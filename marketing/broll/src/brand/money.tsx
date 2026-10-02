@@ -345,11 +345,15 @@ export type MoneyFieldProps = {
   from?: Pt;
   /** flow end (stage px). */
   to?: Pt;
+  /** pour / burst / flow: how wide the starting point is, px (0 = one point). */
+  spread?: number;
   /** Frames: when pour / burst / flow start and stop sending money. */
   start?: number;
   end?: number;
   /** flow: frames each piece takes to arrive. */
   travel?: number;
+  /** flow: how far a piece may bow off the straight line, px (default 120; small keeps it on the line). */
+  arc?: number;
   /** 0 to 1 overall fade (an entrance or exit). */
   appear?: number;
   /** The stage this field sits on: content stage (Stage3D) or full frame (BackdropStage, the default). */
@@ -378,9 +382,11 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
   speed = 1,
   from,
   to,
+  spread = 0,
   start = 0,
   end = 60,
   travel = 20,
+  arc: arcMax = 120,
   appear = 1,
   stage = 'backdrop',
 }) => {
@@ -407,6 +413,7 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
     let ry = 0;
     let rz = 0;
     let a = 1;
+    let grow = 1;
     const s = P / (P - z0); // how much this depth shrinks things on screen
     const margin = Math.max(pw, ph) * s * 0.8;
 
@@ -441,7 +448,7 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
       const vx = (r(4) - 0.5) * (burst ? 16 : 7) * speed;
       const vy = (burst ? -(9 + r(5) * 9) : 1.5 + r(5) * 3.5) * speed;
       const g = (burst ? 0.75 : 0.55) * speed * speed;
-      x = src.x + vx * age + Math.sin(age * 0.12 + phase) * 10;
+      x = src.x + (r(10) - 0.5) * spread + vx * age + Math.sin(age * 0.12 + phase) * 10;
       y = src.y + vy * age + 0.5 * g * age * age;
       rz = -40 + 80 * r(7) + age * (r(6) - 0.5) * 9;
       rx = Math.sin(age * 0.16 + phase) * 50;
@@ -453,16 +460,18 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
       const q = (f - born) / travel;
       if (q < 0 || q > 1) continue;
       const e = q < 0.5 ? 2 * q * q : 1 - (-2 * q + 2) ** 2 / 2;
-      const dx = dst.x - src.x;
+      const sx = src.x + (r(10) - 0.5) * spread;
+      const dx = dst.x - sx;
       const dy = dst.y - src.y;
       const len = Math.hypot(dx, dy) || 1;
-      const arc = Math.sin(e * Math.PI) * (r(4) - 0.5) * 120;
-      x = src.x + dx * e + (-dy / len) * arc;
+      const arc = Math.sin(e * Math.PI) * (r(4) - 0.5) * arcMax;
+      x = sx + dx * e + (-dy / len) * arc;
       y = src.y + dy * e + (dx / len) * arc;
       rz = -25 + 50 * r(7) + e * 40 * (r(6) - 0.5);
       rx = Math.sin(e * Math.PI * 2 + phase) * 30;
       ry = Math.cos(e * Math.PI + phase) * 22;
       a = Math.min(1, q / 0.15, (1 - q) / 0.2);
+      grow = 1 - 0.4 * e; // shrinks as it arrives, as if taken in
     }
 
     // Screen position -> position on this piece's own depth plane.
@@ -483,7 +492,7 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
           height: ph,
           opacity: alpha,
           filter: b > 0.3 ? `blur(${b.toFixed(1)}px)` : undefined,
-          transform: `translateZ(${z}px) rotateZ(${rz}deg) rotateX(${rx}deg) rotateY(${ry}deg)`,
+          transform: `translateZ(${z}px) rotateZ(${rz}deg) rotateX(${rx}deg) rotateY(${ry}deg) scale(${grow})`,
         }}
       >
         {isCoin ? <FlatCoin size={pw} tone={coinTone} /> : <DollarBill width={pw} tone={tone} detail="simple" />}
@@ -492,6 +501,52 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
   }
   return <>{pieces}</>;
 };
+
+/**
+ * One bill that flies off from where it is placed (money leaving): it pops
+ * in, travels by (dx, dy) while it tumbles toward the camera, and fades out.
+ * Place it with `style` (position absolute). `progress` 0 to 1 runs the flight.
+ */
+export const FlyingBill: React.FC<{
+  progress: number;
+  dx?: number;
+  dy?: number;
+  width?: number;
+  tone?: MoneyTone;
+  /** Turn during the flight, degrees. */
+  turn?: number;
+  style?: React.CSSProperties;
+}> = ({progress, dx = 360, dy = -40, width = 110, tone = 'green', turn = -28, style}) => {
+  if (progress <= 0 || progress >= 1) return null;
+  const e = 1 - (1 - progress) ** 2;
+  const a = Math.min(1, progress / 0.12, (1 - progress) / 0.35);
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        pointerEvents: 'none',
+        opacity: a,
+        transform: `translate3d(${dx * e}px, ${dy * e + 30 * progress * progress}px, ${20 + 120 * e}px) rotateZ(${turn * e}deg) rotateX(${28 * e}deg) rotateY(${-22 * e}deg) scale(${0.7 + 0.3 * Math.min(1, progress * 4)})`,
+        filter: 'drop-shadow(0 10px 12px rgba(10,10,10,.14))',
+        ...style,
+      }}
+    >
+      <DollarBill width={width} tone={tone} detail="simple" />
+    </div>
+  );
+};
+
+/**
+ * Two MoneyFields, one down each side of the frame, so money peeks out from
+ * behind the cards and never sits behind a line of words. Full-frame only
+ * (inside BackdropStage). Same props as MoneyField, minus `area`.
+ */
+export const MoneyGutters: React.FC<Omit<MoneyFieldProps, 'area' | 'stage'> & {gutter?: number}> = ({gutter = 250, seed = 'gutters', count = 10, ...rest}) => (
+  <>
+    <MoneyField {...rest} seed={`${seed}-l`} count={Math.ceil(count / 2)} area={{x: -100, y: 0, w: gutter, h: 1920}} />
+    <MoneyField {...rest} seed={`${seed}-r`} count={Math.floor(count / 2)} area={{x: 1080 + 100 - gutter, y: 0, w: gutter, h: 1920}} />
+  </>
+);
 
 export type DollarCounterProps = {
   /** The amount to land on. It must come from props (the script line, the page, the sample client or a real approval). */

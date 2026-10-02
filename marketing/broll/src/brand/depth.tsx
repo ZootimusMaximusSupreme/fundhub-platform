@@ -248,6 +248,9 @@ export const Card3D: React.FC<Card3DProps> = ({
         boxShadow: cardShadow(elevation),
         padding,
         opacity: enter,
+        // 3D pieces placed on the card (a cash stack, a coin) keep their depth,
+        // even while the card fades in.
+        perspective: DEPTH.perspective,
         transform: `translate3d(${x}px, ${y}px, ${zz}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${tilt.rz ?? 0}deg)`,
         ...style,
       }}

@@ -1,5 +1,25 @@
 import React from 'react';
-import {BrandFrame, COLORS, Eyebrow, GradientDash, Tag, TRACK, enter, fadeRight, fadeUp, useTimeline} from '../brand';
+import {
+  BackdropStage,
+  BrandFrame,
+  CARD_EDGE,
+  COLORS,
+  Card3D,
+  Eyebrow,
+  GradientDash,
+  Coin,
+  Decor,
+  FlyingBill,
+  MoneyGutters,
+  P3D,
+  Stage3D,
+  Tag,
+  TRACK,
+  cardShadow,
+  enter,
+  fadeRight,
+  useTimeline,
+} from '../brand';
 
 export type FileItem = {label: string; tag?: string};
 
@@ -35,6 +55,22 @@ export const fileItemsDefaults: FileItemsProps = {
   tag: 'Costing you money',
 };
 
+/** A blank page under the report, so the report reads as a stack of paper. */
+const Sheet: React.FC<{z: number; x: number; y: number; rz: number; progress: number}> = ({z, x, y, rz, progress}) => (
+  <div
+    style={{
+      position: 'absolute',
+      inset: 0,
+      background: '#FFFFFF',
+      ...CARD_EDGE,
+      borderRadius: 30,
+      boxShadow: cardShadow(0.7),
+      opacity: progress,
+      transform: `translate3d(${x}px, ${y + (1 - progress) * 40}px, ${z - (1 - progress) * 380}px) rotateX(${4 + (1 - progress) * 16}deg) rotateZ(${rz}deg)`,
+    }}
+  />
+);
+
 export const FileItems: React.FC<FileItemsProps> = ({
   eyebrow,
   docTitle,
@@ -47,101 +83,138 @@ export const FileItems: React.FC<FileItemsProps> = ({
   showSafeZones,
 }) => {
   const {f, fps} = useTimeline(FILE_ITEMS_BASE, durationInFrames);
+  const L = FILE_ITEMS_BASE;
   const shown = items.slice(0, 5);
   const step = shown.length > 3 ? 7 : 9; // rows arrive one after another
   const card = enter(f, fps, 4, 16);
   const inline = layout === 'inline';
+  const anyChip = tag !== null || shown.some((i) => i.tag);
+
+  // Money: on a red "costs you money" chip, a bill flies off the chip and out
+  // of the report. On a green "fix" chip, a gold coin flips onto the chip.
+  // With no chips, bills hang in the side gutters behind the report.
+  const bad = tagTone === 'bad';
+  const money = !anyChip ? (
+    <MoneyGutters f={f} mode="drift" count={8} seed="file-items-drift" size={[160, 240]} depth={[-700, -150]} opacity={0.55} blur={2.5} />
+  ) : bad ? (
+    <MoneyGutters f={f} mode="fall" count={8} seed="file-items-fall" size={[160, 240]} depth={[-700, -150]} opacity={0.45} blur={2.5} />
+  ) : (
+    <MoneyGutters f={f} mode="rise" count={10} seed="file-items-rise" size={[160, 240]} depth={[-700, -150]} opacity={0.55} blur={2.5} />
+  );
 
   return (
-    <BrandFrame showSafeZones={showSafeZones}>
-      <Eyebrow text={eyebrow} progress={enter(f, fps, 0, 14)} />
-      <div style={{height: 48}} />
-      <div
-        style={{
-          ...fadeUp(card, 30),
-          width: '100%',
-          background: COLORS.white,
-          border: `2px solid ${COLORS.line}`,
-          borderRadius: 30,
-          boxShadow: '0 30px 70px rgba(10,10,10,.08), 0 4px 14px rgba(10,10,10,.04)',
-          padding: '34px 44px 18px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
-            gap: 24,
-            paddingBottom: 24,
-            borderBottom: `2px solid ${COLORS.line}`,
-          }}
-        >
-          <span style={{fontSize: 40, fontWeight: 700, letterSpacing: TRACK.h2, color: COLORS.ink}}>{docTitle}</span>
-          {docSubtitle ? (
-            <span
-              style={{
-                fontSize: 24,
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: COLORS.gray2,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {docSubtitle}
-            </span>
-          ) : null}
-        </div>
-        {shown.map((item, i) => {
-          const row = enter(f, fps, 14 + i * step, 14);
-          const chip = enter(f, fps, 20 + i * step, 12);
-          const chipText = item.tag ?? tag;
-          const chipEl = chipText ? (
+    <BrandFrame
+      showSafeZones={showSafeZones}
+      backdrop={
+        <BackdropStage f={f} length={L}>
+          {money}
+        </BackdropStage>
+      }
+    >
+      <Stage3D f={f} length={L}>
+        <Eyebrow text={eyebrow} progress={enter(f, fps, 0, 14)} />
+        <div style={{height: 48}} />
+        <div style={{position: 'relative', width: '100%', ...P3D}}>
+          <Sheet z={-70} x={-12} y={30} rz={-1.8} progress={enter(f, fps, 0, 16)} />
+          <Sheet z={-36} x={14} y={16} rz={1.6} progress={enter(f, fps, 2, 16)} />
+          <Card3D enter={card} z={24} tilt={{rx: 3, ry: -4, rz: -0.4}} padding="34px 44px 18px">
             <div
               style={{
-                flex: '0 0 auto',
-                marginTop: inline ? 0 : 14,
-                marginLeft: inline ? 0 : 50,
-                opacity: chip,
-                transform: `scale(${0.94 + chip * 0.06})`,
-                transformOrigin: inline ? 'right center' : 'left center',
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 24,
+                paddingBottom: 24,
+                borderBottom: `2px solid ${COLORS.line}`,
               }}
             >
-              <Tag text={chipText} tone={tagTone} size={22} />
-            </div>
-          ) : null;
-          return (
-            <div
-              key={item.label}
-              style={{
-                ...fadeRight(row, 34),
-                padding: inline ? '22px 0' : '26px 0',
-                borderBottom: i < shown.length - 1 ? `2px solid ${COLORS.soft}` : 'none',
-              }}
-            >
-              <div style={{display: 'flex', alignItems: 'center', gap: 22}}>
-                <GradientDash size="bullet" />
+              <span style={{fontSize: 40, fontWeight: 700, letterSpacing: TRACK.h2, color: COLORS.ink}}>{docTitle}</span>
+              {docSubtitle ? (
                 <span
                   style={{
-                    flex: inline ? 1 : undefined,
-                    fontSize: 42,
+                    fontSize: 24,
                     fontWeight: 600,
-                    letterSpacing: TRACK.body,
-                    lineHeight: 1.18,
-                    textWrap: 'balance',
-                    color: COLORS.ink,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: COLORS.gray2,
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {item.label}
+                  {docSubtitle}
                 </span>
-                {inline ? chipEl : null}
-              </div>
-              {inline ? null : chipEl}
+              ) : null}
             </div>
-          );
-        })}
-      </div>
+            {shown.map((item, i) => {
+              const row = enter(f, fps, 14 + i * step, 14);
+              const chip = enter(f, fps, 20 + i * step, 12);
+              const chipText = item.tag ?? tag;
+              const coin = enter(f, fps, 23 + i * step, 12);
+              const fly = (f - (24 + i * step)) / 42; // a calm flight, 42 frames
+              const chipEl = chipText ? (
+                <div
+                  style={{
+                    position: 'relative',
+                    width: 'fit-content',
+                    flex: '0 0 auto',
+                    marginTop: inline ? 0 : 14,
+                    marginLeft: inline ? 0 : 50,
+                    opacity: chip,
+                    transform: `scale(${0.94 + chip * 0.06})`,
+                    transformOrigin: inline ? 'right center' : 'left center',
+                  }}
+                >
+                  <Tag
+                    text={chipText}
+                    tone={tagTone}
+                    size={22}
+                    style={{boxShadow: `0 3px 0 -1px ${bad ? '#EBC6C3' : '#CFE3D4'}, 0 8px 16px rgba(10,10,10,.06)`}}
+                  />
+                  {bad ? (
+                    <Decor>
+                      <FlyingBill progress={fly} dx={inline ? 230 : 330} dy={inline ? 10 : 26} width={124} style={{left: 'calc(100% + 10px)', top: -6}} />
+                    </Decor>
+                  ) : (
+                    <Decor>
+                      <div style={{position: 'absolute', right: -52, top: '50%', marginTop: -20, opacity: coin, transform: `scale(${0.6 + 0.4 * coin})`}}>
+                        <Coin size={40} spin={(1 - coin) * 180} tilt={{rx: 8}} />
+                      </div>
+                    </Decor>
+                  )}
+                </div>
+              ) : null;
+              return (
+                <div
+                  key={item.label}
+                  style={{
+                    ...fadeRight(row, 34),
+                    padding: inline ? '22px 0' : '26px 0',
+                    borderBottom: i < shown.length - 1 ? `2px solid ${COLORS.soft}` : 'none',
+                  }}
+                >
+                  <div style={{display: 'flex', alignItems: 'center', gap: 22}}>
+                    <GradientDash size="bullet" />
+                    <span
+                      style={{
+                        flex: inline ? 1 : undefined,
+                        fontSize: 42,
+                        fontWeight: 600,
+                        letterSpacing: TRACK.body,
+                        lineHeight: 1.18,
+                        textWrap: 'balance',
+                        color: COLORS.ink,
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                    {inline ? chipEl : null}
+                  </div>
+                  {inline ? null : chipEl}
+                </div>
+              );
+            })}
+          </Card3D>
+        </div>
+      </Stage3D>
     </BrandFrame>
   );
 };
