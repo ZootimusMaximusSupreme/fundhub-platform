@@ -14,7 +14,7 @@ Six new ad scripts (3 for the $297 roadmap, 3 for the book-a-call sorting hat), 
 | W1 | Reference files, board, Brief, final scripts file, inventory, checker, commit | claimed | this board · `marketing/ads/scripts/2026-10-02.md` · `marketing/ads/INVENTORY-2026-10-02.md` |
 | W2 | 3 new $297 roadmap ads | claimed | `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` |
 | W3 | 3 new book-a-call (/watch) ads | claimed | `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` |
-| W4 | Which ads ran on Meta and their results, plus every VSL | claimed | `ops/workflows/ad-scripts-2026-10-02/w4-findings.md` |
+| W4 | Which ads ran on Meta and their results, plus every VSL | done | `ops/workflows/ad-scripts-2026-10-02/w4-findings.md` |
 | W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | claimed (phase 1) | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
 
 ## Path corrections (measured 2026-10-02)
@@ -201,9 +201,19 @@ Working numbers: $297 ads are **Ad 21, 22, 23** (after the missing prop ads 9–
 
 (Each unit adds its manifest here when done: files touched, what was made.)
 
+- **W4 (done):** wrote `ops/workflows/ad-scripts-2026-10-02/w4-findings.md`. Meta (read only, live API, account `act_982103620742368`): 7 ads ever delivered, $1,280.42, 435 link clicks, 1 lead, 0 purchases; 4 $297 ads active since 9/26 (`oVid: SLO1`–`SLO4` = SLO Ads 1, 7, 6, 3), 3 book-a-call ads paused since Aug 20 (`oVid: 1`–`3` = CONTROLS Ads 4, 2, 3). VSL list: 20 rows. Nothing changed in Meta, Drive, ClickFunnels or the database. W1 merged both lists into `marketing/ads/INVENTORY-2026-10-02.md` §9–§10.
+
 ## Leftovers
 
 (One line each. Things tripped over that nobody asked about. Not fixed, not verified.)
+
+- W4: `ad_metrics_daily` is missing Aug 4–16 for the book-a-call campaign ($86.86 of Meta's $647.64) and keeps no link clicks, leads or purchases; the 9/28 landing-page board quotes the stored numbers as the whole run.
+- W4: every live Meta ad sends `utm_content={{ad.name}}` ("oVid: SLO1"), which has no leading digits, so no Meta ad ties to a registry id in our attribution tables.
+- W4: https://fundhub.ai/funnel/slo-vsl3-repair.mp4 is 404, and /roadmap-book swaps to it for `track=repair` visitors.
+- W4: `marketing/ads/CONTROLS.md` says the August ads booked calls at $32–36 each; Meta shows 0 leads for the three that ran, and Ad 1 (Denial) never ran. The source of $32–36 was not checked.
+- W4: the live /watch VSL file is 960x540 (the 4K rule covers non-ad videos).
+- W4: the `ad_videos` table has no delivery record (final file id, delivered date) for the four SLO videos live on Meta.
+- W1: `marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md` still holds the older Ad 4 and Ad 5; the 10-02 export has the 9/22 rewrites.
 
 ## Blockers
 
