@@ -52,3 +52,5 @@ ad is measured against it.
 - `ascension-ads.md` — ad strategy for the $10,000 white-label partner offer. Different offer,
   different funnel. Not the primary offer.
 - `apify-scrape-pipeline.md` — competitor ad scraping pipeline.
+- `notes-green-screen.md` — the Notes app green screen concept (2026-10-02): the 7-step note, the
+  sorting hat note, and the SLO, sorting hat and tool analogy scripts filmed in front of them.
