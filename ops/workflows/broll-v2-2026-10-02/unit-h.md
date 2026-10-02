@@ -98,3 +98,7 @@ npx remotion render src/index.ts ProofFloodWide out/samples/proof-flood-wide.mp4
 
 - The money bills are the kit's pale green/blue style, so the money reads as rich texture rather than loud cash. A louder bill look would be a kit change (Unit A's `money.tsx`), not done here.
 - `--gl=angle` is still per command. Setting it once in `remotion.config.ts` would cover every clip (shared file, not changed).
+
+## Commit
+
+`6acaf1ce` — everything above (Root.tsx: only the ProofFlood import and line). Nothing pushed.
