@@ -122,3 +122,7 @@ Same props as round 1 (every shot list still works), same colors, wordmark, grid
 ## Leftovers
 
 - `marketing/broll/shot-lists/2026-10-02.md` still says the 22 clips total 3.9 MB; after the 3D upgrade they total 9.8 MB. Not edited (not my file to change).
+
+## Final commit
+
+`74197098` — rates, step path and soft pull upgraded; DollarCounter leading-zero fix; previews, marked contact sheet, this status file.
