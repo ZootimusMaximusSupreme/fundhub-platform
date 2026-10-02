@@ -9,3 +9,5 @@ export {Grid} from './Grid';
 export {SafeZoneGuide} from './SafeZoneGuide';
 export {Tag} from './Tag';
 export {Wordmark} from './Wordmark';
+export * from './depth';
+export * from './money';

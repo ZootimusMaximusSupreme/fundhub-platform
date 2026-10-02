@@ -1,6 +1,7 @@
 import React from 'react';
 import {Composition} from 'remotion';
 import {CONTACT_SHEET, ContactSheet} from './ContactSheet';
+import {DEPTH_KIT_DEMO_FRAMES, DepthKitDemo} from './DepthKitDemo';
 import {FRAME} from './brand';
 import {TEMPLATES} from './templates/registry';
 
@@ -19,6 +20,14 @@ export const RemotionRoot: React.FC = () => (
       fps={FRAME.fps}
       width={CONTACT_SHEET.width}
       height={CONTACT_SHEET.height}
+    />
+    <Composition
+      id="DepthKitDemo"
+      component={DepthKitDemo}
+      durationInFrames={DEPTH_KIT_DEMO_FRAMES}
+      fps={FRAME.fps}
+      width={FRAME.width}
+      height={FRAME.height}
     />
   </>
 );
