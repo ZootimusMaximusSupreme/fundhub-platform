@@ -1,6 +1,10 @@
+# TOOL TEMPLATES READY
+
+`FlatTireHammer`, `JackFix` and `ToolMatch` are committed on `ad-scripts-2026-10-02` (commit `b1f3ae1d`). Unit G can render its six waiting clips with the props in its shot list; no `--gl=angle` needed.
+
 # Unit F — tool-analogy animations (FlatTireHammer, JackFix, ToolMatch)
 
-**Status: built, checked, committing (2026-10-02).**
+**Status: DONE (2026-10-02).** Commits: `b1f3ae1d` (templates, previews, this file) and the one that adds the heading above.
 
 ## Contract (Unit G writes shot lists against this; it did not change)
 
