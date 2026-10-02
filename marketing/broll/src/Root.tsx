@@ -4,6 +4,7 @@ import {CONTACT_SHEET, ContactSheet} from './ContactSheet';
 import {DEPTH_KIT_DEMO_FRAMES, DepthKitDemo} from './DepthKitDemo';
 import {FRAME} from './brand';
 import {TEMPLATES} from './templates/registry';
+import {OFFER_CTA_COMPOSITIONS} from './templates/offer-cta';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
 // frame to the composition's length, and a 1-frame Still would freeze each
@@ -13,6 +14,7 @@ const SHEET_FRAMES = Math.max(...TEMPLATES.map((t) => t.hero)) + 1;
 export const RemotionRoot: React.FC = () => (
   <>
     {TEMPLATES.map((t) => t.composition())}
+    {OFFER_CTA_COMPOSITIONS}
     <Composition
       id="ContactSheet"
       component={ContactSheet}
