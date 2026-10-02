@@ -12,10 +12,10 @@ Six new ad scripts (3 for the $297 roadmap, 3 for the book-a-call sorting hat), 
 | Unit | What it owns | Status | Output |
 |---|---|---|---|
 | W1 | Reference files, board, Brief, final scripts file, inventory, checker, commit | claimed | this board · `marketing/ads/scripts/2026-10-02.md` · `marketing/ads/INVENTORY-2026-10-02.md` |
-| W2 | 3 new $297 roadmap ads | pending (waits on the Brief) | `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` |
-| W3 | 3 new book-a-call (/watch) ads | pending (waits on the Brief) | `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` |
-| W4 | Which ads ran on Meta and their results, plus every VSL | pending | `ops/workflows/ad-scripts-2026-10-02/w4-findings.md` |
-| W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | pending | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
+| W2 | 3 new $297 roadmap ads | claimed | `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` |
+| W3 | 3 new book-a-call (/watch) ads | claimed | `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` |
+| W4 | Which ads ran on Meta and their results, plus every VSL | claimed | `ops/workflows/ad-scripts-2026-10-02/w4-findings.md` |
+| W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | claimed (phase 1) | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
 
 ## Path corrections (measured 2026-10-02)
 
@@ -84,9 +84,118 @@ Six new ad scripts (3 for the $297 roadmap, 3 for the book-a-call sorting hat), 
 
 **Push:** the standing rule (owner-set 2026-09-09) says never push. This batch commits to the branch and does not push.
 
-## Brief (W1) — status: pending
+## Brief (W1) — status: DONE
 
-Written after W1 reads every rule book and every existing ad. W2 and W3 draft only after this says DONE.
+Read by W1: `CLAUDE.md`, `marketing/ads/` (WRITE-ADS-FROM-HERE, RULES, VOICE, SECOND-LINE, NEXT, README, CONTROLS, CONCEPTS, ASSET-BANK headings, rules-data.mjs, scripts/README, slo/fundhub-297/* , slo/trigger-maps, ascension), both reference files, `scripts/ads/check-script.mjs`, the live /roadmap page (repo copy matches live on every key phrase, checked 2026-10-02), the /watch funnel pages, the Haynes Drive SOP "Bridge from Hook to CTA", and Chris's saved copy decisions.
+
+### B1. Exact paths
+
+| What | Path |
+|---|---|
+| Ad rules (prose) | `marketing/ads/RULES.md`, `marketing/ads/VOICE.md` |
+| Line 2 spec | `marketing/ads/SECOND-LINE.md` |
+| What the checker really enforces | `marketing/ads/rules-data.mjs`, `scripts/ads/check-script.mjs` |
+| Locked $297 ads 1–8, shorts, bullet VSL, house rules | `marketing/ads/reference/locked-ads-2026-09.md` |
+| 9/30 /watch VSL + thank-you video; old 9/20 SLO VSLs | `marketing/ads/reference/vsl-scripts-latest.md` |
+| Live /roadmap page | `marketing/landing-pages/slo/slo-01-sales.html` → https://apply.fundhub.ai/roadmap/ |
+| /watch funnel pages | `marketing/landing-pages/01-vsl.html` (hero), `02a-apply-top.html`, `04a-book-top.html`, `05-thank-you.html` |
+| Older $297 drafts (not locked) | `marketing/ads/slo/fundhub-297/FundHub-297-Ads-2026-09-18.md`, `FundHub-297-Ads-v2.md`, `FundHub-297-Final-Ten.md` |
+| Live book-a-call ads + 48 concepts | `marketing/ads/CONTROLS.md`, `marketing/ads/CONCEPTS.md` |
+| Prop ads 9–20 | **Not found.** Not in the repo, any branch's history, the Claude Doc the locked ads came from, or Google Drive (searched 2026-10-02). |
+
+### B2. The rule set for these six (Chris's 2026-10-02 rules sit on top and win)
+
+1. **Line 1 hook.** Cause before effect. It tells the viewer something true they do not already know. Model: "The condition of your credit determines where you are in the funding process." Also from RULES.md 2.2: no question mark in sentence one, no ask in the first two sentences, sentence one is not about us (not the price, the product, Chris, or Fundhub).
+2. **Line 2 is a bridge built as an open loop.** Name one thing the viewer does not know yet. Hold it across several lines. Pay it off later in the ad, by name. Never resolve it in the same sentence or the next one. Line 2 never carries a greeting, a name, credentials, a restated hook, or an ask (SECOND-LINE.md). Haynes' SOP: the bridge reassures them you can deliver on the bold first line.
+3. **Full certainty.** Never: could, could be worth, might, may, maybe, possibly, potentially, up to, or any other hedge. State what the roadmap does and what the data shows as fact.
+4. **Second person, straight at the viewer.** "You", never "most business owners". Never make them feel stupid. Blame the industry, never the owner.
+5. **Teleprompter paragraphs.** Full flowing sentences, three to five paragraphs. No line break after every sentence. No em dashes, no " -- ".
+6. **Never write:** "it's not X, it's Y"; describing a thing by what it isn't ("there's no call here", "nobody pitches you", "this isn't a course"); two-sentence parallels ("Sometimes it's one item. Sometimes it's twelve." as two sentences); slogans; cute imagery ("road to riches", "green light to shovel money", "conveyor belt"); "Not another ___, but…"; credit repair (or "repair"); your number / the number / any use of "number"; carry (any form); no guarantees; EIN; DUNS; net-30; vendor accounts; gas cards; round two (say "funding sequence"); Social Security number or SSN; "funding gap" (say "left on the table"); "0% interest".
+7. **Proof is only:** a decade (or ten years), hundreds of files, thousands of data points, and the million Chris funded for himself (9/30 VSL wording: "a little over a million dollars for myself"). No $25 million. No Koi Poke. No "tens of thousands".
+8. **"Credit optimization"** is the company term (noun). As a verb, say "fix your file". Never "optimize/optimized/optimizing" — the checker bans every form.
+9. **"I'm Chris, I run Fundhub"** on at most one $297 ad. Never on the sorting-hat ads (Chris: no introduction).
+10. **Company name:** Fundhub. Product name UnderwriteIQ is allowed (it is ours). No vendor names.
+11. **Lead with funding, never the score going up.** The $297 roadmap is not credit repair. "Unlimited funding" is allowed (owner).
+12. **Approved phrases:** maximum amount of funding, maximum fundability, 10x your file, left on the table, funding sequence, fix your file, credit optimization, get funding forever, you'll never need anyone to fund you again.
+
+### B3. What the checker will flag (run `npm run ads:check -- <file>` from the work folder)
+
+- A script is found only under a `## Ad <digit> …` heading. Everything under that heading until the next heading is read as spoken words. Keep notes under a separate heading that does not start with "Ad" and does not contain the letters VSL.
+- **Close promises (both must appear somewhere in the script):** one of `soft pull only` / `zero impact on your score` / `zero score impact` / `no hard inquiry`, and one of `nothing moves until you say so` / `no obligation`. Put both in one plain sentence, e.g. "We pull your credit with a soft pull only, zero impact on your score, and nothing moves until you say so."
+- **Never-say patterns:** a `$` amount followed by "will" in the same sentence (e.g. "The $297 roadmap will…" fails); "will/’ll … come off"; the literal "$10,000" and "$8,000"; "we'll get you funded"; "your score will go up".
+- **Banned words, any form:** optimize, navigate, landscape, leverage, crucial, pivotal, enhance, streamline, comprehensive, align, unleash, elevate, empower, robust, seamless, foster, boast, realm, delve, showcase, underscore, utilize, embark, myriad, plethora, intricate, vibrant, holistic, cultivate, resonate, nestled, tapestry, testament, beacon. **Phrases:** when it comes to, at the end of the day, more than just, the world of, a journey, move the needle, take it to the next level, deep dive, low-hanging fruit, circle back, best-in-class, in conclusion, treasure trove, unlock the power of, elevate your, supercharge, it's important to note, plays a crucial role in. **Openers:** imagine a world where, have you ever wondered, picture this, here's the thing, here's the kicker, trust me, let that sink in, plot twist, let's dive in.
+- **Floor:** 135 words (60 seconds at 150 wpm, minus 10%). The sorting-hat ads at 115–125 words will be flagged "too short". That flag conflicts with Chris's newer rule. Keep his word count and list the flag. Do not pad.
+- Word count = the checker's own count (`[A-Za-z0-9'’$%-]+`). Count with: `node -e 'const t=require("fs").readFileSync(0,"utf8");console.log((t.match(/[A-Za-z0-9\x27’$%-]+/g)||[]).length)' < file.txt`
+
+### B4. The /roadmap page promise (match this so a click lands on the same promise)
+
+- **Hero:** "I'll Show You How to Get Funding Forever!" / "You'll never need anyone to fund you again." Button: "Get My $297 Funding Roadmap". Under it: "Soft pull only. Score doesn't move."
+- **How It Works:** "Get Every Dollar Your File Can Get. Then Do It Again, On Your Own."
+  1. **See what you qualify for today** — "Know what you can get before a bank ever sees your file." Soft pull; roadmap in your portal; "Even with perfect credit, your roadmap reveals the 13 hidden data points that transform a decent file into one that can secure an additional $100,000+ in low-interest funding."
+  2. **Find the gap and optimize your personal credit** — "Stop losing money to items nobody told you about." "$100,000 to $300,000 in fundability" left on the table; every item costing money on all three bureaus: "inquiries, names and addresses that don't match, and your business info"; send the letters.
+  3. **Build the trust in the business** — "Lenders fund businesses that look solid." Experian Business report: liens, bad marks, high card balances, business score, name, address, NAICS code; the exact fix for each, website included.
+  4. **Set up the businesses** — "Never need anyone to fund you again." Open and set up a business the right way with all the right data points, so lenders approve you instead of asking for income verification; repeat company after company.
+  5. **Apply in the right order** — "Get approved, not declined." The banks that approve files like yours, in order, for every business; stack approvals across multiple businesses.
+- **The six deliverables (checkout):** How Much You Qualify For (today and once your file is fixed) · Credit Analysis Report (what's hurting your file, item by item, all three bureaus) · Credit Optimization Roadmap (what to do first and what comes after, month by month) · Dispute Letter Pack (every letter written for your accounts, all six rounds, ready to mail) · Bank & Lender Match List (the banks most likely to approve you where you live, and the order to apply) · FREE BONUS Business Duplication Map (how you go from one company to five or ten, each one funded).
+- **FAQ line worth echoing:** "Even an 800 file has hidden data points that cap how much you get. Your roadmap finds all 13 and gives you the fix for each one. Then you repeat it with every company you open."
+- **The 13 data points:** the repo never lists all 13. Name only the examples the page names: hard inquiries, names and addresses that don't match across the bureaus, business info (business score, liens, bad marks, high business card balances, business name and address, NAICS code, website). Never invent a fourteenth or a list of 13.
+- The page's refund line says "within 7 days". Ads never state a day count.
+
+### B5. The /watch funnel and the 9/30 VSL (match this for the sorting hat)
+
+- **Page hero:** "For Business Owners Who Need Real, High Volume Funding" · "Find out exactly what your business qualifies for in one call" · "10-second application · Soft pull · Zero score impact". Book page: "a live Google Meet, and we run a soft credit pull on the call — zero score impact." Thank-you: "You get one of three roads."
+- **9/30 VSL parts (name these in the match column):**
+  - **P1 Open** — the condition of your credit decides $10,000–$50,000 versus $100,000–$1,000,000 across multiple businesses; small details (personal data, business codes) hold back even an 800; one step most people miss.
+  - **P2 Scenarios** — bank denied you and nobody said why; someone sent your file to every lender on their list; you never applied because you didn't want a hard pull.
+  - **P3 Common cause** — nobody reviewed your credit the way a lender does before applications went out.
+  - **P4 UnderwriteIQ** — reviews your file like a lender, catches the small details, matches thousands of lenders to the thirty to fifty that fit, applies in funding rounds in the order that protects your score.
+  - **P5 The missed step** — removing the hard inquiries between each funding round; inquiries left on make the next lender approve less; one good round, then a wall.
+  - **P6 Funding sequence** — inquiries removed between rounds keep a funding sequence going three to six rounds.
+  - **P7 Three paths** — file ready: we go get the capital (advisor starts within 24 business hours, first applications within 72, upfront fee only once confirmed qualified); something holding it back: we show you what, fix your file, fund you once it's ready; do it yourself: the steps in order to a prime file, fix how your companies are set up, open or age companies, a detailed accountability system, and we fund with you when it's ready.
+  - **P8 Data** — hundreds of files, thousands of data points on what lenders approve.
+  - **P9 Next step** — ten-second application, pick a time, Google Meet, tri-bureau soft pull with your advisor, zero impact on your score; you see what you qualify for now, what's holding it back, the fastest way to the maximum amount of funding.
+- Most people aim for $250,000 to $400,000; some files are ready today and many aren't, which is normal.
+
+### B6. Angles, hooks and loop payoffs already used — do not reuse any
+
+**Locked $297 ads (approved; Ad 1–7 filmed as SLO Ads 1–7, registry ids 84–90):**
+Ad 1 full offer read (no loop; offer first) · Ad 2 declined and nobody told you why → "I'll tell you exactly why" · Ad 3 you don't know what your file is worth → "I'll tell you what yours is worth" · Ad 4 one card holding the file down → which card and the paydown balance · Ad 5 max fundability, two sides of the file → personal and business, resolved in the next sentence · Ad 6 you already know your file decides funding → the gap is a couple hundred thousand (card too high, items, personal data mismatch) · Ad 7 the call that was never a roadmap → "the roadmap was never the product" · Ad 8 abandoned cart → four questions (what you get, what you do, how long, risk), first round was $11,000 in Chase cards.
+**Shorts:** tired of people who don't know what they're talking about · everybody gatekeeps this · worth two or three hundred thousand and you're getting fifty · declined, nobody told you why · call was a pitch · one card · ten years in a $297 package.
+**Old 9/20 SLO VSLs:** "your file could be worth a million" → what it's worth, small tweaks nobody told you, $297 vs a five-figure course; VSL 2: run it yourself or we run it with you, funding stops being something you chase once.
+**Older $297 drafts (never locked):** price anchor (course costs $5–20k) · disqualifier (clean credit, book a call) · callout (getting ready for funding) · thirty-second cut · circumstance (no time to learn credit) · disputing with a template · 700+ came back small · still scrolling · ten seconds · the hours · wrong sequence of fixes · the data · timeline was a sales answer · one payment vs monthly billing · you hold the receipts · the levers on a 700 file · where you live (geography of the lender list) · $297 against the course · the call was a sales call · the shotgun · two moves away · the read without the call · pull it and find out.
+**Live book-a-call ads (CONTROLS):** denial (nobody looked at your file the way a bank does → "it comes down to one thing: nobody ran your file through the same system a bank uses") · broker burn · competitor ("it's not talent") · blind application (what a bank sees vs Credit Karma) · insider access · stop before you apply · why I built this · the Founder VSL.
+**48 concepts (CONCEPTS.md):** who takes the inquiries off · the wrong item first · nobody can promise a deletion · the no is still talking (last year's inquiry) · the handoff · Experian login · you don't need a business (unused LLC) · four exits · built to bring you back · one shot or twelve · price after forty minutes · nobody types your revenue · 24 and 72 hours · under 600 not for you · the same twelve banks · the order you apply in · learning on your file · they took the swing anyway · seven days · a card on his board · what a clean file buys · one cell number · ask them how they protect credit · merchant advance · nobody remembers forty files · my own file first · which bureau they pull · round one funded, round two came back no · the application you never sent · speed of your bank account · twenty-five on a 720 · nobody ran it · not a loan processor · seven hundred and clean · seventy-five files at once · a thousand hours · the clock on us · I turn most people down · thirty days is a bank · an 800 survives two rounds · two answers end the call · nobody stacks $200K in one shot · nobody gets your login · thirty-two dollars · somebody else's credit file · nobody teaches the order · two hundred first · thirty days by law.
+**9/30 /watch VSL loop:** "one step most people miss… I'll show you in a couple of minutes" → removing hard inquiries between funding rounds. A sorting-hat ad may state inquiry removal as a fact, but must not reuse this loop.
+
+### B7. Open lanes nobody has run (suggestions, not orders)
+
+- **$297 set — all three sell the page's promise (the 13 hidden data points, and a roadmap that gets you funded again and again for life):**
+  - A strong file still leaves money on the table — open on Chris's hook direction nearly word for word: "There are 13 hidden data points that get a 760 file an additional $100,000 in low-interest funding." Loop on one data point the page names, paid off later.
+  - The economy angle (required in one ad): rates are going up; when rates rise, banks tighten and money gets harder to get; the files that still get the low-interest money are the ones set up right; a plan for your file matters more than ever now.
+  - Funding forever, company after company: how a business is set up on paper decides whether a lender approves it or asks for income verification; the Business Duplication Map; one company to five or ten, each funded; you'll never need anyone to fund you again.
+- **Sorting hat — one situation per ad (Andromeda finds the audience from the message):** (1) low score or a file that needs work; (2) strong score and income, wants the maximum amount of funding; (3) already funded and wants the next funding sequence, or unsure where they stand. Rising rates go into at least one. Every one ends: "Wherever you are in the funding process, Fundhub has a solution for that, so hop on a call and we'll figure it out."
+- Unused reasons from the locked doc's open items: a charge-off they think is permanent; personal data mismatch across bureaus; already paid somebody and got nothing; funding a second business; quoted six months and don't believe it; closer than they think; inquiries scaring them off applying.
+
+### B8. Draft format for W2 and W3 (W1 assembles the final file from this)
+
+```
+## Ad 21 — SLO, <angle in a few words>
+
+<the script, three to five teleprompter paragraphs>
+
+### Notes for ad 21
+- Angle:
+- Hook (line 1):
+- Loop line (line 2):
+- Where the loop pays off:
+- Matches: <page section, or 9/30 VSL part P1–P9>
+- origin_angle: <lower_case_slug>
+- Words: <checker count>
+- Shoot: Chris seated, face to camera, a location that looks expensive (vary per ad)
+- Checker flags kept on purpose: <flag and the newer rule it conflicts with, or "none">
+```
+
+Working numbers: $297 ads are **Ad 21, 22, 23** (after the missing prop ads 9–20). Sorting-hat ads are **Ad 24, 25, 26**. These are labels for this file only; the real ad id is set at upload (utm_content), and Chris names angles.
 
 ## Manifests
 
