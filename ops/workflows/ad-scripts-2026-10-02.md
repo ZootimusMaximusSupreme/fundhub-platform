@@ -11,11 +11,11 @@ Six new ad scripts (3 for the $297 roadmap, 3 for the book-a-call sorting hat), 
 
 | Unit | What it owns | Status | Output |
 |---|---|---|---|
-| W1 | Reference files, board, Brief, final scripts file, inventory, checker, commit | claimed | this board · `marketing/ads/scripts/2026-10-02.md` · `marketing/ads/INVENTORY-2026-10-02.md` |
+| W1 | Reference files, board, Brief, final scripts file, inventory, checker, commit | done | this board · `marketing/ads/scripts/2026-10-02.md` · `marketing/ads/INVENTORY-2026-10-02.md` |
 | W2 | 3 new $297 roadmap ads | done | `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` |
 | W3 | 3 new book-a-call (/watch) ads | done (W1 rewrote Ad 25's payoff) | `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` |
 | W4 | Which ads ran on Meta and their results, plus every VSL | done | `ops/workflows/ad-scripts-2026-10-02/w4-findings.md` |
-| W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | phase 1 done · phase 2 claimed | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
+| W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | done | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
 
 ## Path corrections (measured 2026-10-02)
 
@@ -205,6 +205,8 @@ Working numbers: $297 ads are **Ad 21, 22, 23** (after the missing prop ads 9–
 - **W3 (done):** wrote `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` — sorting-hat Ads 24 (low score), 25 (strong score and income), 26 (already funded; the rates ad). 123–125 words. Only checker flag: "too short" (135-word floor vs Chris's 115–125). Fed hike confirmed (Sept 16, 2026, first since 2023).
 - **W1 review:** Ad 25's payoff duplicated Ad 21's ("names and addresses that don't match"), so W1 rewrote it around the business name, sourced from `src/underwrite/company-audit.mjs` (125 words). Varied two repeated shoot locations. All six pass the database ad screen (047). Final file `marketing/ads/scripts/2026-10-02.md` committed in e467a5fc.
 - **W5 phase 1 (done, 91668bb0):** Remotion project in `marketing/broll/` (own package.json); 8 templates — QualifyToday, FileItems, HiddenDataPoints, InquiriesOff, LenderList, StepPath, RatesRising, SoftPull; previews and a marked contact sheet in `marketing/broll/previews/`. License: Company License, "Remotion for Creators", $25 per seat per month (1 seat today); nothing bought. Root lint and type check unchanged.
+- **W5 phase 2 (done, 0a6efc9f):** shot lists for the six final scripts in `marketing/broll/shot-lists/2026-10-02.md` (line, template, exact props, start time at 150 wpm, length, file name). 22 MP4s rendered (Ad 21: 4 · 22: 4 · 23: 3 · 24: 3 · 25: 4 · 26: 4), 3.9 MB, H.264 1080x1920 30 fps, in `marketing/broll/out/ad-21/` … `out/ad-26/` (gitignored; one new `.gitignore` line `marketing/broll/out/`). No `PEXELS_API_KEY` in `.env`, so no stock was pulled; three search keywords per script are in the shot list. Rendered one command per clip, no saved render script (stays on the Creators license).
+- **Definition of done (W1, 2026-10-02):** `npm run lint` passes (2314 files parse clean). `npx tsc --noEmit` passes. `npm test`: 11,865 tests, 11,835 pass, 26 fail, 4 skipped — identical on the starting commit ad6bc309 (same 26 failing tests, run in a scratch worktree), so this batch adds no failure. `npm run ads:check -- marketing/ads/scripts/2026-10-02.md`: Ads 21–23 clean; Ads 24–26 flagged "too short" only, kept on purpose (Chris's 115–125 rule). No journeys changed (docs, scripts and a separate Remotion project only). Not pushed (owner-set 2026-09-09).
 - **W4 (done):** wrote `ops/workflows/ad-scripts-2026-10-02/w4-findings.md`. Meta (read only, live API, account `act_982103620742368`): 7 ads ever delivered, $1,280.42, 435 link clicks, 1 lead, 0 purchases; 4 $297 ads active since 9/26 (`oVid: SLO1`–`SLO4` = SLO Ads 1, 7, 6, 3), 3 book-a-call ads paused since Aug 20 (`oVid: 1`–`3` = CONTROLS Ads 4, 2, 3). VSL list: 20 rows. Nothing changed in Meta, Drive, ClickFunnels or the database. W1 merged both lists into `marketing/ads/INVENTORY-2026-10-02.md` §9–§10.
 
 ## Leftovers
