@@ -8,6 +8,7 @@ Two templates, one idea each.
 |---|---|---|---|
 | `LenderSlots` | `marketing/broll/src/templates/LenderSlots.tsx` | `marketing/broll/previews/lender-slots.png` (frame 100) | `out/samples/lender-slots.mp4` (3.5 s), `out/samples/lender-slots-ad22.mp4` (3.0 s, Ad 22 words) |
 | `FundingRounds` | `marketing/broll/src/templates/FundingRounds.tsx` | `marketing/broll/previews/funding-rounds.png` (frame 106) | `out/samples/funding-rounds.mp4` (4 rounds, 3.67 s), `out/samples/funding-rounds-6.mp4` (6 rounds, 4.0 s) |
+| `LenderMatchScroll` (Chris's "Matching your file" redesign, added later the same day) | `marketing/broll/src/templates/LenderMatchScroll.tsx` | `marketing/broll/previews/lender-match-scroll.png` (frame 116) | `out/samples/lender-match-scroll.mp4` (4.0 s) |
 
 All MP4s: 1080x1920, 30 fps, H.264 yuv420p bt709, 0.8 to 1.1 MB each. Folder: `marketing/broll/out/samples/`.
 
@@ -74,6 +75,65 @@ No dollar figure shows by default. Bundles are equal by default, so nothing impl
 | `durationInFrames` | by rounds: 3 → 105, 4 → 110, 5 → 115, 6 → 120 | 75 to 120 (2.5 to 4 s). The timeline stretches to fit. |
 | `showSafeZones` | `false` | Review overlay |
 
+## LenderMatchScroll — Chris's "Matching your file" redesign
+
+Chris's words: "Start from the top and go down. Display a list of 50–60 banks with their logos. Pull the bank logos directly from the CRM database … Show each bureau and their status, but blur out the details." LenderSlots stays as it is; this is a new clip.
+
+### What it shows
+
+- A floating white panel with a header: "Bank", then "Experian", "Equifax", "TransUnion", each with a small padlock.
+- Under it, a list of **59 real banks** on a 3D drum. Each row: the bank's logo (the CRM's own logo file, on a white tile), its name, a blurred line under the name (its real product type), and three blurred status chips, one per bureau. A green chip means the bank pulls that bureau and a gray chip means it does not, straight from the CRM. The words on the chips and the product line are blurred, so you can tell real data is there but you cannot read it.
+- Frames 0 to 10: the eyebrow draws in and the panel flies forward with the top of the list showing (Southside Bank, Chase, Centier Bank, Bank of America …).
+- Frames 10 to 98: the list scrolls from the top of the list to the bottom. It speeds up, runs, then slows down. A light motion blur shows only while it is fast, so logos stay recognizable as they pass. Rows curve away at the top and bottom of the window like a real drum.
+- Frame 98: it settles near the end of the list (ConnectOne Bank, WesBanco, FVC Bank, FNBO, 1st Source Bank). A few bills and coins pop out from behind both sides of the panel.
+- Frames 100 to 120: the clear line lands under the panel: "30–50 lenders matched to your file" (not blurred), and holds.
+- Faint bills drift down both sides the whole time.
+
+No amounts, no approval words, and nothing next to a bank says it approves anyone.
+
+### Props
+
+| Prop | Default | What it does |
+|---|---|---|
+| `eyebrow` | `Matching your file` | Spectrum dash + label (9/30 VSL P4) |
+| `bankHeader` | `Bank` | Header over the logo column |
+| `bureauHeaders` | `["Experian", "Equifax", "TransUnion"]` | The three bureau column headers |
+| `pulledLabel` | `Pulls` | Blurred chip word when the CRM says the bank pulls that bureau |
+| `notPulledLabel` | `No pull` | Blurred chip word when it does not |
+| `count` | `30–50` | The big blue number on the ending line. Empty string `""` shows the words alone, in blue. |
+| `countLabel` | `lenders matched to your file` | The ending line (9/30 VSL P4: "the thirty to fifty that fit you") |
+| `durationInFrames` | `120` | 105 to 135 (3.5 to 4.5 s). The timeline stretches to fit. |
+| `showSafeZones` | `false` | Review overlay |
+
+### Banks, logos and bureau data: sources
+
+- **Bank count:** 59.
+- **Bank and bureau source:** the Fundhub CRM table `public.lenders` (Supabase project `oqpnlusrotpxfenysfxz`). A read-only SELECT of every row that has a logo (661 rows) is saved at `marketing/broll/scripts/data/crm-lenders-with-logos-2026-10-02.json`, with the query inside it. Each bank's name, `logo_path`, `lender_table` and `bureaus_pulled` come from there. The blurred chips are the bank's `bureaus_pulled` (EX, EQ, TU), every product row combined. The blurred line is its `lender_table` in words (for example "Business card, in branch").
+- **Logo source:** the CRM's `logo_path` for each bank, for example `/assets/lenders/chase.png`. That is the file the CRM serves from `public/assets/lenders/` at the repo root. `scripts/bake-lender-scroll.mjs` copies each one byte for byte into `marketing/broll/public/lender-logos/`, so Remotion can load it.
+- **The script refuses** to write if a bank is not in the CRM snapshot, has no logo or more than one, has no bureau data, if the logo file is missing, or if the logo is under 120 px. Every chosen logo is 120 to 256 px and shows at 56 px, so all of them are crisp.
+- **How the 59 were picked:** I looked at every CRM logo of 120 px or more (370 banks). I kept banks whose CRM logo is clearly their own mark, and mixed national names with regional banks. Left out: names with notes in them, all-caps rows, and logos that are not the bank's mark (see Leftovers).
+
+### Commands (inside `marketing/broll/`)
+
+```bash
+node scripts/bake-lender-scroll.mjs     # re-bake after editing PICK
+npx remotion still src/index.ts LenderMatchScroll previews/lender-match-scroll.png --frame=116
+npx remotion render src/index.ts LenderMatchScroll out/samples/lender-match-scroll.mp4
+```
+
+I did not need `--gl=angle`: nothing in the panel dropped or sliced in the default render.
+
+### Where it fits
+
+- **9/30 /watch VSL P4:** "Then it matches your file against thousands of lenders to find the thirty to fifty that fit you". Use the defaults.
+- **$297 Ad 22:** "Then your Bank and Lender Match List shows you the banks that approve files like yours". Use `{"eyebrow":"Bank and Lender Match List","count":"","countLabel":"Lenders matched to your state"}` (the /roadmap page's words; the page gives no 30–50 count).
+
+### Checks
+
+- **Text-only safe-zone scan:** 14 stills with decoration dropped (every 10 frames, 0 to 119, plus the no-count version at frame 119). **0 drawn pixels** in y 0–268 and y 1249–1919 in all 14. Words run from y 303 to y 1210 at most.
+- **Looked at:** the preview, a 15-frame strip of the whole clip, a mid-scroll frame, a slowing frame, and the frame where the longest name (Trustmark National Bank) is centered. The longest names never reach the bureau columns. The logos are crisp at rest. The chips read as hidden real data: green or gray, words unreadable. Fixed after looking: a motion blur so heavy the logos smeared (now light), header labels crowding each other (wider columns), long names running into the chips (long names step down a size), and chip words that were still half readable (blur raised to 7 px).
+- **Typecheck:** `cd marketing/broll && npx tsc --noEmit` passes.
+
 ## Commands (run inside `marketing/broll/`)
 
 ```bash
@@ -117,5 +177,7 @@ npx remotion still src/index.ts LenderSlots /tmp/ls-60.png --frame=60 --props='{
 - Follow-up commit — puts Unit E's two Root.tsx lines back (import + `<LenderMatchingCompositions />`), committed by path only.
 
 ## Leftovers
+
+- Some CRM `logo_path` files are not the bank's own mark, for example a website-builder "G" icon on several banks, a browser icon, generic ".bank" tiles, an app-store badge, a dog photo, and other companies' logos. I left those banks out of LenderMatchScroll and did not fix the CRM.
 
 - Units share one git index in this worktree, so a `git add` by one unit can land in another unit's commit (happened once, see Commits). Committing with `git commit -- <paths>` avoids it.
