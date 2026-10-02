@@ -7,6 +7,8 @@ export type RatesRisingProps = {
   subline: string | null;
   /** Chip at the tip of the line. */
   chipLabel: string;
+  /** Headline size in px (default 104). Smaller keeps a longer line on one row. */
+  headlineSize?: number;
   durationInFrames?: number;
   showSafeZones?: boolean;
 };
@@ -30,7 +32,15 @@ const TIP = {x: 862, y: 58};
 const LINE = `M 18 300 C 120 302, 190 286, 290 292 S 450 304, 540 276 S 690 196, 760 132 S 830 72, ${TIP.x} ${TIP.y}`;
 const AREA = `${LINE} L ${TIP.x} ${H - 30} L 18 ${H - 30} Z`;
 
-export const RatesRising: React.FC<RatesRisingProps> = ({eyebrow, headline, subline, chipLabel, durationInFrames, showSafeZones}) => {
+export const RatesRising: React.FC<RatesRisingProps> = ({
+  eyebrow,
+  headline,
+  subline,
+  chipLabel,
+  headlineSize = 104,
+  durationInFrames,
+  showSafeZones,
+}) => {
   const {f, fps} = useTimeline(RATES_RISING_BASE, durationInFrames);
   const chart = enter(f, fps, 6, 14);
   const draw = progressBetween(f, 10, 50);
@@ -44,11 +54,12 @@ export const RatesRising: React.FC<RatesRisingProps> = ({eyebrow, headline, subl
         style={{
           ...fadeUp(enter(f, fps, 3, 14), 22),
           marginTop: 34,
-          fontSize: 104,
+          fontSize: headlineSize,
           fontWeight: 800,
           letterSpacing: TRACK.h1,
           lineHeight: 1.02,
           textAlign: 'center',
+          textWrap: 'balance',
         }}
       >
         {headline}
@@ -101,6 +112,7 @@ export const RatesRising: React.FC<RatesRisingProps> = ({eyebrow, headline, subl
             ...fadeUp(enter(f, fps, 55, 14), 18),
             marginTop: 40,
             maxWidth: 860,
+            textWrap: 'balance',
             fontSize: 48,
             fontWeight: 600,
             letterSpacing: TRACK.body,

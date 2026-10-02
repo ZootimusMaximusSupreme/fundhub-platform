@@ -1,8 +1,8 @@
 # W5 status — B-roll kit (Remotion)
 
-**PHASE 1 DONE** (2026-10-02). PHASE 2 (shot lists, MP4s, Pexels) waits for the six final scripts.
+**PHASE 1 DONE** (2026-10-02). **PHASE 2 DONE** (2026-10-02): see the last section.
 
-Owns: `marketing/broll/` and this file. Nothing else was edited.
+Owns: `marketing/broll/`, this file, and (phase 2) one line in the root `.gitignore`. Nothing else was edited.
 
 ## 1. License — what Fundhub has to pay
 
@@ -135,12 +135,47 @@ npx remotion still src/index.ts ContactSheet previews/contact-sheet-marked.png -
 npx remotion still src/index.ts SoftPull out/safe.png --frame=72 --props='{"showSafeZones":true}'
 ```
 
-Preview frames are 72 for the 75-frame templates and 86 for the 90-frame ones (HiddenDataPoints, InquiriesOff, StepPath). `out/` does not exist yet. PHASE 2 renders there and adds it to `.gitignore`. Rendering one clip took about 5 seconds on this Mac.
+Preview frames are 72 for the 75-frame templates and 86 for the 90-frame ones (HiddenDataPoints, InquiriesOff, StepPath). `out/` holds the phase 2 MP4s and is in `.gitignore` (root line `marketing/broll/out/`). Rendering one clip took about 5 seconds on this Mac.
 
 ## 7. Root lint and type check
 
 Nothing broke and no config was edited (see section 2).
 
+## PHASE 2 DONE — shot lists and MP4s (2026-10-02)
+
+- **Shot lists:** `marketing/broll/shot-lists/2026-10-02.md`, built from the final scripts only (`marketing/ads/scripts/2026-10-02.md`, commit e467a5fc). The W2 and W3 drafts were not used. For each clip it lists the exact line, the template, the exact props, the start time at 150 words a minute, the length, and the MP4 name.
+- **Clips per ad:** Ad 21: 4 · Ad 22: 4 · Ad 23: 3 · Ad 24: 3 · Ad 25: 4 · Ad 26: 4. That is **22 clips**.
+- **MP4 folder:** `marketing/broll/out/ad-21/` to `marketing/broll/out/ad-26/` (full path `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktrees/ad-scripts-2026-10-02/marketing/broll/out/`).
+- **Total size:** 3,854,329 bytes (3.9 MB). All 22 were probed: H.264, 1080x1920, 30 fps, yuv420p with bt709 tags, and the exact frame count in the shot list (75 or 90).
+- **Pexels:** `PEXELS_API_KEY` is not in `/Users/chrisstanbridge/Developer/fundhub-platform/.env`, and no env file has any Pexels name. Nothing was pulled. The shot list gives three search keywords per script, each tied to the line it fits, and says to pick clips with no faces, logos or bank names.
+- **Git:** one line added to the root `.gitignore`: `marketing/broll/out/`. MP4s never go in git.
+- **How the renders were run:** one `npx remotion render` command per clip, typed at the terminal. No render script or pipeline was saved, so usage stays on the $25 a month Creators option.
+
+**Template changes.** All are additive. The defaults are unchanged: the four touched templates re-render pixel-identical to the approved phase-1 previews.
+- `SoftPull`: `score` can be null, which shows no number. No ad line says a score, so the sample client's 762 never sits over one. The label then sits large inside the gauge.
+- `FileItems`: chips are optional (`tag: null`), plus a green chip tone (`tagTone: "ok"`), an inline row layout (`layout: "inline"`), up to 5 items, and an optional subtitle.
+- `QualifyToday`: a words-only chip when the two amounts are words instead of numbers (used for "From one company / To five or ten / Each one funded").
+- `RatesRising`: optional `headlineSize`, and balanced line breaks on the headline and subline.
+- `remotion.config.ts`: bt709 color tags, so the MP4s come out as standard yuv420p. Without it they came out full-range yuvj420p, which some players and uploaders show with shifted colors.
+
+**Checks.**
+- A still of every clip, scanned: 0 drawn pixels in the top 14% or bottom 35%, and nothing past the side margins.
+- I looked at every still, then one frame from an MP4 of each of the 8 templates, then a motion strip of two clips. Two layouts were fixed after looking: the soft-pull label was crowding the gauge, and the Ad 22 rates subline left "to get." alone on its second line.
+- **Words on screen:** a word-by-word check listed every on-screen word that is not in its own line. Two had no source and were changed: Ad 21 clip 1 "On a 760 file" became "A 760 file", and Ad 21 clip 3 "a fix for each one" became "the fix for each one". Each remaining one is named under its table in the shot list:
+  - the same sentence (Ad 22 clip 1)
+  - the /roadmap page for the same idea (Ad 21 clip 2's card title; Ad 23 clip 2's "from one company to five or ten, each one funded")
+  - the 9/30 /watch VSL for the same step (Ad 26 clip 1's "On your report")
+  - or the ad's own loop sentence that the line pays off (Ad 24 clip 2, Ad 25 clips 2 and 3, Ad 26 clip 1)
+
+**What didn't get a clip** (it stays on Chris):
+- the price and call-to-action lines in every ad
+- "funded again and again" in Ad 21 and "funding forever" in Ad 22
+- the proof line in Ad 23
+- "one file is ready in a month and another takes six" in Ad 24. The two-row layout would color "takes six" blue, as if it were the better result.
+- "Wherever you are in the funding process..." on the three call ads (no three-paths template was built)
+- Ad 22's rates clip starts at "when rates go up" (0:05), so the Fed news line opens on Chris's face.
+
 ## Leftovers
 
 - The live /roadmap "See a sample" dispute letter comes from the vendor sandbox file, while the sample's amounts come from the simulated file. Per `ops/workflows/2026-10-02-roadmap-sample-content.md` (W1 and W3 manifest), that is two files in one sample set, which the 2026-10-02 sample-clients rule forbids. Not touched, not verified.
+- Phase 2: none.

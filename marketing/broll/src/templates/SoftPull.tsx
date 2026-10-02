@@ -3,8 +3,12 @@ import {BrandFrame, COLORS, Eyebrow, Tag, TRACK, enter, fadeUp, progressBetween,
 
 export type SoftPullProps = {
   eyebrow: string;
-  /** The score on the gauge. It never moves: that is the point of the clip. */
-  score: number;
+  /**
+   * The score on the gauge. It never moves: that is the point of the clip.
+   * Null shows no number at all (use it when the script line says no score);
+   * `scoreLabel` then sits large in the middle of the gauge.
+   */
+  score: number | null;
   scoreLabel: string;
   headline: string;
   chip: string;
@@ -26,6 +30,8 @@ export const softPullDefaults: SoftPullProps = {
   chip: "Score doesn't move",
 };
 
+/** Where the marker sits when no score is given: a picture, not a value. */
+const NO_SCORE_AT = 0.78;
 const MIN = 300;
 const MAX = 850;
 const W = 780;
@@ -47,7 +53,7 @@ const arc = (t0: number, t1: number) => {
 
 export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, headline, chip, durationInFrames, showSafeZones}) => {
   const {f, fps} = useTimeline(SOFT_PULL_BASE, durationInFrames);
-  const t = Math.max(0, Math.min(1, (score - MIN) / (MAX - MIN)));
+  const t = score === null ? NO_SCORE_AT : Math.max(0, Math.min(1, (score - MIN) / (MAX - MIN)));
   const gauge = enter(f, fps, 2, 14);
   const num = enter(f, fps, 6, 12);
   const scan = progressBetween(f, 18, 46);
@@ -90,19 +96,29 @@ export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, h
             opacity: num,
           }}
         >
-          <div style={{fontSize: 190, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, fontVariantNumeric: 'tabular-nums'}}>{score}</div>
-          <div
-            style={{
-              marginTop: 10,
-              fontSize: 28,
-              fontWeight: 600,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: COLORS.gray2,
-            }}
-          >
-            {scoreLabel}
-          </div>
+          {score === null ? (
+            <div style={{marginTop: 118, fontSize: 86, fontWeight: 800, letterSpacing: TRACK.h1, lineHeight: 1, whiteSpace: 'nowrap'}}>
+              {scoreLabel}
+            </div>
+          ) : (
+            <>
+              <div style={{fontSize: 190, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, fontVariantNumeric: 'tabular-nums'}}>
+                {score}
+              </div>
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 28,
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: COLORS.gray2,
+                }}
+              >
+                {scoreLabel}
+              </div>
+            </>
+          )}
         </div>
       </div>
       <div style={{...fadeUp(enter(f, fps, 44, 12), 14), marginTop: 46}}>

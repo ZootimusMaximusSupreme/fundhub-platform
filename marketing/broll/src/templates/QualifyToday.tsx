@@ -20,7 +20,10 @@ export type QualifyTodayProps = {
   eyebrow: string;
   today: Amount;
   after: Amount;
-  /** Words after the gap amount, e.g. "left on the table". Null hides the gap line. Shown only when both amounts are numbers. */
+  /**
+   * The chip under the amounts. With two numbers it reads "<gap amount> <gapLabel>", e.g. "$22,150 left on the table".
+   * With words in place of numbers it shows gapLabel alone. Null hides it.
+   */
   gapLabel: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
@@ -154,6 +157,23 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
             </div>
           ) : null}
         </>
+      ) : gapLabel ? (
+        <div
+          style={{
+            ...fadeUp(enter(f, fps, 46, 14), 18),
+            marginTop: 54,
+            padding: '18px 30px',
+            borderRadius: 999,
+            background: COLORS.accentSoft,
+            border: `2px solid ${COLORS.accentLine}`,
+            fontSize: 40,
+            fontWeight: 700,
+            color: COLORS.accent,
+            letterSpacing: '-0.015em',
+          }}
+        >
+          {gapLabel}
+        </div>
       ) : null}
     </BrandFrame>
   );

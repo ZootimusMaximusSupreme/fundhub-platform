@@ -6,11 +6,16 @@ export type FileItem = {label: string; tag?: string};
 export type FileItemsProps = {
   eyebrow: string;
   docTitle: string;
+  /** Small label at the right of the card title. An empty string hides it. */
   docSubtitle: string;
-  /** One to four items, in the words of the script line. */
+  /** One to five items, in the words of the script line. */
   items: FileItem[];
-  /** Chip under every item unless the item sets its own. */
-  tag: string;
+  /** Chip on every item unless the item sets its own. Null shows no chips. */
+  tag: string | null;
+  /** Chip color: red "bad" (default) for problems, green "ok" for fixes. */
+  tagTone?: 'bad' | 'ok';
+  /** "stacked" puts the chip under the item (default); "inline" puts it at the end of the row, for 4 or 5 short items. */
+  layout?: 'stacked' | 'inline';
   durationInFrames?: number;
   showSafeZones?: boolean;
 };
@@ -30,10 +35,22 @@ export const fileItemsDefaults: FileItemsProps = {
   tag: 'Costing you money',
 };
 
-export const FileItems: React.FC<FileItemsProps> = ({eyebrow, docTitle, docSubtitle, items, tag, durationInFrames, showSafeZones}) => {
+export const FileItems: React.FC<FileItemsProps> = ({
+  eyebrow,
+  docTitle,
+  docSubtitle,
+  items,
+  tag,
+  tagTone = 'bad',
+  layout = 'stacked',
+  durationInFrames,
+  showSafeZones,
+}) => {
   const {f, fps} = useTimeline(FILE_ITEMS_BASE, durationInFrames);
-  const shown = items.slice(0, 4);
+  const shown = items.slice(0, 5);
+  const step = shown.length > 3 ? 7 : 9; // rows arrive one after another
   const card = enter(f, fps, 4, 16);
+  const inline = layout === 'inline';
 
   return (
     <BrandFrame showSafeZones={showSafeZones}>
@@ -61,48 +78,66 @@ export const FileItems: React.FC<FileItemsProps> = ({eyebrow, docTitle, docSubti
           }}
         >
           <span style={{fontSize: 40, fontWeight: 700, letterSpacing: TRACK.h2, color: COLORS.ink}}>{docTitle}</span>
-          <span
-            style={{
-              fontSize: 24,
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: COLORS.gray2,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {docSubtitle}
-          </span>
+          {docSubtitle ? (
+            <span
+              style={{
+                fontSize: 24,
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: COLORS.gray2,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {docSubtitle}
+            </span>
+          ) : null}
         </div>
         {shown.map((item, i) => {
-          const row = enter(f, fps, 14 + i * 9, 14);
-          const chip = enter(f, fps, 20 + i * 9, 12);
+          const row = enter(f, fps, 14 + i * step, 14);
+          const chip = enter(f, fps, 20 + i * step, 12);
+          const chipText = item.tag ?? tag;
+          const chipEl = chipText ? (
+            <div
+              style={{
+                flex: '0 0 auto',
+                marginTop: inline ? 0 : 14,
+                marginLeft: inline ? 0 : 50,
+                opacity: chip,
+                transform: `scale(${0.94 + chip * 0.06})`,
+                transformOrigin: inline ? 'right center' : 'left center',
+              }}
+            >
+              <Tag text={chipText} tone={tagTone} size={22} />
+            </div>
+          ) : null;
           return (
             <div
               key={item.label}
               style={{
                 ...fadeRight(row, 34),
-                padding: '26px 0',
+                padding: inline ? '22px 0' : '26px 0',
                 borderBottom: i < shown.length - 1 ? `2px solid ${COLORS.soft}` : 'none',
               }}
             >
               <div style={{display: 'flex', alignItems: 'center', gap: 22}}>
                 <GradientDash size="bullet" />
-                <span style={{fontSize: 42, fontWeight: 600, letterSpacing: TRACK.body, lineHeight: 1.18, color: COLORS.ink}}>
+                <span
+                  style={{
+                    flex: inline ? 1 : undefined,
+                    fontSize: 42,
+                    fontWeight: 600,
+                    letterSpacing: TRACK.body,
+                    lineHeight: 1.18,
+                    textWrap: 'balance',
+                    color: COLORS.ink,
+                  }}
+                >
                   {item.label}
                 </span>
+                {inline ? chipEl : null}
               </div>
-              <div
-                style={{
-                  marginTop: 14,
-                  marginLeft: 50,
-                  opacity: chip,
-                  transform: `scale(${0.94 + chip * 0.06})`,
-                  transformOrigin: 'left center',
-                }}
-              >
-                <Tag text={item.tag ?? tag} tone="bad" size={22} />
-              </div>
+              {inline ? null : chipEl}
             </div>
           );
         })}

@@ -5,3 +5,6 @@ import {Config} from '@remotion/cli/config';
 Config.setEntryPoint('./src/index.ts');
 Config.setVideoImageFormat('jpeg');
 Config.setOverwriteOutput(true);
+// Standard web video: yuv420p, broadcast range, bt709 tags. Without this the
+// MP4s come out full-range yuvj420p, which some players and uploaders shift.
+Config.setColorSpace('bt709');
