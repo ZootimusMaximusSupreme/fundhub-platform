@@ -8,6 +8,7 @@ import {OFFER_CTA_COMPOSITIONS} from './templates/offer-cta';
 import {LenderMatchingCompositions} from './templates/lenderMatching';
 import {companyLineComposition} from './templates/CompanyLine';
 import {ProofWallComposition} from './templates/ProofWall';
+import {ProofFloodCompositions} from './templates/ProofFlood';
 import {BankPocketsCompositions} from './templates/BankPockets';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
@@ -22,6 +23,7 @@ export const RemotionRoot: React.FC = () => (
     {OFFER_CTA_COMPOSITIONS}
     <LenderMatchingCompositions />
     <ProofWallComposition />
+    <ProofFloodCompositions />
     <BankPocketsCompositions />
     <Composition
       id="ContactSheet"
