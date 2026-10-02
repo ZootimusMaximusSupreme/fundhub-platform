@@ -12,10 +12,10 @@ Six new ad scripts (3 for the $297 roadmap, 3 for the book-a-call sorting hat), 
 | Unit | What it owns | Status | Output |
 |---|---|---|---|
 | W1 | Reference files, board, Brief, final scripts file, inventory, checker, commit | claimed | this board · `marketing/ads/scripts/2026-10-02.md` · `marketing/ads/INVENTORY-2026-10-02.md` |
-| W2 | 3 new $297 roadmap ads | claimed | `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` |
-| W3 | 3 new book-a-call (/watch) ads | claimed | `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` |
+| W2 | 3 new $297 roadmap ads | done | `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` |
+| W3 | 3 new book-a-call (/watch) ads | done (W1 rewrote Ad 25's payoff) | `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` |
 | W4 | Which ads ran on Meta and their results, plus every VSL | done | `ops/workflows/ad-scripts-2026-10-02/w4-findings.md` |
-| W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | claimed (phase 1) | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
+| W5 | B-roll kit in Remotion: license, templates, previews, shot lists, MP4s | phase 1 done · phase 2 claimed | `marketing/broll/` · `ops/workflows/ad-scripts-2026-10-02/w5-status.md` |
 
 ## Path corrections (measured 2026-10-02)
 
@@ -201,6 +201,10 @@ Working numbers: $297 ads are **Ad 21, 22, 23** (after the missing prop ads 9–
 
 (Each unit adds its manifest here when done: files touched, what was made.)
 
+- **W2 (done):** wrote `ops/workflows/ad-scripts-2026-10-02/w2-slo.md` — $297 Ads 21 (13 hidden data points on a 760 file, Chris's hook word for word), 22 (the economy: rates up, banks tighten), 23 (set up right, company after company; the set's one "I'm Chris"). 170, 171, 174 words. Checker clean. Found that "get your $297 Funding…" trips the database screen's guaranteed-funding-amount rule, so every call to action says "grab".
+- **W3 (done):** wrote `ops/workflows/ad-scripts-2026-10-02/w3-watch.md` — sorting-hat Ads 24 (low score), 25 (strong score and income), 26 (already funded; the rates ad). 123–125 words. Only checker flag: "too short" (135-word floor vs Chris's 115–125). Fed hike confirmed (Sept 16, 2026, first since 2023).
+- **W1 review:** Ad 25's payoff duplicated Ad 21's ("names and addresses that don't match"), so W1 rewrote it around the business name, sourced from `src/underwrite/company-audit.mjs` (125 words). Varied two repeated shoot locations. All six pass the database ad screen (047). Final file `marketing/ads/scripts/2026-10-02.md` committed in e467a5fc.
+- **W5 phase 1 (done, 91668bb0):** Remotion project in `marketing/broll/` (own package.json); 8 templates — QualifyToday, FileItems, HiddenDataPoints, InquiriesOff, LenderList, StepPath, RatesRising, SoftPull; previews and a marked contact sheet in `marketing/broll/previews/`. License: Company License, "Remotion for Creators", $25 per seat per month (1 seat today); nothing bought. Root lint and type check unchanged.
 - **W4 (done):** wrote `ops/workflows/ad-scripts-2026-10-02/w4-findings.md`. Meta (read only, live API, account `act_982103620742368`): 7 ads ever delivered, $1,280.42, 435 link clicks, 1 lead, 0 purchases; 4 $297 ads active since 9/26 (`oVid: SLO1`–`SLO4` = SLO Ads 1, 7, 6, 3), 3 book-a-call ads paused since Aug 20 (`oVid: 1`–`3` = CONTROLS Ads 4, 2, 3). VSL list: 20 rows. Nothing changed in Meta, Drive, ClickFunnels or the database. W1 merged both lists into `marketing/ads/INVENTORY-2026-10-02.md` §9–§10.
 
 ## Leftovers
@@ -214,6 +218,7 @@ Working numbers: $297 ads are **Ad 21, 22, 23** (after the missing prop ads 9–
 - W4: the live /watch VSL file is 960x540 (the 4K rule covers non-ad videos).
 - W4: the `ad_videos` table has no delivery record (final file id, delivered date) for the four SLO videos live on Meta.
 - W1: `marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md` still holds the older Ad 4 and Ad 5; the 10-02 export has the 9/22 rewrites.
+- W5: the live /roadmap "See a sample" dispute letter comes from the vendor sandbox file while the sample's amounts come from the simulated file — two files in one sample set (the 2026-10-02 sample-clients rule). Not touched, not verified.
 
 ## Blockers
 
