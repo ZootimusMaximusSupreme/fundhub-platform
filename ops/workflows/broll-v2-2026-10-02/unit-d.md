@@ -82,6 +82,11 @@ npx remotion render src/index.ts ProofWall out/ad-23/proof-wall-million.mp4 --gl
 - Edited: `marketing/broll/src/Root.tsx` (one import, one `<ProofWallComposition />` line)
 - Not touched: `src/brand/*`, the registry, the contact sheet, other units' templates.
 
+## Commit
+
+All ProofWall files landed inside Unit E's commit `19517739` (the LenderSlots / FundingRounds commit). Units D and E staged at the same moment in the one shared checkout, and E's commit took both sets. The committed files are exactly mine (checked: no difference from the working copies), and the committed `marketing/broll` tree typechecks on its own (`tsc` exit 0 in a clean copy). This note is committed separately so the ProofWall work has a commit that names it. Nothing was pushed.
+
 ## Leftovers
 
 - The kit's default renderer on this Mac draws some 3D screens with a slice missing; `--gl=angle` fixes it. Other templates with turned 3D cards may hit the same thing when rendered without the flag. Setting it once in `remotion.config.ts` would cover every clip (not changed here; that file is shared).
+- Unit E's commit `19517739` has my `Root.tsx` lines but not E's own (`LenderMatchingCompositions` import and line are still uncommitted in the working copy), so LenderSlots and FundingRounds are not registered in the committed `Root.tsx` yet.
