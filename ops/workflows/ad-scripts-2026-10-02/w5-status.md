@@ -4,11 +4,11 @@
 
 Owns: `marketing/broll/`, this file, and (phase 2) one line in the root `.gitignore`. Nothing else was edited.
 
-## 1. License — what Fundhub has to pay
+## 1. License — free for Fundhub (corrected 2026-10-02)
 
-- **Tier:** Company License, the **"Remotion for Creators"** option. Fundhub has more than 3 people, so the free license does not cover it. The free license covers only individuals, companies of up to 3 people, non-profits, and evaluating before any commercial use.
-- **Cost:** the pricing page says **"$25/mo per seat"**. A seat is one person who makes videos with Remotion, by writing code or by using an agent such as Claude Code (that is how the FAQ and terms define it). No per-render fee on this option. No minimum when Creators is bought on its own.
-- **For Fundhub today: 1 seat = $25 a month** (Chris, with agents doing the work). I set the live price calculator on remotion.pro to Creators only (checked 2026-10-02). It shows "Total $25/month" for 1 seat, $50 for 2, and $75 for 3.
+- **Corrected by Chris, 2026-10-02: Fundhub is 1 person, so Remotion's free license covers it.** The free license covers individuals and companies of up to 3 people. Nothing to buy. The paragraphs below were written when the request said Fundhub has more than 3 people; they describe the paid option that would apply only if Fundhub grows past 3.
+- **If Fundhub ever passes 3 people:** Company License, "Remotion for Creators", $25/mo per seat (pricing page, checked 2026-10-02).
+- **Not applicable today:** the seat math ($25 for 1 seat) only matters past 3 people.
 - **When it would cost more:** if we build code that renders clips by itself (a pipeline that calls Remotion's render functions or runs `npx remotion render` from code), that counts as an automation. Automation is the "Remotion for Automators" option: $0.01 per render, with a $100 a month minimum. The kit has no render script on purpose. Every render is one command typed at the terminal, by Chris or his agent, so it stays on Creators.
 - **When to buy:** building and previewing counts as evaluating. The seat is needed once these clips run in paid ads. Nothing was bought.
 - **Coming change:** Remotion 5.0 will change the terms. The upcoming terms keep Creators at $25 per seat per month with no minimum. They make usage reporting (telemetry) mandatory for Automators only.
