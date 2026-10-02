@@ -10,6 +10,7 @@ import {companyLineComposition} from './templates/CompanyLine';
 import {ProofWallComposition} from './templates/ProofWall';
 import {ProofFloodCompositions} from './templates/ProofFlood';
 import {BankPocketsCompositions} from './templates/BankPockets';
+import {ToolAnalogyCompositions} from './templates/toolAnalogy';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
 // frame to the composition's length, and a 1-frame Still would freeze each
@@ -25,6 +26,7 @@ export const RemotionRoot: React.FC = () => (
     <ProofWallComposition />
     <ProofFloodCompositions />
     <BankPocketsCompositions />
+    <ToolAnalogyCompositions />
     <Composition
       id="ContactSheet"
       component={ContactSheet}
