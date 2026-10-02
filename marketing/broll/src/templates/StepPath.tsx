@@ -98,6 +98,7 @@ export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFra
             f={f}
             mode="rise"
             count={10}
+            gutter={180}
             seed="step-path"
             size={[160, 240]}
             depth={[-700, -150]}

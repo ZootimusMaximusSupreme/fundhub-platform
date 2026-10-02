@@ -100,6 +100,8 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
   const vAfter = after.value !== undefined ? countUp(f, 28, 50, today.value ?? 0, after.value) : 0;
   const gap = both ? (after.value as number) - (today.value as number) : 0;
 
+  // Seven digits or more ($1,000,000+) get a smaller size so they clear the cash stack.
+  const amountSize = String(Math.round(top)).length >= 7 ? 94 : 116;
   const card = enter(f, fps, 4, 16);
   const rowToday = enter(f, fps, 6, 16);
   const rowAfter = enter(f, fps, 24, 16);
@@ -128,7 +130,7 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
             amount={today}
             color={COLORS.ink}
             progress={rowToday}
-            number={today.value !== undefined ? <DollarCounter value={today.value} f={f} start={6} end={30} size={116} /> : null}
+            number={today.value !== undefined ? <DollarCounter value={today.value} f={f} start={6} end={30} size={amountSize} /> : null}
             stack={<CashStack width={STACK_W} height={hToday} />}
           />
           <div style={{height: 2, background: COLORS.soft, margin: '6px 0'}} />
@@ -138,7 +140,7 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
             progress={rowAfter}
             number={
               after.value !== undefined ? (
-                <DollarCounter value={after.value} from={today.value ?? 0} f={f} start={28} end={50} size={116} />
+                <DollarCounter value={after.value} from={today.value ?? 0} f={f} start={28} end={50} size={amountSize} />
               ) : null
             }
             stack={

@@ -347,7 +347,7 @@ export type MoneyFieldProps = {
   to?: Pt;
   /** pour / burst / flow: how wide the starting point is, px (0 = one point). */
   spread?: number;
-  /** Frames: when pour / burst / flow start and stop sending money. */
+  /** Frames: when pour / burst / flow start and stop sending money (recede: when pieces start pulling away, and when they reach the back). */
   start?: number;
   end?: number;
   /** flow: frames each piece takes to arrive. */
@@ -433,11 +433,15 @@ export const MoneyField: React.FC<MoneyFieldProps> = ({
       rx = 14 + Math.sin(f * 0.04 * speed + phase) * 16;
       ry = Math.cos(f * 0.032 * speed + phase) * 20;
     } else if (mode === 'recede') {
+      // From `start`, each piece pulls away into the distance; by `end` it is
+      // far back and faint (never fully gone, so the last frame still shows it).
+      const el = Math.max(0, f - start);
+      const span = Math.max(1, end - start);
       x = A.x + r(6) * A.w;
-      y = A.y + r(5) * A.h - f * 0.6 * speed;
-      z = z0 - f * (9 + 8 * r(4)) * speed;
-      a = Math.max(0, 1 - f / (70 / speed));
-      rz = -30 + 60 * r(7) + f * 0.25 * (r(8) - 0.5);
+      y = A.y + r(5) * A.h - el * 0.6 * speed;
+      z = z0 - el * (9 + 8 * r(4)) * speed;
+      a = Math.min(1, el / 10) * (1 - 0.6 * Math.min(1, el / span));
+      rz = -30 + 60 * r(7) + el * 0.25 * (r(8) - 0.5);
       rx = 20 + Math.sin(f * 0.05 + phase) * 12;
       ry = Math.cos(f * 0.04 + phase) * 16;
     } else if (mode === 'pour' || mode === 'burst') {
@@ -573,14 +577,17 @@ export const DollarCounter: React.FC<DollarCounterProps> = ({value, f, start, en
   const target = Math.max(0, Math.round(value));
   const v = countUp(f, start, end, Math.max(0, from), target);
   const n = String(target).length;
-  const m = Math.log10(Math.max(1, v));
+  // A place-value column opens only once the count reaches it (1,000,000
+  // opens the millions), fading in while its digit rolls 0 -> 1. It never
+  // opens early, so there is never a leading "0" (no "$0,999,985").
+  const opened = (k: number): number => (k === 0 ? 1 : Math.max(0, Math.min(1, v - (10 ** k - 1))));
   const lineH = size * 1.06;
   const digitW = size * 0.62;
   const commaW = size * 0.27;
   const cols: React.ReactNode[] = [];
   for (let idx = 0; idx < n; idx++) {
     const k = n - 1 - idx; // place value: 0 = ones
-    const on = k === 0 ? 1 : Math.max(0, Math.min(1, (m - k) * 3 + 1));
+    const on = opened(k);
     // Odometer: the ones digit rolls freely; every other digit only rolls
     // while everything below it turns over from ...999 to ...000 (the carry),
     // so the last frame always shows exactly `value`.
@@ -610,7 +617,7 @@ export const DollarCounter: React.FC<DollarCounterProps> = ({value, f, start, en
       </span>,
     );
     if (k > 0 && k % 3 === 0) {
-      const cOn = Math.max(0, Math.min(1, (m - k) * 3 + 1));
+      const cOn = opened(k);
       cols.push(
         <span key={`c${k}`} style={{display: 'inline-block', width: commaW * cOn, overflow: 'hidden', opacity: cOn, textAlign: 'left'}}>
           ,

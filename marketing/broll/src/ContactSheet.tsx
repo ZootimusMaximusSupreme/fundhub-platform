@@ -16,7 +16,7 @@ const PAD = 80;
 const HEADER = 210;
 const LABEL = 132;
 const ROW_GAP = 46;
-const LEGEND = 560;
+const LEGEND = 700;
 const RED = '#DC2626';
 
 const ROWS = Math.ceil(TEMPLATES.length / COLS);
@@ -53,7 +53,7 @@ export const ContactSheet: React.FC = () => (
       <Wordmark width={210} />
       <div style={{width: 2, height: 52, background: COLORS.line}} />
       <div>
-        <div style={{fontSize: 40, fontWeight: 700, letterSpacing: '-0.03em'}}>B-roll kit · Phase 1 previews (marked)</div>
+        <div style={{fontSize: 40, fontWeight: 700, letterSpacing: '-0.03em'}}>B-roll kit · Round 2 previews: 3D + money (marked)</div>
         <div style={{marginTop: 6, fontSize: 24, color: COLORS.gray}}>
           2026-10-02 · 1080x1920 · each frame is the still saved as previews/&lt;name&gt;.png · default words and numbers shown
         </div>
@@ -117,7 +117,7 @@ export const ContactSheet: React.FC = () => (
       </div>
       <div style={{marginTop: 26, display: 'flex', alignItems: 'center', gap: 18, fontSize: 23, color: COLORS.ink2}}>
         <div style={{width: 64, height: 3, background: RED, flex: '0 0 auto'}} />
-        Red lines on every frame: the text safe-zone edges, 14% from the top (y 269) and 65% down (y 1248). Every word and number sits between them.
+        Red lines on every frame: the text safe-zone edges, 14% from the top (y 269) and 65% down (y 1248). Every word and number sits between them. Money outside the lines is decoration only, faded to a third of its strength.
       </div>
     </div>
   </AbsoluteFill>
