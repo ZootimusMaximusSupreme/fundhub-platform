@@ -89,4 +89,3 @@ All ProofWall files landed inside Unit E's commit `19517739` (the LenderSlots / 
 ## Leftovers
 
 - The kit's default renderer on this Mac draws some 3D screens with a slice missing; `--gl=angle` fixes it. Other templates with turned 3D cards may hit the same thing when rendered without the flag. Setting it once in `remotion.config.ts` would cover every clip (not changed here; that file is shared).
-- Unit E's commit `19517739` has my `Root.tsx` lines but not E's own (`LenderMatchingCompositions` import and line are still uncommitted in the working copy), so LenderSlots and FundingRounds are not registered in the committed `Root.tsx` yet.
