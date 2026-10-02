@@ -55,21 +55,30 @@ export const fileItemsDefaults: FileItemsProps = {
   tag: 'Costing you money',
 };
 
-/** A blank page under the report, so the report reads as a stack of paper. */
-const Sheet: React.FC<{z: number; x: number; y: number; rz: number; progress: number}> = ({z, x, y, rz, progress}) => (
-  <div
-    style={{
-      position: 'absolute',
-      inset: 0,
-      background: '#FFFFFF',
-      ...CARD_EDGE,
-      borderRadius: 30,
-      boxShadow: cardShadow(0.7),
-      opacity: progress,
-      transform: `translate3d(${x}px, ${y + (1 - progress) * 40}px, ${z - (1 - progress) * 380}px) rotateX(${4 + (1 - progress) * 16}deg) rotateZ(${rz}deg)`,
-    }}
-  />
-);
+/**
+ * A blank page under the report, so the report reads as a stack of paper. It
+ * flies in locked to the report (same motion and tilt as Card3D's "depth"
+ * entrance, always further back), so the two planes never cross mid-flight.
+ */
+const Sheet: React.FC<{z: number; x: number; y: number; rz: number; progress: number}> = ({z, x, y, rz, progress}) => {
+  const q = 1 - progress;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: '#FFFFFF',
+        ...CARD_EDGE,
+        borderRadius: 30,
+        boxShadow: cardShadow(0.7),
+        opacity: progress,
+        transform: `translate3d(${x}px, ${y + q * 36}px, ${z - q * 420}px) rotateX(${CARD_TILT.rx + q * 16}deg) rotateY(${CARD_TILT.ry}deg) rotateZ(${rz}deg)`,
+      }}
+    />
+  );
+};
+
+const CARD_TILT = {rx: 3, ry: -4, rz: -0.4};
 
 export const FileItems: React.FC<FileItemsProps> = ({
   eyebrow,
@@ -115,9 +124,9 @@ export const FileItems: React.FC<FileItemsProps> = ({
         <Eyebrow text={eyebrow} progress={enter(f, fps, 0, 14)} />
         <div style={{height: 48}} />
         <div style={{position: 'relative', width: '100%', ...P3D}}>
-          <Sheet z={-70} x={-12} y={30} rz={-1.8} progress={enter(f, fps, 0, 16)} />
-          <Sheet z={-36} x={14} y={16} rz={1.6} progress={enter(f, fps, 2, 16)} />
-          <Card3D enter={card} z={24} tilt={{rx: 3, ry: -4, rz: -0.4}} padding="34px 44px 18px">
+          <Sheet z={-70} x={-12} y={30} rz={-1.8} progress={card} />
+          <Sheet z={-36} x={14} y={16} rz={1.6} progress={card} />
+          <Card3D enter={card} z={24} tilt={CARD_TILT} padding="34px 44px 18px">
             <div
               style={{
                 display: 'flex',

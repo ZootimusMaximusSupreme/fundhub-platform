@@ -119,6 +119,15 @@ Same props as round 1 (every shot list still works), same colors, wordmark, grid
 - **MP4s:** all 22 probed: H.264, 1080x1920, 30 fps, yuv420p with bt709 tags, exact frame counts (75 or 90). Total 9,848,451 bytes (9.8 MB). One `npx remotion render` command per clip; no render script saved.
 - **Type and lint:** root `npm run lint` ("2314 file(s) and inline script(s) parse clean"), root `npx tsc --noEmit` exit 0, `cd marketing/broll && npx tsc --noEmit` exit 0.
 
+## 3D slice check (coordinator note, 2026-10-02)
+
+Other units saw Remotion's default renderer drop slices of turned 3D cards on this Mac. Checked all 22 clips, every frame:
+
+- **How:** each clip was also rendered with `--gl=angle` into scratch (not delivered), and every frame of the delivered MP4 was compared with the angle copy. A plain comparison flags edge-smoothing noise, so the final pass allows each pixel to match within 2 pixels (renderers place 3D cards up to about 3 px apart) and then looks for any area that still differs. The worst frame of every clip was also looked at side by side.
+- **Result: no dropped slices or blank strips with the default renderer in any of the 22 clips.** 20 clips match at every frame; the other 2 (Ad 23 clip 1, Ad 25 clip 3) differ only where a card sits about 3 px apart, with the same content.
+- **One real defect found, in both renderers, fixed in the geometry:** in `FileItems`, the report crossed through the blank pages behind it while flying in, so a slanted band of the card (for example "Two paths") looked washed out for a few frames. The pages now fly in locked to the report and always stay behind it. The five FileItems clips (ad21-02, ad23-01, ad24-02, ad25-02, ad25-03), the FileItems preview and the contact sheet were re-rendered after the fix; their entrance frames were checked one by one.
+- **`--gl=angle` was not needed and was not used.** `remotion.config.ts` is unchanged.
+
 ## Leftovers
 
 - `marketing/broll/shot-lists/2026-10-02.md` still says the 22 clips total 3.9 MB; after the 3D upgrade they total 9.8 MB. Not edited (not my file to change).
