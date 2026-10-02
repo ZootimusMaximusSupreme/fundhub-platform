@@ -5,6 +5,7 @@ import {DEPTH_KIT_DEMO_FRAMES, DepthKitDemo} from './DepthKitDemo';
 import {FRAME} from './brand';
 import {TEMPLATES} from './templates/registry';
 import {OFFER_CTA_COMPOSITIONS} from './templates/offer-cta';
+import {LenderMatchingCompositions} from './templates/lenderMatching';
 import {companyLineComposition} from './templates/CompanyLine';
 import {ProofWallComposition} from './templates/ProofWall';
 
@@ -18,6 +19,7 @@ export const RemotionRoot: React.FC = () => (
     {TEMPLATES.map((t) => t.composition())}
     {companyLineComposition()}
     {OFFER_CTA_COMPOSITIONS}
+    <LenderMatchingCompositions />
     <ProofWallComposition />
     <Composition
       id="ContactSheet"

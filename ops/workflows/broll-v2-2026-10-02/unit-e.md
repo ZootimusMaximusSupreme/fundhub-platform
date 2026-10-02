@@ -111,6 +111,11 @@ npx remotion still src/index.ts LenderSlots /tmp/ls-60.png --frame=60 --props='{
 - **Typecheck:** `cd marketing/broll && npx tsc --noEmit` passes.
 - **3D:** plain CSS 3D (real drum faces turned with rotateX, CashStack bundles, the kit's camera). No `@remotion/three`, no new packages.
 
+## Commits
+
+- `19517739` — Unit E's files. **Shared-index race:** Unit D ran `git add` on its own files at the same moment, so this commit also carries Unit D's staged work (ProofWall.tsx, proofWallApprovals.ts, proof-wall-approvals.py, public/proof-wall/*.png, unit-d.md) and Unit D's version of Root.tsx, which dropped Unit E's two lines. Nothing was lost; Unit D's files are committed as Unit D wrote them.
+- Follow-up commit — puts Unit E's two Root.tsx lines back (import + `<LenderMatchingCompositions />`), committed by path only.
+
 ## Leftovers
 
-- None found.
+- Units share one git index in this worktree, so a `git add` by one unit can land in another unit's commit (happened once, see Commits). Committing with `git commit -- <paths>` avoids it.
