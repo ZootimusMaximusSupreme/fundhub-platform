@@ -4,6 +4,9 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 
 | # | Ad | Hook (line 1) | Words | About |
 |---|---|---|---|---|
+
+**How we edit these:** Chris reads each ad out loud and talks through changes. When he says "save the ad," the edit is saved to this file in the repo and we move to the next one, top to bottom.
+
 | 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now decides the tool you need to get the maximum amount of funding. | 181 | 1:12 |
 | 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life, and almost everybody gets one round and quits. | 157 | 1:02 |
 | 3 | Ad 14 — It's a skill | Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest. | 124 | 0:49 |
