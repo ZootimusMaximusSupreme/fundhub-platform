@@ -8,6 +8,8 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | Ad 25 — Industry code and business name (strong score, wants the maximum) | 117 | 0:46 |
 | Ad 26 — The funding you already got (already funded, rates) | 117 | 0:46 |
 | Script 2 — Notes green screen | 228 | 1:31 |
+| Script 1 — Notes green screen, seven steps (double loop) | 184 | 1:13 |
+| The statement date (new, 10/3) | 132 | 0:52 |
 | Script 4 — Tool analogy, the hammer on the flat tire | 181 | 1:12 |
 | The 800 That Gets Less | 199 | 1:19 |
 | Ad 9 — The bank | 182 | 1:12 |
@@ -18,12 +20,12 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | Ad 14 — It's a skill | 124 | 0:49 |
 | Ad 15 — High earners | 162 | 1:04 |
 | Ad 16 — The hidden tax | 163 | 1:05 |
-| Ad 17 — Paying for speed | 168 | 1:07 |
+| Ad 17 — Paying for speed | 167 | 1:06 |
 | Ad 18 — The order | 189 | 1:15 |
 | Ad 19 — Over and over (broad, film first) | 157 | 1:02 |
 | Ad 20 — The amount on your report (broad, film first) | 150 | 1:00 |
 
-Changed beyond the CTA: Ad 13, 14 and 17 lose the lines that sold the roadmap, and Ad 19 says "next funding sequence" in place of "round two."
+Changed beyond the CTA: Ad 13, 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
 ## Ad 24 — Why your score is low (file needs work)
 
@@ -85,6 +87,53 @@ Step four, if you're doing it yourself, go one step at a time and have someone c
 Now, those 13 hidden data points. They're things like your name, addresses, employers and business codes. If they don't match on every report, banks approve you for less, so make sure they all match before you apply.
 
 It's a lot, and I don't want you doing it alone. Wherever you are, Fundhub has a solution for that phase. Hop on a call and we'll figure it out.
+
+## Script 1 — Notes green screen, seven steps (double loop)
+
+Shoot: Green screen. Point at each step of this note as you say it:
+
+How to Get the Maximum Amount of Funding (Step by Step) 💰
+
+1. Check your credit 🔍
+Pull your report and make sure everything on it is accurate and in line.
+2. Open your businesses (if needed) 🏢
+Do this early, because the longer a business has been open, the more funding it qualifies for.
+3. Optimize your personal and business information 📋
+Make sure your names, addresses and business details match on every report.
+4. Remove negative items and pay down balances 🧹
+Get the negative items off your report and pay your cards down before you apply.
+5. Find the banks that approve files like yours 🏦
+Look for the banks that approve your type of credit in your state.
+6. Apply in the right order 📊
+The order you apply in decides how many approvals you get.
+7. Remove inquiries and repeat 🔁
+Clear the inquiries from each round before the next one, then do it again for every business.
+
+Following these seven steps in this exact order is how you get funded for the rest of your life.
+
+Banks will fund you again for every business you open, and one step on this list makes that possible, which I'll show you at the end.
+
+Step one, check your credit. Step two, open your businesses, and there's a reason this comes before optimizing your credit. Step three, match your information on every report. Step four, remove the negative items and pay your cards down. Step five, find the banks that approve files like yours. Step six, apply in the right order. Step seven, clear the inquiries and repeat.
+
+A business qualifies for more funding the longer it's been open, so step two goes first and the business ages while you work on everything else.
+
+Clearing the inquiries before every round is what lets every business you open go in with a clean file, so step seven is the one that makes it forever.
+
+Book a call below and your advisor will walk your file through all seven steps, starting with where you are today.
+
+## The statement date (new, 10/3)
+
+Shoot: Straight to camera. Hold your phone up showing a card statement on the first line.
+
+The day your statement closes decides what every lender sees on your credit cards.
+
+Pay on the right day and your cards show a lower balance within 30 days, and one date most people pay on keeps their balances looking high.
+
+You can pay your cards in full every month and still show up to a lender with high balances, because your card company reports your balance once a month and every bank reads that balance.
+
+The date most people pay on is the due date, and by then your balance has already reported. Pay before your statement closes and the balance that reports is the one you want.
+
+Book a time below and your advisor will find the cards reporting high and tell you the exact day to pay each one.
 
 ## Script 4 — Tool analogy, the hammer on the flat tire
 
