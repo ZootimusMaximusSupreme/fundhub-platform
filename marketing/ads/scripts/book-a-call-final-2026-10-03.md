@@ -9,7 +9,6 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | Ad 26 — The funding you already got (already funded, rates) | 117 | 0:46 |
 | Script 2 — Notes green screen | 228 | 1:31 |
 | Script 1 — Notes green screen, seven steps (double loop) | 184 | 1:13 |
-| The statement date (new, 10/3) | 132 | 0:52 |
 | Script 4 — Tool analogy, the hammer on the flat tire | 181 | 1:12 |
 | The 800 That Gets Less | 199 | 1:19 |
 | Ad 9 — The bank | 182 | 1:12 |
@@ -120,20 +119,6 @@ A business qualifies for more funding the longer it's been open, so step two goe
 Clearing the inquiries before every round is what lets every business you open go in with a clean file, so step seven is the one that makes it forever.
 
 Book a call below and your advisor will walk your file through all seven steps, starting with where you are today.
-
-## The statement date (new, 10/3)
-
-Shoot: Straight to camera. Hold your phone up showing a card statement on the first line.
-
-The day your statement closes decides what every lender sees on your credit cards.
-
-Pay on the right day and your cards show a lower balance within 30 days, and one date most people pay on keeps their balances looking high.
-
-You can pay your cards in full every month and still show up to a lender with high balances, because your card company reports your balance once a month and every bank reads that balance.
-
-The date most people pay on is the due date, and by then your balance has already reported. Pay before your statement closes and the balance that reports is the one you want.
-
-Book a time below and your advisor will find the cards reporting high and tell you the exact day to pay each one.
 
 ## Script 4 — Tool analogy, the hammer on the flat tire
 
