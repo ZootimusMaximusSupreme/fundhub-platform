@@ -10,7 +10,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now determines the tool you need to get the maximum amount of funding as quickly as possible. | 190 | 1:16 |
 | 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life. | 234 | 1:33 |
 | 3 | Ad 14 — It's a skill | One skill decides whether a funding company gets you a hundred thousand dollars or ten, and most of the companies in your feed don't have it. | 251 | 1:40 |
-| 4 | Ad 15 — High earners | You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess. | 162 | 1:04 |
+| 4 | Ad 15 — High earners | Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places. | 288 | 1:55 |
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
@@ -86,15 +86,15 @@ Click below and book a call, and your advisor will tell you which one you are.
 
 Shoot: Somewhere that reads expensive.
 
-You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess.
+Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places.
 
-It's something you did right. It's a habit you'd defend to my face, something most people would call responsible, and it's the exact thing holding your approvals down. You paid cash. You kept two cards. You never ran a balance. What that gets you is what a bank calls a thin file, and thin files get approved small no matter how high your score is, because there's nothing on there showing anybody has ever trusted you with real money.
+Maybe you've paid cash your whole life, maybe you've got good credit you never use, or maybe you've got an LLC or a company you forgot about, and that last one is worth more to a bank than you'd expect.
 
-Meanwhile every friend I've got who's worth millions is leveraged constantly, and most of them don't make more than you do.
+You built your income by being a professional and managing money well, and that's exactly why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands. Every dollar I put into Meta comes back about four times, and that's on the low end, so two hundred thousand dollars run through a system that already has proven returns turns into a lot more than two hundred thousand. Capital lets you grow on a proven system much faster than cash flow ever will.
 
-Fixing a thin file is a known process and it doesn't take long.
+Here's what that company you forgot about is worth. We run it through a system that examines every detail of your personal credit report, your business credit report, and your business information, then set it up the right way and back it with your personal credit. Done that way, that company gets a hundred to four hundred thousand dollars in low-interest capital, on top of the business you're already running and any personal funding you want for yourself.
 
-Schedule a call below. Your advisor will show you how thin your file reads to a bank and the fastest way to the maximum amount of funding.
+Most funding companies look at your business, send it to the same few national banks, and call it done. Schedule a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.
 
 ## 5. Ad 17 — Paying for speed
 
