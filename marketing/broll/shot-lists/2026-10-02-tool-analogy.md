@@ -4,7 +4,7 @@ Two shot lists, one per tool-analogy script in `marketing/ads/notes-green-screen
 
 - **The idea (Chris, 2026-10-02):** both ads use the tool and hammer picture. The tire story gets the flat tire and hammer, Script 3's jack line gets the jack, and each ad calls back to its tool near the end.
 - **The clips:** 12 MP4s, 6 per script, in `marketing/broll/out/script-3/` and `marketing/broll/out/script-4/`. Each is 1080x1920 at 30 fps, H.264 (yuv420p, bt709), 3 to 4 seconds. `marketing/broll/out/` is in `.gitignore`, so the MP4s stay out of git.
-- **Rendered now:** the 6 clips on the existing templates (3 per script, 3.7 MB together). **Waiting on Unit F:** the 6 clips on `FlatTireHammer`, `JackFix` and `ToolMatch`. Their props below follow Unit F's contract in `ops/workflows/broll-v2-2026-10-02/unit-f.md`.
+- **Rendered:** all 12 clips (6 per script, 10.4 MB together). Unit F's `FlatTireHammer`, `JackFix` and `ToolMatch` (commit b1f3ae1d) were rendered with the default renderer, no `--gl=angle`.
 - **Submagic:** upload each MP4 under My B-rolls and drop it at its start time. A clip opens on the words it shows, so line it up with the start of its line.
 - **Start time:** words spoken before the clip ÷ 2.5 = seconds (150 words a minute). Words are counted with `[A-Za-z0-9'’$%-]+`. Shown as m:ss, rounded down, with the exact seconds after it. Totals: Script 3 is 195 words (1:18), Script 4 is 182 words (1:12). Both match the scripts file.
 - **What is on screen:** every word and number comes from the line the clip sits on. The few exceptions come from the sentence just before it, the earlier sentence in the same ad that the line pays off, or the live page for the same idea. Each one is named under its table. No invented amounts, lender names, people or faces: the lender rows stay blank.
@@ -13,10 +13,10 @@ Two shot lists, one per tool-analogy script in `marketing/ads/notes-green-screen
   `npx remotion render src/index.ts <Template> out/script-N/<file>.mp4 --codec=h264 --props=props.json`.
   Every command is typed at the terminal; no render script is saved.
 
-| Script | Clips | Templates used | Rendered now | Waiting on Unit F |
-|---|---|---|---|---|
-| 3 (SLO) | 6 | FlatTireHammer, JackFix, FileItems, LenderList, OfferStack, JackFix | 3 | 3 |
-| 4 (sorting hat) | 6 | FlatTireHammer, FileItems, FundingRounds, ToolMatch, FlatTireHammer, BookCall | 3 | 3 |
+| Script | Clips | Templates used | Rendered |
+|---|---|---|---|
+| 3 (SLO) | 6 | FlatTireHammer, JackFix, FileItems, LenderList, OfferStack, JackFix | 6 |
+| 4 (sorting hat) | 6 | FlatTireHammer, FileItems, FundingRounds, ToolMatch, FlatTireHammer, BookCall | 6 |
 
 ## Script 3 — Tool analogy, SLO
 
@@ -24,19 +24,19 @@ Two shot lists, one per tool-analogy script in `marketing/ads/notes-green-screen
 
 | # | Starts | Line it sits on | Template | On screen | Length | MP4 file | Status |
 |---|---|---|---|---|---|---|---|
-| 1 | 0:16 (16.0 s) | "You swing at it for an hour, the tire's still flat, and now the rim's bent too." | `FlatTireHammer` | Fixing a flat tire with a hammer · You swing at it for an hour · the rim bends | 105 frames (3.5 s) | `out/script-3/s3-01-flat-tire-hammer-0m16s.mp4` | waiting on Unit F |
-| 2 | 0:22 (22.8 s) | "A jack and a lug wrench have you back on the road in fifteen minutes." | `JackFix` | A jack and a lug wrench · In fifteen minutes · Back on the road | 105 frames (3.5 s) | `out/script-3/s3-02-jack-fix-0m22s.mp4` | waiting on Unit F |
+| 1 | 0:16 (16.0 s) | "You swing at it for an hour, the tire's still flat, and now the rim's bent too." | `FlatTireHammer` | Fixing a flat tire with a hammer · You swing at it for an hour · the rim bends | 105 frames (3.5 s) | `out/script-3/s3-01-flat-tire-hammer-0m16s.mp4` | rendered |
+| 2 | 0:22 (22.8 s) | "A jack and a lug wrench have you back on the road in fifteen minutes." | `JackFix` | A jack and a lug wrench · In fifteen minutes · Back on the road | 105 frames (3.5 s) | `out/script-3/s3-02-jack-fix-0m22s.mp4` | rendered |
 | 3 | 0:35 (35.2 s) | "Some files need negative items taken off. Some need their names and addresses matched on every report, or their cards paid down." | `FileItems` | Credit works the same way · Some files need · Negative items taken off · Names and addresses matched on every report · Cards paid down (no chips) | 90 frames (3.0 s) | `out/script-3/s3-03-file-items-0m35s.mp4` | rendered |
 | 4 | 0:44 (44.0 s) | "Every file needs the right banks in the right order." | `LenderList` | Every file needs · The right banks in the right order · 5 numbered rows, names blank | 90 frames (3.0 s) | `out/script-3/s3-04-lender-list-0m44s.mp4` | rendered |
 | 5 | 0:54 (54.4 s) | "For $297, I pull your file, and you get every step in order, with the letters already written, the balances to pay down and the banks that approve files like yours." | `OfferStack` | Built from your own credit · Every step in order · The letters already written · The balances to pay down · The banks that approve files like yours · $297 | 105 frames (3.5 s) | `out/script-3/s3-05-offer-stack-0m54s.mp4` | rendered |
-| 6 | 1:06 (66.8 s) | "You use it the way you use a jack, without learning how it's made." | `JackFix` | You use it the way you use a jack · Without learning how it's made · Back on the road | 105 frames (3.5 s) | `out/script-3/s3-06-jack-fix-1m06s.mp4` | waiting on Unit F |
+| 6 | 1:06 (66.8 s) | "You use it the way you use a jack, without learning how it's made." | `JackFix` | You use it the way you use a jack · Without learning how it's made · Back on the road | 105 frames (3.5 s) | `out/script-3/s3-06-jack-fix-1m06s.mp4` | rendered |
 
 **Words from outside the line:**
 
 - Clip 1: Eyebrow is the sentence just before ("Picture fixing a flat tire with a hammer").
 - Clip 3: Eyebrow is the sentence just before ("Credit works the same way"), 2 seconds earlier in the same paragraph.
 - Clip 5: Eyebrow is the sentence just before ("a roadmap built from your own credit"). The four small pages are the live /roadmap page's own "See a sample" pages (Unit C's renders: Credit Optimization Roadmap, Dispute Letter Pack, Credit Analysis Report, Bank & Lender Match List). They show the one /roadmap sample client only, at thumbnail size.
-- Clip 6: "Back on the road" is the jack line (0:22) this line calls back to.
+- Clip 6: "Back on the road" is the jack line (0:22) this line calls back to. The small clock beside the caption is part of JackFix and turns a quarter of the way round (fifteen minutes), though this line says no time.
 
 **Props (exact):**
 
@@ -117,11 +117,11 @@ Two shot lists, one per tool-analogy script in `marketing/ads/notes-green-screen
 
 | # | Starts | Line it sits on | Template | On screen | Length | MP4 file | Status |
 |---|---|---|---|---|---|---|---|
-| 1 | 0:22 (22.0 s) | "You swing at it for an hour, the tire's still flat, and now the rim's bent too." | `FlatTireHammer` | Fixing a flat tire with a hammer · You swing at it for an hour · the rim bends | 105 frames (3.5 s) | `out/script-4/s4-01-flat-tire-hammer-0m22s.mp4` | waiting on Unit F |
+| 1 | 0:22 (22.0 s) | "You swing at it for an hour, the tire's still flat, and now the rim's bent too." | `FlatTireHammer` | Fixing a flat tire with a hammer · You swing at it for an hour · the rim bends | 105 frames (3.5 s) | `out/script-4/s4-01-flat-tire-hammer-0m22s.mp4` | rendered |
 | 2 | 0:35 (35.2 s) | "If something's holding your file back, like collections or maxed-out cards, the tool is optimizing your credit first." | `FileItems` | Holding your file back · Your file · Collections · Maxed-out cards · green chip on each row: Optimizing your credit first | 90 frames (3.0 s) | `out/script-4/s4-02-file-items-0m35s.mp4` | rendered |
 | 3 | 0:42 (42.4 s) | "If your file's ready, the tool is applying in rounds to the banks that fit it." | `FundingRounds` | If your file's ready · Round 1 · Round 2 · Round 3 · Inquiries chip struck between rounds · Hard inquiries (struck) removed between rounds | 105 frames (3.5 s) | `out/script-4/s4-03-funding-rounds-0m42s.mp4` | rendered |
-| 4 | 0:56 (56.4 s) | "The tool almost everybody grabs first is applying, before their file is ready for it." | `ToolMatch` | Credit works the same way · Holding your file back → Optimizing your credit first · Your file's ready → Applying in rounds · You want to do it yourself → A step-by-step plan · row 2 highlighted: Almost everybody grabs first · final card: Applying / Before their file is ready for it | 120 frames (4.0 s) | `out/script-4/s4-04-tool-match-0m56s.mp4` | waiting on Unit F |
-| 5 | 1:02 (62.4 s) | "That's the hammer on the flat tire." | `FlatTireHammer` | Almost everybody grabs first · That's the hammer on the flat tire · the rim bends | 90 frames (3.0 s) | `out/script-4/s4-05-flat-tire-hammer-1m02s.mp4` | waiting on Unit F |
+| 4 | 0:56 (56.4 s) | "The tool almost everybody grabs first is applying, before their file is ready for it." | `ToolMatch` | Credit works the same way · four rows, situation to tool: Holding your file back → Optimizing your credit first · Your file's ready → Applying in rounds · You want to do it yourself → A step-by-step plan · Before your file is ready → Applying (this row lifts off the board, chip: Almost everybody grabs first) · no final card | 120 frames (4.0 s) | `out/script-4/s4-04-tool-match-0m56s.mp4` | rendered |
+| 5 | 1:02 (62.4 s) | "That's the hammer on the flat tire." | `FlatTireHammer` | Applying before the file is ready · That's the hammer on the flat tire · the rim bends | 90 frames (3.0 s) | `out/script-4/s4-05-flat-tire-hammer-1m02s.mp4` | rendered |
 | 6 | 1:09 (69.2 s) | "Hop on a call and we'll figure it out." | `BookCall` | Wherever you are · Hop on a call · calendar, day 15, 2:30 PM · Booked · Wed 15 · 2:30 PM · We'll figure it out | 90 frames (3.0 s) | `out/script-4/s4-06-book-call-1m09s.mp4` | rendered |
 
 **Words from outside the line:**
@@ -129,8 +129,8 @@ Two shot lists, one per tool-analogy script in `marketing/ads/notes-green-screen
 - Clip 1: Eyebrow is the sentence just before ("Picture fixing a flat tire with a hammer").
 - Clip 2: Eyebrow is the line's own "holding your file back", cut short to fit (the full "If something's holding your file back" ran past the side margin). Card title "Your file" is the line's "your file".
 - Clip 3: The round labels, the struck "Inquiries" chip and the caption "Hard inquiries removed between rounds" come from the 9/30 /watch VSL for the same path ("If your file is ready, we go get the capital in funding rounds and keep your credit clean between each round"; "removing the hard inquiries between each funding round"). Three rounds is the low end of that VSL's "three to six rounds". No amounts.
-- Clip 4: The rows are the credit paragraph (0:33 to 0:56) that this line pays off, cut short: "Holding your file back" (from "If something's holding your file back"), "Applying in rounds" (from "applying in rounds to the banks that fit it"), "A step-by-step plan" (from "a step-by-step plan with someone keeping you accountable"). The eyebrow is that paragraph's first sentence.
-- Clip 5: Eyebrow is the sentence just before ("The tool almost everybody grabs first").
+- Clip 4: The first three rows are the credit paragraph (0:33 to 0:56) that this line pays off, cut short: "Holding your file back" (from "If something's holding your file back"), "Applying in rounds" (from "applying in rounds to the banks that fit it"), "A step-by-step plan" (from "a step-by-step plan with someone keeping you accountable"). All three are the right tools. The fourth row is the line itself: "applying" before "their file is ready" (second person here, like the other rows). It is the only wrong tool, so it is the only row that lifts and carries the chip, "Almost everybody grabs first" (the line's words; the picture's hammer joke comes in clip 5). The eyebrow is that paragraph's first sentence. No final card, so no figure and no extra words.
+- Clip 5: Eyebrow is the line just before ("applying, before their file is ready"), shortened to "Applying before the file is ready".
 - Clip 6: Eyebrow is the sentence just before ("Wherever you are, Fundhub has a solution for that phase"). Day 15 and the four times are BookCall's generic calendar (no month, no year, no name).
 
 **Props (exact):**
@@ -179,18 +179,19 @@ Two shot lists, one per tool-analogy script in `marketing/ads/notes-green-screen
   "rows": [
     {"situation": "Holding your file back", "tool": "Optimizing your credit first"},
     {"situation": "Your file's ready", "tool": "Applying in rounds"},
-    {"situation": "You want to do it yourself", "tool": "A step-by-step plan"}
+    {"situation": "You want to do it yourself", "tool": "A step-by-step plan"},
+    {"situation": "Before your file is ready", "tool": "Applying"}
   ],
-  "highlight": 1,
+  "highlight": 3,
   "highlightLabel": "Almost everybody grabs first",
-  "finalCard": {"title": "Applying", "subtitle": "Before their file is ready for it"},
+  "finalCard": null,
   "durationInFrames": 120
 }
 ```
 `s4-05-flat-tire-hammer-1m02s` → `FlatTireHammer`
 ```json
 {
-  "eyebrow": "Almost everybody grabs first",
+  "eyebrow": "Applying before the file is ready",
   "caption": "That's the hammer on the flat tire",
   "bendRim": true,
   "durationInFrames": 90
