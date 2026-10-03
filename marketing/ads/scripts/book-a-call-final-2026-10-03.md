@@ -1,6 +1,6 @@
 # Book-a-call ads — your picks (2026-10-03)
 
-Every ad goes to the /watch VSL, then the booking calendar, then the thank-you page. No $297 anywhere. Only the scripts you picked: Script 4, Ads 19, 14, 15, 17 and 16, and Script 1. Each has its own call to action.
+Every ad goes to the /watch VSL, then the booking calendar, then the thank-you page. No $297 anywhere. Only the scripts you picked: Script 4, Ads 19, 14, 15, 17 and 16, Script 1, and Ad 9 for the bank. Each has its own call to action.
 
 | # | Ad | Hook (line 1) | Words | About |
 |---|---|---|---|---|
@@ -11,6 +11,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
+| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 182 | 1:12 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
@@ -122,3 +123,15 @@ A business qualifies for more funding the longer it's been open, so step two goe
 Clearing the inquiries before every round is what lets every business you open go in with a clean file, so step seven is the one that makes it forever.
 
 Book a call below and your advisor will walk your file through all seven steps, starting with where you are today.
+
+## 8. Ad 9 — The bank
+
+Shoot: In front of the bank. Thumb over your shoulder on the first line.
+
+The bank behind me already decided how much they'd give you, and how much money you make barely factors into it.
+
+There's a number on your credit report that decides more of it than your income and your score put together, and I'd bet you've never looked at it once. It's the biggest credit limit anybody has ever given you. Banks look at what another bank already trusted you with and they land somewhere close to it. So a guy making three hundred grand a year walking around with a two thousand dollar Visa gets approved for almost nothing, and he has no idea why.
+
+Get that limit up before you apply and everything after it comes in bigger. That's the difference between an eight thousand dollar approval and an eighty thousand dollar one, and it's usually a couple months of work.
+
+Pick a time below. Your advisor pulls your file with you, finds the biggest limit you've been given, and shows you what you'd get approved for today and what it takes to raise it. Soft pull, your score doesn't move.
