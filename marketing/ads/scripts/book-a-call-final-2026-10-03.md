@@ -10,19 +10,18 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 4 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | 228 | 1:31 |
 | 5 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
 | 6 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now decides the tool you need to get the maximum amount of funding. | 181 | 1:12 |
-| 7 | The 800 That Gets Less | Lenders size your funding from your whole credit file, which is why someone with an 800 can walk away with less money than someone with a 700. | 199 | 1:19 |
-| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 182 | 1:12 |
-| 9 | Ad 10 — North Scottsdale | The people who live up there figured out how to use credit, and there's one thing they do that nobody outside of that world ever talks about. | 189 | 1:15 |
-| 10 | Ad 11 — The truck | I paid for this truck with credit, and the reason I could is a decision I made four years before I ever wanted a truck. | 166 | 1:06 |
-| 11 | Ad 12 — The fallback | I've lost money in business more times than I want to say on camera, and the only reason I got back up every time is something nobody talks about until it's too late to do anything about it. | 169 | 1:07 |
-| 12 | Ad 13 — Before the ads | Ten years ago there was one guy in the country teaching credit card stacking and I learned it from him, before anybody was running ads on this stuff. | 173 | 1:09 |
-| 13 | Ad 14 — It's a skill | Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest. | 124 | 0:49 |
-| 14 | Ad 15 — High earners | You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess. | 162 | 1:04 |
-| 15 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
-| 16 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
-| 17 | Ad 18 — The order | The order you apply in decides how much money you end up with, and it's the first application that does the damage. | 189 | 1:15 |
-| 18 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life, and almost everybody gets one round and quits. | 157 | 1:02 |
-| 19 | Ad 20 — The amount on your report (broad, film first) | There's a dollar amount attached to your credit report right now and nobody has ever told you what yours is. | 150 | 1:00 |
+| 7 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 182 | 1:12 |
+| 8 | Ad 10 — North Scottsdale | The people who live up there figured out how to use credit, and there's one thing they do that nobody outside of that world ever talks about. | 189 | 1:15 |
+| 9 | Ad 11 — The truck | I paid for this truck with credit, and the reason I could is a decision I made four years before I ever wanted a truck. | 166 | 1:06 |
+| 10 | Ad 12 — The fallback | I've lost money in business more times than I want to say on camera, and the only reason I got back up every time is something nobody talks about until it's too late to do anything about it. | 169 | 1:07 |
+| 11 | Ad 13 — Before the ads | Ten years ago there was one guy in the country teaching credit card stacking and I learned it from him, before anybody was running ads on this stuff. | 173 | 1:09 |
+| 12 | Ad 14 — It's a skill | Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest. | 124 | 0:49 |
+| 13 | Ad 15 — High earners | You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess. | 162 | 1:04 |
+| 14 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
+| 15 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
+| 16 | Ad 18 — The order | The order you apply in decides how much money you end up with, and it's the first application that does the damage. | 189 | 1:15 |
+| 17 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life, and almost everybody gets one round and quits. | 157 | 1:02 |
+| 18 | Ad 20 — The amount on your report (broad, film first) | There's a dollar amount attached to your credit report right now and nobody has ever told you what yours is. | 150 | 1:00 |
 
 Changed beyond the CTA: Ad 13, 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
@@ -136,19 +135,7 @@ The tool almost everybody grabs first is applying, before their file is ready fo
 
 Get on a call with us and your advisor will tell you which tool your file needs first.
 
-## 7. The 800 That Gets Less
-
-Lenders size your funding from your whole credit file, which is why someone with an 800 can walk away with less money than someone with a 700.
-
-It comes down to how your personal information reads across the three bureaus, and there's one detail in there that caps high-score files more than anything else I see.
-
-Your score measures how you've paid. The lender is also checking whether the file in front of them matches the person applying, how many times you've applied lately, and how your balances report on your statement date. An 800 with a problem in any of those gets sized down. A 700 with all of them clean gets sized up.
-
-That detail is your addresses. Old addresses, and addresses that don't match from one bureau to the next, tell a lender the file might not be you, so they approve you for less or ask for documents you may not have.
-
-Click below and book your call. Your advisor pulls all three bureaus and your business report with you, checks every address, and shows you how much we think you'll qualify for right now. Soft pull only, and nothing moves until you say so.
-
-## 8. Ad 9 — The bank
+## 7. Ad 9 — The bank
 
 Shoot: In front of the bank. Thumb over your shoulder on the first line.
 
@@ -160,7 +147,7 @@ Get that limit up before you apply and everything after it comes in bigger. That
 
 Pick a time below. Your advisor pulls your file with you, finds the biggest limit you've been given, and shows you what you'd get approved for today and what it takes to raise it. Soft pull, your score doesn't move.
 
-## 9. Ad 10 — North Scottsdale
+## 8. Ad 10 — North Scottsdale
 
 Shoot: Pointing at the buildings. Photos of the places you've lived on screen.
 
@@ -174,7 +161,7 @@ It only works in a certain order though, and doing it out of order shuts it down
 
 Book your call below and your advisor will show you that order on your own file. I've funded a little over a million for myself this way and put it into companies that pay me back. Soft pull only.
 
-## 10. Ad 11 — The truck
+## 9. Ad 11 — The truck
 
 Shoot: Pull up, get out, keep walking.
 
@@ -186,7 +173,7 @@ That's the thing about this. Some of it you can fix in ninety days. Some of it o
 
 Click the link below and set up a call. Your advisor will tell you which is which on your file, and the banks most likely to approve you where you live.
 
-## 11. Ad 12 — The fallback
+## 10. Ad 12 — The fallback
 
 Shoot: Straight to camera. Lower energy than the rest.
 
@@ -198,7 +185,7 @@ The guys who make it through a bad year built the file in a good one. I've done 
 
 Book the call while business is good. Your advisor runs a soft pull with you and shows you what you'd get approved for now and what's holding the rest back.
 
-## 12. Ad 13 — Before the ads
+## 11. Ad 13 — Before the ads
 
 Shoot: Screen: your oldest approvals and the eight-year-old client file, dates visible, names blurred.
 
@@ -210,7 +197,7 @@ Here's a client I funded eight years ago. Here's some of my first approvals, dat
 
 Ten years, a little over a million funded for myself, hundreds of other people's files, and plenty of money lost figuring out what doesn't work. All of it goes into how your advisor reads your file on the call. Click below and book it.
 
-## 13. Ad 14 — It's a skill
+## 12. Ad 14 — It's a skill
 
 Shoot: Straight to camera.
 
@@ -220,7 +207,7 @@ They run the same plan on everybody because that's what they bought. Two people 
 
 So every file that comes in gets read by somebody who can tell those two people apart. Click below and book a call, and your advisor will tell you which one you are.
 
-## 14. Ad 15 — High earners
+## 13. Ad 15 — High earners
 
 Shoot: Somewhere that reads expensive.
 
@@ -234,7 +221,7 @@ Fixing a thin file is a known process and it doesn't take long.
 
 Schedule a call below. Your advisor will show you how thin your file reads to a bank and the fastest way to the maximum amount of funding.
 
-## 15. Ad 16 — The hidden tax
+## 14. Ad 16 — The hidden tax
 
 Shoot: Straight to camera.
 
@@ -246,7 +233,7 @@ That tax is your credit and the fact that nobody ever showed you how to use it.
 
 Get on the calendar below and your advisor will show you what that tax has cost you and the order to stop paying it. Soft pull, your score doesn't move.
 
-## 16. Ad 17 — Paying for speed
+## 15. Ad 17 — Paying for speed
 
 Shoot: Somewhere expensive. Approvals on screen at "a little over a million."
 
@@ -258,7 +245,7 @@ Then hundreds of other people's files went through the same system, and all of i
 
 Click below and book a call, and your advisor will give you what you'd get approved for today, what you'd get once your file is ready, and every step in between. Every month you spend figuring it out alone costs you funding you'd already have.
 
-## 17. Ad 18 — The order
+## 16. Ad 18 — The order
 
 Shoot: Straight to camera.
 
@@ -272,7 +259,7 @@ The fix is boring and it works. Get the personal file right first. Personal fund
 
 Click below and lock in a call. Your advisor builds that sequence off your own file, banks named, in order.
 
-## 18. Ad 19 — Over and over (broad, film first)
+## 17. Ad 19 — Over and over (broad, film first)
 
 Shoot: High energy. Open loud, thumb pointing at the lens.
 
@@ -284,7 +271,7 @@ Get those balances down to where the banks want them first and your next funding
 
 Tap below and book a call. Your advisor pulls your file with you, tells you what you qualify for right now, and shows you exactly what to pay down before you apply again.
 
-## 19. Ad 20 — The amount on your report (broad, film first)
+## 18. Ad 20 — The amount on your report (broad, film first)
 
 Shoot: Point at the lens on the first line.
 
