@@ -216,7 +216,7 @@ Get on the calendar below and your advisor will show you what that tax has cost 
 
 Shoot: Somewhere expensive. Approvals on screen at "a little over a million."
 
-You can spend the next year figuring out how credit turns into money, or you can have my last ten years of it in about ten seconds.
+You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call.
 
 What those ten years actually bought me was a list of things that don't work, and that list is worth more than any of the wins, because nobody who's got one is going to tell you what's on it. Everybody shows you the stuff that worked. I funded a little over a million for myself, put it into businesses, and lost plenty of it finding out which moves look smart and aren't.
 
