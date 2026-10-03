@@ -1,6 +1,6 @@
 # Book-a-call ads — your picks (2026-10-03)
 
-Every ad goes to the /watch VSL, then the booking calendar, then the thank-you page. No $297 anywhere. Only the scripts you picked: Script 4, Ads 19, 14, 15, 17 and 16, Script 1, and Ad 9 for the bank. Each has its own call to action.
+Every ad goes to the /watch VSL, then the booking calendar, then the thank-you page. No $297 anywhere. Only the scripts you picked: Script 4, Ads 19, 14, 15, 17 and 16, the two green screen ads (Scripts 1 and 2), and Ad 9 for the bank. Each has its own call to action.
 
 | # | Ad | Hook (line 1) | Words | About |
 |---|---|---|---|---|
@@ -11,9 +11,25 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
-| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 271 | 1:48 |
+| 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | 228 | 1:31 |
+| 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 271 | 1:48 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
+
+## How to film the green screen ads (Scripts 1 and 2)
+
+The whole shoot runs on the phone: Notes for the background, Instagram's green screen effect to
+record, Submagic for captions.
+
+1. Put the iPhone in dark mode, open Notes, paste the note from the next section, and set the first
+   line to Title.
+2. Screenshot the note. To scroll down it while you talk, screen-record a slow scroll instead and
+   use that video.
+3. In Instagram, open Reels, tap Effects, search "Green Screen," and pick the screenshot or
+   recording as the background.
+4. Stand in the bottom right of the frame and point at each step as you say it.
+5. Save the reel to your camera roll without posting it.
+6. Run it through Submagic for captions.
 
 ## 1. Script 4 — Tool analogy, the hammer on the flat tire
 
@@ -124,7 +140,38 @@ Clearing the inquiries before every round is what lets every business you open g
 
 Book a call below and your advisor will walk your file through all seven steps, starting with where you are today.
 
-## 8. Ad 9 — The bank
+## 8. Script 2 — Notes green screen
+
+Shoot: Green screen. Point at each line of this note on screen as you say it:
+
+How to Get Funded (Based on Where Your File Is) 💰
+
+1. See where your file is 🔍
+Pull all 3 bureaus and your business credit, and list what's holding you back.
+2. If something is holding you back 🧹
+Remove negative items, fix mismatched names and addresses, and pay your cards under 10%.
+3. If your file is ready 🏦
+Fix the 13 hidden data points (names, addresses, business codes), then apply to the 30 to 50 banks that fit your file, in order.
+4. If you're doing it yourself 📋
+Work one step at a time, in order, and have someone check each step before you move on.
+
+Where your file is right now decides what you need to do to get the maximum amount of funding.
+
+Even if your file's ready, 13 hidden data points cost a 760 file about $100,000, and I'll show you how to fix them at the end.
+
+Here's exactly what I'd do. Step one, pull your three credit reports and your business credit and see what's holding you back.
+
+Step two, if something's holding you back, like collections or maxed-out cards, get the negative items off and pay your cards under ten percent. When your balances are high, banks approve you for a lot less.
+
+Step three, if your file's ready, apply to the thirty to fifty banks that approve files like yours, in the right order. The order decides how many approvals you get.
+
+Step four, if you're doing it yourself, go one step at a time and have someone check your work. One step out of order sets you back months.
+
+Now, those 13 hidden data points. They're things like your name, addresses, employers and business codes. If they don't match on every report, banks approve you for less, so make sure they all match before you apply.
+
+It's a lot, and I don't want you doing it alone. Wherever you are, Fundhub has a solution for that phase. Hop on a call and we'll figure it out.
+
+## 9. Ad 9 — The bank
 
 Shoot: In front of Chase. Thumb over your shoulder at the bank on the first line.
 
