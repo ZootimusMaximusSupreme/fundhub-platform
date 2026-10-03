@@ -7,7 +7,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 
 **How we edit these:** Chris reads each ad out loud and talks through changes. When he says "save the ad," the edit is saved to this file in the repo and we move to the next one, top to bottom.
 
-| 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now decides the tool you need to get the maximum amount of funding. | 181 | 1:12 |
+| 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now determines the tool you need to get the maximum amount of funding as quickly as possible. | 190 | 1:16 |
 | 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life, and almost everybody gets one round and quits. | 157 | 1:02 |
 | 3 | Ad 14 — It's a skill | Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest. | 124 | 0:49 |
 | 4 | Ad 15 — High earners | You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess. | 162 | 1:04 |
@@ -38,17 +38,17 @@ record, Submagic for captions.
 
 Shoot: Hold a hammer on camera. The joke lands on the hammer and on you, never on the viewer.
 
-Where your file is right now decides the tool you need to get the maximum amount of funding.
+Where your file is right now determines the tool you need to get the maximum amount of funding as quickly as possible.
 
 There's one tool almost everybody grabs first, and on the wrong file it leaves you with small approvals and a report full of inquiries. I'll show you which one.
 
-Picture fixing a flat tire with a hammer. You swing at it for an hour, the tire's still flat, and now the rim's bent too. I've grabbed the hammer plenty of times myself, so no judgment.
+Picture fixing a flat tire with a hammer. You swing at it for an hour, the tire's still flat, and now the rim's bent too. I've grabbed the hammer plenty of times myself, back before I spent thousands of hours mastering the funding game.
 
-Credit works the same way. If something's holding your file back, like collections or maxed-out cards, the tool is optimizing your credit first. If your file's ready, the tool is applying in rounds to the banks that fit it. And if you want to do it yourself, the tool is a step-by-step plan with someone keeping you accountable.
+Credit works the same way. If something's holding your file back, like collections or maxed-out cards, the tool is optimizing your credit first. If your file's ready, the tool is applying to the banks that fit it. And if you want to do it yourself, the tool is a step-by-step plan that keeps you accountable.
 
-The tool almost everybody grabs first is applying, before their file is ready for it. That's the hammer on the flat tire.
+The tool almost everybody grabs first is applying before their file is ready for it. That's the hammer on the flat tire.
 
-Get on a call with us and your advisor will tell you which tool your file needs first.
+Get on a call with us first, and your advisor will tell you which tool your file needs.
 
 ## 2. Ad 19 — Over and over (broad, film first)
 
