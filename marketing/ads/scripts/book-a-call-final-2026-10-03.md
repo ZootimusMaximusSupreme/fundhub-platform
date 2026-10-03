@@ -8,7 +8,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 **How we edit these:** Chris reads each ad out loud and talks through changes. When he says "save the ad," the edit is saved to this file in the repo and we move to the next one, top to bottom.
 
 | 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now determines the tool you need to get the maximum amount of funding as quickly as possible. | 190 | 1:16 |
-| 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life, and almost everybody gets one round and quits. | 157 | 1:02 |
+| 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life. | 234 | 1:33 |
 | 3 | Ad 14 — It's a skill | Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest. | 124 | 0:49 |
 | 4 | Ad 15 — High earners | You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess. | 162 | 1:04 |
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
@@ -54,13 +54,17 @@ Get on a call with us first, and your advisor will tell you which tool your file
 
 Shoot: High energy. Open loud, thumb pointing at the lens.
 
-Banks will fund you over and over for the rest of your life, and almost everybody gets one round and quits.
+Banks will fund you over and over for the rest of your life.
 
-They quit because the next funding sequence has a requirement nobody warned them about. They get declined, they figure the well is dry, and they walk. The well is fine. What happened is you got approved for a stack of cards, you used them, and the day you went back those balances were sitting right there on your report. The bank reads that as somebody who's already maxed out and they pass on you.
+I've pulled hundred-thousand-dollar credit lines on four different companies off one personal credit file, and one detail about the banks is what made that possible.
 
-Get those balances down to where the banks want them first and your next funding sequence opens right back up, and it's usually bigger than the first one was.
+Here's how it works. You open more than one company, in the same state or a different one, and aged companies that have been sitting on the shelf work even better. Each company gets set up for fundability and goes out to its own series of banks, all backed by your personal credit, on stated income with no income docs.
 
-Tap below and book a call. Your advisor pulls your file with you, tells you what you qualify for right now, and shows you exactly what to pay down before you apply again.
+You can do every one of those steps right and still walk away with one approval instead of four. It comes down to that one detail, and nobody puts it in a course because it changes every few months.
+
+The detail is which banks will fund the same person across multiple companies. Most banks won't, and the ones that will shift as banks lend more or pull back with the economy, with your local market, and with how much of that market they already own.
+
+That's why it pays to work with someone who's been doing this for ten years and builds your roadmap systematically with AI and machine learning around where lending is right now. Tap below and book a call, and your advisor will map out which of your companies go to which banks.
 
 ## 3. Ad 14 — It's a skill
 
