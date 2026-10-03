@@ -11,7 +11,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
-| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 199 | 1:19 |
+| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 262 | 1:44 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
@@ -130,12 +130,14 @@ Shoot: In front of Chase. Thumb over your shoulder at the bank on the first line
 
 The bank behind me already decided how much they'd give you, and how much money you make barely factors into it.
 
-One line on your credit report decides more of it than your income and your score put together, and I'll show you which line before this video ends.
+One line on your credit report decides more of it than your income and your score put together, and I'll show you which line that is before this video ends.
 
-Here's what that line does. A guy making three hundred grand a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty, because the bank read that one line on both of their reports.
+Here's what that line does. A guy making three hundred thousand dollars a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty, because the bank read that one line on both of their credit reports.
 
-That line has been sitting on your report for years, setting your approvals every time you apply. It takes a couple of months to move, and once it moves, every approval after it comes in bigger.
+That line has been sitting on your report for years, setting your approvals every time you apply. It's a simple tweak, and once you make it, every approval after that comes in bigger.
 
-The line is the biggest credit limit anybody has ever given you. The bank looks at what another bank already trusted you with and lands somewhere close to it.
+That line is the highest limit card on your credit report. Banks look at your highest limit and see that a bank somewhere else already trusted you with a large amount of money, and they'll give you one to two times that limit depending on the bank.
 
-Pick a time below. Your advisor pulls your file with you, finds your biggest limit, and shows you what it takes to raise it before you apply. Soft pull, your score doesn't move.
+Here at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.
+
+Pick a time below and your advisor will pull your file with you and show you exactly where your highest limit sits. Soft pull, your score doesn't move.
