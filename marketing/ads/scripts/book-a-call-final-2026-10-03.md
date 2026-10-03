@@ -9,7 +9,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 
 | 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now determines the tool you need to get the maximum amount of funding as quickly as possible. | 190 | 1:16 |
 | 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life. | 234 | 1:33 |
-| 3 | Ad 14 — It's a skill | Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest. | 124 | 0:49 |
+| 3 | Ad 14 — It's a skill | One skill decides whether a funding company gets you a hundred thousand dollars or ten, and most of the companies in your feed don't have it. | 251 | 1:40 |
 | 4 | Ad 15 — High earners | You make good money and your credit is doing nothing for you, and the reason is the opposite of what you'd guess. | 162 | 1:04 |
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
@@ -70,11 +70,17 @@ That's why it pays to work with someone who's been doing this for ten years and 
 
 Shoot: Straight to camera.
 
-Most of the funding companies in your feed are going to underdeliver on you, and it has nothing to do with them being dishonest.
+One skill decides whether a funding company gets you a hundred thousand dollars or ten, and most of the companies in your feed don't have it.
 
-They run the same plan on everybody because that's what they bought. Two people can have the exact same score and need the complete opposite things done to their file, and knowing which one you're looking at is the whole job. You can't buy that anywhere. It took me ten years and hundreds of files to get good at it and I lost real money getting there.
+Two people can walk in with the exact same credit score and need completely opposite things done to their files, and the companies running ads at you treat them the same.
 
-So every file that comes in gets read by somebody who can tell those two people apart. Click below and book a call, and your advisor will tell you which one you are.
+Most of them bought a funding business in a box. It came with one plan and somebody else's data, so every client gets that plan, built on information that gets passed around the industry and is about eighty percent right. If that plan happens to fit your file, you get funded, and if it doesn't, you walk away with a few small approvals and a report full of inquiries.
+
+The skill is reading a file accurately and knowing which of those two people you're looking at before anything goes out. I've been collecting data points through our system for ten years, and that's where the other twenty percent comes from.
+
+If your file isn't ready, we won't take you on as a funding client. We'll give you the steps to get qualified, or the education to make the right decisions with your credit, because we're never going to burn your file to close a deal. When your file is ready, we get you the most funding as quickly as possible with strategies that have been proven to work.
+
+Click below and book a call, and your advisor will tell you which one you are.
 
 ## 4. Ad 15 — High earners
 
