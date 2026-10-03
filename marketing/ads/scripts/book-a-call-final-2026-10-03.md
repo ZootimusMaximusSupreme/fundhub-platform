@@ -11,7 +11,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life. | 234 | 1:33 |
 | 3 | Ad 14 — It's a skill | One skill decides whether a funding company gets you a hundred thousand dollars or ten, and most of the companies in your feed don't have it. | 251 | 1:40 |
 | 4 | Ad 15 — High earners | Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places. | 288 | 1:55 |
-| 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
+| 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 240 | 1:36 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
 | 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | 228 | 1:31 |
@@ -102,11 +102,13 @@ Shoot: Somewhere expensive. Approvals on screen at "a little over a million."
 
 You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call.
 
-What those ten years actually bought me was a list of things that don't work, and that list is worth more than any of the wins, because nobody who's got one is going to tell you what's on it. Everybody shows you the stuff that worked. I funded a little over a million for myself, put it into businesses, and lost plenty of it finding out which moves look smart and aren't.
+There's one move I see on most of the files I review that costs about three hundred thousand dollars in funding, and it feels like the responsible thing to do.
 
-Then hundreds of other people's files went through the same system, and all of it is built into how we run your file now.
+In those ten years I've funded a little over a million dollars for myself, worked hundreds of other people's files, and made every expensive mistake there is, including this one.
 
-Click below and book a call, and your advisor will give you what you'd get approved for today, what you'd get once your file is ready, and every step in between. Every month you spend figuring it out alone costs you funding you'd already have.
+Here it is: paying off a card and closing it. When you close a card, you lose years of history you can't buy back, and you lose that limit with it. Close a twenty-thousand-dollar card and every approval after it comes in twenty to forty thousand smaller, because banks size you off the limits you already have. Five approvals on one company is a hundred to two hundred thousand dollars gone, and across two or three companies you're at three hundred thousand or more.
+
+When you work with us, our system catches costly moves like that before they ever happen, so you get the maximum amount of funding and keep access to capital whenever you want it, for the rest of your life. I learned every one of those moves the hard way so you don't have to. Click below and book a call, and your advisor will go through your file with you.
 
 ## 6. Ad 16 — The hidden tax
 
