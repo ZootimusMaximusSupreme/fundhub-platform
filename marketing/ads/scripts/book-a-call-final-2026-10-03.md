@@ -11,7 +11,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 167 | 1:06 |
 | 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
-| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 262 | 1:44 |
+| 8 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 251 | 1:40 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
@@ -140,4 +140,4 @@ That line is the highest limit card on your credit report. Banks look at your hi
 
 Here at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.
 
-Pick a time below and your advisor will pull your file with you and show you exactly where your highest limit sits. Soft pull, your score doesn't move.
+The link is down below, and your advisor will walk you through how to maximize your fundability.
