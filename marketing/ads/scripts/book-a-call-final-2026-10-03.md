@@ -240,31 +240,9 @@ Here at Fundhub, we make sure you get the highest limits possible so you can max
 
 Click the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.
 
-## 10. The plan while rates rise (new, 2026-10-04)
+## 10. Scale without your own cash (long, merged 2026-10-04)
 
-Shoot: Straight to camera. Marks: CAPS = punch the word, blank line = pause, ↑ = pitch up at the end.
-
-When interest rates go up, banks tighten, and the entrepreneurs who prepared FIRST are the ones who still get funded.
-
-There's one step in that plan that took me years of driving bank to bank to figure out. ↑
-
-Mark Zuckerberg said, "The biggest risk is not taking any risk." You might not be ready to take that risk yet, and that's okay. Start preparing NOW, because times are getting harder for entrepreneurs.
-
-Step one, optimize your credit FIRST. Do it with me or do it with somebody else, I want you to win either way. Just get it right.
-
-Step two, open your businesses and establish their credit. If you have extra cash, pick up an aged company. Those are fundable assets. Your personal credit is the main one, and every business you add MULTIPLIES it.
-
-Step three is the one that took me years. You need to know exactly which banks to apply to for each file. ↑
-
-I used to drive to every single bank in my state to collect every data point. You'll learn a lot doing that, and I still recommend it. But it takes a TON of time away from your business and your family, and working with someone who already knows every bank and every data point saves you all of it.
-
-Once you have that plan, you have the foundation to get funded, on your own or with someone who's been doing this their whole career.
-
-Click the link below, and your advisor will walk you through that plan for where your credit is right now.
-
-## 11. The entrepreneur who needs to scale (new, 2026-10-04)
-
-Shoot: Straight to camera. Jeremy Haynes line is a paraphrase; swap in his exact words if Chris finds the video. Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
+Shoot: Straight to camera. Merges the scaling-entrepreneur ad and the plan-while-rates-rise ad. Double loop: loop A (own cash never leaves your account) opens on line 2 and pays off right before the CTA; loop B (the step that took years) opens mid-ad and pays off at step three. Jeremy Haynes line is a paraphrase. Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
 
 Putting MORE money into your business is the fastest way to stop being cash-strapped.
 
@@ -278,6 +256,20 @@ You know what your business needs. Either the money isn't there, or it is there,
 
 Your family wants you to take that leap. Your kids, your parents, your brother and your sister.
 
-You don't have to use your own cash to do it. We get you funding on your credit and your businesses, so you put that capital into growth and your cash stays right where it is.
+Mark Zuckerberg said, "The biggest risk is not taking any risk." You might not be ready to take that risk yet, and that's okay. Start preparing NOW, because interest rates are going up, banks are tightening, and the entrepreneurs who prepared FIRST are the ones who still get funded.
 
-Click the link below, and your advisor will show you how much funding you can get to scale your business, based on where you're at right now.
+Here's the plan, and one step in it took me years of driving bank to bank to figure out. ↑
+
+Step one, optimize your credit FIRST. Do it with me or do it with somebody else, I want you to win either way. Just get it right.
+
+Step two, open your businesses and establish their credit. If you have extra cash, pick up an aged company. Those are fundable assets. Your personal credit is the main one, and every business you add MULTIPLIES it.
+
+Step three is the one that took me years. You need to know exactly which banks to apply to for each file. ↑
+
+I used to drive to every single bank in my state to collect every data point. You'll learn a lot doing that, and I still recommend it. But it takes a TON of time away from your business and your family, and working with someone who already knows every bank and every data point saves you all of it.
+
+Once you have that plan, you have the foundation to get funded, on your own or with someone who's been doing this their whole career.
+
+And that's how you scale without touching your own cash. We get you funding on your credit and your businesses, so you put that capital into growth and your cash stays right where it is.
+
+Click the link below, and your advisor will walk you through the plan for where your credit is right now and show you how much funding you can get to scale your business.
