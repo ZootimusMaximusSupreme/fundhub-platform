@@ -261,3 +261,23 @@ I used to drive to every single bank in my state to collect every data point. Yo
 Once you have that plan, you have the foundation to get funded, on your own or with someone who's been doing this their whole career.
 
 Click the link below, and your advisor will walk you through that plan for where your credit is right now.
+
+## 11. The entrepreneur who needs to scale (new, 2026-10-04)
+
+Shoot: Straight to camera. Jeremy Haynes line is a paraphrase; swap in his exact words if Chris finds the video. Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
+
+Putting MORE money into your business is the fastest way to stop being cash-strapped.
+
+And there's a way to do it where your own cash never leaves your account.
+
+Jeremy Haynes, one of the biggest names in media buying, talks about this all the time. The businesses that break out of a cash-restricted position are the ones that put MORE money into their ads and their growth.
+
+Maybe your business does $10,000 a month, maybe $20,000, maybe $50,000, and you're trying to get past $100,000 a month. At those numbers it's hard to save for retirement, let alone buy back time with your family. I've been there.
+
+You know what your business needs. Either the money isn't there, or it is there, it's your cash, and you don't want to risk it. ↑
+
+Your family wants you to take that leap. Your kids, your parents, your brother and your sister.
+
+You don't have to use your own cash to do it. We get you funding on your credit and your businesses, so you put that capital into growth and your cash stays right where it is.
+
+Click the link below, and your advisor will show you how much funding you can get to scale your business, based on where you're at right now.
