@@ -86,17 +86,37 @@ Click below and book a call, and your advisor will tell you which one you are.
 
 Shoot: Somewhere that reads expensive.
 
-Making a million dollars takes two things, a proven investment and access to capital. You might have good credit and a high income and still be missing the second one.
+Marks: CAPS = punch the word, blank line = pause (BigVU pauses on the space), ↑ = pitch up at the end.
 
-Maybe you've paid cash your whole life, or you've got credit you never use. Or maybe you have an old LLC or a company you forgot about. That company is worth a lot of money to a bank.
+Making a million dollars takes TWO things, a proven investment and access to capital.
 
-You built your income by being a professional and managing money well, and that's exactly why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands. Every dollar I put into Meta comes back about four times, and that's on the low end, so $200,000 run through a system that already has proven returns turns into a lot more than $200,000. Capital lets you grow on a proven system much faster than cash flow ever will.
+You might have good credit and a high income and still be MISSING the second one.
 
-Here's what that company you forgot about is worth. Every business qualifies for funding on its own, and the older the business is, the more capital it gets, just from having that age. One business is $100,000 at a minimum, and an older one gets up to $300,000.
+Maybe you've paid cash your whole life, or you've got credit you never use. Or maybe you have an old LLC or a company you forgot about.
 
-So look at the businesses you have that you aren't using. If you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have three, that's up to $900,000, sitting in your account in the next 15 to 30 days, depending on what your roadmap takes to get you there.
+That company is worth a LOT of money to a bank.
 
-Then ask yourself one question. Do you want access to that capital to put into the proven system you already make money with? If the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now. If the answer is no, keep doing what you're doing.
+You built your income by being a professional and managing money well, and that's EXACTLY why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands.
+
+Every dollar I put into Meta comes back about FOUR times, and that's on the low end, so $200,000 run through a system that already has proven returns turns into a LOT more than $200,000.
+
+Capital lets you grow on a proven system MUCH faster than cash flow ever will.
+
+Here's what that company you forgot about is worth. ↑
+
+Every business qualifies for funding on its own, and the older the business is, the MORE capital it gets, just from having that age. One business is $100,000 at a minimum, and an older one gets up to $300,000.
+
+So look at the businesses you have that you aren't using.
+
+If you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have THREE, that's up to $900,000, sitting in your account in the next 15 to 30 days, depending on what your roadmap takes to get you there.
+
+Then ask yourself ONE question. ↑
+
+Do you want access to that capital to put into the proven system you already make money with? ↑
+
+If the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.
+
+If the answer is no, keep doing what you're doing.
 
 ## 5. Ad 17 — Paying for speed
 
