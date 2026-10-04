@@ -248,7 +248,7 @@ Putting MORE money into your business is the fastest way to stop running out of 
 
 And there's a way to do it where your own cash never leaves your account.
 
-Jeremy Haynes, one of the biggest names in ads, talks about this all the time. The businesses that grow the FASTEST are the ones that put more money into their ads and their growth.
+Jeremy Haynes, one of the biggest names in ads, explains this all the time. When your business is stuck with limited cash, you have to turn your spending UP, not down. More spend gets you more data, your ads perform better, and you can finally pay for the people and tools that help you break free.
 
 Maybe your business makes $10,000 a month, maybe $20,000, maybe $50,000, and you want to get past $100,000 a month. At those numbers it's hard to save for retirement, let alone buy back time with your family. I've been there.
 
