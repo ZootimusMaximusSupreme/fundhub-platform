@@ -244,7 +244,7 @@ Click the link below. Your highest limit is one of 13 things on your file that d
 
 Shoot: Straight to camera. Merges the scaling-entrepreneur ad and the plan-while-rates-rise ad. Double loop: loop A (own cash never leaves your account) opens on line 2 and pays off right before the CTA; loop B (the step that took years) opens mid-ad and pays off at step three. Jeremy Haynes line is a paraphrase. Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
 
-Putting MORE money into your business is the fastest way to stop being short on cash.
+Putting MORE money into your business is the fastest way to stop running out of cash.
 
 And there's a way to do it where your own cash never leaves your account.
 
