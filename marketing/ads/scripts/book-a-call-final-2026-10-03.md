@@ -239,3 +239,25 @@ It's your highest limit card. Banks look at the biggest limit another bank has a
 Here at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.
 
 Click the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.
+
+## 10. The plan while rates rise (new, 2026-10-04)
+
+Shoot: Straight to camera. Marks: CAPS = punch the word, blank line = pause, ↑ = pitch up at the end.
+
+When interest rates go up, banks tighten, and the entrepreneurs who prepared FIRST are the ones who still get funded.
+
+There's one step in that plan that took me years of driving bank to bank to figure out. ↑
+
+Mark Zuckerberg said, "The biggest risk is not taking any risk." You might not be ready to take that risk yet, and that's okay. Start preparing NOW, because times are getting harder for entrepreneurs.
+
+Step one, optimize your credit FIRST. Do it with me or do it with somebody else, I want you to win either way. Just get it right.
+
+Step two, open your businesses and establish their credit. If you have extra cash, pick up an aged company. Those are fundable assets. Your personal credit is the main one, and every business you add MULTIPLIES it.
+
+Step three is the one that took me years. You need to know exactly which banks to apply to for each file. ↑
+
+I used to drive to every single bank in my state to collect every data point. You'll learn a lot doing that, and I still recommend it. But it takes a TON of time away from your business and your family, and working with someone who already knows every bank and every data point saves you all of it.
+
+Once you have that plan, you have the foundation to get funded, on your own or with someone who's been doing this their whole career.
+
+Click the link below, and your advisor will walk you through that plan for where your credit is right now.
