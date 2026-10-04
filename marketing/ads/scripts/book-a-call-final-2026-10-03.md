@@ -252,7 +252,7 @@ Jeremy Haynes, one of the biggest names in ads, explains this all the time. When
 
 Maybe your business makes $10,000 a month, maybe $20,000 a month, maybe $50,000 a month. Or maybe you don't have a business yet and you're looking to start one. Wherever you're starting, getting past $100,000 a month takes capital, and that's what buys back time with your family. I've been there.
 
-You know what your business needs. Either the money isn't there, or it is there, it's your cash, and you don't want to risk it. ↑
+You already know what your business needs. Maybe you don't have the money to do it. Or maybe you have the money, but it's your savings, and you don't want to risk it. ↑
 
 Your family wants you to take that leap. Your kids, your parents, your brother and your sister.
 
