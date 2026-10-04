@@ -94,8 +94,8 @@ describe("META_MAP is the contract table", () => {
     });
   });
 
-  test("$197 is integer cents turned into a number of dollars", () => {
-    assert.equal(SLO_VALUE, 197);
+  test("$147 is integer cents turned into a number of dollars", () => {
+    assert.equal(SLO_VALUE, 147);
     assert.equal(typeof SLO_VALUE, "number");
     assert.equal(CURRENCY, "USD");
   });
@@ -205,16 +205,16 @@ describe("event_id: the browser's id, so Meta counts each event once", () => {
 
   test("Purchase only with purchase.<order ref>, once per order", () => {
     const buy = metaEventsFor(SAMPLES[5]);
-    assert.deepEqual(buy, [{ event_name: "Purchase", event_id: "purchase.ord_123", custom_data: { value: 197, currency: "USD" } }]);
+    assert.deepEqual(buy, [{ event_name: "Purchase", event_id: "purchase.ord_123", custom_data: { value: 147, currency: "USD" } }]);
     assert.deepEqual(metaEventsFor(row("payment_result", { props: { result: "success" } })), [],
       "an id that is not purchase.<ref> is not a Purchase id");
     assert.deepEqual(metaEventsFor(row("payment_result", { props: { result: "success" }, meta_event_id: undefined })), [],
       "no order ref: the payment webhook sends it with purchase.<ref>");
   });
 
-  test("InitiateCheckout carries $197 under the browser's id", () => {
+  test("InitiateCheckout carries $147 under the browser's id", () => {
     assert.deepEqual(metaEventsFor(SAMPLES[4]),
-      [{ event_name: "InitiateCheckout", event_id: ID, custom_data: { value: 197, currency: "USD" } }]);
+      [{ event_name: "InitiateCheckout", event_id: ID, custom_data: { value: 147, currency: "USD" } }]);
   });
 
   test("a junk meta_event_id is no id, so nothing is sent", () => {

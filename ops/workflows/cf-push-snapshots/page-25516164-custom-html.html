@@ -43,8 +43,11 @@ n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
 n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
 document,'script','https://connect.facebook.net/en_US/fbevents.js');
+if(!window.__fhPv&&window.self===window.top){(function(w){var s='';try{s=w.sessionStorage.getItem('fh_sid')||'';}catch(e){}
+if(!/^[A-Za-z0-9_-]{8,80}$/.test(s)){s=(Math.random().toString(36).slice(2)+new Date().getTime().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);try{w.sessionStorage.setItem('fh_sid',s);}catch(e){}}
+w.__fhPv='pv.'+s+'.'+Math.random().toString(36).slice(2,10);})(window);
 fbq('init', '2403674420141513');
-fbq('track', 'PageView');
+fbq('track', 'PageView', {}, {eventID: window.__fhPv});}
 </script>
 <noscript><img height="1" width="1" style="display:none" alt=""
 src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></noscript>
@@ -1582,7 +1585,10 @@ body>div:last-child{margin-bottom:0!important;padding-bottom:0!important}
         setBusy(false);
         if(order){order.locked=true;keepPaid(order);}
         hideFormErr();
-        fht('payment_result',{result:'success'});
+        /* order_ref: the shared tracker sends Meta Purchase with event id
+           "purchase.<order_ref>", the same id the payment webhook's server copy uses. */
+        var pr={result:'success'};if(order&&order.ref)pr.order_ref=String(order.ref);
+        fht('payment_result',pr);
         go(3);
       });
       /* A declined card or a gateway refusal. Their words, on our page. */
@@ -1833,10 +1839,12 @@ body>div:last-child{margin-bottom:0!important;padding-bottom:0!important}
     if(!form){var r=root.getBoundingClientRect();if(r.top<0||r.top>window.innerHeight*0.6)root.scrollIntoView({behavior:'smooth',block:'start'});}
   }
   function onContinue(){
-    fht('continue',{step:1});
     /* Paid: steps 1 and 2 are behind them. The soft pull is all that is left. */
     if(order&&order.locked){go(3);return;}
     if(!checkStep1()){var f=s1.querySelector('.err');if(f)f.focus();return;}
+    /* Only a press that passes the step-1 checks counts (the shared tracker sends it
+       to Meta as Lead). A failed press already sends validation_error. */
+    fht('continue',{step:1});
     var c=contact();
     var lf=s3.querySelector('[name="first_name"]'),ll=s3.querySelector('[name="last_name"]');
     if(!lf.value)lf.value=c.first_name;if(!ll.value)ll.value=c.last_name;

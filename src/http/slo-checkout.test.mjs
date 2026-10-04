@@ -36,7 +36,7 @@ function fakeRes() {
 test("GET states $297 and the pull path, and no earnings figure", () => {
   const page = sloPageConfig(LIVE_ENV);
   assert.equal(page.priceCents, SLO_PRICE_CENTS);
-  assert.equal(page.priceCents, 29700);
+  assert.equal(page.priceCents, 14700);
   assert.equal(page.next, SLO_PULL_PATH);
   assert.equal(page.checkout.ready, true);
   const blob = JSON.stringify(page);
@@ -160,7 +160,7 @@ test("runSloCheckout mints Assessment at $297 and sends them to the pull form", 
   assert.equal(out.ref, "slo_test_ref_1");
   assert.equal(out.next, SLO_PULL_PATH);
   assert.equal(sent.length, 1);
-  assert.equal(sent[0].amountCents, 29700);
+  assert.equal(sent[0].amountCents, 14700);
   assert.equal(sent[0].productTitle, SLO_KEEP_TITLE);
   assert.equal(sent[0].productTitle, "Consulting Services Assessment");
   assert.equal(sent[0].successUrl, "https://fundhub.ai/roadmap/pull.html");
@@ -184,7 +184,7 @@ test("runSloCheckout writes a diagnostic payment link so the UnderwriteIQ pull f
   const out = await runSloCheckout({ email: "buyer@example.com", name: "Pat Lee" }, deps);
   assert.equal(out.ok, true);
   assert.equal(deps.links.length, 1);
-  assert.equal(deps.links[0].amountCents, 29700);
+  assert.equal(deps.links[0].amountCents, 14700);
   assert.equal(deps.links[0].ref, "slo_wire_1");
 });
 
@@ -242,7 +242,7 @@ test("POST without email is 400; GET is 200", async () => {
   const get = fakeRes();
   await handler({ method: "GET" }, get);
   assert.equal(get.statusCode, 200);
-  assert.equal(get.body.priceCents, 29700);
+  assert.equal(get.body.priceCents, 14700);
 });
 
 test("sloPullSuccessUrl never puts SSN or amount on the address", () => {
@@ -285,12 +285,12 @@ test("DEMO: records the order stamped demo, never calls Commas, answers ref + cl
   assert.equal(minted, 0, "Commas is never called in demo");
   assert.deepEqual(
     { ok: out.ok, demo: out.demo, ref: out.ref, client_id: out.client_id, priceCents: out.priceCents },
-    { ok: true, demo: true, ref: "slo_demo_1", client_id: CLIENT, priceCents: 29700 }
+    { ok: true, demo: true, ref: "slo_demo_1", client_id: CLIENT, priceCents: 14700 }
   );
   assert.equal(out.checkoutUrl, undefined);
   assert.equal(deps.links.length, 1);
   assert.equal(deps.links[0].isDemo, true);
-  assert.equal(deps.links[0].amountCents, 29700);
+  assert.equal(deps.links[0].amountCents, 14700);
   assert.equal(deps.links[0].ref, "slo_demo_1");
   assert.equal(events[0].name, "slo.checkout_started");
   assert.equal(events[0].payload.demo, true);
@@ -350,8 +350,8 @@ test("businesses: first free, $15 each extra, from a list or from a count", asyn
     replaceBusinesses: async (_db, args) => { stored.push(args); }
   }));
   amount = out.priceCents;
-  assert.equal(amount, 29700 + 1500 * 2);
-  assert.equal(out.priceDisplay, "$327");
+  assert.equal(amount, 14700 + 1500 * 2);
+  assert.equal(out.priceDisplay, "$177");
   assert.equal(stored.length, 1);
   assert.equal(stored[0].businesses.length, 3);
   assert.equal(stored[0].clientId, CLIENT);
@@ -410,7 +410,7 @@ test("GET says whether this is demo pay, and demo checkout counts as ready", asy
   assert.match(demo.notices.charge, /not charged/);
   const live = sloPageConfig(LIVE_ENV);
   assert.equal(live.demo, false);
-  assert.match(live.notices.charge, /\$297/);
+  assert.match(live.notices.charge, /\$147/);
   const dead = sloPageConfig(DEAD_ENV);
   assert.equal(dead.checkout.ready, false);
 });

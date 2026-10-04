@@ -45,8 +45,8 @@ Each event: `{ event_name, event_time, event_id, event_source_url, action_source
 | page_view on /roadmap, /watch, /apply, /home | ViewContent (separate id `<pv>.vc`) | page open | content_name = page |
 | continue (buy box step 1) | Lead | step-1 button | content_name "roadmap_buybox" |
 | survey_answer on the last question (/apply, /home) | Lead | survey submit | content_name = survey |
-| buybox_tab tab 2 (first time per session) | InitiateCheckout | card step shown | value 197, currency USD |
-| payment_result success | Purchase | once per order, id `purchase.<ref>` | value 197, currency USD |
+| buybox_tab tab 2 (first time per session) | InitiateCheckout | card step shown | value 147, currency USD |
+| payment_result success | Purchase | once per order, id `purchase.<ref>` | value 147, currency USD |
 | booking_confirmed | Schedule | every booking page | content_name = calendar |
 | survey_answer | SurveyStep (custom) | each question answered | survey, step |
 | survey_route | SurveyRouted (custom) | sorting hat route | offer |

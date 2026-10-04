@@ -1,4 +1,4 @@
-// SLO diagnostic — public till constants. Price $197, list $297 shown crossed out (owner-set 2026-10-04).
+// SLO diagnostic — public till constants. Price $147, list $297 shown crossed out (owner-set 2026-10-04).
 //
 // Owner-set 2026-09-17: pay, then pull, then pack, then book.
 // Commas is the card API. ClickFunnels stays last. The live /watch funnel
@@ -9,7 +9,7 @@
 // Consulting Services Assessment is the diagnostic title already used by
 // SOFT_PULL and /optimize.
 
-export const SLO_PRICE_CENTS = 19700;
+export const SLO_PRICE_CENTS = 14700;
 
 /** List price shown crossed out on the page. Display only, never charged. */
 export const SLO_LIST_PRICE_CENTS = 29700;
