@@ -12,7 +12,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 3 | Ad 14 — It's a skill | One skill decides whether a funding company gets you a hundred thousand dollars or ten, and most of the companies in your feed don't have it. | 251 | 1:40 |
 | 4 | Ad 15 — High earners | Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places. | 288 | 1:55 |
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 240 | 1:36 |
-| 6 | Ad 16 — The hidden tax | There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file. | 163 | 1:05 |
+| 6 | Ad 16 — The hidden tax | Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding. | 369 | 2:27 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
 | 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | 228 | 1:31 |
 | 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 271 | 1:48 |
@@ -114,13 +114,17 @@ When you work with us, our system catches costly moves like that before they eve
 
 Shoot: Straight to camera.
 
-There's a tax you've been paying every month that's the reason your company is stuck where it is, and it doesn't show up on anything you file.
+Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding.
 
-You pay it every time you cover something out of your own pocket that a bank would have given you at zero percent. You pay it every time a deal comes up and you pass because the money wasn't there. Those are the cheap ones. The expensive one already happened to you and you never even noticed, because at the time it looked like good news. It was an approval. Eight thousand dollars, when your file was worth eighty, and you signed it and went on with your day.
+You pay them without noticing, and the biggest one sits on most files with great scores and even great income.
 
-That tax is your credit and the fact that nobody ever showed you how to use it.
+Number one is paying with a debit card or cash. Every dollar that skips a credit card skips your credit file too, and you give up the two or three percent cash back on every dollar you spend, money you never make back. Your limits never grow and you never build a relationship with the banks, which limits how much more capital you can get from that bank and every other bank too. Put that same spending on a card and pay it off, and your file gets stronger every month.
 
-Get on the calendar below and your advisor will show you what that tax has cost you and the order to stop paying it. Soft pull, your score doesn't move.
+Number two is having a credit card and not using it. Let an old card sit in a drawer long enough and the bank closes it for you, so you lose the card, the cash back, and the history it was building. That limit disappears and your available credit drops with it. Keep using that card and paying it off, and the bank keeps it open and raises your limit, which means more capital the more you use it.
+
+Number three is paying for growth out of your own savings. Ad spend, inventory, equipment, and new hires all come straight out of your bank account, when the banks will lend you that same money at low interest to zero percent. Then when your merchant processor freezes your funds or you take a loss, you have no fallback, because the cash you would have leaned on already went into the business. Eighty-two percent of businesses that fail go under because of cash flow problems. Use the banks' money instead, and your cash stays in your account as your safety net while the business grows.
+
+Those three add up to hundreds of thousands to millions of dollars in lost opportunity, and the fourth one costs you the most. Click the link below and hop on a call, and we'll check whether it's on your file and show you how to get rid of it.
 
 ## 7. Script 1 — Notes green screen, seven steps (double loop)
 
