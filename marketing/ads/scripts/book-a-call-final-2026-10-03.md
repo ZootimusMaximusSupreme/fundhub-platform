@@ -90,11 +90,11 @@ Making a million dollars takes two things, a proven investment and access to cap
 
 Maybe you've paid cash your whole life, maybe you've got credit you never use, or maybe you've got an LLC or a company you forgot about, and that last one is worth more to a bank than you'd expect.
 
-You built your income by being a professional and managing money well, and that's exactly why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands. Every dollar I put into Meta comes back about four times, and that's on the low end, so two hundred thousand dollars run through a system that already has proven returns turns into a lot more than two hundred thousand. Capital lets you grow on a proven system much faster than cash flow ever will.
+You built your income by being a professional and managing money well, and that's exactly why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands. Every dollar I put into Meta comes back about four times, and that's on the low end, so $200,000 run through a system that already has proven returns turns into a lot more than $200,000. Capital lets you grow on a proven system much faster than cash flow ever will.
 
-Here's what that company you forgot about is worth. Every business qualifies for funding on its own, and the older the business is, the more capital it gets, just from having that age. One business is a hundred thousand dollars at a minimum, and an older one gets up to three hundred thousand.
+Here's what that company you forgot about is worth. Every business qualifies for funding on its own, and the older the business is, the more capital it gets, just from having that age. One business is $100,000 at a minimum, and an older one gets up to $300,000.
 
-So look at the businesses you have that you aren't using. If you have one, that's up to three hundred thousand dollars. If you have two, that's up to six hundred thousand, and if you have three, that's up to nine hundred thousand, sitting in your account in the next fifteen to thirty days, depending on what your roadmap takes to get you there.
+So look at the businesses you have that you aren't using. If you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have three, that's up to $900,000, sitting in your account in the next fifteen to thirty days, depending on what your roadmap takes to get you there.
 
 Then ask yourself one question. Do you want that capital in your account to put into the proven system you already make money with? If the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now. If the answer is no, keep doing what you're doing.
 
