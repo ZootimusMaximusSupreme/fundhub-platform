@@ -13,8 +13,8 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 4 | Ad 15 — High earners | Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places. | 288 | 1:55 |
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 240 | 1:36 |
 | 6 | Ad 16 — The hidden tax | Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding. | 369 | 2:27 |
-| 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | 184 | 1:13 |
-| 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | 228 | 1:31 |
+| 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | bullets | freestyle |
+| 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | bullets | freestyle |
 | 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 271 | 1:48 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
@@ -147,17 +147,20 @@ The order you apply in decides how many approvals you get.
 7. Remove inquiries and repeat 🔁
 Clear the inquiries from each round before the next one, then do it again for every business.
 
-Following these seven steps in this exact order is how you get funded for the rest of your life.
+Talking points (bullets only, freestyle on camera; saved 2026-10-04):
 
-Banks will fund you again for every business you open, and one step on this list makes that possible, which I'll show you at the end.
-
-Step one, check your credit. Step two, open your businesses, and there's a reason this comes before optimizing your credit. Step three, match your information on every report. Step four, remove the negative items and pay your cards down. Step five, find the banks that approve files like yours. Step six, apply in the right order. Step seven, clear the inquiries and repeat.
-
-A business qualifies for more funding the longer it's been open, so step two goes first and the business ages while you work on everything else.
-
-Clearing the inquiries before every round is what lets every business you open go in with a clean file, so step seven is the one that makes it forever.
-
-Book a call below and your advisor will walk your file through all seven steps, starting with where you are today.
+- Hook: these seven steps, in this order, get you funded for life
+- Loop: banks fund you again for every business you open, and one step makes that possible
+- 1. Check your credit for accuracy
+- 2. Open your businesses (hold the reason)
+- 3. Match names, addresses and business details on every report
+- 4. Remove negatives, pay cards down
+- 5. Find the banks that approve files like yours
+- 6. Apply in the right order
+- 7. Clear inquiries, repeat
+- Why step 2 is early: businesses get more funding the longer they're open, so it ages while you do the rest
+- The step that keeps you funded: step 7, a clean file for every business each funding sequence
+- CTA: book a call, your advisor walks your file through all seven
 
 ## 8. Script 2 — Notes green screen
 
@@ -174,21 +177,28 @@ Fix the 13 hidden data points (names, addresses, business codes), then apply to 
 4. If you're doing it yourself 📋
 Work one step at a time, in order, and have someone check each step before you move on.
 
-Where your file is right now decides what you need to do to get the maximum amount of funding.
+Talking points (bullets only, freestyle on camera; saved 2026-10-04):
 
-Even if your file's ready, 13 hidden data points cost a 760 file about $100,000, and I'll show you how to fix them at the end.
-
-Here's exactly what I'd do. Step one, pull your three credit reports and your business credit and see what's holding you back.
-
-Step two, if something's holding you back, like collections or maxed-out cards, get the negative items off and pay your cards under ten percent. When your balances are high, banks approve you for a lot less.
-
-Step three, if your file's ready, apply to the thirty to fifty banks that approve files like yours, in the right order. The order decides how many approvals you get.
-
-Step four, if you're doing it yourself, go one step at a time and have someone check your work. One step out of order sets you back months.
-
-Now, those 13 hidden data points. They're things like your name, addresses, employers and business codes. If they don't match on every report, banks approve you for less, so make sure they all match before you apply.
-
-It's a lot, and I don't want you doing it alone. Wherever you are, Fundhub has a solution for that phase. Hop on a call and we'll figure it out.
+- Hook: where your file is right now decides what you do to get the maximum amount of funding
+- Loop: 13 hidden data points cost a 760 file over $100K
+- 1. Pull all three bureaus plus business credit
+- 2. Something holding you back: negatives off, cards under 10%
+- 3. File's ready: banks that approve files like yours, in the right order
+- 4. Doing it yourself: one step at a time, get each step checked
+- Reveal: the 13 are name, addresses, employers and business codes, matched on every report
+- The proof:
+  - Mismatched data: about 1 in 3 banks approve
+  - Data aligned: 2 in 3, sometimes 3 out of 3
+- Example run through our system:
+  - California client, 760, highest card limit $20K, business set up correctly in California
+  - Personal: $20K x 5.5 = about $110K
+  - Business: about double that, $220K, because banks give higher limits on business
+  - Total: about $330K before personal loans
+  - 23 banks in our database take California business card applications, including local ones like Hanmi, Cathay and Mechanics Bank
+  - 1 in 3 approve: about $110K
+  - 2 in 3: about $220K, a $110K gap
+  - 3 out of 3: the full $330K
+- CTA: wherever you are, Fundhub has a solution for that phase, hop on a call
 
 ## 9. Ad 9 — The bank
 
