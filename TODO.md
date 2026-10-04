@@ -112,6 +112,93 @@
   - [ ] Write and film the first batch of ads
   - [ ] Build the funnel and launch
 
+### From Claude chats, Sep 6 – Oct 4 (swept 2026-10-04)
+Open items from Claude chats that were not in this file yet. Personal errands went to `TODO-personal.md` (local only, gitignored, never pushed).
+
+#### Filming gear
+- [ ] Buy a spare Rode Wireless ME transmitter (about $80)
+- [ ] Buy a USB-C power bank for the shoot kit
+- [ ] Buy the ZGCINE PS-R30 PRO case
+
+#### Funnel and site
+- [ ] Roadmap page audit: finish the 23 remaining fixes (Claude Doc project 0f85c4cd-e73a-4ef5-9a6a-ad5c3dad0f6a)
+- [ ] Thank-you page: add the video slot
+- [ ] Netlify bandwidth: move the VSL mp4 off Netlify
+- [ ] Remove the placeholder testimonial boxes
+- [ ] Edit the funnel testimonials, then add the real ones
+- [ ] Check the mobile layout
+- [ ] Prep the sorting-hat funnel
+- [ ] Turn off the free-access system
+- [ ] Save the free lead-magnet course outline into the repo (7 lessons, "How to get $100K–$300K in 0% funding off your credit file")
+- [ ] Proof cards
+- [ ] ClickFunnels API slot with Paul
+- [ ] Website migration off ClickFunnels
+  - [ ] Merge the open branches first
+  - [ ] Restore the shuffle and light-up course section
+  - [ ] Put the Canva approval screenshots into the asset stack
+  - [ ] Set up Cal.com and the CRM custom fields
+
+#### Ads and video
+- [ ] Refine the 11 scripts
+- [ ] 20 full ads, plus the short sorting-hat ads
+- [ ] Smooth out the VSL with Carly
+- [ ] Film 3 long-form B-roll interviews
+- [ ] Film 3 testimonials with B-roll
+- [ ] Send the B-roll asset request list to the marketing team
+- [ ] Gather the ad library materials
+- [ ] Build the testimonial thumbnail pipeline
+- [ ] Export the 3 Submagic videos: Portal Welcome, SLO Main Page VSL, VSL 2 Booking
+- [ ] Film the portal welcome video
+- [ ] Film the Credit Mastery System course in Loom (93 slides, one video per module)
+- [ ] Background marketing agents: scheduled ad-script drafts you review in one batch (designed 2026-09-06, build not started)
+
+#### Tracking, data and APIs
+- [ ] Pixel conditioning on the survey
+- [ ] 1% value-based lookalike from about 2,000 leads (760+ credit, $100K–$200K revenue)
+- [ ] Clarity tracking check
+- [ ] Submagic: check the Business + API plan
+- [ ] Video pipeline: Drive Raw → R2 → Submagic / Deepgram
+- [ ] Phone alerts through ntfy or Pushover
+
+#### Payments and financing
+- [ ] Finish the financing approval
+- [ ] Zoom with Justice on financing
+- [ ] Sign up with ClarityPay directly for a custom checkout
+- [ ] Create the Whop account
+- [ ] Whop KYB support issue for FH Consulting LLC
+- [ ] FH Consulting BNPL plan: own domain, bank account and checkout (fh-consulting-bnpl-plan.md)
+
+#### Capital Blueprint and portal
+- [ ] Monthly soft pull that updates the plan and the letters
+- [ ] Accountability agent with a proof-gated checklist
+- [ ] Dispute-round waypoints
+- [ ] Ready-for-funding trigger that alerts the closer
+- [ ] Payment timing guidance
+- [ ] Promo alerts at 60, 30 and 7 days
+- [ ] Payment reserve tracking
+- [ ] Welcome kit
+- [ ] Per-letter mailing upsell
+- [ ] Credit partner file
+- [ ] Bank relationship tracker
+- [ ] Next-funding-sequence planner
+- [ ] Finance OS: 12 months included, then monthly
+- [ ] Optimize the roadmaps
+- [ ] Authorized contact access in the credit optimization portal
+- [ ] UnderwriteIQ: post-funding inquiry log, with a backfill
+- [ ] Repair the partner sample export
+- [ ] Finalize the doc-collection agent prompts
+
+#### Sales and outreach
+- [ ] Text the 40 old clients (target: 10 sales)
+- [ ] Focus group outreach to entrepreneurial women in AZ
+- [ ] Get the Telegram contact for the Maria Wendt course
+
+#### Ops and systems
+- [ ] Consolidate the conflicting rules across CLAUDE.md and the notes
+- [ ] Save the interview research as an SOP
+- [ ] Delete the 4 DUPLICATE files in the Drive
+- [ ] Company brain: transcribe ACQ, the course and the Hormozi content into it, then add an open-source visualization (low priority; CXL minidegrees after)
+
 ### This file
 - [ ] Triage: walk each dated section below with Claude (done / keep / kill), move what's left into Today / This week / Next 30 days, and archive the rest
 
@@ -151,6 +238,8 @@ drop-down) is fixed and live. These three are what is left.
   shows under its page address — nothing is lost.
 
 ## Personal — errands
+
+More personal errands: `TODO-personal.md` (local only, gitignored).
 
 ### DEXA scan, Gilbert AZ — priced 2026-09-26
 
