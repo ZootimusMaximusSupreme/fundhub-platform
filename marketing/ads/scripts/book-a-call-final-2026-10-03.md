@@ -264,7 +264,7 @@ Step one, fix up your credit FIRST. Do it with me or do it with somebody else, I
 
 Step two, open your businesses and build their credit. If you have extra cash, buy an older company. Banks will fund those. Your personal credit is the main one, and every business you add MULTIPLIES it.
 
-Step three is the one that took me years. You need to know exactly which banks to apply to for your credit. ↑
+Step three is the one that took me years. You need to know exactly which banks fit your credit profile and your business profile, and apply to them in the right order. ↑
 
 I used to drive to every single bank in my state to learn what each one looks for. You'll learn a lot doing that, and I still think it's worth it. But it takes a TON of time away from your business and your family, and working with someone who already knows every bank saves you all of that time.
 
