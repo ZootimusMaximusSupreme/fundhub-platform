@@ -15,7 +15,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 6 | Ad 16 — The hidden tax | Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding. | 369 | 2:27 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | bullets | freestyle |
 | 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | bullets | freestyle |
-| 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 245 | 1:38 |
+| 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 260 | 1:44 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
