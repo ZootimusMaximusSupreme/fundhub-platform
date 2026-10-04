@@ -283,3 +283,17 @@ Once you have that plan, you have everything you need to get funded. If you feel
 And that's how you scale without touching your own cash. We get you funding on your credit and your businesses, so you put that money into growth, your cash stays right where it is, and you finally get the freedom and the time back that you've been working for.
 
 Click the link below, and your advisor will walk you through the plan for where your credit is right now and show you how much funding you can get to grow your business.
+
+## 11. The penthouse (filmed 2026-10-04)
+
+Shoot: In front of the penthouse building. Archimedes is pronounced ar-kuh-MEE-deez.
+
+The guys up there figured out one thing that nobody seems to talk about. Your parents won't tell you, your friends won't, maybe not even your business partner, and you won't find it online.
+
+When I used to live here, I knew a guy up there with a $1.5 million penthouse, and he was struggling. He was struggling mentally to get his businesses and his other ventures off the ground, sitting in a penthouse he owned outright.
+
+So he moved out of state and cut out the distractions. He optimized his credit, then put it to work alongside investors and credit partners, and within six months his income was over $400,000 a year.
+
+The one thing he figured out is how to leverage your credit correctly. I know plenty of people up here who run companies and scale businesses, and the ones who do it most efficiently use other people's money. Archimedes said, "Give me a lever long enough and I can move the world." Credit is that lever, and building with only your own cash is the slowest way to build wealth there is.
+
+Click the link below. Wherever your credit is right now, we'll walk you through how to optimize it and how to get your own funding, and if you want us to help along the way, we'll do that too.
