@@ -258,9 +258,9 @@ Everybody knows it. I know it, because I've been there. Sometimes you're not tak
 
 You already know what your business needs. Maybe you don't have the money to do it. Or maybe you have the money, but it's your savings, and you don't want to risk it. ↑
 
-Your family wants you to take that leap. Your mom, your brother, your sister, your son, your daughter. They all want to see you win.
+Your family wants you to take that leap. Your mom, your brother, your sister, your son, your daughter. They want to see you win, and they want more of your time when you do.
 
-Taking that leap with your own savings is scary, and you don't have to.
+The hard part is that the savings you'd use to take that leap are the same savings that keep your family safe. Funding lets you take the leap and keep that safety net right where it is.
 
 Mark Zuckerberg said, "The biggest risk is not taking any risk."
 
