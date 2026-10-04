@@ -240,36 +240,36 @@ Here at Fundhub, we make sure you get the highest limits possible so you can max
 
 Click the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.
 
-## 10. Scale without your own cash (long, merged 2026-10-04, 5th grade reading level, conversational voice)
+## 10. Scale without your own cash (long, merged 2026-10-04, 5th grade reading level, reverted to approved version)
 
 Shoot: Straight to camera. Merges the scaling-entrepreneur ad and the plan-while-rates-rise ad. Double loop: loop A (own cash never leaves your account) opens on line 2 and pays off right before the CTA; loop B (the step that took years) opens mid-ad and pays off at step three. Jeremy Haynes line is a paraphrase. Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
 
 Putting MORE money into your business is the fastest way to stop running out of cash.
 
-And there's a way to do it where your own cash never leaves your account.
+And you can do it without using your own cash.
 
-Jeremy Haynes, one of the biggest names in ads, talks about this all the time. When your business is stuck and cash is tight, you have to turn your spending UP. More spend gets you more data, your ads perform better, and you can finally pay for the people and tools that get you unstuck.
+Jeremy Haynes, one of the biggest names in ads, explains this all the time. When your business is stuck with limited cash, you have to turn your spending UP. More spend gets you more data, your ads perform better, and you can finally pay for the people and tools that help you break free.
 
-Maybe your business is doing $10,000 a month, maybe $20,000, maybe $50,000. Or maybe you don't have a business yet and you're trying to start one. Wherever you're at, getting past $100,000 a month takes capital, and that's what buys back time with your family. I've been there.
+Maybe your business makes $10,000 a month, maybe $20,000 a month, maybe $50,000 a month. Or maybe you don't have a business yet and you're looking to start one. Wherever you're starting, getting past $100,000 a month takes capital, and that's what buys back time with your family. I've been there.
 
-You already know what your business needs. Maybe you don't have the money for it. Or maybe you do, but it's your savings, and you don't want to risk it. ↑
+You already know what your business needs. Maybe you don't have the money to do it. Or maybe you have the money, but it's your savings, and you don't want to risk it. ↑
 
-Your family wants you to take that leap. Your kids, your parents, your brother, your sister.
+Your family wants you to take that leap. Your kids, your parents, your brother and your sister.
 
-Mark Zuckerberg said, "The biggest risk is not taking any risk." If you're not ready yet, that's fine. But start getting ready NOW, because rates are going up, banks are handing out less money, and the people who get ready first are the ones still getting funded.
+Mark Zuckerberg said, "The biggest risk is not taking any risk." You might not be ready to take that risk yet, and that's okay. Start getting ready NOW, because interest rates are going up, banks are giving out less money, and the business owners who got ready FIRST are the ones who still get funded.
 
-So here's the plan, and one step in it took me years of driving bank to bank to figure out. ↑
+Here's the plan, and one step in it took me years of driving bank to bank to figure out. ↑
 
-Step one, get your credit right FIRST. Do it with me or do it with somebody else, I just want you to win. Just get it right.
+Step one, fix up your credit FIRST. Do it with me or do it with somebody else, I want you to win either way. Just get it right.
 
 Step two, open your businesses and build their credit. If you have extra cash, buy an older company. Banks will fund those. Your personal credit is the main one, and every business you add MULTIPLIES it.
 
-Step three is the one that took me years. You need to know which banks fit your credit profile and your business profile, and apply to them in the right order. ↑
+Step three is the one that took me years. You need to know exactly which banks fit your credit profile and your business profile, and apply to them in the right order. ↑
 
-I used to drive to every bank in my state to figure out what each one looks for. You'll learn a lot doing that, and I still think it's worth it. But it takes a lot of time away from your business and your family. Working with someone who already knows every bank saves you all of that.
+I used to drive to every single bank in my state to learn what each one looks for. You'll learn a lot doing that, and I still think it's worth it. But it takes a TON of time away from your business and your family, and working with someone who already knows every bank saves you all of that time.
 
-Once you have that plan, you have everything you need to get funded, on your own or with someone who's been doing this for years.
+Once you have that plan, you have everything you need to get funded, on your own or with someone who's done this their whole career.
 
-And that's how you grow without touching your own cash. We get you funded on your credit and your businesses, so that money goes into growth and your cash stays where it is.
+And that's how you grow without touching your own cash. We get you funding on your credit and your businesses, so you put that money into growth and your cash stays right where it is.
 
-Click the link below, and your advisor will walk you through the plan for where your credit's at right now and show you how much funding you can get to grow your business.
+Click the link below, and your advisor will walk you through the plan for where your credit is right now and show you how much funding you can get to grow your business.
