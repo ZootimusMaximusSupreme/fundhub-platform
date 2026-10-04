@@ -250,7 +250,7 @@ And there's a way to do it where your own cash never leaves your account.
 
 Jeremy Haynes, one of the biggest names in ads, explains this all the time. When your business is stuck with limited cash, you have to turn your spending UP. More spend gets you more data, your ads perform better, and you can finally pay for the people and tools that help you break free.
 
-Maybe your business makes $10,000 a month, maybe $20,000, maybe $50,000, and you want to get past $100,000 a month. At those numbers it's hard to save for retirement, let alone buy back time with your family. I've been there.
+Maybe your business makes $10,000 a month, maybe $20,000 a month, maybe $50,000 a month. Or maybe you don't have a business yet and you're looking to start one. Wherever you're starting, getting past $100,000 a month takes capital, and that's what buys back time with your family. I've been there.
 
 You know what your business needs. Either the money isn't there, or it is there, it's your cash, and you don't want to risk it. ↑
 
