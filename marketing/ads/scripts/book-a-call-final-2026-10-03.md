@@ -15,7 +15,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 6 | Ad 16 — The hidden tax | Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding. | 369 | 2:27 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | bullets | freestyle |
 | 8 | Script 2 — Notes green screen | Where your file is right now decides what you need to do to get the maximum amount of funding. | bullets | freestyle |
-| 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 271 | 1:48 |
+| 9 | Ad 9 — The bank | The bank behind me already decided how much they'd give you, and how much money you make barely factors into it. | 245 | 1:38 |
 
 Changed beyond the CTA: Ads 14 and 17 lose the lines that sold the roadmap (the Ad 17 hook now says "on one call"), and Ad 19 says "next funding sequence" in place of "round two." Script 1 was a $297 ad; only its last paragraph changed.
 
@@ -206,13 +206,13 @@ Shoot: In front of Chase. Thumb over your shoulder at the bank on the first line
 
 The bank behind me already decided how much they'd give you, and how much money you make barely factors into it.
 
-One line on your credit report decides more of it than your income and your score put together, and I'll show you which line that is before this video ends.
+One thing on your credit report decides it, and it outweighs your income and your score.
 
-Here's what that line does. A guy making three hundred thousand dollars a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty, because the bank read that one line on both of their credit reports.
+A guy making three hundred thousand dollars a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty. Same bank, same week, and the only real difference between them is one thing on their credit reports.
 
-That line has been sitting on your report for years, setting your approvals every time you apply. It's a simple tweak, and once you make it, every approval after that comes in bigger.
+It's been on your report for years, and it sets your approvals every time you apply. Fixing it is a simple tweak, and once you do, every approval after that comes in bigger.
 
-That line is the highest limit card on your credit report. Banks look at your highest limit and see that a bank somewhere else already trusted you with a large amount of money, and they'll give you one to two times that limit depending on the bank.
+It's your highest limit card. Banks look at the biggest limit another bank has already given you, and they'll approve you for one to two times that amount depending on the bank. The guy with eighty thousand had a big limit on his report, and the guy with eight didn't.
 
 Here at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.
 
