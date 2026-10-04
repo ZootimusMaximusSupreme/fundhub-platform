@@ -88,7 +88,7 @@ Shoot: Somewhere that reads expensive.
 
 Making a million dollars takes two things, a proven investment and access to capital. You might have good credit and a high income and still be missing the second one.
 
-Maybe you've paid cash your whole life, or you've got credit you never use. Or maybe you have an old LLC or a company you forgot about. That company is worth real money to a bank.
+Maybe you've paid cash your whole life, or you've got credit you never use. Or maybe you have an old LLC or a company you forgot about. That company is worth a lot of money to a bank.
 
 You built your income by being a professional and managing money well, and that's exactly why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands. Every dollar I put into Meta comes back about four times, and that's on the low end, so $200,000 run through a system that already has proven returns turns into a lot more than $200,000. Capital lets you grow on a proven system much faster than cash flow ever will.
 
