@@ -10,7 +10,7 @@ Every ad goes to the /watch VSL, then the booking calendar, then the thank-you p
 | 1 | Script 4 — Tool analogy, the hammer on the flat tire | Where your file is right now determines the tool you need to get the maximum amount of funding as quickly as possible. | 190 | 1:16 |
 | 2 | Ad 19 — Over and over (broad, film first) | Banks will fund you over and over for the rest of your life. | 234 | 1:33 |
 | 3 | Ad 14 — It's a skill | One skill decides whether a funding company gets you a hundred thousand dollars or ten, and most of the companies in your feed don't have it. | 251 | 1:40 |
-| 4 | Ad 15 — High earners | Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places. | 288 | 1:55 |
+| 4 | Ad 15 — High earners | Making a million dollars takes two things, good credit and a high income. There's a third one that most people with both never use. | 288 | 1:55 |
 | 5 | Ad 17 — Paying for speed | You can spend the next year figuring out how credit turns into money, or you can get my last ten years of it on one call. | 240 | 1:36 |
 | 6 | Ad 16 — The hidden tax | Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding. | 369 | 2:27 |
 | 7 | Script 1 — Notes green screen, seven steps (double loop) | Following these seven steps in this exact order is how you get funded for the rest of your life. | bullets | freestyle |
@@ -86,7 +86,7 @@ Click below and book a call, and your advisor will tell you which one you are.
 
 Shoot: Somewhere that reads expensive.
 
-Good credit and a high income together are the fastest way to a million dollars in the bank, as long as the capital goes to the right places.
+Making a million dollars takes two things, good credit and a high income. There's a third one that most people with both never use.
 
 Maybe you've paid cash your whole life, maybe you've got good credit you never use, or maybe you've got an LLC or a company you forgot about, and that last one is worth more to a bank than you'd expect.
 
@@ -94,7 +94,7 @@ You built your income by being a professional and managing money well, and that'
 
 Here's what that company you forgot about is worth. We run it through a system that examines every detail of your personal credit report, your business credit report, and your business information, then set it up the right way and back it with your personal credit. Done that way, that company gets a hundred to four hundred thousand dollars in low-interest capital, on top of the business you're already running and any personal funding you want for yourself.
 
-Most funding companies look at your business, send it to the same few national banks, and call it done. Schedule a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.
+The third one is being willing to put your credit to work. Most funding companies look at your business, send it to the same few national banks, and call it done. Schedule a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.
 
 ## 5. Ad 17 — Paying for speed
 
