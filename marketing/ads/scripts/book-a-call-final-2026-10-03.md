@@ -94,7 +94,7 @@ You built your income by being a professional and managing money well, and that'
 
 Here's what that company you forgot about is worth. Every business qualifies for funding on its own, and the older the business is, the more capital it gets, just from having that age. One business is $100,000 at a minimum, and an older one gets up to $300,000.
 
-So look at the businesses you have that you aren't using. If you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have three, that's up to $900,000, sitting in your account in the next fifteen to thirty days, depending on what your roadmap takes to get you there.
+So look at the businesses you have that you aren't using. If you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have three, that's up to $900,000, sitting in your account in the next 15 to 30 days, depending on what your roadmap takes to get you there.
 
 Then ask yourself one question. Do you want that capital in your account to put into the proven system you already make money with? If the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now. If the answer is no, keep doing what you're doing.
 
