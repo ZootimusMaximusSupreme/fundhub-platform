@@ -248,7 +248,7 @@ Putting MORE money into your business is the fastest way to stop being short on 
 
 And there's a way to do it where your own cash never leaves your account.
 
-Jeremy Haynes, one of the biggest names in ads, talks about this all the time. The businesses that stop running short on cash are the ones that put MORE money into their ads and their growth.
+Jeremy Haynes, one of the biggest names in ads, talks about this all the time. The businesses that grow the FASTEST are the ones that put more money into their ads and their growth.
 
 Maybe your business makes $10,000 a month, maybe $20,000, maybe $50,000, and you want to get past $100,000 a month. At those numbers it's hard to save for retirement, let alone buy back time with your family. I've been there.
 
