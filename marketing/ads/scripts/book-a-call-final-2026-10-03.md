@@ -240,7 +240,7 @@ Here at Fundhub, we make sure you get the highest limits possible so you can max
 
 Click the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.
 
-## 10. Scale without your own cash (long, merged 2026-10-04, 5th grade reading level, full version with all of Chris's points)
+## 10. Scale without your own cash — REFERENCE (Chris: "a work of art", 2026-10-04)
 
 Shoot: Straight to camera. Merges the scaling-entrepreneur ad and the plan-while-rates-rise ad. Double loop: loop A (own cash never leaves your account) opens on line 2 and pays off right before the CTA; loop B (the step that took years) opens mid-ad and pays off at step three. Jeremy Haynes line is a paraphrase. Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
 
