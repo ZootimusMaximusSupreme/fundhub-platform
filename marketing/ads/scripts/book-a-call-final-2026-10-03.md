@@ -92,11 +92,11 @@ Maybe you've paid cash your whole life, maybe you've got good credit you never u
 
 You built your income by being a professional and managing money well, and that's exactly why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands. Every dollar I put into Meta comes back about four times, and that's on the low end, so two hundred thousand dollars run through a system that already has proven returns turns into a lot more than two hundred thousand. Capital lets you grow on a proven system much faster than cash flow ever will.
 
-Here's what that company you forgot about is worth. Every company you have sitting around qualifies for anywhere from a hundred thousand to a couple hundred thousand dollars in funding, depending on how long it's been open. We run it through a system that examines your personal credit, your business credit and your business information, set it up the right way, and back it with your personal credit.
+Here's what that company you forgot about is worth. Every business qualifies for funding on its own, and the older the business is, the more capital it gets, just from having that age. One business is a hundred thousand dollars at a minimum, and an older one gets up to three hundred thousand.
 
-So if you have three businesses, you have three times the capital to put into the proven investment you already have, on top of the income you already make. That's what access to capital looks like, and we're here to help you multiply it.
+So look at the businesses you have that you aren't using. If you have one, that's up to three hundred thousand dollars. If you have two, that's up to six hundred thousand, and if you have three, that's up to nine hundred thousand, sitting in your account in the next fifteen to thirty days, depending on what your roadmap takes to get you there.
 
-Most funding companies look at your business, send it to the same few national banks, and call it done. Schedule a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.
+Then ask yourself one question. Do you want that capital in your account to put into the proven system you already make money with? If the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now. If the answer is no, keep doing what you're doing.
 
 ## 5. Ad 17 — Paying for speed
 
