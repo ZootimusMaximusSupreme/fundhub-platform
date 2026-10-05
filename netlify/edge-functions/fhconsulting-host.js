@@ -1,18 +1,52 @@
 // fhconsulting.online is a domain alias on the Fundhub Netlify site.
-// Without this, the bare domain would show the Fundhub funding homepage.
-// Consulting paths stay. Everything else on this host goes to the consulting home.
+// The address bar on this host is / , /terms/ , /privacy/ , and /refund/ .
+// Those URLs are served from public/consulting/ with a 200 rewrite, so
+// fundhub.ai/consulting/ is unchanged. Old /consulting/ URLs on this host
+// 301 to the clean address. Other hosts pass through.
 
 const HOSTS = new Set(["fhconsulting.online", "www.fhconsulting.online"]);
+const REWRITE_MARK = "x-fh-consulting-rewrite";
 
-function allowed(path) {
-  return (
-    path === "/consulting" ||
-    path.startsWith("/consulting/") ||
-    path === "/favicon.ico" ||
-    path === "/favicon.svg" ||
-    path === "/apple-touch-icon.png" ||
-    path === "/funnel/rb2b.js"
-  );
+const PASS = new Set([
+  "/favicon.ico",
+  "/favicon.svg",
+  "/apple-touch-icon.png",
+  "/funnel/rb2b.js",
+  "/consulting/site.css",
+]);
+
+const CLEAN = {
+  "/consulting": "/",
+  "/consulting/": "/",
+  "/consulting/index.html": "/",
+  "/consulting/terms": "/terms/",
+  "/consulting/terms/": "/terms/",
+  "/consulting/terms/index.html": "/terms/",
+  "/consulting/privacy": "/privacy/",
+  "/consulting/privacy/": "/privacy/",
+  "/consulting/privacy/index.html": "/privacy/",
+  "/consulting/refund": "/refund/",
+  "/consulting/refund/": "/refund/",
+  "/consulting/refund/index.html": "/refund/",
+};
+
+const SLASH = {
+  "/terms": "/terms/",
+  "/privacy": "/privacy/",
+  "/refund": "/refund/",
+};
+
+const REWRITE = {
+  "/": "/consulting/",
+  "/terms/": "/consulting/terms/",
+  "/privacy/": "/consulting/privacy/",
+  "/refund/": "/consulting/refund/",
+};
+
+function redirectTo(pathname, search, status) {
+  const dest = new URL(pathname, "https://fhconsulting.online");
+  dest.search = search;
+  return Response.redirect(dest, status);
 }
 
 export default async (request, context) => {
@@ -25,12 +59,35 @@ export default async (request, context) => {
     return Response.redirect(url, 301);
   }
 
+  // A rewrite calls this function again on /consulting/... . The mark says
+  // "already rewritten" so that second pass serves the file instead of 301ing.
+  if (request.headers.get(REWRITE_MARK) === "1") return context.next();
+
   const path = url.pathname || "/";
-  if (path === "/") {
-    return Response.redirect("https://fhconsulting.online/consulting/", 301);
+  if (PASS.has(path)) return context.next();
+
+  if (path === "/consulting" || path.startsWith("/consulting/")) {
+    return redirectTo(CLEAN[path] || "/", url.search, 301);
   }
-  if (allowed(path)) return context.next();
-  return Response.redirect("https://fhconsulting.online/consulting/", 302);
+
+  if (SLASH[path]) return redirectTo(SLASH[path], url.search, 301);
+
+  const file = REWRITE[path];
+  if (file) {
+    const dest = new URL(request.url);
+    dest.pathname = file;
+    const headers = new Headers(request.headers);
+    headers.set(REWRITE_MARK, "1");
+    // context.next(new Request) returns that file as a 200. The address bar
+    // stays on the clean path, and this function does not 301 the rewrite.
+    return context.next(new Request(dest, {
+      method: request.method,
+      headers,
+      redirect: "manual",
+    }));
+  }
+
+  return redirectTo("/", url.search, 302);
 };
 
 export const config = { path: "/*" };

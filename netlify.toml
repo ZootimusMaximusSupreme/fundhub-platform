@@ -282,8 +282,8 @@
   status = 200
 
 # fhconsulting.online is an alias on this site. The edge function
-# netlify/edge-functions/fhconsulting-host.js sends that host to /consulting/
-# so the Fundhub homepage never shows on the consulting domain.
+# netlify/edge-functions/fhconsulting-host.js serves public/consulting/ at
+# the domain root so the Fundhub homepage never shows on the consulting domain.
 [[edge_functions]]
   function = "fhconsulting-host"
   path = "/*"
