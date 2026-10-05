@@ -498,6 +498,16 @@ export async function ingestPdfFile(client, meta, {
   return { ok: true, outPath, needsOcr: extracted.needsOcr };
 }
 
+async function downloadVideoToDisk(client, fileId, videoPath) {
+  if (fs.existsSync(videoPath) && fs.statSync(videoPath).size > 0) return;
+  if (typeof client.downloadMediaToFile === "function") {
+    await client.downloadMediaToFile(fileId, videoPath);
+    return;
+  }
+  const buf = await client.downloadMedia(fileId);
+  fs.writeFileSync(videoPath, buf);
+}
+
 export async function ingestVideoFile(client, meta, {
   outRoot,
   workDir,
@@ -514,6 +524,7 @@ export async function ingestVideoFile(client, meta, {
   const rec = state.videos[meta.id];
   const fileWork = path.join(workDir, "videos", meta.id);
   fs.mkdirSync(fileWork, { recursive: true });
+  const videoPath = path.join(fileWork, "source.bin");
 
   let speech = rec.speechText || "";
   if (doSpeech) {
@@ -524,15 +535,12 @@ export async function ingestVideoFile(client, meta, {
     if (resume && rec.speech === "done" && speech) {
       // keep cached speech
     } else {
-      let buf;
       try {
-        buf = await client.downloadMedia(meta.id);
+        await downloadVideoToDisk(client, meta.id, videoPath);
       } catch (err) {
         rec.error = `download:${String(err.message || err).slice(0, 120)}`;
         return { ok: false, error: rec.error };
       }
-      const videoPath = path.join(fileWork, "source.bin");
-      fs.writeFileSync(videoPath, buf);
       const spoken = await transcribeVideoAtPath(videoPath, {
         env, fetchImpl, spawn, localWhisper, workDir
       });
@@ -555,16 +563,11 @@ export async function ingestVideoFile(client, meta, {
     if (resume && rec.visual === "done" && visualNotes.length) {
       // keep
     } else {
-      const videoPath = path.join(fileWork, "source.bin");
-      if (!fs.existsSync(videoPath)) {
-        let buf;
-        try {
-          buf = await client.downloadMedia(meta.id);
-        } catch (err) {
-          rec.error = `download:${String(err.message || err).slice(0, 120)}`;
-          return { ok: false, error: rec.error };
-        }
-        fs.writeFileSync(videoPath, buf);
+      try {
+        await downloadVideoToDisk(client, meta.id, videoPath);
+      } catch (err) {
+        rec.error = `download:${String(err.message || err).slice(0, 120)}`;
+        return { ok: false, error: rec.error };
       }
       const framesDir = path.join(fileWork, "frames");
       const vision = await visualNotesForVideo(videoPath, framesDir, {
