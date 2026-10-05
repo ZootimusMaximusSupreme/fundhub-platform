@@ -748,6 +748,15 @@ export async function runHormoziIngest({
     }
   }
 
+  if (loadBrain && db && orgId && !creditsStop) {
+    for (const meta of videoFiles) {
+      const mdPath = state.videos[meta.id]?.outPath;
+      if (!mdPath || !fs.existsSync(mdPath)) continue;
+      const md = fs.readFileSync(mdPath, "utf8");
+      await loadMarkdownToBrain(db, orgId, meta, md, { env, fetchImpl });
+    }
+  }
+
   const indexEntries = [];
   for (const meta of inventory) {
     let rel = null;
