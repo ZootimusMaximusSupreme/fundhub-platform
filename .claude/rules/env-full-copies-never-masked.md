@@ -14,7 +14,7 @@
 
 - Write or leave `****************` in `.env` “for safety”
 - Paste cloud env from a block that still contains masks
-- Assume `netlify env:get --context production` returns full values for `--secret` vars (it often does not — the refresh script falls back to **dev**)
+- Use **`netlify env:set` without `--secret`** for keys the laptop or cloud must read (see `secrets-env-law.md` banned table)
 
 ## When refresh cannot unmask
 

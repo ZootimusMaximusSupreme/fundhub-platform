@@ -1,6 +1,10 @@
 // Read-only Google Drive API client.
 // Scope is drive.readonly — this module never writes, deletes, or moves.
 
+import fs from "node:fs";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
 import { DRIVE_API_BASE } from "./config.mjs";
 import { fetchAccessToken, fetchOAuthAccessToken } from "./auth.mjs";
 
@@ -165,7 +169,7 @@ export function createDriveClient({
     return json;
   }
 
-  /** Download binary/media content (alt=media). */
+  /** Download binary/media content (alt=media). Small files only — large video use downloadMediaToFile. */
   async function downloadMedia(fileId) {
     const res = await driveFetch(`/files/${encodeURIComponent(fileId)}`, {
       query: { alt: "media", supportsAllDrives: "true" }
@@ -176,6 +180,23 @@ export function createDriveClient({
     }
     const buf = Buffer.from(await res.arrayBuffer());
     return buf;
+  }
+
+  /** Stream Drive media to disk (avoids Node's ~2GB Buffer cap on long course videos). */
+  async function downloadMediaToFile(fileId, destPath) {
+    const res = await driveFetch(`/files/${encodeURIComponent(fileId)}`, {
+      query: { alt: "media", supportsAllDrives: "true" }
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`files.get media failed (${res.status}): ${text.slice(0, 200)}`);
+    }
+    if (!res.body) {
+      throw new Error("files.get media failed: empty body");
+    }
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    const nodeStream = Readable.fromWeb(res.body);
+    await pipeline(nodeStream, fs.createWriteStream(destPath));
   }
 
   /** Export a Google Docs/Sheets/Slides file to a mime type. */
@@ -274,6 +295,7 @@ export function createDriveClient({
     listAllFiles,
     getFile,
     downloadMedia,
+    downloadMediaToFile,
     exportFile,
     getStartPageToken,
     listChangesPage,

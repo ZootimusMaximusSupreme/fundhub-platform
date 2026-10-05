@@ -25,7 +25,7 @@ Business only. Every item was checked against the repo and the live site on 10/4
   - [ ] Make ZootimusMaximusSupreme/Fundhub_ai private (it's public and still empty)
   - [ ] Take `public/funnel/slo-testimonial-colin.mp4` (155MB) out of the history or move it to Git LFS, because GitHub rejects files over 100MB
   - [ ] Push main
-  - [ ] Update the rules and scripts that still say GitLab (`.claude/rules/gitlab-push.md`, its Cursor mirror, `scripts/gitlab-push-whole-repo.mjs`, the comment at the top of `scripts/ship.mjs`)
+  - [x] Update the rules and scripts that still say GitLab → GitHub canonical (`github-push` rules, `scripts/github-push-whole-repo.mjs`, `ship.mjs` comment)
 - [ ] Give the cloud permanent access to the repo on GitHub, so work keeps going while the Mac is off
 - [ ] Add the deploy keys to the cloud environment's secrets, so `npm run ship` runs from the cloud
 - [ ] Test: ship one small change end to end from the cloud

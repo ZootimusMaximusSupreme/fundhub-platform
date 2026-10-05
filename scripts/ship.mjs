@@ -4,8 +4,8 @@
 //   npm run ship            # does it
 //   npm run ship -- --dry   # says what it would do, changes nothing
 //
-// WHY THIS EXISTS. There is no GitHub (owner-set 2026-09-09), so nothing builds on
-// Netlify's servers — every deploy is a laptop build. A laptop build never receives
+// WHY THIS EXISTS. Netlify does not run our full build on push (laptop ship path),
+// so nothing applies DB migrations from Netlify's build alone — every deploy is a laptop build. A laptop build never receives
 // Netlify's hidden MIGRATION_DATABASE_URL, so its migrate step falls back to the
 // restricted app role and dies on the first new table ("permission denied for
 // schema public", 2026-09-06 and twice on 2026-09-16). This script applies the

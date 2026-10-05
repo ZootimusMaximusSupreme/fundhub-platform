@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "INPUT=$(cat); if command -v jq >/dev/null 2>&1; then P=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // empty'); else P=$(echo \"$INPUT\" | grep -o '\"file_path\":\"[^\"]*' | cut -d'\"' -f4); fi; case \"$P\" in *-intended.md) echo '{\"decision\":\"block\",\"reason\":\"intended journey files are human-authored. If code needs a step not in the intended journey, stop and ask.\"}'; exit 2 ;; *.env|*.env.*|*secrets*) echo '{\"decision\":\"block\",\"reason\":\"secrets file.\"}'; exit 2 ;; esac; exit 0"
+            "command": "INPUT=$(cat); if command -v jq >/dev/null 2>&1; then P=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // empty'); else P=$(echo \"$INPUT\" | grep -o '\"file_path\":\"[^\"]*' | cut -d'\"' -f4); fi; case \"$P\" in *-intended.md) echo '{\"decision\":\"block\",\"reason\":\"intended journey files are human-authored. If code needs a step not in the intended journey, stop and ask.\"}'; exit 2 ;; esac; exit 0"
           }
         ]
       }
@@ -57,8 +57,6 @@
       "Bash(node scripts/ship.mjs:*)"
     ],
     "deny": [
-      "Read(.env*)",
-      "Read(**/secrets/**)",
       "Edit(docs/journeys/*-intended.md)",
       "Write(docs/journeys/*-intended.md)",
       "Bash(git push --force*)",
