@@ -116,8 +116,8 @@ So: commit to the local repository in the same session the work is done, every t
 
 ### GitHub is canonical. GitLab is retired (owner-set 2026-10-05)
 
-The full repo on GitHub: **ZootimusMaximusBackup/fundhub-platform**.
-https://github.com/ZootimusMaximusBackup/fundhub-platform
+The full repo on GitHub: **ZootimusMaximusSupreme/fundhub-platform**.
+https://github.com/ZootimusMaximusSupreme/fundhub-platform
 
 Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` — every local branch and tag, then drop remote **`gitlab`** if it still exists. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
 

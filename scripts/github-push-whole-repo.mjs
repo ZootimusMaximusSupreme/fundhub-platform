@@ -4,7 +4,7 @@
  *
  * Env (gitignored .env or credentials/github-pat.txt via loadEnv):
  *   GITHUB_TOKEN — personal access token with repo (push) scope
- *   GITHUB_REPO  — optional, default ZootimusMaximusBackup/fundhub-platform
+ *   GITHUB_REPO  — optional, default ZootimusMaximusSupreme/fundhub-platform
  *
  * Adds/updates remote `origin`, pushes main (--force-with-lease), other branches, tags.
  * Removes remote `gitlab` if present. Never removes GitHub remotes.
@@ -35,7 +35,7 @@ function readTokenFromPatFile() {
 let token = String(process.env.GITHUB_TOKEN ?? "").trim();
 if (!token) token = readTokenFromPatFile();
 
-let repo = String(process.env.GITHUB_REPO ?? "ZootimusMaximusBackup/fundhub-platform").trim();
+let repo = String(process.env.GITHUB_REPO ?? "ZootimusMaximusSupreme/fundhub-platform").trim();
 
 if (!token) {
   console.error("GITHUB_TOKEN missing — add a GitHub PAT with repo scope to .env or credentials/github-pat.txt");

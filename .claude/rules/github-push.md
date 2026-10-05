@@ -4,9 +4,9 @@ Fundhub’s canonical git remote is **GitHub**. GitLab is retired — do not pus
 
 ## Repository
 
-- **Org/user:** `ZootimusMaximusBackup`
+- **Org/user:** `ZootimusMaximusSupreme`
 - **Repo:** `fundhub-platform`
-- **Web:** https://github.com/ZootimusMaximusBackup/fundhub-platform
+- **Web:** https://github.com/ZootimusMaximusSupreme/fundhub-platform
 
 ## How to push
 
@@ -23,7 +23,7 @@ The script adds or updates remote **`origin`**, pushes **`main`** (`--force-with
 | Variable | Purpose |
 |---|---|
 | `GITHUB_TOKEN` | Personal access token with **repo** scope (contents read/write on this repo) |
-| `GITHUB_REPO` | Optional; default `ZootimusMaximusBackup/fundhub-platform` |
+| `GITHUB_REPO` | Optional; default `ZootimusMaximusSupreme/fundhub-platform` |
 
 Fallback: **`credentials/github-pat.txt`** (gitignored) — one line `ghp_…` or `GITHUB_TOKEN=ghp_…`.
 
@@ -37,6 +37,7 @@ Compare against **`origin/main`**, not GitLab.
 
 ## Do not
 
+- Push or treat **`ZootimusMaximusBackup/*`** as the write target — Fundhub git writes go to **`ZootimusMaximusSupreme/fundhub-platform`** only
 - Run `node scripts/gitlab-push-whole-repo.mjs` — it exits with “use GitHub script”
 - Push to `gitlab.com`
 - Print or commit `GITHUB_TOKEN`
