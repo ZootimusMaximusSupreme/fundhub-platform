@@ -145,6 +145,37 @@ test("other paths on the consulting host go to the clean home, not /consulting/"
   assert.equal(seen.length, 0);
 });
 
+test("robots.txt and sitemap.xml are served on the consulting host only", async () => {
+  const { res: robots, seen: rSeen } = await hit("https://fhconsulting.online/robots.txt");
+  assert.equal(robots.status, 200);
+  const robotsBody = await robots.text();
+  assert.match(robotsBody, /User-agent:\s*GPTBot/i);
+  assert.match(robotsBody, /Allow:\s*\//);
+  assert.match(robotsBody, /Sitemap:\s*https:\/\/fhconsulting\.online\/sitemap\.xml/);
+  assert.equal(rSeen.length, 0);
+
+  const { res: map, seen: mSeen } = await hit("https://fhconsulting.online/sitemap.xml");
+  assert.equal(map.status, 200);
+  const mapBody = await map.text();
+  assert.match(mapBody, /<loc>https:\/\/fhconsulting\.online\/<\/loc>/);
+  assert.doesNotMatch(mapBody, /\/terms\//);
+  assert.equal(mSeen.length, 0);
+
+  const { res: fundRobots, seen: fSeen } = await hit("https://fundhub.ai/robots.txt");
+  assert.equal(fundRobots.status, 200);
+  assert.equal(fSeen.length, 1);
+  assert.equal(fSeen[0], null);
+});
+
+test("the consulting home is indexable and legal pages stay noindex", () => {
+  const home = read("public/consulting/index.html");
+  assert.doesNotMatch(home, /<meta name="robots" content="noindex"/);
+  for (const page of ["terms", "privacy", "refund"]) {
+    const html = read(`public/consulting/${page}/index.html`);
+    assert.match(html, /<meta name="robots" content="noindex">/, page);
+  }
+});
+
 test("the consulting home sells marketing consulting and posts no course prices", () => {
   const html = read("public/consulting/index.html");
   assert.match(html, /Marketing consulting for agencies/);

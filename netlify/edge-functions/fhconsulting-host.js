@@ -43,6 +43,55 @@ const REWRITE = {
   "/refund/": "/consulting/refund/",
 };
 
+const ROBOTS = `# fhconsulting.online — search and AI crawlers welcome
+User-agent: *
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://fhconsulting.online/sitemap.xml
+`;
+
+const SITEMAP = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://fhconsulting.online/</loc>
+  </url>
+</urlset>
+`;
+
+function textResponse(body, contentType) {
+  return new Response(body, {
+    status: 200,
+    headers: { "content-type": contentType },
+  });
+}
+
 function redirectTo(pathname, search, status) {
   const dest = new URL(pathname, "https://fhconsulting.online");
   dest.search = search;
@@ -65,6 +114,9 @@ export default async (request, context) => {
 
   const path = url.pathname || "/";
   if (PASS.has(path)) return context.next();
+
+  if (path === "/robots.txt") return textResponse(ROBOTS, "text/plain; charset=utf-8");
+  if (path === "/sitemap.xml") return textResponse(SITEMAP, "application/xml; charset=utf-8");
 
   if (path === "/consulting" || path.startsWith("/consulting/")) {
     return redirectTo(CLEAN[path] || "/", url.search, 301);
