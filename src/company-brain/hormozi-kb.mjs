@@ -18,6 +18,7 @@ import {
   WHISPER_CREDITS_ERROR,
   classifyWhisperFailure
 } from "./transcribe.mjs";
+import { localWhisperVideoAtPath } from "./local-whisper.mjs";
 import { callModel, classifyModelFailure, MODEL_NO_CREDIT, DEFAULT_OPENAI_MODEL } from "../agents/model.mjs";
 import { upsertGeneratedDocument } from "./ingest-generated.mjs";
 
@@ -42,6 +43,29 @@ export const INGEST_STOPPED_OPENAI_CREDITS = "openai_credits_exhausted";
 export function isWhisperOutOfCredits(spoken) {
   if (spoken?.error === WHISPER_CREDITS_ERROR) return true;
   return classifyWhisperFailure({ error: spoken?.error }).error === WHISPER_CREDITS_ERROR;
+}
+
+export function isOpenAiKeyFailure(errText) {
+  const t = String(errText || "").toLowerCase();
+  return t.includes("invalid_api_key") || t.includes("incorrect api key");
+}
+
+/**
+ * null = OK to call OpenAI (API Whisper / vision / brain embed).
+ * Pass only the modes you will use — local whisper.cpp speech does not need a key.
+ */
+export function openAiKeyBlockedReason(
+  env = process.env,
+  { apiSpeech = true, visual = true, brain = true } = {}
+) {
+  if (!apiSpeech && !visual && !brain) return null;
+  const key = String(env.OPENAI_API_KEY || env.COMPANY_BRAIN_OPENAI_API_KEY || "").trim();
+  if (!key) return "OPENAI_API_KEY is missing in .env";
+  if (key.includes("*")) {
+    return "OPENAI_API_KEY is a mask placeholder (****************…) — put the full sk-… key in .env";
+  }
+  if (!/^sk-/.test(key)) return "OPENAI_API_KEY does not look like a real OpenAI key (expected sk-…)";
+  return null;
 }
 
 export const FRAME_INTERVAL_SEC = 90;
@@ -330,7 +354,16 @@ export async function whisperAudioPath(audioPath, { env, fetchImpl, spawn }) {
   return { ok: true, text };
 }
 
-export async function transcribeVideoAtPath(videoPath, { env, fetchImpl, spawn }) {
+export async function transcribeVideoAtPath(videoPath, {
+  env,
+  fetchImpl,
+  spawn,
+  localWhisper = false,
+  workDir = DEFAULT_WORK_DIR
+} = {}) {
+  if (localWhisper) {
+    return localWhisperVideoAtPath(videoPath, { env, spawn, workDir });
+  }
   const audioPath = path.join(path.dirname(videoPath), "audio.mp3");
   const mp3 = stripToMp3(videoPath, audioPath, { spawn });
   if (!mp3.ok) return { ok: false, text: "", error: mp3.error || "ffmpeg_failed" };
@@ -474,7 +507,8 @@ export async function ingestVideoFile(client, meta, {
   fetchImpl,
   spawn,
   doSpeech = true,
-  doVisual = true
+  doVisual = true,
+  localWhisper = false
 }) {
   if (!state.videos[meta.id]) state.videos[meta.id] = {};
   const rec = state.videos[meta.id];
@@ -483,6 +517,10 @@ export async function ingestVideoFile(client, meta, {
 
   let speech = rec.speechText || "";
   if (doSpeech) {
+    if (resume && rec.speech === "error" && localWhisper) {
+      delete rec.speechError;
+      delete rec.speech;
+    }
     if (resume && rec.speech === "done" && speech) {
       // keep cached speech
     } else {
@@ -495,7 +533,9 @@ export async function ingestVideoFile(client, meta, {
       }
       const videoPath = path.join(fileWork, "source.bin");
       fs.writeFileSync(videoPath, buf);
-      const spoken = await transcribeVideoAtPath(videoPath, { env, fetchImpl, spawn });
+      const spoken = await transcribeVideoAtPath(videoPath, {
+        env, fetchImpl, spawn, localWhisper, workDir
+      });
       if (!spoken.ok) {
         rec.speech = "error";
         rec.speechError = spoken.error;
@@ -583,6 +623,7 @@ export async function runHormoziIngest({
   db = null,
   ffmpegBin = DEFAULT_FFMPEG,
   stopOnNoCredits = true,
+  localWhisper = false,
   onProgress = null
 } = {}) {
   const config = driveConfigFromEnv(env);
@@ -599,7 +640,11 @@ export async function runHormoziIngest({
   const inventory = await inventoryHormoziDrive(client);
   const state = readIngestState(outRoot);
   const statePath = path.join(outRoot, "_ingest-state.json");
-  if (stopOnNoCredits && state.stopped_reason === INGEST_STOPPED_OPENAI_CREDITS) {
+  if (
+    stopOnNoCredits &&
+    !localWhisper &&
+    state.stopped_reason === INGEST_STOPPED_OPENAI_CREDITS
+  ) {
     return {
       ok: false,
       reason: INGEST_STOPPED_OPENAI_CREDITS,
@@ -607,6 +652,10 @@ export async function runHormoziIngest({
       alreadyStopped: true,
       statePath
     };
+  }
+  if (localWhisper && state.stopped_reason === "openai_invalid_or_masked_key") {
+    delete state.stopped_reason;
+    writeIngestState(outRoot, state);
   }
   const counts = {
     pdfsDone: 0,
@@ -650,7 +699,8 @@ export async function runHormoziIngest({
         fetchImpl,
         spawn,
         doSpeech: speech,
-        doVisual: visual
+        doVisual: visual,
+        localWhisper
       });
       writeIngestState(outRoot, state);
       if (r.ok) {
@@ -668,6 +718,15 @@ export async function runHormoziIngest({
         counts.errors.push({ id: meta.id, kind: "video", error: r.error });
         if (r.credits && stopOnNoCredits) {
           state.stopped_reason = INGEST_STOPPED_OPENAI_CREDITS;
+          creditsStop = true;
+          break;
+        }
+        if (
+          stopOnNoCredits &&
+          !localWhisper &&
+          isOpenAiKeyFailure(r.error)
+        ) {
+          state.stopped_reason = "openai_invalid_or_masked_key";
           creditsStop = true;
           break;
         }

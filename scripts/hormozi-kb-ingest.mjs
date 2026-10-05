@@ -4,6 +4,7 @@
  *
  *   node scripts/hormozi-kb-ingest.mjs --pdfs
  *   node scripts/hormozi-kb-ingest.mjs --speech --visual --resume
+ *   node scripts/hormozi-kb-ingest.mjs --local-whisper --no-visual --speech --resume
  *   node scripts/hormozi-kb-ingest.mjs --load-brain --resume
  */
 import pg from "pg";
@@ -13,7 +14,8 @@ import {
   runHormoziIngest,
   DEFAULT_KB_OUT,
   DEFAULT_WORK_DIR,
-  INGEST_STOPPED_OPENAI_CREDITS
+  INGEST_STOPPED_OPENAI_CREDITS,
+  openAiKeyBlockedReason
 } from "../src/company-brain/hormozi-kb.mjs";
 
 loadEnv();
@@ -48,12 +50,31 @@ async function main() {
   const anyMode = hasFlag("--pdfs") || hasFlag("--speech") || hasFlag("--visual");
   const pdfs = hasFlag("--pdfs") || !anyMode;
   const speech = hasFlag("--speech") || (!anyMode && !hasFlag("--pdfs-only"));
-  const visual = hasFlag("--visual") || (!anyMode && !hasFlag("--pdfs-only"));
+  const localWhisper = hasFlag("--local-whisper");
+  const visual = hasFlag("--no-visual")
+    ? false
+    : (hasFlag("--visual") || (!anyMode && !hasFlag("--pdfs-only")));
   const resume = hasFlag("--resume");
   const loadBrain = hasFlag("--load-brain");
   const limit = argNum("--limit", Infinity);
   const videoSkip = argNum("--video-skip", 0);
   const stopOnNoCredits = stopOnNoCreditsFlag();
+
+  const apiSpeech = speech && !localWhisper;
+  if (apiSpeech || visual || loadBrain) {
+    const keyBlock = openAiKeyBlockedReason(process.env, {
+      apiSpeech,
+      visual,
+      brain: loadBrain
+    });
+    if (keyBlock) {
+      console.warn(`[hormozi-kb] warning: ${keyBlock}`);
+      console.warn("[hormozi-kb] continuing — OpenAI speech/vision/brain will fail until .env has a full sk-… key");
+    }
+  }
+  if (localWhisper && speech) {
+    console.log("[hormozi-kb] speech: local whisper.cpp (Metal when brew build supports it)");
+  }
 
   let db = null;
   let orgId = null;
@@ -85,6 +106,7 @@ async function main() {
     db,
     orgId,
     stopOnNoCredits,
+    localWhisper,
     onProgress({ phase, meta, result: r }) {
       const tag = r?.ok ? "ok" : "fail";
       console.log(`[${phase}] ${tag} ${meta.name} (${meta.id})`);
