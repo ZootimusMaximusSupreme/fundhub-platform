@@ -68,3 +68,53 @@ export function adNumberOf(tags = {}, ads = [], { orgId = null } = {}) {
 }
 
 export default adNumberOf;
+
+/* ── mapAdNumber — the number a Meta ad carries, read from Meta's own record ──
+ *
+ * Spec docs/specs/marketing-machine-2026-10-04.md §10.5 "Sync mapping", pure
+ * part. The daily Meta sync (U27 wires it into api/campaigns/sync.mjs) asks
+ * Meta for each ad's creative{url_tags} and its name, and calls this.
+ *
+ *   1. utm_content in the url_tags: its leading digits, by the SAME rule as
+ *      fundhub_ad_id() in 286 (adIdOf). "91" and "91-roadmap" are 91. That is
+ *      the number a lead from this ad will carry, so the two always agree.
+ *   2. Else the ad name: "Ad <digits>" as a word ("Ad 91 — angle" is 91). A run
+ *      of more than nine digits is refused rather than cut short, and "Ad" must
+ *      start a word ("Load 7" is nothing). Case counts, as the spec writes it.
+ *   3. Else null. "oVid: SLO1" is null — no number is guessed.
+ *
+ * It NEVER throws: a bad url_tags string, a missing name, or a wrong type is
+ * null. The caller must never overwrite a 'manual' number with this answer
+ * (spec §10.5); that rule lives with the caller, which knows the row.
+ *
+ * Returns { number: "<digits>" as text, like ads.fundhub_ad_number,
+ *           source: "utm" | "name" } or null.
+ */
+const NAME_NUMBER = /(?:^|[^A-Za-z0-9_])Ad ([0-9]{1,9})(?![0-9])/;
+
+function utmContentOf(urlTags) {
+  if (urlTags == null) return null;
+  if (typeof urlTags === "object") {
+    const v = urlTags.utm_content;
+    return typeof v === "string" ? v : null;
+  }
+  if (typeof urlTags !== "string") return null;
+  return new URLSearchParams(urlTags.trim().replace(/^\?/, "")).get("utm_content");
+}
+
+export function mapAdNumber(input) {
+  try {
+    // Read inside the try: a null or a non-object argument is null, not a throw.
+    const { urlTags, name } = input && typeof input === "object" ? input : {};
+    const fromUtm = adIdOf(utmContentOf(urlTags));
+    if (fromUtm != null) return { number: fromUtm, source: "utm" };
+
+    if (typeof name === "string") {
+      const m = NAME_NUMBER.exec(name);
+      if (m) return { number: m[1], source: "name" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

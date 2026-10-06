@@ -100,7 +100,7 @@ describe("POST /api/campaigns/link-asset", { skip: !HAVE_DB ? "no DATABASE_URL" 
   };
 
   const adRow = async (id) => (await asStaff((tx) => tx.query(
-    `SELECT id, asset_id, fundhub_ad_number FROM ads WHERE id = $1`, [id]
+    `SELECT id, asset_id, fundhub_ad_number, fundhub_ad_number_source FROM ads WHERE id = $1`, [id]
   ))).rows[0];
 
   const spineRow = async (id) => (await asStaff((tx) => tx.query(
@@ -404,14 +404,43 @@ describe("POST /api/campaigns/link-asset", { skip: !HAVE_DB ? "no DATABASE_URL" 
 
   // ── 4. the ad number's own rules ────────────────────────────────────────
 
-  test("two ads cannot claim the same number", async () => {
-    await call({ partner_id: partnerA, ad_id: adA, fundhub_ad_number: "77" }, staffToken);
+  test("two ads may share one number since 416, and a typed number reads manual", async () => {
+    // Until 416 this was a 409 ad_number_taken from the unique index
+    // ads_fundhub_number_uq (377:575). The owner-approved spec (§10.4) replaced
+    // it with a plain index: one ad number may run in several ad sets, and a v2
+    // keeps its number. So the second ad now takes the same number.
+    const first = await call({ partner_id: partnerA, ad_id: adA, fundhub_ad_number: "77" }, staffToken);
+    assert.strictEqual(first.code, 200, JSON.stringify(first.body));
     const r = await call({ partner_id: partnerA, ad_id: adA2, fundhub_ad_number: "77" }, staffToken);
 
-    assert.strictEqual(r.code, 409, JSON.stringify(r.body));
-    assert.strictEqual(r.body.error, "ad_number_taken");
+    assert.strictEqual(r.code, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.ad.fundhub_ad_number, "77");
+    assert.strictEqual(r.body.ad.fundhub_ad_number_source, "manual",
+      "a number typed by a person must say so, or the sync could overwrite it");
+
+    for (const id of [adA, adA2]) {
+      const row = await adRow(id);
+      assert.strictEqual(row.fundhub_ad_number, "77");
+      assert.strictEqual(row.fundhub_ad_number_source, "manual");
+    }
+  });
+
+  test("clearing the number clears where it came from", async () => {
+    const r = await call({ partner_id: partnerA, ad_id: adA2, fundhub_ad_number: null }, staffToken);
+    assert.strictEqual(r.code, 200, JSON.stringify(r.body));
     const row = await adRow(adA2);
-    assert.notStrictEqual(row.fundhub_ad_number, "77");
+    assert.strictEqual(row.fundhub_ad_number, null);
+    assert.strictEqual(row.fundhub_ad_number_source, null);
+  });
+
+  test("setting only the creative leaves the number's source alone", async () => {
+    const before = await adRow(adA);
+    assert.strictEqual(before.fundhub_ad_number_source, "manual", "fixture check");
+    const r = await call({ partner_id: partnerA, ad_id: adA, asset_id: assetA }, staffToken);
+    assert.strictEqual(r.code, 200, JSON.stringify(r.body));
+    const after = await adRow(adA);
+    assert.strictEqual(after.fundhub_ad_number, before.fundhub_ad_number);
+    assert.strictEqual(after.fundhub_ad_number_source, "manual");
   });
 
   test("a Meta ad id is refused in our number column", async () => {
