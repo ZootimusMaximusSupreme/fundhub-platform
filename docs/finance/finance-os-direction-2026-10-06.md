@@ -58,3 +58,4 @@ Owner-set by Chris, 2026-10-06. Adds to `client-finance-os-build-spec-2026-09-19
 - Merchant integrations: **Commas**, **Whop**, and an **open API** so any other merchant processor can send sales and payouts in.
 - Past due: a **Clarity Payment** is debt a client owes to Fundhub LLC — or any other debt owed to Fundhub or its subsidiaries, including buy now, pay later (BNPL) plans. Track each one; when it is late, check in (agent first, then a person).
 - AI agent: build it in-house. (No outside AI spend yet — the agent runs on rules until an AI brain is switched on.)
+- **One page.** Chris (2026-10-06): it is all one page — a one-page CRM for finances, called **FinanceOS**. Sections on that page: Overview · Accounts · Credit · Connections · Payments · Setup. Page: `/app/financeos.html`. (The staff desk `/app/finance-os.html` stays as it is.)
