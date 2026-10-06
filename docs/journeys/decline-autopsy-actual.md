@@ -1,5 +1,17 @@
 # decline-autopsy — actual
 
+> **SHELVED — ALL THREE ROUTES ANSWER 404 (corrected 2026-10-05).** The owner
+> shelved this offer on 2026-08-31, ten hours after this page was first written.
+> The three `ROUTES` entries in `netlify/functions/api.mjs` sit inside a block
+> comment ("DECLINE AUTOPSY — SHELVED BY THE OWNER 2026-08-31"), and
+> `src/http/routes.test.mjs` lists all three in `ALLOWED_UNROUTED`. Measured on
+> the live site 2026-10-05: `GET https://fundhub.ai/api/public/decline-autopsy`
+> → **404**. Everything below the router in the picture is real code that no
+> request can reach today. The handlers, `src/autopsy/`, migration 275 and the
+> spec are intact on purpose — the offer is coming back once its delivery is
+> reworked. (Walkthrough-4 defect 19: this page used to say, as present-tense
+> fact, that the router maps the three keys.)
+>
 > **2026-08-31 — first build.** The $27 Decline Autopsy exists in code:
 > checkout, the upload boundary, scoring through the existing underwriting
 > engine, the report, and the buyer's own delete button.
@@ -19,7 +31,9 @@ Traced from `api/public/decline-autopsy.mjs`, `api/public/decline-autopsy-upload
 
 ```mermaid
 flowchart TD
-    AD["A broker clicks an ad"] --> SALES["GET /api/public/decline-autopsy"]
+    AD["A broker clicks an ad"] --> ROUTER{"Are the three keys in ROUTES?<br/>netlify/functions/api.mjs"}
+    ROUTER -->|"No — commented out, SHELVED 2026-08-31"| N404["404 Not found.<br/>TODAY EVERY REQUEST ENDS HERE"]
+    ROUTER -.->|"Only after the owner unshelves it"| SALES["GET /api/public/decline-autopsy"]
     SALES --> TERMS["price 2700 cents, row cap 25, field list,<br/>the attestation wording, and the five promises.<br/>NO EARNINGS FIGURE ANYWHERE"]
 
     TERMS --> BUY["POST /api/public/decline-autopsy — email"]
@@ -86,10 +100,15 @@ flowchart TD
 
 ### The three routes
 
-`netlify/functions/api.mjs` maps three **flat** keys. The keys are flat on
-purpose: the adapter routes `documents/` and `webhooks/` by prefix, and a key
-shaped `public/decline-autopsy/upload` invites the exact sub-path confusion the
-`documents/` branch already caused once.
+**Today none of these is routed.** `netlify/functions/api.mjs` holds the three
+**flat** keys inside a block comment headed "DECLINE AUTOPSY — SHELVED BY THE
+OWNER 2026-08-31", with the restore steps beside them, and
+`src/http/routes.test.mjs` allow-lists all three as unrouted. All three answer
+404. The table below is what the router maps once the three lines are restored.
+
+The keys are flat on purpose: the adapter routes `documents/` and `webhooks/` by
+prefix, and a key shaped `public/decline-autopsy/upload` invites the exact
+sub-path confusion the `documents/` branch already caused once.
 
 | Route key | Handler | Auth |
 |---|---|---|
@@ -97,8 +116,11 @@ shaped `public/decline-autopsy/upload` invites the exact sub-path confusion the
 | `public/decline-autopsy-upload` | `api/public/decline-autopsy-upload.mjs` | none; the paid `autopsy_ref` is the credential |
 | `public/decline-autopsy-report` | `api/public/decline-autopsy-report.mjs` | none; the HMAC signature is the credential |
 
-`src/http/decline-autopsy.pg.test.mjs` calls the adapter, not the handlers, so a
-missing map entry fails the test rather than shipping a 404.
+`src/http/decline-autopsy.pg.test.mjs` calls the adapter, not the handlers, and
+its test "all three routes are reachable through the real ROUTES map" asserts
+the opposite of today's router. It is skipped whenever `DATABASE_URL` is unset,
+so the normal test run never notices. Against a real database it would fail
+while the offer is shelved. See gap 11.
 
 ### Identity never crosses the boundary
 
@@ -177,6 +199,7 @@ Named, not silently reconciled.
 
 | # | Gap |
 |---|---|
+| 0 | **The whole journey is unreachable.** Shelved by the owner 2026-08-31; the three routes are commented out and answer 404 (live, 2026-10-05). Gaps 1–10 describe the code behind the router. |
 | 1 | **`docs/journeys/decline-autopsy-intended.md` does not exist.** It is hand-authored by a human (CLAUDE.md §4). Until it does, there is nothing to compare this against. |
 | 2 | **No front-end.** `public/funnel/decline-autopsy/` was not built — no sales page, upload page or report page, and therefore no Playwright check. The three endpoints are complete and tested; nothing renders them. |
 | 3 | **No `DECLINE_AUTOPSY` entry in `src/config/offers.mjs`.** That file was owned by another workflow in the same batch. `autopsyPriceCents()` already reads `getOffer("DECLINE_AUTOPSY")` first and falls back to the constant in `src/autopsy/fields.mjs`, so adding the entry needs no code change here. |
@@ -187,3 +210,4 @@ Named, not silently reconciled.
 | 8 | **Nothing in production writes `partner_revenue`.** This offer can recruit partners and affiliates; it cannot pay them automatically. Spec §4.1, Q7 — carried, not fixed here. |
 | 9 | **Spec Q6 is now measured, and the answer changes the design.** `computeUnderwrite` on a broker's field list alone returns ZERO capacity for every row, because with no tradeline detail there is no seasoned revolving limit. So the field list here accepts two extra non-identifying numbers — `highest_revolving_limit_usd` and `revolving_opened_month` — and a row without both is reported as "not enough information" rather than as a measured zero. |
 | 10 | **Drift found in `src/underwrite/engine.mjs`'s header.** Its note (2) says the engine collapses unknown counts to zero and that "an unknown reads as a clean file". The vendored file does the opposite for negatives, late payments, inquiries and utilisation — `measuredCount`/`measuredPct` keep them NULL — so `fundable` is FALSE on an unknown, not true. `numOrZero` applies to tradeline limit/balance only. Recorded in `src/autopsy/score.mjs` and pinned by three tests in `src/autopsy/score.test.mjs`. The vendored file was not patched: that would forfeit the byte-identical upstream refresh. |
+| 11 | **The route test asserts the opposite of today's router.** `src/http/decline-autopsy.pg.test.mjs` "all three routes are reachable through the real ROUTES map" expects no 404. It skips without `DATABASE_URL`, so the ordinary run stays green; against a real database it fails while the offer is shelved. Recorded, not changed (walkthrough-4, 2026-10-05). |
