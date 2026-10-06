@@ -1,8 +1,9 @@
 // Daily pulse — audit only. Suggested fixes + proof. Never auto-fixes.
 //
-// 7:00 a.m. America/Denver. Inngest cron is 0 13 * * * while daylight time
-// is on (7:00 a.m. MDT = 13:00 UTC). After the fall-back, 0 13 * * * is
-// 6:00 a.m. Denver; flip the cron to 0 14 * * * then.
+// 7:00 a.m. America/Denver, all year. The cron carries Inngest's TZ= prefix,
+// so it fires on Denver's own clock: 13:00 UTC in daylight time, 14:00 UTC
+// after the fall-back (2026-11-01). Nobody has to flip it twice a year.
+// (It was a bare 0 13 * * *, which would have fired at 6:00 a.m. all winter.)
 //
 // Do not stretch the Ops Admin money pulse into this.
 // Tripwire is existing Recon (AG-07) + scripts/gate-relay. No second watchdog.
@@ -15,9 +16,10 @@ import { relayDirs, readHeartbeat, isPidAlive, STALE_MS } from "../../scripts/ga
 import { gmailConfigFromEnv, createGmailClientFromConfig } from "../gmail/index.mjs";
 import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
+import { checkMachine } from "./machine.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 
-export const PULSE_CRON = "0 13 * * *";
+export const PULSE_CRON = "TZ=America/Denver 0 7 * * *";
 export const PULSE_TZ = "America/Denver";
 export const AGENT_CODE = "AG-07";
 export const SOURCE_WORKFLOW = "daily-pulse";
@@ -245,7 +247,7 @@ export function formatScorecard({ date, dryRun, checks = [], sms, darwin } = {})
   const lines = [
     `# Pulse ${date}`,
     "",
-    `Timezone: ${PULSE_TZ}. Cron: \`${PULSE_CRON}\` (7:00 a.m. Denver during daylight time).`,
+    `Timezone: ${PULSE_TZ}. Cron: \`${PULSE_CRON}\` (7:00 a.m. Denver, summer and winter).`,
     `Dry-run: ${dryRun ? "yes" : "no"}. **This run does not auto-fix.**`,
     "",
     score,
@@ -303,7 +305,9 @@ export async function defaultOrgId(db) {
 
 export async function recordAgentRun(db, { orgId, dryRun, checks, detail } = {}) {
   if (!db || !orgId) return { recorded: false, reason: "no_db" };
-  const fail = (checks || []).some((c) => c.status === "FAIL");
+  // A registry row fails as "down", not "FAIL". Counting only "FAIL" stamped
+  // nine live runs pass while a route answered 404 (2026-09-27..10-05).
+  const fail = (checks || []).some((c) => c.status === "FAIL" || c.status === "down");
   await db.query(
     `INSERT INTO agent_runs (org_id, agent_code, trigger_event, channel, mode, outcome, detail)
      VALUES ($1, $2, 'cron.daily-pulse', 'internal', $3, $4, $5)`,
@@ -329,7 +333,10 @@ export async function runDailyPulse({
   gmailClient = null,
   sendSms = undefined,
   sendWhatsApp = undefined,
-  recordRun = true
+  recordRun = true,
+  // Staff-visibility runner for the marketing-machine rows (asStaff on live).
+  // Those tables are FORCE row security and read empty on the plain app role.
+  staffScope = null
 } = {}) {
   const date = denverDateStamp(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -344,6 +351,7 @@ export async function runDailyPulse({
   checks.push(await checkRecon({ db, orgId: resolvedOrg }));
   checks.push(await checkUnrecorded({ db, orgId: resolvedOrg, now }));
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
+  checks.push(...await checkMachine({ db, scope: staffScope, now }));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
 
   const failRows = checks.filter((c) => c.status === "FAIL" || c.status === "down");

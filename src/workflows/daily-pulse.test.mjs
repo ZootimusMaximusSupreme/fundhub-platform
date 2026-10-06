@@ -5,8 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { PULSE_CRON, handle } from "./daily-pulse.mjs";
 
-test("Inngest cron is 0 13 * * * (7:00 a.m. Denver daylight time)", () => {
-  assert.equal(PULSE_CRON, "0 13 * * *");
+test("Inngest cron is 7:00 a.m. on Denver's own clock, so the fall-back needs no flip", () => {
+  assert.equal(PULSE_CRON, "TZ=America/Denver 0 7 * * *");
 });
 
 test("handle is audit-only — dry-run writes findings and does not send", async () => {
