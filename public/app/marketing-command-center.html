@@ -39,7 +39,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* THE TOPBAR CONTRACT (UI-STANDARDS §12.8, after client-control-panel.html):
    wordmark, separator, this screen's name; the right cluster is filled by
-   shell.js (clock, Search, the role chip, Sign out). The height is a floor,
+   shell.js (clock, Search, the role chip with its LIVE mark, Sign out). The
+   shell owns the clock's size and when it hides (fh-shell-clock-css), so no
+   clock rule is written here. The height is a floor,
    not a pin, so the bar can wrap on a phone without hiding its second row. */
 header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 16px;min-height:48px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--cardline)}
 .brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
@@ -47,10 +49,6 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .brand .sep{color:var(--gray2)}
 .brand .sub{font-weight:600;color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .topbar-right{display:flex;align-items:center;gap:16px;flex:0 0 auto;color:var(--gray2)}
-.live-pill{display:flex;align-items:center;gap:8px;font-family:var(--mono);color:var(--paper);background:var(--card);border:1px solid var(--cardline);padding:4px 8px;border-radius:24px}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
-.clock{white-space:nowrap}
-@media (max-width:1560px){ .clock{display:none} }
 
 .content{padding:24px;display:flex;flex-direction:column;gap:24px;flex:1}
 .foot{border-top:1px solid var(--line);padding:16px 24px;display:flex;align-items:center;gap:8px;color:var(--gray2)}
@@ -112,7 +110,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .gap-top{margin-top:16px}
 .bullets{padding-left:24px;margin-top:8px}
 .bullets li + li{margin-top:8px}
-.offer-body{margin-top:16px;max-height:480px;overflow:auto;max-width:78ch}
+.offer-body{max-height:640px;overflow:auto;max-width:78ch}
 
 /* Every action answers back where the person is looking (§5). */
 .say{display:none;margin-top:16px;padding:8px 16px;border-radius:8px;border:1px solid var(--line)}
@@ -229,9 +227,8 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
         <div class="sep">/</div>
         <div class="sub">Marketing Command Center</div>
       </div>
-      <div class="topbar-right">
-        <div class="live-pill"><span class="live-dot"></span>LIVE</div>
-      </div>
+      <!-- Filled by shell.js: clock, Search, the role chip (with LIVE), Sign out. -->
+      <div class="topbar-right"></div>
     </header>
 
     <div class="content" id="mcc-root">
@@ -291,11 +288,11 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
         <div class="card span-6" id="cardOffer">
           <div class="card-hd"><h2>Offer</h2></div>
           <div id="offerStatus"><span class="skel"></span></div>
-          <div id="offerLatest" class="gap-top"><span class="skel"></span><span class="skel"></span></div>
           <div class="actions offer-actions">
             <button class="btn" type="button" id="offerBtn"><span class="spin" aria-hidden="true"></span><span class="lbl">Write offer</span></button>
           </div>
           <div class="say" id="offerSay" role="status" aria-live="polite"></div>
+          <div id="offerLatest" class="gap-top"><span class="skel"></span><span class="skel"></span></div>
         </div>
 
         <div class="card span-6" id="cardFlywheel">

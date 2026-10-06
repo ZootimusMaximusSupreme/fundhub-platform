@@ -354,7 +354,7 @@
       case "STALE":
         return { word: "Out of date", tone: "wip", why: plainReasons(s.reasons) || "An earlier step changed." };
       case "BLOCKED":
-        return { word: "Waiting on an earlier step", tone: "wip", why: plainReasons(s.reasons) };
+        return { word: "Waiting", tone: "wip", why: plainReasons(s.reasons) || "It waits on an earlier step." };
       case "MISSING":
         return { word: "Not started", tone: "", why: plainReasons(s.reasons) || "It has not been run yet." };
       default:
@@ -729,7 +729,7 @@
       return '<span class="caption">Ad spend, last 7 days</span>' +
         '<span class="vl">' + esc(money(v.spend7)) + "</span>" +
         '<span class="cmp">' + esc(compare(v.spend7, v.spendPrev7, "7 days") + coverage(v.days7, 7)) + "</span>" +
-        '<span class="note">Meta numbers as of ' + timeTag(v.asOf, nowMs) + ". " +
+        '<span class="note">' + (v.asOf ? "Meta numbers as of " + timeTag(v.asOf, nowMs) + ". " : "No Meta numbers on file yet. ") +
         '<a href="campaign-manager.html">See every ad in Campaigns</a></span>';
     }
     return '<span class="caption">Ad spend, last 30 days</span>' +
@@ -1005,6 +1005,12 @@
 
     function paintOffer() {
       $("offerLatest").innerHTML = renderOfferLatest(state.offerRead, Date.now());
+      /* Until the offer writer ships, the button says so and does nothing
+         (the line under it is the reason). Any other answer leaves it on. */
+      var btn = $("offerBtn");
+      if (!btn.classList.contains("busy") && !state.polling) {
+        btn.disabled = Boolean(state.offerRead && state.offerRead.state === "notReady");
+      }
     }
 
     function load() {
@@ -1035,6 +1041,8 @@
     function pollOffer(jobId) {
       if (state.polling || !jobId) return;
       state.polling = true;
+      /* One run at a time: the button rests while this one is followed. */
+      $("offerBtn").disabled = true;
       var tries = 0;
       function step() {
         tries += 1;
@@ -1051,6 +1059,7 @@
           if (tries >= OFFER_POLL_TRIES) {
             state.polling = false;
             say("offerSay", "wait", "It is taking longer than usual. Reload this page later to see the offer.");
+            paintOffer();
             return;
           }
           root.setTimeout(step, OFFER_POLL_MS);

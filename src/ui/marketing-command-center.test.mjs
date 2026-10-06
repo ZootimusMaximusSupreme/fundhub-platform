@@ -256,7 +256,7 @@ describe("flywheel and what waits on Chris", () => {
     const cc = load();
     const v = cc.normalizeToday(today());
     assert.deepEqual([...v.stages.map((s) => cc.stageWord(s).word)],
-      ["Done", "Needs your OK", "Needs a redo", "Needs a redo", "Waiting on an earlier step"]);
+      ["Done", "Needs your OK", "Needs a redo", "Needs a redo", "Waiting"]);
     assert.equal(cc.stageWord(v.stages[0]).why, "133 quotes.");
   });
 
