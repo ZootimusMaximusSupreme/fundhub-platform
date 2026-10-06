@@ -114,10 +114,35 @@ const PATCHABLE = new Set([
    JSON.stringify first and Postgres casts the text to jsonb itself. */
 const JSON_COLUMNS = new Set(["transcript_words"]);
 
-function buildPatch(patch, startIndex) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXT_FREE_TAKE_NO — "give this take the next free number for its ad".
+
+   A step writes this in take_no when it knows the ad but not the take: a phone
+   upload is called IMG_4471.mov and says nothing about which attempt it was.
+   Spec §9.1 step 5: "Take N" from the file name when it is there, otherwise the
+   next free number for that ad.
+
+   THE NUMBER IS PICKED INSIDE THE UPDATE, not read first and written second —
+   the same call nextTake() makes for its INSERT. Before this the matcher wrote
+   take 1 for every take with no "Take N" in its name, so the second take of an
+   ad hit ad_videos_take_uq and stopped there.
+
+   COALESCE(take_no, …): a row that already holds a number keeps it. A take
+   number is never re-numbered (390's comment on ad_videos.take_no).
+
+   Only UPDATEs may ask for it (advance() and patch()), and only with the ad id
+   in the same write — "the next free number of which ad?" has to be answered
+   by the write itself. src/ad-videos/pipeline.mjs holds the same word under
+   the same name; pipeline.test.mjs fails if the two drift apart.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export const NEXT_FREE_TAKE_NO = "next_free";
+
+function buildPatch(patch, startIndex, { nextFreeTake = false } = {}) {
   const sets = [];
   const params = [];
   let i = startIndex;
+  let wantsNextTake = false;
+  let adParam = null;
   for (const [key, value] of Object.entries(patch || {})) {
     if (value === undefined) continue;
     if (!PATCHABLE.has(key)) {
@@ -125,6 +150,8 @@ function buildPatch(patch, startIndex) {
         `"${key}" cannot be set this way — status and the approval fields move ` +
         `through their own functions, so a worker cannot write them by accident`);
     }
+    if (key === "take_no" && value === NEXT_FREE_TAKE_NO) { wantsNextTake = true; continue; }
+    if (key === "ad_id" && value !== null) adParam = `$${i}`;
     /* THE PADDED-NUMBER GUARD, at the last place it is cheap. 389's
        ad_videos_ad_id_ck already refuses "043" — but it refuses it as a
        Postgres constraint violation from inside a worker, which is a long way
@@ -139,6 +166,22 @@ function buildPatch(patch, startIndex) {
     else if (JSON_COLUMNS.has(key) && value !== null) v = JSON.stringify(value);
     params.push(v);
     i += 1;
+  }
+  if (wantsNextTake) {
+    if (!nextFreeTake) {
+      throw new AdVideoStoreError("next_free_take_update_only",
+        "the next free take number is picked inside an UPDATE of the row; a new row " +
+        "gets one from nextTake()");
+    }
+    if (!adParam) {
+      throw new AdVideoStoreError("next_free_take_needs_ad",
+        "the next free take number needs the ad number in the same write — " +
+        "otherwise it is the next number of nothing");
+    }
+    sets.push(
+      `take_no = COALESCE(ad_videos.take_no, (SELECT COALESCE(MAX(t.take_no), 0) + 1 ` +
+      `FROM ad_videos t WHERE t.org_id = ad_videos.org_id AND t.ad_id = ${adParam}::text))`
+    );
   }
   return { sets, params };
 }
@@ -357,7 +400,7 @@ export async function claimTake(tx, {
 export async function advance(tx, { orgId, id, from, to, by = "worker", patch = {} }) {
   transition(from, to, { by });
 
-  const { sets, params } = buildPatch(patch, 5);
+  const { sets, params } = buildPatch(patch, 5, { nextFreeTake: true });
   const assignments = ["status = $4", ...sets];
 
   const r = await tx.query(
@@ -407,15 +450,17 @@ export async function markFailed(tx, { orgId, id, from, reason }) {
    its project id. So it skips, returns an EMPTY patch, and because the patch is
    empty the sweeper writes nothing and the status never moves. The row sits at
    `staged` forever, on every pass, silently. The same trap waits at every later
-   step: a stale transcript stalls the transcriber, a stale renamed_at stalls the
-   matcher, a stale exported_at sends the exporter to poll a render that was
-   never asked for.
+   step: a stale transcript stalls the transcriber, a stale exported_at sends the
+   exporter to poll a render that was never asked for. (renamed_at used to
+   stall the matcher. The matcher no longer renames raw files — spec §9.1 step
+   5 — and no longer reads it; it is cleared here for rows from before.)
 
    So a retry clears everything downstream of staging. The raw file in Drive and
    the row's identity (ad_id, take_no, script_id) survive, because those are the
    inputs, not the work. script_id in particular is kept on purpose: the match
    is the expensive, model-driven step and the transcript it was made from is
-   about to be read again from a project that says the same words.
+   about to be read again from a project that says the same words. A row with
+   script_id set is matched; matchAndRename moves it on without asking again.
 
    THE TWO SPEND CLAIMS ARE HERE FOR A SECOND REASON. A claim standing with no
    result is how the pipeline refuses to pay twice after a crash, and it is
@@ -831,7 +876,7 @@ export async function patch(db, id, changes = {}) {
       return advance(tx, { orgId, id, from: row.status, to: status, patch: rest });
     }
     // No status move — just the marks this step left behind.
-    const { sets, params } = buildPatch(rest, 3);
+    const { sets, params } = buildPatch(rest, 3, { nextFreeTake: true });
     if (!sets.length) return findById(tx, { orgId, id, withTranscript: true });
     const r = await tx.query(
       `UPDATE ad_videos SET ${sets.join(", ")}
@@ -846,7 +891,9 @@ export async function patch(db, id, changes = {}) {
 /**
  * candidateScripts(db, { limit }) → the scripts a take could be.
  *
- * What Claude reads to decide which ad a filmed take is. Archived scripts are
+ * What src/ad-videos/match.mjs scores to decide which ad a filmed take is —
+ * word overlap over all of them, then Claude on the top 3 only when the
+ * overlap is unclear. Archived scripts are
  * left out: a take cannot be a script that was withdrawn, and offering one as a
  * candidate is how a take gets the wrong number.
  */

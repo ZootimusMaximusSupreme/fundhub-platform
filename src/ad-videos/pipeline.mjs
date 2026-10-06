@@ -30,7 +30,7 @@
 //   stage            → staged_at                already set? skip
 //   submagic create  → submagic_project_id      already set? skip
 //   read transcript  → transcript               already set? skip
-//   match + rename   → script_id / renamed_at   already set? skip
+//   match            → script_id                already set? no new match, move on
 //   place + export   → exported_at              already set? skip
 //   notify           → notified_at              already set? skip
 //   deliver          → drive_final_file_id      already set? skip
@@ -372,23 +372,48 @@ export async function readTranscript(row, { submagic, env = process.env } = {}) 
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   matchAndRename — the ad number, and the file name that finally says so.
+   matchAndRename — which ad this take is, and which take of it.
 
-   The match happens first and the rename only happens if it cleared the
-   confidence floor. A file renamed on a guess is worse than a file with the
-   phone's own name: the guess looks like a fact to everybody downstream.
+   THE NAME STAYS FOR NEXT_STEP AND seam.test.mjs. THE RENAME IS GONE.
+   This step used to rename the raw file in Drive to `084_t01_raw_….mp4` once
+   the match cleared the floor. Owner law says never move or rename raw files
+   (.claude/rules/ad-video-best-of-clips.md, spec §2 item 17 and §9.1 step 5),
+   and NAMING.md marks that format wrong. So a phone upload keeps the camera's
+   own name, and the Command Center shows which take belongs to which ad.
+   renamed_at stays on the table, unused.
+
+   A ROW WITH script_id IS MATCHED. It is never matched again: a retried take
+   keeps its script on purpose (store.mjs RETRY_CLEARS), and asking again costs
+   a model call for an answer we already have. It moves straight on. Rows
+   matched before this change can hold a script and no take number — those get
+   the next free number, still without a new match.
    ───────────────────────────────────────────────────────────────────────── */
+
+/** "Give this take the next free number for its ad." The store picks the
+    number inside the same UPDATE that writes the match (src/ad-videos/store.mjs
+    NEXT_FREE_TAKE_NO, the same word). Not imported from there: this file stays
+    pure, with no database module behind it. pipeline.test.mjs pins the two. */
+export const NEXT_FREE_TAKE_NO = "next_free";
+
+/** "Take 6" in the file name is take 6. Anything else is no number at all. */
+export function takeNoFromName(name) {
+  const n = Number((/\btake\s*(\d{1,3})\b/i.exec(String(name || "")) || [])[1]);
+  return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
 export async function matchAndRename(row, {
-  drive, naming, candidateScripts = [], env = process.env, fetchImpl
+  candidateScripts = [], env = process.env, fetchImpl
 } = {}) {
-  if (has(row.script_id) && has(row.renamed_at)) return skip("already matched and renamed");
   if (!has(row.transcript)) return wait("no transcript yet");
 
   let scriptId = row.script_id;
   let adId = row.ad_id;
   let confidence = row.match_confidence;
+  let note = null;
 
-  if (!has(scriptId)) {
+  if (has(scriptId)) {
+    note = "already matched — the match was not run again";
+  } else {
     const m = await matchTakeToScript({
       transcript: row.transcript_words?.length ? row.transcript_words : row.transcript,
       candidates: candidateScripts,
@@ -405,6 +430,7 @@ export async function matchAndRename(row, {
     scriptId = m.scriptId;
     adId = m.adId ?? adId;
     confidence = m.confidence;
+    note = m.reason || null;
   }
 
   if (!has(adId)) {
@@ -414,36 +440,23 @@ export async function matchAndRename(row, {
     );
   }
 
-  /* THE TAKE NUMBER. A phone names a file "SLO Ad 1 Take 2.mp4", which
-     parseVideoName does not read, so take_no is NULL when the row is made.
-     The number is right there in the name; read it rather than invent one.
-     "Take 6" is take 6. No word "Take" is take 1. UNIQUE (org, ad, take) then
-     refuses a real collision loudly instead of a quiet overwrite. */
-  const takeNo = row.take_no
-    ?? (Number((/\btake\s*(\d{1,3})\b/i.exec(String(row.drive_raw_name || "")) || [])[1]) || 1);
-
-  let renamedAt = row.renamed_at || null;
-  /* THE REAL NAMING MODULE, BY ITS REAL NAMES. This used to call
-     naming.rawName({ adId, takeNo, date }) — a function that exists only in
-     pipeline.test.mjs's hand-written stub. src/ad-videos/naming.mjs exports
-     rawFileName(adId, takeNo, takeDate). Measured 2026-09-24 on the first real
-     take: the guard was false, the rename silently never ran, renamed_at stayed
-     NULL. seam.test.mjs now checks every naming.* call against the module. */
-  if (!renamedAt && drive?.renameFile && naming?.rawFileName) {
-    const name = naming.rawFileName(adId, takeNo, new Date(row.created_at));
-    const r = await drive.renameFile(row.drive_raw_file_id, name, { env });
-    if (!r.ok) return r.retryable === false ? dead(r.error) : wait(r.error);
-    renamedAt = r.at || new Date().toISOString();
-  }
+  /* THE TAKE NUMBER (spec §9.1 step 5), in this order:
+       1. the number the row already holds — never re-numbered;
+       2. "Take N" in the file name (a phone that names its own files);
+       3. otherwise the next free number for this ad, picked by the store in
+          the same UPDATE. This used to be a flat 1, so the second take of an
+          ad hit UNIQUE (org, ad, take) and stopped at `transcribed`. */
+  const takeNo = has(row.take_no)
+    ? row.take_no
+    : (takeNoFromName(row.drive_raw_name) ?? NEXT_FREE_TAKE_NO);
 
   return ok({
     status: "matched",
     script_id: scriptId,
     ad_id: String(adId),
     take_no: takeNo,
-    match_confidence: confidence ?? null,
-    renamed_at: renamedAt
-  });
+    match_confidence: confidence ?? null
+  }, note);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

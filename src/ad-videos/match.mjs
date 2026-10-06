@@ -30,8 +30,28 @@
 // is the cheap failure. CLAUDE.md: never invent — if information is missing,
 // that absence is the finding.
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// THE FREE CHECK RUNS FIRST (marketing machine spec §9.1 step 5).
+//
+// Most takes are a straight read off the teleprompter, and for those nobody
+// needs to be asked: count how many of each script's word pairs were actually
+// said. When one script was clearly read — most of its word pairs heard, and
+// well ahead of every other script — that is the match, and the model is never
+// called. It costs nothing and it is the same answer every time.
+//
+// Only when that is unclear (a bullets script said in his own words, a partial
+// pick-up, two scripts that share lines) does Claude read the take, and then it
+// is shown the top 3 by overlap, not the whole library. Three is enough for the
+// right one to be in the room and few enough that it reads instead of skims.
+//
+// THE SAME FLOOR HOLDS FOR BOTH. An overlap winner's confidence is the share of
+// word pairs heard, and the free check only answers when that share clears the
+// floor. Under it, the model is asked; under it again, a person is.
+// ═══════════════════════════════════════════════════════════════════════════
 
 import { callModel } from "../agents/model.mjs";
+import { tokenize } from "./merge-takes.mjs";
 
 /** Below this, the take is not matched and nothing downstream runs. 0–100. */
 export const MATCH_CONFIDENCE_FLOOR = 80;
@@ -41,9 +61,20 @@ export const MATCH_CONFIDENCE_FLOOR = 80;
 export const MAX_SCRIPT_CHARS = 4000;
 export const MAX_TRANSCRIPT_CHARS = 8000;
 
-/** How many candidate scripts are offered at once. More than this and the model
-    is skimming rather than reading. */
-export const MAX_CANDIDATES = 25;
+/** How many candidate scripts the model is shown when the free check is
+    unclear: the top 3 by word overlap (spec §9.1 step 5). It was 25, which is
+    skimming, not reading. */
+export const MAX_CANDIDATES = 3;
+
+/** The free check's winner must be at least this far ahead of the next script
+    (0–1, in share of word pairs heard). Two scripts that share lines land
+    closer than this, and then the model reads them. */
+export const OVERLAP_CLEAR_MARGIN = 0.3;
+
+/** ...and must have had at least this many of its word pairs said. A script of
+    four words is "fully heard" inside any take that happens to say them, so a
+    tiny script can never win on overlap alone. */
+export const OVERLAP_MIN_PAIRS = 8;
 
 const SYSTEM = [
   "You match a filmed take to the written script it was read from.",
@@ -61,14 +92,107 @@ const SYSTEM = [
 
 const clip = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
-/** transcriptText — Submagic's words[] (or plain text) as one readable line. */
-export function transcriptText(input) {
-  if (typeof input === "string") return clip(input, MAX_TRANSCRIPT_CHARS);
+/* The whole take as one line, uncut. Reads Submagic's words ({word}) and
+   whisperWords' words ({w}) alike, and plain text. */
+function fullText(input) {
+  if (typeof input === "string") return input;
   if (Array.isArray(input)) {
-    return clip(input.map((w) => (typeof w === "string" ? w : w?.word ?? w?.text ?? "")).join(" "), MAX_TRANSCRIPT_CHARS);
+    return input.map((w) => (typeof w === "string" ? w : w?.word ?? w?.w ?? w?.text ?? "")).join(" ");
   }
   return "";
 }
+
+/** transcriptText — the take's words as one readable line, capped for the prompt. */
+export function transcriptText(input) {
+  return clip(fullText(input), MAX_TRANSCRIPT_CHARS);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The free word-overlap check.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/** Sounds with no words in them. Whisper is told to keep them (the cut needs
+    them), so they are dropped here before word pairs are counted — otherwise
+    "the wrong order, uh, and the bank" would lose the pair "order and". */
+const FILLER = /^(u+h*m+|u+h+|h+m+|m+h?m+|e+r+m*|a+h+)$/;
+
+/** Text → the spoken words, compared the way the cut compares them
+    (merge-takes.mjs tokenize: lower case, no punctuation, small numbers as
+    digits), with fillers and stutters ("the the") taken out. */
+function spokenWords(text) {
+  const out = [];
+  for (const t of tokenize(text)) {
+    if (FILLER.test(t)) continue;
+    if (out.length && out[out.length - 1] === t) continue;
+    out.push(t);
+  }
+  return out;
+}
+
+function wordPairs(words) {
+  const pairs = new Set();
+  for (let i = 1; i < words.length; i += 1) pairs.add(`${words[i - 1]} ${words[i]}`);
+  return pairs;
+}
+
+function overlapOf(heardPairs, scriptText) {
+  const scriptPairs = wordPairs(spokenWords(scriptText));
+  let heard = 0;
+  for (const p of scriptPairs) if (heardPairs.has(p)) heard += 1;
+  return { pairs: scriptPairs.size, heard, score: scriptPairs.size ? heard / scriptPairs.size : 0 };
+}
+
+/* What a candidate's words are, for the free check: its hook and its body.
+   The hook is often stored on its own as well as inside the body; the pairs
+   are a set, so saying it twice changes nothing. */
+const scriptWordsOf = (c) => [c?.hook_text, c?.body ?? c?.text].filter(Boolean).join("\n");
+
+/**
+ * overlapScore(transcript, scriptText) → 0–1
+ *
+ * The share of the script's word pairs that were said in the take. Extra words
+ * in the take (ad-libs, restarts) do not lower it; lines that were skipped do.
+ * Word pairs rather than single words because scripts in one campaign share
+ * most of their vocabulary ("bank", "credit", "funding") but not their pairs.
+ */
+export function overlapScore(transcript, scriptText) {
+  return overlapOf(wordPairs(spokenWords(fullText(transcript))), scriptText).score;
+}
+
+/**
+ * rankByOverlap(transcript, candidates) → [{ candidate, score, heard, pairs }]
+ * Highest score first. Ties keep the order the candidates came in.
+ */
+export function rankByOverlap(transcript, candidates = []) {
+  const heardPairs = wordPairs(spokenWords(fullText(transcript)));
+  return (Array.isArray(candidates) ? candidates : [])
+    .map((candidate, i) => ({ candidate, i, ...overlapOf(heardPairs, scriptWordsOf(candidate)) }))
+    .sort((a, b) => (b.score - a.score) || (a.i - b.i))
+    .map(({ i, ...rest }) => rest);
+}
+
+/**
+ * clearOverlapWinner(ranked, floor) → the top entry when the free check alone
+ * may decide, or null when the model has to read.
+ *
+ * Clear means all three: its share of pairs heard clears the same floor the
+ * model is held to, it is OVERLAP_CLEAR_MARGIN ahead of the next script, and
+ * at least OVERLAP_MIN_PAIRS of its pairs were said.
+ */
+export function clearOverlapWinner(ranked, floor = MATCH_CONFIDENCE_FLOOR) {
+  const top = ranked?.[0];
+  if (!top) return null;
+  /* Whole percents, so 70% against 40% is the 30-point margin it looks like
+     rather than 0.29999999999999993. */
+  const topPct = Math.round(top.score * 100);
+  const nextPct = Math.round((ranked[1]?.score ?? 0) * 100);
+  if (topPct < floor) return null;
+  if (top.heard < OVERLAP_MIN_PAIRS) return null;
+  if (topPct - nextPct < Math.round(OVERLAP_CLEAR_MARGIN * 100)) return null;
+  return top;
+}
+
+const pct = (x) => `${Math.round((x || 0) * 100)}%`;
 
 /* readVerdict — pull the JSON object out of whatever the model said.
 
@@ -100,9 +224,9 @@ export function readVerdict(text) {
 /**
  * matchTakeToScript({ transcript, candidates, env, fetchImpl, floor })
  *
- * candidates: [{ id, adId, title?, body }] — the locked scripts that have an ad
- * number and no finished video yet. The caller does that filtering; this
- * function only reads.
+ * candidates: [{ id, adId, title?, hook_text?, body }] — the locked scripts that
+ * have an ad number. The caller does that filtering (store.candidateScripts);
+ * this function only reads.
  *
  * → {
  *     ok:          true when a candidate cleared the floor
@@ -111,6 +235,7 @@ export function readVerdict(text) {
  *     confidence:  0–100
  *     reason:      one sentence, for the row and for a person reading it later
  *     retryable:   true when the model could not be reached (try again later)
+ *     method:      "overlap" (the free check decided, no model call) or "model"
  *   }
  *
  * NEVER THROWS.
@@ -124,13 +249,29 @@ export async function matchTakeToScript({
       reason: "there is no transcript to read" };
   }
 
-  const list = (Array.isArray(candidates) ? candidates : [])
-    .filter((c) => c && c.id)
-    .slice(0, MAX_CANDIDATES);
-  if (!list.length) {
+  const all = (Array.isArray(candidates) ? candidates : []).filter((c) => c && c.id);
+  if (!all.length) {
     return { ok: false, retryable: false, scriptId: null, adId: null, confidence: 0,
       reason: "no scripts were offered to match against" };
   }
+
+  /* THE FREE CHECK. A clear winner is the answer and nobody is asked. */
+  const ranked = rankByOverlap(transcript, all);
+  const clear = clearOverlapWinner(ranked, floor);
+  if (clear) {
+    const c = clear.candidate;
+    return {
+      ok: true, retryable: false, method: "overlap",
+      scriptId: String(c.id),
+      adId: c.adId === undefined || c.adId === null ? null : String(c.adId),
+      confidence: Math.round(clear.score * 100),
+      reason: `${clear.heard} of the script's ${clear.pairs} word pairs were said (${pct(clear.score)}); ` +
+        `the next closest script was ${pct(ranked[1]?.score)} — matched by word overlap, no model call`
+    };
+  }
+
+  /* UNCLEAR, SO THE MODEL READS — the top 3 by overlap, not the library. */
+  const list = ranked.slice(0, MAX_CANDIDATES).map((r) => r.candidate);
 
   const user = [
     "THE TAKE (what was said):",
@@ -159,34 +300,34 @@ export async function matchTakeToScript({
   if (res.mode === "shadow") {
     /* No key, so no call was made. Retryable: the take is fine and the match
        should happen once a key is set. The row waits rather than guessing. */
-    return { ok: false, retryable: true, scriptId: null, adId: null, confidence: 0,
+    return { ok: false, retryable: true, method: "model", scriptId: null, adId: null, confidence: 0,
       reason: "ANTHROPIC_API_KEY is not set, so no match was attempted" };
   }
   if (res.error) {
-    return { ok: false, retryable: true, scriptId: null, adId: null, confidence: 0,
+    return { ok: false, retryable: true, method: "model", scriptId: null, adId: null, confidence: 0,
       reason: String(res.error).slice(0, 200) };
   }
 
   const verdict = readVerdict(res.text);
   if (!verdict.ok) {
-    return { ok: false, retryable: true, scriptId: null, adId: null, confidence: 0, reason: verdict.error };
+    return { ok: false, retryable: true, method: "model", scriptId: null, adId: null, confidence: 0, reason: verdict.error };
   }
 
   const picked = verdict.scriptId ? list.find((c) => String(c.id) === verdict.scriptId) : null;
   if (!picked) {
-    return { ok: false, retryable: false, scriptId: null, adId: null,
+    return { ok: false, retryable: false, method: "model", scriptId: null, adId: null,
       confidence: verdict.confidence,
       reason: verdict.reason || "the model matched no script" };
   }
   if (verdict.confidence < floor) {
-    return { ok: false, retryable: false, scriptId: null, adId: null,
+    return { ok: false, retryable: false, method: "model", scriptId: null, adId: null,
       confidence: verdict.confidence,
       reason: `closest was ${picked.id} at ${verdict.confidence}, under the ${floor} floor — a person has to look` };
   }
 
   const adId = picked.adId === undefined || picked.adId === null ? null : String(picked.adId);
   return {
-    ok: true, retryable: false,
+    ok: true, retryable: false, method: "model",
     scriptId: String(picked.id),
     adId,
     confidence: verdict.confidence,
