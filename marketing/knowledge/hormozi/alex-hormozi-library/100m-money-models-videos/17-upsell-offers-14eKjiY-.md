@@ -17,4 +17,6 @@ because I just love these so much. All right, with that being said, the classic 
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame shows a plain gray background.

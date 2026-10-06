@@ -49,4 +49,6 @@ I like Armrestle them to get them to buy. Put the store credit towards another p
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.

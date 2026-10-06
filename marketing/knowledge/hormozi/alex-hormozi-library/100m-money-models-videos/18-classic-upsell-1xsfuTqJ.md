@@ -36,4 +36,6 @@ So think about like that. It has to go with. If you go to McDonald's, I would be
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.

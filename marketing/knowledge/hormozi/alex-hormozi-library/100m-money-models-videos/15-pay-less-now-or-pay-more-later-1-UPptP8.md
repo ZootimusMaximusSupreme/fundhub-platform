@@ -41,4 +41,6 @@ brought down the cancellations that he was going to get later. And so it's reall
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content - blank gray screen

@@ -55,4 +55,6 @@ The boom. These are the ways that you can prove your CAC. So with that being sai
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.

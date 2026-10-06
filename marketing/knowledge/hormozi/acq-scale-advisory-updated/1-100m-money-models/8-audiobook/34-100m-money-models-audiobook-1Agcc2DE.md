@@ -466,4 +466,4 @@ Please be one of those givers and share this with entrepreneurs by leaving a rev
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+(Audiobook — no slide visuals; use the speech transcript above.)

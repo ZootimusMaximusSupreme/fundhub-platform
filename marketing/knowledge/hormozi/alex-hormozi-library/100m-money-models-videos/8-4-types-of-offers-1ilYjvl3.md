@@ -31,4 +31,6 @@ ways that other entrepreneurs have stacks and recombine these things make lots o
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame shows a plain gray background with no on-screen elements.

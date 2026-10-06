@@ -41,4 +41,6 @@ So understanding how to do this can change your business forever. So that is fun
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content in this frame. The image appears to be a blank gray screen.
