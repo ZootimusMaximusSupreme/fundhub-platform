@@ -10,7 +10,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   validateSettingsPatch, validateFunnelInput, settingsView, funnelView, parseUpdatedAt,
-  sevenDayWindow, SETTINGS_KEYS, SETTINGS_PATCH_KEYS, FUNNEL_KEYS, FORMATS, AD_LANES
+  sevenDayWindow, SETTINGS_KEYS, SETTINGS_PATCH_KEYS, FUNNEL_KEYS, FORMATS, AD_LANES,
+  RESEARCH_SETTINGS_KEYS
 } from "./settings-store.mjs";
 import { InvalidError } from "./http.mjs";
 
@@ -28,6 +29,7 @@ describe("validateSettingsPatch", () => {
       format_style: { standard: "words", vsl: "bullets" }, draft_expiry_days: 21,
       winner_rule: { min_spend_cents: 5000 }, ad_number_floor: 91, next_overrides: null,
       max_batch_cost_usd: 50, max_month_cost_usd: 400, submagic_template: "Hormozi 1",
+      max_research_cost_usd: 2.5, research_shares_month_cap: false,
       caption_position_y: 0, magic_zooms: true, clean_audio: false,
       caption_dictionary: ["Fundhub", " UnderwriteIQ "], animation_mode: "overlay",
       flip_horizontal: true, settle_minutes: 15, quiet_start: "22:00", quiet_end: "06:00"
@@ -97,7 +99,10 @@ describe("settingsView", () => {
       updated_by: null, extra_column_from_a_later_migration: 1
     };
     const v = settingsView(row);
-    assert.deepEqual(Object.keys(v), [...SETTINGS_KEYS]);
+    assert.deepEqual(Object.keys(v), [...SETTINGS_KEYS, ...RESEARCH_SETTINGS_KEYS]);
+    // A row read before migration 429: the stop amount is unknown (null), research shares the cap.
+    assert.equal(v.max_research_cost_usd, null);
+    assert.equal(v.research_shares_month_cap, true);
     assert.equal(v.batch_time, "07:00");
     assert.equal(v.quiet_start, "21:00");
     assert.equal(v.updated_at, "2026-10-05T14:00:00.123Z");

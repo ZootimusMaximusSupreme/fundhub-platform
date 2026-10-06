@@ -14,8 +14,11 @@
 // encoded dot) is refused outright rather than cleaned: a path that needs
 // rewriting to look safe came from somewhere that should not be trusted.
 //
-// The list is exactly the spec list. The flywheel folder is NOT on it (a later
-// unit adds it, with its own review).
+// The list is the spec list plus the two folders the research buttons save into
+// (design docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions" and
+// "Slice 10", unit X2): marketing/flywheel/ (the stage files, e.g.
+// marketing/flywheel/partner/02-ad-research.md) and marketing/research/ (deep
+// research reports and their sources.json).
 
 import path from "node:path";
 
@@ -25,7 +28,9 @@ export const ALLOWED_DIRS = Object.freeze([
   "marketing/ads/ideas/",
   "marketing/ads/videos/",
   "marketing/brain/",
-  "ops/page-requests/"
+  "ops/page-requests/",
+  "marketing/flywheel/",
+  "marketing/research/"
 ]);
 
 /** Single files the app may write. */

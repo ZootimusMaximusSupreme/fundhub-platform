@@ -363,7 +363,21 @@ async function callAnthropic({ env, fetchImpl, request, mediaParts }) {
 //                 cost log has to price the one that ran.
 //   usage       — input, output, cache read and cache write tokens
 //   status      — the HTTP status whenever a reply came back
+//   content     — the reply's whole content array (every block, in order)
+//   serverToolUse — {web_search_requests, web_fetch_requests} from
+//                 usage.server_tool_use (0 when the call used no server tool)
 // Errors are plain words. Anything refused before sending starts "not sent: ".
+//
+// SERVER TOOLS AND CONTINUATIONS (added 2026-10-06 for the research jobs, design
+// docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions"):
+//   * a tool with a `type` and no input_schema (web_search_20260318,
+//     web_fetch_20260318) is an Anthropic server tool and is sent exactly as given;
+//     only client tools get the strict schema treatment and the "no tool call" check;
+//   * `messages` replaces `user` when given, so a caller can resend a paused turn
+//     (stop_reason "pause_turn") unchanged — the caller owns that loop;
+//   * `system` may be a list of content blocks (cache marks the last one).
+// pause_turn is NOT an error here: the reply comes back with stopReason
+// "pause_turn" and its content, and the caller decides whether to continue.
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 
@@ -380,6 +394,18 @@ function anthropicUsageOf(raw) {
     cache_read_input_tokens: n(u.cache_read_input_tokens),
     cache_creation_input_tokens: n(u.cache_creation_input_tokens)
   };
+}
+
+/** usage.server_tool_use as two whole numbers (searches are billed, fetches are not). */
+function serverToolUseOf(raw) {
+  const s = (raw && raw.usage && raw.usage.server_tool_use) || {};
+  const n = (v) => Math.max(0, Math.floor(Number(v) || 0));
+  return { web_search_requests: n(s.web_search_requests), web_fetch_requests: n(s.web_fetch_requests) };
+}
+
+/** An Anthropic server tool: has a `type` (web_search_20260318, …) and no input_schema. */
+function isServerTool(t) {
+  return isPlainObject(t) && typeof t.type === "string" && t.type !== "custom" && !isPlainObject(t.input_schema);
 }
 
 function isPlainObject(v) {
@@ -468,11 +494,14 @@ async function callAnthropicForced(args) {
     system, user, env = process.env, fetchImpl = globalThis.fetch,
     model, maxTokens, media = [], provider,
     timeoutMs, cache = false, effort, outputSchema, tools, toolChoice,
-    fallbacks = "default"
+    fallbacks = "default", messages
   } = args;
 
   const mediaParts = Array.isArray(media) ? media.filter(Boolean) : [];
-  const toolList = Array.isArray(tools) ? tools.filter(Boolean) : [];
+  const allTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
+  const serverTools = allTools.filter(isServerTool);
+  const toolList = allTools.filter((t) => !isServerTool(t));
+  const messageList = messages == null ? null : messages;
   const modelName = model == null || model === "" ? DEFAULT_ANTHROPIC_MODEL : String(model);
   const maxTok = maxTokens == null ? DEFAULT_ANTHROPIC_MAX_TOKENS : maxTokens;
   const effortLevel = effort == null ? DEFAULT_EFFORT : effort;
@@ -480,7 +509,10 @@ async function callAnthropicForced(args) {
   const choice = toolChoiceOf(toolChoice);
   const fallbackOn = fallbacks == null || fallbacks === true || fallbacks === "default";
   const sendFallbacks = fallbackOn && FALLBACK_MODELS.includes(modelName);
-  const systemText = String(system || "");
+  const systemBlocks = Array.isArray(system) ? system.filter(Boolean) : null;
+  const systemText = systemBlocks
+    ? systemBlocks.map((b) => (b && typeof b.text === "string" ? b.text : "")).join("\n")
+    : String(system || "");
 
   const request = {
     model: modelName,
@@ -493,15 +525,18 @@ async function callAnthropicForced(args) {
     cache: cache === true,
     timeout_ms: timeout,
     output_schema: outputSchema != null,
-    tools: toolList.map((t) => (t && t.name) || null),
-    tool_choice: toolList.length && !choice.error ? choice.type : null,
-    fallbacks: sendFallbacks ? "default" : null
+    tools: allTools.map((t) => (t && t.name) || null),
+    tool_choice: allTools.length && !choice.error ? choice.type : null,
+    fallbacks: sendFallbacks ? "default" : null,
+    messages_count: Array.isArray(messageList) ? messageList.length : null
   };
 
   const result = (fields) => ({
     mode: "live", text: null, raw: null, request, error: null, status: null,
     json: null, toolInput: null, stopReason: null, servedModel: null,
     usage: emptyAnthropicUsage(),
+    content: [],
+    serverToolUse: { web_search_requests: 0, web_fetch_requests: 0 },
     ...fields
   });
   const notSent = (why) => result({ mode: "shadow", error: `${MODEL_NOT_SENT}${why}` });
@@ -530,6 +565,26 @@ async function callAnthropicForced(args) {
     return notSent(`timeoutMs ${JSON.stringify(timeout)} is not a number of milliseconds above 0.`);
   }
   if (choice.error) return result({ mode: "shadow", error: choice.error });
+  for (const t of serverTools) {
+    if (typeof t.name !== "string" || !t.name) {
+      return notSent(`server tool ${JSON.stringify(t.type)} needs a name (web_search, web_fetch).`);
+    }
+  }
+  if (messageList != null) {
+    if (!Array.isArray(messageList) || !messageList.length) {
+      return notSent("messages must be a non-empty list of {role, content}.");
+    }
+    for (const m of messageList) {
+      if (!isPlainObject(m) || (m.role !== "user" && m.role !== "assistant") || m.content == null) {
+        return notSent("every message needs role 'user' or 'assistant' and content.");
+      }
+    }
+    if (messageList[0].role !== "user") return notSent("the first message must be the user's.");
+  }
+  if (serverTools.length && outputSchema != null) {
+    // Web search always cites, and citations plus structured outputs is HTTP 400.
+    return notSent("outputSchema cannot be used with a server tool (web search citations plus structured output is HTTP 400).");
+  }
   for (const t of toolList) {
     if (!isPlainObject(t) || typeof t.name !== "string" || !t.name) {
       return notSent("every tool needs a name.");
@@ -551,14 +606,20 @@ async function callAnthropicForced(args) {
     model: modelName,
     max_tokens: maxTok
   };
-  if (systemText) {
+  if (systemBlocks && systemBlocks.length) {
+    body.system = systemBlocks.map((b, i) => (cache === true && i === systemBlocks.length - 1)
+      ? { ...b, cache_control: { type: "ephemeral" } }
+      : b);
+  } else if (systemText) {
     body.system = cache === true
       ? [{ type: "text", text: systemText, cache_control: { type: "ephemeral" } }]
       : systemText;
   }
-  body.messages = [{ role: "user", content: buildUserContent(request.user, mediaParts) }];
-  if (toolList.length) {
-    body.tools = toolList.map(strictTool);
+  body.messages = messageList != null
+    ? messageList
+    : [{ role: "user", content: buildUserContent(request.user, mediaParts) }];
+  if (allTools.length) {
+    body.tools = [...serverTools, ...toolList.map(strictTool)];
     body.tool_choice = choice;
   }
   body.output_config = { effort: effortLevel };
@@ -614,7 +675,11 @@ async function callAnthropicForced(args) {
   const usage = anthropicUsageOf(raw);
   const servedModel = raw && typeof raw.model === "string" && raw.model ? raw.model : null;
   const stopReason = (raw && raw.stop_reason) || null;
-  const answered = { raw, status: res.status, usage, servedModel, stopReason };
+  const answered = {
+    raw, status: res.status, usage, servedModel, stopReason,
+    content: Array.isArray(raw && raw.content) ? raw.content : [],
+    serverToolUse: serverToolUseOf(raw)
+  };
 
   if (!res.ok) {
     return result({ ...answered, error: `anthropic ${res.status}: ${JSON.stringify(raw).slice(0, 300)}` });

@@ -54,7 +54,7 @@ describe("enqueueRepoWrite", () => {
 
   test("refuses a path outside the allow-list before touching the database", async () => {
     const tx = fakeTx();
-    for (const p of ["netlify.toml", "marketing/ads/../../CLAUDE.md", "/etc/passwd", "marketing/flywheel/avatar.md"]) {
+    for (const p of ["netlify.toml", "marketing/ads/../../CLAUDE.md", "/etc/passwd", "marketing/knowledge/hormozi/INDEX.md"]) {
       await assert.rejects(enqueueRepoWrite(tx, { orgId: ORG, opId: "x", path: p, mode: "replace", content: "x" }), RepoPathError);
     }
     assert.equal(tx.seen.length, 0);

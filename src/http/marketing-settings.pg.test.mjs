@@ -16,7 +16,7 @@ import { db, close } from "../db.mjs";
 import { createSession } from "../auth/session.mjs";
 import handler from "../../api/marketing/settings.mjs";
 import { withRequest, InvalidError } from "../marketing/http.mjs";
-import { saveSettings, SETTINGS_KEYS } from "../marketing/settings-store.mjs";
+import { saveSettings, SETTINGS_KEYS, RESEARCH_SETTINGS_KEYS } from "../marketing/settings-store.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const SLUG_A = "mset-pg-a";
@@ -117,7 +117,7 @@ describe("/api/marketing/settings", { skip: !HAS_DB ? "no DATABASE_URL" : false 
 
     const s = a.body.settings;
     assert.deepEqual(Object.keys(a.body), ["settings"]);
-    assert.deepEqual(Object.keys(s), [...SETTINGS_KEYS]);
+    assert.deepEqual(Object.keys(s), [...SETTINGS_KEYS, ...RESEARCH_SETTINGS_KEYS]);
     assert.equal(s.org_id, orgA);
     assert.equal(s.enabled, false);
     assert.equal(s.batch_weekday, 1);

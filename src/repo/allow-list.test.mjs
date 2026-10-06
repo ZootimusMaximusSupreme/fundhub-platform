@@ -7,12 +7,14 @@ import {
   ALLOWED_DIRS, ALLOWED_FILES, assertAllowedRepoPath, isAllowedRepoPath, normalizeRepoPath, RepoPathError
 } from "./allow-list.mjs";
 
-test("allow-list: exactly the spec list, and no flywheel folder", () => {
+test("allow-list: exactly the spec list plus the flywheel and research folders (design slice 10)", () => {
   assert.deepEqual([...ALLOWED_DIRS].sort(), [
     "marketing/ads/ideas/",
     "marketing/ads/scripts/machine/",
     "marketing/ads/videos/",
     "marketing/brain/",
+    "marketing/flywheel/",
+    "marketing/research/",
     "ops/page-requests/"
   ]);
   assert.deepEqual([...ALLOWED_FILES].sort(), [
@@ -22,7 +24,12 @@ test("allow-list: exactly the spec list, and no flywheel folder", () => {
     "marketing/ads/banned-live.json",
     "marketing/ads/registry.json"
   ]);
-  assert.equal(isAllowedRepoPath("marketing/flywheel/avatar.md"), false);
+  assert.equal(isAllowedRepoPath("marketing/flywheel/partner/02-ad-research.md"), true);
+  assert.equal(isAllowedRepoPath("marketing/research/2026-10-06-who-sells-funding-1a2b3c4d/report.md"), true);
+  // The folder itself, and anything beside it, stays refused.
+  assert.equal(isAllowedRepoPath("marketing/flywheel"), false);
+  assert.equal(isAllowedRepoPath("marketing/researchers/x.md"), false);
+  assert.equal(isAllowedRepoPath("marketing/knowledge/hormozi/INDEX.md"), false);
 });
 
 test("allow-list: the spec's files and folders are allowed", () => {
