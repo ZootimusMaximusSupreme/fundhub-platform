@@ -23,9 +23,15 @@
 import { callPlatform } from "./_api.mjs";
 import { decryptToken } from "./tokens.mjs";
 import { buildTargeting } from "../compliance/targeting.mjs";
+import {
+  creativeFeaturesOptOut,
+  CONTEXTUAL_MULTI_ADS_FIELD
+} from "./meta-creative-features.mjs";
 
 export const PLATFORM = "meta";
-const API_VERSION = process.env.META_API_VERSION || "v21.0";
+/* v26.0 is the newest Marketing API version on 2026-10-04 (spec M0 step 5);
+   META_API_VERSION overrides it. Read once, when the module loads. */
+export const API_VERSION = process.env.META_API_VERSION || "v26.0";
 const BASE = "https://graph.facebook.com";
 
 /* Every call takes the connection row and derives its own token, so no caller
@@ -90,7 +96,14 @@ export async function createAdSet(connection, adSet, ctx = {}) {
   });
 }
 
+/* createAd — always PAUSED. Only Chris turns an ad on (spec §2 item 6), and
+   that is a separate, per-ad action. So this takes NO status at all: a caller
+   that passes one — even "PAUSED" — is a caller that thinks it can choose, and
+   it is refused before anything is sent. */
 export async function createAd(connection, ad, ctx = {}) {
+  if (ad && Object.prototype.hasOwnProperty.call(ad, "status")) {
+    throw new Error("createAd takes no status: every new ad is loaded PAUSED, and only Chris turns ads on");
+  }
   return callPlatform({
     url: `${BASE}/${API_VERSION}/${acct(connection)}/ads`,
     token: tokenFor(connection),
@@ -123,6 +136,271 @@ export const pause  = (connection, { externalId }, ctx = {}) =>
 export const resume = (connection, { externalId }, ctx = {}) =>
   callPlatform({ url: `${BASE}/${API_VERSION}/${externalId}`, token: tokenFor(connection),
                  body: { status: "ACTIVE" }, ctx });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING A FINISHED VIDEO AS A PAUSED AD (spec §10.1, §10.2, §10.5)
+
+   upload → wait until Meta says ready → thumbnail → creative (every
+   enhancement OFF) → read the creative back → ad set guard → createAd (PAUSED).
+
+   NOTHING HERE SPENDS OR TURNS ANYTHING ON. A video, an image, a creative and a
+   paused ad cost nothing. No function in this block sends ACTIVE, changes a
+   budget, or makes a campaign or an ad set. The order and the database writes
+   are the loader's job (src/marketing/meta-load.mjs); it wraps each write in
+   guardedWrite with the copy as screenSubject.
+
+   Every field name asked for below is a field Meta's v26.0 types declare
+   (checked 2026-10-05 against Meta's v26.0.2 Python SDK: AdVideo.status,
+   VideoStatus.video_status, VideoThumbnail.uri/is_preferred, AdSet
+   effective_status/is_dynamic_creative/campaign, Campaign
+   special_ad_categories/effective_status, AdCreative degrees_of_freedom_spec/
+   contextual_multi_ads). See the trap at VIDEO_INSIGHT_FIELDS below: one unknown
+   field fails the whole request.
+
+   ⚠️ NOT YET RUN AGAINST THE LIVE AD ACCOUNT. Proven with a fake Meta only
+   (meta-load.test.mjs). The first real load is the confirmation. */
+
+const graph = (path) => `${BASE}/${API_VERSION}/${path}`;
+
+/* uploadVideo — POST /act_{id}/advideos with file_url. Meta fetches the file
+   itself from that address (the R2 final), so no bytes pass through us.
+   → { video_id } */
+export async function uploadVideo(connection, { file_url, name } = {}, ctx = {}) {
+  if (!/^https:\/\//i.test(String(file_url || ""))) {
+    throw new Error("uploadVideo needs an https file_url Meta can download");
+  }
+  const res = await callPlatform({
+    url: graph(`${acct(connection)}/advideos`),
+    token: tokenFor(connection),
+    body: { file_url, ...(name ? { name } : {}) },
+    ctx
+  });
+  if (!res?.id) throw new Error("Meta did not return a video id");
+  return { video_id: String(res.id) };
+}
+
+export const VIDEO_STATUSES = Object.freeze(["ready", "processing", "error", "expired"]);
+
+/* getVideoStatus — asks ONCE. The loader re-queues itself every 10 s for up to
+   20 minutes (spec §10.2); holding a function open to poll here would not fit.
+   → 'ready' | 'processing' | 'error' | 'expired'. A value Meta adds later reads
+   as 'processing' — never as ready — so the loader keeps waiting and its own
+   20-minute limit records the failure. */
+export async function getVideoStatus(connection, video_id, ctx = {}) {
+  if (!video_id) throw new Error("getVideoStatus needs a video_id");
+  const res = await callPlatform({
+    url: graph(`${encodeURIComponent(String(video_id))}?fields=status`),
+    token: tokenFor(connection),
+    method: "GET",
+    ctx
+  });
+  const s = String(res?.status?.video_status || "").toLowerCase();
+  return VIDEO_STATUSES.includes(s) ? s : "processing";
+}
+
+/* getVideoThumbnails — GET /{video_id}/thumbnails.
+   → [{ uri, is_preferred }], Meta's order kept. Entries with no uri dropped. */
+export async function getVideoThumbnails(connection, video_id, ctx = {}) {
+  if (!video_id) throw new Error("getVideoThumbnails needs a video_id");
+  const res = await callPlatform({
+    url: graph(`${encodeURIComponent(String(video_id))}/thumbnails?fields=uri,is_preferred`),
+    token: tokenFor(connection),
+    method: "GET",
+    ctx
+  });
+  return (Array.isArray(res?.data) ? res.data : [])
+    .filter((t) => t && typeof t.uri === "string" && t.uri)
+    .map((t) => ({ uri: t.uri, is_preferred: t.is_preferred === true }));
+}
+
+/* preferredThumbnail(list) → the uri Meta marked preferred, else the first, else
+   null. The loader puts it in createCreative as image_url (spec §10.2). */
+export function preferredThumbnail(list = []) {
+  const all = Array.isArray(list) ? list : [];
+  return (all.find((t) => t?.is_preferred) || all[0])?.uri || null;
+}
+
+/* uploadImage — a custom thumbnail. POST /act_{id}/adimages with `bytes`
+   (base64). Meta's v26 reference for this edge takes only `bytes` or
+   `copy_from`; it has no "fetch this address" parameter. So a { url } is
+   refused in plain words: put that address straight into createCreative as
+   image_url instead (Meta saves it to the image library itself).
+   → { image_hash } */
+export async function uploadImage(connection, { url, bytes } = {}, ctx = {}) {
+  if (bytes === undefined || bytes === null || bytes === "") {
+    const e = new Error(url
+      ? "Meta's image upload takes the picture itself, not a web address. Pass the address to createCreative as image_url instead."
+      : "uploadImage needs the image bytes");
+    e.code = url ? "IMAGE_URL_NOT_UPLOADABLE" : "NO_IMAGE";
+    throw e;
+  }
+  const b64 = typeof bytes === "string" ? bytes : Buffer.from(bytes).toString("base64");
+  const res = await callPlatform({
+    url: graph(`${acct(connection)}/adimages`),
+    token: tokenFor(connection),
+    body: { bytes: b64 },
+    ctx
+  });
+  // { images: { <name>: { hash, url, … } } } — one image in, one entry out.
+  const first = Object.values(res?.images || {})[0];
+  if (!first?.hash) throw new Error("Meta did not return an image hash");
+  return { image_hash: String(first.hash) };
+}
+
+/* createCreative — a video ad creative with every enhancement OFF.
+
+   object_story_spec: { page_id, instagram_user_id (the v22+ name; never
+   instagram_actor_id), video_data: { video_id, image_url | image_hash, message,
+   title, link_description, call_to_action: { type, value: { link } } } }
+
+   url_tags carries the UTMs. They never go in the link itself (spec §10.3), so
+   a link holding utm_ is refused.
+
+   degrees_of_freedom_spec.creative_features_spec opts out of every key in
+   meta-creative-features.mjs, and contextual_multi_ads (multi-advertiser ads —
+   a field of the creative itself, not a creative_features_spec key) is
+   OPT_OUT too. The caller then reads the creative back (readCreativeFeatures)
+   and stops on any OPT_IN.
+   → { creative_id } */
+export async function createCreative(connection, spec = {}, ctx = {}) {
+  const {
+    name, page_id, instagram_user_id, video_id, image_url, image_hash,
+    message, title, link_description, cta_type, link, url_tags
+  } = spec;
+  const missing = [];
+  if (!page_id) missing.push("page_id");
+  if (!video_id) missing.push("video_id");
+  if (!message) missing.push("message");
+  if (!cta_type) missing.push("cta_type");
+  if (!link) missing.push("link");
+  if (!url_tags) missing.push("url_tags");
+  if (missing.length) throw new Error(`createCreative is missing ${missing.join(", ")}`);
+  if (Boolean(image_url) === Boolean(image_hash)) {
+    throw new Error("createCreative needs exactly one of image_url or image_hash");
+  }
+  if (/[?&]utm_/i.test(String(link))) {
+    throw new Error("the UTMs go in url_tags, never in the link itself");
+  }
+
+  const video_data = {
+    video_id: String(video_id),
+    ...(image_url ? { image_url } : { image_hash }),
+    message,
+    ...(title ? { title } : {}),
+    ...(link_description ? { link_description } : {}),
+    call_to_action: { type: cta_type, value: { link } }
+  };
+
+  const res = await callPlatform({
+    url: graph(`${acct(connection)}/adcreatives`),
+    token: tokenFor(connection),
+    body: {
+      ...(name ? { name } : {}),
+      object_story_spec: {
+        page_id: String(page_id),
+        ...(instagram_user_id ? { instagram_user_id: String(instagram_user_id) } : {}),
+        video_data
+      },
+      url_tags: String(url_tags).replace(/^\?/, ""),
+      degrees_of_freedom_spec: { creative_features_spec: creativeFeaturesOptOut() },
+      [CONTEXTUAL_MULTI_ADS_FIELD]: { enroll_status: "OPT_OUT" }
+    },
+    ctx
+  });
+  if (!res?.id) throw new Error("Meta did not return a creative id");
+  return { creative_id: String(res.id) };
+}
+
+/* readCreativeFeatures — read the creative back and say whether every
+   enhancement is off. FAILS CLOSED:
+     - any key whose enroll_status is not OPT_OUT (OPT_IN, or anything Meta
+       invents later) is listed in opt_in;
+     - no creative_features_spec on the read at all → all_opt_out false, because
+       nothing was proved.
+   A key we sent that Meta did not echo back is listed in `unconfirmed` only:
+   Meta drops features that do not apply to the format (its own docs say so),
+   and a feature that is not there cannot be on.
+   → { all_opt_out, opt_in: [keys], unconfirmed: [keys], missing_spec, reason } */
+export async function readCreativeFeatures(connection, creative_id, ctx = {}) {
+  if (!creative_id) throw new Error("readCreativeFeatures needs a creative_id");
+  const res = await callPlatform({
+    url: graph(`${encodeURIComponent(String(creative_id))}?fields=degrees_of_freedom_spec,${CONTEXTUAL_MULTI_ADS_FIELD}`),
+    token: tokenFor(connection),
+    method: "GET",
+    ctx
+  });
+  return creativeFeaturesVerdict(res);
+}
+
+/* creativeFeaturesVerdict(readBack) — the pure half of readCreativeFeatures. */
+export function creativeFeaturesVerdict(readBack = {}) {
+  const spec = readBack?.degrees_of_freedom_spec?.creative_features_spec;
+  const missing_spec = !spec || typeof spec !== "object";
+  const opt_in = [];
+  if (!missing_spec) {
+    for (const [key, detail] of Object.entries(spec)) {
+      if (String(detail?.enroll_status || "") !== "OPT_OUT") opt_in.push(key);
+    }
+  }
+  const cma = readBack?.[CONTEXTUAL_MULTI_ADS_FIELD];
+  if (cma && String(cma.enroll_status || "") !== "OPT_OUT") opt_in.push(CONTEXTUAL_MULTI_ADS_FIELD);
+
+  const sent = Object.keys(creativeFeaturesOptOut());
+  const unconfirmed = missing_spec ? sent.slice() : sent.filter((k) => !(k in spec));
+  if (!cma) unconfirmed.push(CONTEXTUAL_MULTI_ADS_FIELD);
+
+  const all_opt_out = !missing_spec && opt_in.length === 0;
+  const reason = all_opt_out ? null
+    : missing_spec
+      ? "Meta did not show the creative's enhancement settings, so we cannot prove they are off. The ad was not loaded."
+      : `Meta has these enhancements turned on: ${opt_in.join(", ")}. The ad was not loaded.`;
+  return { all_opt_out, opt_in, unconfirmed, missing_spec, reason };
+}
+
+/* getAdSetGuardInfo — what checkAdSetGuard (meta-guards.mjs) needs, in one GET.
+   ads.limit(0).summary(true) asks Meta for the count without the list.
+   → { effective_status, is_dynamic_creative, ad_count,
+       campaign: { special_ad_categories, effective_status } } */
+export async function getAdSetGuardInfo(connection, ad_set_external_id, ctx = {}) {
+  if (!ad_set_external_id) throw new Error("getAdSetGuardInfo needs the ad set's Meta id");
+  const fields = [
+    "effective_status",
+    "is_dynamic_creative",
+    "campaign{special_ad_categories,effective_status}",
+    "ads.limit(0).summary(true)"
+  ].join(",");
+  const res = await callPlatform({
+    url: graph(`${encodeURIComponent(String(ad_set_external_id))}?fields=${encodeURIComponent(fields)}`),
+    token: tokenFor(connection),
+    method: "GET",
+    ctx
+  });
+  return adSetGuardInfoFrom(res);
+}
+
+/* adSetGuardInfoFrom(answer) — the pure half. NULL means Meta did not say.
+   An ad set with no ads at all can come back with no `ads` key; that is 0. An
+   `ads` key with no readable count is null (unknown), never 0. */
+export function adSetGuardInfoFrom(res = {}) {
+  let ad_count;
+  if (res?.ads === undefined || res?.ads === null) ad_count = 0;
+  else {
+    const n = Number(res.ads?.summary?.total_count);
+    ad_count = Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+  }
+  const c = res?.campaign;
+  return {
+    effective_status: res?.effective_status ?? null,
+    is_dynamic_creative: typeof res?.is_dynamic_creative === "boolean" ? res.is_dynamic_creative : null,
+    ad_count,
+    campaign: c && typeof c === "object"
+      ? {
+          special_ad_categories: Array.isArray(c.special_ad_categories) ? c.special_ad_categories.map(String) : null,
+          effective_status: c.effective_status ?? null
+        }
+      : null
+  };
+}
 
 /* fetchInsights — the metrics sync, and what the kill switch reads for ACTUAL
    spend. Deliberately goes to the platform every time rather than to
@@ -384,7 +662,10 @@ export async function requestClientAdAccountAccess(
 }
 
 export default {
-  PLATFORM, createCampaign, createAdSet, createAd, updateBudget, pause, resume, fetchInsights,
+  PLATFORM, API_VERSION, createCampaign, createAdSet, createAd, updateBudget, pause, resume, fetchInsights,
+  uploadVideo, getVideoStatus, getVideoThumbnails, preferredThumbnail, uploadImage,
+  createCreative, readCreativeFeatures, creativeFeaturesVerdict,
+  getAdSetGuardInfo, adSetGuardInfoFrom, VIDEO_STATUSES,
   watchedActionCount, playCurveActions, videoMetrics,
   VIDEO_INSIGHT_FIELDS, VIDEO_INSIGHT_REQUEST_FIELDS,
   VIDEO_PLAY_CURVE_FIELD, VIDEO_PLAY_CURVE_COLUMN,

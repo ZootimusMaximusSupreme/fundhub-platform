@@ -70,3 +70,69 @@ flowchart TD
 - `GET /api/read/ad-books` folds the roll-up rows but does not yet add up `payments` or `paid_cents` into its groups or totals, so the screen does not show them. The store returns them; the endpoint is not changed here.
 - A new Meta ad gets a visitor number only after someone gives that ad its `fundhub_ad_number` (the Campaign Manager link box, `api/campaigns/link-asset.mjs`). The four SLO ads that ran were numbered by 407 (84, 90, 89, 86). The three August book-a-call ads have no Fundhub number and stay NULL.
 - `vsl_watch_sessions.ad_number` (379) is still the leading-digits rule only. It is not part of this flow.
+
+## U13 Meta upload, creative, thumbnails, guards, backoff, Page/Instagram id script
+
+Generated from the code on 2026-10-05 (branch `mm-u13-meta-upload`). These are
+the Meta calls the M4 loader (U28, `src/marketing/meta-load.mjs`, not built
+yet) strings together. This unit adds the calls only. Nothing here runs on its
+own, writes our database, or turns an ad on.
+
+```mermaid
+flowchart TD
+    R2[Approved final video<br/>R2 https address] -->|uploadVideo<br/>POST /act_id/advideos file_url| VID[Meta video id]
+    VID -->|getVideoStatus<br/>GET /video?fields=status, asked once| ST{status.video_status}
+    ST -->|processing, or a value Meta adds later| WAIT[loader asks again later<br/>UNVERIFIED: U28 owns the 10 s / 20 min loop]
+    ST -->|error or expired| ERR[loader records load_error<br/>UNVERIFIED: U28]
+    ST -->|ready| TH[getVideoThumbnails<br/>GET /video/thumbnails<br/>preferredThumbnail → image_url]
+    TH -->|custom thumbnail only| IMG[uploadImage<br/>POST /act_id/adimages bytes → image_hash<br/>a web address is refused in plain words]
+    TH --> CR[createCreative<br/>POST /act_id/adcreatives<br/>object_story_spec page_id · instagram_user_id · video_data<br/>url_tags carry the UTMs, a link with utm_ is refused<br/>creative_features_spec: 56 keys OPT_OUT<br/>contextual_multi_ads OPT_OUT]
+    IMG --> CR
+    CR -->|readCreativeFeatures<br/>GET /creative?fields=degrees_of_freedom_spec,contextual_multi_ads| RB{any key not OPT_OUT,<br/>or no spec on the read?}
+    RB -->|yes| STOP[all_opt_out false<br/>reason names the keys · ad NOT loaded]
+    RB -->|no| GI[getAdSetGuardInfo<br/>GET /adset effective_status · is_dynamic_creative ·<br/>campaign special_ad_categories, effective_status · ads count]
+    GI -->|checkAdSetGuard with our campaigns.special_ad_category| G{archived or deleted · dynamic creative ·<br/>50 ads · count unknown · no Meta category ·<br/>Meta category ≠ ours · campaign archived or deleted?}
+    G -->|any| REF[ok false · plain reasons · ad NOT loaded]
+    G -->|none| AD[createAd<br/>POST /act_id/ads status PAUSED<br/>any status argument is refused]
+    G -.->|paused ad set or campaign| NOTE[note for the Launch tab, not a refusal]
+    AD --> PAUSED[Paused ad in Meta<br/>only Chris turns it on]
+```
+
+| Step | Code | What fires it | What it never does |
+|---|---|---|---|
+| Upload | `uploadVideo` (`src/adplatforms/meta.mjs`) | the loader, with the R2 final's https address | send bytes through us |
+| Ready check | `getVideoStatus` | the loader, once per job run | poll inside the function |
+| Thumbnail | `getVideoThumbnails`, `preferredThumbnail`, `uploadImage` | the loader | fetch an image address itself (Meta's `/adimages` takes only `bytes` or `copy_from`) |
+| Creative | `createCreative` | the loader, after guardedWrite's screen (U28) | send OPT_IN, put UTMs in the link, use `instagram_actor_id` |
+| Read-back | `readCreativeFeatures` → `creativeFeaturesVerdict` | the loader, right after the creative | pass a creative with any key not OPT_OUT, or with no spec to read |
+| Ad set guard | `getAdSetGuardInfo` → `checkAdSetGuard` (`src/adplatforms/meta-guards.mjs`) | the loader, before createAd | refuse a paused ad set (it is a note) |
+| Paused ad | `createAd` | the loader | take a status; send ACTIVE |
+| Backing off | `callPlatform` (`src/adplatforms/_api.mjs`) | every Meta call | repeat a POST that hit a 5xx; hold a function open longer than 10 s per pause |
+| Page and Instagram ids | `scripts/meta-page-ids.mjs` | run by hand once, from a checkout with `.env` | write anything; POST; hold an account id in its source |
+
+**Backing off, in words.** When Meta answers with code 4, 17, 32, 613 or 80004,
+or 429, the same call is asked again after 2 s, then 4 s, then it gives up as
+`retryable`. A GET that hits a 5xx is asked again the same way; a POST is not,
+because it may already have made the object. When the
+`x-business-use-case-usage` header shows more than 75% used, the next call to
+that connection waits first (2 s at 75%, up to 10 s at 100%). When Meta names a
+regain time longer than 10 s, nothing more is sent and the error carries
+`retryAfterMs` so the loader's job comes back later.
+
+### Gaps and things not drawn (U13)
+
+- `UNVERIFIED` against the live ad account: every call here. Proven with a fake
+  Meta only (`src/adplatforms/meta-load.test.mjs`). The first real load is the
+  confirmation; `meta.mjs` keeps its "CONFIRM BEFORE THIS RUNS LIVE" header.
+- Spec §10.2 says `creative_features_spec` "plus contextual_multi_ads". Meta's
+  v26 Ad Creative reference makes `contextual_multi_ads` its own field on the
+  creative, not a `creative_features_spec` key, so it is sent there.
+- The opt-out list (`src/adplatforms/meta-creative-features.mjs`) holds the 56
+  keys a Meta documentation page names. 27 more names exist only in Meta's SDK
+  type and are not sent; the read-back still stops a load if any comes back
+  OPT_IN. `standard_enhancements` is not sent (v22.0: no longer supported).
+- The ad count asks `ads.limit(0).summary(true)`. An ad set with no `ads` key
+  in Meta's answer counts as 0.
+- Spec §10.2 wants every write through `guardedWrite` with the copy as
+  `screenSubject`. That wrapping, the database rows and the 10 s / 20 min wait
+  loop belong to the loader (U28), not drawn here.
