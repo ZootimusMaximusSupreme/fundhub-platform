@@ -1,0 +1,197 @@
+<title>Report Numbers Draft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of screens; each screen lists its numbered marks, red = what it showed, green = what the branch shows. */
+:root{
+  --bg:#f7f7f5; --panel:#ffffff; --ink:#151515; --muted:#5d5f63; --line:#dcdcd8;
+  --red:#c62828; --red-wash:#fdecec; --green:#1b7a3a; --green-wash:#e8f5ec;
+  --body:'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141516; --panel:#1d1f21; --ink:#ececea; --muted:#a3a5a8; --line:#33363a;
+  --red:#ff6b6b; --red-wash:#3a1d1d; --green:#5fd38a; --green-wash:#16301f; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#141516; --panel:#1d1f21; --ink:#ececea; --muted:#a3a5a8; --line:#33363a;
+  --red:#ff6b6b; --red-wash:#3a1d1d; --green:#5fd38a; --green-wash:#16301f; color-scheme:dark }
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:24px 64px;display:flex;flex-direction:column;gap:32px}
+header{display:flex;flex-direction:column;gap:8px}
+h1{font-size:28px;line-height:1.2;margin:0;text-wrap:balance}
+h2{font-size:20px;margin:0;text-wrap:balance}
+.lede{color:var(--muted);margin:0;max-width:65ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:600 14px var(--body);padding:10px 16px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;min-height:44px}
+button:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:14px;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;border:2px solid}
+.sw.r{border-color:var(--red);background:var(--red-wash)} .sw.g{border-color:var(--green);background:var(--green-wash)}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:16px}
+.url{font-family:var(--mono);font-size:13px;color:var(--muted);word-break:break-all}
+.mark{display:grid;grid-template-columns:32px minmax(0,1fr);gap:8px 12px;align-items:start}
+.num{grid-row:span 3;width:28px;height:28px;border-radius:50%;background:var(--red);color:var(--panel);font:600 14px var(--mono);display:flex;align-items:center;justify-content:center}
+.what{font-weight:600}
+.box{border:2px solid;border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.box .tag{display:block;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.was{border-color:var(--red);background:var(--red-wash)} .was .tag{color:var(--red)}
+.now{border-color:var(--green);background:var(--green-wash)} .now .tag{color:var(--green)}
+.why{font-size:14px;color:var(--muted);max-width:65ch}
+.cards{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+footer{font-size:13px;color:var(--muted)}
+/* clean view: no marks, only what the branch shows */
+body.clean .num, body.clean .was, body.clean .why, body.clean .legend, body.clean .box .tag{display:none}
+body.clean .now{border-color:var(--line);background:transparent}
+body.clean .mark{grid-template-columns:minmax(0,1fr)}
+@media (max-width:480px){ h1{font-size:24px} .mark{grid-template-columns:28px minmax(0,1fr)} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Report numbers: marked draft</h1>
+    <p class="lede">Every report number below was checked against its raw source on Oct 5, 2026 (the database, read only, and Meta and ClickFunnels by read-only API). Red is what the screen showed. Green is what branch <span class="url">m4-reports-tieout</span> shows. Nothing here is live until the one ship.</p>
+    <div class="bar">
+      <button id="toggle" type="button" aria-pressed="false">Hide the marks</button>
+    </div>
+    <div class="legend">
+      <span class="key"><span class="sw r"></span>Wrong on the screen today</span>
+      <span class="key"><span class="sw g"></span>The fix on the branch</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Campaign manager</h2>
+    <div class="url">https://fundhub.ai/app/campaign-manager.html</div>
+
+    <div class="mark"><span class="num">1</span>
+      <div class="what">Spend yesterday (tile and column)</div>
+      <div class="box was"><span class="tag">Showed at 5:45pm Arizona, Oct 5</span>0.00</div>
+      <div class="box now"><span class="tag">Shows now</span>120.18 &nbsp;(Oct 4, the ad account's yesterday)</div>
+    </div>
+    <p class="why">Meta dates every row in the ad account's time zone, Arizona. The screen counted days in UTC, so from 5pm to midnight Arizona time "yesterday" was today, which has no rows yet.</p>
+
+    <div class="mark"><span class="num">2</span>
+      <div class="what">Creative fatigue: click rate, SLO1, Sep 30 to Oct 4</div>
+      <div class="box was"><span class="tag">Showed</span>7.58%</div>
+      <div class="box now"><span class="tag">Shows now</span>9.87% &nbsp;(15 taps on 152 shows)</div>
+    </div>
+    <p class="why">It averaged each day's rate, so a day with 3 shows counted as much as a day with 400. Now it is taps divided by shows for the whole window, the way Meta counts it.</p>
+
+    <div class="mark"><span class="num">3</span>
+      <div class="what">Campaign drawer: click rate on Oct 3</div>
+      <div class="box was"><span class="tag">Showed</span>7.29%</div>
+      <div class="box now"><span class="tag">Shows now</span>4.83% &nbsp;(23 taps on 476 shows)</div>
+    </div>
+    <p class="why">Same averaging problem, per day across the four ads. The drawer's summary now says "click rate · whole window" and divides the totals.</p>
+
+    <div class="mark"><span class="num">4</span>
+      <div class="what">Funnel pages table: the column header</div>
+      <div class="box was"><span class="tag">Showed</span>Date &nbsp;·&nbsp; VSL &nbsp;·&nbsp; Oct 04 &nbsp;·&nbsp; 642 views</div>
+      <div class="box now"><span class="tag">Shows now</span>Pulled on &nbsp;·&nbsp; VSL &nbsp;·&nbsp; Oct 04 &nbsp;·&nbsp; 642 views<br>Each row is a running total, not one day.</div>
+    </div>
+    <p class="why">642 was 90 days of views (ClickFunnels says the same: 642). That week was 77. The Sync button pulls 7 days, the nightly job 30, a hand pull 90, and the row does not save which.</p>
+
+    <div class="mark"><span class="num">5</span>
+      <div class="what">Which angle is working: spend over 7 days</div>
+      <div class="box was"><span class="tag">Showed after 5pm Arizona</span>523.79</div>
+      <div class="box now"><span class="tag">Shows now</span>606.53 &nbsp;(Sep 29 to Oct 5, Arizona days)</div>
+    </div>
+    <p class="why">The UTC window dropped Sep 29 (82.74) for seven hours a day. The people count uses the same Arizona days, so spend and people cover the same hours.</p>
+
+    <div class="mark"><span class="num">6</span>
+      <div class="what">"partial" marker in the drawer's daily table</div>
+      <div class="box was"><span class="tag">Showed</span>marked tomorrow (UTC) as partial; today's real partial row unmarked</div>
+      <div class="box now"><span class="tag">Shows now</span>marks today in Arizona</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ops &amp; Admin</h2>
+    <div class="url">https://fundhub.ai/app/ops-admin.html</div>
+
+    <div class="mark"><span class="num">7</span>
+      <div class="what">Company KPIs: new clients, last 7 days</div>
+      <div class="box was"><span class="tag">Showed</span>23</div>
+      <div class="box now"><span class="tag">Shows now</span>4</div>
+    </div>
+    <p class="why">19 of the 23 were test rows: @fundhub.ai, @example.com and e2e / sim / test addresses left by test runs. They are now left out by the same rule the page tracker already uses.</p>
+
+    <div class="mark"><span class="num">8</span>
+      <div class="what">Today's briefs: ad spend line</div>
+      <div class="box was"><span class="tag">Showed</span>Ad spend this window: 52379 cents.</div>
+      <div class="box now"><span class="tag">Shows now</span>Ad spend this window: $606.53.</div>
+    </div>
+    <p class="why">Two fixes: it reads in dollars, and the 7 days are Arizona days (see mark 5).</p>
+
+    <div class="mark"><span class="num">9</span>
+      <div class="what">KPI money with cents</div>
+      <div class="box was"><span class="tag">Showed</span>$606.5</div>
+      <div class="box now"><span class="tag">Shows now</span>$606.50</div>
+    </div>
+
+    <div class="mark"><span class="num">10</span>
+      <div class="what">Footer</div>
+      <div class="box was"><span class="tag">Showed</span>FUNDHUB-ADMIN · v1</div>
+      <div class="box now"><span class="tag">Shows now</span>Fundhub admin · v1</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pipeline</h2>
+    <div class="url">https://fundhub.ai/app/pipeline.html</div>
+
+    <div class="mark"><span class="num">11</span>
+      <div class="what">Column money: New Lead (8 cards), Survey Complete (2 cards)</div>
+      <div class="box was"><span class="tag">Showed</span>$0 funding est. &nbsp;·&nbsp; board total $0</div>
+      <div class="box now"><span class="tag">Shows now</span>— funding est. &nbsp;·&nbsp; board total —</div>
+    </div>
+    <p class="why">Not one of those 10 cards has a funding estimate. Unknown is a dash, not $0. An empty column still reads $0.</p>
+  </section>
+
+  <section>
+    <h2>Weekly ops brief</h2>
+    <div class="url">Company Brain document, made on demand (POST /api/ops/weekly-brief)</div>
+
+    <div class="mark"><span class="num">12</span>
+      <div class="what">Funnel pages this week</div>
+      <div class="box was"><span class="tag">Wrote</span>- Fundhub Funnel / VSL: 642 views, 0 conversions</div>
+      <div class="box now"><span class="tag">Writes now</span>Each number is ClickFunnels' running total as of the day it was pulled (7 to 90 days back; the window is not saved). It is not this week's count.<br>- Fundhub Funnel / VSL: 642 views, 0 conversions (pulled 2026-10-04)</div>
+    </div>
+    <p class="why">It added up every pulled total in the week. Once the nightly job runs again, seven 30-day totals would have been added together.</p>
+  </section>
+
+  <section>
+    <h2>Winner's Board and the trial plan</h2>
+    <div class="url">https://fundhub.ai/partner/board/live/ &nbsp;·&nbsp; https://fundhub.ai/partner/trial/live/</div>
+
+    <div class="mark"><span class="num">13</span>
+      <div class="what">Company name</div>
+      <div class="box was"><span class="tag">Showed</span>FundHub does not scrape any ad platform. &nbsp;·&nbsp; FundHub starts fulfilling</div>
+      <div class="box now"><span class="tag">Shows now</span>Fundhub does not scrape any ad platform. &nbsp;·&nbsp; Fundhub starts fulfilling</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Wrong, but the cause is in another workflow's files</h2>
+    <ul class="cards">
+      <li>Meta spend Aug 4 to 16 ($560.78, 23 ad-days) never reached the database. Meta total since Aug 4: $1,563.13. Database: $1,002.32. (M1, the daily sync)</li>
+      <li>Conversions read 0 on all 46 ad-days. Meta is never asked for them, so 0 means unknown. (M1)</li>
+      <li>The dying-ad buzz never sees taps: the query drops the clicks column. (M2, watch curve)</li>
+    </ul>
+  </section>
+
+  <footer>Branch m4-reports-tieout. Board: ops/workflows/perfect-machine-2026-10-05.md. Read-only checks only; nothing was sent or changed on production.</footer>
+</div>
+
+<script>
+(function(){
+  var b = document.getElementById('toggle');
+  b.addEventListener('click', function(){
+    var on = document.body.classList.toggle('clean');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.textContent = on ? 'Show the marks' : 'Hide the marks';
+  });
+})();
+</script>
