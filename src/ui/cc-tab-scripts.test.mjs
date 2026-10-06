@@ -164,7 +164,7 @@ describe("Write now is drawn only when write_now_ready is true", () => {
     const ideas = S.html.ideas(st);
     assert.doesNotMatch(head, /data-act="write-now"/);
     assert.ok(!buttons(head).some((b) => /write/i.test(b)), "no write button");
-    assert.doesNotMatch(head, /Spends model money/);
+    assert.doesNotMatch(head, /with the model/);
     assert.doesNotMatch(ideas, /data-act="idea-write"/);
     assert.match(ideas, /data-act="idea-save"/);
   });
@@ -173,14 +173,14 @@ describe("Write now is drawn only when write_now_ready is true", () => {
     const st = loaded({ ready: true, open: { ideas: true } });
     const head = S.html.head(st);
     assert.match(head, /data-act="write-now"/);
-    assert.match(head, /Writes 3 scripts\. Spends model money\. Cost: unknown, not measured yet\. It stops by itself at \$40 for the batch and \$300 a month\./);
+    assert.match(head, /Writes 3 scripts with the model\. Cost and time: unknown, not measured yet\. Stops by itself at \$40 a batch and \$300 a month\./);
     assert.match(S.html.ideas(st), /data-act="idea-write"/);
     assert.doesNotMatch(buttons(head).filter((b) => /write-now/.test(b))[0], /primary/);
   });
 
   test("an unknown cap prints 'unknown', never $0", () => {
     const note = S.writeNowNote({ scripts_per_day: 1, max_batch_cost_usd: null, max_month_cost_usd: null });
-    assert.match(note, /Writes 1 script\./);
+    assert.match(note, /Writes 1 script with the model\./);
     assert.match(note, /the batch cap \(unknown\) and the month cap \(unknown\)/);
     assert.doesNotMatch(note, /\$0/);
     assert.match(S.writeNowNote(null), /Writes your daily number of scripts/);

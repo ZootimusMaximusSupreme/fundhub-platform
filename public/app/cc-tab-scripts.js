@@ -466,16 +466,16 @@
   function capWords(settings) {
     const b = settings && settings.max_batch_cost_usd;
     const m = settings && settings.max_month_cost_usd;
-    const bt = b == null ? "the batch cap (unknown)" : `$${b} for the batch`;
+    const bt = b == null ? "the batch cap (unknown)" : `$${b} a batch`;
     const mt = m == null ? "the month cap (unknown)" : `$${m} a month`;
-    return `It stops by itself at ${bt} and ${mt}.`;
+    return `Stops by itself at ${bt} and ${mt}.`;
   }
 
   /** The plain cost note under Write now. Every cost is unknown until measured. */
   function writeNowNote(settings) {
     const n = settings && Number.isInteger(settings.scripts_per_day) ? settings.scripts_per_day : null;
     const what = n == null ? "Writes your daily number of scripts" : `Writes ${plural(n, "script")}`;
-    return `${what}. Spends model money. Cost: unknown, not measured yet. ${capWords(settings)} Time: unknown, not measured yet.`;
+    return `${what} with the model. Cost and time: unknown, not measured yet. ${capWords(settings)}`;
   }
 
   /** The schedule line on an empty inbox. */
@@ -724,7 +724,7 @@
 
     return `<article class="card ccs-card" data-swipe="1" data-id="${esc(s.id)}" aria-label="${esc(cardCaption(s, index, total, funnels))}">` +
       top + flagTop + title + `<div class="ccs-words">${wordsHtml(s, st.open)}</div>` + checkP + idea +
-      `<div class="ccs-folds">${folds}</div>` + actions + sayHtml(st.say, `card:${s.id}`) + `</article>`;
+      actions + sayHtml(st.say, `card:${s.id}`) + `<div class="ccs-folds">${folds}</div>` + `</article>`;
   }
 
   function inboxHtml(st) {
@@ -804,11 +804,11 @@
     const rewriting = drafts.filter((s) => st.pendingFix[s.root_script_id]).length;
     const sub = [];
     if (st.filter === "draft" && drafts.length) {
-      if (flagged) sub.push(`${flagged} need a look.`);
+      if (flagged) sub.push(`${flagged} ${flagged === 1 ? "needs" : "need"} a look.`);
       if (rewriting) sub.push(`${rewriting} being rewritten.`);
     }
     const batchLine = st.batches.status === "ok" ? latestBatchLine(st.batches.items) : null;
-    const asOf = st.scripts.loaded ? `Scripts as of ${azTime(st.scripts.as_of)} Arizona time.` : "";
+    if (st.scripts.loaded) sub.push(`As of ${azTime(st.scripts.as_of)} Arizona time.`);
     const loading = st.scripts.status === "loading" && !st.scripts.loaded;
 
     let writeNow = "";
@@ -830,7 +830,6 @@
       (loading ? skeleton(2) : `<h2>${esc(headline(counts, st.filter))}</h2>`) +
       (sub.length ? `<p class="caption">${esc(sub.join(" "))}</p>` : "") +
       (batchLine ? `<p class="caption">${esc(batchLine)}</p>` : "") + batchErr +
-      (asOf ? `<p class="caption">${esc(asOf)}</p>` : "") +
       `</div>${writeNow}</div>` + filters;
   }
 
@@ -875,7 +874,7 @@
         `<div class="ccs-row-btns">${btn("Save idea", "idea-save", { busy: st.busy.ideaSave, busyLabel: "Saving…" })}` +
         (ready ? btn("Write it now", "idea-write", { busy: st.busy.ideaWrite, busyLabel: "Starting…" }) : "") + `</div>` +
         `<p class="caption">Save idea is free. It goes in the next batch.</p>` +
-        (ready ? `<p class="caption">${esc(`Write it now writes one script from it today. Spends model money. Cost: unknown, not measured yet. ${capWords(st.settings.data)}`)}</p>` : "") +
+        (ready ? `<p class="caption">${esc(`Write it now writes one script from it today with the model. Cost and time: unknown, not measured yet. ${capWords(st.settings.data)}`)}</p>` : "") +
         sayHtml(st.say, "ideas") +
         `<p class="eyebrow ccs-sub">Your ideas</p>${list}</div>`;
     }
@@ -980,7 +979,8 @@
 .ccs .ccs-head{display:flex;flex-direction:column;gap:16px}
 @media (min-width:960px){.ccs .ccs-head{flex-direction:row;justify-content:space-between;align-items:flex-start}}
 .ccs .ccs-head-main{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 auto}
-.ccs .ccs-writenow{display:flex;flex-direction:column;gap:8px;flex:0 1 360px;min-width:0}
+.ccs .ccs-writenow{display:flex;flex-direction:column;gap:8px;min-width:0}
+@media (min-width:960px){.ccs .ccs-writenow{flex:0 1 360px}}
 .ccs .ccs-filters{display:flex;flex-wrap:wrap;gap:8px}
 .ccs .ccs-filter{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:22px;background:#fff;color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit}
 .ccs .ccs-filter.on{background:var(--ink2);border-color:var(--ink2);color:var(--paper)}
@@ -1207,7 +1207,8 @@
       const live = st.scripts.items.find((s) => s.root_script_id === root);
       if (live && Number(live.version) > Number(p.version)) {
         delete st.pendingFix[root];
-        say(`card:${live.id}`, "ok", `Rewritten from your note. This is version ${live.version}.`);
+        const name = live.title ? `"${live.title}"` : "Your script";
+        say("inbox", "ok", `${name} was rewritten from your note. Version ${live.version} is in your drafts.`);
       } else if (live && live.status !== "draft") {
         delete st.pendingFix[root];
       }
