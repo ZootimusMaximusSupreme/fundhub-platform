@@ -241,6 +241,7 @@ import trainingProgress from "../../api/training-progress.mjs";
 import financeCards from "../../api/finance/cards.mjs";
 import financeLiabilities from "../../api/finance/liabilities.mjs";
 import financeBankAccounts from "../../api/finance/bank-accounts.mjs";
+import financeContainers from "../../api/finance/containers.mjs";
 import financeEntities from "../../api/finance/entities.mjs";
 import financeBills from "../../api/finance/bills.mjs";
 import financeCashflow from "../../api/finance/cashflow.mjs";
@@ -1062,6 +1063,10 @@ export const ROUTES = {
   "finance/cards": financeCards,
   "finance/liabilities": financeLiabilities,
   "finance/bank-accounts": financeBankAccounts,
+  // Containers (Finance OS 2026-10-06) — one per person, one per business,
+  // each an `entities` row. Assign a bank account to one (entity_kind follows)
+  // and read the billing count. ROLE_SETS.FINANCE, same as bank-accounts.
+  "finance/containers": financeContainers,
   // Entity grouping (106_entities.sql) — personal vs. business wallets under a
   // client. Additive: bank_accounts/card_liabilities/recurring_bills all keep
   // working with entity_id NULL. ROLE_SETS.STAFF, matching the read gate on the
