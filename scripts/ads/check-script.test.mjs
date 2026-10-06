@@ -613,6 +613,9 @@ test("no format: a warning, and no length or close check", () => {
   const r = checkScriptText(nWords(5), {});
   assert.ok(r.warnings.some((w) => w.rule === "format"));
   assert.deepEqual(r.failures.filter((f) => ["length", "close-promises", "bullets-shape"].includes(f.rule)), []);
+  const odd = checkScriptText(nWords(5), { format: "standard", style: "poem" });
+  assert.ok(odd.warnings.some((w) => w.rule === "style"));
+  assert.deepEqual(odd.failures.filter((f) => ["length", "bullets-shape"].includes(f.rule)), []);
 });
 
 test("the old checks still run in checkScriptText: banned word, opener, never-say, question hook", () => {

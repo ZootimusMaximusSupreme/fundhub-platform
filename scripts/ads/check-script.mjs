@@ -730,6 +730,8 @@ export function checkScriptText(text, options = {}) {
     warnings.push({ rule: "format", message: "no format was given, so no length check and no close check ran." });
   } else if (!known) {
     warnings.push({ rule: "format", message: `"${format}" is not a format this checker knows (${SCRIPT_FORMATS.join(", ")}), so no length check and no close check ran.` });
+  } else if (style !== "words" && style !== "bullets") {
+    warnings.push({ rule: "style", message: `"${style}" is not a style this checker knows (words, bullets), so no length check ran.` });
   }
   if (formatRule && formatRule.closePromises) {
     failures.push(...fromOldCheck(checkClosePromises(null, spoken)));
