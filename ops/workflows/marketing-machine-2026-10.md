@@ -34,6 +34,19 @@ Note: production also holds migrations 430–433 from another session (files not
 | S0 | Slice 0 "Today tells the truth" (design §6): Opus build, 3 Fable reviews, Opus fix, Fable re-check | claimed |
 | G | Ground: map M0–M5 + Command Center tabs against the repo; plan units; Fable critique | claimed |
 
+## Overnight run (owner order 2026-10-05, Chris asleep, no questions)
+
+Chris: "run these tokens into the ground, make this beautiful, and as a test when you are done build a funnel end to end for the Blueprint ($5k-$10k book-a-call offer): avatar to scripts loaded, funnel done, all tracking ready, every funnel tagged. Then test it."
+
+Order (each stage starts when the one before lands; the main session runs it):
+1. Running: C1 CI fix, G plan, S0 slice 0, the five-jobs redesign (nothing stays in Claude Code).
+2. Build: Opus builders, Fable reviewers, Opus fixers, GitHub CI proof per unit, merged in dependency order into one integration branch. Scope for tonight, in order: Foundations + Settings (slice 1, incl. the marketing_funnels table that tags every funnel), research jobs on the server (avatar, ad research, deep research), Ideas tab + flywheel ports (copy, ad strategy; offer exists), Scripts (slice 3), Numbers v1 (slice 4), a Funnel builder (book-a-call funnel pages from the offer and copy, with pixel, server events, attribution script and UTM tags, saved as drafts), Videos thin (slice 2), page drafts and proof cards if time allows.
+3. One ship (spec 0.8: at most two a day).
+4. Blueprint test, run through the shipped machine: Capital Blueprint (src/config/offers.mjs 'consulting-package') book-a-call funnel: avatar, ad research, offer, copy, ad strategy, a script batch in the Scripts tab, funnel pages + tracking + tag. Fable QA on every output.
+5. Morning report for Chris in 4th grade English, plus his taps.
+
+Safety for the whole night (no exceptions): nothing goes public or live without Chris's tap. The funnel stays a draft (no ClickFunnels publish, no live page change). No Meta ad created or turned on. No message to any customer. No money moved. No data deleted. No key removed. Model spend is allowed ("run the tokens into the ground").
+
 ## Units (filled in from the plan)
 
 ## Owner defaults taken (design §7, 2026-10-05)
