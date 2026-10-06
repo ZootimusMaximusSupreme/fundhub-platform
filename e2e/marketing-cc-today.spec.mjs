@@ -555,3 +555,32 @@ test("1280: with Write now ready, it sits top-left of the work grid above the fo
     { selector: "#cardWaiting .card-hd", caption: "Waiting on you stays beside it" }
   ], { anchor: "#todayWork" });
 });
+
+test("Write ad copy keeps working as an outline button while Write now is the filled one", async ({ page }) => {
+  const seen = {};
+  const h = handlers({ batchList: [batches(true), 200] });
+  const creative = {
+    "/api/creative/generate": async (route) => {
+      seen.generate = route.request().postDataJSON();
+      return json(route, { ok: true, created: true, job: { id: "job-9" }, provider_ready: true });
+    },
+    "/api/creative/run": async (route) => {
+      seen.run = route.request().postDataJSON();
+      return json(route, { ok: true, ran: 1, succeeded: 1, failed: 0, requeued: 0, jobs: [
+        { job_id: "job-9", status: "succeeded", assets: [{ id: "c1", compliance_state: "passed", copy_text: "Your bank said no? It was not about you." }] }
+      ] });
+    }
+  };
+  await open(page, { ...creative, ...h });
+  const btn = page.locator("#copyBtn");
+  await expect(btn).not.toHaveClass(/primary/);
+  await expect(page.locator(".btn.primary:visible")).toHaveText("Write now");
+  await page.locator("#copyAngle").fill("business owners the bank turned down");
+  await btn.click();
+  await expect(page.locator("#copySay")).toHaveText("Done. Here is your new ad copy. It passed the ad rules check.");
+  expect(seen.generate.prompt).toBe("business owners the bank turned down");
+  expect(seen.run.max_jobs).toBe(1);
+  // After the run it is still the outline button, and still the only other way to write.
+  await expect(btn).not.toHaveClass(/primary/);
+  await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
+});
