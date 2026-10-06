@@ -6,8 +6,13 @@
 // Yesterday's spend rather than today's for the list view: today's is partial and
 // a list sorted or judged on it makes a campaign that started at 11pm look dead.
 // The detail endpoint carries the full series including today.
+//
+// "Yesterday" is the AD ACCOUNT's yesterday (America/Phoenix), because that is
+// how Meta dates the rows. CURRENT_DATE is UTC and read today's unsynced day as
+// "yesterday" from 5pm to midnight Arizona time — see src/lib/ad-account-day.mjs.
 import { db } from "../../src/db.mjs";
 import { partnerReadHandler, stateFilter } from "../../src/http/partner-read-api.mjs";
+import { AD_TODAY_SQL } from "../../src/lib/ad-account-day.mjs";
 
 const STATES = ["draft", "awaiting_approval", "approved", "live", "paused", "archived"];
 const PLATFORMS = ["meta", "tiktok", "google"];
@@ -34,11 +39,11 @@ export const fetchRows = (tx, { limit, offset, query }) => {
             (SELECT count(*)::int FROM ads a WHERE a.campaign_id = c.id)     AS ad_count,
             COALESCE((SELECT sum(m.spend_cents) FROM ad_metrics_daily m
                         JOIN ads a ON a.id = m.ad_id
-                       WHERE a.campaign_id = c.id AND m.date = CURRENT_DATE - 1), 0)
+                       WHERE a.campaign_id = c.id AND m.date = ${AD_TODAY_SQL} - 1), 0)
               AS spend_yesterday_cents,
             (SELECT avg(m.roas) FROM ad_metrics_daily m
                JOIN ads a ON a.id = m.ad_id
-              WHERE a.campaign_id = c.id AND m.date > CURRENT_DATE - 8) AS roas_7d
+              WHERE a.campaign_id = c.id AND m.date > ${AD_TODAY_SQL} - 8) AS roas_7d
        FROM campaigns c
       ${where.length ? "WHERE " + where.join(" AND ") : ""}
       ORDER BY c.created_at DESC

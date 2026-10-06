@@ -13,8 +13,17 @@
 // That keeps the two thresholds the spec said not to invent honest: an unset
 // spend-tier table means this screen shows the metrics and stays quiet about
 // cadence, instead of inventing one.
+//
+// CTR IS CLICKS OVER IMPRESSIONS FOR THE WHOLE WINDOW, not the average of each
+// day's CTR. A 3-impression day at 66% and a 400-impression day at 5% are not a
+// 35% ad. Measured 2026-10-05 over 7 days: SLO1 showed 7.58% against a true
+// 9.87%. Meta's own ctr field is the same percent (clicks / impressions x 100),
+// so the floor in optimization_rules still compares like with like.
+//
+// The window is days in the AD ACCOUNT's zone (src/lib/ad-account-day.mjs).
 import { db } from "../../src/db.mjs";
 import { partnerReadHandler } from "../../src/http/partner-read-api.mjs";
+import { AD_TODAY_SQL } from "../../src/lib/ad-account-day.mjs";
 
 /* fetchRows is exported so the SQL can be executed directly by
    src/http/creative-endpoints.pg.test.mjs. An endpoint whose query only ever runs
@@ -51,13 +60,13 @@ export const fetchRows = async (tx, { limit, offset, query, partnerId }) => {
               sum(d.spend_cents)::bigint AS spend_cents,
               sum(d.impressions)::bigint AS impressions,
               avg(d.frequency) AS frequency,
-              avg(d.ctr)       AS ctr,
+              round(100.0 * sum(d.clicks) / NULLIF(sum(d.impressions), 0), 6) AS ctr,
               avg(d.roas)      AS roas,
               max(d.date)      AS last_date
          FROM ads a
          JOIN campaigns c ON c.id = a.campaign_id
          JOIN ad_metrics_daily d ON d.ad_id = a.id
-        WHERE d.date > CURRENT_DATE - ($3::int || ' days')::interval
+        WHERE d.date > ${AD_TODAY_SQL} - ($3::int || ' days')::interval
         GROUP BY a.id, a.name, a.campaign_id, a.ad_set_id, a.rotated_at, c.name, c.platform
      ), scored AS (
        SELECT m.*,

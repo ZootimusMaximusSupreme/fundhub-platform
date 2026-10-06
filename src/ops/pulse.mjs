@@ -12,6 +12,7 @@ import { loadPods, companyBarFromPods } from "./pods.mjs";
 import { learnFromData } from "./discoveries.mjs";
 import { measureMinutes } from "./measure-minutes.mjs";
 import { marketingSnapshot } from "./meta-marketing.mjs";
+import { AD_TODAY_SQL } from "../lib/ad-account-day.mjs";
 
 const PERIODS = new Set(["today", "7d", "30d", "qtd"]);
 
@@ -334,7 +335,7 @@ export async function loadAdSpend(db, { orgId, days }) {
       `SELECT COALESCE(SUM(spend_cents), 0)::bigint AS cents
          FROM ad_metrics_daily
         WHERE org_id = $1
-          AND date >= (CURRENT_DATE - ($2::int - 1))`,
+          AND date >= (${AD_TODAY_SQL} - ($2::int - 1))`,
       [orgId, lookback]
     );
     const cents = Number(r.rows[0]?.cents);

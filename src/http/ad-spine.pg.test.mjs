@@ -42,18 +42,20 @@ import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createSession } from "../auth/session.mjs";
 import { asStaff } from "../partners/rls.mjs";
 import spineHandler from "../../api/read/ad-spine.mjs";
+import { adAccountDay } from "../lib/ad-account-day.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const SLUG = "adspine-pg-test";
 const EMAIL_TAG = "adspine_pg_test";
 
-/* The fixture's days are computed in JavaScript as UTC days, exactly the way
-   windowFor() in the handler computes the window, so the two cannot disagree by
-   a timezone. Using the database's current_date instead would compare a
-   server-local day against a UTC one and make this test pass or fail depending
-   on which machine ran it. */
+/* The fixture's days are computed in JavaScript as the AD ACCOUNT's days
+   (America/Phoenix), exactly the way windowFor() in the handler computes the
+   window, so the two cannot disagree by a timezone. Using the database's
+   current_date instead would compare a server-local day against an Arizona one
+   and make this test pass or fail depending on which machine, and which hour,
+   ran it. */
 const DAY_MS = 86400000;
-const utcDay = (daysAgo) => new Date(Date.now() - daysAgo * DAY_MS).toISOString().slice(0, 10);
+const acctDay = (daysAgo) => adAccountDay(new Date(Date.now() - daysAgo * DAY_MS));
 
 // MIN_N_RATE is 10 (src/ops/discoveries.mjs:9). The fixture is built either side
 // of it on purpose: alpha clears it, beta does not.
@@ -251,10 +253,10 @@ describe("GET /api/read/ad-spine", { skip: !HAS_DB ? "no DATABASE_URL" : false }
         [org, partnerId, adId, day, spend, impressions, clicks, pastOpening, p75]
       );
 
-      await metric(ad901, utcDay(0), 1000, 100, 10, 40, 10);
-      await metric(ad901, utcDay(1), 2000, 200, 20, 60, 20);
-      await metric(ad902, utcDay(100), 999999, 5000, 500);
-      await metric(adNoNumber, utcDay(0), 500, 30000, 5);
+      await metric(ad901, acctDay(0), 1000, 100, 10, 40, 10);
+      await metric(ad901, acctDay(1), 2000, 200, 20, 60, 20);
+      await metric(ad902, acctDay(100), 999999, 5000, 500);
+      await metric(adNoNumber, acctDay(0), 500, 30000, 5);
 
       await tx.query(
         `INSERT INTO ad_labels (org_id, kind, key, name, description, source_ref, sort_order)
@@ -292,12 +294,13 @@ describe("GET /api/read/ad-spine", { skip: !HAS_DB ? "no DATABASE_URL" : false }
       )).rows[0].id;
 
       // lane/ad_id/variant are GENERATED (286:108-110) — only the raw utm goes in.
-      // Midday UTC so the row sits well inside its day whatever hour the test runs.
+      // Midday Arizona so the row sits well inside the ad account's day whatever
+      // hour the test runs.
       await db.query(
         `INSERT INTO client_ad_attribution (client_id, org_id, utm_campaign, utm_content, captured_at)
          VALUES ($1,$2,'premium',$3,
-                 ($4::date)::timestamp AT TIME ZONE 'UTC' + interval '12 hours')`,
-        [clientId, org, content, utcDay(daysAgo)]
+                 ($4::date)::timestamp AT TIME ZONE 'America/Phoenix' + interval '12 hours')`,
+        [clientId, org, content, acctDay(daysAgo)]
       );
 
       for (const status of bookings) {

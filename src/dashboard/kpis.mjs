@@ -4,6 +4,8 @@
 // in the window", not a invented sample. Cost-per-funded needs ad spend rows
 // (migration 038); when spend is unknown the field is null with a reason.
 
+import { AD_TODAY_SQL } from "../lib/ad-account-day.mjs";
+
 /**
  * daysForPeriod(period) → number of days to look back (inclusive of today).
  * @param {"today"|"7d"|"30d"|"qtd"|string} period
@@ -109,7 +111,7 @@ export async function computeKpis(db, { orgId, period = "7d" } = {}) {
       `SELECT COALESCE(SUM(spend_cents), 0)::bigint AS cents
          FROM ad_metrics_daily
         WHERE org_id = $1
-          AND date >= (CURRENT_DATE - ($2::int - 1))`,
+          AND date >= (${AD_TODAY_SQL} - ($2::int - 1))`,
       [orgId, days]
     ).catch(() => ({ rows: [{ cents: null }] }))
   ]);

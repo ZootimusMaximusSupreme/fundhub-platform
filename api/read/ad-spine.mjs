@@ -167,6 +167,7 @@ import {
 import { dbDown } from "../../src/http/db-down.mjs";
 import { asStaff } from "../../src/partners/rls.mjs";
 import { costPerBooked, watchRate } from "../../src/ops/meta-marketing.mjs";
+import { AD_ACCOUNT_TZ, adAccountDay } from "../../src/lib/ad-account-day.mjs";
 
 /* ── THE DATE WINDOW ───────────────────────────────────────────────────────
 
@@ -183,12 +184,16 @@ import { costPerBooked, watchRate } from "../../src/ops/meta-marketing.mjs";
    import it. */
 
 /* windowFor — the window as two plain YYYY-MM-DD days, inclusive at both ends.
-   days=1 is today only, which is why the subtraction is days - 1. UTC, matching
-   finance-command.mjs:98, so the same call made twice from two timezones covers
-   the same days. It is returned in the response so a screen never has to guess
-   what the numbers cover. */
+   days=1 is today only, which is why the subtraction is days - 1. The days are
+   the AD ACCOUNT's days (America/Phoenix, src/lib/ad-account-day.mjs), because
+   that is how Meta dates every ad_metrics_daily row the money comes from. It
+   was UTC, which from 5pm to midnight Arizona time made "today" tomorrow and
+   dropped the oldest real day from the window (measured 2026-10-05, 7 days:
+   523.79 shown, 606.53 true). A fixed zone still gives two machines the same
+   answer. It is returned in the response so a screen never has to guess what
+   the numbers cover. */
 export function windowFor(days, now = new Date()) {
-  const to = now.toISOString().slice(0, 10);
+  const to = adAccountDay(now);
   const from = new Date(new Date(to + "T00:00:00Z").getTime() - (days - 1) * 86400000)
     .toISOString().slice(0, 10);
   return { from, to, days };
@@ -407,10 +412,11 @@ export function buildQuery({ orgId, groupBy = null, limit, offset, query = {}, w
      question it answers is "of the people who arrived in these days, how many
      booked", which is the one that pairs with the spend of those same days.
 
-     SPELLED AT TIME ZONE 'UTC' because captured_at is a timestamptz and the
-     window is built from UTC days (windowFor above). Comparing it to a bare
-     date would silently use whatever timezone the database server is set to,
-     and the same call would then answer differently on two machines. */
+     SPELLED AT TIME ZONE <the ad account's zone> because captured_at is a
+     timestamptz and the window is built from the ad account's days (windowFor
+     above), so the people and the money cover the same hours. Comparing it to
+     a bare date would silently use whatever timezone the database server is
+     set to, and the same call would then answer differently on two machines. */
   const peopleCte = fromSql
     ? `WITH people AS (
          SELECT ${column} AS label_key,
@@ -427,8 +433,8 @@ export function buildQuery({ orgId, groupBy = null, limit, offset, query = {}, w
             AND b.client_id = a.client_id
             AND b.status IS DISTINCT FROM 'cancelled'
           WHERE ${whereSql}
-            AND a.captured_at >= (${fromSql}::date)::timestamp AT TIME ZONE 'UTC'
-            AND a.captured_at <  (${toSql}::date + 1)::timestamp AT TIME ZONE 'UTC'
+            AND a.captured_at >= (${fromSql}::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}'
+            AND a.captured_at <  (${toSql}::date + 1)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}'
           GROUP BY ${column}
        )`
     : "";
@@ -596,8 +602,8 @@ async function countPeopleRows(tx, orgId, window) {
     `SELECT count(*)::int AS n
        FROM client_ad_attribution
       WHERE org_id = $1
-        AND captured_at >= ($2::date)::timestamp AT TIME ZONE 'UTC'
-        AND captured_at <  ($3::date + 1)::timestamp AT TIME ZONE 'UTC'`,
+        AND captured_at >= ($2::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}'
+        AND captured_at <  ($3::date + 1)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}'`,
     [orgId, window.from, window.to]
   );
   return rows[0]?.n ?? null;
