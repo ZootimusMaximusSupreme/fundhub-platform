@@ -61,6 +61,12 @@ describe("authorized representative", { skip: !HAVE_DB ? "no DATABASE_URL" : fal
       [TAG]
     );
     await db.query(`DELETE FROM accounts WHERE email LIKE $1`, [`${TAG}%`]);
+    // sendTemplated records message.queued on the bus with the client's id,
+    // and events.client_id has no cascade (CI: events_client_id_fkey, 2026-10-05).
+    await db.query(
+      `DELETE FROM events WHERE client_id IN (SELECT id FROM clients WHERE first_name = $1)`, [TAG]);
+    await db.query(
+      `DELETE FROM tasks WHERE client_id IN (SELECT id FROM clients WHERE first_name = $1)`, [TAG]);
     await db.query(`DELETE FROM clients WHERE first_name = $1`, [TAG]);
   }
 
@@ -114,6 +120,15 @@ describe("authorized representative", { skip: !HAVE_DB ? "no DATABASE_URL" : fal
 
     const blocked = await setActiveFile(db, { accountId: first.accountId, clientId: c });
     assert.equal(blocked.ok, false);
+
+    // Bound to the caller's company: the right company still switches, and a
+    // different company's id refuses even for a file this login is linked to.
+    const sameOrg = await setActiveFile(db, { accountId: first.accountId, clientId: b, orgId: org });
+    assert.equal(sameOrg.ok, true);
+    const otherOrg = await setActiveFile(db, {
+      accountId: first.accountId, clientId: b, orgId: "00000000-0000-4000-8000-0000000000ff"
+    });
+    assert.equal(otherOrg.ok, false, "a link is honoured only inside the caller's own company");
 
     const sent = await sendTemplated(db, {
       orgId: org, clientId: b, channel: "sms", templateKey: TPL, eventId: `${TAG}-sms-1`

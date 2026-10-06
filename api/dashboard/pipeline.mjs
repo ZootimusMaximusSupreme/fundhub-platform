@@ -111,7 +111,14 @@ const CARDS_SQL = `
     /* THE RAIL. One CARDS_SQL serves all eight rails, so without this the same
        client's Sales card and Inquiry Removal card carried a funding chip that
        nobody looking at those boards can act on. Applications live inside
-       funding rounds; the flag belongs on the funding rails only. */
+       funding rounds; the flag belongs on the funding rails only.
+
+       THE ROUND, NOT THE WHOLE FILE. Only the client's newest round is the
+       round anybody is working, so a blank amount left behind in round 1 must
+       not keep flagging through rounds 2 and 3. This was written on 2026-08-30
+       (968b5a985) and lost in the merge 036dd5106 on 2026-08-31, which kept
+       the shared condition but dropped this line; src/http/pipeline.pg.test.mjs
+       caught it the first time CI ran the pg suite (2026-10-05). */
     (
       p.key IN ('funding_card_stacking', 'funding_altfin')
       AND EXISTS (
@@ -120,6 +127,14 @@ const CARDS_SQL = `
          WHERE a.client_id = c.id
            AND a.org_id = p.org_id
            AND ${unpricedApprovalConditions("a")}
+           AND a.funding_round_id = (
+                 SELECT fr.id
+                   FROM funding_rounds fr
+                  WHERE fr.client_id = c.id
+                    AND fr.org_id = p.org_id
+                  ORDER BY fr.round_number DESC, fr.created_at DESC
+                  LIMIT 1
+               )
       )
     ) AS approval_amount_missing
   FROM cards cd

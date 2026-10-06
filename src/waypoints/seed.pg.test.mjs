@@ -19,6 +19,17 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
+
+/* A test identity, so the simulator never reads the owner's gitignored file
+   (credentials/sim-identity/owner-identity.local.json). That file exists only
+   on Chris's Mac, so in CI every test here died in its hook with "identity file
+   not found" (2026-10-05). Same pattern as
+   src/deliverables/business-duplication-map.test.mjs. */
+const TEST_IDENTITY = Object.freeze({
+  first: "Test", middle: null, last: "Sample", dob: "1980-01-01",
+  current: { line1: "100 Test Ave", city: "Denton", state: "TX", postal_code: "76205" },
+  priors: [], employer: null
+});
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
 import { seedClientWaypoints } from "./seed.mjs";
 import { evaluateWaypoints } from "./verify.mjs";
@@ -79,7 +90,8 @@ function creditFile(profile, overrides = {}) {
   const payload = buildPayload(profile, {
     email: null,
     name: "Seed Subject",
-    pulledAt: "2026-09-05T00:00:00.000Z"
+    pulledAt: "2026-09-05T00:00:00.000Z",
+    identity: TEST_IDENTITY
   });
   const engine = runTierEngineFromCrsResult(payload, {
     submittedName: "Seed Subject",
@@ -772,7 +784,10 @@ describe("the catalog: its words, and its locks", { skip: !HAVE_DB ? "no DATABAS
     const rows = (await db.query(
       `SELECT key, title, coalesce(detail,'') AS detail FROM waypoint_definitions`
     )).rows;
-    assert.equal(rows.length, 6);
+    // Nine: 362's six plus the three Capital Blueprint dispute steps that
+    // migration 400 added on 2026-09-29 (358cb50d6). The key list in the
+    // catalog test above already names all nine; this count had stayed at six.
+    assert.equal(rows.length, 9);
 
     const banned = [
       "qualify", "qualifies", "qualified", "approv", "guarantee", "will increase",
@@ -867,14 +882,14 @@ describe("the catalog: its words, and its locks", { skip: !HAVE_DB ? "no DATABAS
       await db.query(`DELETE FROM waypoint_definitions WHERE key = 'rls_probe'`);
     }
 
-    // Back to read-only, and the six rows are untouched.
+    // Back to read-only, and the nine rows (362's six + 400's three) are untouched.
     const held = (await db.query(
       `SELECT DISTINCT privilege_type FROM information_schema.role_table_grants
         WHERE grantee = 'fundhub_app' AND table_name = 'waypoint_definitions'`
     )).rows.map((r) => r.privilege_type);
     assert.deepEqual(held, ["SELECT"]);
     assert.equal(
-      Number((await db.query(`SELECT count(*)::int AS n FROM waypoint_definitions`)).rows[0].n), 6
+      Number((await db.query(`SELECT count(*)::int AS n FROM waypoint_definitions`)).rows[0].n), 9
     );
   });
 });

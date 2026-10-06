@@ -52,4 +52,5 @@ export const fetchRows = (tx, { limit, offset, query }) => {
    the filtering and a bare db.query here would be the leak. */
 const run = partnerReadHandler({ fetch: fetchRows });
 
-export default (req, res) => run(req, res, { db });
+// deps lets a test hand in the unprivileged pool (see partner-read-api.mjs).
+export default (req, res, deps = {}) => run(req, res, { db, ...deps });

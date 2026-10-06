@@ -42,6 +42,17 @@ import assert from "node:assert/strict";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
+
+/* A test identity, so the simulator never reads the owner's gitignored file
+   (credentials/sim-identity/owner-identity.local.json). That file exists only
+   on Chris's Mac, so in CI every test here died in its hook with "identity file
+   not found" (2026-10-05). Same pattern as
+   src/deliverables/business-duplication-map.test.mjs. */
+const TEST_IDENTITY = Object.freeze({
+  first: "Test", middle: null, last: "Sample", dob: "1980-01-01",
+  current: { line1: "100 Test Ave", city: "Denton", state: "TX", postal_code: "76205" },
+  priors: [], employer: null
+});
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
 import { buildLetterPackForClient } from "./letter-pack.mjs";
 import { persistFundingLetterFiles } from "./funding-letter-pdf.mjs";
@@ -94,7 +105,7 @@ async function seedAndSave(label, shape = (p) => p) {
     `INSERT INTO clients (org_id, email, first_name, last_name, is_demo)
      VALUES ($1,$2,'F46','Fixture',true) RETURNING id`, [org, email])).rows[0].id;
 
-  const payload = shape(buildPayload("academy", { email, name: "F46 Fixture" }));
+  const payload = shape(buildPayload("academy", { email, name: "F46 Fixture", identity: TEST_IDENTITY }));
   const tier = runTierEngineFromCrsResult(payload, {
     submittedName: "F46 Fixture", submittedAddress: ""
   });

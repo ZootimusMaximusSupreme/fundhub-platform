@@ -7,6 +7,17 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
+
+/* A test identity, so the simulator never reads the owner's gitignored file
+   (credentials/sim-identity/owner-identity.local.json). That file exists only
+   on Chris's Mac, so in CI every test here died in its hook with "identity file
+   not found" (2026-10-05). Same pattern as
+   src/deliverables/business-duplication-map.test.mjs. */
+const TEST_IDENTITY = Object.freeze({
+  first: "Test", middle: null, last: "Sample", dob: "1980-01-01",
+  current: { line1: "100 Test Ave", city: "Denton", state: "TX", postal_code: "76205" },
+  priors: [], employer: null
+});
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
 import { seedClientWaypoints } from "./seed.mjs";
 import { evaluateWaypoints } from "./verify.mjs";
@@ -45,7 +56,8 @@ function creditFile(profile) {
   const payload = buildPayload(profile, {
     email: null,
     name: "Blueprint Dispute Subject",
-    pulledAt: "2026-09-05T00:00:00.000Z"
+    pulledAt: "2026-09-05T00:00:00.000Z",
+    identity: TEST_IDENTITY
   });
   return runTierEngineFromCrsResult(payload, {
     submittedName: "Blueprint Dispute Subject",

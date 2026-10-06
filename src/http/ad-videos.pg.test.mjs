@@ -229,7 +229,7 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
 
   describe("the 4K law (.claude/rules/video-4k-unless-ad.md)", () => {
     test("a 1080p AD is fine — Meta compresses it anyway", async () => {
-      const row = await make({ status: "awaiting_approval", video_kind: "ad", width: 1920, height: 1080 });
+      const row = await make({ status: "awaiting_approval", videoKind: "ad", width: 1920, height: 1080 });
       assert.equal(row.resolution_ok, true);
       const done = await asStaff((tx) => approve(tx, { orgId: org, id: row.id, approvedBy: "chris" }));
       assert.equal(done.status, "approved");
@@ -238,13 +238,13 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
     test("a 1080p NON-AD is recorded and FLAGGED, not thrown away", async () => {
       // Owner decision 2, 2026-09-22. Refusing the row outright would lose the
       // one piece of evidence that says what the camera actually did.
-      const row = await make({ status: "staged", video_kind: "not_ad", width: 1920, height: 1080 });
+      const row = await make({ status: "staged", videoKind: "not_ad", width: 1920, height: 1080 });
       assert.equal(row.resolution_ok, false, "a 1080p VSL must be flagged");
     });
 
     test("a flagged non-ad cannot be approved", async () => {
       const row = await make({
-        status: "awaiting_approval", video_kind: "not_ad", width: 1920, height: 1080
+        status: "awaiting_approval", videoKind: "not_ad", width: 1920, height: 1080
       });
       await assert.rejects(
         asStaff((tx) => approve(tx, { orgId: org, id: row.id, approvedBy: "chris" })),
@@ -257,7 +257,7 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
 
     test("a 4K non-ad approves normally", async () => {
       const row = await make({
-        status: "awaiting_approval", video_kind: "not_ad", width: 3840, height: 2160
+        status: "awaiting_approval", videoKind: "not_ad", width: 3840, height: 2160
       });
       assert.equal(row.resolution_ok, true);
       const done = await asStaff((tx) => approve(tx, { orgId: org, id: row.id, approvedBy: "chris" }));
@@ -267,7 +267,7 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
     test("a non-ad with an UNMEASURED height cannot be approved", async () => {
       // Stricter than the plan's draft check, on purpose: "never upscale 1080p
       // and call it 4K" means an unmeasured VSL is exactly the defect.
-      const row = await make({ status: "awaiting_approval", video_kind: "not_ad" });
+      const row = await make({ status: "awaiting_approval", videoKind: "not_ad" });
       assert.equal(row.resolution_ok, true, "nothing measured yet, so nothing to flag yet");
       await assert.rejects(
         asStaff((tx) => approve(tx, { orgId: org, id: row.id, approvedBy: "chris" })),
@@ -331,15 +331,18 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
       assert.equal(again.row.status, "staged", "the poll must not undo the stager's work");
     });
 
+    /* staged -> editing, not staged -> transcribed: the machine's order since
+       2026-09-23 (988d99b7a, src/ad-videos/states.mjs TRANSITIONS). Submagic is
+       the transcriber, so a take is "editing" before it has words. */
     test("a retried advance whose first run succeeded returns null rather than moving twice", async () => {
       const row = await make({ status: "staged" });
       const first = await asStaff((tx) => advance(tx, {
-        orgId: org, id: row.id, from: "staged", to: "transcribed", patch: { transcript: "hello" }
+        orgId: org, id: row.id, from: "staged", to: "editing", patch: { submagic_project_id: "proj-retry" }
       }));
-      assert.equal(first.status, "transcribed");
+      assert.equal(first.status, "editing");
 
       const retry = await asStaff((tx) => advance(tx, {
-        orgId: org, id: row.id, from: "staged", to: "transcribed", patch: { transcript: "hello" }
+        orgId: org, id: row.id, from: "staged", to: "editing", patch: { submagic_project_id: "proj-retry" }
       }));
       assert.equal(retry, null, "a caller must read null as 'somebody already did this'");
     });
@@ -386,8 +389,9 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
     test("a worker cannot set approved_at through a patch", async () => {
       const row = await make({ status: "staged" });
       await assert.rejects(
+        // A LEGAL move (staged -> editing), so the refusal is the patch's own.
         asStaff((tx) => advance(tx, {
-          orgId: org, id: row.id, from: "staged", to: "transcribed",
+          orgId: org, id: row.id, from: "staged", to: "editing",
           patch: { approved_at: new Date() }
         })),
         (err) => { assert.equal(err.code, "unpatchable_column"); return true; }
@@ -404,10 +408,11 @@ describe("GET /api/ad-videos", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, (
         ["scripted", "filming", {}],
         ["filming", "raw_landed", { drive_raw_file_id: `walk-${adId}`, drive_raw_name: "IMG_1.mov" }],
         ["raw_landed", "staged", { source_url: "https://example.invalid/t.mp4", storage_raw_key: "raw/x.mp4" }],
-        ["staged", "transcribed", { transcript: "Most people apply in the wrong order" }],
+        // The order src/ad-videos/states.mjs allows since 2026-09-23 (988d99b7a).
+        ["staged", "editing", { submagic_project_id: `proj-${adId}` }],
+        ["editing", "transcribed", { transcript: "Most people apply in the wrong order" }],
         ["transcribed", "matched", { match_confidence: 96 }],
-        ["matched", "editing", { submagic_project_id: `proj-${adId}` }],
-        ["editing", "rendered", { finished_url: "https://example.invalid/out.mp4", width: 1920, height: 1080 }]
+        ["matched", "rendered", { finished_url: "https://example.invalid/out.mp4", width: 1920, height: 1080 }]
       ];
       let at = "scripted";
       for (const [from, to, patch] of steps) {
