@@ -143,7 +143,7 @@ describe("flywheel rows (design §3.2 item 6)", () => {
     assert.equal(w({ n: 2, state: "STALE" }), "Out of date");
     assert.equal(w({ n: 6, state: "MISSING" }), "Not run yet");
     assert.equal(w({ n: 1, state: "MISSING", run: { status: "running" } }), "Running");
-    assert.equal(w({ n: 2, state: "MISSING", run: { status: "failed", resumable: true } }), "Stopped at the cap");
+    assert.equal(w({ n: 2, state: "MISSING", run: { status: "failed", resumable: true, stopped_at_cap: true } }), "Stopped at the cap");
     assert.equal(w({ n: 2, state: "READY", state_word: "Thin" }), "Thin");
   });
 
@@ -183,6 +183,32 @@ describe("flywheel rows (design §3.2 item 6)", () => {
     const st = { campaign: "partner", costs: COSTS, open: {}, drafts: {} };
     assert.match(T.renderFlywheel(answer("MISSING"), st), /class="btn primary"[^>]*data-act="stage-run"/);
     assert.doesNotMatch(T.renderFlywheel(answer("READY"), st), /btn primary/);
+  });
+
+  test("unit X3's own answer: server words, can_run reasons, and a step not on the site yet has no Run button", () => {
+    const st = { campaign: "partner", costs: COSTS, open: {}, drafts: {} };
+    const html = T.renderFlywheel({ ok: true, data: { campaign: "partner", stages: [
+      { n: 1, key: "avatar", label_words: "Who we sell to", state: "MISSING", state_word: "Not on this page yet", sentence: "Not on this page yet: it ships in slice 5a. Cost not measured.", can_run: { ok: false, reason: "Not on this page yet: it ships in slice 5a. Cost not measured." }, can_approve: false, run: null, files: [] },
+      { n: 4, key: "copy", label_words: "Ad copy for the Partner offer", state: "FAILED", state_word: "Needs a redo", sentence: "Needs a redo: it did not count its reasons to buy.", can_run: { ok: false, reason: "Approve step 3 first (the offer)." }, can_approve: true, run: null, files: [] }
+    ] } }, st);
+    const row1 = html.slice(html.indexOf('id="cci-stage-1"'), html.indexOf('id="cci-stage-4"'));
+    assert.match(row1, /Not on this page yet: it ships in slice 5a\. Cost not measured\./);
+    assert.doesNotMatch(row1, /<button/, "no dead button on a step the site cannot run yet");
+    assert.doesNotMatch(row1, /cci-cost/);
+    const row4 = html.slice(html.indexOf('id="cci-stage-4"'));
+    assert.match(row4, /Ad copy for the Partner offer/);
+    assert.match(row4, /<button class="btn"[^>]*data-act="stage-run"[^>]* disabled/);
+    assert.match(row4, /Approve step 3 first \(the offer\)\./);
+  });
+
+  test("a run stopped at its cap offers Resume and Start over; any other failure offers Retry", () => {
+    const st = { campaign: "partner", costs: COSTS, open: {}, drafts: {} };
+    const cap = T.renderFlywheel({ ok: true, data: { stages: [{ n: 2, state: "MISSING", run: { job_id: "j2", status: "failed", stopped_at_cap: true, resumable: true, error: "Stopped at the $40 run cap." } }] } }, st);
+    assert.match(cap, /Resume/);
+    assert.match(cap, /Start over/);
+    const fail = T.renderFlywheel({ ok: true, data: { stages: [{ n: 1, state: "MISSING", run: { job_id: "j1", status: "failed", resumable: true, error: "The model key is missing." } }] } }, st);
+    assert.match(fail, />Retry</);
+    assert.doesNotMatch(fail, /Start over/);
   });
 
   test("not deployed: one honest sentence and no button", () => {
@@ -257,6 +283,12 @@ describe("ideas", () => {
     const on = T.renderIdeaList({ ok: true }, ideas, { writeNowReady: true }, COSTS);
     assert.match(on, /Write now from this idea/);
     assert.match(on, /One script\. About \$0\.42/);
+  });
+
+  test("before the planner runs, the card says when it will", () => {
+    /* Monday 7:00 am Arizona drop (14:00 UTC) -> planner Monday 4:00 am. */
+    assert.equal(T.plannerWhen("2026-10-12T14:00:00.000Z"), "Monday 4:00 am");
+    assert.match(T.renderSuggestions({ ok: true, data: { next: { release_at: "2026-10-12T14:00:00.000Z", suggestions: [] } } }, {}), /The planner has not run yet\. It runs 3 hours before the next drop \(Monday 4:00 am\)\./);
   });
 
   test("status words", () => {

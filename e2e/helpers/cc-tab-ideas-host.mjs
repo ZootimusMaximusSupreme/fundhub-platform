@@ -197,7 +197,9 @@ export function flywheel({ running = false, approved2 = false } = {}) {
   return {
     ok: true,
     campaign: "partner",
-    campaigns: ["partner", { campaign: "capital-blueprint", source: "outbox-pending" }],
+    campaign_words: "Partner offer",
+    campaigns: [{ name: "partner", words: "Partner offer" }, { name: "capital-blueprint", words: "Capital Blueprint" }],
+    offers: [{ key: "UWIQ_DELIVERABLES", name: "Capital Blueprint", campaign: "capital-blueprint" }, { key: "FUNDING_DFY", name: "Funding, done-for-you", campaign: "funding-dfy" }],
     advice: "Step 3 needs a redo first.",
     stages: [
       running
@@ -210,8 +212,10 @@ export function flywheel({ running = false, approved2 = false } = {}) {
         files: [{ path: "marketing/flywheel/partner/02-ad-research.md", github_url: "https://github.com/ZootimusMaximusSupreme/fundhub-platform/blob/main/marketing/flywheel/partner/02-ad-research.md" }],
         run: null },
       { n: 3, key: "offer", state: "FAILED", approved: false, sentence: "Needs a redo: the offer file has no guarantee section.", source: "github", run: null },
-      { n: 4, key: "copy", state: "FAILED", approved: false, sentence: "Needs a redo: it did not count its reasons.", source: "github", run: null },
-      { n: 5, key: "ad-strategy", state: "BLOCKED", approved: false, sentence: "Waiting on steps 3 and 4.", source: "github", run: null },
+      { n: 4, key: "copy", state: "FAILED", approved: false, sentence: "Needs a redo: it did not count its reasons.", source: "github", run: null,
+        can_run: { ok: false, reason: "Approve step 3 first (the offer)." }, can_approve: true },
+      { n: 5, key: "ad-strategy", state: "BLOCKED", approved: false, state_word: "Waiting on steps 3 and 4", sentence: "Waiting on steps 3 and 4.", source: "github", run: null,
+        can_run: { ok: false, reason: "Approve steps 3 and 4 first (the offer and the copy)." }, can_approve: false },
       { n: 6, key: "spend", state: "MISSING", approved: false, sentence: "Not run yet.", source: "github", run: null }
     ]
   };

@@ -88,6 +88,16 @@ for (const size of SIZES) {
           { locator: page.locator("#cci-save-idea"), caption: "Save idea: free, one tap" }
         ]);
       }
+      if (size.width === 1280) {
+        await shoot(page, "x8-07-ideas-1280.png", "Ideas tab at 1280px", [
+          { locator: page.locator("#cci-ideas"), caption: "Drop an idea + Your ideas" },
+          { locator: page.locator("#cci-suggest"), caption: "The planner's 3 suggestions, Accept is free" }
+        ]);
+        await shoot(page, "x8-08-funnels-1280.png", "Funnels at 1280px", [
+          { locator: page.locator('[data-funnel="00000000-0000-4000-8000-000000000603"] .cci-url'), caption: "The automatic address" },
+          { locator: page.locator('[data-funnel="00000000-0000-4000-8000-000000000603"] .cci-pages'), caption: "Each page: status and tracked visits" }
+        ]);
+      }
       expect(errors).toEqual([]);
     });
 
@@ -200,20 +210,21 @@ for (const size of SIZES) {
       await sheet.getByRole("button", { name: "Save and re-run" }).click();
       expect(writesTo(posts, "marketing/flywheel/tweak")[0].body).toMatchObject({ campaign: "partner", stage: 2, note: "Look harder at bank overlays." });
       /* Steps 4 and 5 wait on approvals, with the reason printed. */
-      await expect(page.locator("#cci-stage-4")).toContainText("Approve step 3 first.");
+      await expect(page.locator("#cci-stage-4")).toContainText("Approve step 3 first (the offer).");
       await expect(page.locator("#cci-run-4")).toBeDisabled();
-      await expect(page.locator("#cci-stage-5")).toContainText("Approve steps 3 and 4 first.");
+      await expect(page.locator("#cci-stage-5")).toContainText("Approve steps 3 and 4 first (the offer and the copy).");
     });
 
-    test("Write the offer goes to the offer writer; Read the spend is free", async ({ page }) => {
+    test("Write the offer runs step 3 through the flywheel route; Read the spend is free", async ({ page }) => {
       const { posts } = await mountIdeas(page, {
-        "POST marketing/offer/generate": { status: 202, body: { ok: true, job: { id: "offer-1", status: "queued" } } },
+        "POST marketing/flywheel/run": { status: 202, body: { ok: true, stage: 3, job: { id: "offer-1", status: "queued" } } },
         "POST marketing/flywheel/spend-read": { ok: true, rows: [{ ad_number: "84", spend_cents: 49801, taps: 120, cpl_cents: null, purchases: 0 }], unmatched: [], conclusion: { text: "Clicks are fine, cost per lead is high: redo the offer.", points_to_stage: 3 } }
       });
       await expect(page.locator("#cci-cost-3")).toContainText("About $0.67 and 5 minutes (last run, Oct 4).");
       await page.locator("#cci-run-3").click();
       await page.getByRole("dialog").getByRole("button", { name: "Write the offer" }).click();
-      expect(writesTo(posts, "marketing/offer/generate")[0].body).toMatchObject({ campaign: "partner" });
+      expect(writesTo(posts, "marketing/flywheel/run")[0].body).toMatchObject({ campaign: "partner", stage: 3, kind: "offer" });
+      expect(writesTo(posts, "marketing/offer/generate")).toHaveLength(0);
       await expect(page.locator("#cci-stage-6")).toContainText("Free. Reads saved numbers. A few seconds.");
       await page.locator("#cci-run-6").click();
       await expect(page.locator("#cci-stage-6")).toContainText("$498.01");

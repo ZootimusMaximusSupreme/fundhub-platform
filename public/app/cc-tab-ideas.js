@@ -13,7 +13,8 @@
      research     GET/POST marketing/research (+ ?id=, approve, tweak, brain),
                   POST marketing/jobs/retry
      flywheel     GET marketing/flywheel, POST marketing/flywheel/run|approve|
-                  tweak|spend-read|campaign, POST marketing/offer/generate
+                  tweak|spend-read|campaign (step 3's run goes through
+                  flywheel/run, which hands it to the Write offer path)
      funnels      GET marketing/funnels, GET marketing/funnel?id=,
                   POST marketing/funnels/create|rename|build|push-live
      quick copy   GET marketing/today (house account + last pieces),
@@ -186,6 +187,21 @@
       return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }).format(new Date(t));
     } catch (e) {
       return new Date(t).toISOString().slice(11, 16);
+    }
+  }
+
+  /* plannerWhen — 3 hours before the next drop, as "Monday 4:00 am" in
+     Arizona time, or "" when the drop time is unknown. */
+  function plannerWhen(releaseAt) {
+    var t = Date.parse(str(releaseAt));
+    if (!Number.isFinite(t)) return "";
+    try {
+      var d = new Date(t - 3 * 3600 * 1000);
+      var day = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "America/Phoenix" }).format(d);
+      var time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }).format(d);
+      return day + " " + time.replace(/\s?AM$/, " am").replace(/\s?PM$/, " pm");
+    } catch (e) {
+      return "";
     }
   }
 
@@ -521,6 +537,7 @@
       spent: num(pick(run, ["cost_so_far_usd"])),
       shrunk: arr(pick(run, ["shrunk"])).map(str).filter(Boolean),
       resumable: pick(run, ["resumable"]) === true,
+      stoppedAtCap: !!pick(run, ["stopped_at_cap"]),
       error: str(pick(run, ["error"])),
       startedAt: pick(run, ["started_at"]) || null,
       finishedAt: pick(run, ["finished_at"]) || null
@@ -577,13 +594,21 @@
     var word = str(pick(raw, ["state_word"]));
     if (!word) {
       if (running) word = "Running";
-      else if (failed && run.resumable) word = "Stopped at the cap";
+      else if (failed && run.stoppedAtCap) word = "Stopped at the cap";
       else if (state === "READY" && approved) word = STATE_WORDS.APPROVED;
       else word = STATE_WORDS[state] || "Not run yet";
     }
-    var name = def.name;
-    if (def.n === 4) name = "Ad copy for the " + (campaignWords(campaign) || "offer").replace(/^(\w)/, function (c) { return c.toLowerCase(); });
+    var name = str(pick(raw, ["label_words"])) || def.name;
+    if (def.n === 4 && !str(pick(raw, ["label_words"]))) name = "Ad copy for the " + (campaignWords(campaign) || "offer").replace(/^(\w)/, function (c) { return c.toLowerCase(); });
     var gate = obj(pick(raw, ["gate"]));
+    var sentence = str(pick(raw, ["sentence"]));
+    /* can_run (unit X3): the server's own yes/no with its reason. A step whose
+       runner is not on the site yet says "Not on this page yet…": that row
+       shows the sentence and no Run button at all (design §5 rule 9). */
+    var canRunRaw = pick(raw, ["can_run"]);
+    var canRun = canRunRaw && typeof canRunRaw === "object" ? { ok: canRunRaw.ok !== false, reason: str(canRunRaw.reason) } : null;
+    var notBuilt = /^not on this page yet/i.test(word) || (!!canRun && !canRun.ok && /^not on this page yet/i.test(canRun.reason));
+    var canApprove = pick(raw, ["can_approve"]);
     return {
       n: def.n,
       key: def.key,
@@ -592,13 +617,19 @@
       state: state,
       word: word,
       tone: toneFor(word),
-      sentence: str(pick(raw, ["sentence"])),
+      sentence: sentence,
       approved: approved,
+      canRun: canRun,
+      notBuilt: notBuilt,
+      canApprove: canApprove === undefined ? state === "READY" : canApprove === true,
       run: run,
       running: running,
       failed: failed,
       hasFile: ["READY", "FAILED", "STALE", "THIN", "APPROVED"].indexOf(state) !== -1 || arr(pick(raw, ["files"])).length > 0,
-      gateSentence: gate.clears === false ? str(pick(gate, ["sentence"])) : "",
+      /* The gate line is printed only where it adds something: a done or thin
+         step that does not clear the bar for the next one. On a failed or
+         out-of-date row it repeats the row's own sentence. */
+      gateSentence: gate.clears === false && (state === "READY" || state === "THIN") ? str(pick(gate, ["sentence"])) : "",
       source: str(pick(raw, ["source"])),
       review: str(pick(raw, ["review_card_md"])),
       document: str(pick(raw, ["document_md"])),
@@ -612,6 +643,8 @@
   /* blockedReason — why a run button is disabled, or "" when it can run. */
   function blockedReason(view, all) {
     if (view.running) return "";
+    if (view.canRun && !view.canRun.ok && !view.notBuilt) return view.canRun.reason || "This step cannot run yet.";
+    if (view.canRun && view.canRun.ok) return "";
     var need = view.def.needs || [];
     var missing = need.filter(function (n) {
       var s = null;
@@ -892,7 +925,10 @@
     if (!a.ok) return partError("The planner's suggestions did not load. The rest of this page is current.", "reload-suggest");
     var next = obj(pick(obj(a.data), ["next"]));
     var list = arr(pick(next, ["suggestions"]));
-    if (!list.length) return '<p class="cci-empty">The planner has not run yet. It runs 3 hours before the next drop.</p>';
+    if (!list.length) {
+      var when = plannerWhen(pick(next, ["release_at"]));
+      return '<p class="cci-empty">The planner has not run yet. It runs 3 hours before the next drop' + (when ? " (" + esc(when) + ")" : "") + ".</p>";
+    }
     var out = '<ol class="cci-rows">';
     list.slice(0, 3).forEach(function (s) {
       s = obj(s);
@@ -979,20 +1015,23 @@
     var primary = def.n === 1 && !v.running && (v.state === "MISSING" || v.state === "FAILED" || v.state === "STALE");
     var acts = [];
     if (v.review || v.document || v.files.length) acts.push(btn(open["stage:" + v.n] ? "Hide it" : "Read it", "stage-read", { data: { n: v.n } }));
-    if (v.state === "READY" && !v.approved && !v.running) acts.push(btn("Approve", "stage-approve", { data: { n: v.n } }));
-    if (v.hasFile && !v.running && !def.free) acts.push(btn("Tweak", "stage-tweak-open", { data: { n: v.n } }));
-    if (v.failed && v.run && v.run.resumable) {
+    var canRunHere = !v.notBuilt;
+    var capStop = v.failed && v.run && v.run.stoppedAtCap;
+    if (v.canApprove && v.hasFile && !v.approved && !v.running) acts.push(btn("Approve", "stage-approve", { data: { n: v.n } }));
+    if (v.hasFile && !v.running && !def.free && canRunHere) acts.push(btn("Tweak", "stage-tweak-open", { data: { n: v.n } }));
+    if (canRunHere && capStop && v.run.jobId) {
       acts.push(btn("Resume", "stage-retry", { data: { n: v.n, job: v.run.jobId } }));
       acts.push(btn("Start over", "stage-run", { data: { n: v.n } }));
-    } else if (v.failed && v.run && v.run.jobId) {
+    } else if (canRunHere && v.failed && v.run && v.run.jobId) {
       acts.push(btn("Retry", "stage-retry", { data: { n: v.n, job: v.run.jobId } }));
     }
-    if (!v.running && !(v.failed && v.run && v.run.resumable)) {
-      acts.push(btn(v.hasFile && !def.free ? "Redo" : def.run, "stage-run", { data: { n: v.n }, disabled: !!reason, primary: primary, id: "cci-run-" + v.n }));
+    if (canRunHere && !v.running && !capStop) {
+      acts.push(btn(v.hasFile && !def.free ? "Redo" : def.run, "stage-run", { data: { n: v.n }, disabled: !!reason, primary: primary && !reason, id: "cci-run-" + v.n }));
     }
     if (acts.length) out += '<div class="actions">' + acts.join("") + "</div>";
-    if (reason) out += '<p class="caption cci-reason">' + esc(reason) + "</p>";
-    if (v.failed && v.run && (v.run.resumable || v.run.jobId)) out += '<p class="caption cci-muted">' + (v.run.resumable ? "Resume picks up from the saved steps. Start over makes a fresh run." : "Retry is free. Finished steps are kept and never paid for twice.") + "</p>";
+    if (reason && canRunHere) out += '<p class="caption cci-reason">' + esc(reason) + "</p>";
+    if (canRunHere && v.failed && v.run && v.run.jobId) out += '<p class="caption cci-muted">' + (capStop ? "Resume picks up from the saved steps. Start over makes a fresh run." : "Retry is free. Finished steps are kept and never paid for twice.") + "</p>";
+    if (!canRunHere) return out;
     if (!v.running && !def.free) out += costHtml(costLines(def.kind, costs), "cci-cost-" + v.n);
     if (def.free && !v.running) out += '<p class="caption cci-cost">Free. Reads saved numbers. A few seconds.</p>';
     /* Rows 1 and 2 take what they read before the tap. */
@@ -1064,9 +1103,11 @@
     all.forEach(function (v) {
       out += '<li class="cci-row cci-stage" id="cci-stage-' + v.n + '" data-stage="' + v.n + '">';
       out += '<div class="cci-row-hd"><p class="cci-row-text"><b>' + esc(v.name) + '</b> <span class="caption cci-muted">step ' + v.n + " of 6</span></p>" + chip(v.word, v.tone) + "</div>";
-      if (v.running) out += '<p class="cci-sentence">' + esc(runningWords(v.run)) + "</p>";
+      var live = v.running && v.run && (v.run.stepN !== null || v.run.spent !== null) ? runningWords(v.run) : "";
+      if (live) out += '<p class="cci-sentence">' + esc(live) + "</p>";
       else if (v.sentence) out += '<p class="cci-sentence">' + esc(v.sentence) + "</p>";
-      if (v.failed && v.run && v.run.error) out += '<p class="cci-sentence cci-bad">' + esc(v.run.error) + "</p>";
+      else if (v.running) out += '<p class="cci-sentence">Running.</p>';
+      if (v.failed && v.run && v.run.error && v.sentence.indexOf(v.run.error) === -1) out += '<p class="cci-sentence cci-bad">' + esc(v.run.error) + "</p>";
       if (v.gateSentence) out += '<p class="caption cci-muted">' + esc(v.gateSentence) + "</p>";
       out += stageActions(v, all, st.costs, campaign, st.open, st.drafts);
       if (v.n === 6 && st.spendRead) out += '<div class="cci-open">' + renderSpendRead(st.spendRead) + "</div>";
@@ -1085,8 +1126,10 @@
     var offers = arr(pick(d, ["offers"])).map(function (o) { o = obj(o); return [str(pick(o, ["key"])), str(pick(o, ["name"])) || str(pick(o, ["key"]))]; }).filter(function (o) { return o[0]; });
     if (!offers.length) offers = FLYWHEEL_OFFERS.slice();
     var out = '<div class="cci-pickers">';
-    out += '<div class="field"><label for="cci-campaign">Which offer</label><select id="cci-campaign" data-act-change="campaign">' +
-      list.map(function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === current ? " selected" : "") + ">" + esc(c.words + (c.pending ? " (reaching the repo…)" : "")) + "</option>"; }).join("") + "</select></div>";
+    if (list.length) {
+      out += '<div class="field"><label for="cci-campaign">Which offer</label><select id="cci-campaign" data-act-change="campaign">' +
+        list.map(function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === current ? " selected" : "") + ">" + esc(c.words + (c.pending ? " (reaching the repo…)" : "")) + "</option>"; }).join("") + "</select></div>";
+    }
     out += '<div class="field"><label for="cci-new-offer">Start a flywheel for</label><select id="cci-new-offer">' +
       offers.map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + "</option>"; }).join("") + "</select>" +
       '<div class="actions">' + btn("Start a flywheel", "start-flywheel") + '<span class="caption cci-muted">Free. Makes the folder and your notes file.</span></div></div>';
@@ -1231,7 +1274,7 @@
       '<p class="caption cci-muted">It picks a free address for you (like apply.fundhub.ai/blueprint), tags every page, adds the full tracking, and writes the 3 pages.</p>' +
       '<div id="cci-funnel-cost"></div></form>' +
       '<p class="say" data-say="funnels" role="status" aria-live="polite"></p>' +
-      '<div id="cci-funnel-list">' + skeleton(3) + "</div></section>" +
+      '<p class="eyebrow cci-sub">Your funnels</p><div id="cci-funnel-list">' + skeleton(3) + "</div></section>" +
 
       '<section class="card s6" id="cci-quick" aria-labelledby="cci-quick-h"><div class="card-hd"><h2 id="cci-quick-h">Quick copy</h2></div>' +
       '<p class="caption cci-muted">Short copy from a prompt. Not a checked ad script.</p>' +
@@ -1732,15 +1775,14 @@
       var title = (v.hasFile ? "Redo: " : "") + v.def.run + " for " + (campaignWords(campaign) || "this offer") + "?";
       paidTap(v.def.kind, title, lines, v.def.run, function () {
         busy(b, true);
-        var p = n === 3
-          ? call("POST", "marketing/offer/generate", { campaign: campaign })
-          : call("POST", "marketing/flywheel/run", runBody(campaign, v, extra));
-        p.then(function (a) {
+        /* Step 3 goes through the same route: unit X3 hands it to the Write
+           offer path with this campaign's files as the page sees them. */
+        call("POST", "marketing/flywheel/run", runBody(campaign, v, extra)).then(function (a) {
           busy(b, false);
           if (!a.ok) { say("stage:" + n, "err", a.words); return; }
           var d = obj(a.data);
           var words = n === 1 ? "The avatar is" : (n === 2 ? "The market research is" : (n === 3 ? "An offer is" : "This step is"));
-          say("stage:" + n, "wait", d.already_running ? words + " already being built. This is that run." : "Started. This row shows the step it is on.");
+          say("stage:" + n, "wait", d.already_running ? words + " already being built. This is that run." : (str(d.message) || "Started. This row shows the step it is on."));
           loadFlywheel().then(schedulePoll);
         });
       });
@@ -2038,7 +2080,7 @@
   /* The pure rules, for src/ui/cc-tab-ideas.test.mjs. */
   root.FundhubIdeasTab = {
     esc: esc, money: money, dollars: dollars, count: count, shortDate: shortDate,
-    campaignWords: campaignWords, answer: answer, plainError: plainError,
+    campaignWords: campaignWords, plannerWhen: plannerWhen, answer: answer, plainError: plainError,
     normalizeCosts: normalizeCosts, kindCost: kindCost, costLines: costLines, meterLine: meterLine,
     ideaView: ideaView, suggestionNumbers: suggestionNumbers, angleView: angleView, angleLine: angleLine,
     researchView: researchView, researchWords: researchWords,

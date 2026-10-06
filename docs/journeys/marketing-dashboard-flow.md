@@ -773,8 +773,8 @@ flowchart TD
   C --> I3["Accept / Make more of this (free)"] --> P3["POST marketing/ideas {source:'suggestion'?, angle_key}"]
   C --> D1["Research it<br/>(off until a stop amount is typed;<br/>Deep off until a Quick look is measured)"] --> S2["cost sheet: searches x $0.01, cap, month"] --> P4["POST marketing/research {question, depth, sources, belief?, max_cost_usd}"]
   C --> D2["Read it / Approve / Tweak / Redo / Save to the brain / Retry"] --> P5["GET marketing/research?id= · POST research/approve · research/tweak (sheet) · research (sheet) · research/brain · jobs/retry"]
-  C --> F1["Build the avatar · Research the market · Write the copy · Pick the strategy<br/>(4 off until 3 approved; 5 off until 3 and 4)"] --> S3["cost sheet with caps and search ceilings"] --> P6["POST marketing/flywheel/run {campaign, stage, kind, service_description? | market?, competitors?}"]
-  C --> F2["Write the offer"] --> S4["cost sheet"] --> P7["POST marketing/offer/generate {campaign}"]
+  C --> F1["Build the avatar · Research the market · Write the copy · Pick the strategy<br/>(off with the server's can_run reason, e.g. 4 until 3 is approved;<br/>a step the site cannot run yet shows its sentence and no button)"] --> S3["cost sheet with caps and search ceilings"] --> P6["POST marketing/flywheel/run {campaign, stage, kind, service_description? | market?, competitors?}"]
+  C --> F2["Write the offer"] --> S4["cost sheet"] --> P7["POST marketing/flywheel/run {campaign, stage:3, kind:'offer'}<br/>(X3 hands it to the Write offer path with the campaign's files)"]
   C --> F3["Approve (free) · Tweak (sheet) · Retry / Resume (free) · Start over (sheet)"] --> P8["POST flywheel/approve · flywheel/tweak · jobs/retry (else flywheel/run {retry_job_id}) · flywheel/run"]
   C --> F4["Read the spend (free) · Start a flywheel (free)"] --> P9["POST flywheel/spend-read {campaign} · flywheel/campaign {key}"]
   C --> U1["Make the funnel"] --> S5["cost sheet (one model call)"] --> P10["POST marketing/funnels/create {offer_key, path?}<br/>answer shows the automatic address and tag"]
@@ -788,9 +788,12 @@ flowchart TD
   `e2e/cc-tab-ideas.spec.mjs` at 390x844 and 1280 (26 tap paths, mocked answers) and the word rules
   by `src/ui/cc-tab-ideas.test.mjs`.
 - **UNVERIFIED against a real back end:** `GET marketing/costs`, `GET/POST marketing/flywheel*` and
-  `GET/POST marketing/research*` are being built in units X1, X2 and X3 and are not on this branch;
-  the tab follows the design's shapes and sends both `stage` and `kind` on `flywheel/run`. Until
-  they ship, those cards print the honest sentence.
+  `GET/POST marketing/research*` are being built in units X1, X2 and X3 and are not merged on this
+  branch. The flywheel card reads unit X3's real answer (branch `mm-x3-ideas-flywheel` at 8a2aaf4b4:
+  `label_words`, `state_word`, `sentence`, `can_run`, `can_approve`, `run.stopped_at_cap`,
+  `campaigns[{name, words}]`, `offers[{key, name}]`); research and costs follow the design's shapes.
+  `flywheel/run` gets both `stage` and `kind`. Until a route ships, its card prints the honest
+  sentence.
 - **Gaps against the design (findings, not reconciled):** the Proof card is one honest sentence
   (slice 11 not built); the search ceilings (184, 106/138, 62/542) come from `GET marketing/costs`
   `max_searches` when it sends one, else from the design's numbers in one constant; the Ideas tab
