@@ -47,9 +47,11 @@ describe("the insights request", () => {
   test("every field it asks for is one Meta's SDK declares (no invented names)", () => {
     // facebook_business/adobjects/adsinsights.py — checked 2026-10-05 for the two
     // money names; the video names were checked on 2026-09-09 (src/adplatforms/meta.mjs).
+    // inline_link_clicks added 2026-10-05 (marketing machine M0 step 5); it and
+    // every name here are in Meta's v26.0 SDK (adsinsights.py, SDK 26.0.2).
     const known = new Set([
       "ad_id", "spend", "impressions", "clicks", "ctr", "actions", "purchase_roas", "date_start",
-      "cost_per_action_type",
+      "cost_per_action_type", "inline_link_clicks",
       "video_continuous_2_sec_watched_actions", "video_play_actions",
       "video_p25_watched_actions", "video_p50_watched_actions", "video_p75_watched_actions",
       "video_p95_watched_actions", "video_p100_watched_actions", "video_thruplay_watched_actions",

@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 
 import {
   sendMetaEvents, metaCapiEnabled, metaEventsUrl, sanitizeEvent,
-  MAX_BATCH, TIMEOUT_MS, DEFAULT_PIXEL_ID, TRANSMITS
+  MAX_BATCH, TIMEOUT_MS, DEFAULT_PIXEL_ID, TRANSMITS, DEFAULT_API_VERSION
 } from "./meta-capi.mjs";
 import { clearMetaTokenCache } from "../../meta/token.mjs";
 import { sha256 } from "../../meta/user-data.mjs";
@@ -79,7 +79,7 @@ describe("the request", () => {
     assert.deepEqual(out, { ok: true, sent: 1 });
     assert.equal(meta.calls.length, 1);
     const { url, init, body } = meta.calls[0];
-    assert.equal(url, `https://graph.facebook.com/v21.0/${DEFAULT_PIXEL_ID}/events`);
+    assert.equal(url, `https://graph.facebook.com/v26.0/${DEFAULT_PIXEL_ID}/events`);
     assert.equal(DEFAULT_PIXEL_ID, "2403674420141513");
     assert.equal(init.method, "POST");
     assert.equal(init.headers["Content-Type"], "application/json");
@@ -92,7 +92,14 @@ describe("the request", () => {
     assert.equal(metaEventsUrl({ META_API_VERSION: "v22.0", META_PIXEL_ID: "123456789" }),
       "https://graph.facebook.com/v22.0/123456789/events");
     assert.equal(metaEventsUrl({ META_API_VERSION: "../x", META_PIXEL_ID: "abc" }),
-      `https://graph.facebook.com/v21.0/${DEFAULT_PIXEL_ID}/events`);
+      `https://graph.facebook.com/v26.0/${DEFAULT_PIXEL_ID}/events`);
+  });
+
+  test("with META_API_VERSION unset, server events go to v26.0 (marketing machine M0 step 5)", () => {
+    assert.equal(DEFAULT_API_VERSION, "v26.0");
+    assert.equal(metaEventsUrl({}), `https://graph.facebook.com/v26.0/${DEFAULT_PIXEL_ID}/events`);
+    assert.equal(metaEventsUrl({ META_API_VERSION: "  " }),
+      `https://graph.facebook.com/v26.0/${DEFAULT_PIXEL_ID}/events`);
   });
 
   test("META_TEST_EVENT_CODE rides on every batch when set", async () => {

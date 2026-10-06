@@ -210,7 +210,7 @@ describe("what Meta gets", () => {
     await h.settle();
     assert.equal(h.metaCalls.length, 1);
     const { url, body, raw } = h.metaCalls[0];
-    assert.equal(url, "https://graph.facebook.com/v21.0/2403674420141513/events");
+    assert.equal(url, "https://graph.facebook.com/v26.0/2403674420141513/events");
     assert.equal(body.access_token, FAKE_TOKEN);
     assert.deepEqual(body.data, [{
       event_name: "Lead",

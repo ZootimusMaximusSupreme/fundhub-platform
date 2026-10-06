@@ -88,6 +88,7 @@ import { u02AnalyzerCompleteDelivery } from './u-02-analyzer-complete-delivery.m
 import { u03CrsSnapshotSync } from './u-03-crs-snapshot-sync.mjs';
 import { u04PromoteCrsPrimary } from './u-04-promote-crs-primary.mjs';
 import { u05DataHealthMonitor } from './u-05-data-health-monitor.mjs';
+import { metaCampaignSyncHourly } from './meta-campaign-sync-sweeper.mjs';
 
 export const functions = [
   af01AffiliateDrip,
@@ -458,4 +459,12 @@ export const functions = [
   u03CrsSnapshotSync,
   u04PromoteCrsPrimary,
   u05DataHealthMonitor,
+  /* THE HOURLY META PULL (marketing machine M0 step 5, 2026-10-05). At minute
+     30 of every hour it runs the same sync as metaCampaignSyncSweeper above,
+     for today in Arizona and the 2 days before — never the whole history —
+     so the Command Center's numbers are at most an hour old. The nightly
+     28-day pass above is unchanged. It READS from Meta and writes our own
+     campaign / ad / ad_metrics_daily rows; no campaign is created, started,
+     paused or re-budgeted. */
+  metaCampaignSyncHourly,
 ];
