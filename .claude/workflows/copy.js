@@ -31,10 +31,14 @@ const OWNER_NOTES = String(A.ownerNotes || '').slice(0, 2000)
 // silently stops catching things. If the skill changes, change this too.
 // ---------------------------------------------------------------------------
 
+// 'optimize' came off on 2026-10-05 (marketing/ads/RULES.md Part 0 rule 1:
+// "optimize your credit"), the same change as marketing/ads/rules-data.mjs.
+// scripts/ads/check-script.test.mjs fails if these three lists and that
+// file's lists stop holding the same entries.
 const BAN_WORDS = ['delve', 'tapestry', 'leverage', 'utilize', 'robust', 'seamless', 'realm',
   'testament', 'beacon', 'underscore', 'showcase', 'pivotal', 'crucial', 'foster', 'elevate',
   'embark', 'unleash', 'navigate', 'landscape', 'boast', 'myriad', 'plethora', 'intricate',
-  'vibrant', 'enhance', 'streamline', 'optimize', 'comprehensive', 'empower', 'holistic',
+  'vibrant', 'enhance', 'streamline', 'comprehensive', 'empower', 'holistic',
   'cultivate', 'resonate', 'align', 'nestled']
 
 const BAN_PHRASES = ["in today's fast-paced world", 'when it comes to', "it's important to note",

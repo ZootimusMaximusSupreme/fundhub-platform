@@ -34,15 +34,28 @@
 // (marketing/ads/rules-data.mjs) instead of parsing prose. There is no second
 // place a rule can hide.
 //
+// STRICT MODE (added 2026-10-05, spec 7.1)
+// checkScriptText(text, {format, style, strict}) checks one script given as
+// plain teleprompter text, the shape the app's writer produces. With
+// strict: true it adds RULES.md Part 0's patterns (PART0_PATTERNS in
+// rules-data.mjs) and every phrase in marketing/ads/banned-live.json.
+// It also holds the floors by format. checkOneScript is unchanged and still
+// reads only the old lists, so the five live ads in CONTROLS.md pass.
+// Importing this file runs nothing: the CLI below only runs when this file
+// is executed directly, so src/ code can import checkScriptText safely.
+//
 // Node built-ins only. No packages. Nothing here talks to a database or a
 // network.
 
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   BANNED_WORDS, BANNED_PHRASES, BANNED_OPENERS,
   AVOID_PHRASES, ALLOWED_PHRASES,
   NEVER_SAY, NEVER_SAY_ALLOWED, CLOSE_PROMISES,
-  WORD_COUNT_BANDS, FLOOR_WORDS, VENDOR_NAMES
+  WORD_COUNT_BANDS, FLOOR_WORDS, VENDOR_NAMES,
+  PART0_PATTERNS, SCRIPT_FORMATS, DEFAULT_STYLE, FORMAT_RULES
 } from "../../marketing/ads/rules-data.mjs";
 
 // ---------------------------------------------------------------------------
@@ -245,9 +258,10 @@ function checkNotXButY(rows, sectionName) {
   const out = [];
   for (const row of rows) {
     /* FIXED 2026-09-07, found by adversarial review: this used to also ban
-       any plain "not X, but Y" contrast, which rejected RULES.md 3.3's own
-       recommended hook stem — "Not another ___, but the first one that…" —
-       and ordinary sentences like "not because they lack revenue, but
+       any plain "not X, but Y" contrast, which rejected the hook stem RULES.md
+       3.3 recommended then — "Not another ___, but the first one that…" (cut
+       from RULES.md 2026-10-05: it breaks Part 0 rule 15, which the judge
+       checks) — and ordinary sentences like "not because they lack revenue, but
        because nobody read the file." The real AI tell is specifically
        "it's not X, it's Y", both sides anchored on "it's". A plain
        not-X-but-Y contrast is normal, useful writing and stays allowed. */
@@ -486,6 +500,269 @@ export function checkOneScript(block) {
 }
 
 // ---------------------------------------------------------------------------
+// CHECKING ONE SCRIPT AS PLAIN TEXT — checkScriptText (spec 7.1)
+//
+// The app's writer and Chris's edits hand over a script as teleprompter text:
+// plain paragraphs, CAPS to punch, ↑ for pitch up, a blank line for a pause,
+// and in the bullets style "- " cue lines. No HOOK/BODY labels, no headings.
+//
+//   checkScriptText(text, { format, style, strict, parts?, bannedLive? })
+//     -> { ok, failures: [{ rule, match, message, line }], warnings, words }
+//
+//   format     standard | sorting | long | notes | greenscreen | vsl
+//   style      words | bullets (default: DEFAULT_STYLE[format])
+//   strict     true adds RULES.md Part 0's patterns and banned-live.json
+//   parts      optional [{kind: hook|line2|body|cue|reveal|cta, text}]
+//              (ad_scripts.parts, spec 7.4). When sent, the bullets shape
+//              is read from it instead of from the text.
+//   bannedLive optional array of phrases, used instead of reading
+//              marketing/ads/banned-live.json (for a copy read at a git sha).
+//
+// `line` is the 1-based line in `text`, or null when a match spans lines.
+// ---------------------------------------------------------------------------
+
+// A cue line in the bullets style starts with a bullet mark.
+const CUE_MARK_RE = /^(?:[-*•·]|\d{1,2}[.)])\s+/;
+
+const splitSentences = (s) => s.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+
+function firstQuoted(message) {
+  const m = message.match(/"([^"]+)"/);
+  return m ? m[1] : null;
+}
+
+/** Name the rule behind one of the old checks' messages. */
+function ruleOfMessage(message) {
+  const table = [
+    [/^banned word/, "banned-word"],
+    [/^banned phrase/, "banned-phrase"],
+    [/^avoid /, "avoid-phrase"],
+    [/^banned opener/, "opener"],
+    [/^em dash/, "em-dash"],
+    [/^"it's not X, it's Y"/, "not-x-its-y"],
+    [/^never-say/, "never-say"],
+    [/^names a vendor/, "vendor-name"],
+    [/^cause-first check 2/, "cause-first-2"],
+    [/^cause-first check 3/, "cause-first-3"],
+    [/^the close is missing|^no CLOSE found/, "close-promises"]
+  ];
+  for (const [re, rule] of table) if (re.test(message)) return rule;
+  return "check";
+}
+
+function fromOldCheck(list) {
+  return list.map((f) => {
+    const rule = ruleOfMessage(f.message);
+    const match = rule === "em-dash" ? "—" : rule === "close-promises" ? null : firstQuoted(f.message);
+    return { rule, match, message: f.message, line: typeof f.line === "number" ? f.line : null };
+  });
+}
+
+/** Where strict mode reads Chris's banned phrases. A copy beside this file
+ *  first (the repo, or a bundle that keeps the folder layout), then the same
+ *  path under the working directory (Netlify included_files). */
+const BANNED_LIVE_PATH = "marketing/ads/banned-live.json";
+
+function bannedLiveCandidates() {
+  const out = [];
+  try { out.push(fileURLToPath(new URL("../../marketing/ads/banned-live.json", import.meta.url))); } catch { /* no module URL */ }
+  try { out.push(join(process.cwd(), BANNED_LIVE_PATH)); } catch { /* no working directory */ }
+  return out;
+}
+
+/** -> { phrases: string[], warning: string|null }. Never throws. */
+export function loadBannedLive(paths = bannedLiveCandidates()) {
+  for (const p of paths) {
+    let raw;
+    try { raw = readFileSync(p, "utf8"); } catch { continue; }
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return { phrases: [], warning: `${BANNED_LIVE_PATH} is not a JSON list, so Chris's banned phrases were not checked.` };
+      return { phrases: parsed.filter((x) => typeof x === "string" && x.trim()), warning: null };
+    } catch {
+      return { phrases: [], warning: `${BANNED_LIVE_PATH} is not valid JSON, so Chris's banned phrases were not checked.` };
+    }
+  }
+  return { phrases: [], warning: `${BANNED_LIVE_PATH} could not be read, so Chris's banned phrases were not checked.` };
+}
+
+function globalCopy(re) {
+  return new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+}
+
+/** RULES.md Part 0 patterns. Normalized patterns read the whole text, so a
+ *  phrase broken across two lines is still caught. */
+function checkPart0(rows) {
+  const out = [];
+  const seen = new Set();
+  const fullNorm = norm(rows.map((r) => r.text).join("\n"));
+  for (const p of PART0_PATTERNS) {
+    const hits = [];
+    if (p.on === "raw") {
+      for (const r of rows) for (const m of r.text.matchAll(globalCopy(p.pattern))) hits.push({ match: m[0], line: r.n });
+    } else {
+      for (const m of fullNorm.matchAll(globalCopy(p.pattern))) {
+        const row = rows.find((r) => globalCopy(p.pattern).test(norm(r.text)) && norm(r.text).includes(m[0]));
+        hits.push({ match: m[0], line: row ? row.n : null });
+      }
+    }
+    for (const h of hits) {
+      const key = `${p.id}|${h.match.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        rule: `part0-${p.rule}`,
+        match: h.match,
+        message: `Part 0 rule ${p.rule}: "${h.match}". ${p.fix}`,
+        line: h.line
+      });
+    }
+  }
+  return out;
+}
+
+function checkBannedLive(rows, phrases) {
+  const out = [];
+  const fullNorm = norm(rows.map((r) => r.text).join("\n"));
+  for (const phrase of phrases) {
+    const p = norm(phrase);
+    if (!p || !findWholePhrase(fullNorm, p)) continue;
+    const row = rows.find((r) => findWholePhrase(norm(r.text), p));
+    out.push({
+      rule: "banned-live",
+      match: phrase,
+      message: `"${phrase}" is a phrase Chris banned from the app (${BANNED_LIVE_PATH}). Say it another way.`,
+      line: row ? row.n : null
+    });
+  }
+  return out;
+}
+
+const PART_NAMES = { hook: "the hook", line2: "line 2", reveal: "the reveal", cta: "the CTA" };
+
+/** The bullets shape (spec 7.1): the hook, line 2, reveal and CTA word for
+ *  word, plus min..max cues of maxWords or fewer. Reads `parts` when the
+ *  caller has them; otherwise reads the text: the words before the first cue
+ *  are the hook (sentence 1) and line 2 (sentence 2), the words after the
+ *  last cue are the reveal and then the CTA (its last sentence). */
+function checkBulletsShape(rows, parts, cueRule) {
+  const out = [];
+  let present;
+  let cues;
+  if (Array.isArray(parts)) {
+    const has = (kind) => parts.some((p) => p && p.kind === kind && String(p.text || "").trim());
+    present = { hook: has("hook"), line2: has("line2"), reveal: has("reveal"), cta: has("cta") };
+    cues = parts.filter((p) => p && p.kind === "cue").map((p) => ({ text: String(p.text || "").trim(), line: null }));
+  } else {
+    const cueIdx = rows.map((r, i) => (r.cue ? i : -1)).filter((i) => i >= 0);
+    cues = cueIdx.map((i) => ({ text: rows[i].text, line: rows[i].n }));
+    const before = cueIdx.length ? rows.slice(0, cueIdx[0]) : rows;
+    const after = cueIdx.length ? rows.slice(cueIdx[cueIdx.length - 1] + 1) : [];
+    const pre = splitSentences(joinText(before.filter((r) => !r.cue)));
+    const post = splitSentences(joinText(after.filter((r) => !r.cue)));
+    present = { hook: pre.length >= 1, line2: pre.length >= 2, reveal: post.length >= 2, cta: post.length >= 1 };
+  }
+  for (const kind of ["hook", "line2", "reveal", "cta"]) {
+    if (!present[kind]) {
+      out.push({ rule: "bullets-shape", match: null, line: null, message: `bullets style is missing ${PART_NAMES[kind]}, word for word. A standard bullets script is the hook, line 2, 3-8 cues, the reveal and the CTA.` });
+    }
+  }
+  if (cues.length < cueRule.min || cues.length > cueRule.max) {
+    out.push({ rule: "bullets-shape", match: String(cues.length), line: null, message: `bullets style has ${cues.length} cue${cues.length === 1 ? "" : "s"}. It needs ${cueRule.min} to ${cueRule.max}.` });
+  }
+  for (const c of cues) {
+    const n = countWords(c.text);
+    if (n > cueRule.maxWords) {
+      out.push({ rule: "bullets-shape", match: c.text, line: c.line, message: `a cue has ${n} words. Each cue is ${cueRule.maxWords} words or fewer.` });
+    }
+  }
+  return out;
+}
+
+/** checkScriptText(text, {format, style, strict, parts?, bannedLive?})
+ *  -> { ok, failures: [{rule, match, message, line}], warnings: [{rule, message}], words } */
+export function checkScriptText(text, options = {}) {
+  const opts = options || {};
+  const strict = opts.strict === true;
+  const format = typeof opts.format === "string" && opts.format.trim() ? opts.format.trim().toLowerCase() : null;
+  const known = format && SCRIPT_FORMATS.includes(format);
+  const style = typeof opts.style === "string" && opts.style.trim()
+    ? opts.style.trim().toLowerCase()
+    : (known ? DEFAULT_STYLE[format] : "words");
+  const failures = [];
+  const warnings = [];
+
+  // One row per non-blank line. The ↑ mark is dropped and a cue's bullet
+  // mark is cut off, so neither is read as a word.
+  const rows = [];
+  String(text ?? "").split(/\r?\n/).forEach((line, i) => {
+    const t = line.replace(/↑/g, " ").replace(/\s+/g, " ").trim();
+    if (!t) return;
+    const cue = CUE_MARK_RE.test(t);
+    rows.push({ n: i + 1, text: cue ? t.replace(CUE_MARK_RE, "").trim() : t, cue });
+  });
+  const spoken = rows.filter((r) => r.text);
+  const words = countWords(joinText(spoken));
+
+  if (!spoken.length) {
+    failures.push({ rule: "empty", match: null, line: null, message: "the script is empty." });
+    return { ok: false, failures, warnings, words };
+  }
+
+  // The checks every script gets (RULES.md Part 1 and 2.2), the same ones
+  // checkOneScript runs.
+  failures.push(...fromOldCheck(checkBannedWords(spoken, "script")));
+  failures.push(...fromOldCheck(checkBannedPhrases(spoken, "script")));
+  failures.push(...fromOldCheck(checkEmDash(spoken, "script")));
+  failures.push(...fromOldCheck(checkNotXButY(spoken, "script")));
+  failures.push(...fromOldCheck(checkNeverSay(spoken, "script")));
+  failures.push(...fromOldCheck(checkVendorNames(spoken, "script")));
+  const hookRows = spoken.slice(0, 2);
+  failures.push(...fromOldCheck(checkOpener(hookRows)));
+  for (const f of fromOldCheck(checkCauseFirst(hookRows))) {
+    f.match = splitSentences(joinText(hookRows))[0] || null;
+    failures.push(f);
+  }
+
+  // Floors by format, and the close check on standard and sorting only.
+  const formatRule = known ? FORMAT_RULES[format] : null;
+  if (!format) {
+    warnings.push({ rule: "format", message: "no format was given, so no length check and no close check ran." });
+  } else if (!known) {
+    warnings.push({ rule: "format", message: `"${format}" is not a format this checker knows (${SCRIPT_FORMATS.join(", ")}), so no length check and no close check ran.` });
+  }
+  if (formatRule && formatRule.closePromises) {
+    failures.push(...fromOldCheck(checkClosePromises(null, spoken)));
+  }
+  const floor = formatRule ? formatRule[style] : null;
+  if (floor && floor.minWords != null && words < floor.minWords) {
+    failures.push({ rule: "length", match: String(words), line: null, message: `too short. ${words} words for a ${format} ${style} script. It needs ${floor.maxWords != null ? `${floor.minWords}-${floor.maxWords}` : `${floor.minWords} or more`}.` });
+  }
+  if (floor && floor.maxWords != null && words > floor.maxWords) {
+    failures.push({ rule: "length", match: String(words), line: null, message: `too long. ${words} words for a ${format} ${style} script. It needs ${floor.minWords}-${floor.maxWords}.` });
+  }
+  if (floor && floor.cues) {
+    failures.push(...checkBulletsShape(rows, opts.parts, floor.cues));
+  }
+
+  // Strict mode: Chris's rules and the phrases he banned from the app.
+  if (strict) {
+    failures.push(...checkPart0(spoken));
+    let phrases;
+    if (Array.isArray(opts.bannedLive)) {
+      phrases = opts.bannedLive.filter((x) => typeof x === "string" && x.trim());
+    } else {
+      const loaded = loadBannedLive();
+      phrases = loaded.phrases;
+      if (loaded.warning) warnings.push({ rule: "banned-live", message: loaded.warning });
+    }
+    failures.push(...checkBannedLive(spoken, phrases));
+  }
+
+  return { ok: failures.length === 0, failures, warnings, words };
+}
+
+// ---------------------------------------------------------------------------
 // FILES AND THE CLI
 // ---------------------------------------------------------------------------
 
@@ -496,7 +773,8 @@ export function loadRules() {
     BANNED_WORDS, BANNED_PHRASES, BANNED_OPENERS,
     AVOID_PHRASES, ALLOWED_PHRASES,
     NEVER_SAY, NEVER_SAY_ALLOWED, CLOSE_PROMISES,
-    WORD_COUNT_BANDS, FLOOR_WORDS, VENDOR_NAMES
+    WORD_COUNT_BANDS, FLOOR_WORDS, VENDOR_NAMES,
+    PART0_PATTERNS, SCRIPT_FORMATS, DEFAULT_STYLE, FORMAT_RULES
   };
 }
 

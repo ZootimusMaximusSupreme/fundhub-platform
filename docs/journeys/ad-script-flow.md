@@ -131,3 +131,43 @@ integration would have bought.
   attributed per ad. Named in `docs/ops/2026-09-06-self-analysis.md`, separate batch.
 - **The 83 chat scripts.** They are not in the repo and are deliberately not the seed.
   `docs/ads/VOICE.md` is seeded from the five filmed and running ads only.
+
+## U09 M1 7.1: Rules rebuilt and the checker's strict mode
+
+Generated from code on 2026-10-05 (`scripts/ads/check-script.mjs`, `marketing/ads/rules-data.mjs`,
+`marketing/ads/banned-live.json`). Spec section 7.1. This is the check step only; the states above
+are unchanged.
+
+```mermaid
+flowchart TD
+    A["Script text: teleprompter body<br/>CAPS, ↑, blank lines, '- ' cues"] --> B["checkScriptText(text, {format, style, strict, parts?, bannedLive?})"]
+    B --> C["Every run: banned words, banned phrases, avoid list, opener,<br/>em dash, it's-not-X-it's-Y, never-say, vendor names,<br/>cause-first checks 2 and 3"]
+    C --> D{"format"}
+    D -->|"standard or sorting"| E["close check: no hard pull<br/>and nothing moves without their say-so"]
+    D -->|"long, notes, greenscreen, vsl"| F["no close check, no floor"]
+    D -->|"missing or unknown"| W["warning: no length or close check ran"]
+    E --> G{"format and style<br/>(style defaults to the format_style default)"}
+    G -->|"standard, words"| H["135 words or more"]
+    G -->|"standard, bullets"| I["hook, line 2, reveal and CTA present<br/>3-8 cues, each 12 words or fewer<br/>(read from parts when sent, else from the text)"]
+    G -->|"sorting, any style"| J["104-137 words"]
+    F --> K{"strict: true?"}
+    W --> K
+    H --> K
+    I --> K
+    J --> K
+    K -->|yes| L["PART0_PATTERNS (RULES.md Part 0)<br/>+ every phrase in banned-live.json, as plain text"]
+    K -->|no| R
+    L --> R["{ok, failures: [{rule, match, message, line}], warnings, words}"]
+```
+
+- `checkOneScript` and `npm run ads:check` keep the old lists. The one change: "optimize" is no
+  longer banned (RULES.md Part 0 rule 1). Output on `marketing/ads/CONTROLS.md` is byte for byte the
+  same as before.
+- Judge rules ("round two", "carry", "man" and Part 0 rules 13-34) are not patterns. Spec 7.6 gives
+  them to the writer's judge model.
+- `banned-live.json` is read from beside the module, then from the working directory. If neither
+  copy can be read, strict mode still runs and returns a warning that names the file.
+- **UNVERIFIED: no caller yet.** Nothing in `src/`, `api/` or `netlify/` calls `checkScriptText`
+  today. The writer (spec 7.6) and script edits (spec 7.8) are the planned callers.
+- **Gap:** `npm run ads:check` has no strict flag, so a chat writer running it does not get Part 0's
+  patterns. The spec names no CLI flag, so none was added.
