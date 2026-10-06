@@ -40,6 +40,11 @@
 // number of cents → null, and monthly_cents is null too: an unset price is
 // "price not set", never $0. Nothing here charges anyone.
 //
+// CLIENT PIN. rename / assign / unassign take an optional clientId. Staff pass
+// none and keep the org-wide scope they always had. The client's own page
+// (api/money/accounts.mjs) passes the session's clientId, and then a row that
+// belongs to another client answers exactly like a row that does not exist.
+//
 // NO DELETES. Nothing in this module removes a row. Unassign clears two
 // columns; a container is never deleted (api/finance/entities.mjs archives).
 
@@ -214,16 +219,17 @@ export async function createContainer(db, { orgId, clientId, kind, name }) {
   return { ok: true, container: row };
 }
 
-/** renameContainer(db, { orgId, containerId, name }) */
-export async function renameContainer(db, { orgId, containerId, name }) {
+/** renameContainer(db, { orgId, containerId, name, clientId? }) */
+export async function renameContainer(db, { orgId, containerId, name, clientId = null }) {
   if (!orgId) throw new TypeError("orgId is required");
   const id = need(containerId, "container_id");
   const n = readName(name);
+  const pin = clientId === null ? null : need(clientId, "client_id");
   const row = (await db.query(
     `UPDATE entities SET name = $3, updated_at = now()
-      WHERE id = $1 AND org_id = $2
+      WHERE id = $1 AND org_id = $2 AND ($4::uuid IS NULL OR client_id = $4::uuid)
       RETURNING id, client_id, kind, name, archived_at, created_at`,
-    [id, orgId, n]
+    [id, orgId, n, pin]
   )).rows[0];
   if (!row) return { ok: false, reason: "container_not_found" };
   return { ok: true, container: row };
@@ -237,10 +243,11 @@ export async function renameContainer(db, { orgId, containerId, name }) {
  * belong to the same client in the same org, and the container must not be
  * archived.
  */
-export async function assignAccount(db, { orgId, accountId, containerId, source = "staff_reviewed", at = null }) {
+export async function assignAccount(db, { orgId, accountId, containerId, source = "staff_reviewed", at = null, clientId = null }) {
   if (!orgId) throw new TypeError("orgId is required");
   const aid = need(accountId, "account_id");
   const eid = need(containerId, "container_id");
+  const pin = clientId === null ? null : need(clientId, "client_id");
   const src = String(source ?? "").trim().toLowerCase();
   if (!ASSIGN_SOURCES.includes(src)) {
     throw new TypeError(`source must be one of ${ASSIGN_SOURCES.join(", ")}`);
@@ -252,12 +259,14 @@ export async function assignAccount(db, { orgId, accountId, containerId, source 
     [aid, orgId]
   )).rows[0];
   if (!acct) return { ok: false, reason: "account_not_found" };
+  if (pin && String(acct.client_id) !== pin) return { ok: false, reason: "account_not_found" };
 
   const ent = (await db.query(
     `SELECT id, client_id, kind, archived_at FROM entities WHERE id = $1 AND org_id = $2`,
     [eid, orgId]
   )).rows[0];
   if (!ent) return { ok: false, reason: "container_not_found" };
+  if (pin && String(ent.client_id) !== pin) return { ok: false, reason: "container_not_found" };
   if (String(ent.client_id) !== String(acct.client_id)) {
     return { ok: false, reason: "container_belongs_to_another_client" };
   }
@@ -291,9 +300,10 @@ export async function assignAccount(db, { orgId, accountId, containerId, source 
  * unassignAccount(db, { orgId, accountId }) — out of its container, back to
  * 'unknown' with provenance cleared (082: NULL source is correct for unknown).
  */
-export async function unassignAccount(db, { orgId, accountId }) {
+export async function unassignAccount(db, { orgId, accountId, clientId = null }) {
   if (!orgId) throw new TypeError("orgId is required");
   const aid = need(accountId, "account_id");
+  const pin = clientId === null ? null : need(clientId, "client_id");
   const row = (await db.query(
     `UPDATE bank_accounts
         SET entity_id = NULL,
@@ -301,9 +311,9 @@ export async function unassignAccount(db, { orgId, accountId }) {
             entity_kind_source = NULL,
             entity_kind_set_at = NULL,
             updated_at = now()
-      WHERE id = $1 AND org_id = $2
+      WHERE id = $1 AND org_id = $2 AND ($3::uuid IS NULL OR client_id = $3::uuid)
       RETURNING id, client_id`,
-    [aid, orgId]
+    [aid, orgId, pin]
   )).rows[0];
   if (!row) return { ok: false, reason: "account_not_found" };
   return { ok: true, account_id: row.id, client_id: row.client_id };

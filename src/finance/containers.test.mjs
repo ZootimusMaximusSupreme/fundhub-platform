@@ -195,6 +195,50 @@ describe("unassignAccount", () => {
   });
 });
 
+describe("client pin — a client touches only their own rows", () => {
+  const acct = (over = {}) => ({ id: ACCT, client_id: CLIENT, entity_id: null, entity_kind: "unknown",
+    entity_kind_source: null, entity_kind_set_at: null, ...over });
+  const ent = (over = {}) => ({ id: BUSINESS, client_id: CLIENT, kind: "business", archived_at: null, ...over });
+
+  test("assign: another client's account answers account_not_found, nothing written", async () => {
+    const db = fakeDb([[/FROM bank_accounts/, [acct({ client_id: OTHER_CLIENT })]], [/FROM entities/, [ent({ client_id: OTHER_CLIENT })]]]);
+    const r = await assignAccount(db, { orgId: ORG, clientId: CLIENT, accountId: ACCT, containerId: BUSINESS, source: "client_stated" });
+    assert.equal(r.reason, "account_not_found");
+    assert.equal(db.calls.some((c) => /UPDATE/.test(c.sql)), false);
+  });
+
+  test("assign: own account into another client's container answers container_not_found", async () => {
+    const db = fakeDb([[/FROM bank_accounts/, [acct()]], [/FROM entities/, [ent({ client_id: OTHER_CLIENT })]]]);
+    const r = await assignAccount(db, { orgId: ORG, clientId: CLIENT, accountId: ACCT, containerId: BUSINESS, source: "client_stated" });
+    assert.equal(r.reason, "container_not_found");
+    assert.equal(db.calls.some((c) => /UPDATE/.test(c.sql)), false);
+  });
+
+  test("assign: own account, own container, stamped client_stated", async () => {
+    const db = fakeDb([
+      [/FROM bank_accounts/, [acct()]], [/FROM entities/, [ent()]],
+      [/UPDATE bank_accounts/, (_s, p) => [{ id: p[0], client_id: CLIENT, entity_id: p[2], entity_kind: p[3] }]]
+    ]);
+    const r = await assignAccount(db, { orgId: ORG, clientId: CLIENT, accountId: ACCT, containerId: BUSINESS, source: "client_stated" });
+    assert.equal(r.ok, true);
+    assert.equal(db.calls.find((c) => /UPDATE bank_accounts/.test(c.sql)).params[4], "client_stated");
+  });
+
+  test("unassign and rename bind client_id when pinned; staff calls pass null", async () => {
+    const db = fakeDb([[/UPDATE bank_accounts/, []], [/UPDATE entities/, []]]);
+    let r = await unassignAccount(db, { orgId: ORG, clientId: CLIENT, accountId: ACCT });
+    assert.equal(r.reason, "account_not_found");
+    assert.match(db.calls[0].sql, /client_id = \$3::uuid/);
+    assert.equal(db.calls[0].params[2], CLIENT);
+    r = await renameContainer(db, { orgId: ORG, clientId: CLIENT, containerId: BUSINESS, name: "X" });
+    assert.equal(r.reason, "container_not_found");
+    assert.match(db.calls[1].sql, /client_id = \$4::uuid/);
+    assert.equal(db.calls[1].params[3], CLIENT);
+    await unassignAccount(db, { orgId: ORG, accountId: ACCT });
+    assert.equal(db.calls[2].params[2], null);
+  });
+});
+
 describe("billing", () => {
   test("price unset → null price and null monthly, never $0", async () => {
     const db = fakeDb([[/count\(\*\)/, [{ n: 2 }]]]);
