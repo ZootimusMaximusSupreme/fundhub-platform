@@ -22,9 +22,31 @@
 // The gap is on the board for Chris to see once (plan unit U22, build brief).
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// THE WEEKLY BATCH IS NOT SCHEDULED HERE YET. Unit U35 adds batch scheduling to tick()
-// (batchPart below is where it goes). Until then an enabled company is logged as "on"
-// with nothing planned.
+// THE WEEKLY BATCH (unit U35, spec §7.7, §2 item 1). For each company with `enabled`
+// true, weeklyTick() runs ONE short transaction (a per-company advisory xact lock, so
+// two clocks firing at once queue nothing twice):
+//   * inside the plan window (3 hours before release_at): INSERT the weekly batch ON
+//     CONFLICT on marketing_batches_one_weekly_uq DO NOTHING — one batch per week, even
+//     when the clock fires twice;
+//   * a weekly batch that is 'planned' or 'failed', from 3 hours before release_at until
+//     24 hours after it, with no start_batch queued or running: (back to 'planned') and
+//     queue start_batch. So a failed plan is retried on every tick until release_at + 24 h;
+//   * a weekly batch that is 'ready' with release_at passed and no release_batch queued
+//     or running: queue release_batch (finish_batch already queues it for release_at;
+//     this is the backstop);
+//   * from 5 hours before release: one voice_export per week (payload week_key);
+//   * from the first tick after 02:00 in the settings zone: one nightly_script_check and
+//     one expire_drafts per night (payload day).
+// With `enabled` false none of that runs: no batch row, no job (M0 Done #4).
+//
+// LATE DRAFTS (any company). A write_slot that finishes after its batch was released
+// (Chris pressed Retry on a failed slot) gets one finish_batch: it counts the batch
+// again and queues the new draft's repo file, with no second buzz (spec §7.7).
+// followLateDrafts() is one INSERT ... SELECT; it reacts only to Chris's own Retry, the
+// same way the wake below serves his taps while the weekly switch is off.
+//
+// The clock still makes no model, GitHub, Meta or text call: it only reads, inserts rows,
+// queues jobs and wakes the worker.
 //
 // HEARTBEATS (marketing_heartbeats, db/migrations/415_marketing_heartbeats.sql). The clock,
 // the worker and the outbox drain serve every company the machine serves, so each beat
@@ -34,8 +56,10 @@
 // No transaction is held across anything: every statement here is one short statement.
 
 import { JOB_KINDS } from "./job-kinds.mjs";
-import { OFFER_KIND, STALE_AFTER_MINUTES } from "./jobs.mjs";
+import { OFFER_KIND, STALE_AFTER_MINUTES, enqueueJob } from "./jobs.mjs";
 import { wakeWorker } from "./wake.mjs";
+import { weeklyWindow, BATCH_KINDS, PLAN_LEAD_MS, PLAN_RETRY_MS, LATE_FOLLOW_DAYS } from "./schedule.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 
 /** The schedule. netlify.toml [functions."marketing-clock"] must say the same. */
 export const CLOCK_CRON = "*/15 * * * *";
@@ -157,10 +181,22 @@ export async function readHeartbeats(db, orgId) {
 
 /* ── the clock's reads ───────────────────────────────────────────────────── */
 
-/** @param {Db} db → [{ org_id, enabled }] for every company with a settings row. */
+/**
+ * @param {Db} db → [{ org_id, enabled, batch_weekday, batch_time, timezone }] for every
+ * company with a settings row (the schedule fields feed weeklyTick).
+ */
 export async function readSettings(db) {
-  const r = await db.query(`SELECT org_id, enabled FROM marketing_settings ORDER BY org_id`);
-  return r.rows.map((x) => ({ org_id: String(x.org_id), enabled: x.enabled === true }));
+  const r = await db.query(
+    `SELECT org_id, enabled, batch_weekday, batch_time::text AS batch_time, timezone
+       FROM marketing_settings ORDER BY org_id`
+  );
+  return r.rows.map((x) => ({
+    org_id: String(x.org_id),
+    enabled: x.enabled === true,
+    batch_weekday: x.batch_weekday == null ? null : Number(x.batch_weekday),
+    batch_time: x.batch_time == null ? null : String(x.batch_time),
+    timezone: x.timezone == null ? null : String(x.timezone)
+  }));
 }
 
 /**
@@ -201,9 +237,9 @@ export function hasWork(work) {
 /* ── the weekly batch part ───────────────────────────────────────────────── */
 
 /**
- * The weekly-batch part for one company. Plans nothing in this unit.
- * enabled false → "disabled". enabled true → "on", nothing planned yet (U35 adds the
- * schedule here).
+ * The weekly-batch part for one company, before weeklyTick runs. Plans nothing itself.
+ * enabled false → "disabled" (and weeklyTick is never called). enabled true → "on";
+ * tick() fills in what weeklyTick queued.
  * @param {{ org_id: string, enabled: boolean }} settings
  * @returns {{ org_id: string, batch: 'disabled' | 'on', planned: number, note: string }}
  */
@@ -211,14 +247,167 @@ export function batchPart(settings) {
   if (!settings.enabled) {
     return { org_id: settings.org_id, batch: "disabled", planned: 0, note: "the weekly batch is off; nothing planned" };
   }
-  return { org_id: settings.org_id, batch: "on", planned: 0, note: "the weekly batch is on; weekly scheduling is not built yet, nothing planned" };
+  return { org_id: settings.org_id, batch: "on", planned: 0, note: "the weekly batch is on; nothing to queue this tick" };
+}
+
+/* A job of `kind` for batch b (aliased b) that is still waiting or running. */
+const OPEN_BATCH_JOB = (kind) => `
+  SELECT 1 FROM marketing_jobs j
+   WHERE j.org_id = b.org_id AND j.kind = '${kind}'
+     AND j.status IN ('queued', 'running')
+     AND j.payload->>'batch_id' = b.id::text`;
+
+/**
+ * weeklyTick(db, { settings, now }) → { org_id, release_at, week_key, in_plan_window,
+ * made_batch, queued:[{kind, batch_id?, week_key?, day?, retry?}] }
+ *
+ * The weekly batch for ONE company whose `enabled` is true (see the header). One short
+ * transaction with a per-company advisory xact lock (pooler-safe: it ends with the
+ * transaction). Writes only marketing_batches and marketing_jobs. Never called for a
+ * company with `enabled` false.
+ *
+ * @param {any} db
+ * @param {{ settings: { org_id: string, batch_weekday?: number|null, batch_time?: string|null, timezone?: string|null },
+ *           now?: Date }} args
+ */
+export async function weeklyTick(db, { settings, now = new Date() }) {
+  const orgId = settings && settings.org_id;
+  if (!orgId) throw new TypeError("weeklyTick: settings.org_id is required");
+  const w = weeklyWindow(settings, now);
+  const at = (now instanceof Date ? now : new Date(now)).toISOString();
+
+  return withTransaction(db, async (tx) => {
+    await tx.query(`SELECT pg_advisory_xact_lock(hashtextextended('marketing_batches:weekly:' || $1::text, 0))`, [orgId]);
+    /** @type {Array<Record<string, any>>} */
+    const queued = [];
+    const queue = async (kind, payload, extra = {}) => {
+      await enqueueJob(tx, { orgId, kind, payload });
+      queued.push({ kind, ...extra });
+    };
+
+    // 1. The week's batch row, once, inside the plan window.
+    let made = null;
+    if (w.in_plan_window) {
+      const ins = await tx.query(
+        `INSERT INTO marketing_batches (org_id, kind, week_key, status, release_at)
+         VALUES ($1, 'weekly', $2, 'planned', $3::timestamptz)
+         ON CONFLICT (org_id, week_key) WHERE kind = 'weekly' DO NOTHING
+         RETURNING id`,
+        [orgId, w.week_key, w.release_at.toISOString()]
+      );
+      made = ins.rows[0] ? String(ins.rows[0].id) : null;
+    }
+
+    // 2. Plan (or plan again) every weekly batch in its window with no start_batch open.
+    const toPlan = await tx.query(
+      `SELECT b.id, b.status
+         FROM marketing_batches b
+        WHERE b.org_id = $1 AND b.kind = 'weekly'
+          AND b.status IN ('planned', 'failed')
+          AND b.release_at - make_interval(secs => $3::double precision) <= $2::timestamptz
+          AND b.release_at + make_interval(secs => $4::double precision) > $2::timestamptz
+          AND NOT EXISTS (${OPEN_BATCH_JOB(BATCH_KINDS.start)})
+        ORDER BY b.release_at, b.id`,
+      [orgId, at, PLAN_LEAD_MS / 1000, PLAN_RETRY_MS / 1000]
+    );
+    for (const b of toPlan.rows) {
+      const id = String(b.id);
+      if (b.status === "failed") {
+        await tx.query(
+          `UPDATE marketing_batches SET status = 'planned', error = NULL, updated_at = now()
+            WHERE id = $1 AND status = 'failed'`,
+          [id]
+        );
+      }
+      await queue(BATCH_KINDS.start, { batch_id: id }, { batch_id: id, retry: b.status === "failed" });
+    }
+
+    // 3. The release backstop: ready, release time passed, no release_batch open.
+    const toRelease = await tx.query(
+      `SELECT b.id
+         FROM marketing_batches b
+        WHERE b.org_id = $1 AND b.kind = 'weekly' AND b.status = 'ready'
+          AND b.release_at <= $2::timestamptz
+          AND NOT EXISTS (${OPEN_BATCH_JOB(BATCH_KINDS.release)})
+        ORDER BY b.release_at, b.id`,
+      [orgId, at]
+    );
+    for (const b of toRelease.rows) await queue(BATCH_KINDS.release, { batch_id: String(b.id) }, { batch_id: String(b.id) });
+
+    // 4. The week's voice export, once per week.
+    if (w.voice_due) {
+      const seen = await tx.query(
+        `SELECT 1 FROM marketing_jobs WHERE org_id = $1 AND kind = $2 AND payload->>'week_key' = $3 LIMIT 1`,
+        [orgId, BATCH_KINDS.voice, w.week_key]
+      );
+      if (!seen.rows.length) await queue(BATCH_KINDS.voice, { week_key: w.week_key }, { week_key: w.week_key });
+    }
+
+    // 5. The nightly chores, once per night.
+    for (const kind of [BATCH_KINDS.nightly, BATCH_KINDS.expire]) {
+      const seen = await tx.query(
+        `SELECT 1 FROM marketing_jobs WHERE org_id = $1 AND kind = $2 AND payload->>'day' = $3 LIMIT 1`,
+        [orgId, kind, w.nightly_day]
+      );
+      if (!seen.rows.length) await queue(kind, { day: w.nightly_day }, { day: w.nightly_day });
+    }
+
+    return {
+      org_id: orgId,
+      release_at: w.release_at.toISOString(),
+      week_key: w.week_key,
+      in_plan_window: w.in_plan_window,
+      made_batch: made,
+      queued
+    };
+  });
+}
+
+/**
+ * followLateDrafts(db) → [{ org_id, batch_id }] for every finish_batch queued.
+ *
+ * A released batch (in the last 30 days) with a write_slot that finished after the
+ * batch was last counted (marketing_batches.updated_at) and no finish_batch open gets
+ * one finish_batch {batch_id, late:true}. That only happens when Chris pressed Retry on
+ * a failed slot after the release. One statement, every company.
+ * @param {Db} db
+ */
+export async function followLateDrafts(db) {
+  const r = await db.query(
+    `INSERT INTO marketing_jobs (org_id, kind, payload, run_after)
+     SELECT b.org_id, '${BATCH_KINDS.finish}', jsonb_build_object('batch_id', b.id::text, 'late', true), now()
+       FROM marketing_batches b
+      WHERE b.status = 'released'
+        AND b.released_at > now() - make_interval(days => $1::int)
+        AND EXISTS (
+              SELECT 1 FROM marketing_jobs w
+               WHERE w.org_id = b.org_id AND w.kind = '${BATCH_KINDS.write}'
+                 AND w.payload->>'batch_id' = b.id::text
+                 AND w.status IN ('done', 'failed')
+                 AND w.finished_at > b.updated_at)
+        AND NOT EXISTS (${OPEN_BATCH_JOB(BATCH_KINDS.finish)})
+     RETURNING org_id, payload->>'batch_id' AS batch_id`,
+    [LATE_FOLLOW_DAYS]
+  );
+  return r.rows.map((x) => ({ org_id: String(x.org_id), batch_id: String(x.batch_id) }));
+}
+
+/** One log line for what weeklyTick did. @param {any} done */
+export function weeklyNote(done) {
+  const q = (done && Array.isArray(done.queued)) ? done.queued : [];
+  const when = done && done.release_at ? `next drop ${done.release_at} (${done.week_key})` : "next drop unknown";
+  if (!q.length) return `the weekly batch is on; ${when}; nothing to queue this tick`;
+  const what = q.map((x) => x.kind + (x.retry ? " (retry)" : "")).join(", ");
+  return `the weekly batch is on; ${when}; queued ${what}${done.made_batch ? "; made this week's batch" : ""}`;
 }
 
 /* ── one tick ────────────────────────────────────────────────────────────── */
 
 /**
  * @typedef {{
- *   readSettings: () => Promise<Array<{org_id: string, enabled: boolean}>>,
+ *   readSettings: () => Promise<Array<{org_id: string, enabled: boolean, batch_weekday?: number|null, batch_time?: string|null, timezone?: string|null}>>,
+ *   weeklyTick: (settings: any, now: Date) => Promise<{ queued: any[], release_at?: string, week_key?: string, made_batch?: string|null }>,
+ *   followLateDrafts: () => Promise<Array<{org_id: string, batch_id: string}>>,
  *   readWaitingWork: (opts: {kinds: string[]}) => Promise<Work>,
  *   machineOrgIds: () => Promise<string[]>,
  *   beat: (name: string, entries: Array<{orgId: string, detail?: object}>) => Promise<number>,
@@ -233,6 +422,8 @@ export function clockDeps({ db, env = process.env } = /** @type {any} */ ({})) {
   /** @type {ClockDeps} */
   const deps = {
     readSettings: () => readSettings(db),
+    weeklyTick: (settings, now) => weeklyTick(db, { settings, now }),
+    followLateDrafts: () => followLateDrafts(db),
     readWaitingWork: (opts) => readWaitingWork(db, opts),
     machineOrgIds: () => machineOrgIds(db),
     beat: (name, entries) => beat(db, name, entries),
@@ -243,18 +434,26 @@ export function clockDeps({ db, env = process.env } = /** @type {any} */ ({})) {
   return deps;
 }
 
+const reasonOf = (err) =>
+  String((err && typeof err === "object" && "message" in err ? err.message : err) ?? "unknown error")
+    .replace(/\s+/g, " ").trim().slice(0, 300) || "unknown error";
+
 /**
- * tick(ctx) → { ok, at, batch:[...], work, woke }
+ * tick(ctx) → { ok, at, batch:[...], late, work, woke }
  *
  * 1. Read every company's settings (never makes a row).
- * 2. The batch part per company: "disabled" or "on", nothing planned.
- * 3. Count the work already waiting (saves, due buzzes, due jobs of kinds the worker
- *    runs, stale claims).
- * 4. Write the 'clock' beat on every company the machine serves.
- * 5. Wake the worker when work waits. Nothing waiting → no wake.
+ * 2. The batch part per company: "disabled" (nothing runs), or "on": weeklyTick queues
+ *    what is due (the week's batch and its plan, the release backstop, the voice
+ *    export, the nightly chores). A company whose step fails is logged and the others
+ *    go on; the next tick is the retry.
+ * 3. Late drafts (every company): followLateDrafts.
+ * 4. Count the work already waiting (saves, due buzzes, due jobs of kinds the worker
+ *    runs, stale claims) — the jobs just queued included.
+ * 5. Write the 'clock' beat on every company the machine serves.
+ * 6. Wake the worker when work waits. Nothing waiting → no wake.
  *
- * Throws only when the database does (the Netlify shell catches it and still answers
- * 200: the next tick is the retry).
+ * Throws only when the database does on a read (the Netlify shell catches it and still
+ * answers 200: the next tick is the retry).
  *
  * @param {{ db?: Db, env?: Record<string, any>, registry?: Record<string, any>, deps?: Partial<ClockDeps> }} [ctx]
  */
@@ -264,19 +463,43 @@ export async function tick(ctx = {}) {
   const at = deps.now();
 
   const settings = await deps.readSettings();
-  const batch = settings.map((s) => batchPart(s));
-  for (const b of batch) {
-    deps.log(`${LOG} org ${b.org_id.slice(0, 8)}: weekly batch ${b.batch} — ${b.note}`);
+  /** @type {Array<ReturnType<typeof batchPart> & { error?: string }>} */
+  const batch = [];
+  for (const s of settings) {
+    /** @type {ReturnType<typeof batchPart> & { error?: string }} */
+    const part = batchPart(s);
+    if (s.enabled) {
+      try {
+        const done = await deps.weeklyTick(s, at);
+        part.planned = Array.isArray(done && done.queued) ? done.queued.length : 0;
+        part.note = weeklyNote(done);
+      } catch (err) {
+        part.error = reasonOf(err);
+        part.note = `the weekly batch step failed (${part.error}); the next tick tries again`;
+      }
+    }
+    batch.push(part);
+    deps.log(`${LOG} org ${part.org_id.slice(0, 8)}: weekly batch ${part.batch} — ${part.note}`);
   }
   if (!settings.length) deps.log(`${LOG} no company has marketing settings yet: weekly batch disabled — nothing planned`);
+
+  /** @type {Array<{org_id: string, batch_id: string}>} */
+  let late = [];
+  try {
+    late = await deps.followLateDrafts();
+    if (late.length) deps.log(`${LOG} late drafts: queued finish_batch for ${late.map((x) => x.batch_id.slice(0, 8)).join(", ")}`);
+  } catch (err) {
+    deps.log(`${LOG} late-draft check failed (${reasonOf(err)}); the next tick tries again`);
+  }
 
   const work = await deps.readWaitingWork({ kinds });
 
   const enabledBy = new Map(settings.map((s) => [s.org_id, s.enabled]));
+  const plannedBy = new Map(batch.map((b) => [b.org_id, b.planned]));
   const orgs = await deps.machineOrgIds();
   await deps.beat("clock", orgs.map((orgId) => {
     const enabled = enabledBy.get(orgId) === true;
-    return { orgId, detail: { enabled, batch: enabled ? "on" : "disabled", planned: 0, work } };
+    return { orgId, detail: { enabled, batch: enabled ? "on" : "disabled", planned: plannedBy.get(orgId) ?? 0, work } };
   }));
 
   let woke = null;
@@ -288,5 +511,5 @@ export async function tick(ctx = {}) {
     deps.log(`${LOG} nothing waiting — worker not woken`);
   }
 
-  return { ok: true, at: at.toISOString(), batch, work, woke };
+  return { ok: true, at: at.toISOString(), batch, late, work, woke };
 }
