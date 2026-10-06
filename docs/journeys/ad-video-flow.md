@@ -374,3 +374,74 @@ which is the only kind of proof available on a machine with no Postgres.
 local Postgres on this Mac. Nothing about migration 389, migration 390, the
 constraints, the row-level security policies, or any SQL statement in
 `store.mjs` or `token.mjs` has been executed even once.
+
+---
+
+## U18 M3 9.1 match step: whisperWords, free word-overlap pre-check, next free take number, stop renaming raw files
+
+Generated from the code on 2026-10-06: `src/ad-videos/pipeline.mjs`
+`matchAndRename()`, `src/ad-videos/match.mjs`, `src/ad-videos/store.mjs`
+`buildPatch()` / `NEXT_FREE_TAKE_NO`, `src/company-brain/transcribe.mjs`
+`whisperWords()`. Spec: `docs/specs/marketing-machine-2026-10-04.md` §9.1 steps 4 and 5.
+
+**This section replaces the `transcribed → matched` arrow in "The picture" above
+("Claude picks the script, then the Drive file is renamed") and the
+`transcribed` row of "Who does each move".** The match step no longer renames
+anything, and Claude is no longer the first thing asked. The step keeps its
+name, `matchAndRename`, so `NEXT_STEP` and `seam.test.mjs` stay stable.
+
+```mermaid
+flowchart TD
+    E["transcribed"] --> T0{"transcript on the row?"}
+    T0 -->|"no"| W0["waits at transcribed"]
+    T0 -->|"yes"| Q{"script_id already on the row?"}
+    Q -->|"yes — a retried take, or a row matched before 2026-10-06:<br/>no new match, no model call"| N
+    Q -->|"no"| O{"free word-overlap check<br/>every live script with an ad number<br/>(store.candidateScripts, filter unchanged)"}
+    O -->|"clear: 80%+ of one script's word pairs said,<br/>30+ points ahead of the next script,<br/>8+ pairs heard — no model call"| N
+    O -->|"unclear"| M["Claude reads the take<br/>against the top 3 by overlap only"]
+    M -->|"80+ confidence, on a script it was shown"| N
+    M -->|"no ANTHROPIC_API_KEY, or the vendor errored"| W1["waits at transcribed<br/>tried again next pass"]
+    M -->|"under 80, null, or an id it was not shown"| X["failed — a person looks"]
+    O -->|"no scripts offered at all"| X
+    N{"ad number on the script?"} -->|"no"| X
+    N -->|"yes"| T{"take number"}
+    T -->|"the row already has one: kept, never re-numbered"| F["matched"]
+    T -->|"'Take N' in the Drive file name"| F
+    T -->|"otherwise: next free number for this ad,<br/>picked by store.patch inside the same UPDATE"| F
+    F -.->|"the raw Drive file is NOT renamed — it keeps the camera's name"| F
+```
+
+| Piece | What the code does | Where |
+|---|---|---|
+| Free check | Share of a script's word pairs said in the take. Fillers (um, uh, hmm) and stutters ("the the") are dropped first; words compared with `tokenize()` from `merge-takes.mjs`. Hook text and body both count. | `match.mjs` `overlapScore()`, `rankByOverlap()` |
+| Clear winner | Its share clears the same 80 floor the model is held to, it is 30 points ahead of the next script, and 8+ of its pairs were said. The match's confidence is that share. `method: "overlap"`. | `match.mjs` `clearOverlapWinner()` |
+| Model | Only when unclear. Claude only (the env handed down holds just `ANTHROPIC_API_KEY`), shown the top 3 by overlap (`MAX_CANDIDATES` was 25, now 3), floor 80 unchanged. `method: "model"`. | `match.mjs` `matchTakeToScript()` |
+| Already matched | `script_id` set means matched. Moves to `matched` with the same script, no model call. (The old "skip" wrote nothing, which would have left a retried take at `transcribed` forever.) | `pipeline.mjs` `matchAndRename()` |
+| Take number | Row's own number, else "Take N" in the file name, else `NEXT_FREE_TAKE_NO`. The store turns that into `COALESCE(take_no, MAX(take_no) + 1 of that ad in the org)` inside the UPDATE, so a number on the row is never changed. Only `advance()` and `patch()` accept it, and only with the ad id in the same write. Before: a flat 1, so the second phone take of an ad hit `ad_videos_take_uq`. | `pipeline.mjs` `takeNoFromName()`; `store.mjs` `buildPatch()` |
+| No rename | The `drive.renameFile` call (`084_t01_raw_….mp4`) is gone. `renamed_at` stays on the table, unused; a retry still clears it. | `pipeline.mjs`; `seam.test.mjs` now fails if `renameFile` or `rawFileName` comes back |
+| `whisperWords()` | Built, **not wired**. verbose_json, `language=en`, `temperature=0`, word + segment times, the spec's filler prompt, 300 s timeout, refuses a masked key. Drops a segment when `no_speech_prob > 0.6` **or** `avg_logprob < -1`, with its words. Returns `{ words: [{w, start, end}], segments, duration }`. The live pipeline still reads Submagic's words at `editing → transcribed`. `whisperBytes` is unchanged. | `transcribe.mjs` |
+
+**Proof:** `match.test.mjs`, `pipeline.test.mjs`, `transcribe.test.mjs`,
+`seam.test.mjs`; the real-database half (take 1 then take 2 through the real step
+and the real `store.patch`) is `src/ad-videos/pipeline.pg.test.mjs`, which runs
+only in CI's Postgres.
+
+**Gaps between the spec and this code (recorded, not reconciled):**
+
+1. Spec §9.1 step 4 says drop segments with `no_speech_prob > 0.6` **and**
+   `avg_logprob < −1`. The plan's contract for this unit says **or**. Built as
+   **or** (the contract is binding). Whisper's own silence rule uses both
+   together; switching is one word in `keepSegment()`.
+2. Spec §9.1 step 5 says the skip becomes "already matched" when `script_id`
+   **and** `take_no` are set. Built: `script_id` alone means matched (plan
+   brief), a missing take number is filled, and the step moves the row on
+   instead of skipping.
+3. Not built here (other steps): candidates limited to locked and filmed
+   scripts with approved ones ranked last and `late = true`; "opening" ideas as
+   candidates; the script moving to filmed; Assign and Retry for unmatched
+   takes on the Command Center; whisperWords in the live pipeline (needs the
+   R2 audio from the video worker, §9.5, and OpenAI credit).
+4. A "Take N" in a file name that is already used for that ad still collides
+   on `ad_videos_take_uq` (the spec puts the file name first). The row waits at
+   `transcribed` with the save error as its note, and the match runs again next
+   pass (free when the overlap is clear, one model call when it is not).
