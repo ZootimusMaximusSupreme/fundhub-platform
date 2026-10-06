@@ -63,6 +63,44 @@ function stripComments(src) {
     .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 }
 
+/* THE OFFENCE CANNOT BE ITS OWN ALIBI (walkthrough-4 defect 22, 2026-09-06).
+   The old check flagged `UPDATE message_channel_routing SET provider` and then
+   accepted `... SET provider = $` as the restore — the same line of ordinary
+   parameterised SQL — so a test that repointed routing and never put it back
+   stayed green. It also only saw `provider` as the FIRST column after SET.
+
+   Now: the offence is any UPDATE of the table whose SET list names provider.
+   A restore is a DELETE of the org's rows, destroyMemoryRoutedOrg(), a saved
+   copy (savedRouting), or a SECOND provider UPDATE that sits after a teardown
+   (after(, afterEach( or finally {). One UPDATE alone never restores itself. */
+const PROVIDER_UPDATE = /UPDATE\s+message_channel_routing\s+SET\b[^`;'"]*?\bprovider\s*=/gi;
+const TEARDOWN = /\bafter(Each)?\s*\(|\bfinally\s*\{/g;
+
+export function routingOffence(src) {
+  const updates = [...src.matchAll(PROVIDER_UPDATE)].map((m) => m.index);
+  if (!updates.length) return false;
+  if (/DELETE\s+FROM\s+message_channel_routing\s+WHERE\s+org_id/i.test(src) ||
+      /destroyMemoryRoutedOrg\s*\(/.test(src) ||
+      /savedRouting/.test(src)) return false;
+  const teardowns = [...src.matchAll(TEARDOWN)].map((m) => m.index);
+  const restoredInTeardown = updates.length >= 2 &&
+    updates.slice(1).some((u) => teardowns.some((t) => t < u));
+  return !restoredInTeardown;
+}
+
+test("the routing check itself: one UPDATE is never its own restore", () => {
+  const set = "await db.query(`UPDATE message_channel_routing SET provider = $2 WHERE org_id = $1`, [org, 'memory']);";
+  assert.equal(routingOffence(set), true, "a lone parameterised provider UPDATE must be flagged");
+  assert.equal(routingOffence("db.query(`UPDATE message_channel_routing SET enabled = false, provider = 'memory' WHERE org_id = $1`)"), true,
+    "provider later in the SET list must be seen");
+  assert.equal(routingOffence(set + "\nafter(async () => { " + set.replace("'memory'", "saved") + " });"), false,
+    "an UPDATE in the test plus one in after() is a restore");
+  assert.equal(routingOffence(set + "\nafter(async () => { await db.query(`DELETE FROM message_channel_routing WHERE org_id = $1`, [org]); });"), false,
+    "deleting the suite org's rows is a restore");
+  assert.equal(routingOffence("db.query(`UPDATE message_channel_routing SET enabled = false WHERE org_id = $1`)"), false,
+    "an UPDATE that does not touch provider is not this offence");
+});
+
 test("no test UPDATEs message_channel_routing without restoring it", () => {
   const files = [...walk(path.join(ROOT, "src")), ...walk(path.join(ROOT, "scripts"))];
   const offenders = [];
@@ -78,15 +116,7 @@ test("no test UPDATEs message_channel_routing without restoring it", () => {
     // The dangerous shape: UPDATE an existing routing row's provider.
     // INSERT … memory for a suite-owned org is the approved pattern and is
     // not matched here.
-    if (!/UPDATE\s+message_channel_routing\s+SET\s+provider/i.test(src)) continue;
-
-    const restores =
-      /UPDATE\s+message_channel_routing\s+SET\s+provider\s*=\s*\$/i.test(src) ||
-      /DELETE\s+FROM\s+message_channel_routing\s+WHERE\s+org_id/i.test(src) ||
-      /destroyMemoryRoutedOrg\s*\(/.test(src) ||
-      /savedRouting/.test(src);
-
-    if (!restores) {
+    if (routingOffence(src)) {
       offenders.push(path.relative(ROOT, file));
     }
   }
