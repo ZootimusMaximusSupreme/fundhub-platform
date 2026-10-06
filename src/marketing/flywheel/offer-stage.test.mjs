@@ -10,7 +10,8 @@ import {
 } from "./offer-stage.mjs";
 import { stampStage, hashOf, bodyOf } from "./stamp.mjs";
 import { evaluateFiles, splitFrontMatter, parseFrontMatter } from "../../../scripts/flywheel/status.mjs";
-import { AVATAR_MAX_CHARS } from "../offer-rubric.mjs";
+import { AVATAR_MAX_CHARS, RESEARCH_MAX_CHARS } from "../offer-rubric.mjs";
+import { resolveOfferInputs } from "../offer-inputs.mjs";
 
 const CARD = "## Review card\n\n**What this decided:** Sell the Capital Blueprint at $5,000.\n\n**Say one of:** approve";
 const DOC = `# Offer — capital-blueprint\nAs of 2026-10-06.\n\n## 1. The offer in one sentence\n\nA funding plan in 30 days.\n\n## 2. The price, and why that number\n\n$5,000\n\n${CARD}\n`;
@@ -131,5 +132,35 @@ describe("the stamped 03-offer.md", () => {
     const long = stampStage({ stage: 1, version: 1, status: "approved", body: longBody });
     const cut = bodyOf(long).slice(0, AVATAR_MAX_CHARS);
     assert.equal(offerInputHashes({ avatarSummary: cut, cut: { avatar: true } }, { "01-avatar.md": { text: long } })["01-avatar.md"], hashOf(long));
+  });
+  test("a cut that ends on a space or a new line still matches the file the run read (review GL-1)", () => {
+    // Real avatars and research boards run past the 8,000-character cut. When the cut's
+    // last character is a space or a new line, the offer path trims it away; the stamp
+    // must still record the file's own hash, or the chain stalls on "Out of date".
+    for (const gap of [" ", "\n"]) {
+      const avatarBody = `# Buyer\n${"a".repeat(AVATAR_MAX_CHARS - 9)}${gap}${"word ".repeat(400)}\n\n## Review card\n\nx\n`;
+      const researchBody = `# Market\n${"b".repeat(RESEARCH_MAX_CHARS - 10)}${gap}${"row ".repeat(400)}\n\n## Review card\n\nx\n`;
+      const avatar = stampStage({ stage: 1, version: 1, status: "approved", counts: { quotes: 30, languageEntries: 120 }, body: avatarBody });
+      const research = stampStage({ stage: 2, version: 1, status: "approved", inputs: { "01-avatar.md": hashOf(avatar) },
+        counts: { rowsVerified: 9, competitorsFound: 4, rowsWithFirstSeen: 6 }, body: researchBody });
+      assert.equal(bodyOf(avatar)[AVATAR_MAX_CHARS - 1], gap, "the avatar's cut ends on the gap");
+      assert.equal(bodyOf(research)[RESEARCH_MAX_CHARS - 1], gap, "the research cut ends on the gap");
+      const f = { ...files(), "01-avatar.md": { text: avatar, source: "outbox-pending" }, "02-ad-research.md": { text: research, source: "outbox-pending" } };
+
+      // The payload exactly as the Write offer path builds it from these two files.
+      const resolved = resolveOfferInputs({ campaign: "capital-blueprint" }, {
+        readDefaults: () => ({ avatar: bodyOf(avatar), research: bodyOf(research), ownerNotes: "", files: { avatar: "a", research: "r", ownerNotes: null } })
+      });
+      assert.equal(resolved.ok, true);
+      assert.deepEqual(resolved.inputs.cut, { avatar: true, adResearch: true, ownerNotes: false });
+
+      const j = job({ payload: { ...resolved.inputs, today: "2026-10-06" } });
+      const h = offerInputHashes(j.payload, f);
+      assert.equal(h["01-avatar.md"], hashOf(avatar));
+      assert.equal(h["02-ad-research.md"], hashOf(research));
+      const all = { ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.text])), [OFFER_FILE]: offerStageFile({ job: j, files: f }).text };
+      const rows = evaluateFiles((name) => all[name] ?? null);
+      assert.equal(rows[2].state, "READY", rows[2].reasons.join("; "));
+    }
   });
 });

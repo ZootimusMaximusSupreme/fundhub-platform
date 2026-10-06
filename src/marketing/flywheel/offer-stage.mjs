@@ -73,7 +73,10 @@ export function offerInputHashes(payload, files) {
     if (!s) return;
     const cur = textOf(files, name);
     const body = cur == null ? null : bodyOf(cur);
-    const same = body != null && (body === s || (wasCut === true && body.slice(0, max) === s));
+    // The offer path cut the trimmed body to `max` characters and the summary was trimmed
+    // again, so a cut that ends on a space or a new line loses that space: trim the cut
+    // slice the same way before comparing (unit GL review, GL-1).
+    const same = body != null && (body === s || (wasCut === true && body.slice(0, max).trim() === s));
     out[name] = same ? /** @type {string} */ (hashOf(cur)) : textHash(s);
   };
   one("01-avatar.md", p.avatarSummary, cut.avatar, AVATAR_MAX_CHARS);

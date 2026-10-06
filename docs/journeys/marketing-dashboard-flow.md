@@ -1849,7 +1849,9 @@ flowchart TD
 
 - The input hashes are honest: the hash of `01-avatar.md` / `02-ad-research.md` as they are now
   when the run read that same text, else the hash of what it did read (the row then reads "Out
-  of date"); an input the run did not have is left out (the status script says so).
+  of date"); an input the run did not have is left out (the status script says so). "The same
+  text" counts the 8,000-character cut the Write offer path makes: the file's trimmed body, cut
+  and trimmed again, so a cut that ends on a space or a new line still matches (review GL-1).
 - A second Approve of the same run never writes it twice (the op id); it only re-approves.
 
 ### Rows 1 and 2 run from the card
