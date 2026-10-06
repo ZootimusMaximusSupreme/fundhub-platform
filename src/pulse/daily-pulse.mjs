@@ -303,7 +303,9 @@ export async function defaultOrgId(db) {
 
 export async function recordAgentRun(db, { orgId, dryRun, checks, detail } = {}) {
   if (!db || !orgId) return { recorded: false, reason: "no_db" };
-  const fail = (checks || []).some((c) => c.status === "FAIL");
+  // A registry row fails as "down", not "FAIL". Counting only "FAIL" stamped
+  // nine live runs pass while a route answered 404 (2026-09-27..10-05).
+  const fail = (checks || []).some((c) => c.status === "FAIL" || c.status === "down");
   await db.query(
     `INSERT INTO agent_runs (org_id, agent_code, trigger_event, channel, mode, outcome, detail)
      VALUES ($1, $2, 'cron.daily-pulse', 'internal', $3, $4, $5)`,

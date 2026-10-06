@@ -12,6 +12,7 @@ import {
   checkGateRelay,
   checkUnrecorded,
   formatScorecard,
+  recordAgentRun,
   runDailyPulse,
   writeScorecard
 } from "./daily-pulse.mjs";
@@ -105,6 +106,42 @@ test("a FAIL writes a suggested fix and still does not auto-fix", async () => {
   assert.ok(result.suggestedFixes.some((f) => /health/.test(f)));
   assert.match(fs.readFileSync(result.wrote, "utf8"), /FAIL/);
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+/* Measured on live: agent_runs for AG-07 said outcome=pass on 2026-09-27..10-05
+   while the same row's detail named a route answering 404. A registry row says
+   "down", not "FAIL", and the outcome only counted "FAIL". */
+test("a down registry row records the run as fail, not pass", async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [] }; } };
+  await recordAgentRun(db, {
+    orgId: "11111111-1111-4111-8111-111111111111",
+    dryRun: false,
+    checks: [
+      { id: "health", status: "PASS" },
+      { id: "reg:pipeline", kind: "registry", status: "down" }
+    ],
+    detail: "reg:pipeline: /app/pipeline.html answered 503"
+  });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /INSERT INTO agent_runs/);
+  assert.equal(calls[0].params[3], "fail");
+});
+
+test("an all-up run still records pass", async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [] }; } };
+  await recordAgentRun(db, {
+    orgId: "11111111-1111-4111-8111-111111111111",
+    dryRun: false,
+    checks: [
+      { id: "health", status: "PASS" },
+      { id: "gate-relay", status: "skip" },
+      { id: "reg:pipeline", kind: "registry", status: "up" }
+    ],
+    detail: "all PASS"
+  });
+  assert.equal(calls[0].params[3], "pass");
 });
 
 test("gate-relay FAIL names the existing start command — not a new watchdog", () => {
