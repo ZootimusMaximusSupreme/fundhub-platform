@@ -33,7 +33,7 @@ Do these in this order. Each number below is one block of the course.
 
 **Already done for this house:** UCC filings and security agreements (step 7). 2023 purchase papers are in Drive (step 5, partial). Quit claim deed is recorded (related to step 14).
 
-**Not done:** statement of account, private presentment, notary mail, recorded reconveyance, and three county pulls.
+**Not done:** statement of account, private presentment, notary mail, recorded reconveyance. **County index:** recorded **REL D/T** for unit 4011 searched — **not found** (see step 7).
 
 ---
 
@@ -79,7 +79,7 @@ Do this:
 
 - Purchase and loan pack (2023): Mortgage Information → **4 Purchase 2023**. Loan number **6000041372** (Change Lending).
 - Recorded quit claim **20240645099** (12/04/2024): **1 Recorded**.
-- The warranty deed **into CJS Enterprises LLC** is **not** in Drive yet. You pull that in step 6.
+- Recorded warranty deed **into CJS Enterprises LLC** **20230247849** (05/12/2023): **1 Recorded**.
 
 **Done when:** you can point at each of the three papers.
 
@@ -158,22 +158,19 @@ Do this on **loan #6000041372** the way the video does it on a sample:
 
 ## Step 7 — Pull the county recordings you do not have
 
-The course tells you to look at **your** deed of trust. Yours is not fully in the folder yet. Your own index says these three are still missing from Maricopa:
+Pulled from the Maricopa County Recorder (party name and **7137 E Rancho Vista Dr Unit 4011** address search). Official preview PDFs are in **1 Recorded**:
 
-1. The recorded **deed of trust** (Change Lending / Center Street chain).
-2. The **warranty deed into CJS Enterprises LLC**.
-3. The **trustee’s deed to Second Chance Organization**.
+1. Recorded **deed of trust** (Center Street Lending SPE VIII LLC / CJS Enterprises LLC; Change Lending purchase loan **#6000041372** chain): **20230247850**, recorded **05/12/2023**.
+2. **Warranty deed into CJS Enterprises LLC** (grantor OCV Holdings LLC): **20230247849**, recorded **05/12/2023**.
+3. **Trustee’s deed to Second Chance Organization LLC**: **20250110468**, recorded **02/28/2025**.
 
-Do this:
+Still missing from the recorder index for this unit:
 
-1. Search the Maricopa County Recorder for this address and those document types.
-2. Save each PDF.
-3. Put them in Mortgage Information → **1 Recorded**.
-4. Write the recording number and date on your index (`0 INDEX`).
+4. **Deed of reconveyance / release of deed of trust** on unit 4011 — no hit under CJS Enterprises LLC, Center Street Lending VIII SPE LLC, or Change Lending LLC with document code **REL D/T** (2023–2025).
 
 **Already in that folder:** quit claim **20240645099**. HOA judgment **20250175833**.
 
-**Done when:** those three PDFs are in Drive.
+**Done when:** the three pulls above are in **1 Recorded** (done). If Maricopa ever shows a recorded **REL D/T** for this unit, download it, add it to **1 Recorded**, and update this step, `credentials/drive-course-docs-temp/INDEX.txt`, and the status table at the bottom. If there is still no hit, leave **not found** written here — do not substitute the dissolution draft for a county release.
 
 ---
 
@@ -469,9 +466,11 @@ This is the end of the course’s main action (lessons 30 through 34). The paper
 
 **In Drive now:** the dissolution PDF is in the Reconveyance folder and in **3 Deed folder**. There is **no** recorder stamp for it yet.
 
+**Recorded deed-of-trust chain for this unit (not a release):** deed of trust **20230247850** (05/12/2023). **No** recorded deed of reconveyance / **REL D/T** for unit 4011 is in Drive yet.
+
 **Already recorded (related, not this release):** quit claim **20240645099**.
 
-**Done when:** the recorded dissolution is in Drive.
+**Done when:** the recorded dissolution or a recorded **REL D/T** for this unit is in Drive.
 
 ---
 
@@ -504,7 +503,7 @@ This is the end of the course’s main action (lessons 30 through 34). The paper
 |-------|--------|
 | 1–2 Intro | Watch once |
 | 3–4 Deed and acceptance | Florida acceptance exists. This Scottsdale unit is not done. |
-| 5–7 Deed of trust and county pulls | 2023 file is in Drive. Three recorder PDFs are still missing. |
+| 5–7 Deed of trust and county pulls | 2023 file is in Drive. Recorded DOT **20230247850**, warranty deed **20230247849**, trustee’s deed **20250110468** are in **1 Recorded**. Deed of reconveyance for #4011 still missing. |
 | 8–9 Security agreement and UCC-1 | Done |
 | 10 Lien search printout | Not saved |
 | 11–14 Note, deposits, study | Note still buried in the loan PDF |
@@ -513,4 +512,4 @@ This is the end of the course’s main action (lessons 30 through 34). The paper
 | 22–23 Record the release | Dissolution PDF exists. Not recorded. |
 | 24 MERS | Only if the deed of trust says MERS |
 
-**Start here with the person you are showing:** step 7 (get the three county PDFs), then step 15 (mail the statement of account). Do not start at the notary.
+**Start here with the person you are showing:** step 7 is done for the DOT, warranty deed, and trustee’s deed. Only add a **county-recorded REL D/T** here if the recorder actually has one. Then step 15 (mail the statement of account). Do not start at the notary.
