@@ -1797,3 +1797,52 @@ Today, Ideas, Scripts, Shoot, Launch, Numbers (Videos has no module yet, so it i
 strip; a `#videos` link lands on Today). Settings stays behind the gear. The gap above (no tab
 drawn) is closed on this branch. U34's frame tests now read that strip (they were written when
 Today was the only tab with a module).
+
+## U35 The clock's weekly batch tick and the batch jobs in the worker
+
+Generated from code on 2026-10-06 (branch `mm-u35-batch-lifecycle`): `src/marketing/clock.mjs` (`tick`, `weeklyTick`,
+`followLateDrafts`), `src/marketing/schedule.mjs`, `src/marketing/job-kinds.mjs`. This replaces the "weekly scheduling
+is U35 — NOT BUILT" box in the U22 clock diagram above. The batch's own states are drawn in
+`docs/journeys/ad-script-flow.md`, section U35. Spec §7.7, §7.2, §7.9, §2 items 1 and 4, M0 Done #4.
+
+### One clock tick (every 15 minutes, 30-second scheduled function)
+
+```mermaid
+flowchart TD
+    T["tick()"] --> S["read every company's settings<br/>(enabled, batch_weekday, batch_time, timezone)"]
+    S --> E{"enabled?"}
+    E -->|false| OFF["log 'disabled'; no batch row, no job (M0 Done #4)"]
+    E -->|true| WT["weeklyTick: ONE short transaction,<br/>per-company advisory xact lock (two clocks at once queue nothing twice)"]
+    WT --> W1{"3 h before the next drop<br/>(Monday 7:00 am Arizona = 14:00 UTC by default)?"}
+    W1 -->|yes| INS["INSERT the weekly batch (week_key = ISO week of release_at in the zone)<br/>ON CONFLICT on the one-weekly index DO NOTHING"]
+    W1 -->|no| W2
+    INS --> W2["weekly batch 'planned' or 'failed', from release_at - 3 h to release_at + 24 h,<br/>no start_batch queued or running → (back to planned) + queue start_batch"]
+    W2 --> W3["weekly batch 'ready', release_at passed, no release_batch open<br/>→ queue release_batch (backstop: finish_batch already queued one for release_at)"]
+    W3 --> W4["5 h before the drop: one voice_export per week_key"]
+    W4 --> W5["from 02:00 in the zone: one nightly_script_check and one expire_drafts per night"]
+    OFF --> LATE
+    W5 --> LATE["followLateDrafts (every company): a released batch whose write_slot finished<br/>after its last count, no finish_batch open → queue finish_batch {late:true}"]
+    LATE --> WORK["count waiting work (the jobs just queued included) → beat → wake the worker"]
+```
+
+### The batch jobs in the worker (group `system`, one at a time)
+
+| Kind | Queued by | What it does |
+|---|---|---|
+| `start_batch` | the clock (weekly), Write now (U26) | pins main's commit, plans, one `write_slot` per slot, one `finish_batch`, status `writing` |
+| `finish_batch` | `start_batch`, the clock (late drafts) | waits for the slots (re-queues itself 30 s out, no attempt counted), counts, `ready`, queues `release_batch` for `release_at` |
+| `release_batch` | `finish_batch`, the clock (backstop) | `ready` → `released` only at `release_at`; every draft's file; one buzz (Write now: only when Chris is not on the page) |
+| `expire_drafts` | the clock, nightly | machine drafts of a batch released over `draft_expiry_days` ago → `expired`, with their file |
+| `voice_export` | the clock, weekly | unexported voice pairs → one VOICE.md edit per 50, stamped once |
+| `nightly_script_check` | the clock, nightly | file list once per folder, body hashes, a `replace` row only on a mismatch |
+
+- No job here calls a model or texts anyone: the writer (`write_slot`, U24) calls Anthropic; the buzz is a
+  `marketing_buzzes` row the worker sends after quiet hours.
+- GitHub is read only by `start_batch` (main's ref and angles.json) and `nightly_script_check` (folder listings, a
+  file it does not recognise), always outside a transaction. Every repo write goes through `repo_outbox`.
+
+### Gaps (findings, not reconciled)
+
+- `GET marketing/health` does not show the nightly check's counts yet (the job's result holds them).
+- With `enabled` off, the clock queues no voice export, expiry or nightly check either (all scheduled chores).
+- The late-draft follow-up runs for every company, switch on or off: it only reacts to Chris's own Retry.
