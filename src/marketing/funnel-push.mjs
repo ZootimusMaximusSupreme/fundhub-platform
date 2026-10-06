@@ -22,8 +22,10 @@
 // (thank-you, booking, then the landing page last, so the door people arrive
 // at opens only when the rest exist) → token → prove with a cache-busted GET
 // that the live page carries the funnel tag and the tracking → the funnel is
-// live. A page that is made but not proven yet fails the job with the reason;
-// Retry proves it again and makes nothing new.
+// live, and its three pages are queued for the repo (repo outbox, U05) in the
+// same transaction: marketing/landing-pages/funnels/<key>/<page>.html. A page
+// that is made but not proven yet fails the job with the reason; Retry proves it
+// again and makes nothing new.
 
 import * as cfPages from "../messaging/providers/clickfunnels-pages.mjs";
 import { pathsFromPages } from "./funnel-paths.mjs";
@@ -32,6 +34,9 @@ import {
   loadFunnel, markPagePushed, markPageSent, markPageProved, markPageProofFailed, markFunnelLive, sha256
 } from "./funnel-store.mjs";
 import { FunnelJobError } from "./funnel-build.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
+import { enqueueRepoWrite } from "../repo/outbox.mjs";
+import { wakeWorker } from "./wake.mjs";
 
 /** The push order: the landing page goes last. */
 export const PUSH_ORDER = Object.freeze(["thank_you", "booking", "landing"]);
@@ -44,6 +49,11 @@ const SDK_TAG = '<script src="https://sdk.myclickfunnels.com/sdk.js" defer></scr
 /** The description that marks a ClickFunnels page as one this machine made for this page row. */
 export function pageMarker(funnel, page) {
   return `Fundhub funnel ${funnel.tag} page ${page.role} ${page.id}. Made by the Fundhub dashboard.`;
+}
+
+/** Where a live funnel's page is saved in the repo (src/repo/allow-list.mjs). */
+export function repoPathFor(funnel, page) {
+  return `marketing/landing-pages/funnels/${funnel.key}/${String(page.role).replace(/_/g, "-")}.html`;
 }
 
 /** The saved page with the ClickFunnels page token added before the SDK tag. */
@@ -188,7 +198,20 @@ export async function run(job, ctx = /** @type {any} */ ({})) {
   if (pathOf(landing.live_url) !== funnel.path) {
     throw new FunnelJobError(`ClickFunnels put the first page at ${landing.live_url}, not at ${funnel.path}. The funnel was not marked live.`);
   }
-  const live = await markFunnelLive(db, { funnelId: funnel.id, landingUrl: landing.live_url });
+  // Live, and the three pages queued for the repo through the outbox in the same
+  // transaction (they are committed when the outbox drains).
+  const live = await withTransaction(db, async (tx) => {
+    const row = await markFunnelLive(tx, { funnelId: funnel.id, landingUrl: landing.live_url });
+    if (row) {
+      for (const p of order) {
+        await enqueueRepoWrite(tx, {
+          orgId, opId: `funnel-page-live-${p.id}`, path: repoPathFor(funnel, p), mode: "replace", content: p.html
+        });
+      }
+    }
+    return row;
+  });
+  if (live) await (deps.wake ?? wakeWorker)(env);
   return {
     funnel_id: funnel.id,
     url: (live && live.landing_url) || landing.live_url,

@@ -65,10 +65,13 @@ async function call(handler, token, { method = "POST", body, query = {}, deps = 
 }
 
 /* A fake ClickFunnels workspace. `pages` holds what is there; every request is recorded. */
+let fakeIds = 900;
 function fakeClickFunnels(existing) {
   const pages = existing.map((p) => ({ ...p }));
   const calls = [];
-  let nextId = 900;
+  // Page ids are unique across the whole fake account, as on ClickFunnels.
+  fakeIds += 100;
+  let nextId = fakeIds;
   const fetchImpl = async (url, init = {}) => {
     const u = new URL(url);
     const method = init.method || "GET";
@@ -140,6 +143,7 @@ describe("the funnel builder", { skip: !HAS_DB ? "no DATABASE_URL" : false }, ()
     const o = (await db.query(`SELECT id FROM orgs WHERE slug = $1`, [ORG_SLUG])).rows[0];
     if (o) {
       await db.query(`DELETE FROM marketing_model_usage WHERE org_id = $1`, [o.id]);
+      await db.query(`DELETE FROM repo_outbox WHERE org_id = $1`, [o.id]);
       await db.query(`DELETE FROM marketing_funnel_pages WHERE org_id = $1`, [o.id]);
       await db.query(`DELETE FROM marketing_jobs WHERE org_id = $1`, [o.id]);
       await db.query(`DELETE FROM marketing_requests WHERE org_id = $1`, [o.id]);
@@ -282,18 +286,27 @@ describe("the funnel builder", { skip: !HAS_DB ? "no DATABASE_URL" : false }, ()
   // ── rename ───────────────────────────────────────────────────────────────
 
   test("rename: refused for a live ClickFunnels address, our own funnel's address and a reserved word", async () => {
+    // /blueprint-4 was made with build: false, so nothing is in flight for it.
+    const four = (await db.query(`SELECT id FROM marketing_funnels WHERE org_id = $1 AND path = '/blueprint-4'`, [org])).rows[0];
     const live = await call(renameHandler, tokenOwner, {
-      body: { request_id: rid("ren"), id: blueprint.id, path: "capital" },
+      body: { request_id: rid("ren"), id: four.id, path: "capital" },
       deps: { liveTaken: async () => ({ ok: true, taken: new Set(["/capital-book"]) }) }
     });
     assert.equal(live.code, 400);
     assert.equal(live.body.field, "path");
     assert.match(live.body.message, /\/capital-book is already a page/);
-    const ours = await call(renameHandler, tokenOwner, { body: { request_id: rid("ren"), id: blueprint.id, path: "blueprint-2" } });
+    const ours = await call(renameHandler, tokenOwner, { body: { request_id: rid("ren"), id: four.id, path: "blueprint-2" } });
     assert.equal(ours.code, 400);
-    const reserved = await call(renameHandler, tokenOwner, { body: { request_id: rid("ren"), id: blueprint.id, path: "roadmap" } });
+    assert.equal(ours.body.field, "path");
+    const reserved = await call(renameHandler, tokenOwner, { body: { request_id: rid("ren"), id: four.id, path: "roadmap" } });
     assert.equal(reserved.code, 400);
-    assert.equal((await funnelRow(blueprint.id)).path, "/blueprint", "nothing moved");
+    assert.equal(reserved.body.field, "path");
+    assert.equal((await funnelRow(four.id)).path, "/blueprint-4", "nothing moved");
+    // While its pages are being written, a funnel is not renamed at all.
+    const busy = await call(renameHandler, tokenOwner, { body: { request_id: rid("ren"), id: blueprint.id, path: "elsewhere" } });
+    assert.equal(busy.code, 400);
+    assert.equal(busy.body.field, "id");
+    assert.match(busy.body.message, /being written or pushed/);
   });
 
   test("rename: a free address moves the funnel and its pages; the tag stays", async () => {
@@ -400,6 +413,16 @@ describe("the funnel builder", { skip: !HAS_DB ? "no DATABASE_URL" : false }, ()
     const pages = await pageRows(blueprint.id);
     assert.ok(pages.every((p) => p.cf_page_id && p.proved_at && p.sent_sha256));
     assert.equal(pages.find((p) => p.role === "booking").cf_page_id, String(created.find((p) => p.current_path === "/blueprint-book").id));
+
+    // The three live pages are queued for the repo, in the funnel builder's own folder.
+    const outbox = (await db.query(
+      `SELECT path, mode, content FROM repo_outbox WHERE org_id = $1 AND op_id LIKE 'funnel-page-live-%' ORDER BY id`, [org])).rows;
+    assert.deepEqual(outbox.map((r) => r.path), [
+      "marketing/landing-pages/funnels/blueprint/thank-you.html",
+      "marketing/landing-pages/funnels/blueprint/booking.html",
+      "marketing/landing-pages/funnels/blueprint/landing.html"
+    ]);
+    assert.ok(outbox.every((r) => r.mode === "replace" && r.content.includes(tagMeta("fnl-blueprint"))));
   });
 
   test("a live funnel: its pages never change, it is never renamed, rebuilt or pushed again", async () => {

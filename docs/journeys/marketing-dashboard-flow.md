@@ -642,8 +642,13 @@ flowchart TD
   O --> T[page token into that page:<br/>PUT /pages/id, only for ids this push made]
   T --> R[cache-busted GET of each live page:<br/>tag + tracking there?]
   R -->|not yet, 4 tries| F[failed: Retry proves again,<br/>makes nothing new]
-  R -->|all proven| LV[funnel live: status, live_at,<br/>landing_url = live address, active true]
+  R -->|all proven| LV[one transaction: funnel live: status, live_at,<br/>landing_url = live address, active true<br/>+ the 3 pages queued in repo_outbox:<br/>marketing/landing-pages/funnels/key/page.html]
+  LV --> WK[wake the marketing worker<br/>the outbox commits them when it drains]
 ```
+
+- The repo save needed one more folder on the outbox allow-list
+  (`src/repo/allow-list.mjs`): `marketing/landing-pages/funnels/`. Nothing else under
+  `marketing/landing-pages/` is writable by the app.
 
 ### The tag and the tracking on every page
 
