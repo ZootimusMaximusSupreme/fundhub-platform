@@ -347,7 +347,12 @@ const API_KEYS = [
   /* marketing machine. GET answers 401 to an unsigned ping (counts as up) and
      never writes; the POST half is never pinged. */
   "marketing/settings",
-  "marketing/funnels"
+  "marketing/funnels",
+  /* The Meta loader (U28). load is POST only: a GET answers 405 before it reads
+     anything, which isUp() counts as up, and the ping queues nothing.
+     load-status answers 401 to an unsigned GET. Neither ever calls Meta. */
+  "marketing/meta/load",
+  "marketing/meta/load-status"
 ];
 
 const DESK_FILES = [
