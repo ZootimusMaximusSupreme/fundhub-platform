@@ -374,3 +374,80 @@ which is the only kind of proof available on a machine with no Postgres.
 local Postgres on this Mac. Nothing about migration 389, migration 390, the
 constraints, the row-level security policies, or any SQL statement in
 `store.mjs` or `token.mjs` has been executed even once.
+
+---
+
+## U16 M3 9.2: the aligner src/ad-videos/align.mjs (pure, no AI)
+
+Generated from the code on 2026-10-06: `src/ad-videos/align.mjs`
+(`alignTakes`, `resolveAnchor`) and its tests `src/ad-videos/align.test.mjs`.
+The rules are spec §9.2 (`docs/specs/marketing-machine-2026-10-04.md`), owner
+decision §2 item 10 (the cut is made from the script, before Submagic, on
+plain code) and the law `.claude/rules/ad-video-best-of-clips.md`.
+
+**Status: built and tested, not wired in.** Nothing live calls `align.mjs`.
+The take that waits at `staged` today is still joined by `merge-takes.mjs`
+(the section "Joining every take of one angle" above). **Two aligners now
+exist.** `merge-takes.mjs` stays the live one until the video worker's
+`build_cut` job (spec §9.1 step 7) calls `alignTakes()` and saves the answer as
+`ad_videos.cut_plan`. Neither file imports the other.
+
+```mermaid
+flowchart TD
+    IN[takes: words + silences + recorded_at<br/>script: ad_scripts.parts<br/>style: words or bullets] --> N[Spoken words both sides<br/>$300,000 = 300K = 300 grand<br/>a hundred = one hundred, % = percent<br/>contractions out, CAPS and up-arrows out]
+    N --> L[Lines from parts<br/>blank line after = planned pause]
+    L --> T[Takes in filming order<br/>by recorded_at]
+    T --> A[Every attempt at every line in every take<br/>words of 5+ letters match at 0.8]
+    A --> S[Stitch restarts within 8 s<br/>A said words 1..k, B restarts at j ≤ k+1:<br/>keep A before j, then B]
+    S --> R[Per take: latest attempt with 90%+ coverage<br/>and no stall over 1.0 s, else highest coverage]
+    R --> D[Across lines: dynamic program<br/>cost = 1 − coverage + 0.15 per take switch]
+    D --> Q{Line under 85%?}
+    Q -->|no| K[kept]
+    Q -->|yes, both neighbours kept in one take,<br/>the speech between runs under 2x the line| SD[said differently: keep that speech]
+    Q -->|yes, no such neighbours| BA[said differently: keep the best attempt]
+    Q -->|nothing usable| MI[missing]
+    D -.->|bullets style| MID[Freestyle middle between line 2 and the reveal<br/>4+ word restart after 400 ms silence, back within 6 s:<br/>keep the last copy. Cue anchors by keyword]
+    K --> F[Fillers out only inside silence<br/>um/uh 150 ms both sides, like/you know 250 ms]
+    SD --> F
+    BA --> F
+    MID --> F
+    F --> P[Pieces: 40 ms before speech, 80 ms after,<br/>snapped to silence within 250 ms<br/>gap keeps up to 250 ms of the source pause, 450 ms at a planned pause<br/>stalls over 1.0 s cut down. No silence added, no frozen frame]
+    P --> OUT[cut_plan: pieces, missing_lines, said_differently,<br/>coverage, stalls, ok, hold_reasons, lines, cues]
+    OUT -. not wired yet .-> W[video worker build_cut → ad_videos.cut_plan<br/>UNVERIFIED: no caller exists]
+```
+
+**What `ok` means.** `ok` is false when spec §9.1 step 7 would park the take
+at `cut`: the hook, line 2 or the call to action is missing, or under 70% of the
+script's words were said. `rematch` is true under 50% (the match runs again).
+`hold_reasons` says why in plain words.
+
+**Numbers that are not in the spec** (safe defaults, all in `ALIGN_DEFAULTS`):
+an attempt under 50% is never kept as the line; a line's expected length is
+150 words a minute; a stretch "said differently" must hold at least one of the
+line's words, or the line is missing; a cue's anchor words are the words only
+that cue has; the bullets cue index counts from 1 (the U01 contract example);
+the last line of a part is a planned pause unless cue follows cue; a take with
+no `recorded_at` goes after the dated ones; a cut-off word counts as part of a
+restart only when whisper marks it with a dash.
+
+**Gaps (found, not reconciled):**
+
+1. **Two aligners.** `merge-takes.mjs` (live) and `align.mjs` (spec §9.2) cut
+   differently: 0.15 s / 0.12 s pads against 40 / 80 ms edges, a per-line
+   defect score against latest-qualifying plus the switch cost, every filler
+   cut against silence-gated fillers, pauses over 0.45 s cut against stalls over
+   1.0 s. Retiring `merge-takes.mjs` is part of wiring the worker.
+2. **`ad_scripts.parts` does not exist live yet** (spec §7.4). The aligner is
+   proved on fixtures in that shape only.
+3. **The freestyle middle** is taken from one take, bounded by that take's own
+   line 2 and reveal. A take missing either one gives no middle. The spec does
+   not say how to pick a middle across takes.
+4. **Strike or restore a line** (spec §9.6) will need an option here. Not built;
+   9.6 is deferred.
+5. **A piece shorter than 8 frames** is not merged away. Spec §9.3's cut check
+   (`ffmpeg-plan.mjs`, U17) blocks the master when one appears.
+6. **Not proved on a real filmed take** or a real whisper word list: fake
+   transcripts only, plus 120 seeded random shoots that check no moment of a
+   take plays twice and no second is added.
+7. **The intended journey** (`docs/journeys/marketing-machine-intended.md`) is
+   not on main. The yardstick was spec §1 and §9.2.
