@@ -19,7 +19,7 @@ flowchart TD
     CAN --> A_adintel[adintel — 1 route]
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 6 routes]
-    CAN --> A_banking[banking — 4 routes]
+    CAN --> A_banking[banking — 6 routes]
     CAN --> A_blueprint[blueprint — 1 route]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
@@ -30,10 +30,11 @@ flowchart TD
     CAN --> A_creative[Creative Factory — 7 routes]
     CAN --> A_dashboard[The dashboard — 6 routes]
     CAN --> A_documents[Documents — 1 route]
-    CAN --> A_finance[Finance — 10 routes]
+    CAN --> A_finance[Finance — 11 routes]
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 1 route]
     CAN --> A_journeys[journeys — 1 route]
+    CAN --> A_money[money — 1 route]
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 18 routes]
     CAN --> A_read[Reading data — 57 routes]
@@ -76,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**182 of 301 routes.**
+**186 of 305 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -98,6 +99,8 @@ flowchart TD
 | `/api/banking/link-exchange` | POST | owner, admin, sales_manager |
 | `/api/banking/link-token` | POST | owner, admin, sales_manager |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
@@ -149,6 +152,7 @@ flowchart TD
 | `/api/finance/bills` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/cards` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/cashflow` | GET, POST | owner, admin, sales_manager |
+| `/api/finance/containers` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/entities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/liabilities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/model` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -165,6 +169,7 @@ flowchart TD
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/money/overview` | GET | owner, admin, sales_manager |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | staff, client |
@@ -272,7 +277,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**119 of 301 routes.**
+**119 of 305 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

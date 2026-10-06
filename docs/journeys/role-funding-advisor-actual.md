@@ -45,20 +45,21 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 133 routes]
+    WHO -->|Yes| CANT[Blocked — 137 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
-    CANT --> B_banking[banking — 4 blocked]
+    CANT --> B_banking[banking — 6 blocked]
     CANT --> B_brand[brand — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
     CANT --> B_company_brain[company-brain — 2 blocked]
     CANT --> B_content[content — 2 blocked]
     CANT --> B_dashboard[The dashboard — 1 blocked]
     CANT --> B_demo[demo — 2 blocked]
-    CANT --> B_finance[Finance — 5 blocked]
+    CANT --> B_finance[Finance — 6 blocked]
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 43 blocked]
+    CANT --> B_money[money — 1 blocked]
     CANT --> B_ops[ops — 1 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -75,7 +76,7 @@ flowchart TD
 
 ## What they can reach
 
-**168 of 301 routes.**
+**168 of 305 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -257,7 +258,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**133 of 301 routes.**
+**137 of 305 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -276,6 +277,8 @@ flowchart TD
 | `/api/banking/link-token` | POST | owner, admin, sales_manager |
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
 | `/api/chat/portal-message` | GET, POST | client |
@@ -293,6 +296,7 @@ flowchart TD
 | `/api/finance/bills` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/cards` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/cashflow` | GET, POST | owner, admin, sales_manager |
+| `/api/finance/containers` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/subscriptions` | GET, POST | owner, admin, sales_manager |
 | `/api/hiring/application` | GET | owner, admin |
 | `/api/hiring/bench` | GET | owner, admin |
@@ -349,6 +353,7 @@ flowchart TD
 | `/api/marketing/shoot` | GET, POST | owner, admin |
 | `/api/marketing/shoot/mark` | POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
+| `/api/money/overview` | GET | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |

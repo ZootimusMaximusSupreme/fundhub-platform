@@ -477,6 +477,7 @@ const TX_MONTHS_SQL = `
     FROM bank_transactions
    WHERE client_id = $1 AND org_id = $2
      AND is_pending = false
+     AND NOT (raw ? 'fundhub_removed_at')
      AND posted_on IS NOT NULL
      AND posted_on >= $3::date AND posted_on <= $4::date
    GROUP BY 1, 2`;
