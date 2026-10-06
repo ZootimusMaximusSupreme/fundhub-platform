@@ -177,8 +177,9 @@ export default async function handler(req, res) {
 
     /* CAN THIS JOB ACTUALLY RUN? Asked with the same resolve() the runner uses,
        so the answer the screen shows is the real one rather than a hedge. There
-       is no creative_providers row in any migration or seed file, so on a fresh
-       install the answer is no — and src/creative/generate.mjs treats that as a
+       is no creative_providers row for pictures or video in any migration or
+       seed file (copy has one, db/seed/296), so on a fresh install the answer
+       for those is no — and src/creative/generate.mjs treats that as a
        permanent failure, not an outage. Saying "queued" and stopping there would
        let the screen imply pictures are coming when nothing can make them.
 

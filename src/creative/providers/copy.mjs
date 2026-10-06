@@ -16,6 +16,7 @@
 
 import { assetFrom } from "./_http.mjs";
 import { callModel, DEFAULT_MODEL } from "../../agents/model.mjs";
+import { readWithBackupReader } from "../../handlers/doc-check.mjs";
 import { assertSuiteEnabled, assertUnderCap, recordUsage } from "../../brand/meter.mjs";
 
 export const PROVIDER_KEY = "copy";
@@ -33,14 +34,30 @@ export async function generate(spec = {}, ctx = {}) {
     await assertUnderCap(tx, ctx.partnerId);
   }
 
-  const model = await callModel({
+  const modelArgs = {
     system: systemPrompt(spec),
     user: userPrompt(spec, variants),
     env,
     fetchImpl: ctx.fetch,
     model: ctx.config?.model || DEFAULT_MODEL,
     maxTokens: Number(ctx.config?.max_tokens || 2000)
-  });
+  };
+  let model = await callModel(modelArgs);
+
+  /* THE BACKUP WRITER. callModel asks OpenAI first whenever an OpenAI key is
+     set, and the production OpenAI account has no credit (measured live
+     2026-09-18: `openai 429 … insufficient_quota`). Without this, every copy
+     job failed on that 429 three times and wrote nothing, while the working
+     Anthropic key was never asked.
+
+     Same backup Social Studio's callWriter (api/social/generate.mjs) and the
+     ID reader use — the shared readWithBackupReader: only when the first call
+     went to OpenAI AND OpenAI said "no credit", ask Anthropic once, with the
+     OpenAI keys left out of that one call's copy of the environment. The
+     stored keys are not touched (CLAUDE.md §11). Any other failure, or a
+     backup that fails too, leaves the first answer standing. */
+  const backup = await readWithBackupReader(model, { env, modelArgs });
+  if (backup) model = backup;
 
   if (tx && ctx.partnerId) {
     const org = (await tx.query(
