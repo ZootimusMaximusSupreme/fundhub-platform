@@ -36,6 +36,10 @@ import { run as runStageJob } from "../marketing/flywheel/stage-job.mjs";
 import { finishJob } from "../marketing/jobs.mjs";
 import { addDays } from "../metro2/dates.mjs";
 import { campaignFiles, readerDeps, fakeModel } from "../marketing/fixtures/flywheel-fakes.mjs";
+import costsRoute from "../../api/marketing/costs.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
+import { enqueueRepoWrite } from "../repo/outbox.mjs";
+import { stampStage, hashOf, bodyOf } from "../marketing/flywheel/stamp.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -223,7 +227,10 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.equal(r.code, 200, JSON.stringify(r.body));
       assert.equal(r.body.campaign_words, "Capital Blueprint");
       assert.deepEqual(r.body.stages.map((s) => s.state), ["MISSING", "MISSING", "MISSING", "MISSING", "MISSING", "MISSING"]);
-      assert.equal(r.body.stages[0].state_word, "Not on this page yet");
+      // Unit GL: rows 1 and 2 run from the card (X1's avatar, X2's market research).
+      assert.equal(r.body.stages[0].state_word, "Not run yet");
+      assert.deepEqual(r.body.stages[0].can_run, { ok: true, reason: null });
+      assert.deepEqual(r.body.stages[1].can_run, { ok: true, reason: null });
       assert.equal(r.body.stages[2].can_run.ok, false, "the offer needs who we sell to first");
       assert.equal((await call(getFlywheel, tokenOwnerB, { method: "GET", query: { campaign: "capital-blueprint" } })).code, 404);
     });
@@ -309,15 +316,18 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
     });
 
     // Wave 2b merge: step 1 is unit X1's (a tweak also starts a new avatar run, and with no
-    // Anthropic key on the site it is refused first, saving nothing); step 2 still says so.
-    test("step 6 re-runs at once (free); step 2 says it is not on this page yet; step 1 is X1's; an empty note is refused", async () => {
+    // Anthropic key on the site it is refused first, saving nothing). Unit GL: step 2 now
+    // re-runs X2's market research with the note; with no key the note is kept and it says why.
+    test("step 6 re-runs at once (free); step 2 keeps the note and says there is no key; step 1 is X1's; an empty note is refused", async () => {
       const six = await call(postTweak, tokenOwnerA, { body: { request_id: rid("tw6"), campaign: "partner", stage: 6, note: "read the last 30 days" } });
       assert.equal(six.code, 202, JSON.stringify(six.body));
       assert.equal(six.body.rerun.started, true);
       assert.ok(six.body.spend && six.body.spend.ok);
       const two = await call(postTweak, tokenOwnerA, { body: { request_id: rid("tw2"), campaign: "partner", stage: 2, note: "more broker quotes" } });
+      assert.equal(two.code, 202, JSON.stringify(two.body));
       assert.equal(two.body.rerun.started, false);
-      assert.match(two.body.rerun.reason, /slice 10/);
+      assert.match(two.body.rerun.reason, /Anthropic key/);
+      assert.equal(two.body.job, null);
       const before = (await outbox(orgA, "marketing/flywheel/partner/00-OWNER-NOTES.md")).length;
       const one = await call(postTweak, tokenOwnerA, { body: { request_id: rid("tw1"), campaign: "partner", stage: 1, note: "more broker quotes" } });
       assert.equal(one.code, 503);
@@ -483,6 +493,173 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.equal(page.body.stages[3].source, "outbox-pending", "the saved copy shows before the commit lands");
       assert.equal(page.body.stages[3].run.status, "done");
       assert.match(page.body.stages[3].review_card_md, /^## Review card/);
+    });
+  });
+
+  // Unit GL (owner order: the Blueprint test runs end to end through the dashboard).
+  // ENV has no GITHUB_REPO_TOKEN, so every save waits in repo_outbox ('no_token') and
+  // every step reads the database's copy through the one stage reader.
+  describe("unit GL: the Blueprint chain with no GitHub token", () => {
+    const BASE = "marketing/flywheel/capital-blueprint";
+    const CARD = "\n## Review card\n\n**What this decided:** x\n";
+    const FILES = campaignFiles();
+    let offerJob;
+    let offerText;
+
+    const queue = (opId, path, content) => withTransaction(db, (tx) => enqueueRepoWrite(tx, { orgId: orgA, opId, path, mode: "replace", content }));
+    const draft = (text) => text.replace(/\nstatus: approved\n/, "\nstatus: draft\n");
+
+    async function workOne() {
+      const queued = (await db.query(
+        `UPDATE marketing_jobs SET status = 'running', claimed_at = now()
+          WHERE id = (SELECT id FROM marketing_jobs WHERE org_id = $1 AND kind = 'flywheel_stage' AND status = 'queued' ORDER BY created_at LIMIT 1)
+          RETURNING *`, [orgA])).rows[0];
+      assert.ok(queued, "a queued step");
+      const result = await runStageJob(queued, { db, env: { ANTHROPIC_API_KEY: "sk-ant-test-not-real" }, deps: { call: fakeModel().call } });
+      await finishJob(db, queued.id, result);
+      return queued;
+    }
+
+    test("steps 1 and 2 saved and approved from the card wait in the outbox, and the page reads them", async () => {
+      await queue(`gl-avatar-${RUN}`, `${BASE}/01-avatar.md`, draft(FILES["01-avatar.md"]));
+      await queue(`gl-bank-${RUN}`, `${BASE}/01-avatar/Market_Language_Bank.md`, FILES["01-avatar/Market_Language_Bank.md"]);
+      await queue(`gl-research-${RUN}`, `${BASE}/02-ad-research.md`, draft(FILES["02-ad-research.md"]));
+      for (const stage of [1, 2]) {
+        const r = await call(postApprove, tokenOwnerA, { body: { request_id: rid(`gl-ap${stage}`), campaign: "capital-blueprint", stage } });
+        assert.equal(r.code, 200, JSON.stringify(r.body));
+        assert.equal(r.body.already_approved, false);
+      }
+      const page = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: "capital-blueprint" } });
+      assert.equal(page.body.source, "bundle-fallback");
+      assert.deepEqual(page.body.stages.slice(0, 2).map((s) => [s.state, s.approved, s.source]), [["READY", true, "outbox-pending"], ["READY", true, "outbox-pending"]]);
+      assert.equal(page.body.stages[2].can_run.ok, true, "the offer can run");
+    });
+
+    test("a finished offer run waits on row 3: its offer and card, Approve on, and GET marketing/costs reads its cost", async () => {
+      offerJob = (await db.query(
+        `INSERT INTO marketing_jobs (org_id, kind, status, payload, result, requested_by, claimed_at, finished_at)
+         VALUES ($1, 'offer', 'done', $2::jsonb, $3::jsonb, $4, now() - interval '5 minutes', now()) RETURNING *`,
+        [orgA,
+          JSON.stringify({ campaign: "capital-blueprint", avatarSummary: bodyOf(FILES["01-avatar.md"]), adResearchSummary: bodyOf(FILES["02-ad-research.md"]),
+            ownerNotes: "", cut: { avatar: false, adResearch: false, ownerNotes: false }, today: "2026-10-06" }),
+          JSON.stringify({
+            campaign: "capital-blueprint", asOf: "2026-10-06",
+            document: `# Offer — capital-blueprint\nAs of 2026-10-06.\n\n## 1. The offer in one sentence\n\nThe Capital Blueprint: a funding plan in 30 days for $5,000.${CARD}`,
+            reviewCard: { markdown: "## Review card\n\n**What this decided:** x" },
+            counts: { priceSet: 1, bonuses: 3, guarantees: 2, valueEquationScores: 4 },
+            checks: { gate: { passes: true, misses: [] } },
+            model: "claude-opus-5-5",
+            usage: { calls: [{ step: "candidates", model: "claude-opus-5-5", input_tokens: 1000, output_tokens: 500 }], input_tokens: 1000, output_tokens: 500 }
+          }),
+          ownerA]
+      )).rows[0];
+      const page = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: "capital-blueprint" } });
+      const row3 = page.body.stages[2];
+      assert.equal(row3.state, "MISSING");
+      assert.equal(row3.state_word, "Done");
+      assert.match(row3.sentence, /^Done\. A new offer is ready to read \(written \w+ \d+\)\. Approve saves it as step 3\.$/);
+      assert.equal(row3.can_approve, true);
+      assert.equal(row3.offer_waiting.job_id, offerJob.id);
+      assert.match(row3.document_md, /a funding plan in 30 days for \$5,000/);
+      assert.equal(row3.run.kind, "offer");
+
+      const costs = await call(costsRoute, tokenOwnerA, { method: "GET" });
+      assert.equal(costs.code, 200, JSON.stringify(costs.body));
+      assert.equal(costs.body.kinds.offer.job_id, offerJob.id);
+      assert.equal(costs.body.kinds.offer.last_cost_usd, 0.014, "1,000 in at $4 and 500 out at $20 per million");
+      assert.equal(costs.body.kinds.copy.last_calls > 0, true, "the copy line reads the step 4 run on the ledger");
+    });
+
+    test("Approve on row 3 writes the stamped 03-offer.md from the run in one save, keeps the stamp on the run, once", async () => {
+      const id = rid("gl-ap3");
+      const r = await call(postApprove, tokenOwnerA, { body: { request_id: id, campaign: "capital-blueprint", stage: 3 } });
+      assert.equal(r.code, 200, JSON.stringify(r.body));
+      assert.equal(r.body.written_from_job, offerJob.id);
+      assert.equal(r.body.version, 1);
+      const rows = await outbox(orgA, `${BASE}/03-offer.md`);
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].op_id, `flywheel-offer:${offerJob.id}`);
+      assert.equal(rows[0].mode, "replace");
+      offerText = rows[0].content;
+      assert.match(offerText, new RegExp(`^---\\nstage: 3\\nversion: 1\\nstatus: approved\\njob: ${offerJob.id}\\ninputs:\\n {2}01-avatar\\.md: [0-9a-f]{8}\\n {2}02-ad-research\\.md: [0-9a-f]{8}\\ncounts:\\n`));
+      const run = (await db.query(`SELECT result FROM marketing_jobs WHERE id = $1`, [offerJob.id])).rows[0];
+      assert.equal(run.result.stage_file.version, 1);
+      assert.equal(run.result.stage_file.approved_by, ownerA);
+      assert.equal(run.result.stage_file.outbox_id, rows[0].id);
+      assert.ok(run.result.document, "the run keeps its own answer");
+
+      const replay = await call(postApprove, tokenOwnerA, { body: { request_id: id, campaign: "capital-blueprint", stage: 3 } });
+      assert.deepEqual(replay.body, r.body);
+      const again = await call(postApprove, tokenOwnerA, { body: { request_id: rid("gl-ap3b"), campaign: "capital-blueprint", stage: 3 } });
+      assert.equal(again.code, 200);
+      assert.equal(again.body.already_approved, true, "the run was written once; a second tap only re-approves");
+      assert.equal((await outbox(orgA, `${BASE}/03-offer.md`)).filter((x) => x.mode === "replace").length, 1);
+
+      const page = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: "capital-blueprint" } });
+      assert.equal(page.body.stages[2].state, "READY", page.body.stages[2].sentence);
+      assert.equal(page.body.stages[2].approved, true);
+      assert.equal(page.body.stages[2].offer_waiting, null);
+      assert.equal(page.body.stages[2].source, "outbox-pending");
+      assert.deepEqual(page.body.stages[3].can_run, { ok: true, reason: null }, "the copy can run now");
+    });
+
+    test("step 4 runs from the card and reads that approved offer from the database", async () => {
+      ENV.ANTHROPIC_API_KEY = "sk-ant-test-not-real";
+      try {
+        const r = await call(postRun, tokenOwnerA, { body: { request_id: rid("gl-r4"), campaign: "capital-blueprint", stage: 4 } });
+        assert.equal(r.code, 202, JSON.stringify(r.body));
+        assert.equal(r.body.started, true);
+      } finally {
+        delete ENV.ANTHROPIC_API_KEY;
+      }
+      const job = await workOne();
+      const saved = (await db.query(`SELECT content FROM repo_outbox WHERE org_id = $1 AND op_id = $2`, [orgA, `flywheel:${job.id}:04-copy.md`])).rows[0];
+      assert.ok(saved, "the copy is queued for the repo");
+      assert.match(saved.content, new RegExp(`\\n {2}03-offer\\.md: ${hashOf(offerText)}\\n`), "built on the approved offer");
+    });
+
+    test("step 5 runs from the card and reads the approved offer and copy from the database", async () => {
+      const copy = stampStage({ stage: 4, version: 9, status: "draft",
+        inputs: { "03-offer.md": hashOf(offerText), "01-avatar/Market_Language_Bank.md": hashOf(FILES["01-avatar/Market_Language_Bank.md"]) },
+        counts: { hooks: 12, humanizerPassRun: 1, distinctReasons: 15 }, body: `# Copy for the Blueprint${CARD}` });
+      await queue(`gl-copy-${RUN}`, `${BASE}/04-copy.md`, copy);
+      const ap = await call(postApprove, tokenOwnerA, { body: { request_id: rid("gl-ap4"), campaign: "capital-blueprint", stage: 4 } });
+      assert.equal(ap.code, 200, JSON.stringify(ap.body));
+      ENV.ANTHROPIC_API_KEY = "sk-ant-test-not-real";
+      try {
+        const r = await call(postRun, tokenOwnerA, { body: { request_id: rid("gl-r5"), campaign: "capital-blueprint", stage: 5 } });
+        assert.equal(r.code, 202, JSON.stringify(r.body));
+        assert.equal(r.body.started, true);
+      } finally {
+        delete ENV.ANTHROPIC_API_KEY;
+      }
+      const job = await workOne();
+      const saved = (await db.query(`SELECT content FROM repo_outbox WHERE org_id = $1 AND op_id = $2`, [orgA, `flywheel:${job.id}:05-ad-strategy.md`])).rows[0];
+      assert.ok(saved, "the strategy is queued for the repo");
+      assert.match(saved.content, new RegExp(`\\n {2}04-copy\\.md: ${hashOf(copy)}\\n`));
+      assert.match(saved.content, new RegExp(`\\n {2}03-offer\\.md: ${hashOf(offerText)}\\n`));
+      const costs = await call(costsRoute, tokenOwnerA, { method: "GET" });
+      assert.equal(costs.body.kinds.ad_strategy.job_id, job.id, "the strategy line reads this run");
+    });
+
+    test("Tweak on step 2 queues the note and starts X2's market research with it", async () => {
+      ENV.ANTHROPIC_API_KEY = "sk-ant-test-not-real";
+      try {
+        const r = await call(postTweak, tokenOwnerA, { body: { request_id: rid("gl-tw2"), campaign: "capital-blueprint", stage: 2, note: "look at bank overlays" } });
+        assert.equal(r.code, 202, JSON.stringify(r.body));
+        assert.equal(r.body.rerun.started, true);
+        assert.equal(r.body.job.stage, 2);
+        const row = (await db.query(`SELECT kind, status, payload, requested_by FROM marketing_jobs WHERE id = $1`, [r.body.job.id])).rows[0];
+        assert.equal(row.kind, "flywheel_stage");
+        assert.equal(row.status, "queued");
+        assert.equal(row.payload.note, "look at bank overlays");
+        assert.equal(row.requested_by, ownerA);
+        const again = await call(postTweak, tokenOwnerA, { body: { request_id: rid("gl-tw2b"), campaign: "capital-blueprint", stage: 2, note: "and the brokers" } });
+        assert.equal(again.body.rerun.started, false);
+        assert.equal(again.body.job.id, r.body.job.id, "one run in flight");
+      } finally {
+        delete ENV.ANTHROPIC_API_KEY;
+      }
     });
   });
 });

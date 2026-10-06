@@ -10,7 +10,7 @@ import { fakeMarketModel } from "../research/fixtures/fake-market-model.mjs";
 import * as stageJob from "./stage-job.mjs";
 import { searchCeiling, keepMarketFindings, confidenceOf, campaignWords, renderStageFile, LIMITS } from "./ad-research.mjs";
 import { collectSources, READER_PREFIX } from "../research/provenance.mjs";
-import { splitFrontMatter, parseFrontMatter } from "../../../scripts/flywheel/status.mjs";
+import { splitFrontMatter, parseFrontMatter, bodyHash } from "../../../scripts/flywheel/status.mjs";
 
 const ORG = "00000000-0000-0000-0000-0000000000aa";
 const AVATAR = "---\nstage: 1\nversion: 2\nstatus: approved\n---\n\n# Who we sell to\n\nBrokers who want their own shop.\n";
@@ -189,5 +189,38 @@ describe("a market research run in 5 saved steps", () => {
     assert.deepEqual(fm.inputs, {});
     assert.match(text, /Round 3 read 2 of 4 surfaces to stay under \$40\./);
     assert.match(text, /the copy bundled with the site/);
+  });
+});
+
+// Unit GL: the run reads through the one stage reader. With no GitHub token the avatar of
+// a campaign that exists only in the database (Start a flywheel, then Build the avatar and
+// Approve, all waiting in repo_outbox as 'no_token') is still what step 2 builds on.
+describe("unit GL: step 2 with no GitHub token reads the avatar from the company's waiting saves", () => {
+  test("the avatar save with its Approve laid on is read; the stamp records that avatar's hash", async () => {
+    const db = fakeResearchDb();
+    const avatar = "---\nstage: 1\nversion: 1\nstatus: draft\ncounts:\n  quotes: 30\n---\n\n# Who we sell to\n\nOwners a bank turned down.\n";
+    const base = "marketing/flywheel/capital-blueprint";
+    db.outbox.push(
+      { id: 1, org_id: ORG, op_id: "a", path: `${base}/00-OWNER-NOTES.md`, mode: "replace", content: "# n\nOffer key: UWIQ_DELIVERABLES\n\n## Notes\n\n2026-10-06 | stage 2 | look at bank overlays\n", edit: null, committed_sha: null },
+      { id: 2, org_id: ORG, op_id: "b", path: `${base}/01-avatar.md`, mode: "replace", content: avatar, edit: null, committed_sha: null },
+      { id: 3, org_id: ORG, op_id: "c", path: `${base}/01-avatar.md`, mode: "edit", content: null, edit: JSON.stringify({ op: "set_front_matter_key", key: "status", value: "approved" }), committed_sha: null },
+      { id: 4, org_id: "00000000-0000-0000-0000-0000000000bb", op_id: "d", path: `${base}/01-avatar.md`, mode: "replace", content: "---\nstage: 1\n---\nANOTHER COMPANY", edit: null, committed_sha: null }
+    );
+    const model = fakeMarketModel();
+    const job = db.addJob({ org_id: ORG, kind: "flywheel_stage", payload: payload({ campaign: "capital-blueprint" }) });
+    const { job: done } = await driveJob(db, job.id, stageJob, ctxFor(db, model, { readStageFiles: undefined }), { maxClaims: 40 });
+    assert.equal(done.status, "done", done.error);
+    const s = done.result.state;
+    assert.equal(s.inputs_source, "bundle-fallback");
+    assert.equal(s.avatar_summary, "# Who we sell to\n\nOwners a bank turned down.");
+    assert.ok(!JSON.stringify(model.calls).includes("ANOTHER COMPANY"), "never another company's save");
+    assert.match(s.owner_notes, /look at bank overlays/);
+    const saved = db.outbox.filter((o) => o.path === `${base}/02-ad-research.md`);
+    assert.equal(saved.length, 1);
+    const fm = parseFrontMatter(splitFrontMatter(saved[0].content).frontMatter);
+    const approvedAvatar = avatar.replace("status: draft", "status: approved");
+    assert.equal(fm.inputs["01-avatar.md"], bodyHash(approvedAvatar));
+    assert.equal(bodyHash(approvedAvatar), bodyHash(avatar), "Approve never changes the hash");
+    assert.equal(fm.version, 1);
   });
 });

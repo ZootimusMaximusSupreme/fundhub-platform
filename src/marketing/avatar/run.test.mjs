@@ -77,6 +77,14 @@ function fakeDb({ settings = { run_caps: { avatar: 20 }, max_month_cost_usd: 300
       if (s.startsWith("SELECT id, op_id, path, mode, content, edit FROM repo_outbox")) {
         return { rows: st.outbox.filter((o) => o.op_id === p[1]) };
       }
+      // Unit GL: the one stage reader asks for this company's flywheel saves, newest first;
+      // the plain repo read (the testimonials file) for one path's waiting saves.
+      if (s.startsWith("SELECT id, path, mode, content, edit, committed_sha FROM repo_outbox WHERE org_id = $1 AND path LIKE 'marketing/flywheel/%'")) {
+        return { rows: st.outbox.filter((o) => o.org_id === p[0] && o.path.startsWith("marketing/flywheel/")).slice().sort((a, b) => b.id - a.id) };
+      }
+      if (s.startsWith("SELECT id, mode, content, edit FROM repo_outbox WHERE org_id = $1 AND path = $2 AND committed_sha IS NULL")) {
+        return { rows: st.outbox.filter((o) => o.org_id === p[0] && o.path === p[1] && !o.committed_sha) };
+      }
       if (s.startsWith("INSERT INTO marketing_buzzes")) {
         const row = { id: `z${st.buzzes.length + 1}`, org_id: p[0], kind: p[1], body: p[2], group_key: p[3], created: true };
         st.buzzes.push(row);
@@ -420,5 +428,33 @@ describe("avatar run: caps and time", () => {
     const db = fakeDb();
     db.st.job = newJob();
     await assert.rejects(claim(db, fakeModel({ missingKey: true })), (err) => err.final === true && err.message === "No Anthropic key is set on the site. An agent must set it.");
+  });
+});
+
+// Unit GL: with no reader handed in, step 1 reads through the one stage reader. With no
+// GitHub token a campaign that exists only in the database (Start a flywheel and a Tweak
+// line, waiting in repo_outbox as 'no_token') still gives step 1 its owner notes.
+describe("unit GL: step 1 with no GitHub token reads the owner notes from the company's waiting saves", () => {
+  test("the notes save and the Tweak line laid on it reach the first step; the source is named", async () => {
+    const db = fakeDb();
+    const base = "marketing/flywheel/capital-blueprint";
+    db.st.outbox.push(
+      { id: 1, org_id: ORG, op_id: "start", path: `${base}/00-OWNER-NOTES.md`, mode: "replace", content: "# Capital Blueprint\n\nOffer key: UWIQ_DELIVERABLES\n\n## Notes\n", edit: null },
+      { id: 2, org_id: ORG, op_id: "tweak", path: `${base}/00-OWNER-NOTES.md`, mode: "edit", content: null,
+        edit: { op: "append_line_under_heading", heading: "## Notes", line: "2026-10-06 | stage 1 | lean on the business file" } },
+      { id: 3, org_id: "00000000-0000-0000-0000-00000000a002", op_id: "other", path: `${base}/00-OWNER-NOTES.md`, mode: "replace", content: "## Notes\n\n2026-10-06 | stage 1 | ANOTHER COMPANY\n", edit: null }
+    );
+    db.st.nextOutboxId = 4;
+    db.st.job = newJob({ campaign: "capital-blueprint" });
+    db.st.job.status = "running";
+    const model = fakeModel();
+    const snapshot = JSON.parse(JSON.stringify(db.st.job));
+    await run(snapshot, { db, env: { ANTHROPIC_API_KEY: "test" }, deps: { callModel: model.callModel, now: () => new Date("2026-10-06T12:00:00Z") } });
+    const progress = db.st.job.payload.progress;
+    assert.equal(progress.owner_notes, "2026-10-06 | stage 1 | lean on the business file");
+    assert.equal(progress.inputs.owner_notes, "outbox-pending");
+    assert.equal(progress.inputs.previous_foundation, "missing");
+    assert.equal(progress.inputs.testimonials, "bundle-fallback", "a file outside the flywheel comes from the plain repo read");
+    assert.ok(!JSON.stringify(model.calls.map((c) => c.args.user)).includes("ANOTHER COMPANY"));
   });
 });

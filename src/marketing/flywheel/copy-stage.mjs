@@ -20,8 +20,9 @@
 // Model split (design §7 question 6, recommended default): Opus writes the plan
 // and the document; Sonnet writes the pieces and does the checking.
 //
-// Inputs come from the campaign's files as the dashboard sees them
-// (reader.mjs: GitHub, then pending saves, then the bundle): the offer
+// Inputs come from the campaign's files through the one stage reader
+// (stage-inputs.mjs, unit GL: GitHub or the bundle, then the database's saves,
+// then the approved offer run for 03-offer.md): the offer
 // (03-offer.md), the buyer (01-avatar.md), the market's own words
 // (01-avatar/Market_Language_Bank.md) and Chris's notes for stage 4. The stamp
 // records the offer and word-bank hashes, which is what makes this file go out
@@ -29,7 +30,7 @@
 
 import { runSteps, OPUS, SONNET, StageStop, callReserveUsd } from "./steps.mjs";
 import { banScan, keepsSpecifics, specificTokens, ctaCollisions, pieceText, pieceId } from "./copy-checks.mjs";
-import { readFlywheel } from "./reader.mjs";
+import { readStageInputs, STAGE_INPUTS } from "./stage-inputs.mjs";
 import { campaignWords, notesForStage } from "./campaigns.mjs";
 import { stampStage, nextVersion, hashOf, bodyOf } from "./stamp.mjs";
 import { saveStageFile, todayArizona } from "./save.mjs";
@@ -308,7 +309,7 @@ export function steps(ctx) {
       name: "inputs",
       word: "reading the offer and the word bank",
       run: async (s) => {
-        const read = await readFlywheel({ db: ctx.db, orgId: ctx.orgId, campaign: s.campaign, env: ctx.env, deps: (ctx.deps && ctx.deps.reader) || {} });
+        const read = await readStageInputs({ db: ctx.db, orgId: ctx.orgId, campaign: s.campaign, files: STAGE_INPUTS[4], env: ctx.env, deps: (ctx.deps && ctx.deps.reader) || {} });
         const f = read.files || {};
         const text = (name) => (f[name] && f[name].text != null ? f[name].text : null);
         const offer = bodyOf(text("03-offer.md"));

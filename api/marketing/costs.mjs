@@ -6,6 +6,7 @@
 //
 //   GET → 200 {ok, as_of,
 //              kinds:{offer, script, opening, quick_copy, brief, avatar, ad_research,
+//                     copy, ad_strategy, funnel (unit GL),
 //                     research, page_draft, proof_read, proof_check, testimonial_hook,
 //                     testimonial_frames, testimonial_check},
 //                 each null ("unknown, not measured yet") or {last_cost_usd,

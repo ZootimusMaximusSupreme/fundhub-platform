@@ -88,9 +88,11 @@ export function fakeResearchDb({ settings = {} } = {}) {
       if (/^SELECT id, op_id, path, mode, content, edit FROM repo_outbox WHERE org_id = \$1 AND op_id = \$2$/.test(s)) {
         return { rows: outbox.filter((o) => o.org_id === params[0] && o.op_id === params[1]) };
       }
-      if (/^SELECT content FROM repo_outbox/.test(s)) {
-        const rows = outbox.filter((o) => o.path === params[0] && o.mode === "replace" && o.committed_sha == null);
-        return { rows: rows.slice(-1).map((o) => ({ content: o.content })) };
+      // Unit GL: the one stage reader (src/marketing/flywheel/reader.mjs PENDING_SQL):
+      // this company's flywheel saves, newest id first.
+      if (/^SELECT id, path, mode, content, edit, committed_sha FROM repo_outbox WHERE org_id = \$1 AND path LIKE 'marketing\/flywheel\/%' ORDER BY id DESC LIMIT 300$/.test(s)) {
+        const rows = outbox.filter((o) => o.org_id === params[0] && o.path.startsWith("marketing/flywheel/"));
+        return { rows: rows.slice().sort((a, b) => b.id - a.id).map((o) => ({ ...o, edit: typeof o.edit === "string" ? JSON.parse(o.edit) : o.edit })) };
       }
       if (/^INSERT INTO marketing_buzzes/.test(s)) {
         const [org_id, kind, body, group_key, send_after] = params;

@@ -42,7 +42,7 @@ import { queueBuzz } from "../notify.mjs";
 import { enqueueRepoWrite } from "../../repo/outbox.mjs";
 import { withTransaction } from "../../db/with-transaction.mjs";
 import { offerFactsText, ownerNotesSection } from "../offer-inputs.mjs";
-import { readRepoFile } from "../flywheel/repo-read.mjs";
+import { readStageFile } from "../flywheel/stage-inputs.mjs";
 import {
   DESIRE_SOURCES, INFO_SOURCES, VERDICT,
   foundationPrompt, overviewPrompt, desirePrompt, desireAssemblePrompt, mechanismPrompt,
@@ -166,7 +166,8 @@ export async function run(job, ctx) {
   const deps = {
     callModel: d.callModel || realCallModel,
     now: d.now || (() => new Date()),
-    readRepoFile: d.readRepoFile || ((p) => readRepoFile(db, { orgId: job.org_id, path: p, env })),
+    // Unit GL: the one stage reader (stage files from the database when the repo is behind).
+    readRepoFile: d.readRepoFile || ((p) => readStageFile(db, { orgId: job.org_id, path: p, env })),
     queueBuzz: d.queueBuzz || queueBuzz,
     repoDeps: d.repoDeps || {}
   };

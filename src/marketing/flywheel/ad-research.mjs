@@ -526,7 +526,7 @@ export const AD_RESEARCH_DEF = {
       word: () => "checking what can be reached and planning",
       async run(state, io) {
         // 1. The inputs, from one pinned repo read (or the bundle), with pending saves on top.
-        const read = await (io.deps.readStageFiles || readStageFiles)(io.db, state.campaign, { env: io.env });
+        const read = await (io.deps.readStageFiles || readStageFiles)(io.db, state.campaign, { env: io.env, orgId: io.orgId });
         state.inputs_source = read.source;
         state.inputs_sha = read.sha;
         state.avatar_summary = read.avatar ? read.avatar.body.slice(0, 6000) : "";

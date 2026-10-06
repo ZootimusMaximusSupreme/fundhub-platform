@@ -220,6 +220,51 @@ for (const size of SIZES) {
       await expect(page.locator("#cci-stage-5")).toContainText("Approve steps 3 and 4 first (the offer and the copy).");
     });
 
+    /* Unit GL: a finished offer run waits on row 3 with no file yet; Approve saves it as
+       step 3 (the server writes 03-offer.md from the run), and the copy can then run. */
+    test("a finished offer waits on row 3: Read it shows the run's offer, Approve saves it as step 3", async ({ page }) => {
+      let approved = false;
+      const waitingRow = () => approved
+        ? { n: 3, key: "offer", state: "READY", approved: true, state_word: "Done, approved", sentence: "Done. Price set, 3 bonuses. Version 1. Approved.", source: "outbox-pending", run: { job_id: "offer-9", kind: "offer", status: "done" }, can_approve: true, offer_waiting: null, files: [{ path: "marketing/flywheel/capital-blueprint/03-offer.md", github_url: "" }] }
+        : { n: 3, key: "offer", state: "MISSING", approved: false, state_word: "Done", sentence: "Done. A new offer is ready to read (written Oct 6). Approve saves it as step 3.",
+            source: "missing", run: { job_id: "offer-9", kind: "offer", status: "done" }, can_run: { ok: true, reason: null }, can_approve: true,
+            offer_waiting: { job_id: "offer-9", finished_at: "2026-10-06T15:00:00.000Z", replaces_file: false },
+            review_card_md: "## Review card\n\n**What this decided:** Sell the Capital Blueprint at $5,000.", document_md: "# Offer — capital-blueprint\n\nA funding plan in 30 days.", files: [] };
+      const answer = () => {
+        const f = flywheel();
+        f.campaign = "capital-blueprint";
+        f.stages = f.stages.map((s) => (s.n === 3 ? waitingRow() : s.n === 4 && approved ? { ...s, can_run: { ok: true, reason: null } } : s));
+        return f;
+      };
+      const { posts } = await mountIdeas(page, {
+        "GET marketing/flywheel": answer,
+        "GET marketing/flywheel?campaign=capital-blueprint": answer,
+        "POST marketing/flywheel/approve": () => { approved = true; return { ok: true, campaign: "capital-blueprint", stage: 3, file: "03-offer.md", outbox_id: 7, already_approved: false, written_from_job: "offer-9", version: 1 }; }
+      });
+      const row = page.locator("#cci-stage-3");
+      await expect(row).toContainText("A new offer is ready to read");
+      await expect(row).toContainText("Approve saves it as step 3.");
+      await row.getByRole("button", { name: "Read it" }).click();
+      await expect(row).toContainText("Sell the Capital Blueprint at $5,000.");
+      const approve = row.getByRole("button", { name: "Approve" });
+      await expect(approve).toBeVisible();
+      if (size.width === 390) {
+        const box = await approve.boundingBox();
+        expect(box.height, "a 44px tap target").toBeGreaterThanOrEqual(44);
+        await shoot(page, "gl-01-offer-waiting-390.png", "A finished offer waits on row 3", [
+          { locator: row.locator(".cci-sentence").first(), caption: "What Approve does, in one sentence" },
+          { locator: approve, caption: "Approve saves the run as step 3 (03-offer.md)" }
+        ]);
+      }
+      await approve.click();
+      const w = writesTo(posts, "marketing/flywheel/approve");
+      expect(w).toHaveLength(1);
+      expect(w[0].body).toMatchObject({ stage: 3 });
+      expect(typeof w[0].body.request_id).toBe("string");
+      await expect(row).toContainText("Done, approved");
+      await expect(row.getByRole("button", { name: "Approve" })).toHaveCount(0);
+    });
+
     test("Write the offer runs step 3 through the flywheel route; Read the spend is free", async ({ page }) => {
       const { posts } = await mountIdeas(page, {
         "POST marketing/flywheel/run": { status: 202, body: { ok: true, stage: 3, job: { id: "offer-1", status: "queued" } } },

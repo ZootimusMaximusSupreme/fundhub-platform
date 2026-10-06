@@ -78,7 +78,7 @@ export default async function handler(req, res, deps = {}) {
     const body = req.body || {};
     const wanted = typeof body.campaign === "string" ? body.campaign.trim().toLowerCase() : "";
     const campaign = wanted && isCampaign(wanted) ? wanted : DEFAULT_CAMPAIGN;
-    const d = await (deps.repoDefaults ?? repoFlywheelDefaults)(database, campaign, { env }).catch(() => null);
+    const d = await (deps.repoDefaults ?? repoFlywheelDefaults)(database, campaign, { env, orgId }).catch(() => null);
     if (d) readOpts = { readDefaults: () => d };
   }
   const resolved = readInputs(req.body || {}, readOpts);

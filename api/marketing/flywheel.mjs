@@ -86,6 +86,8 @@ export async function stepOneOverlay(tx, { orgId, campaign, answer, notes, roots
     if (job.status === "queued" || job.status === "running") {
       s1.state_word = "Running";
       s1.sentence = view.sentence;
+      // Unit GL: row 1 runs from this card now, so a run in flight turns Run off.
+      s1.can_run = { ok: false, reason: "Who we sell to is already being made. This is that run." };
     } else if (job.status === "failed") {
       s1.state_word = view.stopped_at_cap ? "Stopped at the cap" : "Could not finish";
       s1.sentence = view.sentence;

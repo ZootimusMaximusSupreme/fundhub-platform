@@ -133,11 +133,11 @@ function bundleCampaigns(roots) {
   }
 }
 
-function bundleFiles(campaign, roots) {
+function bundleFiles(campaign, roots, names = CAMPAIGN_FILES) {
   const base = bundleBase(roots);
   /** @type {Record<string, {text: string|null, source: string}>} */
   const out = {};
-  for (const f of CAMPAIGN_FILES) {
+  for (const f of names) {
     let text = null;
     if (base) {
       try { text = fs.readFileSync(path.join(base, campaign, f), "utf8"); } catch { text = null; }
@@ -174,9 +174,15 @@ async function ghRead(p, { ref, env, deps }) {
  *
  * `deps` lets a test hand in getRef / listFolder / getContents / pendingRows /
  * bundleRoots. With no campaign, only the list is read.
- * @param {{db?: any, orgId?: string, campaign?: string|null, env?: any, deps?: any}} [args]
+ *
+ * `files` (unit GL): which files of the campaign to read, relative to its folder
+ * (default CAMPAIGN_FILES). `list: false` skips listing the campaign folders on
+ * GitHub (a stage run reads its own campaign only). Both are for the one stage
+ * reader every flywheel step uses (src/marketing/flywheel/stage-inputs.mjs).
+ * @param {{db?: any, orgId?: string, campaign?: string|null, env?: any, deps?: any,
+ *          files?: readonly string[], list?: boolean}} [args]
  */
-export async function readFlywheel({ db, orgId, campaign = null, env = process.env, deps = {} } = {}) {
+export async function readFlywheel({ db, orgId, campaign = null, env = process.env, deps = {}, files: names = CAMPAIGN_FILES, list: listFolders = true } = {}) {
   const rows = deps.pendingRows
     ? await deps.pendingRows()
     : (db && orgId ? await pendingFlywheelRows(db, orgId) : []);
@@ -198,16 +204,18 @@ export async function readFlywheel({ db, orgId, campaign = null, env = process.e
       const ref = await (deps.getRef || getRef)({ env, fetchImpl: deps.fetchImpl });
       if (!ref.ok || !ref.sha) throw new Error(ref.error || "GitHub did not say which commit the branch is on");
       sha = ref.sha;
-      const list = await (deps.listFolder || listFolder)(FLYWHEEL_ROOT, { ref: sha, env, fetchImpl: deps.fetchImpl });
-      if (!list.ok) throw new Error(list.error || "GitHub did not list the flywheel folder");
-      folders = list.entries.filter((e) => e.type === "dir" && isCampaign(e.name)).map((e) => e.name);
+      if (listFolders) {
+        const list = await (deps.listFolder || listFolder)(FLYWHEEL_ROOT, { ref: sha, env, fetchImpl: deps.fetchImpl });
+        if (!list.ok) throw new Error(list.error || "GitHub did not list the flywheel folder");
+        folders = list.entries.filter((e) => e.type === "dir" && isCampaign(e.name)).map((e) => e.name);
+      }
       if (campaign) {
-        const reads = await Promise.all(CAMPAIGN_FILES.map((f) =>
+        const reads = await Promise.all(names.map((f) =>
           ghRead(`${FLYWHEEL_ROOT}/${campaign}/${f}`, { ref: /** @type {string} */ (sha), env, deps })));
         const bad = reads.find((r) => !r.ok);
         if (bad) throw new Error(bad.error || "GitHub did not answer");
         files = {};
-        CAMPAIGN_FILES.forEach((f, i) => {
+        names.forEach((f, i) => {
           /** @type {any} */ (files)[f] = { text: reads[i].text, source: reads[i].text == null ? "missing" : "github" };
         });
       }
@@ -222,7 +230,7 @@ export async function readFlywheel({ db, orgId, campaign = null, env = process.e
   const all = source === "bundle-fallback";
   if (all) {
     folders = bundleCampaigns(deps.bundleRoots);
-    if (campaign) files = bundleFiles(campaign, deps.bundleRoots);
+    if (campaign) files = bundleFiles(campaign, deps.bundleRoots, names);
   }
   if (campaign && files) files = overlayPending(files, rows, campaign, { all });
 

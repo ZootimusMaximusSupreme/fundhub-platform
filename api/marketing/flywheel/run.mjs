@@ -32,9 +32,10 @@
 // route answered:
 //   stage 1 → src/marketing/avatar/run-route.mjs          runAvatarStage (unit X1)
 //   stage 2 → src/marketing/research/market-run-route.mjs runMarketStage (unit X2)
-// Stages 3 to 6 run the code below (unit X3). STAGE_RUNNERS in
-// src/marketing/flywheel/stages.mjs still lists 1 and 2 as not built, so the Ideas
-// rows for them stay off until unit GL points them here (board, wave 2d).
+// Stages 3 to 6 run the code below (unit X3). Unit GL: STAGE_RUNNERS in
+// src/marketing/flywheel/stages.mjs is the one list of who runs each step; rows 1
+// and 2 name 'avatar' and 'market', and this route hands those to the two bodies
+// above (STAGE_HANDLERS, keyed by that word), so the Ideas rows show their buttons.
 
 import { db } from "../../../src/db.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
@@ -58,8 +59,8 @@ import { runMarketStage } from "../../../src/marketing/research/market-run-route
 
 export const ROUTE = "marketing/flywheel/run";
 
-/** The steps another unit's route body runs (wave 2b merge glue). */
-export const STAGE_HANDLERS = Object.freeze({ 1: runAvatarStage, 2: runMarketStage });
+/** The route bodies of the steps another unit runs, by STAGE_RUNNERS[n].via (unit GL). */
+export const STAGE_HANDLERS = Object.freeze({ avatar: runAvatarStage, market: runMarketStage });
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
@@ -79,7 +80,8 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     const body = readBody(req);
-    const handOff = /** @type {any} */ (STAGE_HANDLERS)[Number(body.stage)];
+    const via = /** @type {any} */ (STAGE_RUNNERS)[Number(body.stage)]?.via;
+    const handOff = via ? /** @type {any} */ (STAGE_HANDLERS)[via] : null;
     if (handOff) return await handOff(req, res, { ...deps, db: database, requireAuth: async () => staff });
     const requestId = checkRequestId(body.request_id);
     const campaign = parseCampaign(body.campaign);

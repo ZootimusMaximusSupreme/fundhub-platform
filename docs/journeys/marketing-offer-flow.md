@@ -63,8 +63,17 @@ flowchart TD
 - **Approve, tweak and redo** from the review card. The card prints the line; nothing on
   the server records the answer yet. The dashboard plan puts that in slice 2
   (`POST marketing/flywheel/approve`, `POST marketing/flywheel/tweak`).
-- **Writing `marketing/flywheel/<campaign>/03-offer.md`.** The server cannot write to the
-  repo; that needs the spec's repo outbox (§6 Step 2). The saved run is in the database only.
+- **Writing `marketing/flywheel/<campaign>/03-offer.md`.** Not written by the run itself. Since
+  unit GL (2026-10-06), Approve on the Ideas card's offer row writes it from the newest
+  finished run through the repo outbox, and keeps the stamp on the run as
+  `result.stage_file` (drawn in `marketing-dashboard-flow.md`, "GL Blueprint glue").
+
+```mermaid
+flowchart LR
+  D[(done: offer + review card saved)] --> W{"newest run for the campaign,<br/>never written as step 3?"}
+  W -->|yes| R["Ideas row 3: Done, a new offer is ready; Approve on"]
+  R --> A["Approve → outbox replace 03-offer.md (status approved, job: run id)<br/>+ result.stage_file on this run"]
+```
 - **Avatar and ad research runs.** They stay in chat (they need live web research). This
   flow only reads what they already saved.
 

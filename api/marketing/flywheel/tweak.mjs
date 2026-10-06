@@ -18,7 +18,9 @@
 //               running one, or blocked with the reason: approve 3 / 3 and 4)
 //         6     the spend read runs now in the same transaction (free)
 //         3     handed to the Write offer path with the new line in its notes
-//         2     not yet (unit X2 has no tweak here): rerun.reason says so
+//         2     a new market research run (unit X2's kind 'flywheel_stage' stage 2,
+//               src/marketing/research/store.mjs startMarketResearch) with the note
+//               in its payload, or the running one (unit GL; it was "not yet")
 //         1     unit X1's answer (see WAVE 2B MERGE GLUE below)
 //     400 invalid: campaign, stage, note; "no owner notes" (field campaign)
 //     404 no such campaign · 503 not_ready
@@ -51,6 +53,11 @@ import { enqueueRepoWrite } from "../../../src/repo/outbox.mjs";
 import { wakeWorker } from "../../../src/marketing/wake.mjs";
 import offerGenerate from "../offer/generate.mjs";
 import { runAvatarTweak } from "../../../src/marketing/avatar/tweak-route.mjs";
+import { getOrCreateSettings } from "../../../src/marketing/settings-store.mjs";
+import { monthUsedUsd } from "../../../src/marketing/research/usage.mjs";
+import {
+  startMarketResearch, monthState, monthCapSentence, hasModelKey, NO_MODEL_SENTENCE
+} from "../../../src/marketing/research/store.mjs";
 
 export const ROUTE = "marketing/flywheel/tweak";
 
@@ -123,6 +130,25 @@ export default async function handler(req, res, deps = {}) {
         // the hand-off), so it must read true on its own: the run, if any, is on
         // the offer row.
         return { ...base, rerun: { started: false, reason: OFFER_HANDED, via: "offer" } };
+      }
+      if (runner.via === "market") {
+        // Step 2 (unit GL): X2's own start, inside this transaction, with the note.
+        if (!running) {
+          if (!hasModelKey(env)) return { ...base, rerun: { started: false, reason: NO_MODEL_SENTENCE } };
+          const month = monthState(await getOrCreateSettings(tx, orgId), await monthUsedUsd(tx, orgId));
+          if (month.capped) return { ...base, rerun: { started: false, reason: monthCapSentence(month.month_cap_usd) } };
+        }
+        const { job, already_running: already } = await startMarketResearch(tx, {
+          orgId, staffId: staff.id ?? null, campaign, note, today
+        });
+        return {
+          ...base,
+          job: jobView(job),
+          rerun: {
+            started: !already,
+            reason: already ? "That step was already running, so the note is saved and the next run reads it." : null
+          }
+        };
       }
       if (blocked && !running) return { ...base, rerun: { started: false, reason: blocked } };
       if (!running && !anthropicKeyOf(env)) {

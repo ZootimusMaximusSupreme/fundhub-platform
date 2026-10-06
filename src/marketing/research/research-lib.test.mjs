@@ -212,11 +212,17 @@ describe("the Hormozi vault (the real files in the repo)", () => {
 });
 
 describe("the repo read (GitHub at one commit, outbox saves on top, the bundle as fallback)", () => {
-  const pendingDb = (rows) => ({
+  // Unit GL: the read is the one stage reader (src/marketing/flywheel/stage-inputs.mjs),
+  // which asks for this company's flywheel saves, newest id first.
+  const ORG = "22222222-2222-4222-8222-222222222222";
+  const pendingDb = (byPath, { edits = [] } = {}) => ({
     query: async (sql, params) => {
       assert.match(sql, /FROM repo_outbox/);
-      const hit = rows[params[0]];
-      return { rows: hit ? [{ content: hit }] : [] };
+      assert.equal(params[0], ORG, "only this company's saves");
+      let id = 0;
+      const rows = Object.entries(byPath).map(([path, content]) => ({ id: ++id, path, mode: "replace", content, edit: null, committed_sha: null }));
+      for (const e of edits) rows.push({ id: ++id, committed_sha: null, content: null, mode: "edit", ...e });
+      return { rows: rows.reverse() };
     }
   });
   test("GitHub at the pinned commit is the source when it answers; a waiting save wins over it", async () => {
@@ -229,23 +235,35 @@ describe("the repo read (GitHub at one commit, outbox saves on top, the bundle a
       return { ok: true, missing: true, content: null };
     };
     const db = pendingDb({ "marketing/flywheel/partner/02-ad-research.md": "---\nstage: 2\nversion: 8\n---\nnew board waiting in the outbox" });
-    const r = await readStageFiles(db, "partner", { env: {}, getRef, getContents });
+    const r = await readStageFiles(db, "partner", { env: {}, orgId: ORG, getRef, getContents });
     assert.equal(r.source, "github");
     assert.ok(asked.every(([, ref]) => ref === "abc123"), "every file read at the same commit");
     assert.equal(r.avatar.body, "GitHub avatar");
     assert.equal(r.avatar.hash, bodyHash("---\nstage: 1\n---\nGitHub avatar"));
     assert.equal(r.priorVersion, 8, "the waiting save is the newest copy");
     assert.deepEqual(r.pending, ["marketing/flywheel/partner/02-ad-research.md"]);
-    const d = await repoFlywheelDefaults(db, "partner", { env: {}, getRef, getContents });
+    const d = await repoFlywheelDefaults(db, "partner", { env: {}, orgId: ORG, getRef, getContents });
     assert.equal(d.research, "new board waiting in the outbox");
     assert.equal(d.files.research, "marketing/flywheel/partner/02-ad-research.md");
     assert.equal(d.ownerNotes, "");
   });
   test("no token: the bundled copy, named as such", async () => {
-    const r = await readStageFiles(pendingDb({}), "partner", { env: {} });
+    const r = await readStageFiles(pendingDb({}), "partner", { env: {}, orgId: ORG });
     assert.equal(r.source, "bundle-fallback");
     assert.ok(r.avatar && r.avatar.body.length > 100, "the bundled partner avatar");
     await assert.rejects(readStageFiles(pendingDb({}), "../x", { env: {} }), TypeError);
+  });
+  test("unit GL: a waiting Approve counts, and with no company no saves are read at all", async () => {
+    const avatar = "---\nstage: 1\nversion: 1\nstatus: draft\n---\nnew avatar from the dashboard";
+    const db = pendingDb({ "marketing/flywheel/capital-blueprint/01-avatar.md": avatar },
+      { edits: [{ path: "marketing/flywheel/capital-blueprint/01-avatar.md", edit: { op: "set_front_matter_key", key: "status", value: "approved" } }] });
+    const r = await readStageFiles(db, "capital-blueprint", { env: {}, orgId: ORG });
+    assert.equal(r.source, "bundle-fallback");
+    assert.match(r.files.avatar, /^---\nstage: 1\nversion: 1\nstatus: approved\n/, "the Approve edit is laid on the save");
+    assert.equal(r.avatar.body, "new avatar from the dashboard");
+    assert.deepEqual(r.pending, ["marketing/flywheel/capital-blueprint/01-avatar.md"]);
+    const none = await readStageFiles({ query: async () => { throw new Error("no query without a company"); } }, "capital-blueprint", { env: {} });
+    assert.equal(none.avatar, null);
   });
 });
 

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { stagesView, reasonWords, reviewCard, adviceWords, NOT_BUILT } from "./stages.mjs";
+import { stagesView, reasonWords, reviewCard, adviceWords, NOT_BUILT, STAGE_RUNNERS } from "./stages.mjs";
 import { stampStage, hashOf } from "./stamp.mjs";
 import { evaluate } from "../../../scripts/flywheel/status.mjs";
 
@@ -69,9 +69,11 @@ describe("the partner flywheel as it is in the repo", () => {
     assert.equal(rows[4].state_word, "Waiting on steps 3 and 4");
   });
 
-  test("Run is off with the reason printed: 1 and 2 are not on this page yet, 4 needs 3 approved, 5 needs 3 and 4", () => {
-    assert.deepEqual(rows[0].can_run, { ok: false, reason: NOT_BUILT[1] });
-    assert.deepEqual(rows[1].can_run, { ok: false, reason: NOT_BUILT[2] });
+  // Unit GL: rows 1 and 2 run from the card (X1's avatar runner, X2's market research).
+  test("1 and 2 can run; Run is off with the reason printed where it cannot: 4 needs 3 approved, 5 needs 3 and 4", () => {
+    assert.deepEqual(rows[0].can_run, { ok: true, reason: null });
+    assert.deepEqual(rows[1].can_run, { ok: true, reason: null });
+    assert.ok(!rows.some((r) => /not on this page yet/i.test(`${r.state_word} ${r.sentence} ${r.can_run.reason || ""}`)), "no row says it is not on this page");
     assert.deepEqual(rows[2].can_run, { ok: true, reason: null }, "the offer can run: the avatar is on file");
     assert.equal(rows[3].can_run.ok, false);
     assert.match(rows[3].can_run.reason, /^Approve step 3 first \(the offer\)\.$/);
@@ -94,6 +96,74 @@ describe("the partner flywheel as it is in the repo", () => {
 
   test("the advice line says what to redo, in order", () => {
     assert.equal(adviceWords(rows), "2 steps need a redo. Do them in order: 3, then 4.");
+  });
+});
+
+describe("rows 1 and 2 point at their runners (unit GL)", () => {
+  test("STAGE_RUNNERS: 1 is X1's avatar, 2 is X2's market research; nothing is left not built", () => {
+    assert.deepEqual(STAGE_RUNNERS[1], { via: "avatar" });
+    assert.deepEqual(STAGE_RUNNERS[2], { via: "market" });
+    assert.deepEqual(Object.keys(NOT_BUILT), []);
+  });
+
+  test("a new campaign: step 1 and step 2 say Not run yet and can run; step 3 waits for who we sell to", () => {
+    const missing = Object.fromEntries(NAMES.map((n) => [n, { text: null, source: "missing" }]));
+    missing["00-OWNER-NOTES.md"] = { text: "# n\nOffer key: UWIQ_DELIVERABLES\n\n## Notes\n", source: "outbox-pending" };
+    const rows = stagesView({ campaign: "capital-blueprint", files: missing });
+    assert.equal(rows[0].state_word, "Not run yet");
+    assert.equal(rows[0].sentence, "Not started.");
+    assert.deepEqual(rows[0].can_run, { ok: true, reason: null });
+    assert.equal(rows[1].state_word, "Not run yet");
+    assert.deepEqual(rows[1].can_run, { ok: true, reason: null });
+    assert.equal(rows[2].can_run.ok, false);
+    assert.match(rows[2].can_run.reason, /Step 1 \(who we sell to\) has to be done first/);
+  });
+
+  test("step 2's run on X2's saved-step runner reads with its step, its words and its cap stop", () => {
+    const running = { id: "m1", kind: "flywheel_stage", status: "running", payload: { campaign: "capital-blueprint", stage: 2 },
+      result: { v: 1, kind: "flywheel_stage", step: "sweep", step_n: 2, steps_total: 5, step_word: "sweeping round 2 of up to 6",
+        state: {}, progress: { findings: 14, cost_usd_so_far: 1.2 } } };
+    let rows = stagesView({ campaign: "capital-blueprint", files: readyFiles(), jobs: { 2: { job: running, spentUsd: 1.2 } } });
+    assert.equal(rows[1].state_word, "Running");
+    assert.equal(rows[1].sentence, "Running: step 2 of 5, sweeping round 2 of up to 6. $1.20 spent so far.");
+    assert.deepEqual(rows[1].run.counts_so_far, { findings: 14 });
+    assert.equal(rows[1].can_run.ok, false);
+    const stopped = { ...running, status: "failed", error: "Stopped at the $40 run cap.", result: { ...running.result, stopped: { reason: "run_cap" } } };
+    rows = stagesView({ campaign: "capital-blueprint", files: readyFiles(), jobs: { 2: { job: stopped, spentUsd: 40 } } });
+    assert.equal(rows[1].state_word, "Stopped at the cap");
+    assert.equal(rows[1].run.stopped_at_cap, true);
+  });
+});
+
+describe("a finished offer run waiting for Approve (unit GL)", () => {
+  const doc = "# Offer — capital-blueprint\nAs of 2026-10-06.\n\n## 1. The offer in one sentence\n\nA plan.\n\n## Review card\n\n**What this decided:** Sell it.\n";
+  const job = { id: "o9", kind: "offer", status: "done", finished_at: "2026-10-06T15:00:00.000Z", payload: { campaign: "capital-blueprint" },
+    result: { document: doc, reviewCard: { markdown: "## Review card\n\n**What this decided:** Sell it." }, counts: { priceSet: 1, bonuses: 3, valueEquationScores: 4, guarantees: 2 },
+      checks: { gate: { passes: true, misses: [] } } } };
+
+  test("row 3 shows the run's offer and card, Approve is on, and it says what Approve does", () => {
+    const files = readyFiles();
+    files["03-offer.md"] = { text: null, source: "missing" };
+    const waiting = { job_id: "o9", finished_at: job.finished_at, replaces_file: false };
+    const rows = stagesView({ campaign: "capital-blueprint", files, jobs: { 3: { job, spentUsd: null } }, offerWaiting: waiting });
+    assert.equal(rows[2].state, "MISSING", "the state is still the status script's");
+    assert.equal(rows[2].state_word, "Done");
+    assert.equal(rows[2].sentence, "Done. A new offer is ready to read (written Oct 6). Approve saves it as step 3.");
+    assert.equal(rows[2].can_approve, true);
+    assert.deepEqual(rows[2].offer_waiting, waiting);
+    assert.match(rows[2].review_card_md, /^## Review card/);
+    assert.match(rows[2].document_md, /^# Offer — capital-blueprint/);
+    assert.doesNotMatch(rows[2].document_md, /Review card/);
+    assert.equal(rows[3].can_run.ok, false, "the copy still waits for step 3 to be approved");
+  });
+
+  test("over an older file it says Approve takes its place; a waiting run for another job is ignored", () => {
+    const waiting = { job_id: "o9", finished_at: job.finished_at, replaces_file: true };
+    let rows = stagesView({ campaign: "capital-blueprint", files: readyFiles(), jobs: { 3: { job, spentUsd: null } }, offerWaiting: waiting });
+    assert.match(rows[2].sentence, /Approve saves it as step 3 in place of the offer on file\.$/);
+    rows = stagesView({ campaign: "capital-blueprint", files: readyFiles(), jobs: { 3: { job, spentUsd: null } }, offerWaiting: { ...waiting, job_id: "other" } });
+    assert.equal(rows[2].state_word, "Done, approved");
+    assert.equal(rows[2].offer_waiting, null);
   });
 });
 

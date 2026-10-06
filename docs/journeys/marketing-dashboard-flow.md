@@ -1175,7 +1175,7 @@ flowchart TD
 flowchart TD
   G["GET marketing/flywheel?campaign="] --> V["six rows: label_words, state_word, sentence,<br/>can_run{ok, reason}, run{step, step_word, cost_so_far_usd}, review_card_md, files"]
   RUN["POST marketing/flywheel/run {campaign, stage, request_id}"] --> W{stage}
-  W -->|1 or 2| NB["409 not_built: 'Not on this page yet: it ships in slice 5a / 10.'"]
+  W -->|1 or 2| NB["handed to X1 (the avatar) or X2 (market research): see Wave 2b merge and unit GL below"]
   W -->|3| OF["hand to POST marketing/offer/generate with the campaign's own files (kind 'offer')"]
   W -->|6| SR["spend read now, one staff transaction → 200"]
   W -->|4 or 5| GATE{"step 3 approved? (5: 3 and 4)"}
@@ -1187,7 +1187,7 @@ flowchart TD
   J --> A202["202 {started, already_running, job, poll}; wake the worker after the commit"]
   AP["POST marketing/flywheel/approve {campaign, stage}"] --> AE["file there? → outbox edit set_front_matter_key status: approved<br/>(the body hash does not change, nothing downstream goes out of date)"]
   TW["POST marketing/flywheel/tweak {campaign, stage, note}"] --> TN["outbox edit append_line_under_heading '## Notes':<br/>'YYYY-MM-DD | stage N | note' (append only, a repeat writes once)"]
-  TN --> TR["re-run where it can: 4/5 a job with the note in its payload · 6 the read now ·<br/>3 the offer path with the line in its notes, started after the commit<br/>(a replayed request_id answers: handed to Write the offer, its row shows the run) · 1/2 not yet (reason given)"]
+  TN --> TR["re-run where it can: 4/5 a job with the note in its payload · 6 the read now ·<br/>3 the offer path with the line in its notes, started after the commit<br/>(a replayed request_id answers: handed to Write the offer, its row shows the run) · 1 X1's avatar run · 2 a new market research run with the note (unit GL)"]
   CA["POST marketing/flywheel/campaign {key}"] --> CN["offer key → folder (UWIQ_DELIVERABLES → capital-blueprint) →<br/>outbox replace 00-OWNER-NOTES.md with 'Offer key: …' (201; exists → 200)"]
 ```
 
@@ -1276,7 +1276,7 @@ flowchart TD
   S -->|other| BAD["400 invalid, field stage"]
   TW["POST marketing/flywheel/tweak"] --> T{stage}
   T -->|1| T1["X1 runAvatarTweak: the line is queued<br/>and a new avatar run carries it"]
-  T -->|2 to 6| T2["X3: the line is queued, then that step re-runs where it can<br/>(2: not on this page yet)"]
+  T -->|2 to 6| T2["X3: the line is queued, then that step re-runs where it can<br/>(2: a new market research run with the note, unit GL)"]
   JOB["worker claims kind 'flywheel_stage'<br/>group 'research', one step at a time"] --> SJ{payload.stage}
   SJ -->|2| R2["X2 ad-research.mjs run()"]
   SJ -->|4| R4["X3 copy-stage.mjs runStage()"]
@@ -1291,7 +1291,7 @@ flowchart TD
   "What we sell" pre-fill maps both folder forms back to the offer.
 - **The two edit ops are one implementation** (X3's), with X1's stamp-key allow-list (`status`,
   `approved_by`, `approved_at`) and one heading form: the whole line, `## Notes`.
-- **Gap (for unit GL, wave 2d):** `STAGE_RUNNERS[1|2]` in `src/marketing/flywheel/stages.mjs`
+- **Gap (closed by unit GL, see its section at the end):** `STAGE_RUNNERS[1|2]` in `src/marketing/flywheel/stages.mjs`
   is still null, so the Ideas card's rows for steps 1 and 2 say "Not on this page yet" and offer
   no Run, while POST run starts them (Today's step-1 row does offer Build the avatar).
 - **Gap:** `GET marketing/flywheel/job?id=` (X1) reads avatar runs only, so the `poll` link X2's
@@ -1797,3 +1797,95 @@ Today, Ideas, Scripts, Shoot, Launch, Numbers (Videos has no module yet, so it i
 strip; a `#videos` link lands on Today). Settings stays behind the gear. The gap above (no tab
 drawn) is closed on this branch. U34's frame tests now read that strip (they were written when
 Today was the only tab with a module).
+
+## GL Blueprint glue: the flywheel chain runs end to end with no GitHub token
+
+Drawn 2026-10-06 from the code on branch `mm-gl-blueprint-glue`:
+`src/marketing/flywheel/{stage-inputs,offer-stage,stages,http,reader,stamp,copy-stage,strategy-stage,ad-research}.mjs`,
+`src/marketing/research/repo-read.mjs`, `src/marketing/avatar/run.mjs`,
+`api/marketing/flywheel/{approve,run,tweak}.mjs`, `api/marketing/flywheel.mjs`,
+`api/marketing/offer/generate.mjs`, `src/marketing/costs.mjs`, `src/marketing/shoot-plan.mjs`,
+`public/app/cc-tab-ideas.js`. Owner order: the Blueprint test runs through the dashboard
+(`docs/specs/blueprint-funnel-test-plan-2026-10-06.md`, Likely outcome, A2 to A6, S10, S11).
+No route, table, job kind or migration is added.
+
+### One reader for what every step reads
+
+```mermaid
+flowchart TD
+  S1["step 1 avatar (X1 run.mjs)"] & S2["step 2 market research (X2 ad-research.mjs)"] & S3["step 3 offer (flywheel/run hand-off, Write offer defaults)"] & S4["step 4 copy"] & S5["step 5 ad strategy"] & G["GET marketing/flywheel (the Ideas rows)"] --> R["readStageInputs(campaign, files)<br/>src/marketing/flywheel/stage-inputs.mjs"]
+  R --> B{"GITHUB_REPO_TOKEN works?"}
+  B -->|yes| GH["the files at one pinned commit on GitHub"]
+  B -->|"no ('no_token') or GitHub fails"| BU["the copy built into the site"]
+  GH --> P1["lay on top: this company's flywheel saves in repo_outbox not yet committed"]
+  BU --> P2["lay on top: every flywheel save of this company, committed too<br/>(the built-in copy is older than all of them)"]
+  P1 & P2 --> O{"reading 03-offer.md?"}
+  O -->|yes| J["the newest offer run Chris approved as step 3<br/>(marketing_jobs.result.stage_file) wins when the file is missing<br/>or has a lower version → source 'job-result'"]
+  O -->|no| OUT
+  J --> OUT["each file: text, source (github | bundle-fallback | outbox-pending | job-result | missing),<br/>approved (its stamp), version"]
+```
+
+- A replace save is the whole file; an edit save (Approve, a Tweak line) is laid on again.
+- Only this company's saves are read; a read with no company id reads no saves at all.
+- Step 1 reads `00-OWNER-NOTES.md`, the old foundation, the word bank and `01-avatar.md`
+  through it (the testimonials file, outside the flywheel, through the plain repo read).
+- The gates are unchanged: step 3 needs `01-avatar.md` on file; step 4 needs step 3 approved;
+  step 5 needs 3 and 4 approved (approved = READY with `status: approved`, X3's rule).
+
+### Step 3: a finished offer run becomes 03-offer.md on Approve
+
+```mermaid
+flowchart TD
+  W["Write the offer / Redo on row 3<br/>(kind 'offer', the Write offer path)"] --> D["run done: the offer in marketing_jobs.result"]
+  D --> Q{"the newest offer run for this campaign is done,<br/>no outbox save 'flywheel-offer:&lt;run id&gt;' yet,<br/>and 03-offer.md does not say job: &lt;run id&gt;?"}
+  Q -->|yes| WT["row 3 waits: state word 'Done', 'A new offer is ready to read. Approve saves it as step 3.'<br/>(+ 'in place of the offer on file' when one exists; + the first bar it misses);<br/>Read it shows the run's card and offer; can_approve true; offer_waiting {job_id, finished_at, replaces_file}"]
+  Q -->|no| N["row 3 is the file's row as before"]
+  WT --> AP["POST marketing/flywheel/approve {campaign, stage: 3}"]
+  AP --> TX["one staff transaction:<br/>outbox replace 03-offer.md (op flywheel-offer:&lt;run id&gt;): stage 3, version = old + 1,<br/>status approved, job: &lt;run id&gt;, inputs = hashes of 01 and 02 the run read, counts = the run's;<br/>marketing_jobs.result.stage_file = {version, inputs, counts, approved_at, approved_by, outbox_id}"]
+  TX --> A200["200 {ok, campaign, stage: 3, file, outbox_id, already_approved: false, written_from_job, version}<br/>wake the worker (the save waits as 'no_token' while the token is unset)"]
+  A200 --> NX["row 3 READY and approved from the waiting save → row 4 can run"]
+  N --> AE["Approve: the stamp edit, as for every other step"]
+```
+
+- The input hashes are honest: the hash of `01-avatar.md` / `02-ad-research.md` as they are now
+  when the run read that same text, else the hash of what it did read (the row then reads "Out
+  of date"); an input the run did not have is left out (the status script says so).
+- A second Approve of the same run never writes it twice (the op id); it only re-approves.
+
+### Rows 1 and 2 run from the card
+
+```mermaid
+flowchart TD
+  SR["STAGE_RUNNERS (stages.mjs): 1 avatar · 2 market · 3 offer · 4, 5 job · 6 spend read"] --> V["GET rows 1 and 2: 'Not run yet' / their own state, can_run ok;<br/>row 1 off with its reason while an avatar run goes"]
+  V --> RUN["POST marketing/flywheel/run: via 'avatar' → X1 runAvatarStage · via 'market' → X2 runMarketStage"]
+  TW["POST marketing/flywheel/tweak {stage: 2, note}"] --> TQ["the line is queued under ## Notes"]
+  TQ --> TK{"Anthropic key? month cap left? a step-2 run already going?"}
+  TK -->|no key / cap| TR["202, rerun.started false, the reason in words (the note is kept)"]
+  TK -->|"going"| TG["202, that run (the next run reads the note)"]
+  TK -->|yes| TS["X2 startMarketResearch with the note → 202, rerun.started true, job"]
+```
+
+- Step 2's run reads with X2's runner shape on the row (step n of 5, its words, findings so far,
+  a cap stop as "Stopped at the cap").
+
+### Cost lines and the Blueprint take name
+
+- `GET marketing/costs` kinds now measured from real runs: `ad_research` (flywheel_stage stage
+  2), `copy` (stage 4), `ad_strategy` (stage 5), `funnel` (kind funnel). The offer path writes no
+  ledger rows, so `offer` is its newest done run's own token counts at the price table's rate
+  (null when a model has no price; never $0).
+- Shoot Day file names: the offer key `capital_blueprint` has the word `Blueprint` (owner default
+  taken 2026-10-06), so a Blueprint take reads `Blueprint Ad <n> — <angle> Take 1.mp4`. The join
+  step reads it back (offer `BLUEPRINT`). `marketing/ads/NAMING.md` is not changed.
+
+### Gaps (findings, not fixed here)
+
+- The offer path still writes no `marketing_model_usage` rows, so offer spend is not in the month
+  cap (the cost line reads the run's own counts).
+- `GET marketing/flywheel/job?id=` reads avatar runs only (from the wave 2b merge); the Ideas row
+  carries the step-2 run itself.
+- Today's own flywheel table (`public/app/marketing-cc-today.js`, unit U37) still prints "Not on
+  this page yet" for steps 1 and 2; the Ideas card (this unit) runs them.
+- UNVERIFIED on this Mac (no Postgres): the chain on real tables is proved by
+  `src/http/marketing-flywheel.pg.test.mjs` "unit GL: the Blueprint chain with no GitHub token"
+  in GitHub CI.

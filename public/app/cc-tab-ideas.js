@@ -652,6 +652,9 @@
       canRun: canRun,
       notBuilt: notBuilt,
       canApprove: canApprove === undefined ? state === "READY" : canApprove === true,
+      /* offer_waiting (unit GL): step 3's newest offer is written and waits for
+         Approve, which saves it as the step's file (even over an older one). */
+      offerWaiting: !!pick(raw, ["offer_waiting"]),
       run: run,
       running: running,
       failed: failed,
@@ -1047,7 +1050,7 @@
     if (v.review || v.document || v.files.length) acts.push(btn(open["stage:" + v.n] ? "Hide it" : "Read it", "stage-read", { data: { n: v.n } }));
     var canRunHere = !v.notBuilt;
     var capStop = v.failed && v.run && v.run.stoppedAtCap;
-    if (v.canApprove && v.hasFile && !v.approved && !v.running) acts.push(btn("Approve", "stage-approve", { data: { n: v.n } }));
+    if (v.canApprove && !v.running && (v.offerWaiting || (v.hasFile && !v.approved))) acts.push(btn("Approve", "stage-approve", { data: { n: v.n } }));
     if (v.hasFile && !v.running && !def.free && canRunHere) acts.push(btn("Tweak", "stage-tweak-open", { data: { n: v.n } }));
     if (canRunHere && capStop && v.run.jobId) {
       acts.push(btn("Resume", "stage-retry", { data: { n: v.n, job: v.run.jobId } }));

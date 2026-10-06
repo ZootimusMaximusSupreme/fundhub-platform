@@ -17,11 +17,19 @@ const KEY = /^[A-Za-z0-9_./-]+$/;
  * inputs: { "03-offer.md": "4596bcc6", ... } (missing inputs are left out)
  * counts: { hooks: 31, ... } whole numbers only (a count that is not a whole
  *         number is left out, so the gate reads "did not report" rather than a lie)
+ * extra:  more top-level lines after status (unit GL: `job: <uuid>`, the offer run
+ *         an approved 03-offer.md was written from). Plain keys and one-word values
+ *         only; anything else is left out.
  * @param {{stage: number, version: number, status?: string,
- *          inputs?: Record<string, string|null|undefined>, counts?: Record<string, any>, body: string}} args
+ *          inputs?: Record<string, string|null|undefined>, counts?: Record<string, any>,
+ *          extra?: Record<string, string|null|undefined>, body: string}} args
  */
-export function stampStage({ stage, version, status = "draft", inputs = {}, counts = {}, body }) {
+export function stampStage({ stage, version, status = "draft", inputs = {}, counts = {}, extra = {}, body }) {
   const lines = ["---", `stage: ${Number(stage)}`, `version: ${Number(version)}`, `status: ${status}`];
+  for (const [k, v] of Object.entries(extra)) {
+    if (/^[a-z][a-z0-9_]*$/.test(k) && !["stage", "version", "status", "inputs", "counts"].includes(k) &&
+        typeof v === "string" && /^[A-Za-z0-9_.:-]{1,80}$/.test(v)) lines.push(`${k}: ${v}`);
+  }
   const ins = Object.entries(inputs).filter(([k, v]) => KEY.test(k) && typeof v === "string" && /^[0-9a-f]{8}$/.test(v));
   if (ins.length) {
     lines.push("inputs:");

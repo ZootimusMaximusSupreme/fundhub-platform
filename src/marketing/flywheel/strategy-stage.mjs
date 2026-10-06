@@ -23,7 +23,8 @@
 // Then the document with its review card, stamped and saved through the outbox.
 
 import { runSteps, OPUS, SONNET, StageStop, callReserveUsd } from "./steps.mjs";
-import { readFlywheel, readRepoFile } from "./reader.mjs";
+import { readRepoFile } from "./reader.mjs";
+import { readStageInputs, STAGE_INPUTS } from "./stage-inputs.mjs";
 import { campaignWords, notesForStage, offerKeyOf } from "./campaigns.mjs";
 import { stampStage, nextVersion, hashOf, bodyOf, countsOf } from "./stamp.mjs";
 import { saveStageFile, todayArizona } from "./save.mjs";
@@ -135,7 +136,7 @@ export function steps(ctx) {
       name: "inputs",
       word: "reading the offer, the copy and the real numbers",
       run: async (s) => {
-        const read = await readFlywheel({ db: ctx.db, orgId: ctx.orgId, campaign: s.campaign, env: ctx.env, deps: (ctx.deps && ctx.deps.reader) || {} });
+        const read = await readStageInputs({ db: ctx.db, orgId: ctx.orgId, campaign: s.campaign, files: STAGE_INPUTS[5], env: ctx.env, deps: (ctx.deps && ctx.deps.reader) || {} });
         const f = read.files || {};
         const text = (name) => (f[name] && f[name].text != null ? f[name].text : null);
         const offer = bodyOf(text("03-offer.md"));

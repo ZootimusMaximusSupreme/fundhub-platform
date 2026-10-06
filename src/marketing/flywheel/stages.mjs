@@ -13,36 +13,41 @@
 // the machine is doing now (the newest job per stage).
 //
 // WHO RUNS EACH STAGE (STAGE_RUNNERS):
-//   1  the avatar        unit X1 (design slice 5a, job kind 'avatar') — not here
-//   2  ad research       unit X2 (design slice 10, kind 'flywheel_stage' stage 2)
+//   1  the avatar        unit X1 (design slice 5a, job kind 'avatar',
+//                        src/marketing/avatar/run.mjs); POST marketing/flywheel/run
+//                        hands it to src/marketing/avatar/run-route.mjs
+//   2  ad research       unit X2 (design slice 10, kind 'flywheel_stage' stage 2,
+//                        src/marketing/flywheel/ad-research.mjs); the run route hands
+//                        it to src/marketing/research/market-run-route.mjs
 //   3  the offer         the existing Write offer path (POST marketing/offer/generate,
-//                        job kind 'offer'); POST marketing/flywheel/run hands it on
+//                        job kind 'offer'); POST marketing/flywheel/run hands it on.
+//                        Approve writes 03-offer.md from the newest finished run
+//                        (unit GL, offer-stage.mjs).
 //   4  the copy          this unit, kind 'flywheel_stage' (copy-stage.mjs)
 //   5  the ad strategy   this unit, kind 'flywheel_stage' (strategy-stage.mjs)
 //   6  the spend read    this unit, no model, no job (spend-read.mjs)
 // A stage whose runner is not built says so in one sentence and offers no dead
-// button (design safety rule 9). X1 and X2 fill their rows in when they land.
+// button (design safety rule 9). Unit GL pointed rows 1 and 2 at X1 and X2.
 
 import { STAGES, evaluateFiles, splitFrontMatter } from "../../../scripts/flywheel/status.mjs";
 import { campaignWords } from "./campaigns.mjs";
+import { waitingWords, jobReviewCard, jobDocument } from "./offer-stage.mjs";
 
 export const STAGE_COUNT = 6;
 
-/** How each stage runs. `null` = not built in this unit (the row says which slice brings it). */
+/** How each stage runs. `null` = not built yet (the row says which slice brings it). */
 export const STAGE_RUNNERS = {
-  1: null,
-  2: null,
+  1: { via: "avatar" },
+  2: { via: "market" },
   3: { via: "offer" },
   4: { via: "job", needsApproved: [3] },
   5: { via: "job", needsApproved: [3, 4] },
   6: { via: "spend-read" }
 };
 
-/** The sentence a row shows while its runner is not on this page yet. */
-export const NOT_BUILT = Object.freeze({
-  1: "Not on this page yet: it ships in slice 5a. Cost not measured.",
-  2: "Not on this page yet: it ships in slice 10. Cost not measured."
-});
+/** The sentence a row shows while its runner is not on this page yet (none since unit GL). */
+/** @type {Readonly<Record<number, string>>} */
+export const NOT_BUILT = Object.freeze({});
 
 /** @param {string} campaignName */
 export function labelWords(n, campaignName) {
@@ -124,17 +129,20 @@ export function runView(job, { spentUsd = null } = {}) {
   if (!job) return null;
   const r = job.result && typeof job.result === "object" ? job.result : {};
   const progress = r.progress || {};
+  // Step 2 runs on unit X2's saved-step runner (src/marketing/research/runner.mjs),
+  // whose checkpoint keeps the step at the top of result and the stop in result.stopped.
+  const x2 = r.v === 1 && typeof r.step === "string";
   return {
     job_id: job.id,
     kind: job.kind,
     status: job.status,
-    step: progress.step ?? null,
-    step_n: progress.step_n ?? null,
-    steps_total: progress.steps_total ?? null,
-    step_word: progress.step_word ?? null,
-    counts_so_far: progress.counts || null,
+    step: progress.step ?? (x2 ? r.step : null),
+    step_n: progress.step_n ?? (x2 ? r.step_n ?? null : null),
+    steps_total: progress.steps_total ?? (x2 ? r.steps_total ?? null : null),
+    step_word: progress.step_word ?? (x2 ? r.step_word ?? null : null),
+    counts_so_far: progress.counts || (x2 && progress.findings != null ? { findings: progress.findings } : null),
     cost_so_far_usd: spentUsd == null ? null : Number(spentUsd),
-    stopped_at_cap: Boolean(r.stopped_at_cap),
+    stopped_at_cap: Boolean(r.stopped_at_cap || (x2 && r.stopped && r.stopped.reason)),
     resumable: job.status === "failed",
     started_at: job.claimed_at || job.created_at || null,
     finished_at: job.finished_at || null,
@@ -148,10 +156,14 @@ export function runView(job, { spentUsd = null } = {}) {
  * files:  name -> {text, source} from reader.mjs (missing files have text null)
  * jobs:   { [stage]: {job, spentUsd} } the newest job per stage (stage 3 = the
  *         newest offer job for this campaign)
+ * offerWaiting: offer-stage.mjs offerWaiting() for the newest offer run, or null.
+ *         While a finished run waits, row 3 shows that run's offer and card and
+ *         Approve is on: Approve writes 03-offer.md from it (unit GL).
  * @param {{campaign: string, files: Record<string, {text: string|null, source: string}>,
- *          jobs?: Record<number, {job: any, spentUsd?: number|null}>, repo?: string, commitSha?: string|null}} args
+ *          jobs?: Record<number, {job: any, spentUsd?: number|null}>, repo?: string, commitSha?: string|null,
+ *          offerWaiting?: {job_id: string, finished_at: string|null, replaces_file: boolean}|null}} args
  */
-export function stagesView({ campaign, files, jobs = {}, repo = "ZootimusMaximusSupreme/fundhub-platform", commitSha = null }) {
+export function stagesView({ campaign, files, jobs = {}, repo = "ZootimusMaximusSupreme/fundhub-platform", commitSha = null, offerWaiting = null }) {
   const read = (f) => (files[f] && files[f].text != null ? files[f].text : null);
   const rows = evaluateFiles(read);
   const name = campaignWords(campaign, read("00-OWNER-NOTES.md"));
@@ -238,6 +250,15 @@ export function stagesView({ campaign, files, jobs = {}, repo = "ZootimusMaximus
       }
     }
 
+    // Row 3 while a finished offer run waits for Approve (unit GL): the run's own
+    // offer and card are what Read it shows and what Approve saves.
+    const waiting = row.n === 3 && offerWaiting && j.job && String(j.job.id) === offerWaiting.job_id ? offerWaiting : null;
+    if (waiting) {
+      const w = waitingWords(waiting, j.job);
+      stateWord = w.state_word;
+      sentence = w.sentence;
+    }
+
     const filePath = `marketing/flywheel/${campaign}/${row.file}`;
     return {
       n: row.n,
@@ -257,11 +278,12 @@ export function stagesView({ campaign, files, jobs = {}, repo = "ZootimusMaximus
           : `Does not clear the bar for the next step: ${reasons.join("; ")}.`
       },
       can_run: canRun,
-      can_approve: text != null,
+      can_approve: text != null || Boolean(waiting),
+      offer_waiting: waiting,
       run,
       version,
-      review_card_md: reviewCard(text),
-      document_md: body == null ? null : body.trim(),
+      review_card_md: waiting ? jobReviewCard(j.job) : reviewCard(text),
+      document_md: waiting ? jobDocument(j.job) : (body == null ? null : body.trim()),
       files: text == null ? [] : [{
         path: filePath,
         github_url: `https://github.com/${repo}/blob/${commitSha || "main"}/${filePath}`

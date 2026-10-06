@@ -7,7 +7,7 @@
 // hasCompany in its own file (scripts/journeys/extract.mjs reads them there).
 
 import { InvalidError } from "../http.mjs";
-import { readFlywheel } from "./reader.mjs";
+import { readFlywheel, CAMPAIGN_FILES } from "./reader.mjs";
 import { latestStageJobs, FLYWHEEL_STAGE_KIND } from "./store.mjs";
 import { stagesView, adviceWords, STAGE_RUNNERS, NOT_BUILT } from "./stages.mjs";
 import { isCampaign, campaignWords, ownerNotesSection, noteLine } from "./campaigns.mjs";
@@ -15,6 +15,8 @@ import { readSpend, concludeSpend, spendDocument } from "./spend-read.mjs";
 import { stampStage, nextVersion, hashOf, bodyOf } from "./stamp.mjs";
 import { enqueueRepoWrite } from "../../repo/outbox.mjs";
 import { repoConfig } from "../../repo/github.mjs";
+import { readStageInputs } from "./stage-inputs.mjs";
+import { OFFER_FILE, offerWaiting, offerWritten } from "./offer-stage.mjs";
 
 export { STAGE_RUNNERS, NOT_BUILT, FLYWHEEL_STAGE_KIND };
 
@@ -64,14 +66,28 @@ export function jobView(row) {
 /**
  * readCampaign({ db, orgId, campaign, env, deps }) → the reader's answer plus the
  * six rows. Never inside a transaction (it may call GitHub).
+ *
+ * Unit GL: 03-offer.md is read the way every step reads it (the approved offer run
+ * when the file is missing or older, stage-inputs.mjs layApprovedOffer), and
+ * `offer_waiting` says whether the newest offer run is finished and not yet saved as
+ * step 3 (offer-stage.mjs): then row 3 shows that run and Approve saves it.
  * @param {{db: any, orgId: string, campaign: string, env: any, deps?: any}} args
  */
 export async function readCampaign({ db, orgId, campaign, env, deps = {} }) {
-  const read = await (deps.readFlywheel || readFlywheel)({ db, orgId, campaign, env, deps: deps.reader || {} });
-  const files = read.files || {};
+  // The same one reader every step uses (stage-inputs.mjs), plus the folder list.
+  const read = await readStageInputs({
+    db, orgId, campaign, env, deps: deps.reader || {}, files: CAMPAIGN_FILES, list: true,
+    via: deps.readFlywheel || readFlywheel
+  });
+  const files = read.files;
   const jobs = await (deps.latestStageJobs || latestStageJobs)(db, { orgId, campaign });
-  const stages = stagesView({ campaign, files, jobs, repo: repoConfig(env).repo, commitSha: read.commit_sha });
-  return { read, files, jobs, stages, advice: adviceWords(stages) };
+  const offerJob = jobs[3] && jobs[3].job;
+  const written = offerJob && offerJob.status === "done"
+    ? await (deps.offerWritten || offerWritten)(db, { orgId, jobId: offerJob.id })
+    : false;
+  const waiting = offerWaiting({ job: offerJob, fileText: fileText(files, OFFER_FILE), written });
+  const stages = stagesView({ campaign, files, jobs, repo: repoConfig(env).repo, commitSha: read.commit_sha, offerWaiting: waiting });
+  return { read, files, jobs, stages, advice: adviceWords(stages), offer_waiting: waiting };
 }
 
 /** A file's text from the reader's map, or null. */

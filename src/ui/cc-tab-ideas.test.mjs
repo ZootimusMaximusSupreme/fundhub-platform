@@ -237,6 +237,39 @@ describe("flywheel rows (design §3.2 item 6)", () => {
     assert.match(row4, /Approve step 3 first \(the offer\)\./);
   });
 
+  test("unit GL: rows 1 and 2 as the server now sends them show Build the avatar and Research the market, with their cost lines", () => {
+    const st = { campaign: "capital-blueprint", costs: COSTS, open: {}, drafts: {} };
+    const html = T.renderFlywheel({ ok: true, data: { campaign: "capital-blueprint", stages: [
+      { n: 1, key: "avatar", label_words: "Who we sell to", state: "MISSING", state_word: "Not run yet", sentence: "Not started.", can_run: { ok: true, reason: null }, can_approve: false, run: null, files: [] },
+      { n: 2, key: "ad-research", label_words: "What the market sells", state: "MISSING", state_word: "Not run yet", sentence: "Not started.", can_run: { ok: true, reason: null }, can_approve: false, run: null, files: [] }
+    ] } }, st);
+    assert.doesNotMatch(html, /Not on this page yet/);
+    const row1 = html.slice(html.indexOf('id="cci-stage-1"'), html.indexOf('id="cci-stage-2"'));
+    const row2 = html.slice(html.indexOf('id="cci-stage-2"'));
+    assert.match(row1, /class="btn primary" type="button" data-act="stage-run" data-n="1"[^>]*>(<span[^>]*><\/span>)?<span class="lbl">Build the avatar</);
+    assert.match(row1, /What we sell \(it reads this\)/);
+    assert.match(row1, /cci-cost/);
+    assert.match(row2, /data-act="stage-run" data-n="2"[^>]*>(<span[^>]*><\/span>)?<span class="lbl">Research the market</);
+    assert.match(row2, /The market, in one line/);
+    assert.match(row2, /cci-cost/);
+  });
+
+  test("unit GL: a finished offer waiting on row 3 shows Approve even with no file yet, and Read it opens the run's offer", () => {
+    const st = { campaign: "capital-blueprint", costs: COSTS, open: { "stage:3": true }, drafts: {} };
+    const html = T.renderFlywheel({ ok: true, data: { campaign: "capital-blueprint", stages: [
+      { n: 3, key: "offer", label_words: "The offer", state: "MISSING", state_word: "Done", sentence: "Done. A new offer is ready to read (written Oct 6). Approve saves it as step 3.",
+        can_run: { ok: true, reason: null }, can_approve: true, offer_waiting: { job_id: "o1", finished_at: "2026-10-06T16:00:00.000Z", replaces_file: false },
+        run: { job_id: "o1", kind: "offer", status: "done" }, review_card_md: "## Review card\n\n**What this decided:** Sell it.", document_md: "# Offer\n\nA plan.", files: [] },
+      { n: 4, key: "copy", state: "MISSING", can_run: { ok: false, reason: "Approve step 3 first (the offer)." }, can_approve: false, run: null, files: [] }
+    ] } }, st);
+    const row3 = html.slice(html.indexOf('id="cci-stage-3"'), html.indexOf('id="cci-stage-4"'));
+    assert.match(row3, /Approve saves it as step 3\./);
+    assert.match(row3, /data-act="stage-approve" data-n="3"[^>]*>(<span[^>]*><\/span>)?<span class="lbl">Approve</);
+    assert.match(row3, /What this decided/);
+    const done = T.renderFlywheel({ ok: true, data: { stages: [{ n: 3, state: "READY", approved: true, can_approve: true, offer_waiting: null, run: null, files: [] }] } }, st);
+    assert.doesNotMatch(done, /stage-approve/, "an approved file with nothing waiting has no Approve");
+  });
+
   test("a run stopped at its cap offers Resume and Start over; any other failure offers Retry", () => {
     const st = { campaign: "partner", costs: COSTS, open: {}, drafts: {} };
     const cap = T.renderFlywheel({ ok: true, data: { stages: [{ n: 2, state: "MISSING", run: { job_id: "j2", status: "failed", stopped_at_cap: true, resumable: true, error: "Stopped at the $40 run cap." } }] } }, st);

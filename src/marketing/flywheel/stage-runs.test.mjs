@@ -11,6 +11,7 @@ import { run as runStageJob } from "./stage-job.mjs";
 import { ANGLES_SCHEMA, PIECE_SCHEMA } from "./copy-stage.mjs";
 import { PLAN_SCHEMA, screenPlan } from "./strategy-stage.mjs";
 import { stampStage, hashOf, parseFrontMatter, splitFrontMatter } from "./stamp.mjs";
+import { offerFileFromStamp } from "./offer-stage.mjs";
 import { evaluateFiles } from "../../../scripts/flywheel/status.mjs";
 import { JOB_KINDS, checkJobKinds } from "../job-kinds.mjs";
 import { campaignFiles, readerDeps, fakeModel } from "../fixtures/flywheel-fakes.mjs";
@@ -236,5 +237,82 @@ describe("step 5, the ad strategy", () => {
     const bad = screenPlan({ strategyName: "x", targetingJson: JSON.stringify({ age_min: 18, age_max: 65, zips: ["85001"] }) });
     assert.equal(bad.ok, false);
     assert.ok(bad.reasons.every((r) => typeof r === "string" && r.length > 10));
+  });
+});
+
+// Unit GL: with GITHUB_REPO_TOKEN unset every save waits in repo_outbox ('no_token').
+// Steps 4 and 5 then read the step before from the company's waiting saves (an Approve
+// laid on), or 03-offer.md from the offer run Chris approved, through the one stage
+// reader (src/marketing/flywheel/stage-inputs.mjs).
+describe("unit GL: steps 4 and 5 with no GitHub token read the database's copy", () => {
+  /** The company's waiting saves for capital-blueprint: each file, then an Approve where asked. */
+  function waitingSaves(files, approve = []) {
+    let id = 0;
+    const rows = [];
+    for (const [name, content] of Object.entries(files)) {
+      rows.push({ id: ++id, path: `marketing/flywheel/capital-blueprint/${name}`, mode: "replace", content, edit: null, committed_sha: null });
+      if (approve.includes(name)) {
+        rows.push({ id: ++id, path: `marketing/flywheel/capital-blueprint/${name}`, mode: "edit", content: null,
+          edit: { op: "set_front_matter_key", key: "status", value: "approved" }, committed_sha: null });
+      }
+    }
+    return rows;
+  }
+  /** ctxFor with no GitHub token: the reader falls back to the built-in copy plus the saves. */
+  function noTokenCtx(db, model, reader) {
+    const { ctx } = ctxFor(db, model, {});
+    ctx.env = { ANTHROPIC_API_KEY: "sk-ant-test" };
+    ctx.deps.reader = reader;
+    return ctx;
+  }
+  const draft = (text) => text.replace(/\nstatus: approved\n/, "\nstatus: draft\n");
+
+  test("step 4 reads the offer from its waiting save with the Approve laid on, and stamps that offer's hash", async () => {
+    const f = campaignFiles();
+    const offer = draft(f["03-offer.md"]);
+    const rows = waitingSaves({ ...f, "03-offer.md": offer }, ["03-offer.md"]);
+    const db = fakeDb();
+    const model = fakeModel();
+    const out = await runStageJob(job(4), noTokenCtx(db, model, { pendingRows: async () => rows, approvedOffer: async () => null }));
+    assert.equal(out.stage, 4);
+    assert.match(model.calls.find((c) => c.outputSchema === ANGLES_SCHEMA).user, /The program is \$5,000/);
+    const meta = parseFrontMatter(splitFrontMatter(db.st.outbox[0].content).frontMatter);
+    assert.equal(meta.inputs["03-offer.md"], hashOf(offer), "the offer it was built from");
+  });
+
+  test("step 4 reads 03-offer.md from the approved offer run when no file is anywhere", async () => {
+    const f = campaignFiles();
+    delete f["03-offer.md"];
+    const run = {
+      id: "6f1d8a52-1111-4a1a-9b1b-0000000000bb", kind: "offer", status: "done",
+      payload: { campaign: "capital-blueprint" },
+      result: {
+        document: `# Offer — capital-blueprint\nThe Blueprint is $5,000. A plan in 30 days.${CARD}`,
+        stage_file: { version: 1, inputs: {}, counts: { priceSet: 1, bonuses: 3, valueEquationScores: 4, guarantees: 2 } }
+      }
+    };
+    const db = fakeDb();
+    const model = fakeModel();
+    const out = await runStageJob(job(4), noTokenCtx(db, model, { pendingRows: async () => waitingSaves(f), approvedOffer: async () => run }));
+    assert.equal(out.stage, 4);
+    assert.match(model.calls.find((c) => c.outputSchema === ANGLES_SCHEMA).user, /The Blueprint is \$5,000/);
+    const meta = parseFrontMatter(splitFrontMatter(db.st.outbox[0].content).frontMatter);
+    assert.equal(meta.inputs["03-offer.md"], hashOf(offerFileFromStamp(run)));
+  });
+
+  test("step 5 reads the offer and the copy from their waiting saves and stamps the copy's hash", async () => {
+    const f = campaignFiles();
+    const copy = stampStage({ stage: 4, version: 1, status: "draft",
+      inputs: { "03-offer.md": hashOf(f["03-offer.md"]), "01-avatar/Market_Language_Bank.md": hashOf(f["01-avatar/Market_Language_Bank.md"]) },
+      counts: { hooks: 12, humanizerPassRun: 1, distinctReasons: 15 }, body: `# Copy waiting in the outbox${CARD}` });
+    const db = fakeDb();
+    const model = fakeModel();
+    const rows = waitingSaves({ ...f, "04-copy.md": copy }, ["04-copy.md"]);
+    const out = await runStageJob(job(5), noTokenCtx(db, model, { pendingRows: async () => rows, approvedOffer: async () => null }));
+    assert.equal(out.stage, 5);
+    assert.match(model.calls.find((c) => c.outputSchema === PLAN_SCHEMA).user, /CREATIVE THAT ACTUALLY EXISTS: 12 written ad pieces/);
+    const meta = parseFrontMatter(splitFrontMatter(db.st.outbox[0].content).frontMatter);
+    assert.equal(meta.inputs["04-copy.md"], hashOf(copy));
+    assert.equal(meta.inputs["03-offer.md"], hashOf(f["03-offer.md"]));
   });
 });

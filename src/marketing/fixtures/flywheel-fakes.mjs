@@ -46,7 +46,9 @@ export function readerDeps(files, { campaign = "capital-blueprint" } = {}) {
       const name = p.slice(prefix.length);
       return files[name] == null ? { ok: true, missing: true, content: null } : { ok: true, content: files[name] };
     },
-    pendingRows: async () => []
+    pendingRows: async () => [],
+    // Unit GL: the stage reader also asks for the newest approved offer run.
+    approvedOffer: async () => null
   };
 }
 
