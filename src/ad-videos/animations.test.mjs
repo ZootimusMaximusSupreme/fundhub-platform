@@ -726,7 +726,10 @@ describe("not wired into any live path", () => {
     for (const d of ["src", "api", "netlify", "scripts", "video-worker"]) {
       if (fs.existsSync(path.join(ROOT, d))) walk(path.join(ROOT, d));
     }
-    assert.deepEqual(hits, ["src/ad-videos/animations.test.mjs"]);
+    assert.deepEqual(hits, ["src/ad-videos/animations.test.mjs"],
+      "animations.mjs is not wired in yet (U30). The change that wires it must switch off the old Submagic " +
+      "B-roll placement (src/ad-videos/broll.mjs via pipeline.mjs placeBrollAndExport) in the same change, " +
+      "or the animations land twice; then add the new importer to this list.");
   });
 
   test("it reads no file, calls nobody and reaches for no credential", () => {
