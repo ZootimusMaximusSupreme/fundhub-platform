@@ -62,6 +62,16 @@ export const CONTRACT_COLUMNS = `
   created_by, created_at, updated_at`;
 
 /** 'sha256:<hex>' — the same algorithm-prefixed shape documents.checksum uses. */
+/* THE "DO NOT SEND THIS" TEMPLATES REFUSE TO SEND (walkthrough-4 defect 2,
+   2026-09-06). Migration 287 put a marked placeholder in the funding and
+   credit-repair agreements because no real text exists for them, and 288 says
+   they "still refuse to be sent by accident" — but nothing refused. A closer's
+   one-click Send on the deck would mail a client a contract whose terms read
+   "THIS IS NOT THE REAL AGREEMENT TEXT. DO NOT SEND THIS." The marker is the
+   one 287 and db/seed/007 wrote; a template with real text never carries it. */
+const PLACEHOLDER_MARKER = /NOT THE REAL AGREEMENT TEXT|>>>\s*PLACEHOLDER\b/i;
+export const hasPlaceholderText = (text) => PLACEHOLDER_MARKER.test(String(text || ""));
+
 export const bodyHash = (text) =>
   `sha256:${createHash("sha256").update(Buffer.from(String(text), "utf8")).digest("hex")}`;
 
@@ -346,6 +356,12 @@ export async function send(db, {
 
   const template = await getTemplate(db, { orgId, id: current.template_id });
   if (!template) throw notFound("That contract template does not exist.", "template_not_found");
+  if (hasPlaceholderText(template.body)) {
+    throw conflict(
+      "This contract template still holds placeholder text, not the real agreement. " +
+      "It cannot be sent until the real wording is loaded.",
+      "placeholder_text");
+  }
 
   const signers = await listSigners(db, current.id);
   if (!signers.length) {
