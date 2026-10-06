@@ -74,7 +74,7 @@
      or hidden from here: shell.js owns `.clock` for every screen at once and
      already drops it under 900px. */
   .brand{display:flex;align-items:center;gap:9px;min-width:0;flex:0 1 auto;}
-  .brand .name{font-weight:800;letter-spacing:.2px;}
+  .brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0;}
   .brand .sep{color:var(--dark-text-dim);font-weight:400;}
   .brand .sub{font-weight:600;color:var(--dark-text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .topbar-right{display:flex;align-items:center;gap:16px;color:var(--dark-text-dim);flex:0 0 auto;}
@@ -523,7 +523,7 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="name">Fundhub</div>
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
       <div class="sep">/</div>
       <div class="sub">Closer Dashboard</div>
     </div>
