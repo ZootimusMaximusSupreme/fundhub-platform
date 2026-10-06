@@ -78,10 +78,15 @@ function run(label, files, concurrency) {
   return r.status ?? 1;
 }
 
-let code = run("unit", unit, undefined);
-if (code !== 0) process.exit(code);
+/* BOTH HALVES ALWAYS RUN. A red unit test used to exit here before a single
+   pg file ran, so in CI one stale unit test hid every database result behind
+   it (measured 2026-10-05, GitHub run 37406614118: 23 unit failures, 0 pg
+   files run). Run the unit half, run the pg half, then fail if either did. */
+const unitCode = run("unit", unit, undefined);
 
 // With a database: one pg file at a time. Without: parallel skip is cheap.
 const pgConcurrency = process.env.DATABASE_URL ? 1 : undefined;
-code = run("pg", pg, pgConcurrency);
-process.exit(code);
+const pgCode = run("pg", pg, pgConcurrency);
+
+process.stderr.write(`\n[run-suite] unit exit ${unitCode}, pg exit ${pgCode}\n`);
+process.exit(unitCode !== 0 ? unitCode : pgCode);

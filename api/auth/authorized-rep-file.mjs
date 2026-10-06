@@ -37,7 +37,10 @@ export default async function handler(req, res) {
   if (!isUuid(clientId)) {
     return res.status(400).json({ ok: false, error: "client_id must be a uuid" });
   }
-  const out = await setActiveFile(db, { accountId: principal.accountId, clientId });
+  // principal.orgId binds the switch to the caller's own company.
+  const out = await setActiveFile(db, {
+    accountId: principal.accountId, clientId, orgId: principal.orgId
+  });
   if (!out.ok) {
     return res.status(403).json({
       ok: false,

@@ -116,19 +116,25 @@ test.describe("client control panel — Bank yes records an amount", () => {
     });
   }
 
-  test("the approved-amount box is on the screen next to Bank yes", async ({ page }) => {
+  /* THE BUTTON WORDS ARE CHRIS'S (owner-set 2026-09-06, 648af7b02): "Bank yes"
+     and "Bank no" became Approved / Declined / Pending. The stored values did
+     not change — Approved, Denied, Applied — so every write assertion below is
+     as it was; only the button names moved. The amount box is labelled
+     "Approved $" and its placeholder says to leave it empty if unknown. */
+  test("the approved-amount box is on the screen next to the Approved button", async ({ page }) => {
     await open(page, []);
     const amt = page.locator('input[data-amount-lender-id]').first();
     await expect(amt).toBeVisible({ timeout: 10_000 });
-    await expect(amt).toHaveAttribute("placeholder", /approved/i);
-    await expect(page.getByRole("button", { name: "Bank yes" }).first()).toBeVisible();
+    await expect(page.getByLabel("Approved $").first()).toBeVisible();
+    await expect(amt).toHaveAttribute("placeholder", /empty if unknown/i);
+    await expect(page.getByRole("button", { name: "Approved", exact: true }).first()).toBeVisible();
   });
 
   test("a typed amount reaches the request as approved_amount in dollars", async ({ page }) => {
     const writes = [];
     await open(page, writes);
     await page.locator('input[data-amount-lender-id]').first().fill("$45,000");
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].status).toBe("Approved");
     // Dollars, fixed 2dp — the unit applications.approved_amount stores.
@@ -139,7 +145,7 @@ test.describe("client control panel — Bank yes records an amount", () => {
     const writes = [];
     await open(page, writes);
     await page.locator('input[data-amount-lender-id]').first().fill("450.10");
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].approved_amount).toBe("450.10");
   });
@@ -153,7 +159,7 @@ test.describe("client control panel — Bank yes records an amount", () => {
   test("A BLANK BOX SAVES THE APPROVAL AND SENDS NO AMOUNT — never a zero", async ({ page }) => {
     const writes = [];
     await open(page, writes);
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].status).toBe("Approved");
     // No key at all. Not 0, not "", not null.
@@ -163,7 +169,7 @@ test.describe("client control panel — Bank yes records an amount", () => {
   test("after saving with no amount, the row says so and the block counts it", async ({ page }) => {
     const writes = [];
     await open(page, writes);
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     await expect(page.locator(`[data-amount-needed-lender-id="${LENDER_ID}"]`))
       .toBeVisible({ timeout: 10_000 });
@@ -177,16 +183,16 @@ test.describe("client control panel — Bank yes records an amount", () => {
     const amt = page.locator('input[data-amount-lender-id]').first();
     for (const bad of ["abc", "-500", "0"]) {
       await amt.fill(bad);
-      await page.getByRole("button", { name: "Bank yes" }).first().click();
+      await page.getByRole("button", { name: "Approved", exact: true }).first().click();
       await page.waitForTimeout(300);
     }
     expect(writes).toHaveLength(0);
   });
 
-  test("Bank no still works and carries no amount", async ({ page }) => {
+  test("Declined still works and carries no amount", async ({ page }) => {
     const writes = [];
     await open(page, writes);
-    await page.getByRole("button", { name: "Bank no" }).first().click();
+    await page.getByRole("button", { name: "Declined", exact: true }).first().click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].status).toBe("Denied");
     expect(writes[0].approved_amount).toBeUndefined();
@@ -240,7 +246,7 @@ test.describe("client control panel — an approval waiting on its amount", () =
       .toBeVisible({ timeout: 10_000 });
 
     await page.locator(`input[data-amount-lender-id="${LENDER_ID}"]`).fill("$45,000");
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
 
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].approved_amount).toBe("45000.00");
@@ -269,7 +275,7 @@ test.describe("client control panel — an approval waiting on its amount", () =
     const writes = [];
     await open(page, writes, waiting());
     await page.locator(`input[data-amount-lender-id="${LENDER_ID}"]`).fill("forty thousand");
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
     await page.waitForTimeout(800);
     expect(writes).toHaveLength(0);
     await expect(page.locator("#fh-funding-apply-status")).toContainText(/not an amount/i);

@@ -74,7 +74,14 @@ test("the panel has a place for the suggestion beside every Approved $ box", () 
 test("the suggestion fills the box and saves NOTHING", () => {
   // The click handler's whole body. If a fetch, a POST or an approved_amount
   // ever appears inside it, the suggestion has become an automatic write.
-  const at = PANEL.indexOf('b.addEventListener("click", function () {');
+  //
+  // Anchored inside fillSlot(), the function that builds the suggestion
+  // buttons. A bare search for the first `b.addEventListener("click", …)` in
+  // the file started landing on the bank to-do Done/Skipped handler added
+  // above it on 2026-09-29 (a5cac05fe), which is a different button.
+  const slotFn = PANEL.indexOf("function fillSlot(slot, box) {");
+  assert.notEqual(slotFn, -1, "the suggestion buttons are still built by fillSlot()");
+  const at = PANEL.indexOf('b.addEventListener("click", function () {', slotFn);
   assert.notEqual(at, -1, "the suggestion button's click handler is still here");
   const handler = PANEL.slice(at, at + 220);
   assert.ok(/box\.value = dollars;/.test(handler), "it puts the figure in the box");

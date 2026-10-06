@@ -124,8 +124,18 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Submagic to his phone for approval. It is a cron with no event trigger, so
    like every sweeper here it will always appear in neverFired, which is the
    correct outcome for a scheduled job rather than a coverage hole. It is
-   exercised directly by src/workflows/ad-video-sweeper.test.mjs. */
-const REGISTERED = 79;
+   exercised directly by src/workflows/ad-video-sweeper.test.mjs.
+
+   Moved 79 -> 90 on 2026-10-05 (CI fix, marketing machine M0 step 6). The pin
+   had not moved since 2026-09-22 while these were registered on purpose:
+   blueprint-finance-os-alerts, blueprint-next-funding-sequence-sweeper,
+   blueprint-closer-ready-sweeper, watch-curve-diagnosis-sweeper,
+   slo-genuine-followup, slo-genuine-reply, slo-genuine-checkout-sms,
+   slo-infinite-drip, slo-no-reply-197 and slo-paid-form-nudge; and
+   ad-video-sweeper left Inngest for a Netlify scheduled function. The pin was
+   also already two behind src/workflows/index.mjs on 2026-09-22. Every id is
+   named in EXPECTED_WORKFLOW_IDS in src/workflows/index.test.mjs. */
+const REGISTERED = 90;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

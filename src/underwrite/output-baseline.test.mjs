@@ -292,12 +292,19 @@ const BASELINE_NODE_PDFS = Object.freeze([
   { filename: "Credit-Optimization-Roadmap.pdf", type: "roadmap",         pages: 5, textSha: "4b3e4698ce339556fc0d2e272812503de54de13bd5059e220661c055dcf132a5" }
 ]);
 
-/** Every document a client receives, in order. [filename, type, bureau]. */
+/** Every document a client receives, in order. [filename, type, bureau].
+ *
+ *  The four analysis documents are the web pages, not the short PDFs, since
+ *  2026-09-17 (fa847f61b, owner via Cursor: "The four analysis pages are the
+ *  pretty web docs, not the short PDFs. Letters stay PDFs."). Same four types,
+ *  same order; only the file each one ships as changed. Re-recorded 2026-10-05;
+ *  this row was red from that commit until then. The in-process PDF printer
+ *  above still makes the four PDFs, and BASELINE_NODE_PDFS still pins them. */
 const BASELINE_FUNDING_PACK = Object.freeze([
-  ["Credit-Analysis-Report.pdf",     "credit_analysis",  null],
-  ["Funding-Snapshot.pdf",           "funding_snapshot", null],
-  ["Bank-Lender-Match-List.pdf",     "lender_match",     null],
-  ["Credit-Optimization-Roadmap.pdf", "roadmap",         null],
+  ["credit_analysis_report.html",    "credit_analysis",  null],
+  ["funding_snapshot.html",          "funding_snapshot", null],
+  ["lender_match_list.html",         "lender_match",     null],
+  ["optimization_roadmap.html",      "roadmap",          null],
   // Recorded 2026-10-02 with the change that added it: the Business Duplication
   // Map rides right after the four analysis pages (src/underwrite/letter-pack.mjs).
   ["business_duplication_map.html",  "business_duplication_map", null],
@@ -540,9 +547,18 @@ describe("baseline — the document pack a client receives", () => {
     pinned(pack.deliverableCount, 5, "the four funding analysis documents plus the Business Duplication Map");
     pinned(pack.deliverableSkip, null, "the funding analysis skip reason");
     pinned(pack.summarySkip, null, "the summary document skip reason");
+    /* Every file is a real document of the kind its name says: the .pdf files
+       are PDFs (magic bytes, not just a label), and the web pages are HTML
+       documents. Before 2026-09-17 every file here was a PDF. */
     for (const file of pack.files) {
-      assert.equal(file.contentType, "application/pdf", file.filename);
-      assert.equal(file.content.subarray(0, 4).toString(), "%PDF", `${file.filename} is not a PDF`);
+      if (file.filename.endsWith(".html")) {
+        assert.equal(file.contentType, "text/html", file.filename);
+        assert.match(String(file.content).trimStart().slice(0, 15).toLowerCase(), /^<!doctype html|^<html/,
+          `${file.filename} is not an HTML document`);
+      } else {
+        assert.equal(file.contentType, "application/pdf", file.filename);
+        assert.equal(file.content.subarray(0, 4).toString(), "%PDF", `${file.filename} is not a PDF`);
+      }
     }
   });
 

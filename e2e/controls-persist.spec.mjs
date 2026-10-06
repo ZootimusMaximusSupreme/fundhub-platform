@@ -99,18 +99,24 @@ test.describe("products & commissions", () => {
 
 test.describe("client control panel open buttons", () => {
 
-  test("Open Funding Matrix goes to finance-os with the client id", async ({ page }) => {
+  /* THE MORE MENU WAS REBUILT IN THE 2026-08-16 CRM MERGE (e2776fd46). The
+     data-open buttons are gone; "Open Funding Matrix" is a real link to the
+     lender matrix for this client (wireLinks: lenders.html?client_id=…). The
+     CRM Contact button went with the CRM itself (owner 2026-08-15, "GHL is
+     out" — 168_retire_ghl_agents.sql). Re-pointed 2026-10-05. */
+  test("Open Funding Matrix goes to the lender matrix with the client id", async ({ page }) => {
     await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}`, OWNER);
     await page.locator("#more-menu summary, details.more > summary").click();
-    const btn = page.locator('[data-open="funding"]');
+    const btn = page.locator("#ccp-link-lenders");
     await expect(btn).toBeVisible();
     await btn.click();
-    await expect(page).toHaveURL(new RegExp(`finance-os\\.html\\?client_id=${CLIENT_ID}`));
+    await expect(page).toHaveURL(new RegExp(`lenders\\.html\\?client_id=${CLIENT_ID}`));
   });
 
-  test("The CRM Contact stays disabled with no contact URL", async ({ page }) => {
+  test("No CRM Contact control is offered — the old CRM is retired", async ({ page }) => {
     await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}`, OWNER);
-    await expect(page.locator('[data-open="ghl"]')).toBeDisabled();
+    await expect(page.locator("#more-menu")).toBeAttached({ timeout: 10_000 });
+    await expect(page.locator('[data-open="ghl"]')).toHaveCount(0);
   });
 
   test("Raw Report stays hidden until a real report file exists", async ({ page }) => {
@@ -194,10 +200,17 @@ test.describe("calendar Join Call and Client file", () => {
   });
 
   test("clicking a calendar event makes it Up Next", async ({ page }) => {
-    const firstDue = new Date();
-    firstDue.setHours(firstDue.getHours() + 1);
-    const pickedDue = new Date();
-    pickedDue.setHours(pickedDue.getHours() + 2);
+    /* The page's clock is pinned to 9am today, the way e2e/calendar.spec.mjs
+       does it. "Now plus two hours" is tomorrow after 10pm, so the picked event
+       was not on today's grid and this failed every night from 10pm to
+       midnight (measured 2026-10-05, 22:40 Arizona). */
+    const nineAm = new Date();
+    nineAm.setHours(9, 0, 0, 0);
+    await page.clock.setFixedTime(nineAm);
+    const firstDue = new Date(nineAm);
+    firstDue.setHours(10);
+    const pickedDue = new Date(nineAm);
+    pickedDue.setHours(11);
     await openScreen(page, "/app/calendar.html", OWNER, {
       "/api/tasks": {
         ok: true,

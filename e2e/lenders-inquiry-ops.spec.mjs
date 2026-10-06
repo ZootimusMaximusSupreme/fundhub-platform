@@ -30,6 +30,10 @@ test("closer-dashboard shows lender matches tile", async ({ page }) => {
     },
     "/api/read/tradelines": { ok: true, data: [], funding: {} }
   });
+  /* The deal calculators, this tile included, sit folded inside "Payment
+     Calculator" since the closer call tools merged into the dashboard on
+     2026-08-20 (b0041c329). Open the fold the way a closer would. */
+  await page.locator("#paymentCalculator > summary").click();
   await expect(page.locator("#oLenderMatches")).toBeVisible();
   await expect(page.getByText(/Lender matches/i)).toBeVisible();
 });

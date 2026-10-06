@@ -73,7 +73,12 @@
   }
 
   /* ---------- chrome ---------- */
-  header.topbar{background:var(--ink);color:var(--dark-text);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;flex-shrink:0;border-bottom:1px solid var(--dark-line);}
+  /* min-height, not height: the account chip lands in .topbar-right, and when
+     the bar is too full it wraps to a second row (crm-sidebar.css lets it).
+     A fixed 44px bar left that row painted over the day arrows below it, so
+     "next day" could not be clicked at 1280px (e2e/calendar.spec.mjs Today
+     test, 2026-10-05). Same rule the Client Control Panel's bar already has. */
+  header.topbar{background:var(--ink);color:var(--dark-text);display:flex;align-items:center;justify-content:space-between;padding:0 16px;min-height:44px;flex-shrink:0;border-bottom:1px solid var(--dark-line);}
   /* ══════════════════════════════════════════════════════════════════════════
      SHARED CHROME — collapsible grouped sidebar. Identical across every file.
      ══════════════════════════════════════════════════════════════════════════ */

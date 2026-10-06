@@ -148,7 +148,21 @@ export const CANONICAL_EVENTS = [
   "subscription.renewed",
   "subscription.past_due",
   "subscription.canceled",
-  "subscription.completed"
+  "subscription.completed",
+  /* THE $147 ROADMAP FUNNEL (/roadmap). Both names already fire in production
+     and three registered workflows listen for them (src/workflows/
+     slo-genuine-followup.mjs, slo-no-reply-197.mjs): slo.contact_started is
+     sent by api/public/slo-interest.mjs once step 1 has a phone, and
+     slo.checkout_started is emitted by api/public/slo-checkout.mjs (still with
+     allowNonCanonical, which this listing makes unnecessary but harmless).
+     Listed 2026-10-05 so the event map and the workflow triggers agree (spec
+     docs/specs/marketing-machine-2026-10-04.md §4 trap 16).
+
+     Keep the line below short — scripts/diagrams/generate.mjs uses the comment
+     line immediately above a group as that group's section name in the table. */
+  // roadmap funnel
+  "slo.contact_started",
+  "slo.checkout_started"
 ];
 
 export const isCanonical = (name) => CANONICAL_EVENTS.includes(name);

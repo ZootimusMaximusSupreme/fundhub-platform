@@ -13,6 +13,16 @@
  *
  * EVERY TEST BUILDS ITS OWN AUTOPSY. Nothing is shared, so no assertion rests on
  * the order the tests happened to run in.
+ *
+ * SHELVED BY THE OWNER ON 2026-08-31 (bd1746064). The three routes were taken
+ * out of ROUTES so the offer cannot go live; the handlers, src/autopsy/,
+ * migration 275 and the sales page stay, because the offer is coming back.
+ * This file still goes through the real front door: for this file only, it
+ * puts the three shelved handlers back into the in-memory ROUTES map in
+ * before() and takes them out again in after(). The first test proves the
+ * shipped map does NOT route them, so a deploy can never carry them by
+ * accident; the rest keep proving the handlers for the day they return.
+ * Until 2026-10-05 the first test asserted the opposite and failed.
  */
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
@@ -22,6 +32,16 @@ import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createAutopsy, markPaid, newAutopsyRef } from "../autopsy/store.mjs";
 import { signReportUrl } from "../autopsy/link.mjs";
 import { ATTESTATION_VERSION, MAX_ROWS } from "../autopsy/fields.mjs";
+import publicDeclineAutopsy from "../../api/public/decline-autopsy.mjs";
+import publicDeclineAutopsyUpload from "../../api/public/decline-autopsy-upload.mjs";
+import publicDeclineAutopsyReport from "../../api/public/decline-autopsy-report.mjs";
+
+/* The three keys netlify/functions/api.mjs keeps commented out while shelved. */
+const SHELVED = Object.freeze({
+  "public/decline-autopsy": publicDeclineAutopsy,
+  "public/decline-autopsy-upload": publicDeclineAutopsyUpload,
+  "public/decline-autopsy-report": publicDeclineAutopsyReport
+});
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 const MARK = "w3autopsy";
@@ -31,7 +51,7 @@ const HEADER = "row_label,fico_band,state,business_age_months,highest_revolving_
 const CLEAN_CSV = `${HEADER}\nA-1,720+,TX,30,10000,2015-01\nA-2,600-639,TX,12,9000,2016-02\nA-3,unknown,,,,`;
 
 describe("public decline autopsy", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
-  let org, handler, priorSecret;
+  let org, handler, ROUTES, priorSecret, shippedRouted;
 
   const call = async (path, { method = "GET", body = null, headers = {} } = {}) => {
     const init = { method, headers: Object.assign({ host: "x" }, headers) };
@@ -73,7 +93,12 @@ describe("public decline autopsy", { skip: !HAVE_DB ? "no DATABASE_URL" : false 
   };
 
   before(async () => {
-    ({ default: handler } = await import("../../netlify/functions/api.mjs"));
+    ({ default: handler, ROUTES } = await import("../../netlify/functions/api.mjs"));
+    // What the SHIPPED map routes, read before this file adds anything.
+    shippedRouted = Object.keys(SHELVED).filter((k) => Object.prototype.hasOwnProperty.call(ROUTES, k));
+    for (const [k, h] of Object.entries(SHELVED)) {
+      if (!Object.prototype.hasOwnProperty.call(ROUTES, k)) ROUTES[k] = h;
+    }
     priorSecret = process.env.AUTOPSY_REPORT_SECRET;
     process.env.AUTOPSY_REPORT_SECRET = SECRET;
     org = await resolveDefaultOrg(db);
@@ -81,6 +106,10 @@ describe("public decline autopsy", { skip: !HAVE_DB ? "no DATABASE_URL" : false 
   });
 
   after(async () => {
+    // Shelved again: only the keys this file added are removed.
+    for (const k of Object.keys(SHELVED)) {
+      if (!shippedRouted.includes(k)) delete ROUTES[k];
+    }
     if (priorSecret === undefined) delete process.env.AUTOPSY_REPORT_SECRET;
     else process.env.AUTOPSY_REPORT_SECRET = priorSecret;
     await purge();
@@ -89,10 +118,19 @@ describe("public decline autopsy", { skip: !HAVE_DB ? "no DATABASE_URL" : false 
 
   // ── the routes exist at all ───────────────────────────────────────────────
 
-  test("*** all three routes are reachable through the real ROUTES map ***", async () => {
-    for (const path of ["public/decline-autopsy", "public/decline-autopsy-upload", "public/decline-autopsy-report"]) {
+  test("*** while shelved, the shipped ROUTES map does not route any of the three ***", async () => {
+    /* Owner, 2026-08-31: shelved so it cannot go live on the next deploy. To
+       unshelve, restore the three lines in netlify/functions/api.mjs, remove
+       them from ALLOWED_UNROUTED in src/http/routes.test.mjs, and turn this
+       test back into "all three are reachable". */
+    assert.deepEqual(shippedRouted, [],
+      "a shelved Decline Autopsy route is back in the deployed ROUTES map");
+  });
+
+  test("with the three put back for this file, all three answer through the front door", async () => {
+    for (const path of Object.keys(SHELVED)) {
       const r = await call(path, { method: "OPTIONS" });
-      assert.notEqual(r.status, 404, `${path} is not in the ROUTES map — it 404s locally and deployed`);
+      assert.notEqual(r.status, 404, `${path} did not route even with its handler put back`);
     }
   });
 

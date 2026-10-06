@@ -124,12 +124,22 @@ export async function listRepFiles(db, accountId) {
   return rows;
 }
 
-export async function setActiveFile(db, { accountId, clientId } = {}) {
-  const live = await db.query(
-    `SELECT 1 FROM client_authorized_reps
-      WHERE account_id = $1 AND client_id = $2 AND removed_at IS NULL`,
-    [accountId, clientId]
-  );
+/* orgId binds the link to the caller's company, the same way actingClientId()
+   above already does. api/auth/authorized-rep-file.mjs passes principal.orgId;
+   without it a link row from another company would have been honoured. Left
+   optional so the existing in-company callers and tests keep their shape. */
+export async function setActiveFile(db, { accountId, clientId, orgId } = {}) {
+  const live = orgId
+    ? await db.query(
+      `SELECT 1 FROM client_authorized_reps
+        WHERE account_id = $1 AND client_id = $2 AND org_id = $3 AND removed_at IS NULL`,
+      [accountId, clientId, orgId]
+    )
+    : await db.query(
+      `SELECT 1 FROM client_authorized_reps
+        WHERE account_id = $1 AND client_id = $2 AND removed_at IS NULL`,
+      [accountId, clientId]
+    );
   if (!live.rows[0]) return { ok: false, status: 403, error: "not_your_file" };
   await db.query(
     `UPDATE account_sessions

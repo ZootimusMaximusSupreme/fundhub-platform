@@ -2880,8 +2880,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   /* The file he is looking at lives on the session, not in the saved account.
-     The saved account still names the first file after he switches. */
-  var repSession = await session();
+     The saved account still names the first file after he switches.
+     Only a client login can be an authorized representative, so a saved STAFF
+     role skips this read: hole 13 (2026-09-18) promises staff with a saved role
+     an answer with no wait on the session, and this read, added for
+     representatives on 2026-09-27, had quietly put that wait back. */
+  var savedStaffRole = (function () { var r = roleHint(); return !!r && r !== "client"; })();
+  var repSession = savedStaffRole ? null : await session();
   if (repSession && repSession.staff && repSession.staff.authorized_rep && repSession.staff.client_id) {
     clientId = String(repSession.staff.client_id);
     window.__fhClientId = Promise.resolve(clientId);
@@ -2893,7 +2898,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     } catch (e) {}
   }
 
-  await paintRepFiles();
+  if (!savedStaffRole) await paintRepFiles();
 
   if (!clientId) {
     paintEmptyIdentity();
