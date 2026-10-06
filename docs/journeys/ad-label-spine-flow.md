@@ -74,12 +74,12 @@ flowchart TD
     K -->|"kept watching past the opening (2 seconds)<br/>and p75 views summed<br/>over the same days<br/>api/read/ad-spine.mjs:361-362"| Q["hook rate = past-the-opening ÷ impressions<br/>hold rate = p75 ÷ past-the-opening<br/>ONE definition, watchRate()<br/>src/ops/meta-marketing.mjs:126"]
     Q --> M
     M -->|"a person opens Campaigns and picks angle, hook, lane,<br/>offer or script type"| S["THE PANEL<br/>Which angle and which hook are working<br/>public/app/campaign-manager.html:416<br/>a dash where the answer is unknown,<br/>a 0 only where it was really zero"]
-    N["A person clicks the ad link<br/>utm_content = OUR number"] --> O["client_ad_attribution row<br/>src/ads/store.mjs:21"]
+    N["A person clicks the ad link<br/>utm_content = OUR number, or (since 407)<br/>utm_content = ad name + utm_term = ad set id"] --> O["client_ad_attribution row<br/>src/ads/store.mjs:19<br/>ad_id filled by the 407 trigger"]
     O -->|"joined on OUR number,<br/>042 and 42 are the same ad"| M
     O --> P["bookings row, not cancelled<br/>db/migrations/225_bookings.sql"]
     P -->|"counted as PEOPLE, not calls"| M
 
-    F -->|"the same short save,<br/>from the rows already in hand"| K["ad_metrics_daily<br/>spend, impressions, clicks, ctr, roas<br/>+ where people stopped watching:<br/>past-the-opening (2s), plays, p25, p50,<br/>p75, p95, p100, ThruPlay<br/>storeInsights(), api/campaigns/sync.mjs:504-543"]
+    F -->|"the same short save,<br/>from the rows already in hand"| K["ad_metrics_daily<br/>spend, impressions, clicks, ctr, roas<br/>+ where people stopped watching:<br/>past-the-opening (2s), plays, p25, p50,<br/>p75, p95, p100, ThruPlay<br/>+ Meta results (408): purchases, cost per purchase,<br/>link clicks, landing page views — NULL when Meta<br/>sent no line; written only once 408 is applied<br/>storeInsights() + insightUpsertSql(), api/campaigns/sync.mjs:524-605"]
     E2 -->|"matched back to an ad by ad_id;<br/>a row with no ad_id is dropped, never guessed<br/>groupInsightsByAd(), :374-383"| K
 
     B -->|"POST /api/scripts/write<br/>with parent_script_id"| L["a NEW ad_scripts row<br/>version = parent + 1<br/>parent_script_id points back<br/>api/scripts/write.mjs:251"]
@@ -103,7 +103,9 @@ been run against a database — see the note at the foot of this page.
 | a connected account | Meta's own business-verification word written down | the same Sync press, one read later | `readVerificationState()`, `api/campaigns/sync.mjs:261-270` | **yes** |
 | an ad in Meta | an `ads` row with Meta's id | a person presses Sync on the Campaign Manager screen | `upsertAd()`, `api/campaigns/sync.mjs:462-482` | **yes** |
 | an `ads` row | `asset_id` set, `fundhub_ad_number` set | a person picks the creative and types our number | `api/campaigns/link-asset.mjs:210` | **yes** |
-| an `ads` row | a day of spend, clicks, and how far into the video people got | the same Sync press | `storeInsights()`, `api/campaigns/sync.mjs:504-543` | **yes** |
+| an `ads` row | a day of spend, clicks, and how far into the video people got | the same Sync press | `storeInsights()`, `api/campaigns/sync.mjs:595-605` | **yes** |
+| an `ads` row | a day of Meta purchases, cost per purchase, link clicks and landing page views (408) | the same Sync press, once `hasMetaResultColumns()` finds the 408 columns | `insightUpsertSql()` / `insightUpsertParams()`, `api/campaigns/sync.mjs:524-575`, parsed by `metaResultMetrics()`, `src/ads/meta-results.mjs:116` | **UNVERIFIED** — written, unit-tested; not run against a database or live Meta |
+| a visitor row with no ad number | its ad number | the end of the same Sync press | `reresolveAdNumbers()`, `api/campaigns/sync.mjs:921` → 407 | **UNVERIFIED** — not run against a database |
 | one campaign's rows | saved on their own, the moment that campaign is done | the same Sync press | the per-campaign save in `syncPartnerConnections()`, `api/campaigns/sync.mjs:795-829` | **yes** |
 | all of the above | labels readable next to the ad | the view joins them; nothing is copied | `377:619-652` | **yes, once the row above is set** |
 | a script | a rewrite of it | posting again with `parent_script_id` | `api/scripts/write.mjs:251` | **yes** |
@@ -162,7 +164,7 @@ the corrected one immediately.
   video ad people got before they left. `insightsRequestUrl()`,
   `api/campaigns/sync.mjs:299-312`, asks Meta for eight extra fields (the list itself
   lives once, at `VIDEO_INSIGHT_FIELDS`, `src/adplatforms/meta.mjs:175-184`) and
-  `storeInsights()`, `api/campaigns/sync.mjs:504-543`, writes them
+  `storeInsights()`, `api/campaigns/sync.mjs:595-605`, writes them
   into eight new columns on `ad_metrics_daily`
   (`db/migrations/378_ad_video_metrics.sql`). It costs nothing extra: eight more words
   on a request the app already sends every Sync.

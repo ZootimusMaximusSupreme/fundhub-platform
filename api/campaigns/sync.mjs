@@ -106,6 +106,12 @@ import {
   VIDEO_INSIGHT_REQUEST_FIELDS
 } from "../../src/adplatforms/meta.mjs";
 import { notifyDyingBefore25 } from "../../src/ops/watch-curve.mjs";
+import {
+  MONEY_INSIGHT_REQUEST_FIELDS,
+  META_RESULT_COLUMNS,
+  metaResultMetrics
+} from "../../src/ads/meta-results.mjs";
+import { reresolveAdNumbers } from "../../src/ads/store.mjs";
 import { safeError } from "../../src/http/health.mjs";
 
 const API_VERSION = () => process.env.META_API_VERSION || "v21.0";
@@ -294,16 +300,19 @@ function tokenFor(connection) {
    costs nothing.
 
    THE FIELD LIST IS NOT EDITED HERE. The video names (eight counts plus the
-   play curve) come from one exported list in src/adplatforms/meta.mjs so that
-   what we ask Meta for and what the parser knows how to read can never drift
-   apart. This function only moved where the call is made. */
+   play curve) come from one exported list in src/adplatforms/meta.mjs, and
+   the money names (`actions` plus `cost_per_action_type`, 2026-10-05) from one
+   exported list in src/ads/meta-results.mjs, so that what we ask Meta for and
+   what the parser knows how to read can never drift apart. A name already on
+   the list is not asked for twice. */
 export function insightsRequestUrl(connection, { since, until, version = API_VERSION() } = {}) {
   const params = new URLSearchParams({
-    fields: [
+    fields: [...new Set([
       "ad_id", "spend", "impressions", "clicks", "ctr", "actions",
       "purchase_roas", "date_start",
-      ...VIDEO_INSIGHT_REQUEST_FIELDS
-    ].join(","),
+      ...VIDEO_INSIGHT_REQUEST_FIELDS,
+      ...MONEY_INSIGHT_REQUEST_FIELDS
+    ])].join(","),
     time_range: JSON.stringify({ since, until }),
     time_increment: "1",
     level: "ad",
@@ -502,24 +511,29 @@ async function upsertAd(tx, { orgId, partnerId, connectionId, campaignId, adSetI
    (see the handler). That one campaign rolls back and is named in the answer;
    the campaigns that already committed are untouched. The reason still travels
    all the way to the response — on a database where migration 378 / 394 has not
-   been applied, "column does not exist" is exactly what the reader needs to see. */
-async function storeInsights(tx, { orgId, partnerId, adId, insights }) {
-  let stored = 0;
-  for (const raw of insights || []) {
-    const row = normalizeInsight(raw);
-    const day = raw.date_start || raw.date || null;
-    if (!day || !adId) continue;
-    const curve = row.video_play_curve == null
-      ? null
-      : JSON.stringify(row.video_play_curve);
-    await tx.query(
-      `INSERT INTO ad_metrics_daily (
+   been applied, "column does not exist" is exactly what the reader needs to see.
+
+   THE FOUR META RESULT COLUMNS (408) — purchases, cost_per_purchase_cents,
+   link_clicks, landing_page_views — come from metaResultMetrics()
+   (src/ads/meta-results.mjs) and pass through as NULL when Meta sent no line
+   for them, never 0. They are written only when `withResults` is true, which
+   the sync decides once per run by looking for the columns
+   (hasMetaResultColumns). Until 408 is applied the write is exactly what it
+   was before, so this code landing ahead of the migration cannot break the
+   daily pull. */
+export function insightUpsertSql({ withResults = false } = {}) {
+  const extraCols = withResults ? `,\n         ${META_RESULT_COLUMNS.join(", ")}` : "";
+  const extraVals = withResults ? ",$19,$20,$21,$22" : "";
+  const extraSet = withResults
+    ? META_RESULT_COLUMNS.map((c) => `,\n         ${c} = EXCLUDED.${c}`).join("")
+    : "";
+  return `INSERT INTO ad_metrics_daily (
          org_id, partner_id, ad_id, date, spend_cents, impressions, clicks, ctr, roas,
          video_continuous_2s_watched, video_plays,
          video_p25_watched, video_p50_watched, video_p75_watched,
          video_p95_watched, video_p100_watched, video_thruplay_watched,
-         video_play_curve
-       ) VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb)
+         video_play_curve${extraCols}
+       ) VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb${extraVals})
        ON CONFLICT (ad_id, date) DO UPDATE SET
          spend_cents = EXCLUDED.spend_cents,
          impressions = EXCLUDED.impressions,
@@ -534,16 +548,57 @@ async function storeInsights(tx, { orgId, partnerId, adId, insights }) {
          video_p95_watched = EXCLUDED.video_p95_watched,
          video_p100_watched = EXCLUDED.video_p100_watched,
          video_thruplay_watched = EXCLUDED.video_thruplay_watched,
-         video_play_curve = EXCLUDED.video_play_curve,
-         synced_at = now()`,
-      [orgId, partnerId, adId, day, row.spend_cents ?? 0,
-       row.impressions ?? 0, row.clicks ?? 0, row.ctr ?? null, row.roas ?? null,
-       row.video_continuous_2s_watched ?? null, row.video_plays ?? null,
-       row.video_p25_watched ?? null,
-       row.video_p50_watched ?? null, row.video_p75_watched ?? null,
-       row.video_p95_watched ?? null, row.video_p100_watched ?? null,
-       row.video_thruplay_watched ?? null, curve]
+         video_play_curve = EXCLUDED.video_play_curve${extraSet},
+         synced_at = now()`;
+}
+
+/* The values for insightUpsertSql, in the same order. Exported beside it so a
+   test can hold the SQL and the values side by side. */
+export function insightUpsertParams({ orgId, partnerId, adId, day, raw, withResults = false }) {
+  const row = normalizeInsight(raw);
+  const curve = row.video_play_curve == null
+    ? null
+    : JSON.stringify(row.video_play_curve);
+  const params = [orgId, partnerId, adId, day, row.spend_cents ?? 0,
+    row.impressions ?? 0, row.clicks ?? 0, row.ctr ?? null, row.roas ?? null,
+    row.video_continuous_2s_watched ?? null, row.video_plays ?? null,
+    row.video_p25_watched ?? null,
+    row.video_p50_watched ?? null, row.video_p75_watched ?? null,
+    row.video_p95_watched ?? null, row.video_p100_watched ?? null,
+    row.video_thruplay_watched ?? null, curve];
+  if (withResults) {
+    const m = metaResultMetrics(raw);
+    for (const c of META_RESULT_COLUMNS) params.push(m[c] ?? null);
+  }
+  return params;
+}
+
+/* Are the 408 columns on ad_metrics_daily? Read from the catalog, which is not
+   filtered by row-level security or column grants. Any failure answers false:
+   the old write is always the safe one. */
+export async function hasMetaResultColumns(query) {
+  try {
+    const r = await query(
+      `SELECT count(*)::int AS n
+         FROM pg_attribute
+        WHERE attrelid = to_regclass('public.ad_metrics_daily')
+          AND attname = ANY($1::text[])
+          AND attnum > 0 AND NOT attisdropped`,
+      [[...META_RESULT_COLUMNS]]
     );
+    return Number(r?.rows?.[0]?.n) === META_RESULT_COLUMNS.length;
+  } catch {
+    return false;
+  }
+}
+
+async function storeInsights(tx, { orgId, partnerId, adId, insights, withResults = false }) {
+  let stored = 0;
+  const sql = insightUpsertSql({ withResults });
+  for (const raw of insights || []) {
+    const day = raw.date_start || raw.date || null;
+    if (!day || !adId) continue;
+    await tx.query(sql, insightUpsertParams({ orgId, partnerId, adId, day, raw, withResults }));
     stored += 1;
   }
   return stored;
@@ -665,6 +720,14 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
 
   const stats = { connections: 0, campaigns: 0, ad_sets: 0, ads: 0, insights: 0, errors: [] };
   const orgId = usable[0].org_id;
+
+  /* Purchases, cost per purchase, link clicks and landing page views (408).
+     Asked once per run. false until 408 is applied, and then the write is the
+     same as it always was. Reported, never fatal. */
+  const withResults = await inScope((tx) =>
+    hasMetaResultColumns((sql, params) => tx.query(sql, params))
+  ).catch(() => false);
+  stats.meta_results_saved = withResults;
 
   for (const connection of usable) {
     stats.connections += 1;
@@ -821,7 +884,8 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
                 done.ads += 1;
                 done.insights += await storeInsights(tx, {
                   orgId, partnerId, adId: ad.id,
-                  insights: insightsByAd.get(String(arow.id)) || []
+                  insights: insightsByAd.get(String(arow.id)) || [],
+                  withResults
                 });
               }
             }
@@ -845,6 +909,22 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
         [connection.id, String(err.message || err).slice(0, 500)]
       )).catch(() => null);
     }
+  }
+
+  /* AD NUMBERS FOR VISITORS WHO ARRIVED BEFORE THEIR AD WAS HERE (407).
+     A visitor's ad number is found by ad set id + ad name against the ads this
+     sync just saved. Someone who clicked before the ad was copied in, or before
+     the ad had its Fundhub number, was saved with no number; this fills those,
+     and only those. It never changes a number already set. A failure here
+     (407 not applied yet, for one) is reported and never undoes a good sync. */
+  try {
+    const filled = await inScope((tx) => reresolveAdNumbers(tx, { orgId }));
+    stats.ad_numbers = { filled };
+  } catch (err) {
+    stats.ad_numbers = {
+      filled: 0,
+      error: String((err && err.message) || err).slice(0, 300)
+    };
   }
 
   /* Watch-curve dying alert. Read-only on Meta. Uses the same phone/ntfy path
