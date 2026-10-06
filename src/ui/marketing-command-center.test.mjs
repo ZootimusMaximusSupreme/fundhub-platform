@@ -30,12 +30,12 @@ const SRC = fs.readFileSync(path.join(APP, "marketing-command-center.js"), "utf8
 const HTML = fs.readFileSync(path.join(APP, "marketing-command-center.html"), "utf8");
 const META_SWEEPER = fs.readFileSync(path.resolve(HERE, "../workflows/meta-campaign-sync-sweeper.mjs"), "utf8");
 
-/* Every clock time on the page prints in the viewer's zone. Chris is in
-   Arizona; the tests pin that zone so the words are the same on any machine. */
+/* Every clock time on the page prints in Arizona, whatever zone the machine
+   running the test is in (staff screens are Arizona). */
 function load() {
   const ctx = createContext({ console });
   runInContext(SRC, ctx);
-  ctx.FHMarketingCC.display.tz = "America/Phoenix";
+  assert.equal(ctx.FHMarketingCC.display.tz, "America/Phoenix", "the page's own default zone is Arizona");
   return ctx.FHMarketingCC;
 }
 

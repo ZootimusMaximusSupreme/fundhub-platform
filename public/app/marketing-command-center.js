@@ -90,8 +90,11 @@
   var FOLD_LINES = 6;
   var FOLD_CHARS = 360;
 
-  /* Times print in the viewer's own clock. Tests pin a zone here. */
-  var display = { tz: undefined };
+  /* Every time on a staff screen prints in Arizona (America/Phoenix), the
+     office clock and the ad account's day — never the viewer's laptop zone
+     (ops/workflows/arizona-time-2026-08-28.md; src/http/crm-html.test.mjs).
+     fmt() applies it to every date and clock this page draws. */
+  var display = { tz: "America/Phoenix" };
 
   function esc(v) {
     return String(v == null ? "" : v)
