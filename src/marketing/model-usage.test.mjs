@@ -7,7 +7,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
   MODEL_PRICES, HIGHEST_KNOWN_RATE, PRICES_SOURCE, DEFAULT_MAX_BATCH_USD, DEFAULT_MAX_MONTH_USD,
-  costUsd, worstCaseUsd, tokensOf, costTotals, logUsage, costStatus
+  costUsd, worstCaseUsd, tokensOf, costTotals, logUsage, costStatus,
+  callCostUsd, serverToolsOf, WEB_SEARCH_USD
 } from "./model-usage.mjs";
 
 const T = (input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0) =>
@@ -128,6 +129,25 @@ describe("logUsage and costStatus (fake database)", () => {
     await logUsage(db, { orgId: ORG, model: "some-fallback-model", inputTokens: 1000, outputTokens: 500 });
     assert.deepEqual(calls[0], [ORG, null, null, "claude-sonnet-5-5", 1000, 500, 0, 0, "0.007000"]);
     assert.deepEqual(calls[1], [ORG, null, null, "some-fallback-model", 1000, 500, 0, 0, null]);
+  });
+
+  test("logUsage with web searches: the search fee is in the cost, the counts and the step are saved", async () => {
+    const calls = [];
+    const db = { query: async (sql, p) => { calls.push({ sql, p }); return { rows: [{ id: "u2" }] }; } };
+    await logUsage(db, {
+      orgId: ORG, jobId: "00000000-0000-0000-0000-0000000000cc", model: "claude-sonnet-5-5",
+      usage: { input_tokens: 1000, output_tokens: 500, web_search_requests: 7, web_fetch_requests: 2 }, step: "quotes"
+    });
+    assert.match(calls[0].sql, /web_search_requests, web_fetch_requests, step/);
+    assert.deepEqual(calls[0].p, [ORG, null, "00000000-0000-0000-0000-0000000000cc", "claude-sonnet-5-5", 1000, 500, 0, 0, "0.077000", 7, 2, "quotes"]);
+  });
+
+  test("search fee: $10 per 1,000; an unknown model stays unknown; Anthropic's raw usage shape is read too", () => {
+    assert.equal(WEB_SEARCH_USD, 0.01);
+    assert.equal(callCostUsd("claude-opus-5-5", T(1000, 1000), 184), 0.024 + 1.84);
+    assert.equal(callCostUsd("mystery", T(1000, 1000), 5), null);
+    assert.deepEqual(serverToolsOf({ usage: { server_tool_use: { web_search_requests: 3 } } }), { web_search_requests: 3, web_fetch_requests: 0 });
+    assert.deepEqual(serverToolsOf({ webSearchRequests: 2, usage: { web_search_requests: 9 } }), { web_search_requests: 2, web_fetch_requests: 0 });
   });
 
   test("logUsage refuses a row with no org or no model", async () => {

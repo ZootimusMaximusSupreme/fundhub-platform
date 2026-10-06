@@ -17,6 +17,20 @@
 //   angles_add         {op, key, name, notes}   angles.json
 //   voice_append_pairs {op, pairs:[...]}        VOICE.md: fixed block, end of
 //                                               "# Real pairs"
+//   set_front_matter_key {op, key, value}       a flywheel stage file
+//                                               (marketing/flywheel/<c>/0N-*.md):
+//                                               one top-level stamp line; the body
+//                                               is never touched, so its hash (the
+//                                               staleness fingerprint) holds
+//   append_line_under_heading {op, heading, line}
+//                                               a flywheel 00-OWNER-NOTES.md: one
+//                                               line at the end of that section,
+//                                               append only, never a rewrite
+//
+// The two flywheel ops (unit X1, design docs/specs/command-center-design-2026-10-05.md
+// §6 "Slice 1 additions") work on a family of files, so they are tied to a path
+// pattern (EDIT_OP_PATTERNS) instead of one file. Both are idempotent: applied to a
+// file that already has the change, they return it unchanged.
 //
 // Part 0 is the section that starts at the line "# PART 0 — CHRIS'S RULES" and
 // ends before the next line starting "# PART " (U09 writes that heading; items
@@ -44,7 +58,17 @@ export const EDIT_OP_FILES = Object.freeze({
   voice_append_pairs: VOICE_PATH
 });
 
-export const EDIT_OPS = Object.freeze(Object.keys(EDIT_OP_FILES));
+/** The flywheel ops: the family of files each may touch. */
+const CAMPAIGN_DIR = "marketing/flywheel/[a-z0-9][a-z0-9-]{0,40}/";
+export const EDIT_OP_PATTERNS = Object.freeze({
+  set_front_matter_key: new RegExp(`^${CAMPAIGN_DIR}0[1-6]-[a-z0-9-]+\\.md$`),
+  append_line_under_heading: new RegExp(`^${CAMPAIGN_DIR}00-OWNER-NOTES\\.md$`)
+});
+
+/** The stamp keys an edit may set. Never stage, version, inputs or counts: those come from a run. */
+export const FRONT_MATTER_KEYS = Object.freeze(["status", "approved_by", "approved_at"]);
+
+export const EDIT_OPS = Object.freeze([...Object.keys(EDIT_OP_FILES), ...Object.keys(EDIT_OP_PATTERNS)]);
 
 export const PART0_HEADING = "# PART 0 — CHRIS'S RULES";
 export const SEED_PAIRS_HEADING = "# Seed pairs — model side written by hand";
@@ -344,7 +368,70 @@ export function voiceAppendPairs(content, edit) {
 
 // ── dispatch and checks ─────────────────────────────────────────────────────
 
+// ── flywheel stage files ────────────────────────────────────────────────────
+
+const MAX_STAMP_VALUE = 200;
+const MAX_NOTE_LINE = 1000;
+
+/**
+ * Set one top-level key in a stamped stage file's front matter. The body (every
+ * byte after the closing ---) is returned untouched.
+ */
+export function setFrontMatterKey(content, edit) {
+  if (content == null) fail("the stage file is missing");
+  const key = String(edit?.key ?? "");
+  if (!FRONT_MATTER_KEYS.includes(key)) fail(`stamp key must be one of ${FRONT_MATTER_KEYS.join(", ")}`);
+  const value = requireText(String(edit?.value ?? ""), "stamp value", MAX_STAMP_VALUE);
+  const text = String(content);
+  if (!text.startsWith("---\n")) fail("the stage file has no stamp (front matter) at the top");
+  const close = text.indexOf("\n---", 3);
+  if (close === -1) fail("the stage file's stamp is not closed with ---");
+  const head = text.slice(4, close + 1); // the lines between the two --- lines
+  const rest = text.slice(close + 1);     // "---" and the body, untouched
+  const lines = head.split("\n");
+  if (lines.length && lines[lines.length - 1] === "") lines.pop();
+  const re = new RegExp(`^${key}:`);
+  let done = false;
+  const out = lines.map((line) => {
+    if (!done && re.test(line)) { done = true; return `${key}: ${value}`; }
+    return line;
+  });
+  if (!done) out.push(`${key}: ${value}`);
+  return `---\n${out.join("\n")}\n${rest}`;
+}
+
+/**
+ * Add one line at the end of a "## <heading>" section (before the next "## "
+ * heading, after the section's last non-blank line). A missing section is added at
+ * the end of the file. The same line already in the section is not added twice.
+ */
+export function appendLineUnderHeading(content, edit) {
+  if (content == null) fail("the owner notes file is missing");
+  const heading = requireText(String(edit?.heading ?? ""), "heading", 120);
+  const line = requireText(String(edit?.line ?? ""), "note line", MAX_NOTE_LINE);
+  const lines = splitLines(content);
+  if (lines.length && lines[lines.length - 1] === "") lines.pop();
+  const start = lines.findIndex((l) => l.trim() === `## ${heading}`);
+  if (start === -1) {
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    return joinLines([...lines, "", `## ${heading}`, "", line]);
+  }
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) { end = i; break; }
+  }
+  if (lines.slice(start + 1, end).some((l) => l.trim() === line)) return joinLines(lines);
+  let last = end - 1;
+  while (last > start && lines[last].trim() === "") last--;
+  const insertAt = last + 1;
+  const before = lines.slice(0, insertAt);
+  if (insertAt === start + 1) before.push("");
+  return joinLines([...before, line, ...lines.slice(insertAt)]);
+}
+
 const OPS = Object.freeze({
+  set_front_matter_key: setFrontMatterKey,
+  append_line_under_heading: appendLineUnderHeading,
   part0_add_rule: part0AddRule,
   part0_edit_rule: part0EditRule,
   ban_phrase: banPhrase,
@@ -365,7 +452,15 @@ export function validateEdit(edit, path) {
   if (typeof op !== "string" || !Object.prototype.hasOwnProperty.call(OPS, op)) {
     fail(`unknown edit op "${String(op).slice(0, 40)}"`);
   }
-  if (path !== undefined && path !== EDIT_OP_FILES[op]) {
+  const pattern = Object.prototype.hasOwnProperty.call(EDIT_OP_PATTERNS, op) ? EDIT_OP_PATTERNS[op] : null;
+  if (pattern) {
+    if (path !== undefined && !pattern.test(String(path))) {
+      const what = op === "set_front_matter_key"
+        ? "a flywheel stage file (marketing/flywheel/<campaign>/0N-name.md)"
+        : "a flywheel 00-OWNER-NOTES.md";
+      fail(`${op} edits ${what}, not ${String(path).slice(0, 120)}`);
+    }
+  } else if (path !== undefined && path !== EDIT_OP_FILES[op]) {
     fail(`${op} edits ${EDIT_OP_FILES[op]}, not ${String(path).slice(0, 120)}`);
   }
   switch (op) {
@@ -386,6 +481,14 @@ export function validateEdit(edit, path) {
     case "angles_add":
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(edit.key ?? "").trim())) fail("angle key must be a short slug");
       requireText(edit.name, "angle name", 200);
+      break;
+    case "set_front_matter_key":
+      if (!FRONT_MATTER_KEYS.includes(String(edit.key ?? ""))) fail(`stamp key must be one of ${FRONT_MATTER_KEYS.join(", ")}`);
+      requireText(String(edit.value ?? ""), "stamp value", MAX_STAMP_VALUE);
+      break;
+    case "append_line_under_heading":
+      requireText(String(edit.heading ?? ""), "heading", 120);
+      requireText(String(edit.line ?? ""), "note line", MAX_NOTE_LINE);
       break;
     case "voice_append_pairs":
       if (!Array.isArray(edit.pairs) || !edit.pairs.length) fail("no voice pairs to add");

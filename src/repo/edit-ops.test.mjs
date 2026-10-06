@@ -10,8 +10,9 @@ import { fileURLToPath } from "node:url";
 import { parseRegistry } from "../ads/registry.mjs";
 import {
   applyEdit, validateEdit, validateRepoFile, readPart0, voicePairBlock,
-  EDIT_OPS, EDIT_OP_FILES, EditOpError, PART0_HEADING, SEED_PAIRS_HEADING, VOICE_TEMPLATE
+  EDIT_OPS, EDIT_OP_FILES, EDIT_OP_PATTERNS, EditOpError, PART0_HEADING, SEED_PAIRS_HEADING, VOICE_TEMPLATE
 } from "./edit-ops.mjs";
+import { bodyHash } from "../../scripts/flywheel/status.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const REGISTRY = fs.readFileSync(path.join(ROOT, "marketing", "ads", "registry.json"), "utf8");
@@ -283,7 +284,8 @@ describe("voice_append_pairs", () => {
 describe("dispatch and checks", () => {
   test("every op is covered and aimed at one file", () => {
     assert.deepEqual([...EDIT_OPS].sort(), [
-      "angles_add", "ban_phrase", "part0_add_rule", "part0_edit_rule", "registry_add_ad", "voice_append_pairs"
+      "angles_add", "append_line_under_heading", "ban_phrase", "part0_add_rule", "part0_edit_rule",
+      "registry_add_ad", "set_front_matter_key", "voice_append_pairs"
     ]);
     assert.equal(EDIT_OP_FILES.part0_add_rule, "marketing/ads/RULES.md");
     assert.equal(EDIT_OP_FILES.voice_append_pairs, "marketing/ads/VOICE.md");
@@ -322,5 +324,88 @@ describe("dispatch and checks", () => {
     const copy = JSON.stringify(edit);
     assert.equal(applyEdit(REGISTRY, edit), applyEdit(REGISTRY, edit));
     assert.equal(JSON.stringify(edit), copy);
+  });
+});
+
+// ── the flywheel ops (unit X1) ─────────────────────────────────────────────
+
+const STAGE = [
+  "---",
+  "stage: 1",
+  "version: 2",
+  "status: draft",
+  "inputs:",
+  "counts:",
+  "  quotes: 133",
+  "  languageEntries: 455",
+  "---",
+  "",
+  "# Core_Avatar_Profile.md",
+  "",
+  "status: this line is in the body and must never change",
+  ""
+].join("\n");
+
+const NOTES = [
+  "# Owner notes — partner flywheel",
+  "",
+  "## Notes",
+  "",
+  "2026-08-31 | stage 1 | the avatar is assumed on purpose.",
+  "2026-08-31 | all | no compliance checking in this pipeline.",
+  ""
+].join("\n");
+
+describe("set_front_matter_key", () => {
+  test("flips the stamp and leaves the body byte for byte, so the staleness hash holds", () => {
+    const out = applyEdit(STAGE, { op: "set_front_matter_key", key: "status", value: "approved" });
+    assert.match(out, /^---\nstage: 1\nversion: 2\nstatus: approved\ninputs:\ncounts:\n  quotes: 133\n/);
+    assert.equal(bodyHash(out), bodyHash(STAGE));
+    assert.ok(out.endsWith("status: this line is in the body and must never change\n"));
+    assert.equal(applyEdit(out, { op: "set_front_matter_key", key: "status", value: "approved" }), out, "idempotent");
+  });
+
+  test("adds a key the stamp does not have yet, inside the stamp", () => {
+    const out = applyEdit(STAGE, { op: "set_front_matter_key", key: "approved_by", value: "staff 1234" });
+    assert.match(out, /  languageEntries: 455\napproved_by: staff 1234\n---\n/);
+    assert.equal(bodyHash(out), bodyHash(STAGE));
+  });
+
+  test("refuses a file with no stamp, a key a run owns, and a path outside the stage files", () => {
+    throwsEdit(() => applyEdit("# no stamp\n", { op: "set_front_matter_key", key: "status", value: "approved" }), /no stamp/);
+    throwsEdit(() => applyEdit(STAGE, { op: "set_front_matter_key", key: "version", value: "9" }), /stamp key/);
+    throwsEdit(() => applyEdit(null, { op: "set_front_matter_key", key: "status", value: "approved" }), /missing/);
+    assert.ok(validateEdit({ op: "set_front_matter_key", key: "status", value: "approved" }, "marketing/flywheel/partner/01-avatar.md"));
+    throwsEdit(() => validateEdit({ op: "set_front_matter_key", key: "status", value: "x" }, "marketing/flywheel/partner/00-OWNER-NOTES.md"), /stage file/);
+    throwsEdit(() => validateEdit({ op: "set_front_matter_key", key: "status", value: "x" }, "marketing/ads/RULES.md"), /stage file/);
+    throwsEdit(() => validateEdit({ op: "set_front_matter_key", key: "inputs", value: "x" }, "marketing/flywheel/partner/01-avatar.md"), /stamp key/);
+    assert.equal(EDIT_OP_PATTERNS.set_front_matter_key.test("marketing/flywheel/partner/01-avatar/Sources.md"), false);
+  });
+});
+
+describe("append_line_under_heading", () => {
+  test("adds one line at the end of the Notes section; never rewrites; never twice", () => {
+    const line = "2026-10-06 | stage 1 | keep the word bank, add to it";
+    const out = applyEdit(NOTES, { op: "append_line_under_heading", heading: "Notes", line });
+    assert.ok(out.startsWith(NOTES.trimEnd()), "every old line is kept, in place");
+    assert.ok(out.endsWith(`no compliance checking in this pipeline.\n${line}\n`));
+    assert.equal(applyEdit(out, { op: "append_line_under_heading", heading: "Notes", line }), out);
+  });
+
+  test("a section followed by another heading gets the line before that heading", () => {
+    const two = `${NOTES}\n## Later\n\nother\n`;
+    const out = applyEdit(two, { op: "append_line_under_heading", heading: "Notes", line: "new | line" });
+    assert.match(out, /no compliance checking in this pipeline\.\nnew \| line\n\n## Later/);
+  });
+
+  test("a file with no Notes section gets one at the end", () => {
+    const out = applyEdit("# Owner notes\n", { op: "append_line_under_heading", heading: "Notes", line: "a | b" });
+    assert.equal(out, "# Owner notes\n\n## Notes\n\na | b\n");
+  });
+
+  test("only the owner notes file of a campaign", () => {
+    assert.ok(validateEdit({ op: "append_line_under_heading", heading: "Notes", line: "x" }, "marketing/flywheel/capital-blueprint/00-OWNER-NOTES.md"));
+    throwsEdit(() => validateEdit({ op: "append_line_under_heading", heading: "Notes", line: "x" }, "marketing/flywheel/partner/01-avatar.md"), /OWNER-NOTES/);
+    throwsEdit(() => validateEdit({ op: "append_line_under_heading", heading: "Notes", line: " " }, "marketing/flywheel/partner/00-OWNER-NOTES.md"), /note line/);
   });
 });

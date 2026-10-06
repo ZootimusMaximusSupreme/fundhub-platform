@@ -41,6 +41,13 @@ export const HIGHEST_KNOWN_RATE = Object.freeze({
   cache_write: Math.max(...Object.values(MODEL_PRICES).map((p) => p.cache_write))
 });
 
+/* WEB SEARCH — Anthropic bills $10 per 1,000 searches on top of tokens (design
+   docs/specs/command-center-design-2026-10-05.md, prices read from platform.claude.com
+   on 2026-10-05; the web search tool page: "$10 per 1,000 searches ... If an error
+   occurs during web search, the web search will not be billed"). Web fetch costs
+   nothing beyond the tokens it reads. */
+export const WEB_SEARCH_USD = 0.01;
+
 export const DEFAULT_MAX_BATCH_USD = 40;
 export const DEFAULT_MAX_MONTH_USD = 300;
 export const COST_TZ = "America/Phoenix";
@@ -72,6 +79,20 @@ export function tokensOf(row = {}) {
   };
 }
 
+/**
+ * serverToolsOf(row) → { web_search_requests, web_fetch_requests }. Explicit fields
+ * win; then callModel's usage (web_search_requests), then Anthropic's raw
+ * usage.server_tool_use.
+ */
+export function serverToolsOf(row = {}) {
+  const u = row.usage || {};
+  const st = u.server_tool_use || {};
+  return {
+    web_search_requests: count(row.webSearchRequests ?? u.web_search_requests ?? st.web_search_requests),
+    web_fetch_requests: count(row.webFetchRequests ?? u.web_fetch_requests ?? st.web_fetch_requests)
+  };
+}
+
 function cost(rates, t) {
   return round6(
     (t.input_tokens * rates.input +
@@ -89,6 +110,15 @@ export function costUsd(model, tokens) {
   return rates ? cost(rates, tokens) : null;
 }
 
+/**
+ * callCostUsd(model, tokens, webSearches) → tokens at the model's price plus the
+ * search fee, or null when the model's price is not known.
+ */
+export function callCostUsd(model, tokens, webSearches = 0) {
+  const t = costUsd(model, tokens);
+  return t == null ? null : round6(t + count(webSearches) * WEB_SEARCH_USD);
+}
+
 /** worstCaseUsd(tokens) → what unpriced tokens count as for the cap: the highest known rate. */
 export function worstCaseUsd(tokens) {
   return cost(HIGHEST_KNOWN_RATE, tokens);
@@ -96,27 +126,50 @@ export function worstCaseUsd(tokens) {
 
 /**
  * logUsage(db, { orgId, batchId, jobId, model, usage | inputTokens, outputTokens,
- *   cacheReadTokens, cacheWriteTokens }) → the saved row.
+ *   cacheReadTokens, cacheWriteTokens, webSearchRequests, webFetchRequests, step })
+ *   → the saved row.
  *
  * `model` must be the model that SERVED the call (callModel's servedModel), which can
  * differ from the one asked for when a refusal fallback ran. An unknown model is saved
  * with cost_usd NULL.
+ *
+ * Web searches (explicit webSearchRequests, else usage.web_search_requests or
+ * usage.server_tool_use.web_search_requests) are saved on the row and their fee is in
+ * cost_usd. `step` names the saved step of a multi-step run (migration 418).
  */
 export async function logUsage(db, row = /** @type {any} */ ({})) {
   if (!row.orgId) throw new TypeError("logUsage: orgId is required");
   const model = String(row.model || "").trim();
   if (!model) throw new TypeError("logUsage: model is required (the model that served the call)");
   const t = tokensOf(row);
-  const usd = costUsd(model, t);
+  const s = serverToolsOf(row);
+  const usd = callCostUsd(model, t, s.web_search_requests);
+  if (!s.web_search_requests && !s.web_fetch_requests && row.step == null) {
+    // The original shape: a database without migration 418 still takes it.
+    const r = await db.query(
+      `INSERT INTO marketing_model_usage
+         (org_id, batch_id, job_id, model, input_tokens, output_tokens,
+          cache_read_tokens, cache_write_tokens, cost_usd)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [row.orgId, row.batchId || null, row.jobId || null, model,
+        t.input_tokens, t.output_tokens, t.cache_read_tokens, t.cache_write_tokens,
+        usd == null ? null : usd.toFixed(6)]
+    );
+    return r.rows[0];
+  }
   const r = await db.query(
     `INSERT INTO marketing_model_usage
        (org_id, batch_id, job_id, model, input_tokens, output_tokens,
-        cache_read_tokens, cache_write_tokens, cost_usd)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        cache_read_tokens, cache_write_tokens, cost_usd,
+        web_search_requests, web_fetch_requests, step)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
     [row.orgId, row.batchId || null, row.jobId || null, model,
       t.input_tokens, t.output_tokens, t.cache_read_tokens, t.cache_write_tokens,
-      usd == null ? null : usd.toFixed(6)]
+      usd == null ? null : usd.toFixed(6),
+      s.web_search_requests, s.web_fetch_requests,
+      row.step == null ? null : String(row.step).slice(0, 80)]
   );
   return r.rows[0];
 }

@@ -14,8 +14,10 @@
 // encoded dot) is refused outright rather than cleaned: a path that needs
 // rewriting to look safe came from somewhere that should not be trusted.
 //
-// The list is exactly the spec list. The flywheel folder is NOT on it (a later
-// unit adds it, with its own review).
+// The list is exactly the spec list, plus the flywheel folder: unit X1 (design
+// docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions": the outbox
+// allow-list gains marketing/flywheel/) so "Build the avatar", Approve, Tweak and
+// Start a flywheel can save the stage files from the dashboard.
 
 import path from "node:path";
 
@@ -25,6 +27,7 @@ export const ALLOWED_DIRS = Object.freeze([
   "marketing/ads/ideas/",
   "marketing/ads/videos/",
   "marketing/brain/",
+  "marketing/flywheel/",
   "ops/page-requests/"
 ]);
 
