@@ -46,6 +46,9 @@ import offerGenerate from "../offer/generate.mjs";
 
 export const ROUTE = "marketing/flywheel/tweak";
 
+/** The saved (and replayed) answer for a step 3 tweak: the note went to Write the offer. */
+export const OFFER_HANDED = "Handed to Write the offer with your note. Its row shows the run.";
+
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const env = deps.env ?? process.env;
@@ -103,8 +106,11 @@ export default async function handler(req, res, deps = {}) {
         return { ...base, rerun: { started: true, reason: null }, spend };
       }
       if (runner.via === "offer") {
-        // Started after the commit (the offer path has its own transaction).
-        return { ...base, rerun: { started: false, reason: "pending", via: "offer" } };
+        // Started after the commit (the offer path has its own transaction). This
+        // is the answer a replayed request_id gets back (withRequest saved it before
+        // the hand-off), so it must read true on its own: the run, if any, is on
+        // the offer row.
+        return { ...base, rerun: { started: false, reason: OFFER_HANDED, via: "offer" } };
       }
       if (blocked && !running) return { ...base, rerun: { started: false, reason: blocked } };
       if (!running && !anthropicKeyOf(env)) {

@@ -26,7 +26,7 @@ import { asStaff } from "../partners/rls.mjs";
 import getFlywheel from "../../api/marketing/flywheel.mjs";
 import postCampaign from "../../api/marketing/flywheel/campaign.mjs";
 import postApprove from "../../api/marketing/flywheel/approve.mjs";
-import postTweak from "../../api/marketing/flywheel/tweak.mjs";
+import postTweak, { OFFER_HANDED } from "../../api/marketing/flywheel/tweak.mjs";
 import postSpendRead from "../../api/marketing/flywheel/spend-read.mjs";
 import postRun from "../../api/marketing/flywheel/run.mjs";
 import { readFlywheel } from "../marketing/flywheel/reader.mjs";
@@ -319,6 +319,34 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       const empty = await call(postTweak, tokenOwnerA, { body: { request_id: rid("tw0"), campaign: "partner", stage: 4, note: "  " } });
       assert.equal(empty.code, 400);
       assert.equal(empty.body.field, "note");
+    });
+
+    test("step 3 hands the note to Write the offer once; a replayed request_id reads true, never 'nothing happened'", async () => {
+      let calls = 0;
+      let seen = null;
+      const offerHandler = async (req, r) => {
+        calls++;
+        seen = req.body;
+        r.status(202).json({ ok: true, started: true, already_running: false, job: { id: "o-tw3" } });
+      };
+      const id = rid("tw3");
+      const body = { request_id: id, campaign: "partner", stage: 3, note: "price it at 297" };
+      const first = await call(postTweak, tokenOwnerA, { body, deps: { offerHandler } });
+      assert.equal(first.code, 202, JSON.stringify(first.body));
+      assert.equal(first.body.rerun.started, true);
+      assert.equal(first.body.rerun.via, "offer");
+      assert.deepEqual(first.body.job, { id: "o-tw3" });
+      assert.equal(calls, 1);
+      assert.ok(seen.owner_notes.includes(first.body.line), "the new line rides in the offer's notes");
+
+      // Double tap / offline retry: the saved answer comes back and the offer is not started again.
+      const replay = await call(postTweak, tokenOwnerA, { body, deps: { offerHandler } });
+      assert.equal(replay.code, 202, JSON.stringify(replay.body));
+      assert.equal(calls, 1, "a replay never starts the offer a second time");
+      assert.equal(replay.body.line, first.body.line);
+      assert.equal(replay.body.rerun.via, "offer");
+      assert.equal(replay.body.rerun.reason, OFFER_HANDED);
+      assert.doesNotMatch(replay.body.rerun.reason, /^pending$/);
     });
   });
 

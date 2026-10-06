@@ -1154,7 +1154,7 @@ flowchart TD
   J --> A202["202 {started, already_running, job, poll}; wake the worker after the commit"]
   AP["POST marketing/flywheel/approve {campaign, stage}"] --> AE["file there? → outbox edit set_front_matter_key status: approved<br/>(the body hash does not change, nothing downstream goes out of date)"]
   TW["POST marketing/flywheel/tweak {campaign, stage, note}"] --> TN["outbox edit append_line_under_heading '## Notes':<br/>'YYYY-MM-DD | stage N | note' (append only, a repeat writes once)"]
-  TN --> TR["re-run where it can: 4/5 a job with the note in its payload · 6 the read now ·<br/>3 the offer path with the line in its notes · 1/2 not yet (reason given)"]
+  TN --> TR["re-run where it can: 4/5 a job with the note in its payload · 6 the read now ·<br/>3 the offer path with the line in its notes, started after the commit<br/>(a replayed request_id answers: handed to Write the offer, its row shows the run) · 1/2 not yet (reason given)"]
   CA["POST marketing/flywheel/campaign {key}"] --> CN["offer key → folder (UWIQ_DELIVERABLES → capital-blueprint) →<br/>outbox replace 00-OWNER-NOTES.md with 'Offer key: …' (201; exists → 200)"]
 ```
 
@@ -1190,6 +1190,9 @@ flowchart TD
 - Quick copy: `src/creative/providers/copy.mjs` is forced to Claude (`claude-sonnet-5-5` unless a
   Claude model is configured); `POST creative/run` adds `check` (checkScriptText strict, in words)
   to every copy asset and `model` to every job.
+  Proved on the route by `src/http/creative-run.test.mjs` (check on each copy asset, none on a
+  picture, the job's model passed through) and on real tables by `src/creative/generate.pg.test.mjs`
+  (a copy job answers `model` = `claude-sonnet-5-5` and its stored row carries `copy_text`).
 
 ### Gaps between the design and this code (findings, not reconciled)
 
