@@ -25,10 +25,15 @@
    side is unknown or the bottom is 0) and src/ui/cc-tab-numbers.test.mjs holds
    the two copies equal.
 
-   WORDS. The metric names are docs/marketing/metrics.md's (CTR, Hook rate,
-   25% hold, Thruplay rate, ...). "25% hold" is plays that reached a quarter of
-   the video (Meta's own definition, marketing/ads/watch-curve.md); it is not
-   ad-spine's hold rate. There is no 3-second number anywhere: Meta has none.
+   WORDS. Plain words first. The keys and the math are docs/marketing/metrics.md's;
+   a short term a phone user cannot hover for keeps its meaning next to it:
+   "Taps per show (CTR)", "Cash per $1 (ROAS)", "Shows (impressions)". The
+   2-second and quarter-mark columns use the design's own labels, "Still there
+   at 2 s" and "Still there at 25%" (design §3.1 and safety rule 7: the older
+   name for the 2-second number never appears on the page). "Still there at
+   25%" is plays that reached a quarter of the video (Meta's own definition,
+   marketing/ads/watch-curve.md); it is not ad-spine's hold rate. There is no
+   3-second number anywhere: Meta has none.
 
    TYPE. fundhub-brand.css forces every element inside the shell to inherit its
    parent's size (UI-STANDARDS §12.7), so this file sets no font sizes at all.
@@ -87,16 +92,16 @@
     { key: "booked", label: "Booked calls", kind: "count", tip: "Those leads who booked a call in their first 14 days." },
     { key: "sales", label: "Sales", kind: "count", tip: "Those leads who bought in their first 14 days." },
     { key: "cash_cents", label: "Cash", kind: "money", tip: "Payments that went through from those leads." },
-    { key: "roas", label: "ROAS", kind: "roas", tip: "Cash back for each $1 of ad spend (cash ÷ spend)." },
+    { key: "roas", label: "Cash per $1 (ROAS)", kind: "roas", tip: "Cash back for each $1 of ad spend (cash ÷ spend)." },
     { key: "cpl_cents", label: "Cost per lead", kind: "money", tip: "Spend ÷ leads." },
     { key: "cost_per_booked_cents", label: "Cost per booked call", kind: "money", tip: "Spend ÷ booked calls." },
-    { key: "ctr", label: "CTR", kind: "pct", tip: "Taps on the link ÷ times the ad was shown." },
-    { key: "hook_rate", label: "Hook rate", kind: "pct", tip: "People who watched 2 seconds ÷ times the ad was shown." },
-    { key: "hold_25", label: "25% hold", kind: "pct", tip: "Plays that reached a quarter of the video ÷ plays." },
-    { key: "thruplay_rate", label: "Thruplay rate", kind: "pct", tip: "Plays watched 15 seconds or to the end ÷ plays." },
-    { key: "impressions", label: "Impressions", kind: "count", tip: "Times Meta showed the ad." },
+    { key: "ctr", label: "Taps per show (CTR)", kind: "pct", tip: "Taps on the link ÷ times the ad was shown." },
+    { key: "hook_rate", label: "Still there at 2 s", kind: "pct", tip: "People who watched 2 seconds ÷ times the ad was shown." },
+    { key: "hold_25", label: "Still there at 25%", kind: "pct", tip: "Plays that reached a quarter of the video ÷ plays." },
+    { key: "thruplay_rate", label: "Watched 15 s (ThruPlay)", kind: "pct", tip: "Plays watched 15 seconds or to the end ÷ plays." },
+    { key: "impressions", label: "Shows (impressions)", kind: "count", tip: "Times Meta showed the ad." },
     { key: "showed", label: "Showed", kind: "count", tip: "Leads who showed up to their call." },
-    { key: "close_rate", label: "Close rate", kind: "pct", tip: "Sales ÷ people who showed." },
+    { key: "close_rate", label: "Sales per show-up (close rate)", kind: "pct", tip: "Sales ÷ people who showed." },
     { key: "roadmaps", label: "$147 roadmaps", kind: "count", tip: "Leads who bought the $147 roadmap." },
     { key: "reported_cash_cents", label: "Reported cash", kind: "money", tip: "Cash the closers typed in after calls." }
   ]);
@@ -1002,7 +1007,7 @@
         kv("Booked calls", count(r.booked)) +
         kv("Sales", count(r.sales)) +
         kv("Cash", money(r.cash_cents)) +
-        kv("ROAS", roas(r.roas), "Cash back for each $1 of ad spend.") +
+        kv("Cash per $1 (ROAS)", roas(r.roas), "Cash back for each $1 of ad spend.") +
         "</dl>";
       if (state.saved[key]) out += '<p class="ccn-say ok" role="status">' + esc(state.saved[key]) + "</p>";
       if (open) {
@@ -1021,7 +1026,7 @@
   function funnelCard(r) {
     let out = '<article class="card ccn-card ccn-spanall" data-test="funnel" data-funnel="' + esc(r.funnel_key) + '">';
     out += '<div class="ccn-card-hd"><b>' + esc(r.name || r.funnel_key) + "</b>" +
-      '<span class="caption">' + esc("Spend " + money(r.spend_cents) + " · Cash " + money(r.cash_cents) + " · ROAS " + roas(r.roas)) + "</span></div>";
+      '<span class="caption">' + esc("Spend " + money(r.spend_cents) + " · Cash " + money(r.cash_cents) + " · Cash per $1 (ROAS) " + roas(r.roas)) + "</span></div>";
     out += '<ol class="ccn-flow">';
     funnelSteps(r).forEach((s) => {
       out += '<li class="ccn-step" data-step="' + s.key + '">';

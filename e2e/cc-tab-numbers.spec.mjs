@@ -322,7 +322,7 @@ for (const vp of VIEWPORTS) {
       await open(page, "#numbers/funnels");
       const road = page.locator("[data-test=funnel][data-funnel=roadmap_147]");
       await expect(road).toContainText("Roadmap $147");
-      await expect(road).toContainText("Spend $412.00 · Cash $588.00 · ROAS 1.43x");
+      await expect(road).toContainText("Spend $412.00 · Cash $588.00 · Cash per $1 (ROAS) 1.43x");
       await expect(road.locator("[data-step=page_views]")).toContainText("1,210");
       await expect(road.locator("[data-step=page_views]")).toContainText("Click to page: 82%");
       await expect(road.locator("[data-step=leads]")).toContainText("Page to lead: 1.2%");

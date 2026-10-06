@@ -10,7 +10,9 @@
 //   2. ONE RULE PER NUMBER. The two step rates the page divides itself, and the
 //      cost per lead on the Angles view, use metrics.mjs's rule exactly; the
 //      Arizona day is ad-account-day's.
-//   3. THE TAB READS ONLY KEYS THE CONTRACT SENDS (src/marketing/api-contract.mjs).
+//   3. THE TAB READS ONLY KEYS THE CONTRACT SENDS (src/marketing/api-contract.mjs),
+//      plus two extras GET marketing/ad always sends (ad.maturing_leads and
+//      ad.curve[].ad_id), proven against the handler and with a safe fallback.
 //   4. UI LAW in the stylesheet: no font sizes, 8px spacing, no --spectrum shadow.
 
 import { test, describe } from "node:test";
@@ -415,12 +417,51 @@ describe("the tab reads only what the contract sends", () => {
     }
   });
 
-  test("the metric names are docs/marketing/metrics.md's", () => {
+  test("the drawer's two reads past the contract are keys GET marketing/ad always sends", async () => {
+    // The drawer also reads ad.maturing_leads ("2 leads are under 14 days old")
+    // and ad.curve[].ad_id (the day picker's "Meta ad 1 / 2" when two Meta ads
+    // carry one number). The contract does not list them (contract keys are the
+    // fixed shape; extra keys are allowed). Both fall back safely when missing:
+    // "Some leads are" and day-only labels. This proves the handler sends them.
+    const ad = keysOf("GET marketing/ad");
+    assert.ok(!ad.has("ad.maturing_leads") && !ad.has("ad.curve[].ad_id"), "now in the contract: move them to the checks above");
+    const { EXTRA_ROW_KEYS } = await import("../../api/marketing/ads.mjs");
+    const { quietRow, readCurve } = await import("../../api/marketing/ad.mjs");
+    assert.ok(EXTRA_ROW_KEYS.includes("maturing_leads"), "every ads row carries maturing_leads");
+    assert.equal(quietRow("97").maturing_leads, 0, "a quiet number's drawer row carries it too");
+    const tx = { query: async () => ({ rows: [{ date: "2026-10-01", ad_id: "a1", video_play_curve: [100, 50] }] }) };
+    const curve = await readCurve(tx, { orgId: "o", n: "91", from: "2026-09-02", to: "2026-10-01" });
+    assert.deepEqual(plain(curve), [{ date: "2026-10-01", video_play_curve: [100, 50], ad_id: "a1" }]);
+    // And the tab survives without them.
+    assert.deepEqual(plain(N.curveChoices({ curve: [{ date: "2026-10-01", video_play_curve: [100, 50] }] }).map((c) => c.label)), ["Oct 1"]);
+  });
+
+  test("the metric math is docs/marketing/metrics.md's; the labels are plain words", () => {
     const doc = fs.readFileSync(path.resolve(HERE, "../../docs/marketing/metrics.md"), "utf8");
-    for (const name of ["CTR", "Hook rate", "25% hold", "Thruplay rate", "Leads", "Booked calls", "Showed", "Cash", "Reported cash", "ROAS"]) {
-      assert.ok(N.AD_COLUMNS.some((c) => c.label === name), name);
+    // key -> the name metrics.md defines it under
+    const DEFINED = {
+      ctr: "| CTR |", hook_rate: "| Hook rate |", hold_25: "| 25% hold |", thruplay_rate: "| Thruplay rate |",
+      leads: "Leads", booked: "Booked calls", showed: "Showed", cash_cents: "Cash", reported_cash_cents: "Reported cash",
+      roas: "ROAS", close_rate: "close rate", impressions: "impressions"
+    };
+    for (const [key, name] of Object.entries(DEFINED)) {
+      assert.ok(N.AD_COLUMNS.some((c) => c.key === key), key);
       assert.ok(doc.includes(name), `${name} is in metrics.md`);
     }
+    // The design's own labels for the 2-second and quarter-mark numbers (§3.1, §3.7).
+    const label = (key) => N.AD_COLUMNS.find((c) => c.key === key).label;
+    assert.equal(label("hook_rate"), "Still there at 2 s");
+    assert.equal(label("hold_25"), "Still there at 25%");
+    // A short term keeps its meaning next to it: plain words first, the term in brackets.
+    for (const key of ["ctr", "roas", "thruplay_rate", "impressions", "close_rate"]) {
+      assert.match(label(key), /^[A-Z][a-z0-9$ -]+ \([A-Za-z ]+\)$/, key);
+    }
+  });
+
+  test("the words \"hook rate\" never appear on the page (design §5 safety rule 7)", () => {
+    for (const c of N.AD_COLUMNS) assert.doesNotMatch(`${c.label} ${c.tip}`, /hook\s*rate/i, c.key);
+    assert.doesNotMatch(SRC, /hook\s*rate/i, "not in the tab's source, comments included");
+    assert.doesNotMatch(CSS, /hook\s*rate/i);
   });
 });
 

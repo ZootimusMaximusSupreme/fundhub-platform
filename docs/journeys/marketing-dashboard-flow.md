@@ -820,8 +820,8 @@ flowchart TD
   FU -->|tap| S
 ```
 
-- **Numbers are the server's.** Counts, money, CTR, hook rate, 25% hold, thruplay rate, cost per
-  lead / booked call and ROAS print as U31 and U32 send them. The page divides only what no route
+- **Numbers are the server's.** Counts, money, CTR, the 2-second and 25% rates, thruplay rate, cost
+  per lead / booked call and ROAS print as U31 and U32 send them. The page divides only what no route
   carries: lead to call (booked ÷ leads), call to sale (sales ÷ showed) and an angle's cost per lead
   (spend ÷ leads). `src/ui/cc-tab-numbers.test.mjs` holds those to `src/marketing/metrics.mjs`'s
   own rule (4 places, null on an unknown side or a 0 bottom).
@@ -836,7 +836,11 @@ flowchart TD
 
 1. **Ads columns the design names that no route sends:** plays, "Meta says" purchases, the last
    day an ad ran, and the unmapped lead count ("18 leads, 0 tied to an ad number yet"). Not shown.
-   "Still there at 2 s" is shown as metrics.md's **Hook rate** (2-second plays ÷ impressions).
+   The 2-second and quarter-mark columns use the design's labels, "Still there at 2 s" and
+   "Still there at 25%" (design §3.1 and safety rule 7); the math stays metrics.md's (2-second
+   plays ÷ impressions; 25% plays ÷ plays). Short terms keep their meaning next to them, because a
+   phone shows no hover: "Taps per show (CTR)", "Cash per $1 (ROAS)", "Shows (impressions)",
+   "Watched 15 s (ThruPlay)", "Sales per show-up (close rate)".
 2. **Drawer parts the design names that `GET marketing/ad` does not send:** the 25/50/75/100%
    quartiles, the hop note, the script's hook and line 2, links to Meta and the repo file.
    **New opening** is out of this unit's scope (plan U38 brief).
@@ -857,3 +861,8 @@ flowchart TD
 8. **Angles and Funnels are always the last 30 days.** Their routes take no window; only Ads does.
 9. **UNVERIFIED in the frame.** Proved in a stub frame (`e2e/helpers/cc-numbers-stub.mjs`) until
    `cc-frame.js` lands; the live load time of each view is recorded by the orchestrator after ship.
+10. **Two drawer reads past the contract.** The drawer reads `ad.maturing_leads` and
+    `ad.curve[].ad_id`. `api/marketing/ad.mjs` always sends both (the unit test proves it against
+    the handler), but `GET marketing/ad` in `src/marketing/api-contract.mjs` does not list them.
+    The tab falls back to "Some leads are" and day-only labels without them. Adding them to the
+    contract is U31's file and `docs/specs/marketing-machine-api.md`; not changed here.
