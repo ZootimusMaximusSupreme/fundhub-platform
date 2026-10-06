@@ -37,6 +37,7 @@ import { encryptToken } from "../adplatforms/tokens.mjs";
 import { syncPartnerConnections } from "../../api/campaigns/sync.mjs";
 import { adAttributionRollup, upsertClientAdAttribution, reresolveAdNumbers } from "../ads/store.mjs";
 import { adNumberOf } from "../ads/ad-number.mjs";
+import { phoenixDay } from "../slo/visitor.mjs";
 import {
   ADS, CASES, ORG_A, SLO_SET, AUGUST_SET, DUP_SET
 } from "../ads/ad-number-cases.mjs";
@@ -51,6 +52,10 @@ const mail = (tag) => `${NONCE}.${tag}@example.com`.toLowerCase();
 const FIXTURE_SETS = [SLO_SET, AUGUST_SET, DUP_SET];
 const FIXTURE_ADS = ADS.filter((a) => a.org_id === ORG_A && FIXTURE_SETS.includes(a.adset_external_id));
 
+/* Yesterday in the ad account's own day (Arizona), so the fixture day is
+   always inside the 28-day window whenever this runs. */
+const DAY = phoenixDay(new Date(Date.now() - 864e5));
+
 const SLO2_META_ID = "120253626574340264";
 const SLO1_META_ID = "120253626444660264";
 const SLO3_META_ID = "120253626579160264";
@@ -58,7 +63,7 @@ const SLO3_META_ID = "120253626579160264";
 /* Meta's documented shape: lists of { action_type, value } with STRING values. */
 const INSIGHTS = [
   {
-    ad_id: SLO2_META_ID, date_start: "2026-09-30",
+    ad_id: SLO2_META_ID, date_start: DAY,
     spend: "272.35", impressions: "1247", clicks: "60", ctr: "4.8",
     actions: [
       { action_type: "link_click", value: "43" },
@@ -73,16 +78,28 @@ const INSIGHTS = [
     ]
   },
   // Meta sent no actions at all: four NULLs, not four zeros.
-  { ad_id: SLO1_META_ID, date_start: "2026-09-30", spend: "52.42", impressions: "585", clicks: "9" },
+  { ad_id: SLO1_META_ID, date_start: DAY, spend: "52.42", impressions: "585", clicks: "9" },
   // Pixel purchase only, no cost line: spend ÷ purchases.
   {
-    ad_id: SLO3_META_ID, date_start: "2026-09-30", spend: "95.48", impressions: "2113", clicks: "120",
+    ad_id: SLO3_META_ID, date_start: DAY, spend: "95.48", impressions: "2113", clicks: "120",
     actions: [{ action_type: "offsite_conversion.fb_pixel_purchase", value: "1" }]
   }
 ];
 
+/* What the fake Meta was asked, and whether it refuses the whole-history
+   request (date_preset=maximum) the way Meta can for a big account. */
+const metaUrls = [];
+let refuseMaximum = false;
+
 const fakeFetch = async (url) => {
   const u = String(url);
+  metaUrls.push(u);
+  if (refuseMaximum && u.includes("/insights?") && u.includes("date_preset=maximum")) {
+    return {
+      ok: false, status: 400,
+      text: async () => JSON.stringify({ error: { message: "Please reduce the amount of data you're asking for", code: 1 } })
+    };
+  }
   let payload = { data: [] };
   if (u.includes("/insights?")) {
     payload = { data: INSIGHTS };
@@ -215,11 +232,33 @@ describe("ad numbers from Meta tags, Meta money numbers, payments per ad", { ski
     assert.equal((await rowFor(early)).ad_id, null, "no ads copied in yet, so no number — honestly NULL");
 
     // First sync: copies the ads in. Nobody has typed their numbers yet.
+    // Nothing is stored for this account, so the pull asks Meta for the WHOLE
+    // history — and this fake Meta refuses that once, the way Meta can for a
+    // big account. The same run must fall back to the 28-day window.
+    refuseMaximum = true;
+    metaUrls.length = 0;
     const first = await syncPartnerConnections({ partnerId, deps: { fetch: fakeFetch } });
+    refuseMaximum = false;
     assert.deepEqual(first.errors, [], JSON.stringify(first.errors));
+    const firstInsights = metaUrls.filter((u) => u.includes("/insights?"));
+    assert.equal(firstInsights.length, 2, "whole history, then the window");
+    assert.ok(firstInsights[0].includes("date_preset=maximum"));
+    assert.ok(decodeURIComponent(firstInsights[1]).includes('"since":'));
+    assert.equal(first.full_history.length, 1);
+    assert.equal(first.full_history[0].ok, false);
+    assert.match(first.full_history[0].error, /whole history refused/);
+    assert.ok(first.insights >= 3, "the fallback window still saved the days");
     assert.equal(first.meta_results_saved, true);
     assert.equal(first.ad_numbers.error, undefined, String(first.ad_numbers.error));
     assert.equal((await rowFor(early)).ad_id, null, "the ads have no Fundhub number yet");
+
+    // Only days inside the window are stored, so the next pull asks for the
+    // whole history again — and this time Meta answers it.
+    metaUrls.length = 0;
+    const retry = await syncPartnerConnections({ partnerId, deps: { fetch: fakeFetch } });
+    assert.deepEqual(retry.errors, []);
+    assert.equal(retry.full_history[0]?.ok, true, JSON.stringify(retry.full_history));
+    assert.equal(metaUrls.filter((u) => u.includes("/insights?")).length, 1);
 
     // A person numbers the ads (what 407 did for the four live SLO ads).
     await asStaff(async (tx) => {
@@ -242,8 +281,8 @@ describe("ad numbers from Meta tags, Meta money numbers, payments per ad", { ski
   test("purchases, cost per purchase, link clicks and landing page views land as Meta sent them", async () => {
     const read = (metaId) => asStaff((tx) => tx.query(
       `SELECT m.* FROM ad_metrics_daily m JOIN ads a ON a.id = m.ad_id
-        WHERE a.partner_id = $1 AND a.external_id = $2 AND m.date = '2026-09-30'::date`,
-      [partnerId, metaId]
+        WHERE a.partner_id = $1 AND a.external_id = $2 AND m.date = $3::date`,
+      [partnerId, metaId, DAY]
     ).then((r) => r.rows[0]));
 
     const slo2 = await read(SLO2_META_ID);
@@ -263,6 +302,24 @@ describe("ad numbers from Meta tags, Meta money numbers, payments per ad", { ski
     const slo3 = await read(SLO3_META_ID);
     assert.equal(Number(slo3.purchases), 1, "the pixel purchase is the fallback when there is no omni_purchase");
     assert.equal(Number(slo3.cost_per_purchase_cents), 9548, "no cost line: spend ÷ purchases");
+  });
+
+  test("once a day older than the window is stored, the pull is the 28-day window again", async () => {
+    const old = phoenixDay(new Date(Date.now() - 60 * 864e5));
+    await asStaff((tx) => tx.query(
+      `INSERT INTO ad_metrics_daily (org_id, partner_id, ad_id, date, spend_cents, impressions)
+       SELECT a.org_id, a.partner_id, a.id, $3::date, 100, 10
+         FROM ads a WHERE a.partner_id = $1 AND a.external_id = $2
+       ON CONFLICT (ad_id, date) DO NOTHING`,
+      [partnerId, SLO1_META_ID, old]
+    ));
+    metaUrls.length = 0;
+    const out = await syncPartnerConnections({ partnerId, deps: { fetch: fakeFetch } });
+    assert.deepEqual(out.errors, []);
+    assert.deepEqual(out.full_history, []);
+    const insights = metaUrls.filter((u) => u.includes("/insights?"));
+    assert.equal(insights.length, 1);
+    assert.ok(!insights[0].includes("date_preset"), "asked for the whole history again");
   });
 
   // ── 3. the shared case table through the real trigger ────────────────────

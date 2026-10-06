@@ -304,21 +304,86 @@ function tokenFor(connection) {
    the money names (`actions` plus `cost_per_action_type`, 2026-10-05) from one
    exported list in src/ads/meta-results.mjs, so that what we ask Meta for and
    what the parser knows how to read can never drift apart. A name already on
-   the list is not asked for twice. */
-export function insightsRequestUrl(connection, { since, until, version = API_VERSION() } = {}) {
+   the list is not asked for twice.
+
+   `datePreset: "maximum"` (2026-10-05) replaces the date window with Meta's
+   own "everything this account has" — up to 37 months, cut into days in the
+   ad account's own time zone by Meta itself. Used for a first pull (see
+   FIRST PULL READS THE WHOLE HISTORY below) and by the one-time backfill
+   (scripts/meta-backfill-ad-days.mjs). `maximum` is a DatePreset in Meta's own
+   SDK (facebook_business/adobjects/adsinsights.py). */
+export function insightsRequestUrl(connection, {
+  since, until, datePreset = null, version = API_VERSION()
+} = {}) {
   const params = new URLSearchParams({
     fields: [...new Set([
       "ad_id", "spend", "impressions", "clicks", "ctr", "actions",
       "purchase_roas", "date_start",
       ...VIDEO_INSIGHT_REQUEST_FIELDS,
       ...MONEY_INSIGHT_REQUEST_FIELDS
-    ])].join(","),
-    time_range: JSON.stringify({ since, until }),
-    time_increment: "1",
-    level: "ad",
-    limit: String(INSIGHT_PAGE_SIZE)
+    ])].join(",")
   });
+  if (datePreset) params.set("date_preset", datePreset);
+  else params.set("time_range", JSON.stringify({ since, until }));
+  params.set("time_increment", "1");
+  params.set("level", "ad");
+  params.set("limit", String(INSIGHT_PAGE_SIZE));
   return `${BASE}/${version}/${acct(connection)}/insights?${params}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIRST PULL READS THE WHOLE HISTORY — 2026-10-05.
+
+   WHAT WAS LOST. Meta holds $1,563.13 of all-time spend for the Fundhub ad
+   account; ad_metrics_daily held $1,002.32 (M4's tie-out,
+   ops/workflows/perfect-machine-2026-10-05.md). The missing $560.78 is Aug 4–16,
+   the first weeks of the three book-a-call ads. Read off the saved rows: the
+   very first rows were written 2026-08-24 23:04 UTC, by a Sync press, when the
+   window was 7 days — so the earliest day it could ask for was Aug 17, and
+   that is exactly the earliest day stored. The 28-day window and the daily
+   pull arrived later (3a3903c82, 2026-09-09; first ship in ops/ship-log.md
+   2026-09-16), by which time Aug 4–16 was older than 28 days. Nothing in the
+   code ever asked Meta for a day older than its window, so a history that
+   predates the first pull was lost for good — for this account and for any
+   partner who connects an account that has already been running.
+
+   No account or ad filter dropped them (the three ads are in our table, and the
+   pull asks the whole ad account at level=ad, paused ads included). The window
+   was the whole cause.
+
+   THE RULE NOW. If this ad account has nothing stored from before the window's
+   first day — nothing at all, or only days inside the window — the pull asks
+   Meta for the whole history instead (`date_preset=maximum`). Once older days
+   are stored, every later pull is the 28-day window again, exactly as before.
+   For an account whose whole life fits in 28 days the two answers are the same
+   rows, so asking for more costs nothing. If Meta refuses the big request, the
+   same run falls back to the 28-day window and says so in `stats.full_history`
+   — a refused history must never cost today's numbers.
+
+   The Fundhub account already holds Aug 17 onward, so this rule does not reach
+   back for it; scripts/meta-backfill-ad-days.mjs is the one-time repair. */
+export function needsFullHistory({ earliestStored, since }) {
+  if (earliestStored === undefined) return false;   // could not tell: keep the window
+  if (earliestStored === null) return true;          // nothing stored yet
+  return String(earliestStored) >= String(since);    // nothing older than the window
+}
+
+/* The oldest day stored for this connection's ads, as YYYY-MM-DD text, or
+   null when there is none. undefined when the question itself failed. Text,
+   not a date: node-postgres turns a DATE into a local-midnight JS Date. */
+export async function earliestStoredDay(query, connectionId) {
+  try {
+    const r = await query(
+      `SELECT to_char(min(m.date), 'YYYY-MM-DD') AS d
+         FROM ad_metrics_daily m
+         JOIN ads a ON a.id = m.ad_id
+        WHERE a.connection_id = $1`,
+      [connectionId]
+    );
+    return r?.rows?.[0]?.d ?? null;
+  } catch {
+    return undefined;
+  }
 }
 
 /* fetchAllPages → { rows, pages, truncated }
@@ -728,6 +793,8 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
     hasMetaResultColumns((sql, params) => tx.query(sql, params))
   ).catch(() => false);
   stats.meta_results_saved = withResults;
+  /* One entry per connection whose pull asked Meta for the whole history. */
+  stats.full_history = [];
 
   for (const connection of usable) {
     stats.connections += 1;
@@ -735,14 +802,42 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
       const token = tokenFor(connection);
       const { since, until } = insightWindow();
 
+      /* FIRST PULL READS THE WHOLE HISTORY (see needsFullHistory above). The
+         question is one short read of our own table; if it fails the answer
+         is "keep the window", which is what this did before. */
+      const earliest = await inScope((tx) =>
+        earliestStoredDay((sql, params) => tx.query(sql, params), connection.id)
+      ).catch(() => undefined);
+
       /* ONE call for every ad's numbers, instead of one call per ad. Done
          before the walk so each ad's days are already in hand when its row is
          written, which keeps the write transactions short. */
-      const pull = await fetchAllPages({
-        url: insightsRequestUrl(connection, { since, until }),
-        token,
-        ctx: deps
-      });
+      let pull = null;
+      if (needsFullHistory({ earliestStored: earliest, since })) {
+        try {
+          pull = await fetchAllPages({
+            url: insightsRequestUrl(connection, { datePreset: "maximum" }),
+            token,
+            ctx: deps
+          });
+          stats.full_history.push({ connection: connection.id, ok: true, days: pull.rows.length });
+        } catch (err) {
+          stats.full_history.push({
+            connection: connection.id,
+            ok: false,
+            error: `whole history refused, used the ${INSIGHT_WINDOW_DAYS}-day window — ` +
+              String((err && err.message) || err).slice(0, 200)
+          });
+          pull = null;
+        }
+      }
+      if (!pull) {
+        pull = await fetchAllPages({
+          url: insightsRequestUrl(connection, { since, until }),
+          token,
+          ctx: deps
+        });
+      }
       const insightsByAd = groupInsightsByAd(pull.rows);
       if (pull.truncated) {
         stats.errors.push({
