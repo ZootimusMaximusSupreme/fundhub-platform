@@ -34,7 +34,12 @@ export const PROVIDER = "meta-capi";
 export const TRANSMITS = true;
 
 export const DEFAULT_PIXEL_ID = "2403674420141513";
-export const DEFAULT_API_VERSION = "v21.0";
+/* v26.0 since 2026-10-05 (marketing machine M0 step 5). The request shape —
+   POST /{pixel}/events with data[], access_token and test_event_code at the
+   root, and every event and user_data key this file sends — was checked that
+   day against Meta's Conversions API parameter pages and the v22 to v26
+   changelogs; nothing was removed or renamed. */
+export const DEFAULT_API_VERSION = "v26.0";
 export const MAX_BATCH = 1000;
 export const TIMEOUT_MS = 3000;
 const MAX_ERROR = 300;
@@ -44,7 +49,7 @@ export function metaCapiEnabled(env = process.env) {
   return env?.META_CAPI_ENABLED === "1";
 }
 
-/** https://graph.facebook.com/<META_API_VERSION || v21.0>/<META_PIXEL_ID || 2403674420141513>/events */
+/** https://graph.facebook.com/<META_API_VERSION || v26.0>/<META_PIXEL_ID || 2403674420141513>/events */
 export function metaEventsUrl(env = process.env) {
   const v = String(env?.META_API_VERSION ?? "").trim();
   const p = String(env?.META_PIXEL_ID ?? "").trim();

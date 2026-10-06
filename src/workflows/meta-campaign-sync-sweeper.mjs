@@ -59,13 +59,32 @@
 // confusing 400.
 //
 //
-// DAILY, NOT HOURLY. Meta reports by whole day in the ad account's own
-// timezone, so a day is not final until it has ended there. 07:00 UTC is
-// midnight Pacific and 01:00 Mountain, so the pass runs just after the previous
-// day closes across the US. An hourly pull would re-read the same 28 days
-// twenty-four times for numbers that move once. And the 28-day window means a
-// pass that is missed, paused or broken costs nothing permanent — the next one
-// that succeeds repairs it.
+// HOURLY FOR 3 DAYS, PLUS THE NIGHTLY 28 DAYS (2026-10-05). This replaces the
+// old "daily, not hourly" reason. That reason was: an hourly pull of 28 days
+// re-reads the same days twenty-four times for numbers that move once. It is
+// still true of 28 days, which is why the hourly pass reads only 3. What
+// changed is who reads the numbers: Chris now runs his marketing from the
+// Command Center (docs/specs/marketing-machine-2026-10-04.md, M0 step 5: "Run
+// hourly for the last 3 days, plus a nightly 28-day pass"), so today's spend
+// and results must be at most an hour old, not up to a day old.
+//
+//   * HOURLY, at minute 30 (HOURLY_CRON). Today in the ad account's zone
+//     (America/Phoenix) and the 2 days before it, the days still moving. It
+//     never takes the whole-history path, whatever is or is not stored
+//     (SYNC_PASSES in api/campaigns/sync.mjs). It asks Meta for strictly fewer
+//     rows than the nightly pass, which already fits the 26-second
+//     /api/inngest limit (the 28-day pass completed at 07:01 UTC on
+//     2026-10-05), so it stays in Inngest. Minute 30 keeps it from starting in
+//     the same minute as the nightly pass and writing the same campaign rows
+//     at once. The dying-ad scan still runs at the end of every pass and still
+//     buzzes at most once per ad per day (ad_watch_curve_alerts).
+//   * NIGHTLY, at 07:00 UTC (SWEEP_CRON), unchanged. Meta reports by whole day
+//     in the ad account's own timezone, and 07:00 UTC is midnight in Arizona,
+//     just after the day closes. It re-reads 28 days because Meta keeps
+//     restating recent days, and so a pass that is missed, paused or broken
+//     costs nothing permanent — the next one that succeeds repairs it. The
+//     first pull of a new ad account (its whole history) happens here or on
+//     the Sync button, never on the hourly pass.
 //
 //
 // REGISTERING IT SENDS NOTHING AND SPENDS NOTHING. The sync is a READ from Meta
@@ -80,13 +99,18 @@ import { inngest } from "./client.mjs";
 import { asStaff } from "../partners/rls.mjs";
 import {
   syncPartnerConnections,
-  INSIGHT_WINDOW_DAYS
+  syncPass
 } from "../../api/campaigns/sync.mjs";
 
-/* 07:00 UTC daily — midnight Pacific, 01:00 Mountain. See the header for why
-   daily rather than hourly, and why this hour. */
+/* 07:00 UTC daily — midnight in Arizona, just after the ad account's day
+   closes: the nightly 28-day pass. See the header for why this hour. */
 export const SWEEP_CRON = "0 7 * * *";
 export const SOURCE_WORKFLOW = "meta-campaign-sync-sweeper";
+
+/* Minute 30 of every hour: the hourly 3-day pass. See the header for why it
+   is hourly, why 3 days, and why minute 30. */
+export const HOURLY_CRON = "30 * * * *";
+export const HOURLY_WORKFLOW = "meta-campaign-sync-hourly";
 
 /* The partners worth a pull, read ACROSS the partner boundary.
    asStaff() is the staff scope in src/partners/rls.mjs — the same boundary
@@ -118,17 +142,35 @@ export async function duePartners({ scope = asStaff } = {}) {
    without Inngest, without Meta and without a database.
 
    NEVER THROWS. A pass that fails must not take the scheduled function down
-   with it: tomorrow's pass is the recovery, and the 28-day window means it can
-   still fetch everything today's pass missed. The failure is returned so it is
-   visible in the run log. */
+   with it: the next pass is the recovery, and the nightly 28-day window means
+   it can still fetch everything a missed pass did not. The failure is returned
+   so it is visible in the run log.
+
+   `pass` is "nightly" (the default, the 07:00 UTC clock) or "hourly" (the
+   3-day clock); it is handed to every partner's sync. */
 export async function sweep({
   listPartners = duePartners,
   sync = syncPartnerConnections,
-  deps = {}
+  deps = {},
+  pass = "nightly"
 } = {}) {
+  let plan;
+  try {
+    plan = syncPass(pass);
+  } catch (err) {
+    return {
+      ok: false,
+      pass: String(pass),
+      partners: 0,
+      synced: 0,
+      error: String((err && err.message) || err).slice(0, 300)
+    };
+  }
+
   const tally = {
     ok: true,
-    window_days: INSIGHT_WINDOW_DAYS,
+    pass: plan.name,
+    window_days: plan.windowDays,
     partners: 0,
     synced: 0,
     campaigns: 0,
@@ -152,7 +194,7 @@ export async function sweep({
 
   for (const partnerId of partnerIds) {
     try {
-      const stats = await sync({ partnerId, deps });
+      const stats = await sync({ partnerId, deps, pass: plan.name });
       tally.synced += 1;
       tally.campaigns += stats.campaigns || 0;
       tally.ad_sets += stats.ad_sets || 0;
@@ -201,10 +243,29 @@ export async function handle({ step } = {}) {
   return step && typeof step.run === "function" ? step.run("sweep", run) : run();
 }
 
+/* The same, for the hourly 3-day pass. */
+export async function handleHourly({ step } = {}) {
+  const run = () => sweep({ pass: "hourly" });
+  return step && typeof step.run === "function" ? step.run("sweep-hourly", run) : run();
+}
+
+/* This file serves two functions, so the journey runner is told which handler
+   belongs to which id (src/journeys/runner/registry.mjs reads `handles`). */
+export const handles = Object.freeze({
+  [SOURCE_WORKFLOW]: handle,
+  [HOURLY_WORKFLOW]: handleHourly
+});
+
 export const metaCampaignSyncSweeper = inngest.createFunction(
   { id: "meta-campaign-sync-sweeper", name: "Meta campaign sync sweeper" },
   { cron: SWEEP_CRON },
   () => sweep()
+);
+
+export const metaCampaignSyncHourly = inngest.createFunction(
+  { id: "meta-campaign-sync-hourly", name: "Meta campaign sync, hourly 3-day pass" },
+  { cron: HOURLY_CRON },
+  () => sweep({ pass: "hourly" })
 );
 
 export default sweep;

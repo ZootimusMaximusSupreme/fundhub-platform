@@ -134,8 +134,13 @@ import { isSyntheticRow } from "./synthetic.mjs";
    slo-infinite-drip, slo-no-reply-197 and slo-paid-form-nudge; and
    ad-video-sweeper left Inngest for a Netlify scheduled function. The pin was
    also already two behind src/workflows/index.mjs on 2026-09-22. Every id is
-   named in EXPECTED_WORKFLOW_IDS in src/workflows/index.test.mjs. */
-const REGISTERED = 90;
+   named in EXPECTED_WORKFLOW_IDS in src/workflows/index.test.mjs.
+
+   Moved 90 -> 91 on 2026-10-05 (marketing machine M0 step 5) with
+   meta-campaign-sync-hourly, the hourly 3-day Meta pull. A cron with no event
+   trigger, so it sits in neverFired like every sweeper here; it shares its
+   module with meta-campaign-sync-sweeper and is told apart by `handles`. */
+const REGISTERED = 91;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

@@ -23,7 +23,7 @@ Owner ask: server events too, and from mobile (server copies reach Meta even whe
 
 ## Token and settings
 - **Token:** already exists — the Meta connection stored encrypted in `ad_platform_connections` (platform `meta`, system user "Conversions API System User", `ads_management`, can read pixel 2403674420141513). The server reads it the way `api/campaigns/sync.mjs` does (`decryptToken` from `src/adplatforms/tokens.mjs`, staff context via `asStaff` in `src/partners/rls.mjs`), cached per function instance. `META_CAPI_ACCESS_TOKEN` env, if ever set, wins. No agent handles the token by hand.
-- `META_PIXEL_ID` env (fallback `2403674420141513`), `META_TEST_EVENT_CODE` env (when set, every server event carries it so it shows in Test Events), `META_API_VERSION` (existing; default `v21.0`).
+- `META_PIXEL_ID` env (fallback `2403674420141513`), `META_TEST_EVENT_CODE` env (when set, every server event carries it so it shows in Test Events), `META_API_VERSION` (existing; default `v26.0` since 2026-10-05, marketing machine M0 step 5 — the request shape was checked against Meta's v22 to v26 changelogs that day).
 - Kill switch: `META_CAPI_ENABLED` — server sends only when `"1"` (set at ship).
 
 ## One sender
