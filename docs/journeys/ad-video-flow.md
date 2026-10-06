@@ -637,3 +637,94 @@ files, which take values as arguments): `CLOUDFLARE_ACCOUNT_ID`,
 - AWS's page at the address the test cites now redirects to the API index; the
   example was read from the Internet Archive copy of 2025-01-04 and is cited in
   `src/storage/r2-sign.test.mjs`.
+## U30 M3 9.4b: the animation planner, the overlay and the finalize (pure, not wired)
+
+Generated 2026-10-06 from `src/ad-videos/animations.mjs` (`planAnimations`,
+`cacheKey`, `overlayArgs`, `finalizeArgs`, `finalizeChecks`) and its tests
+`src/ad-videos/animations.test.mjs`. Spec §9.4, §9.1 step 11, §9.3 (the overlay
+re-encodes the video once and copies the sound) and owner decision §2 item 9:
+**cut → Submagic captions → our animation overlays → finalize.** The master
+Submagic sees never has an animation in it.
+
+**Status: built and tested, not wired in.** Nothing live imports
+`animations.mjs` (a test fails if anything but its own test does). The live
+pipeline still places B-roll **inside Submagic, before its export**
+(`src/ad-videos/broll.mjs` via `pipeline.mjs` `placeBrollAndExport()`, the
+`matched` row in "Who does each move" above). That is the old order. When the
+worker's `render_and_overlay` job goes live with this file, that Submagic
+placement must be switched off in the same change, or the animations land twice.
+Every arrow that starts a render, an ffmpeg run or a state move below is
+UNVERIFIED: the worker (spec §9.5) and the `animated` state (§9.1) are other units.
+
+```mermaid
+flowchart TD
+    IN["cut_plan (align.mjs alignTakes)<br/>animation_plan rows (the writer)<br/>catalog.json · parts · style<br/>Submagic export length + words<br/>animation_mode · caption zone"] --> V{"each row: the writer's own checks again<br/>(animation-plan.mjs) + 1080x1920 at 30 fps"}
+    V -->|"unknown template, bad props, data-tied props,<br/>seconds out of range, anchor not in the script, wide"| SK["skipped, with the reason in words"]
+    V --> MODE{"animation_mode"}
+    MODE -->|"overlay: caption zone not set,<br/>or inside y 269-1248 (where clips draw)"| SK
+    MODE --> CLK["the master's clock: every piece snapped to 1/30 s<br/>(ffmpeg-plan.mjs snapPiece), played in order"]
+    CLK --> DRIFT{"export length vs master<br/>more than 0.1 s apart?"}
+    DRIFT -->|no| ANC
+    DRIFT -->|"yes: line the cut's words up with Submagic's words<br/>(half or more must match)"| RM["every time read through the word pairs"]
+    DRIFT -->|"yes, and no words / too few match"| SK
+    RM --> ANC{"anchor → time<br/>(align.mjs resolveAnchor)"}
+    ANC -->|"words: phrase heard"| T["time on the export, on the frame grid"]
+    ANC -->|"words: phrase not heard but its line kept<br/>bullets: keyword not heard, cue kept"| FB["line / cue start<br/>fallback: true (flagged)"]
+    ANC -->|"its line or cue was cut"| SK
+    FB --> T
+    T --> FF{"fullframe limits, in play order"}
+    FF -->|"in the first 3 s · on the CTA line · under 4 s after the last clip ·<br/>can't be cut short enough for the CTA, the end or the 35% share ·<br/>template can't run 3 s or less (ProofWall 4, ProofFlood 6)"| SK
+    FF -->|"kept: at most 3 s (4 / 6), cut short at the CTA,<br/>the end, or the 35% share"| IT
+    T -->|"overlay mode: no full-frame limits; never two clips at once"| IT["items: template, props (+ durationInFrames,<br/>+ transparent in overlay), start / end, frames,<br/>cache_key = sha256(template + canonical props)"]
+    IT -. "UNVERIFIED: worker not built" .-> R["render each clip once per cache_key (R2 cache)"]
+    R -.-> OV["overlayArgs: each clip over the Submagic export at its frame<br/>ONE video encode (master settings), sound copied"]
+    OV -.-> L1["loudness pass 1 on the overlaid file"]
+    L1 -.-> FIN["finalizeArgs: picture copied; sound re-levelled to -14 LUFS<br/>only when more than 1 LU off; +faststart"]
+    FIN -.-> CHK{"finalizeChecks"}
+    CHK -->|"1080x1920, within 0.3 s of the master,<br/>-14 LUFS ± 1, moov before mdat"| AN["animated (UNVERIFIED: state not built)"]
+    CHK -->|"any one fails"| FX["held, with the reasons in words"]
+```
+
+**Measured, not guessed** (ffmpeg 6.0 on this Mac, synthetic clips, outside the
+suite): a ProRes 4444 clip with alpha placed at frame 45 for 60 frames showed on
+frames 45 to 104 and on no other frame; a VP9 `.webm` clip with alpha at frame
+150 for 90 frames showed on frames 150 to 239; the corners stayed the base
+picture (alpha kept); the output had 300 of 300 frames; the sound was copied bit
+for bit (same MD5 as the export); the argv held one video encoder. Finalize took
+a -39.8 LUFS file to -14.05 LUFS with the picture copied, and wrote `moov` before
+`mdat`; `finalizeChecks` passed it, and failed the un-finalized file with two
+plain reasons (loudness, not fast-start).
+
+**Numbers that are not in the spec** (safe defaults, in `ANIMATION_DEFAULTS`):
+a re-map needs half or more of the cut's words found in Submagic's words; a bare
+`caption_position_y` number is read as the captions' top edge in percent of the
+frame height, covering 15% below it; the band the see-through clips draw in is
+the kit's text-safe band, y 269 to 1248 (`ops/workflows/broll-v2-2026-10-02.md`
+line 36); a clip whose anchor lands in a forbidden spot is skipped, never moved
+(spec done-test: each clip within 0.3 s of its anchor); a clip that would run
+into the CTA, past the end or past the 35% share is cut short when the template
+can run that short, else skipped; clips are kept first come first served in play
+order; in overlay mode two clips never show at once; a phrase not heard word for
+word on a kept line lands on that line's start, flagged `fallback`.
+
+**Gaps (found, not reconciled):**
+
+1. **The old Submagic B-roll placement is still live** (`broll.mjs`,
+   `placeBrollAndExport`). It has to be switched off when this goes live, or the
+   animations land twice.
+2. **Overlay mode cannot render yet.** The kit's templates have no `transparent`
+   switch (spec §9.4 "see-through renders", step 1 of the 10/2 saved plan, in
+   `marketing/broll/`). Until then `animation_mode` stays `fullframe`.
+3. **`caption_position_y` is not measured.** Spec §8.3 says it is set from a test
+   export; until it is, overlay mode skips every clip.
+4. **The cache key does not change when a template's code changes.** It hashes
+   template + props (the spec's words). A kit change needs a new key part (for
+   example a kit version) before cached clips can be trusted across kit edits.
+5. **Chris's own B-roll clips** (`DRIVE_BROLL_FOLDER_ID`, spec §9.4, off by
+   default) are not built: no input for them in this unit's contract.
+6. **Submagic's export frame rate is not pinned.** The overlay forces 30 fps
+   constant (the master's settings); a 29.97 fps export would be re-timed.
+7. **Not proved on a real Submagic export** or a real Remotion render: fake cut
+   plans, the committed catalog, and synthetic ffmpeg clips only.
+8. **The intended journey** (`docs/journeys/marketing-machine-intended.md`) is
+   not on main. The yardstick was spec §1, §2 item 9 and §9.4.
