@@ -1753,7 +1753,7 @@ Chris did all of this from the Teleprompter app and the Command Center. His only
 
 ## Appendix D: New env vars
 
-Set each one with `netlify env:set … --secret`. Keep full copies in `.env` and `credentials/`, and the name in `.env.example` (edit that file through Bash). Never print a value, and never overwrite an existing key.
+Set each one with `netlify env:set …` without `--secret` (owner law 2026-10-04: laptop and cloud must be able to read it back). Keep full copies in `.env` and `credentials/`, and the name in `.env.example` (edit that file through Bash). Never print a value, and never overwrite an existing key.
 
 | Name | Where | What it's for |
 |---|---|---|
