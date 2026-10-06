@@ -1,0 +1,176 @@
+[
+  {
+    "key": "the_conveyor_belt",
+    "name": "The Conveyor Belt",
+    "notes": "Soft pull, tri-bureau. No hard pull. The lender matrix cross-references the real profile and lines up 30–50 matched lenders. Step A, Clean: existing hard inquiries attacked and removed first. Step B, Apply: the first round of matched applications fires only once the file is clean. Step C, Sweep & Repeat: the new inquiries those banks just created are removed before the next batch goes out. The file gets scrubbed while it's moving down the belt, so the score holds through the entire funding sprint. Up to 12 funding rounds. It answers \"this takes too long and ruins my credit\", their #1 objection, with a mechanism instead of a promise.",
+    "source": "ASSET-BANK §2"
+  },
+  {
+    "key": "the_event_driven_engine",
+    "name": "The Event-Driven Engine",
+    "notes": "A traditional CRM makes humans remember to check reports, cross-reference lenders on a spreadsheet, dispute inquiries, drag pipeline cards. This one reacts to events. An inquiry gets removed, the system recalculates readiness on its own and fires the next batch. 50–75 complex multi-round files running simultaneously. Nothing falls through. Chris built it himself. 1,000+ hours. Never name the tech stack in copy. No vendor names, ever. It is \"our system.\"",
+    "source": "ASSET-BANK §2"
+  },
+  {
+    "key": "speed",
+    "name": "Speed",
+    "notes": "The industry funds a deal in 30–45 days. Underwrite IQ closes a capital stack in about 7, by compressing application windows to get in front of more banks. Roughly 2x the approvals, faster.",
+    "source": "ASSET-BANK §2"
+  },
+  {
+    "key": "the_sorting_hat",
+    "name": "The Sorting Hat",
+    "notes": "The call assesses and routes instead of qualifying people out. Four doors off one call (ASSET-BANK §1). The Sorting Hat ads are the wide-net ones that say \"you might not even need funding\" and let the call decide.",
+    "source": "ASSET-BANK §2"
+  },
+  {
+    "key": "the_guarantee",
+    "name": "The Guarantee",
+    "notes": "A funding advisor reviews and begins optimizing the file within 24 business hours. Applications go to approved lenders within 72 business hours. If those don't happen, no upfront fee. Funding Execution Guarantee: full execution of the roadmap and credit optimization plan. If the targeted objective isn't reached after full execution, work continues at no additional cost until it is or no further options exist, otherwise the retainer comes back.",
+    "source": "ASSET-BANK §2"
+  },
+  {
+    "key": "busted_janky_systems_held_together_with_duct_tape",
+    "name": "Busted, janky systems held together with duct tape",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "running_on_an_off_the_shelf_crm_they_didn_t_build",
+    "name": "Running on an off-the-shelf CRM they didn't build",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_automated_inquiry_removal",
+    "name": "No automated inquiry removal",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_automated_credit_repair",
+    "name": "No automated credit repair",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_conveyor_belt_no_sequencing_at_all",
+    "name": "No conveyor belt — no sequencing at all",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_soft_pull_system",
+    "name": "No soft-pull system",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_underwriting_algorithm",
+    "name": "No underwriting algorithm",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_comprehensive_lender_list",
+    "name": "No comprehensive lender list",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "bad_at_asset_funding",
+    "name": "Bad at asset funding",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_support_system_behind_the_sale",
+    "name": "No support system behind the sale",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "ripped_somebody_else_s_course_and_rebranded_it",
+    "name": "Ripped somebody else's course and rebranded it as their own",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "not_ten_years_in_most_are_new",
+    "name": "Not ten years in — most are new",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "committing_fraud_on_your_behalf_on_applications",
+    "name": "Committing fraud on your behalf on applications",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "no_follow_through_once_they_ve_been_paid",
+    "name": "No follow-through once they've been paid",
+    "notes": "The enemy: what competitors are.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "everyone_is_a_scammer",
+    "name": "\"Everyone is a scammer.\"",
+    "notes": "The enemy: what the avatar says, verbatim.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "i_ve_paid_for_this_before_and_got_nothing",
+    "name": "\"I've paid for this before and got nothing.\"",
+    "notes": "The enemy: what the avatar says, verbatim.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "this_takes_too_long_and_ruins_my_credit",
+    "name": "\"This takes too long and ruins my credit.\"",
+    "notes": "The enemy: what the avatar says, verbatim. Their #1 objection. The Conveyor Belt answers it with a mechanism instead of a promise.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "brokers_who_log_into_experian_blast_a_generic",
+    "name": "Brokers who log into Experian, blast a generic lender list, and hand back a lower score",
+    "notes": "The enemy: what the avatar says, verbatim.",
+    "source": "ASSET-BANK §3"
+  },
+  {
+    "key": "growth_stalled_gary",
+    "name": "Growth-Stalled Gary",
+    "notes": "Core avatar. Online business: ecommerce, coaching, digital marketing. Team of 1–10. $50K–$500K/yr. 720+ credit. Has money, ready to invest. In his words: \"I need 6- or 7-figures so I can finally scale this thing properly.\" \"I want capital without worrying about it destroying my credit score.\" \"I need someone I can actually trust who isn't going to rip me off.\" Primary emotion: anger, at the industry, and at himself for being duped before. Fear: that the business stagnates and he misses his window. \"Secret sauce\" is a massive red flag for him. The mechanism gets published, never teased.",
+    "source": "ASSET-BANK §4"
+  },
+  {
+    "key": "the_bank_rejected_builder",
+    "name": "The Bank-Rejected Builder",
+    "notes": "Sub-avatar A. Bank decline, embarrassment, researches before reapplying.",
+    "source": "ASSET-BANK §4"
+  },
+  {
+    "key": "the_mca_survivor",
+    "name": "The MCA Survivor",
+    "notes": "Sub-avatar B. Merchant cash advance regret, fear, anti-daily-payment. The line that lands: \"No daily payments. Know the real cost.\"",
+    "source": "ASSET-BANK §4"
+  },
+  {
+    "key": "the_spam_scarred_skeptic",
+    "name": "The Spam-Scarred Skeptic",
+    "notes": "Sub-avatar C. Marketplace spam, distrust, screens every call. Strongest on Meta: this trauma is universal.",
+    "source": "ASSET-BANK §4"
+  },
+  {
+    "key": "the_credit_protective_planner",
+    "name": "The Credit-Protective Planner",
+    "notes": "Sub-avatar D. Watched the score drop from inquiries, abandons at the hard pull. The line that lands: \"Before anyone pulls your credit.\" Cleanest fit for the Conveyor Belt.",
+    "source": "ASSET-BANK §4"
+  },
+  {
+    "key": "the_unsorted",
+    "name": "The Unsorted",
+    "notes": "Doesn't know what they need. Might need funding, might need repair, might need to learn it. This is who the Sorting Hat ads are for.",
+    "source": "ASSET-BANK §4"
+  }
+]
