@@ -50,6 +50,9 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     "commas-inbox-sweeper",
     "creative-job-runner",
     "hubstaff-poll-sweeper",
+    /* Added 2026-10-06 (marketing machine, plan unit U22). The 15-minute clock: reads,
+       writes its heartbeat and wakes marketing-worker-background; no real work. */
+    "marketing-clock",
     "social-publish-sweeper",
     "staff-message-sweeper"
   ]);

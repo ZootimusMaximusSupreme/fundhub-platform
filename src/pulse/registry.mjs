@@ -347,7 +347,8 @@ const API_KEYS = [
   /* marketing machine. GET answers 401 to an unsigned ping (counts as up) and
      never writes; the POST half is never pinged. */
   "marketing/settings",
-  "marketing/funnels"
+  "marketing/funnels",
+  "marketing/health"
 ];
 
 const DESK_FILES = [
