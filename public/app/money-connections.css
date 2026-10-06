@@ -1,0 +1,80 @@
+/* Connections section — a client's own merchant processors.
+   Every rule is scoped under .fos-connections (mount() adds that class to its
+   container), so the section can sit inside the one FinanceOS page next to the
+   other sections without its .card / .grid / .state rules leaking out.
+   No px font sizes: the page wrapper is .app, and fundhub-brand.css sizes type
+   (UI-STANDARDS §12.7). */
+.fos-connections{--surface:#FFFFFF;--text:var(--ink2);--text-dim:var(--gray)}
+.fos-connections button,.fos-connections input,.fos-connections select{font:inherit;color:inherit}
+.fos-connections button{cursor:pointer}
+.fos-connections ul{list-style:none}
+
+.fos-connections .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fos-connections .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.fos-connections .btn-primary,.fos-connections .btn{min-height:44px;padding:8px 16px;border-radius:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.fos-connections .btn-primary{border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+.fos-connections .btn-primary:hover{background:var(--ink2)}
+.fos-connections .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.fos-connections .btn:hover{border-color:var(--ink)}
+.fos-connections .btn-text{min-height:40px;padding:0 8px;border:0;background:none;color:var(--text-dim);text-decoration:underline;text-underline-offset:3px}
+.fos-connections .btn-primary[disabled],.fos-connections .btn[disabled]{opacity:.6;cursor:default}
+
+.fos-connections .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.fos-connections .tiles>*{grid-column:span 3}
+.fos-connections .thirds>*{grid-column:span 4}
+.fos-connections .one-col>*{grid-column:span 12}
+.fos-connections .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.fos-connections .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.fos-connections .caption{color:var(--text-dim)}
+.fos-connections .big,.fos-connections .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fos-connections .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.fos-connections .tile{display:flex;flex-direction:column;gap:8px}
+
+.fos-connections .prov{display:flex;flex-direction:column;gap:16px}
+.fos-connections .prov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.fos-connections .prov-name{font-weight:600;color:var(--ink)}
+.fos-connections .state{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim);white-space:nowrap}
+.fos-connections .state-active{border-color:var(--ink);color:var(--ink);font-weight:600}
+/* Waiting — literal amber, and it says so in words (UI-STANDARDS §12.6). */
+.fos-connections .state-waiting{background:#FEF3C7;color:#92400E;border-color:#FCD34D}
+.fos-connections .conn{border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:8px}
+.fos-connections .conn-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fos-connections .conn-name{font-weight:600}
+.fos-connections .field{display:flex;flex-direction:column;gap:8px}
+.fos-connections .field label{color:var(--text-dim)}
+.fos-connections .field select,.fos-connections .field input{min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);width:100%;min-width:0}
+.fos-connections .copyrow{display:flex;gap:8px;align-items:stretch}
+.fos-connections .copyrow code{flex:1;min-width:0;display:block;font-family:var(--mono);background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px;overflow-wrap:anywhere}
+.fos-connections .once{background:var(--soft);border:1px solid var(--ink);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.fos-connections .act-msg:empty{display:none}
+.fos-connections .off-row{display:flex;justify-content:flex-end;margin-top:8px}
+
+.fos-connections .block{margin-bottom:48px}
+.fos-connections .block>h2{font-weight:600;color:var(--ink)}
+.fos-connections .block>.caption{margin-bottom:16px}
+.fos-connections .scroll-x{overflow-x:auto}
+.fos-connections table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.fos-connections th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.fos-connections td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.fos-connections .r{text-align:right}
+
+.fos-connections .empty,.fos-connections .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px;margin-bottom:24px}
+.fos-connections .empty p,.fos-connections .error p{max-width:60ch}
+
+.fos-connections .skel{display:flex;flex-direction:column;gap:8px}
+.fos-connections .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fos-conn-sk 1.2s ease-in-out infinite}
+.fos-connections .sk-s{height:12px;width:40%}
+.fos-connections .sk-m{height:16px;width:70%}
+.fos-connections .sk-l{height:32px;width:60%}
+@keyframes fos-conn-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.fos-connections .sk{animation:none}}
+
+@media (max-width:1100px){
+  .fos-connections .tiles>*{grid-column:span 6}
+  .fos-connections .thirds>*{grid-column:span 12}
+}
+@media (max-width:760px){
+  .fos-connections .tiles>*{grid-column:span 12}
+  .fos-connections .card{padding:16px}
+  .fos-connections .copyrow{flex-direction:column}
+}
