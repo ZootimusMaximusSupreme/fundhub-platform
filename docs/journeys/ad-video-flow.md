@@ -585,3 +585,55 @@ only in CI's Postgres.
    on `ad_videos_take_uq` (the spec puts the file name first). The row waits at
    `transcribed` with the save error as its note, and the match runs again next
    pass (free when the overlap is clear, one model call when it is not).
+## U19 R2 signed links and the worker callback signature (pure parts, not wired)
+
+Generated 2026-10-06 from `src/storage/r2-sign.mjs` and
+`src/ad-videos/worker-callback.mjs`. Spec §9.5 (signed links, the callback
+signature), §9.1 step 11 (the final key), §12.1 (the same signer puts the funnel
+videos in the media bucket).
+
+**Nothing calls either file yet.** No state, step, route, table or screen
+changed. The arrows below are what the files do when a later step calls them.
+The router branch and the worker do not exist (§16.4: Render and R2), so those
+boxes are UNVERIFIED.
+
+```mermaid
+flowchart TD
+    subgraph Links["Signed links — src/storage/r2-sign.mjs"]
+        K["finalVideoKey(partner, ad, round)<br/>partners/&lt;partner_id&gt;/ad-video/final/&lt;ad&gt;-r&lt;round&gt;.mp4"] --> P
+        P{"presignR2(GET, PUT or HEAD,<br/>account, bucket, key, key pair, expiry)"}
+        P -->|"expiry over 7 days, bad account / bucket / key,<br/>masked or missing key pair"| PX["refused with a plain reason<br/>(nothing signed)"]
+        P -->|"SigV4 query signing, region auto,<br/>host &lt;account&gt;.r2.cloudflarestorage.com, 24 h by default"| PU["https link<br/>(no network call is made)"]
+    end
+    subgraph Callback["Worker callback — src/ad-videos/worker-callback.mjs"]
+        W["video worker: signCallback(body, ts, secret)<br/>UNVERIFIED — video-worker/ not built"] -->|"X-Fundhub-Video-Timestamp<br/>X-Fundhub-Video-Signature"| V
+        V{"verifyCallback(headers, raw body, secret, now)"}
+        V -->|"no or masked or short secret, missing header,<br/>timestamp over 5 minutes off, body changed, wrong secret"| VX["{ ok: false, reason }<br/>nothing acts"]
+        V -->|"HMAC-SHA256 over '&lt;ts&gt;.&lt;body&gt;' matches,<br/>constant-time compare"| VO["{ ok: true }<br/>router 'video-worker' branch re-reads the row<br/>UNVERIFIED — branch not built"]
+    end
+```
+
+| Piece | What it does | Refuses |
+|---|---|---|
+| `presignR2` | A signed link to one R2 object. GET, PUT or HEAD. 24 hours unless asked. | DELETE, expiry over 604,800 seconds (7 days), an account id that is not 32 hex characters, a bad bucket name, a key with `.`/`..` folders, a leading slash, control characters or over 1,024 bytes, a missing or masked key pair |
+| `presignV4` | The same signer for any S3 host. The test runs AWS's worked example through it and gets AWS's signature `aeeed9bb…f604d404` and URL exactly. | Same checks |
+| `finalVideoKey` | `partners/<partner_id>/ad-video/final/<ad>-r<round>.mp4`. Partner id lowercased (matches `partner_id::text` in migration 045's storage_key check). Ad number without leading zeros. | A partner id that is not a uuid, an ad number under 1, a round that is not a whole number 0 or more |
+| `signCallback` | Hex HMAC-SHA256 of `<ts>.<raw body>` with `VIDEO_WORKER_CALLBACK_SECRET`. | An object body (sign the bytes you send), a millisecond clock, a missing, masked or short (under 32 characters) secret |
+| `verifyCallback` | `{ ok, reason }`. Five-minute window either side of now, inclusive. | Every failure names its reason in words |
+
+**Env names these will read once wired** (none is set yet; none is read by these
+files, which take values as arguments): `CLOUDFLARE_ACCOUNT_ID`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_AD_VIDEO`,
+`R2_BUCKET_MEDIA`, `VIDEO_WORKER_CALLBACK_SECRET`.
+
+**Gaps between the spec and the code (findings, not fixed here):**
+- `storage_final_key` today holds `drive:<file id>` (`saveFinishedToDrive` in
+  `src/workflows/ad-video-sweeper.mjs`). Spec §9.1 step 11 puts an R2 key there.
+  Whoever switches the three `finished_url` readers to a signed link must skip
+  `drive:` values instead of signing them.
+- The spec does not name the callback headers, the signature encoding or where
+  the round count starts. This unit picked: `X-Fundhub-Video-Timestamp` (whole
+  seconds), `X-Fundhub-Video-Signature` (64 hex), round any whole number 0 or more.
+- AWS's page at the address the test cites now redirects to the API index; the
+  example was read from the Internet Archive copy of 2025-01-04 and is cited in
+  `src/storage/r2-sign.test.mjs`.
