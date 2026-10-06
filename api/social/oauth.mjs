@@ -107,29 +107,6 @@ export default async function handler(req, res, deps = {}) {
     } else {
       auth = metaAuthUrl({ appId: env.META_APP_ID, redirectUri: redir, state });
     }
-    // #region agent log
-    fetch("http://127.0.0.1:7854/ingest/d6f5d062-daec-4ccb-b29c-871a05f553ca", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7ffc77" },
-      body: JSON.stringify({
-        sessionId: "7ffc77",
-        runId: "oauth-start",
-        hypothesisId: "A",
-        location: "api/social/oauth.mjs:start",
-        message: "oauth start auth result",
-        data: {
-          channel,
-          hasMetaAppId: Boolean(env.META_APP_ID),
-          hasMetaAppSecret: Boolean(env.META_APP_SECRET),
-          hasLinkedInClientId: Boolean(env.LINKEDIN_CLIENT_ID),
-          authOk: Boolean(auth?.ok),
-          missing: auth?.missing || null,
-          reason: auth?.reason || null
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
     if (!auth.ok) {
       return res.status(503).json({
         ok: false,
