@@ -16,6 +16,7 @@ import { relayDirs, readHeartbeat, isPidAlive, STALE_MS } from "../../scripts/ga
 import { gmailConfigFromEnv, createGmailClientFromConfig } from "../gmail/index.mjs";
 import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
+import { checkMachine } from "./machine.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 
 export const PULSE_CRON = "TZ=America/Denver 0 7 * * *";
@@ -332,7 +333,10 @@ export async function runDailyPulse({
   gmailClient = null,
   sendSms = undefined,
   sendWhatsApp = undefined,
-  recordRun = true
+  recordRun = true,
+  // Staff-visibility runner for the marketing-machine rows (asStaff on live).
+  // Those tables are FORCE row security and read empty on the plain app role.
+  staffScope = null
 } = {}) {
   const date = denverDateStamp(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -347,6 +351,7 @@ export async function runDailyPulse({
   checks.push(await checkRecon({ db, orgId: resolvedOrg }));
   checks.push(await checkUnrecorded({ db, orgId: resolvedOrg, now }));
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
+  checks.push(...await checkMachine({ db, scope: staffScope, now }));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
 
   const failRows = checks.filter((c) => c.status === "FAIL" || c.status === "down");

@@ -8,6 +8,7 @@
 
 import { inngest } from "./client.mjs";
 import { db as defaultDb } from "../db.mjs";
+import { asStaff } from "../partners/rls.mjs";
 import { PULSE_CRON, runDailyPulse } from "../pulse/daily-pulse.mjs";
 
 export { PULSE_CRON };
@@ -21,7 +22,8 @@ export async function handle({
   boardDir,
   gateRelayDirs,
   sendSms,
-  sendWhatsApp
+  sendWhatsApp,
+  staffScope = null
 } = {}) {
   return step.run("run-pulse", () => runDailyPulse({
     db,
@@ -32,14 +34,18 @@ export async function handle({
     gateRelayDirs,
     sendSms,
     sendWhatsApp,
+    staffScope,
     recordRun: !dryRun
   }));
 }
 
+/* asStaff: the marketing-machine rows read FORCE-row-security tables (ads,
+   ad_metrics_daily, funnel_page_stats, …), which the plain app connection
+   reads as empty. Read-only SELECTs; asStaff only sets who is asking. */
 export const dailyPulse = inngest.createFunction(
   { id: "daily-pulse", name: "Daily pulse — audit only (7:00 a.m. Denver)" },
   { cron: PULSE_CRON },
-  ({ step }) => handle({ db: defaultDb, step, env: process.env, dryRun: false })
+  ({ step }) => handle({ db: defaultDb, step, env: process.env, dryRun: false, staffScope: asStaff })
 );
 
 export default dailyPulse;
