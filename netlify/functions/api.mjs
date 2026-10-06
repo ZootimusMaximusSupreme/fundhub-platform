@@ -307,6 +307,11 @@ import marketingScriptsFix from "../../api/marketing/scripts/fix.mjs";
 import marketingBatches from "../../api/marketing/batches.mjs";
 import marketingBatchesWriteNow from "../../api/marketing/batches/write-now.mjs";
 import marketingJobsRetry from "../../api/marketing/jobs/retry.mjs";
+import marketingFunnel from "../../api/marketing/funnel.mjs";
+import marketingFunnelsCreate from "../../api/marketing/funnels/create.mjs";
+import marketingFunnelsRename from "../../api/marketing/funnels/rename.mjs";
+import marketingFunnelsBuild from "../../api/marketing/funnels/build.mjs";
+import marketingFunnelsPushLive from "../../api/marketing/funnels/push-live.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1217,7 +1222,13 @@ export const ROUTES = {
   "marketing/scripts/fix": marketingScriptsFix,
   "marketing/batches": marketingBatches,
   "marketing/batches/write-now": marketingBatchesWriteNow,
-  "marketing/jobs/retry": marketingJobsRetry
+  "marketing/jobs/retry": marketingJobsRetry,
+  // the funnel builder (build unit X4): make, rename, write, push live, read one
+  "marketing/funnel": marketingFunnel,
+  "marketing/funnels/create": marketingFunnelsCreate,
+  "marketing/funnels/rename": marketingFunnelsRename,
+  "marketing/funnels/build": marketingFunnelsBuild,
+  "marketing/funnels/push-live": marketingFunnelsPushLive
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

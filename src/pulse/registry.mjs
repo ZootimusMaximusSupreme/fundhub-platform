@@ -366,7 +366,15 @@ const API_KEYS = [
   "marketing/scripts/fix",
   "marketing/batches",
   "marketing/batches/write-now",
-  "marketing/jobs/retry"
+  "marketing/jobs/retry",
+  /* The funnel builder (build unit X4). GET marketing/funnel answers 401 to an
+     unsigned ping. The four POST siblings answer 405 to a GET before they read
+     anything (isUp() counts 405 as up), so a ping writes nothing. */
+  "marketing/funnel",
+  "marketing/funnels/create",
+  "marketing/funnels/rename",
+  "marketing/funnels/build",
+  "marketing/funnels/push-live"
 ];
 
 const DESK_FILES = [

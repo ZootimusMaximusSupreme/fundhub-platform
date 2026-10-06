@@ -218,3 +218,27 @@ Gaps and things not drawn:
 - The transaction stays open across the Meta call (spec §4 trap 3), same as the campaign path; `guardedWrite` was not changed here.
 - The campaign-level `pause`, `resume`, `update_budget` gate is unchanged: any staff login with a partner_id, or a partner login, can still start a whole campaign (a Chris yes/no on the board).
 - `UNVERIFIED` live: the call has never reached real Meta. The fake Meta in `src/http/campaigns-write-resume-ad.pg.test.mjs` answers like the Graph API docs.
+
+## X4 The funnel tag on events from a dashboard-built funnel
+
+Drawn from `public/funnel/fh-events.js` (`builtFunnel`), `src/funnel/track.mjs`
+(`cleanFunnelTag`, `findFunnelPage`, `recordTrack`) and migration 425. Full drawing:
+`docs/journeys/marketing-dashboard-flow.md`, section "X4 Funnel builder".
+
+```mermaid
+flowchart TD
+  P[a page of a built funnel, e.g. /blueprint-book<br/>head: fh-funnel-tag + window.FH_FUNNEL] --> B{fh-events.js:<br/>page on the fixed list?}
+  B -->|yes| OLD[as before, no funnel_tag]
+  B -->|no| C{FH_FUNNEL.page.path = this page<br/>and tag fnl-...?}
+  C -->|no| N[sends nothing]
+  C -->|yes| S[post with funnel_tag]
+  S --> D{door: tag + address in marketing_funnel_pages?}
+  D -->|no or table not live| I[page_invalid]
+  D -->|yes| R[events row: funnel = tag, step = page position,<br/>funnel_tag, funnel_id, UTMs as sent<br/>events_seen + 1 on the page]
+```
+
+- The ad's url_tags are unchanged (`utm_campaign` = the funnel's lane, `utm_content` = the ad
+  number, migration 286). A lead or booking from such a funnel carries its `landing_path`
+  (the funnel's first page), which belongs to one funnel only.
+- `UNVERIFIED` live: no built funnel is live yet; the browser side is proved in the
+  `src/ads/fh-events-harness.mjs` fake page, the door with a stand-in lookup and in CI's database.
