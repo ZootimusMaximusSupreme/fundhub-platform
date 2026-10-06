@@ -420,8 +420,8 @@ button,input,select,textarea{font:inherit;color:inherit}
     if (diff < 60000) return "just now";
     if (diff < 3600000) return Math.floor(diff / 60000) + "m ago";
     if (diff < 86400000) return Math.floor(diff / 3600000) + "h ago";
-    return t.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " +
-      t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return t.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }) + ", " +
+      t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
   }
   function fullTime(iso) {
     if (!iso) return "";

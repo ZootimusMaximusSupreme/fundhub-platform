@@ -399,7 +399,7 @@ button,input,select,textarea{font:inherit;color:inherit}
       $("qShiftWho").textContent = "You are on shift";
       var started = state.shift.started_at ? new Date(state.shift.started_at) : null;
       $("qShiftWhen").textContent = started && !isNaN(started.getTime())
-        ? "Since " + started.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+        ? "Since " + started.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" })
         : "";
       btn.textContent = "End shift";
     } else {
@@ -622,7 +622,7 @@ button,input,select,textarea{font:inherit;color:inherit}
       }
       state.rows = (res.body.items || []).slice();
       paintQueue();
-      $("qStamp").textContent = "read " + new Date().toLocaleTimeString();
+      $("qStamp").textContent = "read " + new Date().toLocaleTimeString("en-US", { timeZone: "America/Phoenix" });
     });
   }
 

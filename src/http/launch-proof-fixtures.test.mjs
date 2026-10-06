@@ -47,5 +47,8 @@ test("the browser proof reads fixtures and always registers cleanup", () => {
   assert.doesNotMatch(requiredLive, /launch-proof-live/);
 
   const localBrowser = text("playwright.config.mjs");
-  assert.match(localBrowser, /testIgnore: \["\*\*\/launch-proof-live\.spec\.mjs"\]/);
+  assert.match(localBrowser, /testIgnore: \[[^\]]*"\*\*\/launch-proof-live\.spec\.mjs"/);
+  // Every live-*.spec.mjs signs in to the real fundhub.ai, so the offline run
+  // ignores them too (walkthrough-4 defect 9).
+  assert.match(localBrowser, /testIgnore: \[[^\]]*"\*\*\/live-\*\.spec\.mjs"/);
 });

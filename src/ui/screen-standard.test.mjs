@@ -99,6 +99,16 @@ describe("every CRM screen uses the same frame (UI-STANDARDS §12, owner-set 202
           if (/!important/i.test(value)) continue;        // deliberate, and it works
           offenders.push(`${file}: font-size:${value.trim()}`);
         }
+        // The `font:` shorthand sets a size too and dies the same way. This
+        // scan only read the long form, so pipeline.html — this file's own
+        // reference screen — shipped `font:600 11px var(--sans)` on its drawer
+        // buttons and passed green (walkthrough-4 defect 21, 2026-09-06).
+        for (const m of block.matchAll(/(?:^|[;{\s])font\s*:\s*([^;}]*)/gi)) {
+          const value = m[1];
+          if (!/\d*\.?\d+px/.test(value)) continue;
+          if (/!important/i.test(value)) continue;
+          offenders.push(`${file}: font:${value.trim()}`);
+        }
       }
     }
 

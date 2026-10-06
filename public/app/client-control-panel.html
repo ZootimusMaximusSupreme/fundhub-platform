@@ -3154,7 +3154,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var d = new Date(iso);
       if (isNaN(d.getTime())) return null;
       try {
-        return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
       } catch (e) {
         return d.toTimeString().slice(0, 5);
       }
@@ -3453,7 +3453,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function say(message) { if (status) status.textContent = message || ""; }
     function clockTime(d) {
-      try { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+      try { return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }); }
       catch (e) { return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); }
     }
     /* Back to pressable, with the sent line left alone — a later failure must

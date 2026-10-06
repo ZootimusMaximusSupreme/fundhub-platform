@@ -36,6 +36,11 @@ const CHOKEPOINT = "src/lib/outbound-fetch.mjs";
 const NETWORK_TOKENS = [
   /\bglobalThis\.fetch\b/,
   /\bawait\s+fetch\s*\(/,
+  /* A bare, un-awaited fetch to a literal web address. A debugging beacon in
+     api/social/oauth.mjs (fetch("http://127.0.0.1:7854/ingest/…").catch(…))
+     shipped to production because every token above needs `await` or a
+     named fetch helper (walkthrough-4 defect 10, 2026-09-06). */
+  /(^|[^\w.$])fetch\s*\(\s*["'`]https?:\/\//m,
   /\bfetchImpl\s*\(/,
   /\bfetchFn\s*\(/,
   /\bdoFetch\s*\(/,

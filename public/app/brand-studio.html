@@ -402,7 +402,7 @@ table.grid tr.stale:hover td{background:rgba(242,166,155,.15)}
             <div style="padding:4px 14px 14px">
               <div class="fieldrow"><label for="bDomain">Your domain</label><div>
                 <div class="swatchrow"><input class="inp" id="bDomain" placeholder="meridiancapital.com" style="max-width:280px"><button class="btn mono" id="verifyBtn">Verify</button></div>
-                <div class="hint">You own it, you point it here. SSL is issued automatically once DNS resolves.</div>
+                <div class="hint">You own it, you point it here. Verify checks the TXT record only. The secure certificate (SSL) is not issued by this screen: once DNS checks out, Fundhub adds your domain to the site by hand, and until then visitors may see a browser security warning.</div>
               </div></div>
               <div class="dnsbox" id="dnsBox" style="display:none">
                 <table>
@@ -665,13 +665,16 @@ table.grid tr.stale:hover td{background:rgba(242,166,155,.15)}
     }
 
     $("kBrand").textContent = D.name ? (D.logo ? "Logo set" : "Text mark") : "—";
-    $("kDomain").textContent = D.domain ? (D.verified ? "Live" : "Pending") : "—";
+    /* Walkthrough-4 defect 6: a verified TXT record is not a live, secure site.
+       Nothing here issues a certificate (api/partner-brand/verify-domain.mjs is a
+       DNS lookup), so the tile and the chip say what was actually checked. */
+    $("kDomain").textContent = D.domain ? (D.verified ? "DNS verified" : "Pending") : "—";
     $("kDomainSd").textContent = D.domain ? (D.verified ? D.domain : "awaiting DNS") : "not connected";
     $("kFun").textContent = D.funnels.length;
 
     var dc = $("dnsChip"), dt = $("dnsTxt");
     dc.className = "chip " + (D.verified ? "on" : (D.domain ? "wip" : ""));
-    dt.textContent = D.verified ? "Verified · SSL issued" : (D.domain ? "Awaiting DNS" : "Not connected");
+    dt.textContent = D.verified ? "DNS verified · SSL not issued here" : (D.domain ? "Awaiting DNS" : "Not connected");
     $("dnsBox").style.display = D.domain ? "block" : "none";
     $("dnsC").textContent = partnerId
       ? ("fundhub-site-verify=" + partnerId)

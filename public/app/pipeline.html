@@ -43,11 +43,11 @@
 
   /* ---------- chrome ---------- */
   header.topbar{background:var(--ink);color:var(--dark-text);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;flex-shrink:0;}
-  .brand{display:flex;align-items:center;gap:9px;}
-  .brand .name{font-weight:800;font-size:var(--fs-body);letter-spacing:.2px;}
+  .brand{display:flex;align-items:center;gap:9px;min-width:0;flex:0 1 auto;}
+  .brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0;}
   .brand .sep{color:var(--dark-text-dim);font-weight:400;font-size:var(--fs-body);}
-  .brand .sub{font-weight:600;font-size:var(--fs-body);color:var(--dark-text-dim);}
-  .topbar-right{display:flex;align-items:center;gap:16px;font-size:var(--fs-caption);color:var(--dark-text-dim);}
+  .brand .sub{font-weight:600;font-size:var(--fs-body);color:var(--dark-text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .topbar-right{display:flex;align-items:center;gap:16px;font-size:var(--fs-caption);color:var(--dark-text-dim);flex:0 0 auto;}
   .live-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--dark-text);background:var(--card);border:1px solid var(--dark-line);padding:4px 9px 4px 7px;border-radius:20px;}
   .live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:livepulse 1.8s infinite;}
   @keyframes livepulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent);}70%{box-shadow:0 0 0 6px color-mix(in srgb,var(--ok) 0%,transparent);}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 0%,transparent);}}
@@ -161,7 +161,6 @@
   .rail-note b{color:var(--text);}
   .board-summary{font-family:var(--mono);font-size:var(--fs-body);color:var(--text-dim);display:flex;gap:12px;align-items:center;}
   .board-summary b{color:var(--text);}
-  .board-summary .held-n{color:var(--ink2);font-weight:700;}
 
   /* ══════════════════════════════════════════════════════════════════════════
      THE HEADLINE ROW — "what is waiting on me", answered before you read
@@ -297,7 +296,11 @@
   .fh-drawer-head,.fh-drawer-body{min-width:380px}
   .fh-drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid var(--line)}
   .fh-drawer-head h2{margin:4px 0 0;font-size:var(--fs-title);font-weight:800;letter-spacing:-.02em;line-height:1.2}
-  .fh-drawer-x,.fh-drawer-del{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:6px 10px;font:600 11px var(--sans);cursor:pointer;color:var(--ink)}
+  /* No size here (walkthrough-4 defect 21): `font:600 11px` was thrown away by
+     fundhub-brand.css's inherit !important, so Close and Archive painted at
+     body size. The buttons carry class "caption", which the brand whitelist
+     sizes to --fs-caption (13px, the floor). */
+  .fh-drawer-x,.fh-drawer-del{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:6px 10px;font-family:var(--sans);font-weight:600;cursor:pointer;color:var(--ink)}
   .fh-drawer-del{color:#6E2A22;border-color:#e8c4bf}
   .fh-drawer-body{flex:1;overflow:auto;padding:14px 16px 28px}
   .fh-drawer-sec{margin:0 0 16px}
@@ -308,7 +311,7 @@
   .fh-drawer-stat span{font-size:var(--fs-caption);color:var(--text-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
   .fh-drawer-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:var(--fs-body)}
   .fh-drawer-row span:first-child{color:var(--text-dim)}
-  .fh-text-btn{display:inline-block;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:3px 8px;font:600 11px var(--sans);color:var(--ink);text-decoration:none;white-space:nowrap}
+  .fh-text-btn{display:inline-block;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:3px 8px;font-family:var(--sans);font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap}
   .fh-drawer-links{display:flex;flex-direction:column;gap:6px;margin-top:8px}
   .fh-drawer-links a{font-size:var(--fs-body);color:var(--ink);font-weight:600}
   .fh-drawer-empty{color:var(--text-faint);font-size:var(--fs-body);line-height:1.45}
@@ -665,7 +668,7 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="name">Fundhub</div>
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
       <div class="sep">/</div>
       <div class="sub">Pipeline</div>
     </div>
@@ -726,7 +729,13 @@
              span is hidden rather than printing a funding figure those boards
              have nothing to do with. See railHasMoney(). -->
         <span id="sumMoneyWrap"><b id="sumMoney">—</b> funding est.</span>
-        <span class="held-n" id="sumHeld" title="the pipeline API does not return hold status">— held</span>
+        <!-- NO "— held" HERE (walkthrough-4 defect 24, 2026-09-06). It could
+             never be a number: /api/dashboard/pipeline returns no hold field,
+             so it was a bold dash forever. UI-STANDARDS §5: if it does nothing
+             today it does not render today — the same rule that hid the Owner
+             filter and removed the Hold filter below. Put it back beside the
+             code that reads a real hold field, not before. -->
+
       </div>
     </div>
   </div>
@@ -765,8 +774,8 @@
     <!-- HOLD IS GONE FROM HERE ON PURPOSE (2026-09-06). "Held only" emptied
          every board every time it was chosen: no card ever carries the `held`
          class, because /api/dashboard/pipeline returns no hold field for a card
-         (see the note on #sumHeld above, which still says the count is
-         unknown). A filter that can only ever hide everything is worse than no
+         (the "— held" figure in the summary row went for the same reason).
+         A filter that can only ever hide everything is worse than no
          filter. When the API starts returning hold status, put the select back
          beside the code that paints the class — not before. -->
     <div class="select"><span class="sl-k">Age:</span><select id="fAge">
@@ -860,8 +869,8 @@
         <h2 id="fhDrawerName">—</h2>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button type="button" class="fh-drawer-del" id="fhDrawerDel">Archive</button>
-        <button type="button" class="fh-drawer-x" id="fhDrawerClose" aria-label="Close">Close</button>
+        <button type="button" class="fh-drawer-del caption" id="fhDrawerDel">Archive</button>
+        <button type="button" class="fh-drawer-x caption" id="fhDrawerClose" aria-label="Close">Close</button>
       </div>
     </div>
     <div class="fh-drawer-body" id="fhDrawerBody">
@@ -1701,7 +1710,7 @@ restore();
 
   // Held count has no honest value here: no card the API returns carries a
   // hold flag (see api/dashboard/pipeline.mjs — cards has no hold column), so
-  // the board-summary's "held" stat stays a dash always. Card count and est.
+  // the board summary shows no "held" stat at all (defect 24). Card count and est.
   // money DO come from the API and are set for real once a pipeline loads;
   // unknown (not yet loaded, or the load failed) is a dash too, never 0.
   var sumCountEl = document.getElementById("sumCount");

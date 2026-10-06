@@ -61,13 +61,13 @@
   .shell{flex:1;min-width:0;height:100vh;display:flex;flex-direction:column;}
 
   header.topbar{background:var(--ink);color:var(--dark-text);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;flex-shrink:0;border-bottom:1px solid var(--dark-line);}
-  .brand{display:flex;align-items:center;gap:9px;}
+  .brand{display:flex;align-items:center;gap:9px;min-width:0;flex:0 1 auto;}
   /* the real fundhub wordmark, from fundhub-brand.css (--logo).
      .inv flips it for the dark topbar. */
   .brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0;}
   .brand .sep{color:var(--dark-text-dim);font-weight:400;font-size:var(--fs-body);}
-  .brand .sub{font-weight:600;font-size:var(--fs-body);color:var(--dark-text-dim);}
-  .topbar-right{display:flex;align-items:center;gap:16px;font-size:var(--fs-caption);color:var(--dark-text-dim);}
+  .brand .sub{font-weight:600;font-size:var(--fs-body);color:var(--dark-text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .topbar-right{display:flex;align-items:center;gap:16px;font-size:var(--fs-caption);color:var(--dark-text-dim);flex:0 0 auto;}
   .live-pill{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--dark-text);background:#151517;border:1px solid var(--dark-line);padding:4px 9px 4px 7px;border-radius:20px;}
   .live-dot{width:6px;height:6px;border-radius:50%;background:#A8D8B0;box-shadow:0 0 0 0 rgba(168,216,176,.6);animation:pulse 1.8s infinite;}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(168,216,176,.55);}70%{box-shadow:0 0 0 6px rgba(168,216,176,0);}100%{box-shadow:0 0 0 0 rgba(168,216,176,0);}}
@@ -1874,7 +1874,7 @@ window.__fhInitQueue = function(){
   }
 
   function clock(){
-    return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Phoenix'});
   }
   function stat(name){ return document.querySelector('[data-stat="'+name+'"]'); }
   function bump(name, delta){

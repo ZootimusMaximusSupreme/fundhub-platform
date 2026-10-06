@@ -324,8 +324,14 @@ describe("public/app/pipeline.html — screen wiring", () => {
     assert.ok(!/pipeline-new-client\.html/.test(HTML), "must not add a new screen");
   });
 
-  test("held stays an honest dash — the API has no hold field for a card to invent", () => {
-    assert.match(HTML, /id="sumHeld"[^>]*>— held</);
+  /* Was "held stays an honest dash". The rule underneath is unchanged — the
+     API has no hold field, so no hold number may be invented — but a dash
+     that can never become a number is a control that does nothing, and
+     UI-STANDARDS §5 says it does not render (walkthrough-4 defect 24). */
+  test("no held figure renders — the API has no hold field for a card to invent", () => {
+    assert.ok(!/id="sumHeld"/.test(HTML), "the always-a-dash held figure is back");
+    assert.ok(!/>— held</.test(HTML), "a held figure is printed with no source");
+    assert.ok(!/\b\d+ held\b/.test(HTML.replace(/<!--[\s\S]*?-->/g, "")), "a hold count is invented");
   });
 
   test("both the cache-hit path and the fresh-fetch path update the summary from real stages", () => {

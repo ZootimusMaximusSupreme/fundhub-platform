@@ -64,6 +64,27 @@ test.describe("documents", () => {
     });
     await expect(page.locator("body")).toBeVisible();
   });
+
+  /* Walkthrough-4 defect 16. A contract generated 78 days ago and sent
+     yesterday, still awaiting a signature, has been pending ONE day. The
+     screen used to print 78d and paint it stale. */
+  test("age counts from the last state change, not from generation", async ({ page }) => {
+    const DAY = 86400000;
+    const iso = (daysAgo) => new Date(Date.now() - daysAgo * DAY).toISOString();
+    await openScreen(page, "/app/documents.html", OWNER, {
+      "/api/read/documents": {
+        ok: true, items: [{
+          id: "d-age", kind: "contract", title: "Funding Agreement", client_name: "Dana Whitfield",
+          created_at: iso(78), generated_at: iso(78), delivered_at: iso(1.2),
+          delivery_status: "sent", signature_required: true, signed_at: null,
+          expires_at: new Date(Date.now() + 20 * DAY).toISOString(), mime_type: "text/html"
+        }]
+      }
+    });
+    const age = page.locator("td .age").first();
+    await expect(age).toHaveText("1d");
+    await expect(page.locator("#staleTxt")).toHaveText("0 past 14 days");
+  });
 });
 
 test.describe("automations", () => {

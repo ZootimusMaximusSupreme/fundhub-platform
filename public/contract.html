@@ -143,7 +143,12 @@ button.ghost{background:transparent;color:var(--ink);border-color:var(--line);fo
       <div class="okbox" id="doneText"></div>
       <div class="rec" id="doneRecord"></div>
       <button class="ghost" id="dlBtn" type="button" style="display:none">Download a copy</button>
-      <div class="note">This page is your copy. You can come back to this link and read it again at any time.</div>
+      <!-- Walkthrough-4 defect 17 (2026-09-06). This used to say "come back to
+           this link ... at any time", but the link expires 30 days after it was
+           sent (src/contracts/signed-link.mjs DEFAULT_TTL_SECONDS) and then
+           answers "This link has expired". The signed copy stays in the client
+           portal's Agreements list, so the note points there. -->
+      <div class="note">Download a copy now. This link stops working 30 days after it was sent. Your signed copy also stays in your Fundhub portal, under Account &amp; history → Agreements.</div>
     </div>
   </div>
 </div>
@@ -584,16 +589,21 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       });
   }
 
+  /* A failed download says so (defect 17): it used to return silently, so the
+     client believed they had saved a copy they did not have. */
   function download() {
+    var btn = $("dlBtn");
+    function failed() { btn.textContent = "Download failed — try again"; }
     fetch(FILE_API, { headers: { accept: "application/json" } })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (!d || d.ok !== true) return;
+        if (!d || d.ok !== true || !d.pdf_base64) return failed();
         var a = document.createElement("a");
         a.href = "data:application/pdf;base64," + d.pdf_base64;
         a.download = d.filename || "contract.pdf";
         document.body.appendChild(a); a.click(); a.remove();
-      });
+        btn.textContent = "Download a copy";
+      }, failed);
   }
 
   $("name").addEventListener("input", check);

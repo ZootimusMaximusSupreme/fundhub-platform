@@ -441,6 +441,37 @@ test("every clock and timestamp on a staff screen is Arizona — no exceptions",
   }
 });
 
+test("no staff screen draws a time in the viewer's own zone — .html AND the screen scripts", () => {
+  /* The test above only catches a zone that is NAMED. A time formatted with no
+     timeZone at all is drawn in whatever zone the viewer's laptop is set to, so
+     a closer outside Arizona read "5:00 PM" for a call beside a topbar clock
+     reading 2:00 PM MST. And it only opened .html plus shell.js and data.js, so
+     closer-call.js, sales-floor.js and present.js were never read
+     (walkthrough-4 defect 14, 2026-09-06). This one reads every screen script
+     too, and fails on any toLocaleTimeString call that does not name a zone.
+     Customer screens are left out on purpose — the shell gives them no office
+     clock either (CUSTOMER_SCREENS in shell.js). */
+  const CUSTOMER = new Set(["client-portal.html", "consent-capture.html"]);
+  const files = [
+    ...APP_PAGES.filter((f) => !CUSTOMER.has(f)),
+    ...fs.readdirSync(APP).filter((f) => f.endsWith(".js"))
+  ];
+  const offenders = [];
+  for (const file of files) {
+    const src = fs.readFileSync(path.join(APP, file), "utf8");
+    for (const m of src.matchAll(/\.toLocaleTimeString\s*\(/g)) {
+      // The argument list, up to its closing paren (option objects nest no parens).
+      const args = src.slice(m.index + m[0].length, src.indexOf(")", m.index + m[0].length));
+      if (!/timeZone\s*:/.test(args)) {
+        offenders.push(`${file}:${src.slice(0, m.index).split("\n").length}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, [],
+    "These format a time in the viewer's own zone. Staff screens are Arizona — " +
+    "add timeZone: \"America/Phoenix\" (ops/workflows/arizona-time-2026-08-28.md).");
+});
+
 test("the shell mounts a clock, in Arizona, on screens that have no clock of their own", () => {
   const shell = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
   assert.match(shell, /var CLOCK_TZ = "America\/Phoenix"/, "the shell clock must be Arizona");
