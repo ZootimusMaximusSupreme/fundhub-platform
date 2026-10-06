@@ -17,6 +17,9 @@
 //   * fixScript on a locked script: one transaction archives the old version and
 //     inserts the new one with the same root and the same ad number, still locked,
 //     with Chris's note in fix_note.
+//   * The ideas inbox under migration 414's checks: a slot written from an idea sets it
+//     'written' with its script and batch; a refusal sets it 'failed' with a reason and
+//     one attempt; a setup fault (a masked key) leaves it exactly as it was.
 //
 // Nothing here reaches the network: Anthropic is a fake fetch, and GITHUB_REPO_TOKEN is
 // not in the env, so the rule files come from the repo copies.
@@ -49,18 +52,18 @@ const CUES = [
 const REVEAL = "So fix the file they read first, and the rest gets easier ↑";
 const CTA = "Tap below to get your Roadmap. It is a soft pull only, so there is zero impact on your score, and nothing moves until you say so.";
 
-function draft(cta = CTA) {
+function draft(cta = CTA, hook = HOOK, hookKey = "lenders_read_two_files_u24") {
   return {
     title: "The Conveyor Belt",
     angle_key: "the_conveyor_belt",
-    hook_key: "lenders_read_two_files_u24",
+    hook_key: hookKey,
     offer_key: "slo_roadmap",
     lane: "uwiq",
     script_format: "standard",
     style: "bullets",
-    body: [HOOK, "", LINE2, "", ...CUES.map((c) => `- ${c}`), "", REVEAL, "", cta].join("\n"),
+    body: [hook, "", LINE2, "", ...CUES.map((c) => `- ${c}`), "", REVEAL, "", cta].join("\n"),
     parts: [
-      { kind: "hook", text: HOOK }, { kind: "line2", text: LINE2 },
+      { kind: "hook", text: hook }, { kind: "line2", text: LINE2 },
       ...CUES.map((t) => ({ kind: "cue", text: t })),
       { kind: "reveal", text: REVEAL }, { kind: "cta", text: cta }
     ],
@@ -99,7 +102,8 @@ function trackingPool(base) {
   };
 }
 
-/** Fake Anthropic: answers the writer with `replies` in order and the judge with none. */
+/** Fake Anthropic: answers the writer with `replies` in order and the judge with none.
+ *  A reply {refusal: "<category>"} is a refusal with that category. */
 function fakeAnthropic(replies) {
   const calls = [];
   let w = 0;
@@ -108,11 +112,14 @@ function fakeAnthropic(replies) {
     const isJudge = !!body.output_config?.format?.schema?.properties?.violations;
     calls.push({ url: String(url), openTx: tx.open, kind: isJudge ? "judge" : "writer" });
     const out = isJudge ? { violations: [] } : replies[Math.min(w++, replies.length - 1)];
+    const refused = out && typeof out.refusal === "string";
     return {
       ok: true, status: 200,
       json: async () => ({
         id: "msg_pg", type: "message", role: "assistant", model: body.model,
-        content: [{ type: "text", text: JSON.stringify(out) }], stop_reason: "end_turn", stop_details: null,
+        content: refused ? [] : [{ type: "text", text: JSON.stringify(out) }],
+        stop_reason: refused ? "refusal" : "end_turn",
+        stop_details: refused ? { type: "refusal", category: out.refusal, explanation: "test" } : null,
         usage: { input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 0, cache_creation_input_tokens: 8000 }
       })
     };
@@ -123,11 +130,14 @@ function fakeAnthropic(replies) {
 describe("the script writer's save (U24)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
   let org, house, other, batch;
   let pool;
+  /** Three ideas from Chris: one to write, one Claude refuses, one hit by a setup fault. */
+  const ideas = { write: null, refuse: null, setup: null };
 
+  /* Scripts go before ideas: ad_scripts.idea_id is ON DELETE RESTRICT (414), while
+     ad_ideas.script_id is SET NULL. */
   async function purge() {
     await db.query(`DELETE FROM marketing_model_usage WHERE org_id = $1`, [org]);
     await db.query(`DELETE FROM marketing_buzzes WHERE org_id = $1`, [org]);
-    await db.query(`DELETE FROM ad_ideas WHERE org_id = $1`, [org]);
     for (let i = 0; i < 20; i++) {
       const gone = await db.query(
         `DELETE FROM ad_scripts s
@@ -139,6 +149,7 @@ describe("the script writer's save (U24)", { skip: !HAS_DB ? "no DATABASE_URL" :
       );
       if (!gone.rowCount) break;
     }
+    await db.query(`DELETE FROM ad_ideas WHERE org_id = $1`, [org]);
     await db.query(`DELETE FROM ad_labels WHERE org_id = $1`, [org]);
     await db.query(`DELETE FROM marketing_batches WHERE org_id = $1`, [org]);
   }
@@ -160,6 +171,12 @@ describe("the script writer's save (U24)", { skip: !HAS_DB ? "no DATABASE_URL" :
     batch = (await db.query(
       `INSERT INTO marketing_batches (org_id, kind, status, total, release_at)
        VALUES ($1, 'on_command', 'writing', 3, now()) RETURNING id, org_id, kind, status, rules_sha, total`, [org])).rows[0];
+    for (const k of Object.keys(ideas)) {
+      ideas[k] = (await db.query(
+        `INSERT INTO ad_ideas (org_id, source, kind, raw_points, status)
+         VALUES ($1, 'chris', 'script', $2, 'new') RETURNING id`,
+        [org, `U24 pg idea (${k}): most people fix the file the lender never reads first.`])).rows[0].id;
+    }
     pool = trackingPool(rlsPool());
   });
 
@@ -292,5 +309,52 @@ describe("the script writer's save (U24)", { skip: !HAS_DB ? "no DATABASE_URL" :
     assert.equal(stale.failed, true, "a fix of an old version is skipped");
     const outbox = await db.query(`SELECT count(*)::int AS n FROM repo_outbox WHERE org_id = $1`, [org]);
     assert.equal(outbox.rows[0].n, 0, "a fix enqueues no repo write either");
+  });
+
+  const ideaSlot = (ideaId, n) => ({ n, funnel_key: "roadmap_147", script_format: "standard", style: "bullets", source: "chris_idea", angle_key: null, idea_id: ideaId, reason: "U24 pg test idea" });
+  const readIdea = async (id) => (await db.query(
+    `SELECT status, script_id, batch_id, failure_reason, attempts FROM ad_ideas WHERE id = $1`, [id])).rows[0];
+
+  test("a slot written from an idea sets the idea 'written' with its script and batch (414)", async () => {
+    /* A new hook and CTA: the batch already holds the locked script's, and a batch
+       duplicate would be refused. */
+    const hook = "Most people fix the credit file the bank never even reads first on a big line, and then wonder why.";
+    const cta = "Tap below to see which file your lender reads first. It is a soft pull only, so there is zero impact on your score.";
+    const ai = fakeAnthropic([draft(cta, hook, "the_file_nobody_reads_u24")]);
+    const out = await writeSlot(pool, ENV, { batch, slot: ideaSlot(ideas.write, 2) }, { orgId: org, fetchImpl: ai.fetchImpl });
+    assert.ok(out.script_id, JSON.stringify(out));
+    for (const c of ai.calls) assert.equal(c.openTx, 0, `a transaction was open during the ${c.kind} call`);
+    const idea = await readIdea(ideas.write);
+    assert.equal(idea.status, "written");
+    assert.equal(idea.script_id, out.script_id);
+    assert.equal(idea.batch_id, batch.id, "the idea is tied to the batch that wrote it");
+    assert.equal(idea.attempts, 0);
+    const script = (await db.query(`SELECT idea_id FROM ad_scripts WHERE id = $1`, [out.script_id])).rows[0];
+    assert.equal(script.idea_id, ideas.write);
+  });
+
+  test("a refusal sets the idea 'failed' with a reason and one attempt (414 ad_ideas_failed_reason_ck)", async () => {
+    const ai = fakeAnthropic([{ refusal: "cyber" }]);
+    const out = await writeSlot(pool, ENV, { batch, slot: ideaSlot(ideas.refuse, 3) }, { orgId: org, fetchImpl: ai.fetchImpl });
+    assert.equal(out.failed, true, JSON.stringify(out));
+    assert.equal(out.temporary, false);
+    const idea = await readIdea(ideas.refuse);
+    assert.equal(idea.status, "failed");
+    assert.ok(idea.failure_reason && idea.failure_reason.trim(), "a failed idea says why");
+    assert.match(idea.failure_reason, /category: cyber/);
+    assert.equal(idea.attempts, 1);
+    assert.equal(idea.script_id, null);
+  });
+
+  test("a setup fault (a masked key) leaves the idea exactly as it was", async () => {
+    const ai = fakeAnthropic([draft()]);
+    const out = await writeSlot(pool, { ANTHROPIC_API_KEY: "****************abcd" }, { batch, slot: ideaSlot(ideas.setup, 3) }, { orgId: org, fetchImpl: ai.fetchImpl });
+    assert.equal(out.failed, true);
+    assert.equal(out.temporary, true, "the job runs again; then Retry works");
+    assert.equal(ai.calls.length, 0);
+    const idea = await readIdea(ideas.setup);
+    assert.equal(idea.status, "new");
+    assert.equal(idea.attempts, 0);
+    assert.equal(idea.failure_reason, null);
   });
 });
