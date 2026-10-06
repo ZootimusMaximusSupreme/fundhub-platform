@@ -1,6 +1,6 @@
 # Affiliate link + show password (2026-10-06)
 
-Status: W1 built, marked draft with Chris. W2 can start now.
+Status: W1 live. W2 live.
 
 (An earlier draft of this board guessed at a 4-part affiliate audit before Chris gave the task. That draft is dead.)
 
@@ -8,8 +8,8 @@ Status: W1 built, marked draft with Chris. W2 can start now.
 
 | # | Task | Owner | Status |
 |---|---|---|---|
-| W1 | One row per offer on the affiliate page | this session | built on branch affiliate-offer-links — marked draft sent, waiting for "push it" |
-| W2 | Eye button to show the password while typing | open — paste prompt below | pending |
+| W1 | One row per offer on the affiliate page | this session | done — live, shipped ea4a4539, clicks proven |
+| W2 | Show / Hide button on every password box | this session (Chris asked here) | done — see manifest |
 
 No dependencies — W1 and W2 touch different files. All parallel.
 
@@ -119,6 +119,12 @@ Other breaks: one leftover card on the board, then stop. Do not fix them.
 - Tests: `src/affiliates/share-link.test.mjs` (new), `src/ads/fh-attribution-contact.test.mjs` (+4), `src/http/affiliate-referral.pg.test.mjs` (+offerLinks asserts, runs in CI).
 - Journeys: no route change; `npm run journeys` regenerates affiliate-actual.md unchanged. CHANGELOG line added.
 - Draft shots (gitignored): `ops/workflows/affiliate-tracking-2026-10-06-evidence/`.
+
+### W2
+- `public/pw-toggle.js` (new) — one shared Show / Hide button for every password box. Flips back to hidden on submit. Keeps autofill.
+- `public/login.html`, `public/reset-password.html` — load it. These are the only password boxes people type into (sign in; set password from an invite or reset). Clients sign in by email link — no password box.
+- Left out on purpose: API key boxes on `app/campaign-manager.html` and `app/creative-factory.html` (keys, not passwords).
+- Test: `src/http/pw-toggle.test.mjs` — fails if a page gains a password box without the button; checks Show, Hide, and hide-on-send.
 
 ## Leftover cards
 
