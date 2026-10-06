@@ -16,8 +16,11 @@ import { fileURLToPath } from "node:url";
 
 import {
   sweep, detect, walk, portsFor, adVideoSweeper,
-  SWEEP_CRON, DEFAULT_BATCH, DEFAULT_DETECT_LIMIT, loadBrollLibrary
+  SWEEP_CRON, DEFAULT_BATCH, DEFAULT_DETECT_LIMIT, loadBrollLibrary,
+  saveFinishedToDrive, FINISHED_FOLDER_ENV
 } from "./ad-video-sweeper.mjs";
+import { saveFinishedAndNotify } from "../ad-videos/pipeline.mjs";
+import { saveFinished as workerSaveFinished } from "../../netlify/functions/ad-video-worker-background.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -291,5 +294,106 @@ describe("the b-roll library actually gets loaded", () => {
     const port = { listBrollClips: async () => ({ ok: false, error: "drive said no", clips: [] }) };
     const clips = await loadBrollLibrary({ DRIVE_BROLL_FOLDER_ID: "folder_1" }, port);
     assert.deepEqual(clips, [], "one bad Drive read must not stop captions and export");
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   OUR OWN COPY OF THE FINISHED CUT, measured missing 2026-09-24.
+
+   The background worker never supplied `saveFinished`, so storage_final_key
+   stayed NULL on every finished ad and the only copy was Submagic's link.
+   These tests hold the port to three promises: it is wired, it never puts a
+   cut where the sweeper would pay for it again, and it never throws (a throw
+   would hold the buzz).
+   ───────────────────────────────────────────────────────────────────────── */
+describe("the finished cut is copied to our own Drive folder", () => {
+  const row = { id: "r1", ad_id: "84", take_no: 1, finished_version: 2, finished_url: "https://render.example/out.mp4" };
+  const names = { finalFileName: (a, t, v) => `${a}_t${t}_final_v${v}.mp4` };
+
+  test("the background worker hands this port to the sweep", () => {
+    assert.equal(workerSaveFinished, saveFinishedToDrive,
+      "an unwired port is how storage_final_key stayed NULL on every finished ad");
+  });
+
+  test("the copy goes to the finished folder, named for the cut, from the render link", async () => {
+    let asked = null;
+    const port = { uploadVideo: async (args) => { asked = args; return { ok: true, fileId: "drv_final_1" }; } };
+    const out = await saveFinishedToDrive(row, {
+      env: { [FINISHED_FOLDER_ENV]: "fin_1", DRIVE_RAW_FOLDER_ID: "raw_1" }, port, naming: names
+    });
+    assert.deepEqual(out, { ok: true, key: "drive:drv_final_1" });
+    assert.equal(asked.parentId, "fin_1");
+    assert.equal(asked.name, "84_t1_final_v2.mp4");
+    assert.equal(asked.sourceUrl, "https://render.example/out.mp4");
+  });
+
+  test("the real naming module names the copy the way Paul's folder does", async () => {
+    let asked = null;
+    const port = { uploadVideo: async (args) => { asked = args; return { ok: true, fileId: "f" }; } };
+    await saveFinishedToDrive(row, { env: { [FINISHED_FOLDER_ENV]: "fin_1" }, port });
+    assert.equal(asked.name, "084_t01_final_v2.mp4");
+  });
+
+  test("no folder set: nothing moves, and the reason names the variable", async () => {
+    const port = { uploadVideo: async () => assert.fail("must not upload with no folder") };
+    const out = await saveFinishedToDrive(row, { env: {}, port, naming: names });
+    assert.equal(out.ok, false);
+    assert.match(out.error, /DRIVE_FINISHED_FOLDER_ID is not set/);
+  });
+
+  test("the Raw folder is refused — the sweeper would read the cut as a new take and pay again", async () => {
+    const port = { uploadVideo: async () => assert.fail("a cut in Raw is a second paid Submagic project") };
+    const out = await saveFinishedToDrive(row, {
+      env: { [FINISHED_FOLDER_ENV]: "same", DRIVE_RAW_FOLDER_ID: "same" }, port, naming: names
+    });
+    assert.equal(out.ok, false);
+    assert.match(out.error, /same folder as DRIVE_RAW_FOLDER_ID/);
+  });
+
+  test("the B-roll folder is refused — the cut would be placed as a clip", async () => {
+    const port = { uploadVideo: async () => assert.fail("must not upload into B-roll") };
+    const out = await saveFinishedToDrive(row, {
+      env: { [FINISHED_FOLDER_ENV]: "b", DRIVE_BROLL_FOLDER_ID: "b" }, port, naming: names
+    });
+    assert.equal(out.ok, false);
+    assert.match(out.error, /same folder as DRIVE_BROLL_FOLDER_ID/);
+  });
+
+  test("a Drive refusal and a throw both come back as a note, never a throw", async () => {
+    const env = { [FINISHED_FOLDER_ENV]: "fin_1" };
+    const refused = await saveFinishedToDrive(row, {
+      env, port: { uploadVideo: async () => ({ ok: false, error: "drive said no" }) }, naming: names
+    });
+    assert.deepEqual(refused, { ok: false, error: "drive said no" });
+    const threw = await saveFinishedToDrive(row, {
+      env, port: { uploadVideo: async () => { throw new Error("socket hang up"); } }, naming: names
+    });
+    assert.equal(threw.ok, false);
+    assert.match(threw.error, /socket hang up/);
+  });
+
+  test("through the real step: the key lands on the row, and a miss still buzzes", async () => {
+    const notify = { send: async () => ({ status: "sent" }) };
+    const rendered = { ...row, status: "rendered" };
+
+    const saved = await saveFinishedAndNotify(rendered, {
+      notify, env: { [FINISHED_FOLDER_ENV]: "fin_1" },
+      saveFinished: (r, o) => saveFinishedToDrive(r, {
+        ...o, port: { uploadVideo: async () => ({ ok: true, fileId: "f9" }) }, naming: names
+      })
+    });
+    assert.equal(saved.patch.storage_final_key, "drive:f9");
+    assert.equal(saved.patch.status, "awaiting_approval");
+    assert.ok(saved.patch.notified_at, "the buzz still went");
+
+    const missed = await saveFinishedAndNotify(rendered, {
+      notify, env: {},
+      saveFinished: (r, o) => saveFinishedToDrive(r, {
+        ...o, port: { uploadVideo: async () => assert.fail("no folder") }, naming: names
+      })
+    });
+    assert.equal(missed.patch.storage_final_key, undefined);
+    assert.match(missed.patch.save_note, /DRIVE_FINISHED_FOLDER_ID is not set/);
+    assert.ok(missed.patch.notified_at, "a copy we could not take never holds the buzz");
   });
 });

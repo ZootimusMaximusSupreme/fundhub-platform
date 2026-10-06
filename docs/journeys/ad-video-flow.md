@@ -53,7 +53,7 @@ flowchart TD
 | `transcribed` | Claude matches the words to a script, then Drive rename | `matched` | `pipeline.mjs` `matchAndRename()` |
 | `matched` | upload our clips, place them, Export Project | stays `matched`, `exported_at` set | `pipeline.mjs` `placeBrollAndExport()` |
 | `matched` + exported | Submagic webhook **or** the 5-minute poll | `rendered` | `router.mjs` / `pipeline.mjs` `pollFinished()` |
-| `rendered` | save our copy, buzz the phone | `awaiting_approval` | `pipeline.mjs` `saveFinishedAndNotify()` |
+| `rendered` | save our copy, buzz the phone | `awaiting_approval` | `pipeline.mjs` `saveFinishedAndNotify()`; the copy is `ad-video-sweeper.mjs` `saveFinishedToDrive()`, handed in by `netlify/functions/ad-video-worker-background.mjs` |
 | `awaiting_approval` | **Chris taps Approve or Reject** | `approved` / `rejected` | a person. Nothing else moves it. |
 | `approved` | folder `043`, the brief, the video | `delivered` | `pipeline.mjs` `deliverToPaul()` |
 
@@ -155,7 +155,16 @@ Read by NAME only; no value is ever printed or logged.
 `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`, `GOOGLE_DRIVE_DELEGATE_EMAIL`,
 `GOOGLE_DRIVE_OAUTH_TOKEN_JSON`, `DRIVE_RAW_FOLDER_ID`, `DRIVE_PAUL_FOLDER_ID`,
 `NTFY_TOPIC`, `NTFY_SERVER`, `NTFY_TOKEN`, `PUBLIC_SITE_URL`,
-`ADAPTERS_DRY_RUN`, `MESSAGING_DRY_RUN`.
+`ADAPTERS_DRY_RUN`, `MESSAGING_DRY_RUN`, `DRIVE_FINISHED_FOLDER_ID`.
+
+**Our copy of the finished cut (wired 2026-10-05).** At `rendered`, before the
+buzz, the worker pulls the render down and puts it in `DRIVE_FINISHED_FOLDER_ID`
+under the same name Paul's folder uses (`084_t01_final_v1.mp4`); the row gets
+`storage_final_key = drive:<file id>`. It is refused, and nothing moves, when
+that folder is the Raw folder (the sweeper would read the cut as a new take and
+pay Submagic again) or the B-roll folder. Unset, refused or failed, the reason
+goes on the row as `save_note` and the buzz still goes. Delivery to Paul still
+reads `finished_url`, as before.
 
 `AD_VIDEO_STAGING_MODE` is **gone**. It used to choose between publishing the
 take and not publishing it; there is now only the route that publishes nothing,

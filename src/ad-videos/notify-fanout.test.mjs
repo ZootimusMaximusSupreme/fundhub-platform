@@ -84,6 +84,55 @@ describe("the finished-ad text does not follow the pulse number", async () => {
   });
 });
 
+/* THE LOG LINE THAT PROVES A TEXT WENT (board grok-handoff-ad-video-text-2026-09-24,
+   "Done means … the worker log line shows `sms: sent`").
+
+   Nothing leaves this machine: the fence is opened ONLY inside the env handed
+   to send(), and every request goes to the stand-in transport below, which
+   answers the way Twilio and ntfy answer. The numbers are 555-01xx fiction. */
+describe("the worker log line says what each channel did", async () => {
+  const { send } = await import("./notify-fanout.mjs");
+  const env = {
+    MESSAGING_DRY_RUN: "0",
+    AD_VIDEO_SMS_TO: "+15555550198",
+    TWILIO_SEND_ACCOUNT_SID: "ACtest00000000000000000000000000",
+    TWILIO_SEND_AUTH_TOKEN: "test-token",
+    TWILIO_SEND_FROM: "+15555550168",
+    NTFY_TOPIC: "test-topic"
+  };
+  const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  const capture = async (fn) => {
+    const lines = [];
+    const orig = console.log;
+    console.log = (...args) => { lines.push(args.map(String).join(" ")); };
+    try { return { out: await fn(), line: lines.find((l) => l.includes("[ad-video-notify]")) || "" }; }
+    finally { console.log = orig; }
+  };
+
+  test("Twilio and ntfy both accept: the line reads sms: sent and ntfy: sent", async () => {
+    const hosts = [];
+    const fetchImpl = async (url) => {
+      const host = new URL(String(url)).host;
+      hosts.push(host);
+      return host === "api.twilio.com" ? json(201, { sid: "SMtest", status: "queued" }) : json(200, { id: "n1" });
+    };
+    const { out, line } = await capture(() => send({ id: "r", notification }, { env, fetchImpl }));
+    assert.equal(line, "[ad-video-notify] sms: sent to …98 | ntfy: sent");
+    assert.equal(out.status, "sent");
+    assert.deepEqual(hosts.sort(), ["api.twilio.com", "ntfy.sh"]);
+  });
+
+  test("Twilio refuses the number: the line says not sent, and the row is not marked notified", async () => {
+    const fetchImpl = async (url) => (new URL(String(url)).host === "api.twilio.com"
+      ? json(400, { code: 21211, message: "The 'To' number is not a valid phone number." })
+      : json(200, { id: "n1" }));
+    const { out, line } = await capture(() => send({ id: "r", notification }, { env, fetchImpl }));
+    assert.match(line, /^\[ad-video-notify\] sms: not sent \(.*21211.*\) to …98 \| ntfy: sent$/);
+    assert.equal(out.ok, false, "with a number set, the text is what counts — ntfy alone is not a send");
+    assert.match(out.error, /text not sent/);
+  });
+});
+
 describe("with a number set, the text is what counts", async () => {
   const { send } = await import("./notify-fanout.mjs");
   const notification = { title: "Ad 84 take 1 is ready", click: "https://v.example/f.mp4", actions: [] };
