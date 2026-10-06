@@ -340,6 +340,18 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     assert.equal(badStatus.code, 400);
     assert.equal(badStatus.body.field, "status");
 
+    // Ad 92 is rolled twice on this shoot and kept by neither press; no clip
+    // is filed before the shoot closes.
+    for (const k of [1, 2]) {
+      const t = await mark(ownerA.token, { request_id: rid(`t92-${k}`), shoot_id: shootId, root_script_id: s92.id, mark: "another_take" });
+      assert.equal(t.code, 200, JSON.stringify(t.body));
+    }
+    // Ad 93's Take 4 (filed during the shoot) is approved: one finished ad.
+    await staffTx((c) => c.query(
+      `UPDATE ad_videos SET status = 'approved', approved_at = now(), approved_by = 'x5-pg'
+        WHERE org_id = $1 AND ad_id = '93' AND take_no = 4`, [orgA]
+    ));
+
     const done = await save(ownerA.token, { request_id: rid("close"), id: shootId, status: "done" });
     assert.equal(done.code, 200);
     assert.equal(done.body.shoot.status, "done");
@@ -356,12 +368,23 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     const page = await get(ownerA.token);
     assert.equal(page.body.shoot, null);
     assert.equal(page.body.past_shoots[0].id, shootId);
+    assertMatchesContract("GET marketing/shoot", page.body);
     assert.equal(page.body.past_shoots[0].filmed, 1);
+    assert.equal(page.body.past_shoots[0].finished, 1, "Ad 93 has its approved video from this shoot");
     assert.ok(page.body.plan_candidates.some((s) => s.root_script_id === s93.id), "a Got it on a closed shoot no longer hides the script");
     assert.ok(page.body.plan_candidates.some((s) => s.root_script_id === s91.id), "scripts not marked Got it stay on the next plan");
 
-    const next = await save(ownerA.token, { request_id: rid("next"), root_script_ids: [s91.id] });
+    // No take name is handed out twice once a shoot is closed.
+    const by = Object.fromEntries(page.body.plan_candidates.map((s) => [s.root_script_id, s]));
+    assert.equal(by[s92.id].take_file_name, `SLO Ad 92 — ${s92.title} Take 3.mp4`, "rolled twice on the closed shoot, no clip filed yet: Take 3, not Take 1");
+    assert.equal(by[s93.id].take_file_name, "SLO Ad 93 — Lenders read two files Take 5.mp4", "Take 4 filed and Take 3 + 4 rolled: counted once");
+    assert.equal(by[s91.id].take_file_name, `SLO Ad 91 — ${s91.title} Take 2.mp4`, "one clip filed, never rolled on the closed shoot");
+
+    const next = await save(ownerA.token, { request_id: rid("next"), root_script_ids: [s91.id, s92.id] });
     assert.equal(next.code, 200, "a new shoot once the old one is closed");
+    const onNext = Object.fromEntries(next.body.shoot.scripts.map((s) => [s.root_script_id, s]));
+    assert.equal(onNext[s92.id].take_no, 3, "the next shoot carries on from the closed shoot's takes");
+    assert.equal(onNext[s91.id].take_no, 2);
   });
 
   test("another company sees none of it", async () => {

@@ -19,8 +19,10 @@
 //   * Angle  "the name of that script. The words in the title." So the script's
 //            title, word for word (spaces folded), never angle_key and never a
 //            nickname.
-//   * Take # the next take: the highest take number already filed for this ad
-//            before the shoot started, plus the takes rolled on this shoot, plus 1.
+//   * Take # the next take: the highest take number already used for this ad
+//            before the shoot started (a clip filed, or a take rolled on a
+//            closed shoot whose clip is not filed yet — priorTakeNumbers()),
+//            plus the takes rolled on this shoot, plus 1.
 //
 // src/ad-videos/merge-takes.mjs parseTakeName() reads the four parts back. The
 // test proves every name made here reads back to the same four parts, so the
@@ -207,7 +209,8 @@ export function planCompare(a, b) {
  * The plan fields added to the Script object S.
  * @param {any} s        the Script object (scriptView) plus offer_key/lane/idea_kind as read
  * @param {{wpm?: number, priorTake?: number, mark?: {takes?: number, got_it?: boolean}|null}} [opts]
- *   priorTake: the highest take number filed for this ad before the shoot.
+ *   priorTake: the highest take number used for this ad before the shoot
+ *   (priorTakeNumbers(): clips filed, and takes rolled on closed shoots).
  */
 export function planFields(s, { wpm = DEFAULT_WPM, priorTake = 0, mark = null } = {}) {
   const takes = mark && Number.isInteger(mark.takes) && mark.takes > 0 ? mark.takes : 0;
@@ -335,6 +338,67 @@ function plainReason(r) {
   const s = typeof r === "string" ? r.replace(/\s+/g, " ").trim() : "";
   if (!s) return "A step stopped and did not say why.";
   return s.length > 200 ? s.slice(0, 197) + "..." : s;
+}
+
+/* ── the take number already used, per ad ────────────────────────────────── */
+
+/**
+ * The highest take number already used for each ad, so the next name never
+ * repeats one. Two sources, and a take counts once whichever has it:
+ *   * clips filed in ad_videos (take_no) — the caller passes only the clips
+ *     that came in before the shoot being planned started;
+ *   * takes rolled on CLOSED shoots (marks[root].takes) whose clips may not be
+ *     filed yet. Closing a shoot before its clips are shared must not hand the
+ *     next shoot "Take 1" again: ad_videos holds UNIQUE (org_id, ad_id,
+ *     take_no) (migration 389), so a second clip with the same name could
+ *     never be filed under that take.
+ * Closed shoots replay oldest first, numbered exactly as the screen numbered
+ * them: start = the highest take used before that shoot started (clips filed
+ * before it, or an earlier closed shoot), then + its takes.
+ *
+ * @param {{videos?: Array<{ad_id: any, take_no: any, created_at: any}>,
+ *          closed?: Array<{shoot_id: any, created_at: any, ad_id: any, takes: any}>}} p
+ * @returns {Map<string, number>} ad_id → highest take number used (absent = 0)
+ */
+export function priorTakeNumbers({ videos = [], closed = [] } = {}) {
+  const at = (v) => { const t = new Date(v).getTime(); return Number.isFinite(t) ? t : 0; };
+  const whole = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : 0; };
+
+  /** @type {Map<string, Array<{n: number, t: number}>>} */
+  const filed = new Map();
+  for (const v of videos || []) {
+    if (v == null || v.ad_id == null || !whole(v.take_no)) continue;
+    const ad = String(v.ad_id);
+    if (!filed.has(ad)) filed.set(ad, []);
+    /** @type {Array<{n: number, t: number}>} */ (filed.get(ad)).push({ n: whole(v.take_no), t: at(v.created_at) });
+  }
+  const filedBefore = (ad, t) => {
+    let m = 0;
+    for (const x of filed.get(ad) || []) if (t === null || x.t < t) m = Math.max(m, x.n);
+    return m;
+  };
+
+  /** @type {Map<string, {t: number, id: string, perAd: Map<string, number>}>} */
+  const shoots = new Map();
+  for (const c of closed || []) {
+    if (c == null || c.ad_id == null || !whole(c.takes)) continue;
+    const id = String(c.shoot_id);
+    if (!shoots.has(id)) shoots.set(id, { t: at(c.created_at), id, perAd: new Map() });
+    const s = /** @type {{t: number, id: string, perAd: Map<string, number>}} */ (shoots.get(id));
+    const ad = String(c.ad_id);
+    s.perAd.set(ad, (s.perAd.get(ad) || 0) + whole(c.takes));
+  }
+  const order = [...shoots.values()].sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  /** @type {Map<string, number>} */
+  const used = new Map();
+  for (const s of order) {
+    for (const [ad, takes] of s.perAd) {
+      used.set(ad, Math.max(used.get(ad) || 0, filedBefore(ad, s.t)) + takes);
+    }
+  }
+  for (const ad of filed.keys()) used.set(ad, Math.max(used.get(ad) || 0, filedBefore(ad, null)));
+  return used;
 }
 
 /* ── marks ───────────────────────────────────────────────────────────────── */

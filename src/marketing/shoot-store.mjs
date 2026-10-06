@@ -33,7 +33,7 @@ import { InvalidError, NotFoundError } from "./http.mjs";
 import { scriptView, VISIBLE_SQL, orderScripts } from "./scripts-store.mjs";
 import {
   DEFAULT_WPM, MIN_WPM, MAX_WPM, MARKS, JOINED_PREFIX,
-  planFields, planCompare, estimateMinutes, boardRow, sortBoard, applyMark
+  planFields, planCompare, estimateMinutes, boardRow, sortBoard, applyMark, priorTakeNumbers
 } from "./shoot-plan.mjs";
 
 export const SHOOT_STATUSES = Object.freeze(["planned", "filming", "uploaded", "done"]);
@@ -193,19 +193,37 @@ async function readyScripts(tx, { orgId }) {
 }
 
 /**
- * The highest take number filed per ad, counting only clips that came in
- * before `before` (the shoot's start) when given. {ad_id: n}.
+ * The highest take number already used per ad before `before` (the shoot's
+ * start; null = now): clips filed in ad_videos before it, and takes rolled on
+ * closed shoots that started before it, whose clips may not be filed yet
+ * (priorTakeNumbers() in shoot-plan.mjs holds the rule). {ad_id: n}.
  */
 async function priorTakes(tx, { orgId, adIds, before }) {
   if (!adIds.length) return new Map();
-  const r = await tx.query(
-    `SELECT ad_id, max(take_no)::int AS n FROM ad_videos
+  const videos = (await tx.query(
+    `SELECT ad_id, take_no, created_at FROM ad_videos
       WHERE org_id = $1 AND ad_id = ANY($2::text[]) AND take_no IS NOT NULL
-        AND ($3::timestamptz IS NULL OR created_at < $3)
-      GROUP BY ad_id`,
+        AND ($3::timestamptz IS NULL OR created_at < $3)`,
     [orgId, adIds, before ?? null]
-  );
-  return new Map(r.rows.map((x) => [String(x.ad_id), Number(x.n) || 0]));
+  )).rows;
+  // Marks are keyed by root_script_id; the ad number lives on the script.
+  // One row per (closed shoot, root): the lateral picks one version's ad_id.
+  const closed = (await tx.query(
+    `SELECT sh.id AS shoot_id, sh.created_at, a.ad_id, m.value->>'takes' AS takes
+       FROM marketing_shoots sh
+      CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(sh.marks) = 'object' THEN sh.marks ELSE '{}'::jsonb END) m
+      CROSS JOIN LATERAL (
+        SELECT x.ad_id FROM ad_scripts x
+         WHERE x.org_id = sh.org_id AND x.root_script_id::text = m.key
+           AND x.ad_id = ANY($2::text[])
+         ORDER BY x.archived_at IS NULL DESC, x.version DESC
+         LIMIT 1
+      ) a
+      WHERE sh.org_id = $1 AND sh.status = 'done'
+        AND ($3::timestamptz IS NULL OR sh.created_at < $3)`,
+    [orgId, adIds, before ?? null]
+  )).rows;
+  return priorTakeNumbers({ videos, closed });
 }
 
 /** The newest clip per ad that came in since the shoot started (a joined take is not the ad). */
@@ -291,10 +309,20 @@ export async function readShootPage(tx, { orgId, wpm = DEFAULT_WPM }) {
     .map((r) => withPlan(r, { wpm, priorTake: prior.get(String(r.ad_id)) || 0, mark: marks[String(r.root_script_id)] || null }))
     .sort(planCompare);
 
+  // finished: the shoot's ads that now have their one finished video (approved
+  // or delivered, ad_videos_one_finished_uq) from a clip that came in after the
+  // shoot started. Loaded is not counted: ad_videos has no loaded state yet.
   const past = (await tx.query(
-    `SELECT id, shoot_date, root_script_ids, marks, finished_at FROM marketing_shoots
-      WHERE org_id = $1 AND status = 'done'
-      ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT ${PAST_SHOOTS}`,
+    `SELECT sh.id, sh.shoot_date, sh.root_script_ids, sh.marks, sh.finished_at,
+            (SELECT count(DISTINCT v.ad_id)::int
+               FROM ad_scripts x
+               JOIN ad_videos v ON v.org_id = x.org_id AND v.ad_id = x.ad_id
+              WHERE x.org_id = sh.org_id AND x.root_script_id = ANY(sh.root_script_ids)
+                AND x.ad_id IS NOT NULL AND v.created_at >= sh.created_at
+                AND v.status IN ('approved', 'delivered')) AS finished
+       FROM marketing_shoots sh
+      WHERE sh.org_id = $1 AND sh.status = 'done'
+      ORDER BY sh.finished_at DESC NULLS LAST, sh.created_at DESC LIMIT ${PAST_SHOOTS}`,
     [orgId]
   )).rows.map((p) => {
     const m = p.marks && typeof p.marks === "object" ? p.marks : {};
@@ -303,6 +331,7 @@ export async function readShootPage(tx, { orgId, wpm = DEFAULT_WPM }) {
       shoot_date: day(p.shoot_date),
       scripts: (p.root_script_ids || []).length,
       filmed: Object.values(m).filter((x) => x && x.got_it === true).length,
+      finished: Number(p.finished) || 0,
       finished_at: iso(p.finished_at)
     };
   });

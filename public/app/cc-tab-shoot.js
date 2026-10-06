@@ -530,8 +530,8 @@
       past.forEach(function (p) {
         list.appendChild(h("li", { cls: "row" }, [
           h("div", { cls: "nm", text: azDay(p.shoot_date) }),
-          h("div", { cls: "chips" }, [chip("on", plural(p.filmed, "filmed", "filmed"))]),
-          h("div", { cls: "body" }, [h("span", { cls: "caption muted", text: plural(p.scripts, "script", "scripts") + " planned, " + p.filmed + " marked Got it. Closed " + azTime(ctx, p.finished_at) + "." })])
+          h("div", { cls: "chips" }, [chip("on", plural(p.filmed, "filmed", "filmed")), chip(p.finished ? "on" : "", (p.finished || 0) + " finished")]),
+          h("div", { cls: "body" }, [h("span", { cls: "caption muted", text: plural(p.scripts, "script", "scripts") + " planned, " + p.filmed + " marked Got it, " + (p.finished || 0) + " finished. Closed " + azTime(ctx, p.finished_at) + "." })])
         ]));
       });
       return h("section", { cls: "card" }, [h("div", { cls: "hd" }, [h("h2", { text: "Past shoots" })]), list]);

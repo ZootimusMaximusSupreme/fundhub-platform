@@ -2441,7 +2441,7 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
 |---|---|
 | `angle_name` | The script's title, word for word: the angle in `marketing/ads/NAMING.md`. Null when it has no title. |
 | `offer_word` | The word that starts the file name. Only `SLO` (the roadmap offer) is on file; any other offer is null, never a made-up word. |
-| `take_no` | The next take: the highest take number filed for this ad before the shoot started, plus the takes rolled on this shoot, plus 1. |
+| `take_no` | The next take: the highest take number already used for this ad before the shoot started, plus the takes rolled on this shoot, plus 1. Used means a clip filed in `ad_videos`, or a take rolled on a closed shoot whose clip is not filed yet, so closing a shoot early never hands out the same name twice. |
 | `take_file_name` | `{offer_word} Ad {ad_id} — {angle_name} Take {take_no}.mp4`, the exact name the clip gets. Null when a part is missing; `take_name_problem` says which, in plain words. `src/ad-videos/merge-takes.mjs` `parseTakeName()` reads it back to the same four parts. |
 | `last_take_file_name` | The name of the take just rolled on this shoot, or null. |
 | `takes`, `got_it` | This shoot's marks for the script (0 and false off a shoot). |
@@ -2457,7 +2457,7 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
 
 **Request (query):** `{wpm?}`
 
-**Response:** `{shoot:{id, shoot_date, status, root_script_ids, marks, estimated_minutes, board:[{ad_id, angle, step, step_word, since, reason, can_retry, needs_you}], landed_unmatched, scripts:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], started_at, finished_at, created_at, updated_at}, plan_candidates:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], plan_estimated_minutes, past_shoots:[{id, shoot_date, scripts, filmed, finished_at}], wpm, as_of}`
+**Response:** `{shoot:{id, shoot_date, status, root_script_ids, marks, estimated_minutes, board:[{ad_id, angle, step, step_word, since, reason, can_retry, needs_you}], landed_unmatched, scripts:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], started_at, finished_at, created_at, updated_at}, plan_candidates:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], plan_estimated_minutes, past_shoots:[{id, shoot_date, scripts, filmed, finished, finished_at}], wpm, as_of}`
 
 **Errors** (besides the common ones in section 2):
 
@@ -2471,7 +2471,7 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
 - `board`: one row per ad on the shoot that has a Got it mark or a clip that landed after the shoot started. `step` is `filmed`, `matched`, `cutting`, `captions`, `animations`, `ready_to_approve`, `approved`, `loaded` or `failed` (the spec §8.2 table, read from `ad_videos.status`). `step_word` is the word the screen prints. A clip at `staged` says "The join step still runs on the Mac." `needs_you` rows go on top. `can_retry` is false until the Videos routes ship.
 - `estimated_minutes` (the shoot) and `plan_estimated_minutes` (the candidates): each script's read time plus 2 minutes per ad, rounded up.
 - `landed_unmatched`: clips that landed since the shoot started and have no ad yet ("N clips landed, matching").
-- `past_shoots`: the last 5 closed shoots, with how many scripts were on each and how many were marked Got it.
+- `past_shoots`: the last 5 closed shoots, with how many scripts were on each, how many were marked Got it, and `finished`: how many of its ads now have their finished video (approved or delivered) from a clip that came in after the shoot started. Loaded is not counted: `ad_videos` has no loaded state yet.
 
 **Example**
 
@@ -2809,6 +2809,7 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
         "shoot_date": "2026-10-06",
         "scripts": 4,
         "filmed": 4,
+        "finished": 3,
         "finished_at": "2026-10-06T19:12:00.000Z"
       }
     ],

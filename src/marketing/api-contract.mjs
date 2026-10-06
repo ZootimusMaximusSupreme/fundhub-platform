@@ -175,7 +175,7 @@ const PLAN_KEYS = [
   "last_take_file_name", "takes", "got_it", "first_line_only", "teleprompter_text",
   "words", "read_seconds"
 ];
-const PAST_SHOOT_KEYS = ["id", "shoot_date", "scripts", "filmed", "finished_at"];
+const PAST_SHOOT_KEYS = ["id", "shoot_date", "scripts", "filmed", "finished", "finished_at"];
 
 const SUGGESTION_KEYS = [
   "id", "batch_id", "page", "problem", "numbers", "new_words", "status", "change",
@@ -1428,7 +1428,7 @@ export const CONTRACT = deepFreeze({
         },
         plan_candidates: [SHOOT_SCRIPT_2],
         plan_estimated_minutes: 3,
-        past_shoots: [{ id: "00000000-0000-4000-8000-000000000900", shoot_date: "2026-10-06", scripts: 4, filmed: 4, finished_at: "2026-10-06T19:12:00.000Z" }],
+        past_shoots: [{ id: "00000000-0000-4000-8000-000000000900", shoot_date: "2026-10-06", scripts: 4, filmed: 4, finished: 3, finished_at: "2026-10-06T19:12:00.000Z" }],
         wpm: 150,
         as_of: "2026-10-13T16:06:00.000Z"
       }

@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   OFFER_WORDS, offerWordFor, angleNameFor, takeFileName, takeNameProblem,
   teleprompterText, isFirstLineOnly, readSeconds, wordCount, estimateMinutes,
-  planCompare, planFields, boardRow, sortBoard, applyMark, BOARD_STEPS
+  planCompare, planFields, boardRow, sortBoard, applyMark, BOARD_STEPS, priorTakeNumbers
 } from "./shoot-plan.mjs";
 import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 
@@ -158,6 +158,49 @@ describe("marks", () => {
     assert.equal(m.r1.got_it, true);
     assert.equal(m.r1.takes, 3);
     assert.deepEqual(applyMark(null, "r2", "got_it", "t").r2, { takes: 1, got_it: true, at: "t" });
+  });
+});
+
+describe("the take number already used (no name twice)", () => {
+  const day = (d) => `2026-10-${String(d).padStart(2, "0")}T16:00:00.000Z`;
+
+  test("clips on file only: the highest take number", () => {
+    const m = priorTakeNumbers({ videos: [{ ad_id: "93", take_no: 2, created_at: day(1) }, { ad_id: "93", take_no: 1, created_at: day(1) }] });
+    assert.equal(m.get("93"), 2);
+    assert.equal(m.get("91"), undefined);
+  });
+
+  test("a shoot closed before its clips were filed still uses its take numbers", () => {
+    const m = priorTakeNumbers({ closed: [{ shoot_id: "a", created_at: day(5), ad_id: "91", takes: 2 }] });
+    assert.equal(m.get("91"), 2, "rolled Take 1 and Take 2, nothing filed yet: the next shoot starts at Take 3");
+    const next = planFields({ ad_id: "91", title: "Lenders read two files", offer_key: "slo_roadmap", body: "x" }, { priorTake: m.get("91") });
+    assert.equal(next.take_file_name, "SLO Ad 91 — Lenders read two files Take 3.mp4");
+  });
+
+  test("a closed shoot starts after the clips filed before it, and a filed clip is never counted twice", () => {
+    const videos = [
+      { ad_id: "93", take_no: 2, created_at: day(1) }, // before shoot A
+      { ad_id: "93", take_no: 4, created_at: day(6) }  // shoot A's Take 4, filed after it closed
+    ];
+    const closed = [{ shoot_id: "a", created_at: day(5), ad_id: "93", takes: 2 }]; // Take 3 and Take 4
+    assert.equal(priorTakeNumbers({ videos, closed }).get("93"), 4);
+  });
+
+  test("closed shoots replay oldest first", () => {
+    const closed = [
+      { shoot_id: "b", created_at: day(9), ad_id: "91", takes: 1 },
+      { shoot_id: "a", created_at: day(5), ad_id: "91", takes: 2 }
+    ];
+    const videos = [{ ad_id: "91", take_no: 7, created_at: day(7) }]; // filed between the shoots
+    assert.equal(priorTakeNumbers({ videos, closed }).get("91"), 8, "A used 1-2, a clip filed Take 7, B rolled Take 8");
+  });
+
+  test("junk rows are skipped, not counted", () => {
+    const m = priorTakeNumbers({
+      videos: [{ ad_id: null, take_no: 9, created_at: day(1) }, { ad_id: "91", take_no: null, created_at: day(1) }],
+      closed: [{ shoot_id: "a", created_at: day(2), ad_id: "91", takes: "x" }, { shoot_id: "a", created_at: day(2), ad_id: null, takes: 3 }]
+    });
+    assert.equal(m.size, 0);
   });
 });
 

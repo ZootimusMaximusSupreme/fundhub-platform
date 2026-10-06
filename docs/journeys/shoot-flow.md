@@ -18,7 +18,7 @@ stateDiagram-v2
     filming --> done: Close the shoot (two taps)
     filming --> uploaded: POST marketing/shoot {id, status:'uploaded'}<br/>(no button sends this yet)
     uploaded --> done: Close the shoot
-    done --> [*]: never changed again (400)
+    done --> [*]: never changed again (400)<br/>Past shoots: date, planned, Got it count, finished count<br/>(ads with an approved or delivered video from a clip after the shoot started)
 ```
 
 ## 2. One script on Shoot Day
@@ -26,7 +26,7 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     A["Approved in Scripts<br/>ad_scripts.status = locked, ad_id set<br/>(or filmed + needs_retake)"] --> B["GET marketing/shoot<br/>plan_candidates, retakes first, then film_order"]
-    B --> N["take_file_name = '{offer word} Ad {n} — {title} Take {k}.mp4'<br/>offer word on file: SLO only (slo_roadmap or lane slo)<br/>k = highest take filed before the shoot + takes rolled + 1"]
+    B --> N["take_file_name = '{offer word} Ad {n} — {title} Take {k}.mp4'<br/>offer word on file: SLO only (slo_roadmap or lane slo)<br/>k = highest take used before the shoot + takes rolled + 1<br/>used = a clip filed in ad_videos, or a take rolled on a closed shoot<br/>whose clip is not filed yet (closing early never repeats a name)"]
     N -->|"no ad number, no title,<br/>or an offer with no word"| X["take_file_name null<br/>take_name_problem says why in words"]
     B --> P["Shoot tab: Save the plan"]
     P --> T["Teleprompter rolls teleprompter_text<br/>(the hook only for a new-opening retake)"]
@@ -54,3 +54,4 @@ flowchart TD
 6. **Service worker, `window.FH_API_BASE` and the app's own sign-in form** (spec §8.1, for the iPhone app) are not built: there is no app yet. The page keeps its last answer in this phone's storage and rolls from it when offline.
 7. **The shared review module** `public/app/marketing-review.js` (design §3.0) does not exist yet; the tab and the teleprompter each write their own request ids and offline queue.
 8. **The Shoot tab is not on the page yet.** `public/app/cc-tab-shoot.js` registers with `window.FundhubCC` (the tab contract, `docs/specs/command-center-tabs.md`); the integrator adds its `<script>` tag when the frame (U34) lands.
+9. **Past shoots show no loaded count** (design §3.4 item 7). Date, planned, Got it and finished are shown; loaded waits for a loaded state in `ad_videos` (same cause as gap 3). No number is made up.
