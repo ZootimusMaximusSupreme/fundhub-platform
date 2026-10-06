@@ -1,8 +1,8 @@
 // src/meta/user-data.test.mjs — what Meta gets about a person: hashes only.
 //
 // What this proves: email and phone are normalised the way the contract says
-// (lowercased and trimmed; digits only with a leading 1 for a 10-digit US
-// number) and then SHA-256 hashed; the raw value never appears in user_data;
+// (lowercased and trimmed; digits only, no leading zeros, with a leading 1 for
+// a 10-digit US number) and then SHA-256 hashed; the raw value never appears in user_data;
 // IP, fbc and fbp are shape-checked; the session contact lookup is bounded and
 // never throws. And the CLAUDE.md §12 rule for this directory: nothing under
 // src/meta/ calls fetch, and only track-send.mjs imports the sender.
@@ -47,6 +47,13 @@ describe("hashing", () => {
     assert.equal(hashPhone("+14155550134"), hex("14155550134"), "the stored +1 form and the typed form hash the same");
     assert.equal(hashPhone("123"), null);
     assert.equal(hashPhone(""), null);
+  });
+
+  test("phone: leading zeros are removed, as Meta's rule says (an 00 dialing prefix is not the number)", () => {
+    assert.equal(normalizePhone("0044 20 7946 0958"), "442079460958");
+    assert.equal(hashPhone("00 44 20 7946 0958"), hex("442079460958"), "same hash as the +44 form");
+    assert.equal(hashPhone("0014155550134"), hex("14155550134"), "same hash as the +1 form");
+    assert.equal(normalizePhone("000"), "", "all zeros is no phone");
   });
 });
 

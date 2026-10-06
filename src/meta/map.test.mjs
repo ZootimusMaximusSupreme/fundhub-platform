@@ -20,6 +20,7 @@ import {
   metaEventsFor, baseEventId, cleanMetaEventId, pageUrl, VIEW_CONTENT_PAGES
 } from "./map.mjs";
 import { TRACK_EVENTS } from "../funnel/track.mjs";
+import { sloPurchaseEventId } from "../handlers/meta-purchase.mjs";
 import { FUNNEL_PAGES } from "../funnel/pages.mjs";
 
 const DOC = fs.readFileSync(
@@ -82,7 +83,12 @@ describe("META_MAP is the contract table", () => {
   test("custom_data keys and fixed values come from the table", () => {
     ROWS.forEach(([, meta, , cell], i) => {
       const name = meta.match(/^[A-Za-z]+/)[0];
-      const fired = metaEventsFor(SAMPLES[i]).find((e) => e.event_name === name);
+      const rule = META_MAP[i];
+      // A browser-only row (Purchase) has no server copy to look at: check the
+      // rule itself, which is what the browser's copy is held to.
+      const fired = rule.serverCopy === false
+        ? (rule.match(SAMPLES[i]) ? { event_name: name, custom_data: rule.customData(SAMPLES[i]) } : null)
+        : metaEventsFor(SAMPLES[i]).find((e) => e.event_name === name);
       assert.ok(fired, `row ${i + 1}: the sample fires ${name}`);
       assert.deepEqual(Object.keys(fired.custom_data || {}).sort(), docKeys(cell), `row ${i + 1}: ${cell}`);
       const literal = cell.match(/content_name "([^"]+)"/);
@@ -203,13 +209,38 @@ describe("event_id: the browser's id, so Meta counts each event once", () => {
     assert.deepEqual(ids, [["Lead", "sess-abcdef12.9"], ["SurveyStep", "sess-abcdef12.9"]]);
   });
 
-  test("Purchase only with purchase.<order ref>, once per order", () => {
-    const buy = metaEventsFor(SAMPLES[5]);
-    assert.deepEqual(buy, [{ event_name: "Purchase", event_id: "purchase.ord_123", custom_data: { value: 147, currency: "USD" } }]);
-    assert.deepEqual(metaEventsFor(row("payment_result", { props: { result: "success" } })), [],
-      "an id that is not purchase.<ref> is not a Purchase id");
-    assert.deepEqual(metaEventsFor(row("payment_result", { props: { result: "success" }, meta_event_id: undefined })), [],
-      "no order ref: the payment webhook sends it with purchase.<ref>");
+  test("Purchase: the track row sends no server copy — the payment webhook's is the only one", () => {
+    // Meta drops a server event that matches a browser event; it does not
+    // promise to drop a second server event with the same id. The browser
+    // fires Purchase from this row; the server copy is the webhook's.
+    assert.deepEqual(metaEventsFor(SAMPLES[5]), [], "browser's purchase.<ref> row: no second server Purchase");
+    assert.deepEqual(metaEventsFor(row("payment_result", { props: { result: "success" } })), []);
+    assert.deepEqual(metaEventsFor(row("payment_result", { props: { result: "success" }, meta_event_id: undefined })), []);
+    assert.deepEqual(META_MAP.filter((r) => r.serverCopy === false).map((r) => r.meta), ["Purchase"],
+      "Purchase is the only browser-only row; every other row still sends its server copy");
+    for (let i = 0; i < SAMPLES.length; i++) {
+      if (META_MAP[i].serverCopy === false) continue;
+      assert.ok(metaEventsFor(SAMPLES[i]).some((e) => e.event_name === META_MAP[i].meta), `row ${i + 1} still goes server-side`);
+    }
+  });
+
+  test("the browser's Purchase rule: purchase.<order ref>, $147 USD, success only", () => {
+    const rule = META_MAP.find((r) => r.meta === "Purchase");
+    assert.equal(rule.idPrefix, "purchase.");
+    assert.equal(rule.match(SAMPLES[5]), true);
+    assert.equal(rule.match(row("payment_result", { props: { result: "fail" } })), false);
+    assert.deepEqual(rule.customData(SAMPLES[5]), { value: 147, currency: "USD" });
+  });
+
+  test("the doc's Purchase row names the payment webhook as the server copy", () => {
+    const buyRow = ROWS.find(([, meta]) => meta.startsWith("Purchase"));
+    assert.match(buyRow[2], /payment webhook/, buyRow[2]);
+  });
+
+  test("the one server Purchase (payment webhook) uses the browser's id for the same order", () => {
+    const ref = "slo_0123456789abcdef01234567";
+    assert.equal(sloPurchaseEventId(ref), `${META_MAP.find((r) => r.meta === "Purchase").idPrefix}${ref}`);
+    assert.equal(cleanMetaEventId(sloPurchaseEventId(ref)), sloPurchaseEventId(ref), "a usable Meta event id");
   });
 
   test("InitiateCheckout carries $147 under the browser's id", () => {

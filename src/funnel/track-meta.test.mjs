@@ -271,7 +271,7 @@ describe("what Meta gets", () => {
     assert.equal(h.metaCalls[0].body.test_event_code, "TEST4242");
   });
 
-  test("InitiateCheckout: $297 under the browser's id; the next tab-2 post (no id) sends nothing", async () => {
+  test("InitiateCheckout: $147 under the browser's id; the next tab-2 post (no id) sends nothing", async () => {
     const h = harness();
     await send(h, { event: "buybox_tab", seq: 5, props: { tab: 2, bbv: 2 } });
     await send(h, { event: "buybox_tab", seq: 9, props: { tab: 2, bbv: 2 }, meta_event_id: undefined });
@@ -280,7 +280,7 @@ describe("what Meta gets", () => {
     const ev = h.metaCalls[0].body.data[0];
     assert.equal(ev.event_name, "InitiateCheckout");
     assert.equal(ev.event_id, `${SID}.5`);
-    assert.deepEqual(ev.custom_data, { value: 297, currency: "USD" });
+    assert.deepEqual(ev.custom_data, { value: 147, currency: "USD" }, "the price charged (SLO_PRICE_CENTS), in dollars");
   });
 
   test("the last survey question: Lead and SurveyStep in one request, one shared id", async () => {
@@ -295,16 +295,16 @@ describe("what Meta gets", () => {
     assert.equal(h.updates[0].patch.meta.event_name, "Lead,SurveyStep");
   });
 
-  test("Purchase only with the browser's purchase.<order_ref> id, once per order", async () => {
+  test("Purchase: the door sends no server copy — the payment webhook's is the one (Meta does not promise to dedupe two server copies)", async () => {
     const h = harness();
     await send(h, { event: "payment_result", props: { result: "success", bbv: 2, order_ref: "ord_9" }, meta_event_id: "purchase.ord_9" });
     await send(h, { event: "payment_result", seq: 2, props: { result: "success", bbv: 2, order_ref: "ord_9" }, meta_event_id: undefined });
     await send(h, { event: "payment_result", seq: 3, props: { result: "success", bbv: 2 } });
     await h.settle();
     assert.equal(h.rows[0].payload.props.order_ref, "ord_9", "the order ref is kept on the row");
-    assert.equal(h.metaCalls.length, 1);
-    assert.deepEqual(h.metaCalls[0].body.data.map((e) => [e.event_name, e.event_id, e.custom_data]),
-      [["Purchase", "purchase.ord_9", { value: 297, currency: "USD" }]]);
+    assert.equal(h.rows[0].payload.meta_event_id, "purchase.ord_9", "the browser's Purchase id is kept on the row");
+    assert.equal(h.metaCalls.length, 0, "no Purchase to Meta from the track door");
+    assert.equal(h.updates.length, 0, "nothing recorded: no job started");
   });
 });
 

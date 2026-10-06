@@ -18,6 +18,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import { makePage } from "./fh-events-harness.mjs";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { SLO_VALUE, CURRENCY } from "../meta/map.mjs";
 
 const SID = "sess-abcdef12";
 const PV = `pv.${SID}.k3j9x`;
@@ -180,14 +183,14 @@ describe("Lead", () => {
 });
 
 describe("InitiateCheckout, Purchase, ReachedBuyBox", () => {
-  test("InitiateCheckout on the first buybox_tab tab 2 per session, 297 USD; tab 1 and repeats send nothing", () => {
+  test("InitiateCheckout on the first buybox_tab tab 2 per session, 147 USD; tab 1 and repeats send nothing", () => {
     const p = page({ pathname: "/roadmap" }).run();
     p.win.fhTrack("buybox_tab", { tab: 1, bbv: 2 });
     p.win.fhTrack("buybox_tab", { tab: 2, bbv: 2 });
     p.win.fhTrack("buybox_tab", { tab: 1, bbv: 2 });
     p.win.fhTrack("buybox_tab", { tab: 2, bbv: 2 });
     const tabs = p.events("buybox_tab");
-    assert.deepEqual(named(p, "InitiateCheckout"), [["track", "InitiateCheckout", { value: 297, currency: "USD" }, tabs[1].meta_event_id]]);
+    assert.deepEqual(named(p, "InitiateCheckout"), [["track", "InitiateCheckout", { value: 147, currency: "USD" }, tabs[1].meta_event_id]]);
     assert.deepEqual(tabs.map((b) => "meta_event_id" in b), [false, true, false, false]);
 
     const reload = page({ pathname: "/roadmap", storage: p.store }).run();
@@ -195,14 +198,14 @@ describe("InitiateCheckout, Purchase, ReachedBuyBox", () => {
     assert.equal(named(reload, "InitiateCheckout").length, 0, "once per session, not per page load");
   });
 
-  test("Purchase: eventID purchase.<order_ref>, 297 USD, once per order", () => {
+  test("Purchase: eventID purchase.<order_ref>, 147 USD, once per order", () => {
     const ref = "slo_0123456789abcdef01234567";
     const p = page({ pathname: "/roadmap" }).run();
     p.win.fhTrack("payment_result", { result: "fail", code: "card_declined", bbv: 2 });
     p.win.fhTrack("payment_result", { result: "success", order_ref: ref, bbv: 2 });
     p.win.fhTrack("payment_result", { result: "success", order_ref: ref, bbv: 2 });
     const results = p.events("payment_result");
-    assert.deepEqual(named(p, "Purchase"), [["track", "Purchase", { value: 297, currency: "USD" }, `purchase.${ref}`]]);
+    assert.deepEqual(named(p, "Purchase"), [["track", "Purchase", { value: 147, currency: "USD" }, `purchase.${ref}`]]);
     assert.deepEqual(results.map((b) => b.meta_event_id), [undefined, `purchase.${ref}`, undefined]);
     assert.equal(results[1].props.order_ref, ref, "order_ref is posted with the event");
 
@@ -346,4 +349,12 @@ describe("fbclid, fbc, fbp and url on every post", () => {
     const p = page({ pathname: "/watch", search: `?fbclid=${FBCLID}` }).run();
     assert.equal("fbclid" in p.bodies()[0], false);
   });
+});
+
+test("the browser's price is the server's price (src/meta/map.mjs SLO_VALUE, from SLO_PRICE_CENTS)", () => {
+  const src = fs.readFileSync(fileURLToPath(new URL("../../public/funnel/fh-events.js", import.meta.url)), "utf8");
+  const m = src.match(/var PRICE = \{ value: (\d+(?:\.\d+)?), currency: "([A-Z]{3})" \};/);
+  assert.ok(m, "fh-events.js has one PRICE line");
+  assert.equal(Number(m[1]), SLO_VALUE, "Meta keeps the copy it gets first, usually the browser's");
+  assert.equal(m[2], CURRENCY);
 });

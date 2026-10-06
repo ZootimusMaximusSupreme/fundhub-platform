@@ -6,7 +6,7 @@ Shipped `10a7b8ca` (Netlify) + ClickFunnels pushes (funnel 968281 head pixel, /r
 |---|---|
 | Every funnel page + fundhub.ai homepage | PageView (`pv.<sid>.<rand>`) |
 | /roadmap, /watch, /apply, fundhub.ai homepage | ViewContent (`<pv>.vc`) |
-| /roadmap | Lead (step-1 button, checks passed), InitiateCheckout (card step, once per session, $297), Purchase (`purchase.<order ref>`, $297, once — also sent by the server when the payment lands), ReachedBuyBox, SoftPullSubmitted, VideoProgress |
+| /roadmap | Lead (step-1 button, checks passed), InitiateCheckout (card step, once per session, $147), Purchase (`purchase.<order ref>`, $147, once in the browser; the server copy is sent by the payment webhook when the money lands), ReachedBuyBox, SoftPullSubmitted, VideoProgress |
 | /apply, homepage survey | SurveyStep per question, Lead on the last question |
 | /apply, /roadmap-book, /funding-book-call | Schedule on a real booking |
 | /thank-you | SurveyRouted |
@@ -31,12 +31,12 @@ Owner ask: server events too, and from mobile (server copies reach Meta even whe
 ```js
 export async function sendMetaEvents(events, { env = process.env, db, fetchImpl } = {}) // → { ok, sent, error? }
 ```
-Each event: `{ event_name, event_time, event_id, event_source_url, action_source: "website", user_data: { client_ip_address, client_user_agent, fbc, fbp, em: [sha256], ph: [sha256], external_id? }, custom_data? }`. Email and phone are lowercased and trimmed (phone: digits only, US numbers with leading 1) before SHA-256. Never sends card numbers, SSN, date of birth, survey answers about income or credit, soft-pull field values, or raw email/phone.
+Each event: `{ event_name, event_time, event_id, event_source_url, action_source: "website", user_data: { client_ip_address, client_user_agent, fbc, fbp, em: [sha256], ph: [sha256], external_id? }, custom_data? }`. Email and phone are lowercased and trimmed (phone: digits only, leading zeros removed, US numbers with leading 1 — Meta's rule) before SHA-256. Never sends card numbers, SSN, date of birth, survey answers about income or credit, soft-pull field values, or raw email/phone.
 
 ## Same event_id in browser and server (dedupe)
 - Browser-started events: `event_id = "<fh_sid>.<seq>"` — the same `seq` the tracker already sends to our database. The browser calls `fbq('track'|'trackCustom', name, data, { eventID })` and posts the track event (with `meta_event_id`, `fbc`, `fbp`, `url`) to `/api/public/slo-interest`; the server sends the same event to Meta with the same id.
 - PageView: the head pixel snippet sets `window.__fhPv = "pv.<fh_sid>.<random>"` and fires `fbq('track','PageView',{}, {eventID: window.__fhPv})`; the tracker's `page_view` carries `meta_event_id = window.__fhPv`.
-- Purchase ($297): `event_id = "purchase.<order ref>"` in the browser (checkout:success) AND on the server when the order is marked paid (payment webhook) — Meta counts it once.
+- Purchase ($147 roadmap order): `event_id = "purchase.<order ref>"` in the browser (checkout:success) AND on the server when the order is marked paid (payment webhook) — Meta counts it once. The payment webhook is the **only** server copy: the track row of checkout:success sends none (Meta drops a server copy that matches a browser copy, but does not promise to drop a second server copy — changed 2026-10-05, M9).
 
 ## Map (database event → Meta)
 | Our event | Meta event | When | custom_data |
@@ -46,7 +46,7 @@ Each event: `{ event_name, event_time, event_id, event_source_url, action_source
 | continue (buy box step 1) | Lead | step-1 button | content_name "roadmap_buybox" |
 | survey_answer on the last question (/apply, /home) | Lead | survey submit | content_name = survey |
 | buybox_tab tab 2 (first time per session) | InitiateCheckout | card step shown | value 147, currency USD |
-| payment_result success | Purchase | once per order, id `purchase.<ref>` | value 147, currency USD |
+| payment_result success | Purchase | browser only, once per order, id `purchase.<ref>`; the server copy is the payment webhook's, same id | value 147, currency USD |
 | booking_confirmed | Schedule | every booking page | content_name = calendar |
 | survey_answer | SurveyStep (custom) | each question answered | survey, step |
 | survey_route | SurveyRouted (custom) | sorting hat route | offer |
@@ -60,3 +60,55 @@ The old `InitiateCheckout` on the Pay press in `fh-attribution.js` and the hand-
 - Stop dropping `fbclid`. The browser keeps it (first touch) and, when the `_fbc` cookie is missing, builds `fbc = "fb.1.<ms>.<fbclid>"`. `fbp` comes from the `_fbp` cookie.
 - Every track post, the step-1 contact, the checkout and the soft-pull post carry `fbc` and `fbp`. The server stores them on the order/client so a later server-only Purchase (payment webhook) can send them.
 - Server `user_data` also gets `client_ip_address` (`x-nf-client-connection-ip`, else first `x-forwarded-for`) and `client_user_agent`. Email/phone for a session come from that session's `slo.contact_started` row (hashed on the server).
+
+
+---
+
+# Checked against Meta's own rules — 2026-10-05 (M9)
+
+Purchase and Schedule have never fired for real (no sale, no booking since 10/2). So they were checked in code, field by field, against Meta's written rules. The proof is `src/meta/meta-spec.test.mjs`: it builds the exact request our server would send (fake Meta, fake token) and holds it to the rules below.
+
+Meta's pages (read 2026-10-05):
+- R1 Server event parameters — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/server-event
+- R2 Customer information parameters — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/customer-information-parameters
+- R3 fbp and fbc — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/fbp-and-fbc
+- R4 Custom data — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/custom-data ; Pixel standard events — https://developers.facebook.com/docs/meta-pixel/reference
+- R5 Deduplication — https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events
+
+| Check | Meta's rule | Lead | InitiateCheckout | Schedule | Purchase |
+|---|---|---|---|---|---|
+| event_name | standard name, same as the browser's (R1, R5) | PASS | PASS | PASS | PASS |
+| event_time | Unix seconds, not older than 7 days (R1) | PASS (send time) | PASS | PASS | PASS (webhook time) |
+| action_source | one of Meta's values (R1) | PASS website | PASS website | PASS website | PASS website (system_generated only when the checkout kept no user agent) |
+| event_source_url | required for website events (R1) | PASS page url | PASS | PASS booking page url | PASS https://apply.fundhub.ai/roadmap |
+| client_user_agent | required for website events, not hashed (R2) | PASS | PASS | PASS | PASS (from the checkout request) |
+| client_ip_address | not hashed (R2) | PASS | PASS | PASS | PASS |
+| em (email) | SHA-256 of trimmed, lowercased email (R2) | PASS | PASS | PASS | PASS |
+| ph (phone) | SHA-256 of digits, country code, no leading zeros (R2) | FIXED | FIXED | FIXED | FIXED — leading zeros were kept |
+| external_id | hashing recommended (R2) | PASS (hash of session id) | PASS | PASS | PASS (hash of client id) |
+| fbc / fbp | raw, `fb.1.<ms>.<id>`, click id case kept (R2, R3) | PASS | PASS | PASS | PASS |
+| value + currency | Purchase needs both; value is a number (R4) | — | server PASS 147 USD; browser FIXED (was 297) | — | server PASS (charged cents / 100, e.g. 14700 → 147); browser FIXED (was 297) |
+| event_id same in browser and server | eventID = event_id, same name (R5) | PASS `<sid>.<seq>` | PASS `<sid>.<seq>` | PASS `<sid>.<seq>` | PASS `purchase.<order ref>` both sides |
+| one server copy per event | Meta drops a server copy that matches a browser copy; it does not promise to drop a second server copy (R5) | PASS | PASS | PASS | FIXED — the track door also sent one; now only the payment webhook does |
+| ad id / campaign id | Conversions API has no ad id or campaign id field (R1); Meta ties the event to the ad through fbc (the click id) | fbc sent | fbc sent | fbc sent | fbc sent (from the checkout, else kept on the client) |
+
+Live proof already on record (production `events`, read only): the Lead and the InitiateCheckout of 2026-10-02 22:43 UTC both carried the browser's `<sid>.<seq>` id, fbc, fbp and the page url, and Meta answered `sent: 1` with no error.
+
+**Browser price fixed (2026-10-05, M9, owner-authorized):** the browser tracker (`public/funnel/fh-events.js`, `var PRICE`) said $297 for InitiateCheckout and Purchase while the page has charged $147 since 2026-10-04. Meta keeps the copy it gets first, usually the browser's, so a sale would have shown as $297. It now says 147, and `src/ads/fh-events-meta.test.mjs` fails if the browser price and `SLO_VALUE` ever differ again. Live only after the next `npm run ship` (Netlify serves the file; the ClickFunnels pages load it from fundhub.ai).
+
+## After the first real booking or sale — what to look at (5 minutes)
+
+Test Events only shows events sent with a test code, and real visitors never carry one. So a real sale or booking shows up in **Overview**, not Test Events.
+
+1. **Our own record first (an agent reads it).** The booking row `funnel.booking_confirmed` (Schedule) or the payment row `payment.received` (Purchase) has `payload.meta`. Expected: `sent: 1`, no `error`, `event_name` "Schedule" or "Purchase", `event_id` like `<session id>.<number>` (Schedule) or `purchase.slo_<24 letters and digits>` (Purchase). Purchase also shows `ok: true` and `value: 147` (more if they added businesses).
+2. **Meta Overview:** https://business.facebook.com/events_manager2/list/pixel/2403674420141513/overview?business_id=1475597360226485 — find the Purchase or Schedule row. Expected:
+   - It counts **1** for that sale or booking, not 2.
+   - Connection method says **Browser and Server** (or "Multiple").
+   - Open the event, then its deduplication details: the server copy is deduplicated against the browser copy by **Event ID**.
+   - Purchase value: **$147** (if it shows $297, the ship that carries the browser price fix has not gone out).
+   - Schedule: content name **funding-book-call**.
+   - Event Match Quality is shown; email and phone count among the customer information received.
+3. **No third sender.** The event's sources must not name the Conversions API Gateway or ClickFunnels as a partner. If either is there, Meta gets a second server copy and the sale can count twice.
+4. **Diagnostics tab** (same page): no new warning for Purchase or Schedule (for example "missing event_id" or "invalid parameter").
+
+ShowedCall (did the person show up for the call) is planned, not built, and not specified. Not part of this check.

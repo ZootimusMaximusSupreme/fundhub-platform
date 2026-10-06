@@ -17,13 +17,24 @@
 // Purchase once per order_ref, ReachedBuyBox once per page load, PageView /
 // ViewContent per page load. A row without one is a repeat (a second success,
 // a second buy-box view) or an older page, and sending it under a made-up id
-// would count it twice. Server-only Purchases come from the payment webhook,
-// not from here.
+// would count it twice.
+//
+// PURCHASE HAS ONE SERVER COPY, AND IT IS NOT THIS ONE (2026-10-05). The
+// browser fires Purchase "purchase.<order_ref>" on checkout:success, and the
+// payment webhook (src/handlers/meta-purchase.mjs) sends the server copy under
+// the same id when the money clears. Meta promises to drop a server event that
+// matches a browser event (same event_name + event_id, within 48 hours); it
+// does NOT promise to drop a second SERVER event with the same id ("Handling
+// Duplicate Pixel and Conversions API Events", developers.facebook.com). So the
+// track row's payment_result never sends its own server Purchase: with the
+// pixel blocked (Safari, in-app browsers) that second copy could count a sale
+// twice. The Purchase row stays in META_MAP (serverCopy: false) because the
+// table is also the browser's map.
 //
 // ViewContent is the one row with its own id: "<PageView id>.vc". Purchase is
-// sent only with a "purchase.<order_ref>" id. Meta dedupes on event name + id,
-// so the two events of one row (Lead and SurveyStep on the survey's final
-// submit) share the row's id, exactly as the browser sends them.
+// "purchase.<order_ref>". Meta dedupes on event name + id, so the two events
+// of one row (Lead and SurveyStep on the survey's final submit) share the
+// row's id, exactly as the browser sends them.
 //
 // The match rules are the same ones fh-events.js uses, so the browser copy and
 // the server copy fire on the same rows.
@@ -31,7 +42,7 @@
 import { fromCents } from "../commissions/money.mjs";
 import { SLO_PRICE_CENTS } from "../slo/offer.mjs";
 
-/** $297 as Meta wants it: a number of dollars, from integer cents. */
+/** The roadmap price as Meta wants it: a number of dollars ($147), from integer cents. */
 export const SLO_VALUE = Number(fromCents(SLO_PRICE_CENTS));
 export const CURRENCY = "USD";
 
@@ -63,6 +74,9 @@ const props = (row) => (row?.props && typeof row.props === "object" ? row.props 
  *   idSuffix   — appended to the base id (ViewContent only)
  *   idPrefix   — the base id must start with this, or nothing is sent
  *                (Purchase: "purchase.<order_ref>")
+ *   serverCopy — false: the browser fires it from this row, but the server
+ *                never sends a copy from the track row (Purchase: the payment
+ *                webhook's copy is the one server copy)
  * "When" rules that need memory (first time per session, once per order, once
  * per page load) are the browser's: it sends meta_event_id only when they pass.
  */
@@ -100,10 +114,10 @@ export const META_MAP = Object.freeze([
     customData: () => data({ value: SLO_VALUE, currency: CURRENCY }),
   },
   {
-    // Once per order: only with the browser's "purchase.<order_ref>" id, which
-    // the payment webhook's server Purchase shares. A success with no order
-    // ref is left to the webhook.
-    event: "payment_result", meta: "Purchase", custom: false, idPrefix: "purchase.",
+    // Browser only from this row: once per order, "purchase.<order_ref>". The
+    // payment webhook sends the one server copy under that same id (see the
+    // top of this file), so a server copy from here would be a second one.
+    event: "payment_result", meta: "Purchase", custom: false, idPrefix: "purchase.", serverCopy: false,
     match: (row) => props(row).result === "success",
     customData: () => data({ value: SLO_VALUE, currency: CURRENCY }),
   },
@@ -160,9 +174,10 @@ export function baseEventId(row) {
 }
 
 /**
- * The Meta events one saved track row fires, in table order:
+ * The server events one saved track row fires, in table order:
  * [{ event_name, event_id, custom_data? }]. Empty when the row maps to nothing
- * or carries no meta_event_id.
+ * or carries no meta_event_id. A browser-only row (serverCopy: false —
+ * Purchase) is left out: its server copy comes from the payment webhook.
  */
 export function metaEventsFor(row) {
   if (!row || typeof row !== "object" || !MAPPED_TRACK_EVENTS.includes(row.event)) return [];
@@ -170,6 +185,7 @@ export function metaEventsFor(row) {
   if (!base) return [];
   const out = [];
   for (const rule of META_MAP) {
+    if (rule.serverCopy === false) continue;
     if (rule.event !== row.event || !rule.match(row)) continue;
     if (rule.idPrefix && !base.startsWith(rule.idPrefix)) continue;
     const ev = { event_name: rule.meta, event_id: base + (rule.idSuffix || "") };
