@@ -1,7 +1,7 @@
 // Daily pulse — 7:00 a.m. America/Denver audit. Audit only. No auto-fix.
 //
-// Cron 0 13 * * * is 7:00 a.m. Denver during daylight time. After the
-// fall-back, flip to 0 14 * * * or it fires at 6:00 a.m. Denver.
+// Cron TZ=America/Denver 0 7 * * * fires at 7:00 a.m. on Denver's own clock
+// all year (Inngest's TZ= prefix), so the fall-back needs no flip.
 //
 // This is Recon (AG-07)'s runtime. Do not invent a second tripwire.
 // Do not stretch src/ops/pulse.mjs (money pulse) into this.

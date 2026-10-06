@@ -45,9 +45,30 @@ const LIVE_PAGES = {
   "/api/read/underwrite": { status: 401, text: '{"error":"unauthorized"}' }
 };
 
-test("cron is 7:00 a.m. Denver during daylight time", () => {
-  assert.equal(PULSE_CRON, "0 13 * * *");
+/* The time Denver's clock shows when the cron fires on a given day. A cron
+   with a TZ= prefix fires on that zone's clock (Inngest's syntax); a bare cron
+   fires on UTC. */
+function denverTimeWhenCronFires(cron, ymd) {
+  const tz = /^TZ=(\S+)\s+/.exec(cron);
+  const [minute, hour] = cron.replace(/^TZ=\S+\s+/, "").trim().split(/\s+/).map(Number);
+  if (tz && tz[1] === "America/Denver") return { hour, minute };
+  assert.equal(tz, null, `unexpected cron timezone ${tz && tz[1]}`);
+  const pad = (n) => String(n).padStart(2, "0");
+  const fired = new Date(`${ymd}T${pad(hour)}:${pad(minute)}:00Z`);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver", hour: "numeric", minute: "numeric", hourCycle: "h23"
+  }).formatToParts(fired);
+  return {
+    hour: Number(parts.find((p) => p.type === "hour").value),
+    minute: Number(parts.find((p) => p.type === "minute").value)
+  };
+}
+
+test("cron fires at 7:00 a.m. Denver in summer AND after the 2026-11-01 fall-back", () => {
   assert.equal(PULSE_TZ, "America/Denver");
+  for (const day of ["2026-07-01", "2026-10-05", "2026-11-02", "2027-01-15", "2027-03-15"]) {
+    assert.deepEqual(denverTimeWhenCronFires(PULSE_CRON, day), { hour: 7, minute: 0 }, `${PULSE_CRON} on ${day}`);
+  }
 });
 
 test("dry-run writes a board and does not send or fix", async () => {

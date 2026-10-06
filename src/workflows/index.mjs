@@ -111,7 +111,7 @@ export const functions = [
      The chaser also runs today WITHOUT Inngest, through
      /api/contracts { action: "run_reminders" } — see its header. */
   contractChaser,
-  /* Daily pulse — 7:00 a.m. America/Denver (cron 0 13 * * * during MDT).
+  /* Daily pulse — 7:00 a.m. America/Denver all year (cron TZ=America/Denver 0 7 * * *).
      Audit only. Recon AG-07 runtime. Does not auto-fix. */
   dailyPulse,
 
