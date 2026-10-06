@@ -34,6 +34,7 @@ flowchart LR
   e_booking_noshow(["booking.noshow"])
   e_booking_noshow --> w_s_05a_no_show_recovery["s-05a-no-show-recovery"]
   e_booking_rescheduled(["booking.rescheduled"])
+  e_booking_rescheduled --> w_ai_set_04_3way_handoff["ai-set-04-3way-handoff"]
   e_booking_rescheduled --> w_bs_01_precall_launcher["bs-01-precall-launcher"]
   e_booking_rescheduled --> w_s_04b_booking_reminders["s-04b-booking-reminders"]
   e_call_completed(["call.completed"])
@@ -103,7 +104,7 @@ flowchart LR
 | `analysis.completed` | 9 | `af-02-referral-ownership-capture`, `c-02-inquiry-created`, `c-06-crs-results-router`, `dpc-01-analyzer-lock`, `slo-pack-delivery`, `u-02-analyzer-complete-delivery`, `u-03-crs-snapshot-sync`, `u-04-promote-crs-primary`, `u-05-data-health-monitor` |
 | `booking.created` | 9 | `ai-set-01-josh-setter`, `ai-set-04-3way-handoff`, `bs-01-precall-launcher`, `dpc-02-call-outcome-enforcement`, `dpc-05-no-progress-escalation`, `s-04-call-booked`, `s-04b-booking-reminders`, `s-04c-staff-booked-alert`, `s-portal-invite` |
 | `booking.noshow` | 1 | `s-05a-no-show-recovery` |
-| `booking.rescheduled` | 2 | `bs-01-precall-launcher`, `s-04b-booking-reminders` |
+| `booking.rescheduled` | 3 | `ai-set-04-3way-handoff`, `bs-01-precall-launcher`, `s-04b-booking-reminders` |
 | `call.completed` | 4 | `ai-set-03-no-answer-cadence`, `ds-01-repair-referral`, `s-08-post-call-funding-declined`, `s-offer-bucket` |
 | `deposit.paid` | 3 | `c-02b-inquiry-removal-requested`, `s-06-post-call-funding-purchased`, `s-doc-collection` |
 | `diagnostic.paid` | 2 | `af-02-referral-ownership-capture`, `c-00-crs-soft-pull-request` |
@@ -191,6 +192,7 @@ commission and billing events are proposed-but-unbuilt. Either way, nothing dura
 | function | events |
 |---|---|
 | `af-02-referral-ownership-capture` | `entry.captured`, `diagnostic.paid`, `analysis.completed` |
+| `ai-set-04-3way-handoff` | `booking.created`, `booking.rescheduled` |
 | `ar-collections` | `invoice.sent`, `payment.received` |
 | `bs-01-precall-launcher` | `booking.created`, `booking.rescheduled` |
 | `f-06-funding-conditions-missing-docs` | `mail.response`, `docs.received` |

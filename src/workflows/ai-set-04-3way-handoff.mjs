@@ -6,8 +6,11 @@
 // compliance-scrubbed copy (Workflow-SMS-Fixes-Ready-to-Paste.md), plus the advisor
 // follow-up task the original lacked.
 //
-// Trigger: booking.created. Fires 15 minutes before the appointment's start time via
-// a durable sleepUntil — not a poll, a single scheduled wake.
+// Trigger: booking.created, and booking.rescheduled (a moved call gets its text at
+// the NEW time). Fires 15 minutes before the appointment's start time via a durable
+// sleepUntil — not a poll, a single scheduled wake. A move or cancel stops the run
+// for the old time (cancelOn below), and on waking the run re-checks the saved
+// booking before it sends.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -16,6 +19,7 @@ import { sendTemplated } from "./messaging.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { appointmentContext, REMINDER_SKEW_MS } from "./s-04b-booking-reminders.mjs";
 import { portalLoginUrl } from "../auth/magic-link.mjs";
+import { bookingStateAt, SLOT_STATE } from "../bookings/store.mjs";
 
 export const SMS_TEMPLATE_KEY = "SMS-AISET04-HANDOFF";
 const SOURCE_WORKFLOW = "ai-set-04-3way-handoff";
@@ -121,7 +125,28 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
   await step.sleepUntil("wait-until-t-minus-15", new Date(plan.at));
 
   const orgId = event.orgId;
-  const eventId = event.id;
+
+  /* A MOVED OR CANCELLED CALL GETS NO "STARTS IN 15 MINUTES" AT ITS OLD TIME.
+   *
+   * This run slept since the call was booked (or last moved). A move starts a
+   * fresh run for the new time (the booking.rescheduled trigger below) and
+   * cancelOn stops this one, but a cancelOn that misses — a call saved under an
+   * old message id, two runs racing — must not let the old-time text out. So on
+   * waking, the saved booking is asked: is a live booking still at THIS time?
+   * Moved, cancelled or already marked a no-show → no text, no advisor task.
+   * No saved row speaks to this time → send as before (src/bookings/store.mjs). */
+  const slot = await step.run("check-call-still-at-this-time", () =>
+    bookingStateAt(db, { orgId, clientId, bookingUid: payload.bookingUid, startTime }));
+  if (slot === SLOT_STATE.MOVED || slot === SLOT_STATE.CANCELLED || slot === SLOT_STATE.NOSHOW) {
+    return { done: false, reason: `call_${slot}` };
+  }
+
+  /* ONE TEXT PER CUSTOMER PER CALL TIME, never two. The queue row is keyed on
+   * this, not on the event id, so the run from the booking and the run from a
+   * move that kept the same time cannot both write a row (messages has a
+   * unique (org_id, provider_ref)). Worked out from the payload alone — no
+   * clock — so it is the same on every replay. */
+  const eventId = sendKeyFor(clientId, startTime);
   const link = await step.run("resolve-meeting-link", () =>
     meetingLinkFor(db, { orgId, clientId, payload }));
   const context = appointmentContext({ ...payload, meetingUrl: link.url });
@@ -133,6 +158,28 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
 
   return { done: true, sms, task, link };
 }
+
+/** The one-per-call-time key for the text and the advisor task. */
+export function sendKeyFor(clientId, startTime) {
+  return `booking-start:${clientId}:${new Date(startTime).toISOString()}`;
+}
+
+/* A MOVE stops the run for the old time and starts one for the new time.
+   The move cancels only a run whose start time differs from the move's, so the
+   run the move itself starts is never cancelled by it, and a "move" to the same
+   time leaves the existing run alone (the one-per-call-time key above stops a
+   second text). Same uid-or-email matching as the cancel rules, which is what
+   reaches a run started from a call saved under an old message id. */
+export const RESCHEDULE_CANCEL_RULES = [
+  {
+    event: "booking.rescheduled",
+    if: "event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid && event.data.payload.startTime != async.data.payload.startTime"
+  },
+  {
+    event: "booking.rescheduled",
+    if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email && event.data.payload.startTime != async.data.payload.startTime"
+  }
+];
 
 export const aiSet043WayHandoff = inngest.createFunction(
   {
@@ -146,9 +193,10 @@ export const aiSet043WayHandoff = inngest.createFunction(
       {
         event: "booking.cancelled",
         if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
-      }
+      },
+      ...RESCHEDULE_CANCEL_RULES
     ]
   },
-  { event: "booking.created" },
+  [{ event: "booking.created" }, { event: "booking.rescheduled" }],
   ({ event, step }) => handle({ event: event.data, db, step })
 );

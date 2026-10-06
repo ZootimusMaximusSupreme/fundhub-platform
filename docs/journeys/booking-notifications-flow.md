@@ -92,6 +92,7 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 | `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02` |
 | `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
 | `booking.created` | confirm + reminders, the AI setter, the 15-minute handoff, staff alert, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `ai-set-01`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04` |
 
 ## 3. The never-booked chase
 
@@ -202,7 +203,7 @@ and remains the backstop for these two rows and for everything else.
 
 ```mermaid
 flowchart TD
-    B[booking.created] --> C{Customer resolved?}
+    B[booking.created, or booking.rescheduled for the new time] --> C{Customer resolved?}
     C -->|No| S0[Stop]
     C -->|Yes| ST{Start time readable?}
     ST -->|No| S1[Stop: unreadable start time]
@@ -211,16 +212,31 @@ flowchart TD
     PAST -->|No| NEAR{Is 15 minutes before<br/>still in the future?}
     NEAR -->|No| S3[Stop: booked inside 15 minutes]
     NEAR -->|Yes| W[Sleep until 15 minutes before<br/>the moment is recorded, once]
-    W --> L[Find a link to give them]
+    W -.->|a cancel, or a move to a different time,<br/>arrives while asleep| X[Run cancelled. No text.]
+    W --> SAVED{Saved booking at THIS time?<br/>bookingStateAt, src/bookings/store.mjs}
+    SAVED -->|moved away| S4[Stop: call moved. No text, no task.]
+    SAVED -->|cancelled or already a no-show| S5[Stop. No text, no task.]
+    SAVED -->|still on, or no saved row| L[Find a link to give them]
     L --> L1{In the booking message?}
     L1 -->|Yes| USE[Use it]
     L1 -->|No| L2{On the saved booking row?}
     L2 -->|Yes| USE
     L2 -->|No| L3[Use the customer's portal sign-in page]
     L3 --> USE
-    USE --> TXT[Send the handoff text]
-    TXT --> TASK[File the advisor follow-up task]
+    USE --> TXT[Send the handoff text<br/>ONE per customer per call time]
+    TXT --> TASK[File the advisor follow-up task<br/>ONE per customer per call time]
 ```
+
+**A moved call gets its text at the new time, and only there (2026-10-05).** A
+move used to leave the old run asleep, so the customer was told "your call
+starts in 15 minutes" at the time they had moved away from. Now a move starts a
+run for the new time and cancels any run whose start time differs from the
+move's (matched by call id or by email, the same way a cancel is). On waking,
+every run also asks the saved booking whether a live booking is still at its
+time; moved away, cancelled or already a no-show means no text. If no saved
+booking speaks to that time, the text goes as it always did. The text and the
+advisor task are keyed on the customer and the call time, not on the event, so
+two runs for one call time can never queue two texts.
 
 The text used to end "link: ." — it asked for a meeting location and was given
 no context at all, so the tag rendered as nothing. ClickFunnels supplies no
