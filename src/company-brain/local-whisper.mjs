@@ -17,11 +17,15 @@ const BREW_WHISPER_PATHS = [
   "/usr/local/bin/whisper-cpp"
 ];
 
-function repoWhisperCliCandidates() {
-  // Built from parts on purpose. The Netlify bundler follows a literal path like
-  // "credentials/hormozi-kb-work/whisper.cpp" into the function zip, and that folder
-  // is a 22 GB local build tree inside credentials/. This only ever runs on the Mac.
-  const root = path.join(process.cwd(), ["credentials", "hormozi-kb-work", "whisper.cpp"].join("/"));
+function repoWhisperCliCandidates(cwd = process.cwd()) {
+  // `cwd` is a parameter on purpose — do NOT write process.cwd() inline below.
+  // netlify/functions/api.mjs is bundled with nft, which works out any path it can
+  // compute (process.cwd() + fixed text, even ["a","b"].join("/")) and then pulls
+  // every file in that folder into the function. This folder is a local whisper.cpp
+  // build whose CMake "compiler_depend.ts" files are not TypeScript, so the Netlify
+  // build died on them (2026-10-05). nft cannot compute a parameter, so it skips it.
+  // This lookup only ever finds anything on the Mac.
+  const root = path.join(cwd, "credentials/hormozi-kb-work/whisper.cpp");
   return [
     path.join(root, "build/bin/whisper-cli"),
     path.join(root, "build/bin/main"),
