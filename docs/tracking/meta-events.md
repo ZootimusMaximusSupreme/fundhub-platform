@@ -31,7 +31,7 @@ Owner ask: server events too, and from mobile (server copies reach Meta even whe
 ```js
 export async function sendMetaEvents(events, { env = process.env, db, fetchImpl } = {}) // → { ok, sent, error? }
 ```
-Each event: `{ event_name, event_time, event_id, event_source_url, action_source: "website", user_data: { client_ip_address, client_user_agent, fbc, fbp, em: [sha256], ph: [sha256], external_id? }, custom_data? }`. Email and phone are lowercased and trimmed (phone: digits only, US numbers with leading 1) before SHA-256. Never sends card numbers, SSN, date of birth, survey answers about income or credit, soft-pull field values, or raw email/phone.
+Each event: `{ event_name, event_time, event_id, event_source_url, action_source: "website", user_data: { client_ip_address, client_user_agent, fbc, fbp, em: [sha256], ph: [sha256], external_id? }, custom_data? }`. Email and phone are lowercased and trimmed (phone: digits only, leading zeros removed, US numbers with leading 1 — Meta's rule) before SHA-256. Never sends card numbers, SSN, date of birth, survey answers about income or credit, soft-pull field values, or raw email/phone.
 
 ## Same event_id in browser and server (dedupe)
 - Browser-started events: `event_id = "<fh_sid>.<seq>"` — the same `seq` the tracker already sends to our database. The browser calls `fbq('track'|'trackCustom', name, data, { eventID })` and posts the track event (with `meta_event_id`, `fbc`, `fbp`, `url`) to `/api/public/slo-interest`; the server sends the same event to Meta with the same id.

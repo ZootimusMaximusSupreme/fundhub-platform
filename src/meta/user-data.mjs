@@ -4,7 +4,8 @@
 //
 // What Meta gets about a person, and how:
 //   * em / ph — SHA-256 hex of the email (lowercased, trimmed) and of the phone
-//     (digits only; a 10-digit US number gets a leading 1). NEVER the raw value.
+//     (digits only, no leading zeros; a 10-digit US number gets a leading 1).
+//     NEVER the raw value.
 //     Both come from that browser session's slo.contact_started row.
 //   * external_id — SHA-256 hex of our session id (fh_sid).
 //   * client_ip_address / client_user_agent — from the request headers.
@@ -31,9 +32,14 @@ export function normalizeEmail(raw) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : "";
 }
 
-/** Digits only; a 10-digit US number gets its leading 1. "" when too short to be a phone. */
+/**
+ * Meta's phone rule ("Customer Information Parameters", developers.facebook.com):
+ * remove symbols, letters and any leading zeros; include the country code.
+ * So: digits only, leading zeros dropped ("0044 20…" → "4420…"), and a
+ * 10-digit US number gets its leading 1. "" when too short to be a phone.
+ */
 export function normalizePhone(raw) {
-  const digits = String(raw ?? "").replace(/\D+/g, "");
+  const digits = String(raw ?? "").replace(/\D+/g, "").replace(/^0+/, "");
   if (digits.length < 7 || digits.length > 15) return "";
   return digits.length === 10 ? `1${digits}` : digits;
 }
