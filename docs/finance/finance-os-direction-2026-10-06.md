@@ -34,3 +34,19 @@ Owner-set by Chris, 2026-10-06. Adds to `client-finance-os-build-spec-2026-09-19
 | Merchant processor | — | Not built |
 | Page | `/app/finance-os.html` (staff). `/app/finance.html` is 404 | Staff page only |
 | Real banks | Plaid production secret: "You don't have access" | Blocked until Plaid grants access |
+
+## More direction — same day (owner-set 2026-10-06)
+
+- Add a business and all its info. Containers sit inside the business structure.
+- Setup: one-time setup fee (price not set), soft pulls for business credit (no hard inquiries), quick payment to activate.
+- Dashboard: business credit like Credit Karma, every bank account in one view, full money overview.
+- AI agent: help and guidance, reminders, personal money advice, keeps business credit on track.
+
+| Need | In the repo (measured 2026-10-06) |
+|---|---|
+| Soft pull, 3 bureaus + Experian business scores | `src/adapters/crs.mjs`, `api/read/portal-summary.mjs` (returns them, client-safe) |
+| Pay to activate | Commas checkout; "Business Financial Assessment" is the $32 soft-pull gate (`src/adapters/commas.mjs`) |
+| One-time setup fee | Price not set |
+| Reminders | Card-due texts (Unit C, 2026-10-06) |
+| Advice | UnderwriteIQ sentences (`tip` in `/api/money/overview`) |
+| AI chat agent | Waits — owner 2026-10-06: no API spend for now |
