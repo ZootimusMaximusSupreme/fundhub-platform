@@ -331,6 +331,8 @@ import marketingResearchApprove from "../../api/marketing/research/approve.mjs";
 import marketingResearchTweak from "../../api/marketing/research/tweak.mjs";
 import marketingResearchBrain from "../../api/marketing/research/brain.mjs";
 import marketingFlywheelSpendRead from "../../api/marketing/flywheel/spend-read.mjs";
+import marketingShoot from "../../api/marketing/shoot.mjs";
+import marketingShootMark from "../../api/marketing/shoot/mark.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1271,7 +1273,9 @@ export const ROUTES = {
   "marketing/research/tweak": marketingResearchTweak,
   "marketing/research/brain": marketingResearchBrain,
   // X3: the Ideas tab's flywheel (design §3.2 row 6)
-  "marketing/flywheel/spend-read": marketingFlywheelSpendRead
+  "marketing/flywheel/spend-read": marketingFlywheelSpendRead,
+  "marketing/shoot": marketingShoot,
+  "marketing/shoot/mark": marketingShootMark
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

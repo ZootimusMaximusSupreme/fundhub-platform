@@ -378,6 +378,12 @@ Table only. States `planned | filming | uploaded | done`, enforced by the databa
 shoot must have `finished_at`. Nothing reads or writes it yet (Shoot Day routes and screen
 are later units). UNVERIFIED.
 
+**X5 update (branch `mm-x5-shoot-teleprompter`):** the Shoot Day routes now read and write
+it — `GET/POST /api/marketing/shoot` and `POST /api/marketing/shoot/mark` — and so do the
+Shoot tab (`public/app/cc-tab-shoot.js`, tab `shoot`) and the teleprompter page
+(`public/app/teleprompter.html`). The states, the take file name rule and the gaps are
+drawn in [`shoot-flow.md`](./shoot-flow.md). UNVERIFIED on production.
+
 ### Gaps between the spec and this code (findings, not reconciled)
 
 - Spec §6 Step 3 lists `marketing_buzzes` without `attempts`, `last_error`, `failed_at`;
@@ -1449,3 +1455,345 @@ Today's step-1 row (`li.row[data-stage="avatar"]` in `#flywheelList`). U34 draws
 after the tab scripts and waits for `#flywheelList` to appear (a page opened on Settings
 first gets the row once Today is opened). Proved by `e2e/marketing-avatar-row.spec.mjs`
 "opened on Settings first".
+
+## U36 Command Center Scripts tab (`public/app/marketing-cc-scripts.js`)
+
+Drawn from the code on 2026-10-06 (branch `mm-u36-scripts-tab`). One tab module. It registers on both
+tab contracts that exist tonight: U34's frame (`window.FHMarketingCCTabs.register({key:'scripts',
+order:30, place:'strip', rules, render, show, hide})`, or `FHMarketingCCTabsQueue` when the frame loads
+second) and main's `docs/specs/command-center-tabs.md` (`window.FundhubCC.registerTab({id:'scripts',
+order:3})`). Every call goes through the frame's ctx: U34's `ctx.api('/api/…', {method})` and
+`ctx.post(path, body, request_id)`, or main's `ctx.api(method, path, body)`. Cost words under a paid
+button come from U34's `ctx.costLine` (GET marketing/costs) or say "unknown, not measured yet"; under
+main's contract a paid tap also opens `ctx.costSheet` first. The page gets one line,
+`<script defer src="marketing-cc-scripts.js">`. Yardstick (plan note: no intended journey on main):
+spec §8.3 Scripts, §8.1 Inbox / Ideas / Rules, §7.8, §4 trap 17, and the design
+`command-center-design-2026-10-05.md` §3.3. **UNVERIFIED on the live page:** the frame (U34) is not on
+main. In CI the tab runs in the stub frame (`e2e/helpers/cc-tab-harness.mjs`, both contracts); on this
+Mac it also opened at `#scripts` inside U34's own frame files from `mm-u34-frame` and approved a draft.
+
+### What the tab reads when it opens
+
+```mermaid
+flowchart TD
+  R["render(root, ctx)<br/>(ctx.param: approved, rules, ideas, batches or a script id)"] --> P["paint: skeletons in the real layout"]
+  P --> A["GET marketing/scripts<br/>every live script the screen may see"]
+  P --> B["GET marketing/batches<br/>history + write_now_ready"]
+  P --> S["GET marketing/settings<br/>daily count, $ caps, weekly drop time"]
+  P --> F["GET marketing/funnels<br/>names for captions and the idea box"]
+  P --> I["GET marketing/ideas"]
+  RF["Rules fold opened"] --> RU["GET marketing/rules (once, then on Try again)"]
+  VF["'Every version and its checks' opened"] --> V["GET marketing/script?id="]
+  A -->|"fails"| AE["'The scripts did not load. … The rest of this tab is current.' + Try again"]
+  B -->|"write_now_ready true"| WN["Write now drawn, with its cost note"]
+  B -->|"false or failed"| NW["no Write now anywhere (header or idea box)"]
+```
+
+### The Monday taps on one draft (filter Drafts; "needs a look" first, a draft being rewritten last)
+
+```mermaid
+flowchart TD
+  C["Draft card: caption, needs-a-look chip + reason, the words,<br/>one check line, Approve, Edit / Fix, Reject apart, folds under"] -->|"Approve (one tap)"| AP["POST marketing/scripts/approve<br/>{request_id, id, version}"]
+  AP -->|"200"| AP2["'Approved. This is Ad N.' (+ registry note if skipped)<br/>card leaves Drafts, shows under Approved"]
+  C -->|"Edit"| ED["one box per part (or the whole script)<br/>Approve hidden while open"]
+  ED -->|"Save new version"| EP["POST marketing/scripts/edit<br/>{request_id, id, version, body (parts swapped in place), parts}"]
+  EP -->|"200"| E2["'Saved as version N. Your old version is kept.'<br/>+ checker warnings (never block)"]
+  C -->|"Fix"| FX["note box + 'Make this a rule for every script'"]
+  FX -->|"Rewrite it (cost line fix_script printed under it;<br/>main's contract: ctx.costSheet first)"| FP["POST marketing/scripts/fix<br/>{request_id, id, version, note, make_rule}"]
+  FP -->|"202"| F2["card goes to the end, chip 'rewriting', Approve disabled with the reason"]
+  F2 -->|"every 5 s while on screen:<br/>GET marketing/scripts"| F3["a newer version of the same root →<br/>'#quot;Title#quot; was rewritten from your note. Version N is in your drafts.'"]
+  C -->|"Reject (tap 1)"| RJ["'Reject this script? It will not be filmed…'<br/>optional reason · Keep it (filled) · Reject it"]
+  RJ -->|"Reject it (tap 2)"| RP["POST marketing/scripts/reject<br/>{request_id, id, version, reason?}"]
+  RP -->|"200"| R2["'Rejected. It will not be filmed.'"]
+  AP & EP & FP & RP -->|"409 stale"| ST["both texts side by side (stacked at 390)<br/>Edit: Use mine (re-reads the live id, saves on it) / Use theirs<br/>Approve, Fix, Reject: Read the new version"]
+  AP & EP & FP & RP -->|"other failure"| ER["one plain sentence, never a status code;<br/>the same request_id is kept for the retry"]
+  C -->|"swipe left / right"| SW["next / previous card; a swipe never posts"]
+```
+
+### Film order, Write now, ideas and rules
+
+```mermaid
+flowchart TD
+  AL["Approved filter: approved scripts by film_order, then ad number"] -->|"Up / Down / Film first"| OR["POST marketing/scripts/order<br/>{request_id, order:[root_script_id…]}"]
+  OR -->|"200"| O2["film_order 1..n on the screen, 'Film order saved.'"]
+  WN["Write now (only when write_now_ready)<br/>cost line start_batch + month line under it"] -->|"tap (main's contract: ctx.costSheet first)"| WP["POST marketing/batches/write-now {request_id}"]
+  WP -->|"202"| W2["'Writing now. New drafts show up here when they are done.'<br/>GET batches + scripts + ideas every 5 s while on screen, up to 30 min"]
+  ID["Ideas fold: big box, format?, funnel?"] -->|"Save idea (free)"| IP["POST marketing/ideas {request_id, raw_points, script_format?, funnel_key?}"]
+  ID -->|"Write it now (only when write_now_ready) → cost sheet"| IW["POST marketing/ideas {…, write_now:true}"]
+  IP -->|"200"| I2["'Saved. It goes in the next batch.' + the idea on top of Your ideas"]
+  IW -->|"200 with batch_id"| I3["'Saved. Writing one script from it now.'"]
+  IW -->|"200 with note (a cap)"| I4["'Saved, but not written now. then the note'"]
+  RU["Rules fold: Part 0 numbered, banned phrases, recent changes"] -->|"Add the rule / Change → Save the rule / Ban the phrase"| RP["POST marketing/rules {request_id, action add|edit|ban, n?, text}"]
+  RP -->|"202"| R2["GET marketing/rules: the change shows as 'Reaching the repo'"]
+  R2 -->|"every 5 s while a change waits and the tab is on screen"| R3["'In the repo' (commit sha) or 'Refused by the repo'"]
+```
+
+- Polling: one 5-second timer, and it asks only while the tab's root is drawn, the page is not in the
+  background, and something is moving (a Fix, a Write now, a writing batch, a waiting rule, an idea
+  being written). `hide()` stops it; `refresh()` starts it again.
+- Batch history fold: newest first, "N of M ready · N need a look · N failed", Out / Goes out time,
+  the error sentence on a stopped batch.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+1. **The idea box is in two places.** The design puts "Drop an idea" on the Ideas tab (unit X8); this
+   unit's plan acceptance puts Ideas in Scripts. Built here as a folded "Ideas" card on the same
+   `POST marketing/ideas`. If X8 ships its own, the integrator picks one.
+2. **Next batch plan** (design §3.3 item 5) is not here: the plan brief puts it on Today (U37).
+3. **New-opening card** (design §3.3 item 3): out of this unit's scope (plan brief).
+4. **"Send to Shoot" link** is not drawn: the Shoot tab is another unit's, and a link to a tab that
+   may not exist would be a dead control.
+5. **"Why this slot" line:** the Script object has no `slot_reason` (contract shape 3 wins, U25 gap 7).
+6. **Batch cost** ("cost $12.40" in the design header and history): `GET marketing/batches` has no
+   cost field, so no cost is printed.
+7. **"The machine has learned from N of your edits":** no route returns a voice-pair count.
+8. **Offline queue:** the shared review module (`public/app/marketing-review.js`, IndexedDB queue) does
+   not exist; with no connection a tap says "Nothing changed. Check the connection and try again."
+9. **Edit request shape:** the design's `parts:[{kind, before, after}]` loses to the contract's
+   `{body, parts}`; the body is rebuilt by swapping each changed part in place.
+10. **Cost kinds:** Write now and Write it now ask the frame for kind `start_batch`, Fix for
+    `fix_script` (U34's `ctx.costLine`, or main's `ctx.costSheet`). `GET marketing/costs` does not
+    exist yet, so every line reads "unknown, not measured yet". No route names the kinds yet.
+11. **Two tab contracts.** Main's `docs/specs/command-center-tabs.md` (`window.FundhubCC`, files
+    `cc-tab-<id>.js`, the integrator adds the script line) and U34's on `mm-u34-frame`
+    (`window.FHMarketingCCTabs`, files `marketing-cc-<tab>.js`, the tab adds its own line) disagree.
+    This tab follows U34's names (the plan's `owns_files` agree), registers on both, and adds its one
+    line to the page after `marketing-command-center.js`; on U34's page it belongs between
+    `marketing-cc-today.js` and `marketing-cc-settings.js`.
+12. **No cost sheet in U34's frame:** under U34's contract Fix and Write now are one tap with the cost
+    printed under the button (design safety rule 3); the design's two-tap list does not include them.
+
+## U38 Command Center Numbers tab: Ads, Angles and Funnels views
+
+Drawn 2026-10-06 from the code on branch `mm-u38-numbers-views`: `public/app/cc-tab-numbers.js`
+(+ `cc-tab-numbers.css`). One tab module, registered through `window.FundhubCC.registerTab`
+(`docs/specs/command-center-tabs.md`): id `numbers`, order 7. Design §3.7; spec §11.3. It reads
+U31's and U32's routes, posts U26's ideas route, and changes no ad, budget or page. The frame
+(`cc-frame.js`) is not on main yet, so the integrator adds
+`<script defer src="cc-tab-numbers.js"></script>` to `marketing-command-center.html`; the tab loads
+its own stylesheet.
+
+```mermaid
+flowchart TD
+  R[frame calls render root, ctx] --> P{ctx.param or the URL hash numbers/...}
+  P -->|ads / ads/91| A
+  P -->|angles| G
+  P -->|funnels| F
+  P -->|none| M[last view this viewer used<br/>localStorage, try/catch; else Ads]
+  M --> A & G & F
+  A[Ads view] --> AQ[GET marketing/ads?from&to&funnel&format&angle<br/>window = Arizona days, last 30 by default]
+  A --> AN[GET marketing/funnels + GET marketing/angles<br/>names for the filters only]
+  AQ -->|loading| SK[skeleton table]
+  AQ -->|error| AE[one plain sentence + Try again<br/>the rest of the page stays]
+  AQ -->|no rows| AY[No ad numbers saved for Sep 7 to Oct 6<br/>+ Clear filters when filters are on]
+  AQ -->|rows| T[table: one row per ad number, sort by any column<br/>unknown sorts last, null prints unknown<br/>still maturing chip on leads under 14 days]
+  T -->|filter change| AQ
+  T -->|tap a row| D[drawer: GET marketing/ad?n=<br/>URL hash numbers/ads/n]
+  D --> DC[watch curve: SVG polyline drawn by hand<br/>newest day with a curve; day picker per Meta ad per day<br/>no curve: Meta sent no curve for that day]
+  D --> DW[diagnosis in words: opening / middle / ask,<br/>fix type, film note, next take; buzz day if alerted]
+  D --> DM[Meta ads with the number + status]
+  D -->|Close / Escape| T
+  AQ --> U[unmapped spend per campaign<br/>Link to a funnel]
+  U -->|tap| S[ctx.go settings, funnels]
+  G[Angles view] --> GQ[GET marketing/angles, last 30 days]
+  GQ --> GC[card per angle, most spend first:<br/>spend, ads, leads, cost per lead, booked, sales, cash, ROAS]
+  GC -->|Make more of this| SH[sheet: words prefilled from the angle name<br/>Save idea = the one filled button]
+  SH -->|Save idea| PI[POST marketing/ideas<br/>request_id, raw_points, angle_key if a store key, source chris]
+  PI -->|200| OK[Saved to your ideas. The next batch of scripts starts with your ideas.]
+  PI -->|error| ER[Not saved + why; words kept;<br/>the same request_id is sent again]
+  F[Funnels view] --> FQ[GET marketing/funnels/stats, last 30 days]
+  FQ --> FC[card per funnel: spend, cash, ROAS;<br/>page views - click to page; leads - page to lead;<br/>booked - lead to call; showed; sales - call to sale]
+  FQ --> FU[spend not tied to a funnel + Link to a funnel]
+  FU -->|tap| S
+```
+
+- **Numbers are the server's.** Counts, money, CTR, the 2-second and 25% rates, thruplay rate, cost
+  per lead / booked call and ROAS print as U31 and U32 send them. The page divides only what no route
+  carries: lead to call (booked ÷ leads), call to sale (sales ÷ showed) and an angle's cost per lead
+  (spend ÷ leads). `src/ui/cc-tab-numbers.test.mjs` holds those to `src/marketing/metrics.mjs`'s
+  own rule (4 places, null on an unknown side or a 0 bottom).
+- **Arizona days.** The window ends on today's Arizona day (UTC−7, no daylight saving); the unit
+  test holds it equal to `src/lib/ad-account-day.mjs` across the year.
+- **as-of.** One line under the view switch: "Meta numbers pulled <time> Arizona time.", from the
+  open view's `as_of`; "never pulled yet" when it is null.
+- **Phone.** One column at 390px; the Ads table is the only sideways scroll, inside its own box,
+  with the ad column pinned; the drawer is a full-screen sheet that stops above the status strip.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+1. **Ads columns the design names that no route sends:** plays, "Meta says" purchases, the last
+   day an ad ran, and the unmapped lead count ("18 leads, 0 tied to an ad number yet"). Not shown.
+   The 2-second and quarter-mark columns use the design's labels, "Still there at 2 s" and
+   "Still there at 25%" (design §3.1 and safety rule 7); the math stays metrics.md's (2-second
+   plays ÷ impressions; 25% plays ÷ plays). Short terms keep their meaning next to them, because a
+   phone shows no hover: "Taps per show (CTR)", "Cash per $1 (ROAS)", "Shows (impressions)",
+   "Watched 15 s (ThruPlay)", "Sales per show-up (close rate)".
+2. **Drawer parts the design names that `GET marketing/ad` does not send:** the 25/50/75/100%
+   quartiles, the hop note, the script's hook and line 2, links to Meta and the repo file.
+   **New opening** is out of this unit's scope (plan U38 brief).
+3. **Angles:** last run date, best and worst ad, and the planner's 3 suggestions with Accept are
+   not in U32's answer (suggestions live in U23's `GET marketing/batches/next`). Not built here.
+4. **Funnels:** the page funnel (opened, scrolled, played, pressed buy, paid), the Clarity table
+   and the Pages card are out of scope (design slices 4b and 9).
+5. **Map view and Make the report** have no back end; they are not drawn (UI-STANDARDS §5: no
+   "coming soon").
+6. **Link button.** The plan's contract sends it to the Settings funnel mapping
+   (`ctx.go('settings', 'funnels')`); the design's Ads "unknown ad" row names the
+   `campaigns/link-asset` control instead. Built per the plan, labelled "Link to a funnel". That
+   counts the campaign's spend on the Funnels view; it does not give the ads a number, so they stay
+   in the Ads unmapped list. **UNVERIFIED:** that the Settings tab (U34) opens on its funnel part
+   for the param `funnels`.
+7. **No 10-play floor.** The design prints "unknown (fewer than 10 plays)"; the routes have no
+   floor (U31 gap), so a rate on a handful of plays prints as a number.
+8. **Angles and Funnels are always the last 30 days.** Their routes take no window; only Ads does.
+9. **UNVERIFIED in the frame.** Proved in a stub frame (`e2e/helpers/cc-numbers-stub.mjs`) until
+   `cc-frame.js` lands; the live load time of each view is recorded by the orchestrator after ship.
+10. **Two drawer reads past the contract.** The drawer reads `ad.maturing_leads` and
+    `ad.curve[].ad_id`. `api/marketing/ad.mjs` always sends both (the unit test proves it against
+    the handler), but `GET marketing/ad` in `src/marketing/api-contract.mjs` does not list them.
+    The tab falls back to "Some leads are" and day-only labels without them. Adding them to the
+    contract is U31's file and `docs/specs/marketing-machine-api.md`; not changed here.
+
+## U39 Command Center Launch tab (`public/app/cc-tab-launch.js`)
+
+Generated from `public/app/cc-tab-launch.js` on branch `mm-u39-launch-tab` (2026-10-06).
+Design §3.6 and §5 rules 1, 2, 4, 5; spec §10.5 and §2 item 6. The tab plugs into the
+Command Center through `window.FundhubCC.registerTab` (`docs/specs/command-center-tabs.md`,
+id `launch`, order 6). It reads two routes and sends three bodies, nothing else.
+
+```mermaid
+flowchart TD
+  OPEN[Chris opens the Launch tab] --> SK[skeleton: count + rows]
+  SK --> R1[GET marketing/meta/load-status]
+  SK --> R2[GET ad-videos?status=approved,delivered&limit=200]
+  R1 -->|fails| E1[banner: The Meta loads did not load. Try again.<br/>Load all is off]
+  R2 -->|fails| E2[banner: The list of approved videos did not load.<br/>The rest of this page is current.]
+  R1 & R2 --> V[one row per ad video: load-status rows,<br/>then approved videos it does not list; non-ad videos dropped]
+  V -->|no rows| EMPTY[No approved videos to load. Approve one on Videos first.<br/>Open Videos -> ctx.go videos]
+  V --> ROW{row state}
+  ROW -->|not loaded yet| LOAD[Load to Meta, one tap]
+  ROW -->|refused or failed| RETRY[reasons as sentences + Retry load]
+  ROW -->|waiting or loading| STEP[Step N of 4 in words; tab re-reads every 20 s while any load is in flight]
+  ROW -->|loaded, PAUSED| TON{ad set daily budget known?}
+  ROW -->|loaded, ACTIVE| ON[On: no button]
+  LOAD & RETRY --> P1[POST marketing/meta/load<br/>ad_video_id + request_id]
+  V --> ALL[Load all approved into Meta, paused<br/>the one filled button]
+  ALL --> C1[ctx.confirm: N ads load PAUSED ... Costs $0.]
+  C1 -->|Load them| P2[POST marketing/meta/load<br/>all: true + request_id]
+  C1 -->|Cancel| NOTHING1[nothing sent]
+  P1 & P2 -->|202| Q[Queued. It loads paused. Row re-reads in 3 s]
+  TON -->|no| OFF[Turn on disabled: Turn on is off: we cannot see this ad set's daily budget yet.]
+  TON -->|yes| C2[ctx.confirm: Turn on Ad N? It can spend up to $X a day in ad set.<br/>+ ad set / campaign paused lines]
+  C2 -->|Cancel| NOTHING2[nothing sent]
+  C2 -->|Yes, turn on Ad N| P3[POST campaigns/write<br/>action resume_ad, ad_id = our ads.id, request_id]
+  P3 -->|200| ONNOW[Ad N is on. Row says On]
+  P3 -->|403| ONLY[Only Chris can turn ads on.]
+  P3 -->|Meta said no| SAID[the server's sentence; the ad is still paused]
+```
+
+- Flags on every loaded or asked row: "Ad set is paused: nothing in it spends until the ad set
+  is on." and the same for the campaign, read from `ad_set.status` and `campaign.status`.
+  A row with no ad set says "Pick one in Settings" with Open Settings (`ctx.go('settings')`).
+- Turn on is only on a loaded, paused row that has our `ads.id` (`ad_row_id`). It never sends
+  a Meta id, a campaign id, or the campaign-level actions; `src/ui/cc-tab-launch.test.mjs`
+  reads the file to hold that, and `e2e/cc-tab-launch.spec.mjs` checks the body the browser sends.
+- Open Campaigns (`campaign-manager.html`) is the only way to pause or change a budget (owner
+  default: no per-ad pause on Launch in v1).
+- **Gap, measured:** `GET marketing/meta/load-status` (U28) sends no daily budget, so today
+  every Turn on is disabled with its reason. The tab reads `ad_set.daily_budget_cents` the day
+  load-status sends it (design §3.6 shape). Until then nothing can be turned on from this tab.
+- **Gap, measured:** load-status has no `counts`; the count line is counted from the rows the
+  tab shows (one list, so it cannot disagree with itself). "Ads on now" counts only loaded ads,
+  not every live ad in the account (design §3.6 item 1 wants all).
+- **Gap:** the "unknown ad" bucket (design §3.6 item 5) and the loader-down line (worker last
+  check-in) are not on this tab; no route gives them to it.
+- **Gap:** the tab is not on the live page yet. The frame (U34) adds its `<script>` tag; until
+  then only `e2e/helpers/cc-launch-stub.mjs` renders it.
+- **UNVERIFIED:** how the real frame's `ctx.confirm` answers (callback or promise). The tab takes
+  either; only an explicit yes sends.
+
+## X8 The Ideas tab: what each tap sends (`public/app/cc-tab-ideas.js`)
+
+Drawn from the code on branch `mm-x8-ideas-funnels-tab`: `public/app/cc-tab-ideas.js` (the tab,
+registered with `window.FundhubCC` per `docs/specs/command-center-tabs.md`) and
+`public/app/cc-tab-ideas.css`. Owner and admin only, because every route it calls gates on
+`ROLE_SETS.MARKETING`. The intended flow used is the design (`docs/specs/command-center-design-2026-10-05.md`
+§3.2, §5) and spec §1; `docs/journeys/marketing-machine-intended.md` does not exist (design §7 q7).
+
+```mermaid
+flowchart TD
+  L["Tab opens"] --> R["GET marketing/costs, ideas, batches, batches/next, angles,<br/>research, flywheel, funnels, today<br/>(each part paints alone; a failed part says so, the rest stays)"]
+  R --> NB{"route answers the router's 404<br/>(names the path)?"}
+  NB -->|yes| H["one honest sentence: Not on this page yet: it ships in slice N<br/>no button"]
+  NB -->|no| C["cards drawn; every paid button prints its cost line<br/>from GET marketing/costs, or 'Cost: unknown, not measured yet.'"]
+
+  C --> I1["Save idea (free)"] --> P1["POST marketing/ideas {raw_points, script_format?, funnel_key?}"]
+  C --> I2["Write now from this idea<br/>(only when write_now_ready)"] --> S1["cost sheet"] --> P2["POST marketing/batches/write-now {count:1, idea_ids}"]
+  C --> I3["Accept / Make more of this (free)"] --> P3["POST marketing/ideas {source:'suggestion'?, angle_key}"]
+  C --> D1["Research it<br/>(off until a stop amount is typed, or while the research list failed to load,<br/>with the reason printed; Deep off until a Quick look is measured)"] --> S2["cost sheet: the server's search ceiling and its fee, cap, month"] --> P4["POST marketing/research {question, depth, sources, belief?, max_cost_usd}"]
+  C --> D2["Read it / Approve / Tweak / Redo / Save to the brain / Retry"] --> P5["GET marketing/research?id= · POST research/approve · research/tweak (sheet) · research (sheet) · research/brain · jobs/retry"]
+  C --> F1["Build the avatar · Research the market · Write the copy · Pick the strategy<br/>(off with the server's can_run reason, e.g. 4 until 3 is approved;<br/>a step the site cannot run yet shows its sentence and no button)"] --> S3["cost sheet with caps and search ceilings"] --> P6["POST marketing/flywheel/run {campaign, stage, kind, service_description? | market?, competitors?}"]
+  C --> F2["Write the offer"] --> S4["cost sheet"] --> P7["POST marketing/flywheel/run {campaign, stage:3, kind:'offer'}<br/>(X3 hands it to the Write offer path with the campaign's files)"]
+  C --> F3["Approve (free) · Tweak (sheet) · Retry / Resume (free) · Start over (sheet)"] --> P8["POST flywheel/approve · flywheel/tweak · jobs/retry (else flywheel/run {retry_job_id}) · flywheel/run"]
+  C --> F4["Read the spend (free) · Start a flywheel (free)"] --> P9["POST flywheel/spend-read {campaign} · flywheel/campaign {key}"]
+  C --> U1["Make the funnel"] --> S5["cost sheet (one model call)"] --> P10["POST marketing/funnels/create {offer_key, path?}<br/>answer shows the automatic address and tag"]
+  C --> U2["Change the address (free) · Write the pages (sheet) · See the pages<br/>(off with 'write the pages first' until a page is written)"] --> P11["POST funnels/rename {id, path} · funnels/build {id} · GET marketing/funnel?id=<br/>(preview in a sandboxed frame: scripts off, no visit counted)"]
+  C --> U3["Push live: tap 1"] --> CF["confirm naming the address, Costs $0"] --> U4["tap 2 (online only)<br/>a yes by onConfirm, a promise of true or true; sent once"] --> P12["POST marketing/funnels/push-live {id, confirm_url}"]
+  C --> Q1["Write one piece (Quick copy)"] --> S6["cost sheet"] --> P13["POST creative/generate, then POST creative/run {max_jobs:1}"]
+  P4 & P6 & P7 & P10 & P11 & P12 --> PO["the row polls its GET every 10 s while something runs<br/>and the tab is shown (hide() stops it)"]
+```
+
+- Nothing on the tab spends ad money, and no tap posts before its sheet's button: proved by
+  `e2e/cc-tab-ideas.spec.mjs` at 390x844 and 1280 (36 tap paths, mocked answers) and the word rules
+  by `src/ui/cc-tab-ideas.test.mjs`.
+- **Search ceilings come from the server** (design §3.2, §5 rule 3), first match wins:
+  `GET marketing/research` `limits.{quick, deep}.searches` (X2's `researchLimits()`), then
+  `GET marketing/costs` `limits.<kind>` (X1 sends `limits.avatar.max_searches` and
+  `max_search_usd`; market research would be `limits.ad_research` with
+  `searches_with_retries`), then `kinds.<kind>.max_searches`. Only when no server sends one does
+  the line fall back to the design's numbers (184, 106/138, 62/542).
+- **Sheets:** `ctx.costSheet` and `ctx.confirm` may say yes by calling `onConfirm`, by returning a
+  promise that resolves `true`, or by returning `true`; the work runs once even if a frame does
+  two of these, and a sheet that throws sends nothing. The contract does not pin the shape yet.
+- **UNVERIFIED against a real back end:** `GET marketing/costs`, `GET/POST marketing/flywheel*` and
+  `GET/POST marketing/research*` are being built in units X1, X2 and X3 and are not merged on this
+  branch. The flywheel card reads unit X3's real answer (branch `mm-x3-ideas-flywheel` at 8a2aaf4b4:
+  `label_words`, `state_word`, `sentence`, `can_run`, `can_approve`, `run.stopped_at_cap`,
+  `campaigns[{name, words}]`, `offers[{key, name}]`); research and costs follow the design's shapes.
+  `flywheel/run` gets both `stage` and `kind`. Until a route ships, its card prints the honest
+  sentence. Market research (stage 2) has no server limit yet: X2's `marketLimits()` is not sent
+  by any route, so its 106/138 line is the design's number until one is.
+- **Gaps against the design (findings, not reconciled):** the Proof card is one honest sentence
+  (slice 11 not built); the Ideas tab
+  is not yet on `marketing-command-center.html` (the frame unit U34 owns the page and adds the
+  script tag); "one filled button" is per card (Build the avatar only while step 1 needs it), as the
+  design's §3.2 words it.
+
+## Wave 2c integration: the tab script tags (branch `mm-wave2c`)
+
+Per `docs/specs/command-center-tabs.md` ("The integrator adds each tab's `<script>` tag to the
+page"), `public/app/marketing-command-center.html` now loads, in tab order, `cc-tab-ideas.js`,
+`marketing-cc-scripts.js` (already there from U36), `cc-tab-shoot.js`, `cc-tab-launch.js` and
+`cc-tab-numbers.js`, plus `cc-tab-ideas.css` and `cc-tab-numbers.css` (every rule scoped to the
+tab's own class).
+
+```mermaid
+flowchart TD
+  P["marketing-command-center.html loads"] --> T["each tab file runs:<br/>FundhubCC.registerTab({id, order, render})"]
+  T --> F{"frame cc-frame.js (U34) on the page?"}
+  F -->|"no (today)"| Q["the tab waits in FundhubCC._q;<br/>nothing new is drawn"]
+  F -->|yes| D["the frame drains _q and shows the tab bar"]
+```
+
+- **Gap:** the frame (U34, wave 2b) is not merged, so no tab is drawn on the live page yet. The
+  page looks the same as before; the five files only queue themselves.
+
+### Wave 2b meets wave 2c: the frame draws the five tabs
+
+With U34's frame merged (branch `mm-wave2b`), the page loads the frame
+(`marketing-command-center.js`), then Today and Settings, then the five wave 2c tab files, then
+X1's Build the avatar row. The frame drains `FundhubCC._q` and draws one strip in work order:
+Today, Ideas, Scripts, Shoot, Launch, Numbers (Videos has no module yet, so it is not on the
+strip; a `#videos` link lands on Today). Settings stays behind the gear. The gap above (no tab
+drawn) is closed on this branch. U34's frame tests now read that strip (they were written when
+Today was the only tab with a module).

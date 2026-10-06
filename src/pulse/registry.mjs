@@ -405,7 +405,11 @@ const API_KEYS = [
   /* X3: the flywheel. The GET answers 401 to an unsigned ping; the POST-only
      routes answer 405 to a GET before they read anything. A ping never
      writes, queues or spends. */
-  "marketing/flywheel/spend-read"
+  "marketing/flywheel/spend-read",
+  /* X5 Shoot Day: the GET answers 401 to an unsigned ping; mark is POST-only
+     and answers 405 to a GET before it reads anything. A ping never writes. */
+  "marketing/shoot",
+  "marketing/shoot/mark"
 ];
 
 const DESK_FILES = [
@@ -446,7 +450,8 @@ const DESK_FILES = [
   "sales-floor.html",
   "social-studio.html",
   "soft-pull-approve.html",
-  "staff-teams.html"
+  "staff-teams.html",
+  "teleprompter.html"
 ];
 
 /** Static HTML under public/ (not public/app desks). */

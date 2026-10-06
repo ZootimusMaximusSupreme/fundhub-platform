@@ -860,19 +860,22 @@ function withSettings(h) {
   };
 }
 
-test("the frame: the strip shows only tabs that exist (Today); Settings sits behind the gear, top-right", async ({ page }) => {
+// Wave 2b merge with wave 2c: five more tabs have a module on this page now (Ideas,
+// Scripts, Shoot, Launch, Numbers). Videos has none yet, so it is not on the strip.
+const STRIP = ["Today", "Ideas", "Scripts", "Shoot", "Launch", "Numbers"];
+
+test("the frame: the strip shows only tabs that exist, in work order; Settings sits behind the gear, top-right", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const errors = await open(page, withSettings(handlers()));
   await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
   await assertPageAlive(page, errors);
-  // One tab on the strip: Today, marked as the one shown, in words and a line.
-  await expect(page.locator("#mccTabs .tab")).toHaveCount(1);
-  await expect(page.locator("#mccTabs .tab")).toHaveText("Today");
-  await expect(page.locator("#mccTabs .tab")).toHaveAttribute("aria-current", "page");
+  // The tabs that have a module, in work order; Today marked as the one shown, in words and a line.
+  await expect(page.locator("#mccTabs .tab")).toHaveText(STRIP);
+  await expect(page.locator('#mccTabs .tab[aria-current="page"]')).toHaveText("Today");
   const line = await page.locator("#mccTabs .tab.on").evaluate((el) => getComputedStyle(el).borderBottomWidth);
   expect(line).toBe("2px");
-  // No tab without a module: nothing else is on the strip, and nothing says "soon".
-  await expect(page.locator("#mccTabs")).not.toContainText(/Ideas|Scripts|Shoot|Videos|Launch|Numbers|soon/i);
+  // No tab without a module: Videos is not on the strip, and nothing says "soon".
+  await expect(page.locator("#mccTabs")).not.toContainText(/Videos|soon/i);
   // The gear: top-right, with its word.
   const gear = page.locator("#mccGear .gear");
   await expect(gear).toHaveText(/Settings/);
@@ -880,11 +883,13 @@ test("the frame: the strip shows only tabs that exist (Today); Settings sits beh
   const s = await page.locator("#mccTabs").boundingBox();
   expect(g.x).toBeGreaterThan(s.x + s.width - 1);
   expect(g.height).toBeGreaterThanOrEqual(44);
-  expect((await page.locator("#mccTabs .tab").boundingBox()).height).toBeGreaterThanOrEqual(44);
+  for (const tab of await page.locator("#mccTabs .tab").all()) {
+    expect((await tab.boundingBox()).height).toBeGreaterThanOrEqual(44);
+  }
   await expect(page).toHaveURL(/#today$/);
   await expect(page).toHaveTitle(/Command Center · Today$/);
   await shot(page, "24-frame-strip-1280.png", "The frame: Today on the strip, Settings behind the gear", [
-    { selector: "#mccTabs .tab.on", caption: "Today: the only tab with a back end yet" },
+    { selector: "#mccTabs .tab.on", caption: "Today, the tab shown; the other tabs with a module follow in work order" },
     { selector: "#mccGear .gear", caption: "Settings behind the gear, top-right" }
   ]);
 });
@@ -901,7 +906,7 @@ test("the frame: the gear opens Settings, Today comes back as it was, and Back w
   await expect(page.locator("#tab-settings")).toBeVisible();
   await expect(page.locator("#tab-today")).toBeHidden();
   await expect(page.locator("#mccGear .gear")).toHaveAttribute("aria-current", "page");
-  await expect(page.locator("#mccTabs .tab")).not.toHaveAttribute("aria-current", "page");
+  await expect(page.locator('#mccTabs .tab[aria-current="page"]')).toHaveCount(0);
   // Today's "Loaded" clock belongs to Today; it hides on Settings.
   await expect(page.locator("#mccStamp")).toBeHidden();
   await expect(page.locator("#setSwitch")).toContainText("Write scripts every week");
@@ -924,16 +929,16 @@ test("the frame: the gear opens Settings, Today comes back as it was, and Back w
   await expect(page.locator("#tab-settings")).toBeVisible();
 });
 
-test("the frame: a link to a tab with no module (#ideas) lands on Today and the address says so", async ({ page }) => {
+test("the frame: a link to a tab with no module (#videos) lands on Today and the address says so", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const errors = trackErrors(page);
   await page.clock.install({ time: new Date(NOW) });
   await withSession(page, OWNER);
   await wireApi(page, OWNER, withSettings(handlers()));
-  await page.goto(PAGE + "#ideas");
+  await page.goto(PAGE + "#videos");
   await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
   await expect(page).toHaveURL(/#today$/);
-  await expect(page.locator("#mccTabs .tab")).toHaveCount(1);
+  await expect(page.locator("#mccTabs .tab")).toHaveText(STRIP);
   await assertPageAlive(page, errors);
 });
 
@@ -997,8 +1002,9 @@ test("the frame hosts main's FundhubCC tabs: a cc-tab file loaded before the fra
   await expect(page.locator("#prWord")).toHaveText("Read through ctx.api.");
   expect(await page.evaluate(() => [window.__probe.queuedBeforeFrame, window.FundhubCC._q.length, window.__probe.renders]))
     .toEqual([true, 0, 1]);
-  // On the strip in its slot (6: after Today), shown, with Settings still behind the gear.
-  await expect(page.locator("#mccTabs .tab")).toHaveText(["Today", "Probe"]);
+  // On the strip in its slot (6, beside Launch's 6: ties go by key), shown, with Settings
+  // still behind the gear.
+  await expect(page.locator("#mccTabs .tab")).toHaveText(["Today", "Ideas", "Scripts", "Shoot", "Launch", "Probe", "Numbers"]);
   await expect(page.locator('#mccTabs .tab[data-tab="probe"]')).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#mccGear .gear")).toHaveText(/Settings/);
   await expect(page).toHaveTitle(/Command Center · Probe$/);
