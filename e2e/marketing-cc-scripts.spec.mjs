@@ -1,8 +1,10 @@
 // The Command Center's Scripts tab (plan unit U36) in a real browser, offline.
 //
-// The frame (U34) is being built at the same time, so the tab runs inside the
-// stub frame in e2e/helpers/cc-tab-harness.mjs (docs/specs/command-center-tabs.md
-// allows this until the frame lands). page.route answers /api/** with the API
+// The frame (U34) is not on main yet, so the tab runs inside the stub frame in
+// e2e/helpers/cc-tab-harness.mjs (docs/specs/command-center-tabs.md allows this
+// until the frame lands). The stub speaks U34's frame contract (FHMarketingCCTabs,
+// ctx.api/post answering {status, body}, ctx.costLine under each paid button);
+// one test runs main's FundhubCC contract with its cost sheet. page.route answers /api/** with the API
 // contract's own examples (src/marketing/api-contract.mjs), so the requests
 // this screen sends are checked against the shapes the real routes take.
 // No database, no session, nothing sent anywhere.
@@ -125,10 +127,10 @@ async function wire(page, { routes }) {
   return calls;
 }
 
-async function open(page, a = api(), { param = "" } = {}) {
+async function open(page, a = api(), { param = "", flavor = "u34" } = {}) {
   await page.clock.install({ time: new Date(NOW) });
   const calls = await wire(page, a);
-  await openTabHarness(page, { tab: "scripts", param });
+  await openTabHarness(page, { tab: "scripts", param, flavor });
   return calls;
 }
 
@@ -215,20 +217,15 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     expect(edits[1].body.request_id).not.toBe(edits[0].body.request_id);
   });
 
-  test("Fix: a note and 'Make this a rule', the cost sheet first, the new version back within 5 seconds", async ({ page }) => {
+  test("Fix: a note and 'Make this a rule', its cost printed first, the new version back within 5 seconds", async ({ page }) => {
     const a = api();
     const calls = await open(page, a);
     await page.getByRole("button", { name: "Fix" }).click();
-    await expect(card(page)).toContainText("One rewrite, about the cost of one script. Cost: unknown, not measured yet.");
+    await expect(card(page)).toContainText("One rewrite with the model, about the cost of one script. Cost: unknown, not measured yet.");
     await page.getByLabel("What should change?").fill("Make the hook about the business file, not the personal one.");
     await page.getByLabel("Make this a rule for every script").check();
     await page.getByRole("button", { name: "Rewrite it" }).click();
 
-    const sheet = page.getByRole("dialog");
-    await expect(sheet).toContainText("Rewrite this script from your note");
-    await expect(sheet).toContainText("Cost: unknown, not measured yet.");
-    expect(posts(calls, "POST marketing/scripts/fix")).toHaveLength(0);
-    await sheet.getByRole("button", { name: "Yes, go ahead" }).click();
 
     await expect(page.locator(".ccs-say.show")).toContainText("Rewriting from your note. It comes back here when done.");
     await expect(page.locator(".ccs-say.show")).toContainText("Your note is also saved as a new rule for every script.");
@@ -293,19 +290,19 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     await expect(page.getByRole("button", { name: /Write/ })).toHaveCount(0);
   });
 
-  test("Write now: a plain cost note, the cost sheet, then it says it is writing", async ({ page }) => {
+  test("Write now: a plain cost note from the frame's cost line, then it says it is writing", async ({ page }) => {
     const calls = await open(page);
     const note = page.locator(".ccs-writenow .caption").first();
-    await expect(note).toHaveText("Writes 3 scripts with the model. Cost and time: unknown, not measured yet. Stops by itself at $40 a batch and $300 a month.");
+    await expect(note).toHaveText("Writes 3 scripts with the model. Cost: unknown, not measured yet. Stops by itself at $40 a batch and $300 a month.");
+    await expect(page.locator(".ccs-writenow")).toContainText("Model spend this month: unknown.");
+    expect(calls.some((c) => c.key === "GET marketing/costs")).toBe(true);
     await page.getByRole("button", { name: "Write now" }).click();
-    expect(posts(calls, "POST marketing/batches/write-now")).toHaveLength(0);
-    await page.getByRole("dialog").getByRole("button", { name: "Yes, go ahead" }).click();
     await expect(page.locator(".ccs-writenow .ccs-say.show")).toContainText("Writing now. New drafts show up here when they are done.");
     const [p] = posts(calls, "POST marketing/batches/write-now");
     expect(p.body.request_id).toMatch(UUID);
   });
 
-  test("an idea: the big box, optional format and funnel, Save, and Write it now behind the cost sheet", async ({ page }) => {
+  test("an idea: the big box, optional format and funnel, Save, and Write it now with its cost printed", async ({ page }) => {
     const calls = await open(page);
     await page.getByText("Ideas", { exact: true }).click();
     await page.getByLabel("Your idea").fill("Banks read the business file first.");
@@ -320,8 +317,8 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     expect(p.body.write_now).toBeUndefined();
 
     await page.getByLabel("Your idea").fill("Rates are going up.");
+    await expect(page.locator("[data-sec=ideas]")).toContainText("Write it now writes one script from it today with the model. Cost: unknown, not measured yet.");
     await page.getByRole("button", { name: "Write it now" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Yes, go ahead" }).click();
     await expect(page.locator(".ccs-say.show")).toContainText("Saved. Writing one script from it now.");
     expect(posts(calls, "POST marketing/ideas")[1].body.write_now).toBe(true);
   });
@@ -443,6 +440,37 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     const after = calls.length;
     await page.clock.runFor(15000);
     expect(calls.length).toBe(after);
+  });
+});
+
+/* ── main's tab contract (window.FundhubCC, ctx.costSheet) ────────────────── */
+
+test.describe("Scripts tab under main's FundhubCC contract (390x844)", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("registers on FundhubCC, approves, and shows the cost sheet before Fix and Write now", async ({ page }) => {
+    const calls = await open(page, api(), { flavor: "fundhubcc" });
+    await expect(card(page)).toContainText("Draft 1 of 2 · Book a call · sorting hat short");
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
+    await expect(page.locator(".ccs-say.show")).toContainText("Approved. This is Ad 93.");
+    expect(posts(calls, "POST marketing/scripts/approve")[0].body.request_id).toMatch(UUID);
+
+    await page.getByRole("button", { name: "Fix" }).click();
+    await page.getByLabel("What should change?").fill("Shorter hook.");
+    await page.getByRole("button", { name: "Rewrite it" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toContainText("Rewrite this script from your note");
+    await expect(sheet).toContainText("Cost: unknown, not measured yet.");
+    expect(posts(calls, "POST marketing/scripts/fix")).toHaveLength(0);
+    await sheet.getByRole("button", { name: "Yes, go ahead" }).click();
+    await expect(page.locator(".ccs-say.show")).toContainText("Rewriting from your note.");
+    expect(posts(calls, "POST marketing/scripts/fix")[0].body).toMatchObject({ note: "Shorter hook.", make_rule: false });
+
+    await page.getByRole("button", { name: "Write now" }).click();
+    await expect(sheet).toContainText("Write scripts now");
+    expect(posts(calls, "POST marketing/batches/write-now")).toHaveLength(0);
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+    expect(posts(calls, "POST marketing/batches/write-now")).toHaveLength(0);
   });
 });
 

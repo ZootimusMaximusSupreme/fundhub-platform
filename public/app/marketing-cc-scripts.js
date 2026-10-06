@@ -1,4 +1,4 @@
-/* cc-tab-scripts.js — the Command Center's Scripts tab (plan unit U36).
+/* marketing-cc-scripts.js — the Command Center's Scripts tab (plan unit U36).
 
    WHAT THIS TAB IS. The Monday job: Chris approves the week's scripts from his
    phone, one card at a time. Design: docs/specs/command-center-design-2026-10-05.md
@@ -6,11 +6,19 @@
    §8.3 (Scripts), §8.1 (Inbox, Ideas and Rules), §7.8, §4 trap 17 (only a
    person approves or rejects). UI law: docs/rules/UI-STANDARDS.md.
 
-   HOW IT PLUGS IN. docs/specs/command-center-tabs.md: one file per tab,
-   registered on window.FundhubCC (works whether the frame loaded first or
-   not). The frame owns the page, the tab bar, ctx.api, ctx.costSheet and the
-   session. This file never edits the frame or another tab, and it never
-   fetches by itself: every call goes through ctx.api.
+   HOW IT PLUGS IN. One file per tab. Two tab contracts exist tonight, and this
+   file speaks both, so it works with whichever frame lands:
+     - the frame unit U34's (branch mm-u34-frame, docs/specs/command-center-tabs.md
+       there): window.FHMarketingCCTabs.register({key:'scripts', order:30, ...}),
+       or the FHMarketingCCTabsQueue when the frame loads second; ctx.api(path,
+       {method}) and ctx.post(path, body, request_id) answer {status, body};
+       ctx.style, ctx.costs and ctx.costLine.
+     - main's (docs/specs/command-center-tabs.md on main): window.FundhubCC
+       .registerTab({id:'scripts', order:3, ...}); ctx.api(method, path, body)
+       answers {ok, status, data, conflict, current}; ctx.costSheet before a paid tap.
+   The frame owns the page, the tab strip and the session. This file never
+   edits the frame or another tab, and it never fetches by itself: every call
+   goes through ctx.
 
    WHAT IT READS AND CALLS (docs/specs/marketing-machine-api.md shapes 3 and 4).
      GET  marketing/scripts            every live script the screen may see
@@ -37,11 +45,13 @@
 
    TYPE. The shell throws away px font sizes (UI-STANDARDS §12.7), so this file
    writes none. Sizes come from the brand whitelist only: h2 = title,
-   .caption/.eyebrow/.chip/label = caption, everything else body.
+   .caption/.eyebrow/.chip/label = caption, everything else body. Every rule
+   is scoped under .ccs, this tab's own root.
 
    TESTABLE WITHOUT A BROWSER. Every rule that turns data into words or HTML
-   is a plain function on window.FundhubCCScripts; src/ui/cc-tab-scripts.test.mjs
-   runs this file in node:vm with no DOM. */
+   is a plain function on window.FundhubCCScripts (also handed to the frame as
+   `rules`); src/ui/marketing-cc-scripts.test.mjs runs this file in node:vm
+   with no DOM. */
 (function (W) {
   "use strict";
 
@@ -49,6 +59,8 @@
 
   const AZ = "America/Phoenix";
   const POLL_MS = 5000;
+  /* Everything is read again every 5 minutes while the tab is on screen (design §3.0). */
+  const RELOAD_MS = 5 * 60 * 1000;
   /* After this long with no new version, a Fix says it is taking long. */
   const FIX_SLOW_MS = 15 * 60 * 1000;
   /* How long a Write now is watched for its drafts. */
@@ -472,10 +484,13 @@
   }
 
   /** The plain cost note under Write now. Every cost is unknown until measured. */
-  function writeNowNote(settings) {
+  const UNKNOWN_COST = "Cost and time: unknown, not measured yet.";
+
+  /** The plain cost note under Write now. costText is the frame's cost line when it has one. */
+  function writeNowNote(settings, costText) {
     const n = settings && Number.isInteger(settings.scripts_per_day) ? settings.scripts_per_day : null;
     const what = n == null ? "Writes your daily number of scripts" : `Writes ${plural(n, "script")}`;
-    return `${what} with the model. Cost and time: unknown, not measured yet. ${capWords(settings)}`;
+    return `${what} with the model. ${costText || UNKNOWN_COST} ${capWords(settings)}`;
   }
 
   /** The schedule line on an empty inbox. */
@@ -665,13 +680,13 @@
       `<div class="ccs-row-btns">${btn("Save new version", "edit-save", { cls: "primary", busy: panel.busy, busyLabel: "Saving…" })}${btn("Cancel", "panel-close")}</div></div>`;
   }
 
-  function fixPanelHtml(s, panel) {
+  function fixPanelHtml(s, panel, costText) {
     return `<div class="ccs-panel" data-panel="fix">` +
       `<div class="ccs-field"><label for="ccs-fix-note">What should change?</label>` +
       `<textarea id="ccs-fix-note" name="fix-${esc(s.id)}" data-keep rows="4" placeholder="Say it in your words. The machine rewrites the script from it."></textarea>` +
       `<p class="caption">Tap the mic on your keyboard to talk instead of typing.</p></div>` +
       `<label class="ccs-check-row"><input type="checkbox" name="fix-rule-${esc(s.id)}" data-keep> Make this a rule for every script</label>` +
-      `<p class="caption">One rewrite, about the cost of one script. Cost: unknown, not measured yet. The note goes to the machine exactly as you typed it.</p>` +
+      `<p class="caption">${esc(`One rewrite with the model, about the cost of one script. ${costText || UNKNOWN_COST} The note goes to the machine exactly as you typed it.`)}</p>` +
       `<div class="ccs-row-btns">${btn("Rewrite it", "fix-send", { cls: "primary", busy: panel.busy, busyLabel: "Sending…" })}${btn("Cancel", "panel-close")}</div></div>`;
   }
 
@@ -705,7 +720,7 @@
     let actions;
     if (conflict) actions = conflictHtml(conflict);
     else if (panel && panel.kind === "edit") actions = editPanelHtml(s, panel);
-    else if (panel && panel.kind === "fix") actions = fixPanelHtml(s, panel);
+    else if (panel && panel.kind === "fix") actions = fixPanelHtml(s, panel, st.costText && st.costText.fix_script);
     else if (panel && panel.kind === "reject") actions = rejectPanelHtml(s, panel);
     else if (pending) {
       const slow = Number.isFinite(pending.since) && st.now - pending.since > FIX_SLOW_MS;
@@ -814,7 +829,8 @@
     let writeNow = "";
     if (showWriteNow(st.batches)) {
       writeNow = `<div class="ccs-writenow">${btn("Write now", "write-now", { busy: st.busy.writeNow, busyLabel: "Starting…" })}` +
-        `<p class="caption">${esc(writeNowNote(st.settings.data))}</p>${sayHtml(st.say, "writenow")}</div>`;
+        `<p class="caption">${esc(writeNowNote(st.settings.data, st.costText && st.costText.start_batch))}</p>` +
+        (st.monthText ? `<p class="caption">${esc(st.monthText)}</p>` : "") + `${sayHtml(st.say, "writenow")}</div>`;
     }
     const batchErr = st.batches.status === "error"
       ? `<p class="caption">${esc(`Batch history did not load: ${st.batches.error}`)}</p>` : "";
@@ -874,7 +890,7 @@
         `<div class="ccs-row-btns">${btn("Save idea", "idea-save", { busy: st.busy.ideaSave, busyLabel: "Saving…" })}` +
         (ready ? btn("Write it now", "idea-write", { busy: st.busy.ideaWrite, busyLabel: "Starting…" }) : "") + `</div>` +
         `<p class="caption">Save idea is free. It goes in the next batch.</p>` +
-        (ready ? `<p class="caption">${esc(`Write it now writes one script from it today with the model. Cost and time: unknown, not measured yet. ${capWords(st.settings.data)}`)}</p>` : "") +
+        (ready ? `<p class="caption">${esc(`Write it now writes one script from it today with the model. ${(st.costText && st.costText.start_batch) || UNKNOWN_COST} ${capWords(st.settings.data)}`)}</p>` : "") +
         sayHtml(st.say, "ideas") +
         `<p class="eyebrow ccs-sub">Your ideas</p>${list}</div>`;
     }
@@ -1086,17 +1102,36 @@
       pendingFix: {}, writeWatch: null, timer: null, last: {}, swipe: null,
       /* Counts this screen's own saves. A list read that started before a save
          came back is older than what the screen shows, so it is dropped. */
-      mutations: 0
+      mutations: 0,
+      costText: null, monthText: null, lastLoad: 0
     };
   }
 
   let st = freshState();
 
-  /** ctx.api's answer, made safe: never throws, always {ok, status, data, conflict, current}. */
+  /* Which frame handed us ctx. U34's frame has post() and requestId() and
+     answers {status, body}; main's contract has api(method, path, body). */
+  function isU34Ctx(ctx) {
+    return !!ctx && typeof ctx.post === "function" && typeof ctx.requestId === "function";
+  }
+
+  /** The frame's answer, made safe: never throws, always {ok, status, data, conflict, current}. */
   async function call(method, path, body, opts) {
     const ctx = st.ctx;
     if (!ctx || typeof ctx.api !== "function") return { ok: false, status: 0, data: null, conflict: false, current: null };
     try {
+      if (isU34Ctx(ctx)) {
+        const full = "/api/" + path;
+        const res = (method === "GET"
+          ? await ctx.api(full, { method: "GET" })
+          : await ctx.post(full, body, body && body.request_id)) || {};
+        const status = Number(res.status) || 0;
+        const data = res.body !== undefined ? res.body : null;
+        return {
+          ok: status >= 200 && status < 300, status, data,
+          conflict: status === 409, current: isObj(data) ? data.current || null : null
+        };
+      }
       const r = (await ctx.api(method, path, body, opts || {})) || {};
       const status = Number(r.status) || 0;
       const data = r.data !== undefined ? r.data : null;
@@ -1205,8 +1240,22 @@
     paint();
   }
 
+  /* The frame's cost words (U34: ctx.costs + ctx.costLine, read from GET marketing/costs).
+     With no such helper every cost line stays "unknown, not measured yet". */
+  async function loadCosts() {
+    const ctx = st.ctx;
+    if (!ctx || typeof ctx.costs !== "function" || typeof ctx.costLine !== "function") return;
+    try {
+      const c = await ctx.costs();
+      st.costText = { start_batch: String(ctx.costLine(c, "start_batch") || ""), fix_script: String(ctx.costLine(c, "fix_script") || "") };
+      st.monthText = typeof ctx.monthLine === "function" ? String(ctx.monthLine(c) || "") : null;
+    } catch (_) { /* the default words stay */ }
+    paint();
+  }
+
   function loadAll() {
-    return Promise.all([loadScripts(), loadBatches(), loadSettings(), loadFunnels(), loadIdeas(),
+    st.lastLoad = Date.now();
+    return Promise.all([loadScripts(), loadBatches(), loadSettings(), loadFunnels(), loadIdeas(), loadCosts(),
       st.open.rules ? loadRules() : Promise.resolve()]);
   }
 
@@ -1253,7 +1302,9 @@
   async function tick() {
     st.now = Date.now();
     if (st.writeWatch && st.now - st.writeWatch.since >= WRITE_WATCH_MS) st.writeWatch = null;
-    if (!st.shown || !pageVisible() || !needsPoll()) return;
+    if (!st.shown || !pageVisible()) return;
+    if (st.now - st.lastLoad >= RELOAD_MS) { await loadAll(); return; }
+    if (!needsPoll()) return;
     const jobs = [];
     const writing = !!st.writeWatch || batchWriting();
     if (Object.keys(st.pendingFix).length || writing) jobs.push(loadScripts());
@@ -1758,9 +1809,9 @@
     st.ctx = ctx || {};
     st.root = rootEl;
     st.shown = true;
-    applyParam(st.ctx.param);
-    const doc = W.document;
-    injectStyle(doc);
+    applyParam(st.ctx.param != null ? st.ctx.param : (typeof st.ctx.sub === "function" ? st.ctx.sub() : ""));
+    if (typeof st.ctx.style === "function") st.ctx.style("scripts", CSS);
+    else injectStyle(W.document);
     rootEl.innerHTML = `<div class="ccs">` +
       `<section data-sec="head" aria-label="Scripts summary"></section>` +
       `<section data-sec="main" aria-label="Scripts"></section>` +
@@ -1787,12 +1838,15 @@
     });
   }
 
+  /* Shown again (main's refresh(ctx), U34's show(panel, ctx)): read everything again. */
   function refresh(ctx) {
     if (ctx) st.ctx = ctx;
     st.shown = true;
     startTimer();
     return loadAll();
   }
+
+  function show(_panel, ctx) { return refresh(ctx); }
 
   function hide() {
     st.shown = false;
@@ -1815,7 +1869,13 @@
     CSS
   };
 
-  /* ── register (docs/specs/command-center-tabs.md) ── */
+  /* ── register ──
+     U34's frame (mm-u34-frame's docs/specs/command-center-tabs.md): Scripts is order 30.
+     A frame that has not loaded yet drains FHMarketingCCTabsQueue when it starts. */
+  const TAB = { key: "scripts", label: "Scripts", order: 30, place: "strip", rules: W.FundhubCCScripts, render, show, hide };
+  if (W.FHMarketingCCTabs && typeof W.FHMarketingCCTabs.register === "function") W.FHMarketingCCTabs.register(TAB);
+  else (W.FHMarketingCCTabsQueue = W.FHMarketingCCTabsQueue || []).push(TAB);
+  /* main's docs/specs/command-center-tabs.md: window.FundhubCC, Scripts is order 3. */
   (W.FundhubCC = W.FundhubCC || { _q: [], registerTab(t) { this._q.push(t); } })
     .registerTab({ id: "scripts", label: "Scripts", order: 3, render, refresh, hide });
 })(typeof window !== "undefined" ? window : this);

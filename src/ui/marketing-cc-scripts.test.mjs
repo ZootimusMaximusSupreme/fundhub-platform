@@ -1,5 +1,5 @@
 // The Command Center's Scripts tab (plan unit U36): the rules that turn the
-// API's answers into words and buttons. public/app/cc-tab-scripts.js puts each
+// API's answers into words and buttons. public/app/marketing-cc-scripts.js puts each
 // rule on window.FundhubCCScripts, so this file runs the real script in
 // node:vm with no browser and no server (the pattern
 // src/ui/marketing-command-center.test.mjs uses).
@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { CONTRACT, exampleResponse } from "../marketing/api-contract.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.resolve(HERE, "../../public/app/cc-tab-scripts.js"), "utf8");
+const SRC = fs.readFileSync(path.resolve(HERE, "../../public/app/marketing-cc-scripts.js"), "utf8");
 
 function load(extra = {}) {
   const ctx = createContext({ console, ...extra });
@@ -78,7 +78,25 @@ function loaded({ scripts = [list()[0], flaggedDraft()], ready = true, open = {}
 const buttons = (html) => html.match(/<button\b[^>]*>/g) || [];
 
 describe("registering on the Command Center frame", () => {
-  test("queues itself as the Scripts tab when the frame is not loaded yet", () => {
+  test("U34's frame: queues itself as Scripts, order 30, on the strip, with its rules", () => {
+    const q = CTX.FHMarketingCCTabsQueue;
+    assert.equal(q.length, 1);
+    assert.equal(q[0].key, "scripts");
+    assert.equal(q[0].label, "Scripts");
+    assert.equal(q[0].order, 30);
+    assert.equal(q[0].place, "strip");
+    assert.equal(q[0].rules, S);
+    for (const k of ["render", "show", "hide"]) assert.equal(typeof q[0][k], "function", k);
+  });
+
+  test("U34's frame: registers straight away when the frame loaded first", () => {
+    const seen = [];
+    const ctx = load({ FHMarketingCCTabs: { register: (t) => { seen.push(`${t.key}:${t.order}`); return true; } } });
+    assert.deepEqual(seen, ["scripts:30"]);
+    assert.equal(ctx.FHMarketingCCTabsQueue, undefined);
+  });
+
+  test("main's contract: queues itself on FundhubCC when that frame is not loaded yet", () => {
     const q = CTX.FundhubCC._q;
     assert.equal(q.length, 1);
     assert.equal(q[0].id, "scripts");
@@ -176,6 +194,19 @@ describe("Write now is drawn only when write_now_ready is true", () => {
     assert.match(head, /Writes 3 scripts with the model\. Cost and time: unknown, not measured yet\. Stops by itself at \$40 a batch and \$300 a month\./);
     assert.match(S.html.ideas(st), /data-act="idea-write"/);
     assert.doesNotMatch(buttons(head).filter((b) => /write-now/.test(b))[0], /primary/);
+  });
+
+  test("the frame's measured cost line takes the place of 'unknown'", () => {
+    assert.equal(S.writeNowNote(SETTINGS, "About $1.20 and about 6 minutes (last run)."),
+      "Writes 3 scripts with the model. About $1.20 and about 6 minutes (last run). Stops by itself at $40 a batch and $300 a month.");
+    const st = loaded({ ready: true });
+    st.costText = { start_batch: "About $1.20 (last run).", fix_script: "About $0.40 (last run)." };
+    st.monthText = "Model spend this month: $12.48 of $300.00.";
+    const head = S.html.head(st);
+    assert.match(head, /About \$1\.20 \(last run\)\./);
+    assert.match(head, /Model spend this month: \$12\.48 of \$300\.00\./);
+    st.panel = { kind: "fix", id: st.scripts.items[1].id };
+    assert.match(S.html.main(st), /One rewrite with the model, about the cost of one script\. About \$0\.40 \(last run\)\./);
   });
 
   test("an unknown cap prints 'unknown', never $0", () => {

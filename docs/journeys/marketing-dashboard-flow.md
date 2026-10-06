@@ -588,15 +588,21 @@ flowchart TD
 section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
 JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
 
-## U36 Command Center Scripts tab (`public/app/cc-tab-scripts.js`)
+## U36 Command Center Scripts tab (`public/app/marketing-cc-scripts.js`)
 
-Drawn from the code on 2026-10-06 (branch `mm-u36-scripts-tab`). One tab module per
-`docs/specs/command-center-tabs.md`, registered on `window.FundhubCC` as `{id:'scripts', label:'Scripts',
-order:3}`. Every call goes through the frame's `ctx.api`; paid taps go through `ctx.costSheet` first.
-Yardstick (plan note: no intended journey on main): spec §8.3 Scripts, §8.1 Inbox / Ideas / Rules, §7.8,
-§4 trap 17, and the design `command-center-design-2026-10-05.md` §3.3. **UNVERIFIED on the live page:**
-the frame (U34) is not on main, so the tab has only run inside the stub frame
-(`e2e/helpers/cc-tab-harness.mjs`), and its `<script>` line is the integrator's to add.
+Drawn from the code on 2026-10-06 (branch `mm-u36-scripts-tab`). One tab module. It registers on both
+tab contracts that exist tonight: U34's frame (`window.FHMarketingCCTabs.register({key:'scripts',
+order:30, place:'strip', rules, render, show, hide})`, or `FHMarketingCCTabsQueue` when the frame loads
+second) and main's `docs/specs/command-center-tabs.md` (`window.FundhubCC.registerTab({id:'scripts',
+order:3})`). Every call goes through the frame's ctx: U34's `ctx.api('/api/…', {method})` and
+`ctx.post(path, body, request_id)`, or main's `ctx.api(method, path, body)`. Cost words under a paid
+button come from U34's `ctx.costLine` (GET marketing/costs) or say "unknown, not measured yet"; under
+main's contract a paid tap also opens `ctx.costSheet` first. The page gets one line,
+`<script defer src="marketing-cc-scripts.js">`. Yardstick (plan note: no intended journey on main):
+spec §8.3 Scripts, §8.1 Inbox / Ideas / Rules, §7.8, §4 trap 17, and the design
+`command-center-design-2026-10-05.md` §3.3. **UNVERIFIED on the live page:** the frame (U34) is not on
+main. In CI the tab runs in the stub frame (`e2e/helpers/cc-tab-harness.mjs`, both contracts); on this
+Mac it also opened at `#scripts` inside U34's own frame files from `mm-u34-frame` and approved a draft.
 
 ### What the tab reads when it opens
 
@@ -625,7 +631,7 @@ flowchart TD
   ED -->|"Save new version"| EP["POST marketing/scripts/edit<br/>{request_id, id, version, body (parts swapped in place), parts}"]
   EP -->|"200"| E2["'Saved as version N. Your old version is kept.'<br/>+ checker warnings (never block)"]
   C -->|"Fix"| FX["note box + 'Make this a rule for every script'"]
-  FX -->|"Rewrite it → ctx.costSheet(kind fix_script) → yes"| FP["POST marketing/scripts/fix<br/>{request_id, id, version, note, make_rule}"]
+  FX -->|"Rewrite it (cost line fix_script printed under it;<br/>main's contract: ctx.costSheet first)"| FP["POST marketing/scripts/fix<br/>{request_id, id, version, note, make_rule}"]
   FP -->|"202"| F2["card goes to the end, chip 'rewriting', Approve disabled with the reason"]
   F2 -->|"every 5 s while on screen:<br/>GET marketing/scripts"| F3["a newer version of the same root →<br/>'#quot;Title#quot; was rewritten from your note. Version N is in your drafts.'"]
   C -->|"Reject (tap 1)"| RJ["'Reject this script? It will not be filmed…'<br/>optional reason · Keep it (filled) · Reject it"]
@@ -642,7 +648,7 @@ flowchart TD
 flowchart TD
   AL["Approved filter: approved scripts by film_order, then ad number"] -->|"Up / Down / Film first"| OR["POST marketing/scripts/order<br/>{request_id, order:[root_script_id…]}"]
   OR -->|"200"| O2["film_order 1..n on the screen, 'Film order saved.'"]
-  WN["Write now (only when write_now_ready)"] -->|"ctx.costSheet(kind start_batch) → yes"| WP["POST marketing/batches/write-now {request_id}"]
+  WN["Write now (only when write_now_ready)<br/>cost line start_batch + month line under it"] -->|"tap (main's contract: ctx.costSheet first)"| WP["POST marketing/batches/write-now {request_id}"]
   WP -->|"202"| W2["'Writing now. New drafts show up here when they are done.'<br/>GET batches + scripts + ideas every 5 s while on screen, up to 30 min"]
   ID["Ideas fold: big box, format?, funnel?"] -->|"Save idea (free)"| IP["POST marketing/ideas {request_id, raw_points, script_format?, funnel_key?}"]
   ID -->|"Write it now (only when write_now_ready) → cost sheet"| IW["POST marketing/ideas {…, write_now:true}"]
@@ -677,8 +683,14 @@ flowchart TD
    not exist; with no connection a tap says "Nothing changed. Check the connection and try again."
 9. **Edit request shape:** the design's `parts:[{kind, before, after}]` loses to the contract's
    `{body, parts}`; the body is rebuilt by swapping each changed part in place.
-10. **Cost sheet kinds:** Write now and Write it now pass `start_batch`, Fix passes `fix_script` to
-    `ctx.costSheet`; `GET marketing/costs` does not exist yet, so every sheet reads "unknown".
-11. **Registration:** `window.FundhubCC` (the tab contract), not `window.FHMarketingCCTabs` (older
-    plan text). The page's `<script>` line is left to the integrator (the contract's rule), not added
-    here as the plan's shared-files line said.
+10. **Cost kinds:** Write now and Write it now ask the frame for kind `start_batch`, Fix for
+    `fix_script` (U34's `ctx.costLine`, or main's `ctx.costSheet`). `GET marketing/costs` does not
+    exist yet, so every line reads "unknown, not measured yet". No route names the kinds yet.
+11. **Two tab contracts.** Main's `docs/specs/command-center-tabs.md` (`window.FundhubCC`, files
+    `cc-tab-<id>.js`, the integrator adds the script line) and U34's on `mm-u34-frame`
+    (`window.FHMarketingCCTabs`, files `marketing-cc-<tab>.js`, the tab adds its own line) disagree.
+    This tab follows U34's names (the plan's `owns_files` agree), registers on both, and adds its one
+    line to the page after `marketing-command-center.js`; on U34's page it belongs between
+    `marketing-cc-today.js` and `marketing-cc-settings.js`.
+12. **No cost sheet in U34's frame:** under U34's contract Fix and Write now are one tap with the cost
+    printed under the button (design safety rule 3); the design's two-tap list does not include them.
