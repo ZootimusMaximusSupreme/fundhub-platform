@@ -247,7 +247,7 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.deepEqual(rows[0].edit, { op: "set_front_matter_key", key: "status", value: "approved" });
       const seen = await readFlywheel({ db, orgId: orgA, campaign: "partner", env: ENV });
       assert.match(seen.files["04-copy.md"].text, /^---\nstage: 4\nversion: \d+\nstatus: approved\n/);
-      assert.equal(seen.files["04-copy.md"].source, "bundle-fallback");
+      assert.equal(seen.files["04-copy.md"].source, "outbox-pending", "a save not yet in git says so");
     });
 
     test("a step with no file has nothing to approve", async () => {
