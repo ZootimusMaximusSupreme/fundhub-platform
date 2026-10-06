@@ -56,27 +56,27 @@ Safety for the whole night (no exceptions): no existing live page changes. No Me
 
 | Id | Lane | Wave | Depends on | Migrations | Work | Status |
 |---|---|---|---|---|---|---|
-| U01 | A | 1 | C1 | - | API contract for every marketing/* route (docs/specs/marketing-machine-api.md + machine-readable twin) | pending |
-| U02 | A | 1 | C1 | - | M0 step 1: rule changes (new §3c, chris-word-wins, animations-last, lowest-tier line, superseded lines, §3b ro | pending |
-| U03 | A | 1 | C1 | 410 | M0 step 3 part 1: marketing_settings, marketing_funnels, marketing_requests (410), funnel seed, offer facts, s | pending |
-| U04 | A | 1 | C1 | 411 | M0 step 3 part 2 + buzz/cost half of step 4: buzzes, model usage, shoots, jobs claim index (411), job queue li | pending |
-| U05 | A | 1 | C1 | 412 | M0 step 2: repo outbox (412), GitHub client provider, path allow-list, edit ops, lease-based drain (pooler-saf | pending |
-| U06 | A | 1 | C1 | - | M0 step 4 model client: callModel provider 'anthropic' with structured outputs, strict tools (auto only), effo | pending |
-| U07 | A | 1 | C1 | - | M0 step 5: Meta API v26.0 everywhere (except meta.mjs), hourly 3-day + nightly 28-day sync, link clicks source | pending |
-| U08 | A | 1 | C1 | - | M0 step 8: ship pulls (never blocks), pushes after log, skips machine-only commits; Netlify git-build skip rul | pending |
-| U09 | A | 1 | C1 | - | M1 7.1: RULES.md Part 0, contradiction sweep, stale paths, checker strict mode, optimize unbanned, per-format  | pending |
-| U10 | A | 1 | C1 | - | M1 7.3: RECIPES.md, angles.json, Remotion animation catalog builder, animation-plan validator | pending |
-| U11 | A | 1 | C1 | 413, 414 | M1 7.4 data: ad_scripts machine columns + defaults + root trigger + backfill (413), batches/ideas/voice_pairs  | pending |
-| U12 | A | 1 | C1 | - | M1 7.2: 30+ real voice pairs from Chris's chats into VOICE.md (main session) | pending |
-| U13 | B | 1 | C1 | - | M4 10.1/10.2/10.5a: Meta upload, creative, thumbnails, guards, backoff, Page/Instagram id script (meta.mjs on  | pending |
-| U14 | B | 1 | C1 | 416 | M4 10.3/10.4: one ad number on many Meta ads (416: plain index + fundhub_ad_number_source), url_tags builder,  | pending |
-| U15 | B | 1 | C1 | - | M4 10.5 Turn on: resume_ad action (one ad, by our ads.id, Chris only) | pending |
-| U16 | B | 1 | C1 | - | M3 9.2: the aligner src/ad-videos/align.mjs (pure, no AI) | pending |
-| U17 | B | 1 | C1 | - | M3 9.3: ffmpeg argument builders and cut checks src/ad-videos/ffmpeg-plan.mjs (pure) | pending |
-| U18 | B | 1 | C1 | - | M3 9.1 match step: whisperWords, free word-overlap pre-check, next free take number, stop renaming raw files | pending |
-| U19 | B | 1 | C1 | - | M3 9.5 pure parts: R2 presigned links (SigV4) and video-worker callback HMAC | pending |
-| U20 | D | 1 | C1 | - | M5 11.1: metric definitions (docs/marketing/metrics.md) and src/marketing/metrics.mjs with fixture tests | pending |
-| U21 | D | 1 | - | - | M5 precondition: run the one-time Meta history backfill for Aug 4-16 (ops, orchestrator in the main checkout) | pending |
+| U01 | A | 1 | C1 | - | API contract for every marketing/* route (docs/specs/marketing-machine-api.md + machine-readable twin) | claimed (wave 1) |
+| U02 | A | 1 | C1 | - | M0 step 1: rule changes (new §3c, chris-word-wins, animations-last, lowest-tier line, superseded lines, §3b ro | claimed (wave 1) |
+| U03 | A | 1 | C1 | 410 | M0 step 3 part 1: marketing_settings, marketing_funnels, marketing_requests (410), funnel seed, offer facts, s | claimed (wave 1) |
+| U04 | A | 1 | C1 | 411 | M0 step 3 part 2 + buzz/cost half of step 4: buzzes, model usage, shoots, jobs claim index (411), job queue li | claimed (wave 1) |
+| U05 | A | 1 | C1 | 412 | M0 step 2: repo outbox (412), GitHub client provider, path allow-list, edit ops, lease-based drain (pooler-saf | claimed (wave 1) |
+| U06 | A | 1 | C1 | - | M0 step 4 model client: callModel provider 'anthropic' with structured outputs, strict tools (auto only), effo | claimed (wave 1) |
+| U07 | A | 1 | C1 | - | M0 step 5: Meta API v26.0 everywhere (except meta.mjs), hourly 3-day + nightly 28-day sync, link clicks source | claimed (wave 1) |
+| U08 | A | 1 | C1 | - | M0 step 8: ship pulls (never blocks), pushes after log, skips machine-only commits; Netlify git-build skip rul | claimed (wave 1) |
+| U09 | A | 1 | C1 | - | M1 7.1: RULES.md Part 0, contradiction sweep, stale paths, checker strict mode, optimize unbanned, per-format  | claimed (wave 1) |
+| U10 | A | 1 | C1 | - | M1 7.3: RECIPES.md, angles.json, Remotion animation catalog builder, animation-plan validator | claimed (wave 1) |
+| U11 | A | 1 | C1 | 413, 414 | M1 7.4 data: ad_scripts machine columns + defaults + root trigger + backfill (413), batches/ideas/voice_pairs  | claimed (wave 1) |
+| U12 | A | 1 | C1 | - | M1 7.2: 30+ real voice pairs from Chris's chats into VOICE.md (main session) | claimed (wave 1) |
+| U13 | B | 1 | C1 | - | M4 10.1/10.2/10.5a: Meta upload, creative, thumbnails, guards, backoff, Page/Instagram id script (meta.mjs on  | claimed (wave 1) |
+| U14 | B | 1 | C1 | 416 | M4 10.3/10.4: one ad number on many Meta ads (416: plain index + fundhub_ad_number_source), url_tags builder,  | claimed (wave 1) |
+| U15 | B | 1 | C1 | - | M4 10.5 Turn on: resume_ad action (one ad, by our ads.id, Chris only) | claimed (wave 1) |
+| U16 | B | 1 | C1 | - | M3 9.2: the aligner src/ad-videos/align.mjs (pure, no AI) | claimed (wave 1) |
+| U17 | B | 1 | C1 | - | M3 9.3: ffmpeg argument builders and cut checks src/ad-videos/ffmpeg-plan.mjs (pure) | claimed (wave 1) |
+| U18 | B | 1 | C1 | - | M3 9.1 match step: whisperWords, free word-overlap pre-check, next free take number, stop renaming raw files | claimed (wave 1) |
+| U19 | B | 1 | C1 | - | M3 9.5 pure parts: R2 presigned links (SigV4) and video-worker callback HMAC | claimed (wave 1) |
+| U20 | D | 1 | C1 | - | M5 11.1: metric definitions (docs/marketing/metrics.md) and src/marketing/metrics.mjs with fixture tests | claimed (wave 1) |
+| U21 | D | 1 | - | - | M5 precondition: run the one-time Meta history backfill for Aug 4-16 (ops, orchestrator in the main checkout) | done (main session): backfill --write applied 23 new days, refreshed 46; ad_metrics_daily now $1,563.13 over 69 days (Aug 4 - Oct 4), equal to Meta |
 | U22 | A | 2 | U01, U03, U04, U05 | 415 | M0 step 4: marketing clock + background worker (in-pass waits) + GET marketing/health (heartbeats 415) | pending |
 | U23 | A | 2 | U01, U03, U04, U05, U10, U11 | - | M1 7.5 planner ('reads the room') + GET/POST marketing/batches/next | pending |
 | U24 | A | 2 | U03, U04, U05, U06, U09, U10, U11 | - | M1 7.6 writer: Anthropic structured output (save_script schema), strict check loop, judge, compliance, samenes | pending |
