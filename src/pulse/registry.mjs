@@ -354,6 +354,7 @@ const DESK_FILES = [
   "inquiry-remover.html",
   "journeys.html",
   "lenders.html",
+  "marketing-command-center.html",
   "messaging.html",
   "my-numbers.html",
   "ops-admin.html",
