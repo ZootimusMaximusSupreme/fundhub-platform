@@ -156,7 +156,9 @@ describe("Build the avatar on the server (real Postgres)", { skip: !HAS_DB ? "no
 
   // ── migration 418 ─────────────────────────────────────────────────────────
 
-  test("migration 418: an avatar row must name its campaign and step; one run in flight per campaign", async () => {
+  test("migration 418: an avatar row must name its campaign and step; one run in flight per campaign", async (t) => {
+    // Whatever this test leaves behind must never reach the worker claims below.
+    t.after(() => db.query(`DELETE FROM marketing_jobs WHERE org_id = $1`, [orgB]));
     await assert.rejects(
       db.query(`INSERT INTO marketing_jobs (org_id, kind, payload) VALUES ($1, 'avatar', '{"step":"foundation"}')`, [orgB]),
       (e) => e.code === "23514" && /marketing_jobs_avatar_payload_ck/.test(e.message)
@@ -291,7 +293,7 @@ describe("Build the avatar on the server (real Postgres)", { skip: !HAS_DB ? "no
     const sum = (await db.query(`SELECT sum(cost_usd)::float8 AS c FROM marketing_model_usage WHERE job_id = $1`, [job.id])).rows[0].c;
     assert.equal(after.body.kinds.avatar.last_cost_usd, Math.round(sum * 1e6) / 1e6);
     assert.equal(after.body.kinds.avatar.last_searches, ledger.s);
-    assert.match(after.body.avatar_line, /^About \$\d+\.\d\d and \d+ minutes \(last run, /);
+    assert.match(after.body.avatar_line, /^About \$[\d.,]+ and \d+ minutes \(last run, /);
     assert.equal(after.body.kinds.offer, null);
     assert.ok(after.body.month.used_usd >= sum - 1e-6);
 

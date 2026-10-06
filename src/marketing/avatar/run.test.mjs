@@ -408,6 +408,14 @@ describe("avatar run: caps and time", () => {
     assert.ok(new Date(db.st.requeues[0]).getTime() > now.getTime() + 60_000);
   });
 
+  test("a row that names no campaign folder stops at once, before any call", async () => {
+    const db = fakeDb();
+    db.st.job = newJob({ campaign: "" });
+    const model = fakeModel();
+    await assert.rejects(claim(db, model), (err) => err.final === true && /names no campaign folder/.test(err.message));
+    assert.equal(model.calls.length, 0);
+  });
+
   test("no Anthropic key is a final error in plain words", async () => {
     const db = fakeDb();
     db.st.job = newJob();

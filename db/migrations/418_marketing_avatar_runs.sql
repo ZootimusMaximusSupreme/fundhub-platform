@@ -28,15 +28,17 @@
 -- ── 1. marketing_jobs: avatar rows ──────────────────────────────────────────
 
 ALTER TABLE public.marketing_jobs DROP CONSTRAINT IF EXISTS marketing_jobs_avatar_payload_ck;
+-- Every part is COALESCEd: a missing key reads as NULL, and a CHECK that comes out
+-- NULL passes. Without the COALESCE a row with no campaign at all would be let in.
 ALTER TABLE public.marketing_jobs ADD CONSTRAINT marketing_jobs_avatar_payload_ck
   CHECK (
     kind <> 'avatar'
     OR (
-      jsonb_typeof(payload) = 'object'
-      AND jsonb_typeof(payload -> 'campaign') = 'string'
-      AND btrim(payload ->> 'campaign') <> ''
-      AND jsonb_typeof(payload -> 'step') = 'string'
-      AND btrim(payload ->> 'step') <> ''
+      COALESCE(jsonb_typeof(payload), '') = 'object'
+      AND COALESCE(jsonb_typeof(payload -> 'campaign'), '') = 'string'
+      AND btrim(COALESCE(payload ->> 'campaign', '')) <> ''
+      AND COALESCE(jsonb_typeof(payload -> 'step'), '') = 'string'
+      AND btrim(COALESCE(payload ->> 'step', '')) <> ''
     )
   );
 

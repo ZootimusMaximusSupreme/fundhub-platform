@@ -56,7 +56,7 @@ import {
 import { callProvenance, researchJsonOf, checkQuotes, checkFindings, recheckDocument, normWords } from "./sources.mjs";
 import { mergeBank, parseBank } from "./word-bank.mjs";
 import { avatarFiles, avatarPaths, stampVersion, runCounts, doneSentence, withClientVoice } from "./document.mjs";
-import { campaignWords } from "./campaigns.mjs";
+import { campaignWords, isCampaign } from "./campaigns.mjs";
 
 export { AVATAR_KIND };
 
@@ -174,6 +174,11 @@ export async function run(job, ctx) {
 
   const payload = JSON.parse(JSON.stringify(job.payload || {}));
   const campaign = String(payload.campaign || "");
+  // A row that names no real campaign folder can never save anywhere: stop it now,
+  // before anything is paid for.
+  if (!isCampaign(campaign)) {
+    throw new FinalError("This run names no campaign folder, so it cannot be built. Start it again from Build the avatar.");
+  }
   const progress = payload.progress && typeof payload.progress === "object" ? payload.progress : {};
   payload.progress = progress;
   progress.steps = progress.steps || {};
