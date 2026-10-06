@@ -7,12 +7,20 @@
    him, and presses ONE button — "Write ad copy".
 
    WHAT IT READS AND CALLS.
-     GET  /api/marketing/today          everything on the page (owner/admin)
-     POST /api/creative/generate        saves one ad copy job for the house partner
-     POST /api/creative/run             runs it now instead of waiting for the clock
-     POST /api/marketing/offer/generate writes an offer (the Offer card)
-   The first and last are new endpoints. Until they ship, the page says so in
-   plain words ("not ready yet") and invents nothing.
+     GET  /api/marketing/today           everything on the page (owner/admin)
+     POST /api/creative/generate         saves one ad copy job for the house partner
+     POST /api/creative/run              runs it now instead of waiting for the clock
+     GET  /api/marketing/offer/generate  the newest offer, or one run by ?id=
+     POST /api/marketing/offer/generate  starts an offer run (it takes minutes,
+                                         so the page asks again every few seconds)
+   marketing/today and marketing/offer/generate are new. Until they ship, the
+   page says so in plain words ("not ready yet") and invents nothing.
+
+   THE TWO "WAITING" LISTS ARE DIFFERENT THINGS. marketing/today's `waiting`
+   names PARTS of the machine that are not live yet (a table not shipped, no
+   Meta numbers). Those feed the Machine parts card. "Waiting on you" is what
+   only Chris can do — read and approve a flywheel step, or redo one — and is
+   read off the flywheel rows.
 
    NEVER FAKE A NUMBER. A missing or null value shows as "unknown", never as 0
    (CLAUDE.md §12: NULL means unknown and must survive). An empty list says
@@ -44,6 +52,14 @@
   };
 
   var DAY_MS = 86400000;
+  /* The Meta pull runs once a day (meta-campaign-sync-sweeper, cron 0 7 * * *).
+     Older than two days means at least one daily pull was missed. */
+  var META_FRESH_MS = 2 * DAY_MS;
+  /* An offer run takes a few minutes in a 15-minute background function
+     (M12, netlify/functions/marketing-offer-background.mjs). Ask every 10
+     seconds; give up after 16 minutes and say where to look. */
+  var OFFER_POLL_MS = 10000;
+  var OFFER_POLL_TRIES = 96;
 
   function esc(v) {
     return String(v == null ? "" : v)
@@ -51,25 +67,21 @@
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
-  /* ── reading the endpoint's answer ───────────────────────────────────── */
+  /* ── reading the endpoints' answers ──────────────────────────────────── */
 
-  /* The contract for GET marketing/today is written by the back-end workflow
-     (M10). This page reads either spelling of a key — spend7dCents or
-     spend_7d_cents — so a naming choice on the server cannot blank the page. */
+  /* Each key is read in either spelling — last7Days or last_7_days — so a
+     naming change on the server cannot blank the page. */
   function snakeOf(name) {
-    return name.replace(/([a-z])([0-9])/g, "$1_$2").replace(/[A-Z]/g, function (c) {
-      return "_" + c.toLowerCase();
-    });
+    /* last7Days → last7_days → last_7_days */
+    return name.replace(/[A-Z]/g, function (c) { return "_" + c.toLowerCase(); })
+      .replace(/([a-z])([0-9])/g, "$1_$2");
   }
-  function first(obj, names) {
-    if (obj == null || typeof obj !== "object") return undefined;
+  function first(o, names) {
+    if (o == null || typeof o !== "object") return undefined;
     for (var i = 0; i < names.length; i++) {
-      var n = names[i];
-      var variants = [n, snakeOf(n), n.replace(/[A-Z]/g, function (c) { return "_" + c.toLowerCase(); })];
-      for (var j = 0; j < variants.length; j++) {
-        if (Object.prototype.hasOwnProperty.call(obj, variants[j]) && obj[variants[j]] !== undefined) {
-          return obj[variants[j]];
-        }
+      var tries = [names[i], snakeOf(names[i])];
+      for (var j = 0; j < tries.length; j++) {
+        if (Object.prototype.hasOwnProperty.call(o, tries[j]) && o[tries[j]] !== undefined) return o[tries[j]];
       }
     }
     return undefined;
@@ -83,15 +95,16 @@
   function arr(v) { return Array.isArray(v) ? v : []; }
   function obj(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
   function str(v) { return v == null ? "" : String(v); }
+  function strs(v) { return arr(v).map(str).filter(Boolean); }
 
   function normalizePiece(p) {
     p = obj(p);
     var reasons = arr(first(p, ["blockedReasons", "reasons"]));
     if (!reasons.length) reasons = arr(obj(first(p, ["screen"])).reasons);
     return {
-      id: first(p, ["id", "assetId"]) || null,
-      text: str(first(p, ["copyText", "text", "words"])),
-      state: str(first(p, ["complianceState", "state"]) || "pending").toLowerCase(),
+      id: first(p, ["id"]) || null,
+      text: str(first(p, ["copyText", "text"])),
+      state: str(first(p, ["complianceState"]) || "pending").toLowerCase(),
       reasons: reasons.map(function (r) {
         return typeof r === "string" ? r : str(obj(r).message || obj(r).code);
       }).filter(Boolean),
@@ -110,90 +123,144 @@
     };
   }
 
+  /* One row of scripts/flywheel/status.mjs evaluate(), as M10's
+     src/marketing/flywheel-status.mjs hands it over. */
   function normalizeStage(r) {
     r = obj(r);
     var meta = obj(first(r, ["meta"]));
-    var status = first(meta, ["status"]);
     var key = str(first(r, ["key"]));
     return {
-      n: num(first(r, ["n", "stage"])),
+      n: num(first(r, ["n"])),
       key: key,
-      label: str(first(r, ["label", "name"]) || key),
+      label: str(first(r, ["label"]) || key),
       state: str(first(r, ["state"])).toUpperCase() || null,
-      reasons: arr(first(r, ["reasons"])).map(str).filter(Boolean),
-      approved: first(r, ["approved"]) === true || str(status).toLowerCase() === "approved"
+      why: str(first(r, ["why"])),
+      reasons: strs(first(r, ["reasons"])),
+      approved: first(r, ["approved"]) === true || str(first(meta, ["status"])).toLowerCase() === "approved"
     };
   }
 
-  function normalizeOffer(o) {
-    if (o == null) return null;
-    if (typeof o === "string") return o.trim() ? { text: o, title: "", createdAt: null, status: "" } : null;
-    o = obj(o);
-    var text = str(first(o, ["summary", "text", "markdown", "body", "offer", "content"]));
-    var title = str(first(o, ["title", "name", "headline"]));
-    if (!text && !title) return null;
-    return {
-      text: text,
-      title: title,
-      createdAt: first(o, ["createdAt", "savedAt", "generatedAt"]) || null,
-      status: str(first(o, ["status", "state"]))
-    };
-  }
-
-  function normalizeList(list, mapper) {
-    return Array.isArray(list) ? list.map(mapper) : null;
-  }
-
-  /* normalizeToday — one shape for the page, whatever spelling the server used.
-     Called with null when the read failed: every number comes back unknown. */
-  function normalizeToday(body) {
-    var b = obj(body);
-    var numbers = obj(first(b, ["numbers", "spend"]));
-    var house = obj(first(b, ["house"]));
-    var ready = obj(first(b, ["copyReady"]));
-    var copy = obj(first(b, ["copy"]));
-    var flyRaw = first(b, ["flywheel"]);
-    var fly = obj(flyRaw);
-    var offer = obj(first(b, ["offer"]));
-    var stagesRaw = Array.isArray(flyRaw) ? flyRaw : arr(first(fly, ["stages", "rows"]));
-
-    var stages = stagesRaw.map(normalizeStage)
+  function fiveStages(list) {
+    return arr(list).map(normalizeStage)
       .filter(function (s) { return FIVE.indexOf(s.key) !== -1; })
       .sort(function (a, c) { return (a.n || 0) - (c.n || 0); });
+  }
+
+  /* normalizeToday — GET marketing/today (M10, api/marketing/today.mjs) in the
+     one shape this page draws from. Called with null when the read failed:
+     every number comes back unknown and `loaded` is false. */
+  function normalizeToday(body) {
+    var b = obj(body);
+    var windows = obj(first(obj(first(b, ["spend"])), ["windows"]));
+    var w7 = obj(first(windows, ["last7Days"]));
+    var wPrev7 = obj(first(windows, ["prior7Days"]));
+    var w30 = obj(first(windows, ["last30Days"]));
+    var wToday = obj(first(windows, ["today"]));
+    var syncRaw = first(b, ["lastSync"]);
+    var sync = obj(syncRaw);
+    var copy = obj(first(b, ["copy"]));
+    var ready = obj(first(b, ["copyReady"]));
+    var checks = arr(first(ready, ["checks"])).map(function (c) {
+      c = obj(c);
+      return {
+        key: str(first(c, ["key"])),
+        ok: bool(first(c, ["ok"])),
+        label: str(first(c, ["label"])),
+        used: num(first(c, ["used"])),
+        cap: num(first(c, ["cap"]))
+      };
+    });
+    function check(key) {
+      for (var i = 0; i < checks.length; i++) if (checks[i].key === key) return checks[i].ok;
+      return null;
+    }
+    var flyRaw = first(b, ["flywheel"]);
+    var campaigns = arr(first(obj(flyRaw), ["campaigns"])).map(function (c) {
+      c = obj(c);
+      return { campaign: str(first(c, ["campaign"])), stages: fiveStages(first(c, ["stages"])), advice: str(first(c, ["advice"])) };
+    });
+    var main = null;
+    for (var i = 0; i < campaigns.length; i++) if (campaigns[i].campaign === "partner") main = campaigns[i];
+    if (!main) main = campaigns[0] || null;
 
     return {
       /* true when the server answered at all. A 200 with none of these keys
          is still loaded: every number in it is honestly unknown. */
       loaded: body != null && typeof body === "object",
-      asOf: first(b, ["asOf"]) || first(numbers, ["asOf"]) || null,
-      partnerId: first(house, ["partnerId", "id"]) || first(b, ["housePartnerId", "partnerId"]) ||
-        first(ready, ["partnerId"]) || null,
-      spend7: num(first(numbers, ["spend7dCents", "spend7Cents", "last7Cents", "spendLast7Cents"])),
-      spendPrev7: num(first(numbers, ["spendPrev7dCents", "spendPrev7Cents", "prev7Cents", "spendPrior7Cents"])),
-      spend30: num(first(numbers, ["spend30dCents", "spend30Cents", "last30Cents", "spendLast30Cents"])),
-      spendPrev30: num(first(numbers, ["spendPrev30dCents", "spendPrev30Cents", "prev30Cents", "spendPrior30Cents"])),
+      today: str(first(b, ["today"])) || null,
+      asOf: first(sync, ["metricsSyncedAt"]) || first(sync, ["metaSyncedAt"]) || null,
+      latestMetricsDate: first(sync, ["latestMetricsDate"]) || null,
+      syncRead: syncRaw != null && typeof syncRaw === "object",
+      partnerId: first(ready, ["partnerId"]) || first(copy, ["partnerId"]) || null,
+      spendToday: num(first(wToday, ["spendCents"])),
+      spend7: num(first(w7, ["spendCents"])),
+      days7: num(first(w7, ["daysWithData"])),
+      spendPrev7: num(first(wPrev7, ["spendCents"])),
+      spend30: num(first(w30, ["spendCents"])),
+      days30: num(first(w30, ["daysWithData"])),
       copyReady: {
-        switchOn: bool(first(ready, ["switchOn", "marketingOn", "suiteEnabled"])),
-        provider: bool(first(ready, ["provider", "providerRow"])),
-        anthropicKey: bool(first(ready, ["anthropicKey", "key", "modelKey"]))
+        ready: bool(first(ready, ["ready"])),
+        house: check("house_partner"),
+        switchOn: check("marketing_switch"),
+        provider: check("copy_provider"),
+        anthropicKey: check("anthropic_key"),
+        budget: check("writing_budget"),
+        checks: checks
       },
-      pieces: arr(first(copy, ["pieces", "assets"])).map(normalizePiece),
+      pieces: arr(first(copy, ["pieces"])).map(normalizePiece),
       jobs: arr(first(copy, ["jobs"])).map(normalizeJob),
-      campaign: str(first(fly, ["campaign"])) || null,
-      stages: stages,
-      offerLatest: normalizeOffer(first(offer, ["latest"])),
-      waiting: normalizeList(first(b, ["waiting"]), function (w) {
-        w = typeof w === "string" ? { what: w } : obj(w);
-        return { what: str(first(w, ["what", "title", "label"])), why: str(first(w, ["why", "note", "detail"])) };
-      }),
-      parts: normalizeList(first(b, ["parts"]), function (p) {
-        p = obj(p);
-        return {
-          label: str(first(p, ["label", "name", "key"])),
-          ready: bool(first(p, ["ready", "ok"])),
-          note: str(first(p, ["note", "why", "detail"]))
-        };
+      flywheelRead: flyRaw != null && typeof flyRaw === "object",
+      campaigns: campaigns,
+      campaign: main ? main.campaign : null,
+      stages: main ? main.stages : [],
+      advice: main ? main.advice : "",
+      partsWaiting: arr(first(b, ["waiting"])).map(function (w) {
+        w = obj(w);
+        return { part: str(first(w, ["part"])), reason: str(first(w, ["reason"])) };
       })
+    };
+  }
+
+  /* An offer as M12's offerView() hands it over (api/marketing/offer/generate). */
+  function normalizeOffer(v) {
+    if (!v || typeof v !== "object") return null;
+    var o = obj(first(v, ["offer"]));
+    var card = obj(first(v, ["reviewCard"]));
+    var name = str(first(o, ["name"]));
+    var sentence = str(first(o, ["oneSentence"]));
+    if (!name && !sentence) return null;
+    return {
+      jobId: first(v, ["jobId"]) || null,
+      campaign: str(first(v, ["campaign"])) || null,
+      finishedAt: first(v, ["finishedAt"]) || null,
+      name: name,
+      price: str(first(o, ["price"])),
+      sentence: sentence,
+      whatTheyGet: strs(first(o, ["whatTheyGet"])),
+      guarantees: arr(first(o, ["guarantees"])).map(function (g) {
+        if (typeof g === "string") return g;
+        g = obj(g);
+        var n = str(g.name);
+        var p = str(g.promise);
+        return n && p ? n + ": " + p : (n || p);
+      }).filter(Boolean),
+      bonuses: strs(first(o, ["bonuses"])),
+      decided: str(first(card, ["whatThisDecided"])),
+      toCheck: strs(first(card, ["threeThingsToCheck"])),
+      notSure: strs(first(card, ["notSureAbout"])).filter(function (s) { return !/^nothing\.?$/i.test(s.trim()); })
+    };
+  }
+
+  function normalizeOfferJob(j) {
+    j = obj(j);
+    var id = first(j, ["id"]);
+    if (!id) return null;
+    return {
+      id: id,
+      status: str(first(j, ["status"])).toLowerCase(),
+      createdAt: first(j, ["createdAt"]) || null,
+      finishedAt: first(j, ["finishedAt"]) || null,
+      error: str(first(j, ["error"]))
     };
   }
 
@@ -204,7 +271,7 @@
     var n = num(cents);
     if (n === null) return "unknown";
     var dollars = Math.abs(n) / 100;
-    var whole = dollars >= 100 || dollars === 0 || Math.round(dollars) === dollars;
+    var whole = dollars >= 100 || Math.round(dollars) === dollars;
     return (n < 0 ? "-$" : "$") + dollars.toLocaleString("en-US", {
       minimumFractionDigits: whole ? 0 : 2,
       maximumFractionDigits: whole ? 0 : 2
@@ -250,6 +317,14 @@
     };
   }
 
+  /* dayWords("2026-10-04") → "Oct 4". A calendar day, not a moment. */
+  function dayWords(day) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(day));
+    if (!m) return "";
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  }
+
   /* plainReasons — the flywheel checker's reasons, readable. It writes count
      keys as code names ("did not report distinctReasons"); those become words. */
   function plainReasons(list) {
@@ -272,10 +347,8 @@
     switch (s && s.state) {
       case "READY":
         return s.approved
-          ? { word: "Done", tone: "on", why: "" }
+          ? { word: "Done", tone: "on", why: plainReasons([s.why]) }
           : { word: "Needs your OK", tone: "wip", why: "It is done. It waits for you to read it and say yes." };
-      case "APPROVED":
-        return { word: "Done", tone: "on", why: "" };
       case "FAILED":
         return { word: "Needs a redo", tone: "bad", why: plainReasons(s.reasons) };
       case "STALE":
@@ -289,10 +362,9 @@
     }
   }
 
-  /* deriveWaiting — what waits on Chris. The server's own list wins when it
-     sends one; otherwise it is read off the flywheel rows, and nothing else. */
+  /* deriveWaiting — what only Chris can do, read off the flywheel rows and
+     nothing else: approve a finished step, or redo a failed or stale one. */
   function deriveWaiting(view) {
-    if (view && view.waiting) return view.waiting;
     var out = [];
     arr(view && view.stages).forEach(function (s) {
       var name = stageName(s).toLowerCase();
@@ -307,40 +379,58 @@
     return out;
   }
 
-  /* The Meta pull runs once a day (meta-campaign-sync-sweeper, cron 0 7 * * *).
-     Older than two days means at least one daily pull was missed. */
-  var META_FRESH_MS = 2 * DAY_MS;
+  function waitingFor(view, names) {
+    return arr(view && view.partsWaiting).filter(function (w) { return names.indexOf(w.part) !== -1; });
+  }
 
+  /* deriveParts — the Machine parts card. Each part is Ready, Not ready or
+     Unknown; unknown is never counted as ready. */
   function deriveParts(view, nowMs) {
-    if (view && view.parts) return view.parts;
     var v = view || {};
     var r = v.copyReady || {};
     var now = typeof nowMs === "number" ? nowMs : Date.now();
-    var asOfMs = v.asOf ? new Date(v.asOf).getTime() : NaN;
+    var notLive = "This part is not live yet. It turns on with the next update.";
+    var parts = [];
+
     var meta;
-    if (!v.loaded) meta = { ready: null, note: "Not known yet." };
-    else if (isNaN(asOfMs)) meta = { ready: false, note: "No Meta pull is on file." };
-    else meta = {
-      ready: now - asOfMs <= META_FRESH_MS,
-      note: "Last pulled " + when(v.asOf, now).text + "." +
-        (now - asOfMs > META_FRESH_MS ? " It should pull every day." : "")
-    };
-    function part(label, value, onNote, offNote) {
-      return {
-        label: label,
-        ready: value,
-        note: value === true ? onNote : (value === false ? offNote : "Not known yet.")
+    if (!v.loaded) {
+      meta = { ready: null, note: "Not known yet." };
+    } else if (v.asOf) {
+      var age = now - new Date(v.asOf).getTime();
+      var fresh = !isNaN(age) && age <= META_FRESH_MS;
+      meta = {
+        ready: fresh,
+        note: "Last saved " + when(v.asOf, now).text + "." +
+          (v.latestMetricsDate ? " Numbers run through " + dayWords(v.latestMetricsDate) + "." : "") +
+          (fresh ? "" : " It should save every day.")
       };
+      if (v.spend30 === null && waitingFor(v, ["spend"]).length) meta.note += " No ad numbers are saved for the last 30 days.";
+    } else if (v.syncRead) {
+      meta = { ready: false, note: "Meta has never sent numbers for this company." };
+    } else {
+      meta = { ready: false, note: notLive };
     }
-    return [
-      { label: "Ad numbers from Meta", ready: meta.ready, note: meta.note },
-      part("Marketing switch for the Fundhub house account", r.switchOn,
-        "On.", "Off, so ad copy cannot be written."),
-      part("Copy writer set up", r.provider,
-        "Set up.", "Not set up, so ad copy cannot be written."),
-      part("AI key for writing", r.anthropicKey,
-        "Saved.", "Missing, so ad copy cannot be written.")
-    ];
+    parts.push({ label: "Ad numbers from Meta", ready: meta.ready, note: meta.note });
+
+    function part(label, value, onNote, offNote) {
+      var note = value === true ? onNote : (value === false ? offNote : "Not known yet.");
+      if (value === null && v.loaded && waitingFor(v, ["copy", "copy_ready"]).length) note = notLive;
+      parts.push({ label: label, ready: value, note: note });
+    }
+    if (r.house === false) {
+      parts.push({ label: "Fundhub house account", ready: false, note: "Missing, so there is no account to write ad copy for." });
+    }
+    part("Marketing switch for the Fundhub house account", r.switchOn, "On.", "Off, so ad copy cannot be written.");
+    part("Copy writer set up", r.provider, "Set up.", "Not set up, so ad copy cannot be written.");
+    part("AI key for writing", r.anthropicKey, "Saved.", "Missing, so ad copy cannot be written.");
+    part("Writing budget this month", r.budget, "Has room.", "Used up for this month.");
+
+    parts.push(!v.loaded
+      ? { label: "Flywheel files", ready: null, note: "Not known yet." }
+      : (v.flywheelRead
+        ? { label: "Flywheel files", ready: true, note: "Found on the server." }
+        : { label: "Flywheel files", ready: false, note: "The flywheel files are not on this server yet." }));
+    return parts;
   }
 
   /* setupBlock — the one sentence that says why "Write ad copy" cannot work
@@ -348,9 +438,11 @@
   function setupBlock(r) {
     r = r || {};
     var missing = [];
+    if (r.house === false) missing.push("the Fundhub house account is missing");
     if (r.switchOn === false) missing.push("marketing is switched off for the Fundhub house account");
     if (r.provider === false) missing.push("no copy writer is set up");
     if (r.anthropicKey === false) missing.push("the AI key is missing");
+    if (r.budget === false) missing.push("this month's writing budget is used up");
     if (!missing.length) return null;
     var list = missing.length === 1 ? missing[0]
       : missing.slice(0, -1).join(", ") + " and " + missing[missing.length - 1];
@@ -361,13 +453,12 @@
     if (!view || !view.loaded) {
       return { bad: true, text: "This needs the marketing numbers to load first, so it knows which account to write for." };
     }
+    var block = setupBlock(view.copyReady);
+    if (block) return { bad: true, text: block };
     if (!view.partnerId) {
       return { bad: true, text: "The page could not find the Fundhub house account, so it cannot write yet." };
     }
-    var block = setupBlock(view.copyReady);
-    if (block) return { bad: true, text: block };
-    var r = view.copyReady;
-    if (r.switchOn === true && r.provider === true && r.anthropicKey === true) {
+    if (view.copyReady.ready === true) {
       return { bad: false, text: "Ready. It writes one ad and checks it against the ad rules." };
     }
     return { bad: false, text: "It writes one ad and checks it against the ad rules." };
@@ -400,6 +491,15 @@
     return "That did not work, and nothing changed. Try again in a moment.";
   }
 
+  /* serverWords — the offer writer (M12) answers every refusal with a
+     `message` written for this page, in plain words. Use it — except for
+     signed-out and not-allowed, which this page words itself. */
+  function serverWords(res) {
+    if (!res || res.status === 401 || res.status === 403) return "";
+    var m = str(obj(res.body).message).trim();
+    return m;
+  }
+
   /* jobReason — the reason a copy job recorded, in plain words. Only reasons
      we can say for sure are translated; anything else points to where the
      full reason is kept. */
@@ -428,9 +528,9 @@
   /* checkCopyInput — stop before anything is sent, with one plain question. */
   function checkCopyInput(view, angle, offerType) {
     if (!view || !view.loaded) return "The marketing numbers have not loaded yet, so nothing was sent. Reload the page and try again.";
-    if (!view.partnerId) return "The page could not find the Fundhub house account, so nothing was sent.";
     var block = setupBlock(view.copyReady);
     if (block) return block;
+    if (!view.partnerId) return "The page could not find the Fundhub house account, so nothing was sent.";
     if (!str(angle).trim()) return "Write a few words about what this ad is about first.";
     if (OFFER_TYPES.indexOf(offerType) === -1) return "Pick what we are selling first.";
     return null;
@@ -497,7 +597,7 @@
   }
 
   /* writeAdCopy — generate, then run. deps.api(path, init) answers
-     { status, body, transport }. Resolves to { tone, message, pieces }. */
+     { status, body, transport }. Resolves to { tone, message, pieces, sent }. */
   function writeAdCopy(deps, view, angle, offerType) {
     var stop = checkCopyInput(view, angle, offerType);
     if (stop) return Promise.resolve({ tone: "err", message: stop, pieces: [], sent: false });
@@ -529,37 +629,82 @@
     });
   }
 
-  /* ── Write offer ─────────────────────────────────────────────────────── */
+  /* ── Write offer (M12: api/marketing/offer/generate) ─────────────────── */
 
-  function offerRequest(view) {
+  var OFFER_PATH = "/api/marketing/offer/generate";
+  var NOT_READY = "The offer writer is not ready yet. It turns on with the next update.";
+
+  /* summarizeOfferRead — GET: the newest run and offer, or one run by id. */
+  function summarizeOfferRead(res) {
+    if (!res || res.transport || res.status === 0) return { state: "error", message: plainError(res, "offer"), job: null, offer: null };
+    var b = obj(res.body);
+    /* The router's own 404 for a route that is not deployed carries `path`
+       (netlify/functions/api.mjs). A 404 without it is M12 saying one run id
+       is not on file. */
+    if (res.status === 404) {
+      return Object.prototype.hasOwnProperty.call(b, "path") || !b.error
+        ? { state: "notReady", message: NOT_READY, job: null, offer: null }
+        : { state: "error", message: "That offer run is not on file any more. Reload the page.", job: null, offer: null };
+    }
+    if (res.status !== 200 || b.ok === false) {
+      return { state: "error", message: serverWords(res) || plainError(res, "offer"), job: null, offer: null };
+    }
+    if (b.ready === false) return { state: "notReady", message: str(b.message) || NOT_READY, job: null, offer: null };
+    return { state: "ok", message: "", job: normalizeOfferJob(first(b, ["job"])), offer: normalizeOffer(first(b, ["offer"])) };
+  }
+
+  /* summarizeOfferStart — POST: a run was started (202), joined (already
+     running), or refused with a reason. */
+  function summarizeOfferStart(res) {
+    if (!res || res.transport || res.status === 0) return { tone: "err", message: plainError(res, "offer"), job: null };
+    if (res.status === 404) return { tone: "wait", message: NOT_READY, job: null, notReady: true };
+    var b = obj(res.body);
+    if ((res.status === 200 || res.status === 202) && b.ok !== false) {
+      var job = normalizeOfferJob(first(b, ["job"]));
+      var msg = str(b.message) || (b.already_running
+        ? "An offer is already being written. This page shows it when it is done."
+        : "Writing the offer. This takes a few minutes.");
+      return { tone: "wait", message: msg, job: job };
+    }
+    if (res.status === 503 && str(b.error) === "not_ready") {
+      return { tone: "wait", message: str(b.message) || NOT_READY, job: null, notReady: true };
+    }
+    return { tone: "err", message: serverWords(res) || plainError(res, "offer"), job: normalizeOfferJob(first(b, ["job"])) };
+  }
+
+  /* offerJobLine — one sentence about the newest run. */
+  function offerJobLine(job, nowMs) {
+    if (!job) return "";
+    if (job.status === "queued") return "An offer is waiting to start (asked " + when(job.createdAt, nowMs).text + ").";
+    if (job.status === "running") return "An offer is being written now (started " + when(job.createdAt, nowMs).text + ").";
+    if (job.status === "failed") return "The last try did not work." + (job.error ? " " + job.error : "");
+    return "";
+  }
+
+  function startOffer(deps, view) {
     var body = { campaign: (view && view.campaign) || "partner" };
-    if (view && view.partnerId) body.partner_id = view.partnerId;
-    return body;
+    return deps.api(OFFER_PATH, { method: "POST", body: body }).then(summarizeOfferStart);
   }
 
-  function summarizeOffer(res) {
-    if (!res || res.transport || res.status === 0) {
-      return { tone: "err", message: plainError(res, "offer"), offer: null };
-    }
-    if (res.status === 404) return { tone: "wait", message: plainError(res, "offer"), offer: null, notReady: true };
-    if (res.status === 502 || res.status === 504) {
-      return { tone: "wait", message: "It is still writing. Reload this page in a few minutes to see the new offer.", offer: null };
-    }
-    var body = obj(res.body);
-    if (res.status !== 200 || body.ok === false) {
-      return { tone: "err", message: plainError(res, "offer"), offer: null };
-    }
-    var offer = normalizeOffer(first(body, ["offer", "latest", "result"]));
-    return {
-      tone: "ok",
-      message: offer ? "Done. Here is the new offer." : "Done. The offer writer finished.",
-      offer: offer
-    };
+  function readOffer(deps, jobId) {
+    var p = jobId ? OFFER_PATH + "?id=" + encodeURIComponent(jobId) : OFFER_PATH;
+    return deps.api(p).then(summarizeOfferRead);
   }
 
-  function writeOffer(deps, view) {
-    return deps.api("/api/marketing/offer/generate", { method: "POST", body: offerRequest(view) })
-      .then(summarizeOffer);
+  /* offerPollStep — one look at a running offer: keep asking, or stop. */
+  function offerPollStep(read) {
+    if (read.state === "notReady") return { done: true, tone: "wait", message: read.message };
+    if (read.state === "error") return { done: false, tone: "wait", message: "" };
+    var job = read.job;
+    if (job && job.status === "done") {
+      return read.offer
+        ? { done: true, tone: "ok", message: "Done. Here is the new offer.", offer: read.offer }
+        : { done: true, tone: "err", message: "The offer writer finished but sent no offer back." };
+    }
+    if (job && job.status === "failed") {
+      return { done: true, tone: "err", message: "The offer did not get written." + (job.error ? " " + job.error : "") };
+    }
+    return { done: false, tone: "wait", message: "" };
   }
 
   /* ── markup (pure: data in, HTML string out) ─────────────────────────── */
@@ -573,19 +718,24 @@
     return '<span title="' + esc(w.title) + '">' + esc(w.text) + "</span>";
   }
 
+  function coverage(days, of) {
+    var d = num(days);
+    return d !== null && d < of && d > 0 ? " Numbers saved for " + d + " of " + of + " days." : "";
+  }
+
   function renderSpendTile(view, which, nowMs) {
     var v = view || {};
-    var seven = which === 7;
-    var cur = seven ? v.spend7 : v.spend30;
-    var prev = seven ? v.spendPrev7 : v.spendPrev30;
-    var html = '<span class="caption">Ad spend, last ' + (seven ? "7" : "30") + " days</span>" +
-      '<span class="vl" data-value="' + esc(money(cur)) + '">' + esc(money(cur)) + "</span>" +
-      '<span class="cmp">' + esc(compare(cur, prev, seven ? "7 days" : "30 days")) + "</span>";
-    if (seven) {
-      html += '<span class="note">Meta numbers as of ' + timeTag(v.asOf, nowMs) + ". " +
+    if (which === 7) {
+      return '<span class="caption">Ad spend, last 7 days</span>' +
+        '<span class="vl">' + esc(money(v.spend7)) + "</span>" +
+        '<span class="cmp">' + esc(compare(v.spend7, v.spendPrev7, "7 days") + coverage(v.days7, 7)) + "</span>" +
+        '<span class="note">Meta numbers as of ' + timeTag(v.asOf, nowMs) + ". " +
         '<a href="campaign-manager.html">See every ad in Campaigns</a></span>';
     }
-    return html;
+    return '<span class="caption">Ad spend, last 30 days</span>' +
+      '<span class="vl">' + esc(money(v.spend30)) + "</span>" +
+      '<span class="cmp">' + esc(compare(v.spend30, null, "30 days") + coverage(v.days30, 30)) + "</span>" +
+      '<span class="note">Today so far: ' + esc(money(v.spendToday)) + ".</span>";
   }
 
   function renderPartsTile(view, nowMs) {
@@ -618,10 +768,8 @@
     }).join("") + "</ol>";
   }
 
-  function renderFlywheel(view) {
-    if (!view || !view.loaded) return notLoaded();
-    if (!view.stages.length) return '<p class="muted">No flywheel steps are on file yet.</p>';
-    return '<ol class="rows">' + view.stages.map(function (s) {
+  function stageRows(stages) {
+    return '<ol class="rows">' + stages.map(function (s) {
       var w = stageWord(s);
       return '<li class="row" data-stage="' + esc(s.key) + '">' +
         '<span class="row-n">' + esc(s.n == null ? "" : s.n) + "</span>" +
@@ -629,6 +777,18 @@
         (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") + "</div>" +
         chip(w.word, w.tone) + "</li>";
     }).join("") + "</ol>";
+  }
+
+  function renderFlywheel(view) {
+    if (!view || !view.loaded) return notLoaded();
+    if (!view.flywheelRead) return '<p class="muted">The flywheel files are not on this server yet, so the steps cannot be shown.</p>';
+    var withRows = view.campaigns.filter(function (c) { return c.stages.length; });
+    if (!withRows.length) return '<p class="muted">No flywheel steps are on file yet.</p>';
+    return withRows.map(function (c) {
+      return (withRows.length > 1 ? '<p class="caption sub-hd">Campaign: ' + esc(c.campaign) + "</p>" : "") +
+        stageRows(c.stages) +
+        (c.advice ? '<p class="caption muted gap-top">' + esc(plainReasons([c.advice])) + "</p>" : "");
+    }).join("");
   }
 
   function offerStage(view) {
@@ -640,25 +800,40 @@
   function renderOfferStatus(view) {
     if (!view || !view.loaded) return notLoaded();
     var s = offerStage(view);
-    if (!s) return '<p class="muted">Offer step status: unknown. No flywheel row for it is on file.</p>';
+    if (!s) return '<p class="muted">Offer step: unknown. No flywheel row for it is on file.</p>';
     var w = stageWord(s);
-    return '<div class="row-main"><div class="piece-hd"><span>Step 3 of the flywheel</span>' + chip(w.word, w.tone) + "</div>" +
+    return '<div class="row-main"><div class="piece-hd"><span>Flywheel step 3</span>' + chip(w.word, w.tone) + "</div>" +
       (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") + "</div>";
+  }
+
+  function list(items) {
+    return items.length ? '<ul class="bullets">' + items.map(function (i) { return "<li>" + esc(i) + "</li>"; }).join("") + "</ul>" : "";
   }
 
   function renderOffer(offer, nowMs) {
     if (!offer) return "";
-    return '<div class="pieces"><div class="piece">' +
-      '<div class="piece-hd"><b>' + esc(offer.title || "Latest offer") + "</b>" +
-      (offer.createdAt ? '<span class="caption faint">' + timeTag(offer.createdAt, nowMs) + "</span>" : "") + "</div>" +
-      (offer.text ? '<div class="words">' + esc(offer.text) + "</div>" : "") +
-      "</div></div>";
+    return '<div class="offer-body">' +
+      '<div class="piece-hd"><b>' + esc(offer.name || "Latest offer") + "</b>" +
+      (offer.finishedAt ? '<span class="caption faint">Written ' + timeTag(offer.finishedAt, nowMs) + "</span>" : "") + "</div>" +
+      (offer.price ? '<p class="gap-top"><b>Price:</b> ' + esc(offer.price) + "</p>" : "") +
+      (offer.sentence ? '<p class="gap-top">' + esc(offer.sentence) + "</p>" : "") +
+      (offer.whatTheyGet.length ? '<p class="caption sub-hd">What they get</p>' + list(offer.whatTheyGet) : "") +
+      (offer.guarantees.length ? '<p class="caption sub-hd">Guarantee</p>' + list(offer.guarantees) : "") +
+      (offer.bonuses.length ? '<p class="caption sub-hd">Bonuses</p>' + list(offer.bonuses) : "") +
+      (offer.decided ? '<p class="caption sub-hd">What this decided</p><p>' + esc(offer.decided) + "</p>" : "") +
+      (offer.toCheck.length ? '<p class="caption sub-hd">Check these</p>' + list(offer.toCheck) : "") +
+      (offer.notSure.length ? '<p class="caption sub-hd">Not sure about</p>' + list(offer.notSure) : "") +
+      "</div>";
   }
 
-  function renderOfferLatest(view, nowMs) {
-    if (!view || !view.loaded) return "";
-    if (!view.offerLatest) return '<p class="muted gap-top">No offer has been written here yet.</p>';
-    return renderOffer(view.offerLatest, nowMs);
+  /* renderOfferLatest — what GET marketing/offer/generate said on load. */
+  function renderOfferLatest(read, nowMs) {
+    if (!read) return '<p class="muted">Checking for a saved offer…</p>';
+    if (read.state === "notReady" || read.state === "error") return '<p class="muted">' + esc(read.message) + "</p>";
+    var line = offerJobLine(read.job, nowMs);
+    var html = line ? '<p class="row-why">' + esc(line) + "</p>" : "";
+    if (!read.offer) return html + '<p class="muted">No offer has been written here yet.</p>';
+    return html + renderOffer(read.offer, nowMs);
   }
 
   var SCREEN_WORDS = { passed: "Passed the ad rules", blocked: "Stopped by the ad rules", pending: "Being checked" };
@@ -713,12 +888,15 @@
   var API = {
     OFFER_TYPES: OFFER_TYPES,
     FIVE: FIVE,
+    OFFER_POLL_MS: OFFER_POLL_MS,
+    OFFER_POLL_TRIES: OFFER_POLL_TRIES,
     normalizeToday: normalizeToday,
     normalizePiece: normalizePiece,
     normalizeOffer: normalizeOffer,
     money: money,
     compare: compare,
     when: when,
+    dayWords: dayWords,
     plainReasons: plainReasons,
     stageWord: stageWord,
     deriveWaiting: deriveWaiting,
@@ -732,14 +910,18 @@
     copyRequest: copyRequest,
     summarizeRun: summarizeRun,
     writeAdCopy: writeAdCopy,
-    offerRequest: offerRequest,
-    summarizeOffer: summarizeOffer,
-    writeOffer: writeOffer,
+    summarizeOfferRead: summarizeOfferRead,
+    summarizeOfferStart: summarizeOfferStart,
+    offerJobLine: offerJobLine,
+    offerPollStep: offerPollStep,
+    startOffer: startOffer,
+    readOffer: readOffer,
     renderSpendTile: renderSpendTile,
     renderPartsTile: renderPartsTile,
     renderWaiting: renderWaiting,
     renderFlywheel: renderFlywheel,
     renderOfferStatus: renderOfferStatus,
+    renderOffer: renderOffer,
     renderOfferLatest: renderOfferLatest,
     renderPieces: renderPieces,
     renderLatest: renderLatest,
@@ -781,7 +963,8 @@
       );
     }
 
-    var state = { view: normalizeToday(null), offer: null };
+    var deps = { api: api };
+    var state = { view: normalizeToday(null), offerRead: null, polling: false };
 
     function say(id, tone, text) {
       var el = $(id);
@@ -804,12 +987,11 @@
       $("tileSpend30").innerHTML = renderSpendTile(v, 30, now);
       $("tileParts").innerHTML = renderPartsTile(v, now);
       var waiting = v.loaded ? deriveWaiting(v) : [];
-      $("waitingCount").textContent = v.loaded ? (waiting.length ? waiting.length + " to do" : "") : "";
+      $("waitingCount").textContent = waiting.length ? waiting.length + " to do" : "";
       $("waitingList").innerHTML = renderWaiting(v);
       $("flywheelCampaign").textContent = v.loaded && v.campaign ? "Campaign: " + v.campaign : "";
       $("flywheelList").innerHTML = renderFlywheel(v);
       $("offerStatus").innerHTML = renderOfferStatus(v);
-      $("offerLatest").innerHTML = state.offer ? renderOffer(state.offer, now) : renderOfferLatest(v, now);
       $("healthList").innerHTML = renderParts(v, now);
       $("latestList").innerHTML = renderLatest(v, now);
       var line = setupLine(v);
@@ -819,6 +1001,10 @@
       var btn = $("copyBtn");
       if (!btn.classList.contains("busy")) btn.disabled = line.bad;
       $("mccStamp").textContent = v.loaded ? "Loaded " + when(new Date(now).toISOString(), now).text : "Not loaded";
+    }
+
+    function paintOffer() {
+      $("offerLatest").innerHTML = renderOfferLatest(state.offerRead, Date.now());
     }
 
     function load() {
@@ -837,6 +1023,42 @@
       });
     }
 
+    function loadOffer() {
+      return readOffer(deps).then(function (read) {
+        state.offerRead = read;
+        paintOffer();
+        /* A run that was already going when the page opened is followed too. */
+        if (read.job && (read.job.status === "queued" || read.job.status === "running")) pollOffer(read.job.id);
+      });
+    }
+
+    function pollOffer(jobId) {
+      if (state.polling || !jobId) return;
+      state.polling = true;
+      var tries = 0;
+      function step() {
+        tries += 1;
+        readOffer(deps, jobId).then(function (read) {
+          var out = offerPollStep(read);
+          if (out.done) {
+            state.polling = false;
+            say("offerSay", out.tone, out.message);
+            if (out.offer) state.offerRead = { state: "ok", message: "", job: read.job, offer: out.offer };
+            else if (read.state === "ok") state.offerRead = read;
+            paintOffer();
+            return;
+          }
+          if (tries >= OFFER_POLL_TRIES) {
+            state.polling = false;
+            say("offerSay", "wait", "It is taking longer than usual. Reload this page later to see the offer.");
+            return;
+          }
+          root.setTimeout(step, OFFER_POLL_MS);
+        });
+      }
+      root.setTimeout(step, OFFER_POLL_MS);
+    }
+
     $("copyForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var btn = $("copyBtn");
@@ -848,12 +1070,11 @@
       busy(btn, true, "Writing…");
       say("copySay", "wait", "Writing your ad copy. This can take up to half a minute.");
       $("copyResult").innerHTML = "";
-      writeAdCopy({ api: api }, state.view, angle, offerType).then(function (out) {
+      writeAdCopy(deps, state.view, angle, offerType).then(function (out) {
         say("copySay", out.tone, out.message);
         $("copyResult").innerHTML = renderPieces(out.pieces, Date.now());
         busy(btn, false, "Write ad copy");
-        if (out.sent) return load();
-        return null;
+        return out.sent ? load() : null;
       }, function () {
         say("copySay", "err", "Something went wrong on this page. Reload it and try again.");
         busy(btn, false, "Write ad copy");
@@ -864,16 +1085,12 @@
 
     $("offerBtn").addEventListener("click", function () {
       var btn = $("offerBtn");
-      if (btn.classList.contains("busy")) return;
-      busy(btn, true, "Writing…");
-      say("offerSay", "wait", "Writing the offer. This can take a few minutes.");
-      writeOffer({ api: api }, state.view).then(function (out) {
+      if (btn.classList.contains("busy") || state.polling) return;
+      busy(btn, true, "Starting…");
+      startOffer(deps, state.view).then(function (out) {
         say("offerSay", out.tone, out.message);
-        if (out.offer) {
-          state.offer = out.offer;
-          $("offerLatest").innerHTML = renderOffer(out.offer, Date.now());
-        }
         busy(btn, false, "Write offer");
+        if (out.job && (out.job.status === "queued" || out.job.status === "running")) pollOffer(out.job.id);
       }, function () {
         say("offerSay", "err", "Something went wrong on this page. Reload it and try again.");
         busy(btn, false, "Write offer");
@@ -881,6 +1098,7 @@
     });
 
     load();
+    loadOffer();
   }
 
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", boot);

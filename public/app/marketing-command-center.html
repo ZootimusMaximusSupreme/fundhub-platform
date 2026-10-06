@@ -110,6 +110,9 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .actions{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .offer-actions{margin-top:16px}
 .gap-top{margin-top:16px}
+.bullets{padding-left:24px;margin-top:8px}
+.bullets li + li{margin-top:8px}
+.offer-body{margin-top:16px;max-height:480px;overflow:auto;max-width:78ch}
 
 /* Every action answers back where the person is looking (§5). */
 .say{display:none;margin-top:16px;padding:8px 16px;border-radius:8px;border:1px solid var(--line)}
@@ -288,7 +291,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
         <div class="card span-6" id="cardOffer">
           <div class="card-hd"><h2>Offer</h2></div>
           <div id="offerStatus"><span class="skel"></span></div>
-          <div id="offerLatest"><span class="skel"></span><span class="skel"></span></div>
+          <div id="offerLatest" class="gap-top"><span class="skel"></span><span class="skel"></span></div>
           <div class="actions offer-actions">
             <button class="btn" type="button" id="offerBtn"><span class="spin" aria-hidden="true"></span><span class="lbl">Write offer</span></button>
           </div>
