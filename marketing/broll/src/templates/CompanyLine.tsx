@@ -21,6 +21,7 @@ import {
   enter,
   fadeUp,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 // CompanyLine: companies roll down a 3D assembly line, one after another.
 // Each one stops under the funding station, cash pours onto it and stacks up
@@ -49,6 +50,8 @@ export type CompanyLineProps = {
   /** Clip length in frames, 75 to 105 (2.5 to 3.5 seconds at 30 fps). */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const COMPANY_LINE_BASE = 90;
@@ -60,6 +63,7 @@ export const companyLineDefaults: CompanyLineProps = {
   headline: 'From one company to five or ten, each one funded.',
   count: 5,
   fundedLabel: 'Funded',
+  transparent: false,
 };
 
 /** This template runs 2.5 to 3.5 seconds (the kit's shared clamp is 2 to 3). */
@@ -482,6 +486,7 @@ export const CompanyLine: React.FC<CompanyLineProps> = ({
   fundedLabel = 'Funded',
   durationInFrames,
   showSafeZones,
+  transparent,
 }) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -586,7 +591,7 @@ export const CompanyLine: React.FC<CompanyLineProps> = ({
     }
   }
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -678,6 +683,7 @@ export const CompanyLine: React.FC<CompanyLineProps> = ({
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
 
 /** The composition, for Root.tsx. Length comes from the props (75 to 105 frames). */

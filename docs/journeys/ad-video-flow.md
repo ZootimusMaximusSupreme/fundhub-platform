@@ -637,3 +637,73 @@ files, which take values as arguments): `CLOUDFLARE_ACCOUNT_ID`,
 - AWS's page at the address the test cites now redirects to the API index; the
   example was read from the Internet Archive copy of 2025-01-04 and is cited in
   `src/storage/r2-sign.test.mjs`.
+
+---
+
+## U29 M3 9.4a: see-through (transparent) switch on every Remotion template
+
+Generated 2026-10-06 from `marketing/broll/src/brand/Grid.tsx`, the 20 template
+files in `marketing/broll/src/templates/` and `marketing/broll/catalog.json`.
+Spec §9.4 (see-through renders) and §2 item 9 (animations always go on last;
+step 1 of the 10/2 saved plan, see-through renders, stays). Render commands:
+`marketing/broll/README.md`. Marked proof: `marketing/broll/previews/see-through-marked.png`.
+
+**Nothing in the pipeline renders these yet.** No state, step, route, table or
+screen changed. `marketing_settings.animation_mode` stays `fullframe`. The
+overlay step (U30) and the video worker are not built, so their boxes are
+UNVERIFIED.
+
+```mermaid
+flowchart TD
+    P["a template's props<br/>transparent: false by default<br/>(all 22 compositions, catalog.json default_props)"] --> W["&lt;SeeThrough on={transparent}&gt;<br/>wraps the template's frame"]
+    W --> G{"Grid (BrandFrame's page)<br/>and the wide pages<br/>(BankPockets WideGrid, ProofFlood wide)"}
+    G -->|"transparent false"| O["white paper + faint grid, as before<br/>(41 of 44 test stills identical; ProofFlood only its usual render noise)"]
+    G -->|"transparent true"| T["no paper, no grid<br/>cards, words, money, shadows unchanged<br/>words inside y 269-1248 (wide: 5% title-safe)"]
+    O --> MP4["npx remotion render ... .mp4<br/>(typed by hand)"]
+    T --> A{"npx remotion render ... --image-format=png"}
+    A -->|"--codec=prores --prores-profile=4444<br/>--pixel-format=yuva444p10le"| MOV[".mov ProRes 4444<br/>ffprobe: yuva444p12le"]
+    A -->|"--codec=vp9 --pixel-format=yuva420p"| WEBM[".webm VP9<br/>ffprobe: yuv420p + alpha_mode=1<br/>(decode with libvpx-vp9)"]
+    MOV --> U30["overlay over the Submagic export<br/>UNVERIFIED: U30 and the video worker not built"]
+    WEBM --> U30
+    S["marketing_settings.animation_mode<br/>'fullframe' (default, unchanged) or 'overlay'"] -.->|"picks transparent<br/>UNVERIFIED: nothing reads it yet"| P
+```
+
+| Piece | What it does |
+|---|---|
+| `SeeThrough` / `useSeeThrough` (`Grid.tsx`) | A React context, off unless a template turns it on. Adds no element to the page. |
+| `Grid` | Returns nothing when see-through. Otherwise the same paper and grid as before. |
+| Each template | `transparent?: boolean` in its props type, `transparent: false` in its defaults, frame wrapped in `<SeeThrough on={transparent}>`. |
+| `BankPockets` wide, `ProofFlood` wide | Paint their own 4K page; skip it when see-through. |
+| `catalog.json` | Rebuilt; every entry's `default_props` now ends with `transparent: false`. |
+| `src/marketing/broll-see-through.test.mjs` | Fails if a template lands without the switch, a page stops listening to it, or the README loses the alpha commands. |
+
+**Measured (scratch renders, not in git):** 44 stills each way (2 frames of each
+of the 22 compositions). Switch on: all 44 are RGBA PNGs, 11% to 92% of pixels
+fully clear, no faint grid line found (a test grid drawn on purpose was caught:
+29,611 line pixels). With `checkTextOnly` as well: 0 drawn pixels in the top 14%
+or bottom 35% of all 40 vertical stills; the 2 wide clips have nothing above
+alpha 3 of 255 outside the 5% margin (the faint tail of a card shadow). A 75-frame
+QualifyToday clip came out as ProRes 4444 (45.6 MB) and VP9 (0.9 MB); one
+decoded frame of each is 66% clear and 22% solid.
+
+**Gaps between the spec and the code (findings, not fixed here):**
+- `transparent` is now in every template's `default_props`, so the writer's
+  animation plan may send it for a template that is not data-tied
+  (`validateAnimationPlan` allows any default_props key). It is a render choice
+  that should follow `animation_mode`. The overlay step (U30) should set it
+  itself and ignore a writer's value. For the data-tied templates
+  (QualifyToday, ProofWall, ProofFlood) the validator refuses every prop, so
+  the render step must add it there too.
+- Money decoration still drifts through the top 14% and bottom 35% at about a
+  third of its strength when see-through (alpha up to 55 of 255 measured in
+  QualifyToday frame 72), as it does on the white page. Spec §9.4 wants captions
+  in a zone the overlays never draw in, so in overlay mode the bills will cross
+  the caption zone faintly. The spec names only the page and the grid.
+- Small gray words with no card behind them (eyebrows, sublines) are hard to
+  read over busy film (proof sheet mark 4). Cards read fine.
+- ffmpeg's own VP9 decoder drops the alpha (measured: every pixel solid). The
+  overlay step must decode a `.webm` with `libvpx-vp9`, or use the ProRes `.mov`.
+- ContactSheet and DepthKitDemo (kit tools, not in the catalog) have no switch.
+- ProofFlood stills are not repeatable run to run (up to 17 of 255 on some
+  pixels), before and after this change, so its "unchanged" proof is "same
+  noise as two runs of the old code", not identical bytes.

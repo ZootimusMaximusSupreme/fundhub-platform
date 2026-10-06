@@ -15,6 +15,7 @@ import {
   progressBetween,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type SoftPullProps = {
   eyebrow: string;
@@ -29,6 +30,8 @@ export type SoftPullProps = {
   chip: string;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const SOFT_PULL_BASE = 75;
@@ -43,6 +46,7 @@ export const softPullDefaults: SoftPullProps = {
   scoreLabel: 'Credit score',
   headline: 'Zero impact on your score.',
   chip: "Score doesn't move",
+  transparent: false,
 };
 
 /** Where the marker sits when no score is given: a picture, not a value. */
@@ -67,7 +71,7 @@ const arc = (t0: number, t1: number) => {
   return `M ${a.x} ${a.y} A ${R} ${R} 0 0 1 ${b.x} ${b.y}`;
 };
 
-export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, headline, chip, durationInFrames, showSafeZones}) => {
+export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, headline, chip, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useTimeline(SOFT_PULL_BASE, durationInFrames);
   const L = SOFT_PULL_BASE;
   const t = score === null ? NO_SCORE_AT : Math.max(0, Math.min(1, (score - MIN) / (MAX - MIN)));
@@ -78,7 +82,7 @@ export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, h
   const marker = polar(t);
   const pulse = Math.max(0, 1 - Math.abs(scan - t) * 6) * scanOn;
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -191,4 +195,5 @@ export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, h
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

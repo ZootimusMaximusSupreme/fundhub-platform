@@ -15,6 +15,7 @@ import {
   enter,
   progressBetween,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {useOfferCtaTimeline} from './offer-cta-timeline';
 
 // BookCall: the call to action for the book-a-call funnel (/watch). A 3D
@@ -38,6 +39,8 @@ export type BookCallProps = {
   detail: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const BOOK_CALL_BASE = 90;
@@ -56,6 +59,7 @@ export const bookCallDefaults: BookCallProps = {
   pickTime: 2,
   booked: 'Booked',
   detail: 'Soft pull on the call, zero score impact',
+  transparent: false,
 };
 
 // Generic month: 30 days, day 1 on a Wednesday (Monday-first grid). No month name.
@@ -117,7 +121,7 @@ const BinderRing: React.FC<{left: number}> = ({left}) => (
   />
 );
 
-export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times, pickTime, booked, detail, durationInFrames, showSafeZones}) => {
+export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times, pickTime, booked, detail, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useOfferCtaTimeline(BOOK_CALL_BASE, durationInFrames);
   const L = BOOK_CALL_BASE;
 
@@ -151,7 +155,7 @@ export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times
   const slotGap = 14;
   const bodyH = 44 + rows * CELL_H + PAD;
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -431,4 +435,5 @@ export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
