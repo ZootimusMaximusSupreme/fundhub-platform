@@ -445,6 +445,7 @@ const DESK_FILES = [
   "lenders.html",
   "marketing-command-center.html",
   "messaging.html",
+  "money.html",
   "my-numbers.html",
   "ops-admin.html",
   "partner-galaxy.html",
