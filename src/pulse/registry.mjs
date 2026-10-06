@@ -383,7 +383,10 @@ const API_KEYS = [
   "marketing/ads",
   "marketing/ad",
   "marketing/angles",
-  "marketing/funnels/stats"
+  "marketing/funnels/stats",
+  /* U23: GET answers 401 to an unsigned ping and never writes (the plan is a live
+     preview); the POST half is never pinged. */
+  "marketing/batches/next"
 ];
 
 const DESK_FILES = [
