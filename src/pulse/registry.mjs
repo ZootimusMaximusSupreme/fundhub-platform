@@ -402,7 +402,11 @@ const API_KEYS = [
   "marketing/flywheel/campaign",
   /* Research it (unit X2): GET lists the runs, 401 to an unsigned ping; the POST
      that starts a paid run is never pinged. */
-  "marketing/research"
+  "marketing/research",
+  /* X3: the flywheel. The GET answers 401 to an unsigned ping; the POST-only
+     routes answer 405 to a GET before they read anything. A ping never
+     writes, queues or spends. */
+  "marketing/flywheel/spend-read"
 ];
 
 const DESK_FILES = [

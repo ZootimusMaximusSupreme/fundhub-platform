@@ -191,6 +191,30 @@ export async function getContents(path, { ref, etag, env, fetchImpl } = {}) {
 }
 
 /**
+ * List one folder through the Contents API (a read; the Ideas tab's campaign
+ * picker and stage rows, unit X3).
+ *
+ *   200 -> { entries: [{name, path, type:'file'|'dir', sha}] }
+ *   404 -> { missing:true, entries:[] }
+ *
+ * @param {string} path
+ * @param {GhOpts & {ref?: string}} [opts]
+ * @returns {Promise<GhResult & {entries: {name: string, path: string, type: string, sha: string|null}[],
+ *                               missing: boolean}>}
+ */
+export async function listFolder(path, { ref, env, fetchImpl } = {}) {
+  const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+  const res = await call("GET", `/contents/${encodePath(path)}${q}`, { env, fetchImpl, what: `github list ${path}` });
+  if (res.status === 404 && !res.blocked) return { ...res, ok: true, error: null, entries: [], missing: true };
+  if (!res.ok) return { ...withReason(res), entries: [], missing: false };
+  if (!Array.isArray(res.body)) return { ...res, ok: false, error: `${path} is a file, not a folder`, entries: [], missing: false };
+  const entries = res.body
+    .filter((e) => e && typeof e.name === "string")
+    .map((e) => ({ name: e.name, path: String(e.path ?? `${path}/${e.name}`), type: String(e.type ?? "file"), sha: e.sha ?? null }));
+  return { ...res, entries, missing: false };
+}
+
+/**
  * The last `perPage` commits reachable from `sha` (default: the branch).
  * @param {GhOpts & {sha?: string, perPage?: number}} [opts]
  * @returns {Promise<GhResult & {commits: {sha: string|null, message: string, tree: string|null}[]}>}
@@ -305,6 +329,6 @@ export async function updateRef({ sha, env, fetchImpl } = {}) {
 }
 
 export default {
-  PROVIDER, TRANSMITS, repoToken, repoConfig, getRef, getContents, listCommits,
+  PROVIDER, TRANSMITS, repoToken, repoConfig, getRef, getContents, listFolder, listCommits,
   createTree, createCommit, updateRef, commitMessage, outboxTrailerIds, isBranchMoved
 };

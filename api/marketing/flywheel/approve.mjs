@@ -1,50 +1,42 @@
-// POST /api/marketing/flywheel/approve — Approve a flywheel step from the dashboard.
+// /api/marketing/flywheel/approve — Approve on a flywheel row.
 //
-// Route key "marketing/flywheel/approve" (netlify/functions/api.mjs ROUTES). Design
-// docs/specs/command-center-design-2026-10-05.md §3.2 Actions ("Approve (free, one tap;
-// flips the stamp's status to approved through one outbox edit that touches the front
-// matter only, so the body hash and nothing downstream changes)") and §5 rule 12 (repo
-// saves land in git through the outbox). Unit X1.
+// Route key "marketing/flywheel/approve". Design docs/specs/command-center-
+// design-2026-10-05.md §3.2 row 6: "Approve (free, one tap; flips the stamp's
+// status to approved through one outbox edit that touches the front matter
+// only, so the body hash and nothing downstream changes; the row flips at once
+// from the pending save and stays when the commit lands) -> POST
+// marketing/flywheel/approve {campaign, stage, request_id}" and "-> 200 {ok,
+// stage, outbox_id} (outbox edit op set_front_matter_key)". Unit X3.
 //
-//   POST {campaign, stage, request_id} → 200 {ok, stage, outbox_id, duplicate, message}
-//     → 400 invalid  bad campaign or stage (1 to 6)
-//     → 404 not_found  that step has no file to approve yet
-//   A repeated request_id answers the first answer again and queues nothing.
+//   POST {request_id, campaign, stage}
+//     → 200 {ok, campaign, stage, file, outbox_id, already_approved, duplicate, message}
+//       (duplicate and message: unit X1 built this route too; the wave 2b merge keeps
+//       X3's route and adds X1's two answer keys)
+//     400 invalid: campaign, stage, or "step N has no file yet" (field stage)
+//     404 no such campaign · 503 not_ready
+//   Approving a file that does not clear its bar is allowed ("Approve anyway if
+//   you like it"); the row still shows the bar it missed.
 //
-// The edit is set_front_matter_key {key:'status', value:'approved'} on
-// marketing/flywheel/<campaign>/0N-<name>.md (src/repo/edit-ops.mjs): applied by the
-// outbox drain to the newest copy at the branch head, so it never overwrites anything.
-// The worker is woken after the commit so the save reaches the repo within a minute.
-//
-// Owner and admin only: requireAuth, then requireRole(ROLE_SETS.MARKETING), then a
-// company on the session. One staff transaction (withRequest). No model call.
+// Free. One outbox edit. Owner and admin only.
 
 import { db } from "../../../src/db.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
 import { requireAuth } from "../../../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole } from "../../../src/http/read-api.mjs";
 import {
-  withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany,
-  InvalidError, NotFoundError
+  withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany, InvalidError, NotFoundError
 } from "../../../src/marketing/http.mjs";
+import { parseCampaign, parseStage, fileText } from "../../../src/marketing/flywheel/http.mjs";
+import { readFlywheel } from "../../../src/marketing/flywheel/reader.mjs";
+import { STAGES, splitFrontMatter, parseFrontMatter } from "../../../scripts/flywheel/status.mjs";
 import { enqueueRepoWrite } from "../../../src/repo/outbox.mjs";
 import { wakeWorker } from "../../../src/marketing/wake.mjs";
-import { readRepoFile } from "../../../src/marketing/flywheel/repo-read.mjs";
-import { isCampaign } from "../../../src/marketing/avatar/campaigns.mjs";
-import { STAGES } from "../../../scripts/flywheel/status.mjs";
 
 export const ROUTE = "marketing/flywheel/approve";
-
-/** The stage file for 1..6, or null. */
-export function stageFile(stage) {
-  const s = STAGES.find((x) => x.n === Number(stage));
-  return s ? s.file : null;
-}
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const env = deps.env ?? process.env;
-  const wake = deps.wake ?? wakeWorker;
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -61,30 +53,37 @@ export default async function handler(req, res, deps = {}) {
   try {
     const body = readBody(req);
     const requestId = checkRequestId(body.request_id);
-    if (!isCampaign(body.campaign)) throw new InvalidError("campaign", "Pick a campaign: a folder name like partner.");
-    const file = stageFile(body.stage);
-    if (!file) throw new InvalidError("stage", "Say which step: 1 to 6.");
-    const repoPath = `marketing/flywheel/${body.campaign}/${file}`;
+    const campaign = parseCampaign(body.campaign);
+    const stage = parseStage(body.stage);
+    const file = STAGES.find((s) => s.n === stage).file;
+
+    const read = await (deps.readFlywheel || readFlywheel)({ db: database, orgId, campaign, env, deps: deps.reader || {} });
+    if (!read.campaigns.includes(campaign)) throw new NotFoundError(`There is no flywheel called ${campaign}.`);
+    const text = fileText(read.files, file);
+    if (text == null) throw new InvalidError("stage", `Step ${stage} has no file yet, so there is nothing to approve. Run it first.`);
+    if (!String(text).startsWith("---\n")) throw new InvalidError("stage", `Step ${stage}'s file has no stamp, so it cannot be marked approved. Redo the step.`);
+    const already = parseFrontMatter(splitFrontMatter(text).frontMatter).status === "approved";
+    let ran = false;
 
     const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, async (tx) => {
-      const now = await readRepoFile(tx, { orgId, path: repoPath, env: {}, deps: deps.repoDeps || {} });
-      if (now.content == null) throw new NotFoundError(`Step ${Number(body.stage)} has no file to approve yet. Run it first.`);
+      ran = true;
       const row = await enqueueRepoWrite(tx, {
-        orgId, opId: `approve:${requestId}`, path: repoPath, mode: "edit",
+        orgId,
+        opId: `flywheel-approve:${requestId}`,
+        path: `marketing/flywheel/${campaign}/${file}`,
+        mode: "edit",
         edit: { op: "set_front_matter_key", key: "status", value: "approved" }
       });
       return {
-        ok: true, stage: Number(body.stage), outbox_id: row.id, duplicate: row.duplicate,
-        message: "Approved. Saved. Reaching the repo…"
+        ok: true, campaign, stage, file, outbox_id: row.id, already_approved: already,
+        duplicate: row.duplicate, message: "Approved. Saved. Reaching the repo…"
       };
     });
-    try { await wake(env); } catch { /* the clock drains the outbox within 15 minutes */ }
+
+    if (ran) await (deps.wake ?? wakeWorker)(env);
     return res.status(200).json(answer);
   } catch (err) {
     if (sendKnownError(res, err)) return;
-    if (err && (err.name === "RepoPathError" || err.name === "EditOpError" || err.name === "OutboxError")) {
-      return res.status(400).json({ error: "invalid", field: "stage", message: `The repo refused the save: ${err.message}` });
-    }
     if (sendNotReady(res, err, "Approve")) return;
     if (dbDown(res, err)) return;
     throw err;

@@ -111,7 +111,7 @@ export default async function handler(req, res, deps = {}) {
     return res.status(202).json({
       ok: true, started: true, already_running: false, job: jobView(job),
       poll: `/api/marketing/offer/generate?id=${job.id}`,
-      message: "Writing the offer. Six offers, four judges, one winner — this takes a few minutes."
+      message: "Writing the offer. Six offers, four judges, one winner. This takes a few minutes."
     });
   } catch (err) {
     if (isNotReady(err)) return res.status(503).json({ ok: false, error: "not_ready", message: NOT_READY_MESSAGE });

@@ -16,6 +16,7 @@
 
 import { OFFERS, OFFER_KEYS, formatCents } from "../../config/offers.mjs";
 import { isCampaign } from "../offer-inputs.mjs";
+import { campaignForOffer } from "../flywheel/campaigns.mjs";
 
 /** Folders whose offer is not their own name. */
 export const CAMPAIGN_OFFER_KEYS = Object.freeze({ partner: "PARTNER_ENTRY" });
@@ -36,7 +37,10 @@ export function campaignForOfferKey(key) {
 export function offerKeyForCampaign(campaign) {
   if (!isCampaign(campaign)) return null;
   if (Object.prototype.hasOwnProperty.call(CAMPAIGN_OFFER_KEYS, campaign)) return CAMPAIGN_OFFER_KEYS[/** @type {keyof typeof CAMPAIGN_OFFER_KEYS} */ (campaign)];
-  return OFFER_KEYS.find((k) => campaignForOfferKey(k) === campaign) || null;
+  // Wave 2b merge: "Start a flywheel" (unit X3, src/marketing/flywheel/campaigns.mjs)
+  // names a new folder after the offer name (UWIQ_DELIVERABLES -> capital-blueprint),
+  // so both folder forms map back to their offer.
+  return OFFER_KEYS.find((k) => campaignForOfferKey(k) === campaign || campaignForOffer(k) === campaign) || null;
 }
 
 /** "partner" -> "Partner offer"; any other folder -> its offer's name, else the folder in words. */

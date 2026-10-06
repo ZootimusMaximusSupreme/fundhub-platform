@@ -18,7 +18,7 @@ flowchart TD
   B -->|no| B1[401 / 403]
   B -->|yes| S{stage is 2?}
   S -->|1| AV[the route file hands step 1 to Build the avatar<br/>unit X1, see marketing-avatar-flow.md]
-  S -->|3, 4, 5, 6| S1[400 invalid stage: not on this route yet]
+  S -->|3, 4, 5, 6| S1[unit X3 runs them<br/>see marketing-dashboard-flow.md, wave 2b merge]
   S -->|2| C{campaign a slug?}
   C -->|no| C1[400 invalid campaign]
   C -->|yes| K{usable Anthropic key?}

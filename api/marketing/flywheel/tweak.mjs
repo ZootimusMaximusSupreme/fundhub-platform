@@ -1,50 +1,65 @@
-// POST /api/marketing/flywheel/tweak — Tweak a flywheel step: one dated line in the
-// owner notes, and (for step 1) a new run that carries the line.
+// /api/marketing/flywheel/tweak — Tweak on a flywheel row: one line of what to
+// change, saved to the owner notes, then that step runs again with it.
 //
-// Route key "marketing/flywheel/tweak" (netlify/functions/api.mjs ROUTES). Design
-// docs/specs/command-center-design-2026-10-05.md §3.2 Actions ("the note is appended as
-// one dated line under ## Notes in 00-OWNER-NOTES.md (append only, never a rewrite) and
-// also rides in the new run's payload, so the run does not wait for the commit"). Unit X1.
+// Route key "marketing/flywheel/tweak". Design docs/specs/command-center-
+// design-2026-10-05.md §3.2 row 6: "Tweak (one-line box ...) -> POST
+// marketing/flywheel/tweak {campaign, stage, note, request_id}; the note is
+// appended as one dated line under ## Notes in 00-OWNER-NOTES.md (append only,
+// never a rewrite) and also rides in the new run's payload, so the run does not
+// wait for the commit" and "-> 202 {ok, job, outbox_id} (outbox edit op
+// append_line_under_heading)". Unit X3.
 //
-//   POST {campaign, stage, note, request_id} → 202 {ok, stage, outbox_id, job, started,
-//                                                  already_running, poll, message}
-//     stage 1: the line is queued AND a new avatar run starts with the line in its
-//       payload (or the running one is handed back: one run per campaign at a time)
-//     stages 2-6: the line is queued; job is null — those steps re-run from their own
-//       buttons (their units), and the line feeds their next run
-//     → 400 invalid  bad campaign, stage or an empty note · 409 cap_hit · 503 no_model
+//   POST {request_id, campaign, stage, note}
+//     → 202 {ok, campaign, stage, line, outbox_id, job, rerun{started, reason}}
+//       Always: the line "YYYY-MM-DD | stage N | <note>" is queued for the
+//       owner notes (and the worker woken to carry it to git).
+//       Then the step runs again where it can:
+//         4, 5  a new flywheel_stage job with the note in its payload (or the
+//               running one, or blocked with the reason: approve 3 / 3 and 4)
+//         6     the spend read runs now in the same transaction (free)
+//         3     handed to the Write offer path with the new line in its notes
+//         2     not yet (unit X2 has no tweak here): rerun.reason says so
+//         1     unit X1's answer (see WAVE 2B MERGE GLUE below)
+//     400 invalid: campaign, stage, note; "no owner notes" (field campaign)
+//     404 no such campaign · 503 not_ready
 //
-// The line is "YYYY-MM-DD | stage N | <note>" (Arizona date), the format the file
-// documents. Edit op append_line_under_heading on marketing/flywheel/<c>/00-OWNER-NOTES.md
-// (src/repo/edit-ops.mjs): applied to the newest copy, never a rewrite.
+// The note itself is free. The re-run costs what that step costs (the row's
+// cost line says so before the tap). Owner and admin only.
 //
-// Owner and admin only: requireAuth, then requireRole(ROLE_SETS.MARKETING), then a
-// company on the session. One staff transaction (withRequest); the worker is woken after.
+// WAVE 2B MERGE GLUE. Unit X1 built this route too, for step 1. Stage 1 is handed,
+// after the gate, to X1's body (src/marketing/avatar/tweak-route.mjs runAvatarTweak):
+// the line is queued AND a new avatar run starts with it, answered as
+// 202 {ok, stage, outbox_id, job, started, already_running, poll, message}.
+// Stages 2 to 6 run the code below.
 
 import { db } from "../../../src/db.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
 import { requireAuth } from "../../../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole } from "../../../src/http/read-api.mjs";
 import {
-  withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany, InvalidError
+  withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany, InvalidError, NotFoundError
 } from "../../../src/marketing/http.mjs";
+import {
+  parseCampaign, parseStage, parseNote, readCampaign, jobView, spendReadInTx, startOffer, blockedReason,
+  fileText, noteLine, STAGE_RUNNERS, NOT_BUILT
+} from "../../../src/marketing/flywheel/http.mjs";
+import { NOTES_FILE, NOTES_HEADING } from "../../../src/marketing/flywheel/campaigns.mjs";
+import { startStageJob } from "../../../src/marketing/flywheel/store.mjs";
+import { todayArizona } from "../../../src/marketing/flywheel/save.mjs";
+import { anthropicKeyOf } from "../../../src/marketing/offer-transport.mjs";
 import { enqueueRepoWrite } from "../../../src/repo/outbox.mjs";
 import { wakeWorker } from "../../../src/marketing/wake.mjs";
-import { getOrCreateSettings } from "../../../src/marketing/settings-store.mjs";
-import { costStatus } from "../../../src/marketing/model-usage.mjs";
-import { isCampaign, defaultServiceDescription } from "../../../src/marketing/avatar/campaigns.mjs";
-import { arizonaDate } from "../../../src/marketing/avatar/run.mjs";
-import { dollars } from "../../../src/marketing/avatar/plan.mjs";
-import { createAvatarJob, avatarRunCap, avatarJobView, latestAvatarJob } from "../../../src/marketing/avatar/store.mjs";
-import { hasModelKey } from "../../../src/marketing/avatar/run-route.mjs";
+import offerGenerate from "../offer/generate.mjs";
+import { runAvatarTweak } from "../../../src/marketing/avatar/tweak-route.mjs";
 
 export const ROUTE = "marketing/flywheel/tweak";
-const MAX_NOTE = 500;
+
+/** The saved (and replayed) answer for a step 3 tweak: the note went to Write the offer. */
+export const OFFER_HANDED = "Handed to Write the offer with your note. Its row shows the run.";
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const env = deps.env ?? process.env;
-  const wake = deps.wake ?? wakeWorker;
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -60,61 +75,91 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     const body = readBody(req);
+    // Step 1 (who we sell to) is unit X1's: the note also starts a new avatar run.
+    if (Number(body.stage) === 1) {
+      return await runAvatarTweak(req, res, { ...deps, db: database, requireAuth: async () => staff });
+    }
     const requestId = checkRequestId(body.request_id);
-    const campaign = body.campaign;
-    if (!isCampaign(campaign)) throw new InvalidError("campaign", "Pick a campaign: a folder name like partner.");
-    const stage = Number(body.stage);
-    if (!Number.isInteger(stage) || stage < 1 || stage > 6) throw new InvalidError("stage", "Say which step: 1 to 6.");
-    // "|" splits the fields of a notes line, so one typed inside the note becomes "/".
-    const note = typeof body.note === "string" ? body.note.replace(/\|/g, "/").replace(/\s+/g, " ").trim() : "";
-    if (!note) throw new InvalidError("note", "Type the one line you want changed.");
-    if (note.length > MAX_NOTE) throw new InvalidError("note", `Keep the tweak under ${MAX_NOTE} characters.`);
-    if (stage === 1 && !hasModelKey(env)) {
-      return res.status(503).json({ error: "no_model", message: "No Anthropic key is set on the site. An agent must set it." });
+    const campaign = parseCampaign(body.campaign);
+    const stage = parseStage(body.stage);
+    const note = parseNote(body.note);
+    const today = todayArizona();
+    const line = noteLine({ today, stage, note });
+
+    // Outside any transaction: may read GitHub.
+    const view = await readCampaign({ db: database, orgId, campaign, env, deps });
+    if (!view.read.campaigns.includes(campaign)) throw new NotFoundError(`There is no flywheel called ${campaign}. Start one first.`);
+    if (fileText(view.files, NOTES_FILE) == null) {
+      throw new InvalidError("campaign", "This flywheel has no owner notes file yet. Start it from the page first.");
     }
 
-    let started = false;
+    const runner = /** @type {any} */ (STAGE_RUNNERS)[stage];
+    const row = view.stages.find((s) => s.n === stage);
+    const running = row && row.run && (row.run.status === "queued" || row.run.status === "running");
+    const blocked = runner && runner.via === "job" ? blockedReason(view.stages, stage) : null;
+    let ran = false;
+
     const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, async (tx) => {
-      const line = `${arizonaDate(deps.now ? deps.now() : new Date())} | stage ${stage} | ${note}`;
-      const row = await enqueueRepoWrite(tx, {
-        orgId, opId: `tweak:${requestId}`, path: `marketing/flywheel/${campaign}/00-OWNER-NOTES.md`, mode: "edit",
-        edit: { op: "append_line_under_heading", heading: "Notes", line }
+      ran = true;
+      const saved = await enqueueRepoWrite(tx, {
+        orgId,
+        opId: `flywheel-tweak:${requestId}`,
+        path: `marketing/flywheel/${campaign}/${NOTES_FILE}`,
+        mode: "edit",
+        edit: { op: "append_line_under_heading", heading: NOTES_HEADING, line }
       });
-      if (stage !== 1) {
-        return {
-          ok: true, stage, outbox_id: row.id, job: null, started: false, already_running: false, poll: null,
-          message: `Saved to your notes. Step ${stage} uses it the next time it runs from its own button.`
-        };
+      const base = { ok: true, campaign, stage, line, outbox_id: saved.id, job: null };
+
+      if (!runner) {
+        return { ...base, rerun: { started: false, reason: /** @type {any} */ (NOT_BUILT)[stage] || "This step cannot re-run from the page yet." } };
       }
-      const settings = await getOrCreateSettings(tx, orgId);
-      const month = await costStatus(tx, { orgId, maxMonthUsd: Number(settings.max_month_cost_usd) });
-      if (month.month_capped) {
-        throw new InvalidError("stage", `Saved nothing: the ${dollars(Number(settings.max_month_cost_usd))} month cap is reached, so step 1 cannot re-run. Raise it in Settings or wait for next month.`);
+      if (runner.via === "spend-read") {
+        const spend = await spendReadInTx(tx, { orgId, campaign, files: view.files, opId: `flywheel-spend:${requestId}` });
+        return { ...base, rerun: { started: true, reason: null }, spend };
       }
-      const last = await latestAvatarJob(tx, { orgId, campaign });
-      const service = (last && last.payload && last.payload.service_description) || defaultServiceDescription(campaign);
-      if (!service) throw new InvalidError("note", "This campaign names no offer, so step 1 needs What we sell. Start it from Build the avatar.");
-      const { job, created } = await createAvatarJob(tx, {
-        orgId, campaign, serviceDescription: service, tweak: note, runCapUsd: avatarRunCap(settings), staffId: staff.id ?? null
+      if (runner.via === "offer") {
+        // Started after the commit (the offer path has its own transaction). This
+        // is the answer a replayed request_id gets back (withRequest saved it before
+        // the hand-off), so it must read true on its own: the run, if any, is on
+        // the offer row.
+        return { ...base, rerun: { started: false, reason: OFFER_HANDED, via: "offer" } };
+      }
+      if (blocked && !running) return { ...base, rerun: { started: false, reason: blocked } };
+      if (!running && !anthropicKeyOf(env)) {
+        return { ...base, rerun: { started: false, reason: "No Anthropic key is set on the site. An agent must set it." } };
+      }
+      const { job, created } = await startStageJob(tx, {
+        orgId, campaign, stage, staffId: staff.id, payload: { today, note }
       });
-      started = created;
       return {
-        ok: true, stage, outbox_id: row.id, job: avatarJobView(job), started: created, already_running: !created,
-        poll: `/api/marketing/flywheel/job?id=${job.id}`,
-        message: created
-          ? "Saved to your notes. Step 1 is running again with it."
-          : "Saved to your notes. The avatar is already being built; the next run uses it."
+        ...base,
+        job: jobView(job),
+        rerun: {
+          started: created,
+          reason: created ? null : "That step was already running, so the note is saved and the next run reads it."
+        }
       };
     });
-    if (started || answer.outbox_id) {
-      try { await wake(env); } catch { /* the clock is the backstop */ }
+
+    let out = answer;
+    if (ran && answer.rerun && answer.rerun.via === "offer") {
+      const offer = await startOffer(req, {
+        campaign, files: view.files, extraNote: line,
+        offerHandler: deps.offerHandler ?? offerGenerate, deps: deps.offerDeps ?? {}
+      });
+      const ok = offer.status >= 200 && offer.status < 300 && offer.body && offer.body.ok !== false;
+      out = {
+        ...answer,
+        job: ok && offer.body.job ? offer.body.job : null,
+        rerun: ok
+          ? { started: Boolean(offer.body.started), reason: offer.body.already_running ? offer.body.message : null, via: "offer" }
+          : { started: false, reason: (offer.body && offer.body.message) || "The offer writer did not start.", via: "offer" }
+      };
     }
-    return res.status(202).json(answer);
+    if (ran) await (deps.wake ?? wakeWorker)(env);
+    return res.status(202).json(out);
   } catch (err) {
     if (sendKnownError(res, err)) return;
-    if (err && (err.name === "RepoPathError" || err.name === "EditOpError" || err.name === "OutboxError")) {
-      return res.status(400).json({ error: "invalid", field: "note", message: `The repo refused the save: ${err.message}` });
-    }
     if (sendNotReady(res, err, "Tweak")) return;
     if (dbDown(res, err)) return;
     throw err;

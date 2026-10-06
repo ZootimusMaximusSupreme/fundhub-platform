@@ -9,6 +9,7 @@ import { resolvePartnerId } from "../../src/http/partner-read-api.mjs";
 import { claim, run } from "../../src/creative/generate.mjs";
 import { runDue } from "../../src/creative/runner.mjs";
 import { safeError } from "../../src/http/health.mjs";
+import { quickCopyVerdict } from "../../src/marketing/quick-copy.mjs";
 
 /* plainReason — the failure a job recorded, in words the owner reads.
 
@@ -102,6 +103,16 @@ export default async function handler(req, res, deps = {}) {
       }
       return out;
     });
+
+    /* THE CHECKER'S VERDICT on every piece of copy, on the words exactly as
+       saved (Quick copy, design docs/specs/command-center-design-2026-10-05.md
+       §2 J9 and §3.2 "Existing"; unit X3): the repo's own ad checker, strict,
+       in Chris's words. Pictures and videos have no words and get none. */
+    for (const j of jobs) {
+      for (const a of j.assets || []) {
+        if (a && a.kind === "copy" && typeof a.copy_text === "string") a.check = quickCopyVerdict(a.copy_text);
+      }
+    }
 
     /* WHAT ACTUALLY HAPPENED, not just how many rows were touched.
 

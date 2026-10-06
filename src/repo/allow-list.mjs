@@ -21,7 +21,9 @@
 // Start a flywheel can save the stage files from the dashboard, plus the folder the
 // research buttons save into (design "Slice 10", unit X2): marketing/research/ (deep
 // research reports and their sources.json). X2 also added marketing/flywheel/ (the
-// stage files, e.g. marketing/flywheel/partner/02-ad-research.md).
+// stage files, e.g. marketing/flywheel/partner/02-ad-research.md), and so did X3 (the
+// Ideas tab's flywheel buttons: Start a flywheel, Approve, Tweak, the copy, strategy and
+// spend stages save their stage files and owner notes to git through the outbox).
 
 import path from "node:path";
 

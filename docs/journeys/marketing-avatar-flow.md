@@ -10,11 +10,14 @@ outbox (`src/repo/outbox.mjs`). The yardstick is the design
 17, 18, §6 slice 5a); there is no `marketing-machine-intended.md` yet (design §7
 question 7). Anything not traced to code is marked UNVERIFIED.
 
-Wave 2b merge (2026-10-06): `api/marketing/flywheel/run.mjs` now checks the gate once and
-hands stage 1 to `src/marketing/avatar/run-route.mjs` (`runAvatarStage`, the code drawn
-below, unchanged) and stage 2 to unit X2's market research
-(`src/marketing/research/market-run-route.mjs`). The tap, the answers and the states below
-are the same.
+Wave 2b merge (2026-10-06): the flywheel route files are unit X3's now. After X3's gate,
+`api/marketing/flywheel/run.mjs` hands stage 1 to `src/marketing/avatar/run-route.mjs`
+(`runAvatarStage`, the code drawn below, unchanged) and stage 2 to unit X2's market research
+(`src/marketing/research/market-run-route.mjs`); `api/marketing/flywheel/tweak.mjs` hands
+stage 1 to `src/marketing/avatar/tweak-route.mjs` (`runAvatarTweak`). The tap, the answers
+and the states below are the same. GET marketing/flywheel is X3's six rows with this
+unit's step-1 run, words and "What we sell" pre-fill laid on step 1; Approve and Start a
+flywheel are X3's (a new folder takes X3's name for the offer, e.g. `capital-blueprint`).
 
 ## The record and the states it moves through
 
@@ -73,7 +76,7 @@ flowchart LR
     OB -->|worker drain, at most once a minute<br/>needs GITHUB_REPO_TOKEN| GH[GitHub main<br/>marketing/flywheel/campaign/01-avatar*]
     OB -->|no token| HELD[held: the health card says no_token]
     APPROVE[Approve<br/>POST marketing/flywheel/approve] -->|edit set_front_matter_key status approved| OB
-    TWEAK[Tweak<br/>POST marketing/flywheel/tweak] -->|edit append_line_under_heading Notes| OB
+    TWEAK[Tweak<br/>POST marketing/flywheel/tweak] -->|edit append_line_under_heading, the whole Notes heading line| OB
     TWEAK -->|stage 1 only| TAP2[a new avatar run with the tweak line in its payload]
     START[Start a flywheel<br/>POST marketing/flywheel/campaign] -->|replace 00-OWNER-NOTES.md, once| OB
 ```

@@ -37,7 +37,7 @@ flowchart TD
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 8 routes]
     CAN --> A_journeys[journeys — 2 routes]
-    CAN --> A_marketing[marketing — 40 routes]
+    CAN --> A_marketing[marketing — 41 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
@@ -64,7 +64,7 @@ flowchart TD
 
 ## What they can reach
 
-**288 of 296 routes.**
+**289 of 297 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -192,6 +192,7 @@ flowchart TD
 | `/api/marketing/flywheel/campaign` | POST | owner, admin |
 | `/api/marketing/flywheel/job` | GET | owner, admin |
 | `/api/marketing/flywheel/run` | POST | owner, admin |
+| `/api/marketing/flywheel/spend-read` | POST | owner, admin |
 | `/api/marketing/flywheel/tweak` | POST | owner, admin |
 | `/api/marketing/funnel` | GET | owner, admin |
 | `/api/marketing/funnels` | GET, POST | owner, admin |
@@ -366,7 +367,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**8 of 296 routes.**
+**8 of 297 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

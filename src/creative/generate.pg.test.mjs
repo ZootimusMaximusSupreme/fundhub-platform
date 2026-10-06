@@ -25,6 +25,7 @@ const asPartner = (partnerId, fn, deps) => _asPartner(partnerId, fn, { pool: rls
 const asStaff = (fn, deps) => _asStaff(fn, { pool: rlsPool, ...(deps || {}) });
 
 import { enqueue, claim, run } from "./generate.mjs";
+import { QUICK_COPY_MODEL } from "./providers/copy.mjs";
 import { clearRuleCache } from "../compliance/screen.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
@@ -162,6 +163,9 @@ describe("creative generation", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, 
 
     assert.strictEqual(out.status, "succeeded", `job failed: ${out.error}`);
     assert.strictEqual(out.assets.length, 1);
+    // X3: run() names the model that wrote it (the Quick copy card prints it). This
+    // stand-in provider names none, so the answer is null, never a guess.
+    assert.strictEqual(out.model, null);
 
     const row = await asPartner(partnerId, (tx) =>
       tx.query(`SELECT status, cost_cents FROM generation_jobs WHERE id = $1`, [job.id])
@@ -209,7 +213,11 @@ describe("creative generation", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, 
     });
 
     assert.strictEqual(out.status, "succeeded", "the JOB succeeded; the ASSET is blocked");
+    // X3: the copy writer is forced to Claude, and run() hands back the model that
+    // wrote it (the Quick copy card prints it); the stored row carries the words.
+    assert.strictEqual(out.model, QUICK_COPY_MODEL);
     const asset = out.assets[0];
+    assert.strictEqual(asset.copy_text, "Guaranteed approval for everyone!");
     assert.strictEqual(asset.compliance_state, "blocked");
 
     const row = await asPartner(partnerId, (tx) =>

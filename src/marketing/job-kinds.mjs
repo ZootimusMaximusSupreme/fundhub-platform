@@ -15,7 +15,8 @@
 //           return value is the result); one that throws fails it (jobs.mjs failJob).
 //
 // STARTED EMPTY. Units U24 (writer), U28 (Meta loader) and U35 (batch lifecycle) add
-// their lines here when their handlers land; X1 added 'avatar'. A kind that is not here is never claimed, and
+// their lines here when their handlers land; X1 added 'avatar', X2 and X3 'flywheel_stage'.
+// A kind that is not here is never claimed, and
 // "Retry" refuses it (retryJob only re-queues kinds the caller passes, and the route passes
 // these keys).
 //
@@ -44,8 +45,11 @@ export const JOB_KINDS = {
   funnel_push: { group: "system", load: () => import("./funnel-push.mjs") },
   // Build the avatar (flywheel step 1), 10 saved steps: src/marketing/avatar/run.mjs. Unit X1.
   avatar: { group: "research", load: () => import("./avatar/run.mjs") },
-  // Flywheel stage runs (design §3.2 "Endpoints"): stage 2, market research (unit X2).
-  // src/marketing/flywheel/stage-job.mjs sends each row to its stage's code.
+  // Flywheel stage runs (design §3.2 "Endpoints"), started by POST marketing/flywheel/run:
+  // stage 2, market research (unit X2); 4 copy and 5 strategy (unit X3). One kind;
+  // payload.stage picks the stage (src/marketing/flywheel/stage-job.mjs). Wave 2b merge:
+  // X3 filed it under 'writer', X2 under 'research'; 'research' runs one step at a time,
+  // so a long research step never takes a script writer's slot.
   flywheel_stage: { group: "research", load: () => import("./flywheel/stage-job.mjs") },
   // "Research it" — deep research (design §2 row J20, unit X2).
   deep_research: { group: "research", load: () => import("./research/deep-research.mjs") }

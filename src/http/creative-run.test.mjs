@@ -80,3 +80,41 @@ describe("creative/run — max_jobs", () => {
     assert.equal(claimed, 0);
   });
 });
+
+/* Quick copy's verdict on the route (unit X3, review X3-R2). The checker is the
+   real one (src/marketing/quick-copy.mjs → scripts/ads/check-script.mjs strict);
+   only claim() and run() are fakes, shaped as src/creative/generate.mjs run()
+   answers: stored asset rows (RETURNING *, so copy_text is there) and the model
+   the writer used. */
+describe("creative/run — the checker's verdict on copy", () => {
+  test("every copy asset carries check {ok, words}; a picture gets none; the job keeps its model", async () => {
+    const r = res();
+    await handler({ method: "POST", headers: {}, query: {}, body: { partner_id: PARTNER, max_jobs: 1 } }, r, {
+      db: {},
+      requirePrincipal: async () => ({ kind: "partner", partnerId: PARTNER }),
+      withPartnerScope: async (_scope, fn) => fn({}),
+      claim: (() => { let left = 1; return async () => (left-- > 0 ? { id: "job-copy" } : null); })(),
+      run: async () => ({
+        status: "succeeded",
+        cost_cents: 0,
+        model: "claude-sonnet-5-5",
+        assets: [
+          { id: "a1", kind: "copy", copy_text: "Two lenders read your business file before they read the personal one. See what they see first." },
+          { id: "a2", kind: "copy", copy_text: "We leverage our lenders — and you get funded." },
+          { id: "a3", kind: "image", copy_text: null }
+        ]
+      }),
+      runDue: async () => { throw new Error("runDue must not be called for one partner"); }
+    });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    const job = r.body.jobs[0];
+    assert.equal(job.model, "claude-sonnet-5-5");
+    const [clean, dirty, image] = job.assets;
+    assert.equal(clean.check.ok, true);
+    assert.equal(clean.check.words, "Checked against the ad rules: it passes.");
+    assert.equal(dirty.check.ok, false);
+    assert.match(dirty.check.words, /^Checked against the ad rules: \d+ problems?\. /);
+    assert.ok(dirty.check.failures.some((f) => f.rule === "em-dash"));
+    assert.equal(image.check, undefined);
+  });
+});
