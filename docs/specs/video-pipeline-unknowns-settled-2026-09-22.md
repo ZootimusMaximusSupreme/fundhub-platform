@@ -22,6 +22,8 @@ The repo's own earlier research (`docs/specs/video-pipeline-api-verification-202
 Drive link cannot work and that takes must be copied to Cloudflare R2 or S3 first. **That is now
 measured wrong on both counts** — see §2.4 and §1.3. No R2, no S3, no new vendor, no new bill.
 
+> Superseded by docs/specs/marketing-machine-2026-10-04.md (owner-approved 2026-10-05): spec v3 moves videos to Cloudflare R2 (§2 item 12), because Netlify paused the site over video bandwidth: the ad pipeline's files go in the private bucket `fundhub-ad-video` (§9.5) and the site's videos in `fundhub-media` (§12.1).
+
 ---
 
 ## 1. Submagic
@@ -339,6 +341,7 @@ and fails with exactly the "not a downloadable media file" error the earlier res
 * **Cloudflare R2 / S3** — a new vendor and a new bill for a problem Drive and Submagic already
   solve. The earlier research recommended this on the belief that Drive links cannot work; §2.4
   measured that belief false.
+  Superseded by docs/specs/marketing-machine-2026-10-04.md (owner-approved 2026-10-05): spec v3 picks Cloudflare R2 for videos (§2 item 12, §9.5, §12.1), because Netlify paused the site over video bandwidth.
 
 ### Before any of it can run
 
