@@ -41,6 +41,7 @@ const APP = path.resolve(HERE, "../../public/app");
    money-setup.html     — the client's Finance OS setup page; same as money.html
    money-accounts.html  — the client's Finance OS Accounts page; same as money.html
    money-connections.html — Finance OS merchant connections; same client-facing frame as money.html
+   money-payments.html  — the client's Finance OS Payments page; same reason as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
    *.fragment.html      — a fragment, not a screen */
@@ -56,6 +57,7 @@ const NO_SIDEBAR = new Set([
   "money-setup.html",
   "money-accounts.html",
   "money-connections.html",
+  "money-payments.html",
   "teleprompter.html"
 ]);
 

@@ -253,6 +253,7 @@ import moneySetup from "../../api/money/setup.mjs";
 import moneyAccounts from "../../api/money/accounts.mjs";
 import moneyConnections from "../../api/money/connections.mjs";
 import merchantEvents from "../../api/merchant/events.mjs";
+import moneyPayments from "../../api/money/payments.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1106,6 +1107,10 @@ export const ROUTES = {
      webhooks/ prefix (src/http/router.mjs, merchant-whop/<id>, merchant-commas/<id>). */
   "money/connections": moneyConnections,
   "merchant/events": merchantEvents,
+  // Payments page (/app/money-payments.html): Clarity Payments owed to Fundhub,
+  // what is coming up, what the money helper did. Same gate as money/overview;
+  // POST plan changes are staff (FINANCE) only, "talk to a person" is either.
+  "money/payments": moneyPayments,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
