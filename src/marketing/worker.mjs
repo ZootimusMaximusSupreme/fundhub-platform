@@ -37,7 +37,8 @@
 // one short transaction; the drain, the texts and the job handlers run outside them
 // (spec §4 trap 3).
 //
-// A JOB HANDLER (src/marketing/job-kinds.mjs) exports run(job, ctx), ctx = {db, env, deps}.
+// A JOB HANDLER (src/marketing/job-kinds.mjs) exports run(job, ctx), ctx = {db, env, deps,
+// finishByMs} (finishByMs: the time, in ms, by which this pass stops waiting for jobs).
 // Returning finishes the job with the return value as its result. Throwing fails it
 // (jobs.mjs failJob counts an attempt; an error with `final: true` fails it at once, for
 // a cost cap). A handler that re-queues its own job (requeueJob) and returns is fine:
@@ -280,10 +281,12 @@ export async function runPass(ctx = {}) {
   const registry = ctx.registry || JOB_KINDS;
   const kinds = workerKinds(registry);
   const groups = groupKinds(registry);
-  const jobCtx = { db: ctx.db, env, deps: ctx.jobDeps || {} };
-
   const startMs = deps.now().getTime();
   const deadline = startMs + STOP_TAKING_MS;
+  // finishByMs: when this pass stops waiting for running jobs (minute 14). A multi-step
+  // job (the avatar run, unit X1) reads it to size its model calls and to hand a step
+  // to the next pass rather than start one it cannot finish before Netlify's 15-minute kill.
+  const jobCtx = { db: ctx.db, env, deps: ctx.jobDeps || {}, finishByMs: startMs + FINISH_BY_MS };
   const summary = {
     started_at: new Date(startMs).toISOString(),
     finished_at: /** @type {string | null} */ (null),

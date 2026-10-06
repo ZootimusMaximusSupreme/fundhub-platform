@@ -386,7 +386,16 @@ const API_KEYS = [
   "marketing/funnels/stats",
   /* U23: GET answers 401 to an unsigned ping and never writes (the plan is a live
      preview); the POST half is never pinged. */
-  "marketing/batches/next"
+  "marketing/batches/next",
+  /* Build the avatar (unit X1). The GETs answer 401 unsigned; the POSTs answer 405 to
+     a GET ping (counted as up) and never write. */
+  "marketing/costs",
+  "marketing/flywheel",
+  "marketing/flywheel/job",
+  "marketing/flywheel/run",
+  "marketing/flywheel/approve",
+  "marketing/flywheel/tweak",
+  "marketing/flywheel/campaign"
 ];
 
 const DESK_FILES = [

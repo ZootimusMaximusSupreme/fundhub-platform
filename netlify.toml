@@ -111,6 +111,10 @@
     # without this line the Today tab says the flywheel is "waiting" on Netlify.
     # (M10 and M12 both added this line; the release merge keeps one copy.)
     "marketing/flywheel/**",
+    # The live testimonials list (one small JSON file). Build the avatar (unit X1,
+    # src/marketing/avatar/run.mjs) reads it for Prompt 1's "Best Testimonial" so the
+    # SOP only ever names a real one; GitHub is read first, this copy is the fallback.
+    "marketing/testimonials/testimonials.json",
     # The marketing machine's rule files (spec docs/specs/marketing-machine-2026-10-04.md
     # §6 Step 2, "Reads"). The writer and the rules routes read them from GitHub
     # at one commit (src/repo/github.mjs getContents); when GitHub cannot be

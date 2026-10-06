@@ -7,12 +7,13 @@ import {
   ALLOWED_DIRS, ALLOWED_FILES, assertAllowedRepoPath, isAllowedRepoPath, normalizeRepoPath, RepoPathError
 } from "./allow-list.mjs";
 
-test("allow-list: exactly the spec list, and no flywheel folder", () => {
+test("allow-list: exactly the spec list, plus the funnel builder (X4) and flywheel (X1) folders", () => {
   assert.deepEqual([...ALLOWED_DIRS].sort(), [
     "marketing/ads/ideas/",
     "marketing/ads/scripts/machine/",
     "marketing/ads/videos/",
     "marketing/brain/",
+    "marketing/flywheel/",
     "marketing/landing-pages/funnels/",
     "ops/page-requests/"
   ]);
@@ -23,11 +24,15 @@ test("allow-list: exactly the spec list, and no flywheel folder", () => {
     "marketing/ads/banned-live.json",
     "marketing/ads/registry.json"
   ]);
-  assert.equal(isAllowedRepoPath("marketing/flywheel/avatar.md"), false);
   // X4: a built funnel's pages, and nothing else under landing-pages.
   assert.equal(isAllowedRepoPath("marketing/landing-pages/funnels/blueprint/landing.html"), true);
   assert.equal(isAllowedRepoPath("marketing/landing-pages/slo/slo-01-sales.html"), false);
   assert.equal(isAllowedRepoPath("marketing/landing-pages/tracking-manifest.mjs"), false);
+  assert.equal(isAllowedRepoPath("marketing/flywheel/partner/01-avatar.md"), true);
+  assert.equal(isAllowedRepoPath("marketing/flywheel/partner/01-avatar/Market_Language_Bank.md"), true);
+  assert.equal(isAllowedRepoPath("marketing/flywheel/"), false, "a folder is never a file");
+  assert.equal(isAllowedRepoPath("marketing/flywheel/../../.env"), false);
+  assert.equal(isAllowedRepoPath("marketing/flywheelx/a.md"), false);
 });
 
 test("allow-list: the spec's files and folders are allowed", () => {

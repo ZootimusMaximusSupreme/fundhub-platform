@@ -15,7 +15,7 @@
 //           return value is the result); one that throws fails it (jobs.mjs failJob).
 //
 // STARTED EMPTY. Units U24 (writer), U28 (Meta loader) and U35 (batch lifecycle) add
-// their lines here when their handlers land. A kind that is not here is never claimed, and
+// their lines here when their handlers land; X1 added 'avatar'. A kind that is not here is never claimed, and
 // "Retry" refuses it (retryJob only re-queues kinds the caller passes, and the route passes
 // these keys).
 //
@@ -26,9 +26,12 @@
 // length of that test (for example to show a screen that appears once a kind exists).
 // src/marketing/job-kinds.test.mjs fails if any entry lacks a group, a load, or a run().
 
-export const JOB_GROUPS = Object.freeze(["writer", "loader", "system"]);
+// 'research' (unit X1): the long, many-call web research runs Chris taps (Build the
+// avatar). The worker runs one at a time (GROUP_CAPS default), so a research step never
+// takes the slot a system chore or a script writer needs.
+export const JOB_GROUPS = Object.freeze(["writer", "loader", "system", "research"]);
 
-/** @type {Record<string, { group: 'writer' | 'loader' | 'system', load: () => Promise<any> }>} */
+/** @type {Record<string, { group: 'writer' | 'loader' | 'system' | 'research', load: () => Promise<any> }>} */
 export const JOB_KINDS = {
   // U24 — the script writer (src/marketing/writer.mjs, spec §7.6). One module, two handlers.
   write_slot: { group: "writer", load: () => import("./writer.mjs").then((m) => ({ run: m.runWriteSlot })) },
@@ -36,7 +39,9 @@ export const JOB_KINDS = {
   // X4 funnel builder: write a book-a-call funnel's three pages (one model call,
   // checked words), then put them on ClickFunnels as NEW pages on Chris's Push live.
   funnel: { group: "writer", load: () => import("./funnel-build.mjs") },
-  funnel_push: { group: "system", load: () => import("./funnel-push.mjs") }
+  funnel_push: { group: "system", load: () => import("./funnel-push.mjs") },
+  // Build the avatar (flywheel step 1), 10 saved steps: src/marketing/avatar/run.mjs. Unit X1.
+  avatar: { group: "research", load: () => import("./avatar/run.mjs") }
 };
 
 /**

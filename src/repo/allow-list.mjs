@@ -15,8 +15,10 @@
 // rewriting to look safe came from somewhere that should not be trusted.
 //
 // The list is exactly the spec list, plus the funnel builder's own folder (build
-// unit X4). The flywheel folder is NOT on it (a later unit adds it, with its own
-// review).
+// unit X4), plus the flywheel folder: unit X1 (design
+// docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions": the outbox
+// allow-list gains marketing/flywheel/) so "Build the avatar", Approve, Tweak and
+// Start a flywheel can save the stage files from the dashboard.
 
 import path from "node:path";
 
@@ -26,6 +28,7 @@ export const ALLOWED_DIRS = Object.freeze([
   "marketing/ads/ideas/",
   "marketing/ads/videos/",
   "marketing/brain/",
+  "marketing/flywheel/",
   "ops/page-requests/",
   // Build unit X4 (owner order 2026-10-05): the pages of a dashboard-built funnel,
   // saved to the repo when the push proves them live. Its own folder only; the

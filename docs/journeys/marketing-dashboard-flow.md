@@ -1108,3 +1108,30 @@ Gaps between the spec, the design and this code (recorded, not reconciled):
    through the repo outbox shows its key until the next ship.
 5. **UNVERIFIED:** the live timing of each route (spec M5 "under 2 seconds with 30 days of
    data"). The orchestrator records one live timing per route after ship.
+## X1 Build the avatar on the server (design slice 5a)
+
+The full flow, generated from the code, is its own file:
+[marketing-avatar-flow.md](marketing-avatar-flow.md). What it changes on this page's
+records:
+
+- `marketing_jobs`: kind `avatar` (group `research`, one at a time), payload.campaign and
+  payload.step required by a CHECK, one in flight per company and campaign (migration 418).
+  The worker hands every job handler `finishByMs` (minute 14 of the pass) so a long step
+  waits for the next pass instead of being cut off.
+- `marketing_model_usage`: `web_search_requests`, `web_fetch_requests`, `step`; a search's
+  $10-per-1,000 fee is inside `cost_usd`.
+- `marketing_settings.run_caps` = `{"avatar": 20}` by default.
+- `repo_outbox`: `marketing/flywheel/` is on the allow-list; edit ops
+  `set_front_matter_key` (Approve) and `append_line_under_heading` (Tweak).
+- New reads: `GET marketing/costs` (every cost line's source; null = "unknown, not
+  measured yet"), `GET marketing/flywheel`, `GET marketing/flywheel/job`.
+
+```mermaid
+flowchart LR
+    COSTS[GET marketing/costs] -->|last finished job of a kind with ledger rows| LEDGER[(marketing_model_usage)]
+    COSTS -->|month used vs max_month_cost_usd| LEDGER
+    RUN[POST marketing/flywheel/run] -->|kind avatar| JOBS[(marketing_jobs)]
+    JOBS -->|claimed one step at a time| WORKER[marketing worker]
+    WORKER -->|one row per call| LEDGER
+    WORKER -->|step 10: eight files| OUTBOX[(repo_outbox)]
+```
