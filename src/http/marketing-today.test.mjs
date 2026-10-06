@@ -19,8 +19,10 @@ import { test, describe } from "node:test";
 import assert from "node:assert";
 
 import handler, {
-  addDays, spendWindows, isMissingThing, HOUSE_SLUG
+  addDays, spendWindows, spendEnd, isMissingThing, HOUSE_SLUG,
+  shapeOfferCost, shapeCopyCost, COPY_COST_RUNS
 } from "../../api/marketing/today.mjs";
+import { MODEL_PRICES, costOfCalls, priceOf } from "../marketing/model-prices.mjs";
 
 const ORG = "11111111-2222-3333-4444-555555555555";
 const HOUSE = "22222222-3333-4444-5555-666666666666";
@@ -67,7 +69,20 @@ function fakeTx(world, log) {
         }] };
       }
       if (s.includes("SELECT org_id FROM partners WHERE id")) return { rows: [{ org_id: ORG }] };
+      // The copy writer's own calls (the cost line), newest first, at most $2.
+      if (s.includes("FROM partner_ai_usage") && s.includes("purpose = 'creative'")) {
+        assert.equal(params[0], HOUSE, "the cost line reads the house partner's calls only");
+        return { rows: (world.copyCalls || []).slice(0, params[1]) };
+      }
       if (s.includes("FROM partner_ai_usage")) return { rows: [{ used: world.used ?? 0 }] };
+      if (s.includes("FROM marketing_jobs")) return { rows: world.offerRun ? [world.offerRun] : [] };
+      if (s.includes("FROM analytics_connections")) {
+        return { rows: [{ clickfunnels_synced_at: world.cfSyncedAt ?? null }] };
+      }
+      if (s.includes("spend_end_day")) {
+        const days = world.days || [];
+        return { rows: [{ spend_end_day: days.length ? days.map((d) => d.date).sort().at(-1) : null }] };
+      }
       if (s.includes("FROM creative_providers")) {
         return { rows: world.provider === false ? [] : [{ provider_key: "copy", config: {} }] };
       }
@@ -118,15 +133,19 @@ async function call(world = {}, { role = "owner", method = "GET", env = { ANTHRO
   return { r, log };
 }
 
-// Ad-days around the windows. Today (Arizona) is 2026-10-05.
+// Ad-days around the windows. Today (Arizona) is 2026-10-05. The newest saved
+// day is 2026-10-04 (the Meta pull saves through yesterday), so every 7 and 30
+// day window ends on the 4th and is made of whole days.
 const DAYS = [
-  { date: "2026-10-04", spend_cents: 1000 },   // last 7, last 30
+  { date: "2026-10-04", spend_cents: 1000 },   // last day of last 7 and last 30
   { date: "2026-10-04", spend_cents: 500 },    // a second ad, same day
-  { date: "2026-09-29", spend_cents: 200 },    // first day of last 7
-  { date: "2026-09-28", spend_cents: 300 },    // last day of prior 7
-  { date: "2026-09-22", spend_cents: 400 },    // first day of prior 7
-  { date: "2026-09-06", spend_cents: 50 },     // first day of last 30
-  { date: "2026-09-05", spend_cents: 9999 }    // outside every window
+  { date: "2026-09-28", spend_cents: 200 },    // first day of last 7
+  { date: "2026-09-27", spend_cents: 300 },    // last day of prior 7
+  { date: "2026-09-21", spend_cents: 400 },    // first day of prior 7
+  { date: "2026-09-05", spend_cents: 50 },     // first day of last 30
+  { date: "2026-09-04", spend_cents: 70 },     // last day of prior 30
+  { date: "2026-08-06", spend_cents: 80 },     // first day of prior 30
+  { date: "2026-08-05", spend_cents: 9999 }    // outside every window
 ];
 
 describe("marketing/today — pure helpers", () => {
@@ -136,12 +155,25 @@ describe("marketing/today — pure helpers", () => {
     assert.equal(addDays("2026-12-31", 1), "2027-01-01");
   });
 
-  test("spendWindows: both ends inclusive, prior 7 ends the day before last 7 starts", () => {
-    const w = Object.fromEntries(spendWindows("2026-10-05").map((x) => [x.key, x]));
-    assert.deepEqual([w.today.from, w.today.to], ["2026-10-05", "2026-10-05"]);
-    assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-09-29", "2026-10-05"]);
-    assert.deepEqual([w.prior_7_days.from, w.prior_7_days.to], ["2026-09-22", "2026-09-28"]);
-    assert.deepEqual([w.last_30_days.from, w.last_30_days.to], ["2026-09-06", "2026-10-05"]);
+  test("spendWindows: whole days ending on the newest saved day; prior windows end the day before", () => {
+    const w = Object.fromEntries(spendWindows("2026-10-05", "2026-10-04").map((x) => [x.key, x]));
+    assert.deepEqual([w.today.from, w.today.to], ["2026-10-05", "2026-10-05"], "today is still today");
+    assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-09-28", "2026-10-04"]);
+    assert.deepEqual([w.prior_7_days.from, w.prior_7_days.to], ["2026-09-21", "2026-09-27"]);
+    assert.deepEqual([w.last_30_days.from, w.last_30_days.to], ["2026-09-05", "2026-10-04"]);
+    assert.deepEqual([w.prior_30_days.from, w.prior_30_days.to], ["2026-08-06", "2026-09-04"]);
+    for (const k of ["last_7_days", "prior_7_days", "last_30_days", "prior_30_days"]) {
+      const days = (Date.parse(w[k].to) - Date.parse(w[k].from)) / 86400000 + 1;
+      assert.equal(days, w[k].days, `${k} covers exactly ${w[k].days} days`);
+    }
+  });
+
+  test("spendEnd: the newest saved day, never after today; nothing saved → yesterday", () => {
+    assert.equal(spendEnd("2026-10-05", "2026-10-04"), "2026-10-04");
+    assert.equal(spendEnd("2026-10-05", "2026-10-01"), "2026-10-01", "an old pull keeps its own days");
+    assert.equal(spendEnd("2026-10-05", "2026-10-07"), "2026-10-05", "never a day after today");
+    assert.equal(spendEnd("2026-10-05", null), "2026-10-04");
+    assert.equal(spendEnd("2026-10-05", "not a day"), "2026-10-04");
   });
 
   test("isMissingThing: only 'does not exist' codes, not every database error", () => {
@@ -179,14 +211,16 @@ describe("marketing/today — the gate", () => {
   });
 });
 
+const WORLD = {
+  days: DAYS,
+  metaSyncedAt: new Date("2026-10-05T07:01:50Z"),
+  metricsSyncedAt: new Date("2026-10-05T07:01:51Z"),
+  cfSyncedAt: new Date("2026-10-04T22:10:00Z"),
+  pieces: [{ id: "a1", compliance_state: "passed", blocked_reasons: [], copy_text: "Words." }],
+  jobs: [{ id: "j1", status: "succeeded", error: null }]
+};
+
 describe("marketing/today — the answer", () => {
-  const WORLD = {
-    days: DAYS,
-    metaSyncedAt: new Date("2026-10-05T07:01:50Z"),
-    metricsSyncedAt: new Date("2026-10-05T07:01:51Z"),
-    pieces: [{ id: "a1", compliance_state: "passed", blocked_reasons: [], copy_text: "Words." }],
-    jobs: [{ id: "j1", status: "succeeded", error: null }]
-  };
 
   test("owner gets every part, today is Arizona's day, as_of is the clock", async () => {
     const { r } = await call(WORLD);
@@ -208,6 +242,8 @@ describe("marketing/today — the answer", () => {
       ["marketing_switch", "copy_provider", "anthropic_key", "writing_budget"]);
     assert.equal(b.last_sync.meta_synced_at.toISOString(), "2026-10-05T07:01:50.000Z");
     assert.equal(b.last_sync.latest_metrics_date, "2026-10-04");
+    assert.equal(b.last_sync.clickfunnels_synced_at.toISOString(), "2026-10-04T22:10:00.000Z");
+    assert.equal(b.spend.through, "2026-10-04");
   });
 
   test("spend: exact integer cents per window, from the rows inside it only", async () => {
@@ -217,8 +253,11 @@ describe("marketing/today — the answer", () => {
     assert.equal(w.last_7_days.spend_cents, 1700);     // 1000 + 500 + 200
     assert.equal(w.last_7_days.ad_days, 3);
     assert.equal(w.last_7_days.days_with_data, 2);
+    assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-09-28", "2026-10-04"]);
     assert.equal(w.prior_7_days.spend_cents, 700);     // 300 + 400
-    assert.equal(w.last_30_days.spend_cents, 2450);    // all but the 9999
+    assert.equal(w.last_30_days.spend_cents, 2450);    // 1700 + 700 + 50
+    assert.equal(w.prior_30_days.spend_cents, 150);    // 70 + 80, never the 9999
+    assert.equal(w.prior_30_days.days, 30);
     for (const k of Object.keys(w)) {
       if (w[k].spend_cents !== null) assert.ok(Number.isInteger(w[k].spend_cents), k);
     }
@@ -232,11 +271,38 @@ describe("marketing/today — the answer", () => {
     assert.equal(t.days_with_data, 0);
   });
 
-  test("no ad numbers at all → every window null, spend named in waiting, still 200", async () => {
+  test("no ad numbers at all → every window null, through null, spend named in waiting, still 200", async () => {
     const { r } = await call({ ...WORLD, days: [] });
     assert.equal(r.code, 200);
     for (const w of Object.values(r.body.spend.windows)) assert.equal(w.spend_cents, null);
-    assert.ok(r.body.waiting.some((x) => x.part === "spend"));
+    assert.equal(r.body.spend.through, null);
+    const w = r.body.waiting.find((x) => x.part === "spend");
+    assert.equal(w.reason, "No ad numbers are saved yet.");
+  });
+
+  test("an old pull: the windows end on the last saved day, so no window is padded with empty days", async () => {
+    const old = [{ date: "2026-09-30", spend_cents: 100 }, { date: "2026-09-24", spend_cents: 40 }];
+    const { r } = await call({ ...WORLD, days: old });
+    const w = r.body.spend.windows;
+    assert.equal(r.body.spend.through, "2026-09-30");
+    assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-09-24", "2026-09-30"]);
+    assert.equal(w.last_7_days.spend_cents, 140);
+    assert.equal(w.today.spend_cents, null);
+  });
+
+  test("ClickFunnels never pulled → null, and the rest of last_sync is untouched", async () => {
+    const { r } = await call({ ...WORLD, cfSyncedAt: null });
+    assert.equal(r.body.last_sync.clickfunnels_synced_at, null);
+    assert.equal(r.body.last_sync.latest_metrics_date, "2026-10-04");
+  });
+
+  test("the ClickFunnels table not shipped → clickfunnels waiting, Meta times still there", async () => {
+    const missing = Object.assign(new Error('relation "analytics_connections" does not exist'), { code: "42P01" });
+    const { r } = await call({ ...WORLD, fail: { "FROM analytics_connections": missing } });
+    assert.equal(r.code, 200);
+    assert.equal(r.body.last_sync.clickfunnels_synced_at, null);
+    assert.equal(r.body.last_sync.latest_metrics_date, "2026-10-04");
+    assert.ok(r.body.waiting.some((x) => x.part === "clickfunnels"));
   });
 
   test("Meta never synced → last_sync waiting, values null", async () => {
@@ -309,7 +375,7 @@ describe("marketing/today — the answer", () => {
 
   test("a missing spend table → spend null and waiting, page still 200", async () => {
     const missing = Object.assign(new Error('relation "ad_metrics_daily" does not exist'), { code: "42P01" });
-    const { r } = await call({ ...WORLD, fail: { "unnest(": missing, "max(synced_at)": missing } });
+    const { r } = await call({ ...WORLD, fail: { "spend_end_day": missing, "max(synced_at)": missing } });
     assert.equal(r.code, 200);
     assert.equal(r.body.spend, null);
     assert.equal(r.body.last_sync, null);
@@ -332,5 +398,138 @@ describe("marketing/today — the answer", () => {
   test("any other fault is thrown (a 500), not hidden as 'waiting'", async () => {
     const bug = Object.assign(new Error("syntax error at or near FROM"), { code: "42601" });
     await assert.rejects(() => call({ ...WORLD, fail: { "unnest(": bug } }), /syntax error/);
+  });
+});
+
+// ── what the last measured runs cost ─────────────────────────────────────────
+
+/* The offer contract's one measured run (docs/specs/marketing-offer-contract.md):
+   4 min 29 s, 24,551 in and 28,640 out on claude-opus-5-5. */
+const OFFER_RUN = {
+  id: "77777777-8888-4999-8aaa-bbbbbbbbbbbb",
+  claimed_at: new Date("2026-10-05T18:00:00Z"),
+  finished_at: new Date("2026-10-05T18:04:29Z"),
+  usage: {
+    input_tokens: 24551, output_tokens: 28640,
+    calls: [
+      { step: "candidates", model: "claude-opus-5-5", input_tokens: 9000, output_tokens: 12931 },
+      { step: "judges", model: "claude-opus-5-5", input_tokens: 12000, output_tokens: 10204 },
+      { step: "synthesis", model: "claude-opus-5-5", input_tokens: 3551, output_tokens: 5505 }
+    ]
+  }
+};
+
+describe("model prices — only with a source", () => {
+  test("Opus 5.5 is $4 in, $20 out per million tokens; nothing else is guessed", () => {
+    assert.deepEqual({ ...priceOf("claude-opus-5-5") }, { inCentsPerMTok: 400, outCentsPerMTok: 2000 });
+    assert.equal(priceOf("claude-sonnet-4-5-20250929"), null);
+    assert.equal(priceOf("gpt-4o-mini"), null);
+    assert.equal(priceOf("claude-opus-5-5-20260401"), null, "exact names only, no near matches");
+    assert.deepEqual(Object.keys(MODEL_PRICES), ["claude-opus-5-5"]);
+  });
+
+  test("the offer contract's measured run is 67 cents", () => {
+    const c = costOfCalls([{ model: "claude-opus-5-5", input_tokens: 24551, output_tokens: 28640 }]);
+    assert.equal(c.cents, 67);
+    assert.deepEqual(c.unpriced, []);
+  });
+
+  test("one call with no price on file makes the whole total unknown, never a smaller number", () => {
+    const c = costOfCalls([
+      { model: "claude-opus-5-5", input_tokens: 1000, output_tokens: 1000 },
+      { model: "gpt-4o-mini", input_tokens: 1000, output_tokens: 1000 }
+    ]);
+    assert.equal(c.cents, null);
+    assert.deepEqual(c.unpriced, ["gpt-4o-mini"]);
+    assert.equal(costOfCalls([]).cents, null, "no calls is not a measured $0");
+  });
+});
+
+describe("marketing/today — costs", () => {
+  test("offer: the newest finished run, its minutes and its dollars", async () => {
+    const { r } = await call({ ...WORLD, offerRun: OFFER_RUN });
+    const o = r.body.costs.offer;
+    assert.equal(o.measured, true);
+    assert.equal(o.job_id, OFFER_RUN.id);
+    assert.equal(o.seconds, 269);
+    assert.equal(o.input_tokens, 24551);
+    assert.equal(o.output_tokens, 28640);
+    assert.deepEqual(o.models, ["claude-opus-5-5"]);
+    assert.equal(o.cost_cents, 67);
+    assert.deepEqual(o.unpriced_models, []);
+  });
+
+  test("offer: no finished run yet → measured false, every number null", async () => {
+    const { r } = await call(WORLD);
+    const o = r.body.costs.offer;
+    assert.equal(o.measured, false);
+    for (const k of ["seconds", "cost_cents", "input_tokens", "output_tokens", "job_id"]) assert.equal(o[k], null, k);
+  });
+
+  test("offer: a run on a model with no price → cost null, the model named", () => {
+    const o = shapeOfferCost({ ...OFFER_RUN, usage: { input_tokens: 10, output_tokens: 10,
+      calls: [{ model: "gpt-4o-mini", input_tokens: 10, output_tokens: 10 }] } });
+    assert.equal(o.measured, true);
+    assert.equal(o.cost_cents, null);
+    assert.deepEqual(o.unpriced_models, ["gpt-4o-mini"]);
+  });
+
+  test("offer: no pick-up time recorded → seconds unknown, not 0", () => {
+    assert.equal(shapeOfferCost({ ...OFFER_RUN, claimed_at: null }).seconds, null);
+  });
+
+  test("the marketing_jobs table not shipped → costs.offer null and named in waiting", async () => {
+    const missing = Object.assign(new Error('relation "marketing_jobs" does not exist'), { code: "42P01" });
+    const { r } = await call({ ...WORLD, fail: { "FROM marketing_jobs": missing } });
+    assert.equal(r.code, 200);
+    assert.equal(r.body.costs.offer, null);
+    assert.ok(r.body.waiting.some((x) => x.part === "costs"));
+    assert.equal(r.body.costs.copy.runs, 0, "the copy line is a separate read and still answers");
+  });
+
+  test("copy: the house partner's last calls averaged; Sonnet has no price here, so dollars are unknown", async () => {
+    const calls = [
+      { created_at: new Date("2026-10-05T18:00:00Z"), input_tokens: 300, output_tokens: 90, model: "claude-sonnet-4-5-20250929" },
+      { created_at: new Date("2026-10-04T18:00:00Z"), input_tokens: 100, output_tokens: 30, model: "claude-sonnet-4-5-20250929" }
+    ];
+    const { r } = await call({ ...WORLD, copyCalls: calls });
+    const c = r.body.costs.copy;
+    assert.equal(c.runs, 2);
+    assert.equal(c.avg_input_tokens, 200);
+    assert.equal(c.avg_output_tokens, 60);
+    assert.equal(c.avg_cost_cents, null);
+    assert.deepEqual(c.unpriced_models, ["claude-sonnet-4-5-20250929"]);
+    assert.equal(c.last_at.toISOString(), "2026-10-05T18:00:00.000Z");
+  });
+
+  test("copy: priced runs average to whole cents, at most the last five", async () => {
+    const six = Array.from({ length: 6 }, (_, i) => ({
+      created_at: new Date(Date.UTC(2026, 9, 5, 18 - i)),
+      // 100,000 out on Opus 5.5 = 200 cents; the sixth would drag the average if counted.
+      input_tokens: 0, output_tokens: i === 5 ? 0 : 100000, model: "claude-opus-5-5"
+    }));
+    const { r } = await call({ ...WORLD, copyCalls: six });
+    assert.equal(COPY_COST_RUNS, 5);
+    assert.equal(r.body.costs.copy.runs, 5);
+    assert.equal(r.body.costs.copy.avg_cost_cents, 200);
+  });
+
+  test("copy: a tiny priced run is 'under one cent', not a measured $0", () => {
+    const c = shapeCopyCost([{ created_at: "2026-10-05T18:00:00Z", input_tokens: 100, output_tokens: 100, model: "claude-opus-5-5" }]);
+    assert.equal(c.avg_cost_cents, 0);
+    assert.equal(c.under_one_cent, true);
+  });
+
+  test("copy: no calls yet → runs 0 and every number null", async () => {
+    const { r } = await call(WORLD);
+    const c = r.body.costs.copy;
+    assert.equal(c.runs, 0);
+    assert.equal(c.avg_cost_cents, null);
+    assert.equal(c.avg_input_tokens, null);
+  });
+
+  test("no house partner → nobody wrote copy: runs 0, not an error", async () => {
+    const { r } = await call({ ...WORLD, house: null });
+    assert.equal(r.body.costs.copy.runs, 0);
   });
 });

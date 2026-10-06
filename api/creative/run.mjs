@@ -36,24 +36,51 @@ function plainReason(error) {
   return "The reason is on the job in the list below.";
 }
 
-export default async function handler(req, res) {
+/* maxJobsFrom(body) — how many jobs one press may run.
+
+   A whole number from 1 to 10 is used exactly as sent. The Command Center's
+   Write ad copy button sends max_jobs: 1 (design §6 slice 0), so one press runs
+   at most one job and pays for at most one job; it can never sweep up two older
+   jobs that were waiting in line. Missing or not a whole number: 3, as before.
+   Above 10: 10. */
+export const DEFAULT_MAX_JOBS = 3;
+export const MAX_JOBS_CAP = 10;
+export function maxJobsFrom(body) {
+  const raw = body && body.max_jobs;
+  if (typeof raw !== "number" && typeof raw !== "string") return DEFAULT_MAX_JOBS;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) return DEFAULT_MAX_JOBS;
+  return Math.min(MAX_JOBS_CAP, n);
+}
+
+/* deps lets src/http/creative-run.test.mjs drive the handler with no database.
+   The router (netlify/functions/api.mjs) calls handler(req, res), so every
+   default below is the real one. */
+export default async function handler(req, res, deps = {}) {
+  const database = deps.db ?? db;
+  const principalOf = deps.requirePrincipal ?? requirePrincipal;
+  const partnerScope = deps.withPartnerScope ?? withPartnerScope;
+  const claimJob = deps.claim ?? claim;
+  const runJob = deps.run ?? run;
+  const runAllDue = deps.runDue ?? runDue;
+
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 
-  const principal = await requirePrincipal(req, res, ["partner", "staff"], { db });
+  const principal = await principalOf(req, res, ["partner", "staff"], { db: database });
   if (!principal) return;
 
   const body = req.body || {};
-  const maxJobs = Math.min(10, Math.max(1, Number(body.max_jobs) || 3));
+  const maxJobs = maxJobsFrom(body);
 
   try {
     if (body.all === true || body.all === 1 || body.all === "1") {
       if (principal.kind !== "staff") {
         return res.status(403).json({ ok: false, error: "staff_only_for_all" });
       }
-      const out = await runDue(db, { maxJobsPerPartner: maxJobs });
+      const out = await runAllDue(database, { maxJobsPerPartner: maxJobs });
       return res.status(200).json({ ok: true, ...out });
     }
 
@@ -64,12 +91,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: "partner_id_required" });
     }
 
-    const jobs = await withPartnerScope({ kind: "partner", partnerId }, async (tx) => {
+    const jobs = await partnerScope({ kind: "partner", partnerId }, async (tx) => {
       const out = [];
       for (let i = 0; i < maxJobs; i++) {
-        const job = await claim(tx, { partnerId });
+        const job = await claimJob(tx, { partnerId });
         if (!job) break;
-        out.push({ job_id: job.id, ...(await run(tx, job)) });
+        out.push({ job_id: job.id, ...(await runJob(tx, job)) });
       }
       return out;
     });
