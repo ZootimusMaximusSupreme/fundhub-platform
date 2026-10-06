@@ -49,8 +49,8 @@ it was written on. See the note at the foot of this page.
 
 ```mermaid
 flowchart TD
-    A["Chris writes a script and tags it<br/>Write a script and label it<br/>public/app/creative-factory.html"] -->|POST /api/scripts/write| B["ad_scripts row<br/>version = 1<br/>five labels on the same row<br/>api/scripts/write.mjs:254"]
-    B -->|same transaction| C["ad_labels learns the words<br/>a name Chris typed is never overwritten<br/>api/scripts/write.mjs:277"]
+    A["Chris writes a script and tags it<br/>Write a script and label it<br/>public/app/creative-factory.html"] -->|POST /api/scripts/write| B["ad_scripts row<br/>version = 1<br/>five labels on the same row<br/>api/scripts/write.mjs:328"]
+    B -->|same transaction| C["ad_labels learns the words<br/>a name Chris typed is never overwritten<br/>api/scripts/write.mjs:354"]
 
     B -->|"picked in the Script list on<br/>Generate and decide, sent as spec.scriptId<br/>POST /api/creative/generate"| D["creative_assets row<br/>script_id points at the script<br/>src/creative/generate.mjs:248"]
 
@@ -82,7 +82,7 @@ flowchart TD
     F -->|"the same short save,<br/>from the rows already in hand"| K["ad_metrics_daily<br/>spend, impressions, clicks, ctr, roas<br/>+ where people stopped watching:<br/>past-the-opening (2s), plays, p25, p50,<br/>p75, p95, p100, ThruPlay<br/>+ Meta results (408): purchases, cost per purchase,<br/>link clicks, landing page views — NULL when Meta<br/>sent no line; written only once 408 is applied<br/>storeInsights() + insightUpsertSql(), api/campaigns/sync.mjs:524-605"]
     E2 -->|"matched back to an ad by ad_id;<br/>a row with no ad_id is dropped, never guessed<br/>groupInsightsByAd(), :374-383"| K
 
-    B -->|"POST /api/scripts/write<br/>with parent_script_id"| L["a NEW ad_scripts row<br/>version = parent + 1<br/>parent_script_id points back<br/>api/scripts/write.mjs:251"]
+    B -->|"POST /api/scripts/write<br/>with parent_script_id"| L["a NEW ad_scripts row<br/>version = parent + 1, same root and number<br/>parent_script_id points back<br/>the old version is archived, same transaction<br/>an archived version answers 409 stale<br/>api/scripts/write.mjs:221-365 (413)"]
     L --> B
 
 ```
@@ -96,9 +96,9 @@ been run against a database — see the note at the foot of this page.
 
 | From | To | What fires it | Where it happens | Works today? |
 |---|---|---|---|---|
-| nothing | an `ad_scripts` row, `version = 1`, labels on it | somebody posts the words and the tags | `api/scripts/write.mjs:254` | **yes** |
+| nothing | an `ad_scripts` row, `version = 1`, labels on it | somebody posts the words and the tags | `api/scripts/write.mjs:328` | **yes** |
 | a script | a creative carrying that script id | generating with `script_id` | `src/creative/generate.mjs:248` | **yes** |
-| a label key | a row in `ad_labels` | the same write, in the same transaction | `api/scripts/write.mjs:277` | **yes** |
+| a label key | a row in `ad_labels` | the same write, in the same transaction | `api/scripts/write.mjs:354` | **yes** |
 | a connected account sitting on "waiting" | the account switched on | Meta answers the first read of the Sync press | the switch-on `UPDATE` in `syncPartnerConnections()`, `api/campaigns/sync.mjs:721-735` | **yes** |
 | a connected account | Meta's own business-verification word written down | the same Sync press, one read later | `readVerificationState()`, `api/campaigns/sync.mjs:261-270` | **yes** |
 | an ad in Meta | an `ads` row with Meta's id | a person presses Sync on the Campaign Manager screen | `upsertAd()`, `api/campaigns/sync.mjs:462-482` | **yes** |
@@ -110,7 +110,7 @@ been run against a database — see the note at the foot of this page.
 | a visitor row with no ad number | its ad number | the end of the same Sync press | `reresolveAdNumbers()`, `api/campaigns/sync.mjs:921` → 407 | **UNVERIFIED** — not run against a database |
 | one campaign's rows | saved on their own, the moment that campaign is done | the same Sync press | the per-campaign save in `syncPartnerConnections()`, `api/campaigns/sync.mjs:795-829` | **yes** |
 | all of the above | labels readable next to the ad | the view joins them; nothing is copied | `377:619-652` | **yes, once the row above is set** |
-| a script | a rewrite of it | posting again with `parent_script_id` | `api/scripts/write.mjs:251` | **yes** |
+| a script | a rewrite of it; the old version archived in the same transaction, same root and number; rewriting an archived version is 409 stale | posting again with `parent_script_id` | `api/scripts/write.mjs:221-365` (413; states in `ad-script-flow.md`) | **UNVERIFIED** — proved in CI only; not live until ship |
 | labels + spend + people | what each label cost and what it brought | asking for a group and a number of days | `api/read/ad-spine.mjs:443` | **yes** |
 | a day of video views | hook rate and hold rate for a label | the same call, same days | `watchRate()`, `src/ops/meta-marketing.mjs:126` | **yes** |
 
@@ -161,7 +161,9 @@ the corrected one immediately.
 **Works:**
 
 - Writing a script with its five labels, and the dictionary learning the new words.
-- Writing a rewrite that points back at what it replaced, without touching the original.
+- Writing a rewrite that points back at what it replaced. Since 413 the original is archived
+  in the same transaction (its words, labels and number are kept), so a script has one live
+  version.
 - Pulling ads and daily spend in from Meta — and, since 2026-09-09, how far into each
   video ad people got before they left. `insightsRequestUrl()`,
   `api/campaigns/sync.mjs:299-312`, asks Meta for eight extra fields (the list itself

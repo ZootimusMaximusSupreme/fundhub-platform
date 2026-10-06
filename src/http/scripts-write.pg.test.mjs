@@ -152,7 +152,17 @@ describe("POST /api/scripts/write", { skip: !HAS_DB ? "no DATABASE_URL" : false 
     assert.equal(row.lane, "funding600");
   });
 
-  test("a rewrite writes a NEW row, increments the version, and never touches the parent", async () => {
+  const readScript = (id) => asStaff((tx) => tx.query(
+    `SELECT id, version, body, title, parent_script_id, root_script_id, ad_id, status, source,
+            archived_at, updated_at
+       FROM ad_scripts WHERE id = $1`, [id]
+  )).then((q) => q.rows[0]);
+
+  /* A number no other suite will be using, for a parent that has to carry one.
+     Nine digits, no leading zero (393's shape). */
+  const testAdNumber = () => String(900000000 + Math.floor(Math.random() * 99999999));
+
+  test("a rewrite archives its parent and inserts the new version with the same root and number, in one transaction", async () => {
     const first = await post(tokenStaff, {
       title: `Parent ${TITLE_TAG}`,
       body: "First draft. The words that were there before.",
@@ -160,11 +170,16 @@ describe("POST /api/scripts/write", { skip: !HAS_DB ? "no DATABASE_URL" : false 
     });
     assert.equal(first.code, 200, JSON.stringify(first.body));
     const parentId = first.body.script.id;
+    // write.mjs never hands out numbers; the parent is given one here so the
+    // test can prove the rewrite carries it.
+    const adNumber = testAdNumber();
+    await asStaff((tx) => tx.query(
+      `UPDATE ad_scripts SET ad_id = $2, status = 'locked' WHERE id = $1`, [parentId, adNumber]
+    ));
 
-    const before = (await asStaff((tx) => tx.query(
-      `SELECT id, version, body, parent_script_id, updated_at FROM ad_scripts WHERE id = $1`,
-      [parentId]
-    ))).rows[0];
+    const before = await readScript(parentId);
+    assert.equal(before.root_script_id, parentId, "an original script must be its own root");
+    assert.equal(before.archived_at, null);
 
     const second = await post(tokenStaff, {
       title: `Rewrite ${TITLE_TAG}`,
@@ -180,24 +195,139 @@ describe("POST /api/scripts/write", { skip: !HAS_DB ? "no DATABASE_URL" : false 
     assert.equal(child.parent_script_id, parentId);
     assert.equal(child.version, 2);
     assert.equal(child.body, "Second draft. Completely different words.");
+    assert.equal(child.root_script_id, parentId, "the rewrite must share its parent's root");
+    assert.equal(child.ad_id, adNumber, "the rewrite must keep the parent's ad number");
+    assert.equal(child.status, "locked", "editing a locked script keeps it locked (spec 7.4)");
+    assert.equal(child.archived_at, null, "the new version is the live one");
 
-    // THE POINT OF THE WHOLE DESIGN: the parent is byte-for-byte what it was.
-    const after = (await asStaff((tx) => tx.query(
-      `SELECT id, version, body, parent_script_id, updated_at FROM ad_scripts WHERE id = $1`,
-      [parentId]
-    ))).rows[0];
+    // The parent is archived — and nothing else about it moved. Its words are
+    // still there to read beside the rewrite.
+    const after = await readScript(parentId);
+    assert.ok(after.archived_at, "the parent was left live — a script now has one live version");
     assert.equal(after.body, before.body, "the rewrite overwrote the parent's words");
+    assert.equal(after.title, before.title);
     assert.equal(Number(after.version), Number(before.version), "the parent's version moved");
-    assert.equal(after.parent_script_id, null);
-    assert.equal(new Date(after.updated_at).getTime(), new Date(before.updated_at).getTime(),
-      "the parent row was written to — a rewrite must never update what it replaced");
+    assert.equal(after.ad_id, adNumber, "the parent lost its number");
+    assert.equal(after.root_script_id, parentId);
+    assert.equal(after.status, "locked", "a parent the machine did not write keeps its status");
 
-    // Two rows, both still there, readable side by side. That is the comparison
-    // 377 was designed to make possible.
-    const both = (await asStaff((tx) => tx.query(
-      `SELECT id FROM ad_scripts WHERE id = $1 OR parent_script_id = $1`, [parentId]
+    // Same transaction: the archive stamp and the new row were written at the
+    // same instant (now() is the transaction's start time in Postgres).
+    const childRow = await readScript(child.id);
+    const created = (await asStaff((tx) => tx.query(
+      `SELECT created_at FROM ad_scripts WHERE id = $1`, [child.id]
+    ))).rows[0].created_at;
+    assert.equal(new Date(after.archived_at).getTime(), new Date(created).getTime(),
+      "the archive and the insert did not happen in one transaction");
+    assert.equal(childRow.root_script_id, parentId);
+
+    // Two rows, one root, one of them live.
+    const family = (await asStaff((tx) => tx.query(
+      `SELECT id, archived_at FROM ad_scripts WHERE root_script_id = $1`, [parentId]
     ))).rows;
-    assert.equal(both.length, 2);
+    assert.equal(family.length, 2);
+    assert.equal(family.filter((r) => !r.archived_at).length, 1, "more than one live version");
+  });
+
+  test("a machine-written parent becomes superseded when it is rewritten", async () => {
+    const first = await post(tokenStaff, {
+      title: `Machine parent ${TITLE_TAG}`,
+      body: "A draft the machine wrote."
+    });
+    assert.equal(first.code, 200, JSON.stringify(first.body));
+    const parentId = first.body.script.id;
+    await asStaff((tx) => tx.query(`UPDATE ad_scripts SET source = 'machine' WHERE id = $1`, [parentId]));
+
+    const second = await post(tokenStaff, {
+      title: `Machine rewrite ${TITLE_TAG}`,
+      parent_script_id: parentId,
+      body: "Chris's rewrite of the machine's draft."
+    });
+    assert.equal(second.code, 200, JSON.stringify(second.body));
+    assert.equal(second.body.script.status, "draft", "a draft's rewrite is a draft");
+    assert.equal(second.body.script.source, "chris");
+
+    const parent = await readScript(parentId);
+    assert.ok(parent.archived_at);
+    assert.equal(parent.status, "superseded");
+  });
+
+  test("rewriting a version that was already replaced is 409 stale, names the live version, and writes nothing", async () => {
+    const first = await post(tokenStaff, {
+      title: `Stale parent ${TITLE_TAG}`,
+      body: "Version one."
+    });
+    assert.equal(first.code, 200, JSON.stringify(first.body));
+    const v1 = first.body.script.id;
+
+    const second = await post(tokenStaff, {
+      title: `Stale v2 ${TITLE_TAG}`,
+      parent_script_id: v1,
+      body: "Version two."
+    });
+    assert.equal(second.code, 200, JSON.stringify(second.body));
+    const v2 = second.body.script.id;
+
+    const beforeCount = await scriptCount();
+    const stale = await post(tokenStaff, {
+      title: `Stale fork ${TITLE_TAG}`,
+      parent_script_id: v1,
+      body: "A second rewrite of version one, from a screen that never saw version two."
+    });
+    await refused(stale, 409, "stale");
+    assert.ok(stale.body.current, "the 409 must name the live version");
+    assert.equal(stale.body.current.id, v2);
+    assert.equal(stale.body.current.version, 2);
+    assert.equal(stale.body.current.body, "Version two.");
+    assert.ok("parts" in stale.body.current, "current must carry parts (spec 7.8 shape)");
+
+    assert.equal(await scriptCount(), beforeCount, "a stale rewrite wrote a row");
+    const live = await readScript(v2);
+    assert.equal(live.archived_at, null, "a stale rewrite archived the live version");
+  });
+
+  test("when the new version cannot be saved, the parent is not archived either", async () => {
+    // A trigger that refuses one marked insert, so the failure lands AFTER the
+    // archive has run inside the handler's transaction. Owner-only DDL, fine on
+    // the suite's connection (pg test files run one at a time). Dropped in
+    // finally whatever happens.
+    const MARK = "[zz_force_insert_failure]";
+    await db.query(`
+      CREATE OR REPLACE FUNCTION zz_test_scripts_write_fail() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.title LIKE '%${MARK}%' THEN
+          RAISE EXCEPTION 'zz test: refused on purpose';
+        END IF;
+        RETURN NEW;
+      END $$ LANGUAGE plpgsql`);
+    await db.query(`DROP TRIGGER IF EXISTS zz_test_scripts_write_fail ON ad_scripts`);
+    await db.query(`
+      CREATE TRIGGER zz_test_scripts_write_fail BEFORE INSERT ON ad_scripts
+      FOR EACH ROW EXECUTE FUNCTION zz_test_scripts_write_fail()`);
+    try {
+      const first = await post(tokenStaff, {
+        title: `Atomic parent ${TITLE_TAG}`,
+        body: "The live version, which must stay live."
+      });
+      assert.equal(first.code, 200, JSON.stringify(first.body));
+      const parentId = first.body.script.id;
+
+      const beforeCount = await scriptCount();
+      const r = await post(tokenStaff, {
+        title: `Atomic rewrite ${MARK} ${TITLE_TAG}`,
+        parent_script_id: parentId,
+        body: "This insert is refused by the test trigger."
+      });
+      assert.equal(r.code, 500, JSON.stringify(r.body));
+
+      const parent = await readScript(parentId);
+      assert.equal(parent.archived_at, null,
+        "the parent was archived although its rewrite was never saved — the two are not one transaction");
+      assert.equal(await scriptCount(), beforeCount, "a row was written by a failed rewrite");
+    } finally {
+      await db.query(`DROP TRIGGER IF EXISTS zz_test_scripts_write_fail ON ad_scripts`);
+      await db.query(`DROP FUNCTION IF EXISTS zz_test_scripts_write_fail()`);
+    }
   });
 
   test("a brand new angle nobody has registered saves, and the dictionary learns it", async () => {
