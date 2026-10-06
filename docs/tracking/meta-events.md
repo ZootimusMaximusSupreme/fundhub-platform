@@ -60,3 +60,55 @@ The old `InitiateCheckout` on the Pay press in `fh-attribution.js` and the hand-
 - Stop dropping `fbclid`. The browser keeps it (first touch) and, when the `_fbc` cookie is missing, builds `fbc = "fb.1.<ms>.<fbclid>"`. `fbp` comes from the `_fbp` cookie.
 - Every track post, the step-1 contact, the checkout and the soft-pull post carry `fbc` and `fbp`. The server stores them on the order/client so a later server-only Purchase (payment webhook) can send them.
 - Server `user_data` also gets `client_ip_address` (`x-nf-client-connection-ip`, else first `x-forwarded-for`) and `client_user_agent`. Email/phone for a session come from that session's `slo.contact_started` row (hashed on the server).
+
+
+---
+
+# Checked against Meta's own rules — 2026-10-05 (M9)
+
+Purchase and Schedule have never fired for real (no sale, no booking since 10/2). So they were checked in code, field by field, against Meta's written rules. The proof is `src/meta/meta-spec.test.mjs`: it builds the exact request our server would send (fake Meta, fake token) and holds it to the rules below.
+
+Meta's pages (read 2026-10-05):
+- R1 Server event parameters — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/server-event
+- R2 Customer information parameters — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/customer-information-parameters
+- R3 fbp and fbc — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/fbp-and-fbc
+- R4 Custom data — https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/custom-data ; Pixel standard events — https://developers.facebook.com/docs/meta-pixel/reference
+- R5 Deduplication — https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events
+
+| Check | Meta's rule | Lead | InitiateCheckout | Schedule | Purchase |
+|---|---|---|---|---|---|
+| event_name | standard name, same as the browser's (R1, R5) | PASS | PASS | PASS | PASS |
+| event_time | Unix seconds, not older than 7 days (R1) | PASS (send time) | PASS | PASS | PASS (webhook time) |
+| action_source | one of Meta's values (R1) | PASS website | PASS website | PASS website | PASS website (system_generated only when the checkout kept no user agent) |
+| event_source_url | required for website events (R1) | PASS page url | PASS | PASS booking page url | PASS https://apply.fundhub.ai/roadmap |
+| client_user_agent | required for website events, not hashed (R2) | PASS | PASS | PASS | PASS (from the checkout request) |
+| client_ip_address | not hashed (R2) | PASS | PASS | PASS | PASS |
+| em (email) | SHA-256 of trimmed, lowercased email (R2) | PASS | PASS | PASS | PASS |
+| ph (phone) | SHA-256 of digits, country code, no leading zeros (R2) | FIXED | FIXED | FIXED | FIXED — leading zeros were kept |
+| external_id | hashing recommended (R2) | PASS (hash of session id) | PASS | PASS | PASS (hash of client id) |
+| fbc / fbp | raw, `fb.1.<ms>.<id>`, click id case kept (R2, R3) | PASS | PASS | PASS | PASS |
+| value + currency | Purchase needs both; value is a number (R4) | — | server PASS 147 USD; **browser FAIL 297** | — | server PASS (charged cents / 100, e.g. 14700 → 147); **browser FAIL 297** |
+| event_id same in browser and server | eventID = event_id, same name (R5) | PASS `<sid>.<seq>` | PASS `<sid>.<seq>` | PASS `<sid>.<seq>` | PASS `purchase.<order ref>` both sides |
+| one server copy per event | Meta drops a server copy that matches a browser copy; it does not promise to drop a second server copy (R5) | PASS | PASS | PASS | FIXED — the track door also sent one; now only the payment webhook does |
+| ad id / campaign id | Conversions API has no ad id or campaign id field (R1); Meta ties the event to the ad through fbc (the click id) | fbc sent | fbc sent | fbc sent | fbc sent (from the checkout, else kept on the client) |
+
+Live proof already on record (production `events`, read only): the Lead and the InitiateCheckout of 2026-10-02 22:43 UTC both carried the browser's `<sid>.<seq>` id, fbc, fbp and the page url, and Meta answered `sent: 1` with no error.
+
+**Still wrong, and not ours to change here:** the live browser tracker (`public/funnel/fh-events.js`, `var PRICE`) still says $297 for InitiateCheckout and Purchase. The page charges $147 since 2026-10-04. Meta keeps the copy it gets first, usually the browser's, so a sale would show as $297. The exact patch is on `ops/workflows/perfect-machine-2026-10-05.md` (M9).
+
+## After the first real booking or sale — what to look at (5 minutes)
+
+Test Events only shows events sent with a test code, and real visitors never carry one. So a real sale or booking shows up in **Overview**, not Test Events.
+
+1. **Our own record first (an agent reads it).** The booking row `funnel.booking_confirmed` (Schedule) or the payment row `payment.received` (Purchase) has `payload.meta`. Expected: `sent: 1`, no `error`, `event_name` "Schedule" or "Purchase", `event_id` like `<session id>.<number>` (Schedule) or `purchase.slo_<24 letters and digits>` (Purchase). Purchase also shows `ok: true` and `value: 147` (more if they added businesses).
+2. **Meta Overview:** https://business.facebook.com/events_manager2/list/pixel/2403674420141513/overview?business_id=1475597360226485 — find the Purchase or Schedule row. Expected:
+   - It counts **1** for that sale or booking, not 2.
+   - Connection method says **Browser and Server** (or "Multiple").
+   - Open the event, then its deduplication details: the server copy is deduplicated against the browser copy by **Event ID**.
+   - Purchase value: **$147** once the fh-events.js patch is live. Before that it may show $297 — that is the browser bug above, not the server.
+   - Schedule: content name **funding-book-call**.
+   - Event Match Quality is shown; email and phone count among the customer information received.
+3. **No third sender.** The event's sources must not name the Conversions API Gateway or ClickFunnels as a partner. If either is there, Meta gets a second server copy and the sale can count twice.
+4. **Diagnostics tab** (same page): no new warning for Purchase or Schedule (for example "missing event_id" or "invalid parameter").
+
+ShowedCall (did the person show up for the call) is planned, not built, and not specified. Not part of this check.
