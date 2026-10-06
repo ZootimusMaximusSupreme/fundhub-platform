@@ -377,7 +377,7 @@ test("Read it unfolds the stage's review card on the page; Show more opens long 
   await read.click();
   await expect(row.locator(".review")).toBeVisible();
   await expect(row.locator(".review")).toContainText("What this decided: the partner offer and its price.");
-  await expect(row.locator(".review")).toContainText("In chat, say one of: approve · tweak: <what to change> · redo");
+  await expect(row.locator(".review")).toContainText("Approve or tweak: Not on this page yet: it ships in slice 5.");
   await expect(row.getByRole("button", { name: "Hide it" })).toHaveAttribute("aria-expanded", "true");
   // Step 6 has nothing to read: the button is off and says why.
   const spend = page.locator('#flywheelList [data-stage="spend"]');
@@ -693,21 +693,24 @@ test("a repaint keeps an open review card open", async ({ page }) => {
   await expect(row.locator(".review")).toBeVisible();
 });
 
-test("Copy the chat command puts the documented command on the clipboard", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("nothing sends Chris to chat: a row with no button names the slice that adds it", async ({ page }) => {
+  // Owner law 2026-10-05 (design §3.9) and safety rule 9: no "Copy the chat
+  // command", no "runs in chat", never a dead button.
   await page.setViewportSize({ width: 1280, height: 900 });
   await open(page, handlers());
-  const row = page.locator('#waitingList li[data-wait="redo"]').first();
-  await row.getByRole("button", { name: "Copy the chat command" }).click();
-  await expect(row.locator(".copied")).toHaveText("Copied. Paste it in Claude Code.");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/flywheel stage 3 partner");
-
-  // Read and approve: the approve command (.claude/commands/flywheel.md), never a re-run.
+  const redo = page.locator('#waitingList li[data-wait="redo"]').first();
+  await expect(redo).toContainText("Saving the offer file: Not on this page yet: it ships in slice 1.");
   const approve = page.locator('#waitingList li[data-wait="approve"]').first();
-  await expect(approve).toContainText("To approve, copy this command into Claude Code.");
-  await approve.getByRole("button", { name: "Copy the chat command" }).click();
-  await expect(approve.locator(".copied")).toHaveText("Copied. Paste it in Claude Code.");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/flywheel approve 2 partner");
+  await expect(approve).toContainText("Approving: Not on this page yet: it ships in slice 5.");
+  await expect(page.locator('#flywheelList [data-stage="avatar"]')).toContainText("Not on this page yet: it ships in slice 5a. Cost not measured.");
+  await expect(page.locator('#flywheelList [data-stage="ad-research"]')).toContainText("Not on this page yet: it ships in slice 10. Cost not measured.");
+  await expect(page.locator("#mcc-root button", { hasText: /chat/i })).toHaveCount(0);
+  const words = await page.locator("#mcc-root").innerText();
+  expect(words).not.toMatch(/in chat|chat command|Claude Code/i);
+  await shot(page, "23-no-chat-rows-1280.png", "Rows with no button say which slice adds it", [
+    { selector: '#waitingList li[data-wait="approve"]', caption: "Approving: not on this page yet, slice 5" },
+    { selector: '#waitingList li[data-wait="redo"]', caption: "Saving the offer file: slice 1" }
+  ], { anchor: "#waitingList" });
 });
 
 test("signed out: a sentence, not a code", async ({ page }) => {

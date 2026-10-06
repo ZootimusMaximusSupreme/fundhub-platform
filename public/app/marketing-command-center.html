@@ -46,13 +46,23 @@ button,input,select,textarea{font:inherit;color:inherit}
    shell.js (clock, Search, the role chip with its LIVE mark, Sign out). The
    shell owns the clock's size and when it hides (fh-shell-clock-css), so no
    clock rule is written here. The height is a floor,
-   not a pin, so the bar can wrap on a phone without hiding its second row. */
-header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 16px;min-height:48px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--cardline)}
-.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+   not a pin, so the bar can wrap without hiding its second row.
+   WRAP, NEVER OVERFLOW. The right cluster (Search and the role chip, plus the
+   clock above 1100px) is about 680px wide with Mac fonts and wider with
+   Linux's: CI measured this page 993px wide at a 960px screen, and the name
+   shrank to 6px under Search. So the bar may wrap at any width, not only at
+   480px. Line-breaking reads the brand at 104px (the wordmark and the slash),
+   so on a wide screen the bar stays one row and the name truncates as before;
+   when even that does not fit, the cluster drops to a second row, right-
+   aligned, and wraps inside itself. The controls still never shrink
+   (UI-STANDARDS §12.8: flex 0 0 auto, and shell.js pins them flex-shrink 0);
+   max-width:100% only stops the cluster's own box running past the edge. */
+header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 16px;padding:0 16px;min-height:48px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--cardline)}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 104px;min-height:48px}
 .brand .logo{height:16px;aspect-ratio:2698/543;flex-shrink:0}
 .brand .sep{color:var(--gray2)}
 .brand .sub{font-weight:600;color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar-right{display:flex;align-items:center;gap:16px;flex:0 0 auto;color:var(--gray2)}
+.topbar-right{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 16px;flex:0 0 auto;max-width:100%;margin-left:auto;color:var(--gray2)}
 
 .content{padding:24px;display:flex;flex-direction:column;gap:24px;flex:1}
 .foot{border-top:1px solid var(--line);padding:16px 24px;display:flex;align-items:center;gap:8px;color:var(--gray2)}
@@ -167,7 +177,8 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 @media (max-width:720px){ .content{padding:16px} .card{padding:16px} }
 @media (max-width:480px){
   header.topbar{height:auto;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
-  .topbar-right{width:100%;gap:8px;flex-wrap:wrap}
+  .brand{min-height:0}
+  .topbar-right{width:100%;gap:8px;flex-wrap:wrap;justify-content:flex-start}
   .btn.primary{width:100%}
 }
 </style>

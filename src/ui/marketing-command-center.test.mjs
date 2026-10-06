@@ -428,16 +428,24 @@ describe("flywheel and what waits on Chris", () => {
     assert.match(html, /<div class="review" id="rc-partner-avatar" hidden>/);
     assert.match(html, /<button class="btn quiet" type="button" disabled>Read it<\/button><span class="caption muted">Nothing to read yet: this step has not been run\.<\/span>/);
     assert.match(html, /Write offer, on the Offer card, writes a new offer on this page\./);
-    assert.match(html, /This step runs in chat\. It reads live web pages/);
+    // Owner law 2026-10-05 (design §3.9, safety rule 9): a step with no button
+    // names the slice that adds it, and nothing sends Chris to chat.
+    assert.match(html, /data-stage="avatar"[\s\S]*?Not on this page yet: it ships in slice 5a\. Cost not measured\./);
+    assert.match(html, /data-stage="ad-research"[\s\S]*?Not on this page yet: it ships in slice 10\. Cost not measured\./);
+    assert.match(html, /data-stage="copy"[\s\S]*?Not on this page yet: it ships in slice 5\./);
+    assert.doesNotMatch(html, /chat|Claude Code/i);
   });
 
-  test("a review card reads as paragraphs: bold label kept, 'Say one of' kept as the chat words, markup escaped", () => {
+  test("a review card reads as paragraphs: bold label kept, 'Say one of' becomes the honest slice sentence, markup escaped", () => {
     const cc = load();
-    const out = cc.reviewCardHtml(CARD + "\n\n**Not sure:** <img src=x onerror=alert(1)>");
+    const out = cc.reviewCardHtml(CARD + "\n\n**Not sure:** <img src=x onerror=alert(1)>", "5a");
     assert.match(out, /^<p><b>What this decided:<\/b> who the partner is\.<\/p>/);
-    // marketing/flywheel/README.md: approving is "Say approve" in chat, so the line stays.
-    assert.match(out, /<p><b>In chat, say one of:<\/b> approve · tweak: &lt;what to change&gt; · redo<\/p>/);
+    // The card's "Say one of" line is a chat instruction. Nothing on the page
+    // sends Chris to chat (design §3.9), so it says where Approve lands instead.
+    assert.match(out, /<p><b>Approve or tweak:<\/b> Not on this page yet: it ships in slice 5a\.<\/p>/);
     assert.doesNotMatch(out, /<b>Say one of/);
+    assert.doesNotMatch(out, /chat/i);
+    assert.match(cc.reviewCardHtml(CARD), /<b>Approve or tweak:<\/b> Not on this page yet: it ships in slice 5\./, "slice 5 when none is given");
     assert.doesNotMatch(out, /<img/);
     assert.match(out, /&lt;img/);
   });
@@ -459,12 +467,21 @@ describe("flywheel and what waits on Chris", () => {
       "Redo the offer (step 3 of 6)",
       "Redo ad copy (step 4 of 6)"
     ], "M10's `waiting` names machine parts, not Chris's to-do list");
-    assert.equal(rows[0].how, "Read it under Offer and market. To approve, copy this command into Claude Code.");
-    assert.match(rows[1].how, /^Write offer, on the Offer card, makes a new offer\. This row clears only when the offer file is redone/);
-    assert.equal(rows[2].how, "Not on this page yet. It still runs in chat.");
-    assert.equal(rows[1].cmd, "/flywheel stage 3 partner", "the command marketing/flywheel/README.md documents");
-    // .claude/commands/flywheel.md: `approve <n>` marks it approved; `stage <n>` would run it again.
-    assert.equal(rows[0].cmd, "/flywheel approve 2 partner", "approving copies the approve command, never a re-run");
+    // Design safety rule 9 and §3.9: each row names the slice that adds its
+    // button. No chat command to copy, no "runs in chat".
+    assert.equal(rows[0].how, "Read it under Offer and market. Approving: Not on this page yet: it ships in slice 5.");
+    assert.equal(rows[1].how, "Write offer, on the Offer card, makes a new offer. This row clears only when the offer file is redone. Saving the offer file: Not on this page yet: it ships in slice 1.");
+    assert.equal(rows[2].how, "Not on this page yet: it ships in slice 5.");
+    for (const r of rows) assert.ok(!("cmd" in r), "no chat command on any row");
+    const html = cc.renderWaiting(v, null, NOW);
+    assert.doesNotMatch(html, /chat|Claude Code|data-copy/i);
+    // The avatar row lands in slice 5a; market research's redo in slice 10.
+    const own = cc.deriveWaiting({ stages: [
+      { n: 1, key: "avatar", label: "avatar", state: "READY", approved: false, reasons: [], counts: {} },
+      { n: 2, key: "ad-research", label: "ad research", state: "FAILED", approved: false, reasons: ["thin"], counts: {} }
+    ] });
+    assert.equal(own[0].how, "Read it under Offer and market. Approving: Not on this page yet: it ships in slice 5a.");
+    assert.equal(own[1].how, "Not on this page yet: it ships in slice 10.");
   });
 
   test("the 2 videos waiting since Sep 24 are a Waiting row, first, and say the text links ran out", () => {

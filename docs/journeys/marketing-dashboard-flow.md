@@ -105,18 +105,24 @@ flowchart TD
   P1 -->|a reload fails after a good load| P5[keep the last numbers<br/>banner: This page shows the last load from 3:02 PM]
   P1 -->|a read gets no answer in 20 s| P7[give up on it: same as a failed reload,<br/>banner: The server took too long to answer<br/>the next 5-minute tick reads again]
   P1 -->|ad-videos fails| P6[one line in Waiting on you: The video list did not load]
-  P3 --> W1[Waiting on you: videos first, then flywheel rows<br/>each with where it is done; Copy the chat command:<br/>redo rows /flywheel stage N, approve rows /flywheel approve N]
-  P3 --> R1[Read it on each stage row: unfolds its review card in place]
+  P3 --> W1[Waiting on you: videos first, then flywheel rows<br/>each with where it is done: the button on this page,<br/>or Not on this page yet: it ships in slice N]
+  P3 --> R1[Read it on each stage row: unfolds its review card in place;<br/>its Say one of line becomes Approve or tweak: Not on this page yet]
   P3 --> X1[Write ad copy: creative/generate, then creative/run max_jobs 1]
   P2 --> X2[Write offer: POST, then GET ?id= every 10 s]
 ```
 
 - Nothing on the page approves a video or a flywheel step. The videos row says
   approving is not on the page yet, and when the text message's links ran out
-  (`approval_expires_at`). Approving a stage still runs in chat; the row says so and
-  copies `/flywheel approve N <campaign>` (`.claude/commands/flywheel.md`), never
-  `/flywheel stage N`, which would run the step again.
+  (`approval_expires_at`).
+- Nothing on the page sends Chris to chat or Claude Code (owner law 2026-10-05,
+  design §3.9). A row whose button is not built says "Not on this page yet: it ships
+  in slice N" (design safety rule 9) and shows no button: approve the avatar 5a, approve
+  any other step 5; run the avatar 5a ("Cost not measured."), market research 10
+  ("Cost not measured."), steps 4 to 6 5; saving the offer file 1. No chat command is
+  copied, and no row says "runs in chat".
 - No inner scroll box: long ad copy and the offer fold behind Show more.
+- The topbar wraps rather than pushing the page sideways: one row on a wide screen,
+  Search and the account chip on a second row when they do not fit beside the name.
 
 ## NOT BUILT (on this branch)
 

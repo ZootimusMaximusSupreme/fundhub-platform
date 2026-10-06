@@ -73,14 +73,27 @@
     "competitorsFound": "competitors",
     "languageEntries": "language entries"
   };
-  /* Where each step runs today. Only the offer has a button on this page. */
+  /* Owner law, 2026-10-05: nothing on this page sends Chris to chat or to
+     Claude Code (design §3.9). A step with no button yet says so in one honest
+     sentence and names the slice that adds the button (design safety rule 9),
+     never a dead button and never a chat command to copy.
+     RUN_SLICE: where running the step lands (§6: Build the avatar is slice 5a,
+     Research the market is slice 10, stages 4 to 6 are slice 5).
+     APPROVE_SLICE: where Approve and Tweak land (slice 5a for the avatar row,
+     slice 5 for every other row). OFFER_FILE_SLICE: where Write offer starts
+     saving 03-offer.md (slice 1). Only the offer has a button on this page. */
+  var RUN_SLICE = { "avatar": "5a", "ad-research": "10", "copy": "5", "ad-strategy": "5", "spend": "5" };
+  var APPROVE_SLICE = { "avatar": "5a" };
+  var OFFER_FILE_SLICE = "1";
+  function notYet(slice) { return "Not on this page yet: it ships in slice " + slice + "."; }
+  function approveSlice(key) { return APPROVE_SLICE[key] || "5"; }
   var STAGE_RUNS = {
-    "avatar": "This step runs in chat. It reads live web pages, which only the chat agent can do.",
-    "ad-research": "This step runs in chat. It reads live web pages, which only the chat agent can do.",
+    "avatar": notYet(RUN_SLICE["avatar"]) + " Cost not measured.",
+    "ad-research": notYet(RUN_SLICE["ad-research"]) + " Cost not measured.",
     "offer": "Write offer, on the Offer card, writes a new offer on this page.",
-    "copy": "This step runs in chat for now.",
-    "ad-strategy": "This step runs in chat for now.",
-    "spend": "This step runs in chat for now."
+    "copy": notYet(RUN_SLICE["copy"]),
+    "ad-strategy": notYet(RUN_SLICE["ad-strategy"]),
+    "spend": notYet(RUN_SLICE["spend"])
   };
 
   var DAY_MS = 86400000;
@@ -761,23 +774,13 @@
     }
   }
 
-  /* The commands .claude/commands/flywheel.md documents: `stage <n>` runs a
-     step again (it costs a run); `approve <n>` only marks it approved. */
-  function chatCommand(s, campaign) {
-    return s && s.n ? "/flywheel stage " + s.n + " " + (campaign || "partner") : "";
-  }
-  function approveCommand(s, campaign) {
-    return s && s.n ? "/flywheel approve " + s.n + " " + (campaign || "partner") : "";
-  }
-
   /* deriveWaiting — what only Chris can do, read off the flywheel rows:
      approve a finished step, or redo a failed or stale one. Each row says
-     honestly where it is done (design §3.1: "Not on this page yet. It still
-     runs in chat.") and offers the chat command when there is one. */
+     honestly where it is done: the button on this page, or "Not on this page
+     yet: it ships in slice N" (design §3.1 and safety rule 9). */
   function deriveWaiting(view) {
     var out = [];
     var stages = arr(view && view.stages);
-    var campaign = (view && view.campaign) || "partner";
     stages.forEach(function (s) {
       var name = stageName(s) + " (" + stepWords(s).toLowerCase() + ")";
       var w = stageWord(s, stages);
@@ -786,8 +789,7 @@
           kind: "approve", key: s.key,
           what: "Read and approve: " + name,
           why: doneSentence(s),
-          how: "Read it under Offer and market. To approve, copy this command into Claude Code.",
-          cmd: approveCommand(s, campaign)
+          how: "Read it under Offer and market. Approving: " + notYet(approveSlice(s.key))
         });
       } else if (s.state === "FAILED" || s.state === "STALE") {
         out.push({
@@ -795,9 +797,8 @@
           what: "Redo " + name.charAt(0).toLowerCase() + name.slice(1),
           why: w.why,
           how: s.key === "offer"
-            ? "Write offer, on the Offer card, makes a new offer. This row clears only when the offer file is redone, and that still runs in chat."
-            : "Not on this page yet. It still runs in chat.",
-          cmd: chatCommand(s, campaign)
+            ? "Write offer, on the Offer card, makes a new offer. This row clears only when the offer file is redone. Saving the offer file: " + notYet(OFFER_FILE_SLICE)
+            : notYet(RUN_SLICE[s.key] || "5")
         });
       }
     });
@@ -849,8 +850,7 @@
       why: adWords + (since ? "Waiting since " + dateOf(since) + "." : "Waiting since an unknown day."),
       whyHtml: esc(adWords) + (since ? "Waiting since " + dateTip(since) + "." : "Waiting since an unknown day."),
       how: how,
-      howHtml: howHtml,
-      cmd: ""
+      howHtml: howHtml
     };
   }
 
@@ -1369,15 +1369,11 @@
     return '<p class="muted">Not loaded. The note at the top of the page says why.</p>';
   }
 
-  function waitRow(w, i) {
+  function waitRow(w) {
     return '<li class="row" data-wait="' + esc(w.kind) + '">' +
       '<div class="row-main"><b>' + esc(w.what) + "</b>" +
       (w.why ? '<div class="row-why">' + (w.whyHtml || esc(w.why)) + "</div>" : "") +
       (w.how ? '<div class="row-why">' + (w.howHtml || esc(w.how)) + "</div>" : "") +
-      (w.cmd
-        ? '<div class="row-act"><button class="btn quiet" type="button" data-copy="' + esc(w.cmd) + '">Copy the chat command</button>' +
-          '<span class="caption copied" id="copied-' + i + '" role="status" aria-live="polite"></span></div>'
-        : "") +
       "</div></li>";
   }
 
@@ -1400,22 +1396,21 @@
   }
 
   /* reviewCardHtml — the "## Review card" markdown as plain paragraphs.
-     Bold labels stay bold. The card's "Say one of:" line is the real
-     instruction for approving, which still happens in chat, so it stays,
-     labelled "In chat, say one of:". */
-  var SAY_LABEL = "In chat, say one of:";
-  function reviewCardHtml(md) {
+     Bold labels stay bold. The card's "Say one of:" line is a chat
+     instruction, and nothing on this page sends Chris to chat (design §3.9),
+     so that line becomes the honest sentence for where Approve and Tweak land
+     (`slice`; slice 5 when not given). */
+  var SAY_LABEL = "Approve or tweak:";
+  function reviewCardHtml(md, slice) {
     var blocks = str(md).replace(/\r/g, "").split(/\n\s*\n/).map(function (b) { return b.trim(); }).filter(Boolean);
     return blocks.map(function (b) {
       var text = b.replace(/\\([<>\\*_])/g, "$1");
       var label = /^\*\*([^*]+?)\*\*\s*/.exec(text);
       var rest = label ? text.slice(label[0].length) : text;
       var name = label ? label[1] : "";
-      if (/^say one of:?$/i.test(name.trim())) {
+      if (/^say one of:?$/i.test(name.trim()) || (!label && /^Say one of:\s*/i.test(rest))) {
         name = SAY_LABEL;
-      } else if (!label && /^Say one of:\s*/i.test(rest)) {
-        name = SAY_LABEL;
-        rest = rest.replace(/^Say one of:\s*/i, "");
+        rest = notYet(slice || "5");
       }
       rest = rest.replace(/\*\*/g, "");
       return "<p>" + (name ? "<b>" + esc(name) + "</b> " : "") + esc(rest) + "</p>";
@@ -1427,7 +1422,7 @@
       var w = stageWord(s, stages);
       var id = "rc-" + str(campaign || "c").replace(/[^a-z0-9-]/gi, "") + "-" + s.key;
       var read = s.reviewCard
-        ? toggle(id, "Read it", "Hide it") + '<div class="review" id="' + esc(id) + '" hidden>' + reviewCardHtml(s.reviewCard) + "</div>"
+        ? toggle(id, "Read it", "Hide it") + '<div class="review" id="' + esc(id) + '" hidden>' + reviewCardHtml(s.reviewCard, approveSlice(s.key)) + "</div>"
         : '<button class="btn quiet" type="button" disabled>Read it</button>' +
           '<span class="caption muted">Nothing to read yet: ' + (s.state === "MISSING" ? "this step has not been run." : "this step has no review card.") + "</span>";
       return '<li class="row" data-stage="' + esc(s.key) + '">' +
@@ -1893,26 +1888,12 @@
       root.setTimeout(step, OFFER_POLL_MS);
     }
 
-    /* One listener for every Show more / Read it and Copy the chat command
-       button the renderers paint, so a repaint never loses its wiring. */
+    /* One listener for every Show more / Read it button the renderers
+       paint, so a repaint never loses its wiring. */
     $("mcc-root").addEventListener("click", function (e) {
-      var t = e.target && e.target.closest ? e.target.closest("button[data-toggle], button[data-copy]") : null;
+      var t = e.target && e.target.closest ? e.target.closest("button[data-toggle]") : null;
       if (!t || t.disabled) return;
-      if (t.hasAttribute("data-toggle")) {
-        setOpen(t, t.getAttribute("aria-expanded") !== "true");
-        return;
-      }
-      var cmd = t.getAttribute("data-copy");
-      var note = t.parentNode && t.parentNode.querySelector(".copied");
-      function tell(text) { if (note) note.textContent = text; }
-      var fail = function () { tell("Could not copy. Type this in Claude Code: " + cmd); };
-      try {
-        if (root.navigator && root.navigator.clipboard && root.navigator.clipboard.writeText) {
-          root.navigator.clipboard.writeText(cmd).then(function () { tell("Copied. Paste it in Claude Code."); }, fail);
-        } else {
-          fail();
-        }
-      } catch (err) { fail(); }
+      setOpen(t, t.getAttribute("aria-expanded") !== "true");
     });
 
     $("copyForm").addEventListener("submit", function (e) {
