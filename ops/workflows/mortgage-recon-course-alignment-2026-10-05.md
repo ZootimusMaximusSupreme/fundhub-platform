@@ -1,74 +1,77 @@
-# Mortgage Re{CON}veyance — course ↔ documents (merged A1–A10)
+# Mortgage Re{CON}veyance — course ↔ documents, example property #4011
 
-**Property (doc index):** 7137 E Rancho Vista Dr Unit 4011, Scottsdale AZ  
-**Course:** `Bryan-Stay-Strong-Thinkific-Course-Export.zip` → `course-material/` (37-lesson main track)  
+**Example property #4011 only.** This board illustrates Part B of the SOP. The process itself (any property, any state) is Part A of `docs/sops/mortgage-reconveyance-playbook-2026-10-05.md`. Step numbers here match the SOP.
+
+**Example property:** 7137 E Rancho Vista Dr Unit 4011, Scottsdale AZ 85251 — see `credentials/drive-course-docs-temp/INDEX.txt`
+**Course:** `Bryan-Stay-Strong-Thinkific-Course-Export.zip` → `course-material/` (37-lesson main track + 4 extra tracks)
 **Drive:** [Reconveyance](https://drive.google.com/drive/folders/1coNo39Vbm7830hyOct-Gcn23UWHqYElF) · [Mortgage Information](https://drive.google.com/drive/folders/1_6EHl85i3j74AM4GgnmHNhHKh0gSlizw)
 
-**Status:** DONE = doc in Drive matches step · PARTIAL = related doc, step incomplete · GAP = course step, no doc · COURSE = lesson only
+**Status:** DONE = paper on file for the step · PARTIAL = related paper, step not finished · GAP = no paper · COURSE = nothing to file · OUR = our own paper, not taught by the course
+
+**Order source:** Bryan's doing order comes from the lesson 33 webinar (his whole Henderson County file, closing to recorded reconveyance, plus its Q&A), not from lesson order. 26 steps + optional MERS check.
 
 ---
 
-## End-to-end step-by-step (course order)
+## Status by step (synced with SOP Part B3)
 
-| Step | Course (lesson / MOD) | What the course says to do | Your documents (if any) | Status |
-|------|------------------------|----------------------------|-------------------------|--------|
-| 0 | L1–2 Intro, Disclaimer | Watch; not legal advice | — | COURSE |
-| 1 | L3–4 MOD1 Deed acceptance | Know 3 core docs: **warranty deed**, **deed of trust**, **promissory note**. Focus deed: **sign → seal → attest → deliver → grantee accepts** | **FL:** DEED ACCEPTANCE folder, Acknowledgment & Acceptance, warranty deed 11/27/2024 (Cooper City). **AZ #4011:** no acceptance packet in index | PARTIAL (FL only) |
-| 2 | L5–8 MOD2 Contracts | Contract elements, offer/acceptance, holder in due course, meeting of the minds | No standalone contract packet in Drive | GAP |
-| 3 | L9–12 MOD3 DOT | Learn deed of trust / mortgage; walk a **DOT example** | **4 Purchase 2023** — Change Lending loan **#6000041372**, title commitment, purchase contract, digisign 04-11-2023 | PARTIAL |
-| 4 | L13–14 MOD3 Daly | Case study (education) | — | COURSE |
-| 5 | L15–16 MOD4 Security / UCC-1 | Security interest; prepare **UCC financing statement** | **2 UCC** — Security Agreement (Trust Google Doc + Trust No. 2 PDF, 07/15–07/16/2025) | DONE |
-| 6 | L17 MOD4 UCC filing | File / search (course shows UCC-1 + **UCC-11** info request) | **2 UCC** — MD UCC-1 **250711-1908000** (07/11/2025); UCC-3 **250717-0039001** (07/17/2025); AZ UCC-1 p1 | DONE |
-| 7 | L18–20 MOD5 Promissory note | Note example, recorded example, **deposits** | Inside **Change Lending** loan PDFs (not split out in Drive) | PARTIAL |
-| 8 | L21–23 MOD6 Securitization | Collateral + securitization (education) | — | COURSE |
-| 9 | L24–26 MOD7 Accord & satisfaction | Conditional acceptance / accord (education + case law) | No accord/SAT mail in Drive | GAP |
-| 10 | L27–28 MOD8 Statement of account | **Signed** SOA request (UCC 9-210); creditor **14 days** to respond; if no reply → default notice (SOA2) | No SOA request / default letter / certified receipts in Drive | GAP |
-| 11 | L29 MOD9 Presentment (private) | **First action is always presentment** — put beneficiary on notice; ask them to prove relationship / perform | No private presentment + mail proof in Drive | GAP |
-| 12 | L30 MOD9 Notary track | After ignored presentment: **Request for Notarial Presentment** → notary mails **Notice of Breach** (10 days) → **Opportunity to Cure** (10 days) → **Certificate of Dishonor** (keep certified mail receipts) | Templates: **Notary Presentment Bryan** + **6 Notary Presentment - *** (Google Docs). Not filled for #4011 lender in folder | PARTIAL (templates only) |
-| 13 | L31–34 MOD10 Process | Big picture + webinar + “mortgage process explained” | **Untitled document** (reconveyance outline); **033/034** transcripts in ZIP | PARTIAL (notes + course) |
-| 14 | L33–34 + L30 aftermath | **Reconveyance / release DOT** — trustee path after dishonor + payment proof | **DISSOULUTION OF DEED OF TRUST 2.pdf** (Recon + Mortgage **3 Deed folder**). Recording receipt not in folder | PARTIAL |
-| 15 | L35–37 MOD11 MERS | MERS / assignment / memorandum (optional depth) | — | COURSE |
-| — | Index §1 Recorded | Public record chain for #4011 | Quit claim **20240645099** (12/04/2024 CJS → Trust); HOA judgment **20250175833** | DONE |
-| — | Index STILL MISSING | Pull from Maricopa Recorder | Recorded **DOT**; **warranty deed into CJS**; **trustee’s deed to Second Chance** | GAP |
-| — | Index §5 Related | Parallel disputes | HOA stmt **08/01/2025** $44,487.61; Second Chance motion **CC2025058680** | DONE |
-| — | Recon extras | Admin / collateral (course ties loosely to MOD5–6) | **BILL OF SALE KW 2.pdf**; **REVOCATION OF POWER OF ATTORNEY.pdf** | PARTIAL (no step label in index) |
+| Step | Course lessons | What the step needs | #4011 files | Status |
+|---|---|---|---|---|
+| 1 | 1, 2, 14 | Watch intro and disclaimer | — | COURSE |
+| 2 | 12, 33 | Full county record list, with numbers and dates | INDEX §1 + 7 recorded copies in `maricopa/` + the quit claim PDF; 20240459062 and 20250044789 not on the list; no date for 20240640128 or 20250175833 | PARTIAL |
+| 3 | 3, 21 | Read the warranty deed | 20230247849 | DONE |
+| 4 | 5–12, 33 | Deed of trust notes sheet | 20230247850 on disk; no notes sheet | PARTIAL |
+| 5 | 18, 21, 33 | Note copy + closing-papers request | 2023 purchase file (loan #6000041372); no note for loan 68846; no request on file | PARTIAL |
+| 6 | 3, 4, 8, 33 | Recorded deed acceptance | INDEX §3 Deed folder files, not yet reviewed; acceptance text on disk is a different Florida property; no recording for #4011 | GAP |
+| 7 | (33) | OUR: trust papers recorded | Declaration of Trust 20240640128 · Quit Claim 20240645099 · Bill of Sale 20240645100 (only 099 in INDEX; Bill of Sale p1 spells "STANBRIDGELIVING") | PARTIAL (OUR) |
+| 8 | 16, 17, 33 | Certified UCC-11 search | none | GAP |
+| 9 | 15, 16, 33 | UCC-1 package recorded at county, then filed | MD UCC-1 250711-1908000 · UCC-3 250717-0039001 · AZ UCC-1 p1 · security agreements; no county-recorded package | PARTIAL |
+| 10–13 | 24–26, 33 | Dispute letter, conditional acceptance, money orders ×3, 90-day wait | none | GAP |
+| 14–17 | 27, 28, 33 | Statement of account, 14-day wait, default notice, notice of dishonor | none | GAP |
+| 18–21 | 29, 30, 33 | Notary request, Notice of Breach, Opportunity to Cure, Certificate of Dishonor | Texas 2022 sample templates only | GAP |
+| 22–23 | 19, 33 | Recorded notice, note, fee schedule, certificate; 2-week wait | none | GAP |
+| 24 | 11, 33 | Recorded substitution of trustee for reconveyance | none; no REL D/T found | GAP |
+| 25 | (33) | OUR: end papers | Dissolution 20240645098 (12/04/2024) + amended re-recording 20240650333 (notarized 12/06/2024); Deed of Reconveyance in INDEX only as still missing; Revocation of POA not on this Mac | PARTIAL (OUR) |
+| 26 | 33 | File kept; later letters answered | Related: trustee's deed 20250110468 (auction 1/21/2025), HOA judgment 20250175833, HOA stmt 08/01/2025 $44,487.61, case CC2025058680 | PARTIAL |
+| M | 35–37 | MERS check | DOT page 1 names Center Street Lending VIII SPE as beneficiary; MERS not named on page 1 | PARTIAL |
 
 ---
 
-## Flowchart (course order + your status)
+## Keep separate
+
+| Item | What it is | Status |
+|---|---|---|
+| County-recorded REL D/T or deed of reconveyance for #4011 | Not found (INDEX "Still missing"; no release on disk) | GAP |
+| Deed of Dissolution of Deed of Trust 20240645098 and amended 20240650333 | Recorded, but not a REL D/T; neither cites DOT 20230247850 | OUR, recorded |
+| "Dissolution of Deed of Trust 2" | Draft listed in INDEX §3; not on this Mac; not a recording | draft |
+| Florida (Broward County) acceptance + warranty deed to trust, 11/27/2024 | A different property and owner | not #4011 |
+
+---
+
+## What was filed, in date order (#4011)
 
 ```mermaid
 flowchart TD
-  S0[L0 Watch intro + disclaimer] --> S1[L3-4 Accept warranty deed]
-  S1 --> S2[L5-8 Contract literacy]
-  S2 --> S3[L9-12 Gather + study DOT + note]
-  S3 --> S4[L15-17 UCC security + filings]
-  S4 --> S5[L18-20 Promissory note / deposits]
-  S5 --> S6[L21-26 Securitization + accord - education]
-  S6 --> S7[L27-28 SOA request signed - 14 day wait]
-  S7 --> S8[L29 Private presentment to beneficiary]
-  S8 --> S9[L30 Notary: Request - Breach 10d - Cure 10d - COD]
-  S9 --> S10[L14 Record reconveyance / dissolution DOT]
-  S10 --> S11[L35-37 MERS optional]
-
-  S1 -.- D1[FL deed acceptance DONE / AZ GAP]
-  S3 -.- D2[2023 purchase pack PARTIAL / recorded DOT GAP]
-  S4 -.- D3[UCC + security agreements DONE]
-  S5 -.- D4[Note inside loan PDF PARTIAL]
-  S7 -.- D5[SOA GAP]
-  S8 -.- D6[Presentment GAP]
-  S9 -.- D7[Notary templates PARTIAL]
-  S10 -.- D8[Dissolution DOT pdf PARTIAL / quit claim DONE]
+  E1["May 2023 · warranty deed + deed of trust recorded"] --> E2["2024 · Declaration of Trust 20240640128"]
+  E2 --> E3["Dec 4, 2024 · Dissolution 20240645098 · Quit Claim 20240645099 · Bill of Sale 20240645100"]
+  E3 --> E4["Dec 6, 2024 notarized · amended Dissolution 20240650333"]
+  E4 --> E5["Jan 21, 2025 · trustee's sale · Second Chance Organization"]
+  E5 --> E6["Jul 2025 · Maryland UCC-1 · security agreement · UCC-3"]
 ```
+
+Compared with Bryan's order: the end papers (step 25, the dissolutions) were recorded 12/04/2024, the same minute as the step 7 quit claim; in Bryan's order they come last. Steps 10–23 have no papers. The UCC filings (step 9) came after the trustee's sale.
 
 ---
 
-## Where you are on the path (plain)
+## INDEX vs recorded copies
 
-You are **past MOD4 (UCC filed)** and **MOD3 partial (2023 purchase file)** for Scottsdale. You have **not** shown Drive proof for **SOA (MOD8)**, **private presentment (L29)**, or **executed notary mail chain (L30)**. **Reconveyance instrument** exists as PDF; **recording** not shown. **Deed acceptance** docs match **Florida**, not the #4011 index line. **Three recorder pulls** still missing per your own index.
+- Fixed (typo, proven by the recorded deed of trust): lender name is **Center Street Lending VIII SPE, LLC** (INDEX had "SPE VIII" on two lines).
+- Not changed (content, reported only): INDEX ties DOT 20230247850 to "Change Lending purchase loan #6000041372." The recorded DOT shows Loan Number 68846 and never names Change Lending.
+- INDEX "recorded 02/28/2025" for trustee's deed 20250110468: 2/28/2025 is the signing date on the copy; the stamp is covered.
+- Recordings on disk not listed in INDEX §1: 20240640128, 20240645098, 20240645100, 20240650333.
 
 ---
 
 ## Agent manifests
 
-All ten lanes merged into this file (2026-10-05). No further parallel agents required unless Drive gets new uploads.
+- **2026-10-05 (Claude Code, Opus) — SOP rewrite.** 11 reader agents extracted all 37 main lessons + 4 extra tracks + templates + recorded PDFs; 11 checker agents re-verified every step and quote against the transcripts; 3 more checkers then tested the written SOP (27 fixes applied, incl. moving the 2-week wait to after the recordings). Files: `docs/sops/mortgage-reconveyance-playbook-2026-10-05.md` (Part A process, Part A2 lesson guide, Part B example), this board, `scripts/mortgage-recon-playbook-export-drive.mjs` (generic PDF title, diagrams drawn in the PDF), `credentials/drive-course-docs-temp/INDEX.txt` (two typo fixes, gitignored). Journeys impacted: none.
+- Earlier: the ten A1–A10 lanes merged into this file (2026-10-05).

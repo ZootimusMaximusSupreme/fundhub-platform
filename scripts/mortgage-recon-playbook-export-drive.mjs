@@ -2,6 +2,9 @@
 /**
  * Build styled playbook PDF + upload to Reconveyance Drive folder.
  *   node --env-file=.env scripts/mortgage-recon-playbook-export-drive.mjs
+ *
+ * Mermaid blocks in the markdown are drawn as plain HTML boxes here (no mermaid
+ * library, no network), so the diagrams show in the PDF too.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +21,7 @@ const OUT_DIR = path.join(ROOT, "credentials/mortgage-recon-playbook");
 const HTML_PATH = path.join(OUT_DIR, "Mortgage-ReCONveyance-Playbook.html");
 const PDF_PATH = path.join(OUT_DIR, "Mortgage-ReCONveyance-Playbook.pdf");
 const DRIVE_FOLDER = "1coNo39Vbm7830hyOct-Gcn23UWHqYElF";
-const PDF_NAME = "Mortgage ReCONveyance Playbook — 7137 E Rancho Vista Dr 4011.pdf";
+const PDF_NAME = "Mortgage ReCONveyance SOP — Any Property (example Unit 4011).pdf";
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap');
@@ -34,6 +37,7 @@ const CSS = `
   --partial: #d97706;
   --gap: #dc2626;
   --course: #2563eb;
+  --ours: #7c3aed;
   --line: #e2e8f0;
 }
 * { box-sizing: border-box; }
@@ -63,13 +67,31 @@ h2 {
   font-size: 22pt; font-weight: 400;
   margin: 32px 0 12px; color: var(--navy);
   border-bottom: 2px solid var(--gold); padding-bottom: 6px;
+  page-break-after: avoid;
 }
-h3 { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 24px 0 10px; }
-.pipeline {
-  display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 24px;
+h3 { font-size: 12.5pt; color: var(--navy); margin: 26px 0 8px; page-break-after: avoid; }
+h3.step {
+  background: var(--navy); color: #fff; padding: 8px 12px; border-radius: 8px;
+  border-left: 5px solid var(--gold);
 }
+h3.phase {
+  font-size: 10pt; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold);
+  margin-top: 34px; border-bottom: 1px solid var(--line); padding-bottom: 4px;
+}
+h4 { font-size: 10.5pt; color: var(--navy); margin: 18px 0 4px; page-break-after: avoid; }
+p { margin: 6px 0 8px; }
+ul, ol { margin: 4px 0 10px; padding-left: 1.4em; }
+li { margin: 3px 0; }
+ul.todo { list-style: none; padding-left: 0.2em; }
+ul.todo li { padding-left: 1.5em; position: relative; }
+ul.todo li::before { content: '☐'; position: absolute; left: 0; color: var(--muted); }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 8.5pt; background: #eef2f7; padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+a { color: var(--course); text-decoration: none; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
+.pipeline { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 24px; }
 .pill {
-  font-size: 8pt; font-weight: 600; padding: 6px 10px; border-radius: 999px;
+  display: inline-block;
+  font-size: 8pt; font-weight: 600; padding: 3px 9px; border-radius: 999px;
   background: var(--card); border: 1px solid var(--line);
 }
 .pill.done { background: #ecfdf5; border-color: #6ee7b7; color: var(--done); }
@@ -83,9 +105,6 @@ h3 { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.08em; color: 
 }
 .flow-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 9pt; }
 .flow-arrow { color: var(--gold); font-weight: 700; }
-.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 8.5pt; margin-bottom: 20px; }
-.legend span { display: flex; align-items: center; gap: 6px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; }
 table {
   width: 100%; border-collapse: collapse; margin: 10px 0 20px;
   font-size: 9pt; background: var(--card);
@@ -98,23 +117,29 @@ th {
 }
 td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tr:nth-child(even) td { background: #f8fafc; }
-.cb { font-family: monospace; font-size: 11pt; }
-.priority {
-  background: linear-gradient(90deg, var(--gold-dim), #fff);
-  border-left: 4px solid var(--gold);
-  padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 16px 0;
+tr.phase td { background: var(--gold-dim) !important; font-weight: 600; color: var(--navy); }
+tr { page-break-inside: avoid; }
+.dg {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; margin: 12px 0 22px; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
 }
-.priority ol { margin: 8px 0 0; padding-left: 1.2em; }
-.priority li { margin: 6px 0; }
-.outstanding {
-  background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
-  padding: 16px 18px; margin-top: 20px;
+.dg-group { border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px 12px; page-break-inside: avoid; }
+.dg-title { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+.dg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dg-node {
+  font-size: 8.5pt; font-weight: 600; padding: 6px 10px; border-radius: 8px;
+  background: #f8fafc; border: 1px solid #cbd5e1; color: var(--ink); max-width: 15em;
 }
-.outstanding h2 { border-color: #f87171; color: #991b1b; }
-ul.todo { list-style: none; padding: 0; }
-ul.todo li { padding: 4px 0 4px 1.4em; position: relative; }
-ul.todo li::before { content: '☐'; position: absolute; left: 0; color: var(--muted); }
-ul.todo li.done::before { content: '☑'; color: var(--done); }
+.dg-node.wait { background: var(--gold-dim); border: 1px dashed var(--gold); color: #6b5413; }
+.dg-node.decision { background: #fffbeb; border-color: var(--partial); }
+.dg-node.done { background: #ecfdf5; border-color: var(--done); color: #065f46; }
+.dg-node.partial { background: #fffbeb; border-color: var(--partial); color: #92400e; }
+.dg-node.gap { background: #fef2f2; border-color: var(--gap); color: #991b1b; }
+.dg-node.ours { background: #f5f3ff; border-color: var(--ours); color: #4c1d95; }
+.dg-node.related { background: #f1f5f9; border-color: var(--muted); color: #334155; }
+.dg-node .dg-note { display: block; font-weight: 400; font-size: 7.5pt; color: var(--muted); margin-top: 3px; }
+.dg-arrow { color: var(--gold); font-weight: 700; font-size: 11pt; }
+.dg-down { text-align: center; color: var(--gold); font-weight: 700; font-size: 13pt; line-height: 1; margin: 4px 0; }
 @media print {
   body { background: #fff; }
   .page { padding: 24px 32px; max-width: none; }
@@ -122,100 +147,283 @@ ul.todo li.done::before { content: '☑'; color: var(--done); }
 }
 `;
 
-function mdTableToHtml(block) {
-  const lines = block.trim().split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return `<pre>${block}</pre>`;
-  const rows = lines.filter((l) => !/^\|[\s\-:|]+\|$/.test(l.trim()));
-  let html = "<table>";
-  rows.forEach((line, i) => {
-    const cells = line.split("|").slice(1, -1).map((c) => c.trim());
-    const tag = i === 0 ? "th" : "td";
-    if (i === 0) html += "<thead><tr>";
-    else if (i === 1) html += "</tr></thead><tbody><tr>";
-    else html += "<tr>";
-    for (const c of cells) {
-      let cell = c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      cell = cell.replace(/✅/g, '<span class="pill done">DONE</span>');
-      cell = cell.replace(/🟡/g, '<span class="pill partial">PARTIAL</span>');
-      cell = cell.replace(/⬜/g, '<span class="pill gap">GAP</span>');
-      cell = cell.replace(/📚/g, '<span class="pill course">COURSE</span>');
-      html += `<${tag}>${cell}</${tag}>`;
-    }
-    html += "</tr>";
-  });
-  html += "</tbody></table>";
-  return html;
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function mdToBody(md) {
-  const parts = [];
-  const chunks = md.split(/\n(?=## )/);
-  for (const chunk of chunks) {
-    if (chunk.startsWith("# ")) continue;
-    const segs = chunk.split(/\n(?=### )/);
-    const head = segs[0].match(/^## (.+)/);
-    if (head) parts.push(`<h2>${head[1].replace(/^\d+\.\s*/, "")}</h2>`);
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i];
-      const h3 = seg.match(/^### (.+)/m);
-      if (h3) parts.push(`<h3>${h3[1]}</h3>`);
-      const tables = seg.split(/\n\n(?=\|)/);
-      for (const t of tables) {
-        if (t.trim().startsWith("|")) parts.push(mdTableToHtml(t));
-        else if (t.includes("```mermaid")) {
-          parts.push(`<div class="flow-box"><p><strong>Flowchart</strong> — see pipeline section below (Mermaid in repo markdown).</p></div>`);
-        } else {
-          let text = t.replace(/^### .+\n/m, "").replace(/^## .+\n/m, "");
-          text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-          text = text.replace(/^- \[ \] (.+)$/gm, '<li class="todo-item">$1</li>');
-          text = text.replace(/^- \[x\] (.+)$/gim, '<li class="done-item">$1</li>');
-          if (text.includes("<li")) text = `<ul class="todo">${text}</ul>`;
-          text = text.replace(/^(\d+)\. \[ \] (.+)$/gm, "<li>$2</li>");
-          if (/^<li/m.test(text.trim())) text = `<ol>${text}</ol>`;
-          text = text.split("\n\n").filter(Boolean).map((p) => {
-            if (p.startsWith("<")) return p;
-            if (p.startsWith("**Do first")) return `<div class="priority"><p>${p.replace(/\n/g, "</p><p>")}</p></div>`;
-            return `<p>${p.replace(/\n/g, "<br/>")}</p>`;
-          }).join("\n");
-          if (text.trim() && !text.includes("<h2")) parts.push(text);
-        }
-      }
+function inline(raw) {
+  const codes = [];
+  let s = raw.replace(/`([^`]+)`/g, (_, c) => {
+    codes.push(c);
+    return `\u0000${codes.length - 1}\u0000`;
+  });
+  s = escapeHtml(s);
+  s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2">$1</a>');
+  s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,:;]|$)/g, "$1<em>$2</em>");
+  s = s.replace(/✅/g, '<span class="pill done">DONE</span>');
+  s = s.replace(/🟡/g, '<span class="pill partial">PARTIAL</span>');
+  s = s.replace(/⬜/g, '<span class="pill gap">GAP</span>');
+  s = s.replace(/📚/g, '<span class="pill course">COURSE</span>');
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${escapeHtml(codes[Number(i)])}</code>`);
+}
+
+function tableHtml(lines) {
+  const rows = lines.filter((l) => !/^\|[\s\-:|]+\|$/.test(l.trim()));
+  const cellsOf = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  const [head, ...body] = rows.map(cellsOf);
+  let html = "<table><thead><tr>" + head.map((c) => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>";
+  for (const cells of body) {
+    if (cells.length > 1 && cells.slice(1).every((c) => !c)) {
+      html += `<tr class="phase"><td colspan="${head.length}">${inline(cells[0])}</td></tr>`;
+    } else {
+      html += "<tr>" + cells.map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>";
     }
   }
-  return parts.join("\n");
+  return html + "</tbody></table>";
+}
+
+// --- Mermaid flowchart → HTML boxes -------------------------------------------------
+
+const NODE_RE = /^([A-Za-z0-9_]+)\s*(?:(\{\{|\[\[|\[\(|\(\[|\(\(|\[|\(|\{)\s*(?:"([^"]*)"|([^\]\)\}"]*?))\s*(\}\}|\]\]|\)\]|\]\)|\)\)|\]|\)|\}))?(?::::(\w+))?/;
+const EDGE_RE = /^(-->|-\.->|==>|---|-\.-)\s*(?:\|([^|]*)\|)?\s*/;
+
+function parseFlowchart(src) {
+  const nodes = new Map();
+  const order = [];
+  const groups = [];
+  const edges = [];
+  let group = null;
+  const touch = (id, label, open, cls) => {
+    let n = nodes.get(id);
+    if (!n) {
+      n = { id, label: id, shape: "box", cls: "", group: group ? group.id : null };
+      nodes.set(id, n);
+      order.push(id);
+      if (group) group.nodes.push(id);
+    }
+    if (label !== undefined) {
+      n.label = label;
+      n.shape = open === "{{" ? "wait" : open === "{" ? "decision" : "box";
+    }
+    if (cls) n.cls = cls;
+    return n;
+  };
+  for (const rawLine of src.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || /^(flowchart|graph|classDef|class |direction|style|%%)/.test(line)) continue;
+    const sub = line.match(/^subgraph\s+([A-Za-z0-9_]+)\s*(?:\["?(.*?)"?\])?/);
+    if (sub) {
+      group = { id: sub[1], title: sub[2] || sub[1], nodes: [] };
+      groups.push(group);
+      continue;
+    }
+    if (line === "end") {
+      group = null;
+      continue;
+    }
+    let rest = line;
+    let prev = null;
+    let pendingLabel = null;
+    while (rest) {
+      const m = rest.match(NODE_RE);
+      if (!m) break;
+      const n = touch(m[1], m[2] ? (m[3] ?? m[4]) : undefined, m[2], m[6]);
+      if (prev) edges.push({ from: prev.id, to: n.id, label: pendingLabel });
+      prev = n;
+      rest = rest.slice(m[0].length).trim();
+      const e = rest.match(EDGE_RE);
+      if (!e) break;
+      pendingLabel = e[2] ? e[2].trim() : null;
+      rest = rest.slice(e[0].length);
+    }
+  }
+  return { nodes, order, groups, edges };
+}
+
+function flowchartHtml(src) {
+  const { nodes, order, groups, edges } = parseFlowchart(src);
+  const edgeOf = (a, b) => edges.find((e) => e.from === a && e.to === b);
+  const drawn = new Set();
+  const nodeHtml = (id, nextId) => {
+    const n = nodes.get(id);
+    const cls = ["dg-node", n.shape === "box" ? "" : n.shape, n.cls].filter(Boolean).join(" ");
+    const notes = edges
+      .filter((e) => e.from === id && e.to !== nextId && !drawn.has(e))
+      .map((e) => {
+        drawn.add(e);
+        return `<span class="dg-note">→ ${e.label ? escapeHtml(e.label) + ": " : ""}${escapeHtml(nodes.get(e.to).label)}</span>`;
+      })
+      .join("");
+    return `<span class="${cls}">${escapeHtml(n.label)}${notes}</span>`;
+  };
+  const rowHtml = (ids) => {
+    let html = '<div class="dg-row">';
+    ids.forEach((id, i) => {
+      const next = ids[i + 1];
+      const e = next ? edgeOf(id, next) : null;
+      if (e) drawn.add(e);
+      html += nodeHtml(id, e ? next : undefined);
+      if (e) html += `<span class="dg-arrow">${e.label ? `<small>${escapeHtml(e.label)}</small> ` : ""}→</span>`;
+    });
+    return html + "</div>";
+  };
+  // Top-level items in first-appearance order: whole groups, or runs of ungrouped nodes.
+  const items = [];
+  const emitted = new Set();
+  for (const id of order) {
+    const n = nodes.get(id);
+    if (n.group) {
+      if (emitted.has(n.group)) continue;
+      emitted.add(n.group);
+      const g = groups.find((x) => x.id === n.group);
+      items.push({ title: g.title, ids: g.nodes });
+    } else {
+      const last = items[items.length - 1];
+      if (last && !last.title) last.ids.push(id);
+      else items.push({ title: null, ids: [id] });
+    }
+  }
+  // Group-to-group edges first, so they draw as a down arrow and not as a note.
+  const links = items.map((it, i) => {
+    const next = items[i + 1];
+    if (!next) return null;
+    const e = edges.find((x) => it.ids.includes(x.from) && next.ids.includes(x.to));
+    if (e) drawn.add(e);
+    return e;
+  });
+  let html = '<div class="dg">';
+  items.forEach((it, i) => {
+    const body = rowHtml(it.ids);
+    html += it.title ? `<div class="dg-group"><div class="dg-title">${escapeHtml(it.title)}</div>${body}</div>` : body;
+    if (links[i]) html += '<div class="dg-down">↓</div>';
+  });
+  return html + "</div>";
+}
+
+// --- Markdown → HTML -----------------------------------------------------------------
+
+function mdToBody(md) {
+  const lines = md.split("\n");
+  const out = [];
+  let para = [];
+  const flushPara = () => {
+    if (para.length) out.push(`<p>${para.map(inline).join("<br/>")}</p>`);
+    para = [];
+  };
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const t = line.trim();
+    if (/^# /.test(line)) {
+      flushPara();
+      i++;
+      continue;
+    }
+    if (t.startsWith("```")) {
+      flushPara();
+      const lang = t.slice(3).trim();
+      const buf = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) buf.push(lines[i++]);
+      i++;
+      out.push(lang === "mermaid" ? flowchartHtml(buf.join("\n")) : `<pre>${escapeHtml(buf.join("\n"))}</pre>`);
+      continue;
+    }
+    const h = line.match(/^(#{2,4}) (.+)$/);
+    if (h) {
+      flushPara();
+      const level = h[1].length;
+      const text = h[2];
+      const cls = level === 3 && /^Step /.test(text) ? ' class="step"' : level === 3 && /^Phase /.test(text) ? ' class="phase"' : "";
+      out.push(`<h${level}${cls}>${inline(text)}</h${level}>`);
+      i++;
+      continue;
+    }
+    if (t === "---") {
+      flushPara();
+      out.push("<hr/>");
+      i++;
+      continue;
+    }
+    if (t.startsWith("|")) {
+      flushPara();
+      const buf = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) buf.push(lines[i++]);
+      out.push(tableHtml(buf));
+      continue;
+    }
+    if (/^- \[[ x]\] /i.test(t)) {
+      flushPara();
+      let html = '<ul class="todo">';
+      while (i < lines.length && /^- \[[ x]\] /i.test(lines[i].trim())) {
+        html += `<li>${inline(lines[i].trim().replace(/^- \[[ x]\] /i, ""))}</li>`;
+        i++;
+      }
+      out.push(html + "</ul>");
+      continue;
+    }
+    if (/^(- |\d+\. )/.test(line)) {
+      flushPara();
+      const ordered = /^\d+\. /.test(line);
+      let html = ordered ? "<ol>" : "<ul>";
+      let open = false;
+      let nested = false;
+      while (i < lines.length && /^(\s*- |\d+\. )/.test(lines[i])) {
+        const l = lines[i];
+        if (/^\s+- /.test(l)) {
+          if (!nested) {
+            html += "<ul>";
+            nested = true;
+          }
+          html += `<li>${inline(l.trim().slice(2))}</li>`;
+        } else {
+          if (nested) {
+            html += "</ul>";
+            nested = false;
+          }
+          if (open) html += "</li>";
+          html += `<li>${inline(l.replace(/^(- |\d+\. )/, ""))}`;
+          open = true;
+        }
+        i++;
+      }
+      if (nested) html += "</ul>";
+      if (open) html += "</li>";
+      out.push(html + (ordered ? "</ol>" : "</ul>"));
+      continue;
+    }
+    if (!t) {
+      flushPara();
+      i++;
+      continue;
+    }
+    para.push(t);
+    i++;
+  }
+  flushPara();
+  return out.join("\n");
 }
 
 function pipelineHtml() {
+  const phases = ["1 Get ready", "2 Accept and secure", "3 Dispute and pay", "4 Statement of account and default", "5 Notary presentment", "6 Record and wait", "7 Reconveyance", "8 After"];
   return `
-<div class="legend">
-  <span><span class="dot" style="background:var(--done)"></span> Done</span>
-  <span><span class="dot" style="background:var(--partial)"></span> Partial</span>
-  <span><span class="dot" style="background:var(--gap)"></span> Not started / gap</span>
-  <span><span class="dot" style="background:var(--course)"></span> Course only</span>
-</div>
 <div class="flow-box">
   <div class="flow-row">
-    <span class="pill course">0 Intro</span><span class="flow-arrow">→</span>
-    <span class="pill partial">1 Deed accept</span><span class="flow-arrow">→</span>
-    <span class="pill course">2 Contract</span><span class="flow-arrow">→</span>
-    <span class="pill partial">3 DOT file</span><span class="flow-arrow">→</span>
-    <span class="pill done">4 UCC</span><span class="flow-arrow">→</span>
-    <span class="pill partial">5 Note</span><span class="flow-arrow">→</span>
-    <span class="pill course">6–7 Educ</span><span class="flow-arrow">→</span>
-    <span class="pill gap">8 SOA</span><span class="flow-arrow">→</span>
-    <span class="pill gap">9 Presentment</span><span class="flow-arrow">→</span>
-    <span class="pill partial">10 Reconvey</span><span class="flow-arrow">→</span>
-    <span class="pill course">11 MERS</span>
+    ${phases.map((p) => `<span class="pill">${p}</span>`).join('<span class="flow-arrow">→</span>')}
   </div>
 </div>
 <div class="flow-box">
-  <strong>Notary chain (L30)</strong>
+  <strong>Waiting periods</strong>
   <div class="flow-row" style="margin-top:10px">
-    Private presentment <span class="flow-arrow">→</span> Request (notary)
-    <span class="flow-arrow">→</span> Notice of Breach <em>(10d)</em>
-    <span class="flow-arrow">→</span> Opportunity to Cure <em>(10d)</em>
+    Payments <span class="flow-arrow">→</span> <em>90+ days</em>
+    <span class="flow-arrow">→</span> Statement of account <span class="flow-arrow">→</span> <em>14 days</em>
+    <span class="flow-arrow">→</span> Default notice + notice of dishonor
+    <span class="flow-arrow">→</span> Notice of Breach <em>(10 days)</em>
+    <span class="flow-arrow">→</span> Opportunity to Cure <em>(10 days)</em>
     <span class="flow-arrow">→</span> Certificate of Dishonor
-    <span class="flow-arrow">→</span> Record reconveyance
+    <span class="flow-arrow">→</span> Recordings <span class="flow-arrow">→</span> <em>~2 weeks</em>
+    <span class="flow-arrow">→</span> Substitution of trustee
   </div>
 </div>`;
 }
@@ -225,13 +433,13 @@ function coverHtml() {
 <section class="cover">
   <div>
     <div class="gold-bar"></div>
-    <h1>Mortgage Re{CON}veyance<br/>Playbook</h1>
-    <p class="sub">Hand this to the person doing the work. Lessons 1–37 in course order. Each step says what to do.</p>
+    <h1>Mortgage Re{CON}veyance<br/>Step-by-Step SOP</h1>
+    <p class="sub">The process for any property in any state, in the order Bryan does the work. Every step: what to do, documents, done when. Part B maps one example property.</p>
   </div>
   <div class="meta">
-    <div><strong>Property:</strong> 7137 E Rancho Vista Dr Unit 4011, Scottsdale AZ 85251</div>
+    <div><strong>Example (Part B):</strong> 7137 E Rancho Vista Dr Unit 4011, Scottsdale AZ 85251</div>
     <div><strong>Generated:</strong> ${new Date().toISOString().slice(0, 10)}</div>
-    <div><strong>Source:</strong> Bryan-Stay-Strong-Thinkific-Course-Export.zip + Drive case folders</div>
+    <div><strong>Source:</strong> Bryan-Stay-Strong-Thinkific-Course-Export.zip (37-lesson main track + extra tracks) + case folders</div>
   </div>
 </section>`;
 }
@@ -243,14 +451,14 @@ async function buildHtml() {
   const html = `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"/>
-<title>Mortgage ReCONveyance Playbook</title>
+<title>Mortgage ReCONveyance SOP</title>
 <style>${CSS}</style>
 </head><body>
 ${coverHtml()}
 <div class="page">
 <h2>At a glance</h2>
 ${pipelineHtml()}
-${body.replace(/## 6\. Outstanding/g, '</div><div class="page outstanding"><h2>Outstanding — placement TBD</h2>').replace(/## 7\. Should Grok.*/, "</div>")}
+${body}
 </div>
 </body></html>`;
   fs.writeFileSync(HTML_PATH, html);
@@ -305,6 +513,7 @@ async function main() {
   console.log("HTML:", HTML_PATH);
   await htmlToPdf();
   console.log("PDF:", PDF_PATH, fs.statSync(PDF_PATH).size, "bytes");
+  if (process.argv.includes("--no-upload")) return;
   const uploaded = await driveUpload(PDF_PATH, PDF_NAME, "application/pdf");
   console.log("Drive upload OK:", uploaded.name);
   console.log(uploaded.webViewLink);
