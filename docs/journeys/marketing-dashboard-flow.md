@@ -587,3 +587,98 @@ flowchart TD
 `GET marketing/batches` and `POST marketing/batches/write-now` are drawn in `ad-script-flow.md`,
 section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
 JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
+
+## U36 Command Center Scripts tab (`public/app/cc-tab-scripts.js`)
+
+Drawn from the code on 2026-10-06 (branch `mm-u36-scripts-tab`). One tab module per
+`docs/specs/command-center-tabs.md`, registered on `window.FundhubCC` as `{id:'scripts', label:'Scripts',
+order:3}`. Every call goes through the frame's `ctx.api`; paid taps go through `ctx.costSheet` first.
+Yardstick (plan note: no intended journey on main): spec §8.3 Scripts, §8.1 Inbox / Ideas / Rules, §7.8,
+§4 trap 17, and the design `command-center-design-2026-10-05.md` §3.3. **UNVERIFIED on the live page:**
+the frame (U34) is not on main, so the tab has only run inside the stub frame
+(`e2e/helpers/cc-tab-harness.mjs`), and its `<script>` line is the integrator's to add.
+
+### What the tab reads when it opens
+
+```mermaid
+flowchart TD
+  R["render(root, ctx)<br/>(ctx.param: approved, rules, ideas, batches or a script id)"] --> P["paint: skeletons in the real layout"]
+  P --> A["GET marketing/scripts<br/>every live script the screen may see"]
+  P --> B["GET marketing/batches<br/>history + write_now_ready"]
+  P --> S["GET marketing/settings<br/>daily count, $ caps, weekly drop time"]
+  P --> F["GET marketing/funnels<br/>names for captions and the idea box"]
+  P --> I["GET marketing/ideas"]
+  RF["Rules fold opened"] --> RU["GET marketing/rules (once, then on Try again)"]
+  VF["'Every version and its checks' opened"] --> V["GET marketing/script?id="]
+  A -->|"fails"| AE["'The scripts did not load. … The rest of this tab is current.' + Try again"]
+  B -->|"write_now_ready true"| WN["Write now drawn, with its cost note"]
+  B -->|"false or failed"| NW["no Write now anywhere (header or idea box)"]
+```
+
+### The Monday taps on one draft (filter Drafts; "needs a look" first, a draft being rewritten last)
+
+```mermaid
+flowchart TD
+  C["Draft card: caption, needs-a-look chip + reason, the words,<br/>one check line, Approve, Edit / Fix, Reject apart, folds under"] -->|"Approve (one tap)"| AP["POST marketing/scripts/approve<br/>{request_id, id, version}"]
+  AP -->|"200"| AP2["'Approved. This is Ad N.' (+ registry note if skipped)<br/>card leaves Drafts, shows under Approved"]
+  C -->|"Edit"| ED["one box per part (or the whole script)<br/>Approve hidden while open"]
+  ED -->|"Save new version"| EP["POST marketing/scripts/edit<br/>{request_id, id, version, body (parts swapped in place), parts}"]
+  EP -->|"200"| E2["'Saved as version N. Your old version is kept.'<br/>+ checker warnings (never block)"]
+  C -->|"Fix"| FX["note box + 'Make this a rule for every script'"]
+  FX -->|"Rewrite it → ctx.costSheet(kind fix_script) → yes"| FP["POST marketing/scripts/fix<br/>{request_id, id, version, note, make_rule}"]
+  FP -->|"202"| F2["card goes to the end, chip 'rewriting', Approve disabled with the reason"]
+  F2 -->|"every 5 s while on screen:<br/>GET marketing/scripts"| F3["a newer version of the same root →<br/>'#quot;Title#quot; was rewritten from your note. Version N is in your drafts.'"]
+  C -->|"Reject (tap 1)"| RJ["'Reject this script? It will not be filmed…'<br/>optional reason · Keep it (filled) · Reject it"]
+  RJ -->|"Reject it (tap 2)"| RP["POST marketing/scripts/reject<br/>{request_id, id, version, reason?}"]
+  RP -->|"200"| R2["'Rejected. It will not be filmed.'"]
+  AP & EP & FP & RP -->|"409 stale"| ST["both texts side by side (stacked at 390)<br/>Edit: Use mine (re-reads the live id, saves on it) / Use theirs<br/>Approve, Fix, Reject: Read the new version"]
+  AP & EP & FP & RP -->|"other failure"| ER["one plain sentence, never a status code;<br/>the same request_id is kept for the retry"]
+  C -->|"swipe left / right"| SW["next / previous card; a swipe never posts"]
+```
+
+### Film order, Write now, ideas and rules
+
+```mermaid
+flowchart TD
+  AL["Approved filter: approved scripts by film_order, then ad number"] -->|"Up / Down / Film first"| OR["POST marketing/scripts/order<br/>{request_id, order:[root_script_id…]}"]
+  OR -->|"200"| O2["film_order 1..n on the screen, 'Film order saved.'"]
+  WN["Write now (only when write_now_ready)"] -->|"ctx.costSheet(kind start_batch) → yes"| WP["POST marketing/batches/write-now {request_id}"]
+  WP -->|"202"| W2["'Writing now. New drafts show up here when they are done.'<br/>GET batches + scripts + ideas every 5 s while on screen, up to 30 min"]
+  ID["Ideas fold: big box, format?, funnel?"] -->|"Save idea (free)"| IP["POST marketing/ideas {request_id, raw_points, script_format?, funnel_key?}"]
+  ID -->|"Write it now (only when write_now_ready) → cost sheet"| IW["POST marketing/ideas {…, write_now:true}"]
+  IP -->|"200"| I2["'Saved. It goes in the next batch.' + the idea on top of Your ideas"]
+  IW -->|"200 with batch_id"| I3["'Saved. Writing one script from it now.'"]
+  IW -->|"200 with note (a cap)"| I4["'Saved, but not written now. then the note'"]
+  RU["Rules fold: Part 0 numbered, banned phrases, recent changes"] -->|"Add the rule / Change → Save the rule / Ban the phrase"| RP["POST marketing/rules {request_id, action add|edit|ban, n?, text}"]
+  RP -->|"202"| R2["GET marketing/rules: the change shows as 'Reaching the repo'"]
+  R2 -->|"every 5 s while a change waits and the tab is on screen"| R3["'In the repo' (commit sha) or 'Refused by the repo'"]
+```
+
+- Polling: one 5-second timer, and it asks only while the tab's root is drawn, the page is not in the
+  background, and something is moving (a Fix, a Write now, a writing batch, a waiting rule, an idea
+  being written). `hide()` stops it; `refresh()` starts it again.
+- Batch history fold: newest first, "N of M ready · N need a look · N failed", Out / Goes out time,
+  the error sentence on a stopped batch.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+1. **The idea box is in two places.** The design puts "Drop an idea" on the Ideas tab (unit X8); this
+   unit's plan acceptance puts Ideas in Scripts. Built here as a folded "Ideas" card on the same
+   `POST marketing/ideas`. If X8 ships its own, the integrator picks one.
+2. **Next batch plan** (design §3.3 item 5) is not here: the plan brief puts it on Today (U37).
+3. **New-opening card** (design §3.3 item 3): out of this unit's scope (plan brief).
+4. **"Send to Shoot" link** is not drawn: the Shoot tab is another unit's, and a link to a tab that
+   may not exist would be a dead control.
+5. **"Why this slot" line:** the Script object has no `slot_reason` (contract shape 3 wins, U25 gap 7).
+6. **Batch cost** ("cost $12.40" in the design header and history): `GET marketing/batches` has no
+   cost field, so no cost is printed.
+7. **"The machine has learned from N of your edits":** no route returns a voice-pair count.
+8. **Offline queue:** the shared review module (`public/app/marketing-review.js`, IndexedDB queue) does
+   not exist; with no connection a tap says "Nothing changed. Check the connection and try again."
+9. **Edit request shape:** the design's `parts:[{kind, before, after}]` loses to the contract's
+   `{body, parts}`; the body is rebuilt by swapping each changed part in place.
+10. **Cost sheet kinds:** Write now and Write it now pass `start_batch`, Fix passes `fix_script` to
+    `ctx.costSheet`; `GET marketing/costs` does not exist yet, so every sheet reads "unknown".
+11. **Registration:** `window.FundhubCC` (the tab contract), not `window.FHMarketingCCTabs` (older
+    plan text). The page's `<script>` line is left to the integrator (the contract's rule), not added
+    here as the plan's shared-files line said.
