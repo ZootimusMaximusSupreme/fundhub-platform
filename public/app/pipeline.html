@@ -161,7 +161,6 @@
   .rail-note b{color:var(--text);}
   .board-summary{font-family:var(--mono);font-size:var(--fs-body);color:var(--text-dim);display:flex;gap:12px;align-items:center;}
   .board-summary b{color:var(--text);}
-  .board-summary .held-n{color:var(--ink2);font-weight:700;}
 
   /* ══════════════════════════════════════════════════════════════════════════
      THE HEADLINE ROW — "what is waiting on me", answered before you read
@@ -730,7 +729,13 @@
              span is hidden rather than printing a funding figure those boards
              have nothing to do with. See railHasMoney(). -->
         <span id="sumMoneyWrap"><b id="sumMoney">—</b> funding est.</span>
-        <span class="held-n" id="sumHeld" title="the pipeline API does not return hold status">— held</span>
+        <!-- NO "— held" HERE (walkthrough-4 defect 24, 2026-09-06). It could
+             never be a number: /api/dashboard/pipeline returns no hold field,
+             so it was a bold dash forever. UI-STANDARDS §5: if it does nothing
+             today it does not render today — the same rule that hid the Owner
+             filter and removed the Hold filter below. Put it back beside the
+             code that reads a real hold field, not before. -->
+
       </div>
     </div>
   </div>
@@ -769,8 +774,8 @@
     <!-- HOLD IS GONE FROM HERE ON PURPOSE (2026-09-06). "Held only" emptied
          every board every time it was chosen: no card ever carries the `held`
          class, because /api/dashboard/pipeline returns no hold field for a card
-         (see the note on #sumHeld above, which still says the count is
-         unknown). A filter that can only ever hide everything is worse than no
+         (the "— held" figure in the summary row went for the same reason).
+         A filter that can only ever hide everything is worse than no
          filter. When the API starts returning hold status, put the select back
          beside the code that paints the class — not before. -->
     <div class="select"><span class="sl-k">Age:</span><select id="fAge">
@@ -1705,7 +1710,7 @@ restore();
 
   // Held count has no honest value here: no card the API returns carries a
   // hold flag (see api/dashboard/pipeline.mjs — cards has no hold column), so
-  // the board-summary's "held" stat stays a dash always. Card count and est.
+  // the board summary shows no "held" stat at all (defect 24). Card count and est.
   // money DO come from the API and are set for real once a pipeline loads;
   // unknown (not yet loaded, or the load failed) is a dash too, never 0.
   var sumCountEl = document.getElementById("sumCount");
