@@ -22,6 +22,7 @@ import { resolvePartnerId } from "../../src/http/partner-read-api.mjs";
 import { withPartnerScope } from "../../src/partners/rls.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { callModel, DEFAULT_MODEL } from "../../src/agents/model.mjs";
+import { readWithBackupReader } from "../../src/handlers/doc-check.mjs";
 import { screen } from "../../src/compliance/screen.mjs";
 import {
   assertSuiteEnabled, assertUnderCap, recordUsage, SUITE_OFF, CAP_HIT
@@ -85,6 +86,40 @@ export async function callModelBounded(args, ms = MODEL_TIMEOUT_MS) {
   }
 }
 
+/* callWriter — the model call, plus the backup writer when OpenAI has no credit.
+
+   WHY. "Write 3 posts for me" wrote nothing on fundhub.ai (marketing-fixes
+   2026-09-17, F3). The OpenAI key production holds is a real key on an empty
+   account: measured live 2026-09-18 08:52 UTC, `openai 429 … insufficient_quota,
+   You have no credits remaining`, and the 2026-09-17 23:17 press recorded
+   gpt-4o-mini with 0 tokens AFTER the masked-key fix shipped. callModel only
+   turns to Anthropic when no OpenAI key is set at all, so the working Anthropic
+   key was never asked.
+
+   This is the same backup the ID reader already uses (readWithBackupReader,
+   src/handlers/doc-check.mjs): only when the first call went to OpenAI and
+   OpenAI said "no credit", ask Anthropic once with the OpenAI keys left out of
+   that one call's copy of the environment. The stored key is not touched
+   (CLAUDE.md §11). If the backup fails too, the first result stands.
+
+   The backup gets what is left of the same time bound, so the two calls
+   together still finish before the platform's limit. A first call that timed
+   out is returned as it is: there is no time left for a second. */
+export async function callWriter(args, {
+  ms = MODEL_TIMEOUT_MS, bounded = callModelBounded, now = Date.now
+} = {}) {
+  const started = now();
+  const first = await bounded(args, ms);
+  if (first.timedOut) return first;
+  const left = Math.max(1000, ms - (now() - started));
+  const backup = await readWithBackupReader(first, {
+    env: args.env,
+    modelArgs: args,
+    callModelImpl: (a) => bounded(a, left)
+  });
+  return backup || first;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");
@@ -126,7 +161,8 @@ export default async function handler(req, res) {
     });
 
     // STEP 2 — the model call. No transaction, no database connection held.
-    const model = await callModelBounded({
+    // OpenAI first; Anthropic once if OpenAI says "no credit" (callWriter).
+    const model = await callWriter({
       system: SYSTEM,
       user: [
         `Brand: ${setup.brand.entity_name || "the partner"}`,
