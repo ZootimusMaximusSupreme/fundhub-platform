@@ -295,6 +295,13 @@ import climateConfig from "../../api/climate/config.mjs";
 import marketingSettings from "../../api/marketing/settings.mjs";
 import marketingFunnels from "../../api/marketing/funnels.mjs";
 import marketingHealth from "../../api/marketing/health.mjs";
+import marketingCosts from "../../api/marketing/costs.mjs";
+import marketingFlywheel from "../../api/marketing/flywheel.mjs";
+import marketingFlywheelRun from "../../api/marketing/flywheel/run.mjs";
+import marketingFlywheelJob from "../../api/marketing/flywheel/job.mjs";
+import marketingFlywheelApprove from "../../api/marketing/flywheel/approve.mjs";
+import marketingFlywheelTweak from "../../api/marketing/flywheel/tweak.mjs";
+import marketingFlywheelCampaign from "../../api/marketing/flywheel/campaign.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1193,7 +1200,16 @@ export const ROUTES = {
   // marketing machine
   "marketing/settings": marketingSettings,
   "marketing/funnels": marketingFunnels,
-  "marketing/health": marketingHealth
+  "marketing/health": marketingHealth,
+  // Build the avatar on the server (design slice 5a, unit X1): the cost reader, the
+  // flywheel reader, the run and its poll, Approve, Tweak, Start a flywheel.
+  "marketing/costs": marketingCosts,
+  "marketing/flywheel": marketingFlywheel,
+  "marketing/flywheel/run": marketingFlywheelRun,
+  "marketing/flywheel/job": marketingFlywheelJob,
+  "marketing/flywheel/approve": marketingFlywheelApprove,
+  "marketing/flywheel/tweak": marketingFlywheelTweak,
+  "marketing/flywheel/campaign": marketingFlywheelCampaign
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

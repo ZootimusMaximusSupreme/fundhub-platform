@@ -348,7 +348,16 @@ const API_KEYS = [
      never writes; the POST half is never pinged. */
   "marketing/settings",
   "marketing/funnels",
-  "marketing/health"
+  "marketing/health",
+  /* Build the avatar (unit X1). The GETs answer 401 unsigned; the POSTs answer 405 to
+     a GET ping (counted as up) and never write. */
+  "marketing/costs",
+  "marketing/flywheel",
+  "marketing/flywheel/job",
+  "marketing/flywheel/run",
+  "marketing/flywheel/approve",
+  "marketing/flywheel/tweak",
+  "marketing/flywheel/campaign"
 ];
 
 const DESK_FILES = [

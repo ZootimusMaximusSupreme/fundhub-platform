@@ -16,8 +16,12 @@ describe("JOB_KINDS", () => {
     assert.equal(Object.prototype.hasOwnProperty.call(JOB_KINDS, "offer"), false);
   });
 
-  test("the three groups the worker paces by", () => {
-    assert.deepEqual([...JOB_GROUPS], ["writer", "loader", "system"]);
+  test("the four groups the worker paces by", () => {
+    assert.deepEqual([...JOB_GROUPS], ["writer", "loader", "system", "research"]);
+  });
+
+  test("'avatar' (Build the avatar, unit X1) is a research job", () => {
+    assert.equal(JOB_KINDS.avatar.group, "research");
   });
 });
 
