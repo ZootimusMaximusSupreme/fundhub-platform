@@ -83,7 +83,10 @@ main::-webkit-scrollbar-thumb{background:#D4D4D8;border-radius:5px}
 .welcome{font-size:var(--fs-metric);font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
 .welcome-sub{font-size:var(--fs-body);color:var(--text-dim);margin-bottom:22px}
 
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+/* The shared token, never a hand-rolled value (UI-STANDARDS §12.2,
+   walkthrough-4 defect 28). This page has no .app wrapper, so the brand
+   file's app-wide shadow rule never reaches it — it names the token itself. */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:16px;box-shadow:var(--panel-shadow)}
 .card-title{font-size:var(--fs-caption);font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px}
 .sec-hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .sec-hd .card-title{margin-bottom:0}

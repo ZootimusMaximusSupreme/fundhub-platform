@@ -64,6 +64,14 @@ test("defect 17: the signing page does not promise the link works forever", () =
   assert.match(html, /Download failed — try again/);
 });
 
+test("defect 28: the client portal's cards use the shared shadow token", () => {
+  const css = read("public/app/client-portal.html").replace(/\/\*[\s\S]*?\*\//g, "");
+  const card = css.match(/\n\.card\{[^}]*\}/);
+  assert.ok(card, "the portal .card rule is gone");
+  assert.match(card[0], /box-shadow:var\(--panel-shadow\)/);
+  assert.ok(!/0 1px 2px rgba\(0,0,0,\.02\)/.test(css), "the hand-rolled near-invisible shadow is back");
+});
+
 test("defect 27: Campaign Manager names the badge, not a colour", () => {
   const html = read("public/app/campaign-manager.html");
   assert.ok(!/Green means/i.test(html));
