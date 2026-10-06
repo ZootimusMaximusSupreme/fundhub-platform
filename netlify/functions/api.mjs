@@ -294,6 +294,8 @@ import climateGeocode from "../../api/climate/geocode.mjs";
 import climateConfig from "../../api/climate/config.mjs";
 import marketingSettings from "../../api/marketing/settings.mjs";
 import marketingFunnels from "../../api/marketing/funnels.mjs";
+import marketingAds from "../../api/marketing/ads.mjs";
+import marketingAd from "../../api/marketing/ad.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1191,7 +1193,9 @@ export const ROUTES = {
 
   // marketing machine
   "marketing/settings": marketingSettings,
-  "marketing/funnels": marketingFunnels
+  "marketing/funnels": marketingFunnels,
+  "marketing/ads": marketingAds,
+  "marketing/ad": marketingAd
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is
