@@ -72,6 +72,7 @@ const JOB_2 = "00000000-0000-4000-8000-000000000502";
 const JOB_3 = "00000000-0000-4000-8000-000000000503";
 const JOB_4 = "00000000-0000-4000-8000-000000000504";
 const JOB_5 = "00000000-0000-4000-8000-000000000505";
+const JOB_OFFER = "00000000-0000-4000-8000-000000000506"; // a finished Write offer run (costs.offer)
 const FUNNEL_BOOK = "00000000-0000-4000-8000-000000000601";
 const FUNNEL_ROADMAP = "00000000-0000-4000-8000-000000000602";
 const VIDEO_1 = "00000000-0000-4000-8000-000000000701";
@@ -1060,8 +1061,15 @@ export const CONTRACT = deepFreeze({
     guard: null,
     requestKeys: [],
     responseKeys: [
-      // Existing keys (never renamed; their inner shape is in marketing-today-contract.md).
-      "ok", "as_of", "today", "timezone", "waiting", "flywheel", "copy", "copy_ready", "spend", "last_sync",
+      // Existing keys (never renamed; their full inner shape is in marketing-today-contract.md).
+      "ok", "as_of", "today", "timezone", "waiting", "flywheel", "copy", "copy_ready", "spend", "last_sync", "costs",
+      // Slice 0 of the Command Center design ("Today tells the truth") added spend.through,
+      // prior_30_days, last_sync.clickfunnels_synced_at and costs. They are named here so a
+      // body that drops one fails the contract. spend, last_sync and costs may be null.
+      ...under("spend.", ["currency", "through", "windows"]),
+      ...under("spend.windows.", ["today", "last_7_days", "prior_7_days", "last_30_days", "prior_30_days"]),
+      ...under("last_sync.", ["meta_synced_at", "metrics_synced_at", "latest_metrics_date", "clickfunnels_synced_at"]),
+      "costs.offer", "costs.copy",
       // Added by U32.
       "numbers", "numbers.today", "numbers.d7", "numbers.d30",
       ...under("numbers.today.", NUMBER_KEYS), ...under("numbers.d7.", NUMBER_KEYS), ...under("numbers.d30.", NUMBER_KEYS),
@@ -1085,14 +1093,32 @@ export const CONTRACT = deepFreeze({
         copy_ready: { ready: true, partner_id: "00000000-0000-4000-8000-000000000003", checks: [], missing: [] },
         spend: {
           currency: "USD",
+          through: "2026-10-11",
           windows: {
             today: { from: "2026-10-12", to: "2026-10-12", days: 1, spend_cents: null, ad_days: 0, days_with_data: 0 },
-            last_7_days: { from: "2026-10-06", to: "2026-10-12", days: 7, spend_cents: 61500, ad_days: 18, days_with_data: 6 },
-            prior_7_days: { from: "2026-09-29", to: "2026-10-05", days: 7, spend_cents: 48200, ad_days: 14, days_with_data: 7 },
-            last_30_days: { from: "2026-09-13", to: "2026-10-12", days: 30, spend_cents: 203400, ad_days: 61, days_with_data: 27 }
+            last_7_days: { from: "2026-10-05", to: "2026-10-11", days: 7, spend_cents: 61500, ad_days: 18, days_with_data: 6 },
+            prior_7_days: { from: "2026-09-28", to: "2026-10-04", days: 7, spend_cents: 48200, ad_days: 14, days_with_data: 7 },
+            last_30_days: { from: "2026-09-12", to: "2026-10-11", days: 30, spend_cents: 203400, ad_days: 61, days_with_data: 27 },
+            prior_30_days: { from: "2026-08-13", to: "2026-09-11", days: 30, spend_cents: 151900, ad_days: 44, days_with_data: 21 }
           }
         },
-        last_sync: { meta_synced_at: META_SYNC, metrics_synced_at: "2026-10-12T07:01:51.000Z", latest_metrics_date: "2026-10-11" },
+        last_sync: {
+          meta_synced_at: META_SYNC,
+          metrics_synced_at: "2026-10-12T07:01:51.000Z",
+          latest_metrics_date: "2026-10-11",
+          clickfunnels_synced_at: "2026-10-11T22:10:00.000Z"
+        },
+        costs: {
+          offer: {
+            measured: true, job_id: JOB_OFFER, finished_at: "2026-10-12T14:04:29.000Z", seconds: 269,
+            input_tokens: 24551, output_tokens: 28640, models: ["claude-opus-5-5"], cost_cents: 67,
+            under_one_cent: false, unpriced_models: []
+          },
+          copy: {
+            runs: 0, last_at: null, models: [], avg_input_tokens: null, avg_output_tokens: null,
+            avg_cost_cents: null, under_one_cent: false, unpriced_models: []
+          }
+        },
         numbers: {
           today: { spend_cents: null, leads: 2, booked: 1, showed: 0, sales: 0, roadmaps: 0, cash_cents: 0, reported_cash_cents: null, roas: null },
           d7: { spend_cents: 61500, leads: 23, booked: 7, showed: 5, sales: 1, roadmaps: 4, cash_cents: 158800, reported_cash_cents: 100000, roas: 2.58 },

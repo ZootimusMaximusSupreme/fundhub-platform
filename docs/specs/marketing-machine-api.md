@@ -1836,11 +1836,12 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 
 **Request (query):** `{}`
 
-**Response:** `{ok, as_of, today, timezone, waiting, flywheel, copy, copy_ready, spend, last_sync, numbers:{today:{spend_cents, leads, booked, showed, sales, roadmaps, cash_cents, reported_cash_cents, roas}, d7:{spend_cents, leads, booked, showed, sales, roadmaps, cash_cents, reported_cash_cents, roas}, d30:{spend_cents, leads, booked, showed, sales, roadmaps, cash_cents, reported_cash_cents, roas}}, daily:[{date, spend_cents, leads}], spend_by_funnel:[{funnel_key, name, spend_cents}], flow:{page_views, clicks, leads, booked, showed, sales}, scripts_waiting:{ready, flagged}, stuck_jobs:[{id, kind, error, since}]}`
+**Response:** `{ok, as_of, today, timezone, waiting, flywheel, copy, copy_ready, spend:{currency, through, windows:{today, last_7_days, prior_7_days, last_30_days, prior_30_days}}, last_sync:{meta_synced_at, metrics_synced_at, latest_metrics_date, clickfunnels_synced_at}, costs:{offer, copy}, numbers:{today:{spend_cents, leads, booked, showed, sales, roadmaps, cash_cents, reported_cash_cents, roas}, d7:{spend_cents, leads, booked, showed, sales, roadmaps, cash_cents, reported_cash_cents, roas}, d30:{spend_cents, leads, booked, showed, sales, roadmaps, cash_cents, reported_cash_cents, roas}}, daily:[{date, spend_cents, leads}], spend_by_funnel:[{funnel_key, name, spend_cents}], flow:{page_views, clicks, leads, booked, showed, sales}, scripts_waiting:{ready, flagged}, stuck_jobs:[{id, kind, error, since}]}`
 
 **Errors:** only the common ones in section 2.
 
 - Every existing key stays exactly as `docs/specs/marketing-today-contract.md` says. U32 adds keys and never renames one.
+- Slice 0 of `docs/specs/command-center-design-2026-10-05.md` ("Today tells the truth") added `spend.through`, `spend.windows.prior_30_days`, `last_sync.clickfunnels_synced_at` and `costs` (`offer`, `copy`). Their full shape is in `docs/specs/marketing-today-contract.md`. The 7 and 30 day `spend.windows` end on `spend.through` (the last whole day the newest Meta pull covered), never on today; only `spend.windows.today` is today.
 - `numbers.today`, `d7` and `d30` are whole Arizona-day windows ending today. The counting rules are in `docs/marketing/metrics.md` (U20). `roadmaps` = $147 roadmap sales. `cash_cents` = succeeded transactions; `reported_cash_cents` = what closers typed. `roas` = cash divided by spend.
 - `daily`: the last 30 Arizona days, oldest first. The example shows 3.
 - `spend_by_funnel`: the last 7 days. Spend that maps to no funnel is one row with `funnel_key: null` and `name: "Unmapped"`.
@@ -1871,6 +1872,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
     },
     "spend": {
       "currency": "USD",
+      "through": "2026-10-11",
       "windows": {
         "today": {
           "from": "2026-10-12",
@@ -1881,35 +1883,68 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
           "days_with_data": 0
         },
         "last_7_days": {
-          "from": "2026-10-06",
-          "to": "2026-10-12",
+          "from": "2026-10-05",
+          "to": "2026-10-11",
           "days": 7,
           "spend_cents": 61500,
           "ad_days": 18,
           "days_with_data": 6
         },
         "prior_7_days": {
-          "from": "2026-09-29",
-          "to": "2026-10-05",
+          "from": "2026-09-28",
+          "to": "2026-10-04",
           "days": 7,
           "spend_cents": 48200,
           "ad_days": 14,
           "days_with_data": 7
         },
         "last_30_days": {
-          "from": "2026-09-13",
-          "to": "2026-10-12",
+          "from": "2026-09-12",
+          "to": "2026-10-11",
           "days": 30,
           "spend_cents": 203400,
           "ad_days": 61,
           "days_with_data": 27
+        },
+        "prior_30_days": {
+          "from": "2026-08-13",
+          "to": "2026-09-11",
+          "days": 30,
+          "spend_cents": 151900,
+          "ad_days": 44,
+          "days_with_data": 21
         }
       }
     },
     "last_sync": {
       "meta_synced_at": "2026-10-12T07:01:50.000Z",
       "metrics_synced_at": "2026-10-12T07:01:51.000Z",
-      "latest_metrics_date": "2026-10-11"
+      "latest_metrics_date": "2026-10-11",
+      "clickfunnels_synced_at": "2026-10-11T22:10:00.000Z"
+    },
+    "costs": {
+      "offer": {
+        "measured": true,
+        "job_id": "00000000-0000-4000-8000-000000000506",
+        "finished_at": "2026-10-12T14:04:29.000Z",
+        "seconds": 269,
+        "input_tokens": 24551,
+        "output_tokens": 28640,
+        "models": ["claude-opus-5-5"],
+        "cost_cents": 67,
+        "under_one_cent": false,
+        "unpriced_models": []
+      },
+      "copy": {
+        "runs": 0,
+        "last_at": null,
+        "models": [],
+        "avg_input_tokens": null,
+        "avg_output_tokens": null,
+        "avg_cost_cents": null,
+        "under_one_cent": false,
+        "unpriced_models": []
+      }
     },
     "numbers": {
       "today": {
