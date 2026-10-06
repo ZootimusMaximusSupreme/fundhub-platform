@@ -410,7 +410,8 @@ const DESK_FILES = [
   "sales-floor.html",
   "social-studio.html",
   "soft-pull-approve.html",
-  "staff-teams.html"
+  "staff-teams.html",
+  "teleprompter.html"
 ];
 
 /** Static HTML under public/ (not public/app desks). */
