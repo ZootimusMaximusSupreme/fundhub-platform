@@ -1,7 +1,8 @@
 # Ad video — from a filmed take to Paul's folder
 
 Generated from the code on 2026-09-22, updated the same day when staging and the
-binary transfer landed. Written against `src/ad-videos/pipeline.mjs`,
+binary transfer landed. The join step at `staged` was added on 2026-10-05 from
+`src/ad-videos/merge-takes.mjs`, `merge-takes-media.mjs` and `merge-takes-step.mjs`. Written against `src/ad-videos/pipeline.mjs`,
 `src/ad-videos/staging.mjs`, `src/workflows/ad-video-sweeper.mjs`,
 `src/messaging/providers/submagic.mjs`,
 `src/messaging/providers/google-drive-write.mjs`, `src/messaging/providers/ntfy.mjs`,
@@ -24,7 +25,12 @@ flowchart TD
     A["Chris films the take<br/>phone shares it to the Raw Drive folder"] --> B["raw_landed"]
     B -->|"sweeper sees a new video, size above zero"| B
     B -->|"stage: nothing is published, no link is made"| C["staged"]
-    C -->|"upload the bytes (or hand over the link), autoRender OFF"| D["editing"]
+    C --> J{"join step<br/>every take of one angle<br/>(NAMING.md: offer + ad + angle words)"}
+    J -->|"wait: takes still landing (30 min), no angle in the name,<br/>name not NAMING.md, no ffmpeg or whisper.cpp here, no script"| C
+    J -->|"another take of this angle carries the master"| XJ["failed<br/>reason starts 'joined into one master:'"]
+    J -->|"the takes do not follow the script"| X
+    J -->|"the only take of its angle: sent as it is<br/>2+ takes: ONE master — best line of each take, script order,<br/>filler, repeats, false starts, dead air cut, levelled"| U(("upload"))
+    U -->|"upload the bytes, autoRender OFF"| D["editing"]
     D -->|"Submagic returns words[] with real times"| E["transcribed"]
     D -->|"still listening"| D
     E -->|"Claude picks the script, then the Drive file is renamed"| F["matched"]
@@ -48,7 +54,8 @@ flowchart TD
 |---|---|---|---|
 | — | Drive `files.list` on the Raw folder every 5 minutes | `raw_landed` | `ad-video-sweeper.mjs` `detect()` |
 | `raw_landed` | get the take ready. Nothing is published | `staged` | `pipeline.mjs` `stage()` + `staging.mjs` |
-| `staged` | upload the bytes to Submagic, `autoRender:false` | `editing` | `pipeline.mjs` `submagicCreate()` |
+| `staged` | **join step, before any upload.** Groups takes by their NAMING.md name. One take of its angle: sent as it is. 2+ takes: the lowest waiting take builds ONE master and carries it; the others are closed first. Otherwise waits with the reason on the row | `staged` (waits), `failed` (joined into another take's master, or the takes do not follow the script), or on to the upload | `ad-video-sweeper.mjs` `walk()` → `merge-takes-step.mjs` `joinBeforeSubmagic()`; planner `merge-takes.mjs`; ffmpeg + whisper.cpp `merge-takes-media.mjs` |
+| `staged` | upload the bytes to Submagic (the master's bytes for a joined angle), `autoRender:false` | `editing` | `pipeline.mjs` `submagicCreate()` — unchanged |
 | `editing` | Submagic Get Project → `words[]` | `transcribed` | `pipeline.mjs` `readTranscript()` |
 | `transcribed` | Claude matches the words to a script, then Drive rename | `matched` | `pipeline.mjs` `matchAndRename()` |
 | `matched` | upload our clips, place them, Export Project | stays `matched`, `exported_at` set | `pipeline.mjs` `placeBrollAndExport()` |
@@ -77,6 +84,85 @@ No state is added, removed or renamed. The database's status list is untouched.
 `uploadTextFile()` writes text, and making a PDF would need a new dependency.
 The brief holds the same five things either way: ad number, hook, headline,
 primary text and the landing link.
+
+---
+
+## Joining every take of one angle (built 2026-10-05)
+
+The law is `.claude/rules/ad-video-best-of-clips.md`: one finished video per ad,
+made from the best of every take, in script order, with the bad bits cut,
+before Submagic sees it. `marketing/MACHINE-GAPS.md` item 7 measured that no
+code did this. Traced from `src/ad-videos/merge-takes.mjs` (the planner),
+`src/ad-videos/merge-takes-media.mjs` (ffmpeg and whisper.cpp),
+`src/ad-videos/merge-takes-step.mjs` (the one call in the sweeper) and
+`scripts/ad-video-join-takes.mjs` (the runner).
+
+**Which takes join.** Only takes whose names follow `marketing/ads/NAMING.md`
+(`{Offer} Ad {n} — {angle} Take {n}.mp4`) and share the offer, the ad number
+AND the angle words. A different angle is a different video, even under the
+same ad number. A take is read from `ad_videos.drive_raw_name`; every row with
+a Drive file counts, whatever its state — so a take that already went to
+Submagic alone before this existed still joins the next master.
+
+**What the step decides, for one take at `staged`:**
+
+| The take | What happens |
+|---|---|
+| no file name on the row | sent the old way, alone, with a note |
+| its angle had a new take less than 30 minutes ago | waits, with the minutes left on the row |
+| the only take of its angle | sent as it is, with a note ("one take — sent as it is") |
+| another waiting take of the angle has a lower take number | closed: `failed`, reason starts `joined into one master:`. Never sent |
+| the same take number twice | the later file is closed the same way |
+| a name with no angle (`SLO Ad 7 Take 1.mp4`) while another file shares the ad number | waits, the row says to rename it |
+| a name that is not NAMING.md at all (`IMG_4471.mov`) | waits, the row says to rename it |
+| 2+ takes, no ffmpeg or whisper.cpp on this machine | waits, the row names the runner below |
+| 2+ takes, no script with that title in the repo | waits |
+| 2+ takes, the takes do not follow the script (under 70% of its lines said cleanly anywhere) | `failed` for a person |
+| 2+ takes, the join works | the other waiting takes are closed FIRST, then the master's bytes go to the unchanged Submagic upload |
+
+**How the master is made.** whisper.cpp on the machine hears each take word by
+word (aligned times, moved 0.08 s earlier because they run late). ffmpeg finds
+each take's silence, black frames and loudness. Each script line is matched to
+every attempt at it in every take; only complete attempts compete, and the one
+with the fewest defects wins (filler, repeated words, stumbles, missing words,
+long pauses). Cuts keep each line once, in script order; filler and repeated
+words inside a line are cut out, pauses are cut down to about a third of a
+second, there is no air before the first word or after the last, black frames
+are trimmed off a cut's edges, every take is brought to one level and the
+master is levelled to -16 LUFS. The master keeps the takes' own picture size;
+a bigger take is scaled down to a smaller one, never up, and takes of different
+shapes are refused.
+
+**Where it can run.** The Netlify worker has no ffmpeg and no whisper.cpp, so
+there a multi-take angle WAITS at `staged` with the reason on the row. It never
+falls back to sending one take. The join runs on the Mac:
+
+* `node scripts/ad-video-join-takes.mjs --dir <folder> [--out <folder>]` — offline:
+  a folder of takes in, one master and one edit report per angle out. No
+  database, Drive, Submagic or paid API.
+* `node scripts/ad-video-join-takes.mjs --live` — one real sweeper pass from the
+  Mac, the same `sweep()` the worker runs. This one uploads the master and
+  spends Submagic credit.
+
+**Gaps (found, not reconciled):**
+
+1. **No `joined` state.** A take closed into another take's master is recorded
+   as `failed` with the reason `joined into one master: …`. The table has no
+   other ending a worker may write. A real state needs a migration.
+2. **One take alone is not trimmed.** The only take of an angle goes the old
+   way: no cut of dead air, filler or false starts. The law asks for those cuts
+   on every finished ad.
+3. **The join does not run where the pipeline runs.** Until a machine with
+   ffmpeg and whisper.cpp runs `--live`, every multi-take angle waits.
+4. **Loud breaths** are cut only when they sit in a pause that is cut. A breath
+   inside a kept stretch is not detected.
+5. **A rebuilt master after a failed upload is built again from scratch** (all
+   takes downloaded, heard and cut again). It costs time, not money.
+6. **Not proved on a real filmed take.** Proved on synthetic ffmpeg clips (unit
+   tests) and on two spoken test takes made with the Mac's own voice: re-heard,
+   the master had all 20 lines of SLO Ad 7 in script order, no filler, no
+   doubled word, no false start, no air at either end, longest pause 0.4 s,
+   -16.1 LUFS. The SQL read (`listAngleTakes`) has not run against Postgres.
 
 ---
 
@@ -156,6 +242,9 @@ Read by NAME only; no value is ever printed or logged.
 `GOOGLE_DRIVE_OAUTH_TOKEN_JSON`, `DRIVE_RAW_FOLDER_ID`, `DRIVE_PAUL_FOLDER_ID`,
 `NTFY_TOPIC`, `NTFY_SERVER`, `NTFY_TOKEN`, `PUBLIC_SITE_URL`,
 `ADAPTERS_DRY_RUN`, `MESSAGING_DRY_RUN`, `DRIVE_FINISHED_FOLDER_ID`.
+The join step reads `FFMPEG_BIN`, `WHISPER_CPP_BIN` and `WHISPER_CPP_MODEL`
+(all optional — local program paths, not secrets; unset means the PATH, the
+`ffmpeg-static` devDependency and the repo's own whisper.cpp lookup).
 
 **Our copy of the finished cut (wired 2026-10-05).** At `rendered`, before the
 buzz, the worker pulls the render down and puts it in `DRIVE_FINISHED_FOLDER_ID`
