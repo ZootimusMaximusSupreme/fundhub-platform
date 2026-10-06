@@ -29,7 +29,12 @@
 export const JOB_GROUPS = Object.freeze(["writer", "loader", "system"]);
 
 /** @type {Record<string, { group: 'writer' | 'loader' | 'system', load: () => Promise<any> }>} */
-export const JOB_KINDS = {};
+export const JOB_KINDS = {
+  // X4 funnel builder: write a book-a-call funnel's three pages (one model call,
+  // checked words), then put them on ClickFunnels as NEW pages on Chris's Push live.
+  funnel: { group: "writer", load: () => import("./funnel-build.mjs") },
+  funnel_push: { group: "system", load: () => import("./funnel-push.mjs") }
+};
 
 /**
  * checkJobKinds(registry) → a list of problems, in plain words (empty when every entry is good).

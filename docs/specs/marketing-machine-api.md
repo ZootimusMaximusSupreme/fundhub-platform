@@ -115,7 +115,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 
 ## 5. Route index
 
-46 routes. "deferred" = drafted here, built after this pass.
+51 routes. "deferred" = drafted here, built after this pass. "X4" = the funnel builder (build unit X4).
 
 | Route | Owner | Spec | Success |
 |---|---|---|---|
@@ -148,6 +148,11 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 | `POST marketing/meta/load` | U28 | §10.2-10.5 | 202 |
 | `GET marketing/meta/load-status` | U28 | §10.5 | 200 |
 | `POST campaigns/write#resume_ad` | U15 | §10.5 Turn on, §2 item 6 | 200 |
+| `POST marketing/funnels/create` | X4 | owner order 2026-10-05 (build unit X4): URL system, tag, page builder | 200 |
+| `POST marketing/funnels/rename` | X4 | owner order 2026-10-05 (build unit X4): name it in the dash | 200 |
+| `POST marketing/funnels/build` | X4 | owner order 2026-10-05 (build unit X4): page builder job (kind funnel) | 202 |
+| `POST marketing/funnels/push-live` | X4 | owner order 2026-10-05 (build unit X4): push live to a NEW path; design §5 rules 5 and 16 | 202 |
+| `GET marketing/funnel` | X4 | owner order 2026-10-05 (build unit X4): one funnel with its draft pages | 200 |
 | `GET marketing/shoot` | deferred | §8.2 | 200 |
 | `POST marketing/shoot` | deferred | §8.2 | 200 |
 | `POST marketing/shoot/mark` | deferred | §8.2 | 200 |
@@ -314,7 +319,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 
 **Request (query):** `{}`
 
-**Response:** `{funnels:[{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at}], campaigns:[{external_id, name, status, spend_7d_cents, funnel_key}], ad_sets:[{external_id, name, status, campaign_external_id}], as_of}`
+**Response:** `{funnels:[{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at, kind, url, path, tag, utm_campaign, utm_template, campaign, status, live_at, created_by, pages:[{id, position, role, path, url, status, built_at, pushed_at, proved_at, live_url, events_seen, last_event_at}], events_seen}], campaigns:[{external_id, name, status, spend_7d_cents, funnel_key}], ad_sets:[{external_id, name, status, campaign_external_id}], as_of}`
 
 **Errors:** only the common ones in section 2.
 
@@ -322,6 +327,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 - `ad_sets` feed the default ad set picker.
 - `format_mix` holds weights (2 standard to 1 sorting), not a 0..1 ratio. `weight` is a JSON number.
 - `as_of` is the last Meta sync.
+- Funnels the dashboard builds (X4, migration 425) carry `kind: "book_a_call"`, their address `path`, the `tag` every event carries (it never changes), `utm_campaign` (the lane), `status` draft or live, and `pages` (landing, booking, thank-you) with each page's `status` (empty, built, pushed, live), `url` and `events_seen`. A funnel mapped by hand here has `kind`, `path` and `tag` null, `status` "live", `pages` [] and `events_seen` null (unknown). `url` is the funnel's address; `utm_template` is the url_tags every ad for it carries (`{ad_number}` filled in at load).
 
 **Example**
 
@@ -338,14 +344,29 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
         "offer_key": "funding_dfy",
         "lane": "sorting",
         "book_call": true,
-        "format_mix": { "standard": 2, "sorting": 1 },
+        "format_mix": {
+          "standard": 2,
+          "sorting": 1
+        },
         "cta_type": "LEARN_MORE",
         "meta_campaign_ids": [],
         "default_ad_set_external_id": null,
         "weight": 1,
         "active": true,
         "created_at": "2026-10-06T18:00:00.000Z",
-        "updated_at": "2026-10-06T18:00:00.000Z"
+        "updated_at": "2026-10-06T18:00:00.000Z",
+        "kind": null,
+        "url": "https://apply.fundhub.ai/watch",
+        "path": null,
+        "tag": null,
+        "utm_campaign": null,
+        "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=sorting&utm_content={ad_number}",
+        "campaign": null,
+        "status": "live",
+        "live_at": null,
+        "created_by": null,
+        "pages": [],
+        "events_seen": null
       },
       {
         "id": "00000000-0000-4000-8000-000000000602",
@@ -355,14 +376,100 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
         "offer_key": "slo_roadmap",
         "lane": "uwiq",
         "book_call": false,
-        "format_mix": { "standard": 1 },
+        "format_mix": {
+          "standard": 1
+        },
         "cta_type": "LEARN_MORE",
         "meta_campaign_ids": [],
         "default_ad_set_external_id": null,
         "weight": 1,
         "active": true,
         "created_at": "2026-10-06T18:00:00.000Z",
-        "updated_at": "2026-10-06T18:00:00.000Z"
+        "updated_at": "2026-10-06T18:00:00.000Z",
+        "kind": null,
+        "url": "https://apply.fundhub.ai/roadmap",
+        "path": null,
+        "tag": null,
+        "utm_campaign": null,
+        "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+        "campaign": null,
+        "status": "live",
+        "live_at": null,
+        "created_by": null,
+        "pages": [],
+        "events_seen": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000603",
+        "key": "blueprint",
+        "name": "Capital Blueprint book a call",
+        "landing_url": "https://apply.fundhub.ai/blueprint",
+        "offer_key": "capital_blueprint",
+        "lane": "uwiq",
+        "book_call": true,
+        "format_mix": {},
+        "cta_type": "LEARN_MORE",
+        "meta_campaign_ids": [],
+        "default_ad_set_external_id": null,
+        "weight": 1,
+        "active": true,
+        "created_at": "2026-10-12T15:10:00.000Z",
+        "updated_at": "2026-10-12T16:00:21.000Z",
+        "kind": "book_a_call",
+        "url": "https://apply.fundhub.ai/blueprint",
+        "path": "/blueprint",
+        "tag": "fnl-blueprint",
+        "utm_campaign": "uwiq",
+        "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+        "campaign": null,
+        "status": "live",
+        "live_at": "2026-10-12T16:00:21.000Z",
+        "created_by": "00000000-0000-4000-8000-000000000002",
+        "pages": [
+          {
+            "id": "00000000-0000-4000-8000-000000000611",
+            "position": 1,
+            "role": "landing",
+            "path": "/blueprint",
+            "url": "https://apply.fundhub.ai/blueprint",
+            "status": "live",
+            "built_at": "2026-10-12T15:20:00.000Z",
+            "pushed_at": "2026-10-12T16:00:00.000Z",
+            "proved_at": "2026-10-12T16:00:20.000Z",
+            "live_url": "https://apply.fundhub.ai/blueprint",
+            "events_seen": 12,
+            "last_event_at": "2026-10-12T18:30:00.000Z"
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000612",
+            "position": 2,
+            "role": "booking",
+            "path": "/blueprint-book",
+            "url": "https://apply.fundhub.ai/blueprint-book",
+            "status": "live",
+            "built_at": "2026-10-12T15:20:00.000Z",
+            "pushed_at": "2026-10-12T16:00:00.000Z",
+            "proved_at": "2026-10-12T16:00:20.000Z",
+            "live_url": "https://apply.fundhub.ai/blueprint-book",
+            "events_seen": 4,
+            "last_event_at": "2026-10-12T18:30:00.000Z"
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000613",
+            "position": 3,
+            "role": "thank_you",
+            "path": "/blueprint-thank-you",
+            "url": "https://apply.fundhub.ai/blueprint-thank-you",
+            "status": "live",
+            "built_at": "2026-10-12T15:20:00.000Z",
+            "pushed_at": "2026-10-12T16:00:00.000Z",
+            "proved_at": "2026-10-12T16:00:20.000Z",
+            "live_url": "https://apply.fundhub.ai/blueprint-thank-you",
+            "events_seen": 1,
+            "last_event_at": "2026-10-12T18:30:00.000Z"
+          }
+        ],
+        "events_seen": 17
       }
     ],
     "campaigns": [
@@ -408,7 +515,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 
 **Request (JSON body):** `{request_id, funnel:{key, updated_at?}}`
 
-**Response:** `{funnel:{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at}}`
+**Response:** `{funnel:{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at, kind, url, path, tag, utm_campaign, utm_template, campaign, status, live_at, created_by, pages:[{id, position, role, path, url, status, built_at, pushed_at, proved_at, live_url, events_seen, last_event_at}], events_seen}}`
 
 **Errors** (besides the common ones in section 2):
 
@@ -421,6 +528,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 - Saves by `key`: a new key adds a funnel, a known key changes it. Send `key` plus only the fields that change.
 - When changing a funnel that exists, send its `updated_at`. An older one gets 409 with the saved funnel as `current`. A new key needs no `updated_at`.
 - Mapping a campaign to a funnel means adding the campaign's external id to `meta_campaign_ids`.
+- A funnel built on the dashboard (kind set) refuses a change to landing_url, lane, offer_key or book_call here (400 on that field): its pages were written for them. Rename it with POST marketing/funnels/rename.
 
 **Example**
 
@@ -430,7 +538,9 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
     "request_id": "00000000-0000-4000-8000-00000000c002",
     "funnel": {
       "key": "roadmap_147",
-      "meta_campaign_ids": ["120210000000000001"],
+      "meta_campaign_ids": [
+        "120210000000000001"
+      ],
       "default_ad_set_external_id": "120210000000000101",
       "updated_at": "2026-10-06T18:00:00.000Z"
     }
@@ -444,14 +554,30 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
       "offer_key": "slo_roadmap",
       "lane": "uwiq",
       "book_call": false,
-      "format_mix": { "standard": 1 },
+      "format_mix": {
+        "standard": 1
+      },
       "cta_type": "LEARN_MORE",
-      "meta_campaign_ids": ["120210000000000001"],
+      "meta_campaign_ids": [
+        "120210000000000001"
+      ],
       "default_ad_set_external_id": "120210000000000101",
       "weight": 1,
       "active": true,
       "created_at": "2026-10-06T18:00:00.000Z",
-      "updated_at": "2026-10-12T15:05:00.000Z"
+      "updated_at": "2026-10-12T15:05:00.000Z",
+      "kind": null,
+      "url": "https://apply.fundhub.ai/roadmap",
+      "path": null,
+      "tag": null,
+      "utm_campaign": null,
+      "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+      "campaign": null,
+      "status": "live",
+      "live_at": null,
+      "created_by": null,
+      "pages": [],
+      "events_seen": null
     }
   }
 }
@@ -2424,6 +2550,524 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
     "request_id": "00000000-0000-4000-8000-00000000c014"
   },
   "response": { "ok": true, "ad": { "id": "00000000-0000-4000-8000-000000000801", "status": "ACTIVE" } }
+}
+```
+
+### 6.10 The funnel builder (X4, owner order 2026-10-05)
+
+Make a book-a-call funnel with its own address and tag, write its three pages, rename it, push it live as NEW ClickFunnels pages, and read it back. Tables: `marketing_funnels` (builder columns) and `marketing_funnel_pages` (migration 425). Every page carries the funnel tag and the tracking manifest's scripts; the database refuses a page without them.
+
+#### `POST marketing/funnels/create`
+
+**Owner:** X4 · **Spec:** owner order 2026-10-05 (build unit X4): URL system, tag, page builder · **Success:** 200 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, offer_key, lane?, name?, campaign?, path?, build?}`
+
+**Response:** `{funnel:{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at, kind, url, path, tag, utm_campaign, utm_template, campaign, status, live_at, created_by, pages:[{id, position, role, path, url, status, built_at, pushed_at, proved_at, live_url, events_seen, last_event_at}], events_seen}, job:{id, kind, status, created_at}, worker:{started, reason}}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `offer_key` | not an offer sold on a call (capital_blueprint or funding_dfy) |
+| 400 | `invalid` | `path` | the typed address is reserved, already a live ClickFunnels page, or used by another of our funnels; or no free address is left |
+| 400 | `invalid` | `lane` | a lane the database files as unknown |
+| 400 | `invalid` | `campaign` | not a flywheel folder name |
+| 503 | `clickfunnels_unreadable` | none | the live ClickFunnels page list could not be read, so nothing was made |
+
+- The address is picked for Chris from the offer's word: /blueprint, then /blueprint-2, /blueprint-3 if taken. A typed `path` ("Capital VIP" becomes /capital-vip) is checked the same way. Taken means a page on the live ClickFunnels workspace (read only: GET /workspaces/{id}/pages), an address any of our funnels uses, or a reserved word (every page the live funnels use, and api, app, login, privacy, terms and the like). The three pages are `<path>`, `<path>-book` and `<path>-thank-you`; all three must be free.
+- The `tag` is `fnl-` plus the funnel key. It is saved once and never changes, even on a rename.
+- `lane` defaults to the offer's lane (capital_blueprint: uwiq, from marketing/ads/registry.json; funding_dfy: funding600). It becomes `utm_campaign`.
+- `build` (default true) queues the page writer: job kind `funnel`, one Anthropic call (claude-opus-5-5, structured output), the copy check (the ad checker in strict mode plus outcome first, no invented numbers, no price, no testimonials, no Social Security number talk, no guarantee), one fix round, then the three pages drawn with the funnel tag and the tracking. `job` is null when build is false.
+- `worker.started` false with a `reason` means the worker could not be woken; the job is then failed with that reason and Build can be pressed again.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c051",
+    "offer_key": "capital_blueprint"
+  },
+  "response": {
+    "funnel": {
+      "id": "00000000-0000-4000-8000-000000000603",
+      "key": "blueprint",
+      "name": "Capital Blueprint book a call",
+      "landing_url": "https://apply.fundhub.ai/blueprint",
+      "offer_key": "capital_blueprint",
+      "lane": "uwiq",
+      "book_call": true,
+      "format_mix": {},
+      "cta_type": "LEARN_MORE",
+      "meta_campaign_ids": [],
+      "default_ad_set_external_id": null,
+      "weight": 1,
+      "active": false,
+      "created_at": "2026-10-12T15:10:00.000Z",
+      "updated_at": "2026-10-12T15:10:00.000Z",
+      "kind": "book_a_call",
+      "url": "https://apply.fundhub.ai/blueprint",
+      "path": "/blueprint",
+      "tag": "fnl-blueprint",
+      "utm_campaign": "uwiq",
+      "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+      "campaign": null,
+      "status": "draft",
+      "live_at": null,
+      "created_by": "00000000-0000-4000-8000-000000000002",
+      "pages": [
+        {
+          "id": "00000000-0000-4000-8000-000000000611",
+          "position": 1,
+          "role": "landing",
+          "path": "/blueprint",
+          "url": "https://apply.fundhub.ai/blueprint",
+          "status": "empty",
+          "built_at": null,
+          "pushed_at": null,
+          "proved_at": null,
+          "live_url": null,
+          "events_seen": 0,
+          "last_event_at": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000612",
+          "position": 2,
+          "role": "booking",
+          "path": "/blueprint-book",
+          "url": "https://apply.fundhub.ai/blueprint-book",
+          "status": "empty",
+          "built_at": null,
+          "pushed_at": null,
+          "proved_at": null,
+          "live_url": null,
+          "events_seen": 0,
+          "last_event_at": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000613",
+          "position": 3,
+          "role": "thank_you",
+          "path": "/blueprint-thank-you",
+          "url": "https://apply.fundhub.ai/blueprint-thank-you",
+          "status": "empty",
+          "built_at": null,
+          "pushed_at": null,
+          "proved_at": null,
+          "live_url": null,
+          "events_seen": 0,
+          "last_event_at": null
+        }
+      ],
+      "events_seen": 0
+    },
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000621",
+      "kind": "funnel",
+      "status": "queued",
+      "created_at": "2026-10-12T15:10:00.000Z"
+    },
+    "worker": {
+      "started": true,
+      "reason": null
+    }
+  }
+}
+```
+
+#### `POST marketing/funnels/rename`
+
+**Owner:** X4 · **Spec:** owner order 2026-10-05 (build unit X4): name it in the dash · **Success:** 200 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, id, path}`
+
+**Response:** `{funnel:{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at, kind, url, path, tag, utm_campaign, utm_template, campaign, status, live_at, created_by, pages:[{id, position, role, path, url, status, built_at, pushed_at, proved_at, live_url, events_seen, last_event_at}], events_seen}}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `path` | the address is reserved, already a live ClickFunnels page, used by another of our funnels, or the same as now |
+| 400 | `invalid` | `id` | the funnel is live or a page of it is on ClickFunnels (a live address never changes), or a build or push is running |
+| 404 | `not_found` | none | no such funnel in this company, or it was not built here |
+| 503 | `clickfunnels_unreadable` | none | the live ClickFunnels page list could not be read, so nothing was renamed |
+
+- Built pages are drawn again from their saved words so the links between them follow the new address. No model call.
+- A live address never changes: once any page is on ClickFunnels, rename is refused.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c052",
+    "id": "00000000-0000-4000-8000-000000000603",
+    "path": "blueprint-vip"
+  },
+  "response": {
+    "funnel": {
+      "id": "00000000-0000-4000-8000-000000000603",
+      "key": "blueprint",
+      "name": "Capital Blueprint book a call",
+      "landing_url": "https://apply.fundhub.ai/blueprint-vip",
+      "offer_key": "capital_blueprint",
+      "lane": "uwiq",
+      "book_call": true,
+      "format_mix": {},
+      "cta_type": "LEARN_MORE",
+      "meta_campaign_ids": [],
+      "default_ad_set_external_id": null,
+      "weight": 1,
+      "active": false,
+      "created_at": "2026-10-12T15:10:00.000Z",
+      "updated_at": "2026-10-12T15:12:00.000Z",
+      "kind": "book_a_call",
+      "url": "https://apply.fundhub.ai/blueprint-vip",
+      "path": "/blueprint-vip",
+      "tag": "fnl-blueprint",
+      "utm_campaign": "uwiq",
+      "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+      "campaign": null,
+      "status": "draft",
+      "live_at": null,
+      "created_by": "00000000-0000-4000-8000-000000000002",
+      "pages": [
+        {
+          "id": "00000000-0000-4000-8000-000000000611",
+          "position": 1,
+          "role": "landing",
+          "path": "/blueprint-vip",
+          "url": "https://apply.fundhub.ai/blueprint-vip",
+          "status": "empty",
+          "built_at": null,
+          "pushed_at": null,
+          "proved_at": null,
+          "live_url": null,
+          "events_seen": 0,
+          "last_event_at": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000612",
+          "position": 2,
+          "role": "booking",
+          "path": "/blueprint-vip-book",
+          "url": "https://apply.fundhub.ai/blueprint-vip-book",
+          "status": "empty",
+          "built_at": null,
+          "pushed_at": null,
+          "proved_at": null,
+          "live_url": null,
+          "events_seen": 0,
+          "last_event_at": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000613",
+          "position": 3,
+          "role": "thank_you",
+          "path": "/blueprint-vip-thank-you",
+          "url": "https://apply.fundhub.ai/blueprint-vip-thank-you",
+          "status": "empty",
+          "built_at": null,
+          "pushed_at": null,
+          "proved_at": null,
+          "live_url": null,
+          "events_seen": 0,
+          "last_event_at": null
+        }
+      ],
+      "events_seen": 0
+    }
+  }
+}
+```
+
+#### `POST marketing/funnels/build`
+
+**Owner:** X4 · **Spec:** owner order 2026-10-05 (build unit X4): page builder job (kind funnel) · **Success:** 202 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, id}`
+
+**Response:** `{queued, job:{id, kind, status, created_at}, worker:{started, reason}}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `id` | the funnel is live or a page of it is on ClickFunnels (never rewritten), or a build or push is already running |
+| 404 | `not_found` | none | no such funnel in this company, or it was not built here |
+
+- Writes (or writes again) the three pages of a draft funnel. Cost: one model call (see GET marketing/costs once it exists; until then "unknown, not measured yet"). The job stops before calling the model when this month's model spend has reached max_month_cost_usd.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c053",
+    "id": "00000000-0000-4000-8000-000000000603"
+  },
+  "response": {
+    "queued": true,
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000621",
+      "kind": "funnel",
+      "status": "queued",
+      "created_at": "2026-10-12T15:10:00.000Z"
+    },
+    "worker": {
+      "started": true,
+      "reason": null
+    }
+  }
+}
+```
+
+#### `POST marketing/funnels/push-live`
+
+**Owner:** X4 · **Spec:** owner order 2026-10-05 (build unit X4): push live to a NEW path; design §5 rules 5 and 16 · **Success:** 202 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, id, confirm_url}`
+
+**Response:** `{queued, job:{id, kind, status, created_at}, url, worker:{started, reason}}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `confirm_url` | missing, or not this funnel's address (the second tap names the address) |
+| 400 | `invalid` | `id` | the pages are not built yet, the funnel is already live, or a build or push is running |
+| 404 | `not_found` | none | no such funnel in this company, or it was not built here |
+
+- The second tap names the address; `confirm_url` is that address and must equal the funnel's. Sent online only, never from the offline queue (design §5 rules 5 and 16).
+- The push (job kind `funnel_push`) re-reads the live page list, stops before making anything when one of the three addresses is a page this machine did not make, then makes three NEW custom HTML pages (POST /workspaces/{id}/pages/custom_html; thank-you, booking, then the landing page last), saves each page id the moment ClickFunnels answers, puts each page's token into that same page (the only PUT, and only on an id this push made), and proves each page with a cache-busted read that shows the funnel tag and the tracking. Only then is the funnel `live`. It never changes, moves or deletes a page it did not make.
+- Costs $0. No ad is made or changed.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c054",
+    "id": "00000000-0000-4000-8000-000000000603",
+    "confirm_url": "https://apply.fundhub.ai/blueprint"
+  },
+  "response": {
+    "queued": true,
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000622",
+      "kind": "funnel_push",
+      "status": "queued",
+      "created_at": "2026-10-12T15:59:00.000Z"
+    },
+    "url": "https://apply.fundhub.ai/blueprint",
+    "worker": {
+      "started": true,
+      "reason": null
+    }
+  }
+}
+```
+
+#### `GET marketing/funnel`
+
+**Owner:** X4 · **Spec:** owner order 2026-10-05 (build unit X4): one funnel with its draft pages · **Success:** 200 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (query):** `{id}`
+
+**Response:** `{funnel:{id, key, name, landing_url, offer_key, lane, book_call, format_mix, cta_type, meta_campaign_ids, default_ad_set_external_id, weight, active, created_at, updated_at, kind, url, path, tag, utm_campaign, utm_template, campaign, status, live_at, created_by, pages:[{id, position, role, path, url, status, built_at, pushed_at, proved_at, live_url, events_seen, last_event_at}], events_seen}, pages:[{id, position, role, path, url, status, built_at, pushed_at, proved_at, live_url, events_seen, last_event_at, copy, html}], jobs:[{id, kind, status, attempts, error, result, created_at, claimed_at, finished_at, run_after}], as_of}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `id` | id is not a uuid |
+| 404 | `not_found` | none | no such funnel in this company |
+
+- `pages[].copy` is the checked words the page was drawn from; `pages[].html` is the whole page as saved (before the ClickFunnels page token is added). A funnel mapped by hand answers with `pages` [] and `jobs` [].
+
+**Example**
+
+```json
+{
+  "request": {
+    "id": "00000000-0000-4000-8000-000000000603"
+  },
+  "response": {
+    "funnel": {
+      "id": "00000000-0000-4000-8000-000000000603",
+      "key": "blueprint",
+      "name": "Capital Blueprint book a call",
+      "landing_url": "https://apply.fundhub.ai/blueprint",
+      "offer_key": "capital_blueprint",
+      "lane": "uwiq",
+      "book_call": true,
+      "format_mix": {},
+      "cta_type": "LEARN_MORE",
+      "meta_campaign_ids": [],
+      "default_ad_set_external_id": null,
+      "weight": 1,
+      "active": true,
+      "created_at": "2026-10-12T15:10:00.000Z",
+      "updated_at": "2026-10-12T16:00:21.000Z",
+      "kind": "book_a_call",
+      "url": "https://apply.fundhub.ai/blueprint",
+      "path": "/blueprint",
+      "tag": "fnl-blueprint",
+      "utm_campaign": "uwiq",
+      "utm_template": "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+      "campaign": null,
+      "status": "live",
+      "live_at": "2026-10-12T16:00:21.000Z",
+      "created_by": "00000000-0000-4000-8000-000000000002",
+      "pages": [
+        {
+          "id": "00000000-0000-4000-8000-000000000611",
+          "position": 1,
+          "role": "landing",
+          "path": "/blueprint",
+          "url": "https://apply.fundhub.ai/blueprint",
+          "status": "live",
+          "built_at": "2026-10-12T15:20:00.000Z",
+          "pushed_at": "2026-10-12T16:00:00.000Z",
+          "proved_at": "2026-10-12T16:00:20.000Z",
+          "live_url": "https://apply.fundhub.ai/blueprint",
+          "events_seen": 12,
+          "last_event_at": "2026-10-12T18:30:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000612",
+          "position": 2,
+          "role": "booking",
+          "path": "/blueprint-book",
+          "url": "https://apply.fundhub.ai/blueprint-book",
+          "status": "live",
+          "built_at": "2026-10-12T15:20:00.000Z",
+          "pushed_at": "2026-10-12T16:00:00.000Z",
+          "proved_at": "2026-10-12T16:00:20.000Z",
+          "live_url": "https://apply.fundhub.ai/blueprint-book",
+          "events_seen": 4,
+          "last_event_at": "2026-10-12T18:30:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000613",
+          "position": 3,
+          "role": "thank_you",
+          "path": "/blueprint-thank-you",
+          "url": "https://apply.fundhub.ai/blueprint-thank-you",
+          "status": "live",
+          "built_at": "2026-10-12T15:20:00.000Z",
+          "pushed_at": "2026-10-12T16:00:00.000Z",
+          "proved_at": "2026-10-12T16:00:20.000Z",
+          "live_url": "https://apply.fundhub.ai/blueprint-thank-you",
+          "events_seen": 1,
+          "last_event_at": "2026-10-12T18:30:00.000Z"
+        }
+      ],
+      "events_seen": 17
+    },
+    "pages": [
+      {
+        "id": "00000000-0000-4000-8000-000000000611",
+        "position": 1,
+        "role": "landing",
+        "path": "/blueprint",
+        "url": "https://apply.fundhub.ai/blueprint",
+        "status": "live",
+        "built_at": "2026-10-12T15:20:00.000Z",
+        "pushed_at": "2026-10-12T16:00:00.000Z",
+        "proved_at": "2026-10-12T16:00:20.000Z",
+        "live_url": "https://apply.fundhub.ai/blueprint",
+        "events_seen": 12,
+        "last_event_at": "2026-10-12T18:30:00.000Z",
+        "copy": {
+          "headline": "Know exactly what stands between you and funding"
+        },
+        "html": "<!doctype html>..."
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000612",
+        "position": 2,
+        "role": "booking",
+        "path": "/blueprint-book",
+        "url": "https://apply.fundhub.ai/blueprint-book",
+        "status": "live",
+        "built_at": "2026-10-12T15:20:00.000Z",
+        "pushed_at": "2026-10-12T16:00:00.000Z",
+        "proved_at": "2026-10-12T16:00:20.000Z",
+        "live_url": "https://apply.fundhub.ai/blueprint-book",
+        "events_seen": 4,
+        "last_event_at": "2026-10-12T18:30:00.000Z",
+        "copy": {
+          "headline": "Pick the time that works for you"
+        },
+        "html": "<!doctype html>..."
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000613",
+        "position": 3,
+        "role": "thank_you",
+        "path": "/blueprint-thank-you",
+        "url": "https://apply.fundhub.ai/blueprint-thank-you",
+        "status": "live",
+        "built_at": "2026-10-12T15:20:00.000Z",
+        "pushed_at": "2026-10-12T16:00:00.000Z",
+        "proved_at": "2026-10-12T16:00:20.000Z",
+        "live_url": "https://apply.fundhub.ai/blueprint-thank-you",
+        "events_seen": 1,
+        "last_event_at": "2026-10-12T18:30:00.000Z",
+        "copy": {
+          "headline": "Your call is on the calendar"
+        },
+        "html": "<!doctype html>..."
+      }
+    ],
+    "jobs": [
+      {
+        "id": "00000000-0000-4000-8000-000000000622",
+        "kind": "funnel_push",
+        "status": "done",
+        "attempts": 0,
+        "error": null,
+        "result": {
+          "url": "https://apply.fundhub.ai/blueprint",
+          "created": 3,
+          "adopted": 0
+        },
+        "created_at": "2026-10-12T15:59:00.000Z",
+        "claimed_at": "2026-10-12T15:59:01.000Z",
+        "finished_at": "2026-10-12T16:00:21.000Z",
+        "run_after": "2026-10-12T15:59:00.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000621",
+        "kind": "funnel",
+        "status": "done",
+        "attempts": 0,
+        "error": null,
+        "result": {
+          "checks": "passed",
+          "rounds": 1,
+          "cost_usd": 0.046
+        },
+        "created_at": "2026-10-12T15:10:00.000Z",
+        "claimed_at": "2026-10-12T15:10:01.000Z",
+        "finished_at": "2026-10-12T15:11:30.000Z",
+        "run_after": "2026-10-12T15:10:00.000Z"
+      }
+    ],
+    "as_of": "2026-10-12T18:31:00.000Z"
+  }
 }
 ```
 

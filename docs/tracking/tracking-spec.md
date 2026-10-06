@@ -45,6 +45,8 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 
 `/home` is the fundhub.ai homepage survey page. The browser sends `page: "/home"` when the host is `fundhub.ai` (or `www.fundhub.ai`) and the path is `/`, because `apply.fundhub.ai/` is a different page (an unused ClickFunnels template).
 
+**Funnels the dashboard builds (2026-10-06, build unit X4).** Their pages are not in the table above; they come and go from the Command Center. Each one carries `<meta name="fh-funnel-tag" content="fnl-…">` and `window.FH_FUNNEL = {id, tag, key, offer, lane, page:{role, path, step}}` first in its `<head>`. The shared tracker sends from such a page only when `FH_FUNNEL.page.path` is the page's own path, and adds `funnel_tag` to every post. The server looks the tag and the page up in `marketing_funnel_pages` (migration 425): found, the row's funnel is the tag, its step is the page's position (1 landing, 2 booking, 3 thank-you), and `funnel_tag` and `funnel_id` are saved on the row; not found, `page_invalid` as for any unknown page. Leads and bookings carry the funnel through `landing_path` (the first page the visitor landed on, stamped on every form by `fh-attribution.js`), and that address belongs to one funnel only.
+
 ## Events
 
 | Event | When | Props (allow-list) | Who sends it |
