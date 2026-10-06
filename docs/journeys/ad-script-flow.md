@@ -346,3 +346,93 @@ copy_blocked, engine_blocked}`, `sameness
     approved example from before the price change may still carry. Neither is typed in the writer.
 13. **A compliance screen that could not run** (rule_set `engine`) still blocks and flags the
     draft, but is not sent back to Claude (review U24-R4).
+## U25 M1 7.8 core script actions + 7.9 repo files + voice pairs on edit
+
+Drawn from code on branch `mm-u25-script-actions`: `api/marketing/scripts.mjs`, `api/marketing/script.mjs`,
+`api/marketing/scripts/{approve,edit,reject,order}.mjs`, `src/marketing/scripts-store.mjs`,
+`src/marketing/script-file.mjs`, `src/marketing/voice.mjs`. Yardstick: spec §7.8, §7.9, §7.2, §7.4
+"How status moves", §7.7 visibility, §4 traps 9, 17, 21. Shapes: `docs/specs/marketing-machine-api.md` §6.2.
+Every arrow below is **UNVERIFIED on production**: proved in GitHub CI only, not live until a ship.
+
+### Who sees a script
+
+| Script | Listed (`GET marketing/scripts`) | Read or acted on by id |
+|---|---|---|
+| source `import` (the rows from before the machine, 413 backfill) | no | no, 404 |
+| from a batch that is not released, or released with `release_at` still ahead | no | no, 404 |
+| from a released batch whose `release_at` has passed | yes | yes |
+| with no batch | yes | yes |
+| another company's | no | no, 404 |
+
+Rule: `VISIBLE_SQL`, `scripts-store.mjs:86`. The list shows live versions; `?status=superseded` shows the replaced ones.
+
+### The moves this unit adds
+
+```mermaid
+flowchart TD
+    D["draft"] -->|"Approve<br/>POST marketing/scripts/approve<br/>scripts-store.mjs:394"| L["locked<br/>ad_id = next_ad_number (91+), once<br/>locked_at, locked_by = staff id"]
+    L -->|"Approve again"| L2["same number back<br/>nothing new queued"]
+    D -->|"Reject<br/>POST marketing/scripts/reject<br/>scripts-store.mjs:583"| R["rejected<br/>rejected_by = staff id<br/>reason, or 'rejected from the app, no reason given'"]
+    D -->|"Edit<br/>POST marketing/scripts/edit<br/>scripts-store.mjs:481"| E{{"one transaction"}}
+    L -->|"Edit"| E
+    F["filmed"] -->|"Edit"| E
+    E -->|"1. old version archived, status superseded<br/>:524"| S["superseded"]
+    E -->|"2. new version, version + 1, same root,<br/>same number, source chris :532"| NV{"old one locked<br/>or filmed?"}
+    NV -->|yes| L
+    NV -->|no| D
+    E -->|"3. voice pairs for the machine lines<br/>Chris changed :564"| V[("voice_pairs")]
+    R -.->|"Approve or Edit"| X["400 invalid id<br/>nothing written"]
+    STALE["a version that is not the live one"] -->|"any write"| C["409 stale<br/>current = {version, body, parts}<br/>lockLiveScript :284"]
+```
+
+### What one save writes, in ONE staff transaction (withRequest)
+
+```mermaid
+flowchart LR
+    P["POST approve / edit / reject<br/>request_id, id, version"] --> G{"owner or admin?<br/>(closer, csm: 403)"}
+    G -->|yes| T["withRequest: lock request_id,<br/>replay a repeat"]
+    T --> K["lock the version FOR UPDATE<br/>stale? 409"]
+    K --> W["the database change"]
+    W --> F["repo file queued<br/>repo_outbox mode replace<br/>marketing/ads/scripts/machine/&lt;week or on-demand&gt;/&lt;nn&gt;-&lt;slug&gt;.md<br/>path set once in repo_path, never moved"]
+    W -->|"approve, lane has a rule"| RG["registry entry queued<br/>repo_outbox mode edit, op registry_add_ad<br/>registry: queued"]
+    W -->|"approve, lane slo or none"| SK["registry: skipped<br/>plain registry_note, never blocks"]
+    F --> A["answer saved in marketing_requests"]
+    RG --> A
+    SK --> A
+    A --> CM["COMMIT"]
+    CM --> WK["wakeWorker after the commit<br/>(the worker commits to GitHub)"]
+```
+
+A save that fails anywhere rolls back whole: no change, no outbox row, no saved answer
+(proved in `src/http/marketing-scripts.pg.test.mjs`). `POST marketing/scripts/order` sets
+`film_order` (first = 1) on the live version of each listed script in the same kind of
+transaction; it writes no repo file and wakes nothing.
+
+### The repo file (§7.9)
+
+Front matter, flat values only: `ad, version, status, offer, funnel, format, style, angle, batch,
+updated_by, updated_at`. Then the body, byte for byte as the database holds it. Then a marker
+line and a fenced JSON block with `parts`, `animation_plan` and `meta_copy`
+(`src/marketing/script-file.mjs`). `nn` is the script's place in its batch (version 1 rows, by
+when they were made); a path another script already holds gets the first 8 characters of the
+script's id added.
+
+### Gaps against the spec and the design (findings, not fixed here)
+
+1. **`flagged` has no column.** It is read from `check_results` (an explicit `flagged: true`, or
+   any check with `passed: false`), and only for machine-written versions. A person's edit is never
+   machine-flagged; its checker result is saved in `check_results.strict` and its warnings come
+   back on the save. U24 owns the inner keys of `check_results`.
+2. **`repo_commit` stays empty.** The outbox drain (U05) stamps `repo_outbox.committed_sha` but
+   nothing copies it to `ad_scripts.repo_commit` yet.
+3. **Editing a rejected or expired script is refused** (400 on `id`). The spec names no move out
+   of those states. The contract's edit error table does not list this answer.
+4. **Editing a filmed script** makes a locked new version (its new words must be filmed again),
+   the same rule `api/scripts/write.mjs` already uses. The spec only names "editing a locked
+   script keeps its number".
+5. **Words changed with no parts sent:** the new version's parts are cleared (null = unknown) with
+   a warning, rather than keeping parts that no longer match the words.
+6. **The film order** changes only the listed scripts; scripts left out keep their old number.
+7. **The design** (`command-center-design-2026-10-05.md`) asks for `slot_reason`, `cost_usd`, a
+   `batch` object, `outbox_id` and `voice_pairs_saved`. The contract's fixed shape 3 wins; edit
+   also answers `voice_pairs` (a count) as an allowed extra key.
