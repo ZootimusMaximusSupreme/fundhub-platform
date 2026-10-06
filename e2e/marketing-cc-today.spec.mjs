@@ -31,6 +31,9 @@
 //      Retry per stuck job that posts marketing/jobs/retry and answers in
 //      plain words.
 //   6. One part failing leaves the rest of the page painted.
+//   7. A second Write now is watched for its own 10 minutes.
+//   8. When Write now turns on and the cards trade places, the box Chris is
+//      typing in keeps focus, words and caret.
 //
 // EVIDENCE. Shots and their marks go to MCC_TODAY_PROOF_OUT, or the system
 // temp directory, never a tracked path (CLAUDE.md §8: every shot shown to
@@ -416,6 +419,40 @@ test("Write now: Cancel on the cost sheet sends nothing; a cap answer says which
   await expect(page.locator("#writeNowBtn")).toBeEnabled();
 });
 
+test("a second Write now while the first batch still writes is watched for its own 10 minutes", async ({ page }) => {
+  const seen = {};
+  const counts = {};
+  const posts = [];
+  // The newest batch keeps writing the whole time, so the 20-second re-read never stops on its own.
+  const writing = () => {
+    const b = batches(true);
+    b.batches[0] = { ...b.batches[0], id: "b-new", counts: { total: 3, ready: 0, flagged: 0, failed: 0 }, release_at: NOW };
+    return b;
+  };
+  const h = handlers({ seen, counts, batchList: () => [writing(), 200] });
+  const firstPost = h["/api/marketing/batches/write-now"];
+  h["/api/marketing/batches/write-now"] = async (route) => { posts.push(route.request().postDataJSON()); return firstPost(route); };
+  await open(page, h);
+
+  const tap = async () => {
+    await page.locator("#writeNowBtn").click();
+    await page.locator('.cc-sheet [data-sheet="yes"]').click();
+    await expect(page.locator("#nextBody .say")).toContainText("Writing 3 scripts now.");
+  };
+  await tap();
+  // Nine minutes into the first batch's 10-minute watch, Chris taps Write now again.
+  await page.clock.runFor(9 * 60000);
+  await tap();
+  expect(posts.length).toBe(2);
+  expect(posts[1].request_id).not.toBe(posts[0].request_id);
+  // Past the end of the first watch (10:20) and the 10:00 page reload ...
+  await page.clock.runFor(2 * 60000);
+  const at11 = counts.batches;
+  // ... and before the 15:00 reload: only the second watch reads the list here.
+  await page.clock.runFor(3.5 * 60000);
+  await expect.poll(() => counts.batches - at11, { message: "the second batch is still read every 20 seconds" }).toBeGreaterThanOrEqual(9);
+});
+
 /* ── 3. Use this angle ── */
 
 test("Use this angle saves the suggestion as an idea, says so, and the plan is read again", async ({ page }) => {
@@ -591,5 +628,35 @@ test("Write ad copy keeps working as an outline button while Write now is the fi
   expect(seen.run.max_jobs).toBe(1);
   // After the run it is still the outline button, and still the only other way to write.
   await expect(btn).not.toHaveClass(/primary/);
+  await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
+});
+
+test("390: Chris typing in 'What is this ad about?' keeps the box, the words and the caret when Write now turns on", async ({ page }) => {
+  // The batch list answers only after Chris has started typing: that answer
+  // turns Write now on and moves the cards.
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const h = handlers();
+  h["/api/marketing/batches"] = async (route) => { await gate; return json(route, batches(true)); };
+  await open(page, h);
+  await expect(page.locator("#todayWork > .card").first()).toHaveId("cardCopy");
+
+  const box = page.locator("#copyAngle");
+  await box.click();
+  await page.keyboard.type("bank said no");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  release();
+  await expect(page.locator("#writeNowBtn")).toBeVisible();
+  await expect(page.locator("#todayWork > .card").first()).toHaveId("cardNext");
+
+  const held = await page.evaluate(() => {
+    const el = document.activeElement;
+    return { id: el && el.id, start: el && el.selectionStart, end: el && el.selectionEnd };
+  });
+  expect(held).toEqual({ id: "copyAngle", start: 9, end: 9 });
+  await page.keyboard.type(" really");
+  await expect(box).toHaveValue("bank said really no");
   await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
 });

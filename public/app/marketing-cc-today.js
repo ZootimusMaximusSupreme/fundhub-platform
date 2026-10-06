@@ -3017,11 +3017,35 @@
       var machine = $("cardMachine");
       $("copyBtn").classList.toggle(PRIMARY, !ready);
       if (ready && next.parentNode !== work) {
-        work.insertBefore(next, copy);
-        more.insertBefore(copy, machine);
+        keepFocus(function () {
+          work.insertBefore(next, copy);
+          more.insertBefore(copy, machine);
+        });
       } else if (!ready && copy.parentNode !== work) {
-        work.insertBefore(copy, next);
-        more.insertBefore(next, machine);
+        keepFocus(function () {
+          work.insertBefore(copy, next);
+          more.insertBefore(next, machine);
+        });
+      }
+    }
+
+    /* keepFocus — moving a card takes focus off whatever is inside it, so
+       Chris typing in "What is this ad about?" when the batch answer lands
+       would lose his place. Note the focused box and its caret, move the
+       cards, then put both back. The words never leave the box. */
+    function keepFocus(move) {
+      var el = doc.activeElement;
+      var held = el && el !== doc.body && panel.contains(el) ? el : null;
+      var start = null;
+      var end = null;
+      if (held) {
+        try { start = held.selectionStart; end = held.selectionEnd; } catch (e) { start = null; }
+      }
+      move();
+      if (!held || doc.activeElement === held || !panel.contains(held)) return;
+      held.focus();
+      if (typeof start === "number" && typeof end === "number" && typeof held.setSelectionRange === "function") {
+        try { held.setSelectionRange(start, end); } catch (e) { /* not a text box */ }
       }
     }
 
@@ -3050,9 +3074,10 @@
 
     /* watchBatch — after Write now, read the batch list again every 20
        seconds while the newest batch is waiting or writing and the page is
-       in view, at most 10 minutes. */
+       in view, at most 10 minutes. A second Write now starts the 10 minutes
+       over for its own batch: the old watch is stopped, never kept. */
     function watchBatch() {
-      if (state.batchPoll) return;
+      if (state.batchPoll) root.clearInterval(state.batchPoll);
       var tries = 0;
       state.batchPoll = root.setInterval(function () {
         tries += 1;

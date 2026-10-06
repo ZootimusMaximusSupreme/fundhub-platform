@@ -1830,7 +1830,9 @@ flowchart TD
 
 Each of the three new reads paints its own card when it answers; none waits for another or for
 GET marketing/today. A failed re-read of GET marketing/batches keeps the last good answer, so
-Write now does not blink away on one dropped answer.
+Write now does not blink away on one dropped answer. When the cards trade places, whatever was
+focused inside them stays focused: someone typing in "What is this ad about?" keeps the box,
+the words and the caret (`keepFocus`; e2e "keeps the box, the words and the caret").
 
 ### Write now (spec §2 item 1; drawn only while write_now_ready is true)
 
@@ -1842,7 +1844,7 @@ flowchart TD
   S -->|Cancel| X2[nothing sent]
   S -->|Write N| P[POST marketing/batches/write-now<br/>request_id + count]
   P -->|202 queued| W["'Writing N scripts now. They show up in Scripts when they are done.'"]
-  W --> R[GET marketing/batches again now, then every 20 s<br/>while the newest batch is planned or writing,<br/>page in view, at most 10 minutes]
+  W --> R[GET marketing/batches again now, then every 20 s<br/>while the newest batch is planned or writing,<br/>page in view, at most 10 minutes;<br/>a second Write now starts the 10 minutes over]
   P -->|400 cap_reached| CR[the server's cap sentence + 'Nothing was started.']
   P -->|401 / 403 / no connection / other| E[plain words; Write now comes back]
 ```
@@ -1950,3 +1952,7 @@ Launch."
 10. **UNVERIFIED:** the live click path on https://fundhub.ai/app/marketing-command-center.html#today
     (the orchestrator walks it after ship). write_now_ready is false on main until U35 lands, so
     Write now is not on the live page yet.
+11. **Money and leads sizes.** The 6 numbers in each window are body-size bold beside 13px
+    labels, so they are not the 2-3x hero size UI-STANDARDS §3 asks for. They read as a table
+    (6 rows by 3 windows) on the 390 and 1280 shots; the hero size stays on the spend tiles at
+    the top of Today. Left as a table (review U37-R3, a style note).
