@@ -21,6 +21,7 @@ import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
 import { financeOsCardDueReminders } from './finance-os-card-due-reminders.mjs';
+import { financeOsMoneyAgent } from './finance-os-money-agent.mjs';
 import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
@@ -218,6 +219,12 @@ export const functions = [
      payment is on file. Never moves money. Keyed in cashflow_reminders and in
      messages.provider_ref so a retry cannot send twice. */
   financeOsCardDueReminders,
+  /* MONEY HELPER (Finance OS wave 2, 2026-10-06). Daily, after the card due
+     texts: Clarity Payments (money owed to Fundhub, incl. BNPL) and card bills
+     already past due get one ladder step each — reminder, late check-in,
+     second check-in, then a CSM task and no more texts. Rules only, no AI
+     call. Claimed in money_agent_log before anything is queued. */
+  financeOsMoneyAgent,
   /* Daily Plaid charges + deposits pull, then repeating-bill detection, for every
      client with an active consented Plaid login. Reads only; does nothing when
      Plaid is not configured. Finance OS build 2026-10-06, unit A. */
