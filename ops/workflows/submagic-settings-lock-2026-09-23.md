@@ -8,7 +8,7 @@ This board is not ad scripts. Ad scripts are a separate job.
 | # | Workflow | Owns | Status |
 |---|---|---|---|
 | W1 | API truth | The real field names in Submagic's docs — eye tracking, silence, merge, templates, costs | done |
-| W2 | Repo wiring | What our code already sends, what it does not, the dead-space code change, cost guard | claimed |
+| W2 | Repo wiring | What our code already sends, what it does not, the dead-space code change, cost guard | done (see "W2 Repo wiring — done") |
 | W3 | B-roll coverage | AD 1–7 matrix, real Drive clips, the file naming rule | done |
 | W4 | Recorded B-roll | The 8 missing screen clips — recorded, named for the matcher, 4K | done |
 
@@ -1251,6 +1251,16 @@ Chris in chat; the same three went to the pulse number by SMS and to ntfy.
   nothing logged per channel. `notify-fanout.mjs` now prints one line per
   channel (`sms: sent | ntfy: sent`), number never shown. Every take from here
   on is provable.
+* **2026-10-05 (W2 of `ops/workflows/finish-builds-2026-10-05.md`, branch
+  `w2-stalled-launches`):** `saveFinished` is now wired. The background worker
+  hands `saveFinishedToDrive` to the sweep; the cut goes to
+  `DRIVE_FINISHED_FOLDER_ID`, never the Raw or B-roll folder, and a miss is a
+  `save_note` that never holds the buzz. That folder variable is not set yet,
+  so until it is, each finished cut gets a note naming it. The `sms: sent`
+  line is proved offline only (two tests in `notify-fanout.test.mjs` with a
+  stand-in transport; nothing sent). The live line still needs one real text,
+  which is a yes/no for Chris on the finish-builds board. "Retry still pays
+  again" (W7) is still an owner call, also on that board.
 
 ### Leftover cards (not this job's holes — recorded, not fixed)
 
