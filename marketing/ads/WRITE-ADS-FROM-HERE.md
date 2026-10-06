@@ -28,7 +28,7 @@ Use this when Chris wants **ad copy**, not a repo audit.
 |---|---|
 | `marketing/ads/registry.json` | Lane vocabulary (`funding600`, `sorting`, `uwiq`, …) |
 | `marketing/ads/CONCEPTS.md` | Picking an angle from the sheet |
-| `marketing/ads/ASSET-BANK.md` | Mechanism / proof numbers |
+| `marketing/ads/ASSET-BANK.md` | Mechanism numbers (proof is RULES.md Part 0, rules 35–38) |
 | `marketing/ads/slo/SLO-CHAT-PROMPT.md` | **$297 SLO product only** — self-contained chat prompt, not general cold ads |
 
 Do **not** open `marketing/ads/README.md` old shoot workflow first — that path assumes concept generation from scratch.
@@ -52,7 +52,7 @@ npm run ads:check -- path/to/draft.md
 
 Fix what it names. Run again until exit 0.  
 The checker reads **`marketing/ads/rules-data.mjs` only** — not all of `RULES.md` prose. That is intentional (fast, cannot lie about having run).  
-`npm run ads:check` runs the old lists. Part 0's patterns and Chris's banned phrases run in strict mode (`checkScriptText` with `strict: true`, RULES.md 4.1 item 10), which the app's writer uses.
+`npm run ads:check` runs the old lists. Part 0's patterns and Chris's banned phrases run in strict mode (`checkScriptText` with `strict: true`, RULES.md 4.1 item 10), built for the app's writer.
 
 Twelve compliance rules run **later** inside Creative Factory / `storeAsset` (needs live DB). Not part of this pass.
 
