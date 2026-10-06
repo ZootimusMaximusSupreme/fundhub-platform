@@ -295,6 +295,12 @@ import climateConfig from "../../api/climate/config.mjs";
 import marketingSettings from "../../api/marketing/settings.mjs";
 import marketingFunnels from "../../api/marketing/funnels.mjs";
 import marketingHealth from "../../api/marketing/health.mjs";
+import marketingIdeas from "../../api/marketing/ideas.mjs";
+import marketingRules from "../../api/marketing/rules.mjs";
+import marketingScriptsFix from "../../api/marketing/scripts/fix.mjs";
+import marketingBatches from "../../api/marketing/batches.mjs";
+import marketingBatchesWriteNow from "../../api/marketing/batches/write-now.mjs";
+import marketingJobsRetry from "../../api/marketing/jobs/retry.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1193,7 +1199,13 @@ export const ROUTES = {
   // marketing machine
   "marketing/settings": marketingSettings,
   "marketing/funnels": marketingFunnels,
-  "marketing/health": marketingHealth
+  "marketing/health": marketingHealth,
+  "marketing/ideas": marketingIdeas,
+  "marketing/rules": marketingRules,
+  "marketing/scripts/fix": marketingScriptsFix,
+  "marketing/batches": marketingBatches,
+  "marketing/batches/write-now": marketingBatchesWriteNow,
+  "marketing/jobs/retry": marketingJobsRetry
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is
