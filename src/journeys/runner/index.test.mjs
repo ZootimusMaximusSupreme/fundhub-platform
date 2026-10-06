@@ -143,8 +143,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
 
    Moved 91 -> 92 on 2026-10-06 (Finance OS unit C) with
    finance-os-card-due-reminders, the daily card due text. A cron with no
-   event trigger, so it sits in neverFired like every sweeper here. */
-const REGISTERED = 92;
+   event trigger, so it sits in neverFired like every sweeper here.
+
+   Moved 92 -> 93 the same day (Finance OS build, unit A) with
+   plaid-transactions-sweeper, the daily Plaid charges + deposits pull. A cron
+   with no event trigger, so it sits in neverFired like every sweeper here. */
+const REGISTERED = 93;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

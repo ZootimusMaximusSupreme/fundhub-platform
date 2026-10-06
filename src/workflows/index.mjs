@@ -21,6 +21,7 @@ import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
 import { financeOsCardDueReminders } from './finance-os-card-due-reminders.mjs';
+import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
@@ -217,6 +218,10 @@ export const functions = [
      payment is on file. Never moves money. Keyed in cashflow_reminders and in
      messages.provider_ref so a retry cannot send twice. */
   financeOsCardDueReminders,
+  /* Daily Plaid charges + deposits pull, then repeating-bill detection, for every
+     client with an active consented Plaid login. Reads only; does nothing when
+     Plaid is not configured. Finance OS build 2026-10-06, unit A. */
+  plaidTransactionsSweeper,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
 

@@ -144,6 +144,7 @@ import bankingSyncAccounts from "../../api/banking/sync-accounts.mjs";
 import bankingLinkToken from "../../api/banking/link-token.mjs";
 import bankingLinkExchange from "../../api/banking/link-exchange.mjs";
 import bankingSyncLiabilities from "../../api/banking/sync-liabilities.mjs";
+import bankingSyncTransactions from "../../api/banking/sync-transactions.mjs";
 import inquiries from "../../api/inquiries.mjs";
 import repairExceptions from "../../api/repair/exceptions.mjs";
 import repairEnroll from "../../api/repair/enroll.mjs";
@@ -718,6 +719,8 @@ export const ROUTES = {
   "banking/link-exchange": bankingLinkExchange,
   // Card bills (due date, minimum) from Plaid /liabilities/get → statement cycles.
   "banking/sync-liabilities": bankingSyncLiabilities,
+  /* Plaid charges + deposits → bank_transactions, then repeating bills. Same gate. */
+  "banking/sync-transactions": bankingSyncTransactions,
 
   // Write endpoints. Hand-rolled rather than readHandler-based, so each one owns
   // its own method switch, its 405 + allow header, and its domain-error mapping.
