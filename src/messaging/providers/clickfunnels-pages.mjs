@@ -166,7 +166,9 @@ export async function createCustomHtmlPage(opts) {
     env, fetchImpl: opts.fetchImpl, what: `ClickFunnels create page ${opts.path}`,
     body: { page: { name: opts.name, description: opts.description, custom_html: opts.html, current_path: opts.path } }
   });
-  if (!r.ok) return fail(why(r, `Making ${opts.path}`));
+  // The status rides along so the caller can tell a refusal (401, 403, 422: the
+  // same on a retry) from a busy answer (429) that is worth trying again later.
+  if (!r.ok) return fail(why(r, `Making ${opts.path}`), { status: Number(r.status) || 0 });
   const page = r.body && typeof r.body === "object" && r.body.page && typeof r.body.page === "object" ? r.body.page : r.body;
   const id = page && (page.id ?? page.public_id);
   if (id == null || id === "") return fail(`Making ${opts.path}: ClickFunnels answered without a page id.`);

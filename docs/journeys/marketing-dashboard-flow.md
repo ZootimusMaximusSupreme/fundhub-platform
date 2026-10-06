@@ -638,11 +638,20 @@ flowchart TD
   J --> L[READ live page list]
   L --> C{each of the 3 addresses:<br/>free, ours already, or ours from a crash<br/>by its description marker?}
   C -->|a page we did not make| X[failed before anything was made]
-  C -->|ok| O[thank-you, booking, then landing:<br/>POST custom_html = a NEW page<br/>save its id at once]
-  O --> T[page token into that page:<br/>PUT /pages/id, only for ids this push made]
-  T --> R[cache-busted GET of each live page:<br/>tag + tracking there?]
+  C -->|ok| O[thank-you, booking, then landing:<br/>POST custom_html = a NEW page]
+  O -->|429 or no answer| RT[tried again later by the worker,<br/>nothing saved, nothing made twice]
+  O -->|401, 403, 404, 422| FX[failed for good with the reason]
+  O --> A{ClickFunnels answered<br/>the page address?}
+  A -->|no address| NA[failed before saving: never guessed;<br/>Retry takes the page back by its marker]
+  A -->|yes| SV[save its id and that address at once]
+  SV --> H{address = https://apply.fundhub.ai<br/>+ this page's path?}
+  H -->|another host or path| WH[failed: funnel stays a draft,<br/>no token, no proof, no more pages;<br/>a Retry stops here again]
+  H -->|yes| T[page token into that page:<br/>PUT /pages/id, only for ids this push made]
+  T --> R[cache-busted GET of each page at its own address:<br/>tag + tracking there?]
   R -->|not yet, 4 tries| F[failed: Retry proves again,<br/>makes nothing new]
-  R -->|all proven| LV[one transaction: funnel live: status, live_at,<br/>landing_url = live address, active true<br/>+ the 3 pages queued in repo_outbox:<br/>marketing/landing-pages/funnels/key/page.html]
+  R -->|all proven| CK{all 3 pages at their own address,<br/>landing page at the funnel's address?}
+  CK -->|no| WH
+  CK -->|yes| LV[one transaction: funnel live: status, live_at,<br/>landing_url = live address, active true<br/>+ the 3 pages queued in repo_outbox:<br/>marketing/landing-pages/funnels/key/page.html]
   LV --> WK[wake the marketing worker<br/>the outbox commits them when it drains]
 ```
 
@@ -686,12 +695,26 @@ flowchart LR
   (a missing file would 404 on a live page, as slo-02-booking does today).
 - **Standalone pages.** The pages are made as standalone custom HTML pages (no `funnel` block),
   so no existing ClickFunnels funnel is changed. Which domain ClickFunnels serves a standalone
-  page on is UNVERIFIED until the first push: the push reads `url` from ClickFunnels' answer and
-  refuses to call the funnel live if the landing page is not at its own address.
+  page on is UNVERIFIED until the first push (the /roadmap pages sit inside a ClickFunnels funnel
+  whose domain is apply.fundhub.ai; `docs/sops/clickfunnels-custom-html-push.md`). The push saves
+  the `url` ClickFunnels answers as it is and stops at the first page whose address is not
+  `https://apply.fundhub.ai` + its path: the funnel stays a draft and no more pages are made.
+  If that happens, the thank-you page is left on ClickFunnels at the other host, and the funnel
+  cannot be renamed (a page is on ClickFunnels); it needs an owner call (move the pages into a
+  ClickFunnels funnel on apply.fundhub.ai, the /roadmap way) before it can go live.
+- **Rename keeps the first word.** A rename moves the address but keeps the funnel's key, its
+  tag (law: a tag never changes) and its repo folder. After /blueprint-2 is renamed to
+  /blueprint-vip, its tag stays `fnl-blueprint-2` and its live pages save under
+  `marketing/landing-pages/funnels/blueprint_2/`; the next automatic create skips /blueprint-2
+  (its key is still taken). The Funnels card (X8) should print the tag and the repo folder next
+  to the address so this shows.
 - **Draft campaign files.** The writer reads the campaign's stage files whatever their approval
   stamp and reports each file's status on the job result; it does not wait for approval.
 - **U22 worker.** Not on main, so the jobs run in their own background function (the offer
-  pattern). Both kinds are in `JOB_KINDS` for U22's worker to pick up later.
+  pattern). Both kinds are in `JOB_KINDS` for U22's worker to pick up later. The wake carries
+  the owner's session to that function; design §5 rule 18 says every wake carries the worker
+  secret, never the owner's session. When U22's worker lands, kinds `funnel` and `funnel_push`
+  move to it and `netlify/functions/marketing-funnel-background.mjs` retires.
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
   `src/http/marketing-funnel-builder.pg.test.mjs` in GitHub CI. Never run against live
   ClickFunnels: every ClickFunnels call in the tests is a fake behind the real provider.

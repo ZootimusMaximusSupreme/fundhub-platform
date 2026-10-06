@@ -18,17 +18,29 @@
 //     which nobody else can know) and takes it back; any other page at that
 //     address stops the push.
 //
+// IT NEVER CALLS A PAGE LIVE ANYWHERE BUT ITS OWN ADDRESS.
+//   * The address ClickFunnels answers for a page is saved as it is. Unless it
+//     is that page's own address on the funnel host (https://apply.fundhub.ai
+//     + the page's path), the push stops right there: no token, no proof, no
+//     next page, and the funnel stays a draft. Which host ClickFunnels serves a
+//     standalone custom HTML page on is not known until the first real push,
+//     and a live funnel can never move, so a wrong host must never go live.
+//   * An answer with no address at all is never filled in with a guess: the
+//     push stops before saving that page (a Retry takes it back by its marker).
+//   * The proof reads each page at its own address, and step 4 checks all three
+//     once more before the funnel says "live".
+//
 // SAVED STEPS (a retry skips what is done): check addresses → make each page
 // (thank-you, booking, then the landing page last, so the door people arrive
-// at opens only when the rest exist) → token → prove with a cache-busted GET
-// that the live page carries the funnel tag and the tracking → the funnel is
-// live, and its three pages are queued for the repo (repo outbox, U05) in the
+// at opens only when the rest exist) → check it is at its own address → token
+// → prove with a cache-busted GET that the live page carries the funnel tag and
+// the tracking → the funnel is live, and its three pages are queued for the repo (repo outbox, U05) in the
 // same transaction: marketing/landing-pages/funnels/<key>/<page>.html. A page
 // that is made but not proven yet fails the job with the reason; Retry proves it
 // again and makes nothing new.
 
 import * as cfPages from "../messaging/providers/clickfunnels-pages.mjs";
-import { pathsFromPages } from "./funnel-paths.mjs";
+import { pathsFromPages, urlFor, FUNNEL_HOST } from "./funnel-paths.mjs";
 import { tagMeta, trackingGaps } from "./funnel-tracking.mjs";
 import {
   loadFunnel, markPagePushed, markPageSent, markPageProved, markPageProofFailed, markFunnelLive, sha256
@@ -64,9 +76,31 @@ export function withPageToken(html, token) {
   return h.includes(SDK_TAG) ? h.replace(SDK_TAG, `${meta}\n${SDK_TAG}`) : h.replace(/<\/head>/i, `${meta}\n</head>`);
 }
 
-const pathOf = (url) => {
-  try { return new URL(url).pathname.toLowerCase().replace(/\/+$/, ""); } catch { return null; }
-};
+/**
+ * The page's own address (urlFor(path)) when `url` is that address — https, the
+ * funnel host, no port, the same path (a trailing slash or upper case is the
+ * same page) — else null. A query or a fragment is not the page's address.
+ * @param {unknown} url
+ * @param {string} path
+ */
+export function ownAddress(url, path) {
+  if (typeof url !== "string" || !url.trim()) return null;
+  let u;
+  try { u = new URL(url.trim()); } catch { return null; }
+  if (u.protocol !== "https:" || u.hostname.toLowerCase() !== FUNNEL_HOST || u.port || u.username || u.password) return null;
+  if (u.search || u.hash) return null;
+  const p = u.pathname.toLowerCase().replace(/\/+$/, "");
+  return p === String(path) ? urlFor(path) : null;
+}
+
+/** A ClickFunnels answer that will be the same on a retry (bad key, refused page). 408 and 429 are worth a retry. */
+export function finalStatus(status) {
+  const s = Number(status);
+  return s >= 400 && s < 500 && s !== 408 && s !== 429;
+}
+
+const wrongHost = (page, url) =>
+  `ClickFunnels put ${page.path} at ${url}, not at ${urlFor(page.path)}. The funnel was not made live, and no more pages were made.`;
 
 /**
  * run(job, ctx) — the handler contract of src/marketing/job-kinds.mjs.
@@ -118,7 +152,7 @@ export async function run(job, ctx = /** @type {any} */ ({})) {
       const own = adopt.get(page.id);
       let made;
       if (own) {
-        made = { id: String(own.id), publicId: own.public_id != null ? String(own.public_id) : null, url: own.url || null, token: null };
+        made = { id: String(own.id), publicId: own.public_id != null ? String(own.public_id) : null, url: typeof own.url === "string" ? own.url : null, token: null };
         adopted += 1;
       } else {
         const r = await cf.createCustomHtmlPage({
@@ -129,18 +163,27 @@ export async function run(job, ctx = /** @type {any} */ ({})) {
           path: page.path
         });
         if (!r.ok) {
-          if (/HTTP 4\d\d/.test(r.error)) throw new FunnelJobError(r.error);
+          if (finalStatus(r.status)) throw new FunnelJobError(r.error);
           throw new Error(r.error);
         }
         made = r;
         token = r.token;
         created += 1;
       }
-      const liveUrl = made.url && /^https:\/\//.test(made.url) ? made.url : `https://apply.fundhub.ai${page.path}`;
+      const answered = typeof made.url === "string" ? made.url.trim() : "";
+      if (!/^https:\/\/[^/?#\s]+/i.test(answered)) {
+        // Never guessed. The page is on ClickFunnels with our marker, so a Retry
+        // takes it back by that marker; it is never made twice.
+        throw new FunnelJobError(`ClickFunnels answered without the page address for ${page.path}. The funnel was not made live, and no more pages were made.`);
+      }
+      const liveUrl = ownAddress(answered, page.path) ?? answered;
       const row = await markPagePushed(db, { pageId: page.id, cfPageId: made.id, publicId: made.publicId, liveUrl });
       if (!row) throw new Error(`The ${page.role} page was saved by another run at the same moment.`);
       Object.assign(page, row);
     }
+    // At its own address, or the push stops here (the page id stays saved, so a
+    // Retry stops here again and makes nothing new).
+    if (page.live_url !== urlFor(page.path)) throw new FunnelJobError(wrongHost(page, page.live_url));
     const owned = pages.map((p) => p.cf_page_id).filter(Boolean).map(String);
     if (!token && !page.sent_sha256) {
       const read = await cf.getPage({ env, creds, pageId: page.cf_page_id });
@@ -169,7 +212,7 @@ export async function run(job, ctx = /** @type {any} */ ({})) {
     let proof = null;
     for (let i = 0; i < tries; i += 1) {
       if (i > 0) await sleep(waitMs);
-      const got = await cf.fetchLivePage({ env, url: page.live_url, now: deps.now ? deps.now() : Date.now() });
+      const got = await cf.fetchLivePage({ env, url: urlFor(page.path), now: deps.now ? deps.now() : Date.now() });
       const gaps = got.ok ? trackingGaps(got.html, funnel.tag) : [];
       proof = {
         checked_at: new Date().toISOString(),
@@ -194,9 +237,14 @@ export async function run(job, ctx = /** @type {any} */ ({})) {
   }
 
   // 4. Live.
+  // Every page at its own address (host and path), and the landing page at the
+  // funnel's address, or the funnel stays a draft.
+  for (const p of order) {
+    if (p.live_url !== urlFor(p.path)) throw new FunnelJobError(wrongHost(p, p.live_url));
+  }
   const landing = pages.find((p) => p.role === "landing");
-  if (pathOf(landing.live_url) !== funnel.path) {
-    throw new FunnelJobError(`ClickFunnels put the first page at ${landing.live_url}, not at ${funnel.path}. The funnel was not marked live.`);
+  if (!landing || landing.path !== funnel.path || landing.live_url !== urlFor(funnel.path)) {
+    throw new FunnelJobError(`The first page is at ${landing ? landing.live_url : "no address"}, not at ${urlFor(funnel.path)}. The funnel was not made live.`);
   }
   // Live, and the three pages queued for the repo through the outbox in the same
   // transaction (they are committed when the outbox drains).

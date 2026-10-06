@@ -64,10 +64,13 @@ async function call(handler, token, { method = "POST", body, query = {}, deps = 
   return r;
 }
 
-/* A fake ClickFunnels workspace. `pages` holds what is there; every request is recorded. */
+/* A fake ClickFunnels workspace. `pages` holds what is there; every request is recorded.
+   pageHost: the host ClickFunnels answers in a new page's url (null = no url at all).
+   busy: how many page makes answer 429 before one goes through. */
 let fakeIds = 900;
-function fakeClickFunnels(existing) {
+function fakeClickFunnels(existing, { pageHost = "apply.fundhub.ai", busy = 0 } = {}) {
   const pages = existing.map((p) => ({ ...p }));
+  let busyLeft = busy;
   const calls = [];
   // Page ids are unique across the whole fake account, as on ClickFunnels.
   fakeIds += 100;
@@ -86,9 +89,11 @@ function fakeClickFunnels(existing) {
       if (method === "GET" && u.pathname === "/api/v2/workspaces/77/pages") return reply(200, pages.map(({ html, ...p }) => p));
       if (method === "POST" && u.pathname === "/api/v2/workspaces/77/pages/custom_html") {
         const p = body.page;
+        if (busyLeft > 0) { busyLeft -= 1; return reply(429, { error: "Too many requests" }); }
         if (pages.some((x) => x.current_path === p.current_path)) return reply(422, { error: "path taken" });
         const page = { id: ++nextId, public_id: `P${nextId}`, name: p.name, description: p.description, current_path: p.current_path,
-          url: `https://apply.fundhub.ai${p.current_path}`, custom_html_page: true, sdk: { token: `cfp_${nextId}` }, html: p.custom_html };
+          ...(pageHost ? { url: `https://${pageHost}${p.current_path}` } : {}),
+          custom_html_page: true, sdk: { token: `cfp_${nextId}` }, html: p.custom_html };
         pages.push(page);
         const { html, ...shown } = page;
         return reply(201, shown);
@@ -467,6 +472,80 @@ describe("the funnel builder", { skip: !HAS_DB ? "no DATABASE_URL" : false }, ()
     assert.equal(out.result.created, 2);
     assert.deepEqual(cfk.calls.filter((c) => c.method === "POST").map((c) => c.body.page.current_path), ["/blueprint-vip-book", "/blueprint-vip"]);
     assert.equal((await pageRows(vip.id)).find((p) => p.role === "thank_you").cf_page_id, "41");
+  });
+
+  test("push: a 429 from ClickFunnels is tried again later, not failed for good; nothing is made", async () => {
+    const cv = (await db.query(`SELECT * FROM marketing_funnels WHERE org_id = $1 AND path = '/capital-vip'`, [org])).rows[0];
+    const job = await call(buildHandler, tokenOwner, { body: { request_id: rid("b"), id: cv.id } });
+    assert.equal((await runFunnelJob(db, { jobId: job.body.job.id, orgId: org, env: ENV, deps: { callModel: fakeModel().fn, readSources: () => ({ files: {} }) } })).status, "done");
+    const cfk = fakeClickFunnels(EXISTING, { busy: 1 });
+    const queued = await call(pushHandler, tokenOwner, { body: { request_id: rid("p"), id: cv.id, confirm_url: cv.landing_url } });
+    assert.equal(queued.code, 202, JSON.stringify(queued.body));
+    const out = await runFunnelJob(db, { jobId: queued.body.job.id, orgId: org, env: ENV, deps: { cf: cfk.cf, sleep: async () => {}, proofWaitMs: 0 } });
+    assert.equal(out.status, "queued", JSON.stringify(out));
+    const row = await jobRow(queued.body.job.id);
+    assert.equal(row.status, "queued");
+    assert.equal(row.attempts, 1);
+    assert.match(row.error, /HTTP 429/);
+    assert.equal(cfk.calls.filter((c) => c.method === "POST").length, 1, "one make, answered 429");
+    assert.equal(cfk.pages.length, EXISTING.length, "nothing was made");
+    assert.ok((await pageRows(cv.id)).every((p) => p.cf_page_id === null));
+    // Close the waiting try so the next push can start.
+    await db.query(`UPDATE marketing_jobs SET status = 'failed', finished_at = now() WHERE id = $1`, [queued.body.job.id]);
+  });
+
+  test("push: a page ClickFunnels puts on another host stops the push; the funnel stays a draft, and a Retry makes nothing new", async () => {
+    const cv = (await db.query(`SELECT * FROM marketing_funnels WHERE org_id = $1 AND path = '/capital-vip'`, [org])).rows[0];
+    const cfk = fakeClickFunnels(EXISTING, { pageHost: "acme.myclickfunnels.com" });
+    for (const round of [1, 2]) {
+      const queued = await call(pushHandler, tokenOwner, { body: { request_id: rid("p"), id: cv.id, confirm_url: cv.landing_url } });
+      assert.equal(queued.code, 202, `round ${round}: ${JSON.stringify(queued.body)}`);
+      const out = await runFunnelJob(db, { jobId: queued.body.job.id, orgId: org, env: ENV, deps: { cf: cfk.cf, sleep: async () => {}, proofWaitMs: 0 } });
+      assert.equal(out.status, "failed", `round ${round}: ${JSON.stringify(out)}`);
+      const job = await jobRow(queued.body.job.id);
+      assert.equal(job.status, "failed", "final at once: a retry gets the same answer");
+      assert.match(job.error, /ClickFunnels put \/capital-vip-thank-you at https:\/\/acme\.myclickfunnels\.com\/capital-vip-thank-you, not at https:\/\/apply\.fundhub\.ai\/capital-vip-thank-you/);
+    }
+    // One page was made (the thank-you page, first in line); the push stopped before
+    // the token, the proof and the next page, and the Retry made nothing new.
+    assert.deepEqual(cfk.calls.filter((c) => c.method !== "GET").map((c) => [c.method, c.body.page.current_path]),
+      [["POST", "/capital-vip-thank-you"]]);
+    assert.ok(cfk.calls.every((c) => c.host === "acme.myclickfunnels.com" && c.path.startsWith("/api/v2/")), "no live page was read as proof");
+    const f = await funnelRow(cv.id);
+    assert.equal(f.status, "draft");
+    assert.equal(f.active, false);
+    assert.equal(f.live_at, null);
+    assert.equal(f.landing_url, "https://apply.fundhub.ai/capital-vip");
+    const pages = await pageRows(cv.id);
+    const thanks = pages.find((p) => p.role === "thank_you");
+    assert.ok(thanks.cf_page_id, "the page id is kept, so it is never made twice");
+    assert.equal(thanks.live_url, "https://acme.myclickfunnels.com/capital-vip-thank-you", "the address ClickFunnels used is kept as it is");
+    assert.equal(thanks.proved_at, null);
+    assert.ok(pages.filter((p) => p.role !== "thank_you").every((p) => p.cf_page_id === null));
+    const outbox = (await db.query(`SELECT count(*)::int AS n FROM repo_outbox WHERE org_id = $1 AND path LIKE 'marketing/landing-pages/funnels/capital_vip/%'`, [org])).rows[0].n;
+    assert.equal(outbox, 0, "nothing queued for the repo");
+  });
+
+  test("push: an answer with no page address is never filled in; a Retry takes the page back by its marker", async () => {
+    const fu = (await db.query(`SELECT * FROM marketing_funnels WHERE org_id = $1 AND path = '/funding'`, [org])).rows[0];
+    const job = await call(buildHandler, tokenOwner, { body: { request_id: rid("b"), id: fu.id } });
+    assert.equal((await runFunnelJob(db, { jobId: job.body.job.id, orgId: org, env: ENV, deps: { callModel: fakeModel().fn, readSources: () => ({ files: {} }) } })).status, "done");
+    const cfk = fakeClickFunnels(EXISTING, { pageHost: null });
+    const run = async () => {
+      const queued = await call(pushHandler, tokenOwner, { body: { request_id: rid("p"), id: fu.id, confirm_url: fu.landing_url } });
+      assert.equal(queued.code, 202, JSON.stringify(queued.body));
+      const out = await runFunnelJob(db, { jobId: queued.body.job.id, orgId: org, env: ENV, deps: { cf: cfk.cf, sleep: async () => {}, proofWaitMs: 0 } });
+      return { out, job: await jobRow(queued.body.job.id) };
+    };
+    const first = await run();
+    assert.equal(first.out.status, "failed");
+    assert.match(first.job.error, /ClickFunnels answered without the page address for \/funding-thank-you/);
+    assert.ok((await pageRows(fu.id)).every((p) => p.cf_page_id === null && p.live_url === null), "no address was guessed");
+    const second = await run();
+    assert.equal(second.out.status, "failed");
+    assert.match(second.job.error, /without the page address for \/funding-thank-you/);
+    assert.equal(cfk.calls.filter((c) => c.method === "POST").length, 1, "the Retry took its own page back by the marker; it was not made twice");
+    assert.equal((await funnelRow(fu.id)).status, "draft");
   });
 
   // ── the reads ────────────────────────────────────────────────────────────

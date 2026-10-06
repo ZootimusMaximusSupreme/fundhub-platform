@@ -92,6 +92,16 @@ describe("making a page", () => {
     assert.ok(!("head_code" in cf.calls[0].body.page) && !("funnel" in cf.calls[0].body.page));
   });
 
+  test("a failed make carries the HTTP status, so a busy 429 can be told from a refused 422", async () => {
+    for (const status of [429, 422, 401]) {
+      const cf = fakeCf(() => ({ status, body: { error: "no" } }));
+      const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", description: "x", html: "x", path: "/x" });
+      assert.equal(out.ok, false);
+      assert.equal(out.status, status);
+      assert.match(out.error, new RegExp(`HTTP ${status}`));
+    }
+  });
+
   test("a dirty address is refused before any request", async () => {
     const cf = fakeCf(() => ({ body: {} }));
     const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", description: "x", html: "x", path: "/../watch" });
