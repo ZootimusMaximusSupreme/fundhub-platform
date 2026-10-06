@@ -1,7 +1,7 @@
 // Meta's creative enhancements ("Advantage+ creative" features) — the list we
 // turn OFF, one by one, on every ad creative we load.
 //
-// WHY ONE BY ONE. Since Marketing API v22.0 the "standard enhancements" bundle
+// WHY ONE BY ONE. Since Marketing API version 22.0 the "standard enhancements" bundle
 // can no longer be opted in or out of; each feature is its own key under
 // degrees_of_freedom_spec.creative_features_spec, set to
 // {"enroll_status": "OPT_OUT"}. Several default to ON when a key is left out
@@ -39,7 +39,7 @@ export const SOURCES = Object.freeze([
   },
   {
     url: "https://developers.facebook.com/docs/marketing-api/marketing-api-changelog/version22.0",
-    what: "v22.0 changelog — the STANDARD_ENHANCEMENTS bundle is no longer supported (opt in or out)"
+    what: "Version 22.0 changelog — the STANDARD_ENHANCEMENTS bundle is no longer supported (opt in or out)"
   },
   {
     url: "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adcreativefeaturesspec.py",
@@ -110,11 +110,11 @@ export const META_CREATIVE_FEATURE_KEYS = Object.freeze([
 ]);
 
 /* NOT SENT, ON PURPOSE.
-   standard_enhancements — the v22.0 changelog: opting in OR out of this bundle
+   standard_enhancements — the version 22.0 changelog: opting in OR out of this bundle
    is no longer supported. Meta may still show it on a read; the read-back
    treats it like any other key and stops the load if it says OPT_IN. */
 export const NOT_SENT = Object.freeze({
-  standard_enhancements: "v22.0+: the bundle can no longer be opted in or out of; turn off its parts one by one instead"
+  standard_enhancements: "Version 22.0 and later: the bundle can no longer be opted in or out of; turn off its parts one by one instead"
 });
 
 /* IN META'S SDK TYPE BUT ON NO DOCUMENTATION PAGE (2026-10-05). Not sent,
