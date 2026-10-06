@@ -17,6 +17,7 @@ import {
   formatDollars,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 /** A dollar amount (counts up) or a phrase such as "Several hundred thousand" (fades in). */
 export type Amount = {label: string; value?: number; text?: string};
@@ -32,6 +33,8 @@ export type QualifyTodayProps = {
   gapLabel: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const QUALIFY_TODAY_BASE = 75;
@@ -45,6 +48,7 @@ export const qualifyTodayDefaults: QualifyTodayProps = {
   today: {label: 'Today', value: 199350},
   after: {label: 'Once your file is fixed', value: 221500},
   gapLabel: 'left on the table',
+  transparent: false,
 };
 
 const STACK_W = 172; // bill width on top of each cash stack
@@ -90,7 +94,7 @@ const Row: React.FC<{
   </div>
 );
 
-export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after, gapLabel, durationInFrames, showSafeZones}) => {
+export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after, gapLabel, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useTimeline(QUALIFY_TODAY_BASE, durationInFrames);
   const L = QUALIFY_TODAY_BASE;
 
@@ -113,7 +117,7 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
   const hSlab = both ? Math.max(0, (STACK_MAX * (vAfter - (today.value as number))) / top) : STACK_MAX * 0.6 * enter(f, fps, 30, 22);
   const afterStackIn = enter(f, fps, 24, 12);
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -197,4 +201,5 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

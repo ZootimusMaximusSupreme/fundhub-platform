@@ -20,6 +20,7 @@ import {
   fadeRight,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type FileItem = {label: string; tag?: string};
 
@@ -38,6 +39,8 @@ export type FileItemsProps = {
   layout?: 'stacked' | 'inline';
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const FILE_ITEMS_BASE = 75;
@@ -53,6 +56,7 @@ export const fileItemsDefaults: FileItemsProps = {
   docSubtitle: 'All three bureaus',
   items: [{label: 'Cards sitting too high'}, {label: 'Harmful items'}, {label: "Personal data that doesn't match"}],
   tag: 'Costing you money',
+  transparent: false,
 };
 
 /**
@@ -90,6 +94,7 @@ export const FileItems: React.FC<FileItemsProps> = ({
   layout = 'stacked',
   durationInFrames,
   showSafeZones,
+  transparent,
 }) => {
   const {f, fps} = useTimeline(FILE_ITEMS_BASE, durationInFrames);
   const L = FILE_ITEMS_BASE;
@@ -111,7 +116,7 @@ export const FileItems: React.FC<FileItemsProps> = ({
     <MoneyGutters f={f} mode="rise" count={10} seed="file-items-rise" size={[160, 240]} depth={[-700, -150]} opacity={0.55} blur={2.5} />
   );
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -226,4 +231,5 @@ export const FileItems: React.FC<FileItemsProps> = ({
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

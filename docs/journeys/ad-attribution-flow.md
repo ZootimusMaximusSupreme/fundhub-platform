@@ -242,3 +242,147 @@ flowchart TD
   (the funnel's first page), which belongs to one funnel only.
 - `UNVERIFIED` live: no built funnel is live yet; the browser side is proved in the
   `src/ads/fh-events-harness.mjs` fake page, the door with a stand-in lookup and in CI's database.
+## U27 Sync mapping: the Meta sync asks for creative{url_tags} and stores each ad's number
+
+Generated from `api/campaigns/sync.mjs` (`AD_LIST_FIELDS`, `upsertAd`,
+`syncAdNumber`, `syncPartnerConnections`) on 2026-10-06, branch
+`mm-u27-ad-number-sync`. Spec §10.5 "Sync mapping", M4 Done #3. This wires the
+`SYNC` arrow the U14 section above drew as NOT BUILT. Not live until ship.
+
+```mermaid
+flowchart TD
+    CLOCK[Sync button · 07:00 UTC nightly pass · hourly 3-day pass] --> LIST["GET {ad set}/ads<br/>fields = id,name,status,adset_id,creative{url_tags}<br/>(v26.0; field checked in Meta's v26.0.2 SDK)"]
+    LIST --> TX[One transaction per campaign]
+    TX --> SAVE[upsertAd: insert or update name + status<br/>RETURNING the row's number and source]
+    SAVE --> MAP{mapAdNumber<br/>url_tags, name}
+    MAP -->|no number: utm_content=&#123;&#123;ad.name&#125;&#125;,<br/>'oVid: SLO1', no creative| NONE[nothing written · tally none<br/>a number is never cleared]
+    MAP -->|number N, source utm or name| MAN{row's source = manual?}
+    MAN -->|yes| KEEP[nothing written · tally kept_manual]
+    MAN -->|no| SAME{row already holds N?}
+    SAME -->|yes| SAMEW[nothing written · tally same<br/>source kept, e.g. loader]
+    SAME -->|no, or no number yet| SP[SAVEPOINT fundhub_ad_number_map<br/>UPDATE ads SET number = N, source<br/>WHERE number IS NULL OR source is not manual]
+    SP -->|ok| SET[tally set]
+    SP -->|database refuses| RB[ROLLBACK TO SAVEPOINT<br/>ad stays saved without the number<br/>tally failed + first 5 named]
+    SET --> DAYS[storeInsights for this ad]
+    KEEP --> DAYS
+    SAMEW --> DAYS
+    NONE --> DAYS
+    RB --> DAYS
+    DAYS --> COMMIT[campaign COMMIT<br/>tally added to stats.ad_number_map only now]
+    COMMIT --> RER[after every connection:<br/>reresolveAdNumbers → fundhub_reresolve_ad_numbers 407<br/>visitors with no number re-matched by ad set id + ad name]
+    RER --> VIS[(client_ad_attribution.ad_id = the number just written)]
+```
+
+| Step | Where | What fires it |
+|---|---|---|
+| Ask for the UTMs | `AD_LIST_FIELDS` in `api/campaigns/sync.mjs`, used by the ads list | Every pass (button, nightly, hourly). `Ad.creative` (an `AdCreative`) and `AdCreative.url_tags` (a string) are declared in Meta's v26.0 SDK, facebook-business 26.0.2 (`apiconfig.py` API_VERSION v26.0). One undeclared field would fail the whole list. |
+| Read the number | `mapAdNumber` (`src/ads/ad-number.mjs`, U14) | Leading digits of `utm_content` in `url_tags` → `utm`; else `Ad N` as a word in the name → `name`; else null. |
+| Write the number | `syncAdNumber` | Only when the row has no number, or a different number whose source is not `manual`. Same number → no write. No number found → no write. The UPDATE's WHERE repeats the manual rule. |
+| A refused write | `SAVEPOINT` / `ROLLBACK TO SAVEPOINT` | Any database error on that UPDATE. It is caught, rolled back to the savepoint, counted, and never thrown, so the campaign's other ads and days still commit. |
+| Counting | `stats.ad_number_map` = `{set, kept_manual, same, none, failed, failures}` | Per campaign, added only after that campaign commits (same rule as every other count). |
+| Visitors | `reresolveAdNumbers` (`src/ads/store.mjs`) | Unchanged: once per run, after all campaigns. It now also finds visitors whose ad got its number from this sync. |
+
+Proof: `src/http/campaigns-sync-paging.test.mjs` (fake Meta and fake
+transaction, runs on every push) and `src/http/ad-number-sync.pg.test.mjs`
+(real Postgres in CI: 91 utm, 92 name, live ads nothing, a refused write
+counted while the campaign commits, manual kept, loader kept on the same number,
+a visitor gets 91 after the sync).
+
+Gaps and things not drawn (findings, not reconciled):
+- **Default picked: the same number keeps its source.** The contract allows a
+  rewrite of any non-manual row; this writes nothing when the number already
+  matches, so a loaded ad stays `loader` instead of turning `utm` on its next
+  sync. A different number from Meta still overwrites `loader`, `utm` and `name`.
+- **Default picked: the sync never clears a number.** If Meta's record stops
+  naming a number, the stored one stays.
+- **"SLO Ad 7" names (from U14) are now live in the sync.** A Meta ad named
+  "SLO Ad 7 — …" with no number in its `url_tags` would be stored as 7 (source
+  `name`), though `marketing/ads/NAMING.md`'s SLO Ad 7 is Fundhub ad 90. No live
+  Meta ad is named that way today. A number a person types (link-asset, `manual`)
+  always wins.
+- **The counts are not on any screen.** `stats.ad_number_map`, like
+  `stats.ad_numbers`, is in what `syncPartnerConnections` returns, but not in the
+  Sync button's answer (`buildSyncResponse`) or the sweeper's run tally
+  (`src/workflows/meta-campaign-sync-sweeper.mjs`).
+- **Live ads map to nothing here, on purpose** (owner decision 2026-10-05: keep
+  `utm_content={{ad.name}}` and `utm_term={{adset.id}}`). Their visitors are
+  matched by 407 once a person numbers the ad.
+- `UNVERIFIED` live: the field was checked against Meta's SDK, not a live call.
+  The first real sync after ship is the confirmation.
+## U28 M4 loader: meta_load job, POST marketing/meta/load, GET load-status (paused only)
+
+Generated from the code on 2026-10-06 (branch `mm-u28-meta-loader`):
+`src/marketing/meta-load.mjs` (`runLoad`, `planLoad`, `createStore`,
+`queueLoads`, `readLoadStatus`, `deriveLoadState`), `api/marketing/meta/load.mjs`,
+`api/marketing/meta/load-status.mjs`, migration 417. Spec §10.2, §10.4, §10.5,
+§2 items 6 and 11. Not live until ship. The Launch tab that presses these is a
+separate unit (U39). The worker that runs the job is U22 (not merged when this
+was written), so a queued load waits for it.
+
+```mermaid
+flowchart TD
+    P1[POST /api/marketing/meta/load<br/>ad_video_id, or all: true · request_id] --> G{requireAuth → ROLE_SETS.MARKETING<br/>owner or admin → a company}
+    G -->|no| E[401 / 403 · nothing queued]
+    G -->|yes| W[withRequest: ONE staff transaction<br/>request_id seen → the saved answer]
+    W -->|all: true| Q1[every ad video: approved or delivered,<br/>approved_at + approver, not loaded, kind ad]
+    W -->|ad_video_id| Q2[that video in this company<br/>else 404 · any state is queued]
+    Q1 --> J[one meta_load job per video<br/>a video with a job waiting or running gets that job back]
+    Q2 --> J
+    J --> A[202 queued: true, jobs<br/>then wake the worker, after the commit]
+    A --> RUN[worker runs meta_load]
+    RUN --> PRE{planLoad: approved by a person? Meta copy?<br/>funnel + default ad set synced? connection active?<br/>final video an R2 key + R2 env? Page + Instagram ids?<br/>lane known? no UTMs in the link?}
+    PRE -->|any no| REF[refused · plain reasons<br/>ad_videos.load_error · job done]
+    PRE -->|all yes| SCR{screenAndRecord on the Meta copy<br/>approveBeforeLaunch false because a person approved}
+    SCR -->|blocked or needs_approval| REF
+    SCR -->|passed| UP[uploadVideo through guardedWrite<br/>24-hour signed R2 link<br/>meta_video_id saved at once]
+    UP --> ST{getVideoStatus, once}
+    ST -->|processing, or ready with no thumbnail| WT{20 minutes since the upload?}
+    WT -->|no| RQ[requeueJob 10 s out · no attempt counted]
+    RQ --> RUN
+    WT -->|yes| FAIL[failed · upload let go · Retry uploads again]
+    ST -->|error or expired| FAIL
+    ST -->|ready + thumbnail| CR[createCreative through guardedWrite<br/>url_tags = buildUrlTags · every enhancement OPT_OUT<br/>meta_creative_id saved at once]
+    CR --> RB{readCreativeFeatures: all OPT_OUT?}
+    RB -->|no| REF2[refused · creative let go]
+    RB -->|yes| GD{getAdSetGuardInfo + checkAdSetGuard}
+    GD -->|archived · dynamic · 50 ads · category| REF
+    GD -->|ok, paused is a note| CL[claim: reserve our ads row id<br/>on ad_videos.ad_row_id]
+    CL --> AD[createAd through guardedWrite<br/>PAUSED, no status argument<br/>meta_ad_external_id saved at once]
+    AD --> FIN[ONE transaction: creative_assets house, video, 9x16<br/>+ ads PAUSED, number, source loader,<br/>ON CONFLICT connection_id, external_id DO UPDATE<br/>+ ad_videos.loaded_at]
+    FIN --> DONE[loaded · job done]
+    S[GET /api/marketing/meta/load-status] --> SG{same gate}
+    SG --> SR[one staff read: every video with a meta_load job<br/>or a Meta id or loaded_at · its job · our ads row<br/>· the ad set and campaign from our rows]
+    SR --> OUT[loads: state waiting · loading · loaded · refused · failed,<br/>reasons, Meta ids, ad_status, ad_set, campaign, step · as_of]
+```
+
+| Step | Where | What fires it | What it never does |
+|---|---|---|---|
+| Queue | `queueLoads` in withRequest's transaction | Load to Meta / Load all approved | call Meta; queue a second job for a video that has one waiting |
+| Preflight | `planLoad` | each run | reach Meta when a reason exists |
+| Screen | `screenAndRecord`, then `guardedWrite` on every write | each run, each Meta write | pass `needs_approval`; skip the audit row |
+| Upload, creative, ad | `meta.uploadVideo`, `meta.createCreative`, `meta.createAd` via `guardedWrite` on a staff handle | the run | hold a transaction open while Meta answers; send ACTIVE |
+| Wait | `getVideoStatus` + `requeueJob` | Meta still processing | wait inside the function; count an attempt |
+| Claim | `store.claim` (ad_row_id) | before createAd | make an ad while another load of the same video runs |
+| Our rows | `store.finishLoad` | after createAd | change `ad_videos.status` (the loaded state is 9.1a) |
+| Status | `readLoadStatus` + `deriveLoadState` | GET load-status | write anything |
+
+How a run ends: loaded, refused and busy return (the worker marks the job done
+with that result). A Meta wait or a "slow down" re-queues the job itself. A
+failure for good (Meta said no, the video errored or expired, 20 minutes passed)
+fails the job itself with `final`, so Retry is the way back. A passing hiccup
+(Meta 5xx, unreachable, our database) is thrown and the queue tries again at 1
+and 5 minutes.
+
+### Gaps and things not drawn (U28)
+
+- `UNVERIFIED` live: no load has reached real Meta. Proven with a fake Meta (`src/marketing/meta-load.test.mjs`, also through the real `meta.mjs` with a fake fetch) and against Postgres in CI (`src/http/marketing-meta-load.pg.test.mjs`). Production today has 0 approved videos and 0 `storage_final_key` values, so every live load refuses with "The final video is not in storage yet." until M3 and R2 exist (spec §16.4).
+- Two partners in production (read-only SELECT, 2026-10-06): the Meta connection, campaigns and ad sets sit on `fundhub-direct`; videos and scripts on `fundhub-house`. `creative_assets` follows the video (house: its storage key must start with `partners/<partner_id>/`, 045). `trg_ads_asset_partner` (377) refuses a cross-partner `ads.asset_id`, so the ads row is written with `asset_id` NULL and the ad ties to its script by `fundhub_ad_number` only. A same-partner setup links the asset.
+- Spec §10.4 "sync first if they're missing": the loader does not start a sync. An ad set that is not in our rows yet is refused with "It shows up after the next Meta pull."
+- The design doc (§3.6) draws `POST {script_id}` and rows keyed by script; the API contract (U01, the fixed shapes win) says `ad_video_id` and `loads[]`. Built to the contract, plus extra keys `step`, `angle`, `funnel_key`, `loaded_at`, `ad_set.name`.
+- `creative_assets.duration_sec` is NULL (unknown): the finished cut's length arrives with 9.1a's `master_duration_seconds`; the raw take's length is not the ad's. `compliance_state` is written `approved` (a person approved the video and the screen passed); the spec does not name a value.
+- The 20-minute window starts at the upload's `action_log.executed_at` (no seventh column). A timeout or a Meta error lets the upload go (`meta_video_id` NULL, the old id kept in `load_error`), so Retry starts a fresh window.
+- A claim whose run died while asking Meta for the ad is retried with the same reserved row id. If Meta had made the ad, the ad set may hold a second PAUSED copy; paused ads spend nothing.
+- `ads.approval_state` is left at its default (`draft`), the same as the sync writes.
+- The roadmap funnel's lane is `uwiq` (seed 297), while live roadmap leads use `slo` (406/407). The loader writes `utm_campaign` from the funnel's lane, so this plan gap carries into new ads.
+- Both `META_PAGE_ID` and `META_INSTAGRAM_USER_ID` are required before any load (spec §10.2 lists both in `object_story_spec`).
+- The worker contract assumed for U22: a handler may re-queue or fail its own job before it returns; the worker's `finishJob` then finds the row not running and changes nothing (`jobs.mjs` checks `status = 'running'`).

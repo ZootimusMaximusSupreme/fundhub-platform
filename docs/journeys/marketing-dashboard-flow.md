@@ -8,6 +8,11 @@ Required by `CLAUDE.md` §3a step 4. Written 2026-10-05 from the code on branch
 Drawn from code, not from the plan. Anything the code does not do yet is marked
 **NOT BUILT** rather than drawn as if it ran.
 
+Updated 2026-10-05 on branch `cc-slice0-today-truth` for slice 0 of
+`docs/specs/command-center-design-2026-10-05.md` ("Today tells the truth"): whole-day
+spend windows, `prior_30_days`, the ClickFunnels time, measured costs, the stage counts
+and review cards, the page that reads them, and `max_jobs: 1` on Write ad copy.
+
 ## The Today read — `GET /api/marketing/today`
 
 Read only. Each part reads in its own short transaction (`asStaff()`), so one part
@@ -25,17 +30,36 @@ flowchart TD
   H -->|found| H1[copy: last 10 copy pieces + last 5 copy jobs]
   H -->|found| H2[copy_ready: switch, writer row, Anthropic key, budget]
   H -->|missing| H3[copy empty, copy_ready false, waiting: copy]
-  D --> S[spend: today, last 7, prior 7, last 30<br/>from ad_metrics_daily, whole company]
+  F --> F2[each stage: its front-matter counts<br/>+ the text under ## Review card]
+  D --> S0[spend.through = the later of the newest saved ad-day<br/>and the day before the newest Meta pull's Arizona day,<br/>never today or later]
+  S0 --> S[spend: today, then last 7 / prior 7 / last 30 / prior 30<br/>whole days ending on spend.through<br/>from ad_metrics_daily, whole company]
   D --> L[last_sync: Meta connection + newest ad-day]
-  F & H1 & H2 & S & L --> Z[200 with as_of and waiting]
+  D --> CF[clickfunnels_synced_at:<br/>analytics_connections.last_synced_at]
+  D --> CO[costs.offer: newest done marketing_jobs offer run<br/>seconds, tokens, dollars]
+  H -->|found| CC[costs.copy: house partner's last 5<br/>partner_ai_usage rows, purpose creative]
+  CO & CC --> PR{model price on file?<br/>src/marketing/model-prices.mjs}
+  PR -->|yes| PR1[cost in whole cents]
+  PR -->|no / no run| PR2[cost null: the page prints unknown]
+  F2 & H1 & H2 & S & L & CF & PR1 & PR2 --> Z[200 with as_of and waiting]
   F -->|files not on server| W[that part null + named in waiting]
-  S -->|table missing / no rows in 30 days| W
+  S0 -->|no saved ad-day at all| W
+  S -->|table missing| W
   L -->|table missing / never synced| W
+  CF -->|table missing| W
+  CO -->|marketing_jobs missing| W
   W --> Z
   D -->|database not answering| E[503 db down]
 ```
 
 - A window with no saved ad-days is `null`, never `0`.
+- The 7 and 30 day windows end on `spend.through`, never on today, so both sides of
+  every comparison are whole days. Only `today` is today. `spend.through` is the later
+  of the newest saved ad-day and the last whole day the newest Meta pull covered, so
+  the windows keep moving after ads stop (Meta sends no row for a day with no ads).
+  A covered window with no rows stays `null`; the page says "No ad spend saved for
+  Oct 5 to Oct 11."
+- A cost is `null` when no run was measured, or when a run's model has no price with a
+  source in `src/marketing/model-prices.mjs` (today only `claude-opus-5-5` has one).
 - A table or column that is not in the database yet (Postgres 42P01 / 42703 / 42883)
   makes that part `waiting`. Any other database error is a 503 (connection) or a 500.
 
@@ -49,7 +73,7 @@ flowchart TD
   C0[POST creative/generate<br/>asset_kind=copy, house partner] --> G{marketing switch on?}
   G -->|no| G1[403 suite_off, nothing saved]
   G -->|yes| C1[generation_jobs: queued]
-  C1 -->|POST creative/run, or the runner every 2 min| C2[running]
+  C1 -->|POST creative/run max_jobs 1 from the page:<br/>claims at most one job, or the runner every 2 min| C2[running]
   C2 --> R{copy writer row?}
   R -->|no| C9[failed: no active provider]
   R -->|yes| M[OpenAI first]
@@ -65,6 +89,49 @@ flowchart TD
   C3 -->|a rule fires| C5[blocked, reasons kept]
   C4 -->|a person approves| C6[approved]
 ```
+
+## The page — `public/app/marketing-command-center.*` (Today view)
+
+What the page reads, and when. Drawn from `public/app/marketing-command-center.js`.
+
+```mermaid
+flowchart TD
+  P0[page opens] --> P1[GET marketing/today<br/>+ GET ad-videos?status=awaiting_approval]
+  P0 --> P2[GET marketing/offer/generate]
+  P1 -->|200| P3[paint: spend tiles, as-of line, Waiting on you,<br/>Offer and market rows, cost lines, footer clock]
+  P1 -->|first load fails| P4[banner in words, every number unknown]
+  T1[every 5 minutes while the tab is visible] --> P1
+  T2[tab comes back into view or gets focus<br/>more than 30 s after the last read] --> P1
+  P1 -->|a reload fails after a good load| P5[keep the last numbers<br/>banner: This page shows the last load from 3:02 PM]
+  P1 -->|a read gets no answer in 20 s| P7[give up on it: same as a failed reload,<br/>banner: The server took too long to answer<br/>the next 5-minute tick reads again]
+  P1 -->|ad-videos fails| P6[one line in Waiting on you: The video list did not load]
+  P3 --> W1[Waiting on you: videos first, then flywheel rows<br/>each with where it is done: the button on this page,<br/>or Not on this page yet: it ships in slice N]
+  P3 --> R1[Read it on each stage row: unfolds its review card in place;<br/>its Say one of line becomes Approve or tweak: Not on this page yet]
+  P3 --> X1[Write ad copy: creative/generate, then creative/run max_jobs 1]
+  P2 --> X2[Write offer: POST, then GET ?id= every 10 s]
+```
+
+- Nothing on the page approves a video or a flywheel step. The videos row says
+  approving is not on the page yet, and when the text message's links ran out
+  (`approval_expires_at`).
+- Nothing on the page sends Chris to chat or Claude Code (owner law 2026-10-05,
+  design §3.9). A row whose button is not built says "Not on this page yet: it ships
+  in slice N" (design safety rule 9) and shows no button: approve the avatar 5a, approve
+  any other step 5; run the avatar 5a ("Cost not measured."), market research 10
+  ("Cost not measured."), steps 4 to 6 5; saving the offer file 1. No chat command is
+  copied, and no row says "runs in chat".
+- No inner scroll box: long ad copy and the offer fold behind Show more.
+- The topbar wraps rather than pushing the page sideways: one row on a wide screen,
+  Search and the account chip on a second row when they do not fit beside the name.
+
+## NOT BUILT (on this branch)
+
+- Running a flywheel stage from the page, approving one, tweaking one (design slice 5).
+  The flywheel rows are read only.
+- Approving or rejecting a video from the page (design slice 2). Only the count, the
+  ads and the dates are shown.
+- `GET marketing/costs` and the cost ledger (design slice 1). Until then the cost lines
+  come from `GET marketing/today` `costs`, as above.
 
 ## U20 M5 11.1: metric definitions (`src/marketing/metrics.mjs`)
 
@@ -117,12 +184,6 @@ Gaps between the spec and the live data (recorded, not fixed) are listed in
 `booking.created` events carry no client; call_outcomes has 0 rows; cash here is
 transactions while `adAttributionRollup` counts payment links; "25% hold" is not
 ad-spine's `hold_rate`; 2-second plays are stored on 0 of 69 ad-days.
-
-## NOT BUILT (on this branch)
-
-- The page `public/app/marketing-command-center.*` (workflow M11).
-- Running a flywheel stage from the page (slice 2). The flywheel rows are read only.
-- The offer generator (workflow M12).
 
 ## U01 API contract for every marketing/* route
 
@@ -552,6 +613,147 @@ flowchart TD
   orchestrator's precondition records them.
 - **UNVERIFIED:** Netlify's own handling of the exit code (0 skips, 1 builds) is from
   Netlify's docs, not seen on a live build.
+## U22 M0 step 4: marketing clock + background worker (in-pass waits) + GET marketing/health (heartbeats 415)
+
+Drawn 2026-10-06 from the code on branch `mm-u22-marketing-clock`:
+`src/marketing/clock.mjs` (tick), `src/marketing/worker.mjs` (runPass, the door),
+`netlify/functions/marketing-clock.mjs`, `netlify/functions/marketing-worker-background.mjs`,
+`api/marketing/health.mjs`, `db/migrations/415_marketing_heartbeats.sql`. Spec §6 Step 4,
+§8.3 (health card), §2 item 4 (buzzes). Back end only: the health card screen is lane E.
+
+### The clock (`marketing-clock`, every 15 minutes, a 30-second scheduled function)
+
+```mermaid
+flowchart TD
+  T["Netlify cron */15 * * * *<br/>marketing-clock.mjs → tick()"] --> S["read every company's marketing_settings<br/>(never makes a row)"]
+  S --> B{"enabled? (read as the weekly-batch switch only)"}
+  B -->|false| BD["batch part: log 'disabled', plan nothing"]
+  B -->|true| BO["batch part: 'on', plan nothing yet<br/>(weekly scheduling is U35 — NOT BUILT)"]
+  BD & BO --> W["count waiting work (all companies):<br/>repo_outbox rows not committed · buzzes due ·<br/>queued jobs due of a JOB_KINDS kind (never 'offer') ·<br/>running claims older than 16 min"]
+  W --> HB["'clock' heartbeat on every company the machine serves<br/>(settings row, a waiting save, or an open job)"]
+  HB --> K{anything waiting?}
+  K -->|no| N["log 'nothing waiting'; no wake"]
+  K -->|yes| WK["wakeWorker: POST /.netlify/functions/marketing-worker-background<br/>header x-fundhub-worker"]
+  WK -->|"MARKETING_WORKER_SECRET unset or masked"| WN["no-op, logged; nothing runs"]
+  T -->|"database error"| E["log it, still answer 200 — the next tick is the retry"]
+```
+
+- The clock imports no model, GitHub, Meta or texting module (`clock.test.mjs` walks the imports).
+- It queues nothing in this unit. The only row it writes is its heartbeat.
+
+### One worker pass (`marketing-worker-background`, up to 15 minutes)
+
+```mermaid
+flowchart TD
+  D["POST from the clock, a save's wake, or the last pass"] --> G{"x-fundhub-worker = MARKETING_WORKER_SECRET?<br/>(unset or masked secret = closed door)"}
+  G -->|no| X["404 'no', nothing runs"]
+  G -->|yes| H1["'worker' heartbeat: running"]
+  H1 --> R["reclaimStale: claims older than 16 min → queued (or failed on the 3rd); never 'offer'"]
+  R --> L{"minute 9 yet?"}
+  L -->|yes| STOP["stop taking work"]
+  L -->|no| DR{"last drain (any pass) a minute or more ago?<br/>('outbox_drain' heartbeat)"}
+  DR -->|yes| DO["drainOutbox → record the result on 'outbox_drain'<br/>('busy' moves the time, keeps the last real result)"]
+  DR -->|no| BZ
+  DO --> BZ{"30 s since the last buzz check?"}
+  BZ -->|yes| SB["sendDueBuzzes with notify-fanout send()"]
+  BZ -->|no| CL
+  SB --> CL["claim per group: writer up to 3 at once, every other group 1<br/>(one short transaction: advisory xact lock, count running, SKIP LOCKED claim, never 'offer')"]
+  CL --> RJ["run each claimed job's handler (JOB_KINDS run(job, ctx))<br/>return → finishJob · throw → failJob (final:true fails at once)"]
+  RJ --> F{"jobs still running?"}
+  F -->|yes| WT["wait for one to end, at most 15 s"] --> L
+  F -->|no| NX{"earliest queued run_after, or the next drain minute<br/>when saves wait and the last drain was not held,<br/>falls before minute 9?"}
+  NX -->|yes| SL["wait until then (a job due but unclaimable: 5 s)"] --> L
+  NX -->|no| IDLE["stop: idle"]
+  STOP & IDLE --> FIN["let running jobs finish (killed at 15 min; reclaimStale takes them back)"]
+  FIN --> RW{"a queued job due within the next 9 minutes?"}
+  RW -->|yes| WAKE["wake the next pass"]
+  RW -->|no| END
+  WAKE --> END["'worker' heartbeat: done, with what the pass did"]
+```
+
+- A job that re-queues itself 10 seconds out (U28's Meta video poll) runs again in the same
+  pass. NOT BUILT: no job kind is registered yet (`JOB_KINDS` is empty until U24, U28 and U35),
+  so today a pass drains, sends buzzes and ends.
+- Concurrent passes are safe: claims skip locked rows, the outbox drain holds a 10-minute
+  lease, buzzes take a lease, and the group caps count running jobs in the database.
+
+### GET /api/marketing/health
+
+```mermaid
+flowchart TD
+  Q["GET /api/marketing/health"] --> A{"signed in?"}
+  A -->|no| E401["401"]
+  A -->|yes| RL{"owner or admin (ROLE_SETS.MARKETING), with a company?"}
+  RL -->|no| E403["403, nothing written"]
+  RL -->|yes| TX["one short staff transaction"]
+  TX --> S1["settings row (made with defaults on the first read)"]
+  S1 --> PS["'page_seen' heartbeat: who read it"]
+  PS --> RD["read: heartbeats · this company's jobs (never 'offer') ·<br/>repo_outbox · last Meta sync · cost this month and the newest batch"]
+  RD --> OUT["200 {clock, worker, outbox, sync, model, as_of}"]
+  OUT --> HR{"held_reason"}
+  HR -->|"GITHUB_REPO_TOKEN unset or masked"| NT["'no_token'"]
+  HR -->|"last drain held by the dry-run fence"| DRY["'dry_run'"]
+  HR -->|otherwise| NUL["null"]
+  TX -->|"a marketing_* table not live yet"| E503["503 not_ready"]
+```
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **The clock and `enabled`.** Spec M0 step 4 says the clock "does nothing while `enabled` is
+  false". This unit reads `enabled` as the weekly-batch switch only: with it off the batch part
+  logs "disabled" and plans nothing (M0 Done #4), but the clock still wakes the worker for saves,
+  due buzzes, due jobs and stale claims, because those come from Chris's own taps (Write now,
+  rule edits, script saves) and must work while the weekly schedule is off. For Chris to see once.
+- Spec §6 Step 4 says the clock's self-wake `fetch` goes on `ALLOWED_RAW_FETCH`. The clock calls
+  `wakeWorker` (`src/marketing/wake.mjs`, already on that list from U05), so no new entry.
+- Spec says "runs up to 3 writer jobs at once". The other groups (loader, system) run 1 at a time
+  each, per the plan brief; the spec does not name them.
+- Heartbeats for the clock, the worker and the drain are written on every company the machine
+  serves; the health card reads its own company's. `marketing_heartbeats.org_id` cascades when a
+  company is deleted (a status light, not a record). The spec names no heartbeat table; the plan
+  contract does (415).
+- `sync.last_sync_at` is the later of the Meta connection's `last_synced_at` and the newest
+  `ad_metrics_daily.synced_at`. `model.last_batch_cost_usd` is the newest `marketing_batches`
+  row's cost; null when there is no batch.
+- Buzz retries use the one company's quiet hours when exactly one company has settings, else the
+  spec default (21:00-07:00 Arizona). A new buzz already waits through quiet hours when queued.
+- `docs/journeys/marketing-machine-intended.md` is not on main, so this was checked against the
+  spec text and the plan contract, not the intended journey.
+
+## U26 Retry a stuck step — `POST /api/marketing/jobs/retry`
+
+Generated from the code on 2026-10-06 (branch `mm-u26-ideas-rules-retry`): `api/marketing/jobs/retry.mjs`,
+`retryJob` in `src/marketing/jobs.mjs`, `JOB_KINDS` in `src/marketing/job-kinds.mjs`. Spec §8.3 (Today
+lists each machine stage with Retry; Chris runs marketing from the dashboard, never from Claude
+Code). Owner and admin only (requireAuth, then requireRole `ROLE_SETS.MARKETING`). Today's
+`stuck_jobs` (plan unit U32) carry the ids this route takes.
+
+```mermaid
+flowchart TD
+  P["POST marketing/jobs/retry<br/>request_id, job_id"] --> U{"job_id is an id?"}
+  U -->|no| X["400 invalid, field job_id"]
+  U -->|yes| T["one staff transaction (withRequest)"]
+  T --> F["SELECT the job FOR UPDATE<br/>this company only"]
+  F --> K{"found, not 'offer',<br/>kind in JOB_KINDS?"}
+  K -->|no| NF["404 not_found<br/>(another company's job, the Write offer path, a kind the worker does not know)"]
+  K -->|yes| S{"status failed?"}
+  S -->|no| NX["400 invalid, field job_id<br/>(queued, running or done)"]
+  S -->|yes| R["retryJob: failed → queued<br/>attempts 0, error, result, claimed_at, finished_at cleared, due now"]
+  R --> OK["200 {ok, job:{id, kind, status:'queued'}}"]
+  OK --> W["COMMIT, then wake the worker"]
+```
+
+- Free: a retry spends nothing by itself; the job's own handler checks the cost caps when it runs.
+- A repeated request_id answers the first 200 and changes nothing, even if the job failed again since.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
+  `src/http/marketing-jobs-retry.pg.test.mjs` in GitHub CI. Today JOB_KINDS is empty, so every
+  live job answers 404 until units U24, U28 and U35 register their kinds.
+
+### Batch history and Write now on the dashboard
+
+`GET marketing/batches` and `POST marketing/batches/write-now` are drawn in `ad-script-flow.md`,
+section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
+JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
 
 ## X4 Funnel builder: automatic addresses, tags, full tracking, Push live to a NEW path
 
@@ -718,40 +920,194 @@ flowchart LR
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
   `src/http/marketing-funnel-builder.pg.test.mjs` in GitHub CI. Never run against live
   ClickFunnels: every ClickFunnels call in the tests is a fake behind the real provider.
-## U26 Retry a stuck step — `POST /api/marketing/jobs/retry`
 
-Generated from the code on 2026-10-06 (branch `mm-u26-ideas-rules-retry`): `api/marketing/jobs/retry.mjs`,
-`retryJob` in `src/marketing/jobs.mjs`, `JOB_KINDS` in `src/marketing/job-kinds.mjs`. Spec §8.3 (Today
-lists each machine stage with Retry; Chris runs marketing from the dashboard, never from Claude
-Code). Owner and admin only (requireAuth, then requireRole `ROLE_SETS.MARKETING`). Today's
-`stuck_jobs` (plan unit U32) carry the ids this route takes.
+## U31 M5 11.2 part 1: GET marketing/ads and GET marketing/ad?n=
+
+Drawn from code on branch `mm-u31-ads-routes`: `api/marketing/ads.mjs`,
+`api/marketing/ad.mjs`, the readers in `src/marketing/metrics.mjs` (U20) and
+`readLastSync` in `api/marketing/today.mjs`. Spec §11.2, §11.1, §11.3; shapes are
+fixed shape 8 in `docs/specs/marketing-machine-api.md` §6.7. Read only: no row is
+written, nothing is texted, Meta and models are not called. Owner and admin only
+(requireAuth, then requireRole `ROLE_SETS.MARKETING`, then a company on the session).
+Every query runs in one `asStaff()` transaction.
+
+### The Ads view — `GET /api/marketing/ads?from&to&funnel&format&angle`
 
 ```mermaid
 flowchart TD
-  P["POST marketing/jobs/retry<br/>request_id, job_id"] --> U{"job_id is an id?"}
-  U -->|no| X["400 invalid, field job_id"]
-  U -->|yes| T["one staff transaction (withRequest)"]
-  T --> F["SELECT the job FOR UPDATE<br/>this company only"]
-  F --> K{"found, not 'offer',<br/>kind in JOB_KINDS?"}
-  K -->|no| NF["404 not_found<br/>(another company's job, the Write offer path, a kind the worker does not know)"]
-  K -->|yes| S{"status failed?"}
-  S -->|no| NX["400 invalid, field job_id<br/>(queued, running or done)"]
-  S -->|yes| R["retryJob: failed → queued<br/>attempts 0, error, result, claimed_at, finished_at cleared, due now"]
-  R --> OK["200 {ok, job:{id, kind, status:'queued'}}"]
-  OK --> W["COMMIT, then wake the worker"]
+  A[GET marketing/ads] --> B{signed in?}
+  B -->|no| B1[401]
+  B -->|yes| C{owner or admin?<br/>ROLE_SETS.MARKETING}
+  C -->|no| C1[403, nothing read]
+  C -->|yes| D{from / to real YYYY-MM-DD,<br/>from not after to?}
+  D -->|no| D1[400 invalid, field from or to]
+  D -->|yes| W[window: Arizona days, both ends in<br/>none sent = the last 30 days ending today]
+  W --> F{funnel, format or angle sent?}
+  F -->|yes| L[script labels per number:<br/>live ad_scripts version, else newest<br/>keep numbers whose labels all match]
+  L -->|no number matches| E[rows empty]
+  L --> R1[readAdNumbers for those numbers]
+  F -->|no| R2[readAdNumbers for every number<br/>with spend or a lead in the window]
+  R2 --> L2[script labels for those numbers]
+  R1 & L2 --> ROW[one row per ad NUMBER:<br/>counts from the reader, rates from ratiosFor<br/>labels null when no script]
+  ROW --> S[most spend first, unknown spend last, then number]
+  W --> U[unmapped: spend of ads with no number,<br/>per campaign, same window, filters do not apply]
+  W --> T[as_of = connection last_synced_at,<br/>else newest saved ad-day; null if never synced]
+  S & E & U & T --> OK[200 rows, unmapped, as_of]
 ```
 
-- Free: a retry spends nothing by itself; the job's own handler checks the cost caps when it runs.
-- A repeated request_id answers the first 200 and changes nothing, even if the job failed again since.
-- **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
-  `src/http/marketing-jobs-retry.pg.test.mjs` in GitHub CI. Today JOB_KINDS is empty, so every
-  live job answers 404 until units U24, U28 and U35 register their kinds.
+- Every number is U20's: `readAdNumbers` gives the counts and `ratiosFor` the rates.
+  The route adds, divides and rounds nothing of its own.
+- A row also carries the reader's raw counts after the contract keys: `ads`,
+  `link_clicks`, `plays`, `ad_days`, `reported_days`, `maturing_leads`,
+  `cash_unknown` (extra keys are allowed by the contract).
+- Unknown stays `null`: spend of a number with leads but no ad-days, a rate whose
+  bottom is 0 or never reported. `maturing` is true when a lead is under 14 days old.
 
-### Batch history and Write now on the dashboard
+### The drawer — `GET /api/marketing/ad?n=91`
 
-`GET marketing/batches` and `POST marketing/batches/write-now` are drawn in `ad-script-flow.md`,
-section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
-JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
+```mermaid
+flowchart TD
+  A[GET marketing/ad?n=] --> G[same gate: 401 / 403]
+  G --> N{n is 1-9 digits?}
+  N -->|no| N1[400 invalid, field n]
+  N -->|yes| K{this company has a Meta ad,<br/>a script or a tagged lead with n?}
+  K -->|no| K1[404 not_found]
+  K -->|yes| R[the Ads row for n over the last 30 Arizona days<br/>nothing in the window: spend null, counts 0]
+  R --> M[meta_ads: every ads row with n, oldest first]
+  R --> CU[curve: one entry per Meta ad per saved ad-day in the 30 days<br/>video_play_curve as stored, null when Meta sent none]
+  R --> WA[watch.alerts: ad_watch_curve_alerts of those ads<br/>watch.diagnoses: ad_watch_curve_diagnoses, newest day first, at most 100,<br/>not limited to the 30 days]
+  M & CU & WA --> OK[200 ad, as_of]
+```
+
+- `watch` inner keys (U31 owns them): an alert is `{ad_id, dies_before_25_alerted_on,
+  updated_at}`; a diagnosis is `{date, diagnosis, fix_type, film_note,
+  next_take_improved, id, ad_id, created_at}`. `ad_id` is `ads.id` (the Meta ad row).
+- Two Meta ads with one number keep two curves (each entry names its `ad_id`); they
+  are never averaged.
+
+### Fast with 30 days (spec M5 done 2)
+
+`src/http/marketing-ads.pg.test.mjs` runs every read of both routes under
+`EXPLAIN (ANALYZE)` on a 30-day fixture with seq scans turned off for that one
+transaction, and fails if `ad_metrics_daily` or `client_ad_attribution` is read
+without an index condition. The live timing of each route is taken after ship
+(the orchestrator writes it on the board).
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+- **Design keys not built.** The design doc's Ads row (`ad_id`, `angle`, `hold_2s`,
+  `sales_ours`, `sales_meta`, `cpb_cents`, `last_day`, `unknown_ad`) and drawer
+  (`quartiles`, `diagnosis`, `script{hook, line2}`, `links`) differ from fixed
+  shape 8; the contract wins. Meta's own purchase count, the last day an ad ran,
+  the script's hook and line 2 and the unmapped lead count are not in these answers.
+- **Funnel of a row comes from the script only.** U32's funnel roll-up falls back
+  to `marketing_funnels.meta_campaign_ids`; this route does not, so a number with no
+  script funnel reads `funnel_key` null here while its spend can count on Funnels.
+- **Unmapped spend ignores funnel / format / angle.** Spend with no number has no
+  script, so no label can match it.
+- **No 10-play floor.** The design prints "unknown (fewer than 10 plays)" through
+  `watchRate()`; U20's rates and this route have no floor.
+- **`readLastSync` is not index-checked.** Its `max(synced_at)` reads the company's
+  ad-days with no index that orders them; it is today's shared helper, not this unit's.
+- **Lead days are not range-scanned.** U20's lead read finds the company's tagged
+  leads by index, then keeps the window by Arizona day of `captured_at` (not sargable).
+- **UNVERIFIED on this Mac** (no Postgres here): proved only by the pg test in GitHub CI.
+
+## U32 M5 11.2 part 2: angles, funnel numbers, and the M5 keys on Today
+
+Written 2026-10-06 from the code on branch `mm-u32-angles-funnel-stats`. Read only: nothing
+here writes a row, calls Meta or calls a model. Code: `api/marketing/angles.mjs`,
+`api/marketing/funnels/stats.mjs`, `api/marketing/today.mjs` (part 5),
+`src/marketing/metrics-rollups.mjs`. The counting rules are U20's
+(`src/marketing/metrics.mjs`); this unit only decides which funnel and which angle a number
+belongs to, and adds the per-number results up.
+
+Three routes, one gate (owner and admin, `ROLE_SETS.MARKETING`; the company from the
+session):
+
+```mermaid
+flowchart TD
+  A[GET marketing/angles<br/>GET marketing/funnels/stats] --> B{signed in?}
+  T[GET marketing/today] --> B
+  B -->|no| B1[401]
+  B -->|yes| C{owner or admin?}
+  C -->|no| C1[403, nothing read]
+  C -->|yes| W[window: last 30 Arizona days<br/>Today: today, 7 and 30 days]
+  W --> R[one asStaff read<br/>Today: four parts side by side]
+  R -->|a marketing_ table not there yet| NR[angles, funnels/stats: 503 not_ready<br/>Today: that part empty + named in waiting]
+  R -->|database not answering| DD[503 db down]
+  R --> OK[200 + as_of<br/>angles, funnels/stats: last Meta sync<br/>Today: when built; Meta time is last_sync]
+```
+
+Which funnel and which angle a number belongs to:
+
+```mermaid
+flowchart TD
+  AD[ads row with spend<br/>ad_metrics_daily, Arizona spend day] --> N{ad number?}
+  N -->|yes| S{its LIVE script<br/>ad_scripts.ad_id, archived_at NULL}
+  S -->|names funnel_key| F1[that funnel]
+  S -->|no script, or no funnel_key| CA{campaign on a funnel's<br/>meta_campaign_ids?}
+  N -->|no| CA
+  CA -->|yes| F2[that funnel]
+  CA -->|no| UM[Unmapped spend]
+  S -->|names angle_key| A1[that angle]
+  S -->|no angle_key| SP{v_ad_label_spine:<br/>creative's script angle?}
+  SP -->|yes| A2[that angle]
+  SP -->|no| NA[no angle: in no angle row]
+  L[lead: client_ad_attribution<br/>first touch, Arizona lead day] --> LN{ad number?}
+  LN -->|no| LU[not placed]
+  LN -->|yes| LS[number: script's funnel and angle,<br/>else the one its ads rows agree on]
+  LS -->|two funnels disagree| LU
+  LS --> RES[readAdNumbers results: booked, showed,<br/>sales, roadmaps, cash, reported cash — 14 days]
+```
+
+- **GET marketing/angles** → `{rows:[{angle_key, name, spend_cents, ads, leads, booked, sales,
+  cash_cents, roas}], as_of}`. One row per angle with spend or leads in the window. `ads` =
+  distinct ad numbers (an ads row with no number counts on its own). `name` from
+  `marketing/ads/angles.json` (bundled through netlify.toml `included_files`); a key not in
+  the file shows the key.
+- **GET marketing/funnels/stats** → `{rows:[{funnel_key, name, spend_cents, page_views,
+  click_to_page, page_to_lead, leads, booked, showed, sales, cash_cents, roas}],
+  unmapped_spend_cents, as_of}`. Every active funnel plus any funnel spend or leads were placed
+  on. `page_views` = `funnel.page` events from people on the funnel's landing page (its
+  `landing_url` path; null when the tracker does not run on that page). `click_to_page` =
+  page views ÷ the funnel's ads' link clicks; `page_to_lead` = leads ÷ page views.
+- **GET marketing/today, added keys** (every old key unchanged): `numbers` (today / d7 / d30
+  from `readTotals`), `daily` (30 days from `readDaily`), `spend_by_funnel` (7 days, with an
+  Unmapped row), `flow` (7 days: landing page views, Meta link clicks, then `numbers.d7`'s
+  leads, booked, showed, sales), `scripts_waiting` (released drafts and the machine's flagged
+  ones), `stuck_jobs` (failed `marketing_jobs`, not `offer`, newest first, each with its id
+  for Retry).
+- **Unknown stays null.** Spend with no saved ad-day is null. A funnel with nothing placed is
+  null while some spend is unmapped, and a known 0 only when all saved spend is placed. Cash
+  over several numbers is null only when payments exist and none reported an amount.
+- **Index proof.** Every query starts with a `-- m5:<name>` line;
+  `src/http/marketing-funnels-stats.pg.test.mjs` runs EXPLAIN (ANALYZE) on each with sequential
+  scans priced out and fails if `ad_metrics_daily`, `events`, `ad_scripts` or
+  `marketing_jobs` is read without an index. `ad_spend` walks `ads` then
+  `ad_metrics_daily (ad_id, date)`; `funnel_steps` walks `idx_events_name (org_id, name,
+  created_at)` with constant Arizona-midnight bounds.
+
+Gaps between the spec, the design and this code (recorded, not reconciled):
+
+1. **Design vs contract shapes.** The design doc (`command-center-design-2026-10-05.md` §3.1,
+   §3.7) draws `money{…, prior_30_days}`, `by_funnel`, `flow{page, pressed_buy, paid, booked}`,
+   angles `{ok, angles[], suggestions[]}` and funnels `{ok, funnels[{key, flow{}, page_funnel{},
+   clarity{}}]}`. This code builds the plan's fixed shapes 7 and 9
+   (`docs/specs/marketing-machine-api.md`), which win per the plan. The design's per-angle
+   "cost per lead, last run date, best and worst ad", the page funnel (pressed buy, paid) and
+   Clarity rows are not in these answers.
+2. **Two populations in one rate.** `page_views` counts every person on the landing page (ad
+   or not); `leads` counts only leads tagged with an ad number that maps to the funnel. So
+   `page_to_lead` understates while most leads carry no number (2 of 18 on 2026-10-06,
+   `docs/marketing/metrics.md` gap 8).
+3. **Flagged and visible rules are copied, not shared.** `scripts_waiting` repeats U25's
+   visibility rule and `isFlagged` (`src/marketing/scripts-store.mjs`, not on main when this
+   was written) in SQL. If either changes, this count must change with it.
+4. **Angle names lag one ship.** Names come from the bundled `angles.json`; an angle added
+   through the repo outbox shows its key until the next ship.
+5. **UNVERIFIED:** the live timing of each route (spec M5 "under 2 seconds with 30 days of
+   data"). The orchestrator records one live timing per route after ship.
 
 ## X8 The Ideas tab: what each tap sends (`public/app/cc-tab-ideas.js`)
 

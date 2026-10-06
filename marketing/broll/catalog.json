@@ -16,7 +16,8 @@
         "label": "Once your file is fixed",
         "value": 221500
       },
-      "gapLabel": "left on the table"
+      "gapLabel": "left on the table",
+      "transparent": false
     },
     "purpose": "Qualify today vs once fixed. A floating card: today and once-fixed amounts roll up, each beside a 3D cash stack that grows with it (the gap stacks on top in blue). Bills rise behind.",
     "data_tied": true
@@ -43,7 +44,8 @@
           "label": "Personal data that doesn't match"
         }
       ],
-      "tag": "Costing you money"
+      "tag": "Costing you money",
+      "transparent": false
     },
     "purpose": "Items on the credit report. The report floats on a stack of pages. Red chips: a bill flies off each one. Green chips: a gold coin flips in beside each.",
     "data_tied": false
@@ -59,7 +61,8 @@
       "eyebrow": "Even with perfect credit",
       "count": 13,
       "label": "hidden data points",
-      "subline": "An additional $100,000+ in low-interest funding"
+      "subline": "An additional $100,000+ in low-interest funding",
+      "transparent": false
     },
     "purpose": "The 13 hidden data points. Thirteen glossy dots light up on a tilted orbit around the count; back dots pass behind it. Bills drift behind the ring. Dots never labeled.",
     "data_tied": false
@@ -78,7 +81,8 @@
       "beforeTag": "On your report",
       "afterTag": "Removed",
       "toLabel": "Next funding round",
-      "toNote": "Goes in clean"
+      "toNote": "Goes in clean",
+      "transparent": false
     },
     "purpose": "Inquiries off between rounds. Hard inquiries are struck off a floating card, then bills ride the line down into the next funding round.",
     "data_tied": false
@@ -95,7 +99,8 @@
       "headline": "The banks that approve files like yours",
       "footer": "Apply in that order",
       "rows": 5,
-      "names": []
+      "names": [],
+      "transparent": false
     },
     "purpose": "The lender list, in order. Each lender row is its own floating slab; a gold coin flips in at the end of each. Names stay blank unless a shot list gives real ones.",
     "data_tied": false
@@ -115,7 +120,8 @@
         "Build the trust in the business",
         "Set up the businesses",
         "Apply in the right order"
-      ]
+      ],
+      "transparent": false
     },
     "purpose": "The step-by-step path. Thick numbered discs flip from gray to blue as the line runs down the steps. Bills rise up the sides as the path completes.",
     "data_tied": false
@@ -131,7 +137,8 @@
       "eyebrow": "Interest rates",
       "headline": "Rates are going up.",
       "subline": "When rates rise, banks tighten.",
-      "chipLabel": "Rates"
+      "chipLabel": "Rates",
+      "transparent": false
     },
     "purpose": "Interest rates going up. On a floating panel a thick line climbs to a Rates chip while a cash stack shrinks. No rate values or dates.",
     "data_tied": false
@@ -148,7 +155,8 @@
       "score": 762,
       "scoreLabel": "Credit score",
       "headline": "Zero impact on your score.",
-      "chip": "Score doesn't move"
+      "chip": "Score doesn't move",
+      "transparent": false
     },
     "purpose": "Soft pull, score does not move. A scan passes over a thick 3D dial and the score stays put. Bills hang faint and still at the sides.",
     "data_tied": false
@@ -164,7 +172,8 @@
       "eyebrow": "Company after company",
       "headline": "From one company to five or ten, each one funded.",
       "count": 5,
-      "fundedLabel": "Funded"
+      "fundedLabel": "Funded",
+      "transparent": false
     },
     "purpose": "CompanyLine: companies roll down a 3D assembly line, one after another. Each one stops under the funding station, cash pours onto it and stacks up on top, its windows light up, its revenue bars climb and its chip turns \"Funded\". Then it rolls on, carrying its cash, and the next one comes in. It reads \"from one company to five or ten, each one funded\" (the /roadmap page's line for the Business Duplication Map, and $297 Ad 23).",
     "data_tied": false
@@ -207,7 +216,8 @@
         }
       ],
       "price": "$297",
-      "footer": null
+      "footer": null,
+      "transparent": false
     },
     "purpose": "OfferStack: the six things in the $297 Funding Roadmap stack up in 3D, one row at a time, each with a real page from the /roadmap checkout's own \"See a sample\" previews, then the price lands with cash behind it.",
     "data_tied": false
@@ -231,7 +241,8 @@
       ],
       "pickTime": 2,
       "booked": "Booked",
-      "detail": "Soft pull on the call, zero score impact"
+      "detail": "Soft pull on the call, zero score impact",
+      "transparent": false
     },
     "purpose": "BookCall: the call to action for the book-a-call funnel (/watch). A 3D calendar flips down into place, a day gets picked, time slots appear, one is picked, and a \"Booked\" card lands in front. Generic days and times only: no month name, no year, no person's name.",
     "data_tied": false
@@ -251,7 +262,8 @@
         "Chase",
         "American Express",
         "Bank of America"
-      ]
+      ],
+      "transparent": false
     },
     "purpose": "A three-reel slot machine that spins through real lender names from the bank book (docs/legacy-strong/lenders-legacy-strong.csv, baked into src/data/lenders.ts), slows, lands one name per reel, then reads \"30–50 lenders matched\".",
     "data_tied": false
@@ -270,7 +282,8 @@
       "inquiryChip": "Inquiries",
       "captionStruck": "Hard inquiries",
       "captionRest": "removed between rounds",
-      "amounts": null
+      "amounts": null,
+      "transparent": false
     },
     "purpose": "A funding sequence that runs round by round (3 to 6 rounds). Each round lights up on the track and stacks another strapped bundle onto one cash tower while bills and coins pour down onto it; between rounds a hard-inquiries chip pops up, gets struck off and leaves before the next round lights. Every piece of loose money is masked to the tower area or the side gutters, so none of it ever sits on a word.",
     "data_tied": false
@@ -293,7 +306,8 @@
       "pulledLabel": "Pulls",
       "notPulledLabel": "No pull",
       "count": "30–50",
-      "countLabel": "lenders matched to your file"
+      "countLabel": "lenders matched to your file",
+      "transparent": false
     },
     "purpose": "A list of 59 real banks scrolls from the top of the list to the bottom on a 3D drum. Each row has the bank's logo (the CRM's own logo file) and the three bureaus with a status for each, heavily blurred: you can tell the data is there, but you cannot read it. The list slows and settles, then one clear line lands: \"30–50 lenders matched to your file\" (9/30 /watch VSL P4).",
     "data_tied": false
@@ -321,7 +335,8 @@
         "Thousands of data points",
         "A little over a million dollars funded for myself"
       ],
-      "speed": 1
+      "speed": 1,
+      "transparent": false
     },
     "purpose": "ProofWall: the real client approvals turn past on a 3D carousel of floating screens. Each screen is one approval picture exactly as it is (the branded win card from marketing/landing-pages/slo/client-wins/deck, copied to public/proof-wall/ by scripts/proof-wall-approvals.py). Built to read on a phone: few approvals per clip, each one held in front about a second, the front screen big and square to the camera, the side screens pushed back, dimmed and softened. A chip pinned to the front screen repeats its amount and lender from that picture's manifest entry (the figure read off the picture), never anything else. No name or face is added. Under the carousel the proof lines build up: \"A decade\", \"Hundreds of files\", \"Thousands of data points\" pop in as chips, then \"A little over a million dollars funded for myself\" lands big and holds. Bills drift behind the screens.",
     "data_tied": true
@@ -347,7 +362,8 @@
       ],
       "showTotal": true,
       "eyebrow": "Client approvals",
-      "caption": "Real approvals"
+      "caption": "Real approvals",
+      "transparent": false
     },
     "purpose": "ProofFlood: a flood of real approvals. Dozens of approval cards fly in out of the depth and pile up behind; the headline approvals slam to the front one at a time with a flash, a money burst and a big amount chip, then dock as a small trophy chip and drop back into the pile. A running total climbs while the cards land. It adds only the figures on screen: each card's amount joins the total the moment that card lands, so the last frame shows the sum of every approval in the clip.",
     "data_tied": true
@@ -373,7 +389,8 @@
       ],
       "showTotal": true,
       "eyebrow": "Client approvals",
-      "caption": "Real approvals"
+      "caption": "Real approvals",
+      "transparent": false
     },
     "purpose": "ProofFlood: a flood of real approvals. Dozens of approval cards fly in out of the depth and pile up behind; the headline approvals slam to the front one at a time with a flash, a money burst and a big amount chip, then dock as a small trophy chip and drop back into the pile. A running total climbs while the cards land. It adds only the figures on screen: each card's amount joins the total the moment that card lands, so the last frame shows the sum of every approval in the clip.",
     "data_tied": true
@@ -389,7 +406,8 @@
       "format": "vertical",
       "eyebrow": "Interest rates",
       "headline": "Rates went up. Banks tightened.",
-      "subline": "Money gets harder to get."
+      "subline": "Money gets harder to get.",
+      "transparent": false
     },
     "purpose": "BankPockets (Unit I, broll-v2-2026-10-02). Chris: \"When interest rates rise, we should show it like a bank pulling out its pockets, as if they have no money to lend out.\"",
     "data_tied": false
@@ -405,7 +423,8 @@
       "format": "wide",
       "eyebrow": "Interest rates",
       "headline": "Rates went up. Banks tightened.",
-      "subline": "Money gets harder to get."
+      "subline": "Money gets harder to get.",
+      "transparent": false
     },
     "purpose": "BankPockets (Unit I, broll-v2-2026-10-02). Chris: \"When interest rates rise, we should show it like a bank pulling out its pockets, as if they have no money to lend out.\"",
     "data_tied": false
@@ -420,7 +439,8 @@
     "default_props": {
       "eyebrow": "Wrong tool",
       "caption": "An hour with a hammer",
-      "bendRim": true
+      "bendRim": true,
+      "transparent": false
     },
     "purpose": "FlatTireHammer: the wrong tool. A car sits on a flat tire and a hammer swings at it. Each hit bounces off and the tire stays flat; the tire only jiggles. The last swing gets a bigger wind-up, and when it lands the rim bends (a dent at the upper right) and the wheel wobbles while two bills fly off. The clock by the caption runs a full turn: an hour of swinging.",
     "data_tied": false
@@ -435,7 +455,8 @@
     "default_props": {
       "eyebrow": "Right tool",
       "caption": "Fifteen minutes with a jack",
-      "doneLabel": "Back on the road"
+      "doneLabel": "Back on the road",
+      "transparent": false
     },
     "purpose": "JackFix: the right tool. The same car on the same flat tire. A blue scissor jack slides in and cranks the car up, a blue cross wrench spins the lug nuts off, the flat is tossed aside and a fresh full tire drops in and goes on, the wrench spins the nuts back, the jack lets the car down and slides out. A \"Back on the road\" check pops, the wheel turns and the road moves, and a few bills drift down behind. The clock by the caption only gets a quarter of the way round: fifteen minutes.",
     "data_tied": false
@@ -467,7 +488,8 @@
           "tool": "The right banks in the right order"
         }
       ],
-      "highlight": null
+      "highlight": null,
+      "transparent": false
     },
     "purpose": "ToolMatch: a 3D tool board. Each credit situation gets its matching tool, one row at a time: the situation slides in on the left, a blue tool badge pops on the line between, and the tool's card hangs on the board at the right. Then one row lifts off the board and the others dim (with an optional chip, for example \"The hammer\"). An optional final card lands in front at the end, for example the roadmap and its price.",
     "data_tied": false

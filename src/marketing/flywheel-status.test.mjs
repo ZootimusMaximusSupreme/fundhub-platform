@@ -10,7 +10,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { campaignStatus, flywheelStatus, findFlywheelDir } from "./flywheel-status.mjs";
+import { campaignStatus, flywheelStatus, findFlywheelDir, reviewCard, REVIEW_CARD_MAX } from "./flywheel-status.mjs";
 import { bodyHash } from "../../scripts/flywheel/status.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -112,6 +112,17 @@ describe("flywheel status — fixture folder", () => {
     assert.equal(out.advice, "2 stages need re-running. Do them in order: 3, then 4.");
   });
 
+  test("each row carries the file's own counts and its review card (what Read it unfolds)", () => {
+    const out = campaignStatus(dir, "fixture");
+    const byN = Object.fromEntries(out.stages.map((s) => [s.n, s]));
+    assert.deepEqual(byN[1].counts, { quotes: 25, languageEntries: 120 });
+    assert.equal(byN[1].review_card, "all good");
+    assert.equal(byN[2].review_card, "ok");
+    // No file: nothing to count and nothing to read. Never an invented card.
+    assert.deepEqual(byN[6].counts, {});
+    assert.equal(byN[6].review_card, null);
+  });
+
   test("flywheelStatus lists every campaign folder under marketing/flywheel", () => {
     const out = flywheelStatus({ roots: [root] });
     assert.deepEqual(out.campaigns.map((c) => c.campaign), ["fixture"]);
@@ -141,5 +152,31 @@ describe("flywheel status — the real repo, word for word with the command", ()
       assert.ok(lines.includes(s.line), `stage ${s.n} line not printed by the command: ${s.line}`);
     }
     if (partner.advice) assert.ok(lines.includes(partner.advice), partner.advice);
+  });
+});
+
+describe("reviewCard — the block under '## Review card'", () => {
+  test("runs to the next heading of the same or higher level, or to the end", () => {
+    const text = "# Title\n\nbody\n\n## Review card\n\n**What this decided:** one thing\n\n### detail kept\nmore\n\n## Appendix\nnot this\n";
+    assert.equal(reviewCard(text), "**What this decided:** one thing\n\n### detail kept\nmore");
+    assert.equal(reviewCard("## Review card\nlast block\n"), "last block");
+  });
+
+  test("no card, or an empty one, is null", () => {
+    assert.equal(reviewCard("# Offer\n\nno card here\n"), null);
+    assert.equal(reviewCard("## Review card\n\n## Next\n"), null);
+    assert.equal(reviewCard(null), null);
+  });
+
+  test("a runaway card is capped", () => {
+    assert.equal(reviewCard("## Review card\n" + "x".repeat(REVIEW_CARD_MAX * 2)).length, REVIEW_CARD_MAX);
+  });
+
+  test("every real partner stage file that exists has a card to read", () => {
+    const partner = flywheelStatus({ roots: [REPO] }).campaigns.find((c) => c.campaign === "partner");
+    for (const s of partner.stages) {
+      if (s.state === "MISSING") assert.equal(s.review_card, null, `stage ${s.n}`);
+      else assert.match(s.review_card, /What this decided/, `stage ${s.n} has no review card`);
+    }
   });
 });

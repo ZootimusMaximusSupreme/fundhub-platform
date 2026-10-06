@@ -1,5 +1,6 @@
 import React from 'react';
 import {CARD_EDGE, COLORS, BrandFrame, Decor, MoneyField, P3D, Stage3D, TAG, TRACK, cardShadow, enter} from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {
   CarCorner,
   CaptionBlock,
@@ -38,6 +39,8 @@ export type JackFixProps = {
   /** Clip length in frames, 75 to 105 (2.5 to 3.5 seconds at 30 fps). Default 90. */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const JACK_FIX_BASE = 90;
@@ -50,6 +53,7 @@ export const jackFixDefaults: JackFixProps = {
   eyebrow: 'Right tool',
   caption: 'Fifteen minutes with a jack',
   doneLabel: 'Back on the road',
+  transparent: false,
 };
 
 const ORIGIN = {x: 440, y: 600};
@@ -87,7 +91,7 @@ const T = {
 
 const s = (f: number, k: keyof typeof T): number => seg(f, T[k][0], T[k][1]);
 
-export const JackFix: React.FC<JackFixProps> = ({eyebrow, caption, doneLabel = 'Back on the road', durationInFrames, showSafeZones}) => {
+export const JackFix: React.FC<JackFixProps> = ({eyebrow, caption, doneLabel = 'Back on the road', durationInFrames, showSafeZones, transparent}) => {
   const L = JACK_FIX_BASE;
   const {f, fps} = useToolTimeline(L, durationInFrames, JACK_FIX_MIN, JACK_FIX_MAX);
 
@@ -151,7 +155,7 @@ export const JackFix: React.FC<JackFixProps> = ({eyebrow, caption, doneLabel = '
   const check = enter(f, fps, T.check[0], 12);
   const checkDraw = seg(f, T.check[0] + 3, T.check[0] + 10);
 
-  return (
+  const page = (
     <BrandFrame showSafeZones={showSafeZones}>
       <ToolDefs />
       <Stage3D f={f} length={L}>
@@ -288,4 +292,5 @@ export const JackFix: React.FC<JackFixProps> = ({eyebrow, caption, doneLabel = '
       </div>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

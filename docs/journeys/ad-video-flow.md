@@ -637,3 +637,169 @@ files, which take values as arguments): `CLOUDFLARE_ACCOUNT_ID`,
 - AWS's page at the address the test cites now redirects to the API index; the
   example was read from the Internet Archive copy of 2025-01-04 and is cited in
   `src/storage/r2-sign.test.mjs`.
+
+---
+
+## U29 M3 9.4a: see-through (transparent) switch on every Remotion template
+
+Generated 2026-10-06 from `marketing/broll/src/brand/Grid.tsx`, the 20 template
+files in `marketing/broll/src/templates/` and `marketing/broll/catalog.json`.
+Spec §9.4 (see-through renders) and §2 item 9 (animations always go on last;
+step 1 of the 10/2 saved plan, see-through renders, stays). Render commands:
+`marketing/broll/README.md`. Marked proof: `marketing/broll/previews/see-through-marked.png`.
+
+**Nothing in the pipeline renders these yet.** No state, step, route, table or
+screen changed. `marketing_settings.animation_mode` stays `fullframe`. The
+overlay step (U30) and the video worker are not built, so their boxes are
+UNVERIFIED.
+
+```mermaid
+flowchart TD
+    P["a template's props<br/>transparent: false by default<br/>(all 22 compositions, catalog.json default_props)"] --> W["&lt;SeeThrough on={transparent}&gt;<br/>wraps the template's frame"]
+    W --> G{"Grid (BrandFrame's page)<br/>and the wide pages<br/>(BankPockets WideGrid, ProofFlood wide)"}
+    G -->|"transparent false"| O["white paper + faint grid, as before<br/>(41 of 44 test stills identical; ProofFlood only its usual render noise)"]
+    G -->|"transparent true"| T["no paper, no grid<br/>cards, words, money, shadows unchanged<br/>words inside y 269-1248 (wide: 5% title-safe)"]
+    O --> MP4["npx remotion render ... .mp4<br/>(typed by hand)"]
+    T --> A{"npx remotion render ... --image-format=png"}
+    A -->|"--codec=prores --prores-profile=4444<br/>--pixel-format=yuva444p10le"| MOV[".mov ProRes 4444<br/>ffprobe: yuva444p12le"]
+    A -->|"--codec=vp9 --pixel-format=yuva420p"| WEBM[".webm VP9<br/>ffprobe: yuv420p + alpha_mode=1<br/>(decode with libvpx-vp9)"]
+    MOV --> U30["overlay over the Submagic export<br/>UNVERIFIED: U30 and the video worker not built"]
+    WEBM --> U30
+    S["marketing_settings.animation_mode<br/>'fullframe' (default, unchanged) or 'overlay'"] -.->|"picks transparent<br/>UNVERIFIED: nothing reads it yet"| P
+```
+
+| Piece | What it does |
+|---|---|
+| `SeeThrough` / `useSeeThrough` (`Grid.tsx`) | A React context, off unless a template turns it on. Adds no element to the page. |
+| `Grid` | Returns nothing when see-through. Otherwise the same paper and grid as before. |
+| Each template | `transparent?: boolean` in its props type, `transparent: false` in its defaults, frame wrapped in `<SeeThrough on={transparent}>`. |
+| `BankPockets` wide, `ProofFlood` wide | Paint their own 4K page; skip it when see-through. |
+| `catalog.json` | Rebuilt; every entry's `default_props` now ends with `transparent: false`. |
+| `src/marketing/broll-see-through.test.mjs` | Fails if a template lands without the switch, a page stops listening to it, or the README loses the alpha commands. |
+
+**Measured (scratch renders, not in git):** 44 stills each way (2 frames of each
+of the 22 compositions). Switch on: all 44 are RGBA PNGs, 11% to 92% of pixels
+fully clear, no faint grid line found (a test grid drawn on purpose was caught:
+29,611 line pixels). With `checkTextOnly` as well: 0 drawn pixels in the top 14%
+or bottom 35% of all 40 vertical stills; the 2 wide clips have nothing above
+alpha 3 of 255 outside the 5% margin (the faint tail of a card shadow). A 75-frame
+QualifyToday clip came out as ProRes 4444 (45.6 MB) and VP9 (0.9 MB); one
+decoded frame of each is 66% clear and 22% solid.
+
+**Gaps between the spec and the code (findings, not fixed here):**
+- `transparent` is now in every template's `default_props`, so the writer's
+  animation plan may send it for a template that is not data-tied
+  (`validateAnimationPlan` allows any default_props key). It is a render choice
+  that should follow `animation_mode`. The overlay step (U30) should set it
+  itself and ignore a writer's value. For the data-tied templates
+  (QualifyToday, ProofWall, ProofFlood) the validator refuses every prop, so
+  the render step must add it there too.
+- Money decoration still drifts through the top 14% and bottom 35% at about a
+  third of its strength when see-through (alpha up to 55 of 255 measured in
+  QualifyToday frame 72), as it does on the white page. Spec §9.4 wants captions
+  in a zone the overlays never draw in, so in overlay mode the bills will cross
+  the caption zone faintly. The spec names only the page and the grid.
+- Small gray words with no card behind them (eyebrows, sublines) are hard to
+  read over busy film (proof sheet mark 4). Cards read fine.
+- ffmpeg's own VP9 decoder drops the alpha (measured: every pixel solid). The
+  overlay step must decode a `.webm` with `libvpx-vp9`, or use the ProRes `.mov`.
+- ContactSheet and DepthKitDemo (kit tools, not in the catalog) have no switch.
+- ProofFlood stills are not repeatable run to run (up to 17 of 255 on some
+  pixels), before and after this change, so its "unchanged" proof is "same
+  noise as two runs of the old code", not identical bytes.
+
+---
+
+## U30 M3 9.4b: the animation planner, the overlay and the finalize (pure, not wired)
+
+Generated 2026-10-06 from `src/ad-videos/animations.mjs` (`planAnimations`,
+`cacheKey`, `overlayArgs`, `finalizeArgs`, `finalizeChecks`) and its tests
+`src/ad-videos/animations.test.mjs`. Spec §9.4, §9.1 step 11, §9.3 (the overlay
+re-encodes the video once and copies the sound) and owner decision §2 item 9:
+**cut → Submagic captions → our animation overlays → finalize.** The master
+Submagic sees never has an animation in it.
+
+**Status: built and tested, not wired in.** Nothing live imports
+`animations.mjs` (a test fails if anything but its own test does). The live
+pipeline still places B-roll **inside Submagic, before its export**
+(`src/ad-videos/broll.mjs` via `pipeline.mjs` `placeBrollAndExport()`, the
+`matched` row in "Who does each move" above). That is the old order. When the
+worker's `render_and_overlay` job goes live with this file, that Submagic
+placement must be switched off in the same change, or the animations land twice.
+Every arrow that starts a render, an ffmpeg run or a state move below is
+UNVERIFIED: the worker (spec §9.5) and the `animated` state (§9.1) are other units.
+
+```mermaid
+flowchart TD
+    IN["cut_plan (align.mjs alignTakes)<br/>animation_plan rows (the writer)<br/>catalog.json · parts · style<br/>Submagic export length + words<br/>animation_mode · caption zone"] --> V{"each row: the writer's own checks again<br/>(animation-plan.mjs) + 1080x1920 at 30 fps"}
+    V -->|"unknown template, bad props, data-tied props,<br/>seconds out of range, anchor not in the script, wide"| SK["skipped, with the reason in words"]
+    V --> MODE{"animation_mode"}
+    MODE -->|"overlay: caption zone not set,<br/>or inside y 269-1248 (where clips draw)"| SK
+    MODE --> CLK["the master's clock: every piece snapped to 1/30 s<br/>(ffmpeg-plan.mjs snapPiece), played in order"]
+    CLK --> DRIFT{"export length vs master<br/>more than 0.1 s apart?"}
+    DRIFT -->|no| ANC
+    DRIFT -->|"yes: line the cut's words up with Submagic's words<br/>(half or more must match)"| RM["every time read through the word pairs"]
+    DRIFT -->|"yes, and no words / too few match"| SK
+    RM --> ANC{"anchor → time<br/>(align.mjs resolveAnchor)"}
+    ANC -->|"words: phrase heard"| T["time on the export, on the frame grid"]
+    ANC -->|"words: phrase not heard but its line kept<br/>bullets: keyword not heard, cue kept"| FB["line / cue start<br/>fallback: true (flagged)"]
+    ANC -->|"its line or cue was cut"| SK
+    FB --> T
+    T --> FF{"fullframe limits, in play order"}
+    FF -->|"in the first 3 s · on the CTA line · under 4 s after the last clip ·<br/>can't be cut short enough for the CTA, the end or the 35% share ·<br/>template can't run 3 s or less (ProofWall 4, ProofFlood 6)"| SK
+    FF -->|"kept: at most 3 s (4 / 6), cut short at the CTA,<br/>the end, or the 35% share"| IT
+    T -->|"overlay mode: no full-frame limits; never two clips at once"| IT["items: template, props (+ durationInFrames,<br/>+ transparent from the mode: true in overlay, false in full frame,<br/>whatever the writer sent), start / end, frames,<br/>cache_key = sha256(template + canonical props)"]
+    IT -. "UNVERIFIED: worker not built" .-> R["render each clip once per cache_key (R2 cache)"]
+    R -.-> OV["overlayArgs: each clip over the Submagic export at its frame<br/>ONE video encode (master settings), sound copied"]
+    OV -.-> L1["loudness pass 1 on the overlaid file"]
+    L1 -.-> FIN["finalizeArgs: picture copied; sound re-levelled to -14 LUFS<br/>only when more than 1 LU off; +faststart"]
+    FIN -.-> CHK{"finalizeChecks"}
+    CHK -->|"1080x1920, within 0.3 s of the master,<br/>-14 LUFS ± 1, moov before mdat"| AN["animated (UNVERIFIED: state not built)"]
+    CHK -->|"any one fails"| FX["held, with the reasons in words"]
+```
+
+**Measured, not guessed** (ffmpeg 6.0 on this Mac, synthetic clips, outside the
+suite): a ProRes 4444 clip with alpha placed at frame 45 for 60 frames showed on
+frames 45 to 104 and on no other frame; a VP9 `.webm` clip with alpha at frame
+150 for 90 frames showed on frames 150 to 239; the corners stayed the base
+picture (alpha kept); the output had 300 of 300 frames; the sound was copied bit
+for bit (same MD5 as the export); the argv held one video encoder. Finalize took
+a -39.8 LUFS file to -14.05 LUFS with the picture copied, and wrote `moov` before
+`mdat`; `finalizeChecks` passed it, and failed the un-finalized file with two
+plain reasons (loudness, not fast-start).
+
+**Numbers that are not in the spec** (safe defaults, in `ANIMATION_DEFAULTS`):
+a re-map needs half or more of the cut's words found in Submagic's words; a bare
+`caption_position_y` number is read as the captions' top edge in percent of the
+frame height, covering 15% below it; the band the see-through clips draw in is
+the kit's text-safe band, y 269 to 1248 (`ops/workflows/broll-v2-2026-10-02.md`
+line 36); a clip whose anchor lands in a forbidden spot is skipped, never moved
+(spec done-test: each clip within 0.3 s of its anchor); a clip that would run
+into the CTA, past the end or past the 35% share is cut short when the template
+can run that short, else skipped; clips are kept first come first served in play
+order; in overlay mode two clips never show at once; a phrase not heard word for
+word on a kept line lands on that line's start, flagged `fallback`.
+
+**Gaps (found, not reconciled):**
+
+1. **The old Submagic B-roll placement is still live** (`broll.mjs`,
+   `placeBrollAndExport`). It has to be switched off when this goes live, or the
+   animations land twice.
+2. **Overlay mode cannot render on main yet.** The kit's `transparent` switch
+   (spec §9.4 "see-through renders") is U29, not merged when this was written.
+   This planner sends U29's prop name, `transparent`, and sets it from the mode
+   on every clip (data-tied ones too), so a writer's own value never decides it.
+   Until U29 lands and Chris switches it, `animation_mode` stays `fullframe`.
+3. **`caption_position_y` is not measured.** Spec §8.3 says it is set from a test
+   export; until it is, overlay mode skips every clip.
+4. **The cache key does not change when a template's code changes.** It hashes
+   template + props (the spec's words). A kit change needs a new key part (for
+   example a kit version) before cached clips can be trusted across kit edits.
+5. **Chris's own B-roll clips** (`DRIVE_BROLL_FOLDER_ID`, spec §9.4, off by
+   default) are not built: no input for them in this unit's contract.
+6. **Submagic's export frame rate is not pinned.** The overlay forces 30 fps
+   constant (the master's settings); a 29.97 fps export would be re-timed.
+7. **Not proved on a real Submagic export** or a real Remotion render: fake cut
+   plans, the committed catalog, and synthetic ffmpeg clips only.
+8. **The intended journey** (`docs/journeys/marketing-machine-intended.md`) is
+   not on main. The yardstick was spec §1, §2 item 9 and §9.4.

@@ -15,6 +15,7 @@ import {
   progressBetween,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type RatesRisingProps = {
   eyebrow: string;
@@ -26,6 +27,8 @@ export type RatesRisingProps = {
   headlineSize?: number;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const RATES_RISING_BASE = 75;
@@ -39,6 +42,7 @@ export const ratesRisingDefaults: RatesRisingProps = {
   headline: 'Rates are going up.',
   subline: 'When rates rise, banks tighten.',
   chipLabel: 'Rates',
+  transparent: false,
 };
 
 // The chart is drawn in a 900 x 380 box and shown at 820 x 346 on the panel.
@@ -61,6 +65,7 @@ export const RatesRising: React.FC<RatesRisingProps> = ({
   headlineSize = 104,
   durationInFrames,
   showSafeZones,
+  transparent,
 }) => {
   const {f, fps} = useTimeline(RATES_RISING_BASE, durationInFrames);
     const panel = enter(f, fps, 5, 16);
@@ -72,7 +77,7 @@ export const RatesRising: React.FC<RatesRisingProps> = ({
   const cash = 118 - 92 * progressBetween(f, 16, 54);
   const cashIn = enter(f, fps, 8, 14);
 
-  return (
+  const page = (
     <BrandFrame showSafeZones={showSafeZones}>
       <Stage3D f={f} length={RATES_RISING_BASE}>
         <Eyebrow text={eyebrow} progress={enter(f, fps, 0, 14)} />
@@ -174,4 +179,5 @@ export const RatesRising: React.FC<RatesRisingProps> = ({
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

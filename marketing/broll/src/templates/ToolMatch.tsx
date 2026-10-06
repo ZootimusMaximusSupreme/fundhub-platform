@@ -13,6 +13,7 @@ import {
   cardShadow,
   enter,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {FitEyebrow, easeOut, seg, useToolTimeline} from './toolScene';
 
 // ToolMatch: a 3D tool board. Each credit situation gets its matching tool,
@@ -47,6 +48,8 @@ export type ToolMatchProps = {
   /** Clip length in frames, 75 to 120 (2.5 to 4 seconds at 30 fps). Default 105. */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const TOOL_MATCH_BASE = 105;
@@ -67,6 +70,7 @@ export const toolMatchDefaults: ToolMatchProps = {
     {situation: 'Every file', tool: 'The right banks in the right order'},
   ],
   highlight: null,
+  transparent: false,
 };
 
 /**
@@ -132,7 +136,7 @@ const fitSize = (texts: string[], width: number, lines: number, max: number, min
   return min;
 };
 
-export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, highlight = null, highlightLabel, finalCard, durationInFrames, showSafeZones}) => {
+export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, highlight = null, highlightLabel, finalCard, durationInFrames, showSafeZones, transparent}) => {
   const L = TOOL_MATCH_BASE;
   const {f, fps} = useToolTimeline(L, durationInFrames, TOOL_MATCH_MIN, TOOL_MATCH_MAX);
   const rows = (rowsIn ?? []).slice(0, 4);
@@ -165,7 +169,7 @@ export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, high
   const boardTransform = `translate3d(0px, ${(40 * (1 - boardIn)).toFixed(1)}px, ${(-380 * (1 - boardIn) - 60 * fin).toFixed(1)}px) rotateX(${(5 + 14 * (1 - boardIn)).toFixed(2)}deg) rotateY(-7deg)`;
   const dimAll = 1 - 0.72 * Math.min(1, fin * 1.6);
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -350,5 +354,6 @@ export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, high
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
 
