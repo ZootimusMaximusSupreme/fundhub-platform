@@ -95,3 +95,16 @@ Fundhub repo. Board: ops/workflows/plaid-two-testers-2026-10-06.md — read it, 
 ## Blockers
 
 - Waiting on Chris: go + yes/no on client picking Business/Personal when Plaid can't tell. Second tester email only needed for real banks.
+
+## W1 manifest — 2026-10-06 (done, sandbox)
+
+- Keys: PLAID_CLIENT_ID, PLAID_SECRET (sandbox), PLAID_ENV=sandbox, PLAID_TOKEN_ENC_KEY (new) → `.env`, `credentials/env.full.snapshot`, Netlify prod/preview/branch, no --secret. Production secret: Plaid says "You don't have access" yet.
+- New: `src/banking/plaid-link.mjs` (startLink, completeLink, toStoreAccount), `api/banking/link-token.mjs`, `api/banking/link-exchange.mjs`, `scripts/plaid-sandbox-link.mjs`, `src/http/plaid-link.test.mjs` (11 pass).
+- Changed: `src/banking/providers/plaid-http.mjs` (+createLinkToken, +sandboxPublicToken, holder_category carried), `netlify/functions/api.mjs` (2 routes), `src/pulse/registry.mjs`, journeys regenerated.
+- Contract change vs board: both routes are STAFF (owner/admin/sales_manager) with `client_id` in the body — no PLAID_TESTER_EMAILS gate. Front end calls them from the staff side for now.
+- Proof: sandbox bank linked to client f1cb9c27 (Test Test, stanbridgejchris@gmail.com): Personal Checking 1101, Business Checking 2202, Personal Visa 3303 (limit $8,000), Business Amex 4404 (limit $25,000). Token stored encrypted (v1:), consent stamped, entity_kind 'unknown'.
+- Business vs personal: `bank_accounts.entity_kind` already exists (unknown/personal/business). Plaid's holder_category kept in `raw` only.
+
+## Leftover
+
+- `src/http/climate-match.test.mjs` "climate page: no approval odds…" fails on main too. Not touched.
