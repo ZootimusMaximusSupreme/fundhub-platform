@@ -215,6 +215,7 @@ import creativeJobs from "../../api/creative/jobs.mjs";
 import creativeApprovals from "../../api/creative/approvals.mjs";
 import creativeActions from "../../api/creative/actions.mjs";
 import creativeRun from "../../api/creative/run.mjs";
+import marketingOfferGenerate from "../../api/marketing/offer/generate.mjs";
 import adintelBoard from "../../api/adintel/board.mjs";
 import contentTiles from "../../api/content/tiles.mjs";
 import contentUpload from "../../api/content/upload.mjs";
@@ -876,6 +877,11 @@ export const ROUTES = {
   "creative/approvals": creativeApprovals,
   "creative/actions": creativeActions,
   "creative/run": creativeRun,
+  /* The dashboard's "Write offer" button (flywheel stage 3 on the server).
+     Owner/admin. POST saves a queued run and wakes the 15-minute background
+     writer (netlify/functions/marketing-offer-background.mjs); GET reads the
+     run back. Contract: docs/specs/marketing-offer-contract.md. */
+  "marketing/offer/generate": marketingOfferGenerate,
   /* The Winner's Board read endpoint (W2 Layers 1-2). Partner or staff; a
      client or affiliate session is refused by requirePrincipal, and staff must
      name a partner_id so the query still runs inside a scoped transaction.

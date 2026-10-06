@@ -100,6 +100,10 @@
     "assets/ebooks/fundhub-ebook-placeholder.pdf",
     "assets/gifts/message-blaster.dmg",
     "scripts/black-reports/**",
+    # The flywheel stage files (avatar, ad research, owner notes). The offer
+    # writer (/api/marketing/offer/generate) reads them as its default inputs;
+    # without this line it finds no avatar on Netlify and refuses to guess.
+    "marketing/flywheel/**",
     # src/finance/vendor/crs-engine.cjs is a one-line CommonJS shim:
     #   module.exports = require("../../../vendor/underwriteiq-full/…/engine.js")
     # esbuild leaves that require() external, so the zip shipped without the
