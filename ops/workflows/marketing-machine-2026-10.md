@@ -121,6 +121,8 @@ Recommended answer on each, except q10: the approval deck stays OFF /roadmap (Ch
 
 Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34, X1, X2, X3; 2c = U35, U36, U37, U38, U39; 2d = X5, X8. U33 waits on U02. U34 runs after S0 because both change the Today screen. Then one ship, then the Blueprint test.
 
+Extra unit GL (wave 2d): | GL | Glue so the Blueprint chain runs end to end without the GitHub token: approving the offer writes 03-offer.md through the outbox; every flywheel stage reads the newest approved stage output from the database (or the pending outbox entry) when the repo file is missing or older; STAGE_RUNNERS 1 and 2 point at X1 and X2; Blueprint offer word default 'Blueprint' for take file names (in code; NAMING.md untouched) | 2d | pending |
+
 ## Blockers / only-Chris items (spec §16)
 
 - The intended journey `docs/journeys/marketing-machine-intended.md` was approved in the archived chat but never committed. A hook blocks agents from writing `*-intended.md`.
@@ -135,3 +137,4 @@ Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34
 - 2026-10-06 5:35 am MST: owner asked for more speed. Wave 2a: 12/12 CI green, 10 clean reviews, U24 and X4 fixing. Wave 2b started early on top of the 2a branches (U23, U34, X1, X2, X3). A separate team writes the Blueprint test plan (docs/specs/blueprint-funnel-test-plan-2026-10-06.md) so the test starts right after the ship.
 - 2026-10-06 ~5:45 am MST: owner said faster. Tab contract written (docs/specs/command-center-tabs.md) so tabs build alongside the frame. Wave 2c started now (U36 Scripts, U38 Numbers, U39 Launch, X8 Ideas + Funnels, X5 Shoot + teleprompter). Plan: ship 1 as soon as the back ends land, start the Blueprint test, ship 2 with the tabs. Still waiting: U35 (needs U23), U37 (needs U23 and U34).
 - 2026-10-06 ~6:25 am MST: wave 2a merged to main (dbc7b34e1, 12/12, CI green twice except the known climate test) and pushed. New env MARKETING_WORKER_SECRET set in .env, credentials snapshot and Netlify (no --secret). Saves to GitHub stay held ('no_token') until Chris makes GITHUB_REPO_TOKEN (spec §16).
+- 2026-10-06 ~6:40 am MST: Blueprint test plan written (docs/specs/blueprint-funnel-test-plan-2026-10-06.md). It found 3 gaps that would stop the test (no 03-offer.md writer, the outbox held without GITHUB_REPO_TOKEN, no Blueprint offer word); unit GL closes them in wave 2d with U35 and U37. Default taken: Blueprint offer word 'Blueprint'.
