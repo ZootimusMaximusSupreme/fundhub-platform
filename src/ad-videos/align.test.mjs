@@ -199,6 +199,61 @@ describe("attempts, with takes ordered by recorded_at", () => {
     const found = findAttempts(linesFromParts(ONE_LINE), t).get(0);
     assert.equal(found.filter((c) => !c.stitched && c.coverage === 1).length, 3);
   });
+
+  test("a short line inside a longer line: the longer line said 6 of 7 keeps its attempt", () => {
+    const parts = [{ kind: "hook", text: HOOK }, { kind: "body", text: "Grab your roadmap." }, { kind: "cta", text: CTA }];
+    const t = take("t1", T0, `${HOOK} |0.6| Grab your roadmap. |0.6| Tap below and grab your roadmap.`);
+    const p = plan(parts, [t]);
+    assert.equal(p.ok, true);
+    assert.deepEqual(p.missing_lines, []);
+    assert.deepEqual(p.hold_reasons, []);
+    assert.equal(p.lines[2].state, "kept");
+    assert.equal(p.lines[2].coverage, 0.857);
+    assert.deepEqual(p.pieces.map((x) => x.line_idx), [0, 1, 2]);
+    /* The short line plays from its own reading, not from inside the CTA. */
+    const body = p.pieces.find((x) => x.line_idx === 1);
+    assert.ok(body.start <= wordAt(t, "grab", 0).start && body.end < wordAt(t, "tap").start);
+    assert.ok(playsAt(p, "t1", wordAt(t, "grab", 1).start), "the CTA's own 'grab' plays");
+  });
+
+  test("a 2-word CTA inside a body line said 8 of 9: the body stays kept", () => {
+    const parts = [{ kind: "hook", text: HOOK }, { kind: "body", text: "So tap below and see what both files say." },
+      { kind: "cta", text: "Tap below." }];
+    const t = take("t1", T0, `${HOOK} |0.6| So tap below and see what both files. |0.6| Tap below.`);
+    const p = plan(parts, [t]);
+    assert.equal(p.ok, true);
+    assert.equal(p.lines[1].state, "kept");
+    assert.equal(p.lines[1].coverage, 0.889);
+    assert.deepEqual(p.said_differently, []);
+    const cta = p.pieces.find((x) => x.line_idx === 2);
+    assert.ok(cta.start >= wordAt(t, "tap", 1).start - 0.04 - 1e-6, "the CTA plays its own reading");
+  });
+
+  test("the hook said again as the last line: each line gets its own copy", () => {
+    const parts = [{ kind: "hook", text: HOOK }, { kind: "body", text: "Grab your roadmap today." }, { kind: "cta", text: HOOK }];
+    const t = take("t1", T0, `${HOOK} |0.6| Grab your roadmap today. |0.6| ${HOOK}`);
+    const p = plan(parts, [t]);
+    assert.equal(p.ok, true);
+    assert.deepEqual(p.missing_lines, []);
+    assert.deepEqual(p.lines.map((l) => l.state), ["kept", "kept", "kept"]);
+    assert.deepEqual(p.pieces.map((x) => x.line_idx), [0, 1, 2]);
+    for (let i = 1; i < p.pieces.length; i++) assert.ok(p.pieces[i].start >= p.pieces[i - 1].end, "pieces in time order");
+    assert.ok(playsAt(p, "t1", wordAt(t, "lenders", 0).start));
+    assert.ok(playsAt(p, "t1", wordAt(t, "lenders", 1).start));
+  });
+
+  test("identical lines: a hook retake stays the hook's, the copy after the body is the CTA's", () => {
+    const parts = [{ kind: "hook", text: HOOK }, { kind: "body", text: "Grab your roadmap today." }, { kind: "cta", text: HOOK }];
+    const t = take("t1", T0, `${HOOK} |0.6| ${HOOK} |0.6| Grab your roadmap today. |0.6| ${HOOK}`);
+    const p = plan(parts, [t]);
+    assert.equal(p.ok, true);
+    assert.deepEqual(p.pieces.map((x) => x.line_idx), [0, 1, 2]);
+    const hook = p.pieces.find((x) => x.line_idx === 0);
+    const cta = p.pieces.find((x) => x.line_idx === 2);
+    assert.ok(hook.start >= wordAt(t, "lenders", 1).start - 0.04 - 1e-6 && hook.end < wordAt(t, "grab").start,
+      "the hook plays its latest try before the body");
+    assert.ok(cta.start >= wordAt(t, "lenders", 2).start - 0.04 - 1e-6, "the CTA plays the copy after the body");
+  });
 });
 
 describe("restarts are stitched within 8 s", () => {
@@ -383,6 +438,16 @@ describe("gaps: the source's own pause, up to 250 ms (450 ms at a planned pause)
     assert.deepEqual(p.pieces.map((x) => x.take_id), ["t1", "t2"]);
     close(p.pieces[0].end, wordAt(t1, "you").end + 0.33);
     close(p.pieces[1].start, wordAt(t2, "your").start - 0.04);
+  });
+
+  test("no silences and no file length: a take's last word gets the 80 ms edge and no tail", () => {
+    const parts = [{ kind: "hook", text: "Grab your roadmap." }, { kind: "cta", text: "Tap below now." }];
+    const t1 = take("t1", T0, "Grab your roadmap.", { noSilences: true });
+    const t2 = take("t2", T1, "Tap below now.", { noSilences: true });
+    delete t1.duration;
+    const p = alignTakes({ takes: [t1, t2], parts });
+    assert.deepEqual(p.pieces.map((x) => x.take_id), ["t1", "t2"]);
+    close(p.pieces[0].end, wordAt(t1, "roadmap").end + 0.08);
   });
 });
 

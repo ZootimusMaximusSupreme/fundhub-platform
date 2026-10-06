@@ -604,13 +604,71 @@ function stitchRestarts(hits, line, take, o) {
   return cands;
 }
 
+/* Two lines with the very same words (the hook said again as the last line)
+   find the very same attempts, and the first of them in script order would
+   claim every copy. Share the copies out by where they sit in the take: a
+   copy belongs to the first of those lines that comes after the nearest
+   other line said before it (hook, body, hook: the second copy follows the
+   body, so it is the last line's). Then a line left with no copy takes one
+   from an identical line that holds two or more: the latest copy when it
+   comes later in the script, the earliest when it comes before. */
+function shareIdenticalLines(lines, all, byLine) {
+  const groups = new Map();
+  for (const line of lines) {
+    if (!line.verbatim) continue;
+    const key = line.tokens.map((t) => t.t + (t.opt ? "?" : "")).join(" ");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(line.line_idx);
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const inGroup = new Set(group);
+    const copies = group.flatMap((x) => byLine.get(x) || []).sort((a, b) => a.start - b.start);
+    if (!copies.length) continue;
+    const others = [...byLine.entries()].filter(([x]) => !inGroup.has(x)).flatMap(([, hs]) => hs);
+    /** @type {Map<number, any[]>} */
+    const owner = new Map(group.map((x) => [x, []]));
+    for (const c of copies) {
+      let before = null;
+      for (const h of others) if (h.end <= c.start + EPS && (!before || h.end > before.end)) before = h;
+      const after = before ? before.line_idx : -1;
+      const x = group.find((g) => g > after) ?? group[group.length - 1];
+      owner.get(x)?.push(c);
+    }
+    for (const x of group) {
+      if (owner.get(x)?.length) continue;
+      const donor = group.filter((g) => (owner.get(g)?.length ?? 0) >= 2)
+        .sort((a, b) => Math.abs(a - x) - Math.abs(b - x))[0];
+      if (donor === undefined) continue;
+      const held = owner.get(donor) ?? [];
+      owner.get(x)?.push(x > donor ? held.pop() : held.shift());
+    }
+    /* Each line keeps its own attempt objects: the same words found by that
+       line's own alignment. */
+    /** @type {Map<number, any[]>} */
+    const next = new Map(group.map((x) => [x, []]));
+    for (const x of group) {
+      for (const c of owner.get(x) ?? []) {
+        const own = c.line_idx === x ? c
+          : all.find((h) => h.line_idx === x && h.span[0] === c.span[0] && h.span[1] === c.span[1]);
+        next.get(own ? x : c.line_idx)?.push(own || c);
+      }
+    }
+    for (const x of group) {
+      const list = next.get(x) ?? [];
+      if (list.length) byLine.set(x, list);
+      else byLine.delete(x);
+    }
+  }
+}
+
 /**
  * findAttempts(lines, take, opts) → Map(line_idx → candidates in that take).
  *
  * Every attempt at every word-for-word line (§9.2 rule 2). Each line is
  * aligned to the take again and again, walling off each attempt it finds.
  * Then the take's words are shared out — a word belongs to one attempt only,
- * the most complete first — and restarts are stitched (rule 3).
+ * the most matched words first — and restarts are stitched (rule 3).
  */
 export function findAttempts(lines, take, opts = {}, cache = new Map()) {
   const o = { ...ALIGN_DEFAULTS, ...opts };
@@ -631,7 +689,12 @@ export function findAttempts(lines, take, opts = {}, cache = new Map()) {
       for (let q = hit.span[0]; q <= hit.span[1]; q++) mask[q] = 1;
     }
   }
-  all.sort((a, b) => (b.coverage - a.coverage) || (b.score - a.score) || (a.span[0] - b.span[0]));
+  /* Most matched words first, then the most complete. A short line that is a
+     piece of a longer one ("Grab your roadmap." inside "Tap below and grab
+     your roadmap today.") matches inside every reading of the longer line;
+     sorting by coverage alone would hand it those words whenever the longer
+     reading missed a word, and throw the longer line's attempt away. */
+  all.sort((a, b) => (b.score - a.score) || (b.coverage - a.coverage) || (a.span[0] - b.span[0]));
   const claimed = new Uint8Array(T.length);
   const byLine = new Map();
   for (const h of all) {
@@ -642,6 +705,7 @@ export function findAttempts(lines, take, opts = {}, cache = new Map()) {
     if (!byLine.has(h.line_idx)) byLine.set(h.line_idx, []);
     byLine.get(h.line_idx).push(h);
   }
+  shareIdenticalLines(lines, all, byLine);
   const out = new Map();
   for (const line of lines) {
     const hits = byLine.get(line.line_idx);
@@ -1002,7 +1066,9 @@ function buildPieces(E, o) {
         const s = silenceAt(take, end);
         bound = s ? Math.min(s.end, nextStart - o.edgeBefore) : end;
       } else {
-        bound = Number.isFinite(nextStart) ? nextStart - o.edgeBefore : end + tail;
+        /* No silences and no next word: with the file's length unknown there
+           is no proof of any air after the edge, so no tail. */
+        bound = Number.isFinite(nextStart) ? nextStart - o.edgeBefore : end;
       }
       if (take.duration !== null) bound = Math.min(bound, take.duration);
       end = Math.max(end, Math.min(end + tail, bound));

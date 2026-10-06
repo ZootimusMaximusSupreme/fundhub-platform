@@ -398,7 +398,8 @@ flowchart TD
     N --> L[Lines from parts<br/>blank line after = planned pause]
     L --> T[Takes in filming order<br/>by recorded_at]
     T --> A[Every attempt at every line in every take<br/>words of 5+ letters match at 0.8]
-    A --> S[Stitch restarts within 8 s<br/>A said words 1..k, B restarts at j ≤ k+1:<br/>keep A before j, then B]
+    A --> SH[A word belongs to one attempt:<br/>most matched words first, then most complete<br/>lines with the same words share the copies by position]
+    SH --> S[Stitch restarts within 8 s<br/>A said words 1..k, B restarts at j ≤ k+1:<br/>keep A before j, then B]
     S --> R[Per take: latest attempt with 90%+ coverage<br/>and no stall over 1.0 s, else highest coverage]
     R --> D[Across lines: dynamic program<br/>cost = 1 − coverage + 0.15 per take switch]
     D --> Q{Line under 85%?}
@@ -429,6 +430,17 @@ that cue has; the bullets cue index counts from 1 (the U01 contract example);
 the last line of a part is a planned pause unless cue follows cue; a take with
 no `recorded_at` goes after the dated ones; a cut-off word counts as part of a
 restart only when whisper marks it with a dash.
+
+**Who owns a word when two lines match it** (review fixes, 2026-10-06): the
+attempt with the most matched words claims it first, then the most complete
+one. So a short line that is a piece of a longer line ("Grab your roadmap."
+inside "Tap below and grab your roadmap today.") never takes the longer line's
+words, even when the longer line missed a word. Lines with the very same words
+(the hook said again as the last line) share the copies by where they sit: a
+copy goes to the first such line after the nearest other line said before it;
+a line left with none takes one from an identical line that holds two or more.
+With no silences measured and no file length, a take's last word gets the 80 ms
+edge and no gap tail, so a piece never runs past the end of the file.
 
 **Gaps (found, not reconciled):**
 
