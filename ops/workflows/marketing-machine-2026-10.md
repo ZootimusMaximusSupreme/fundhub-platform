@@ -91,10 +91,10 @@ Safety for the whole night (no exceptions): no existing live page changes. No Me
 | U33 | D | 2 | U02 | 424 | M5 11.4 Clarity: database counter (424), capped adapter for org sync, sweeper registered, law updated in all t | pending |
 | U34 | E | 1 | U01, U03 | - | Command Center frame: tab bar, Today moved into its own file, Settings tab (schedule, caps, funnels, campaign  | claimed (wave 2b, started early on wave-2a branches) |
 | U35 | A | 3 | U22, U23, U24, U25, U26 | - | M1 7.7 batch lifecycle: weekly scheduling on the clock, start/plan/write/release/expiry jobs, one buzz with th | pending |
-| U36 | E | 2 | U25, U26, U34 | - | Command Center Scripts tab: Inbox (Approve, Edit, Fix, Reject, film order, Write now when ready), Ideas, Rules | pending |
+| U36 | E | 2 | U25, U26, U34 | - | Command Center Scripts tab: Inbox (Approve, Edit, Fix, Reject, film order, Write now when ready), Ideas, Rules | claimed (wave 2c, started early as tab modules) |
 | U37 | E | 2 | U22, U23, U26, U32, U34 | - | Command Center Today additions: next drop + Write now (when ready) + suggestion accept, health card, M5 number | pending |
-| U38 | E | 2 | U26, U31, U32, U34 | - | Command Center Ads, Angles and Funnels tabs (watch-curve drawer, 'Make more of this', step rates) | pending |
-| U39 | E | 2 | U15, U28, U34 | - | Command Center Launch tab: Load to Meta, Load all approved, load status and reasons, Turn on per ad | pending |
+| U38 | E | 2 | U26, U31, U32, U34 | - | Command Center Ads, Angles and Funnels tabs (watch-curve drawer, 'Make more of this', step rates) | claimed (wave 2c, started early as tab modules) |
+| U39 | E | 2 | U15, U28, U34 | - | Command Center Launch tab: Load to Meta, Load all approved, load status and reasons, Turn on per ad | claimed (wave 2c, started early as tab modules) |
 
 Full briefs: `ops/workflows/marketing-machine-2026-10-plan.json` (key final.units). U34 waits for U01 and U03, so it runs in wave 2.
 
@@ -116,8 +116,8 @@ Recommended answer on each, except q10: the approval deck stays OFF /roadmap (Ch
 | X1 | Build the avatar on the server (slice 5a) | 2b | claimed (wave 2b, started early) |
 | X2 | Research the market + Research it on the server (slice 10) | 2b | claimed (wave 2b, started early) |
 | X3 | Ideas back end: flywheel stages from buttons (slice 5) | 2b | claimed (wave 2b, started early) |
-| X8 | Ideas tab + Research + Funnels cards | 2c | pending |
-| X5 | Ready to film: Shoot tab + teleprompter page | 2c | pending |
+| X8 | Ideas tab + Research + Funnels cards | 2c | claimed (wave 2c, started early) |
+| X5 | Ready to film: Shoot tab + teleprompter page | 2c | claimed (wave 2c, started early) |
 
 Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34, X1, X2, X3; 2c = U35, U36, U37, U38, U39; 2d = X5, X8. U33 waits on U02. U34 runs after S0 because both change the Today screen. Then one ship, then the Blueprint test.
 
@@ -133,3 +133,4 @@ Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34
 - Found: the build moved 4 minutes ago. Wave 2a has 12 units running in worktrees.
 - Did: nothing to wake. No takeover. Left the main session to run.
 - 2026-10-06 5:35 am MST: owner asked for more speed. Wave 2a: 12/12 CI green, 10 clean reviews, U24 and X4 fixing. Wave 2b started early on top of the 2a branches (U23, U34, X1, X2, X3). A separate team writes the Blueprint test plan (docs/specs/blueprint-funnel-test-plan-2026-10-06.md) so the test starts right after the ship.
+- 2026-10-06 ~5:45 am MST: owner said faster. Tab contract written (docs/specs/command-center-tabs.md) so tabs build alongside the frame. Wave 2c started now (U36 Scripts, U38 Numbers, U39 Launch, X8 Ideas + Funnels, X5 Shoot + teleprompter). Plan: ship 1 as soon as the back ends land, start the Blueprint test, ship 2 with the tabs. Still waiting: U35 (needs U23), U37 (needs U23 and U34).
