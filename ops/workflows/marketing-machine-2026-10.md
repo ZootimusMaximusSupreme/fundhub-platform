@@ -127,3 +127,8 @@ Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34
 
 ## Change manifests
 - 2026-10-06 2:45 am MST (2:40 timer): wave 1 done, 19 of 20 units on main at 33765ead0 and pushed to GitHub; U02 blocked; wave 2a launched (12 units incl. X4 funnel builder and the slice 0 fix).
+
+## Oversight log
+- 2:46 am oversight: alive, last activity 2:42 am, board commit 661d5e9a5 (wave 1 on main, wave 2a running).
+- Found: the build moved 4 minutes ago. Wave 2a has 12 units running in worktrees.
+- Did: nothing to wake. No takeover. Left the main session to run.
