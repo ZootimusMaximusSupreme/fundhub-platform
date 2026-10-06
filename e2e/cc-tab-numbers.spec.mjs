@@ -247,6 +247,7 @@ for (const vp of VIEWPORTS) {
       expect(await smallestText(page)).toBeGreaterThanOrEqual(11);
       await noSidewaysScroll(page);
 
+      await drawer.locator("[data-test=diagnosis] .eyebrow").click(); // focus leaves the Close button
       await page.keyboard.press("Escape");
       await expect(drawer).toHaveCount(0);
       expect(new URL(page.url()).hash).toBe("#numbers/ads");

@@ -510,7 +510,8 @@
     sheet: null,
     saved: {},
     seq: 0,
-    wired: false
+    wired: false,
+    keyWired: false
   };
 
   function now() {
@@ -1214,7 +1215,13 @@
     root.addEventListener("change", onChange);
     root.addEventListener("input", onInput);
     root.addEventListener("submit", onSubmit);
-    root.addEventListener("keydown", onKey);
+    /* Escape closes the drawer wherever focus sits (a tap on the drawer's
+       background moves focus to the page body). onKey does nothing when no
+       drawer is open, and hide() closes it when the tab is left. */
+    if (!state.keyWired && root.ownerDocument) {
+      root.ownerDocument.addEventListener("keydown", onKey);
+      state.keyWired = true;
+    }
     state.wired = root;
   }
 
