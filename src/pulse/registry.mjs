@@ -379,7 +379,9 @@ const API_KEYS = [
      anything, which isUp() counts as up, and the ping queues nothing.
      load-status answers 401 to an unsigned GET. Neither ever calls Meta. */
   "marketing/meta/load",
-  "marketing/meta/load-status"
+  "marketing/meta/load-status",
+  "marketing/ads",
+  "marketing/ad"
 ];
 
 const DESK_FILES = [

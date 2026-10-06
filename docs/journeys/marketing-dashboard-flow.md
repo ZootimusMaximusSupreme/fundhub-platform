@@ -859,3 +859,95 @@ flowchart LR
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
   `src/http/marketing-funnel-builder.pg.test.mjs` in GitHub CI. Never run against live
   ClickFunnels: every ClickFunnels call in the tests is a fake behind the real provider.
+
+## U31 M5 11.2 part 1: GET marketing/ads and GET marketing/ad?n=
+
+Drawn from code on branch `mm-u31-ads-routes`: `api/marketing/ads.mjs`,
+`api/marketing/ad.mjs`, the readers in `src/marketing/metrics.mjs` (U20) and
+`readLastSync` in `api/marketing/today.mjs`. Spec §11.2, §11.1, §11.3; shapes are
+fixed shape 8 in `docs/specs/marketing-machine-api.md` §6.7. Read only: no row is
+written, nothing is texted, Meta and models are not called. Owner and admin only
+(requireAuth, then requireRole `ROLE_SETS.MARKETING`, then a company on the session).
+Every query runs in one `asStaff()` transaction.
+
+### The Ads view — `GET /api/marketing/ads?from&to&funnel&format&angle`
+
+```mermaid
+flowchart TD
+  A[GET marketing/ads] --> B{signed in?}
+  B -->|no| B1[401]
+  B -->|yes| C{owner or admin?<br/>ROLE_SETS.MARKETING}
+  C -->|no| C1[403, nothing read]
+  C -->|yes| D{from / to real YYYY-MM-DD,<br/>from not after to?}
+  D -->|no| D1[400 invalid, field from or to]
+  D -->|yes| W[window: Arizona days, both ends in<br/>none sent = the last 30 days ending today]
+  W --> F{funnel, format or angle sent?}
+  F -->|yes| L[script labels per number:<br/>live ad_scripts version, else newest<br/>keep numbers whose labels all match]
+  L -->|no number matches| E[rows empty]
+  L --> R1[readAdNumbers for those numbers]
+  F -->|no| R2[readAdNumbers for every number<br/>with spend or a lead in the window]
+  R2 --> L2[script labels for those numbers]
+  R1 & L2 --> ROW[one row per ad NUMBER:<br/>counts from the reader, rates from ratiosFor<br/>labels null when no script]
+  ROW --> S[most spend first, unknown spend last, then number]
+  W --> U[unmapped: spend of ads with no number,<br/>per campaign, same window, filters do not apply]
+  W --> T[as_of = connection last_synced_at,<br/>else newest saved ad-day; null if never synced]
+  S & E & U & T --> OK[200 rows, unmapped, as_of]
+```
+
+- Every number is U20's: `readAdNumbers` gives the counts and `ratiosFor` the rates.
+  The route adds, divides and rounds nothing of its own.
+- A row also carries the reader's raw counts after the contract keys: `ads`,
+  `link_clicks`, `plays`, `ad_days`, `reported_days`, `maturing_leads`,
+  `cash_unknown` (extra keys are allowed by the contract).
+- Unknown stays `null`: spend of a number with leads but no ad-days, a rate whose
+  bottom is 0 or never reported. `maturing` is true when a lead is under 14 days old.
+
+### The drawer — `GET /api/marketing/ad?n=91`
+
+```mermaid
+flowchart TD
+  A[GET marketing/ad?n=] --> G[same gate: 401 / 403]
+  G --> N{n is 1-9 digits?}
+  N -->|no| N1[400 invalid, field n]
+  N -->|yes| K{this company has a Meta ad,<br/>a script or a tagged lead with n?}
+  K -->|no| K1[404 not_found]
+  K -->|yes| R[the Ads row for n over the last 30 Arizona days<br/>nothing in the window: spend null, counts 0]
+  R --> M[meta_ads: every ads row with n, oldest first]
+  R --> CU[curve: one entry per Meta ad per saved ad-day in the 30 days<br/>video_play_curve as stored, null when Meta sent none]
+  R --> WA[watch.alerts: ad_watch_curve_alerts of those ads<br/>watch.diagnoses: ad_watch_curve_diagnoses, newest day first, at most 100,<br/>not limited to the 30 days]
+  M & CU & WA --> OK[200 ad, as_of]
+```
+
+- `watch` inner keys (U31 owns them): an alert is `{ad_id, dies_before_25_alerted_on,
+  updated_at}`; a diagnosis is `{date, diagnosis, fix_type, film_note,
+  next_take_improved, id, ad_id, created_at}`. `ad_id` is `ads.id` (the Meta ad row).
+- Two Meta ads with one number keep two curves (each entry names its `ad_id`); they
+  are never averaged.
+
+### Fast with 30 days (spec M5 done 2)
+
+`src/http/marketing-ads.pg.test.mjs` runs every read of both routes under
+`EXPLAIN (ANALYZE)` on a 30-day fixture with seq scans turned off for that one
+transaction, and fails if `ad_metrics_daily` or `client_ad_attribution` is read
+without an index condition. The live timing of each route is taken after ship
+(the orchestrator writes it on the board).
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+- **Design keys not built.** The design doc's Ads row (`ad_id`, `angle`, `hold_2s`,
+  `sales_ours`, `sales_meta`, `cpb_cents`, `last_day`, `unknown_ad`) and drawer
+  (`quartiles`, `diagnosis`, `script{hook, line2}`, `links`) differ from fixed
+  shape 8; the contract wins. Meta's own purchase count, the last day an ad ran,
+  the script's hook and line 2 and the unmapped lead count are not in these answers.
+- **Funnel of a row comes from the script only.** U32's funnel roll-up falls back
+  to `marketing_funnels.meta_campaign_ids`; this route does not, so a number with no
+  script funnel reads `funnel_key` null here while its spend can count on Funnels.
+- **Unmapped spend ignores funnel / format / angle.** Spend with no number has no
+  script, so no label can match it.
+- **No 10-play floor.** The design prints "unknown (fewer than 10 plays)" through
+  `watchRate()`; U20's rates and this route have no floor.
+- **`readLastSync` is not index-checked.** Its `max(synced_at)` reads the company's
+  ad-days with no index that orders them; it is today's shared helper, not this unit's.
+- **Lead days are not range-scanned.** U20's lead read finds the company's tagged
+  leads by index, then keeps the window by Arizona day of `captured_at` (not sargable).
+- **UNVERIFIED on this Mac** (no Postgres here): proved only by the pg test in GitHub CI.
