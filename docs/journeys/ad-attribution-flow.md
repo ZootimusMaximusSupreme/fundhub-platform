@@ -70,3 +70,43 @@ flowchart TD
 - `GET /api/read/ad-books` folds the roll-up rows but does not yet add up `payments` or `paid_cents` into its groups or totals, so the screen does not show them. The store returns them; the endpoint is not changed here.
 - A new Meta ad gets a visitor number only after someone gives that ad its `fundhub_ad_number` (the Campaign Manager link box, `api/campaigns/link-asset.mjs`). The four SLO ads that ran were numbered by 407 (84, 90, 89, 86). The three August book-a-call ads have no Fundhub number and stay NULL.
 - `vsl_watch_sessions.ad_number` (379) is still the leading-digits rule only. It is not part of this flow.
+
+## U15 Turn on: resume_ad action (one ad, by our ads.id, Chris only)
+
+Generated from `api/campaigns/write.mjs` (`resumeAd`, `mayTurnOnAds`) on 2026-10-05.
+Spec §10.5 "Turn on", §2 item 6, §4 trap 11. Not live until ship. The Launch tab
+button that sends it is a separate unit (U39); nothing in the app sends it yet.
+
+```mermaid
+flowchart TD
+    BTN[POST /api/campaigns/write<br/>action resume_ad · ad_id = our ads.id · request_id] --> P{requirePrincipal<br/>partner or staff session?}
+    P -->|no session| E401[401]
+    P -->|client / affiliate| E403A[403 forbidden]
+    P -->|partner or staff| G{mayTurnOnAds:<br/>staff login AND role owner/admin<br/>AND staff id in MARKETING_AD_SWITCH_STAFF_IDS?}
+    G -->|no, or list unset| E403[403 Only Chris can turn ads on.<br/>Meta not called, nothing written]
+    G -->|yes| ID{ad_id is a uuid?}
+    ID -->|missing| E400[400 invalid · field ad_id]
+    ID -->|Meta id, number, anything else| E404[404 not_found<br/>Meta not called]
+    ID -->|yes| TX[asStaff transaction:<br/>SELECT ads row JOIN its connection<br/>WHERE id = ad_id AND org_id = caller's org]
+    TX -->|no row: a campaign id, ad set id,<br/>other company, unknown| E404
+    TX -->|not Meta, or no external_id yet| E400B[400 invalid · field ad_id<br/>Meta not called]
+    TX -->|our Meta ad| LOG[guardedWrite: action_log row<br/>actor human · target_type ad · target_id ads.id<br/>after.staff_id · after.request_id]
+    LOG -->|POST graph.facebook.com/version/ads.external_id<br/>body status ACTIVE| META{Meta answers success true?}
+    META -->|yes| ON[ads.status = ACTIVE · last_error cleared<br/>action_log executed_at stamped<br/>200 ok, ad id, status ACTIVE]
+    META -->|refused or no yes| OFF[ads.status unchanged · ads.last_error = Meta's words<br/>action_log execute_error<br/>502 Meta said no: reason. The ad is still paused.]
+```
+
+| Step | Where | What fires it |
+|---|---|---|
+| Door | `requirePrincipal(["partner","staff"])` | Every POST, same as the campaign actions. |
+| The switch gate | `mayTurnOnAds()` | `action` is `resume_ad` (any case). Staff kind, `ROLE_SETS.MARKETING`, and the staff id on `MARKETING_AD_SWITCH_STAFF_IDS` (comma list, read per request, junk ignored, unset = nobody). One 403 body for every refusal. |
+| Which ad | `isUuid` then the `ads` row in the caller's org | Only our `ads.id`. The Meta id comes from that row, never from the request. |
+| Log, then Meta | `guardedWrite` (`src/adplatforms/index.mjs`) → `meta.resume` | Log row first, then one POST to the ad's own Meta id. |
+| Mirror | `UPDATE ads` | Only on `{success: true}` from Meta. Never a campaign or ad set row. |
+
+Gaps and things not drawn:
+- The staff id lives in `action_log.after.staff_id`, not `action_log.user_id`: `user_id` references `accounts` (046:480), and a staff id is not an accounts row.
+- `request_id` is kept on the log row only. No saved-answer table exists yet, so a repeat calls Meta again (it re-sends ACTIVE, which changes nothing at Meta).
+- The transaction stays open across the Meta call (spec §4 trap 3), same as the campaign path; `guardedWrite` was not changed here.
+- The campaign-level `pause`, `resume`, `update_budget` gate is unchanged: any staff login with a partner_id, or a partner login, can still start a whole campaign (a Chris yes/no on the board).
+- `UNVERIFIED` live: the call has never reached real Meta. The fake Meta in `src/http/campaigns-write-resume-ad.pg.test.mjs` answers like the Graph API docs.
