@@ -18,6 +18,24 @@
 //   voice_append_pairs {op, pairs:[...]}        VOICE.md: fixed block, end of
 //                                               "# Real pairs"
 //
+// Two more ops work on a FAMILY of files instead of one (EDIT_OP_PATHS), the
+// flywheel's (design docs/specs/command-center-design-2026-10-05.md §6 "Slice 1
+// additions"; built by unit X3 for the Ideas tab):
+//
+//   set_front_matter_key      {op, key, value}   a stage file's stamp
+//                             marketing/flywheel/<campaign>/0N-<name>.md
+//                             One top-level line of the "---" block. The body is
+//                             never touched, so its hash (scripts/flywheel/
+//                             status.mjs bodyHash) and every later stage's
+//                             "built on" stays the same: Approve marks nothing
+//                             out of date. Same value again: no change.
+//   append_line_under_heading {op, heading, line} the owner-notes file
+//                             marketing/flywheel/<campaign>/00-OWNER-NOTES.md
+//                             Appends one line at the end of that section. Never
+//                             rewrites a line (the file's own rule: "append one
+//                             line, never rewrite"). The same line already there:
+//                             no change, so a retry never writes it twice.
+//
 // Part 0 is the section that starts at the line "# PART 0 — CHRIS'S RULES" and
 // ends before the next line starting "# PART " (U09 writes that heading; items
 // are "N. text" lines). VOICE.md's layout is fixed with U12 — see VOICE_TEMPLATE.
@@ -44,7 +62,13 @@ export const EDIT_OP_FILES = Object.freeze({
   voice_append_pairs: VOICE_PATH
 });
 
-export const EDIT_OPS = Object.freeze(Object.keys(EDIT_OP_FILES));
+/** Ops that may touch any file of one family, by its exact path shape. */
+export const EDIT_OP_PATHS = Object.freeze({
+  set_front_matter_key: /^marketing\/flywheel\/[a-z0-9][a-z0-9-]{0,59}\/0[1-6]-[a-z0-9-]+\.md$/,
+  append_line_under_heading: /^marketing\/flywheel\/[a-z0-9][a-z0-9-]{0,59}\/00-OWNER-NOTES\.md$/
+});
+
+export const EDIT_OPS = Object.freeze([...Object.keys(EDIT_OP_FILES), ...Object.keys(EDIT_OP_PATHS)]);
 
 export const PART0_HEADING = "# PART 0 — CHRIS'S RULES";
 export const SEED_PAIRS_HEADING = "# Seed pairs — model side written by hand";
@@ -342,6 +366,89 @@ export function voiceAppendPairs(content, edit) {
   });
 }
 
+// ── flywheel files ──────────────────────────────────────────────────────────
+
+const FM_KEY = /^[a-z][a-z0-9_]{0,39}$/;
+const FM_VALUE = /^[A-Za-z0-9][A-Za-z0-9 ._:@+-]{0,99}$/;
+const HEADING = /^#{1,6} \S.{0,118}$/;
+const MAX_NOTE_LINE = 600;
+
+/**
+ * set_front_matter_key: change (or add) one top-level `key: value` line inside
+ * the opening "---" block. Indented lines (inputs:, counts:) are never touched,
+ * and nothing after the closing "---" changes.
+ */
+export function setFrontMatterKey(content, edit) {
+  if (content == null) fail("the stage file is missing, so there is nothing to stamp");
+  const key = String(edit?.key ?? "");
+  const value = String(edit?.value ?? "");
+  if (!FM_KEY.test(key)) fail("front matter key must be a short lower-case name");
+  if (!FM_VALUE.test(value)) fail("front matter value must be short plain text on one line");
+  const text = String(content);
+  if (!text.startsWith("---\n")) fail("the stage file has no stamp (no opening ---)");
+  const lines = splitLines(text);
+  let close = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i] === "---") { close = i; break; }
+  }
+  if (close === -1) fail("the stage file's stamp is not closed (no second ---)");
+  const want = `${key}: ${value}`;
+  for (let i = 1; i < close; i++) {
+    const m = /^([^\s:][^:]*):(.*)$/.exec(lines[i]);
+    if (m && m[1].trim() === key) {
+      if (lines[i] === want) return text;
+      if (m[2].trim() === "" && i + 1 < close && /^\s{2,}\S/.test(lines[i + 1])) {
+        fail(`${key} holds a list in the stamp and cannot be set to one value`);
+      }
+      const out = lines.slice();
+      out[i] = want;
+      return out.join("\n");
+    }
+  }
+  const out = [...lines.slice(0, close), want, ...lines.slice(close)];
+  return out.join("\n");
+}
+
+/**
+ * append_line_under_heading: add one line at the end of the section that
+ * starts at `heading` (an exact line) and runs to the next heading of the same
+ * or a higher level. A missing heading is added at the end of the file. The
+ * exact line already in that section: the file comes back unchanged.
+ */
+export function appendLineUnderHeading(content, edit) {
+  if (content == null) fail("the owner notes file is missing");
+  const heading = String(edit?.heading ?? "");
+  if (!HEADING.test(heading)) fail("heading must be one markdown heading line, like ## Notes");
+  const line = requireText(edit?.line, "line", MAX_NOTE_LINE);
+  if (/^#{1,6} /.test(line)) fail("the line may not be a heading");
+  const text = String(content);
+  const lines = splitLines(text);
+  const level = /^(#+)/.exec(heading)?.[1].length ?? 2;
+  const start = lines.findIndex((l) => l.trimEnd() === heading);
+  if (start === -1) {
+    const body = text.replace(/\s+$/, "");
+    return `${body}${body ? "\n\n" : ""}${heading}\n\n${line}\n`;
+  }
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = /^(#{1,6}) /.exec(lines[i]);
+    if (m && m[1].length <= level) { end = i; break; }
+  }
+  const section = lines.slice(start + 1, end);
+  if (section.some((l) => l.trim() === line)) return text;
+  // Insert after the last non-blank line of the section (or straight under the
+  // heading with one blank line when the section is empty).
+  let at = end;
+  while (at > start + 1 && lines[at - 1].trim() === "") at--;
+  const before = lines.slice(0, at);
+  const after = lines.slice(at);
+  const lead = at === start + 1 ? [""] : [];
+  const tail = after.length && after[0].trim() !== "" ? [""] : [];
+  return joinLines([...before, ...lead, line, ...tail, ...after], {
+    trailingNewline: text.endsWith("\n") || !after.length
+  });
+}
+
 // ── dispatch and checks ─────────────────────────────────────────────────────
 
 const OPS = Object.freeze({
@@ -350,7 +457,9 @@ const OPS = Object.freeze({
   ban_phrase: banPhrase,
   registry_add_ad: registryAddAd,
   angles_add: anglesAdd,
-  voice_append_pairs: voiceAppendPairs
+  voice_append_pairs: voiceAppendPairs,
+  set_front_matter_key: setFrontMatterKey,
+  append_line_under_heading: appendLineUnderHeading
 });
 
 /**
@@ -365,10 +474,25 @@ export function validateEdit(edit, path) {
   if (typeof op !== "string" || !Object.prototype.hasOwnProperty.call(OPS, op)) {
     fail(`unknown edit op "${String(op).slice(0, 40)}"`);
   }
-  if (path !== undefined && path !== EDIT_OP_FILES[op]) {
+  const family = Object.prototype.hasOwnProperty.call(EDIT_OP_PATHS, op)
+    ? EDIT_OP_PATHS[/** @type {keyof typeof EDIT_OP_PATHS} */ (op)]
+    : null;
+  if (family) {
+    if (path === undefined) fail(`${op} needs the path of the file it edits`);
+    if (!family.test(String(path))) fail(`${op} cannot edit ${String(path).slice(0, 120)}`);
+  } else if (path !== undefined && path !== EDIT_OP_FILES[op]) {
     fail(`${op} edits ${EDIT_OP_FILES[op]}, not ${String(path).slice(0, 120)}`);
   }
   switch (op) {
+    case "set_front_matter_key":
+      if (!FM_KEY.test(String(edit.key ?? ""))) fail("front matter key must be a short lower-case name");
+      if (!FM_VALUE.test(String(edit.value ?? ""))) fail("front matter value must be short plain text on one line");
+      break;
+    case "append_line_under_heading":
+      if (!HEADING.test(String(edit.heading ?? ""))) fail("heading must be one markdown heading line, like ## Notes");
+      requireText(edit.line, "line", MAX_NOTE_LINE);
+      if (/^#{1,6} /.test(oneLine(edit.line))) fail("the line may not be a heading");
+      break;
     case "part0_add_rule":
       requireText(edit.text, "rule text", MAX_RULE);
       break;

@@ -283,7 +283,8 @@ describe("voice_append_pairs", () => {
 describe("dispatch and checks", () => {
   test("every op is covered and aimed at one file", () => {
     assert.deepEqual([...EDIT_OPS].sort(), [
-      "angles_add", "ban_phrase", "part0_add_rule", "part0_edit_rule", "registry_add_ad", "voice_append_pairs"
+      "angles_add", "append_line_under_heading", "ban_phrase", "part0_add_rule", "part0_edit_rule",
+      "registry_add_ad", "set_front_matter_key", "voice_append_pairs"
     ]);
     assert.equal(EDIT_OP_FILES.part0_add_rule, "marketing/ads/RULES.md");
     assert.equal(EDIT_OP_FILES.voice_append_pairs, "marketing/ads/VOICE.md");
@@ -322,5 +323,113 @@ describe("dispatch and checks", () => {
     const copy = JSON.stringify(edit);
     assert.equal(applyEdit(REGISTRY, edit), applyEdit(REGISTRY, edit));
     assert.equal(JSON.stringify(edit), copy);
+  });
+});
+
+// ── the flywheel ops (design §6 "Slice 1 additions", unit X3) ──────────────
+
+const STAGE = [
+  "---",
+  "stage: 4",
+  "version: 1",
+  "status: draft",
+  "inputs:",
+  "  03-offer.md: 4596bcc6",
+  "counts:",
+  "  hooks: 31",
+  "---",
+  "",
+  "# Partner copy",
+  "",
+  "status: draft is a phrase in the body and must never change.",
+  ""
+].join("\n");
+
+const NOTES = [
+  "# Owner notes — partner flywheel",
+  "",
+  "Format:",
+  "",
+  "## Notes",
+  "",
+  "2026-08-31 | stage 1 | the avatar is assumed on purpose.",
+  ""
+].join("\n");
+
+describe("set_front_matter_key", () => {
+  const P = "marketing/flywheel/partner/04-copy.md";
+
+  test("flips status in the stamp and leaves the body byte for byte", () => {
+    const out = applyEdit(STAGE, { op: "set_front_matter_key", key: "status", value: "approved" });
+    assert.match(out, /^---\nstage: 4\nversion: 1\nstatus: approved\n/);
+    assert.equal(out.split("\n---\n")[1], STAGE.split("\n---\n")[1], "the body did not change");
+    assert.match(out, /status: draft is a phrase in the body/);
+  });
+
+  test("the same value again changes nothing; a new key goes before the closing ---", () => {
+    const once = applyEdit(STAGE, { op: "set_front_matter_key", key: "status", value: "approved" });
+    assert.equal(applyEdit(once, { op: "set_front_matter_key", key: "status", value: "approved" }), once);
+    const added = applyEdit(STAGE, { op: "set_front_matter_key", key: "approved_on", value: "2026-10-06" });
+    assert.match(added, / {2}hooks: 31\napproved_on: 2026-10-06\n---\n/);
+  });
+
+  test("refuses a missing file, no stamp, a list key, and bad keys or values", () => {
+    throwsEdit(() => applyEdit(null, { op: "set_front_matter_key", key: "status", value: "approved" }), /missing/);
+    throwsEdit(() => applyEdit("# no stamp\n", { op: "set_front_matter_key", key: "status", value: "approved" }), /no stamp/);
+    throwsEdit(() => applyEdit("---\nstatus: x\n", { op: "set_front_matter_key", key: "status", value: "approved" }), /not closed/);
+    throwsEdit(() => applyEdit(STAGE, { op: "set_front_matter_key", key: "inputs", value: "x" }), /holds a list/);
+    throwsEdit(() => applyEdit(STAGE, { op: "set_front_matter_key", key: "Status!", value: "x" }), /key/);
+    throwsEdit(() => applyEdit(STAGE, { op: "set_front_matter_key", key: "status", value: "a\nb" }), /value/);
+  });
+
+  test("validateEdit takes any stage file of any campaign, and nothing else", () => {
+    assert.deepEqual(validateEdit({ op: "set_front_matter_key", key: "status", value: "approved" }, P),
+      { op: "set_front_matter_key", key: "status", value: "approved" });
+    validateEdit({ op: "set_front_matter_key", key: "status", value: "approved" }, "marketing/flywheel/capital-blueprint/01-avatar.md");
+    for (const bad of [
+      "marketing/flywheel/partner/00-OWNER-NOTES.md",
+      "marketing/flywheel/partner/07-later.md",
+      "marketing/flywheel/partner/01-avatar/Market_Language_Bank.md",
+      "marketing/ads/RULES.md",
+      "marketing/flywheel/Partner/04-copy.md"
+    ]) {
+      throwsEdit(() => validateEdit({ op: "set_front_matter_key", key: "status", value: "approved" }, bad), /cannot edit/);
+    }
+    throwsEdit(() => validateEdit({ op: "set_front_matter_key", key: "status", value: "approved" }), /needs the path/);
+  });
+});
+
+describe("append_line_under_heading", () => {
+  const P = "marketing/flywheel/partner/00-OWNER-NOTES.md";
+  const LINE = "2026-10-06 | stage 4 | lead with the backdoor fear";
+
+  test("appends one line at the end of the section and keeps every earlier line", () => {
+    const out = applyEdit(NOTES, { op: "append_line_under_heading", heading: "## Notes", line: LINE });
+    assert.ok(out.startsWith(NOTES.trimEnd()), "nothing above is rewritten");
+    assert.match(out, /the avatar is assumed on purpose\.\n2026-10-06 \| stage 4 \| lead with the backdoor fear\n$/);
+  });
+
+  test("the same line twice is written once (a retry is harmless)", () => {
+    const once = applyEdit(NOTES, { op: "append_line_under_heading", heading: "## Notes", line: LINE });
+    assert.equal(applyEdit(once, { op: "append_line_under_heading", heading: "## Notes", line: LINE }), once);
+  });
+
+  test("stops at the next heading; an empty section gets the line under a blank line; a missing heading is added", () => {
+    const two = `${NOTES}\n## Later\n\nkeep me\n`;
+    const out = applyEdit(two, { op: "append_line_under_heading", heading: "## Notes", line: LINE });
+    assert.match(out, /assumed on purpose\.\n2026-10-06 \| stage 4 \| lead with the backdoor fear\n\n## Later\n\nkeep me\n$/);
+    const empty = applyEdit("# T\n\n## Notes\n", { op: "append_line_under_heading", heading: "## Notes", line: LINE });
+    assert.equal(empty, `# T\n\n## Notes\n\n${LINE}\n`);
+    const none = applyEdit("# T\n", { op: "append_line_under_heading", heading: "## Notes", line: LINE });
+    assert.equal(none, `# T\n\n## Notes\n\n${LINE}\n`);
+  });
+
+  test("refuses a missing file, a heading line, and paths other than owner notes", () => {
+    throwsEdit(() => applyEdit(null, { op: "append_line_under_heading", heading: "## Notes", line: LINE }), /missing/);
+    throwsEdit(() => applyEdit(NOTES, { op: "append_line_under_heading", heading: "## Notes", line: "## sneaky" }), /heading/);
+    throwsEdit(() => applyEdit(NOTES, { op: "append_line_under_heading", heading: "Notes", line: LINE }), /heading/);
+    validateEdit({ op: "append_line_under_heading", heading: "## Notes", line: LINE }, P);
+    throwsEdit(() => validateEdit({ op: "append_line_under_heading", heading: "## Notes", line: LINE }, "marketing/flywheel/partner/04-copy.md"), /cannot edit/);
+    throwsEdit(() => validateEdit({ op: "append_line_under_heading", heading: "## Notes", line: " " }, P), /empty/);
   });
 });
