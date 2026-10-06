@@ -129,6 +129,7 @@ const API_KEYS = [
   "finance/bills",
   "finance/cards",
   "finance/cashflow",
+  "finance/containers",
   "finance/crs-pull",
   "finance/entities",
   "finance/liabilities",
