@@ -343,7 +343,11 @@ const API_KEYS = [
   /* The checkbox a client ticks on their own checklist. POST only: a GET
      answers 405 before it reads anything, and isUp() counts 405 as up — the
      same reason campaigns/link-asset is monitored. The ping writes nothing. */
-  "waypoint-tick"
+  "waypoint-tick",
+  /* marketing machine. GET answers 401 to an unsigned ping (counts as up) and
+     never writes; the POST half is never pinged. */
+  "marketing/settings",
+  "marketing/funnels"
 ];
 
 const DESK_FILES = [

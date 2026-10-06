@@ -102,3 +102,90 @@ What is in the code today, traced through `ROUTES` in `netlify/functions/api.mjs
 Every route marked "no" is a shape only. Each owner unit adds its own flow section here when its
 route lands. Gaps between the spec, the design doc and the fixed shapes are listed in the
 contract's section 8.
+## U03 Settings, funnels, and one save per press
+
+Drawn from code on branch `mm-u03-settings-funnels`: `api/marketing/settings.mjs`,
+`api/marketing/funnels.mjs`, `src/marketing/http.mjs`, `src/marketing/settings-store.mjs`,
+`src/marketing/offer-facts.mjs`, migration `410_marketing_settings_funnels.sql`, seed
+`297_marketing_funnels.sql`. Spec §6 Step 3, §7.8, §17. Owner and admin only on both
+routes (requireAuth, then requireRole `ROLE_SETS.MARKETING`).
+
+### Settings — `GET/POST /api/marketing/settings`
+
+```mermaid
+flowchart TD
+  G[GET marketing/settings] --> G1{row for this company?}
+  G1 -->|no| G2[insert the defaults<br/>ON CONFLICT DO NOTHING<br/>enabled false, Monday 07:00 Arizona,<br/>3 a day x 7 days, size_rule total, floor 91]
+  G1 -->|yes| G3[200 settings]
+  G2 --> G3
+  P[POST marketing/settings<br/>request_id, updated_at, patch] --> V{every key known<br/>and every value right?}
+  V -->|no| V1[400 invalid, field patch.key<br/>nothing saved]
+  V -->|yes| W[withRequest: one staff transaction]
+  W --> S{updated_at = the saved one?}
+  S -->|no| S1[409 stale + current<br/>rolled back, nothing saved]
+  S -->|yes| S2[save; format_style merges;<br/>updated_by = who; updated_at moves on]
+  S2 --> R[200 settings]
+```
+
+- `enabled` goes true only when the patch says so — Chris's tap in Settings. No seed
+  or migration sets it.
+- Times are `HH:MM`. Money caps are whole dollars (model bills only).
+
+### Funnels — `GET/POST /api/marketing/funnels`
+
+```mermaid
+flowchart TD
+  G[GET marketing/funnels] --> F[funnels of this company]
+  G --> C[synced Meta campaigns<br/>+ spend over the last 7 Arizona days<br/>null when no ad-day saved, never 0<br/>+ the funnel that holds each one]
+  G --> A[synced Meta ad sets]
+  G --> T[as_of = last Meta sync]
+  P[POST marketing/funnels<br/>request_id, funnel:key + fields] --> V{fields known and right?}
+  V -->|no| V1[400 invalid, field funnel.x]
+  V -->|yes| W[withRequest: one staff transaction]
+  W --> K{a funnel with this key?}
+  K -->|no| N{name, landing_url, lane sent?}
+  N -->|no| V1
+  N -->|yes| M[make it]
+  K -->|yes| U{updated_at sent and still the saved one?}
+  U -->|no| S1[409 stale + current]
+  U -->|yes| X[change only the fields sent]
+  M --> D{a campaign id already<br/>on another funnel?}
+  X --> D
+  D -->|yes| V2[400 funnel.meta_campaign_ids<br/>rolled back]
+  D -->|no| R[200 funnel]
+```
+
+- Seed 297 makes `book_call` (https://apply.fundhub.ai/watch, lane sorting, book a call,
+  offer `funding_dfy`, mix standard 2 : sorting 1) and `roadmap_147`
+  (https://apply.fundhub.ai/roadmap, lane uwiq, offer `slo_roadmap`, mix standard 1) in the
+  default company, once. `meta_campaign_ids` stay empty until Chris maps them.
+- `offerFacts(offer_key)` reads each price from `src/slo/offer.mjs` or
+  `src/config/offers.mjs`. No price is typed in `src/marketing/`.
+
+### One save per press — `withRequest` (every marketing write)
+
+```mermaid
+flowchart TD
+  Q[a write with request_id] --> L[BEGIN as staff<br/>lock this request_id]
+  L --> F{request_id saved before?}
+  F -->|same company + route| A[return the saved answer<br/>fn never runs]
+  F -->|other company or route| B[400 invalid, field request_id]
+  F -->|no| R[run the change]
+  R -->|throws| X[ROLLBACK: no change, no saved answer]
+  R --> I[INSERT marketing_requests — last statement]
+  I -->|primary key clash: a copy saved first| Y[ROLLBACK, return the first saved answer]
+  I --> C[COMMIT, return the answer]
+```
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **Roadmap lane.** The spec seeds `roadmap_147` with lane `uwiq`; live roadmap visitors
+  read lane `slo` (406/407). The seed uses the spec value until Chris answers the yes/no
+  on the board. Numbers (M5) group by funnel, not lane.
+- **offer_key values** (`funding_dfy`, `slo_roadmap`) are plan-chosen; the spec names the
+  column, not the values.
+- **One funnel per campaign.** The code refuses a Meta campaign that is already on another
+  funnel of the same company, so a campaign's spend cannot count twice. The spec does not
+  say this either way.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
+  `src/http/marketing-settings.pg.test.mjs` and `marketing-funnels.pg.test.mjs` in GitHub CI.
