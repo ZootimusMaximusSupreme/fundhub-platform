@@ -312,6 +312,52 @@ export async function loadBrollLibrary(env = process.env, port = drive) {
   return got.ok ? (got.clips || []) : [];
 }
 
+/** The Drive folder that holds our own copy of each finished cut. */
+export const FINISHED_FOLDER_ENV = "DRIVE_FINISHED_FOLDER_ID";
+
+/* saveFinishedToDrive — the `saveFinished` port: our own copy of the finished cut.
+
+   MEASURED 2026-09-24: nothing supplied this port, so storage_final_key stayed
+   NULL and the only copy of a finished ad was Submagic's download link, whose
+   life nobody could measure. This pulls the render down and puts it in
+   DRIVE_FINISHED_FOLDER_ID with the same uploadVideo() deliverToPaul uses.
+
+   NEVER THE RAW FOLDER. detect() reads every video in DRIVE_RAW_FOLDER_ID as a
+   new take, so a finished cut put there would be sent back to Submagic and
+   paid for again. Same for the B-roll folder, where it would be placed as a
+   clip. Either one is refused and nothing moves.
+
+   NEVER THROWS. saveFinishedAndNotify() calls this before the buzz; a throw
+   there would hold the buzz for ever. Every miss comes back as { ok: false }
+   and the pipeline writes it on the row as save_note — the approval and the
+   text still go out. */
+export async function saveFinishedToDrive(row, { env = process.env, port = drive, naming } = {}) {
+  try {
+    const folderId = String(env[FINISHED_FOLDER_ENV] || "").trim();
+    if (!folderId) return { ok: false, error: `${FINISHED_FOLDER_ENV} is not set — our own copy of the finished cut was not taken` };
+    for (const other of ["DRIVE_RAW_FOLDER_ID", "DRIVE_BROLL_FOLDER_ID"]) {
+      if (String(env[other] || "").trim() === folderId) {
+        return { ok: false, error: `${FINISHED_FOLDER_ENV} is the same folder as ${other} — nothing was saved there` };
+      }
+    }
+    if (typeof port?.uploadVideo !== "function") return { ok: false, error: "the Drive provider offers no uploadVideo" };
+    if (row?.ad_id === null || row?.ad_id === undefined || row?.ad_id === "") {
+      return { ok: false, error: "no ad number on the row — the copy has no name" };
+    }
+    const names = naming || await import("../ad-videos/naming.mjs");
+    const up = await port.uploadVideo({
+      parentId: folderId,
+      name: names.finalFileName(row.ad_id, row.take_no, row.finished_version || 1),
+      sourceUrl: row.finished_url,
+      env
+    });
+    if (!up?.ok || !up.fileId) return { ok: false, error: String(up?.error || "Drive returned no file id") };
+    return { ok: true, key: `drive:${up.fileId}` };
+  } catch (err) {
+    return { ok: false, error: `saving our copy threw: ${String((err && err.message) || err)}` };
+  }
+}
+
 export async function sweep(database, options = {}) {
   const env = options.env || process.env;
   try {

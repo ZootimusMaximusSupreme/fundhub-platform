@@ -27,7 +27,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { db } from "../../src/db.mjs";
-import { sweep } from "../../src/workflows/ad-video-sweeper.mjs";
+import { sweep, saveFinishedToDrive } from "../../src/workflows/ad-video-sweeper.mjs";
+
+/* OUR OWN COPY OF EACH FINISHED CUT. This port was never supplied, so
+   storage_final_key stayed NULL and the only copy was Submagic's link
+   (board submagic-settings-lock-2026-09-23, "Left undone"). The copy goes to
+   DRIVE_FINISHED_FOLDER_ID; with that unset, the row says so in save_note and
+   the buzz still goes. */
+export const saveFinished = saveFinishedToDrive;
 
 /* ONE TAKE PER PASS. Not throughput — spend. A create costs one of 30 an hour
    and bills API minutes; an export costs one of 50. One take per pass means a
@@ -57,7 +64,7 @@ export async function handler(req) {
      Netlify sets COMMIT_REF at build time; printing it makes a stale function
      visible in one line. */
   console.log(`[ad-video-worker] build ${String(process.env.COMMIT_REF || "unknown").slice(0, 8)} starting a pass`);
-  const result = await sweep(db, { limit: TAKES_PER_PASS });
+  const result = await sweep(db, { limit: TAKES_PER_PASS, saveFinished });
 
   if (!result.ok) {
     console.error(`[ad-video-worker] pass failed: ${result.error}`);
