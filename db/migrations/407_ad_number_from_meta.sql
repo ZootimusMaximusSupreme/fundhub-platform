@@ -147,8 +147,8 @@ END $$;
 -- same trap that stopped the ClickFunnels night job (MACHINE-GAPS.md §7). As
 -- the owner it can see the ads. What it can give back is one short number for
 -- an ad the caller already names by company, ad set and exact ad name — the
--- number that ad's own link would carry. search_path is pinned, PUBLIC cannot
--- call it, and the app role is granted it below.
+-- number that ad's own link would carry. search_path is pinned, PUBLIC, anon
+-- and authenticated cannot call it, and the app role is granted it below.
 
 CREATE OR REPLACE FUNCTION fundhub_meta_ad_number(p_org uuid, p_adset_id text, p_ad_name text)
 RETURNS text
@@ -274,8 +274,24 @@ REVOKE ALL ON FUNCTION fundhub_reresolve_ad_numbers(uuid) FROM PUBLIC;
 COMMENT ON FUNCTION fundhub_reresolve_ad_numbers(uuid) IS
   'Fills client_ad_attribution.ad_id where it is NULL and fundhub_meta_ad_number() now finds the ad. Never changes a number already set, never touches the raw tags, never deletes. Returns how many rows it filled. Run by the daily Meta sync after it saves the ads. 407.';
 
+-- WHO MAY CALL THEM. REVOKE ... FROM PUBLIC is not enough on Supabase: its
+-- default privileges grant EXECUTE on every new function in `public` to anon
+-- and authenticated BY NAME (measured on production 2026-10-05:
+-- fundhub_vsl_recent_count carries anon=X and authenticated=X). Those two are
+-- the roles a browser reaches through Supabase's own API, so they are named and
+-- revoked here. The app role is granted what the daily sync needs.
 DO $$
+DECLARE
+  r text;
 BEGIN
+  FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('REVOKE ALL ON FUNCTION fundhub_meta_ad_number(uuid, text, text) FROM %I', r);
+      EXECUTE format('REVOKE ALL ON FUNCTION fundhub_reresolve_ad_numbers(uuid) FROM %I', r);
+      EXECUTE format('REVOKE ALL ON FUNCTION fundhub_caa_set_ad_id() FROM %I', r);
+    END IF;
+  END LOOP;
+
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fundhub_app') THEN
     GRANT EXECUTE ON FUNCTION fundhub_meta_ad_number(uuid, text, text) TO fundhub_app;
     GRANT EXECUTE ON FUNCTION fundhub_reresolve_ad_numbers(uuid) TO fundhub_app;

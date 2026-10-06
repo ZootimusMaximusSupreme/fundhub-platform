@@ -120,6 +120,14 @@ describe("the SQL says the same thing", () => {
     assert.equal(/\bTRUNCATE\b/i.test(code), false);
   });
 
+  test("the owner-rights resolver is closed to the browser roles, not just PUBLIC", () => {
+    // Supabase grants EXECUTE on new public functions to anon and authenticated
+    // by name, so REVOKE ... FROM PUBLIC alone would leave them callable.
+    assert.ok(sql407.includes("ARRAY['anon', 'authenticated']"));
+    assert.ok(sql407.includes("REVOKE ALL ON FUNCTION fundhub_meta_ad_number(uuid, text, text) FROM %I"));
+    assert.ok(sql407.includes("SET search_path = public, pg_temp"));
+  });
+
   test("an ads row is only numbered when it has no number and the number is free", () => {
     assert.ok(sql407.includes("WHERE a.fundhub_ad_number IS NULL"));
     assert.ok(sql407.includes("o.org_id = a.org_id AND o.fundhub_ad_number = w.num"));
