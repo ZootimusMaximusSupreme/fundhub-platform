@@ -12,34 +12,66 @@ The ad-script generator reads this file as an input, before it writes a word —
 reads `RULES.md`. It never opens this file itself. A small loader piece of code hands the generator
 the text inside this file. Today that loader reads this one markdown file. Later it might read a row
 out of a database instead. If that happens, only the loader changes — the generator's job (learn
-from these pairs) and the shape of the pairs (hook, body, cta, close) stay the same.
+from these pairs) and the shape of the pairs (hook, line 2, body, cta, close) stay the same.
 
-## The pairs below are seed examples, not real transcript quotes
+## Where the pairs come from
 
-The pairs in this file today are seed examples. They are illustrative. **They are not real edits
-Chris ever typed.** The "Chris wrote" line in each pair is a real, word-for-word quote pulled from
-`docs/ads/CONTROLS.md` — the five ads that are filmed, running, and booking calls at $32–36 today.
-But the "Model wrote" line next to it is invented for this file, written to show what a generic
-AI draft of the same idea sounds like, so the difference is visible. No agent sat down, wrote a
-draft, and watched Chris rewrite it into the "Chris wrote" line. These are starting examples only.
+Every real pair in this file is one AI-written ad line next to the words Chris used in its place.
+The "Chris wrote" side is always Chris's own words, copied exactly. Nothing under `# Real pairs` is
+invented, and no agent ever writes a "Chris wrote" line or a "Why" line for a real pair. The 9 seed
+pairs are different; see "The seed pairs" below.
 
-## The rule for every pair added after this one
+A real pair comes from Chris's own rewrite of an AI line, in one of two places:
 
-**Every pair added to this file from here forward must come from Chris's own rewrite of a
-generated draft. Nothing an agent writes may ever be added here as an "after" line.** The
-"Model wrote" side can keep coming from a generated draft. The "Chris wrote" side must be something
-Chris himself typed, in his own hand, correcting that draft — never an agent's guess at what Chris
-would say.
+1. **Chat.** An AI wrote an ad line (hook, line 2, body, CTA or close) and Chris replaced it with
+   his own words in the same chat. Only a true rewrite counts: the AI's draft of a line, and
+   Chris's replacement for that same line. A line Chris wrote with no AI draft before it is not a
+   pair.
+2. **The app.** Chris edits a machine-written line in the Command Center. The app saves the old
+   line and his new line, and a weekly job adds the pair here.
 
-## Owner decision on where these pairs come from
+Chris said, of the 83 unfiltered chat scripts: *"we dont want those."* Whole scripts are never
+pulled into this file, from a chat or from anywhere else. Only before-and-after line pairs are.
+Never `CONCEPTS.md`, never `ASSET-BANK.md`, no matter how good a line looks there.
 
-Chris said, of the 83 unfiltered chat scripts: *"we dont want those."* None of those scripts are in
-this file and none should ever be pulled into it. The only source for a "Chris wrote" line, in this
-file, ever, is a real quote — either from `docs/ads/CONTROLS.md` (as it is here) or from a real
-rewrite Chris types over a generated draft (going forward). Never `CONCEPTS.md`, never
-`ASSET-BANK.md`, never a chat log, no matter how good a line looks there.
+## How a real pair is written
+
+Each real pair goes at the end of `# Real pairs`, in this exact block, one line per field:
+
+```text
+## Pair <N> — <kind>
+- **Lane:** <lane, or unknown>
+- **Model wrote:** <the AI line>
+- **Chris wrote:** "<Chris's exact words>"
+- **Why:** <Chris's own stated reason, or the words: not given>
+- **Source:** chat YYYY-MM-DD
+```
+
+- `<N>` is one more than the highest pair number in this file. Pair numbers never repeat.
+- A pair from the app has a different Source line: `app edit YYYY-MM-DD, script <first 8 of its
+  id>`. Every other line is the same.
+- **Why** is only a reason Chris gave himself. If he gave none, it says `not given`.
+- This repo is public. A pair never holds a phone number, an email, a client's name, or a dollar
+  amount next to a person's name.
+
+## The seed pairs
+
+The 9 pairs under `# Seed pairs — model side written by hand` came first. They are not real edits
+Chris ever typed. The "Chris wrote" line in each one is a real, word-for-word quote from
+`marketing/ads/CONTROLS.md`, the five ads that are filmed, running, and booking calls at $32–36
+today. But the "Model wrote" line next to it was written by hand for this file, to show what a
+generic AI draft of the same idea sounds like, and so were the "Why" lines. No agent sat down,
+wrote a draft, and watched Chris rewrite it into the "Chris wrote" line. These are starting
+examples only. They stay as they are, and their numbers (1 to 9) stay taken.
 
 ---
+
+# Real pairs
+
+Real pairs from Chris's own rewrites go here, in the block above. New pairs are added at the end
+of this section.
+
+# Seed pairs — model side written by hand
 
 ## Pair 1 — hook
 - **Lane:** funding600 — general lane. `CONTROLS.md`'s ads are not sorted into a specific gate

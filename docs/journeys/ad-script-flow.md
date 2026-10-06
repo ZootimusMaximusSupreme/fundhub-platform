@@ -245,3 +245,8 @@ flowchart TD
    loaded numbers, so this only bites if it is ever pointed at an empty database.
 4. **`api/scripts/list.mjs`** does not return status, root or number, so the Creative Factory
    picker cannot show them yet.
+## U12 VOICE.md layout
+
+- `marketing/ads/VOICE.md` now has a header, then `# Real pairs` (every real pair: an AI line next to Chris's own rewrite of it, from a chat or the app), then `# Seed pairs — model side written by hand` (the 9 hand-written seed pairs, unchanged, numbers 1-9).
+- `# Real pairs` holds 0 pairs on this branch. The chat search for real pairs was blocked by the permission check, so the real count is not measured.
+- U05's weekly append adds app-edit pairs at the end of `# Real pairs`, numbered from one more than the highest pair. UNVERIFIED here: that code is not on this branch.
