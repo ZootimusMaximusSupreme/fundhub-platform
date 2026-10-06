@@ -182,3 +182,19 @@ three clean runs in a row.** Two earlier runs were cancelled partway, with 0 pas
 most likely the way their output was piped cut the process short, not the code. Checked
 afterwards: 0 test funnels and 0 test viewings left on the live database. The funnel list holds
 0 rows, as intended.
+
+## F3 — re-checked and fixed in code, 2026-10-05 (W3 of `finish-builds-2026-10-05`, branch `w3-funnel-tracking`, not live until ship)
+
+**The 09-17 cause was wrong. The live OpenAI key is not a mask. It is a real key on an empty account.**
+
+- `OPENAI_API_KEY` on Netlify is a **secret** variable (`is_secret: true`, last changed 2026-08-24). Netlify always shows a secret as stars, so the CLI's "masked" view is Netlify hiding it, not the stored value. The local `.env` copy *is* a mask, which is why a laptop test got 401.
+- Proof: the 2026-09-17 23:17 UTC press came *after* the masked-key fix shipped (`8a35bd30`, 16:14 Arizona), and `partner_ai_usage` still recorded `gpt-4o-mini` with 0 tokens. A key with a star in it would have been skipped. And `failed_events` holds the live OpenAI answer three times on 2026-09-18 08:52 UTC: `openai 429 … insufficient_quota, "You have no credits remaining"`.
+- `callModel` only turns to Anthropic when no OpenAI key is set at all, so the working Anthropic key (production key answers 200, checked 2026-10-05) was never asked. No social press has run since 09-17 (`partner_ai_usage`), and `marketing_content_queue` has no rows after 2026-08-26.
+
+**Fix (smallest diff, reuse):** `api/social/generate.mjs` now calls `callWriter`, which runs the same backup the ID reader already uses (`readWithBackupReader`, `src/handlers/doc-check.mjs`): when OpenAI says "no credit", ask Anthropic once, with the OpenAI key left out of that one call's copy of the environment. The stored key is untouched. The backup gets only what is left of the 8.5-second bound.
+
+**Proved (local, not live):**
+- `src/http/social-generate-writer.test.mjs` 8/8, 0 skipped. Same stubs on the old path: OpenAI 429, one call, no text.
+- Real call: OpenAI leg replays the recorded production 429, Anthropic leg goes to the real API with the **production** `ANTHROPIC_API_KEY` → provider anthropic, `claude-sonnet-4-5-20250929`, 3 captions, 4.9 s total.
+
+**Live proof still owed after ship:** press "Write 3 posts for me" on https://fundhub.ai/app/social-studio.html?partner_id=55272246-b97f-4c4b-a693-bce3f7e2dfd2 as owner. Pass = new `draft` rows in `marketing_content_queue` and a `partner_ai_usage` row with model `claude-sonnet-4-5-20250929` and tokens above 0.

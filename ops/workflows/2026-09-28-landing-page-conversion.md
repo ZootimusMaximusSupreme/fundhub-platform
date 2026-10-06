@@ -240,3 +240,23 @@ Chris confirmed the live site works and the pixels are set up. Repo-only teardow
 someone re-checks live. Still open: ad id on the SLO order path and real proof cards on the
 sales page.
 
+
+## W4 — re-checked 2026-10-05 (W3 of `finish-builds-2026-10-05`)
+
+Read only: the live page, the live database (SELECT only) and the repo. Nothing changed live.
+
+### Ad id on the SLO order path — the order path is done; the ad's number never arrives
+
+- **Done and live:** the ad's tags now ride from the ad to the order. The two real Meta clicks that started a $297 checkout both carry them in `client_ad_attribution`: 2026-10-01 19:50 UTC (`/roadmap/`, then `payment.failed`) and 2026-10-02 22:43 UTC (`/roadmap`). Both: `utm_source=fb_ad`, `utm_campaign=oPur: TOF-SLO: $297`, `utm_content=oVid: SLO2`, `utm_term=120253626444640264`, event `slo.checkout_started`. Code: the buy box sends `utm_*` and `api/public/slo-checkout.mjs` writes them on every checkout (2026-09-25). The 09-28 finding (all tags NULL, bare `/order` buttons) is gone: the live page has no `href="/order"`.
+- **Still empty:** the database's own `ad_id` column is NULL on both rows. The live Meta ads put the ad's **name** in `utm_content` (`oVid: SLO2`), and the database only reads a leading **number** there (`db/migrations/286_client_ad_attribution.sql`, wire format owner-set 2026-09-03). `utm_term` holds the **ad set** id (`120253626444640264` = ad set `oPur: TOF-SLO: 25-55M: SBOs: 2.5M` in `ad_sets`), not the ad id. The four SLO ads have no Fundhub ad number (`v_ad_label_spine.fundhub_ad_number` NULL), so `api/read/ad-spine.mjs` cannot tie a buyer to an SLO ad.
+- The ad *can* be found by hand: ad set `120253626444640264` + name `oVid: SLO2` = Meta ad `120253626574340264`.
+- Closing it is a Chris call, either way (live ad change, or a new matching rule in our reports). Yes/no question on `ops/workflows/finish-builds-2026-10-05.md`.
+
+### Real proof cards on the sales page — the empty cards are gone; the approval cards were cut on purpose
+
+- Live https://apply.fundhub.ai/roadmap (fetched 2026-10-05): no `CLIENT RESULT` placeholder, no "Sample data" bar, no `FH_SIM`. Three real video testimonials: Colin Schmidt, Gene, Sarah.
+- No approval cards on the page. The approvals deck was cut when Chris pushed the shorter page on 2026-10-01 (`marketing/ads/roadmap-page-changes.md`, row 2026-10-01: "Cut: … Approvals"). Only its leftover CSS is still in the page.
+- The 40 real, branded approval crops exist: `marketing/landing-pages/slo/client-wins/deck/win-*.png`, provenance in `approvals-manifest.json`. Putting them back on the page is a Chris call (yes/no on the finish-builds board). If yes, it goes through a marked draft first.
+- Note: `TODO.md` "Checked 10/4 … Proof cards are on /roadmap" is true only of the three testimonials, not of approval cards.
+
+**W4 status:** done for everything that needs no owner call. Two yes/no questions left.
