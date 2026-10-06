@@ -354,13 +354,22 @@
   function sampleLine(d) {
     return d && d.sample === true ? fine("Sample scores. Not a real credit pull.") : "";
   }
+  /* THE BAR IS COLOURED BY THE SCORE, NEVER BY THE ROW (walkthrough-4 defect 1).
+     It used to be coral / sage / blue by position, so Experian was always the
+     red one — a client with a 790 there saw "failed". The one line the engine
+     draws is 700 (src/underwrite/vendor/underwriter.cjs `score >= 700` is the
+     fundable bar): at or over it is sage (healthy), under it is peach (behind).
+     No coral — the engine names no score as blocked. The number prints beside it. */
+  function scoreTone(v) {
+    if (v == null || !isFinite(Number(v))) return "transparent";
+    return Number(v) >= 700 ? "var(--ok)" : "var(--warn)";
+  }
   function scoreBars(fico) {
-    var stops = ["var(--alert)", "var(--ok)", "var(--info)"];
     var rows = [["Experian", fico && fico.ex], ["TransUnion", fico && fico.tu], ["Equifax", fico && fico.eq]];
-    return '<div style="margin-top:12px;max-width:600px">' + rows.map(function (r, i) {
+    return '<div style="margin-top:12px;max-width:600px">' + rows.map(function (r) {
       var v = r[1];
       var w = v == null ? 0 : Math.max(4, ((Number(v) - 300) / 550) * 100);
-      return '<div class="prog"><span class="nm">' + r[0] + '</span><div class="track"><div class="fill" style="width:' + w + "%;background:" + stops[i] + '"></div></div><span class="n">' + dash(v) + "</span></div>";
+      return '<div class="prog"><span class="nm">' + r[0] + '</span><div class="track"><div class="fill" style="width:' + w + "%;background:" + scoreTone(v) + '"></div></div><span class="n">' + dash(v) + "</span></div>";
     }).join("") + '<div style="display:flex;justify-content:space-between;padding-left:94px;padding-right:44px;margin-top:2px"><span class="mono" style="color:var(--gray2)">300</span><span class="mono" style="color:var(--gray2)">850</span></div></div>';
   }
   function stepsHtml(steps, current) {
