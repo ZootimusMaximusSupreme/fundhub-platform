@@ -20,6 +20,7 @@ flowchart TD
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 13 routes]
     CAN --> A_banking[banking — 3 routes]
+    CAN --> A_blueprint[blueprint — 1 route]
     CAN --> A_brand[brand — 1 route]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
@@ -32,10 +33,11 @@ flowchart TD
     CAN --> A_dashboard[The dashboard — 7 routes]
     CAN --> A_demo[demo — 2 routes]
     CAN --> A_documents[Documents — 1 route]
-    CAN --> A_finance[Finance — 11 routes]
+    CAN --> A_finance[Finance — 12 routes]
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 8 routes]
     CAN --> A_journeys[journeys — 2 routes]
+    CAN --> A_marketing[marketing — 1 route]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
@@ -43,7 +45,7 @@ flowchart TD
     CAN --> A_privacy[privacy — 1 route]
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 18 routes]
-    CAN --> A_read[Reading data — 65 routes]
+    CAN --> A_read[Reading data — 66 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 7 routes]
@@ -62,7 +64,7 @@ flowchart TD
 
 ## What they can reach
 
-**245 of 253 routes.**
+**249 of 257 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -92,6 +94,7 @@ flowchart TD
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
+| `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
@@ -154,6 +157,7 @@ flowchart TD
 | `/api/finance/entities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/liabilities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/model` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/finance/paydown-simulator` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/soft-pull` | GET, POST | employees: owner, admin, closer, funding_advisor<br>plus: client |
 | `/api/finance/subscriptions` | GET, POST | owner, admin, sales_manager |
 | `/api/gifts/message-blaster` | GET, HEAD | staff, affiliate, partner |
@@ -176,6 +180,7 @@ flowchart TD
 | `/api/lender-observations` | POST | owner, admin, funding_advisor |
 | `/api/lenders` | POST | owner, admin, funding_advisor |
 | `/api/marketing-flags` | POST | owner, admin, sales_manager |
+| `/api/marketing/offer/generate` | GET, POST | owner, admin |
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -230,6 +235,7 @@ flowchart TD
 | `/api/read/ai-bureau-config` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/bank-inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
+| `/api/read/blueprint-combined-approval` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/call-outcomes` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/client-progress` | GET | staff, client |
 | `/api/read/closer-call` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -310,7 +316,7 @@ flowchart TD
 | `/api/trials/dashboard` | GET | partner, staff |
 | `/api/trials/eligibility` | POST | anyone |
 | `/api/trials/provision` | POST | owner, admin |
-| `/api/webhooks/:provider` | — | **not a sign-in** — provider signature |
+| `/api/webhooks/:provider` | OPTIONS | **not a sign-in** — provider signature |
 
 ### Worth knowing
 
@@ -321,7 +327,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**8 of 253 routes.**
+**8 of 257 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

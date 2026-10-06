@@ -21,12 +21,11 @@
 
 import { db } from "../../../src/db.mjs";
 import { requireAuth, bearerToken } from "../../../src/http/middleware/requireAuth.mjs";
-import { requireRole, isUuid } from "../../../src/http/read-api.mjs";
+import { ROLE_SETS, requireRole, isUuid } from "../../../src/http/read-api.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
 import { safeError } from "../../../src/http/health.mjs";
 import { resolveOfferInputs } from "../../../src/marketing/offer-inputs.mjs";
 import { anthropicKeyOf, wakeOfferWorker } from "../../../src/marketing/offer-transport.mjs";
-import { OFFER_ROLES } from "../../../src/marketing/offer-run.mjs";
 import {
   createOfferJob, failOfferJob, getOfferJob, latestOfferJobs,
   isNotReady, jobView, offerView
@@ -55,7 +54,9 @@ export default async function handler(req, res, deps = {}) {
 
   const staff = await requireAuth(req, res, { db: database });
   if (!staff) return;
-  if (!requireRole(res, staff, OFFER_ROLES)) return;
+  // Owner and admin — the same set as OFFER_ROLES in src/marketing/offer-run.mjs,
+  // which the background writer checks.
+  if (!requireRole(res, staff, ROLE_SETS.OPS)) return;
   const orgId = staff.org_id;
   if (!isUuid(orgId)) return res.status(403).json({ ok: false, error: "forbidden" });
 

@@ -10,10 +10,11 @@ import { generateOffer, OfferError } from "./offer-generator.mjs";
 import { askAnthropic, OFFER_MODEL } from "./offer-transport.mjs";
 import { claimOfferJob, finishOfferJob, failOfferJob } from "./offer-store.mjs";
 
-/* Owner and admin. ROLE_SETS.MARKETING is the dashboard plan's name for exactly
-   that pair (docs/specs/marketing-dashboard-plan-2026-10-05.md §4 Step B); until
-   it lands, ROLE_SETS.OPS is the same two roles. */
-export const OFFER_ROLES = ROLE_SETS.MARKETING || ROLE_SETS.OPS;
+/* Owner and admin: ROLE_SETS.OPS. The dashboard plan calls this pair
+   ROLE_SETS.MARKETING (docs/specs/marketing-dashboard-plan-2026-10-05.md §4 Step B);
+   it is the same two roles. The endpoint names ROLE_SETS.OPS in its own text too,
+   because scripts/journeys/generate.mjs reads the gate off the handler's source. */
+export const OFFER_ROLES = ROLE_SETS.OPS;
 
 /** The background function gets 15 minutes. Stop starting new calls well before. */
 export const RUN_BUDGET_MS = 14 * 60 * 1000;
