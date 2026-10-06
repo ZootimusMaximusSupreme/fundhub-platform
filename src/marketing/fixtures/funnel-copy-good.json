@@ -1,0 +1,48 @@
+{
+  "landing": {
+    "eyebrow": "Capital Blueprint",
+    "headline": "Know exactly what stands between you and funding",
+    "subhead": "One call. Your credit file read line by line. A plan you can follow.",
+    "lede": "You get a written plan built from your own credit file. On the call we walk it with you, so you know what to fix first and which banks to ask.",
+    "cta": "Pick a call time",
+    "cta_note": "Takes one minute to book",
+    "bullets_title": "What you walk away with",
+    "bullets": [
+      { "title": "Credit Analysis Report", "detail": "Every line on your file, read and explained in plain words." },
+      { "title": "Credit Optimization Roadmap", "detail": "What to fix first, and in what order." },
+      { "title": "Bank & Lender Match List", "detail": "The banks that fit your file today." }
+    ],
+    "steps_title": "How the call works",
+    "steps": [
+      { "title": "Pick a time", "detail": "Choose a slot that works for you." },
+      { "title": "Walk your file", "detail": "We go through your file with you, line by line." },
+      { "title": "Get your plan", "detail": "You leave knowing your next move." }
+    ],
+    "faq": [
+      { "q": "Is this a loan?", "a": "No. Fundhub is not a bank or a lender. We show you where you stand and what to do next." },
+      { "q": "What do I need for the call?", "a": "Your name, your email and about half an hour." },
+      { "q": "Will you pull my credit on the call?", "a": "Nothing moves until you say so." }
+    ]
+  },
+  "booking": {
+    "eyebrow": "Book your call",
+    "headline": "Pick the time that works for you",
+    "subhead": "This is where your plan starts.",
+    "lede": "Choose a slot below. You get a text and an email with the details.",
+    "booknote": "Times are shown in your time zone",
+    "prep_title": "Have these ready",
+    "prep": ["Your questions about funding", "A quiet place to talk"]
+  },
+  "thank_you": {
+    "eyebrow": "You are booked",
+    "headline": "Your call is on the calendar",
+    "subhead": "Here is what happens next.",
+    "lede": "Watch your email and your texts for the details.",
+    "steps_title": "What happens next",
+    "next_steps": [
+      { "title": "Check your email", "detail": "Your call details are on the way." },
+      { "title": "Add it to your calendar", "detail": "So the time does not slip by." },
+      { "title": "Show up ready", "detail": "Bring your questions about funding." }
+    ]
+  }
+}

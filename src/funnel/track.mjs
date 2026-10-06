@@ -21,6 +21,14 @@
 // META_CAPI_ENABLED is "1". Contract: the "Phase 4 contract" section of
 // docs/tracking/meta-events.md.
 //
+// A page that is not on the fixed map (src/funnel/pages.mjs) may still be
+// saved when it is a page of a funnel the dashboard built (build unit X4): the
+// browser sends funnel_tag (window.FH_FUNNEL on that page), and the page is
+// looked up in marketing_funnel_pages by that tag and that address. Found: the
+// row's funnel is the tag, its step is the page's position, and funnel_tag and
+// funnel_id ride on the row; the page's events_seen count goes up by one. Not
+// found (or the table is not live yet): page_invalid, exactly as before.
+//
 // Four top-level fields come with that (same contract): meta_event_id (the id
 // the browser pixel used, so Meta counts the two copies once), fbc and fbp
 // (Meta's click id and browser id cookies), and url (the page address; a query
@@ -31,7 +39,7 @@ import { db as defaultDb } from "../db.mjs";
 import { defaultOrgId, emit } from "../events/bus.mjs";
 import { pickAttribution } from "../ads/attribution-keys.mjs";
 import { classifyVisitor } from "../slo/visitor.mjs";
-import { funnelFor } from "./pages.mjs";
+import { funnelFor, normalizePage } from "./pages.mjs";
 import { cleanMetaEventId } from "../meta/map.mjs";
 import { cleanFbc, cleanFbp } from "../meta/user-data.mjs";
 import { startMetaSend } from "../meta/track-send.mjs";
@@ -319,6 +327,33 @@ function parseSeq(v) {
 
 const clip = (v, max) => String(v ?? "").trim().slice(0, max);
 
+/** A funnel tag as the builder writes it (migration 425), or null. */
+const FUNNEL_TAG = /^fnl-[a-z0-9]+(-[a-z0-9]+)*$/;
+export function cleanFunnelTag(raw) {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  return s.length <= 64 && FUNNEL_TAG.test(s) ? s : null;
+}
+
+/**
+ * The built-funnel page behind a tag and an address, or null. Never throws: a
+ * missing table (the migration not live yet) or a failed read is "not found".
+ */
+export async function findFunnelPage(db, orgId, tag, page) {
+  try {
+    const r = await db.query(
+      `SELECT p.id, p.path, p.position, f.tag, f.id AS funnel_id
+         FROM marketing_funnel_pages p
+         JOIN marketing_funnels f ON f.id = p.funnel_id
+        WHERE p.org_id = $1 AND f.tag = $2 AND p.path = $3
+        LIMIT 1`,
+      [orgId, tag, page]
+    );
+    return r.rows[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * One funnel event → { ok, actor, saved } or { ok:false, error }.
  *
@@ -341,8 +376,20 @@ export async function recordTrack(body, deps = {}) {
   const seq = parseSeq(body.seq);
   if (seq === null) return { ok: false, error: "seq_invalid" };
 
-  const where = funnelFor(body.page);
-  if (!where) return { ok: false, error: "page_invalid" };
+  let where = funnelFor(body.page);
+  let built = null;
+  let db = null;
+  let orgId = null;
+  if (!where) {
+    const tag = cleanFunnelTag(body.funnel_tag);
+    const page = normalizePage(body.page);
+    if (!tag || !/^\/[a-z0-9]+(-[a-z0-9]+)*$/.test(page)) return { ok: false, error: "page_invalid" };
+    db = deps.db || defaultDb;
+    orgId = deps.orgId || (await (deps.defaultOrgId || defaultOrgId)(db));
+    built = await (deps.findFunnelPage || findFunnelPage)(db, orgId, tag, page);
+    if (!built) return { ok: false, error: "page_invalid" };
+    where = { page: built.path, funnel: built.tag, step: Number(built.position) };
+  }
 
   const props = cleanProps(event, body.props);
   if (PREVIEW_EVENTS.includes(event) && !props.deliverable) return { ok: false, error: "deliverable_invalid" };
@@ -368,6 +415,10 @@ export async function recordTrack(body, deps = {}) {
     actor: who.actor,
     actor_reason: who.reason
   };
+  if (built) {
+    payload.funnel_tag = built.tag;
+    payload.funnel_id = built.funnel_id;
+  }
 
   // Meta dedupe id, click and browser ids, page address: kept only when valid.
   const metaEventId = cleanMetaEventId(body.meta_event_id);
@@ -379,8 +430,8 @@ export async function recordTrack(body, deps = {}) {
   const url = cleanPageUrl(body.url);
   if (url) payload.url = url;
 
-  const db = deps.db || defaultDb;
-  const orgId = deps.orgId || (await (deps.defaultOrgId || defaultOrgId)(db));
+  if (!db) db = deps.db || defaultDb;
+  if (!orgId) orgId = deps.orgId || (await (deps.defaultOrgId || defaultOrgId)(db));
 
   // page_view is once per session per page, so it is bounded by the page list
   // and never counted against the cap: an over-cap session still records the
@@ -399,6 +450,16 @@ export async function recordTrack(body, deps = {}) {
     idempotencyKey: trackIdempotencyKey(event, sessionId, seq, where.page)
   });
   const saved = sent?.deduped !== true;
+
+  // A built funnel's page: one more event seen (GET marketing/funnels shows it).
+  if (saved && built) {
+    try {
+      await db.query(
+        `UPDATE marketing_funnel_pages SET events_seen = events_seen + 1, last_event_at = now() WHERE id = $1`,
+        [built.id]
+      );
+    } catch { /* the count is a convenience; the event row is the record */ }
+  }
 
   // The Meta server copy: saved rows from real people only, never awaited here
   // (the door waits a capped time after it answers; see deps.onMetaSend).

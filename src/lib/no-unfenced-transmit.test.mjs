@@ -82,6 +82,14 @@ const ALLOWED_RAW_FETCH = {
     "15-minute worker. Same shape as ad-video-sweeper above. Nothing leaves fundhub.ai and " +
     "no vendor is reached; the GitHub, Meta and model calls happen inside the worker, " +
     "through src/messaging/providers/* and the fence. Added 2026-10-05 (U05).",
+  "src/marketing/funnel-transport.mjs":
+    "The funnel builder's wake (build unit X4). Its ONE call is a POST to our own " +
+    "deploy (process.env.URL or DEPLOY_URL) at /.netlify/functions/marketing-funnel-background " +
+    "with the owner's own session and { job_id }, to start the 15-minute worker the 26 s " +
+    "/api function cannot hold. Same shape as wakeOfferWorker above. Nothing leaves " +
+    "fundhub.ai and no vendor is reached; the model call goes through src/agents/model.mjs " +
+    "and every ClickFunnels call through src/messaging/providers/clickfunnels-pages.mjs " +
+    "and the ADAPTERS fence. Added 2026-10-06.",
   // ── Not actually the global fetch ────────────────────────────────────────
   "src/http/read-api.mjs":
     "`fetch` here is a local parameter holding a database reader, not the global.",

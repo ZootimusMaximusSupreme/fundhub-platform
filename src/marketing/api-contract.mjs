@@ -72,6 +72,7 @@ const JOB_2 = "00000000-0000-4000-8000-000000000502";
 const JOB_3 = "00000000-0000-4000-8000-000000000503";
 const JOB_4 = "00000000-0000-4000-8000-000000000504";
 const JOB_5 = "00000000-0000-4000-8000-000000000505";
+const JOB_OFFER = "00000000-0000-4000-8000-000000000506"; // a finished Write offer run (costs.offer)
 const FUNNEL_BOOK = "00000000-0000-4000-8000-000000000601";
 const FUNNEL_ROADMAP = "00000000-0000-4000-8000-000000000602";
 const VIDEO_1 = "00000000-0000-4000-8000-000000000701";
@@ -113,8 +114,26 @@ const SETTINGS_KEYS = [
 const FUNNEL_KEYS = [
   "id", "key", "name", "landing_url", "offer_key", "lane", "book_call", "format_mix",
   "cta_type", "meta_campaign_ids", "default_ad_set_external_id", "weight", "active",
-  "created_at", "updated_at"
+  "created_at", "updated_at",
+  // X4 funnel builder (migration 425). A funnel mapped by hand: kind null, tag null,
+  // status "live", pages [], events_seen null.
+  "kind", "url", "path", "tag", "utm_campaign", "utm_template", "campaign", "status",
+  "live_at", "created_by", "pages[]", "events_seen"
 ];
+
+/* One page of a built funnel (X4). */
+const FUNNEL_PAGE_KEYS = [
+  "id", "position", "role", "path", "url", "status", "built_at", "pushed_at", "proved_at",
+  "live_url", "events_seen", "last_event_at"
+];
+
+/** A funnel object's key paths under a prefix ("funnels[]." or "funnel."). */
+const funnelShape = (/** @type {string} */ prefix) => [
+  ...under(prefix, FUNNEL_KEYS), ...under(`${prefix}pages[].`, FUNNEL_PAGE_KEYS)
+];
+
+const FUNNEL_JOB_KEYS = ["job", "job.id", "job.kind", "job.status", "job.created_at"];
+const WORKER_KEYS = ["worker", "worker.started", "worker.reason"];
 
 /* Script object S (spec §7.4 columns as the API returns them). */
 export const SCRIPT_KEYS = Object.freeze([
@@ -232,7 +251,19 @@ const FUNNEL_BOOK_CALL = {
   weight: 1,
   active: true,
   created_at: "2026-10-06T18:00:00.000Z",
-  updated_at: "2026-10-06T18:00:00.000Z"
+  updated_at: "2026-10-06T18:00:00.000Z",
+  kind: null,
+  url: "https://apply.fundhub.ai/watch",
+  path: null,
+  tag: null,
+  utm_campaign: null,
+  utm_template: "utm_source=fb&utm_medium=paid&utm_campaign=sorting&utm_content={ad_number}",
+  campaign: null,
+  status: "live",
+  live_at: null,
+  created_by: null,
+  pages: [],
+  events_seen: null
 };
 
 const FUNNEL_ROADMAP_147 = {
@@ -250,8 +281,86 @@ const FUNNEL_ROADMAP_147 = {
   weight: 1,
   active: true,
   created_at: "2026-10-06T18:00:00.000Z",
-  updated_at: "2026-10-06T18:00:00.000Z"
+  updated_at: "2026-10-06T18:00:00.000Z",
+  kind: null,
+  url: "https://apply.fundhub.ai/roadmap",
+  path: null,
+  tag: null,
+  utm_campaign: null,
+  utm_template: "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+  campaign: null,
+  status: "live",
+  live_at: null,
+  created_by: null,
+  pages: [],
+  events_seen: null
 };
+
+/* X4: a Blueprint book-a-call funnel the dashboard built, drafted and written. */
+const FUNNEL_BP = "00000000-0000-4000-8000-000000000603";
+const BP_PAGE = (/** @type {number} */ n) => "00000000-0000-4000-8000-00000000061" + n;
+const bpPage = (/** @type {number} */ n, /** @type {string} */ role, /** @type {string} */ p, /** @type {string} */ status) => ({
+  id: BP_PAGE(n),
+  position: n,
+  role,
+  path: p,
+  url: `https://apply.fundhub.ai${p}`,
+  status,
+  built_at: status === "empty" ? null : "2026-10-12T15:20:00.000Z",
+  pushed_at: status === "live" ? "2026-10-12T16:00:00.000Z" : null,
+  proved_at: status === "live" ? "2026-10-12T16:00:20.000Z" : null,
+  live_url: status === "live" ? `https://apply.fundhub.ai${p}` : null,
+  events_seen: status === "live" ? (n === 1 ? 12 : n === 2 ? 4 : 1) : 0,
+  last_event_at: status === "live" ? "2026-10-12T18:30:00.000Z" : null
+});
+const FUNNEL_BLUEPRINT_DRAFT = {
+  id: FUNNEL_BP,
+  key: "blueprint",
+  name: "Capital Blueprint book a call",
+  landing_url: "https://apply.fundhub.ai/blueprint",
+  offer_key: "capital_blueprint",
+  lane: "uwiq",
+  book_call: true,
+  format_mix: {},
+  cta_type: "LEARN_MORE",
+  meta_campaign_ids: [],
+  default_ad_set_external_id: null,
+  weight: 1,
+  active: false,
+  created_at: "2026-10-12T15:10:00.000Z",
+  updated_at: "2026-10-12T15:10:00.000Z",
+  kind: "book_a_call",
+  url: "https://apply.fundhub.ai/blueprint",
+  path: "/blueprint",
+  tag: "fnl-blueprint",
+  utm_campaign: "uwiq",
+  utm_template: "utm_source=fb&utm_medium=paid&utm_campaign=uwiq&utm_content={ad_number}",
+  campaign: null,
+  status: "draft",
+  live_at: null,
+  created_by: CHRIS,
+  pages: [
+    bpPage(1, "landing", "/blueprint", "empty"),
+    bpPage(2, "booking", "/blueprint-book", "empty"),
+    bpPage(3, "thank_you", "/blueprint-thank-you", "empty")
+  ],
+  events_seen: 0
+};
+const FUNNEL_BLUEPRINT_LIVE = {
+  ...FUNNEL_BLUEPRINT_DRAFT,
+  active: true,
+  updated_at: "2026-10-12T16:00:21.000Z",
+  status: "live",
+  live_at: "2026-10-12T16:00:21.000Z",
+  pages: [
+    bpPage(1, "landing", "/blueprint", "live"),
+    bpPage(2, "booking", "/blueprint-book", "live"),
+    bpPage(3, "thank_you", "/blueprint-thank-you", "live")
+  ],
+  events_seen: 17
+};
+const FUNNEL_JOB_BUILD = { id: "00000000-0000-4000-8000-000000000621", kind: "funnel", status: "queued", created_at: "2026-10-12T15:10:00.000Z" };
+const FUNNEL_JOB_PUSH = { id: "00000000-0000-4000-8000-000000000622", kind: "funnel_push", status: "queued", created_at: "2026-10-12T15:59:00.000Z" };
 
 const FUNNEL_ROADMAP_MAPPED = {
   ...FUNNEL_ROADMAP_147,
@@ -699,7 +808,7 @@ export const CONTRACT = deepFreeze({
     guard: null,
     requestKeys: [],
     responseKeys: [
-      "funnels[]", ...under("funnels[].", FUNNEL_KEYS),
+      "funnels[]", ...funnelShape("funnels[]."),
       "campaigns[]", ...under("campaigns[].", ["external_id", "name", "status", "spend_7d_cents", "funnel_key"]),
       "ad_sets[]", ...under("ad_sets[].", ["external_id", "name", "status", "campaign_external_id"]),
       "as_of"
@@ -708,7 +817,7 @@ export const CONTRACT = deepFreeze({
     example: {
       request: {},
       response: {
-        funnels: [FUNNEL_BOOK_CALL, FUNNEL_ROADMAP_147],
+        funnels: [FUNNEL_BOOK_CALL, FUNNEL_ROADMAP_147, FUNNEL_BLUEPRINT_LIVE],
         campaigns: [
           { external_id: "120210000000000001", name: "Roadmap ads (example)", status: "ACTIVE", spend_7d_cents: 41200, funnel_key: null },
           { external_id: "120210000000000002", name: "Book a call ads (example)", status: "PAUSED", spend_7d_cents: null, funnel_key: null }
@@ -731,7 +840,7 @@ export const CONTRACT = deepFreeze({
     success: 200,
     guard: "updated_at",
     requestKeys: ["request_id", "funnel", "funnel.key", "funnel.updated_at?"],
-    responseKeys: ["funnel", ...under("funnel.", FUNNEL_KEYS)],
+    responseKeys: ["funnel", ...funnelShape("funnel.")],
     errors: [
       { status: 400, error: "invalid", field: "funnel.key", when: "key is missing or not lower-case letters, digits and _" },
       { status: 400, error: "invalid", field: "funnel.<key>", when: "an unknown field, or a bad value (lane not an ad lane, a landing_url that is not https, a negative weight)" },
@@ -1117,8 +1226,15 @@ export const CONTRACT = deepFreeze({
     guard: null,
     requestKeys: [],
     responseKeys: [
-      // Existing keys (never renamed; their inner shape is in marketing-today-contract.md).
-      "ok", "as_of", "today", "timezone", "waiting", "flywheel", "copy", "copy_ready", "spend", "last_sync",
+      // Existing keys (never renamed; their full inner shape is in marketing-today-contract.md).
+      "ok", "as_of", "today", "timezone", "waiting", "flywheel", "copy", "copy_ready", "spend", "last_sync", "costs",
+      // Slice 0 of the Command Center design ("Today tells the truth") added spend.through,
+      // prior_30_days, last_sync.clickfunnels_synced_at and costs. They are named here so a
+      // body that drops one fails the contract. spend, last_sync and costs may be null.
+      ...under("spend.", ["currency", "through", "windows"]),
+      ...under("spend.windows.", ["today", "last_7_days", "prior_7_days", "last_30_days", "prior_30_days"]),
+      ...under("last_sync.", ["meta_synced_at", "metrics_synced_at", "latest_metrics_date", "clickfunnels_synced_at"]),
+      "costs.offer", "costs.copy",
       // Added by U32.
       "numbers", "numbers.today", "numbers.d7", "numbers.d30",
       ...under("numbers.today.", NUMBER_KEYS), ...under("numbers.d7.", NUMBER_KEYS), ...under("numbers.d30.", NUMBER_KEYS),
@@ -1142,14 +1258,32 @@ export const CONTRACT = deepFreeze({
         copy_ready: { ready: true, partner_id: "00000000-0000-4000-8000-000000000003", checks: [], missing: [] },
         spend: {
           currency: "USD",
+          through: "2026-10-11",
           windows: {
             today: { from: "2026-10-12", to: "2026-10-12", days: 1, spend_cents: null, ad_days: 0, days_with_data: 0 },
-            last_7_days: { from: "2026-10-06", to: "2026-10-12", days: 7, spend_cents: 61500, ad_days: 18, days_with_data: 6 },
-            prior_7_days: { from: "2026-09-29", to: "2026-10-05", days: 7, spend_cents: 48200, ad_days: 14, days_with_data: 7 },
-            last_30_days: { from: "2026-09-13", to: "2026-10-12", days: 30, spend_cents: 203400, ad_days: 61, days_with_data: 27 }
+            last_7_days: { from: "2026-10-05", to: "2026-10-11", days: 7, spend_cents: 61500, ad_days: 18, days_with_data: 6 },
+            prior_7_days: { from: "2026-09-28", to: "2026-10-04", days: 7, spend_cents: 48200, ad_days: 14, days_with_data: 7 },
+            last_30_days: { from: "2026-09-12", to: "2026-10-11", days: 30, spend_cents: 203400, ad_days: 61, days_with_data: 27 },
+            prior_30_days: { from: "2026-08-13", to: "2026-09-11", days: 30, spend_cents: 151900, ad_days: 44, days_with_data: 21 }
           }
         },
-        last_sync: { meta_synced_at: META_SYNC, metrics_synced_at: "2026-10-12T07:01:51.000Z", latest_metrics_date: "2026-10-11" },
+        last_sync: {
+          meta_synced_at: META_SYNC,
+          metrics_synced_at: "2026-10-12T07:01:51.000Z",
+          latest_metrics_date: "2026-10-11",
+          clickfunnels_synced_at: "2026-10-11T22:10:00.000Z"
+        },
+        costs: {
+          offer: {
+            measured: true, job_id: JOB_OFFER, finished_at: "2026-10-12T14:04:29.000Z", seconds: 269,
+            input_tokens: 24551, output_tokens: 28640, models: ["claude-opus-5-5"], cost_cents: 67,
+            under_one_cent: false, unpriced_models: []
+          },
+          copy: {
+            runs: 0, last_at: null, models: [], avg_input_tokens: null, avg_output_tokens: null,
+            avg_cost_cents: null, under_one_cent: false, unpriced_models: []
+          }
+        },
         numbers: {
           today: { spend_cents: null, leads: 2, booked: 1, showed: 0, sales: 0, roadmaps: 0, cash_cents: 0, reported_cash_cents: null, roas: null },
           d7: { spend_cents: 61500, leads: 23, booked: 7, showed: 5, sales: 1, roadmaps: 4, cash_cents: 158800, reported_cash_cents: 100000, roas: 2.58 },
@@ -1359,6 +1493,145 @@ export const CONTRACT = deepFreeze({
           }
         ],
         as_of: META_SYNC
+      }
+    }
+  },
+
+  /* ---------------- X4: the funnel builder (owner order 2026-10-05) ---------------- */
+
+  "POST marketing/funnels/create": {
+    owner: "X4",
+    spec: "owner order 2026-10-05 (build unit X4): URL system, tag, page builder",
+    method: "POST",
+    path: "marketing/funnels/create",
+    gate: GATE,
+    success: 200,
+    guard: null,
+    requestKeys: ["request_id", "offer_key", "lane?", "name?", "campaign?", "path?", "build?"],
+    responseKeys: ["funnel", ...funnelShape("funnel."), ...FUNNEL_JOB_KEYS, ...WORKER_KEYS],
+    errors: [
+      { status: 400, error: "invalid", field: "offer_key", when: "not an offer sold on a call (capital_blueprint or funding_dfy)" },
+      { status: 400, error: "invalid", field: "path", when: "the typed address is reserved, already a live ClickFunnels page, or used by another of our funnels; or no free address is left" },
+      { status: 400, error: "invalid", field: "lane", when: "a lane the database files as unknown" },
+      { status: 400, error: "invalid", field: "campaign", when: "not a flywheel folder name" },
+      { status: 503, error: "clickfunnels_unreadable", when: "the live ClickFunnels page list could not be read, so nothing was made" }
+    ],
+    example: {
+      request: { request_id: REQ("051"), offer_key: "capital_blueprint" },
+      response: { funnel: FUNNEL_BLUEPRINT_DRAFT, job: FUNNEL_JOB_BUILD, worker: { started: true, reason: null } }
+    }
+  },
+
+  "POST marketing/funnels/rename": {
+    owner: "X4",
+    spec: "owner order 2026-10-05 (build unit X4): name it in the dash",
+    method: "POST",
+    path: "marketing/funnels/rename",
+    gate: GATE,
+    success: 200,
+    guard: null,
+    requestKeys: ["request_id", "id", "path"],
+    responseKeys: ["funnel", ...funnelShape("funnel.")],
+    errors: [
+      { status: 400, error: "invalid", field: "path", when: "the address is reserved, already a live ClickFunnels page, used by another of our funnels, or the same as now" },
+      { status: 400, error: "invalid", field: "id", when: "the funnel is live or a page of it is on ClickFunnels (a live address never changes), or a build or push is running" },
+      { status: 404, error: "not_found", when: "no such funnel in this company, or it was not built here" },
+      { status: 503, error: "clickfunnels_unreadable", when: "the live ClickFunnels page list could not be read, so nothing was renamed" }
+    ],
+    example: {
+      request: { request_id: REQ("052"), id: FUNNEL_BP, path: "blueprint-vip" },
+      response: {
+        funnel: {
+          ...FUNNEL_BLUEPRINT_DRAFT,
+          key: "blueprint",
+          landing_url: "https://apply.fundhub.ai/blueprint-vip",
+          url: "https://apply.fundhub.ai/blueprint-vip",
+          path: "/blueprint-vip",
+          updated_at: "2026-10-12T15:12:00.000Z",
+          pages: [
+            bpPage(1, "landing", "/blueprint-vip", "empty"),
+            bpPage(2, "booking", "/blueprint-vip-book", "empty"),
+            bpPage(3, "thank_you", "/blueprint-vip-thank-you", "empty")
+          ]
+        }
+      }
+    }
+  },
+
+  "POST marketing/funnels/build": {
+    owner: "X4",
+    spec: "owner order 2026-10-05 (build unit X4): page builder job (kind funnel)",
+    method: "POST",
+    path: "marketing/funnels/build",
+    gate: GATE,
+    success: 202,
+    guard: null,
+    requestKeys: ["request_id", "id"],
+    responseKeys: ["queued", ...FUNNEL_JOB_KEYS, ...WORKER_KEYS],
+    errors: [
+      { status: 400, error: "invalid", field: "id", when: "the funnel is live or a page of it is on ClickFunnels (never rewritten), or a build or push is already running" },
+      { status: 404, error: "not_found", when: "no such funnel in this company, or it was not built here" }
+    ],
+    example: {
+      request: { request_id: REQ("053"), id: FUNNEL_BP },
+      response: { queued: true, job: FUNNEL_JOB_BUILD, worker: { started: true, reason: null } }
+    }
+  },
+
+  "POST marketing/funnels/push-live": {
+    owner: "X4",
+    spec: "owner order 2026-10-05 (build unit X4): push live to a NEW path; design §5 rules 5 and 16",
+    method: "POST",
+    path: "marketing/funnels/push-live",
+    gate: GATE,
+    success: 202,
+    guard: null,
+    requestKeys: ["request_id", "id", "confirm_url"],
+    responseKeys: ["queued", ...FUNNEL_JOB_KEYS, "url", ...WORKER_KEYS],
+    errors: [
+      { status: 400, error: "invalid", field: "confirm_url", when: "missing, or not this funnel's address (the second tap names the address)" },
+      { status: 400, error: "invalid", field: "id", when: "the pages are not built yet, the funnel is already live, or a build or push is running" },
+      { status: 404, error: "not_found", when: "no such funnel in this company, or it was not built here" }
+    ],
+    example: {
+      request: { request_id: REQ("054"), id: FUNNEL_BP, confirm_url: "https://apply.fundhub.ai/blueprint" },
+      response: { queued: true, job: FUNNEL_JOB_PUSH, url: "https://apply.fundhub.ai/blueprint", worker: { started: true, reason: null } }
+    }
+  },
+
+  "GET marketing/funnel": {
+    owner: "X4",
+    spec: "owner order 2026-10-05 (build unit X4): one funnel with its draft pages",
+    method: "GET",
+    path: "marketing/funnel",
+    gate: GATE,
+    success: 200,
+    guard: null,
+    requestKeys: ["id"],
+    responseKeys: [
+      "funnel", ...funnelShape("funnel."),
+      "pages[]", ...under("pages[].", [...FUNNEL_PAGE_KEYS, "copy", "html"]),
+      "jobs[]", ...under("jobs[].", ["id", "kind", "status", "attempts", "error", "result", "created_at", "claimed_at", "finished_at", "run_after"]),
+      "as_of"
+    ],
+    errors: [
+      { status: 400, error: "invalid", field: "id", when: "id is not a uuid" },
+      { status: 404, error: "not_found", when: "no such funnel in this company" }
+    ],
+    example: {
+      request: { id: FUNNEL_BP },
+      response: {
+        funnel: FUNNEL_BLUEPRINT_LIVE,
+        pages: [
+          { ...bpPage(1, "landing", "/blueprint", "live"), copy: { headline: "Know exactly what stands between you and funding" }, html: "<!doctype html>..." },
+          { ...bpPage(2, "booking", "/blueprint-book", "live"), copy: { headline: "Pick the time that works for you" }, html: "<!doctype html>..." },
+          { ...bpPage(3, "thank_you", "/blueprint-thank-you", "live"), copy: { headline: "Your call is on the calendar" }, html: "<!doctype html>..." }
+        ],
+        jobs: [
+          { id: FUNNEL_JOB_PUSH.id, kind: "funnel_push", status: "done", attempts: 0, error: null, result: { url: "https://apply.fundhub.ai/blueprint", created: 3, adopted: 0 }, created_at: "2026-10-12T15:59:00.000Z", claimed_at: "2026-10-12T15:59:01.000Z", finished_at: "2026-10-12T16:00:21.000Z", run_after: "2026-10-12T15:59:00.000Z" },
+          { id: FUNNEL_JOB_BUILD.id, kind: "funnel", status: "done", attempts: 0, error: null, result: { checks: "passed", rounds: 1, cost_usd: 0.046 }, created_at: "2026-10-12T15:10:00.000Z", claimed_at: "2026-10-12T15:10:01.000Z", finished_at: "2026-10-12T15:11:30.000Z", run_after: "2026-10-12T15:10:00.000Z" }
+        ],
+        as_of: "2026-10-12T18:31:00.000Z"
       }
     }
   },

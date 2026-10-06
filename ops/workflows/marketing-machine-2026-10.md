@@ -31,7 +31,7 @@ Note: production also holds migrations 430–433 from another session (files not
 |---|---|---|
 | C1 | CI fix (M0 step 6): fresh database builds, unit suite green, pg suite runs and blocks | done, merged to main (d2a74b5c1). One test left red on purpose: climate page 'Approval Odds' vs the climate brief (owner call) |
 | D | Fable design team: `docs/specs/command-center-design-2026-10-05.md` (4 audits, 3 designs, 3 judges) | done |
-| S0 | Slice 0 'Today tells the truth' | built + Fable PASS on cc-slice0-today-truth; GitHub run 37427631428 failed; landing in wave 2a as unit S0 |
+| S0 | Slice 0 'Today tells the truth' | done, on main (wave 2a, dbc7b34e1) |
 | G | Ground: map M0–M5 + Command Center tabs against the repo; plan units; Fable critique | done: 39 units |
 
 ## Overnight run (owner order 2026-10-05, Chris asleep, no questions)
@@ -77,17 +77,17 @@ Safety for the whole night (no exceptions): no existing live page changes. No Me
 | U19 | B | 1 | C1 | - | M3 9.5 pure parts: R2 presigned links (SigV4) and video-worker callback HMAC | done, on main (wave 1, 33765ead0) |
 | U20 | D | 1 | C1 | - | M5 11.1: metric definitions (docs/marketing/metrics.md) and src/marketing/metrics.mjs with fixture tests | done, on main (wave 1, 33765ead0) |
 | U21 | D | 1 | - | - | M5 precondition: run the one-time Meta history backfill for Aug 4-16 (ops, orchestrator in the main checkout) | done (main session): backfill --write applied 23 new days, refreshed 46; ad_metrics_daily now $1,563.13 over 69 days (Aug 4 - Oct 4), equal to Meta |
-| U22 | A | 2 | U01, U03, U04, U05 | 415 | M0 step 4: marketing clock + background worker (in-pass waits) + GET marketing/health (heartbeats 415) | claimed (wave 2a) |
+| U22 | A | 2 | U01, U03, U04, U05 | 415 | M0 step 4: marketing clock + background worker (in-pass waits) + GET marketing/health (heartbeats 415) | done, on main (wave 2a, dbc7b34e1) |
 | U23 | A | 2 | U01, U03, U04, U05, U10, U11 | - | M1 7.5 planner ('reads the room') + GET/POST marketing/batches/next | claimed (wave 2b, started early on wave-2a branches) |
-| U24 | A | 2 | U03, U04, U05, U06, U09, U10, U11 | - | M1 7.6 writer: Anthropic structured output (save_script schema), strict check loop, judge, compliance, samenes | claimed (wave 2a) |
-| U25 | A | 2 | U01, U03, U05, U09, U11 | - | M1 7.8 core script actions (scripts, script, approve, edit, reject, order) + 7.9 repo files + voice pairs on e | claimed (wave 2a) |
-| U26 | A | 2 | U01, U03, U04, U05, U09, U11 | - | M1 7.8 rest: ideas (incl. suggestions), rules, scripts/fix, batches history (write_now_ready), batches/write-n | claimed (wave 2a) |
-| U27 | B | 2 | U07, U14 | - | M4 10.5 sync mapping: ads fetch asks creative{url_tags}; sync writes ad numbers without overwriting manual one | claimed (wave 2a) |
-| U28 | B | 2 | U01, U03, U04, U11, U13, U14, U19 | 417 | M4 loader: meta_load job + POST marketing/meta/load + GET load-status (paused only; refuses until the final vi | claimed (wave 2a) |
-| U29 | B | 2 | U10 | - | M3 9.4a: see-through (transparent) switch on every Remotion template, alpha renders | claimed (wave 2a) |
-| U30 | B | 2 | U10, U16, U17 | - | M3 9.4b: animation planner and overlay/finalize argument builders (pure) | claimed (wave 2a) |
-| U31 | D | 2 | U01, U03, U11, U14, U20 | - | M5 11.2 part 1: GET marketing/ads and GET marketing/ad?n= | claimed (wave 2a) |
-| U32 | D | 2 | U01, U03, U10, U11, U20 | - | M5 11.2 part 2: GET marketing/angles, GET marketing/funnels/stats, and additive M5 keys in GET marketing/today | claimed (wave 2a) |
+| U24 | A | 2 | U03, U04, U05, U06, U09, U10, U11 | - | M1 7.6 writer: Anthropic structured output (save_script schema), strict check loop, judge, compliance, samenes | done, on main (wave 2a, dbc7b34e1) |
+| U25 | A | 2 | U01, U03, U05, U09, U11 | - | M1 7.8 core script actions (scripts, script, approve, edit, reject, order) + 7.9 repo files + voice pairs on e | done, on main (wave 2a, dbc7b34e1) |
+| U26 | A | 2 | U01, U03, U04, U05, U09, U11 | - | M1 7.8 rest: ideas (incl. suggestions), rules, scripts/fix, batches history (write_now_ready), batches/write-n | done, on main (wave 2a, dbc7b34e1) |
+| U27 | B | 2 | U07, U14 | - | M4 10.5 sync mapping: ads fetch asks creative{url_tags}; sync writes ad numbers without overwriting manual one | done, on main (wave 2a, dbc7b34e1) |
+| U28 | B | 2 | U01, U03, U04, U11, U13, U14, U19 | 417 | M4 loader: meta_load job + POST marketing/meta/load + GET load-status (paused only; refuses until the final vi | done, on main (wave 2a, dbc7b34e1) |
+| U29 | B | 2 | U10 | - | M3 9.4a: see-through (transparent) switch on every Remotion template, alpha renders | done, on main (wave 2a, dbc7b34e1) |
+| U30 | B | 2 | U10, U16, U17 | - | M3 9.4b: animation planner and overlay/finalize argument builders (pure) | done, on main (wave 2a, dbc7b34e1) |
+| U31 | D | 2 | U01, U03, U11, U14, U20 | - | M5 11.2 part 1: GET marketing/ads and GET marketing/ad?n= | done, on main (wave 2a, dbc7b34e1) |
+| U32 | D | 2 | U01, U03, U10, U11, U20 | - | M5 11.2 part 2: GET marketing/angles, GET marketing/funnels/stats, and additive M5 keys in GET marketing/today | done, on main (wave 2a, dbc7b34e1) |
 | U33 | D | 2 | U02 | 424 | M5 11.4 Clarity: database counter (424), capped adapter for org sync, sweeper registered, law updated in all t | pending |
 | U34 | E | 1 | U01, U03 | - | Command Center frame: tab bar, Today moved into its own file, Settings tab (schedule, caps, funnels, campaign  | claimed (wave 2b, started early on wave-2a branches) |
 | U35 | A | 3 | U22, U23, U24, U25, U26 | - | M1 7.7 batch lifecycle: weekly scheduling on the clock, start/plan/write/release/expiry jobs, one buzz with th | pending |
@@ -112,7 +112,7 @@ Recommended answer on each, except q10: the approval deck stays OFF /roadmap (Ch
 
 | Id | Work | Wave | Status |
 |---|---|---|---|
-| X4 | Funnel builder + automatic funnel URLs + tags + tracking + Push live to a new path | 2a | claimed (wave 2a) |
+| X4 | Funnel builder + automatic funnel URLs + tags + tracking + Push live to a new path | 2a | done, on main (wave 2a, dbc7b34e1) |
 | X1 | Build the avatar on the server (slice 5a) | 2b | claimed (wave 2b, started early) |
 | X2 | Research the market + Research it on the server (slice 10) | 2b | claimed (wave 2b, started early) |
 | X3 | Ideas back end: flywheel stages from buttons (slice 5) | 2b | claimed (wave 2b, started early) |
@@ -120,6 +120,8 @@ Recommended answer on each, except q10: the approval deck stays OFF /roadmap (Ch
 | X5 | Ready to film: Shoot tab + teleprompter page | 2c | claimed (wave 2c, started early) |
 
 Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34, X1, X2, X3; 2c = U35, U36, U37, U38, U39; 2d = X5, X8. U33 waits on U02. U34 runs after S0 because both change the Today screen. Then one ship, then the Blueprint test.
+
+Extra unit GL (wave 2d): | GL | Glue so the Blueprint chain runs end to end without the GitHub token: approving the offer writes 03-offer.md through the outbox; every flywheel stage reads the newest approved stage output from the database (or the pending outbox entry) when the repo file is missing or older; STAGE_RUNNERS 1 and 2 point at X1 and X2; Blueprint offer word default 'Blueprint' for take file names (in code; NAMING.md untouched) | 2d | pending |
 
 ## Blockers / only-Chris items (spec §16)
 
@@ -134,3 +136,5 @@ Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34
 - Did: nothing to wake. No takeover. Left the main session to run.
 - 2026-10-06 5:35 am MST: owner asked for more speed. Wave 2a: 12/12 CI green, 10 clean reviews, U24 and X4 fixing. Wave 2b started early on top of the 2a branches (U23, U34, X1, X2, X3). A separate team writes the Blueprint test plan (docs/specs/blueprint-funnel-test-plan-2026-10-06.md) so the test starts right after the ship.
 - 2026-10-06 ~5:45 am MST: owner said faster. Tab contract written (docs/specs/command-center-tabs.md) so tabs build alongside the frame. Wave 2c started now (U36 Scripts, U38 Numbers, U39 Launch, X8 Ideas + Funnels, X5 Shoot + teleprompter). Plan: ship 1 as soon as the back ends land, start the Blueprint test, ship 2 with the tabs. Still waiting: U35 (needs U23), U37 (needs U23 and U34).
+- 2026-10-06 ~6:25 am MST: wave 2a merged to main (dbc7b34e1, 12/12, CI green twice except the known climate test) and pushed. New env MARKETING_WORKER_SECRET set in .env, credentials snapshot and Netlify (no --secret). Saves to GitHub stay held ('no_token') until Chris makes GITHUB_REPO_TOKEN (spec §16).
+- 2026-10-06 ~6:40 am MST: Blueprint test plan written (docs/specs/blueprint-funnel-test-plan-2026-10-06.md). It found 3 gaps that would stop the test (no 03-offer.md writer, the outbox held without GITHUB_REPO_TOKEN, no Blueprint offer word); unit GL closes them in wave 2d with U35 and U37. Default taken: Blueprint offer word 'Blueprint'.
