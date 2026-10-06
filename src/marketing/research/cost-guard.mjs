@@ -91,5 +91,6 @@ export function capSentence({ stop, runCapUsd, monthCapUsd, afterStep }) {
   if (stop === "month_cap") {
     return `Stopped at the ${dollars(monthCapUsd)} month cap. Raise it in Settings or wait for next month. What it found so far is saved.`;
   }
+  if (!(Number(afterStep) >= 1)) return `Stopped at the ${dollars(runCapUsd)} run cap before step 1. Nothing was spent on this run.`;
   return `Stopped at the ${dollars(runCapUsd)} run cap after step ${afterStep}. What it found so far is saved.`;
 }

@@ -247,6 +247,21 @@ export function statedOnPage(textValue, url, sources) {
 }
 
 /**
+ * priceStated(price, url, sources) → true when that page (or Anthropic's cited text for
+ * it) states the price as written. Prices are short, so the 8-letter floor for quotes does
+ * not apply; a price must hold a digit ("$997", "$5,000 a month").
+ */
+export function priceStated(price, url, sources) {
+  const p = normText(price);
+  if (!p || !/\d/.test(p)) return false;
+  const n = normalizeUrl(url);
+  if (!n) return false;
+  for (const c of sources.cited.get(n) || []) if (normText(c).includes(p)) return true;
+  const page = sources.fetched.get(n);
+  return !!page && normText(page).includes(p);
+}
+
+/**
  * vaultQuoteHolds(quote, fileText) → true when the quote's words are in the repo file.
  * The caller reads the file named by the finding (never the model's copy of it).
  */

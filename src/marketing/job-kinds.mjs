@@ -26,10 +26,20 @@
 // length of that test (for example to show a screen that appears once a kind exists).
 // src/marketing/job-kinds.test.mjs fails if any entry lacks a group, a load, or a run().
 
-export const JOB_GROUPS = Object.freeze(["writer", "loader", "system"]);
+//   'research' (unit X2) = a research job Chris tapped (market research, deep research):
+//           saved steps with live web reading. Not named in the worker's GROUP_CAPS, so one
+//           research step runs at a time; each step is one claim, so two research runs take
+//           turns step by step.
+export const JOB_GROUPS = Object.freeze(["writer", "loader", "system", "research"]);
 
-/** @type {Record<string, { group: 'writer' | 'loader' | 'system', load: () => Promise<any> }>} */
-export const JOB_KINDS = {};
+/** @type {Record<string, { group: 'writer' | 'loader' | 'system' | 'research', load: () => Promise<any> }>} */
+export const JOB_KINDS = {
+  // Flywheel stage runs (design §3.2 "Endpoints"): stage 2, market research (unit X2).
+  // src/marketing/flywheel/stage-job.mjs sends each row to its stage's code.
+  flywheel_stage: { group: "research", load: () => import("./flywheel/stage-job.mjs") },
+  // "Research it" — deep research (design §2 row J20, unit X2).
+  deep_research: { group: "research", load: () => import("./research/deep-research.mjs") }
+};
 
 /**
  * checkJobKinds(registry) → a list of problems, in plain words (empty when every entry is good).

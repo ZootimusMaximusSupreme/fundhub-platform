@@ -101,7 +101,7 @@ export async function jobSpend(db, jobId) {
  * monthUsedUsd(db, orgId, { now }) → this Arizona calendar month's model spend for the
  * company (every marketing call, research included), from costStatus.
  */
-export async function monthUsedUsd(db, orgId, { now } = {}) {
+export async function monthUsedUsd(db, orgId, { now } = /** @type {{ now?: Date }} */ ({})) {
   const s = await costStatus(db, { orgId, now });
   return s.month_usd;
 }

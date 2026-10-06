@@ -295,6 +295,11 @@ import climateConfig from "../../api/climate/config.mjs";
 import marketingSettings from "../../api/marketing/settings.mjs";
 import marketingFunnels from "../../api/marketing/funnels.mjs";
 import marketingHealth from "../../api/marketing/health.mjs";
+import marketingResearch from "../../api/marketing/research.mjs";
+import marketingResearchApprove from "../../api/marketing/research/approve.mjs";
+import marketingResearchTweak from "../../api/marketing/research/tweak.mjs";
+import marketingResearchBrain from "../../api/marketing/research/brain.mjs";
+import marketingFlywheelRun from "../../api/marketing/flywheel/run.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1193,7 +1198,15 @@ export const ROUTES = {
   // marketing machine
   "marketing/settings": marketingSettings,
   "marketing/funnels": marketingFunnels,
-  "marketing/health": marketingHealth
+  "marketing/health": marketingHealth,
+
+  // the research buttons (unit X2, design slice 10): Research it (J20) and
+  // Research the market (J2, flywheel step 2)
+  "marketing/research": marketingResearch,
+  "marketing/research/approve": marketingResearchApprove,
+  "marketing/research/tweak": marketingResearchTweak,
+  "marketing/research/brain": marketingResearchBrain,
+  "marketing/flywheel/run": marketingFlywheelRun
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is
