@@ -15,8 +15,6 @@
 //     → 200 {..., created:false} when that offer's flywheel already exists.
 //     400 invalid field key (not an offer) · 503 not_ready
 //   A repeated request_id answers the first answer again and changes nothing.
-//   words: the same as campaign_words (unit X1 built this route too and named it so;
-//   the wave 2b merge keeps X3's route, its folder names and X1's key).
 //
 // Free. Writes one file through the outbox. Owner and admin only.
 
@@ -72,8 +70,7 @@ export default async function handler(req, res, deps = {}) {
     const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, async (tx) => {
       ran = true;
       if (exists) {
-        const words = campaignWords(campaign);
-        return { ok: true, campaign, campaign_words: words, words, created: false, offer_key: offer.key, repo_path: path, outbox_id: null };
+        return { ok: true, campaign, campaign_words: campaignWords(campaign), created: false, offer_key: offer.key, repo_path: path, outbox_id: null };
       }
       const row = await enqueueRepoWrite(tx, {
         orgId,
@@ -82,8 +79,7 @@ export default async function handler(req, res, deps = {}) {
         mode: "replace",
         content: ownerNotesTemplate({ campaign, offerKey: offer.key, today: todayArizona() })
       });
-      const words = campaignWords(campaign, `Offer key: ${offer.key}`);
-      return { ok: true, campaign, campaign_words: words, words, created: true, offer_key: offer.key, repo_path: path, outbox_id: row.id };
+      return { ok: true, campaign, campaign_words: campaignWords(campaign, `Offer key: ${offer.key}`), created: true, offer_key: offer.key, repo_path: path, outbox_id: row.id };
     });
 
     if (ran && answer.created) await (deps.wake ?? wakeWorker)(env);

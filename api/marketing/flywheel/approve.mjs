@@ -9,9 +9,7 @@
 // stage, outbox_id} (outbox edit op set_front_matter_key)". Unit X3.
 //
 //   POST {request_id, campaign, stage}
-//     → 200 {ok, campaign, stage, file, outbox_id, already_approved, duplicate, message}
-//       (duplicate and message: unit X1 built this route too; the wave 2b merge keeps
-//       X3's route and adds X1's two answer keys)
+//     → 200 {ok, campaign, stage, file, outbox_id, already_approved}
 //     400 invalid: campaign, stage, or "step N has no file yet" (field stage)
 //     404 no such campaign · 503 not_ready
 //   Approving a file that does not clear its bar is allowed ("Approve anyway if
@@ -74,10 +72,7 @@ export default async function handler(req, res, deps = {}) {
         mode: "edit",
         edit: { op: "set_front_matter_key", key: "status", value: "approved" }
       });
-      return {
-        ok: true, campaign, stage, file, outbox_id: row.id, already_approved: already,
-        duplicate: row.duplicate, message: "Approved. Saved. Reaching the repo…"
-      };
+      return { ok: true, campaign, stage, file, outbox_id: row.id, already_approved: already };
     });
 
     if (ran) await (deps.wake ?? wakeWorker)(env);

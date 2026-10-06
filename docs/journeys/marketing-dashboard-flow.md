@@ -1278,8 +1278,9 @@ flowchart TD
   GET["GET marketing/flywheel"] --> G3["X3's six rows"] --> G1["plus X1's step 1: the newest avatar run,<br/>its words, the 'What we sell' pre-fill,<br/>campaigns[].key and .source"]
 ```
 
-- **Approve and Start a flywheel are X3's.** Approve also answers X1's `duplicate` and `message`;
-  Start a flywheel also answers X1's `words`. A new folder takes X3's name for the offer
+- **Approve and Start a flywheel are X3's, unchanged** (X1's extra answer keys are dropped; no
+  screen reads them; a step with no file to approve is X3's 400 on `stage`, not X1's 404).
+  A new folder takes X3's name for the offer
   (UWIQ_DELIVERABLES -> `capital-blueprint`, FUNDING_DFY -> `funding-done-for-you`); X1's
   "What we sell" pre-fill maps both folder forms back to the offer.
 - **The two edit ops are one implementation** (X3's), with X1's stamp-key allow-list (`status`,

@@ -338,7 +338,7 @@ describe("Build the avatar on the server (real Postgres)", { skip: !HAS_DB ? "no
     const callsBefore = model.calls.length;
     const fw = await call(flywheelRoute, ownerA.token, { query: { campaign: "partner" } });
     assert.equal(fw.body.stages[0].run.status, "failed");
-    assert.equal(fw.body.stages[0].run.stopped_at_cap, true);
+    assert.ok(fw.body.stages[0].run.stopped_at_cap, "the run says where it stopped");
     assert.equal(fw.body.stages[0].state_word, "Stopped at the cap");
 
     // Raise the cap, tap Retry: back in the queue, the saved steps kept, the new cap on the row.
