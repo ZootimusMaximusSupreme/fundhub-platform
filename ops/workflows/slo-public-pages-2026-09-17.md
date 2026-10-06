@@ -20,7 +20,7 @@ backend work once it is committed. Local git only. No GitHub.
 |---|------|-------|--------|----------|
 | W1 | `public/slo/index.html` (sales) + `public/slo/pay.html` (pay) | this session | **done** | other session's `api/public/slo-checkout.mjs` edits being committed |
 | W2 | `public/slo/pull.html` (Commas success URL) | W2 agent | **done** | nothing |
-| SHIP | `npm run ship` once W1, W2 and the other session are all committed | this session | pending | W1, W2, other session |
+| SHIP | `npm run ship` once W1, W2 and the other session are all committed | this session | **done — live** (proved 2026-10-05, see below) | — |
 
 ## Shared context
 
@@ -74,6 +74,18 @@ backend work once it is committed. Local git only. No GitHub.
   served with `python3 -m http.server` at 375px and default width: consent refusal shown,
   valid submit shows the building state, URL never gained `ssn`, zero console errors, no
   horizontal scroll at 375px. Server killed after.
+
+### SHIP — done, proved live 2026-10-05 (W2 of `ops/workflows/finish-builds-2026-10-05.md`)
+
+- The pages moved before they shipped: `0b19e17fe` (2026-09-20, "Put the $297 Capital Playbook on
+  /roadmap, not /slo") renamed `public/slo/` to `public/roadmap/`. Since 2026-10-02 the sales page has one
+  address, `https://apply.fundhub.ai/roadmap` (owner ask; `netlify.toml`).
+- Live, with a cache-bust query: `https://fundhub.ai/slo` and `/slo/` answer 301 to
+  `https://apply.fundhub.ai/roadmap` (which answers 200). `/slo/pay.html` and `/slo/pull.html` answer 301 to
+  `/roadmap/pay.html` and `/roadmap/pull.html`, and both of those answer 200.
+- Byte check: live `/roadmap/pay.html` and `/roadmap/pull.html` are byte-for-byte the files on `main`
+  (sha256 starts `1322d261d39a5152` and `6d9b37be3f4d1890`).
+- Nothing left to ship for this board.
 
 ## Owner decisions
 
