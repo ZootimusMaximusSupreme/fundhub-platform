@@ -243,6 +243,95 @@ export async function sandboxPublicToken({ institutionId, products = ["transacti
   return { ...r, publicToken, data: null };
 }
 
+/* How many pages one sync may walk before it stops and says so. 500 rows a page
+   (Plaid's maximum) × 40 pages is 20,000 transactions — two years of a busy
+   business account. A loop that never ends is a function that times out with
+   nothing saved, so the cap is reported, never absorbed. */
+export const SYNC_PAGE_SIZE = 500;
+export const SYNC_MAX_PAGES = 40;
+
+/* Plaid's own instruction for this error: restart the WHOLE page loop from the
+   first cursor, not just the page that failed. Two restarts, then give up. */
+const MUTATION_DURING_PAGINATION = "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
+const MAX_RESTARTS = 2;
+
+/**
+ * syncTransactions — POST /transactions/sync, every page.
+ *
+ *   syncTransactions(accessToken, { cursor }, opts)
+ *     → { ok, added[], modified[], removed[], nextCursor, pages, capped,
+ *         updateStatus } | the flat failure shape from plaidPost
+ *
+ * `cursor` null or absent means "from the start". The rows come back exactly as
+ * Plaid sent them. *** PLAID'S SIGN IS NOT THIS REPO'S SIGN *** — Plaid says a
+ * positive amount is money OUT. Negating is the ingest module's job
+ * (src/banking/plaid-transactions.mjs), and this file deliberately does not do
+ * it, so there is exactly one place the flip happens.
+ *
+ * nextCursor is only returned on success, and only after the last page. A
+ * caller must save it in the same breath as the rows it covers — saving the
+ * cursor without the rows skips those rows for ever.
+ */
+export async function syncTransactions(accessToken, { cursor = null } = {}, opts = {}) {
+  const startCursor = cursor || null;
+
+  for (let attempt = 0; attempt <= MAX_RESTARTS; attempt += 1) {
+    const added = [], modified = [], removed = [];
+    let next = startCursor;
+    let pages = 0;
+    let hasMore = true;
+    let updateStatus = null;
+    let restart = false;
+
+    while (hasMore && pages < SYNC_MAX_PAGES) {
+      const payload = { access_token: accessToken, count: SYNC_PAGE_SIZE };
+      if (next) payload.cursor = next;
+      const r = await plaidPost("/transactions/sync", payload, opts);
+      if (!r.ok) {
+        if (r.errorCode === MUTATION_DURING_PAGINATION) { restart = true; break; }
+        return r;
+      }
+      const d = r.data || {};
+      if (!Array.isArray(d.added) || !Array.isArray(d.modified) || !Array.isArray(d.removed)
+          || typeof d.next_cursor !== "string") {
+        return {
+          ...r, ok: false, data: null,
+          error: "plaid /transactions/sync answered 200 without added/modified/removed/next_cursor"
+        };
+      }
+      added.push(...d.added);
+      modified.push(...d.modified);
+      removed.push(...d.removed);
+      next = d.next_cursor;
+      hasMore = d.has_more === true;
+      updateStatus = d.transactions_update_status ?? updateStatus;
+      pages += 1;
+    }
+
+    if (restart) continue;
+
+    return {
+      ok: true, blocked: false, transmitted: true, status: 200, data: null,
+      errorCode: null, errorType: null, retryable: false, error: null,
+      added, modified, removed,
+      /* Capped means there is more to read. The cursor we hand back is the one
+         after the last page we DID read, so the next run carries on from there
+         rather than skipping the rest. */
+      nextCursor: next,
+      pages,
+      capped: hasMore,
+      updateStatus
+    };
+  }
+
+  return {
+    ok: false, blocked: false, transmitted: true, status: 0, data: null,
+    errorCode: MUTATION_DURING_PAGINATION, errorType: "TRANSACTIONS_ERROR", retryable: true,
+    error: "plaid kept changing the transactions while we paged through them; try again"
+  };
+}
+
 export default {
-  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, createLinkToken, sandboxPublicToken
+  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, createLinkToken, sandboxPublicToken,
+  syncTransactions
 };

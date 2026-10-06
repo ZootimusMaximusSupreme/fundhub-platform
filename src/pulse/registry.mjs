@@ -64,6 +64,7 @@ const API_KEYS = [
   "banking/link-token",
   "banking/revoke",
   "banking/sync-accounts",
+  "banking/sync-transactions",
   "bookings",
   "brand/review",
   "call-outcomes",
