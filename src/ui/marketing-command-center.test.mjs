@@ -1,8 +1,10 @@
 // The Marketing Command Center's own rules: what it reads, what it sends, and
-// the words it shows. public/app/marketing-command-center.js puts every rule
-// that turns data into words on window.FHMarketingCC, so this file runs the
-// real script in node:vm (same pattern as src/training/ramp-quizzes.test.mjs)
-// with no browser and no server.
+// the words it shows. The Today tab (public/app/marketing-cc-today.js, moved
+// out of marketing-command-center.js unchanged by U34) puts every rule that
+// turns data into words on window.FHMarketingCC, so this file runs the real
+// script in node:vm (same pattern as src/training/ramp-quizzes.test.mjs) with
+// no browser and no server. The frame (public/app/marketing-command-center.js:
+// the tab registry, hash routing, the shared helpers) is tested at the bottom.
 //
 // The fixtures are shaped like the back ends this page reads:
 //   GET  marketing/today           — M10, api/marketing/today.mjs (slice 0 shape)
@@ -26,7 +28,9 @@ import { STAGES } from "../../scripts/flywheel/status.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, "../../public/app");
-const SRC = fs.readFileSync(path.join(APP, "marketing-command-center.js"), "utf8");
+/* SRC is the Today tab; FRAME is the Command Center frame it plugs into. */
+const SRC = fs.readFileSync(path.join(APP, "marketing-cc-today.js"), "utf8");
+const FRAME = fs.readFileSync(path.join(APP, "marketing-command-center.js"), "utf8");
 const HTML = fs.readFileSync(path.join(APP, "marketing-command-center.html"), "utf8");
 const META_SWEEPER = fs.readFileSync(path.resolve(HERE, "../workflows/meta-campaign-sync-sweeper.mjs"), "utf8");
 
@@ -957,16 +961,45 @@ describe("plain words only", () => {
 });
 
 describe("the page itself", () => {
-  test("exactly one primary button, and it is Write ad copy (UI-STANDARDS §1)", () => {
-    const primaries = HTML.match(/class="btn primary"/g) || [];
+  test("exactly one primary button on Today, and it is Write ad copy (UI-STANDARDS §1)", () => {
+    // Today's cards moved from the page into the Today tab's own markup (U34).
+    // The frame paints no button of its own, so Today's view still has exactly
+    // one filled button.
+    const markup = load().TODAY_HTML;
+    const primaries = markup.match(/class="btn primary"/g) || [];
     assert.equal(primaries.length, 1);
-    assert.match(HTML, /<button class="btn primary"[^>]*id="copyBtn"[\s\S]*?Write ad copy<\/span><\/button>/);
-    assert.doesNotMatch(SRC, /btn primary/, "the script must not paint a second primary button");
+    assert.match(markup, /<button class="btn primary"[^>]*id="copyBtn"[\s\S]*?Write ad copy<\/span><\/button>/);
+    assert.equal((SRC.match(/btn primary/g) || []).length, 1,
+      "the script must not paint a second primary button: the only one is copyBtn in TODAY_HTML");
+    assert.doesNotMatch(HTML, /btn primary/, "the frame page carries no filled button; each tab brings its own one");
+    // The frame paints exactly one filled button: the yes button inside its
+    // sheet (the cost sheet and the two-tap confirm). The sheet covers the page
+    // and makes the rest inert while it is open, so that button is never on
+    // screen beside Today's Write ad copy.
+    assert.equal((FRAME.match(/btn primary/g) || []).length, 1, "the frame's only filled button is the sheet's yes");
+    assert.match(FRAME, /function sheetHtml\(o\) \{[\s\S]*?class="btn primary" data-sheet="yes"[\s\S]*?\n  \}/,
+      "and it lives in sheetHtml, nowhere on the page");
   });
 
-  test("it loads the shell and its own script, and carries the shared sidebar", () => {
+  test("Today's markup is the page's old markup: every id the tests and the code read is there", () => {
+    const markup = load().TODAY_HTML;
+    for (const id of ["mccBanner", "tileSpend7", "tileSpend30", "tileParts", "mccAsOf", "cardCopy", "copySetup", "copyForm",
+      "copyAngle", "copyOffer", "copyBtn", "copyCost", "copySay", "copyResult", "cardWaiting", "waitingCount", "waitingList",
+      "cardOffer", "offerStatus", "offerBtn", "offerCost", "offerHonest", "offerSay", "offerLatest", "cardFlywheel",
+      "flywheelCampaign", "flywheelList", "cardHealth", "healthList", "cardLatest", "latestList"]) {
+      assert.match(markup, new RegExp(`id="${id}"`), `#${id} is missing from Today's markup`);
+      assert.doesNotMatch(HTML, new RegExp(`id="${id}"`), `#${id} must live in the Today tab, not twice`);
+    }
+    // The footer clock stays in the frame's footer, owned by Today.
+    assert.match(HTML, /<span id="mccStamp" data-cc-tab="today" title="">Loading…<\/span>/);
+  });
+
+  test("it loads the shell, the frame, then one line per tab, and carries the shared sidebar", () => {
     assert.match(HTML, /<script defer src="shell\.js"><\/script>/);
-    assert.match(HTML, /<script defer src="marketing-command-center\.js"><\/script>/);
+    const frame = HTML.indexOf('<script defer src="marketing-command-center.js"></script>');
+    const today = HTML.indexOf('<script defer src="marketing-cc-today.js"></script>');
+    const settings = HTML.indexOf('<script defer src="marketing-cc-settings.js"></script>');
+    assert.ok(frame > 0 && today > frame && settings > today, "the frame loads first, then each tab's script");
     assert.match(HTML, /<a class="navitem on" href="marketing-command-center\.html">/);
     assert.match(HTML, /class="logo inv"/);
   });
@@ -979,6 +1012,439 @@ describe("the page itself", () => {
   });
 
   test("the company name is spelled Fundhub", () => {
-    assert.doesNotMatch(HTML + SRC, /FundHub|FUNDHUB|Fund Hub/);
+    assert.doesNotMatch(HTML + SRC + FRAME, /FundHub|FUNDHUB|Fund Hub/);
+  });
+});
+
+/* ── the frame (U34) ───────────────────────────────────────────────────── */
+
+const TODAY_SRC = SRC;
+const SETTINGS_SRC = fs.readFileSync(path.join(APP, "marketing-cc-settings.js"), "utf8");
+
+/* A value from inside the vm, as a plain value of this realm (deepEqual
+   compares prototypes, and the vm has its own Array and Object). */
+const plain = (v) => JSON.parse(JSON.stringify(v));
+
+/* A fresh window with the frame and the given tab files run in page order. */
+function page(files = [FRAME, TODAY_SRC, SETTINGS_SRC]) {
+  const ctx = createContext({ console: { error() {}, log: console.log } });
+  for (const src of files) runInContext(src, ctx);
+  return ctx;
+}
+
+describe("the frame: the tab registry", () => {
+  test("only the tabs whose script is on the page show: Today on the strip, Settings behind the gear", () => {
+    const w = page();
+    assert.deepEqual(plain(w.FHMarketingCCTabs.list().map((t) => [t.key, t.label, t.place])),
+      [["today", "Today", "strip"], ["settings", "Settings", "gear"]]);
+    const F = w.FHMarketingCCFrame;
+    const tabs = {};
+    for (const key of w.FHMarketingCCTabs.keys()) tabs[key] = { ...w.FHMarketingCCTabs.list().find((t) => t.key === key) };
+    const strip = F.stripHtml(tabs, "today");
+    assert.equal((strip.match(/class="tab/g) || []).length, 1, "one tab on the strip: Today");
+    assert.match(strip, /<a class="tab on" href="#today" data-tab="today" aria-current="page">Today<\/a>/);
+    // No tab without a module: no Ideas, Scripts, Shoot, Videos, Launch or Numbers yet,
+    // and no "coming soon" (UI-STANDARDS §5).
+    assert.doesNotMatch(strip, /Ideas|Scripts|Shoot|Videos|Launch|Numbers|soon/i);
+    const gear = F.gearHtml(tabs, "today");
+    assert.match(gear, /<a class="gear" href="#settings" data-tab="settings">/);
+    assert.match(gear, />Settings<\/a>$/, "the gear says its word, not an icon alone");
+    assert.match(F.gearHtml(tabs, "settings"), /class="gear on"[^>]*aria-current="page"/);
+  });
+
+  test("a tab file that is not loaded is not a tab: the frame alone has none", () => {
+    const w = page([FRAME]);
+    assert.deepEqual(plain(w.FHMarketingCCTabs.keys()), []);
+    assert.equal(w.FHMarketingCCFrame.stripHtml({}, null), "");
+    assert.equal(w.FHMarketingCCFrame.gearHtml({}, null), "");
+  });
+
+  test("register checks the shape, says why it refused, and allows one gear tab", () => {
+    const w = page([FRAME]);
+    const reg = w.FHMarketingCCTabs;
+    assert.equal(reg.register({ key: "Bad Key", label: "x", render() {} }), false);
+    assert.equal(reg.register({ key: "ideas", label: "", render() {} }), false);
+    assert.equal(reg.register({ key: "ideas", label: "Ideas" }), false);
+    assert.equal(reg.register({ key: "ideas", label: "Ideas", render() {}, place: "top" }), false);
+    assert.equal(reg.problems().length, 4);
+    assert.ok(reg.problems().every((p) => /\.$/.test(p) && !/undefined/.test(p)));
+    assert.equal(reg.register({ id: "numbers", label: "Numbers", order: 70, render() {} }), true, "`id` reads as `key`");
+    assert.equal(reg.register({ key: "ideas", label: "Ideas", order: 20, render() {}, rules: { a: 1 } }), true);
+    assert.deepEqual(plain(reg.keys()), ["ideas", "numbers"], "the strip is in `order`");
+    assert.deepEqual(plain(reg.rules("ideas")), { a: 1 });
+    assert.equal(reg.register({ key: "settings", label: "Settings", place: "gear", render() {} }), true);
+    assert.equal(reg.register({ key: "other", label: "Other", place: "gear", render() {} }), false, "one gear only");
+    assert.deepEqual(plain(reg.keys()), ["ideas", "numbers", "settings"], "the gear tab comes last");
+  });
+
+  test("a tab file that runs before the frame waits in the queue and is registered when the frame starts", () => {
+    const w = page([TODAY_SRC, FRAME]);
+    assert.deepEqual(plain(w.FHMarketingCCTabs.keys()), ["today"]);
+    assert.equal(w.FHMarketingCCTabsQueue.length, 0);
+    assert.equal(w.FHMarketingCCTabs.rules("today"), w.FHMarketingCC, "Today's rules are its FHMarketingCC");
+  });
+});
+
+describe("the frame: the address picks the tab", () => {
+  test("parseHash reads #tab and #tab/view, and refuses anything else", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    assert.deepEqual(plain(F.parseHash("#today")), { key: "today", sub: "" });
+    assert.deepEqual(plain(F.parseHash("#numbers/ads")), { key: "numbers", sub: "ads" });
+    assert.deepEqual(plain(F.parseHash("#Settings")), { key: "settings", sub: "" });
+    for (const bad of ["", "#", "#/x", "#<script>", "#1abc", "#a b"]) assert.equal(F.parseHash(bad), null, bad);
+  });
+
+  test("?tab= is read once when there is no hash (the plan's spelling of a deep link)", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    assert.equal(F.tabFromSearch("?tab=settings"), "settings");
+    assert.equal(F.tabFromSearch("?x=1&tab=Today"), "today");
+    assert.equal(F.tabFromSearch("?tab=%3Cb%3E"), null);
+    assert.equal(F.tabFromSearch(""), null);
+  });
+
+  test("pickTab: the link's tab, else the remembered one, else Today; a tab with no module is never picked", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    const tabs = { today: { key: "today", order: 10, place: "strip" }, settings: { key: "settings", order: 900, place: "gear" } };
+    assert.equal(F.pickTab(["settings", null, "today", "today"], tabs), "settings");
+    assert.equal(F.pickTab(["ideas", null, "settings", "today"], tabs), "settings", "#ideas has no module: the remembered tab");
+    assert.equal(F.pickTab(["ideas", null, null, "today"], tabs), "today");
+    assert.equal(F.pickTab(["ideas"], { settings: tabs.settings }), "settings", "nothing wanted is there: the first tab");
+    assert.equal(F.pickTab(["today"], {}), null, "no tab registered yet");
+    assert.equal(F.DEFAULT_TAB, "today");
+    assert.equal(F.STORE_KEY, "fh_mcc_tab");
+  });
+});
+
+describe("the frame: shared helpers for every tab", () => {
+  test("cost lines read GET marketing/costs; until it ships they say unknown, never a number", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    const missing = F.normalizeCosts({ status: 404, body: { error: "not_found" } });
+    assert.equal(missing.state, "missing");
+    assert.equal(F.costLine(missing, "script"), "Cost: unknown, not measured yet.");
+    // The test harness answers an unknown GET with an empty list: still unknown.
+    assert.equal(F.normalizeCosts({ status: 200, body: { ok: true, items: [] } }).state, "missing");
+    assert.equal(F.normalizeCosts({ status: 0, body: null }).state, "error");
+    const ok = F.normalizeCosts({ status: 200, body: {
+      kinds: { offer: { last_cost_usd: 0.67, last_minutes: 4.48, measured_at: "2026-10-05T18:04:29Z" }, script: null },
+      month: { used_usd: 12.48, cap_usd: 300 } } });
+    assert.equal(F.costLine(ok, "offer"), "About $0.67 and about 4 minutes (last run).");
+    assert.equal(F.costLine(ok, "script"), "Cost: unknown, not measured yet.", "a kind with no ledger row is unknown");
+    assert.equal(F.costLine(ok, "avatar"), "Cost: unknown, not measured yet.");
+    assert.equal(F.monthLine(ok), "Model spend this month: $12.48 of $300.00.");
+    assert.equal(F.monthLine(missing), "Model spend this month: unknown.");
+    assert.equal(F.dollars(null), "unknown");
+    assert.equal(F.dollars(0), "$0.00", "a measured zero prints 0");
+    assert.equal(F.dollars(0.004), "under 1 cent");
+  });
+
+  test("every failed answer is one plain sentence: no status code, no server word", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    for (const res of [{ status: 0 }, { status: 0, transport: "timeout" }, { status: 400, body: { error: "invalid", field: "patch.x" } },
+      { status: 401 }, { status: 403 }, { status: 404 }, { status: 409 }, { status: 500, body: { error: "boom: relation x" } }, { status: 503 }]) {
+      const s = F.plainError(res, "The settings");
+      assert.doesNotMatch(s, /\b(4\d\d|5\d\d)\b|_|boom|relation/, s);
+      assert.match(s, /\.$/, s);
+    }
+  });
+
+  test("every write carries a fresh request_id; the caller's own id wins", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    const a = F.newRequestId();
+    const b = F.newRequestId();
+    assert.match(a, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.notEqual(a, b);
+    let i = 0;
+    assert.match(F.newRequestId(() => (i++ % 16) / 16), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    const body = { updated_at: "2026-10-12T15:00:00.000Z", patch: { batch_time: "06:30" } };
+    const sent = F.withRequestId(body);
+    assert.match(sent.request_id, /^[0-9a-f-]{36}$/);
+    assert.equal(sent.updated_at, body.updated_at, "the version guard rides along");
+    assert.equal(body.request_id, undefined, "the caller's object is not changed");
+    assert.equal(F.withRequestId({ request_id: "mine" }).request_id, "mine");
+  });
+
+  test("clock times print in Arizona", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    assert.equal(F.TZ, "America/Phoenix");
+    assert.equal(F.clockOf(Date.parse("2026-10-05T22:05:00Z")), "3:05 PM");
+    assert.equal(F.fullTime(Date.parse("2026-10-05T22:05:00Z")), "Oct 5, 2026, 3:05 PM");
+  });
+
+  test("the frame reads nothing when the page opens, and calls render only after the tab file has run", () => {
+    // The only fetches are inside api(), which runs when a tab asks.
+    assert.equal((FRAME.match(/root\.fetch\(/g) || []).length, 1);
+    assert.match(FRAME, /onAdd = later;/);
+    assert.match(FRAME, /Promise\.resolve\(\)\.then\(function \(\) \{ routeQueued = false; route\(\); \}\)/);
+  });
+
+  test("the strip is phone-safe: 44px tabs, wraps 4 + 3 at 480px, the gear on its own row, no sideways scroll", () => {
+    const css = HTML.slice(HTML.indexOf("<style>"), HTML.indexOf("</style>"));
+    assert.match(css, /\.tab\{display:inline-flex;align-items:center;justify-content:center;min-height:44px;/);
+    assert.match(css, /\.gear\{display:inline-flex;align-items:center;gap:8px;min-height:44px;/);
+    assert.match(css, /\.tab\.on\{color:var\(--ink\);border-bottom-color:var\(--ink\)\}/, "the tab shown says so with a line, not colour alone");
+    const phone = css.slice(css.indexOf("@media (max-width:480px)"));
+    assert.match(phone, /\.tabs\{flex:1 1 100%;/);
+    assert.match(phone, /\.tab\{flex:0 0 25%;/);
+    assert.match(phone, /\.cc-gear\{order:-1\}/);
+    assert.doesNotMatch(css, /overflow-x\s*:\s*(auto|scroll)/);
+    // The toast clears data.js's status strip and the phone's home bar.
+    assert.match(css, /bottom:calc\(var\(--fh-statusbar,0px\) \+ env\(safe-area-inset-bottom,0px\) \+ 16px\)/);
+  });
+});
+
+/* ── the frame hosts main's tab contract too (U34 review R1) ──────────────── */
+/* docs/specs/command-center-tabs.md on main: window.FundhubCC.registerTab
+   ({id, label, order, render(root, ctx), refresh(ctx), hide()}) and
+   ctx.api(method, path, body, {version, requestId}) -> {ok, status, data,
+   error, conflict, current}, ctx.costSheet, ctx.confirm, ctx.param, ctx.fmt,
+   ctx.user. The Ideas, Scripts, Launch and Numbers tab units build on it. */
+
+/* The registration line every main-contract tab file ends with, word for word
+   from the contract. */
+const mainTab = (id, label, order) => `
+(window.FundhubCC = window.FundhubCC || { _q: [], registerTab(t) { this._q.push(t); } })
+  .registerTab({ id: ${JSON.stringify(id)}, label: ${JSON.stringify(label)}, order: ${order},
+    render(root, ctx) {}, refresh(ctx) {}, hide() {} });`;
+
+/* A window with `window` pointing at itself (main's snippet writes
+   window.FundhubCC), a stand-in fetch that records each call, and storage. */
+function browserish({ answer = () => ({ status: 200, body: { ok: true } }), store = {} } = {}) {
+  const calls = [];
+  const ctx = createContext({ console: { error() {}, log: console.log } });
+  ctx.window = ctx;
+  ctx.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem() {}, removeItem() {} };
+  ctx.fetch = (url, opts) => {
+    calls.push({ url, method: opts.method, headers: opts.headers, body: opts.body === undefined ? undefined : JSON.parse(opts.body) });
+    const a = answer(url, opts);
+    if (a === "network") return Promise.reject(new Error("Failed to fetch"));
+    return Promise.resolve({ status: a.status, json: () => (a.body === undefined ? Promise.reject(new Error("no json")) : Promise.resolve(a.body)) });
+  };
+  return { w: ctx, calls, run: (src) => runInContext(src, ctx) };
+}
+
+describe("the frame: main's FundhubCC tabs", () => {
+  test("a FundhubCC tab that ran before the frame waits in _q and lands on the strip in its slot", () => {
+    const b = browserish();
+    b.run(mainTab("launch", "Launch", 6));
+    b.run(FRAME);
+    b.run(TODAY_SRC);
+    b.run(SETTINGS_SRC);
+    const reg = b.w.FHMarketingCCTabs;
+    assert.deepEqual(plain(reg.list().map((t) => [t.key, t.label, t.order, t.place])),
+      [["today", "Today", 10, "strip"], ["launch", "Launch", 60, "strip"], ["settings", "Settings", 900, "gear"]],
+      "Launch is slot 6: after Today, and Settings stays behind the gear");
+    assert.equal(b.w.FundhubCC._q.length, 0, "the frame drained the queue");
+    assert.equal(typeof b.w.FundhubCC.registerTab, "function");
+    const tabs = {};
+    for (const t of reg.list()) tabs[t.key] = { ...t };
+    const strip = b.w.FHMarketingCCFrame.stripHtml(tabs, "launch");
+    assert.match(strip, /<a class="tab" href="#today" data-tab="today">Today<\/a><a class="tab on" href="#launch" data-tab="launch" aria-current="page">Launch<\/a>/);
+    assert.deepEqual(plain(reg.problems()), []);
+  });
+
+  test("a FundhubCC tab that runs after the frame registers at once, in work order with the frame's own tabs", () => {
+    const b = browserish();
+    b.run(FRAME);
+    b.run(TODAY_SRC);
+    b.run(mainTab("numbers", "Numbers", 7));
+    b.run(mainTab("ideas", "Ideas", 2));
+    assert.deepEqual(plain(b.w.FHMarketingCCTabs.keys()), ["today", "ideas", "numbers"]);
+    assert.equal(b.w.FundhubCC.registerTab({ id: "Bad Id", label: "x", order: 3, render() {} }), false, "a bad shape is refused");
+    assert.equal(b.w.FHMarketingCCTabs.problems().length, 1);
+    assert.match(b.w.FHMarketingCCTabs.problems()[0], /lower-case/);
+  });
+
+  test("a tab that registers in both spellings counts once: the first one wins", () => {
+    const b = browserish();
+    b.run(FRAME);
+    const rules = { mine: true };
+    assert.equal(b.w.FHMarketingCCTabs.register({ key: "scripts", label: "Scripts", order: 30, render() {}, show() {}, rules }), true);
+    assert.equal(b.w.FundhubCC.registerTab({ id: "scripts", label: "Scripts", order: 3, render() {}, refresh() {}, hide() {} }), false);
+    assert.deepEqual(plain(b.w.FHMarketingCCTabs.list()), [{ key: "scripts", label: "Scripts", order: 30, place: "strip" }]);
+    assert.equal(b.w.FHMarketingCCTabs.rules("scripts"), rules, "the first registration is the one kept");
+    assert.deepEqual(plain(b.w.FHMarketingCCTabs.problems()), [], "a second spelling is not a problem");
+  });
+
+  test("fromMainTab: id is the key, order is a slot times ten, settings goes behind the gear, refresh and hide are kept", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    const refresh = () => {};
+    const hide = () => {};
+    const render = () => {};
+    const t = F.fromMainTab({ id: "launch", label: "Launch", order: 6, render, refresh, hide });
+    assert.equal(t.key, "launch");
+    assert.equal(t.order, 60);
+    assert.equal(t.place, "strip");
+    assert.equal(t.render, render);
+    assert.equal(t.refresh, refresh);
+    assert.equal(t.hide, hide);
+    assert.equal(F.fromMainTab({ id: "settings", label: "Settings", render }).place, "gear");
+    assert.equal(F.fromMainTab({ id: "x", label: "X", render }).order, null, "no order: the frame's default slot");
+    const c = F.checkTab(F.fromMainTab({ id: "launch", label: "Launch", order: 6, render, refresh, hide }));
+    assert.equal(c.tab.refresh, refresh, "checkTab keeps refresh");
+    assert.equal(F.fromMainTab(null), null, "not an object: checkTab says why");
+  });
+});
+
+describe("the frame: main's ctx", () => {
+  test("ctx.api('GET', 'marketing/x') calls /api/marketing/x with the session and answers {ok, status, data}", async () => {
+    const b = browserish({ store: { fh_token: "tok-1", fh_role: " Owner " },
+      answer: () => ({ status: 200, body: { ok: true, word: "hi" } }) });
+    b.run(FRAME);
+    const ctx = b.w.FHMarketingCCFrame.baseCtx("launch");
+    const r = await ctx.api("GET", "marketing/x");
+    assert.equal(b.calls.length, 1);
+    assert.equal(b.calls[0].url, "/api/marketing/x");
+    assert.equal(b.calls[0].method, "GET");
+    assert.equal(b.calls[0].headers.authorization, "Bearer tok-1");
+    assert.equal(b.calls[0].body, undefined, "a read sends no body");
+    assert.deepEqual(plain(r), { ok: true, status: 200, data: { ok: true, word: "hi" }, error: null, conflict: false, current: null });
+    for (const p of ["/marketing/x", "/api/marketing/x", "api/marketing/x"]) {
+      await ctx.api("get", p);
+      assert.equal(b.calls[b.calls.length - 1].url, "/api/marketing/x", p);
+    }
+    assert.deepEqual(plain(ctx.user), { role: "owner" }, "the shell's cached role, folded the shell's way");
+  });
+
+  test("a write carries request_id (its own, then opts.requestId, then a fresh one) and version from opts", async () => {
+    const b = browserish();
+    b.run(FRAME);
+    const ctx = b.w.FHMarketingCCFrame.baseCtx("scripts");
+    await ctx.api("POST", "marketing/scripts/approve", { id: "s1" }, { version: 2, requestId: "req-7" });
+    assert.deepEqual(b.calls[0].body, { id: "s1", request_id: "req-7", version: 2 });
+    assert.equal(b.calls[0].method, "POST");
+    assert.equal(b.calls[0].headers["content-type"], "application/json");
+    await ctx.api("POST", "marketing/scripts/approve", { id: "s1", request_id: "own", version: 1 }, { version: 2, requestId: "req-7" });
+    assert.deepEqual(b.calls[1].body, { id: "s1", request_id: "own", version: 1 }, "the body's own id and version win");
+    await ctx.api("POST", "marketing/ideas", { raw_points: "x" });
+    assert.match(b.calls[2].body.request_id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.equal("version" in b.calls[2].body, false, "no version unless one is given");
+  });
+
+  test("a 409 answers conflict and the saved copy; a failure answers in words a tab can use; nothing throws", async () => {
+    let next = { status: 409, body: { error: "stale", message: "Someone saved first.", current: { version: 4, body: "new" } } };
+    const b = browserish({ answer: () => next });
+    b.run(FRAME);
+    const ctx = b.w.FHMarketingCCFrame.baseCtx("scripts");
+    assert.deepEqual(plain(await ctx.api("POST", "marketing/scripts/edit", { id: "s1" }, { version: 3 })),
+      { ok: false, status: 409, data: next.body, error: "stale", conflict: true, current: { version: 4, body: "new" } });
+    next = { status: 404, body: { ok: false, error: "not_found", path: "marketing/costs" } };
+    const nf = await ctx.api("GET", "marketing/costs");
+    assert.equal(nf.ok, false);
+    assert.equal(nf.status, 404);
+    assert.equal(nf.error, "not_found");
+    next = "network";
+    assert.deepEqual(plain(await ctx.api("GET", "marketing/today")),
+      { ok: false, status: 0, data: null, error: "network", conflict: false, current: null });
+    next = { status: 502, body: undefined };
+    const bad = await ctx.api("GET", "marketing/today");
+    assert.equal(bad.ok, false);
+    assert.equal(bad.status, 502);
+    assert.equal(bad.data, null, "a body that is not JSON is null, never a guess");
+  });
+
+  test("the frame's own spelling still answers {status, body}: Today and Settings are untouched", async () => {
+    const b = browserish({ answer: () => ({ status: 200, body: { settings: { enabled: false } } }) });
+    b.run(FRAME);
+    const ctx = b.w.FHMarketingCCFrame.baseCtx("settings");
+    assert.deepEqual(plain(await ctx.api("/api/marketing/settings")), { status: 200, body: { settings: { enabled: false } } });
+    assert.equal(b.calls[0].url, "/api/marketing/settings");
+    await ctx.post("/api/marketing/settings", { updated_at: "t", patch: {} }, "req-9");
+    assert.deepEqual(b.calls[1].body, { updated_at: "t", patch: {}, request_id: "req-9" });
+    for (const k of ["post", "requestId", "costs", "costLine", "monthLine", "dollars", "plainError", "esc", "clock", "fullTime", "sub"]) {
+      assert.equal(typeof ctx[k], "function", k);
+    }
+  });
+
+  test("ctx.param is the view the address names; ctx.fmt prints cents, Arizona time and 'ago', and NULL is unknown", () => {
+    const b = browserish();
+    b.w.location = { hash: "#numbers/ads/91", search: "" };
+    b.run(FRAME);
+    const F = b.w.FHMarketingCCFrame;
+    assert.equal(F.baseCtx("numbers").param, "ads/91");
+    assert.equal(F.baseCtx("ideas").param, "", "another tab's view is not this tab's");
+    const fmt = F.baseCtx("numbers").fmt;
+    assert.equal(fmt.money(123456), "$1,234.56");
+    assert.equal(fmt.money(0), "$0.00", "a measured zero prints 0");
+    assert.equal(fmt.money(null), "unknown", "NULL is unknown, never $0");
+    assert.equal(fmt.money(undefined), "unknown");
+    assert.equal(fmt.money(-1250), "-$12.50");
+    assert.equal(fmt.money("4578"), "$45.78");
+    assert.equal(fmt.az("2026-10-05T22:05:00Z"), "Oct 5, 3:05 PM");
+    assert.equal(fmt.az(Date.parse("2026-10-06T07:01:50Z")), "Oct 6, 12:01 AM");
+    assert.equal(fmt.az(null), "unknown");
+    assert.equal(fmt.az("not a time"), "unknown");
+    const now = Date.parse("2026-10-06T15:00:00Z");
+    assert.equal(F.agoWords(now - 20 * 1000, now), "just now");
+    assert.equal(F.agoWords(now - 60 * 1000, now), "1 minute ago");
+    assert.equal(F.agoWords(now - 5 * 60 * 1000, now), "5 minutes ago");
+    assert.equal(F.agoWords(now - 2 * 3600 * 1000, now), "2 hours ago");
+    assert.equal(F.agoWords(now - 3 * 86400 * 1000, now), "3 days ago");
+    assert.equal(F.agoWords(now + 10 * 60 * 1000, now), "in 10 minutes");
+    assert.equal(fmt.ago(null), "unknown");
+    assert.equal(typeof fmt.ago(new Date().toISOString()), "string");
+  });
+
+  test("ctx.user is null without a cached role, and a blocked store never throws", () => {
+    const b = browserish();
+    b.w.localStorage = { getItem() { throw new Error("blocked"); } };
+    b.run(FRAME);
+    assert.deepEqual(plain(b.w.FHMarketingCCFrame.baseCtx("today").user), { role: null });
+  });
+});
+
+describe("the frame: the cost sheet and the two-tap confirm", () => {
+  test("the cost sheet waits for GET marketing/costs before its yes button works, and says why", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    const html = F.sheetHtml({ kind: "cost", title: "Write 3 scripts?", lines: ["Spends no ad money."], button: "Write 3", wait: true });
+    assert.match(html, /^<h2 id="ccSheetTitle">Write 3 scripts\?<\/h2>/);
+    assert.match(html, /<p class="cc-sheet-cost" data-sheet-cost>Checking the cost…<\/p>/);
+    assert.match(html, /<p class="caption cc-sheet-month" data-sheet-month hidden><\/p>/);
+    assert.match(html, /<p>Spends no ad money\.<\/p>/);
+    assert.match(html, /<button type="button" class="btn primary" data-sheet="yes" disabled>Write 3<\/button>/);
+    // What it prints once the costs answer (the route is not built yet: unknown).
+    const missing = F.normalizeCosts({ status: 404, body: { ok: false, error: "not_found", path: "marketing/costs" } });
+    assert.equal(F.costLine(missing, "script"), "Cost: unknown, not measured yet.");
+    assert.equal(F.monthLine(missing), "Model spend this month: unknown.");
+    assert.match(F.sheetHtml({ kind: "cost", title: "Go?" }), /data-sheet="yes">Start<\/button>/, "the yes word defaults to Start");
+  });
+
+  test("the confirm names the consequence; Cancel comes first; one filled button; server words are escaped", () => {
+    const F = page([FRAME]).FHMarketingCCFrame;
+    const html = F.sheetHtml({ kind: "confirm", title: "Turn on Ad 84?", consequence: "Ad 84 starts spending $40.00 a day.", button: "Turn on" });
+    assert.match(html, /<div class="cc-sheet-body" id="ccSheetBody"><p>Ad 84 starts spending \$40\.00 a day\.<\/p><\/div>/);
+    assert.ok(html.indexOf('data-sheet="no"') < html.indexOf('data-sheet="yes"'), "Cancel first: it takes the first focus");
+    assert.equal((html.match(/btn primary/g) || []).length, 1);
+    assert.doesNotMatch(html, /disabled/, "a confirm has nothing to wait for");
+    assert.match(F.sheetHtml({ kind: "confirm", title: "<b>x</b>", consequence: "a & b" }), /<h2 id="ccSheetTitle">&lt;b&gt;x&lt;\/b&gt;<\/h2>[\s\S]*<p>a &amp; b<\/p>[\s\S]*>Yes<\/button>/);
+  });
+
+  test("the sheet is phone-safe: above the status strip and the Chat button, a bottom sheet at 480, 32px between the buttons", () => {
+    const css = HTML.slice(HTML.indexOf("<style>"), HTML.indexOf("</style>"));
+    assert.match(css, /\.cc-sheet\{position:fixed;inset:0;z-index:2147482900;[^}]*padding-bottom:calc\(var\(--fh-statusbar,0px\) \+ env\(safe-area-inset-bottom,0px\) \+ 16px\)/);
+    const chat = fs.readFileSync(path.join(APP, "chat-widget.js"), "utf8").match(/chat-fab\{[^}]*z-index:(\d+)/);
+    assert.ok(chat && Number(chat[1]) < 2147482900, "the sheet covers the shell's Chat button");
+    assert.match(css, /\.cc-sheet-acts\{display:flex;align-items:center;justify-content:space-between;gap:32px;/);
+    assert.match(css, /\.cc-sheet-acts \.btn\{min-height:48px\}/);
+    const phone = css.slice(css.indexOf("@media (max-width:480px)"));
+    assert.match(phone, /\.cc-sheet\{align-items:flex-end\}/);
+    assert.match(phone, /\.cc-sheet-acts\{flex-direction:column-reverse;align-items:stretch\}/);
+    assert.doesNotMatch(css.slice(css.indexOf("/* THE SHEET"), css.indexOf(".foot{")), /font-size|\d+px\s*;?\s*font|box-shadow/,
+      "no px font size and no hand-written shadow: the box is a .card");
+  });
+
+  test("the frame wires the sheets, the refresh hook and both registries into the page", () => {
+    assert.match(FRAME, /ctx\.costSheet = costSheet;/);
+    assert.match(FRAME, /ctx\.confirm = confirmSheet;/);
+    // refresh(ctx): when a drawn tab is shown again with no show(), every
+    // 5 minutes while it is open and in view, and on coming back after a minute.
+    assert.match(FRAME, /\} else if \(t\.refresh\) \{\n      refreshTab\(key\);/);
+    assert.match(FRAME, /root\.setInterval\(function \(\) \{ due\(REFRESH_MS\); \}, 30 \* 1000\);/);
+    assert.match(FRAME, /doc\.addEventListener\("visibilitychange", function \(\) \{ due\(REFOCUS_MS\); \}\);/);
+    const F = page([FRAME]).FHMarketingCCFrame;
+    assert.equal(F.REFRESH_MS, 5 * 60 * 1000);
+    assert.equal(F.REFOCUS_MS, 60 * 1000);
+    // Leaving a tab with a sheet open is a no, and the page is inert under a sheet.
+    assert.match(FRAME, /if \(sheet\) closeSheet\(false\);\n      if \(old\.hide\)/);
+    assert.match(FRAME, /setInert\(s\.host, el, true\);/);
   });
 });

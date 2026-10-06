@@ -280,6 +280,20 @@
     load();
   }
 
-  if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  /* Wave 2b merge (U34's frame): Today is drawn by its tab script the first time the
+     frame shows it, so #flywheelList may not exist yet (another tab opened first).
+     Wait for it, once, then boot. */
+  function whenListThere() {
+    if (doc.getElementById("flywheelList")) { boot(); return; }
+    if (typeof root.MutationObserver !== "function" || !doc.body) return;
+    var watch = new root.MutationObserver(function () {
+      if (!doc.getElementById("flywheelList")) return;
+      watch.disconnect();
+      boot();
+    });
+    watch.observe(doc.body, { childList: true, subtree: true });
+  }
+
+  if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", whenListThere);
+  else whenListThere();
 })(typeof window !== "undefined" ? window : globalThis);

@@ -115,8 +115,18 @@ describe("the sheet and the request", () => {
 });
 
 describe("on the page", () => {
-  test("the page loads it after its own script", () => {
-    assert.match(HTML, /<script defer src="marketing-command-center\.js"><\/script>\n<script defer src="marketing-avatar-row\.js"><\/script>/);
+  // Wave 2b merge: U34's frame draws Today from its own tab script
+  // (marketing-cc-today.js), so the row's script comes after the frame AND after Today.
+  test("the page loads it after its own script and after the Today tab", () => {
+    const at = (name) => HTML.indexOf(`<script defer src="${name}"></script>`);
+    assert.ok(at("marketing-avatar-row.js") > 0, "the row's script is on the page");
+    assert.ok(at("marketing-command-center.js") > 0 && at("marketing-command-center.js") < at("marketing-avatar-row.js"));
+    assert.ok(at("marketing-cc-today.js") > 0 && at("marketing-cc-today.js") < at("marketing-avatar-row.js"));
+  });
+
+  test("it waits for Today's list when another tab is drawn first", () => {
+    assert.match(SRC, /function whenListThere\(\)/);
+    assert.match(SRC, /getElementById\("flywheelList"\)/);
   });
 
   test("it never paints a filled button and never writes a font size", () => {

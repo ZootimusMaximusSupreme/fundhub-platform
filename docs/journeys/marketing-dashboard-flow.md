@@ -1292,3 +1292,159 @@ flowchart TD
 - **UNVERIFIED on this Mac** (no Postgres): proved by `src/http/marketing-flywheel.pg.test.mjs`
   (X3), `src/http/marketing-flywheel-avatar.pg.test.mjs` (X1) and
   `src/http/marketing-research.pg.test.mjs` (X2) in GitHub CI.
+
+## U34 Command Center frame: tab bar, Today in its own file, Settings tab
+
+Drawn from code on branch `mm-u34-frame`: `public/app/marketing-command-center.html` (the
+frame's markup and shared style), `public/app/marketing-command-center.js` (the frame),
+`public/app/marketing-cc-today.js` (Today, moved unchanged), `public/app/marketing-cc-settings.js`
+(Settings). The tab-file contract is `docs/specs/command-center-tabs.md` (main's text, with what
+the frame accepts as built). Spec §8.3 (tabs,
+Settings); design `docs/specs/command-center-design-2026-10-05.md` §3.0, §3.1, §3.8, §6 slices 0-2.
+No route, table or migration added; Settings reads and writes U03's routes and U22's health read.
+
+### The frame — which tab shows
+
+```mermaid
+flowchart TD
+  L[page loads: shell.js, then the frame, then one script per tab] --> R[each tab file registers in either spelling]
+  R --> R1[main's: FundhubCC.registerTab<br/>id, label, order 1-7, render, refresh, hide]
+  R --> R2[the frame's: FHMarketingCCTabs.register<br/>key, label, order 10-70, place, render, show, hide, rules]
+  R1 --> Q{frame there yet?}
+  R2 --> Q
+  Q -->|no| QU[FHMarketingCCTabsQueue, then FundhubCC._q;<br/>the frame drains both when it starts]
+  Q -->|yes| MAP[main's tab: id is the key, order x10,<br/>settings goes behind the gear]
+  QU --> MAP
+  MAP --> DUP{same key already there?}
+  DUP -->|yes| IGN[ignored: the first one wins<br/>a file that registers in both spellings counts once]
+  DUP -->|no| ST[strip: tabs in work order<br/>gear: the one gear tab, Settings]
+  ST --> W[after the tab file has finished running: route]
+  H[hashchange / Back / Forward] --> W
+  W --> A{what the address asks}
+  A -->|#key, a registered tab| S[show it]
+  A -->|#key with no tab on the page, e.g. #ideas| F[after all scripts load: the remembered tab, else Today<br/>history.replaceState to #that-tab]
+  A -->|no hash| P{?tab= once, else fh_mcc_tab in this browser, else Today}
+  P --> S
+  F --> S
+  S --> FR{first time this tab is shown?}
+  FR -->|yes| RN[render panel, ctx<br/>Today: paints its cards and reads GET marketing/today, ad-videos, offer<br/>Settings: reads settings, funnels, health]
+  FR -->|no| SH[show panel, ctx if the tab has one,<br/>else refresh ctx if it has one]
+  RN --> M[remember the tab; strip + gear marked aria-current;<br/>footer bits with data-cc-tab show only on their tab]
+  SH --> M
+  LV[another tab is shown] --> HD[an open sheet closes as Cancel; hide runs]
+  TK[every 5 minutes in view, or back in view after a minute away] --> RF{shown tab has refresh, no sheet open?}
+  RF -->|yes| RFX[refresh ctx]
+  RF -->|no| RFN[nothing: the tab keeps its own timers, as Today does]
+```
+
+- A tab whose file is not on the page never shows: today the strip has Today only, and Settings
+  sits behind the gear. No empty or "coming soon" tab (UI-STANDARDS §5).
+- Today is drawn only when it is opened: a buzz link to `#settings` reads no Today numbers.
+- Today's own reads, timers and words are unchanged (the e2e suite for Today runs as before).
+  Its footer clock ("Loaded 3:02 PM") hides on Settings.
+- A main-contract tab's `render` may be async. If it throws, or its promise fails before it drew
+  anything, the panel says "This tab did not open. Reload the page and try again."
+
+### The sheets a tab asks through (ctx.costSheet, ctx.confirm)
+
+```mermaid
+flowchart TD
+  T1[a paid tap in a tab] --> CS[ctx.costSheet kind, title, lines, button]
+  CS --> CW[sheet opens; the page under it is inert;<br/>Checking the cost... and the yes button waits]
+  CW --> GC[GET marketing/costs, at most once a minute]
+  GC -->|answers| CL[About $X and about N minutes last run<br/>Model spend this month: $X of $Y]
+  GC -->|404 not built yet, or no answer| CU[Cost: unknown, not measured yet.<br/>Model spend this month: unknown.]
+  CL --> YES{tap}
+  CU --> YES
+  T2[Reject, Turn on, Push live and the like] --> CF[ctx.confirm title, consequence, button<br/>the second tap names the consequence]
+  CF --> YES
+  YES -->|yes button| Y[sheet closes; promise true; onConfirm runs once]
+  YES -->|Cancel, Escape, tap outside, a new sheet, leaving the tab| N[sheet closes; promise false; nothing runs]
+  Y --> API[the tab calls ctx.api method, path, body, version, requestId<br/>the body gets request_id and version]
+  API --> AN[ok, status, data, error, conflict, current<br/>a 409 hands back the saved copy]
+```
+
+- One sheet at a time. Cancel has the first focus. The yes button is the only filled button on
+  screen while the sheet is open. At 480px and below it is a bottom sheet, yes above Cancel,
+  32px apart, both 48px tall, above the status strip and over the shell's Chat button.
+- Proved in a real browser with a probe tab written to main's contract and loaded from its own
+  file before the frame (`e2e/helpers/cc-frame-probe.mjs`).
+
+### Settings — what one press does
+
+```mermaid
+flowchart TD
+  O[Settings opens] --> G[GET marketing/settings + GET marketing/funnels + GET marketing/health]
+  G -->|each part on its own| P1[settings card, or: The settings did not load. reason. Try again]
+  G --> P2[funnels card, or: The funnels did not load. reason. Try again]
+  G --> P3[used this month from health.model, or unknown]
+  B[Chris changes a box] --> D{anything different from saved, or a box not right?}
+  D -->|no| D0[Save rests: No changes to save.]
+  D -->|yes| D1[Save on: You have changes that are not saved.]
+  SV[Save] --> V{every box right?}
+  V -->|no| V1[Did not save. the box, in words; nothing sent]
+  V -->|yes| CAP{month cap below what is spent this month?}
+  CAP -->|yes, first tap| C1[warn: Runs stop at once. Tap Save anyway]
+  CAP -->|no, or second tap| S1[POST marketing/settings<br/>request_id, updated_at, patch: only the changed boxes, never enabled]
+  S1 --> F1[then POST marketing/funnels for each changed funnel<br/>request_id, funnel: key, changed fields, updated_at]
+  S1 -->|409| K[both versions side by side; Save rests<br/>Keep mine: same patch over the saved updated_at, new request_id<br/>Use the saved one: boxes show the saved version, nothing sent]
+  F1 -->|409| K
+  F1 --> AN[one answer: Saved 8:04 AM. / Settings saved 8:04 AM. Roadmap $147 did not save. reason. Try again.]
+  SW[Turn on weekly scripts] --> SA[second tap names the day, time, count and both caps<br/>Yes, turn it on / Not now]
+  SA -->|Yes| SP[POST marketing/settings patch: enabled true, only]
+  SP --> SAN[Weekly scripts are on. Saved 8:04 AM.]
+```
+
+- `enabled` is sent only from the switch's own confirm (`switchPatch`); the form's patch never
+  carries it. A unit test counts the one place.
+- A funnel saved with no mix yet (`{}`, the table's default; X4's funnel builder makes them that
+  way) does not block a Save. The mix rule ("at least one above 0") applies only when the mix is
+  being sent, which is when U03 checks it too.
+- Video choices (Submagic template, caption place, zooms, clean audio, caption words, animation
+  mode, flip, settle minutes) are not shown and never sent; they keep their saved values.
+- A Meta campaign already on another funnel is disabled with "Linked to <funnel>." (U03 refuses
+  it too). Unticking a campaign clears its default ad set. No campaign linked: "its spend reads
+  unknown and the batch split treats it as $0 spent." Spend null prints "unknown", never $0.
+- Save sits bottom-right in a bar pinned above the status strip, clear of the shell's Chat button.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+- **Routing.** The plan's U34 contract says "routing by ?tab="; the design (§3.0) says the URL
+  hash, and buzz links use `#scripts`. Built: the hash, plus `?tab=` read once when there is no
+  hash.
+- **Registry name.** The plan names `window.FHMarketingCCTabs.register({key, label, render,
+  rules})`; built as named, plus `order` and `place`, and `id` read as `key`. Main's contract
+  (`docs/specs/command-center-tabs.md`, written by the main session while U34 was building) names
+  `window.FundhubCC.registerTab` and a different `ctx`. The frame now takes both, and the contract
+  file says so. The Ideas, Scripts, Launch and Numbers tab files on their branches were loaded into
+  this frame in a trial run: all four showed on the strip in work order and drew with no script
+  error.
+- **Design §3.8 items not on the page**, each because nothing behind it exists yet (UI-STANDARDS
+  §5): per-run caps (avatar, research, page draft, proof; no `run_caps` column yet), "Research
+  counts against the month cap", the buzz list and **Test buzz** (no `POST marketing/buzz/test`),
+  keys status by name, the Submagic template picker (hidden with the video choices), the proof
+  folders, next free ad number (no read for `next_ad_number`), and "who flipped it last"
+  (`updated_by` is the last person to save any setting, as a staff id, not the switch's flipper).
+- **Settle minutes.** Design §3.8 lists it under Schedule; the plan brief hides it with the video
+  choices until the video pipeline reads it. Hidden.
+- **The winner rule** shows "Not set yet." with no editor: `winner_rule` is jsonb with no shape
+  in the spec.
+- **Model spend this month** comes from `GET marketing/health` (`model.month_cost_usd`), as design
+  §3.8 says. `GET marketing/costs` is not built; `ctx.costs()` answers "missing" and every cost
+  line prints "Cost: unknown, not measured yet."
+- **The clock and `enabled`** (from U22): the switch's words say "It only holds back the weekly
+  batch", which is what the clock does today; spec M0 step 4 still says the clock does nothing
+  while it is off.
+- **UNVERIFIED in a real database:** the screen is proved against the U01 contract's examples
+  (node:vm and Playwright). The routes themselves are proved by U03's and U22's pg tests in CI.
+- `docs/journeys/marketing-machine-intended.md` is not on main, so this was checked against the
+  spec text, the design and the plan contract, not the intended journey.
+
+### Wave 2b merge: Build the avatar inside U34's frame
+
+`public/app/marketing-avatar-row.js` (unit X1) is not a tab: it adds Build the avatar to
+Today's step-1 row (`li.row[data-stage="avatar"]` in `#flywheelList`). U34 draws Today from
+`marketing-cc-today.js` the first time the frame shows it, so the row's script now loads
+after the tab scripts and waits for `#flywheelList` to appear (a page opened on Settings
+first gets the row once Today is opened). Proved by `e2e/marketing-avatar-row.spec.mjs`
+"opened on Settings first".

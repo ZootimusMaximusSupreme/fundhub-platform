@@ -19,6 +19,15 @@
 // scroll boxes, the chip on the row's first line at 390px, and .span-4
 // stacking at 960px.
 //
+// THE FRAME (U34). Today is now one tab module (public/app/marketing-cc-today.js)
+// inside the frame (marketing-command-center.js). Every Today test above runs
+// unchanged against it. The frame tests at the bottom prove the strip shows
+// only tabs that exist, Settings behind the gear top-right, hash routing
+// (#today, #settings, an unknown #ideas falls back to Today), Back, the
+// remembered tab, and the strip at 390px. The last test loads a tab written to
+// main's FundhubCC contract from its own file, before the frame, and proves it
+// shows, reads through ctx.api and asks through the cost sheet and the confirm.
+//
 // EVIDENCE. Each scenario that matters to Chris screenshots the viewport and
 // records the live bounding box of the element under discussion into
 // shot-marks.json. _apply-marks.py (a copy of
@@ -32,6 +41,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { OWNER, CLOSER, json, wireApi, withSession, trackErrors, assertPageAlive } from "./harness.mjs";
+import { exampleResponse } from "../src/marketing/api-contract.mjs";
+import { withProbe } from "./helpers/cc-frame-probe.mjs";
 
 const OUT_DIR = process.env.MCC_PROOF_OUT || process.env.M11_PROOF_OUT;
 const OUT = OUT_DIR ? path.resolve(OUT_DIR) : path.join(os.tmpdir(), "mcc-marketing-command-center");
@@ -356,7 +367,10 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
     { selector: "#mccAsOf", caption: "Numbers through Oct 4, saved 12:01 AM; ClickFunnels time" },
     { selector: "#copyCost", caption: "Write ad copy: time and cost, unknown until measured" },
     { selector: '#waitingList li[data-wait="videos"]', caption: "2 videos waiting since Sep 24" }
-  ]);
+    // The tab strip (U34) sits above the tiles, so the cost line under the
+    // button now ends just past 900px; the shot is taken 1000px tall. The
+    // fold check above (the button itself inside 900px) is unchanged.
+  ], { height: 1000 });
 
   await shot(page, "02-offer-and-market-1280.png", "Offer card and Offer and market at 1280", [
     { selector: "#offerCost", caption: "Write offer cost from the last measured run" },
@@ -830,4 +844,234 @@ test("the Command Center row is first in the Marketing group of the sidebar", as
   const rows = page.locator('[data-fh-section="marketing"] .navitem');
   await expect(rows.first()).toHaveAttribute("href", "marketing-command-center.html");
   await expect(rows.first()).toHaveText(/Command Center/);
+});
+
+/* ── the frame (U34): the tab strip, the gear, the address ────────────────── */
+
+/* Settings answers for the frame tests, from the U01 contract's own examples
+   (src/marketing/api-contract.mjs). marketing-cc-settings.spec.mjs covers the
+   Settings tab itself. */
+function withSettings(h) {
+  return {
+    ...h,
+    "/api/marketing/settings": async (route) => json(route, exampleResponse("GET marketing/settings")),
+    "/api/marketing/funnels": async (route) => json(route, exampleResponse("GET marketing/funnels")),
+    "/api/marketing/health": async (route) => json(route, exampleResponse("GET marketing/health"))
+  };
+}
+
+test("the frame: the strip shows only tabs that exist (Today); Settings sits behind the gear, top-right", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const errors = await open(page, withSettings(handlers()));
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await assertPageAlive(page, errors);
+  // One tab on the strip: Today, marked as the one shown, in words and a line.
+  await expect(page.locator("#mccTabs .tab")).toHaveCount(1);
+  await expect(page.locator("#mccTabs .tab")).toHaveText("Today");
+  await expect(page.locator("#mccTabs .tab")).toHaveAttribute("aria-current", "page");
+  const line = await page.locator("#mccTabs .tab.on").evaluate((el) => getComputedStyle(el).borderBottomWidth);
+  expect(line).toBe("2px");
+  // No tab without a module: nothing else is on the strip, and nothing says "soon".
+  await expect(page.locator("#mccTabs")).not.toContainText(/Ideas|Scripts|Shoot|Videos|Launch|Numbers|soon/i);
+  // The gear: top-right, with its word.
+  const gear = page.locator("#mccGear .gear");
+  await expect(gear).toHaveText(/Settings/);
+  const g = await gear.boundingBox();
+  const s = await page.locator("#mccTabs").boundingBox();
+  expect(g.x).toBeGreaterThan(s.x + s.width - 1);
+  expect(g.height).toBeGreaterThanOrEqual(44);
+  expect((await page.locator("#mccTabs .tab").boundingBox()).height).toBeGreaterThanOrEqual(44);
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page).toHaveTitle(/Command Center · Today$/);
+  await shot(page, "24-frame-strip-1280.png", "The frame: Today on the strip, Settings behind the gear", [
+    { selector: "#mccTabs .tab.on", caption: "Today: the only tab with a back end yet" },
+    { selector: "#mccGear .gear", caption: "Settings behind the gear, top-right" }
+  ]);
+});
+
+test("the frame: the gear opens Settings, Today comes back as it was, and Back works", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const counter = { today: 0 };
+  await open(page, withSettings(handlers({ counter })));
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await expect(page.locator("#mccStamp")).toBeVisible();
+
+  await page.locator("#mccGear .gear").click();
+  await expect(page).toHaveURL(/#settings$/);
+  await expect(page.locator("#tab-settings")).toBeVisible();
+  await expect(page.locator("#tab-today")).toBeHidden();
+  await expect(page.locator("#mccGear .gear")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#mccTabs .tab")).not.toHaveAttribute("aria-current", "page");
+  // Today's "Loaded" clock belongs to Today; it hides on Settings.
+  await expect(page.locator("#mccStamp")).toBeHidden();
+  await expect(page.locator("#setSwitch")).toContainText("Write scripts every week");
+  // Exactly one filled button on the Settings view too: Save.
+  await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
+  await expect(page.locator(".btn.primary:visible")).toHaveText("Save");
+
+  await page.locator("#mccTabs .tab", { hasText: "Today" }).click();
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page.locator("#tab-today")).toBeVisible();
+  await expect(page.locator("#tab-settings")).toBeHidden();
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await expect(page.locator("#mccStamp")).toHaveText("Loaded 12:00 PM");
+  expect(counter.today, "switching tabs does not read Today again").toBe(1);
+  await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
+  await expect(page.locator(".btn.primary:visible")).toHaveText("Write ad copy");
+
+  await page.goBack();
+  await expect(page).toHaveURL(/#settings$/);
+  await expect(page.locator("#tab-settings")).toBeVisible();
+});
+
+test("the frame: a link to a tab with no module (#ideas) lands on Today and the address says so", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const errors = trackErrors(page);
+  await page.clock.install({ time: new Date(NOW) });
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, withSettings(handlers()));
+  await page.goto(PAGE + "#ideas");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page.locator("#mccTabs .tab")).toHaveCount(1);
+  await assertPageAlive(page, errors);
+});
+
+test("the frame: a buzz link straight to #settings opens Settings, and the last tab is remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const counter = { today: 0 };
+  const errors = trackErrors(page);
+  await page.clock.install({ time: new Date(NOW) });
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, withSettings(handlers({ counter })));
+  await page.goto(PAGE + "#settings");
+  await expect(page.locator("#setSwitch")).toBeVisible();
+  await expect(page.locator("#tab-today")).toHaveCount(0);
+  expect(counter.today, "Today is drawn only when it is opened").toBe(0);
+  // Open the page again with no tab in the link: the last tab comes back.
+  await page.goto(PAGE);
+  await expect(page).toHaveURL(/#settings$/);
+  await expect(page.locator("#setSwitch")).toBeVisible();
+  await assertPageAlive(page, errors);
+});
+
+test("the frame at 390: the gear on its own row, top-right; the strip under it; no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, withSettings(handlers()));
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(wide).toBeLessThanOrEqual(390);
+  const g = await page.locator("#mccGear .gear").boundingBox();
+  const s = await page.locator("#mccTabs").boundingBox();
+  expect(g.y + g.height).toBeLessThanOrEqual(s.y + 1);
+  expect(g.x + g.width).toBeGreaterThan(390 - 16 - 4);
+  expect(await innerScrollBoxes(page)).toEqual([]);
+  await shot(page, "25-frame-strip-390.png", "The frame at 390", [
+    { selector: "#mccGear .gear", caption: "Settings, top-right, 44px tall" },
+    { selector: "#mccTabs .tab.on", caption: "Today, the tab shown" }
+  ]);
+});
+
+test("the frame hosts main's FundhubCC tabs: a cc-tab file loaded before the frame shows, reads, and asks through the sheets (390)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const posted = [];
+  const errors = trackErrors(page);
+  await page.clock.install({ time: new Date(NOW) });
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, withSettings({
+    ...handlers(),
+    "/api/marketing/probe": async (route, { method }) => {
+      if (method === "POST") {
+        posted.push(route.request().postDataJSON());
+        return json(route, { error: "stale", message: "Someone saved first.", current: { version: 4 } }, 409);
+      }
+      return json(route, { ok: true, word: "Read through ctx.api.", spend_cents: 123456, as_of: NOW });
+    },
+    // GET marketing/costs is not built yet: the router's own 404.
+    "/api/marketing/costs": async (route) => json(route, { ok: false, error: "not_found", path: "marketing/costs" }, 404)
+  }));
+  await withProbe(page);
+  await page.goto(PAGE + "#probe/ads");
+
+  // It registered before the frame existed, and the frame drained the queue.
+  await expect(page.locator("#prWord")).toHaveText("Read through ctx.api.");
+  expect(await page.evaluate(() => [window.__probe.queuedBeforeFrame, window.FundhubCC._q.length, window.__probe.renders]))
+    .toEqual([true, 0, 1]);
+  // On the strip in its slot (6: after Today), shown, with Settings still behind the gear.
+  await expect(page.locator("#mccTabs .tab")).toHaveText(["Today", "Probe"]);
+  await expect(page.locator('#mccTabs .tab[data-tab="probe"]')).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#mccGear .gear")).toHaveText(/Settings/);
+  await expect(page).toHaveTitle(/Command Center · Probe$/);
+  // ctx.fmt, ctx.param and ctx.user, as the contract names them.
+  await expect(page.locator("#prMoney")).toHaveText("Spend: $1,234.56");
+  await expect(page.locator("#prNull")).toHaveText("Null money: unknown");
+  await expect(page.locator("#prTime")).toHaveText("As of Oct 5, 12:00 PM");
+  await expect(page.locator("#prParam")).toHaveText("View: ads");
+  await expect(page.locator("#prRole")).toHaveText("Role: owner");
+
+  // The cost sheet: the cost and the month line first, then the tap.
+  await page.locator("#prCost").click();
+  const sheet = page.locator(".cc-sheet");
+  await expect(sheet).toHaveCount(1);
+  await expect(sheet.locator('[role="dialog"]')).toHaveAttribute("aria-modal", "true");
+  await expect(sheet.locator("h2")).toHaveText("Write 3 scripts?");
+  await expect(sheet.locator("[data-sheet-cost]")).toHaveText("Cost: unknown, not measured yet.");
+  await expect(sheet.locator("[data-sheet-month]")).toHaveText("Model spend this month: unknown.");
+  await expect(sheet.locator('[data-sheet="yes"]')).toBeEnabled();
+  await expect(sheet.locator('[data-sheet="no"]')).toBeFocused();
+  await expect(page.locator(".app > .main")).toHaveAttribute("inert", "");
+  await expect(page.locator(".btn.primary:visible")).toHaveText(["Write 3"]);
+  // Phone-safe: inside the screen, full-width buttons 48px tall, 32px apart, yes above Cancel.
+  const box = await sheet.locator(".cc-sheet-box").boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(16);
+  expect(box.x + box.width).toBeLessThanOrEqual(390 - 16 + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(844);
+  const yes = await sheet.locator('[data-sheet="yes"]').boundingBox();
+  const no = await sheet.locator('[data-sheet="no"]').boundingBox();
+  expect(yes.height).toBeGreaterThanOrEqual(48);
+  expect(no.height).toBeGreaterThanOrEqual(48);
+  expect(yes.y + yes.height + 32).toBeLessThanOrEqual(no.y + 1);
+  expect(Math.round(yes.width)).toBe(Math.round(no.width));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await shot(page, "26-frame-cost-sheet-390.png", "The cost sheet a tab gets from the frame (390)", [
+    { selector: ".cc-sheet-box h2", caption: "What the tap will do" },
+    { selector: ".cc-sheet [data-sheet-cost]", caption: "The cost, before the tap: unknown until measured" },
+    { selector: '.cc-sheet [data-sheet="yes"]', caption: "Yes: the only filled button on screen" },
+    { selector: '.cc-sheet [data-sheet="no"]', caption: "Cancel, 32px below" }
+  ]);
+  // Cancel: nothing runs.
+  await sheet.locator('[data-sheet="no"]').click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator(".app > .main")).not.toHaveAttribute("inert", "");
+  await expect(page.locator("#prCost")).toBeFocused();
+  // Yes: onConfirm runs once.
+  await page.locator("#prCost").click();
+  await page.locator('.cc-sheet [data-sheet="yes"]').click();
+  await expect(sheet).toHaveCount(0);
+  expect(await page.evaluate(() => [window.__probe.answers, window.__probe.confirmed])).toEqual([[["cost", false], ["cost", true]], 1]);
+
+  // The two-tap confirm: it names the consequence; Escape is a no.
+  await page.locator("#prTurn").click();
+  await expect(page.locator('.cc-sheet [role="alertdialog"]')).toBeVisible();
+  await expect(page.locator(".cc-sheet .cc-sheet-body")).toHaveText("Ad 84 starts spending $40.00 a day.");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  expect(posted).toEqual([]);
+  // Yes: the write goes through ctx.api with its request_id and version; the 409 comes back as conflict + current.
+  await page.locator("#prTurn").click();
+  await page.locator('.cc-sheet [data-sheet="yes"]').click();
+  await expect(page.locator("#prSay")).toHaveText("Someone saved this first. The saved one is version 4.");
+  expect(posted).toEqual([{ a: 1, request_id: "req-probe-1", version: 3 }]);
+  expect(await page.evaluate(() => window.__probe.sent)).toEqual({
+    ok: false, status: 409, data: { error: "stale", message: "Someone saved first.", current: { version: 4 } },
+    error: "stale", conflict: true, current: { version: 4 }
+  });
+
+  // Leave and come back: hide() once, refresh(ctx) once, render still once.
+  await page.locator("#mccTabs .tab", { hasText: "Today" }).click();
+  await expect(page.locator("#tab-probe")).toBeHidden();
+  await page.locator("#mccTabs .tab", { hasText: "Probe" }).click();
+  await expect(page.locator("#tab-probe")).toBeVisible();
+  expect(await page.evaluate(() => [window.__probe.renders, window.__probe.hides, window.__probe.refreshes])).toEqual([1, 1, 1]);
+  await assertPageAlive(page, errors);
 });

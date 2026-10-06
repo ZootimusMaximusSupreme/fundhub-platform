@@ -17,6 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { OWNER, json, wireApi, withSession, trackErrors, assertPageAlive } from "./harness.mjs";
+import { exampleResponse } from "../src/marketing/api-contract.mjs";
 
 const OUT = path.join(os.tmpdir(), "x1-avatar-row");
 fs.mkdirSync(OUT, { recursive: true });
@@ -163,4 +164,26 @@ test("phone, 390px: one column, no sideways scroll, 44px taps", async ({ page })
   const sheetWide = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(sheetWide).toBeLessThanOrEqual(390);
   await page.screenshot({ path: path.join(OUT, "05-sheet-390.png") });
+});
+
+// Wave 2b merge (U34's frame): Today is drawn by its tab script the first time it is
+// shown. Opened straight on Settings, the row must still appear once Today is opened.
+test("opened on Settings first: the row shows once Today is drawn", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const errors = trackErrors(page);
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, {
+    ...handlers(),
+    "/api/marketing/settings": (route) => json(route, exampleResponse("GET marketing/settings")),
+    "/api/marketing/funnels": (route) => json(route, exampleResponse("GET marketing/funnels")),
+    "/api/marketing/health": (route) => json(route, exampleResponse("GET marketing/health"))
+  });
+  await page.goto(PAGE + "#settings");
+  await expect(page.locator("#setSwitch")).toBeVisible();
+  await expect(page.locator(ACT)).toHaveCount(0);
+  await page.locator("#mccTabs .tab", { hasText: "Today" }).click();
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page.locator(ACT)).toBeVisible();
+  await expect(page.locator(ACT).getByRole("button", { name: "Build the avatar" })).toBeEnabled();
+  await assertPageAlive(page, errors);
 });
