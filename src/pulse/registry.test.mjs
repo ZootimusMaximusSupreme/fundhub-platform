@@ -15,6 +15,7 @@ import {
   coverageKey,
   missingFromRegistry
 } from "./registry.mjs";
+import { ROUTES } from "../../netlify/functions/api.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const API_DIR = path.resolve(HERE, "../../api");
@@ -99,6 +100,23 @@ test("registry: every registry row names a real handler or desk file", () => {
     const key = coverageKey(row);
     assert.ok(live.has(key), `PULSE_REGISTRY has "${key}" (${row.path}) but that file is gone.`);
   }
+});
+
+/* A handler file is not a route (CLAUDE.md §12). A row for a file that is on
+   disk but not in ROUTES answers 404 every morning — measured on live: the
+   shelved public/decline-autopsy was "down" in every pulse from 2026-09-18 to
+   2026-10-05, and it was the first failure in Chris's text each day. A shelved
+   or unrouted door goes in ALLOWED_UNMONITORED with its reason instead. */
+test("registry: every api row the pulse pings is actually routed", () => {
+  const unrouted = PULSE_REGISTRY
+    .filter((row) => row.kind === "api")
+    .map(coverageKey)
+    .filter((key) => !Object.prototype.hasOwnProperty.call(ROUTES, key));
+  assert.deepEqual(
+    unrouted,
+    [],
+    `the pulse pings these, but netlify/functions/api.mjs does not route them, so they answer 404 every day:\n  ${unrouted.join("\n  ")}`
+  );
 });
 
 test("registry: a GET ping writes up or down and never auto-fixes", async () => {

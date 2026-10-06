@@ -8,6 +8,12 @@ export const ALLOWED_UNMONITORED = {
   "webhooks/[provider]": "Signed webhook POST only. A GET ping is not uptime and can look like a replay.",
   "documents/[id]": "Per-document GET needs a real id and a signed-in caller. Not a desk ping.",
   "contracts/sign": "Signed contract link. GET without id/exp/sig answers 404 on purpose. That is not downtime.",
+  /* SHELVED, NOT DOWN. The owner shelved the $27 Decline Autopsy on 2026-08-31
+     and its three routes are commented out in netlify/functions/api.mjs on
+     purpose. Pinging it anyway answered 404 in every pulse from 2026-09-18 to
+     2026-10-05 and led Chris's morning text each day. TO UNSHELVE: restore the
+     route lines there, then move this key back into API_KEYS below. */
+  "public/decline-autopsy": "Shelved by the owner 2026-08-31 — its route is commented out in netlify/functions/api.mjs on purpose, so a GET answers 404 by design. That is a decision, not an outage. When the offer is unshelved and routed again, move this key back into API_KEYS so the sales-page door is watched.",
   "public/decline-autopsy-upload": "POST only — the paid autopsy_ref plus the merchant attestation are the credential. A GET answers 405 by design, and pinging it with a body would write somebody's declined-deal rows. The sales page at public/decline-autopsy is the monitored door for this offer.",
   "public/decline-autopsy-report": "Signed, expiring report link. A GET without org/ref/exp/sig answers 404 on purpose — and it answers that identically for a forged signature, so the endpoint cannot be used to find out which references exist. That refusal is correct behaviour, not downtime.",
   "public/vsl-watch": "POST only — it is the video player's own beacon, and the one door here a stranger can knock on. A GET answers 405 by design, which a ping would read as an outage, and pinging it with a body would file a viewing of the VSL that nobody watched: a made-up visitor, a made-up viewing, counted on every drop-off curve drawn from vsl_watch_sessions afterwards. There is no read sibling to watch in its place yet, because no screen reads this table — when one exists it becomes the monitored door for this surface.",
@@ -181,16 +187,15 @@ const API_KEYS = [
   "proxy/end",
   "proxy/launch",
   "public/affiliate-click",
-  /* The Decline Autopsy sales page. A plain GET answers 200 with the price, the
-     row cap and the field list, so it is a real uptime door. Its two siblings
-     are not — see ALLOWED_UNMONITORED. */
   /* The lending-climate lead magnet's match count, behind the /climate/ page. A
      plain GET answers 200 with how many active lenders the book holds, so it is
      a real uptime door: if this is down the page shows the map and can never
      give a visitor their number, which is the whole offer. */
   "public/climate-match",
-  "public/decline-autopsy",
   "public/education-enroll",
+  /* The voluntary EEO self-ID form. GET never writes (the survey token is the
+     credential, and a GET without one answers 400, which counts as up). */
+  "public/eeo-survey",
   /* The self-serve till for the /partner/ funnel pages. A plain GET answers 200
      with every price those five pages render and whether checkout is actually
      configured, so it is a real uptime door: if this is down, three sales pages
@@ -261,6 +266,9 @@ const API_KEYS = [
   "read/customer-insights",
   "read/deal-math",
   "read/documents",
+  /* Bias-audit counts only (cells under 5 suppressed). Staff read; an unsigned
+     ping answers 401, which counts as up. */
+  "read/eeo-aggregate",
   "read/entitlements",
   "read/failed-events",
   "read/finance-ask",
@@ -307,6 +315,9 @@ const API_KEYS = [
   "repair/generate",
   "repair/inbound-mail",
   "repair/send",
+  /* The Script picker's read on the Creative Factory screen. Staff read; an
+     unsigned ping answers 401, which counts as up. */
+  "scripts/list",
   "shifts",
   "slo-connections",
   "social/channels",
@@ -326,7 +337,11 @@ const API_KEYS = [
      paid $297 to watch for seven days; an outage there is the product missing.
      Its two write siblings are not pingable — see ALLOWED_UNMONITORED. */
   "trials/dashboard",
-  "trials/eligibility"
+  "trials/eligibility",
+  /* The checkbox a client ticks on their own checklist. POST only: a GET
+     answers 405 before it reads anything, and isUp() counts 405 as up — the
+     same reason campaigns/link-asset is monitored. The ping writes nothing. */
+  "waypoint-tick"
 ];
 
 const DESK_FILES = [
