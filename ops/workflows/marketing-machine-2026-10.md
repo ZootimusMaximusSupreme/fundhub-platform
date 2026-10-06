@@ -45,7 +45,12 @@ Order (each stage starts when the one before lands; the main session runs it):
 4. Blueprint test, run through the shipped machine: Capital Blueprint (src/config/offers.mjs 'consulting-package') book-a-call funnel: avatar, ad research, offer, copy, ad strategy, a script batch in the Scripts tab, funnel pages + tracking + tag. Fable QA on every output.
 5. Morning report for Chris in 4th grade English, plus his taps.
 
-Safety for the whole night (no exceptions): nothing goes public or live without Chris's tap. The funnel stays a draft (no ClickFunnels publish, no live page change). No Meta ad created or turned on. No message to any customer. No money moved. No data deleted. No key removed. Model spend is allowed ("run the tokens into the ground").
+Owner update (2026-10-05, before sleeping): "we can push a funnel live tho. /blueprint ... we should have a url system as well so that way i dont have to name them or allow me to name them in the dash." And: "when i wake up I expect all this done and 'ready to film'."
+- The Blueprint test funnel MAY go live tonight at its own new path (e.g. /blueprint on the funnel domain). Never overwrite or change any existing live page or path; if the path is taken, the URL system picks the next free one.
+- URL system: every funnel gets an automatic short URL and its tag on creation (no naming needed); Chris can rename the URL from the dashboard if he wants. The URL, the funnel tag, the UTMs and the tracking all tie to the same funnel row.
+- "Ready to film": the Blueprint scripts end the night approved-ready in the Scripts tab and laid out for Shoot Day (film order, teleprompter text).
+
+Safety for the whole night (no exceptions): no existing live page changes. No Meta ad created or turned on. No Meta ad created or turned on. No message to any customer. No money moved. No data deleted. No key removed. Model spend is allowed ("run the tokens into the ground").
 
 ## Units (filled in from the plan)
 
