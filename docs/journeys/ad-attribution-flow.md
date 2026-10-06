@@ -218,3 +218,71 @@ Gaps and things not drawn:
 - The transaction stays open across the Meta call (spec §4 trap 3), same as the campaign path; `guardedWrite` was not changed here.
 - The campaign-level `pause`, `resume`, `update_budget` gate is unchanged: any staff login with a partner_id, or a partner login, can still start a whole campaign (a Chris yes/no on the board).
 - `UNVERIFIED` live: the call has never reached real Meta. The fake Meta in `src/http/campaigns-write-resume-ad.pg.test.mjs` answers like the Graph API docs.
+
+## U27 Sync mapping: the Meta sync asks for creative{url_tags} and stores each ad's number
+
+Generated from `api/campaigns/sync.mjs` (`AD_LIST_FIELDS`, `upsertAd`,
+`syncAdNumber`, `syncPartnerConnections`) on 2026-10-06, branch
+`mm-u27-ad-number-sync`. Spec §10.5 "Sync mapping", M4 Done #3. This wires the
+`SYNC` arrow the U14 section above drew as NOT BUILT. Not live until ship.
+
+```mermaid
+flowchart TD
+    CLOCK[Sync button · 07:00 UTC nightly pass · hourly 3-day pass] --> LIST["GET {ad set}/ads<br/>fields = id,name,status,adset_id,creative{url_tags}<br/>(v26.0; field checked in Meta's v26.0.2 SDK)"]
+    LIST --> TX[One transaction per campaign]
+    TX --> SAVE[upsertAd: insert or update name + status<br/>RETURNING the row's number and source]
+    SAVE --> MAP{mapAdNumber<br/>url_tags, name}
+    MAP -->|no number: utm_content=&#123;&#123;ad.name&#125;&#125;,<br/>'oVid: SLO1', no creative| NONE[nothing written · tally none<br/>a number is never cleared]
+    MAP -->|number N, source utm or name| MAN{row's source = manual?}
+    MAN -->|yes| KEEP[nothing written · tally kept_manual]
+    MAN -->|no| SAME{row already holds N?}
+    SAME -->|yes| SAMEW[nothing written · tally same<br/>source kept, e.g. loader]
+    SAME -->|no, or no number yet| SP[SAVEPOINT fundhub_ad_number_map<br/>UPDATE ads SET number = N, source<br/>WHERE number IS NULL OR source is not manual]
+    SP -->|ok| SET[tally set]
+    SP -->|database refuses| RB[ROLLBACK TO SAVEPOINT<br/>ad stays saved without the number<br/>tally failed + first 5 named]
+    SET --> DAYS[storeInsights for this ad]
+    KEEP --> DAYS
+    SAMEW --> DAYS
+    NONE --> DAYS
+    RB --> DAYS
+    DAYS --> COMMIT[campaign COMMIT<br/>tally added to stats.ad_number_map only now]
+    COMMIT --> RER[after every connection:<br/>reresolveAdNumbers → fundhub_reresolve_ad_numbers 407<br/>visitors with no number re-matched by ad set id + ad name]
+    RER --> VIS[(client_ad_attribution.ad_id = the number just written)]
+```
+
+| Step | Where | What fires it |
+|---|---|---|
+| Ask for the UTMs | `AD_LIST_FIELDS` in `api/campaigns/sync.mjs`, used by the ads list | Every pass (button, nightly, hourly). `Ad.creative` (an `AdCreative`) and `AdCreative.url_tags` (a string) are declared in Meta's v26.0 SDK, facebook-business 26.0.2 (`apiconfig.py` API_VERSION v26.0). One undeclared field would fail the whole list. |
+| Read the number | `mapAdNumber` (`src/ads/ad-number.mjs`, U14) | Leading digits of `utm_content` in `url_tags` → `utm`; else `Ad N` as a word in the name → `name`; else null. |
+| Write the number | `syncAdNumber` | Only when the row has no number, or a different number whose source is not `manual`. Same number → no write. No number found → no write. The UPDATE's WHERE repeats the manual rule. |
+| A refused write | `SAVEPOINT` / `ROLLBACK TO SAVEPOINT` | Any database error on that UPDATE. It is caught, rolled back to the savepoint, counted, and never thrown, so the campaign's other ads and days still commit. |
+| Counting | `stats.ad_number_map` = `{set, kept_manual, same, none, failed, failures}` | Per campaign, added only after that campaign commits (same rule as every other count). |
+| Visitors | `reresolveAdNumbers` (`src/ads/store.mjs`) | Unchanged: once per run, after all campaigns. It now also finds visitors whose ad got its number from this sync. |
+
+Proof: `src/http/campaigns-sync-paging.test.mjs` (fake Meta and fake
+transaction, runs on every push) and `src/http/ad-number-sync.pg.test.mjs`
+(real Postgres in CI: 91 utm, 92 name, live ads nothing, a refused write
+counted while the campaign commits, manual kept, loader kept on the same number,
+a visitor gets 91 after the sync).
+
+Gaps and things not drawn (findings, not reconciled):
+- **Default picked: the same number keeps its source.** The contract allows a
+  rewrite of any non-manual row; this writes nothing when the number already
+  matches, so a loaded ad stays `loader` instead of turning `utm` on its next
+  sync. A different number from Meta still overwrites `loader`, `utm` and `name`.
+- **Default picked: the sync never clears a number.** If Meta's record stops
+  naming a number, the stored one stays.
+- **"SLO Ad 7" names (from U14) are now live in the sync.** A Meta ad named
+  "SLO Ad 7 — …" with no number in its `url_tags` would be stored as 7 (source
+  `name`), though `marketing/ads/NAMING.md`'s SLO Ad 7 is Fundhub ad 90. No live
+  Meta ad is named that way today. A number a person types (link-asset, `manual`)
+  always wins.
+- **The counts are not on any screen.** `stats.ad_number_map`, like
+  `stats.ad_numbers`, is in what `syncPartnerConnections` returns, but not in the
+  Sync button's answer (`buildSyncResponse`) or the sweeper's run tally
+  (`src/workflows/meta-campaign-sync-sweeper.mjs`).
+- **Live ads map to nothing here, on purpose** (owner decision 2026-10-05: keep
+  `utm_content={{ad.name}}` and `utm_term={{adset.id}}`). Their visitors are
+  matched by 407 once a person numbers the ad.
+- `UNVERIFIED` live: the field was checked against Meta's SDK, not a live call.
+  The first real sync after ship is the confirmation.
