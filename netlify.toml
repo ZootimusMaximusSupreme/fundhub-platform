@@ -103,6 +103,10 @@
     # The flywheel stage files (avatar, ad research, owner notes). The offer
     # writer (/api/marketing/offer/generate) reads them as its default inputs;
     # without this line it finds no avatar on Netlify and refuses to guess.
+    # GET /api/marketing/today reads the same files at request time
+    # (src/marketing/flywheel-status.mjs). esbuild cannot see a file read, so
+    # without this line the Today tab says the flywheel is "waiting" on Netlify.
+    # (M10 and M12 both added this line; the release merge keeps one copy.)
     "marketing/flywheel/**",
     # src/finance/vendor/crs-engine.cjs is a one-line CommonJS shim:
     #   module.exports = require("../../../vendor/underwriteiq-full/…/engine.js")

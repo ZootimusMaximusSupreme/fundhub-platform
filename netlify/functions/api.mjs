@@ -139,6 +139,7 @@ import readCustomerInsights from "../../api/read/customer-insights.mjs";
 import readCsmQueue from "../../api/read/csm-queue.mjs";
 import customerInsightsWrite from "../../api/customer-insights.mjs";
 import marketingFlagsWrite from "../../api/marketing-flags.mjs";
+import marketingToday from "../../api/marketing/today.mjs";
 import bankingSyncAccounts from "../../api/banking/sync-accounts.mjs";
 import inquiries from "../../api/inquiries.mjs";
 import repairExceptions from "../../api/repair/exceptions.mjs";
@@ -647,6 +648,8 @@ export const ROUTES = {
   "read/csm-queue": readCsmQueue,
   "customer-insights": customerInsightsWrite,
   "marketing-flags": marketingFlagsWrite,
+  // Marketing Command Center, Today tab (owner/admin). Read only.
+  "marketing/today": marketingToday,
 
   // banking/sync-accounts is the FIRST WRITER `bank_accounts` has ever had —
   // until it, the only INSERT into that table in the whole repository was inside

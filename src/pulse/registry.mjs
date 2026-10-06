@@ -156,6 +156,7 @@ const API_KEYS = [
   "lenders",
   "marketing-flags",
   "marketing/offer/generate",
+  "marketing/today",
   "message-templates",
   "messages-outbound",
   "messages",
