@@ -19,6 +19,13 @@
 // scroll boxes, the chip on the row's first line at 390px, and .span-4
 // stacking at 960px.
 //
+// THE FRAME (U34). Today is now one tab module (public/app/marketing-cc-today.js)
+// inside the frame (marketing-command-center.js). Every Today test above runs
+// unchanged against it. The frame tests at the bottom prove the strip shows
+// only tabs that exist, Settings behind the gear top-right, hash routing
+// (#today, #settings, an unknown #ideas falls back to Today), Back, the
+// remembered tab, and the strip at 390px.
+//
 // EVIDENCE. Each scenario that matters to Chris screenshots the viewport and
 // records the live bounding box of the element under discussion into
 // shot-marks.json. _apply-marks.py (a copy of
@@ -32,6 +39,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { OWNER, CLOSER, json, wireApi, withSession, trackErrors, assertPageAlive } from "./harness.mjs";
+import { exampleResponse } from "../src/marketing/api-contract.mjs";
 
 const OUT_DIR = process.env.MCC_PROOF_OUT || process.env.M11_PROOF_OUT;
 const OUT = OUT_DIR ? path.resolve(OUT_DIR) : path.join(os.tmpdir(), "mcc-marketing-command-center");
@@ -356,7 +364,10 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
     { selector: "#mccAsOf", caption: "Numbers through Oct 4, saved 12:01 AM; ClickFunnels time" },
     { selector: "#copyCost", caption: "Write ad copy: time and cost, unknown until measured" },
     { selector: '#waitingList li[data-wait="videos"]', caption: "2 videos waiting since Sep 24" }
-  ]);
+    // The tab strip (U34) sits above the tiles, so the cost line under the
+    // button now ends just past 900px; the shot is taken 1000px tall. The
+    // fold check above (the button itself inside 900px) is unchanged.
+  ], { height: 1000 });
 
   await shot(page, "02-offer-and-market-1280.png", "Offer card and Offer and market at 1280", [
     { selector: "#offerCost", caption: "Write offer cost from the last measured run" },
@@ -830,4 +841,130 @@ test("the Command Center row is first in the Marketing group of the sidebar", as
   const rows = page.locator('[data-fh-section="marketing"] .navitem');
   await expect(rows.first()).toHaveAttribute("href", "marketing-command-center.html");
   await expect(rows.first()).toHaveText(/Command Center/);
+});
+
+/* ── the frame (U34): the tab strip, the gear, the address ────────────────── */
+
+/* Settings answers for the frame tests, from the U01 contract's own examples
+   (src/marketing/api-contract.mjs). marketing-cc-settings.spec.mjs covers the
+   Settings tab itself. */
+function withSettings(h) {
+  return {
+    ...h,
+    "/api/marketing/settings": async (route) => json(route, exampleResponse("GET marketing/settings")),
+    "/api/marketing/funnels": async (route) => json(route, exampleResponse("GET marketing/funnels")),
+    "/api/marketing/health": async (route) => json(route, exampleResponse("GET marketing/health"))
+  };
+}
+
+test("the frame: the strip shows only tabs that exist (Today); Settings sits behind the gear, top-right", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const errors = await open(page, withSettings(handlers()));
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await assertPageAlive(page, errors);
+  // One tab on the strip: Today, marked as the one shown, in words and a line.
+  await expect(page.locator("#mccTabs .tab")).toHaveCount(1);
+  await expect(page.locator("#mccTabs .tab")).toHaveText("Today");
+  await expect(page.locator("#mccTabs .tab")).toHaveAttribute("aria-current", "page");
+  const line = await page.locator("#mccTabs .tab.on").evaluate((el) => getComputedStyle(el).borderBottomWidth);
+  expect(line).toBe("2px");
+  // No tab without a module: nothing else is on the strip, and nothing says "soon".
+  await expect(page.locator("#mccTabs")).not.toContainText(/Ideas|Scripts|Shoot|Videos|Launch|Numbers|soon/i);
+  // The gear: top-right, with its word.
+  const gear = page.locator("#mccGear .gear");
+  await expect(gear).toHaveText(/Settings/);
+  const g = await gear.boundingBox();
+  const s = await page.locator("#mccTabs").boundingBox();
+  expect(g.x).toBeGreaterThan(s.x + s.width - 1);
+  expect(g.height).toBeGreaterThanOrEqual(44);
+  expect((await page.locator("#mccTabs .tab").boundingBox()).height).toBeGreaterThanOrEqual(44);
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page).toHaveTitle(/Command Center · Today$/);
+  await shot(page, "24-frame-strip-1280.png", "The frame: Today on the strip, Settings behind the gear", [
+    { selector: "#mccTabs .tab.on", caption: "Today: the only tab with a back end yet" },
+    { selector: "#mccGear .gear", caption: "Settings behind the gear, top-right" }
+  ]);
+});
+
+test("the frame: the gear opens Settings, Today comes back as it was, and Back works", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const counter = { today: 0 };
+  await open(page, withSettings(handlers({ counter })));
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await expect(page.locator("#mccStamp")).toBeVisible();
+
+  await page.locator("#mccGear .gear").click();
+  await expect(page).toHaveURL(/#settings$/);
+  await expect(page.locator("#tab-settings")).toBeVisible();
+  await expect(page.locator("#tab-today")).toBeHidden();
+  await expect(page.locator("#mccGear .gear")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#mccTabs .tab")).not.toHaveAttribute("aria-current", "page");
+  // Today's "Loaded" clock belongs to Today; it hides on Settings.
+  await expect(page.locator("#mccStamp")).toBeHidden();
+  await expect(page.locator("#setSwitch")).toContainText("Write scripts every week");
+  // Exactly one filled button on the Settings view too: Save.
+  await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
+  await expect(page.locator(".btn.primary:visible")).toHaveText("Save");
+
+  await page.locator("#mccTabs .tab", { hasText: "Today" }).click();
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page.locator("#tab-today")).toBeVisible();
+  await expect(page.locator("#tab-settings")).toBeHidden();
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await expect(page.locator("#mccStamp")).toHaveText("Loaded 12:00 PM");
+  expect(counter.today, "switching tabs does not read Today again").toBe(1);
+  await expect(page.locator(".btn.primary:visible")).toHaveCount(1);
+  await expect(page.locator(".btn.primary:visible")).toHaveText("Write ad copy");
+
+  await page.goBack();
+  await expect(page).toHaveURL(/#settings$/);
+  await expect(page.locator("#tab-settings")).toBeVisible();
+});
+
+test("the frame: a link to a tab with no module (#ideas) lands on Today and the address says so", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const errors = trackErrors(page);
+  await page.clock.install({ time: new Date(NOW) });
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, withSettings(handlers()));
+  await page.goto(PAGE + "#ideas");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await expect(page).toHaveURL(/#today$/);
+  await expect(page.locator("#mccTabs .tab")).toHaveCount(1);
+  await assertPageAlive(page, errors);
+});
+
+test("the frame: a buzz link straight to #settings opens Settings, and the last tab is remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const counter = { today: 0 };
+  const errors = trackErrors(page);
+  await page.clock.install({ time: new Date(NOW) });
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, withSettings(handlers({ counter })));
+  await page.goto(PAGE + "#settings");
+  await expect(page.locator("#setSwitch")).toBeVisible();
+  await expect(page.locator("#tab-today")).toHaveCount(0);
+  expect(counter.today, "Today is drawn only when it is opened").toBe(0);
+  // Open the page again with no tab in the link: the last tab comes back.
+  await page.goto(PAGE);
+  await expect(page).toHaveURL(/#settings$/);
+  await expect(page.locator("#setSwitch")).toBeVisible();
+  await assertPageAlive(page, errors);
+});
+
+test("the frame at 390: the gear on its own row, top-right; the strip under it; no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, withSettings(handlers()));
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(wide).toBeLessThanOrEqual(390);
+  const g = await page.locator("#mccGear .gear").boundingBox();
+  const s = await page.locator("#mccTabs").boundingBox();
+  expect(g.y + g.height).toBeLessThanOrEqual(s.y + 1);
+  expect(g.x + g.width).toBeGreaterThan(390 - 16 - 4);
+  expect(await innerScrollBoxes(page)).toEqual([]);
+  await shot(page, "25-frame-strip-390.png", "The frame at 390", [
+    { selector: "#mccGear .gear", caption: "Settings, top-right, 44px tall" },
+    { selector: "#mccTabs .tab.on", caption: "Today, the tab shown" }
+  ]);
 });

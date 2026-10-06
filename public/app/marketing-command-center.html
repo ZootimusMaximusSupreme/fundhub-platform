@@ -13,10 +13,15 @@
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
 <style>
-/* ══ MARKETING COMMAND CENTER — Today ════════════════════════════════════════
-   docs/specs/marketing-machine-2026-10-04.md §8.3 (the Today tab) and the
-   "smallest first slice" in docs/specs/marketing-dashboard-plan-2026-10-05.md,
-   made honest by slice 0 of docs/specs/command-center-design-2026-10-05.md.
+/* ══ MARKETING COMMAND CENTER — the frame, and Today ═════════════════════════
+   docs/specs/marketing-machine-2026-10-04.md §8.3 (the tabs) and
+   docs/specs/command-center-design-2026-10-05.md §3.0 (rules for every tab),
+   §3.1 (Today, made honest by slice 0) and §6 slices 0 to 2.
+   The frame (U34): a tab strip in work order, Settings behind the gear
+   top-right, one <section class="cc-panel"> per tab. Each tab's markup lives
+   in its own script (docs/specs/command-center-tabs.md); a tab with its own
+   look adds its own <style> through ctx.style, so tab units never edit this
+   block. The rules below are the frame's and Today's.
    docs/rules/UI-STANDARDS.md is law here. What that means on this screen:
      - Top-left answers the owner's first question, "is the machine healthy?":
        ad spend for the last 7 days beside the 7 days before it (§1, §10).
@@ -65,6 +70,28 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
 .topbar-right{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 16px;flex:0 0 auto;max-width:100%;margin-left:auto;color:var(--gray2)}
 
 .content{padding:24px;display:flex;flex-direction:column;gap:24px;flex:1}
+
+/* THE FRAME (U34; design §3.0). The strip is .tabs (on the brand's shadow
+   list, so it keeps its border and never writes a shadow). The tab being shown
+   says so twice: aria-current, and a solid ink line under its word — never
+   colour alone (§12.6). Every tab and the gear are 44px tall. At 480px and
+   below the gear sits top-right on its own row and the strip wraps 4 + 3; it
+   never scrolls sideways. */
+.cc-bar{display:flex;align-items:center;gap:16px}
+.tabs{display:flex;flex-wrap:wrap;gap:0 8px;flex:1 1 auto;min-width:0;background:#fff;border:1px solid var(--line);border-radius:10px;padding:0 8px}
+.tab{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;font-weight:600;color:var(--gray);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+.cc-gear{flex:0 0 auto;margin-left:auto}
+.gear{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink2);font-weight:600;text-decoration:none;white-space:nowrap}
+.gear:hover{border-color:var(--ink)}
+.gear.on{border-color:var(--ink);background:var(--soft,#F4F4F5)}
+.cc-panels,.cc-panel{display:flex;flex-direction:column;gap:24px;min-width:0}
+/* The toast: one short answer, pinned above data.js's status strip and the
+   phone's home bar (design §3.0). */
+.cc-toast{position:fixed;right:16px;left:auto;bottom:calc(var(--fh-statusbar,0px) + env(safe-area-inset-bottom,0px) + 16px);z-index:30;max-width:calc(100% - 32px);padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+.cc-toast.ok{background:color-mix(in srgb,var(--ok) 28%,#fff);color:#2C5138}
+.cc-toast.err{background:color-mix(in srgb,var(--alert) 28%,#fff);color:#6E2A22}
 .foot{border-top:1px solid var(--line);padding:16px 24px;display:flex;align-items:center;gap:8px;color:var(--gray2)}
 .spacer{flex:1}
 
@@ -180,6 +207,10 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
   .brand{min-height:0}
   .topbar-right{width:100%;gap:8px;flex-wrap:wrap;justify-content:flex-start}
   .btn.primary{width:100%}
+  .cc-bar{flex-wrap:wrap;gap:8px}
+  .cc-gear{order:-1}
+  .tabs{flex:1 1 100%;padding:0 4px;gap:0}
+  .tab{flex:0 0 25%;padding:8px}
 }
 </style>
 <script defer src="shell.js"></script>
@@ -265,100 +296,24 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
     </header>
 
     <div class="content" id="mcc-root">
-
-      <div class="banner err" id="mccBanner" role="alert"></div>
-
-      <!-- 1. IS THE MACHINE HEALTHY? Top-left, largest (UI-STANDARDS §1, §10). -->
-      <section class="grid" aria-label="This week at a glance">
-        <div class="card tile span-4" id="tileSpend7">
-          <span class="caption">Ad spend, all accounts, last 7 days</span>
-          <span class="skel big"></span><span class="skel"></span>
-        </div>
-        <div class="card tile span-4" id="tileSpend30">
-          <span class="caption">Ad spend, all accounts, last 30 days</span>
-          <span class="skel big"></span><span class="skel"></span>
-        </div>
-        <div class="card tile span-4" id="tileParts">
-          <span class="caption">What is turned on</span>
-          <span class="skel big"></span><span class="skel"></span>
-        </div>
-      </section>
-      <!-- The one as-of sentence: how fresh the numbers above are. -->
-      <p class="caption asof" id="mccAsOf" hidden></p>
-
-      <!-- 2. THE ONE JOB, and what waits on Chris. -->
-      <section class="grid">
-        <div class="card span-6" id="cardCopy">
-          <div class="card-hd"><h2>Write ad copy</h2></div>
-          <p class="setup caption" id="copySetup">Checking that the copy writer is ready…</p>
-          <form id="copyForm" novalidate>
-            <div class="field">
-              <label for="copyAngle">What is this ad about?</label>
-              <textarea id="copyAngle" rows="3" placeholder="For example: business owners who got turned down by their bank"></textarea>
-            </div>
-            <div class="field">
-              <label for="copyOffer">What are we selling?</label>
-              <select id="copyOffer">
-                <option value="funding" selected>Funding</option>
-                <option value="credit_cards">Credit cards</option>
-                <option value="credit_repair">Credit repair</option>
-              </select>
-            </div>
-            <div class="actions">
-              <button class="btn primary" type="submit" id="copyBtn" disabled><span class="spin" aria-hidden="true"></span><span class="lbl">Write ad copy</span></button>
-            </div>
-            <!-- What a run costs: the copy writer's last measured runs, or "unknown". -->
-            <p class="caption cost" id="copyCost">Checking what a run costs…</p>
-          </form>
-          <div class="say" id="copySay" role="status" aria-live="polite"></div>
-          <div id="copyResult"></div>
-        </div>
-
-        <div class="card span-6" id="cardWaiting">
-          <div class="card-hd"><h2>Waiting on you</h2><span class="caption faint" id="waitingCount"></span></div>
-          <div id="waitingList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
-        </div>
-      </section>
-
-      <!-- 3. The offer and the five flywheel steps. -->
-      <section class="grid">
-        <div class="card span-6" id="cardOffer">
-          <div class="card-hd"><h2>Offer</h2></div>
-          <div id="offerStatus"><span class="skel"></span></div>
-          <div class="actions offer-actions">
-            <button class="btn" type="button" id="offerBtn"><span class="spin" aria-hidden="true"></span><span class="lbl">Write offer</span></button>
-          </div>
-          <!-- Time and cost: the last measured offer run, or "unknown". -->
-          <p class="caption cost" id="offerCost">Checking what a run costs…</p>
-          <p class="honest" id="offerHonest" hidden></p>
-          <div class="say" id="offerSay" role="status" aria-live="polite"></div>
-          <div id="offerLatest" class="gap-top"><span class="skel"></span><span class="skel"></span></div>
-        </div>
-
-        <div class="card span-6" id="cardFlywheel">
-          <div class="card-hd"><h2>Offer and market</h2><span class="caption faint" id="flywheelCampaign"></span></div>
-          <div id="flywheelList"><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
-        </div>
-      </section>
-
-      <!-- 4. Health detail and the latest copy. -->
-      <section class="grid">
-        <div class="card span-6" id="cardHealth">
-          <div class="card-hd"><h2>What is turned on</h2></div>
-          <div id="healthList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
-        </div>
-
-        <div class="card span-6" id="cardLatest">
-          <div class="card-hd"><h2>Latest ad copy</h2><a class="caption" href="creative-factory.html">Open Creative Factory</a></div>
-          <div id="latestList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
-        </div>
-      </section>
-
+      <!-- THE FRAME (U34). The tab strip and the gear are painted by
+           marketing-command-center.js from the tabs that registered; a tab with
+           no script on this page never shows. Each tab draws into its own
+           <section class="cc-panel"> inside #mccPanels. -->
+      <div class="cc-bar">
+        <nav class="tabs" id="mccTabs" aria-label="Command Center tabs" hidden></nav>
+        <div class="cc-gear" id="mccGear"></div>
+      </div>
+      <div class="cc-panels" id="mccPanels"></div>
     </div>
 
-    <div class="foot caption"><span>Fundhub</span><span class="spacer"></span><span id="mccStamp" title="">Loading…</span></div>
+    <div class="foot caption"><span>Fundhub</span><span class="spacer"></span><span id="mccStamp" data-cc-tab="today" title="">Loading…</span></div>
   </div>
 </div>
+<div class="cc-toast" id="mccToast" role="status" aria-live="polite" hidden></div>
+<!-- The frame first, then one line per tab (docs/specs/command-center-tabs.md). -->
 <script defer src="marketing-command-center.js"></script>
+<script defer src="marketing-cc-today.js"></script>
+<script defer src="marketing-cc-settings.js"></script>
 </body>
 </html>
