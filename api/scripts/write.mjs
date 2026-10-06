@@ -13,12 +13,25 @@
 // whole spine reads as EMPTY rather than as broken. This is the way in.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// A REWRITE NEVER TOUCHES WHAT IT REPLACED
+// A REWRITE ARCHIVES WHAT IT REPLACED, AND NEVER OVERWRITES ITS WORDS
 //
-// Pass parent_script_id and this writes a NEW row at parent.version + 1 with
-// parent_script_id pointing back. It runs no UPDATE against the parent, ever —
-// comparing a rewrite to the thing it came from is the entire point of 377's
-// design, and an overwrite destroys that comparison silently.
+// Pass parent_script_id and this, in ONE transaction (spec 2026-10-04 §4 trap
+// 9, migration 413):
+//   1. locks the parent row and refuses with 409 `stale` when it is already
+//      archived — only the live version of a script can be rewritten, so two
+//      people rewriting the same version cannot both win;
+//   2. archives the parent (archived_at = now(); status 'superseded' when the
+//      machine wrote it). Its words, labels and number are left exactly as they
+//      were, so the rewrite can still be read beside the thing it came from;
+//   3. inserts the new version at parent.version + 1 with parent_script_id
+//      pointing back, the SAME root_script_id and the SAME ad_id. A locked or
+//      filmed parent's rewrite lands locked: editing a locked script keeps its
+//      number (spec §7.4), and its new words still have to be filmed.
+// If step 3 fails, step 2 rolls back with it. 413's indexes back this up in the
+// database: one live version per root, one row per (root, version).
+//
+// Before 413 this file never touched the parent at all, and two rewrites of one
+// version could both be version 2. That is over.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // LABELS ARE FREE TEXT AND THIS FILE HOLDS NO ALLOW-LIST
@@ -104,12 +117,36 @@ const bad = (res, error, message) => res.status(400).json({ ok: false, error, me
    The checks above call bad(); the checks inside the transaction cannot return a
    response from in there, so they throw one of these instead and the catch at
    the bottom unpacks it. Same three parts either way. */
-function fail(status, code, message) {
+function fail(status, code, message, extra = null) {
   const e = new Error(message);
   e.httpStatus = status;
   e.errorCode = code;
+  e.extra = extra;
   return e;
 }
+
+/* THE STALE ANSWER. Same shape the marketing routes use (spec §7.8):
+   { error: 'stale', current: { id, version, body, parts } }, where current is
+   the live version of the same script, or null when every version of it has
+   been retired. A screen can show "somebody saved a newer version" and offer
+   that one instead of losing the edit. */
+const STALE_MESSAGE =
+  "That version of the script has already been replaced. Rewrite the current version instead.";
+
+async function staleFor(tx, rootId) {
+  const current = rootId
+    ? (await tx.query(
+        `SELECT id, version, body, parts FROM ad_scripts
+          WHERE root_script_id = $1 AND archived_at IS NULL`,
+        [rootId]
+      )).rows[0] || null
+    : null;
+  return fail(409, "stale", STALE_MESSAGE, { current });
+}
+
+/* 413's two version indexes. A unique-violation on either one means another
+   save of the same script got there first — the same answer as stale. */
+const VERSION_INDEXES = new Set(["ad_scripts_one_live_per_root_uq", "ad_scripts_root_version_uq"]);
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
@@ -191,8 +228,13 @@ export default async function handler(req, res, deps = {}) {
       let parent = null;
 
       if (parentId) {
+        /* FOR UPDATE: a second rewrite of the same version waits here until the
+           first one commits, then reads the parent as archived and gets 409. */
         parent = (await tx.query(
-          `SELECT id, org_id, partner_id, version FROM ad_scripts WHERE id = $1`,
+          `SELECT id, org_id, partner_id, version, root_script_id, ad_id,
+                  status, source, archived_at
+             FROM ad_scripts WHERE id = $1
+              FOR UPDATE`,
           [parentId]
         )).rows[0];
         /* ONE CODE AND ONE SENTENCE FOR BOTH ANSWERS. "no such script" and "that
@@ -203,6 +245,11 @@ export default async function handler(req, res, deps = {}) {
         if (!parent || parent.org_id !== orgId) {
           throw fail(404, "parent_script_not_found",
             "The script being rewritten was not found.");
+        }
+        /* ONLY THE LIVE VERSION CAN BE REWRITTEN. An archived parent was already
+           replaced (or retired); writing beside it would fork the script. */
+        if (parent.archived_at) {
+          throw await staleFor(tx, parent.root_script_id);
         }
         /* A REWRITE STAYS WITH ITS PARENT. Moving it would strand the pair on
            opposite sides of a partner boundary, and 377's own move guard
@@ -246,23 +293,53 @@ export default async function handler(req, res, deps = {}) {
 
       /* version IS COMPUTED, NEVER SENT. A caller choosing its own version number
          is a caller that can write version 1 twice and make the history unreadable.
-         Two branches of a rewrite legitimately sharing version 2 is fine — 377's
-         comment on the column says as much — because id is the key, not version. */
+         Since 413 a version number is used once per script (root), and only the
+         live version can be rewritten, so parent.version + 1 is always free. */
       const version = parent ? Number(parent.version) + 1 : 1;
+
+      /* THE ARCHIVE, then the insert — in this order, in this transaction. The
+         old version has to stop being live before the new one can be, or 413's
+         one-live-per-root index and 393's one-live-per-number index refuse the
+         insert. `AND archived_at IS NULL` is the second lock on the stale case. */
+      if (parent) {
+        const archived = await tx.query(
+          `UPDATE ad_scripts
+              SET archived_at = now(),
+                  status = CASE WHEN source = 'machine' THEN 'superseded' ELSE status END
+            WHERE id = $1 AND archived_at IS NULL`,
+          [parent.id]
+        );
+        if (archived.rowCount !== 1) throw await staleFor(tx, parent.root_script_id);
+      }
+
+      /* A NEW SCRIPT sends no root, number or status: 413's trigger makes it its
+         own root and the defaults make it a draft written by chris. A REWRITE
+         carries the parent's root and number, and stays locked when the parent
+         was locked or filmed (its new words still have to be filmed). */
+      const carried = parent
+        ? {
+            root: parent.root_script_id,
+            adId: parent.ad_id,
+            status: parent.status === "locked" || parent.status === "filmed" ? "locked" : "draft"
+          }
+        : { root: null, adId: null, status: "draft" };
 
       const script = (await tx.query(
         `INSERT INTO ad_scripts
            (org_id, partner_id, parent_script_id, version,
             title, body, hook_text,
-            script_type, lane, angle_key, hook_key, offer_key)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::ad_lane,$10,$11,$12)
+            script_type, lane, angle_key, hook_key, offer_key,
+            root_script_id, ad_id, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::ad_lane,$10,$11,$12,$13,$14,$15)
          RETURNING id, org_id, partner_id, parent_script_id, version,
                    title, body, hook_text,
                    script_type, lane::text AS lane, angle_key, hook_key, offer_key,
+                   root_script_id, ad_id, status, source,
                    archived_at, created_at, updated_at`,
         [orgId, partnerId, parent ? parent.id : null, version,
          title, text, hookText,
-         labels.script_type, lane, labels.angle_key, labels.hook_key, labels.offer_key]
+         labels.script_type, lane, labels.angle_key, labels.hook_key, labels.offer_key,
+         carried.root, carried.adId, carried.status]
       )).rows[0];
 
       /* THE DICTIONARY LEARNS. DO UPDATE … WHERE name IS NULL fills a blank name
@@ -307,7 +384,15 @@ export default async function handler(req, res, deps = {}) {
     /* A refusal raised inside the transaction, unpacked into the same
        { error, message } shape every refusal above already uses. */
     if (err.errorCode) {
-      return res.status(err.httpStatus).json({ ok: false, error: err.errorCode, message: err.message });
+      return res.status(err.httpStatus).json({
+        ok: false, error: err.errorCode, message: err.message, ...(err.extra || {})
+      });
+    }
+    /* Another save of the same script won the race between our read and our
+       insert. Nothing was written (the transaction rolled back), so the answer
+       is the same stale answer; the screen re-reads the live version. */
+    if (err && err.code === "23505" && VERSION_INDEXES.has(err.constraint)) {
+      return res.status(409).json({ ok: false, error: "stale", message: STALE_MESSAGE, current: null });
     }
     if (dbDown(res, err)) return;
     return res.status(500).json({ ok: false, error: safeError(err) });
