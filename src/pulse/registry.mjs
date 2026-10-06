@@ -356,7 +356,16 @@ const API_KEYS = [
   "marketing/scripts/approve",
   "marketing/scripts/edit",
   "marketing/scripts/reject",
-  "marketing/scripts/order"
+  "marketing/scripts/order",
+  /* U26: the GETs answer 401 to an unsigned ping; the POST-only routes answer
+     405 to a GET before they read anything (isUp counts both as up). A ping
+     never writes, queues or spends. */
+  "marketing/ideas",
+  "marketing/rules",
+  "marketing/scripts/fix",
+  "marketing/batches",
+  "marketing/batches/write-now",
+  "marketing/jobs/retry"
 ];
 
 const DESK_FILES = [

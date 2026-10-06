@@ -341,3 +341,117 @@ script's id added.
 7. **The design** (`command-center-design-2026-10-05.md`) asks for `slot_reason`, `cost_usd`, a
    `batch` object, `outbox_id` and `voice_pairs_saved`. The contract's fixed shape 3 wins; edit
    also answers `voice_pairs` (a count) as an allowed extra key.
+
+## U26 Ideas, rules, Fix and Write now
+
+Generated from the code on 2026-10-06 (branch `mm-u26-ideas-rules-retry`): `api/marketing/ideas.mjs`,
+`api/marketing/rules.mjs`, `api/marketing/scripts/fix.mjs`, `api/marketing/batches.mjs`,
+`api/marketing/batches/write-now.mjs`, `src/marketing/ideas-store.mjs`, `src/marketing/rules-store.mjs`.
+Spec §7.8 (fix, ideas, batches, write-now, rules rows), §7.5 step 7, §8.1 tabs 4 and 5, §2 item 1.
+Every route: owner and admin only (requireAuth, then requireRole `ROLE_SETS.MARKETING`), the company
+from the session, every write in one `withRequest` staff transaction (a repeated request_id answers
+the first save and writes nothing), the worker woken after COMMIT.
+
+### An idea, from the box to a batch
+
+```mermaid
+flowchart TD
+  P["POST marketing/ideas<br/>raw_points, source chris (default) or suggestion,<br/>format?, funnel?, angle?, write_now?"] --> V{"points there, source not machine,<br/>format known, funnel of this company?"}
+  V -->|no| X["400 invalid, field named<br/>nothing saved"]
+  V -->|yes| T["one staff transaction"]
+  T --> I["ad_ideas row: status new, kind script,<br/>created_by = Chris"]
+  I --> F["repo_outbox replace row:<br/>marketing/ads/ideas/YYYY-MM-DD-id8.md<br/>(Arizona day, flat front matter, the points word for word)"]
+  F --> W{"write_now?"}
+  W -->|no| A["200 {idea}"]
+  W -->|yes| C{"costStatus: month or batch cap reached?"}
+  C -->|yes| N["200 {idea, note}<br/>idea kept, nothing queued"]
+  C -->|no| B["marketing_batches: on_command, planned, release_at now<br/>idea.batch_id = this batch<br/>job start_batch {batch_id, count 1, funnel_key, idea_ids}"]
+  B --> AB["200 {idea, batch_id, job_id}"]
+  A --> K["COMMIT, wake the worker"]
+  N --> K
+  AB --> K
+  K -.->|"the worker drains the outbox"| G[("repo: the idea's file")]
+  K -.->|"start_batch, plan unit U35"| U35["UNVERIFIED: start_batch has no handler yet<br/>the job waits in the queue"]
+```
+
+- Accepting a planner suggestion (spec §7.5 step 7) is the same POST with `source: 'suggestion'`
+  and the suggestion's `angle_key`.
+- `GET marketing/ideas?status=` lists the company's ideas, newest first (at most 200); `status`
+  filters to new, writing, written, failed or dropped.
+
+### Write now
+
+```mermaid
+flowchart TD
+  P["POST marketing/batches/write-now<br/>count?, funnel_key?, idea_ids?"] --> V{"count 1-50, funnel of this company,<br/>ideas of this company?"}
+  V -->|no| X["400 invalid, field named"]
+  V -->|yes| S["settings (made with the defaults on first read)<br/>enabled is NOT read: Write now works with the schedule off"]
+  S --> C{"costStatus: month cap, or this new batch's cap, reached?"}
+  C -->|yes| R["400 cap_reached, plain sentence<br/>rolled back, nothing queued"]
+  C -->|no| B["marketing_batches: on_command, planned, release_at now,<br/>week_key = ISO week in the settings time zone<br/>named ideas with no batch get this batch"]
+  B --> J["job start_batch {batch_id, count (default scripts_per_day), funnel_key, idea_ids}"]
+  J --> K["202 {queued, batch_id, job_id}; wake the worker"]
+  H["GET marketing/batches"] --> L["newest 50 batches with counts {total, ready, flagged, failed}"]
+  H --> RD{"JOB_KINDS has start_batch?"}
+  RD -->|no| F["write_now_ready false: screens hide Write now"]
+  RD -->|yes| TT["write_now_ready true"]
+```
+
+### Fix a script
+
+```mermaid
+flowchart TD
+  P["POST marketing/scripts/fix<br/>id, version, note, make_rule"] --> V{"id, version, note (up to 4,000 characters),<br/>make_rule true or false?"}
+  V -->|no| X["400 invalid, field named"]
+  V -->|yes| T["one staff transaction"]
+  T --> S{"script with that id in this company?"}
+  S -->|no| NF["404 not_found"]
+  S -->|yes| L{"it is the live version of its root,<br/>and version matches?"}
+  L -->|no| ST["409 stale, current = live {version, body, parts}<br/>nothing queued"]
+  L -->|yes| J["job fix_script {script_id, version, note}<br/>(the note exactly as typed)"]
+  J --> M{"make_rule?"}
+  M -->|yes| R["repo_outbox edit row: part0_add_rule, the note on one line<br/>(at most 1,000 characters)"]
+  M -->|no| OK
+  R --> OK["202 {queued, job_id}; wake the worker"]
+  OK -.->|"fix_script, plan unit U24"| W["UNVERIFIED: fix_script has no handler yet<br/>the writer saves the new version when it lands"]
+```
+
+### Rules (Part 0 and banned phrases)
+
+```mermaid
+flowchart TD
+  G["GET marketing/rules"] --> TK{"GITHUB_REPO_TOKEN set and unmasked?"}
+  TK -->|yes| GH["getRef: main's commit, then RULES.md and banned-live.json<br/>at that one commit (8 s deadline)"]
+  GH -->|"answered"| P0["source github, rules_sha = that commit"]
+  GH -->|"refused, missing or late"| BU
+  TK -->|no| BU["the copy built into the site<br/>source bundle, rules_sha = COMMIT_REF or null"]
+  P0 --> OUT["part0 [{n, text}] (readPart0), banned [phrases],<br/>recent: the company's last 20 rule changes from repo_outbox"]
+  BU --> OUT
+  BU -->|"no copy either"| NA["503 rules_unavailable, plain sentence"]
+  PO["POST marketing/rules<br/>action add | edit | ban, n?, text"] --> V{"action known, text there and short enough,<br/>edit names a rule Part 0 has<br/>(or one a waiting add will make)?"}
+  V -->|no| X["400 invalid, field named"]
+  V -->|yes| E["repo_outbox edit row in one staff transaction:<br/>add = part0_add_rule, edit = part0_edit_rule, ban = ban_phrase"]
+  E --> OK["202 {queued, op_id}; wake the worker"]
+  OK -.-> D["the outbox re-applies the op to the newest file and commits"]
+  D -.-> RS["recent: waiting → committed (commit sha) or failed (reason on the row, tried again)"]
+```
+
+- `recent` state: `waiting` = not committed yet; `committed` = on main; `failed` = the last try was
+  refused (the reason is on the outbox row and shows on the health card); the outbox keeps trying.
+- A bundled copy can be older than main: outbox commits carry `[skip ci]` and do not rebuild the
+  site. The answer says `source: 'bundle'` so the screen can say so.
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **No intended journey on main.** `docs/journeys/marketing-machine-intended.md` is not on any
+  branch; this section follows spec §1 and §7.8 as the yardstick (plan note).
+- **The contract's example `angle_key: "two-files"`** has a dash. The database (414
+  `ad_ideas_angle_ck`) and `angles.json` keys use underscores only, so the route refuses a dash.
+- **Ideas held by a batch.** Write now stamps `ad_ideas.batch_id` on the ideas it names (only those
+  with no batch yet), so the weekly planner does not write the same idea twice. The spec names the
+  column, not this use.
+- **`partner_id` on ad_ideas stays null.** The spec lists the column; nothing says which partner
+  an idea from Chris belongs to.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
+  `src/http/marketing-ideas.pg.test.mjs`, `marketing-batches.pg.test.mjs` and
+  `marketing-rules.pg.test.mjs` in GitHub CI.
