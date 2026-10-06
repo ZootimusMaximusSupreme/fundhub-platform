@@ -31,6 +31,36 @@ export const TRANSMITS = true;
 
 const DEFAULT_BASE_URL = "https://api.resend.com";
 
+/* ADDRESSES RESEND WILL NEVER TAKE.
+
+   example.com, example.net, example.org and every name under .test, .example,
+   .invalid and .localhost are reserved for examples and testing (RFC 2606,
+   RFC 6761). No mailbox can exist there, and Resend refuses them on sight:
+   HTTP 422 validation_error, "use our testing email address instead of domains
+   like `example.com`". Measured 2026-10-01: 6 welcome and 5 finish-application
+   emails from live test walks of the apply form got exactly that answer and
+   were recorded as failed mail, which read as the welcome email being broken.
+
+   Pure — no network, no database. The dispatcher asks before it sends, so a
+   test address is held for what it is instead of handed over and logged as a
+   failed delivery. Returns a plain reason naming the domain (never the whole
+   address), or null when the address is fine to try. */
+const RESERVED_DOMAINS = new Set(["example.com", "example.net", "example.org"]);
+const RESERVED_TLDS = new Set(["test", "example", "invalid", "localhost"]);
+
+export function refusedAddress(to) {
+  const addr = String(to || "").trim().toLowerCase();
+  const at = addr.lastIndexOf("@");
+  if (at < 0) return null;
+  const domain = addr.slice(at + 1).replace(/\.+$/, "");
+  if (!domain) return null;
+  const labels = domain.split(".");
+  if (RESERVED_TLDS.has(labels[labels.length - 1]) || RESERVED_DOMAINS.has(labels.slice(-2).join("."))) {
+    return `test address: ${domain} is reserved for testing and can never receive mail, so it was not sent`;
+  }
+  return null;
+}
+
 function asBase64(content, encoding) {
   if (Buffer.isBuffer(content)) return content.toString("base64");
   const raw = String(content ?? "");

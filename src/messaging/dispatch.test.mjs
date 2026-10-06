@@ -691,3 +691,53 @@ test("dispatch: the placeholder guard does not block real Spanish or Portuguese 
   assert.equal(isPlaceholderCopy("Lorem ipsum dolor sit amet"), true);
   assert.equal(isPlaceholderCopy("LOREM   IPSUM"), true, "case and spacing do not rescue it");
 });
+
+// ---------------------------------------------------------------------------
+// TEST ADDRESSES — MEASURED 2026-10-01 (M7, perfect-machine-2026-10-05)
+//
+// Live test walks of the apply form used @example.com addresses. Each one
+// queued a real welcome email and a real finish-your-application email, the
+// dispatcher handed them to Resend, Resend answered HTTP 422 ("use our testing
+// email address instead of domains like `example.com`"), and 6 welcome + 5
+// finish-application rows were recorded as FAILED mail. No real person was
+// involved; the report read as "the welcome email is broken".
+//
+// An address the provider refuses on sight must be held as a test address,
+// not handed over and recorded as a failed delivery.
+// ---------------------------------------------------------------------------
+
+const RESEND_ENV = {
+  ...ENV,
+  RESEND_API_KEY: "re_test_0123456789abcdef",
+  RESEND_FROM: "Fundhub <no-reply@fundhub.ai>"
+};
+const RESEND_ROUTING = { email: { provider: "resend", enabled: true } };
+
+describe("an address the email provider refuses on sight", () => {
+  test("an @example.com welcome email never reaches Resend and is not recorded as failed", async () => {
+    const f = spy();
+    const db = fakeDb({ routing: RESEND_ROUTING });
+    const res = await dispatchOne(db,
+      claimed({ template_key: "EMAIL-S00-WELCOME", to_address: "cfextract+walk@example.com" }),
+      { fetchImpl: f, env: RESEND_ENV, now: MIDDAY });
+
+    assert.strictEqual(f.calls.length, 0, "A TEST ADDRESS WAS HANDED TO RESEND");
+    assert.strictEqual(res.outcome, OUTCOME.TEST_ADDRESS);
+    const last = db.updates[db.updates.length - 1];
+    assert.match(last.sql, /SET status = \$2/);
+    assert.strictEqual(last.params[1], "blocked", "a test address is held, not a failed email");
+    assert.match(String(last.params[3]), /example\.com/, "the reason names the test domain");
+    assert.ok(!String(last.params[3]).includes("cfextract"), "the reason must not carry the address");
+  });
+
+  test("a real address through Resend still goes out", async () => {
+    const f = spy();
+    const db = fakeDb({ routing: RESEND_ROUTING });
+    const res = await dispatchOne(db,
+      claimed({ template_key: "EMAIL-S00-WELCOME", to_address: "someone@gmail.com" }),
+      { fetchImpl: f, env: RESEND_ENV, now: MIDDAY });
+
+    assert.strictEqual(res.outcome, OUTCOME.SENT);
+    assert.strictEqual(f.calls.length, 1);
+  });
+});

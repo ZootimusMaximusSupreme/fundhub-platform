@@ -738,3 +738,31 @@ describe("postJson", () => {
     assert.strictEqual(res.ok, false);
   });
 });
+
+/* Resend refuses the reserved test domains with HTTP 422 (measured 2026-10-01).
+   refusedAddress is the pure check the dispatcher asks before it sends. */
+describe("resend.refusedAddress", () => {
+  test("refuses the reserved test domains, any case, any subdomain", () => {
+    for (const to of [
+      "cfextract+walk@example.com", "a@EXAMPLE.ORG", "a@example.net", "a@mail.example.com",
+      "a@fundhub.test", "a@x.example", "a@nowhere.invalid", "a@localhost", " a@example.com. "
+    ]) {
+      assert.ok(resend.refusedAddress(to), `${to} should be refused`);
+    }
+  });
+
+  test("lets real and look-alike domains through", () => {
+    for (const to of [
+      "someone@gmail.com", "e2e+prove@fundhub.ai", "a@example.co", "a@myexample.com",
+      "a@example.com.au", "a@test.com", "a@testing.dev", "", null, "no-at-sign"
+    ]) {
+      assert.strictEqual(resend.refusedAddress(to), null, `${to} should not be refused`);
+    }
+  });
+
+  test("the reason names the domain and never the whole address", () => {
+    const why = resend.refusedAddress("cfextract+walk@example.com");
+    assert.match(why, /example\.com/);
+    assert.ok(!why.includes("cfextract"));
+  });
+});
