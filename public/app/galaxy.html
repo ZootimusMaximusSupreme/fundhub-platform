@@ -363,7 +363,6 @@
     <i><span class="sw a"></span>behind</i>
     <i><span class="sw r"></span>blocked</i>
     <i><span class="sw line"></span>live handoff</i>
-    <i>flare = money landing</i>
     <i>click a cluster to zoom in · a worker for their day · empty space to pull back</i>
   </div>
 
@@ -617,38 +616,21 @@ function evMove(){
   var i = (Math.random()*RAILS.length)|0;
   if(RAILS[i].quiet && Math.random()<0.88) i = (Math.random()*(RAILS.length-1))|0;
   var r = RAILS[i];
+  /* NO REAL NAME ON A RANDOM STAGE, AND NO BUMP TO THE REAL DEPOSITS COUNT
+     (walkthrough-4 defect 4, 2026-09-06). The pulse is animation: the stage is
+     a dice roll, so it carries no client's name, and it never adds to the
+     "Deposits" figure the server sent (src/galaxy/company-activity.mjs). */
   pulses.push({rail:i, t:0, dur:3.6+Math.random()*1.4,
                u0:0.05+Math.random()*0.28, span:0.34+Math.random()*0.22,
-               label: pick(CLIENTS)+'  →  '+pick(r.stages)});
-  bumpKPI('move', 1, false);
+               label: pick(r.stages)});
 }
 
-/* -- money lands: the loudest thing on this screen -- */
-function evMoney(){
-  if(flares.length>=2 || !NODES.length) return;
-  var actives = NODES.filter(function(n){ return n.state==='active'; });
-  var n = pick(actives.length ? actives : NODES);
-  if(!n) return;
-  var roll = Math.random();
-  var amt, kid, kind, color;
-  if(roll < 0.55){
-    amt = 3000 + (Math.random()<0.5?300:0);
-    kid='cash'; kind='Deposit paid'; color=C.green;
-  } else {
-    amt = 8500 + Math.round(Math.random()*7)*2500;
-    kid='fund'; kind='Round funded'; color=C.gold;
-  }
-  var k = KPI[kid];
-  if(!k) return;
-  flares.push({n:n, k:k, amt:amt, kind:kind, color:color, t:0, dur:2.9, delivered:false, big: amt>=12000});
-  blooms.push({x:n.x, y:n.y, t:0, dur:1.5, color:color, big: amt>=12000});
-  n.flash = 1; n.out += (kid==='fund'?3:1); sizeNode(n);
-  nodeSay(n, kind+' — $'+amt.toLocaleString('en-US'));
-  for(var i=0;i<18;i++){
-    motes.push({x:n.x, y:n.y, a:Math.random()*TAU, sp:0.6+Math.random()*1.9,
-                t:0, dur:0.8+Math.random()*0.8, color:color, r:0.7+Math.random()*1.4});
-  }
-}
+/* evMoney() IS GONE (walkthrough-4 defect 4). It rolled dice for "+$18,500
+   ROUND FUNDED" / "Deposit paid" every 10-25 seconds, flew the figure off a
+   real staff member, wrote it into their timeline and added it to the real
+   Cash collected / Funded today tiles — while the pill said LIVE. The owner
+   ruled invented money off the canvas on 2026-08-19 (T10-02, partner-galaxy
+   .html); this screen had kept the same dice. The sky and the motion stay. */
 
 /* -- the soft numbers drift as calls resolve -- */
 function evRate(){
@@ -681,7 +663,6 @@ var SCHED = NODES.length ? [
   {fn:evActivity, lo:3.2, hi:7.0,  next:1.2},
   {fn:evHandoff,  lo:4.2, hi:9.0,  next:0.9},
   {fn:evMove,     lo:2.6, hi:5.4,  next:0.4},
-  {fn:evMoney,    lo:13,  hi:25,   next:3.4},
   {fn:evRate,     lo:16,  hi:34,   next:7.0}
 ] : [];
 var histT = 0;
@@ -1796,8 +1777,7 @@ function applyLiveFeed(data){
   SCHED.push(
     {fn:evActivity, lo:2.4, hi:5.5, next:0.6},
     {fn:evHandoff,  lo:3.8, hi:8.0, next:1.1},
-    {fn:evMove,     lo:2.4, hi:5.0, next:0.5},
-    {fn:evMoney,    lo:10,  hi:22,  next:2.8}
+    {fn:evMove,     lo:2.4, hi:5.0, next:0.5}
   );
 
   var pill = document.getElementById('livePill');
