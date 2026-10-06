@@ -114,7 +114,11 @@
     #
     # Same class as the two entries in external_node_modules below and as
     # scripts/black-reports/** above: a runtime path esbuild cannot see.
-    "vendor/underwriteiq-full/**"
+    "vendor/underwriteiq-full/**",
+    # GET /api/marketing/today reads the flywheel stage files at request time
+    # (src/marketing/flywheel-status.mjs). esbuild cannot see a file read, so
+    # without this line the Today tab says the flywheel is "waiting" on Netlify.
+    "marketing/flywheel/**"
   ]
   # letter-generator.js require()s this at load time. esbuild leaves it
   # external, which 502s the whole /api/* function (login included).

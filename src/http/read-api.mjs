@@ -214,7 +214,13 @@ export const ROLE_SETS = {
      `closer` because a closer enrolls a client from their own screen and never
      needs to read the queue back. Widen this only by naming a role that works
      one of these two desks. */
-  SPECIALIST_DESK: new Set(["owner", "admin", "inquiry_specialist", "funding_advisor"])
+  SPECIALIST_DESK: new Set(["owner", "admin", "inquiry_specialist", "funding_advisor"]),
+  /* The Marketing Command Center and every api/marketing/* read behind it:
+     ad spend, unreleased ad copy and the offer work. Owner and admin, the
+     same people the Marketing menu shows to (public/app/shell.js
+     OWNER_ADMIN_ONLY). Named in docs/specs/marketing-machine-2026-10-04.md §4
+     trap 2. Widen it by naming a role, never by reaching for STAFF. */
+  MARKETING: new Set(["owner", "admin"])
 };
 
 export function allowsRole(roleSet, role) {

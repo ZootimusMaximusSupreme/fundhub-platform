@@ -72,6 +72,7 @@ Endpoints name a set like `ROLE_SETS.FINANCE`. Those names mean:
 | `COMPLIANCE` | owner, admin |
 | `LENDERS` | owner, admin, funding_advisor |
 | `SPECIALIST_DESK` | owner, admin, inquiry_specialist, funding_advisor |
+| `MARKETING` | owner, admin |
 
 > **There is no automatic super-role on the read path.** An owner reaches these routes
 > only because `owner` is written into each set by hand. Remove it from one and the owner
