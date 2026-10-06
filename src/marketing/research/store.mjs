@@ -40,6 +40,22 @@ export function researchNotReady(err) {
   return false;
 }
 
+/**
+ * A refusal decided inside a write's transaction (a cap reached, no such campaign). Thrown,
+ * never returned, so withRequest rolls back and never saves it as the request's answer:
+ * the same request_id can be sent again once the reason is fixed (API doc §2: "Only success
+ * answers are saved").
+ */
+export class Refusal extends Error {
+  /** @param {number} status @param {Record<string, any>} body */
+  constructor(status, body) {
+    super(String(body && body.message || "refused"));
+    this.name = "Refusal";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 /** A 400 with error 'bad_question' (design: "400 bad_question (empty question or missing cap)"). */
 export class BadQuestionError extends Error {
   /** @param {string} field @param {string} message */

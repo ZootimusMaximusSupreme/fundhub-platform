@@ -7,7 +7,7 @@
 //
 //   POST {id, note, request_id} → 202 {ok, started, already_running, job, poll}
 //     400 invalid (bad id, empty note, run still going) · 404 not this company's run
-//     409 cap_hit (the month cap is used) · 503 no_model | not_ready
+//     400 cap_reached (the month cap is used) · 503 no_model | not_ready
 //
 // One research run in flight per company: when one is already running, that run comes back
 // with already_running true and nothing new starts.
@@ -20,7 +20,7 @@ import { withRequest, readBody, checkRequestId, sendKnownError, hasCompany, Inva
 import { getOrCreateSettings } from "../../../src/marketing/settings-store.mjs";
 import { monthUsedUsd } from "../../../src/marketing/research/usage.mjs";
 import {
-  tweakResearch, researchJobView, researchNotReady, hasModelKey, monthState, monthCapSentence, NO_MODEL_SENTENCE
+  tweakResearch, researchJobView, researchNotReady, hasModelKey, monthState, monthCapSentence, NO_MODEL_SENTENCE, Refusal
 } from "../../../src/marketing/research/store.mjs";
 import { wakeWorker } from "../../../src/marketing/wake.mjs";
 
@@ -50,13 +50,14 @@ export default async function handler(req, res, deps = {}) {
     const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, async (tx) => {
       const settings = await getOrCreateSettings(tx, orgId);
       const m = monthState(settings, await monthUsedUsd(tx, orgId));
-      if (m.capped) return { status: 409, body: { error: "cap_hit", message: monthCapSentence(m.month_cap_usd) } };
+      if (m.capped) throw new Refusal(400, { error: "cap_reached", message: monthCapSentence(m.month_cap_usd) });
       const { job, already_running } = await tweakResearch(tx, { orgId, id: String(body.id), note: body.note, staffId: staff.id ?? null });
-      return { status: 202, body: { ok: true, started: !already_running, already_running, job: researchJobView(job), poll: `marketing/research?id=${job.id}` } };
+      return { status: 202, body: { ok: true, queued: true, started: !already_running, already_running, job: researchJobView(job), poll: `marketing/research?id=${job.id}` } };
     });
     if (answer.status === 202 && answer.body.started) await (deps.wake ?? wakeWorker)(env).catch(() => null);
     return res.status(answer.status).json(answer.body);
   } catch (err) {
+    if (err instanceof Refusal) return res.status(err.status).json(err.body);
     if (sendKnownError(res, err)) return;
     if (researchNotReady(err)) {
       return res.status(503).json({ error: "not_ready", message: "Research is built, but its database change is not live yet. It turns on with the next ship." });

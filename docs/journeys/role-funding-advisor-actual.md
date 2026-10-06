@@ -45,7 +45,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 93 routes]
+    WHO -->|Yes| CANT[Blocked — 98 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 2 blocked]
@@ -58,7 +58,7 @@ flowchart TD
     CANT --> B_finance[Finance — 5 blocked]
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
-    CANT --> B_marketing[marketing — 5 blocked]
+    CANT --> B_marketing[marketing — 10 blocked]
     CANT --> B_ops[ops — 1 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -75,7 +75,7 @@ flowchart TD
 
 ## What they can reach
 
-**168 of 261 routes.**
+**168 of 266 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -257,7 +257,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**93 of 261 routes.**
+**98 of 266 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -304,9 +304,14 @@ flowchart TD
 | `/api/journeys/ask` | POST | owner, admin |
 | `/api/journeys/run` | POST | owner, admin, sales_manager |
 | `/api/marketing-flags` | POST | owner, admin, sales_manager |
+| `/api/marketing/flywheel/run` | POST | owner, admin |
 | `/api/marketing/funnels` | GET, POST | owner, admin |
 | `/api/marketing/health` | GET | owner, admin |
 | `/api/marketing/offer/generate` | GET, POST | owner, admin |
+| `/api/marketing/research` | GET, POST | owner, admin |
+| `/api/marketing/research/approve` | POST | owner, admin |
+| `/api/marketing/research/brain` | POST | owner, admin |
+| `/api/marketing/research/tweak` | POST | owner, admin |
 | `/api/marketing/settings` | GET, POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
 | `/api/ops/hire-closer` | POST | owner, admin |

@@ -8,7 +8,8 @@
 //
 //   POST {id, request_id} → 200 {ok, brain_file_id, chunks, unchanged}
 //     400 invalid (bad id, or the run is not finished) · 404 not this company's run
-//     409 {error:'brain_unavailable', message}  the brain could not take the page
+//     503 {error:'brain_unavailable', message}  the brain could not take the page (design §3.2 wrote
+//         409; the contract keeps 409 for 'stale' only — recorded as a gap in the API doc §8)
 //
 // Reuses src/company-brain/ingest-generated.mjs upsertGeneratedDocument (source type
 // "deep-research", key = the run's id, access tier owner). The same report saved twice is
@@ -72,7 +73,7 @@ export default async function handler(req, res, deps = {}) {
       env
     });
     if (!out || !out.ok) {
-      return res.status(409).json({ error: "brain_unavailable", message: brainSentence(out && out.reason) });
+      return res.status(503).json({ error: "brain_unavailable", message: brainSentence(out && out.reason) });
     }
     return res.status(200).json({ ok: true, brain_file_id: out.fileId, chunks: out.chunkCount || 0, unchanged: out.skipped === true });
   } catch (err) {

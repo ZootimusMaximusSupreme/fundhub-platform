@@ -219,7 +219,8 @@ describe("the global rules hold", () => {
     for (const key of KEYS) {
       const c = CONTRACT[key];
       assert.match(c.gate, /ROLE_SETS\.MARKETING/, key);
-      assert.match(c.owner, /^(U\d\d|deferred)$/, key);
+      // U = the plan's units; X = the extras units (ops/workflows/marketing-machine-2026-10-extras.json).
+      assert.match(c.owner, /^(U\d\d|X\d+|deferred)$/, key);
       assert.equal(key, c.path === "campaigns/write" ? `${c.method} ${c.path}#resume_ad` : `${c.method} ${c.path}`);
       if (c.path !== "campaigns/write") assert.match(c.path, /^marketing\//, key);
     }

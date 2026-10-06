@@ -93,6 +93,11 @@ const ANSWERED = "2026-10-12T15:04:05.000Z"; // when an answer was built
 const RELEASE = "2026-10-12T14:00:00.000Z"; // Monday 7:00 am Arizona
 const SHA_RULES = "9c1d4e2f6a8b0c3d5e7f9a1b2c4d6e8f0a1b3c5d";
 const SHA_COMMIT = "4f2a9c1e7b3d5a8c0e6f1b2d3c4a5e6f7a8b9c0d";
+// X2 (the research buttons, design slice 10)
+const RESEARCH_1 = "00000000-0000-4000-8000-000000000d01";
+const RESEARCH_2 = "00000000-0000-4000-8000-000000000d02";
+const MARKET_RUN_1 = "00000000-0000-4000-8000-000000000d03";
+const BRAIN_FILE_1 = "00000000-0000-4000-8000-000000000d04";
 
 /* ------------------------------------------------------------------------ */
 /* Key lists for the shared objects                                          */
@@ -588,6 +593,75 @@ export const RATE_KEYS = Object.freeze([
 
 const GATE = "ROLE_SETS.MARKETING (owner, admin)";
 const GATE_SWITCH = "ROLE_SETS.MARKETING (owner, admin), then staff id in MARKETING_AD_SWITCH_STAFF_IDS";
+
+/* X2: one research run as the research routes answer it (src/marketing/research/store.mjs
+   researchJobView), and one market research run (marketRunView). */
+const RESEARCH_JOB_KEYS = [
+  "id", "status", "question", "depth", "step_word", "step_n", "steps_total",
+  "progress", "progress.round", "progress.findings", "progress.searches_used",
+  "progress.cost_usd_so_far", "progress.started_at", "progress.updated_at",
+  "error", "resumable", "approved", "created_at", "finished_at"
+];
+const MARKET_RUN_KEYS = [
+  "job_id", "status", "campaign", "step", "step_n", "steps_total", "step_word", "round",
+  "counts_so_far", "counts_so_far.findings", "searches_so_far", "fetches_so_far",
+  "cost_so_far_usd", "shrunk[]", "resumable", "started_at", "finished_at", "error"
+];
+const RESEARCH_RUNNING = {
+  id: RESEARCH_1,
+  status: "running",
+  question: "Which funding broker programs sell best, and at what price?",
+  depth: "quick",
+  sources: { web: true, vault: true, own_files: false },
+  max_cost_usd: 5,
+  focus: null,
+  parent_id: null,
+  step_word: "Running: sweeping round 1 of up to 1 · 23 findings · $1.12 so far",
+  step: "sweep",
+  step_n: 3,
+  steps_total: 8,
+  progress: {
+    round: 0, findings: 23, searches_used: 31, cost_usd_so_far: 1.12, shrunk: [],
+    started_at: "2026-10-12T15:00:00.000Z", updated_at: "2026-10-12T15:03:10.000Z"
+  },
+  error: null,
+  resumable: false,
+  approved: false,
+  created_at: "2026-10-12T14:59:58.000Z",
+  finished_at: null
+};
+const RESEARCH_DONE = {
+  ...RESEARCH_RUNNING,
+  id: RESEARCH_2,
+  status: "done",
+  step_word: "Done, 4 of 5 key claims held up",
+  step: "done",
+  step_n: 8,
+  progress: { ...RESEARCH_RUNNING.progress, round: 1, findings: 41, searches_used: 52, cost_usd_so_far: 2.37, updated_at: "2026-10-12T15:14:00.000Z" },
+  finished_at: "2026-10-12T15:14:01.000Z"
+};
+const MARKET_RUN_QUEUED = {
+  job_id: MARKET_RUN_1,
+  status: "queued",
+  campaign: "partner",
+  campaign_words: "Partner offer",
+  step: null,
+  step_n: null,
+  steps_total: 5,
+  step_word: "Waiting to start. It runs in the background.",
+  round: 0,
+  counts_so_far: { findings: 0, checked: 0, competitors: 0 },
+  searches_so_far: 0,
+  fetches_so_far: 0,
+  cost_so_far_usd: 0,
+  shrunk: [],
+  resumable: false,
+  stopped: null,
+  board: null,
+  started_at: null,
+  finished_at: null,
+  error: null
+};
 
 /* ------------------------------------------------------------------------ */
 /* The routes                                                               */
@@ -1720,6 +1794,181 @@ export const CONTRACT = deepFreeze({
           change: { ...CHANGE_REQUESTED, draft_url: "https://claude.ai/artifact/example", status: "pushing" },
           updated_at: "2026-10-13T16:00:00.000Z"
         }
+      }
+    }
+  },
+
+  /* ---------------- X2: the research buttons (design slice 10, J20 and J2) ---------------- */
+
+  "POST marketing/research": {
+    owner: "X2",
+    spec: "design §2 J20, §3.2 item 5, §6 slice 10",
+    method: "POST",
+    path: "marketing/research",
+    gate: GATE,
+    success: 202,
+    guard: null,
+    requestKeys: ["request_id", "question", "depth?", "sources?", "belief?", "max_cost_usd?"],
+    responseKeys: ["ok", "queued", "started", "already_running", "job", ...under("job.", RESEARCH_JOB_KEYS), "poll"],
+    errors: [
+      { status: 400, error: "bad_question", field: "question", when: "the question is empty", message: "Type the question first." },
+      { status: 400, error: "bad_question", field: "sources", when: "neither live web pages nor the Hormozi vault is ticked" },
+      { status: 400, error: "bad_question", field: "max_cost_usd", when: "no stop amount was sent and Settings has none, or it is under $1", message: "Type a stop amount first." },
+      { status: 400, error: "invalid", field: "depth", when: "depth is not quick or deep" },
+      { status: 400, error: "cap_reached", when: "this month's model spend already reached the month cap and research shares it" },
+      { status: 503, error: "no_model", when: "no usable Anthropic key is set on the site", message: "No Anthropic key is set on the site. An agent must set it." },
+      { status: 503, error: "not_ready", when: "migration 429 is not live yet" }
+    ],
+    example: {
+      request: {
+        request_id: REQ("101"),
+        question: "Which funding broker programs sell best, and at what price?",
+        depth: "quick",
+        sources: { web: true, vault: true, own_files: false },
+        belief: "Most sell a course for under $2,000.",
+        max_cost_usd: 5
+      },
+      response: {
+        ok: true, queued: true, started: true, already_running: false,
+        job: { ...RESEARCH_RUNNING, status: "queued", step_word: "Waiting to start. It runs in the background.", step: null, step_n: null, progress: { round: 0, findings: 0, searches_used: 0, cost_usd_so_far: 0, shrunk: [], started_at: null, updated_at: null } },
+        poll: `marketing/research?id=${RESEARCH_1}`
+      }
+    }
+  },
+
+  "GET marketing/research": {
+    owner: "X2",
+    spec: "design §3.2 item 5 and Endpoints",
+    method: "GET",
+    path: "marketing/research",
+    gate: GATE,
+    success: 200,
+    guard: null,
+    requestKeys: ["id?"],
+    responseKeys: [
+      "ok", "runs[]", ...under("runs[].", RESEARCH_JOB_KEYS),
+      "settings", ...under("settings.", ["max_research_cost_usd", "research_shares_month_cap", "month_used_usd", "month_cap_usd", "measured", "last_run"]),
+      "limits", "limits.quick", "limits.quick.searches", "limits.quick.search_usd", "limits.deep", "limits.deep.searches", "limits.deep.search_usd"
+    ],
+    errors: [
+      { status: 400, error: "invalid", field: "id", when: "id is not a research run's id" },
+      { status: 404, error: "not_found", when: "?id= names no research run of the caller's org" }
+    ],
+    example: {
+      request: {},
+      response: {
+        ok: true,
+        runs: [RESEARCH_RUNNING, RESEARCH_DONE],
+        settings: {
+          max_research_cost_usd: null,
+          research_shares_month_cap: true,
+          month_used_usd: 14.85,
+          month_cap_usd: 300,
+          measured: true,
+          last_run: { quick: { cost_usd: 2.37, minutes: 14, searches: 52 }, deep: null }
+        },
+        limits: {
+          quick: { searches: 62, search_usd: 0.62, rounds: 1, sub_questions: 4, key_claims: 5 },
+          deep: { searches: 542, search_usd: 5.42, rounds: 6, sub_questions: 8, key_claims: 15 }
+        }
+      }
+    }
+  },
+
+  "POST marketing/research/approve": {
+    owner: "X2",
+    spec: "design §3.2 item 5 and Endpoints",
+    method: "POST",
+    path: "marketing/research/approve",
+    gate: GATE,
+    success: 200,
+    guard: null,
+    requestKeys: ["request_id", "id"],
+    responseKeys: ["ok", "job", ...under("job.", RESEARCH_JOB_KEYS)],
+    errors: [
+      { status: 400, error: "invalid", field: "id", when: "id is not a research run's id, or the run is not finished" },
+      { status: 404, error: "not_found", when: "no research run with that id in the caller's org" },
+      { status: 503, error: "not_ready", when: "migration 429 is not live yet" }
+    ],
+    example: {
+      request: { request_id: REQ("102"), id: RESEARCH_2 },
+      response: { ok: true, job: { ...RESEARCH_DONE, approved: true } }
+    }
+  },
+
+  "POST marketing/research/tweak": {
+    owner: "X2",
+    spec: "design §3.2 item 5 and Endpoints",
+    method: "POST",
+    path: "marketing/research/tweak",
+    gate: GATE,
+    success: 202,
+    guard: null,
+    requestKeys: ["request_id", "id", "note"],
+    responseKeys: ["ok", "queued", "started", "already_running", "job", ...under("job.", RESEARCH_JOB_KEYS), "poll"],
+    errors: [
+      { status: 400, error: "invalid", field: "note", when: "note is missing or empty" },
+      { status: 400, error: "invalid", field: "id", when: "id is not a research run's id, or that run is still going" },
+      { status: 400, error: "cap_reached", when: "this month's model spend already reached the month cap and research shares it" },
+      { status: 404, error: "not_found", when: "no research run with that id in the caller's org" },
+      { status: 503, error: "no_model", when: "no usable Anthropic key is set on the site" }
+    ],
+    example: {
+      request: { request_id: REQ("103"), id: RESEARCH_2, note: "go deeper on bank overlays" },
+      response: {
+        ok: true, queued: true, started: true, already_running: false,
+        job: { ...RESEARCH_RUNNING, status: "queued", focus: "go deeper on bank overlays", parent_id: RESEARCH_2, step_word: "Waiting to start. It runs in the background." },
+        poll: `marketing/research?id=${RESEARCH_1}`
+      }
+    }
+  },
+
+  "POST marketing/research/brain": {
+    owner: "X2",
+    spec: "design §3.2 item 5 and Endpoints",
+    method: "POST",
+    path: "marketing/research/brain",
+    gate: GATE,
+    success: 200,
+    guard: null,
+    requestKeys: ["request_id", "id"],
+    responseKeys: ["ok", "brain_file_id", "chunks", "unchanged"],
+    errors: [
+      { status: 400, error: "invalid", field: "id", when: "id is not a research run's id, or the run is not finished" },
+      { status: 404, error: "not_found", when: "no research run with that id in the caller's org" },
+      { status: 503, error: "brain_unavailable", when: "Company Brain could not take the page (for example its embedding key has no credit)", message: "The brain cannot save new pages right now: its embedding key has no credit." }
+    ],
+    example: {
+      request: { request_id: REQ("104"), id: RESEARCH_2 },
+      response: { ok: true, brain_file_id: BRAIN_FILE_1, chunks: 9, unchanged: false }
+    }
+  },
+
+  "POST marketing/flywheel/run": {
+    owner: "X2",
+    spec: "design §2 J2, §3.2 item 6 row 2 and Endpoints, §6 slice 10",
+    method: "POST",
+    path: "marketing/flywheel/run",
+    gate: GATE,
+    success: 202,
+    guard: null,
+    requestKeys: ["request_id", "campaign", "stage", "market?", "competitors?", "retry_job_id?"],
+    responseKeys: ["ok", "queued", "started", "already_running", "job", ...under("job.", MARKET_RUN_KEYS), "poll"],
+    errors: [
+      { status: 400, error: "invalid", field: "stage", when: "stage is not a step number, or a step this route does not start yet (it starts step 2)" },
+      { status: 400, error: "invalid", field: "campaign", when: "the campaign is not a lower-case slug" },
+      { status: 400, error: "bad_campaign", field: "campaign", when: "there is no flywheel folder for that campaign (bundled or waiting in the outbox)" },
+      { status: 400, error: "invalid", field: "retry_job_id", when: "that run is not stopped, or not the caller's" },
+      { status: 400, error: "cap_reached", when: "this month's model spend already reached the month cap and research shares it" },
+      { status: 503, error: "no_model", when: "no usable Anthropic key is set on the site" },
+      { status: 503, error: "not_ready", when: "migration 429 is not live yet" }
+    ],
+    example: {
+      request: { request_id: REQ("105"), campaign: "partner", stage: 2, market: null, competitors: ["Fund&Grow"] },
+      response: {
+        ok: true, queued: true, started: true, already_running: false,
+        job: MARKET_RUN_QUEUED,
+        poll: `marketing/flywheel/job?id=${MARKET_RUN_1}`
       }
     }
   }

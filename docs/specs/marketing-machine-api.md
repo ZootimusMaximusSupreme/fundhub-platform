@@ -115,7 +115,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 
 ## 5. Route index
 
-46 routes. "deferred" = drafted here, built after this pass.
+52 routes. "deferred" = drafted here, built after this pass.
 
 | Route | Owner | Spec | Success |
 |---|---|---|---|
@@ -165,6 +165,12 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 | `POST marketing/pages/choose` | deferred | §14 steps 2-3 | 200 |
 | `POST marketing/pages/fix-it` | deferred | §14 step 3 | 200 |
 | `POST marketing/pages/push-live` | deferred | §14 step 3 | 200 |
+| `POST marketing/research` | X2 | design §2 J20, §3.2 item 5, §6 slice 10 | 202 |
+| `GET marketing/research` | X2 | design §3.2 item 5 and Endpoints | 200 |
+| `POST marketing/research/approve` | X2 | design §3.2 item 5 and Endpoints | 200 |
+| `POST marketing/research/tweak` | X2 | design §3.2 item 5 and Endpoints | 202 |
+| `POST marketing/research/brain` | X2 | design §3.2 item 5 and Endpoints | 200 |
+| `POST marketing/flywheel/run` | X2 | design §2 J2, §3.2 item 6 row 2 and Endpoints, §6 slice 10 | 202 |
 
 ## 6. Routes built in this pass
 
@@ -2427,6 +2433,482 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 }
 ```
 
+### 6.10 Research the market and deep research (X2, design §6 slice 10)
+
+#### `POST marketing/research`
+
+**Owner:** X2 · **Spec:** design §2 J20, §3.2 item 5, §6 slice 10 · **Success:** 202 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, question, depth?, sources?, belief?, max_cost_usd?}`
+
+**Response:** `{ok, queued, started, already_running, job:{id, status, question, depth, step_word, step_n, steps_total, progress:{round, findings, searches_used, cost_usd_so_far, started_at, updated_at}, error, resumable, approved, created_at, finished_at}, poll}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `bad_question` | `question` | the question is empty; message: "Type the question first." |
+| 400 | `bad_question` | `sources` | neither live web pages nor the Hormozi vault is ticked |
+| 400 | `bad_question` | `max_cost_usd` | no stop amount was sent and Settings has none, or it is under $1; message: "Type a stop amount first." |
+| 400 | `invalid` | `depth` | depth is not quick or deep |
+| 400 | `cap_reached` | none | this month's model spend already reached the month cap and research shares it |
+| 503 | `no_model` | none | no usable Anthropic key is set on the site; message: "No Anthropic key is set on the site. An agent must set it." |
+| 503 | `not_ready` | none | migration 429 is not live yet |
+
+- Answers at once (202). The run is a `marketing_jobs` row of kind `deep_research` that the marketing worker runs in 8 saved steps: plan, vault, sweep, chase, critic, verify, write-up, save. Read `GET marketing/research?id=` to see it move.
+- One run in flight per company (migration 429). A second tap while one runs answers `already_running: true` with that run, and nothing new starts.
+- `depth`: `quick` (Quick look: 4 sub-questions, one sweep round, up to 5 key claims checked, at most 62 searches) or `deep` (Leave nothing unturned: up to 8 sub-questions, rounds until two come back dry, at most 6, then chase and critic, up to 15 key claims checked two ways, at most 542 searches). Default `quick`.
+- `sources`: `web` and `vault` default true, `own_files` false. Own files are the partner flywheel's stage files and reach only the plan and the write-up, never a step that touches the web.
+- `max_cost_usd` is the stop amount for this run, in dollars of model spend. Left out, Settings' `max_research_cost_usd` is used; with neither, 400 `bad_question`. The write-up's reserve is held back from every earlier step, so a run that reaches its stop amount still ends with a report that says it stopped.
+- A cost cap answers `400 cap_reached` (see section 8, gap 9).
+- Nothing this run writes reaches a page, an ad or a customer: the report and `sources.json` go to `marketing/research/<yyyy-mm-dd>-<slug>-<id8>/` through the repo outbox.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c101",
+    "question": "Which funding broker programs sell best, and at what price?",
+    "depth": "quick",
+    "sources": {
+      "web": true,
+      "vault": true,
+      "own_files": false
+    },
+    "belief": "Most sell a course for under $2,000.",
+    "max_cost_usd": 5
+  },
+  "response": {
+    "ok": true,
+    "queued": true,
+    "started": true,
+    "already_running": false,
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000d01",
+      "status": "queued",
+      "question": "Which funding broker programs sell best, and at what price?",
+      "depth": "quick",
+      "sources": {
+        "web": true,
+        "vault": true,
+        "own_files": false
+      },
+      "max_cost_usd": 5,
+      "focus": null,
+      "parent_id": null,
+      "step_word": "Waiting to start. It runs in the background.",
+      "step": null,
+      "step_n": null,
+      "steps_total": 8,
+      "progress": {
+        "round": 0,
+        "findings": 0,
+        "searches_used": 0,
+        "cost_usd_so_far": 0,
+        "shrunk": [],
+        "started_at": null,
+        "updated_at": null
+      },
+      "error": null,
+      "resumable": false,
+      "approved": false,
+      "created_at": "2026-10-12T14:59:58.000Z",
+      "finished_at": null
+    },
+    "poll": "marketing/research?id=00000000-0000-4000-8000-000000000d01"
+  }
+}
+```
+
+#### `GET marketing/research`
+
+**Owner:** X2 · **Spec:** design §3.2 item 5 and Endpoints · **Success:** 200 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (query):** `{id?}`
+
+**Response:** `{ok, runs:[{id, status, question, depth, step_word, step_n, steps_total, progress:{round, findings, searches_used, cost_usd_so_far, started_at, updated_at}, error, resumable, approved, created_at, finished_at}], settings:{max_research_cost_usd, research_shares_month_cap, month_used_usd, month_cap_usd, measured, last_run}, limits:{quick:{searches, search_usd}, deep:{searches, search_usd}}}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `id` | id is not a research run's id |
+| 404 | `not_found` | none | ?id= names no research run of the caller's org |
+
+- Without `id`: the 20 newest runs, newest first, plus the numbers the cost sheet prints. `settings.measured` is true once a Quick look has finished (the page keeps Quick look the default until then); `settings.last_run` is the last finished run of each depth, or null. `limits` are computed from the server's own limits, never typed: searches cost $10 per 1,000.
+- `month_cap_usd` is null when Settings says research has its own budget (`research_shares_month_cap` false).
+- **With `id`** the answer is one run instead: `{ok, job, report}`. `job` is the same object as each item of `runs`. `report` is null until the run is done, then `{markdown, fallback_report, key_verified, key_killed, unreachable[], dropped, quotes_unchecked, rounds, cost_usd, searches, minutes, stopped_at_cap, repo_path, repo_state, approved_by, approved_at}`. `repo_state.words` is "Saved. Reaching the repo…" until the outbox commit lands, then "In the repo".
+- `job.step_word` is the row's words: "Running: sweeping round 2 of up to 6 · 37 findings · $1.12 so far", "Done, 11 of 14 key claims held up", "Done, stopped at the cap: $X after round N", "Done, write-up failed, findings below" or "Could not finish: <reason>".
+
+**Example**
+
+```json
+{
+  "request": {},
+  "response": {
+    "ok": true,
+    "runs": [
+      {
+        "id": "00000000-0000-4000-8000-000000000d01",
+        "status": "running",
+        "question": "Which funding broker programs sell best, and at what price?",
+        "depth": "quick",
+        "sources": {
+          "web": true,
+          "vault": true,
+          "own_files": false
+        },
+        "max_cost_usd": 5,
+        "focus": null,
+        "parent_id": null,
+        "step_word": "Running: sweeping round 1 of up to 1 · 23 findings · $1.12 so far",
+        "step": "sweep",
+        "step_n": 3,
+        "steps_total": 8,
+        "progress": {
+          "round": 0,
+          "findings": 23,
+          "searches_used": 31,
+          "cost_usd_so_far": 1.12,
+          "shrunk": [],
+          "started_at": "2026-10-12T15:00:00.000Z",
+          "updated_at": "2026-10-12T15:03:10.000Z"
+        },
+        "error": null,
+        "resumable": false,
+        "approved": false,
+        "created_at": "2026-10-12T14:59:58.000Z",
+        "finished_at": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000d02",
+        "status": "done",
+        "question": "Which funding broker programs sell best, and at what price?",
+        "depth": "quick",
+        "sources": {
+          "web": true,
+          "vault": true,
+          "own_files": false
+        },
+        "max_cost_usd": 5,
+        "focus": null,
+        "parent_id": null,
+        "step_word": "Done, 4 of 5 key claims held up",
+        "step": "done",
+        "step_n": 8,
+        "steps_total": 8,
+        "progress": {
+          "round": 1,
+          "findings": 41,
+          "searches_used": 52,
+          "cost_usd_so_far": 2.37,
+          "shrunk": [],
+          "started_at": "2026-10-12T15:00:00.000Z",
+          "updated_at": "2026-10-12T15:14:00.000Z"
+        },
+        "error": null,
+        "resumable": false,
+        "approved": false,
+        "created_at": "2026-10-12T14:59:58.000Z",
+        "finished_at": "2026-10-12T15:14:01.000Z"
+      }
+    ],
+    "settings": {
+      "max_research_cost_usd": null,
+      "research_shares_month_cap": true,
+      "month_used_usd": 14.85,
+      "month_cap_usd": 300,
+      "measured": true,
+      "last_run": {
+        "quick": {
+          "cost_usd": 2.37,
+          "minutes": 14,
+          "searches": 52
+        },
+        "deep": null
+      }
+    },
+    "limits": {
+      "quick": {
+        "searches": 62,
+        "search_usd": 0.62,
+        "rounds": 1,
+        "sub_questions": 4,
+        "key_claims": 5
+      },
+      "deep": {
+        "searches": 542,
+        "search_usd": 5.42,
+        "rounds": 6,
+        "sub_questions": 8,
+        "key_claims": 15
+      }
+    }
+  }
+}
+```
+
+#### `POST marketing/research/approve`
+
+**Owner:** X2 · **Spec:** design §3.2 item 5 and Endpoints · **Success:** 200 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, id}`
+
+**Response:** `{ok, job:{id, status, question, depth, step_word, step_n, steps_total, progress:{round, findings, searches_used, cost_usd_so_far, started_at, updated_at}, error, resumable, approved, created_at, finished_at}}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `id` | id is not a research run's id, or the run is not finished |
+| 404 | `not_found` | none | no research run with that id in the caller's org |
+| 503 | `not_ready` | none | migration 429 is not live yet |
+
+- Free. Stores who approved and when (`approved_by`, `approved_at`, migration 429; a person's tap only) and saves the same report file again with `status: approved` through the repo outbox. A second approve changes nothing.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c102",
+    "id": "00000000-0000-4000-8000-000000000d02"
+  },
+  "response": {
+    "ok": true,
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000d02",
+      "status": "done",
+      "question": "Which funding broker programs sell best, and at what price?",
+      "depth": "quick",
+      "sources": {
+        "web": true,
+        "vault": true,
+        "own_files": false
+      },
+      "max_cost_usd": 5,
+      "focus": null,
+      "parent_id": null,
+      "step_word": "Done, 4 of 5 key claims held up",
+      "step": "done",
+      "step_n": 8,
+      "steps_total": 8,
+      "progress": {
+        "round": 1,
+        "findings": 41,
+        "searches_used": 52,
+        "cost_usd_so_far": 2.37,
+        "shrunk": [],
+        "started_at": "2026-10-12T15:00:00.000Z",
+        "updated_at": "2026-10-12T15:14:00.000Z"
+      },
+      "error": null,
+      "resumable": false,
+      "approved": true,
+      "created_at": "2026-10-12T14:59:58.000Z",
+      "finished_at": "2026-10-12T15:14:01.000Z"
+    }
+  }
+}
+```
+
+#### `POST marketing/research/tweak`
+
+**Owner:** X2 · **Spec:** design §3.2 item 5 and Endpoints · **Success:** 202 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, id, note}`
+
+**Response:** `{ok, queued, started, already_running, job:{id, status, question, depth, step_word, step_n, steps_total, progress:{round, findings, searches_used, cost_usd_so_far, started_at, updated_at}, error, resumable, approved, created_at, finished_at}, poll}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `note` | note is missing or empty |
+| 400 | `invalid` | `id` | id is not a research run's id, or that run is still going |
+| 400 | `cap_reached` | none | this month's model spend already reached the month cap and research shares it |
+| 404 | `not_found` | none | no research run with that id in the caller's org |
+| 503 | `no_model` | none | no usable Anthropic key is set on the site |
+
+- Starts a short re-run (a Quick look) of the same question that goes deeper on the one-line `note`, with the same places to look and the same stop amount. The first report stays as it is. `job.parent_id` names it.
+- One research run in flight per company: when one is running, that run comes back with `already_running: true`.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c103",
+    "id": "00000000-0000-4000-8000-000000000d02",
+    "note": "go deeper on bank overlays"
+  },
+  "response": {
+    "ok": true,
+    "queued": true,
+    "started": true,
+    "already_running": false,
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000d01",
+      "status": "queued",
+      "question": "Which funding broker programs sell best, and at what price?",
+      "depth": "quick",
+      "sources": {
+        "web": true,
+        "vault": true,
+        "own_files": false
+      },
+      "max_cost_usd": 5,
+      "focus": "go deeper on bank overlays",
+      "parent_id": "00000000-0000-4000-8000-000000000d02",
+      "step_word": "Waiting to start. It runs in the background.",
+      "step": "sweep",
+      "step_n": 3,
+      "steps_total": 8,
+      "progress": {
+        "round": 0,
+        "findings": 23,
+        "searches_used": 31,
+        "cost_usd_so_far": 1.12,
+        "shrunk": [],
+        "started_at": "2026-10-12T15:00:00.000Z",
+        "updated_at": "2026-10-12T15:03:10.000Z"
+      },
+      "error": null,
+      "resumable": false,
+      "approved": false,
+      "created_at": "2026-10-12T14:59:58.000Z",
+      "finished_at": null
+    },
+    "poll": "marketing/research?id=00000000-0000-4000-8000-000000000d01"
+  }
+}
+```
+
+#### `POST marketing/research/brain`
+
+**Owner:** X2 · **Spec:** design §3.2 item 5 and Endpoints · **Success:** 200 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, id}`
+
+**Response:** `{ok, brain_file_id, chunks, unchanged}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `id` | id is not a research run's id, or the run is not finished |
+| 404 | `not_found` | none | no research run with that id in the caller's org |
+| 503 | `brain_unavailable` | none | Company Brain could not take the page (for example its embedding key has no credit); message: "The brain cannot save new pages right now: its embedding key has no credit." |
+
+- Saves the report into Company Brain (`src/company-brain/ingest-generated.mjs`, source type `deep-research`, owner tier). The same report saved twice is skipped (`unchanged: true`), so a second tap never pays for embedding again.
+- `503 brain_unavailable` when the brain cannot take the page (see section 8, gap 9). No transaction is held across the embedding call.
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c104",
+    "id": "00000000-0000-4000-8000-000000000d02"
+  },
+  "response": {
+    "ok": true,
+    "brain_file_id": "00000000-0000-4000-8000-000000000d04",
+    "chunks": 9,
+    "unchanged": false
+  }
+}
+```
+
+#### `POST marketing/flywheel/run`
+
+**Owner:** X2 · **Spec:** design §2 J2, §3.2 item 6 row 2 and Endpoints, §6 slice 10 · **Success:** 202 · **Guard:** none
+
+**Gate:** ROLE_SETS.MARKETING (owner, admin)
+
+**Request (JSON body):** `{request_id, campaign, stage, market?, competitors?, retry_job_id?}`
+
+**Response:** `{ok, queued, started, already_running, job:{job_id, status, campaign, step, step_n, steps_total, step_word, round, counts_so_far:{findings}, searches_so_far, fetches_so_far, cost_so_far_usd, shrunk:[], resumable, started_at, finished_at, error}, poll}`
+
+**Errors** (besides the common ones in section 2):
+
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `stage` | stage is not a step number, or a step this route does not start yet (it starts step 2) |
+| 400 | `invalid` | `campaign` | the campaign is not a lower-case slug |
+| 400 | `bad_campaign` | `campaign` | there is no flywheel folder for that campaign (bundled or waiting in the outbox) |
+| 400 | `invalid` | `retry_job_id` | that run is not stopped, or not the caller's |
+| 400 | `cap_reached` | none | this month's model spend already reached the month cap and research shares it |
+| 503 | `no_model` | none | no usable Anthropic key is set on the site |
+| 503 | `not_ready` | none | migration 429 is not live yet |
+
+- Starts flywheel step 2, "What the market sells" (Research the market). The run is a `marketing_jobs` row of kind `flywheel_stage` with `payload {campaign, stage: 2, market, competitors}`, run by the marketing worker in 5 saved steps: reach and plan, up to 3 sweep rounds of 4 surfaces, up to 4 read-only funnel teardowns, up to 14 findings checked two ways, then the board. At most 106 web searches, 138 when a slow surface is retried.
+- One run per company, campaign and stage in flight (migration 429): a second tap answers `already_running: true` with that run.
+- `retry_job_id` resumes a run that stopped (at its cap, or failed) from its saved steps; finished steps are never paid for twice. `POST marketing/jobs/retry {job_id}` does the same.
+- The run cap is $40 (the batch cap, `max_batch_cost_usd`) until Settings gives market research its own (`run_caps.ad_research`). A run that reaches it fails with "Stopped at the $40 run cap after step N. What it found so far is saved." and `job.resumable: true`.
+- The board lands in `marketing/flywheel/<campaign>/02-ad-research.md` through the repo outbox, stamped with the avatar's body hash from the same pinned repo read. `job` is the stage row's `run` object from the design (`src/marketing/research/store.mjs marketRunView`). `poll` names `GET marketing/flywheel/job`, which the stage-1 unit builds.
+- Steps 1, 4 and 5 add their own `stage` branch to this route when they land (see section 8, gap 10).
+
+**Example**
+
+```json
+{
+  "request": {
+    "request_id": "00000000-0000-4000-8000-00000000c105",
+    "campaign": "partner",
+    "stage": 2,
+    "market": null,
+    "competitors": [
+      "Fund&Grow"
+    ]
+  },
+  "response": {
+    "ok": true,
+    "queued": true,
+    "started": true,
+    "already_running": false,
+    "job": {
+      "job_id": "00000000-0000-4000-8000-000000000d03",
+      "status": "queued",
+      "campaign": "partner",
+      "campaign_words": "Partner offer",
+      "step": null,
+      "step_n": null,
+      "steps_total": 5,
+      "step_word": "Waiting to start. It runs in the background.",
+      "round": 0,
+      "counts_so_far": {
+        "findings": 0,
+        "checked": 0,
+        "competitors": 0
+      },
+      "searches_so_far": 0,
+      "fetches_so_far": 0,
+      "cost_so_far_usd": 0,
+      "shrunk": [],
+      "resumable": false,
+      "stopped": null,
+      "board": null,
+      "started_at": null,
+      "finished_at": null,
+      "error": null
+    },
+    "poll": "marketing/flywheel/job?id=00000000-0000-4000-8000-000000000d03"
+  }
+}
+```
+
 ## 7. Deferred routes (drafted, not built in this pass)
 
 The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2 and the 9.1a states, videos wait on the video worker and R2, and the map and page suggestions are outside this pass. Their shapes are drafted from the spec text and the design doc so lane E can mock them. The unit that builds one may change it, and updates this file and the module in the same PR.
@@ -3378,6 +3860,10 @@ These are findings, not fixes. Nothing here changes a route.
 6. **The next-batch guard.** `POST marketing/batches/next` guards on `marketing_settings.updated_at`, which `GET marketing/batches/next` does not return. The screen reads it from `GET marketing/settings`.
 7. **Types the database does not hand over as-is.** `next_ad_number()` returns a whole number and `marketing_funnels.weight` is `numeric` (the driver returns a string). The routes send the ad number as a string of digits and the weight as a JSON number.
 8. **Write-now cost refusals.** No document fixed the status for "a cost cap is reached". This contract uses `400 {error:'cap_reached', message}` on write-now, and on `POST marketing/ideas` with `write_now: true` it still saves the idea and leaves out `batch_id` and `job_id`, with a plain `note`.
+9. **Cost-cap and brain refusals on the research routes (X2).** The design (`docs/specs/command-center-design-2026-10-05.md` §3.2) writes `409 cap_hit` for `POST marketing/flywheel/run` and `409 brain_unavailable` for `POST marketing/research/brain`. This contract's global rule keeps 409 for `stale` only, so these routes answer `400 cap_reached` (the same as gap 8's write-now refusal) and `503 brain_unavailable`. The words are the design's.
+10. **`POST marketing/flywheel/run` is shared.** The design gives one route to steps 1, 2, 4 and 5. X2 built step 2 (and its Resume); the step-1 unit (X1) and the steps 4-5 unit (X3) add their `stage` branches. Until they land, those stage numbers answer `400 invalid` on `stage` with the reason. `GET marketing/flywheel` and `GET marketing/flywheel/job` (the stage row and the poll) belong to those units and are not in this contract yet.
+11. **`GET marketing/research` has two answers.** Without `id` it is the list (the contract's key list); with `id` it is one run, `{ok, job, report}`, printed in that route's notes. A route key holds one key list, so the one-run shape is checked by its own test (`src/http/marketing-research.pg.test.mjs`), not by `assertMatchesContract`.
+12. **The research dials in Settings.** `GET/POST marketing/settings` also answer and take `max_research_cost_usd` (null until Chris types a number) and `research_shares_month_cap` (true by default), after the 27 fixed keys of shape (1). Extra keys are allowed, so shape (1) is unchanged.
 
 ## 9. Changing this contract
 

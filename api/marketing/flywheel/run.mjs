@@ -4,7 +4,8 @@
 // Route key "marketing/flywheel/run". Design docs/specs/command-center-design-2026-10-05.md
 // §2 row J2, §3.2 item 6 row 2 and "Endpoints" (`POST marketing/flywheel/run {campaign,
 // stage, request_id, market?, competitors?, retry_job_id?}` → `202 {ok, started,
-// already_running, job, poll}`; `400` bad campaign; `503 no_model | not_ready`; `409 cap_hit`);
+// already_running, job, poll}`; `400` bad campaign; `503 no_model | not_ready`; `409 cap_hit`,
+// answered here as 400 cap_reached because the contract keeps 409 for 'stale' — a gap in its §8);
 // contract docs/specs/marketing-machine-api.md §6.10. Unit X2. Step 1 (the avatar) and steps
 // 4 and 5 add their own `stage` branch here when they land; until then those numbers answer
 // 400 with the reason, never start something else.
@@ -27,7 +28,7 @@ import { retryJob } from "../../../src/marketing/jobs.mjs";
 import { flywheelDir } from "../../../src/marketing/offer-inputs.mjs";
 import {
   checkMarketStart, startMarketResearch, marketRunView, researchNotReady, hasModelKey,
-  monthState, monthCapSentence, NO_MODEL_SENTENCE, STAGE_KIND
+  monthState, monthCapSentence, NO_MODEL_SENTENCE, STAGE_KIND, Refusal
 } from "../../../src/marketing/research/store.mjs";
 import { wakeWorker } from "../../../src/marketing/wake.mjs";
 
@@ -75,23 +76,24 @@ export default async function handler(req, res, deps = {}) {
     const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, async (tx) => {
       if (input.retry_job_id) {
         const row = await retryJob(tx, { orgId, id: input.retry_job_id, kinds: [STAGE_KIND] });
-        if (!row) return { status: 400, body: { error: "invalid", field: "retry_job_id", message: "That run cannot be resumed: it is not stopped, or it is not this company's." } };
-        return { status: 202, body: { ok: true, started: true, already_running: false, resumed: true, job: marketRunView(row), poll: `marketing/flywheel/job?id=${row.id}` } };
+        if (!row) throw new Refusal(400, { error: "invalid", field: "retry_job_id", message: "That run cannot be resumed: it is not stopped, or it is not this company's." });
+        return { status: 202, body: { ok: true, queued: true, started: true, already_running: false, resumed: true, job: marketRunView(row), poll: `marketing/flywheel/job?id=${row.id}` } };
       }
       if (!(await campaignExists(tx, orgId, input.campaign, { dirOf: deps.flywheelDir }))) {
-        return { status: 400, body: { error: "bad_campaign", field: "campaign", message: `There is no flywheel named "${input.campaign}". Start a flywheel for it first.` } };
+        throw new Refusal(400, { error: "bad_campaign", field: "campaign", message: `There is no flywheel named "${input.campaign}". Start a flywheel for it first.` });
       }
       const settings = await getOrCreateSettings(tx, orgId);
       const m = monthState(settings, await monthUsedUsd(tx, orgId));
-      if (m.capped) return { status: 409, body: { error: "cap_hit", message: monthCapSentence(m.month_cap_usd) } };
+      if (m.capped) throw new Refusal(400, { error: "cap_reached", message: monthCapSentence(m.month_cap_usd) });
       const { job, already_running } = await startMarketResearch(tx, {
         orgId, staffId: staff.id ?? null, campaign: input.campaign, market: input.market, competitors: input.competitors
       });
-      return { status: 202, body: { ok: true, started: !already_running, already_running, job: marketRunView(job), poll: `marketing/flywheel/job?id=${job.id}` } };
+      return { status: 202, body: { ok: true, queued: true, started: !already_running, already_running, job: marketRunView(job), poll: `marketing/flywheel/job?id=${job.id}` } };
     });
     if (answer.status === 202 && answer.body.started) await (deps.wake ?? wakeWorker)(env).catch(() => null);
     return res.status(answer.status).json(answer.body);
   } catch (err) {
+    if (err instanceof Refusal) return res.status(err.status).json(err.body);
     if (sendKnownError(res, err)) return;
     if (researchNotReady(err)) {
       return res.status(503).json({ error: "not_ready", message: "This button is built, but its database change is not live yet. It turns on with the next ship." });

@@ -11,10 +11,13 @@
 //     → 202 {ok, started, already_running, job, poll}
 //     → 400 {error:'bad_question', field, message}  no question, no place to look, no stop amount
 //     → 400 {error:'invalid', field, message}       a malformed field
-//     → 409 {error:'cap_hit', message}              the month cap is already used
+//     → 400 {error:'cap_reached', message}          the month cap is already used
 //     → 503 {error:'no_model' | 'not_ready', message}
 //   GET ?id=<uuid> → 200 {ok, job{…}, report{…}|null}   404 when not this company's run
 //   GET            → 200 {ok, runs[] (20 newest), settings{…}, limits{quick, deep}}
+//
+//   A cost cap answers 400 {error:'cap_reached'} (the contract's rule: 409 is only 'stale';
+//   design §3.2 wrote 409 cap_hit — recorded as a gap in docs/specs/marketing-machine-api.md §8).
 //
 // The run itself happens on the marketing worker in saved steps
 // (src/marketing/research/deep-research.mjs); this route only queues it and wakes the
@@ -34,7 +37,7 @@ import { monthUsedUsd } from "../../src/marketing/research/usage.mjs";
 import {
   checkResearchStart, startDeepResearch, researchJobView, researchReportView, repoStateOf,
   lastMeasured, researchLimits, monthState, monthCapSentence, hasModelKey, researchNotReady,
-  BadQuestionError, NO_MODEL_SENTENCE, DEEP_KIND
+  BadQuestionError, NO_MODEL_SENTENCE, DEEP_KIND, Refusal
 } from "../../src/marketing/research/store.mjs";
 import { wakeWorker } from "../../src/marketing/wake.mjs";
 
@@ -110,11 +113,11 @@ export default async function handler(req, res, deps = {}) {
       const settings = await getOrCreateSettings(tx, orgId);
       const input = checkResearchStart(body, settings);
       const m = monthState(settings, await monthUsedUsd(tx, orgId));
-      if (m.capped) return { status: 409, body: { error: "cap_hit", message: monthCapSentence(m.month_cap_usd) } };
+      if (m.capped) throw new Refusal(400, { error: "cap_reached", message: monthCapSentence(m.month_cap_usd) });
       const { job, already_running } = await startDeepResearch(tx, { orgId, staffId: staff.id ?? null, input });
       return {
         status: 202,
-        body: { ok: true, started: !already_running, already_running, job: researchJobView(job), poll: `marketing/research?id=${job.id}` }
+        body: { ok: true, queued: true, started: !already_running, already_running, job: researchJobView(job), poll: `marketing/research?id=${job.id}` }
       };
     });
     if (answer.status === 202 && answer.body.started) {
@@ -123,6 +126,7 @@ export default async function handler(req, res, deps = {}) {
     }
     return res.status(answer.status).json(answer.body);
   } catch (err) {
+    if (err instanceof Refusal) return res.status(err.status).json(err.body);
     if (err instanceof BadQuestionError) return res.status(400).json({ error: "bad_question", field: err.field, message: err.message });
     if (sendKnownError(res, err)) return;
     if (researchNotReady(err)) {

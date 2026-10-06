@@ -45,6 +45,31 @@ function bundleContent(campaign, file) {
 }
 
 /**
+ * repoFlywheelDefaults(db, campaign, opts) → the offer writer's default inputs in
+ * readFlywheelDefaults' shape ({avatar, research, ownerNotes, files}, plus `source`), read
+ * through the same pinned repo read as the research runs, so a board saved by "Research
+ * the market" reaches the offer writer without a ship (design §6 slice 10).
+ */
+export async function repoFlywheelDefaults(db, campaign, opts = {}) {
+  const r = await readStageFiles(db, campaign, opts);
+  const body = (t) => (t ? splitFrontMatter(t).body.trim() : "");
+  const rel = (f) => stagePath(campaign, f);
+  const avatar = body(r.files.avatar);
+  const research = body(r.files.research);
+  return {
+    avatar,
+    research,
+    ownerNotes: r.ownerNotes,
+    source: r.source,
+    files: {
+      avatar: avatar ? rel(STAGE_FILES.avatar) : null,
+      research: research ? rel(STAGE_FILES.research) : null,
+      ownerNotes: r.ownerNotes ? rel(STAGE_FILES.notes) : null
+    }
+  };
+}
+
+/**
  * readStageFiles(db, campaign, { env, getRef, getContents }) → {
  *   source: 'github' | 'bundle-fallback', sha, pending: [paths read from the outbox],
  *   files: { notes, avatar, research } (whole text or null),
