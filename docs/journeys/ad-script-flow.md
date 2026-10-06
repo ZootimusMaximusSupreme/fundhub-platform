@@ -250,3 +250,81 @@ flowchart TD
 - `marketing/ads/VOICE.md` now has a header, then `# Real pairs` (every real pair: an AI line next to Chris's own rewrite of it, from a chat or the app), then `# Seed pairs — model side written by hand` (the 9 hand-written seed pairs, unchanged, numbers 1-9).
 - `# Real pairs` holds 0 pairs on this branch. The chat search for real pairs was blocked by the permission check, so the real count is not measured.
 - U05's weekly append adds app-edit pairs at the end of `# Real pairs`, numbered from one more than the highest pair. UNVERIFIED here: that code is not on this branch.
+
+## U24 M1 7.6 writer: one Claude call writes a draft, the checks send it back, the draft is saved
+
+Generated from code on 2026-10-06: `src/marketing/writer.mjs`, `src/marketing/writer-prompt.mjs`,
+`src/marketing/sameness.mjs`, two new lines in `src/marketing/job-kinds.mjs`. Yardstick: spec §7.6,
+Appendix A, Appendix B, §4 traps 3 and 8. Nothing queues `write_slot` yet (U35's `start_batch` will);
+`fix_script` is queued by `POST marketing/scripts/fix` (U26). The background worker (U22) is what runs both.
+
+```mermaid
+flowchart TD
+    J1["job write_slot {batch_id, slot}"] --> L["load the slot: batch, settings, funnel,<br/>house partner, idea, last 30 scripts,<br/>batch scripts, 3 approved examples<br/>(one short staff transaction)"]
+    J2["job fix_script {script_id, version, note}"] --> LF["load the script, its batch and funnel<br/>(one short staff transaction)"]
+    LF -->|"archived, or not the version Chris saw"| SKIP["done: failed 'a newer version was saved', no call"]
+    L -->|"no batch / no funnel / no house partner"| GIVE["done: failed, plain reason<br/>idea marked failed"]
+    L --> R["rule files at the batch's rules_sha from GitHub<br/>(fix: newest), else the bundled copies:<br/>RULES.md, VOICE.md, RECIPES.md, catalog.json,<br/>angles.json, banned-live.json"]
+    LF --> R
+    R --> CAP{"cost cap reached?<br/>(checked before every call)"}
+    CAP -->|yes| CAPF["done: failed 'cost cap reached'<br/>one cost_cap buzz per batch or Arizona month"]
+    CAP -->|no| W["Claude writes: provider anthropic, MARKETING_WRITER_MODEL<br/>(claude-opus-5-5), effort medium, 16000 tokens, 5 min,<br/>cached system prompt, outputSchema SAVE_SCRIPT_SCHEMA<br/>call logged in marketing_model_usage (served model)"]
+    W -->|"no JSON"| W2["one retry"] -->|"no JSON again"| GIVE
+    W -->|"refusal"| GIVE
+    W -->|"timeout / 429 / 5xx / unreachable"| THROW["handler throws: the queue runs the job again (up to 3)"]
+    W --> C{"code checks: strict checker, parts in the body,<br/>validateAnimationPlan, Meta copy (headline 40),<br/>no price on book-a-call, label keys,<br/>compliance screen on body + meta copy"}
+    C -->|"a check fails, rounds left (2)"| RW["rewrite with every failure listed"] --> C
+    C --> JD["one judge pass: MARKETING_CHECK_MODEL (claude-sonnet-5-5),<br/>effort medium, JUDGE_SCHEMA: rules 3, 9, 12, 13-34"]
+    JD -->|"violations"| RJ["rewrite once (kept if it passes the code checks)"]
+    JD --> S{"sameness: overlap > 0.5 with the last 30 hooks or bodies,<br/>a hook or CTA the batch has, an intro over its cap"}
+    RJ --> S
+    S -->|"yes"| RS["rewrite once"]
+    RS -->|"write_slot: batch duplicate still there"| REF["done: failed 'Refused: ...'<br/>idea marked failed, nothing saved"]
+    S --> SV["save in ONE staff transaction:<br/>lock the batch row, re-check batch duplicates,<br/>INSERT ad_scripts (version 1, draft, machine, root = id),<br/>ad_labels upserts, idea written"]
+    RS --> SV
+    SV --> D1["draft, flagged when any check still fails<br/>(check_results.flagged + flag_reasons)"]
+    S -.->|"fix_script"| SF["save in ONE staff transaction: lock the parent,<br/>archive it (machine: superseded), INSERT version + 1,<br/>same root, same ad_id, locked stays locked, fix_note"]
+    SF --> D2["new version"]
+```
+
+What the save writes: `ad_scripts` (title, body, hook_text, script_type `cold` or `vsl`, lane and
+offer_key from the funnel, angle_key, hook_key, script_format, style, funnel_key, batch_id, idea_id,
+parts, check_results, animation_plan, meta_copy), `ad_labels` (script_type, angle, hook, offer; a
+blank name is filled, a typed one is never overwritten), and `ad_ideas` (status written, script_id).
+No `repo_outbox` row: draft files are committed at release (U35, spec §7.7). No transaction is open
+while Claude is called.
+
+`check_results` keys: `version`, `flagged`, `flag_reasons`, `strict {passed, rounds, failures,
+warnings, words}`, `parts`, `animation`, `meta_copy`, `offer`, `labels`, `judge {passed, ran, model,
+notes, sent_back, taken, error}`, `compliance {state, reasons, copy_blocked}`, `sameness
+{hook_overlap, body_overlap, duplicate_hook, duplicate_cta, intro, rewritten, refused}`, `rules
+{sha, from, missing}`, `time_ran_out`, `rewrite_errors`, `models`, `calls`.
+
+### Gaps between the spec and the code (findings, not fixed here)
+
+1. **Forced tool → structured output.** Spec §7.6 says "a forced save_script tool". Forced
+   `tool_choice` is HTTP 400 on claude-opus-5-5 and claude-sonnet-5-5 (claude-api skill), so the
+   same schema goes out as `output_config.format` (callModel `outputSchema`). Source: the plan's
+   intended-journey note, item (2). Structured outputs take no `maxLength`, so the 40-character
+   headline is checked in code, and animation `props` travel as JSON text and are parsed.
+2. **Spec numbers changed by the plan:** maxTokens 16000 (spec 8000) and timeoutMs 5 minutes
+   (spec 3 minutes). Opus 5.5 always thinks and thinking counts toward max_tokens.
+3. **A new angle the writer proposes is not added to `angles.json`.** Spec §7.3 says it is added
+   through the outbox; the unit contract says the writer never enqueues repo writes. The new key
+   lands on the script and in `ad_labels` only.
+4. **The judge runs once.** A rewrite made after it (its own fix, or the sameness rewrite) is
+   re-checked by code, not judged again.
+5. **The compliance screen runs inside every code-check round**, not only after the judge, so a
+   blocked line goes back to Claude. Two reasons are not counted as copy problems: the approval
+   gate and an unset Meta special ad category (`special_ad_category_unset`).
+6. **Intro caps for small batches:** floor(N/5) long and floor(2N/5) short, never under 1 each. A
+   3-script Write now may have 1 long and 1 short intro. Picked by this unit; not an owner number.
+7. **A time budget:** with no `deadlineAt` from the worker, a script gets 10 minutes; a rewrite
+   round only starts when a whole 5-minute call still fits. UNVERIFIED: the worker (U22) does not
+   pass `deadlineAt` yet.
+8. **Who reads the job result:** a slot that cannot be written finishes its job with
+   `{failed:true, reason}`; a retryable failure throws. UNVERIFIED: U35's batch counts must read
+   that result.
+9. **`fix_script` on a script with no format** treats it as `standard`.
+10. **Lane comes from the funnel row as-is** (`roadmap_147` is `uwiq`, not `slo`): the uwiq-vs-slo
+    gap U14 recorded is unchanged.

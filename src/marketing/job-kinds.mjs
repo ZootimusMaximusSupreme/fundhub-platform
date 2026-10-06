@@ -14,7 +14,7 @@
 //           and ctx is { db, env, deps }. A handler that returns finishes the job (its
 //           return value is the result); one that throws fails it (jobs.mjs failJob).
 //
-// EMPTY ON PURPOSE. Units U24 (writer), U28 (Meta loader) and U35 (batch lifecycle) add
+// STARTED EMPTY. Units U24 (writer), U28 (Meta loader) and U35 (batch lifecycle) add
 // their lines here when their handlers land. A kind that is not here is never claimed, and
 // "Retry" refuses it (retryJob only re-queues kinds the caller passes, and the route passes
 // these keys).
@@ -29,7 +29,11 @@
 export const JOB_GROUPS = Object.freeze(["writer", "loader", "system"]);
 
 /** @type {Record<string, { group: 'writer' | 'loader' | 'system', load: () => Promise<any> }>} */
-export const JOB_KINDS = {};
+export const JOB_KINDS = {
+  // U24 — the script writer (src/marketing/writer.mjs, spec §7.6). One module, two handlers.
+  write_slot: { group: "writer", load: () => import("./writer.mjs").then((m) => ({ run: m.runWriteSlot })) },
+  fix_script: { group: "writer", load: () => import("./writer.mjs").then((m) => ({ run: m.runFixScript })) }
+};
 
 /**
  * checkJobKinds(registry) → a list of problems, in plain words (empty when every entry is good).
