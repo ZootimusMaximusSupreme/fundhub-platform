@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Accounts</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<!-- ══ ACCOUNTS — THE CLIENT'S CONTAINERS AND ACCOUNTS ═══════════════════════
+     Direction: docs/finance/finance-os-direction-2026-10-06.md ("add a
+     business and input all relevant business information… containers within
+     the business structure… easy account addition"). Board:
+     ops/workflows/finance-os-pages-2026-10-06.md, unit P2.
+
+     Reads and writes ONE endpoint, /api/money/accounts. Every POST answers
+     with the whole view, and the page repaints from it.
+
+     THIN SHELL (owner change 2026-10-06: one FinanceOS page with tabs). The
+     section itself is window.FinanceOS.sections.accounts.mount(el, ctx) in
+     money-accounts.js; this page only gives it a header, the nav and a box.
+     The section's styles are the rules below from ".head" down (not .mbar,
+     .mnav) — /app/financeos.html needs the same rules.
+
+     CLIENT-FACING, SO NO shell.js — same as money.html. Own dark header, the
+     shared Money nav from the board, no staff menu. The real gate is the
+     endpoint: a client session only ever touches its own file; staff need
+     ?client_id=. money-accounts.js sends the person to sign in on a 401.
+
+     .app on the wrapper: fundhub-brand.css sizes the type (h1/h2 = title,
+     .caption/.eyebrow/label = caption, everything else body) and gives .card
+     the shared --panel-shadow. No px font sizes below (UI-STANDARDS §12.7). -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--surface:#FFFFFF;--text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2)}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+ul{list-style:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* header — same dark bar as money.html */
+.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sub{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
+
+/* the shared Money nav (board: ops/workflows/finance-os-pages-2026-10-06.md) */
+.mnav{display:flex;flex-wrap:wrap;gap:8px;padding:8px 24px;background:var(--surface);border-bottom:1px solid var(--line)}
+.mnav a{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:8px;text-decoration:none;color:var(--text-dim)}
+.mnav a:hover{background:var(--soft);color:var(--ink)}
+.mnav a[aria-current="page"]{background:var(--ink);color:var(--paper);font-weight:600}
+
+main{padding:24px 24px 64px}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.head h2{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.head-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.act-msg{flex-basis:100%}
+.act-msg:empty{display:none}
+.btn-primary,.btn{min-height:44px;padding:8px 24px;border-radius:8px;font-weight:600}
+.btn-primary{border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+.btn-primary:hover{background:var(--ink2)}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.btn:hover{border-color:var(--ink)}
+.btn-primary[disabled],.btn[disabled]{opacity:.6;cursor:default}
+.linkish{background:none;border:0;padding:0;min-height:40px;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+
+.sandbox{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+
+.block{margin-bottom:48px}
+.block>h2{font-weight:600;color:var(--ink)}
+.block>.caption{margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.grid>*{grid-column:span 6}
+.grid.one>*{grid-column:span 12}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.caption{color:var(--text-dim)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink)}
+.mask{font-family:var(--mono);color:var(--text-dim)}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim)}
+
+.box-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:8px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.box-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.info dd{margin:0;overflow-wrap:anywhere}
+.info-none{padding:16px 0;border-bottom:1px solid var(--line)}
+
+.acct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:16px 0;border-top:1px solid var(--line);align-items:start}
+.acct:first-child{border-top:0}
+.acct-name{font-weight:600;overflow-wrap:anywhere}
+.acct-num{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.acct-move{grid-column:1 / -1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.acct-move select{min-height:40px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);max-width:100%}
+.acct-none{padding:16px 0}
+
+/* forms — collapsed by default (UI-STANDARDS §9) */
+details.form{margin-top:16px}
+details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
+.fields{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
+.f{display:flex;flex-direction:column;gap:8px;grid-column:span 4;min-width:0}
+.f.wide{grid-column:span 8}
+.f.full{grid-column:span 12}
+.f input,.f select{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);width:100%}
+.f input:focus,.f select:focus,.acct-move select:focus{outline:2px solid var(--ink);outline-offset:1px}
+.form-act{grid-column:span 12;display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:flex-end}
+.form-act .act-msg{flex-basis:auto;flex:1 1 200px}
+.only-card[hidden]{display:none}
+
+.billing{margin-top:16px}
+.empty,.error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.empty p,.error p{max-width:60ch}
+
+.skel{display:flex;flex-direction:column;gap:8px}
+.sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+.sk-s{height:12px;width:40%}.sk-m{height:16px;width:70%}.sk-l{height:32px;width:60%}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+@media (max-width:1100px){
+  .grid>*{grid-column:span 12}
+  .info{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .f{grid-column:span 6}
+  .f.wide{grid-column:span 12}
+}
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .mbar,.mnav{padding:8px 16px}
+  .card{padding:16px}
+  .info{grid-template-columns:minmax(0,1fr)}
+  .f,.f.wide{grid-column:span 12}
+  .head-act{width:100%}
+  .head-act .btn-primary,.head-act .btn{flex:1 1 auto}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mbar">
+    <div class="brand">
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <div class="sub">Accounts</div>
+    </div>
+    <a id="money-back" href="client-portal.html">Back to my portal</a>
+  </header>
+  <nav class="mnav" aria-label="Money">
+    <a href="/app/money.html">Money</a>
+    <a href="/app/money-accounts.html" aria-current="page">Accounts</a>
+    <a href="/app/money-credit.html">Credit</a>
+    <a href="/app/money-connections.html">Connections</a>
+    <a href="/app/money-payments.html">Payments</a>
+    <a href="/app/money-setup.html">Setup</a>
+  </nav>
+  <main>
+    <h1 class="sr-only">Accounts</h1>
+    <div id="accounts-root" aria-live="polite">
+      <div class="head"><div><h2>Accounts</h2><p class="caption">Loading your accounts…</p></div></div>
+    </div>
+  </main>
+</div>
+<script defer src="money-accounts.js"></script>
+</body>
+</html>

@@ -39,6 +39,7 @@ const APP = path.resolve(HERE, "../../public/app");
                           no shell.js, no staff navigation (finance spec §8 step 4)
    money-credit.html    — the client's credit page; same rule as money.html
    money-setup.html     — the client's Finance OS setup page; same as money.html
+   money-accounts.html  — the client's Finance OS Accounts page; same as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
    *.fragment.html      — a fragment, not a screen */
@@ -52,6 +53,7 @@ const NO_SIDEBAR = new Set([
   "money.html",
   "money-credit.html",
   "money-setup.html",
+  "money-accounts.html",
   "teleprompter.html"
 ]);
 
