@@ -379,7 +379,7 @@
       var rows = items.map(function (it) {
         var when = it.when ? new Date(it.when) : null;
         var whenLabel = when && !isNaN(when.getTime())
-          ? (it.is_today ? "Today · " : "") + when.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+          ? (it.is_today ? "Today · " : "") + when.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" })
           : (it.is_today ? "Today" : "This week");
         var who = it.client_name || (it.attached ? "Client" : "Not matched yet");
         var href = safeDriveUrl(it.url);

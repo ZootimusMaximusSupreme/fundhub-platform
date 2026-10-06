@@ -612,7 +612,7 @@ let log=[], versions=[];
 let sim={running:false,done:false,feed:[],report:null,timer:null,mode:'first'};
 
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const now=()=>new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const now=()=>new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Phoenix'});
 
 function listAt(path){ if(!path||!path.length) return J[active].nodes;
   const c=J[active].nodes.find(n=>n.id===path[0]); return c?c.branches[path[1]].nodes:J[active].nodes; }

@@ -1874,7 +1874,7 @@ window.__fhInitQueue = function(){
   }
 
   function clock(){
-    return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Phoenix'});
   }
   function stat(name){ return document.querySelector('[data-stat="'+name+'"]'); }
   function bump(name, delta){

@@ -679,7 +679,7 @@
   }
   function clockTime(d) {
     try {
-      return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
     } catch (e) {
       return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0");
     }

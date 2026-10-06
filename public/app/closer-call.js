@@ -44,12 +44,15 @@
     if (!iso) return null;
     var d = new Date(iso);
     if (isNaN(d.getTime())) return null;
-    var clock = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    /* Arizona, like the topbar clock beside it — never the viewer's own zone
+       (walkthrough-4 defect 14). "Today" is the Arizona day too. */
+    var PHX = "America/Phoenix";
+    var clock = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: PHX });
     var ref = now ? new Date(now) : new Date();
-    var today = d.getFullYear() === ref.getFullYear() &&
-      d.getMonth() === ref.getMonth() && d.getDate() === ref.getDate();
+    var today = d.toLocaleDateString("en-US", { timeZone: PHX }) ===
+      ref.toLocaleDateString("en-US", { timeZone: PHX });
     if (today) return clock;
-    return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + clock;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: PHX }) + " " + clock;
   }
   /* "in 25m" / "35m ago" — the only place the back-to-back rhythm is said out
      loud. Never a bare number: a signed minute count with no word is unreadable
@@ -324,7 +327,7 @@
         rows += "<tr><td>Utilization</td><td>" + (credit.utilization != null ? credit.utilization + "%" : "—") + "</td></tr>";
         rows += "<tr><td>Inquiries · 6mo</td><td>" + (credit.inquiries_6mo != null ? credit.inquiries_6mo : "—") + "</td></tr>";
         rows += "<tr><td>Derogatories</td><td>" + (credit.derogatories != null ? credit.derogatories : "—") + "</td></tr>";
-        rows += "<tr><td>" + (credit.sample === true ? "Sample report loaded" : "Pulled") + "</td><td>" + (credit.pulled_at ? new Date(credit.pulled_at).toLocaleString() : "—") + "</td></tr>";
+        rows += "<tr><td>" + (credit.sample === true ? "Sample report loaded" : "Pulled") + "</td><td>" + (credit.pulled_at ? new Date(credit.pulled_at).toLocaleString("en-US", { timeZone: "America/Phoenix" }) : "—") + "</td></tr>";
         tables[0].innerHTML = rows;
       }
     }
@@ -338,7 +341,7 @@
       var pay = deal.latest_payment;
       var paidWhen = pay && pay.created_at ? new Date(pay.created_at) : null;
       var paidLabel = paidWhen && !isNaN(paidWhen.getTime())
-        ? paidWhen.toLocaleDateString() : null;
+        ? paidWhen.toLocaleDateString("en-US", { timeZone: "America/Phoenix" }) : null;
       /* A fraction on the payload (0.10 = 10%), and "default" is said out loud
          where no closeout row exists yet — the screen used to print a flat 10%
          whatever the file held. */
@@ -367,7 +370,7 @@
       if (cells[1]) cells[1].textContent = precall.purpose || "—";
       if (cells[2]) cells[2].textContent = precall.guessed_fico || "—";
       if (cells[3]) cells[3].textContent = precall.last_message_at
-        ? new Date(precall.last_message_at).toLocaleString() : "—";
+        ? new Date(precall.last_message_at).toLocaleString("en-US", { timeZone: "America/Phoenix" }) : "—";
       var flag = ctx.querySelector(".flag");
       if (flag) {
         flag.textContent = precall.lead_source
@@ -380,7 +383,7 @@
     var upNextSection = document.querySelector("aside.rail [data-fh-up-next], aside.rail section[data-fh-up-next]");
     if (upNextSection) {
       var next = (data.up_next || []).map(function (u) {
-        var t = u.due_at ? new Date(u.due_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "—";
+        var t = u.due_at ? new Date(u.due_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "—";
         return '<div class="q"><span class="t">' + t + "</span><div><b>" + (u.name || "Client") +
           "</b><em>" + (u.title || "") + "</em></div></div>";
       }).join("") || '<div class="q"><span class="t">—</span><div><b>No upcoming booked calls</b><em>Calendar tasks with due times will show here</em></div></div>';
