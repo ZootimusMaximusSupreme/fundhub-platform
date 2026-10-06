@@ -60,6 +60,15 @@ const ALLOWED_RAW_FETCH = {
     "the worker, through the providers and the chokepoint. Added 2026-09-24 after the " +
     "worker had to move off Inngest (26 s) and off a scheduled function (30 s), both of " +
     "which killed a 120 MB upload mid-flight.",
+  "src/marketing/offer-transport.mjs":
+    "The offer generator's two calls, neither of which reaches a client or a vendor " +
+    "record. (1) askAnthropic wraps the fetch handed to src/agents/model.mjs only to " +
+    "attach an AbortSignal, the same as api/social/generate.mjs; the model call is a " +
+    "question to a language model. (2) wakeOfferWorker is ONE POST to our own deploy " +
+    "(process.env.URL) at /.netlify/functions/marketing-offer-background with the " +
+    "owner's own session, to start the 15-minute writer the 26 s /api function cannot " +
+    "hold (spec docs/specs/marketing-machine-2026-10-04.md §6 Step 4 names this wake). " +
+    "Added 2026-10-05.",
   // ── Not actually the global fetch ────────────────────────────────────────
   "src/http/read-api.mjs":
     "`fetch` here is a local parameter holding a database reader, not the global.",
