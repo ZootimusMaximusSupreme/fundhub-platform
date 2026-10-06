@@ -72,6 +72,22 @@ flowchart LR
     START[Start a flywheel<br/>POST marketing/flywheel/campaign] -->|replace 00-OWNER-NOTES.md, once| OB
 ```
 
+## On the screen (Today, Flywheel card, step 1's row)
+
+```mermaid
+flowchart TD
+    ROW[step 1 row: the cost line from GET marketing/costs avatar_line<br/>and the run's own sentence when there is a run] --> RUNNING{a run queued or running?}
+    RUNNING -->|yes| DIS[Build the avatar disabled, reason printed:<br/>It is running now. This row shows each step as it goes.<br/>GET flywheel/job every 8 s while the tab is visible]
+    RUNNING -->|no| BTN[Build the avatar, outline]
+    BTN -->|tap| COSTS2[GET marketing/costs again] --> SHEET[sheet: the cost line, What we sell pre-filled,<br/>step 1 notes read only, It spends no ad money]
+    SHEET -->|Not now| ROW
+    SHEET -->|Start building| POST[POST marketing/flywheel/run<br/>campaign, stage 1, request_id, service_description]
+    POST -->|202| DIS
+    POST -->|409 / 503 / 400 / no connection| SAY[the server's sentence on the row; nothing started]
+    ROW -->|run stopped or failed| RETRY[Retry: POST run with retry_job_id] --> DIS
+    DIS -->|done or failed| ROW
+```
+
 ## The reads
 
 - `GET marketing/flywheel?campaign=` — six rows in words; step 1 carries the newest run
@@ -88,9 +104,13 @@ flowchart LR
 
 ## Gaps between the design and this code (findings, not fixed)
 
-1. The screen is not built in this unit: no Build the avatar button on Today's stage-1
-   row yet, no cost sheet, no Read it / Approve / Tweak / Redo / Retry controls (lane E,
-   unit X8 builds the Ideas card; Today's stage-1 row is not wired to these routes).
+1. The screen is partly built. On Today's Flywheel card, step 1's row
+   (`public/app/marketing-avatar-row.js`) shows the server's cost line, **Build the
+   avatar** (outline) with the cost sheet first (What we sell pre-filled, the step-1
+   notes read only), the running words polled every 8 s, and **Retry** on a stopped
+   or failed run. Not on the screen yet: Read it, Approve, Tweak, Redo (their routes
+   exist; lane E's Ideas card, unit X8, draws them), and the Today "Read the avatar"
+   waiting row and Alerts row.
 2. `GET marketing/flywheel` reads the bundled copy plus waiting saves, not GitHub at a
    pinned commit; the GitHub reader exists (`src/marketing/flywheel/repo-read.mjs`) and
    the run uses it, but the GET does not call GitHub on every poll (no ETag cache yet).
