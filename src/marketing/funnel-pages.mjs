@@ -15,8 +15,9 @@
 // thank-you page the same way slo-02 does (fh_booking_v1 in localStorage, written
 // by the calendar's own capture script on a real booking).
 //
-// Phone first: one column, 16px side gutters at 390px, 48px buttons, text 11px
-// or larger.
+// Phone first: one column, 16px side gutters at 390px (the calendar card too),
+// 48px buttons, text 11px or larger. Each page's tab title and link-preview
+// description are its own checked headline and subhead.
 
 import { pageDocument } from "./funnel-tracking.mjs";
 import { FUNNEL_HOST } from "./funnel-paths.mjs";
@@ -88,7 +89,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .fh-f .faq details[open] summary::before{content:"\\2212"}
 .fh-f .faq .a{padding:0 2px 18px 30px;font-size:15px;color:var(--gray);line-height:1.66}
 .fh-f .note{margin:26px auto 0;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}
-.fh-f .frame{max-width:900px;margin:18px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 18px 44px rgba(10,10,10,.10)}
+.fh-f .frame{width:calc(100% - 32px);max-width:900px;margin:18px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 18px 44px rgba(10,10,10,.10)}
 .fh-f .frame iframe{display:block;width:100%;height:920px;min-height:600px;border:0;background:#fff}
 .fh-f .prep{max-width:640px;margin:22px auto 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px}
 .fh-f .prep li{margin:8px 0 0 18px;font-size:15.5px;color:var(--gray)}
@@ -98,7 +99,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .fh-f .disc strong{color:#2A2A31;font-weight:600}
 .fh-f .foot{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--gray)}
 .fh-f .foot a{color:var(--ink2);text-decoration:underline;text-underline-offset:3px}
-@media(min-width:700px){.fh-f .wrap{padding:0 24px}.fh-f .hero{padding:40px 0 8px}.fh-f .card{padding:26px 28px}}
+@media(min-width:700px){.fh-f .wrap{padding:0 24px}.fh-f .frame{width:calc(100% - 48px)}.fh-f .hero{padding:40px 0 8px}.fh-f .card{padding:26px 28px}}
 @media(prefers-reduced-motion:reduce){.fh-f .btn{transition:none}}
 </style>`;
 
@@ -276,5 +277,9 @@ const BODY = Object.freeze({ landing: landingBody, booking: bookingBody, thank_y
 export function renderPage({ funnel, page, copy, paths, pageToken = null, env = process.env }) {
   const body = BODY[page.role];
   if (!body) throw new Error(`renderPage: unknown page role ${JSON.stringify(page.role)}`);
-  return pageDocument({ funnel, page, bodyHtml: body(copy, paths), pageToken, env });
+  const words = (copy && copy[page.role]) || {};
+  return pageDocument({
+    funnel, page, bodyHtml: body(copy, paths), pageToken, env,
+    title: words.headline, description: words.subhead
+  });
 }

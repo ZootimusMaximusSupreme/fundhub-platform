@@ -76,14 +76,45 @@ export function funnelTagBlock(funnel, page) {
   ].join("\n");
 }
 
+/* Text that is safe inside a <title> or an attribute. */
+function escText(value) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const MANIFEST_TITLE = "<title>Fundhub</title>";
+
+/**
+ * The page's own tab title ("<headline> | Fundhub") and a description meta
+ * (what a shared link or a Meta preview shows), in place of the manifest's
+ * plain "Fundhub" title. No headline keeps "Fundhub"; no subhead, no meta.
+ * @param {string} doc
+ * @param {{ title?: string|null, description?: string|null }} words
+ */
+export function withPageTitle(doc, { title = null, description = null } = {}) {
+  const t = escText(title).slice(0, 120);
+  const d = escText(description).slice(0, 300);
+  const line = `<title>${t ? `${t} | Fundhub` : "Fundhub"}</title>${d ? `\n<meta name="description" content="${d}">` : ""}`;
+  if (doc.includes(MANIFEST_TITLE)) return doc.replace(MANIFEST_TITLE, () => line);
+  return doc.replace(/<head>/i, () => `<head>\n${line}`);
+}
+
 /**
  * The whole page: the tag block first in <head>, then the manifest's tracking
- * head, then the body, then the manifest's footer scripts.
+ * head, then the body, then the manifest's footer scripts. The tab title and
+ * the description are the page's own words.
  * @param {{ funnel: any, page: { role: string, path: string }, bodyHtml: string,
- *           pageToken?: string|null, env?: Record<string, string|undefined> }} opts
+ *           pageToken?: string|null, env?: Record<string, string|undefined>,
+ *           title?: string|null, description?: string|null }} opts
  */
-export function pageDocument({ funnel, page, bodyHtml, pageToken = null, env = process.env }) {
-  return wrapCustomHtmlDocument({
+export function pageDocument({ funnel, page, bodyHtml, pageToken = null, env = process.env, title = null, description = null }) {
+  const doc = wrapCustomHtmlDocument({
     bodyHtml,
     pageToken: pageToken || undefined,
     pixelId: metaPixelId(env).id,
@@ -91,6 +122,7 @@ export function pageDocument({ funnel, page, bodyHtml, pageToken = null, env = p
     headFirstHtml: funnelTagBlock(funnel, page),
     env
   });
+  return withPageTitle(doc, { title, description });
 }
 
 /**

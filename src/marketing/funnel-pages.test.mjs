@@ -119,6 +119,37 @@ describe("the pages", () => {
     assert.match(html, /min-height:52px/);
   });
 
+  test("phone first: the calendar card keeps the same side gutter as every other block", () => {
+    const html = page("booking");
+    assert.match(html, /\.fh-f \.frame\{width:calc\(100% - 32px\);max-width:900px;margin:18px auto 0;/);
+    assert.match(html, /@media\(min-width:700px\)\{\.fh-f \.wrap\{padding:0 24px\}\.fh-f \.frame\{width:calc\(100% - 48px\)\}/);
+  });
+
+  for (const role of FUNNEL_ROLES) {
+    test(`${role}: the tab title and the link preview are this page's own words`, () => {
+      const head = headOf(page(role));
+      assert.ok(head.includes(`<title>${esc(COPY[role].headline)} | Fundhub</title>`), "the headline names the tab");
+      assert.ok(head.includes(`<meta name="description" content="${esc(COPY[role].subhead)}">`), "the subhead is the description");
+      assert.equal((head.match(/<title>/g) || []).length, 1, "one title");
+    });
+  }
+
+  test("a title is escaped like every other word", () => {
+    const evil = structuredClone(COPY);
+    evil.landing.headline = '</title><script>alert(1)</script>';
+    evil.landing.subhead = '"><script>x</script>';
+    const head = headOf(renderPage({ funnel: FUNNEL, page: { role: "landing", path: "/blueprint" }, copy: evil, paths: PATHS, env: ENV }));
+    assert.ok(head.includes("<title>&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt; | Fundhub</title>"));
+    assert.ok(head.includes('<meta name="description" content="&quot;&gt;&lt;script&gt;x&lt;/script&gt;">'));
+    assert.ok(!head.includes("<script>alert(1)"));
+  });
+
+  test("no words: the plain Fundhub title, no description", () => {
+    const doc = pageDocument({ funnel: FUNNEL, page: { role: "landing", path: "/blueprint" }, bodyHtml: "<p>x</p>", env: ENV });
+    assert.ok(headOf(doc).includes("<title>Fundhub</title>"));
+    assert.ok(!doc.includes('name="description"'));
+  });
+
   test("an unknown role is refused", () => {
     assert.throws(() => renderPage({ funnel: FUNNEL, page: { role: "x", path: "/x" }, copy: COPY, paths: PATHS, env: ENV }), /unknown page role/);
   });
