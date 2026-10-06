@@ -96,9 +96,14 @@ before(async () => {
   if (!RUN) return;
   orgId = (await db.query(`SELECT id FROM orgs WHERE is_default LIMIT 1`)).rows[0].id;
 
+  /* Resend's own test inbox, not @example.com. Email routes to Resend, and
+     Resend refuses example.com on sight (HTTP 422), so the dispatcher now holds
+     that address as a test address before any send (M7, 2026-10-05). The
+     transport is a spy here either way; this keeps the fixture an address the
+     real provider would take, so the acceptance run still proves a send. */
   clientId = (await db.query(
     `INSERT INTO clients (org_id, first_name, last_name, email, phone, ghl_contact_id)
-     VALUES ($1,'Acceptance','Case','acceptance-case@example.com','+15550000001','crmAcceptance')
+     VALUES ($1,'Acceptance','Case','delivered+acceptance-case@resend.dev','+15550000001','crmAcceptance')
      RETURNING id`,
     [orgId]
   )).rows[0].id;
@@ -158,7 +163,7 @@ async function queueReal({ channel = "email", templateKey = EMAIL_TPL, eventId =
        (org_id, client_id, direction, channel, template_key, rendered_body,
         provider, provider_ref, status, compliance_check_passed, to_address)
      VALUES ($1,$2,'outbound',$3,$4,$5,'internal',$6,'queued',true,$7)`,
-    [orgId, clientId, channel, TAG, body, `${TAG}:${Math.random()}`, "acceptance-case@example.com"]
+    [orgId, clientId, channel, TAG, body, `${TAG}:${Math.random()}`, "delivered+acceptance-case@resend.dev"]
   );
   return { sent: true };
 }
@@ -387,7 +392,7 @@ test("the destination and the rendered subject are recorded when the message is 
     await queueReal({ eventId: "address-evt-1" });
     const [row] = await rowsFor();
 
-    assert.equal(row.to_address, "acceptance-case@example.com",
+    assert.equal(row.to_address, "delivered+acceptance-case@resend.dev",
       "the destination must be recorded at queue time");
     assert.equal(row.subject, "About your file, Acceptance",
       "the subject must be recorded RENDERED — an unrendered one shows the client a merge tag");

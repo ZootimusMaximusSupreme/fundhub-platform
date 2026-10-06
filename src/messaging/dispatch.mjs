@@ -112,7 +112,8 @@ export const OUTCOME = Object.freeze({
   GAVE_UP: "gave_up",           // out of attempts
   DEFERRED: "deferred",         // inside quiet hours; due again when it opens
   SYNTHETIC: "synthetic",       // a test record, and the provider is real
-  DRY_RUN: "dry_run"            // the fence is up; held, not failed
+  DRY_RUN: "dry_run",           // the fence is up; held, not failed
+  TEST_ADDRESS: "test_address"  // the provider refuses this address on sight
 });
 
 /* ── QUIET HOURS ARE A DEFERRAL, NOT A BLOCK ────────────────────────────────
@@ -572,6 +573,22 @@ export async function dispatchOne(db, message, options = {}) {
       // record does not have.
       return await finalise(db, message, "failed", OUTCOME.NO_ADDRESS,
         `the client has no ${addressColumnFor(route.provider, message.channel)} to send to`, route.provider);
+    }
+
+    /* ---- 2d. AN ADDRESS THE PROVIDER WILL NEVER TAKE ----------------------
+       A provider may declare refusedAddress(to): a pure check, no network, for
+       destinations it refuses on sight. Resend does, for the reserved test
+       domains (example.com and the rest). Asked here, before the send, so a
+       test lead from a live walk of the funnel is recorded as 'blocked' with
+       the reason, instead of being handed to the vendor and logged as a failed
+       email. Measured 2026-10-01: 6 welcome + 5 finish-application emails
+       "failed" this way, every one to an @example.com address, none to a
+       person. Final, not a hold: no retry turns example.com into an inbox. */
+    if (typeof provider.refusedAddress === "function") {
+      const refused = provider.refusedAddress(address);
+      if (refused) {
+        return await finalise(db, message, "blocked", OUTCOME.TEST_ADDRESS, refused, null);
+      }
     }
 
     /* ---- 2b. The way out ---------------------------------------------------
