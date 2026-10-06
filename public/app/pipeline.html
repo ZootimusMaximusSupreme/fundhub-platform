@@ -1592,11 +1592,17 @@ restore();
   // fields buildColumn() already put on each column — the summary bar can
   // never disagree with the columns under it.
   function fhPipelineSummary(stages) {
-    var count = 0, money = 0;
+    var count = 0, money = 0, known = false;
     (stages || []).forEach(function (s) {
       count += s.count || 0;
-      money += s.amount || 0;
+      if (s.amount != null) {
+        money += s.amount;
+        if ((s.count || 0) > 0) known = true;
+      }
     });
+    /* Cards on the board but not one estimate among them: unknown, never $0.
+       An empty board is still a real zero. */
+    if (count > 0 && !known) money = null;
     return { count: count, money: money };
   }
   window.FHPipelineSummary = fhPipelineSummary;
@@ -1709,7 +1715,7 @@ restore();
   var sumMoneyWrap = document.getElementById("sumMoneyWrap");
   function setSummary(totals) {
     if (sumCountEl) sumCountEl.textContent = totals ? String(totals.count) : "—";
-    if (sumMoneyEl) sumMoneyEl.textContent = totals ? usd(totals.money) : "—";
+    if (sumMoneyEl) sumMoneyEl.textContent = totals && totals.money != null ? usd(totals.money) : "—";
     /* The money on a card is the client's FUNDING number, so a board total is
        only meaningful on the rails that are about funding. Everywhere else the
        figure is hidden instead of being summed into something it is not. */
@@ -2583,8 +2589,10 @@ restore();
     if (railHasMoney(pipelineKey)) {
       var moneyEl = document.createElement("div");
       moneyEl.className = "col-money";
-      moneyEl.textContent = usd(stage.amount) + " funding est.";
-      moneyEl.title = "The funding these clients are estimated to get. Not money collected.";
+      moneyEl.textContent = (stage.amount == null ? "—" : usd(stage.amount)) + " funding est.";
+      moneyEl.title = stage.amount == null
+        ? "No client in this column has a funding estimate yet."
+        : "The funding these clients are estimated to get. Not money collected.";
       head.appendChild(moneyEl);
     }
     var body = document.createElement("div");

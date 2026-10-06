@@ -134,6 +134,15 @@ const CARDS_SQL = `
   LIMIT $3
 `;
 
+/* stageAmount — the column's funding estimate. Sum of the known card amounts;
+   null when the column has cards and none of them carries an amount (unknown is
+   not $0); 0 for an empty column (nothing there is a real zero). */
+export function stageAmount(cards) {
+  const known = (cards || []).filter((c) => c.amount != null);
+  if (!known.length) return (cards || []).length ? null : 0;
+  return known.reduce((a, c) => a + Number(c.amount), 0);
+}
+
 export default async function handler(req, res) {
   // Staff session first; DASHBOARD_SECRET stays as the fallback until cutover,
   // matching the other dashboard routes.
@@ -199,8 +208,13 @@ export default async function handler(req, res) {
         sort_order: s.sort_order,
         count: cards.length,
         // Column money is the sum of what is actually in the column, so it can
-        // never disagree with the cards under it.
-        amount: cards.reduce((a, c) => a + (c.amount || 0), 0),
+        // never disagree with the cards under it. A column that holds cards
+        // but not one known estimate is UNKNOWN (null), not $0 — measured
+        // 2026-10-05: New Lead (8 cards) and Survey Complete (2) read "$0
+        // funding est." with no estimate on any card. An empty column is a
+        // real 0. amount_known says how many cards the sum is built from.
+        amount: stageAmount(cards),
+        amount_known: cards.filter((c) => c.amount != null).length,
         cards
       };
     });
