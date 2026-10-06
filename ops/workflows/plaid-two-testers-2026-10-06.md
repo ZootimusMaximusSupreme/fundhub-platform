@@ -1,6 +1,6 @@
 # Plaid — live bank connect for 2 testers (2026-10-06)
 
-Status: **waiting for Chris's go** (split proposed, nothing built).
+Status: **waiting for Chris's go** (split proposed, sandbox chosen, nothing built).
 
 ## Ask
 
@@ -21,9 +21,17 @@ Chris got off a call with Plaid. He wants Plaid working for himself and 1 other 
 4. No keys.
 5. `development` host in `PLAID_HOSTS` is dead at Plaid (retired 2024). Real banks = `production` host with Plaid's free Limited Production access.
 
-## Decision only Chris can make
+## Owner decisions
 
-- **Real banks or fake test banks?** Real = production keys (Limited Production / "Try for free"). Fake = sandbox keys only.
+- 2026-10-06 (owner-set): **sandbox only for now** — Plaid's fake test banks. `PLAID_ENV=sandbox`. Real banks later.
+- 2026-10-06 (owner-set): must support **business checking, personal checking, personal credit cards, business credit cards**, and the rest.
+
+## Account types — measured against the schema
+
+- Checking/savings → `bank_accounts.account_type='depository'`. Already fits.
+- Credit cards → `account_type='credit'`, `credit_limit_cents`. Already fits.
+- **Business vs personal → no column today.** Plaid tags accounts `holder_category` = business / personal / unrecognized. Plan: new nullable column `bank_accounts.holder_category`, filled only from Plaid. NULL = unknown, never guessed (same rule as `recurring_bills.is_business`). Proposed: when Plaid says unrecognized, the client taps Business or Personal after linking — **needs Chris's yes**.
+- W1 must confirm in Plaid docs which sandbox test users return business accounts and credit cards. Do not invent test usernames.
 
 ## Split
 
@@ -86,4 +94,4 @@ Fundhub repo. Board: ops/workflows/plaid-two-testers-2026-10-06.md — read it, 
 
 ## Blockers
 
-- Waiting on Chris: go + real vs fake banks + the second tester's email.
+- Waiting on Chris: go + yes/no on client picking Business/Personal when Plaid can't tell. Second tester email only needed for real banks.
