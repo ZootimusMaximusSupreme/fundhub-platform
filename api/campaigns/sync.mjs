@@ -113,8 +113,28 @@ import {
 } from "../../src/ads/meta-results.mjs";
 import { reresolveAdNumbers } from "../../src/ads/store.mjs";
 import { safeError } from "../../src/http/health.mjs";
+import { adAccountDay } from "../../src/lib/ad-account-day.mjs";
 
-const API_VERSION = () => process.env.META_API_VERSION || "v21.0";
+/* THE META GRAPH VERSION — v26.0 (2026-10-05, marketing machine M0 step 5).
+
+   v26.0 is Meta's newest version (released 2026-07-29). This file used to pin
+   version 21, which Meta's own Marketing API table lists as expired on
+   2025-09-09. Calls to an expired version "may fail or be upgraded to the next
+   available version" (Meta, Marketing API versioning) — so the pull only kept
+   working because Meta quietly upgraded it, and it would have broken the day
+   an endpoint we use changed.
+
+   THE FIELDS WERE CHECKED, NOT ASSUMED. Meta refuses a whole insights request
+   when one field name is unknown, so every name this file asks for — the
+   insights list (insightsRequestUrl), the campaign, ad set and ad lists, and
+   Business verification_status — was checked on 2026-10-05 against Meta's own
+   v26.0 SDK (facebook-python-business-sdk 26.0.2, adobjects/adsinsights.py,
+   campaign.py, adset.py, ad.py, business.py) and the v22 to v26 changelogs.
+   None was removed or renamed; `date_preset=maximum` is still a preset.
+
+   META_API_VERSION still wins when it is set. */
+export const DEFAULT_META_API_VERSION = "v26.0";
+const API_VERSION = () => process.env.META_API_VERSION || DEFAULT_META_API_VERSION;
 const BASE = "https://graph.facebook.com";
 
 /* How many days of numbers to pull, and how far the pager is allowed to walk.
@@ -468,6 +488,65 @@ export function insightWindow(now = Date.now()) {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   TWO PASSES — AN HOURLY 3-DAY PASS AND THE NIGHTLY 28-DAY PASS (2026-10-05).
+
+   The spec (docs/specs/marketing-machine-2026-10-04.md, M0 step 5): "Run hourly
+   for the last 3 days, plus a nightly 28-day pass." Chris runs his marketing
+   from the Command Center, so today's spend and results have to be at most an
+   hour old, not up to a day old.
+
+   nightly — exactly what the 07:00 UTC clock and the Sync button always ran:
+             the 28-day window (insightWindow), and a first pull of an account
+             reads its whole history (needsFullHistory). Unchanged.
+   hourly  — today in the ad account's zone (America/Phoenix,
+             src/lib/ad-account-day.mjs) and the 2 days before it: 3 days, a
+             row per ad per day. It NEVER reads the whole history, whatever is
+             or is not stored. Up to 37 months of rows every hour is a pull
+             that cannot fit the 26-second /api/inngest limit, and the first
+             pull of a new account is the nightly pass's job (or the button's).
+             Everything else is the same pull: the lists, the switch-on, the
+             saves, the ad numbers and the dying-ad scan, which still buzzes at
+             most once per ad per day (ad_watch_curve_alerts).
+
+   Both write through ON CONFLICT (ad_id, date), so a day read by both passes
+   simply holds Meta's newest answer. */
+export const HOURLY_WINDOW_DAYS = 3;
+
+/* hourlyWindow → { since, until }: HOURLY_WINDOW_DAYS days ending today in the
+   ad account's zone. Arizona days, never the UTC date: from 5pm to midnight
+   Arizona the UTC date is already tomorrow. */
+export function hourlyWindow(now = Date.now()) {
+  const until = adAccountDay(new Date(now));
+  const first = new Date(`${until}T00:00:00Z`);
+  first.setUTCDate(first.getUTCDate() - (HOURLY_WINDOW_DAYS - 1));
+  return { since: first.toISOString().slice(0, 10), until };
+}
+
+export const SYNC_PASSES = Object.freeze({
+  nightly: Object.freeze({
+    name: "nightly",
+    windowDays: INSIGHT_WINDOW_DAYS,
+    window: insightWindow,
+    mayReadWholeHistory: true
+  }),
+  hourly: Object.freeze({
+    name: "hourly",
+    windowDays: HOURLY_WINDOW_DAYS,
+    window: hourlyWindow,
+    mayReadWholeHistory: false
+  })
+});
+
+/* syncPass(name) → the pass, or throws BAD_PASS. A misspelt pass is a bug to
+   see, not a reason to quietly run a different pull. */
+export function syncPass(name = "nightly") {
+  if (Object.hasOwn(SYNC_PASSES, name)) return SYNC_PASSES[name];
+  const e = new Error(`unknown Meta sync pass "${name}" — use nightly or hourly`);
+  e.code = "BAD_PASS";
+  throw e;
+}
+
 async function upsertCampaign(tx, { orgId, partnerId, connectionId, row }) {
   const externalId = String(row.id);
   const budget = row.daily_budget != null
@@ -755,11 +834,20 @@ function describeError(entry) {
    across the boundary — see src/partners/rls.mjs.
 
    It throws NO_CONNECTION / NO_TOKEN the way it always did; the handler turns
-   those into the same 400s, and the sweeper counts them as skips. */
-export async function syncPartnerConnections({ partnerId, connectionId = null, deps = {} }) {
+   those into the same 400s, and the sweeper counts them as skips.
+
+   `pass` is "nightly" (the default: the button and the 07:00 UTC clock) or
+   "hourly" (the 3-day clock) — see SYNC_PASSES. `scope` is withPartnerScope
+   unless a test hands in its own, so the pass can be driven with no
+   database. */
+export async function syncPartnerConnections({
+  partnerId, connectionId = null, deps = {}, pass = "nightly", scope = withPartnerScope
+}) {
+  const plan = syncPass(pass);
+
   /* Every database touch below opens its own short transaction. NONE of them
      wraps a call to Meta — that is the whole point of this shape. */
-  const inScope = (fn) => withPartnerScope({ kind: "partner", partnerId }, fn);
+  const inScope = (fn) => scope({ kind: "partner", partnerId }, fn);
 
   const connId = connectionId;
   const found = await inScope((tx) => tx.query(
@@ -784,6 +872,7 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
   }
 
   const stats = { connections: 0, campaigns: 0, ad_sets: 0, ads: 0, insights: 0, errors: [] };
+  stats.pass = plan.name;
   const orgId = usable[0].org_id;
 
   /* Purchases, cost per purchase, link clicks and landing page views (408).
@@ -800,20 +889,24 @@ export async function syncPartnerConnections({ partnerId, connectionId = null, d
     stats.connections += 1;
     try {
       const token = tokenFor(connection);
-      const { since, until } = insightWindow();
+      const { since, until } = plan.window();
 
-      /* FIRST PULL READS THE WHOLE HISTORY (see needsFullHistory above). The
-         question is one short read of our own table; if it fails the answer
-         is "keep the window", which is what this did before. */
-      const earliest = await inScope((tx) =>
-        earliestStoredDay((sql, params) => tx.query(sql, params), connection.id)
-      ).catch(() => undefined);
+      /* FIRST PULL READS THE WHOLE HISTORY (see needsFullHistory above) — on
+         the nightly pass and the button only. The hourly pass never asks the
+         question, so it can never take this path (SYNC_PASSES). The question
+         is one short read of our own table; if it fails the answer is "keep
+         the window", which is what this did before. */
+      const earliest = plan.mayReadWholeHistory
+        ? await inScope((tx) =>
+          earliestStoredDay((sql, params) => tx.query(sql, params), connection.id)
+        ).catch(() => undefined)
+        : undefined;
 
       /* ONE call for every ad's numbers, instead of one call per ad. Done
          before the walk so each ad's days are already in hand when its row is
          written, which keeps the write transactions short. */
       let pull = null;
-      if (needsFullHistory({ earliestStored: earliest, since })) {
+      if (plan.mayReadWholeHistory && needsFullHistory({ earliestStored: earliest, since })) {
         try {
           pull = await fetchAllPages({
             url: insightsRequestUrl(connection, { datePreset: "maximum" }),

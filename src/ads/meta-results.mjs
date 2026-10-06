@@ -38,9 +38,22 @@ export const META_PURCHASE_ACTION_TYPES = Object.freeze([
 export const META_LINK_CLICK_ACTION = "link_click";
 export const META_LANDING_PAGE_VIEW_ACTION = "landing_page_view";
 
+/* LINK CLICKS COME FROM inline_link_clicks FIRST (2026-10-05, marketing
+   machine M0 step 5). It is Meta's own "Link clicks" field on the insights
+   row — one number, sent as a STRING ("43") — and a field in Meta's v26.0 SDK
+   (facebook_business/adobjects/adsinsights.py, SDK 26.0.2, checked
+   2026-10-05). When Meta sends it, it is the number. When Meta does not, the
+   link_click line in `actions` is used, as before. Never added together: they
+   count the same clicks. Stored in the one column 408 already added,
+   ad_metrics_daily.link_clicks — there is no second column. */
+export const META_INLINE_LINK_CLICKS_FIELD = "inline_link_clicks";
+
 /* The insights fields these four numbers need. `actions` was already on the
-   request; `cost_per_action_type` is the one this adds. */
-export const MONEY_INSIGHT_REQUEST_FIELDS = Object.freeze(["actions", "cost_per_action_type"]);
+   request; `cost_per_action_type` (purchases) and `inline_link_clicks` (link
+   clicks) are the ones this adds. */
+export const MONEY_INSIGHT_REQUEST_FIELDS = Object.freeze([
+  "actions", "cost_per_action_type", META_INLINE_LINK_CLICKS_FIELD
+]);
 
 /* Our column names (408), in the order the sync writes them. */
 export const META_RESULT_COLUMNS = Object.freeze([
@@ -95,6 +108,15 @@ export function actionCostCents(costs, type) {
   return null;
 }
 
+/* linkClicks(row) → inline_link_clicks when Meta sent a readable one, else
+   the link_click line in `actions`, else null. A real 0 Meta sent stays 0. */
+export function linkClicks(row = {}) {
+  const r = row && typeof row === "object" ? row : {};
+  const inline = countOrNull(r[META_INLINE_LINK_CLICKS_FIELD]);
+  if (inline !== null) return inline;
+  return actionCount(r.actions, META_LINK_CLICK_ACTION);
+}
+
 /* The first purchase action Meta actually sent a line for. */
 export function purchaseActionType(actions) {
   for (const type of META_PURCHASE_ACTION_TYPES) {
@@ -130,7 +152,7 @@ export function metaResultMetrics(row = {}) {
   return {
     purchases,
     cost_per_purchase_cents: costPerPurchase,
-    link_clicks: actionCount(r.actions, META_LINK_CLICK_ACTION),
+    link_clicks: linkClicks(r),
     landing_page_views: actionCount(r.actions, META_LANDING_PAGE_VIEW_ACTION)
   };
 }

@@ -34,11 +34,11 @@ import { driveConfigFromEnv, createDriveClient } from "./src/company-brain/index
 import { extractPdfText } from "./src/company-brain/pdf-text.mjs";
 
 const FILE_ID = "18aTm2HUG1qiy4PrTUMQB6HLfT9HkrHCf";
-const outTxt = "docs/ads/reference/masterson-architecture-of-persuasion-2009.txt";
+const outTxt = "marketing/ads/reference/masterson-architecture-of-persuasion-2009.txt";
 const client = createDriveClient(driveConfigFromEnv(process.env));
 const buf = await client.downloadMedia(FILE_ID);
 const { text } = await extractPdfText(buf);
-mkdirSync("docs/ads/reference", { recursive: true });
+mkdirSync("marketing/ads/reference", { recursive: true });
 writeFileSync(outTxt, text);
 console.log("wrote", outTxt, "chars", text.length);
 EOF

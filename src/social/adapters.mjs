@@ -7,7 +7,10 @@
 import { decryptToken } from "../adplatforms/tokens.mjs";
 import { callPlatform } from "../adplatforms/_api.mjs";
 
-const API_VERSION = () => process.env.META_API_VERSION || "v21.0";
+/* Meta Graph version: META_API_VERSION, else v26.0 (marketing machine M0
+   step 5, 2026-10-05). POST /{page-id}/feed with `message` is unchanged in the
+   Graph API v22 to v26 changelogs. */
+const API_VERSION = () => process.env.META_API_VERSION || "v26.0";
 const BASE = "https://graph.facebook.com";
 
 function channelFromPost(post) {

@@ -299,6 +299,12 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/407_ad_number_from_meta.sql",
   "migrations/408_ad_metrics_meta_results.sql",
   "migrations/409_marketing_jobs.sql",
+  "migrations/410_marketing_settings_funnels.sql",
+  "migrations/411_marketing_buzzes_usage_shoots.sql",
+  "migrations/412_repo_outbox.sql",
+  "migrations/413_ad_scripts_machine_columns.sql",
+  "migrations/414_marketing_batches_ideas_voice_next_number.sql",
+  "migrations/416_ads_number_index_and_source.sql",
   "seed/002_pipelines.sql",
   "seed/006_message_templates_source_doc.sql",
   "seed/007_contract_templates.sql",
@@ -332,7 +338,8 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/033_slo_texts_voice.sql",
   "seed/034_slo_first5_reply.sql",
   "seed/295_sms_copy_2026_09.sql",
-  "seed/296_marketing_copy_writer_house.sql"
+  "seed/296_marketing_copy_writer_house.sql",
+  "seed/297_marketing_funnels.sql"
 ]);
 
 export default EXPECTED_MIGRATIONS;

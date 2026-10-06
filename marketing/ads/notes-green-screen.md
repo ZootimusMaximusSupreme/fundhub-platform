@@ -4,7 +4,7 @@ Oct 2, 2026 · Chris Stanbridge. Saved to the repo 2026-10-02 from Chris's conce
 analogy ads were rewritten the same day to be funnier (flat tire and a hammer, owner ask).
 
 **Owner-set 2026-10-02: this doc's copy rules win over the ad checker.** `npm run ads:check` flags
-these scripts for "optimize" (banned in `docs/ads/rules-data.mjs`) and for the missing RULES.md 3.6
+these scripts for "optimize" (banned in `marketing/ads/rules-data.mjs`) and for the missing RULES.md 3.6
 close (no hard pull, nothing moves without consent). Chris overruled both: those checker rules are
 outdated. The scripts stay as written.
 
@@ -348,6 +348,6 @@ The landing page and the deliverables still run on the old 5-step order, so they
 - [ ] Film the SLO Notes ad.
 - [ ] Write the sorting hat Notes script on the 7-step note.
 - [ ] Write the 13 hidden data points ad and the cliffhanger ad.
-- [x] Save the note and scripts to the repo under docs/ads/. Done 2026-10-02: this file. The concept
+- [x] Save the note and scripts to the repo under marketing/ads/. Done 2026-10-02: this file. The concept
       doc said the note was already saved as `funding-process-note.md`; no file by that name exists
       in the repo on any branch, so the note lives here, in "The note" above.

@@ -204,12 +204,21 @@ export default async function handler(req, res) {
       const sets = [];
       const params = [adId, partnerId];
       if (setsAsset)  { params.push(assetId);  sets.push(`asset_id = $${params.length}`); }
-      if (setsNumber) { params.push(adNumber); sets.push(`fundhub_ad_number = $${params.length}`); }
+      if (setsNumber) {
+        params.push(adNumber);
+        sets.push(`fundhub_ad_number = $${params.length}`);
+        // A number typed here is a person's number: source 'manual' (416), which
+        // the daily Meta sync never overwrites (spec §10.5). Clearing the number
+        // clears its source too — no number, nothing to say where it came from.
+        params.push(adNumber === null ? null : "manual");
+        sets.push(`fundhub_ad_number_source = $${params.length}`);
+      }
 
       const updated = (await tx.query(
         `UPDATE ads SET ${sets.join(", ")}, updated_at = now()
           WHERE id = $1 AND partner_id = $2
-          RETURNING id, org_id, partner_id, asset_id, fundhub_ad_number, external_id, name`,
+          RETURNING id, org_id, partner_id, asset_id, fundhub_ad_number,
+                    fundhub_ad_number_source, external_id, name`,
         params
       )).rows[0];
 
@@ -240,17 +249,9 @@ export default async function handler(req, res) {
     if (err.code === "CROSS_PARTNER" || err.code === "CROSS_ORG") {
       return res.status(400).json({ ok: false, error: err.code.toLowerCase(), message: err.message });
     }
-    // 23505 — ads_fundhub_number_uq (377:575). The number pool is shared across
-    // the whole company, not per partner (377:542-548), so the ad already
-    // holding it may well belong to somebody else. Its id is deliberately not
-    // returned.
-    if (err.code === "23505") {
-      return res.status(409).json({
-        ok: false,
-        error: "ad_number_taken",
-        message: "another ad already uses that number. Ad numbers are unique across the whole company."
-      });
-    }
+    // No 23505 branch any more: 416 replaced the unique index on the number
+    // (ads_fundhub_number_uq, 377:575) with a plain one, so one number may sit
+    // on several Meta ads (spec §10.4) and nothing here can collide.
     // 23514 — the CHECK. The JS guard above should have caught it first; if it
     // did not, the two regexes have drifted apart and that is worth seeing.
     if (err.code === "23514") {

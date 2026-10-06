@@ -4,7 +4,22 @@
 import crypto from "node:crypto";
 import { encryptToken } from "../adplatforms/tokens.mjs";
 
-const META_GRAPH = "https://graph.facebook.com/v21.0";
+/* Meta Graph version: META_API_VERSION, else v26.0 (marketing machine M0
+   step 5, 2026-10-05). It used to be written into both URLs below by hand, so
+   setting META_API_VERSION moved every other Meta call but not this one. A
+   value that is not a version (vNN.N) falls back to the default rather than
+   building a broken URL — the same rule src/messaging/providers/meta-capi.mjs
+   uses. The OAuth dialog, /oauth/access_token, /me/accounts and the Page
+   permissions asked for below are unchanged in the Graph API v22 to v26
+   changelogs. */
+export const DEFAULT_META_API_VERSION = "v26.0";
+
+export function metaGraphVersion(env = process.env) {
+  const v = String(env?.META_API_VERSION ?? "").trim();
+  return /^v\d{1,3}\.\d{1,3}$/.test(v) ? v : DEFAULT_META_API_VERSION;
+}
+
+const metaGraph = (env) => `https://graph.facebook.com/${metaGraphVersion(env)}`;
 const LI_AUTH = "https://www.linkedin.com/oauth/v2/authorization";
 const LI_TOKEN = "https://www.linkedin.com/oauth/v2/accessToken";
 
@@ -44,13 +59,13 @@ export function verifyState(state, env = process.env) {
   }
 }
 
-export function metaAuthUrl({ appId, redirectUri, state, scopes } = {}) {
+export function metaAuthUrl({ appId, redirectUri, state, scopes, env = process.env } = {}) {
   if (!appId) return { ok: false, reason: "not_configured", missing: ["META_APP_ID"] };
   const scope = (scopes || [
     "pages_show_list", "pages_manage_posts", "pages_read_engagement",
     "instagram_basic", "instagram_content_publish"
   ]).join(",");
-  const dialog = new URL("https://www.facebook.com/v21.0/dialog/oauth");
+  const dialog = new URL(`https://www.facebook.com/${metaGraphVersion(env)}/dialog/oauth`);
   dialog.searchParams.set("client_id", appId);
   dialog.searchParams.set("redirect_uri", redirectUri);
   dialog.searchParams.set("state", state);
@@ -78,7 +93,8 @@ export async function exchangeMetaCode({ code, redirectUri, env = process.env, f
     return { ok: false, reason: "not_configured", missing: ["META_APP_ID", "META_APP_SECRET"].filter((k) => !env[k]) };
   }
   const doFetch = fetchImpl || fetch;
-  const tokenUrl = new URL(`${META_GRAPH}/oauth/access_token`);
+  const graph = metaGraph(env);
+  const tokenUrl = new URL(`${graph}/oauth/access_token`);
   tokenUrl.searchParams.set("client_id", appId);
   tokenUrl.searchParams.set("client_secret", secret);
   tokenUrl.searchParams.set("redirect_uri", redirectUri);
@@ -88,7 +104,7 @@ export async function exchangeMetaCode({ code, redirectUri, env = process.env, f
   if (!tok.access_token) return { ok: false, reason: "token_exchange_failed", detail: tok };
 
   const pagesRes = await doFetch(
-    `${META_GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${encodeURIComponent(tok.access_token)}`
+    `${graph}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${encodeURIComponent(tok.access_token)}`
   );
   const pages = await pagesRes.json().catch(() => ({}));
   return {

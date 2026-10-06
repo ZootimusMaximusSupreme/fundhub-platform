@@ -16,8 +16,9 @@ import {
   advance, STATES, NEXT_STEP, checkResolution, buildBrief, FOUR_K_HEIGHT,
   stage, submagicCreate, readTranscript, matchAndRename,
   placeBrollAndExport, pollFinished, saveFinishedAndNotify, deliverToPaul,
-  recordSubmagicWebhook, renotify
+  recordSubmagicWebhook, renotify, NEXT_FREE_TAKE_NO, takeNoFromName
 } from "./pipeline.mjs";
+import * as store from "./store.mjs";
 
 const NAMING = {
   /* THE REAL MODULE'S NAMES AND SHAPES. This stub used to invent rawName,
@@ -242,39 +243,192 @@ describe("Submagic", () => {
   });
 });
 
-describe("match and rename", () => {
-  const transcribed = row({
-    status: "transcribed", ad_id: null, script_id: null,
-    transcript: "most people apply in the wrong order",
-    transcript_words: [{ word: "most", startTime: 0, endTime: 0.3 }]
+describe("match (spec §9.1 step 5)", () => {
+  /* A real-length read: the free word-overlap check places it with no model. */
+  const SCRIPT = {
+    id: "s1", adId: "43", title: "wrong order",
+    body: "Most people apply in the wrong order and the bank says no. Fix the order first and the same bank says yes."
+  };
+  const OTHER = { id: "s2", adId: "44", title: "inquiries", body: "Every inquiry on your file is a reason to decline you." };
+  const READ = "most people apply in the the wrong order uh and the bank says no fix the order first and the same bank says yes";
+
+  const transcribed = (extra = {}) => row({
+    status: "transcribed", ad_id: null, take_no: null, script_id: null,
+    drive_raw_name: "IMG_4471.MOV", transcript: READ, ...extra
   });
 
-  test("THE RENAME ONLY HAPPENS AFTER THE MATCH", async () => {
-    let renamed = false;
-    const out = await matchAndRename(transcribed, {
-      drive: { renameFile: async () => { renamed = true; return okish({ at: "2026-09-23T10:00:00Z" }); } },
-      naming: NAMING,
-      candidateScripts: [],       // nothing to match against
-      env: { ANTHROPIC_API_KEY: "" }
+  /** A model that must not be reached, and says so if it is. */
+  const noModel = () => {
+    const impl = async () => { impl.calls += 1; throw new Error("the model was called"); };
+    impl.calls = 0;
+    return impl;
+  };
+
+  /** A Drive stand-in that remembers any rename. */
+  const watchedDrive = () => {
+    const drive = { renamed: 0, renameFile: async () => { drive.renamed += 1; return okish({ at: "t" }); } };
+    return drive;
+  };
+
+  test("a row with script_id NULL is matched — by overlap, with no model call", async () => {
+    const model = noModel();
+    const out = await matchAndRename(transcribed(), {
+      candidateScripts: [OTHER, SCRIPT], env: { ANTHROPIC_API_KEY: "sk-ant-test" }, fetchImpl: model
     });
-    assert.equal(out.ok, false);
-    assert.equal(renamed, false,
-      "a file renamed on a guess looks like a fact to everybody downstream");
+    assert.equal(out.ok, true, out.error);
+    assert.equal(model.calls, 0);
+    assert.equal(out.patch.status, "matched");
+    assert.equal(out.patch.script_id, "s1");
+    assert.equal(out.patch.ad_id, "43");
+    assert.ok(out.patch.match_confidence >= 80);
+  });
+
+  test("a row with script_id NULL that overlap cannot place goes to the model", async () => {
+    let asked = 0;
+    const model = async () => {
+      asked += 1;
+      const body = { content: [{ type: "text", text: '{"scriptId":"s1","confidence":91,"reason":"own words"}' }] };
+      return { ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) };
+    };
+    const out = await matchAndRename(transcribed({ transcript: "so the thing nobody tells you about banks" }), {
+      candidateScripts: [SCRIPT, OTHER], env: { ANTHROPIC_API_KEY: "sk-ant-test" }, fetchImpl: model
+    });
+    assert.equal(asked, 1);
+    assert.equal(out.patch.status, "matched");
+    assert.equal(out.patch.script_id, "s1");
+  });
+
+  test("NO RAW FILE IS RENAMED — not after a match, not after a miss", async () => {
+    const drive = watchedDrive();
+    const hit = await matchAndRename(transcribed(), {
+      drive, naming: NAMING, candidateScripts: [SCRIPT, OTHER], env: {}
+    });
+    assert.equal(hit.ok, true);
+    const miss = await matchAndRename(transcribed(), {
+      drive, naming: NAMING, candidateScripts: [], env: {}
+    });
+    assert.equal(miss.ok, false);
+    assert.equal(drive.renamed, 0,
+      "owner law: never move or rename raw files. A phone upload keeps the camera's name.");
+    assert.equal("renamed_at" in hit.patch, false, "renamed_at stays on the table, unused");
   });
 
   test("a script with no ad number stops the row and says why", async () => {
     const out = await matchAndRename(row({
       status: "transcribed", transcript: "words", script_id: "s1", ad_id: null
-    }), { naming: NAMING, drive: {} });
+    }), {});
     assert.equal(out.patch.status, "failed");
     assert.match(out.error, /ad number must exist before filming/);
   });
 
-  test("with an id and a name already on the row it does nothing", async () => {
-    const out = await matchAndRename(row({
-      status: "transcribed", transcript: "w", script_id: "s1", renamed_at: "2026-09-23T10:00:00Z"
-    }), {});
-    assert.equal(out.skipped, true);
+  test("a row with a script and a take number is not matched again — it moves on", async () => {
+    const model = noModel();
+    const out = await matchAndRename(transcribed({ script_id: "s1", ad_id: "43", take_no: 2, match_confidence: 88 }), {
+      candidateScripts: [OTHER], env: { ANTHROPIC_API_KEY: "sk-ant-test" }, fetchImpl: model
+    });
+    assert.equal(model.calls, 0);
+    assert.equal(out.ok, true);
+    assert.equal(out.patch.status, "matched",
+      "an empty patch here would leave a retried take at `transcribed` forever");
+    assert.equal(out.patch.script_id, "s1", "the script it was matched to is kept");
+    assert.equal(out.patch.take_no, 2, "a take number is never re-numbered");
+    assert.equal(out.patch.match_confidence, 88);
+  });
+
+  test("A ROW WITH script_id SET AND take_no NULL gets the next free take number, with no new match", async () => {
+    const model = noModel();
+    const out = await matchAndRename(transcribed({ script_id: "s1", ad_id: "43", take_no: null }), {
+      candidateScripts: [OTHER], env: { ANTHROPIC_API_KEY: "sk-ant-test" }, fetchImpl: model
+    });
+    assert.equal(model.calls, 0, "rows matched before this change are not re-matched");
+    assert.equal(out.patch.status, "matched");
+    assert.equal(out.patch.script_id, "s1");
+    assert.equal(out.patch.ad_id, "43", "the store needs the ad in the same write to number it");
+    assert.equal(out.patch.take_no, NEXT_FREE_TAKE_NO);
+  });
+
+  test("A SECOND TAKE FOR AN AD IS NOT TAKE 1 AGAIN — both ask for the next free number", async () => {
+    /* The old rule was "no 'Take N' in the name is take 1", so the second phone
+       upload of an ad collided on ad_videos_take_uq and stuck at transcribed.
+       The store picks 1 and then 2 inside each UPDATE; the real-database half of
+       this test is src/ad-videos/pipeline.pg.test.mjs. */
+    const first = await matchAndRename(transcribed({ id: "a", drive_raw_name: "IMG_0001.MOV" }), {
+      candidateScripts: [SCRIPT, OTHER], env: {}
+    });
+    const second = await matchAndRename(transcribed({ id: "b", drive_raw_name: "IMG_0002.MOV" }), {
+      candidateScripts: [SCRIPT, OTHER], env: {}
+    });
+    assert.equal(first.patch.ad_id, "43");
+    assert.equal(second.patch.ad_id, "43");
+    assert.equal(first.patch.take_no, NEXT_FREE_TAKE_NO);
+    assert.equal(second.patch.take_no, NEXT_FREE_TAKE_NO);
+    assert.notEqual(second.patch.take_no, 1);
+  });
+
+  test('"Take N" in the file name is take N; no number there means the next free one', async () => {
+    assert.equal(takeNoFromName("SLO Ad 7 — Haynes, the call that was never a roadmap Take 6.mp4"), 6);
+    assert.equal(takeNoFromName("take2.mov"), 2);
+    assert.equal(takeNoFromName("IMG_4471.MOV"), null);
+    assert.equal(takeNoFromName("Take 0.mp4"), null, "there is no take 0");
+    const named = await matchAndRename(transcribed({ drive_raw_name: "SLO Ad 43 Take 3.mp4" }), {
+      candidateScripts: [SCRIPT, OTHER], env: {}
+    });
+    assert.equal(named.patch.take_no, 3);
+  });
+
+  test("the pipeline's next-free word is the store's", () => {
+    assert.equal(NEXT_FREE_TAKE_NO, store.NEXT_FREE_TAKE_NO);
+  });
+});
+
+describe("the store picks the next free take number inside the UPDATE", () => {
+  /** A transaction stand-in. Keeps the SQL and the parameters, runs nothing. */
+  const fakeTx = () => {
+    const queries = [];
+    return { queries, query: async (sql, params) => { queries.push({ sql, params }); return { rows: [{ id: "r1" }] }; } };
+  };
+
+  test("a move to matched asks Postgres for MAX(take_no) + 1 of that ad, and keeps a number already there", async () => {
+    const tx = fakeTx();
+    await store.advance(tx, {
+      orgId: "org1", id: "r1", from: "transcribed", to: "matched",
+      patch: { script_id: "s1", ad_id: "43", take_no: NEXT_FREE_TAKE_NO, match_confidence: 91 }
+    });
+    const { sql, params } = tx.queries[0];
+    const adParam = `$${params.indexOf("43") + 1}`;
+    assert.ok(sql.includes(
+      "take_no = COALESCE(ad_videos.take_no, (SELECT COALESCE(MAX(t.take_no), 0) + 1 " +
+      `FROM ad_videos t WHERE t.org_id = ad_videos.org_id AND t.ad_id = ${adParam}::text))`
+    ), sql);
+    assert.equal(params.includes(NEXT_FREE_TAKE_NO), false, "the word itself is never written into the column");
+  });
+
+  test("an explicit number is written as it is", async () => {
+    const tx = fakeTx();
+    await store.advance(tx, {
+      orgId: "org1", id: "r1", from: "transcribed", to: "matched",
+      patch: { ad_id: "43", take_no: 3 }
+    });
+    assert.match(tx.queries[0].sql, /take_no = \$\d+/);
+    assert.ok(tx.queries[0].params.includes(3));
+  });
+
+  test("the next free number of NO ad is refused before any SQL", async () => {
+    const tx = fakeTx();
+    await assert.rejects(
+      store.advance(tx, { orgId: "org1", id: "r1", from: "transcribed", to: "matched", patch: { take_no: NEXT_FREE_TAKE_NO } }),
+      (err) => err.code === "next_free_take_needs_ad"
+    );
+    assert.equal(tx.queries.length, 0);
+  });
+
+  test("a new row cannot ask for it — nextTake() is the door for that", async () => {
+    const tx = fakeTx();
+    await assert.rejects(
+      store.createTake(tx, { orgId: "org1", partnerId: "p1", adId: "43", takeNo: 1, take_no: NEXT_FREE_TAKE_NO }),
+      (err) => err.code === "next_free_take_update_only"
+    );
+    assert.equal(tx.queries.length, 0);
   });
 });
 

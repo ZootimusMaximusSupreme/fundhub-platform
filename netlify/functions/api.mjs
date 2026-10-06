@@ -292,6 +292,8 @@ import readProxySessions from "../../api/read/proxy-sessions.mjs";
 import climate from "../../api/climate.mjs";
 import climateGeocode from "../../api/climate/geocode.mjs";
 import climateConfig from "../../api/climate/config.mjs";
+import marketingSettings from "../../api/marketing/settings.mjs";
+import marketingFunnels from "../../api/marketing/funnels.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1185,7 +1187,11 @@ export const ROUTES = {
   // handler named api/messages.mjs for two entirely different features; this
   // one was renamed at merge time rather than either feature being dropped
   // or the two being forced into one file. See docs/MERGE-LOG.md section 3.
-  "messages-outbound": messagesOutbound
+  "messages-outbound": messagesOutbound,
+
+  // marketing machine
+  "marketing/settings": marketingSettings,
+  "marketing/funnels": marketingFunnels
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

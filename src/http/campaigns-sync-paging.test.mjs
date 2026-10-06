@@ -59,7 +59,7 @@ function endlessPages() {
       status: 200,
       text: async () => JSON.stringify({
         data: [{ id: `x${n}` }],
-        paging: { next: `https://graph.facebook.com/v21.0/page${n + 1}` }
+        paging: { next: `https://graph.facebook.com/v26.0/page${n + 1}` }
       })
     };
   };
@@ -88,7 +88,7 @@ describe("following Meta's next-page link", () => {
     const { fetchImpl, seen } = fakeMeta([
       {
         data: [{ id: "c1" }, { id: "c2" }],
-        paging: { next: "https://graph.facebook.com/v21.0/act_1/campaigns?after=AAA" }
+        paging: { next: "https://graph.facebook.com/v26.0/act_1/campaigns?after=AAA" }
       },
       { data: [{ id: "c3" }] }
     ]);
@@ -108,8 +108,8 @@ describe("following Meta's next-page link", () => {
 
   test("a second page of ads under one ad set is read too", async () => {
     const { fetchImpl } = fakeMeta([
-      { data: [{ id: "ad1" }], paging: { next: "https://graph.facebook.com/v21.0/set1/ads?after=BBB" } },
-      { data: [{ id: "ad2" }], paging: { next: "https://graph.facebook.com/v21.0/set1/ads?after=CCC" } },
+      { data: [{ id: "ad1" }], paging: { next: "https://graph.facebook.com/v26.0/set1/ads?after=BBB" } },
+      { data: [{ id: "ad2" }], paging: { next: "https://graph.facebook.com/v26.0/set1/ads?after=CCC" } },
       { data: [{ id: "ad3" }] }
     ]);
 
@@ -190,11 +190,11 @@ describe("the page cap", () => {
       status: 200,
       text: async () => JSON.stringify({
         data: [{ id: "c1" }],
-        paging: { next: "https://graph.facebook.com/v21.0/same" }
+        paging: { next: "https://graph.facebook.com/v26.0/same" }
       })
     });
     const out = await fetchAllPages({
-      url: "https://graph.facebook.com/v21.0/same",
+      url: "https://graph.facebook.com/v26.0/same",
       token: "t",
       ctx: { fetch: fetchImpl }
     });

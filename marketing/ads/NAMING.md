@@ -34,9 +34,9 @@ Spaces stay. The dash before the angle is ` — ` (space, em dash, space). The t
 
 ## The seven SLO ads
 
-These angle names are the titles in `docs/ads/fundhub-297/FundHub-LOCKED-ADS.md`. Copy them. Do not rename the angle.
+These angle names are the titles in `marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md`. Copy them. Do not rename the angle.
 
-Ad 5's angle is the title in `docs/ads/fundhub-297/FundHub-297-Ads-FINAL.pdf`. The markdown locked file still has the older Ad 5 opening.
+Ad 5's angle is the title in `marketing/ads/slo/fundhub-297/FundHub-297-Ads-FINAL.pdf`. The markdown locked file still has the older Ad 5 opening.
 
 | Ad | File name for take 1 |
 |---|---|

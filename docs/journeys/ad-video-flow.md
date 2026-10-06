@@ -374,3 +374,266 @@ which is the only kind of proof available on a machine with no Postgres.
 local Postgres on this Mac. Nothing about migration 389, migration 390, the
 constraints, the row-level security policies, or any SQL statement in
 `store.mjs` or `token.mjs` has been executed even once.
+
+---
+
+## U16 M3 9.2: the aligner src/ad-videos/align.mjs (pure, no AI)
+
+Generated from the code on 2026-10-06: `src/ad-videos/align.mjs`
+(`alignTakes`, `resolveAnchor`) and its tests `src/ad-videos/align.test.mjs`.
+The rules are spec §9.2 (`docs/specs/marketing-machine-2026-10-04.md`), owner
+decision §2 item 10 (the cut is made from the script, before Submagic, on
+plain code) and the law `.claude/rules/ad-video-best-of-clips.md`.
+
+**Status: built and tested, not wired in.** Nothing live calls `align.mjs`.
+The take that waits at `staged` today is still joined by `merge-takes.mjs`
+(the section "Joining every take of one angle" above). **Two aligners now
+exist.** `merge-takes.mjs` stays the live one until the video worker's
+`build_cut` job (spec §9.1 step 7) calls `alignTakes()` and saves the answer as
+`ad_videos.cut_plan`. Neither file imports the other.
+
+```mermaid
+flowchart TD
+    IN[takes: words + silences + recorded_at<br/>script: ad_scripts.parts<br/>style: words or bullets] --> N[Spoken words both sides<br/>$300,000 = 300K = 300 grand<br/>a hundred = one hundred, % = percent<br/>contractions out, CAPS and up-arrows out]
+    N --> L[Lines from parts<br/>blank line after = planned pause]
+    L --> T[Takes in filming order<br/>by recorded_at]
+    T --> A[Every attempt at every line in every take<br/>words of 5+ letters match at 0.8]
+    A --> SH[A word belongs to one attempt:<br/>most matched words first, then most complete<br/>lines with the same words share the copies by position]
+    SH --> S[Stitch restarts within 8 s<br/>A said words 1..k, B restarts at j ≤ k+1:<br/>keep A before j, then B]
+    S --> R[Per take: latest attempt with 90%+ coverage<br/>and no stall over 1.0 s, else highest coverage]
+    R --> D[Across lines: dynamic program<br/>cost = 1 − coverage + 0.15 per take switch]
+    D --> Q{Line under 85%?}
+    Q -->|no| K[kept]
+    Q -->|yes, both neighbours kept in one take,<br/>the speech between runs under 2x the line| SD[said differently: keep that speech]
+    Q -->|yes, no such neighbours| BA[said differently: keep the best attempt]
+    Q -->|nothing usable| MI[missing]
+    D -.->|bullets style| MID[Freestyle middle between line 2 and the reveal<br/>4+ word restart after 400 ms silence, back within 6 s:<br/>keep the last copy. Cue anchors by keyword]
+    K --> F[Fillers out only inside silence<br/>um/uh 150 ms both sides, like/you know 250 ms]
+    SD --> F
+    BA --> F
+    MID --> F
+    F --> P[Pieces: 40 ms before speech, 80 ms after,<br/>snapped to silence within 250 ms<br/>gap keeps up to 250 ms of the source pause, 450 ms at a planned pause<br/>stalls over 1.0 s cut down. No silence added, no frozen frame]
+    P --> OUT[cut_plan: pieces, missing_lines, said_differently,<br/>coverage, stalls, ok, hold_reasons, lines, cues]
+    OUT -. not wired yet .-> W[video worker build_cut → ad_videos.cut_plan<br/>UNVERIFIED: no caller exists]
+```
+
+**What `ok` means.** `ok` is false when spec §9.1 step 7 would park the take
+at `cut`: the hook, line 2 or the call to action is missing, or under 70% of the
+script's words were said. `rematch` is true under 50% (the match runs again).
+`hold_reasons` says why in plain words.
+
+**Numbers that are not in the spec** (safe defaults, all in `ALIGN_DEFAULTS`):
+an attempt under 50% is never kept as the line; a line's expected length is
+150 words a minute; a stretch "said differently" must hold at least one of the
+line's words, or the line is missing; a cue's anchor words are the words only
+that cue has; the bullets cue index counts from 1 (the U01 contract example);
+the last line of a part is a planned pause unless cue follows cue; a take with
+no `recorded_at` goes after the dated ones; a cut-off word counts as part of a
+restart only when whisper marks it with a dash.
+
+**Who owns a word when two lines match it** (review fixes, 2026-10-06): the
+attempt with the most matched words claims it first, then the most complete
+one. So a short line that is a piece of a longer line ("Grab your roadmap."
+inside "Tap below and grab your roadmap today.") never takes the longer line's
+words, even when the longer line missed a word. Lines with the very same words
+(the hook said again as the last line) share the copies by where they sit: a
+copy goes to the first such line after the nearest other line said before it;
+a line left with none takes one from an identical line that holds two or more.
+With no silences measured and no file length, a take's last word gets the 80 ms
+edge and no gap tail, so a piece never runs past the end of the file.
+
+**Gaps (found, not reconciled):**
+
+1. **Two aligners.** `merge-takes.mjs` (live) and `align.mjs` (spec §9.2) cut
+   differently: 0.15 s / 0.12 s pads against 40 / 80 ms edges, a per-line
+   defect score against latest-qualifying plus the switch cost, every filler
+   cut against silence-gated fillers, pauses over 0.45 s cut against stalls over
+   1.0 s. Retiring `merge-takes.mjs` is part of wiring the worker.
+2. **`ad_scripts.parts` does not exist live yet** (spec §7.4). The aligner is
+   proved on fixtures in that shape only.
+3. **The freestyle middle** is taken from one take, bounded by that take's own
+   line 2 and reveal. A take missing either one gives no middle. The spec does
+   not say how to pick a middle across takes.
+4. **Strike or restore a line** (spec §9.6) will need an option here. Not built;
+   9.6 is deferred.
+5. **A piece shorter than 8 frames** is not merged away. Spec §9.3's cut check
+   (`ffmpeg-plan.mjs`, U17) blocks the master when one appears.
+6. **Not proved on a real filmed take** or a real whisper word list: fake
+   transcripts only, plus 120 seeded random shoots that check no moment of a
+   take plays twice and no second is added.
+7. **The intended journey** (`docs/journeys/marketing-machine-intended.md`) is
+   not on main. The yardstick was spec §1 and §9.2.
+## U17 M3 9.3: ffmpeg argument builders and cut checks
+
+Generated 2026-10-06 from `src/ad-videos/ffmpeg-plan.mjs` (spec §9.3 and §9.1
+step 3). Pure code: it only writes the argument lists and reads what ffmpeg
+prints. **Nothing calls it yet.** The video worker that runs these lists
+(spec §9.5) and the `prepared` / `cut` states (spec §9.1) are other units, so
+every arrow below that starts a run is UNVERIFIED until they land.
+
+Ads only. Every builder refuses a video whose `video_kind` is not `'ad'`, and a
+missing `video_kind` too (`NotAnAdError`, code `not_an_ad`). The master is
+1080x1920; non-ad videos keep 4K end to end (`.claude/rules/video-4k-unless-ad.md`).
+
+```mermaid
+flowchart TD
+    T["one raw take (ad)"] --> PR["probeArgs (ffprobe JSON)<br/>parseProbe: size as shown (±90 swaps), fps,<br/>color_transfer, creation_time, duration, sound"]
+    PR --> AU["audioExtractArgs<br/>mono 16 kHz Opus 32 kbps .ogg (for Whisper)"]
+    PR --> SI["silenceArgs: silencedetect noise -35 dB d=0.12<br/>parseSilence → silences"]
+    AU -.->|"UNVERIFIED: worker not built"| PREP["prepared"]
+    SI -.-> PREP
+    PREP -.->|"aligner U16 gives the pieces"| PC["pieceArgs, one run per piece<br/>-ss S -t D on the 1/30 s grid<br/>[HDR tonemap] → scale 1080:1920 lanczos → fps 30 → [hflip] → setsar 1<br/>exactly N = round(30·D) frames (trim=end_frame)<br/>sound padded/trimmed to N×1600 samples, 15 ms fades, PCM in .mov"]
+    PC --> M1["loudnormPass1Args + blackdetectArgs on each piece"]
+    M1 --> CC{"cutChecks"}
+    CC -->|"short piece, loudness 3 dB off the middle,<br/>peak above -1 dBTP, any black frame, not an ad"| HOLD["blocked, plain reasons<br/>(gain_db says how far each piece is off)"]
+    CC -->|ok| CAT["concatList + concatArgs<br/>stream copy, no encode"]
+    CAT --> L1["loudnormPass1Args on the join → parseLoudnorm"]
+    L1 --> FIN["finalArgs: loudnorm pass 2 (I -14, TP -1.5, LRA 11, linear) + aresample 48000<br/>H.264 High crf 18, 12M / 24M, yuv420p bt709, 30 fps cfr<br/>AAC 192k 48 kHz stereo, +faststart, no metadata"]
+    FIN -.->|"UNVERIFIED: worker not built"| CUT["master saved (cut)"]
+```
+
+Measured, not guessed (ffmpeg 6.0 on this Mac, synthetic clips, outside the suite):
+
+* `-frames:v N` (the spec's words) gave N frames but stopped the file at the
+  Nth frame, so every piece lost 192-848 sound samples (up to 18 ms). The
+  frame cap is `trim=end_frame=N` inside the filter chain instead: 14 of 14
+  in-range pieces came out at exactly N frames and N×1600 samples.
+* A piece past the end of its take came out short of frames with made-up
+  silence, so `pieceArgs` refuses a piece that ends more than half a frame
+  after the take.
+* The HLG tonemap chain ran and wrote bt709 1080x1920; a wide picture stored
+  with a 90° display matrix came out turned (not squashed) with no matrix left;
+  the joined master read back 1080x1920, 30 fps, AAC 48 kHz stereo, moov before
+  mdat, 192 of 192 frames.
+
+Gaps found (not reconciled):
+
+* Two encodes exist now. `merge-takes-media.mjs` (the 2026-10-05 join at
+  `staged`) keeps the takes' own size and levels to -16 LUFS in one pass; this
+  plan cuts to 1080x1920 and levels to -14 LUFS in two passes. Nothing switches
+  the old join off yet.
+* Spec §9.3 says loudness is "matched" but sets no number. Default here: a piece
+  more than 3 dB from the middle piece blocks; pieces under 1 s are not matched.
+* Spec §9.3 names `-frames:v N`; see the measurement above.
+* `ffprobe` is not on this Mac, so `parseProbe` is proved on JSON in ffprobe 6's
+  shape, not on a real iPhone file.
+## U18 M3 9.1 match step: whisperWords, free word-overlap pre-check, next free take number, stop renaming raw files
+
+Generated from the code on 2026-10-06: `src/ad-videos/pipeline.mjs`
+`matchAndRename()`, `src/ad-videos/match.mjs`, `src/ad-videos/store.mjs`
+`buildPatch()` / `NEXT_FREE_TAKE_NO`, `src/company-brain/transcribe.mjs`
+`whisperWords()`. Spec: `docs/specs/marketing-machine-2026-10-04.md` §9.1 steps 4 and 5.
+
+**This section replaces the `transcribed → matched` arrow in "The picture" above
+("Claude picks the script, then the Drive file is renamed") and the
+`transcribed` row of "Who does each move".** The match step no longer renames
+anything, and Claude is no longer the first thing asked. The step keeps its
+name, `matchAndRename`, so `NEXT_STEP` and `seam.test.mjs` stay stable.
+
+```mermaid
+flowchart TD
+    E["transcribed"] --> T0{"transcript on the row?"}
+    T0 -->|"no"| W0["waits at transcribed"]
+    T0 -->|"yes"| Q{"script_id already on the row?"}
+    Q -->|"yes — a retried take, or a row matched before 2026-10-06:<br/>no new match, no model call"| N
+    Q -->|"no"| O{"free word-overlap check<br/>every live script with an ad number<br/>(store.candidateScripts, filter unchanged)"}
+    O -->|"clear: 80%+ of one script's word pairs said,<br/>30+ points ahead of the next script,<br/>8+ pairs heard — no model call"| N
+    O -->|"unclear"| M["Claude reads the take<br/>against the top 3 by overlap only"]
+    M -->|"80+ confidence, on a script it was shown"| N
+    M -->|"no ANTHROPIC_API_KEY, or the vendor errored"| W1["waits at transcribed<br/>tried again next pass"]
+    M -->|"under 80, null, or an id it was not shown"| X["failed — a person looks"]
+    O -->|"no scripts offered at all"| X
+    N{"ad number on the script?"} -->|"no"| X
+    N -->|"yes"| T{"take number"}
+    T -->|"the row already has one: kept, never re-numbered"| F["matched"]
+    T -->|"'Take N' in the Drive file name"| F
+    T -->|"otherwise: next free number for this ad,<br/>picked by store.patch inside the same UPDATE"| F
+    F -.->|"the raw Drive file is NOT renamed — it keeps the camera's name"| F
+```
+
+| Piece | What the code does | Where |
+|---|---|---|
+| Free check | Share of a script's word pairs said in the take. Fillers (um, uh, hmm) and stutters ("the the") are dropped first; words compared with `tokenize()` from `merge-takes.mjs`. Hook text and body both count. | `match.mjs` `overlapScore()`, `rankByOverlap()` |
+| Clear winner | Its share clears the same 80 floor the model is held to, it is 30 points ahead of the next script, and 8+ of its pairs were said. The match's confidence is that share. `method: "overlap"`. | `match.mjs` `clearOverlapWinner()` |
+| Model | Only when unclear. Claude only (the env handed down holds just `ANTHROPIC_API_KEY`), shown the top 3 by overlap (`MAX_CANDIDATES` was 25, now 3), floor 80 unchanged. `method: "model"`. | `match.mjs` `matchTakeToScript()` |
+| Already matched | `script_id` set means matched. Moves to `matched` with the same script, no model call. (The old "skip" wrote nothing, which would have left a retried take at `transcribed` forever.) | `pipeline.mjs` `matchAndRename()` |
+| Take number | Row's own number, else "Take N" in the file name, else `NEXT_FREE_TAKE_NO`. The store turns that into `COALESCE(take_no, MAX(take_no) + 1 of that ad in the org)` inside the UPDATE, so a number on the row is never changed. Only `advance()` and `patch()` accept it, and only with the ad id in the same write. Before: a flat 1, so the second phone take of an ad hit `ad_videos_take_uq`. | `pipeline.mjs` `takeNoFromName()`; `store.mjs` `buildPatch()` |
+| No rename | The `drive.renameFile` call (`084_t01_raw_….mp4`) is gone. `renamed_at` stays on the table, unused; a retry still clears it. | `pipeline.mjs`; `seam.test.mjs` now fails if `renameFile` or `rawFileName` comes back |
+| `whisperWords()` | Built, **not wired**. verbose_json, `language=en`, `temperature=0`, word + segment times, the spec's filler prompt, 300 s timeout, refuses a masked key. Drops a segment when `no_speech_prob > 0.6` **or** `avg_logprob < -1`, with its words. Returns `{ words: [{w, start, end}], segments, duration }`. The live pipeline still reads Submagic's words at `editing → transcribed`. `whisperBytes` is unchanged. | `transcribe.mjs` |
+
+**Proof:** `match.test.mjs`, `pipeline.test.mjs`, `transcribe.test.mjs`,
+`seam.test.mjs`; the real-database half (take 1 then take 2 through the real step
+and the real `store.patch`) is `src/ad-videos/pipeline.pg.test.mjs`, which runs
+only in CI's Postgres.
+
+**Gaps between the spec and this code (recorded, not reconciled):**
+
+1. Spec §9.1 step 4 says drop segments with `no_speech_prob > 0.6` **and**
+   `avg_logprob < −1`. The plan's contract for this unit says **or**. Built as
+   **or** (the contract is binding). Whisper's own silence rule uses both
+   together; switching is one word in `keepSegment()`.
+2. Spec §9.1 step 5 says the skip becomes "already matched" when `script_id`
+   **and** `take_no` are set. Built: `script_id` alone means matched (plan
+   brief), a missing take number is filled, and the step moves the row on
+   instead of skipping.
+3. Not built here (other steps): candidates limited to locked and filmed
+   scripts with approved ones ranked last and `late = true`; "opening" ideas as
+   candidates; the script moving to filmed; Assign and Retry for unmatched
+   takes on the Command Center; whisperWords in the live pipeline (needs the
+   R2 audio from the video worker, §9.5, and OpenAI credit).
+4. A "Take N" in a file name that is already used for that ad still collides
+   on `ad_videos_take_uq` (the spec puts the file name first). The row waits at
+   `transcribed` with the save error as its note, and the match runs again next
+   pass (free when the overlap is clear, one model call when it is not).
+## U19 R2 signed links and the worker callback signature (pure parts, not wired)
+
+Generated 2026-10-06 from `src/storage/r2-sign.mjs` and
+`src/ad-videos/worker-callback.mjs`. Spec §9.5 (signed links, the callback
+signature), §9.1 step 11 (the final key), §12.1 (the same signer puts the funnel
+videos in the media bucket).
+
+**Nothing calls either file yet.** No state, step, route, table or screen
+changed. The arrows below are what the files do when a later step calls them.
+The router branch and the worker do not exist (§16.4: Render and R2), so those
+boxes are UNVERIFIED.
+
+```mermaid
+flowchart TD
+    subgraph Links["Signed links — src/storage/r2-sign.mjs"]
+        K["finalVideoKey(partner, ad, round)<br/>partners/&lt;partner_id&gt;/ad-video/final/&lt;ad&gt;-r&lt;round&gt;.mp4"] --> P
+        P{"presignR2(GET, PUT or HEAD,<br/>account, bucket, key, key pair, expiry)"}
+        P -->|"expiry over 7 days, bad account / bucket / key,<br/>masked or missing key pair"| PX["refused with a plain reason<br/>(nothing signed)"]
+        P -->|"SigV4 query signing, region auto,<br/>host &lt;account&gt;.r2.cloudflarestorage.com, 24 h by default"| PU["https link<br/>(no network call is made)"]
+    end
+    subgraph Callback["Worker callback — src/ad-videos/worker-callback.mjs"]
+        W["video worker: signCallback(body, ts, secret)<br/>UNVERIFIED — video-worker/ not built"] -->|"X-Fundhub-Video-Timestamp<br/>X-Fundhub-Video-Signature"| V
+        V{"verifyCallback(headers, raw body, secret, now)"}
+        V -->|"no or masked or short secret, missing header,<br/>timestamp over 5 minutes off, body changed, wrong secret"| VX["{ ok: false, reason }<br/>nothing acts"]
+        V -->|"HMAC-SHA256 over '&lt;ts&gt;.&lt;body&gt;' matches,<br/>constant-time compare"| VO["{ ok: true }<br/>router 'video-worker' branch re-reads the row<br/>UNVERIFIED — branch not built"]
+    end
+```
+
+| Piece | What it does | Refuses |
+|---|---|---|
+| `presignR2` | A signed link to one R2 object. GET, PUT or HEAD. 24 hours unless asked. | DELETE, expiry over 604,800 seconds (7 days), an account id that is not 32 hex characters, a bad bucket name, a key with `.`/`..` folders, a leading slash, control characters or over 1,024 bytes, a missing or masked key pair |
+| `presignV4` | The same signer for any S3 host. The test runs AWS's worked example through it and gets AWS's signature `aeeed9bb…f604d404` and URL exactly. | Same checks |
+| `finalVideoKey` | `partners/<partner_id>/ad-video/final/<ad>-r<round>.mp4`. Partner id lowercased (matches `partner_id::text` in migration 045's storage_key check). Ad number without leading zeros. | A partner id that is not a uuid, an ad number under 1, a round that is not a whole number 0 or more |
+| `signCallback` | Hex HMAC-SHA256 of `<ts>.<raw body>` with `VIDEO_WORKER_CALLBACK_SECRET`. | An object body (sign the bytes you send), a millisecond clock, a missing, masked or short (under 32 characters) secret |
+| `verifyCallback` | `{ ok, reason }`. Five-minute window either side of now, inclusive. | Every failure names its reason in words |
+
+**Env names these will read once wired** (none is set yet; none is read by these
+files, which take values as arguments): `CLOUDFLARE_ACCOUNT_ID`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_AD_VIDEO`,
+`R2_BUCKET_MEDIA`, `VIDEO_WORKER_CALLBACK_SECRET`.
+
+**Gaps between the spec and the code (findings, not fixed here):**
+- `storage_final_key` today holds `drive:<file id>` (`saveFinishedToDrive` in
+  `src/workflows/ad-video-sweeper.mjs`). Spec §9.1 step 11 puts an R2 key there.
+  Whoever switches the three `finished_url` readers to a signed link must skip
+  `drive:` values instead of signing them.
+- The spec does not name the callback headers, the signature encoding or where
+  the round count starts. This unit picked: `X-Fundhub-Video-Timestamp` (whole
+  seconds), `X-Fundhub-Video-Signature` (64 hex), round any whole number 0 or more.
+- AWS's page at the address the test cites now redirects to the API index; the
+  example was read from the Internet Archive copy of 2025-01-04 and is cited in
+  `src/storage/r2-sign.test.mjs`.

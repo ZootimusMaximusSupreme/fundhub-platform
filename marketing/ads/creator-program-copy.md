@@ -76,7 +76,7 @@ No fee. No pitch. Reply "IN."
 
 ---
 
-## What not to say (from `docs/ads/RULES.md`)
+## What not to say (from `marketing/ads/RULES.md`)
 - No credit-outcome promises. Never "fix your credit," "guaranteed approval."
 - No income claims for the creator beyond the table above.
 - No "passive income."

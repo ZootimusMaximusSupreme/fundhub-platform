@@ -14,6 +14,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { adNumberOf, metaAdNumberOf } from "./ad-number.mjs";
+import { mapAdNumber } from "./ad-number.mjs";
+import { buildUrlTags } from "../marketing/url-tags.mjs";
 import { laneOf, SLO_LANE, LANES } from "./registry.mjs";
 import { ADS, CASES, ORG_A, SLO_SET } from "./ad-number-cases.mjs";
 
@@ -142,5 +144,106 @@ describe("the SQL says the same thing", () => {
     ]) {
       assert.ok(sql407.includes(`('${metaId}', '${name}', '120253626444640264', '${num}')`), `${name} → ${num}`);
     }
+  });
+});
+
+// ── mapAdNumber (spec §10.5, the sync mapping's pure part; U14) ─────────────
+//
+// What the daily Meta sync will store on an `ads` row, read from the ad's
+// creative{url_tags} and its name. utm_content first (the same leading-digits
+// rule as fundhub_ad_id, so a lead and its ad always agree), the name second,
+// else null. It never throws.
+
+describe("mapAdNumber — utm_content in url_tags first", () => {
+  test("the owner-set tags give the number, source utm", () => {
+    assert.deepEqual(
+      mapAdNumber({ urlTags: "utm_source=fb&utm_medium=paid&utm_campaign=slo&utm_content=91" }),
+      { number: "91", source: "utm" }
+    );
+  });
+
+  test("round trip: what buildUrlTags writes, mapAdNumber reads back", () => {
+    for (const [lane, adNumber, variant] of [["slo", "91", undefined], ["uwiq", "84", "sun"], ["wl", "123456789", null]]) {
+      const urlTags = buildUrlTags({ lane, adNumber, variant });
+      assert.strictEqual(mapAdNumber({ urlTags }).number, adNumber, urlTags);
+      assert.equal(mapAdNumber({ urlTags }).source, "utm");
+    }
+  });
+
+  test("a slug after the digits is the 286 rule: 84-slo-ad-1 is 84", () => {
+    assert.deepEqual(mapAdNumber({ urlTags: "utm_content=84-slo-ad-1" }), { number: "84", source: "utm" });
+  });
+
+  test("the url_tags number wins over a different number in the name", () => {
+    assert.deepEqual(
+      mapAdNumber({ urlTags: "utm_campaign=slo&utm_content=91", name: "Ad 84 — old name" }),
+      { number: "91", source: "utm" }
+    );
+  });
+
+  test("a leading ? on the tags is fine", () => {
+    assert.deepEqual(mapAdNumber({ urlTags: "?utm_content=91" }), { number: "91", source: "utm" });
+  });
+
+  test("the live ads' {{ad.name}} placeholder is not a number — the name is read next", () => {
+    assert.deepEqual(
+      mapAdNumber({ urlTags: "utm_source=fb&utm_content={{ad.name}}&utm_term={{adset.id}}", name: "Ad 91 — x" }),
+      { number: "91", source: "name" }
+    );
+  });
+
+  test("a Meta-length id in utm_content is not our number (nine digits at most)", () => {
+    assert.equal(mapAdNumber({ urlTags: "utm_content=120253626574340264" }), null);
+  });
+});
+
+describe("mapAdNumber — the ad name second", () => {
+  test("'Ad 91 — x' maps to 91 with source name", () => {
+    assert.deepEqual(mapAdNumber({ name: "Ad 91 — x" }), { number: "91", source: "name" });
+  });
+
+  test("the live SLO names carry no number and map to null", () => {
+    for (const name of ["oVid: SLO1", "oVid: SLO2", "oVid: SLO3", "oVid: SLO4", "oVid: 1"]) {
+      assert.equal(mapAdNumber({ name }), null, name);
+      assert.equal(mapAdNumber({ urlTags: "utm_content={{ad.name}}", name }), null, name);
+    }
+  });
+
+  test("'Ad' must start a word: Load 7 and Bad 7 are nothing", () => {
+    assert.equal(mapAdNumber({ name: "Load 7" }), null);
+    assert.equal(mapAdNumber({ name: "Bad 7" }), null);
+  });
+
+  test("more than nine digits is refused, not cut short", () => {
+    assert.equal(mapAdNumber({ name: "Ad 1234567890" }), null);
+  });
+
+  test("the number is text, like ads.fundhub_ad_number", () => {
+    assert.equal(typeof mapAdNumber({ name: "Ad 7" }).number, "string");
+  });
+});
+
+describe("mapAdNumber — never throws", () => {
+  test("nothing, null, a string or a number in → null out", () => {
+    assert.equal(mapAdNumber(), null);
+    assert.equal(mapAdNumber(null), null);
+    assert.equal(mapAdNumber("Ad 91"), null);
+    assert.equal(mapAdNumber(91), null);
+    assert.equal(mapAdNumber({}), null);
+  });
+
+  test("odd field types are null, not a crash", () => {
+    assert.equal(mapAdNumber({ urlTags: 91, name: 91 }), null);
+    assert.equal(mapAdNumber({ urlTags: ["utm_content=91"] }), null);
+    assert.equal(mapAdNumber({ urlTags: "%E0%A4%A", name: null }), null);
+  });
+
+  test("a getter that throws is still null", () => {
+    const bad = { get urlTags() { throw new Error("boom"); } };
+    assert.equal(mapAdNumber(bad), null);
+  });
+
+  test("an object with utm_content works like the string form", () => {
+    assert.deepEqual(mapAdNumber({ urlTags: { utm_content: "91" } }), { number: "91", source: "utm" });
   });
 });

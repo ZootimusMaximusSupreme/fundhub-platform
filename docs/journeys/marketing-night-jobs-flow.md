@@ -151,3 +151,56 @@ flowchart TD
 | nothing | the list of active ClickFunnels accounts | the 07:15 UTC clock | `src/workflows/clickfunnels-analytics-sweeper.mjs:29` | **yes on this branch, after ship.** Proved offline with a fake pool that hides the row unless the transaction is stamped staff; the real-database proof runs in CI (`clickfunnels-analytics-sweeper.pg.test.mjs`) |
 | an active account | a day of page numbers saved | the same pass | `src/analytics/clickfunnels-org-sync.mjs:48` | **yes** (the hand pull already used this path) |
 | a failed pull | the account marked `error` | ClickFunnels refusing | `src/analytics/clickfunnels-org-sync.mjs:81` | **yes** — and the clock then skips that account until a hand pull sets it back to `active`. Left as a card on the board, not changed here |
+
+---
+
+## U07 Meta API v26.0, an hourly 3-day pull plus the nightly 28-day pull, link clicks source
+
+Marketing machine M0 step 5 (`docs/specs/marketing-machine-2026-10-04.md`). Traced from the
+code on branch `mm-u07-meta-v26-sync`, 2026-10-05. Not run against a database or live Meta:
+the proof is unit tests with a fake transaction and a fake Meta
+(`src/http/campaigns-sync-hourly.test.mjs`, `src/workflows/meta-campaign-sync-hourly.test.mjs`,
+`src/http/meta-api-version.test.mjs`), plus CI.
+
+**Two clocks now run the same pull.** The nightly one is unchanged. The new hourly one reads
+only today in Arizona and the 2 days before it, and it never reads an account's whole history.
+Everything after the numbers read is the same for both: the lists, the switch-on, the saves,
+the visitor ad numbers and the dying-ad buzz (still at most once per ad per day).
+
+```mermaid
+flowchart TD
+    N["07:00 UTC daily clock<br/>metaCampaignSyncSweeper, cron 0 7 * * *<br/>src/workflows/meta-campaign-sync-sweeper.mjs:107, :259"] -->|"sweep() — pass nightly<br/>:151"| P
+    H["minute 30, every hour<br/>metaCampaignSyncHourly, cron 30 * * * *<br/>src/workflows/meta-campaign-sync-sweeper.mjs:112, :265<br/>registered src/workflows/index.mjs:469"] -->|"sweep({ pass: 'hourly' })<br/>:151"| P
+    B["Sync button<br/>POST /api/campaigns/sync"] -->|"pass nightly (the default)"| P
+    P["for each partner<br/>syncPartnerConnections({ pass })<br/>api/campaigns/sync.mjs:843<br/>syncPass() refuses any other pass name, :543"] --> W{"which pass?<br/>SYNC_PASSES, :526"}
+    W -->|nightly| NW["28 days back to today (UTC dates)<br/>insightWindow(), :484"]
+    W -->|hourly| HW["3 days: today in Arizona and the 2 before<br/>hourlyWindow(), :519"]
+    NW --> Q{"anything stored older than the window?<br/>earliestStoredDay() + needsFullHistory(), :899, :909"}
+    Q -->|"no — first pull"| FH["whole history, date_preset=maximum<br/>(falls back to the 28 days if Meta refuses)"]
+    Q -->|yes| R
+    HW -->|"never asks the question,<br/>never the whole history"| R
+    FH --> L
+    R["ONE insights call for the ad account, level=ad,<br/>a row per ad per day, Meta v26.0<br/>insightsRequestUrl(), :335<br/>fields now include inline_link_clicks"] --> L["campaigns, ad sets, ads walked to their end;<br/>account switched on; per-campaign saves<br/>(unchanged)"]
+    L --> S["ad_metrics_daily row per ad per day<br/>link_clicks = inline_link_clicks when Meta sent it,<br/>else the actions link_click line, else NULL<br/>linkClicks(), src/ads/meta-results.mjs:113, used at :155"]
+    S --> D["visitor ad numbers, then the dying-ad buzz check<br/>(at most once per ad per day)<br/>api/campaigns/sync.mjs:1124"]
+```
+
+| From | To | What fires it | Where | Works today? |
+|---|---|---|---|---|
+| nothing | today + 2 days of Meta numbers saved | minute 30 of every hour | `src/workflows/meta-campaign-sync-sweeper.mjs:265`, `api/campaigns/sync.mjs:519` | **UNVERIFIED** — unit-tested; live only after ship (Inngest picks up the new function then) |
+| nothing | 28 days of Meta numbers saved | the 07:00 UTC clock | `src/workflows/meta-campaign-sync-sweeper.mjs:259` | **yes** (unchanged; last pull 2026-10-05 07:01 UTC on the old version) |
+| an account with nothing older than 28 days stored | its whole history | the nightly clock or the Sync button only | `api/campaigns/sync.mjs:899-909` | **UNVERIFIED** — unit-tested; the hourly pass is proved never to ask |
+| a Meta insights row | `ad_metrics_daily.link_clicks` | the same save | `src/ads/meta-results.mjs:113` | **UNVERIFIED** — unit-tested; no new column (408's `link_clicks`) |
+| every Meta Graph call outside `src/adplatforms/meta.mjs` | v26.0, or `META_API_VERSION` when set | each call | `api/campaigns/sync.mjs:136`, `src/social/adapters.mjs:13`, `src/social/oauth.mjs:17`, `src/messaging/providers/meta-capi.mjs:42` | **UNVERIFIED** — unit-tested; `src/adplatforms/meta.mjs` still says version 21 until U13 lands |
+
+**Field check, 2026-10-05.** Every field the sync, the Conversions API sender, the Page post
+and the Page connect ask for is still in Meta's v26.0 SDK (`facebook-python-business-sdk`
+26.0.2) and is not named in the Marketing API or Graph API v22 to v26 changelogs. Nothing was
+removed or renamed, so no field changed.
+
+**Gaps against the spec, recorded, not reconciled.**
+- The spec's step 5 says "store it in a new `ad_metrics_daily.link_clicks` column". Migration
+  408 had already added that column (filled from `actions`), so no second column was made; the
+  plan says the same.
+- The nightly window and the Sync button still count days in UTC dates (unchanged on purpose:
+  "the nightly pass is unchanged"). The new hourly window counts Arizona days.

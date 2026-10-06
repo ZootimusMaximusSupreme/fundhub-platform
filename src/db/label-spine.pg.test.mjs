@@ -302,6 +302,9 @@ describe("377 marketing label spine", { skip: !HAS_DB ? "no DATABASE_URL" : fals
       const p = (await insertScript(tx, partnerA, {
         title: "Broker Burn v1", angle_key: "broker_burn_angle", hook_key: "broker_open"
       })).rows[0];
+      // Since 413 a script has one live version: the old one is archived in the
+      // same transaction, before the rewrite goes in (spec 2026-10-04 §4 trap 9).
+      await tx.query(`UPDATE ad_scripts SET archived_at = now() WHERE id = $1`, [p.id]);
       const c = (await insertScript(tx, partnerA, {
         title: "Broker Burn v2", version: 2, parent_script_id: p.id,
         angle_key: "broker_burn_angle", hook_key: "broker_open"
@@ -451,15 +454,27 @@ describe("377 marketing label spine", { skip: !HAS_DB ? "no DATABASE_URL" : fals
       "a Meta ad id was accepted into our own ad-number column"
     );
 
-    // Two ads may not claim the same number.
+    // Since 416 two ads MAY carry the same number. 377 made it unique
+    // (ads_fundhub_number_uq); the owner-approved spec §10.4 replaced that with a
+    // plain index so one ad number can run in several ad sets and a v2 keeps its
+    // number. The second insert is rolled back so the fixtures below are
+    // unchanged.
+    const ROLL_BACK = new Error("roll back the duplicate-number probe");
+    let shared = null;
     await assert.rejects(
       () => asStaff(async (tx) => {
         const c = (await insertCreative(tx, partnerA, null)).rows[0];
-        await insertAd(tx, "Duplicate number", c.id, { fundhubNumber: "42" });
+        const second = (await insertAd(tx, "Same number, second ad", c.id, { fundhubNumber: "42" })).rows[0];
+        shared = (await tx.query(
+          `SELECT count(*)::int AS n FROM ads WHERE id = ANY($1) AND fundhub_ad_number = '42'`,
+          [[ad.id, second.id]]
+        )).rows[0].n;
+        throw ROLL_BACK;
       }),
-      /ads_fundhub_number_uq/,
-      "two ads claimed the same ad number"
+      (err) => err === ROLL_BACK,
+      "a second ad with the same number was refused — 416's plain index is not in place"
     );
+    assert.equal(shared, 2, "both ads should carry number 42");
   });
 
   // ── 6. the query Chris actually wants ───────────────────────────────────

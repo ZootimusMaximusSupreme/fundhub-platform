@@ -14,6 +14,7 @@ reads it to fail a script before Chris ever sees it. Chris reads it to change a 
 
 | Part | What is in it |
 |---|---|
+| **Part 0** | Chris's rules, word for word. They win over Parts 1–4. |
 | **Part 1** | The hard no's. Same for every ad type. Break one and the script does not ship. |
 | **Part 2** | The two measurements — how many words, and does the hook lead with the cause. |
 | **Part 3** | Three sections, one per ad type, because the format is not one format. |
@@ -22,6 +23,78 @@ reads it to fail a script before Chris ever sees it. Chris reads it to change a 
 **Where the rules came from.** Almost nothing here is new. Most of it already lived somewhere else
 in the repo and nobody could find it. Every block says its source file. **If you change a rule,
 change it in the source file too, or the two will drift and the older one will win.**
+
+---
+---
+
+# PART 0 — CHRIS'S RULES
+
+Part 0 wins over Parts 1–4. Where another part says something different, follow Part 0.
+
+0. Chris's word beats every rule below. These rules guide the writer, and they are never read so literally that they block what Chris asked for.
+
+**Words**
+1. Never write "credit repair." Say "credit optimization" or "optimize your credit."
+2. Never say "your number" or "the number." Spell it out, for example: "how much we think you'll qualify for based on where you're at right now."
+3. Never write "carry" or "carries" for what a file is worth. Say how much funding it can get them.
+4. Never write "shelf company" or "sitting on a shelf." Say "an LLC or a company you forgot about."
+5. Never mention EIN, DUNS, net-30 vendors or gas cards.
+6. Never write "no guarantees." Say what's most likely based on the data.
+7. "Maximum amount of funding" stays exactly as written.
+8. Say "review your file the way a lender does."
+9. A "funding sequence" holds several rounds. Never call the next sequence "round two."
+10. Write Fundhub with a lowercase h. No em dashes.
+11. Dollar amounts are always numerals, like $300,000.
+12. No "dude," "bro" or "man" filler, and no hype. Write it conversational, at a 5th grade level.
+
+**Sentences**
+
+13. Never write "it's not X, it's Y." No slogans and no made-up nouns like "the belt" or "the rung."
+14. No cute figures of speech. State the fact plainly.
+15. Don't describe something by what it isn't. Say what it is.
+16. No two-sentence pairs where the second sentence lands the point. Say it in one sentence.
+17. No chopped fragments for effect. Use full, plain sentences.
+18. Cause before effect: "The condition of your credit determines where you are in the funding process."
+19. Speak with certainty. Never "could" or "could be worth."
+
+**Talking to the viewer**
+
+20. Second person, straight at the viewer: "you," never "most business owners."
+21. Never make the viewer feel stupid. Open on what their file is worth.
+22. Never tell viewers what they are or what they do.
+23. Never say they aren't being judged. Say something that builds Chris up instead, like "back before I spent thousands of hours mastering the funding game."
+24. Never put a slow timeline on a fix. Call it a simple tweak.
+25. The audience already knows stacking and funding. Never explain it like they're new. Talk like the authority.
+
+**Structure**
+
+26. The hook tells them something they don't already know. An obvious fact gets swiped past.
+27. Line 2 is a bridge, and an open loop is best: name something they don't know yet and hold it.
+28. Pay the loop off right before the call to action. Never announce it ("I'll show you before this video ends").
+29. Every ad gets its own call to action. Book-a-call ads never mention a price.
+30. Never sell credit optimization in an ad. It's the lowest offer.
+31. Don't open every ad with "My name is Chris." Use the full intro only where Chris is the proof, a short "I'm Chris, I run Fundhub" on some, and none on others.
+32. Industry-slam ads never name competitors or mock how anyone looks.
+33. Don't use the "Frodo / skip the journey" framing.
+34. Every ad in a batch is a whole different ad. No hook swaps on the same body.
+
+**Proof Chris allows**
+
+35. A decade in the industry, hundreds of files, thousands of data points. Don't use Koi Poke or $25M.
+36. He funded a little over $1,000,000 for himself and invested it in cash-flowing companies for 10 years, with real losses along the way.
+37. He learned stacking 10 years ago from the one person teaching it, and some of his clients were funded 8 years ago.
+38. He pulled $100K lines on four companies off one personal file, on stated income with no income docs. It's four companies, not five.
+
+**Format**
+
+39. Teleprompter scripts are full, flowing sentences in paragraphs. No line-broken fragments.
+40. Delivery marks: CAPS = punch the word, a blank line = pause, ↑ = pitch goes up.
+41. Hand scripts over as plain text with blank lines between paragraphs, but not after every sentence.
+42. Standard ads run about a minute (about 150 words). Sorting-hat shorts run 115–125 words.
+43. Green screen and Notes ads are bullet cues. No internal labels like "Payoffs."
+44. Long ads keep every point Chris gave. Never cut them down.
+
+*Note for the writer: rules 39 and 42 describe the words style. Since Chris's 10/4 plan, standard ads default to the bullets style in Appendix B.*
 
 ---
 ---
@@ -55,7 +128,7 @@ the ones that are.
 | "No denials." | A guarantee. See the compliance rules below. |
 | "We won't touch personal credit." | False for the funding path. |
 | "You need an LLC / aged corp / DUNS first." | Not our rule. Concept 7 says the opposite on purpose. |
-| A made-up win, client count, or story | A lie, and it is also a compliance block. Use only wins Chris has given in writing — today that is **$25 million secured** and **Koi Poke**. |
+| A made-up win, client count, or story | A lie, and it is also a compliance block. Use only the proof in Part 0, rules 35–38. |
 
 **The one that trips writers up.** "This will not affect you at all" is banned as a blanket promise
 about the whole engagement. It is **not** banned to say the soft pull does not touch the score —
@@ -75,14 +148,16 @@ Source: `.claude/workflows/copy.js` lines 34–47, copied there verbatim from th
 These are the words that make copy read like a machine wrote it. Copied again here so an ad writer
 has one file to open. **If this list changes, change it in `copy.js` too.**
 
-**Words — 34.** Any form of the word counts (plural, past tense, -ing).
+**Words — 33.** Any form of the word counts (plural, past tense, -ing).
 
 ```
 delve · tapestry · leverage · utilize · robust · seamless · realm · testament · beacon ·
 underscore · showcase · pivotal · crucial · foster · elevate · embark · unleash · navigate ·
-landscape · boast · myriad · plethora · intricate · vibrant · enhance · streamline · optimize ·
+landscape · boast · myriad · plethora · intricate · vibrant · enhance · streamline ·
 comprehensive · empower · holistic · cultivate · resonate · align · nestled
 ```
+
+"optimize" came off this list on 2026-10-05. Part 0 rule 1 says "optimize your credit."
 
 **Phrases — 20.**
 
@@ -104,7 +179,7 @@ let that sink in · plot twist · trust me
 
 ## 1.3 Avoid these — the market has poisoned them
 
-Source: `docs/ads/ASSET-BANK.md` section 8.
+Source: `marketing/ads/ASSET-BANK.md` section 8.
 
 - "lenders compete for you" — sounds like the spam swarm
 - "get matched with 75 lenders" as a headline — the audience has a bad memory of it
@@ -120,12 +195,12 @@ Source: `docs/ads/ASSET-BANK.md` section 8.
 with trust, earn the speed claim second, and when you use it use the real number — about **7 days
 against an industry 30–45** — not an adjective.
 
-**Words that do work** (same source): "no spam calls" · "we don't sell your number" · "soft pull" ·
+**Words that do work** (same source): "no spam calls" · "we don't sell your phone number" · "soft pull" ·
 "won't touch your credit score" · "see your real offers" · "one honest application" · "no equity" ·
 "no daily payments" · "know the real cost" · "judged on your business, not just your FICO" ·
 "owners the banks ignore" · "bridge the gap" · "before anyone pulls your credit".
 
-## 1.4 Two more, from `docs/ads/README.md`
+## 1.4 Two more, from `marketing/ads/README.md`
 
 - **Never name the tech stack.** No vendor names, ever. It is "our system", or the name we gave it.
 - **Never lead with white-label.** Two concepts maximum, and only as a door mentioned at the end.
@@ -181,7 +256,7 @@ pull. That is `CLAUDE.md` §7 and it is a label Chris asked for, not advice.
 
 ## 1.6 What kills a concept
 
-Source: `docs/ads/ANGLE-GENERATOR.md`, last section. Run all seven before a concept goes on a sheet.
+Source: `marketing/ads/ANGLE-GENERATOR.md`, last section. Run all seven before a concept goes on a sheet.
 
 1. It fails the mechanism test (see 3.1).
 2. It is a duplicate of another concept in **argument**, not just in wording.
@@ -239,9 +314,19 @@ These two rules did not exist anywhere in the repo before this file. Chris named
 
 ## 2.1 Word count per runtime band
 
-**The floor first: minimum 60 seconds. No exceptions.** (owner-set 2026-09-01,
-`docs/ads/ANGLE-GENERATOR.md`.) A short hook is fine. A short *ad* is not. If a concept only has 30
+**The floor first: minimum 60 seconds.** (owner-set 2026-09-01,
+`marketing/ads/ANGLE-GENERATOR.md`.) A short hook is fine. A short *ad* is not. If a concept only has 30
 seconds of substance in it, it is not finished — go back and give it the mechanism in full.
+
+**Floors by format (2026-10-05).** Part 0 rule 42 sets sorting-hat shorts at 115–125 words, so the
+60-second floor is no longer one number for every ad. The checker's strict mode uses these:
+
+| Format and style | Floor |
+|---|---|
+| Standard, words | 135 words or more |
+| Standard, bullets | none; the hook, line 2, reveal and CTA word for word, plus 3–8 cues of 12 words or fewer |
+| Sorting | 104–137 words |
+| Long, notes, greenscreen, vsl | none |
 
 **The speaking rate is an assumption. Chris can change it and every number below moves with it.**
 
@@ -309,13 +394,16 @@ A hook is the first **two sentences**. All four must pass.
    record, not the brand. Those all belong in the body, and they belong there quickly — just not
    first.
 
-### Three that pass
+**Part 0 shapes the hook too, and wins where it differs:** rule 21 (open on what their file is
+worth), rule 26 (tell them something they don't already know) and rule 27 (line 2 is a bridge).
 
-| Source | Hook | Why it passes |
-|---|---|---|
-| **Ad 1 — Denial** (`CONTROLS.md`) | *"If your business got denied for funding, you didn't lose because of your credit. You lost because nobody looked at your file the way a bank actually looks at it."* | Rules out the cause they blame themselves for, then names the real one, inside two sentences. |
-| **Concept 1 — Who Takes Them Off** (`CONCEPTS.md`) | *"The guy who got you funded left a pile of hard inquiries on your credit. Ask him when he's taking them off. He's not, because he has no way to."* | A named actor doing a named thing, in sentence one. |
-| **Concept 28 — Round Two** (`CONCEPTS.md`) | *"Round one funded. Round two came back no. That wasn't your credit slipping — that was the inquiries round one just created, still sitting on your file when the next batch went out."* | Effect first, then the cause arrives and corrects the one they assumed. |
+### Examples that pass
+
+Three examples sat here until 2026-10-05 (Ad 1's denial hook, Concept 1's "who takes them off"
+hook and Concept 28's round-two hook). They passed the four checks but break Part 0, so they were
+cut: a sentence that says what it isn't (rules 13 and 15), a two-sentence pair where the second
+sentence lands the point (rule 16), chopped fragments (rule 17) and an em dash (rule 10). The four
+checks still hold. Part 0 decides how the sentences sound.
 
 ### Three that fail
 
@@ -352,7 +440,7 @@ Highest volume, most rewriting, most split-testing. This is where most of the sp
 
 ### 3.1 The angle formula
 
-Source: `docs/ads/ANGLE-GENERATOR.md`.
+Source: `marketing/ads/ANGLE-GENERATOR.md`.
 
 > **ANGLE = one ENEMY × one MECHANISM × one AUDIENCE**
 >
@@ -375,10 +463,10 @@ Second half of the same rule: end the hook by indicting the alternative, not by 
 ```
 HOOK    0–3s          The concept's hook, verbatim. Must pass cause-first (2.2).
 BODY    10–60s        Validate → Reveal mechanism → Connect to desire → Proof
-CTA     last 10–30s   Two-minute application. Book the call.
+CTA     last 10–30s   This ad's own call to action (Part 0 rule 29).
 CLOSE                 No hard inquiry. No obligation. Nothing moves until you say so.
 
-RUNTIME 60–90s | 90–120s | 2min+     (60 seconds is the floor, always)
+RUNTIME 60–90s | 90–120s | 2min+     (floors by format: see 2.1)
 WORDS   see 2.1
 SHOOT   Outfit + location note
 TAG     origin_angle value for CRM message match
@@ -405,9 +493,6 @@ Five that work. Rotate them so forty concepts do not all open the same way.
 | Absolve, blame the system | Take it off their shoulders |
 | Insider says the opposite | Contradict what they expect |
 | Short mechanism line | State the machine, plainly |
-
-Two reusable stems: *"Not another ___, but the first one that…"* and *"Not another ___, but for
-people who…"*
 
 ### 3.4 Match the hook to what they already know
 
@@ -452,23 +537,21 @@ wrong — only 2 of the 5 use that literal sentence. The other 3 use a real vari
 Do not reword either promise into something new. Pick from the phrasings above, or match their
 shape exactly.
 
+The checker's strict mode looks for these two promises on standard and sorting ads only. Long,
+notes, green screen and VSL scripts are not checked for them.
+
 ### 3.7 Proof, and the limit on it
 
-We have two proof assets and they must not be embroidered:
-
-- **Close to a decade in business funding.**
-- **Over $25 million secured for our clients.**
-- **Koi Poke** — one restaurant, already turned away once, now a franchise with multiple locations.
+The proof list is Part 0, rules 35–38. Use only those, and do not embroider them.
 
 That is the list. Anything else is a made-up win, which is both a never-say and a compliance block.
-**Koi Poke carries all five running ads**, which is a known weakness — if a second real case study
-ever exists in writing, it goes here first.
+If a new real result ever exists in writing, Chris adds it to Part 0 first.
 
 ---
 
 ## Section 2 — VSLs
 
-**Long form.** `docs/ads/CONTROLS.md` holds the Founder VSL as the one worked example, and it is
+**Long form.** `marketing/ads/CONTROLS.md` holds the Founder VSL as the one worked example, and it is
 841 words. Everything in this section is derived from that script, not invented.
 
 Everything in Part 1 still applies. Everything in Section 1 still applies except runtime and shape.
@@ -493,7 +576,7 @@ Read straight off the Founder VSL. Keep the order. Beats can be short; none can 
 8. **What it really cost** — the plan behind the money. Ads, team, the trip, the debt, the family.
 9. **The near-miss** — "you feel like you're right there. Like it's literally one thing away."
 10. **"That's not on you."** Then name where it is on.
-11. **Proof** — decade, $25 million, Koi Poke.
+11. **Proof** — Part 0 rules 35–38 only.
 12. **The mechanism, in full, step by step** — soft pull, zero impact, the read, the lender fit, the
     order. This is the only place the mechanism gets explained at length.
 13. **What happens when you click** — application, analysis, the call, what he will say on it.
@@ -508,14 +591,14 @@ Read straight off the Founder VSL. Keep the order. Beats can be short; none can 
 - **Cause-first still governs the first fifteen seconds.** Beats 1–4 have to land the cause before
   the founder story earns its place.
 - **The mechanism is explained once.** Beat 12. Not sprinkled through.
-- **The refusal is mandatory.** Beat 15, quoted in `docs/ads/CONTROLS.md`: *"I know there are a lot
+- **The refusal is mandatory.** Beat 15, quoted in `marketing/ads/CONTROLS.md`: *"I know there are a lot
   of people in this space who will tell you whatever you want to hear to get you on a call. We're
   not going to do that."* A VSL without it is not our VSL. (Corrected 2026-09-07: an earlier draft
   said Chris named this line "the voice" — that could not be traced to anything he actually said,
   so the attribution is cut. The rule itself stands; only the source line is real.)
 - **Never promise the call outcome.** Beat 13 says what he will *show* them, never what they will
   *get*.
-- **One case study minimum, real.** Today that is Koi Poke.
+- **Proof is real, and only from Part 0 rules 35–38.**
 
 ---
 
@@ -564,9 +647,8 @@ An evergreen ad may not contain anything that expires. A checker can look for al
 - **No "right now", "today only", "this week", "limited spots", "before the deadline".** No scarcity
   of any kind.
 - **No rate, spend or market conditions.** Interest rates move; the ad should not.
-- **No client count or revenue figure that will change.** "$25 million secured" grows. Say "millions
-  secured for our clients" in an evergreen piece, or leave the number to the cold ads where it gets
-  refreshed.
+- **No client count or revenue figure that will change.** A number that grows goes stale. Leave it
+  to the cold ads, where it gets refreshed.
 - **No reference to another ad, a launch, a promotion, or a price.**
 
 ### 3.15 Variation rules
@@ -579,6 +661,8 @@ A variation is a new opening line and a new example. It is not a new ad.
   Changing two at once means you cannot tell what moved the number.
 - **Keep the same `origin_angle` tag across a family of variations**, so the CRM still knows what
   the lead heard.
+- **A variation never goes in the same batch as the ad it varies.** Part 0 rule 34: every ad in a
+  batch is a whole different ad.
 
 ### 3.16 Length
 
@@ -591,7 +675,7 @@ band is the right band, because a single teaching beat does not need three minut
 # PART 4 — WHAT A CHECKER CAN CHECK
 
 Keeping these two lists apart matters. A machine that claims to have judged the voice is lying; a
-person who claims to have counted 34 banned words is guessing.
+person who claims to have counted 33 banned words is guessing.
 
 ## 4.1 A machine can check these
 
@@ -615,6 +699,19 @@ Fail the script, rewrite it, do not show Chris.
    `storeAsset` in `src/creative/generate.mjs` (1.5).
 9. Evergreen only: no date, season, scarcity or moving number (3.14). Built and running, only for a
    script marked as the evergreen type — a cold or VSL script is never checked against this rule.
+10. **Strict mode (2026-10-05).** `checkScriptText(text, {format, style, strict: true})` in
+   `scripts/ads/check-script.mjs` is built for the app's writer (spec 7.6). On top of items 2–6 it adds:
+   - the Part 0 patterns in `marketing/ads/rules-data.mjs` (`PART0_PATTERNS`): "credit repair",
+     "your number" / "the number", "shelf company" / "sitting on a shelf", EIN, DUNS, net 30, gas
+     card, "no guarantees", "dude" / "bro", "most business owners", "could", dollar amounts written
+     as words, any spelling of the company name but Fundhub, "Frodo" / "skip the journey", and the
+     dropped proof (rule 35);
+   - every phrase in `marketing/ads/banned-live.json`, the phrases Chris bans from the app, matched
+     as plain text;
+   - the floors by format in 2.1, and the close check (3.6) on standard and sorting ads only.
+
+   `checkOneScript` and `npm run ads:check` keep the old lists (less "optimize"), so `CONTROLS.md`
+   still passes.
 
 ## 4.2 Only a person can check these
 
@@ -627,14 +724,17 @@ Bring these to Chris. Do not claim them as passed.
 2. The mechanism test. A machine cannot tell whether a competitor could run the same ad.
 3. Whether it sounds like Chris. That is what `VOICE.md` is for, and it is a judgement, not a regex.
 4. Whether the angle duplicates another concept's argument.
-5. Whether the proof used is a proof we actually have in writing.
+5. Whether the proof used is a proof we actually have in writing (Part 0 rules 35–38).
+5a. **Part 0 rules 13–34, plus "round two", "carry" / "carries" and "man".** These depend on context,
+   so they are judged, never matched as patterns. "Round two" is fine inside one funding sequence
+   (rule 9). The app's judge model checks them; a person checks them everywhere else.
 6. **A banned word or phrase hidden behind an irregular verb.** The checker inflects the *leading*
    word of a phrase for regular endings ("dive" catches "diving", "dived"), so "deep dive" catches
    "deep diving" but a genuinely irregular verb ("took" for "take") is not recognised as the same
    word. Found by adversarial review 2026-09-07 and left as a known, documented gap rather than
    built out — a real irregular-verb-aware checker is a bigger job than one night's build. If this
    ever bites for real, tell Chris and widen the specific phrase's forms by hand in
-   `docs/ads/rules-data.mjs` rather than trying to solve it generally.
+   `marketing/ads/rules-data.mjs` rather than trying to solve it generally.
 
 ---
 

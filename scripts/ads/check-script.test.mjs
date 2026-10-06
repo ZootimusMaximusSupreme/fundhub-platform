@@ -12,9 +12,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { checkOneScript, loadRules, main } from "./check-script.mjs";
+import { checkOneScript, checkScriptText, loadBannedLive, loadRules, main } from "./check-script.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..", "..");
@@ -69,7 +70,9 @@ test("marketing/ads/CONTROLS.md is marked LIVE — DO NOT EDIT, and this test ne
   assert.match(text, /^# LIVE — DO NOT EDIT/, "CONTROLS.md's own header changed shape; the file this checker is graded against may not be the locked baseline any more.");
 });
 
-test("a banned word is caught, including a plural/-ed/-ing form of it", () => {
+// Flipped 2026-10-05 (spec 7.1): RULES.md Part 0 rule 1 says "optimize your
+// credit", so "optimize" came off the banned list. Same block as before.
+test("'optimize' is no longer a banned word (Part 0 rule 1), in checkOneScript too", () => {
   const block = {
     title: "Test — banned word forms",
     startLine: 1,
@@ -83,7 +86,25 @@ test("a banned word is caught, including a plural/-ed/-ing form of it", () => {
     ]
   };
   const result = checkOneScript(block);
-  assert.ok(result.failures.some((f) => /banned word "optimize"/.test(f.message)));
+  assert.ok(!result.failures.some((f) => /banned word "optimize"/.test(f.message)), JSON.stringify(result.failures));
+  assert.ok(!loadRules().BANNED_WORDS.includes("optimize"));
+});
+
+test("a banned word is caught, including a plural/-ed/-ing form of it", () => {
+  const block = {
+    title: "Test — banned word forms",
+    startLine: 1,
+    lines: [
+      { n: 1, text: "HOOK This system streamlined your file before anything got submitted anywhere." },
+      { n: 2, text: "BODY We built it because nobody else does this and it takes very little time to run." },
+      { n: 3, text: "CTA Click the link below and book your free strategy call today, right now." },
+      { n: 4, text: "CLOSE No hard inquiry. No obligation. Nothing moves until you say so." },
+      { n: 5, text: "RUNTIME 60-90s" },
+      { n: 6, text: "TAG test_angle" }
+    ]
+  };
+  const result = checkOneScript(block);
+  assert.ok(result.failures.some((f) => /banned word "streamline"/.test(f.message)), JSON.stringify(result.failures));
 });
 
 test("a banned phrase is caught in a different verb form (moved the needle vs move the needle)", () => {
@@ -141,16 +162,28 @@ test("main() exits 0 on a clean file and 1 on a failing one", () => {
   assert.equal(main([]), 0);
 });
 
+// Reads one inline array out of copy.js (it cannot import rules-data.mjs:
+// workflow scripts cannot import anything, copy.js line 13).
+function copyJsList(source, name) {
+  const m = source.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\]`));
+  assert.ok(m, `.claude/workflows/copy.js no longer has a ${name} list`);
+  return [...m[1].matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)].map((x) => x[1] ?? x[2]);
+}
+
 test("loadRules returns the shared lists, and they still match .claude/workflows/copy.js", () => {
   const rules = loadRules();
-  assert.equal(rules.BANNED_WORDS.length, 34);
+  assert.equal(rules.BANNED_WORDS.length, 33);
   assert.equal(rules.BANNED_PHRASES.length, 20);
   assert.equal(rules.BANNED_OPENERS.length, 11);
+  assert.equal(rules.PART0_PATTERNS.length, 16);
   assert.ok(rules.BANNED_WORDS.includes("align"), "the word list drifted once before and lost \"align\" — this pins it back in");
 
   const copyJs = readFileSync(join(REPO_ROOT, ".claude", "workflows", "copy.js"), "utf8");
-  for (const w of rules.BANNED_WORDS) {
-    assert.ok(copyJs.includes(`'${w}'`), `"${w}" is in rules-data.mjs but not in .claude/workflows/copy.js any more — the two have drifted, fix one to match the other`);
+  for (const [mine, theirs] of [["BANNED_WORDS", "BAN_WORDS"], ["BANNED_PHRASES", "BAN_PHRASES"], ["BANNED_OPENERS", "BAN_OPENERS"]]) {
+    assert.deepEqual(
+      [...copyJsList(copyJs, theirs)].sort(), [...rules[mine]].sort(),
+      `${mine} in rules-data.mjs and ${theirs} in .claude/workflows/copy.js have drifted — fix one to match the other`
+    );
   }
 });
 
@@ -257,7 +290,10 @@ test("fix 3 stays fixed: a real slug-shaped TAG passes", () => {
   assert.ok(!result.failures.some((f) => /TAG/.test(f.message)), JSON.stringify(result.failures));
 });
 
-test("fix 6: RULES.md 3.3's own recommended hook stem is never flagged as an AI-tell contrast", () => {
+// The stem came out of RULES.md 3.3 on 2026-10-05 (it breaks Part 0 rule 15,
+// which the judge checks). The pattern check still must not call a plain
+// "not X, but Y" contrast the "it's not X, it's Y" tell.
+test("fix 6: a plain 'not another X, but Y' contrast is never flagged as an AI-tell contrast", () => {
   const block = mkBlock("Test", [
     "HOOK Not another broker, but the first one that actually reads your file the way a bank does."
   ]);
@@ -319,4 +355,277 @@ test("known limitation, documented not silently dropped: the stemmer only inflec
   // If this ever starts passing (someone builds real irregular-verb handling),
   // this assertion will fail loudly and should be updated, not deleted.
   assert.ok(!result.failures.some((f) => /the next level/.test(f.message)));
+});
+
+// ---------------------------------------------------------------------------
+// checkScriptText — strict mode, banned-live.json and the floors by format
+// (spec 7.1, added 2026-10-05).
+// ---------------------------------------------------------------------------
+
+const part0Rules = (r) => r.failures.filter((f) => f.rule.startsWith("part0-"));
+// Strict check on one line, with an empty banned list so only Part 0 speaks.
+// "long" has no floor and no close check, so nothing else gets in the way.
+const strictLong = (text) => checkScriptText(text, { format: "long", strict: true, bannedLive: [] });
+
+// A standard words-style script that obeys Part 0. It says "optimize your
+// credit", which Part 0 rule 1 asks for.
+const CLEAN_STANDARD_WORDS = [
+  "The banks that turned you down never read your credit file the way a lender reads it before a decision.",
+  "",
+  "I spent the last ten years learning what they look for, across hundreds of files and thousands of data points. Your file holds more funding than the last application showed you.",
+  "",
+  "Three things decide it: your names and addresses matching on every report, your card balances, and the ORDER you apply in. When those line up, the same file gets approved by more banks in one funding sequence.",
+  "",
+  "We optimize your credit first, so every application goes in on a clean file. You get a plan built from your own report, with the banks that approve files like yours in your state ↑",
+  "",
+  "Book a call and we walk your file with you, line by line, before anything goes out.",
+  "",
+  "No hard inquiry. Nothing moves until you say so."
+].join("\n");
+
+test("strict: a clean standard words script that says 'optimize your credit' passes with nothing to fix", () => {
+  const result = checkScriptText(CLEAN_STANDARD_WORDS, { format: "standard", style: "words", strict: true, bannedLive: [] });
+  assert.ok(result.words >= 135, `the fixture must clear the 135-word floor; it has ${result.words}`);
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.ok, true);
+  assert.match(CLEAN_STANDARD_WORDS, /optimize your credit/);
+});
+
+// One failing strict case per Part 0 pattern. Each line must fail strict mode
+// on the named rule, and must NOT fail on a Part 0 rule outside strict mode.
+const PART0_CASES = [
+  ["credit repair", "We do credit repair for owners like you.", 1],
+  ["your number", "We find your number before you apply.", 2],
+  ["the number", "Here is the number the bank sees.", 2],
+  ["shelf company", "Buy a shelf company and apply with it.", 4],
+  ["sitting on a shelf", "That LLC has been sitting on a shelf for years.", 4],
+  ["EIN", "Get an EIN for the business first.", 5],
+  ["DUNS", "Set up your DUNS profile before you apply.", 5],
+  ["net-30 (normalized text)", "Open five net-30 vendor accounts this month.", 5],
+  ["gas card", "Start with a gas card and build from there.", 5],
+  ["no guarantees", "There are no guarantees in funding.", 6],
+  ["dude", "Look, dude, the file decides it.", 12],
+  ["bro", "The file decides it, bro.", 12],
+  ["most business owners", "Most business owners apply in the wrong order.", 20],
+  ["could", "You could get approved for more.", 19],
+  ["could be worth", "Your file could be worth more than you think.", 19],
+  ["dollar amount in words", "That is three hundred thousand dollars in funding.", 11],
+  ["FundHub", "FundHub reads the file before any bank does.", 10],
+  ["FUNDHUB", "FUNDHUB reads the file before any bank does.", 10],
+  ["Fund Hub", "Fund Hub reads the file before any bank does.", 10],
+  ["Frodo", "You are Frodo in this story.", 33],
+  ["skip the journey", "You get to skip the journey.", 33],
+  ["Koi Poke", "Koi Poke got funded after a bank said no.", 35],
+  ["$25M", "We secured $25M for our clients.", 35]
+];
+
+for (const [name, line, rule] of PART0_CASES) {
+  test(`strict: Part 0 rule ${rule} pattern "${name}" fails, and only in strict mode`, () => {
+    const strict = strictLong(line);
+    assert.ok(strict.failures.some((f) => f.rule === `part0-${rule}` && f.line === 1 && f.match), JSON.stringify(strict.failures));
+    assert.equal(strict.ok, false);
+    const loose = checkScriptText(line, { format: "long", strict: false });
+    assert.deepEqual(part0Rules(loose), [], JSON.stringify(loose.failures));
+  });
+}
+
+test("strict: every Part 0 pattern has at least one failing case above", () => {
+  const covered = new Set();
+  for (const [, line] of PART0_CASES) {
+    for (const p of loadRules().PART0_PATTERNS) {
+      const text = p.on === "raw" ? line : line.toLowerCase().replace(/-/g, " ");
+      if (new RegExp(p.pattern.source, p.pattern.flags).test(text)) covered.add(p.id);
+    }
+  }
+  assert.deepEqual([...covered].sort(), loadRules().PART0_PATTERNS.map((p) => p.id).sort());
+});
+
+test("strict: 'net 30' is matched on normalized text — hyphen, space and no space all fail", () => {
+  for (const line of ["Open a net-30 account.", "Open a net 30 account.", "Open a net30 account.", "Open a NET-30 account."]) {
+    assert.ok(strictLong(line).failures.some((f) => f.rule === "part0-5"), line);
+  }
+});
+
+test("strict: the company name is matched on raw text — Fundhub and the fundhub.ai domain pass", () => {
+  const ok = strictLong("Fundhub reads your file. Go to fundhub.ai and Fundhub's team calls you.");
+  assert.deepEqual(part0Rules(ok), [], JSON.stringify(ok.failures));
+  for (const bad of ["FundHub", "FUNDHUB", "Fund Hub", "fund hub", "Fund-Hub", "fundHub"]) {
+    const r = strictLong(`${bad} reads your file.`);
+    assert.ok(r.failures.some((f) => f.rule === "part0-10"), bad);
+  }
+});
+
+test("strict: judge rules are not patterns — 'round two', 'carry' and 'man' never fail on their own", () => {
+  const result = strictLong("Round two of the sequence goes out once the file is clean. Your file carries more than the bank showed you, man, and it can carry a bigger line.");
+  assert.deepEqual(part0Rules(result), [], JSON.stringify(result.failures));
+  for (const p of loadRules().PART0_PATTERNS) {
+    for (const word of ["round two", "carry", "carries", "man"]) {
+      assert.ok(!new RegExp(p.pattern.source, p.pattern.flags).test(word), `${p.id} matches the judge word "${word}"`);
+    }
+  }
+});
+
+test("strict: near misses stay clean — numerals, 'thousands of dollars', 'couldn't', 'your phone number'", () => {
+  const result = strictLong("You got $300,000 and $100K lines. That saved thousands of dollars. The bank couldn't read it. We don't sell your phone number.");
+  assert.deepEqual(part0Rules(result), [], JSON.stringify(result.failures));
+});
+
+test("strict: em dashes are still caught (they were already)", () => {
+  const result = strictLong("Your file is ready — the banks are not.");
+  assert.ok(result.failures.some((f) => f.rule === "em-dash"), JSON.stringify(result.failures));
+});
+
+test("strict: a phrase in a line break still fails, and the line is null when it spans lines", () => {
+  const result = strictLong("This is for most business\nowners who apply in the wrong order.");
+  const hit = result.failures.find((f) => f.rule === "part0-20");
+  assert.ok(hit, JSON.stringify(result.failures));
+  assert.equal(hit.line, null);
+});
+
+// banned-live.json: Chris's banned phrases, plain text, merged in strict mode.
+
+test("banned-live.json is a JSON list of plain strings, and strict mode reads it with no warning", () => {
+  const parsed = JSON.parse(readFileSync(join(REPO_ROOT, "marketing", "ads", "banned-live.json"), "utf8"));
+  assert.ok(Array.isArray(parsed));
+  assert.ok(parsed.every((x) => typeof x === "string"));
+  const loaded = loadBannedLive();
+  assert.equal(loaded.warning, null);
+  assert.deepEqual(loaded.phrases, parsed.filter((x) => x.trim()));
+  const result = checkScriptText(CLEAN_STANDARD_WORDS, { format: "standard", style: "words", strict: true });
+  assert.ok(!result.warnings.some((w) => w.rule === "banned-live"), JSON.stringify(result.warnings));
+});
+
+test("banned-live phrases fail in strict mode only, matched as plain text", () => {
+  const text = "Here is what (really) works for a file like yours.";
+  const strict = checkScriptText(text, { format: "long", strict: true, bannedLive: ["what (really) works"] });
+  assert.ok(strict.failures.some((f) => f.rule === "banned-live" && f.match === "what (really) works" && f.line === 1), JSON.stringify(strict.failures));
+  const loose = checkScriptText(text, { format: "long", strict: false, bannedLive: ["what (really) works"] });
+  assert.ok(!loose.failures.some((f) => f.rule === "banned-live"));
+  // As a pattern "(really)" would be a group and match "what really works".
+  // It is plain text, so this does not fail.
+  const plain = checkScriptText("Here is what really works.", { format: "long", strict: true, bannedLive: ["what (really) works"] });
+  assert.ok(!plain.failures.some((f) => f.rule === "banned-live"), JSON.stringify(plain.failures));
+});
+
+test("banned-live: a file that cannot be read gives a warning, never a crash", () => {
+  const loaded = loadBannedLive(["/nonexistent/banned-live.json"]);
+  assert.deepEqual(loaded.phrases, []);
+  assert.match(loaded.warning, /could not be read/);
+});
+
+// Floors by format.
+
+const nWords = (n) => Array.from({ length: n }, () => "file").join(" ") + ".";
+const lengthFails = (r) => r.failures.filter((f) => f.rule === "length");
+
+test("floors: standard words needs 135 words or more", () => {
+  assert.equal(lengthFails(checkScriptText(nWords(134), { format: "standard", style: "words" })).length, 1);
+  assert.equal(lengthFails(checkScriptText(nWords(135), { format: "standard", style: "words" })).length, 0);
+  assert.equal(lengthFails(checkScriptText(nWords(400), { format: "standard", style: "words" })).length, 0);
+});
+
+test("floors: sorting needs 104-137 words", () => {
+  for (const [n, fails] of [[103, 1], [104, 0], [120, 0], [137, 0], [138, 1]]) {
+    assert.equal(lengthFails(checkScriptText(nWords(n), { format: "sorting" })).length, fails, `${n} words`);
+  }
+});
+
+test("floors: long, notes, greenscreen and vsl have no floor and no bullets shape", () => {
+  for (const format of ["long", "notes", "greenscreen", "vsl"]) {
+    const r = checkScriptText(nWords(10), { format });
+    assert.deepEqual(r.failures.filter((f) => ["length", "bullets-shape"].includes(f.rule)), [], format);
+  }
+});
+
+const BULLETS_OK = [
+  "Your file is worth more funding than the last bank showed you. One detail on it decides how much.",
+  "",
+  "- names and addresses match on every report",
+  "- card balances under 10% before you apply",
+  "- the banks that approve files like yours",
+  "",
+  "That detail is the ORDER you apply in. Book a call and your advisor walks your file with you.",
+  "",
+  "No hard inquiry. Nothing moves until you say so."
+].join("\n");
+
+test("floors: standard bullets has no word floor; hook, line 2, reveal, CTA and 3-8 short cues pass", () => {
+  const r = checkScriptText(BULLETS_OK, { format: "standard", style: "bullets", strict: true, bannedLive: [] });
+  assert.ok(r.words < 135);
+  assert.deepEqual(r.failures, []);
+  // Standard defaults to the bullets style when no style is sent.
+  assert.deepEqual(checkScriptText(BULLETS_OK, { format: "standard", strict: true, bannedLive: [] }).failures, []);
+});
+
+test("floors: standard bullets fails without line 2, without the reveal and CTA, and with too few cues", () => {
+  const noLine2 = BULLETS_OK.replace(" One detail on it decides how much.", "");
+  assert.ok(checkScriptText(noLine2, { format: "standard" }).failures.some((f) => f.rule === "bullets-shape" && /line 2/.test(f.message)));
+
+  const noEnd = BULLETS_OK.split("\n").slice(0, 5).join("\n");
+  const end = checkScriptText(noEnd, { format: "standard" }).failures.filter((f) => f.rule === "bullets-shape");
+  assert.ok(end.some((f) => /the reveal/.test(f.message)), JSON.stringify(end));
+  assert.ok(end.some((f) => /the CTA/.test(f.message)), JSON.stringify(end));
+
+  const twoCues = BULLETS_OK.replace("- the banks that approve files like yours\n", "");
+  assert.ok(checkScriptText(twoCues, { format: "standard" }).failures.some((f) => f.rule === "bullets-shape" && f.match === "2"));
+});
+
+test("floors: standard bullets fails with 9 cues and with a cue over 12 words", () => {
+  const nine = BULLETS_OK.replace("- the banks that approve files like yours", Array.from({ length: 7 }, (_, i) => `- cue number ${i + 1}`).join("\n"));
+  assert.ok(checkScriptText(nine, { format: "standard" }).failures.some((f) => f.rule === "bullets-shape" && f.match === "9"));
+
+  // 13 words: one over the limit.
+  const long = BULLETS_OK.replace("- the banks that approve files like yours", "- the banks that approve files like yours in your state at your score");
+  const hit = checkScriptText(long, { format: "standard" }).failures.find((f) => f.rule === "bullets-shape" && /13 words/.test(f.message));
+  assert.ok(hit, "a 13-word cue must fail");
+  assert.equal(hit.line, 5);
+  // 12 words: right at the limit, passes.
+  const twelve = BULLETS_OK.replace("- the banks that approve files like yours", "- the banks that approve files like yours in your state at score");
+  assert.ok(!checkScriptText(twelve, { format: "standard" }).failures.some((f) => f.rule === "bullets-shape"));
+});
+
+test("floors: standard bullets reads the shape from parts when parts are sent", () => {
+  const parts = [
+    { kind: "hook", text: "Your file is worth more funding than the last bank showed you." },
+    { kind: "line2", text: "One detail on it decides how much." },
+    { kind: "cue", text: "names and addresses match on every report" },
+    { kind: "cue", text: "card balances under 10% before you apply" },
+    { kind: "cue", text: "the banks that approve files like yours" },
+    { kind: "reveal", text: "That detail is the ORDER you apply in." },
+    { kind: "cta", text: "Book a call and your advisor walks your file with you." }
+  ];
+  assert.deepEqual(checkScriptText(BULLETS_OK, { format: "standard", parts }).failures, []);
+  const missing = checkScriptText(BULLETS_OK, { format: "standard", parts: parts.filter((p) => p.kind !== "line2") });
+  assert.ok(missing.failures.some((f) => f.rule === "bullets-shape" && /line 2/.test(f.message)));
+});
+
+test("close check: runs for standard and sorting only", () => {
+  const noClose = nWords(120);
+  for (const format of ["standard", "sorting"]) {
+    assert.ok(checkScriptText(noClose, { format, style: "words" }).failures.some((f) => f.rule === "close-promises"), format);
+  }
+  for (const format of ["long", "notes", "greenscreen", "vsl"]) {
+    assert.ok(!checkScriptText(noClose, { format }).failures.some((f) => f.rule === "close-promises"), format);
+  }
+});
+
+test("no format: a warning, and no length or close check", () => {
+  const r = checkScriptText(nWords(5), {});
+  assert.ok(r.warnings.some((w) => w.rule === "format"));
+  assert.deepEqual(r.failures.filter((f) => ["length", "close-promises", "bullets-shape"].includes(f.rule)), []);
+  const odd = checkScriptText(nWords(5), { format: "standard", style: "poem" });
+  assert.ok(odd.warnings.some((w) => w.rule === "style"));
+  assert.deepEqual(odd.failures.filter((f) => ["length", "bullets-shape"].includes(f.rule)), []);
+});
+
+test("the old checks still run in checkScriptText: banned word, opener, never-say, question hook", () => {
+  const r = checkScriptText("Have you ever wondered why the bank said no? We streamlined it. Your score will go up.", { format: "long" });
+  const rules = r.failures.map((f) => f.rule);
+  for (const rule of ["banned-word", "opener", "never-say", "cause-first-3"]) assert.ok(rules.includes(rule), `${rule}: ${JSON.stringify(r.failures)}`);
+});
+
+test("importing check-script.mjs runs nothing (safe to import from src/)", () => {
+  const url = new URL("./check-script.mjs", import.meta.url).href;
+  const out = execFileSync(process.execPath, ["--input-type=module", "-e", `await import(${JSON.stringify(url)});`], { encoding: "utf8" });
+  assert.equal(out, "");
 });

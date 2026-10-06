@@ -16,7 +16,9 @@ import {
   purchaseActionType,
   META_PURCHASE_ACTION_TYPES,
   MONEY_INSIGHT_REQUEST_FIELDS,
-  META_RESULT_COLUMNS
+  META_RESULT_COLUMNS,
+  META_INLINE_LINK_CLICKS_FIELD,
+  linkClicks
 } from "./meta-results.mjs";
 
 const act = (type, value) => ({ action_type: type, value: String(value) });
@@ -122,6 +124,46 @@ describe("metaResultMetrics — the four numbers off one ad-day", () => {
   });
 });
 
+/* Link clicks (marketing machine M0 step 5, 2026-10-05): Meta's own
+   inline_link_clicks field first, the link_click line in actions when Meta did
+   not send it. Same column (408's link_clicks), no second one. */
+describe("link clicks — inline_link_clicks first, then actions link_click", () => {
+  test("inline_link_clicks is used when Meta sends it, even when actions has a line too", () => {
+    const out = metaResultMetrics({
+      inline_link_clicks: "41",
+      actions: [act("link_click", 43), act("landing_page_view", 33)]
+    });
+    assert.equal(out.link_clicks, 41, "the actions line was used although inline_link_clicks was sent");
+    assert.equal(out.landing_page_views, 33);
+  });
+
+  test("never added together: the two count the same clicks", () => {
+    assert.equal(linkClicks({ inline_link_clicks: "10", actions: [act("link_click", 10)] }), 10);
+  });
+
+  test("no inline_link_clicks: the actions link_click line, as before", () => {
+    assert.equal(metaResultMetrics({ actions: [act("link_click", 43)] }).link_clicks, 43);
+    assert.equal(linkClicks({ inline_link_clicks: null, actions: [act("link_click", 7)] }), 7);
+    assert.equal(linkClicks({ inline_link_clicks: "", actions: [act("link_click", 7)] }), 7);
+  });
+
+  test("an unreadable inline_link_clicks falls back to the actions line, not to a made-up number", () => {
+    assert.equal(linkClicks({ inline_link_clicks: "lots", actions: [act("link_click", 5)] }), 5);
+    assert.equal(linkClicks({ inline_link_clicks: "-3", actions: [act("link_click", 5)] }), 5);
+  });
+
+  test("a real 0 Meta sent in inline_link_clicks stays 0", () => {
+    assert.strictEqual(linkClicks({ inline_link_clicks: "0", actions: [act("link_click", 5)] }), 0);
+    assert.strictEqual(linkClicks({ inline_link_clicks: 0 }), 0);
+  });
+
+  test("neither one: NULL, never 0", () => {
+    assert.strictEqual(linkClicks({ spend: "5" }), null);
+    assert.strictEqual(linkClicks(undefined), null);
+    assert.strictEqual(metaResultMetrics({ spend: "5", clicks: "9" }).link_clicks, null);
+  });
+});
+
 describe("the helpers", () => {
   test("actionCount takes the largest entry for a type, never the sum", () => {
     assert.equal(actionCount([act("link_click", 5), act("link_click", 12)], "link_click"), 12);
@@ -148,8 +190,10 @@ describe("only Meta's own names", () => {
     assert.deepEqual([...META_PURCHASE_ACTION_TYPES], ["omni_purchase", "offsite_conversion.fb_pixel_purchase"]);
   });
 
-  test("the request adds exactly one field, cost_per_action_type", () => {
-    assert.deepEqual([...MONEY_INSIGHT_REQUEST_FIELDS], ["actions", "cost_per_action_type"]);
+  test("the request adds exactly two fields, cost_per_action_type and inline_link_clicks", () => {
+    assert.deepEqual([...MONEY_INSIGHT_REQUEST_FIELDS],
+      ["actions", "cost_per_action_type", "inline_link_clicks"]);
+    assert.equal(META_INLINE_LINK_CLICKS_FIELD, "inline_link_clicks");
   });
 
   test("the columns are the four 408 adds", () => {
