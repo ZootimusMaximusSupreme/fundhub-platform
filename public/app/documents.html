@@ -728,7 +728,16 @@ renderTabs(); renderClassbar(); render();
                 : (r.expires_at && new Date(r.expires_at) < new Date()) ? "expired"
                 : "awaiting";
 
-        var born = new Date(r.generated_at || r.created_at || Date.now());
+        /* AGE COUNTS FROM THE LAST STATE CHANGE (the legend says so, and it
+           used to count from generation — walkthrough-4 defect 16). The
+           state changes this endpoint knows: created, generated, delivered,
+           signed, and an expiry that has passed. The latest one wins, so a
+           contract made in June and sent yesterday is one day old, not 78. */
+        var lastChange = [r.created_at, r.generated_at, r.delivered_at, r.signed_at,
+          (r.expires_at && new Date(r.expires_at) < new Date()) ? r.expires_at : null]
+          .map(function (t) { return t ? new Date(t).getTime() : NaN; })
+          .filter(function (t) { return !isNaN(t); });
+        var born = new Date(lastChange.length ? Math.max.apply(null, lastChange) : Date.now());
         return {
           // Carried so the contract lookup below has something to join on. It is
           // the documents row id, not a storage key — redact() strips those.
