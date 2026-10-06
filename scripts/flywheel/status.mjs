@@ -120,6 +120,11 @@ export function parseFrontMatter (fm) {
       if (key === 'inputs' || key === 'counts') { section = key; continue }
       section = null
       out[key] = /^-?\d+$/.test(value) ? Number(value) : value
+    } else if (section === 'inputs') {
+      // A hash is text, even when all 8 of its characters happen to be digits
+      // (about 1 in 43 hashes): read as a number it never equals bodyHash()'s
+      // string, and the stage would read STALE for no reason.
+      out[section][key] = value
     } else if (section) {
       out[section][key] = /^-?\d+$/.test(value) ? Number(value) : value
     }

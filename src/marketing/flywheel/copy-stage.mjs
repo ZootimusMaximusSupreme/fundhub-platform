@@ -312,7 +312,7 @@ export function steps(ctx) {
         const f = read.files || {};
         const text = (name) => (f[name] && f[name].text != null ? f[name].text : null);
         const offer = bodyOf(text("03-offer.md"));
-        if (!offer) throw new StageStop(`There is no offer on file for ${campaignWords(s.campaign)}. Finish step 3 (the offer) first.`);
+        if (!offer) throw new StageStop(`There is no offer on file for ${campaignWords(s.campaign, text("00-OWNER-NOTES.md"))}. Finish step 3 (the offer) first.`);
         const notes = [notesForStage(text("00-OWNER-NOTES.md"), STAGE), s.note ? `${s.today} | stage 4 | ${s.note}` : ""]
           .filter(Boolean).join("\n");
         s.inputs = {

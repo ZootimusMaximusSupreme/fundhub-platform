@@ -111,7 +111,9 @@ export function screenPlan(plan) {
     return { strategy: plan.strategyName, ok: false, reasons: ["the targeting was not a readable JSON object, so it cannot be checked"], targeting: null };
   }
   const out = screenTargeting(targeting, { platform: "meta" });
-  return { strategy: plan.strategyName, ok: Boolean(out.ok), reasons: out.reasons || [], targeting };
+  // The screen's reasons are {code, message}; the plan, the page and the model read the message.
+  const reasons = (out.reasons || []).map((r) => (r && typeof r === "object" ? String(r.message || r.code) : String(r)));
+  return { strategy: plan.strategyName, ok: Boolean(out.ok), reasons, targeting };
 }
 
 export function initState(job) {
@@ -137,7 +139,7 @@ export function steps(ctx) {
         const f = read.files || {};
         const text = (name) => (f[name] && f[name].text != null ? f[name].text : null);
         const offer = bodyOf(text("03-offer.md"));
-        if (!offer) throw new StageStop(`There is no offer on file for ${campaignWords(s.campaign)}. Finish step 3 (the offer) first.`);
+        if (!offer) throw new StageStop(`There is no offer on file for ${campaignWords(s.campaign, text("00-OWNER-NOTES.md"))}. Finish step 3 (the offer) first.`);
         const copyText = text("04-copy.md");
         const notesText = text("00-OWNER-NOTES.md");
         const offerKey = offerKeyOf(s.campaign, notesText);
