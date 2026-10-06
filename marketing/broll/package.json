@@ -1,0 +1,21 @@
+{
+  "name": "fundhub-broll",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fundhub B-roll animation kit. Remotion templates for vertical 1080x1920 ad clips. Self-contained: own package.json, own node_modules.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.532",
+    "@remotion/google-fonts": "4.0.532",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "typescript": "5.9.3"
+  }
+}
