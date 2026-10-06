@@ -121,6 +121,7 @@ main::-webkit-scrollbar-thumb{background:#D4D4D8;border-radius:5px}
 .fb-wins{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;padding:14px 18px}
 .fb-wins:hover{border-color:var(--ink)}
 .fb-mark{width:36px;height:36px;border-radius:10px;background:#1877F2;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:var(--fs-title);flex:0 0 36px}
+.fb-mark.money-mark{background:var(--ink);color:var(--paper)}
 .fb-t{font-size:var(--fs-body);font-weight:800;letter-spacing:-.01em}
 .fb-d{font-size:var(--fs-body);color:var(--text-dim);line-height:1.4}
 .fb-go{margin-left:auto;font-size:var(--fs-body);font-weight:700;white-space:nowrap;color:var(--ink);text-decoration:underline;text-underline-offset:2px}
@@ -564,6 +565,18 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
           <div class="fb-d">This is where we post wins. Come say hi before your call.</div>
         </div>
         <span class="fb-go">Join on Facebook</span>
+      </a>
+
+      <!-- ══ MONEY — the client's Finance OS pages ═════════════════════════
+           Same card shape as the wins group above. money.html is on
+           ROLE_TABS.client in shell.js, or gateLinks() would hide this card. -->
+      <a class="card fb-wins" id="money-link" href="money.html">
+        <div class="fb-mark money-mark" aria-hidden="true">$</div>
+        <div>
+          <div class="fb-t">Money</div>
+          <div class="fb-d">Your bank accounts, cards, bills, and business credit in one place.</div>
+        </div>
+        <span class="fb-go">Open Money</span>
       </a>
 
       <!-- ══ AGREEMENTS — contracts sent for signature ═════════════════ -->

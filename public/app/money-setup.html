@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Money setup</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<!-- ══ MONEY SETUP — THE CLIENT'S FINANCE OS SETUP STEPS ═══════════════════
+     Direction: docs/finance/finance-os-direction-2026-10-06.md ("one-time setup
+     fee, soft pulls for business credit (no hard inquiries), quick payment to
+     activate"). Board: ops/workflows/finance-os-pages-2026-10-06.md (unit P5).
+     Reads GET /api/money/setup; acts through POST /api/money/setup.
+
+     Same header, same look and same money nav as money.html. Client-facing, so
+     NO shell.js, for the same reason money.html gives. The real gate is the
+     endpoint: a client session only ever gets its own file back.
+
+     Prices the owner has not set are null on the wire and paint "$X". -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:#FFFFFF;
+  --text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2);
+}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+ol,ul{list-style:none}
+
+/* header — same dark bar as money.html */
+.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sub{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
+
+/* Shared money nav — same rules as money.html. */
+.mnav{display:flex;flex-wrap:wrap;gap:0 16px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line)}
+.mnav a{display:inline-flex;align-items:center;min-height:44px;color:var(--text-dim);text-decoration:none;border-bottom:2px solid transparent}
+.mnav a:hover{color:var(--ink)}
+.mnav a[aria-current="page"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+
+main{padding:24px 24px 64px}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none}
+.btn-primary:hover{background:var(--ink2)}
+.btn-primary[disabled]{opacity:.6;cursor:default}
+.btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);font-weight:600;text-decoration:none}
+.btn-line:hover{background:var(--soft)}
+.btn-line[disabled]{opacity:.6;cursor:default}
+
+/* 12-column grid: steps span 8, the price box spans 4. */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px;align-items:start}
+.grid>.steps-card{grid-column:span 8}
+.grid>.price-card{grid-column:span 4}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.caption{color:var(--text-dim)}
+.big,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.num{font-weight:500;color:var(--ink)}
+
+/* One step per row. Done / now / later is said in WORDS in .state, and the
+   marker changes shape (✓ filled, number outlined) — never colour alone
+   (UI-STANDARDS §12.6). */
+.step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px 16px;padding:16px 0;border-top:1px solid var(--line)}
+.step:first-child{border-top:0}
+.mark{width:40px;height:40px;border-radius:999px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:500;color:var(--text-dim)}
+.step.done .mark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.step.now .mark{border-color:var(--ink);color:var(--ink)}
+.step-body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.step-title{font-weight:600;color:var(--ink)}
+.state{font-family:var(--mono);color:var(--text-dim)}
+.step.done .state{color:var(--ink)}
+.step-act{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.act-msg:empty{display:none}
+
+.price-list li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+.price-list li:first-child{border-top:0}
+.price-line{margin-top:16px}
+
+.error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.error p{max-width:60ch}
+
+/* loading skeletons, in the real layout */
+.skel{display:flex;flex-direction:column;gap:8px}
+.sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+.sk-s{height:12px;width:40%}.sk-m{height:16px;width:70%}.sk-l{height:32px;width:60%}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+@media (max-width:1100px){
+  .grid>.steps-card,.grid>.price-card{grid-column:span 12}
+}
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .mbar{padding:8px 16px}
+  .mnav{padding:0 16px}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mbar">
+    <div class="brand">
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <div class="sub">Money</div>
+    </div>
+    <a id="money-back" href="client-portal.html">Back to my portal</a>
+  </header>
+  <nav class="mnav" aria-label="Money pages">
+    <a href="money.html">Money</a>
+    <a href="money-accounts.html">Accounts</a>
+    <a href="money-credit.html">Credit</a>
+    <a href="money-connections.html">Connections</a>
+    <a href="money-payments.html">Payments</a>
+    <a href="money-setup.html" aria-current="page">Setup</a>
+  </nav>
+  <main>
+    <div id="setup-root" aria-live="polite">
+      <div class="head"><div><h1>Set up Money</h1><p class="caption">Loading your setup…</p></div></div>
+    </div>
+  </main>
+</div>
+<script defer src="money-setup.js"></script>
+</body>
+</html>

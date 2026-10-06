@@ -248,6 +248,7 @@ import financeEntities from "../../api/finance/entities.mjs";
 import financeBills from "../../api/finance/bills.mjs";
 import financeCashflow from "../../api/finance/cashflow.mjs";
 import moneyOverview from "../../api/money/overview.mjs";
+import moneySetup from "../../api/money/setup.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1084,6 +1085,9 @@ export const ROUTES = {
   // Finance OS client dashboard (/app/money.html). Client session = own file
   // only; staff = ROLE_SETS.FINANCE + ?client_id= in their org.
   "money/overview": moneyOverview,
+  // Finance OS setup (/app/money-setup.html): setup status, setup checkout,
+  // soft-pull approval form. Same two callers and gate as money/overview.
+  "money/setup": moneySetup,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,

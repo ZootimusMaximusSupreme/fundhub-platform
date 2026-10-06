@@ -49,6 +49,13 @@ ul{list-style:none}
 .brand .sub{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
 
+/* Shared money nav (ops/workflows/finance-os-pages-2026-10-06.md): the same six
+   links, in the same order, on every money page. The current page carries
+   aria-current="page" and a solid underline — a shape, not only a colour. */
+.mnav{display:flex;flex-wrap:wrap;gap:0 16px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line)}
+.mnav a{display:inline-flex;align-items:center;min-height:44px;color:var(--text-dim);text-decoration:none;border-bottom:2px solid transparent}
+.mnav a:hover{color:var(--ink)}
+.mnav a[aria-current="page"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
 main{padding:24px 24px 64px}
 .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
 .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
@@ -153,6 +160,7 @@ table.cards .used-bar{width:64px;margin-left:auto}
 @media (max-width:760px){
   main{padding:16px 16px 48px}
   .mbar{padding:8px 16px}
+  .mnav{padding:0 16px}
   .tiles>*,.two>*{grid-column:span 12}
   .card{padding:16px}
   .card-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -169,6 +177,14 @@ table.cards .used-bar{width:64px;margin-left:auto}
     </div>
     <a id="money-back" href="client-portal.html">Back to my portal</a>
   </header>
+  <nav class="mnav" aria-label="Money pages">
+    <a href="money.html" aria-current="page">Money</a>
+    <a href="money-accounts.html">Accounts</a>
+    <a href="money-credit.html">Credit</a>
+    <a href="money-connections.html">Connections</a>
+    <a href="money-payments.html">Payments</a>
+    <a href="money-setup.html">Setup</a>
+  </nav>
   <main>
     <div id="money-root" aria-live="polite">
       <div class="head"><div><h1>Money</h1><p class="caption">Loading your accounts…</p></div></div>
