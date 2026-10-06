@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Money</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<!-- ══ MONEY — THE CLIENT'S FINANCE OVERSIGHT PAGE ══════════════════════════
+     Spec: docs/finance/client-finance-os-build-spec-2026-09-19.md §4–§4c and
+     docs/finance/finance-os-direction-2026-10-06.md. Contract: the
+     GET /api/money/overview block on ops/workflows/finance-os-build-2026-10-06.md.
+
+     CLIENT-FACING, SO NO shell.js. Like client-portal.html it keeps its own
+     header and carries no staff navigation (spec §8 step 4: "No staff picker.
+     No CRM employee menu."). It does not load shell.js on purpose: the shell's
+     gate only lets a client open the screens in ROLE_TABS.client, and its
+     sidebar rules belong to staff desks. The real gate is the endpoint — a
+     client session only ever gets its own file back; staff need ?client_id=.
+     money.js sends the person to the right sign-in page on a 401.
+
+     .app on the wrapper on purpose: fundhub-brand.css then sizes the type to
+     the four tokens (.big = metric, h1/h2 = title, .caption/.eyebrow = caption,
+     everything else body) and gives .card the shared --panel-shadow. No px
+     font sizes are written below — they would be thrown away (UI-STANDARDS
+     §12.7). -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:#FFFFFF;
+  --text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2);
+}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+ul{list-style:none}
+
+/* header — same dark bar as client-portal.html */
+.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sub{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
+
+main{padding:24px 24px 64px}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.head-act{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.act-msg:empty{display:none}
+.btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+.btn-primary:hover{background:var(--ink2)}
+.btn-primary[disabled]{opacity:.6;cursor:default}
+
+/* Sandbox banner — literal amber, not a brand variable, so it stays a warning
+   on every tenant, and it says so in words (UI-STANDARDS §12.6). */
+.sandbox{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+
+/* 12-column grid. Tiles span 3, halves span 6, one spans 12. */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.tiles>*{grid-column:span 3}
+.two>*{grid-column:span 6}
+.one>*,.boxes>*{grid-column:span 12}
+.debt>:first-child{grid-column:span 4}
+.debt>:last-child{grid-column:span 8}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.caption{color:var(--text-dim)}
+.big,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.num{font-weight:500;color:var(--ink)}
+.mask{font-family:var(--mono);color:var(--text-dim)}
+
+.tile{display:flex;flex-direction:column;gap:8px}
+.cash-line{display:flex;flex-direction:column}
+.next-name{font-weight:600}
+.split li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+.split li:first-child{border-top:0}
+.total-line{margin-top:8px}
+
+.used-bar{display:block;width:100%;height:8px;margin-top:8px}
+.used-track{fill:var(--soft)}
+.used-fill{fill:var(--ink)}
+
+.tip{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin-bottom:24px}
+.tip .eyebrow{display:inline;margin:0 8px 0 0}
+
+.block{margin-bottom:48px}
+.block>h2{font-weight:600;color:var(--ink)}
+.block>.caption{margin-bottom:16px}
+
+.box-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.box-name{font-weight:600;color:var(--ink)}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim)}
+.acct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:16px 0;border-top:1px solid var(--line)}
+.acct:first-child{border-top:0}
+.acct-name{font-weight:600}
+.acct-num{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.card-facts{grid-column:1 / -1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 16px}
+.card-facts dd{margin:0}
+.fact-used{grid-column:span 2}
+.fact-late dd{color:#92400E;font-weight:600}
+
+.rows .row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+.rows .row:first-child{border-top:0}
+
+.scroll-x{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+.r{text-align:right}
+table.cards .used-bar{width:64px;margin-left:auto}
+
+.chart{display:block;width:100%;height:auto;max-height:200px;margin:8px 0 16px}
+.chart-base{stroke:var(--line);stroke-width:1}
+.bar-in{fill:var(--ok);stroke:var(--ink);stroke-width:1}
+.bar-out{fill:var(--ink2)}
+.chart-label,.chart-dash{fill:var(--text-dim);font-family:var(--sans)}
+/* THIS SCREEN'S ONE TYPE ESCAPE HATCH (UI-STANDARDS §12.7). Chart labels are
+   SVG text in viewBox units, and the viewBox is scaled to the card. The brand
+   file's `.app *{font-size:inherit !important}` would hand them the 16px body
+   size, which the scale then blows up past the bars. 11 user units lands near
+   caption size once the chart is drawn. */
+.app .chart text{font-size:11px !important}
+.legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.key{display:inline-block;width:16px;height:12px;border-radius:2px}
+.key-in{background:var(--ok);border:1px solid var(--ink)}
+.key-out{background:var(--ink2);margin-left:8px}
+.flow-none{font-weight:600;color:var(--ink);margin-bottom:8px}
+
+.empty,.error{max-width:none;display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.empty p,.error p{max-width:60ch}
+.billing{margin-top:16px}
+
+/* loading skeletons, in the real layout */
+.skel{display:flex;flex-direction:column;gap:8px}
+.sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+.sk-s{height:12px;width:40%}.sk-m{height:16px;width:70%}.sk-l{height:32px;width:60%}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+@media (max-width:1100px){
+  .tiles>*{grid-column:span 6}
+  .card-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .debt>:first-child,.debt>:last-child{grid-column:span 12}
+}
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .mbar{padding:8px 16px}
+  .tiles>*,.two>*{grid-column:span 12}
+  .card{padding:16px}
+  .card-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fact-used{grid-column:span 2}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mbar">
+    <div class="brand">
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <div class="sub">Money</div>
+    </div>
+    <a id="money-back" href="client-portal.html">Back to my portal</a>
+  </header>
+  <main>
+    <div id="money-root" aria-live="polite">
+      <div class="head"><div><h1>Money</h1><p class="caption">Loading your accounts…</p></div></div>
+    </div>
+  </main>
+</div>
+<script defer src="money.js"></script>
+</body>
+</html>
