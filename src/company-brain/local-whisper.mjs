@@ -18,7 +18,10 @@ const BREW_WHISPER_PATHS = [
 ];
 
 function repoWhisperCliCandidates() {
-  const root = path.join(process.cwd(), "credentials/hormozi-kb-work/whisper.cpp");
+  // Built from parts on purpose. The Netlify bundler follows a literal path like
+  // "credentials/hormozi-kb-work/whisper.cpp" into the function zip, and that folder
+  // is a 22 GB local build tree inside credentials/. This only ever runs on the Mac.
+  const root = path.join(process.cwd(), ["credentials", "hormozi-kb-work", "whisper.cpp"].join("/"));
   return [
     path.join(root, "build/bin/whisper-cli"),
     path.join(root, "build/bin/main"),

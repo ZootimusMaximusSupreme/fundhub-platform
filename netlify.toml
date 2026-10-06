@@ -97,6 +97,8 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = [
+    # Never ship local secrets or the huge local work trees inside credentials/.
+    "!credentials/**",
     "assets/ebooks/fundhub-ebook-placeholder.pdf",
     "assets/gifts/message-blaster.dmg",
     "scripts/black-reports/**",
