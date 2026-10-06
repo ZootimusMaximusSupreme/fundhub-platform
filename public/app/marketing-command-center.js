@@ -810,19 +810,23 @@
     return items.length ? '<ul class="bullets">' + items.map(function (i) { return "<li>" + esc(i) + "</li>"; }).join("") + "</ul>" : "";
   }
 
+  /* renderOffer — the review card first, then the offer's name and price, then
+     the detail (M12's contract: docs/specs/marketing-offer-contract.md, "What
+     the Offer card should show first"). */
   function renderOffer(offer, nowMs) {
     if (!offer) return "";
     return '<div class="offer-body">' +
-      '<div class="piece-hd"><b>' + esc(offer.name || "Latest offer") + "</b>" +
+      '<div class="piece-hd"><b>Latest offer</b>' +
       (offer.finishedAt ? '<span class="caption faint">Written ' + timeTag(offer.finishedAt, nowMs) + "</span>" : "") + "</div>" +
-      (offer.price ? '<p class="gap-top"><b>Price:</b> ' + esc(offer.price) + "</p>" : "") +
+      (offer.decided ? '<p class="caption sub-hd">What this decided</p><p>' + esc(offer.decided) + "</p>" : "") +
+      (offer.toCheck.length ? '<p class="caption sub-hd">Check these</p>' + list(offer.toCheck) : "") +
+      (offer.notSure.length ? '<p class="caption sub-hd">Not sure about</p>' + list(offer.notSure) : "") +
+      '<p class="gap-top"><b>' + esc(offer.name || "Unnamed offer") + "</b>" +
+      (offer.price ? " · " + esc(offer.price) : "") + "</p>" +
       (offer.sentence ? '<p class="gap-top">' + esc(offer.sentence) + "</p>" : "") +
       (offer.whatTheyGet.length ? '<p class="caption sub-hd">What they get</p>' + list(offer.whatTheyGet) : "") +
       (offer.guarantees.length ? '<p class="caption sub-hd">Guarantee</p>' + list(offer.guarantees) : "") +
       (offer.bonuses.length ? '<p class="caption sub-hd">Bonuses</p>' + list(offer.bonuses) : "") +
-      (offer.decided ? '<p class="caption sub-hd">What this decided</p><p>' + esc(offer.decided) + "</p>" : "") +
-      (offer.toCheck.length ? '<p class="caption sub-hd">Check these</p>' + list(offer.toCheck) : "") +
-      (offer.notSure.length ? '<p class="caption sub-hd">Not sure about</p>' + list(offer.notSure) : "") +
       "</div>";
   }
 
