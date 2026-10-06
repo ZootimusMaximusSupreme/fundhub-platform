@@ -424,11 +424,12 @@ async function recordBooking(db, event, p, clientId, status) {
    This used to fall through to upsertBooking() when nothing matched, on the
    reading that "a cancellation for a booking we never stored is still something
    that happened". It is — but what it is not is a second appointment, and that
-   is what the insert produced. src/adapters/clickfunnels.mjs derives the
-   booking uid from the ClickFunnels WEBHOOK EVENT id rather than the
-   appointment id, so a cancellation for a call we DID store arrives carrying a
-   uid no creation ever used. Matching nothing is therefore the normal case, not
-   the edge case, and every one of those cancellations invented a row: the same
+   is what the insert produced. Until 2026-10-05 src/adapters/clickfunnels.mjs
+   derived the booking uid from the ClickFunnels WEBHOOK EVENT id rather than the
+   appointment id (it now uses the call's own id), so a cancellation for a call
+   we DID store arrived carrying a uid no creation ever used. Matching nothing
+   was therefore the normal case, not the edge case, and every one of those
+   cancellations invented a row: the same
    call appeared on the calendar twice — 'booked' at the original time under one
    uid, 'cancelled' under another — and listBookings() returned both.
 

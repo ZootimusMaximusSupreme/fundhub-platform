@@ -23,15 +23,19 @@ flowchart TD
     EMAIL -->|Yes| WHICH{What kind of post?}
 
     WHICH -->|appointment, or a form post with a start time| BOOK[booking.created]
+    WHICH -->|appointment moved| MOVE[booking.rescheduled]
+    WHICH -->|appointment cancelled| CXL[booking.cancelled]
     WHICH -->|anything else| ENTRY[entry.captured]
     ENTRY --> ANS{Survey answers present?}
     ANS -->|Yes| SURV[survey.submitted as well]
     ANS -->|No| ONLYENTRY[entry.captured alone]
 
     BOOK --> RESOLVE
+    MOVE --> RESOLVE
+    CXL --> RESOLVE
     SURV --> RESOLVE
     ONLYENTRY --> RESOLVE
-    RESOLVE[Resolve the customer ONCE for the whole delivery<br/>resolveClient, src/handlers/client-lifecycle.mjs]
+    RESOLVE[Resolve the customer ONCE for the whole delivery<br/>resolveClient, src/handlers/client-lifecycle.mjs<br/>appointment booking id = the call's own id, data.id;<br/>repeat-delivery key = the message's event_id]
 
     RESOLVE --> SLOT{booking.created for a slot<br/>already saved?}
     SLOT -->|Yes| PROMOTE[Update the saved booking's id. No new event.]
@@ -39,6 +43,13 @@ flowchart TD
 
     REPEAT -->|Yes — a repeat post| STORE_ONLY[Event STORED with the customer on it.<br/>No workflow run started.]
     REPEAT -->|No — the first post| STORE_RUN[Event stored with the customer on it,<br/>AND handed to the workflow engine.]
+
+    RESOLVE -->|move or cancel| HELD{A saved booking already<br/>holds this call id?}
+    HELD -->|Yes| STORE_RUN
+    HELD -->|No| OLD{ONE earlier ClickFunnels booking for this email?<br/>cancel: at exactly the call's time<br/>move: the one live upcoming call}
+    OLD -->|Yes| REKEY[Re-key that booking and its closer task<br/>to the call id]
+    OLD -->|No, or two or more| STORE_RUN
+    REKEY --> STORE_RUN
 ```
 
 **The two things that changed here.**
@@ -56,6 +67,23 @@ flowchart TD
 
 `booking.created` is deliberately **not** repeat-suppressed: it already has
 slot-level dedupe, and a second booking is a real second appointment.
+
+**One call, one booking id (2026-10-05).** A real ClickFunnels appointment
+message has no top-level `id`. It carries `event_id` (new on every message) and
+the call itself in `data`, whose `id` is the call's own id (it equals
+`subject_id` on all 5 appointment messages ClickFunnels still lists for this
+account). The adapter used to save the booking under `event_id`, so a move made
+a second booking and a second closer task, and a cancel closed nothing. Now the
+booking id is `data.id` (then `subject_id`), so create, move and cancel of one
+call land on one booking row. `event_id` is still the repeat-delivery key, so
+two moves of one call are both handled and a re-sent message is not.
+
+Calls booked before this change are saved under a message id. When their move or
+cancel arrives, the adapter re-keys that one earlier booking (and its closer task)
+to the call id first — a cancel only when one live ClickFunnels booking for that
+email sits at exactly the call's time, a move only when that email has exactly
+one live upcoming ClickFunnels booking. Anything less certain is left alone.
+`src/adapters/clickfunnels.mjs` (`adoptEarlierBooking`).
 
 ## 2. What each event starts
 

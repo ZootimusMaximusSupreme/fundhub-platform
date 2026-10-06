@@ -438,7 +438,22 @@ export function normalizeClickFunnelsEvent(body) {
   const startTime = d.start_on || d.startTime || schedule?.start_on || b.start_on || null;
   const endTime = d.end_on || d.endTime || schedule?.end_on || b.end_on || null;
   const tzid = d.tzid || schedule?.tzid || b.tzid || null;
-  const bookingUid = id ? String(id) : null;
+  /* THE CALL'S OWN ID, NOT THE MESSAGE'S.
+     A real ClickFunnels appointment webhook has no top-level `id`. Its envelope
+     carries `event_id` (a new UUID on every delivery) and `subject_id`, and
+     `data` IS the scheduled event, so `data.id` is the call. Measured
+     2026-10-05 on the 5 appointment webhooks ClickFunnels still lists for this
+     workspace: data.id equals subject_id on every one. The old chain fell
+     through to `event_id`, so each create, move and cancel of ONE call arrived
+     under a different booking id: a move made a second booking, a cancel
+     closed nothing. `id` above stays the message id — it is the repeat-delivery
+     key on the event bus, and two moves of one call are two real messages.
+     A payload with no call id at all keeps the old answer. */
+  const callIdRaw = isAppointmentType(type)
+    ? (d.id ?? b.subject_id ?? d.public_id ?? null)
+    : null;
+  const callId = callIdRaw != null && String(callIdRaw).trim() !== "" ? String(callIdRaw).trim() : null;
+  const bookingUid = callId || (id ? String(id) : null);
 
   return {
     id: id ? String(id) : null,
@@ -452,6 +467,7 @@ export function normalizeClickFunnelsEvent(body) {
     a2,
     attribution,
     metaClickIds,
+    callId,
     bookingUid,
     startTime,
     endTime,
@@ -726,6 +742,51 @@ async function promoteBookingUid(db, { orgId, existing, nextUid, meetingUrl }) {
   }
 }
 
+/* A CALL BOOKED BEFORE THE CALL-ID FIX IS SAVED UNDER A MESSAGE ID.
+   Its move or cancel now arrives under the call's own id, which no saved row
+   carries, so the handlers would make a second booking (move) or close nothing
+   (cancel). Before the event is emitted, re-key that one earlier row to the
+   call id — the same re-key the slot match above does for a form post.
+
+   Narrow on purpose, and only ever when NO row holds the call id yet:
+     cancel      → a live ClickFunnels booking for this email at EXACTLY the
+                   call's time (a cancel carries the call's own time);
+     reschedule  → the ONE live upcoming ClickFunnels booking for this email (a
+                   move carries the NEW time, so the old time cannot be matched).
+   Zero or two-plus candidates → nothing is touched, and the handlers behave as
+   they always have. Never blocks the webhook. */
+async function adoptEarlierBooking(db, { orgId, evt, cancel }) {
+  if (!orgId || !evt || !evt.email || !evt.callId) return null;
+  try {
+    const held = await db.query(
+      `SELECT id FROM bookings WHERE org_id = $1 AND provider_uid = $2 LIMIT 1`,
+      [orgId, evt.callId]
+    );
+    if (held.rows && held.rows.length) return null;
+    const slot = cancel ? evt.startTime || null : null;
+    if (cancel && !slot) return null;
+    const { rows } = await db.query(
+      `SELECT id, client_id, provider_uid
+         FROM bookings
+        WHERE org_id = $1
+          AND lower(attendee_email) = $2
+          AND source = 'clickfunnels'
+          AND COALESCE(status, 'booked') IN ('booked', 'rescheduled')
+          AND starts_at >= now() - interval '1 day'
+          AND ($3::timestamptz IS NULL OR starts_at = $3::timestamptz)
+        ORDER BY starts_at ASC
+        LIMIT 2`,
+      [orgId, String(evt.email).toLowerCase(), slot]
+    );
+    if (!rows || rows.length !== 1) return null;
+    await promoteBookingUid(db, { orgId, existing: rows[0], nextUid: evt.callId, meetingUrl: null });
+    return rows[0].id;
+  } catch (err) {
+    console.warn(`[clickfunnels] earlier booking not re-keyed to call ${evt.callId}: ${String(err?.message || err).slice(0, 160)}`);
+    return null;
+  }
+}
+
 // --- 3. Map a normalized event to canonical events (pure) -------------------
 // Appointments → booking.* only (never entry.captured).
 // Calendar form posts (form_submission with a start time) → booking.created.
@@ -904,6 +965,14 @@ export async function handleClickFunnelsWebhook({
         emitted.push({ name: c.name, id: existing.id, deduped: true, repeat: true, startedRun: false });
         continue;
       }
+    }
+
+    if (c.name === "booking.rescheduled" || c.name === "booking.cancelled") {
+      await adoptEarlierBooking(db, {
+        orgId: ingestOrgId,
+        evt,
+        cancel: c.name === "booking.cancelled"
+      });
     }
 
     /* A repeat post of a survey already in flight: still stored, still merged
