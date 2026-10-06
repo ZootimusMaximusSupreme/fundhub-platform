@@ -532,6 +532,7 @@ describe("cost", () => {
     assert.equal(COST_CAP_REASON, "cost cap reached");
     assert.equal(ai.calls.length, 0);
     assert.equal(log.saves.length, 0);
+    assert.equal(log.ideaFailed.length, 0, "a cost cap never marks an idea failed: it is written once the cap is raised");
     assert.equal(log.buzzes.length, 1);
     assert.equal(log.buzzes[0].kind, COST_CAP_BUZZ_KIND);
     assert.match(log.buzzes[0].groupKey, /^month:\d{4}-\d{2}$/);

@@ -1270,15 +1270,17 @@ export async function writeSlot(db, env, { batch = null, slot = null } = {}, dep
     batchUsed: use.batchUsed, intro: use.intro, examples: ctx.examples
   });
 
+  /* A cost cap is not the idea's fault: its idea stays as it was, so the next batch can
+     write it once Chris raises the cap. */
   const first = await writeDraft(run, base);
-  if (first.capped) return giveUp(COST_CAP_REASON, { cost_cap: first.capped.which });
+  if (first.capped) return failed(COST_CAP_REASON, { cost_cap: first.capped.which });
   if (first.fail) {
     if (first.fail.kind === "temporary") return { failed: true, reason: first.fail.reason, temporary: true };
     return giveUp(first.fail.reason, first.fail.category ? { category: first.fail.category } : {});
   }
 
   const loop = await checkLoop(run, first, base);
-  if (loop.capped) return giveUp(COST_CAP_REASON, { cost_cap: loop.capped.which });
+  if (loop.capped) return failed(COST_CAP_REASON, { cost_cap: loop.capped.which });
   if (loop.same.refused) {
     return giveUp(`Refused: ${loop.same.reasons.filter((r) => /batch already has this/.test(r)).join(" ")} The one rewrite did not change it.`);
   }

@@ -267,7 +267,7 @@ flowchart TD
     L --> R["rule files at the batch's rules_sha from GitHub<br/>(fix: newest), else the bundled copies:<br/>RULES.md, VOICE.md, RECIPES.md, catalog.json,<br/>angles.json, banned-live.json"]
     LF --> R
     R --> CAP{"cost cap reached?<br/>(checked before every call)"}
-    CAP -->|yes| CAPF["done: failed 'cost cap reached'<br/>one cost_cap buzz per batch or Arizona month"]
+    CAP -->|yes| CAPF["done: failed 'cost cap reached', the idea left as it was<br/>one cost_cap buzz per batch or Arizona month"]
     CAP -->|no| W["Claude writes: provider anthropic, MARKETING_WRITER_MODEL<br/>(claude-opus-5-5), effort medium, 16000 tokens, 5 min,<br/>cached system prompt, outputSchema SAVE_SCRIPT_SCHEMA<br/>call logged in marketing_model_usage (served model)"]
     W -->|"no JSON"| W2["one retry"] -->|"no JSON again"| GIVE
     W -->|"refusal"| GIVE
