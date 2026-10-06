@@ -46,6 +46,7 @@ import * as submagic from "../messaging/providers/submagic.mjs";
 import * as drive from "../messaging/providers/google-drive-write.mjs";
 import * as ntfy from "../messaging/providers/ntfy.mjs";
 import * as fanout from "../ad-videos/notify-fanout.mjs";
+import { joinBeforeSubmagic } from "../ad-videos/merge-takes-step.mjs";
 
 /** Every five minutes. The research puts the useful window at two to five;
     five is the slower end because each pass can cost a paid API minute. */
@@ -216,13 +217,21 @@ export async function walk(database, { store, ports, limit = DEFAULT_BATCH } = {
       return written !== null && written !== undefined;
     };
 
-    const out = await advance(row, {
+    /* EVERY TAKE OF ONE ANGLE BECOMES ONE MASTER BEFORE SUBMAGIC SEES IT
+       (.claude/rules/ad-video-best-of-clips.md). Only rows at `staged`. The
+       only take of its angle goes the old way, with a note; a take that
+       another take's master carries is closed and never sent; nothing is ever
+       a lone take while its angle has others. See src/ad-videos/merge-takes-step.mjs. */
+    const joined = await joinBeforeSubmagic(database, row, { store, ports });
+    const out = joined.out || await advance(row, {
       ...ports,
+      ...joined.ports,
       ...links,
       claim,
       candidateScripts: ports.candidateScripts,
       brollLibrary: ports.brollLibrary
     });
+    if (joined.note) out.note = [joined.note, out.note].filter(Boolean).join(" | ");
     /* WRITE DOWN WHAT JUST HAPPENED, EVEN WHEN NOTHING MOVED.
 
        A step that waits returns no patch, so before migration 392 a take could
