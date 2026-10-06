@@ -718,3 +718,37 @@ flowchart LR
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
   `src/http/marketing-funnel-builder.pg.test.mjs` in GitHub CI. Never run against live
   ClickFunnels: every ClickFunnels call in the tests is a fake behind the real provider.
+## U26 Retry a stuck step — `POST /api/marketing/jobs/retry`
+
+Generated from the code on 2026-10-06 (branch `mm-u26-ideas-rules-retry`): `api/marketing/jobs/retry.mjs`,
+`retryJob` in `src/marketing/jobs.mjs`, `JOB_KINDS` in `src/marketing/job-kinds.mjs`. Spec §8.3 (Today
+lists each machine stage with Retry; Chris runs marketing from the dashboard, never from Claude
+Code). Owner and admin only (requireAuth, then requireRole `ROLE_SETS.MARKETING`). Today's
+`stuck_jobs` (plan unit U32) carry the ids this route takes.
+
+```mermaid
+flowchart TD
+  P["POST marketing/jobs/retry<br/>request_id, job_id"] --> U{"job_id is an id?"}
+  U -->|no| X["400 invalid, field job_id"]
+  U -->|yes| T["one staff transaction (withRequest)"]
+  T --> F["SELECT the job FOR UPDATE<br/>this company only"]
+  F --> K{"found, not 'offer',<br/>kind in JOB_KINDS?"}
+  K -->|no| NF["404 not_found<br/>(another company's job, the Write offer path, a kind the worker does not know)"]
+  K -->|yes| S{"status failed?"}
+  S -->|no| NX["400 invalid, field job_id<br/>(queued, running or done)"]
+  S -->|yes| R["retryJob: failed → queued<br/>attempts 0, error, result, claimed_at, finished_at cleared, due now"]
+  R --> OK["200 {ok, job:{id, kind, status:'queued'}}"]
+  OK --> W["COMMIT, then wake the worker"]
+```
+
+- Free: a retry spends nothing by itself; the job's own handler checks the cost caps when it runs.
+- A repeated request_id answers the first 200 and changes nothing, even if the job failed again since.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
+  `src/http/marketing-jobs-retry.pg.test.mjs` in GitHub CI. Today JOB_KINDS is empty, so every
+  live job answers 404 until units U24, U28 and U35 register their kinds.
+
+### Batch history and Write now on the dashboard
+
+`GET marketing/batches` and `POST marketing/batches/write-now` are drawn in `ad-script-flow.md`,
+section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
+JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
