@@ -150,7 +150,14 @@ function readManifest() {
   try { return JSON.parse(fs.readFileSync(MANIFEST, "utf8")); } catch { return {}; }
 }
 
-async function shot(page, file, legend, marks, { anchor } = {}) {
+async function shot(page, file, legend, marks, { anchor, height } = {}) {
+  // A shot whose marks may span more than one phone screen (fonts differ
+  // between the Mac and CI's Linux) is taken in a taller window, never with
+  // a box pointing off the picture.
+  if (height) {
+    await page.setViewportSize({ width: page.viewportSize().width, height });
+    await page.waitForTimeout(150);
+  }
   if (anchor) {
     await page.locator(anchor).first().evaluate((el) => {
       el.scrollIntoView({ block: "start" });
@@ -301,31 +308,31 @@ test("390: next drop, the machine, money and leads, scripts and stuck work, and 
     { selector: "#nextBody .drop-when", caption: "When the next drop comes, Arizona time" },
     { selector: "#nextBody .drop-count", caption: "How many, split by last week's spend" },
     { selector: '#nextBody [data-angle-row="two-files"]', caption: "An angle to try, with its numbers and Use this angle" }
-  ], { anchor: "#cardNext" });
+  ], { height: 1400, anchor: "#cardNext" });
   await shot(page, "u37-02-machine-390.png", "The machine at 390", [
     { selector: "#machineBody .health-line", caption: "One line: healthy, or the first thing that needs a look" },
     { selector: '#machineBody [data-health="clock"]', caption: "The clock: late, in words and a chip" }
-  ], { anchor: "#cardMachine" });
+  ], { height: 1400, anchor: "#cardMachine" });
   await shot(page, "u37-02b-saves-390.png", "Saves to GitHub and model spend at 390", [
     { selector: '#machineBody [data-health="outbox"]', caption: "Repo saves held: the GitHub token is not set" },
     { selector: '#machineBody [data-health="model"]', caption: "Model spend against the caps" }
-  ], { anchor: '#machineBody [data-health="outbox"]' });
+  ], { height: 1400, anchor: '#machineBody [data-health="outbox"]' });
   await shot(page, "u37-03-waiting-390.png", "Waiting on you at 390: scripts and a stuck job", [
     { selector: '#waitingList [data-wait="scripts"]', caption: "Scripts ready, with Open Scripts" },
     { selector: '#waitingList [data-wait="stuck"] [data-act="retry"]', caption: "One Retry per stuck job" }
-  ], { anchor: "#cardWaiting" });
+  ], { height: 1400, anchor: "#cardWaiting" });
   await shot(page, "u37-04-numbers-390.png", "Money and leads at 390: today, 7 and 30 days", [
     { selector: '#numbersBody [data-win="today"] [data-num="spend"]', caption: "Today's spend comes in tomorrow (never $0)" },
     { selector: '#numbersBody [data-win="today"] [data-num="roas"]', caption: "Unknown stays unknown" }
-  ], { anchor: "#cardNumbers" });
+  ], { height: 1400, anchor: "#cardNumbers" });
   await shot(page, "u37-05-sparks-390.png", "Hand-drawn sparklines, spend by funnel, the flow (390)", [
     { selector: '#numbersBody [data-spark="spend"]', caption: "Spend each day: the gap is the 3 days with no number" },
     { selector: '#numbersBody [data-spark="leads"]', caption: "Leads each day, drawn by hand" }
-  ], { anchor: "#numbersBody .sparks" });
+  ], { height: 1400, anchor: "#numbersBody .sparks" });
   await shot(page, "u37-05b-funnels-flow-390.png", "Spend by funnel and the flow (390)", [
     { selector: '#numbersBody [data-part="by-funnel"] .bar-row.unmapped', caption: "Spend not tied to a funnel, with the way to fix it" },
     { selector: '#numbersBody [data-step="clicks"]', caption: "The flow starts at the ad tap" }
-  ], { anchor: '#numbersBody [data-part="by-funnel"] .bar-row.unmapped' });
+  ], { height: 1400, anchor: '#numbersBody [data-part="by-funnel"] .bar-row.unmapped' });
 });
 
 /* ── 2. Write now ready: the one filled button, cost sheet first ── */
@@ -352,7 +359,9 @@ test("390: when write_now_ready is true, Write now is the one filled button, the
   await shot(page, "u37-06-write-now-390.png", "Write now is the one filled button once it can run (390)", [
     { selector: "#writeNowCount", caption: "How many scripts (3 unless you pick)" },
     { selector: "#writeNowBtn", caption: "Write now: the one filled button" }
-  ], { anchor: "#cardNext" });
+  ], { height: 1400, anchor: "#cardNext" });
+  // Back to the phone's own size for the taps.
+  await page.setViewportSize({ width: 390, height: 844 });
 
   await page.locator("#writeNowCount").selectOption("5");
   await wn.click();
