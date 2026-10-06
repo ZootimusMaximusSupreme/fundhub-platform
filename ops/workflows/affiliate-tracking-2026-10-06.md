@@ -1,158 +1,101 @@
-# Affiliate tracking — make it solid (2026-10-06)
+# Affiliate link + show password (2026-10-06)
 
-Chris asked: "We need to ensure that affiliate tracking is setup real well!"
+Status: **waiting for Chris** — he picks A, B or C for W1. W2 can start now.
 
-Status: **waiting for Chris's go.** No workflow starts until he says go.
-
-## The chain
-
-An affiliate gets paid only if every link in this chain holds:
-
-1. **Click** — someone clicks the affiliate's link. We save the click and remember who sent them.
-2. **Credit** — that person signs up or buys. The sale is tied to the right affiliate.
-3. **Money** — the right commission is worked out (rates, tier 2, success fee share) and paid.
-4. **Report** — the affiliate sees their clicks, signups and money in their portal. Chris sees it too.
-
-One workflow per link. No hard dependencies — all four run at the same time.
-Each workflow makes its own test data, tagged `test-affiliate-tracking-2026-10-06`.
+(An earlier draft of this board guessed at a 4-part affiliate audit before Chris gave the task. That draft is dead.)
 
 ## Tasks
 
-| # | Link | Owner | Status |
+| # | Task | Owner | Status |
 |---|---|---|---|
-| W1 | Click — capture and remember | this session | pending |
-| W2 | Credit — signup / purchase tied to the affiliate | open | pending |
-| W3 | Money — commission math and payouts | open | pending |
-| W4 | Report — affiliate portal and owner view | open | pending |
+| W1 | One clear affiliate link (A / B / C) | this session | blocked — waiting for Chris's pick |
+| W2 | Eye button to show the password while typing | open — paste prompt below | pending |
 
-## Shared rules for every workflow
+No dependencies — W1 and W2 touch different files. All parallel.
 
-- Read `CLAUDE.md` first. Model: Opus.
-- Work in your own worktree: `.claude/worktrees/affiliate-tracking-wN` (never switch the main checkout's branch).
-- Claim your row above (`claimed`) before you start. Write your manifest below when done.
-- Read `docs/journeys/affiliate-intended.md` first. If code needs a step that is not in it, STOP and ask.
-- Own only your link. Found a break in another link? One leftover card below, then keep going on yours. Do not fix it.
-- Proof is live: a real click / signup / number on the live site, not just green tests.
-- Never delete data. Test rows stay tagged.
-- Update `docs/journeys/affiliate-actual.md` + `docs/journeys/CHANGELOG.md` for any flow you change.
-- Commit locally every session. Push with `node scripts/github-push-whole-repo.mjs`. Ship once with `npm run ship`.
+## W1 — the facts
 
----
+- Loom: https://www.loom.com/share/3a39e89b0f7743ddb21bd0fbc82a16b6
+- David Ramirez (affiliate) does not know which link is live.
+- The affiliate desk link `https://fundhub.ai/start.html?ref=<code>` is built in `src/affiliates/share-link.mjs`.
+  `public/start.html:32` forwards to `https://apply.fundhub.ai/watch` with the code.
+- Chris's "297" text sends people to `https://apply.fundhub.ai/roadmap`.
+- Roadmap already carries a ref: `src/slo/discount-197.mjs:19` builds `https://apply.fundhub.ai/roadmap/?offer=197&ref=<id>#fhw`.
+
+Options (Chris picks one):
+- **A** — one share link. It lands on roadmap with `a1` + `ref`.
+- **B** — two links on `affiliate.html`: watch and roadmap.
+- **C** — change the 297 text so it points at watch only.
+
+## W2 — the facts
+
+Password boxes people type into (searched `public/` and `marketing/landing-pages/`, 2026-10-06):
+- `public/login.html:62` — sign-in password (staff and affiliates)
+- `public/reset-password.html:24` and `:25` — new password + type it again
+
+Clients sign in with an email link (`public/portal-login.html`), so they have no password box.
+The ClickFunnels pages have no password box.
+Three API key boxes on staff tools (`public/app/campaign-manager.html:671`,
+`public/app/creative-factory.html:704`, `:707`) are keys, not passwords. Not in scope unless Chris says so.
 
 ## Copy-paste prompts
 
-### W1 — Click (this session)
+### W1 — One clear affiliate link (this session)
 
 ```
 Repo: /Users/chrisstanbridge/Developer/fundhub-platform. Read CLAUDE.md first.
-Board: ops/workflows/affiliate-tracking-2026-10-06.md. Claim row W1 before you start.
-Work in worktree .claude/worktrees/affiliate-tracking-w1.
+Board: ops/workflows/affiliate-tracking-2026-10-06.md. Claim row W1. Read the W1 facts there.
+Work in worktree .claude/worktrees/affiliate-link-w1.
 
-You own ONE link of the affiliate chain: the CLICK.
-Goal: when anyone clicks an affiliate link, we save the click and remember who sent them,
-all the way to the signup or checkout page — including the ClickFunnels pages on
-apply.fundhub.ai, across fundhub.ai <-> apply.fundhub.ai, on phone and desktop,
-and after they leave and come back days later.
+Loom: https://www.loom.com/share/3a39e89b0f7743ddb21bd0fbc82a16b6
+Problem: the affiliate desk link (fundhub.ai/start.html?ref=…) sends buyers to
+apply.fundhub.ai/watch. Chris's "297" text sends to apply.fundhub.ai/roadmap.
+David Ramirez does not know which link is live.
 
-Start with: docs/journeys/affiliate-intended.md, api/public/affiliate-click.mjs,
-src/affiliates/share-link.mjs, db/migrations/235_affiliate_link_clicks.sql,
-public/affiliates/index.html, marketing/landing-pages/** (how ref is carried),
-src/http/affiliate-click.pg.test.mjs.
+Chris's pick: <A | B | C — fill in from the board>
+A = one share link -> roadmap with a1+ref. B = two links on affiliate.html (watch + roadmap).
+C = change the 297 text to match watch only.
 
-Prove it live: make a test affiliate tagged test-affiliate-tracking-2026-10-06, click its
-link in a real browser, and show the click row and the ref still present on the
-signup/checkout page. Fix only what breaks in the click link. Breaks in credit, money or
-report go on the board as one leftover card each. Never delete data.
-Done = CLAUDE.md §6, manifest on the board, commit, push, ship once.
+Read: src/affiliates/share-link.mjs, public/start.html, public/app/affiliate.html,
+api/read/affiliate-portal.mjs, src/affiliates/drip.mjs, src/http/start-html.test.mjs,
+src/http/affiliate-referral.pg.test.mjs.
+
+Build the picked option. Smallest diff. Prove both URLs live after the fix (the ref is still
+on the page they land on, and the click is saved). npm test. Update affiliate-actual.md +
+CHANGELOG. Commit, push (node scripts/github-push-whole-repo.mjs), ship once (npm run ship).
+Other breaks: one leftover card on the board, then stop. Do not fix them.
 ```
 
-### W2 — Credit
-
-```
-Repo: /Users/chrisstanbridge/Developer/fundhub-platform. Read CLAUDE.md first.
-Board: ops/workflows/affiliate-tracking-2026-10-06.md. Claim row W2 before you start.
-Work in worktree .claude/worktrees/affiliate-tracking-w2.
-
-You own ONE link of the affiliate chain: CREDIT.
-Goal: when a referred person signs up or buys (Fundhub app signup, ClickFunnels checkout
-webhook, any other door), the client record is tied to the right affiliate — first touch
-vs last touch per docs/journeys/affiliate-intended.md, no double credit, no lost credit,
-and an affiliate can never claim a client who was already someone else's.
-
-Start with: docs/journeys/affiliate-intended.md, api/affiliates/refer.mjs,
-src/workflows/af-02-referral-ownership-capture.mjs, src/workflows/ds-01-repair-referral.mjs,
-db/migrations/237_affiliate_referral_lookup_index.sql, db/migrations/340_client_light_affiliate.sql,
-the ClickFunnels webhook handler (grep for it), src/http/affiliate-referral.pg.test.mjs.
-
-Prove it live: a test affiliate tagged test-affiliate-tracking-2026-10-06, a test signup
-through its link, and show the client row owned by that affiliate. Fix only what breaks in
-the credit link. Breaks in click, money or report go on the board as one leftover card each.
-Never delete data. Done = CLAUDE.md §6, manifest on the board, commit, push, ship once.
-```
-
-### W3 — Money
+### W2 — Show password while typing
 
 ```
 Repo: /Users/chrisstanbridge/Developer/fundhub-platform. Read CLAUDE.md first.
-Board: ops/workflows/affiliate-tracking-2026-10-06.md. Claim row W3 before you start.
-Work in worktree .claude/worktrees/affiliate-tracking-w3.
+Board: ops/workflows/affiliate-tracking-2026-10-06.md. Claim row W2. Read the W2 facts there.
+Work in worktree .claude/worktrees/show-password-w2.
+Read docs/rules/UI-STANDARDS.md before touching public/.
 
-You own ONE link of the affiliate chain: MONEY.
-Goal: once a client is credited to an affiliate, the commission is right — the owner-set
-rates (migrations 260, 261, 272, 399), tier 2 chain, success fee share, refunds and
-chargebacks — and payouts run with the right amount to the right person.
-Money is integer cents via src/commissions/money.mjs; NULL means unknown, never 0.
+Chris wants everyone who types a password (clients, affiliates, staff) to be able to
+tap an eye button and see what they typed. Tap again to hide it.
 
-Start with: docs/journeys/affiliate-intended.md, src/affiliates/economics.mjs,
-src/affiliates/payouts.mjs, src/workflows/affiliate-payout-run.mjs,
-src/affiliates/two-tier-chain.pg.test.mjs, src/affiliates/success-fee-share.pg.test.mjs,
-e2e/affiliate-commission.spec.mjs.
+Boxes in scope: public/login.html:62, public/reset-password.html:24 and :25.
+Search again first (public/, marketing/landing-pages/, any JS that builds a password box)
+in case one was missed. The 3 API key boxes on campaign-manager and creative-factory are
+NOT in scope.
 
-Prove it: the pg tests green against a real database, and one live test client tagged
-test-affiliate-tracking-2026-10-06 showing the right commission row. Do not send a real
-payout. Fix only what breaks in the money link. Breaks in click, credit or report go on the
-board as one leftover card each. Never delete data.
-Done = CLAUDE.md §6, manifest on the board, commit, push, ship once.
+Rules: one small shared piece used by every box (no copy-paste per page). Works on phone
+and desktop. Screen reader label ("Show password" / "Hide password"). Keeps autofill and
+password managers working. Hides again after the form is sent.
+
+Prove it live: Playwright on https://fundhub.ai/login.html and the reset page —
+type, tap the eye, see the text, tap again, hidden. Marked-up screenshots (CLAUDE.md §8).
+npm run lint, npx tsc --noEmit, npm test. Commit, push, ship once.
+Other breaks: one leftover card on the board, then stop. Do not fix them.
 ```
-
-### W4 — Report
-
-```
-Repo: /Users/chrisstanbridge/Developer/fundhub-platform. Read CLAUDE.md first.
-Board: ops/workflows/affiliate-tracking-2026-10-06.md. Claim row W4 before you start.
-Work in worktree .claude/worktrees/affiliate-tracking-w4.
-
-You own ONE link of the affiliate chain: REPORT.
-Goal: an affiliate logs in and sees true numbers — clicks, signups, sales, commission owed,
-paid — that match the database row for row. The owner view of affiliates matches too.
-An affiliate sees only their own data.
-
-Start with: docs/journeys/affiliate-intended.md, docs/rules/UI-STANDARDS.md,
-public/app/affiliate.html, api/read/affiliate-portal.mjs, api/read/affiliates.mjs,
-src/http/affiliate-stats.pg.test.mjs, src/http/affiliates-self-read.test.mjs,
-src/http/affiliate-screen.test.mjs.
-
-Prove it live: log in as a test affiliate tagged test-affiliate-tracking-2026-10-06, compare
-each number on screen to a database count, marked-up screenshot per CLAUDE.md §8.
-Fix only what breaks in the report link. Breaks in click, credit or money go on the board as
-one leftover card each. Never delete data.
-Done = CLAUDE.md §6, manifest on the board, commit, push, ship once.
-```
-
----
-
-## Shared context brief
-
-(empty — each workflow grounds its own link)
 
 ## Manifests
 
 (none yet)
 
 ## Leftover cards
-
-(none yet)
-
-## Blockers / open questions
 
 (none yet)
