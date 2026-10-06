@@ -302,10 +302,12 @@ export async function findByProviderUid(db, { orgId, providerUid } = {}) {
  *
  * The cancel / no-show path. Matches across sources for the reason above, and
  * returns the affected rows so a caller can tell "marked it cancelled" from
- * "there was no such booking" — the second is a real outcome here, because
- * src/adapters/clickfunnels.mjs currently derives the booking uid from the
- * webhook's event id rather than the appointment's, so a cancellation arrives
- * carrying a uid no creation ever used.
+ * "there was no such booking" — the second is a real outcome here. Until
+ * 2026-10-05 src/adapters/clickfunnels.mjs derived the booking uid from the
+ * webhook's message id rather than the call's own id, so a cancellation arrived
+ * carrying a uid no creation ever used. It now uses the call's id, and re-keys a
+ * call saved the old way before its move or cancel is handled; a miss is still
+ * possible for a provider that sends no stable id.
  */
 export async function setStatusByProviderUid(db, { orgId, providerUid, status } = {}) {
   requireOrg(orgId, "setStatusByProviderUid");
@@ -321,6 +323,86 @@ export async function setStatusByProviderUid(db, { orgId, providerUid, status } 
     [orgId, uid, st]
   );
   return (res && res.rows) || [];
+}
+
+/**
+ * What a saved booking says about one call time, asked by the jobs that wait
+ * for that time (the 15-minute text, the no-show check). See bookingStateAt.
+ */
+export const SLOT_STATE = Object.freeze({
+  ON: "on",               // a live booking still sits at this time
+  MOVED: "moved",         // the booking that was at this time moved to another
+  CANCELLED: "cancelled", // the booking at this time was cancelled
+  NOSHOW: "noshow",       // the booking at this time is already marked no-show
+  UNKNOWN: "unknown"      // no saved booking speaks to this time
+});
+
+/**
+ * bookingStateAt(db, { orgId, clientId, bookingUid, startTime }) → SLOT_STATE.
+ *
+ * *** A JOB THAT SLEPT UNTIL A CALL TIME ASKS THIS BEFORE IT ACTS. ***
+ *
+ * The 15-minute text and the no-show check are started when a call is booked
+ * and then sleep for hours or days. A move or a cancel in between used to be
+ * invisible to them: the moved call still got "starts in 15 minutes" at the old
+ * time, and a cancelled or moved call was marked a no-show at the old end time.
+ *
+ * The answer comes from the saved booking rows, not from the job's own copy of
+ * the event. It looks at this customer's bookings (or the one with this
+ * provider id) in this company only:
+ *   - one still live at this exact time         → ON
+ *   - only cancelled / no-show rows at this time → CANCELLED / NOSHOW
+ *   - none at this time, but one whose saved history (raw->'__history', which
+ *     upsertBooking appends on every move) holds this time → MOVED
+ *   - nothing either way                         → UNKNOWN
+ *
+ * UNKNOWN means "act as before". A missing row, an unreadable time or a failed
+ * read never stops a reminder on its own; only a saved fact does.
+ */
+export async function bookingStateAt(db, { orgId, clientId = null, bookingUid = null, startTime } = {}) {
+  const uid = normalizeProviderUid(bookingUid);
+  if (!orgId || (!clientId && !uid)) return SLOT_STATE.UNKNOWN;
+  let at;
+  try {
+    at = toTimestamp(startTime, "bookingStateAt: startTime");
+  } catch {
+    return SLOT_STATE.UNKNOWN;
+  }
+  if (!at) return SLOT_STATE.UNKNOWN;
+
+  let rows;
+  try {
+    const res = await db.query(
+      `SELECT b.status,
+              (b.starts_at = $3::timestamptz) AS at_this_time,
+              EXISTS (
+                SELECT 1
+                  FROM jsonb_array_elements(
+                         CASE WHEN jsonb_typeof(b.raw->'__history') = 'array'
+                              THEN b.raw->'__history' ELSE '[]'::jsonb END) AS h(item)
+                 WHERE h.item->>'starts_at' IS NOT NULL
+                   AND (h.item->>'starts_at')::timestamptz = $3::timestamptz
+              ) AS was_at_this_time
+         FROM bookings b
+        WHERE b.org_id = $1
+          AND (b.client_id = $2 OR ($4::text IS NOT NULL AND b.provider_uid = $4::text))`,
+      [orgId, clientId || null, at, uid]
+    );
+    rows = (res && res.rows) || [];
+  } catch (err) {
+    console.warn(`[bookings] bookingStateAt read failed (acting as unknown): ${String(err?.message || err)}`);
+    return SLOT_STATE.UNKNOWN;
+  }
+
+  const atRows = rows.filter((r) => r && r.at_this_time === true);
+  const statusOf = (r) => String(r.status || "").trim().toLowerCase();
+  if (atRows.some((r) => statusOf(r) !== BOOKING_STATUS.CANCELLED && statusOf(r) !== BOOKING_STATUS.NOSHOW)) {
+    return SLOT_STATE.ON;
+  }
+  if (atRows.some((r) => statusOf(r) === BOOKING_STATUS.CANCELLED)) return SLOT_STATE.CANCELLED;
+  if (atRows.length) return SLOT_STATE.NOSHOW;
+  if (rows.some((r) => r && r.was_at_this_time === true)) return SLOT_STATE.MOVED;
+  return SLOT_STATE.UNKNOWN;
 }
 
 /**

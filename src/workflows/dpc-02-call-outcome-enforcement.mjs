@@ -1,6 +1,9 @@
 // DPC-02 — Call Outcome Enforcement + Call Held.
 // Source: the CRM system map DECISION & PROGRESS CONTROL section.
-// Trigger: booking.created. Waits until 5 minutes after the appointment's end time,
+// Trigger: booking.created, and booking.rescheduled (a moved call is checked at its
+// new time). A cancel or a move stops the check for the old time (cancelOn), and on
+// waking the run re-checks the saved booking: a cancelled or moved call is never
+// marked a no-show. Waits until 5 minutes after the appointment's end time,
 // then checks whether the call actually happened (call.completed fired for this
 // client) — Showed moves the sales card to "showed" and tags call_held; No-Show
 // moves it to "downsell" no-show handling.
@@ -23,6 +26,8 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { moveCardToStage } from "./cards.mjs";
 import { addTags } from "./tags.mjs";
+import { bookingStateAt, SLOT_STATE } from "../bookings/store.mjs";
+import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mjs";
 
 // Exported because BS-01's pre-call drip gates on the same question ("has the call
 // been held?") and this workflow owns the concept — better one definition than two
@@ -41,8 +46,27 @@ export async function handle({ event, db, step }) {
   const wakeAt = new Date(new Date(endTime).getTime() + 5 * 60 * 1000);
   await step.sleepUntil("wait-until-5-min-after-end", wakeAt);
 
-  const showed = await step.run("check-call-happened", () => callHappened(db, clientId));
   const orgId = event.orgId;
+
+  /* A CANCELLED OR MOVED CALL IS NEVER A NO-SHOW.
+   *
+   * This run slept since the call was booked. A cancel or a move used to leave
+   * it asleep, so at the OLD end time it found no call, marked the customer a
+   * no-show, moved their sales card to lost and started the no-show texts.
+   * cancelOn below now stops it, and a moved call gets its own check at the new
+   * time (the booking.rescheduled trigger). But a cancelOn that misses must not
+   * let the mark through, so on waking the saved booking is asked about THIS
+   * call time first. Moved away, cancelled, or already marked → no outcome at
+   * all from this run. No saved row speaks to this time → decide as before. */
+  const slot = await step.run("check-call-still-at-this-time", () =>
+    bookingStateAt(db, {
+      orgId, clientId, bookingUid: event.payload?.bookingUid, startTime: event.payload?.startTime
+    }));
+  if (slot === SLOT_STATE.MOVED || slot === SLOT_STATE.CANCELLED || slot === SLOT_STATE.NOSHOW) {
+    return { done: false, reason: `call_${slot}` };
+  }
+
+  const showed = await step.run("check-call-happened", () => callHappened(db, clientId));
 
   if (showed) {
     await step.run("set-call-outcome-showed", () => mergeCustomFields(db, clientId, { call_outcome: "showed", last_progress_action: "call_held" }));
@@ -59,14 +83,30 @@ export async function handle({ event, db, step }) {
     emit(db, "booking.noshow", payload, {
       orgId,
       clientId,
-      idempotencyKey: `dpc-02:${payload.bookingUid || event.id}:booking.noshow`
+      idempotencyKey: noshowKeyFor(payload, event.id)
     })
   );
   return { done: true, outcome: "no_show", card };
 }
 
+/* The booking id is now the call's own id and stays the same when the call
+   moves, so the key also carries the call time: a moved call that is missed at
+   its new time is its own no-show, not a repeat of one at an earlier time. */
+export function noshowKeyFor(payload = {}, eventId) {
+  const startMs = new Date(payload.startTime).getTime();
+  const at = Number.isFinite(startMs) ? `:${new Date(startMs).toISOString()}` : "";
+  return `dpc-02:${payload.bookingUid || eventId}${at}:booking.noshow`;
+}
+
+/* Same rules as the 15-minute text (src/workflows/booking-cancel-rules.mjs):
+   a cancel stops the check; a move to a different time stops the old-time check
+   and the booking.rescheduled trigger starts one for the new time. */
 export const dpc02CallOutcomeEnforcement = inngest.createFunction(
-  { id: "dpc-02-call-outcome-enforcement", name: "DPC-02 — Call Outcome Enforcement" },
-  { event: "booking.created" },
+  {
+    id: "dpc-02-call-outcome-enforcement",
+    name: "DPC-02 — Call Outcome Enforcement",
+    cancelOn: [...CANCEL_RULES, ...RESCHEDULE_CANCEL_RULES]
+  },
+  [{ event: "booking.created" }, { event: "booking.rescheduled" }],
   ({ event, step }) => handle({ event: event.data, db, step })
 );

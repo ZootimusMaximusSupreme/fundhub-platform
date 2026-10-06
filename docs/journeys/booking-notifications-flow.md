@@ -23,15 +23,19 @@ flowchart TD
     EMAIL -->|Yes| WHICH{What kind of post?}
 
     WHICH -->|appointment, or a form post with a start time| BOOK[booking.created]
+    WHICH -->|appointment moved| MOVE[booking.rescheduled]
+    WHICH -->|appointment cancelled| CXL[booking.cancelled]
     WHICH -->|anything else| ENTRY[entry.captured]
     ENTRY --> ANS{Survey answers present?}
     ANS -->|Yes| SURV[survey.submitted as well]
     ANS -->|No| ONLYENTRY[entry.captured alone]
 
     BOOK --> RESOLVE
+    MOVE --> RESOLVE
+    CXL --> RESOLVE
     SURV --> RESOLVE
     ONLYENTRY --> RESOLVE
-    RESOLVE[Resolve the customer ONCE for the whole delivery<br/>resolveClient, src/handlers/client-lifecycle.mjs]
+    RESOLVE[Resolve the customer ONCE for the whole delivery<br/>resolveClient, src/handlers/client-lifecycle.mjs<br/>appointment booking id = the call's own id, data.id;<br/>repeat-delivery key = the message's event_id]
 
     RESOLVE --> SLOT{booking.created for a slot<br/>already saved?}
     SLOT -->|Yes| PROMOTE[Update the saved booking's id. No new event.]
@@ -39,6 +43,13 @@ flowchart TD
 
     REPEAT -->|Yes — a repeat post| STORE_ONLY[Event STORED with the customer on it.<br/>No workflow run started.]
     REPEAT -->|No — the first post| STORE_RUN[Event stored with the customer on it,<br/>AND handed to the workflow engine.]
+
+    RESOLVE -->|move or cancel| HELD{A saved booking already<br/>holds this call id?}
+    HELD -->|Yes| STORE_RUN
+    HELD -->|No| OLD{ONE earlier ClickFunnels booking for this email?<br/>cancel: at exactly the call's time<br/>move: the one live upcoming call}
+    OLD -->|Yes| REKEY[Re-key that booking and its closer task<br/>to the call id]
+    OLD -->|No, or two or more| STORE_RUN
+    REKEY --> STORE_RUN
 ```
 
 **The two things that changed here.**
@@ -57,6 +68,23 @@ flowchart TD
 `booking.created` is deliberately **not** repeat-suppressed: it already has
 slot-level dedupe, and a second booking is a real second appointment.
 
+**One call, one booking id (2026-10-05).** A real ClickFunnels appointment
+message has no top-level `id`. It carries `event_id` (new on every message) and
+the call itself in `data`, whose `id` is the call's own id (it equals
+`subject_id` on all 5 appointment messages ClickFunnels still lists for this
+account). The adapter used to save the booking under `event_id`, so a move made
+a second booking and a second closer task, and a cancel closed nothing. Now the
+booking id is `data.id` (then `subject_id`), so create, move and cancel of one
+call land on one booking row. `event_id` is still the repeat-delivery key, so
+two moves of one call are both handled and a re-sent message is not.
+
+Calls booked before this change are saved under a message id. When their move or
+cancel arrives, the adapter re-keys that one earlier booking (and its closer task)
+to the call id first — a cancel only when one live ClickFunnels booking for that
+email sits at exactly the call's time, a move only when that email has exactly
+one live upcoming ClickFunnels booking. Anything less certain is left alone.
+`src/adapters/clickfunnels.mjs` (`adoptEarlierBooking`).
+
 ## 2. What each event starts
 
 | Event | Workflows woken | File |
@@ -64,6 +92,7 @@ slot-level dedupe, and a second booking is a real second appointment.
 | `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02` |
 | `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
 | `booking.created` | confirm + reminders, the AI setter, the 15-minute handoff, staff alert, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `ai-set-01`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
 
 ## 3. The never-booked chase
 
@@ -174,7 +203,7 @@ and remains the backstop for these two rows and for everything else.
 
 ```mermaid
 flowchart TD
-    B[booking.created] --> C{Customer resolved?}
+    B[booking.created, or booking.rescheduled for the new time] --> C{Customer resolved?}
     C -->|No| S0[Stop]
     C -->|Yes| ST{Start time readable?}
     ST -->|No| S1[Stop: unreadable start time]
@@ -183,16 +212,31 @@ flowchart TD
     PAST -->|No| NEAR{Is 15 minutes before<br/>still in the future?}
     NEAR -->|No| S3[Stop: booked inside 15 minutes]
     NEAR -->|Yes| W[Sleep until 15 minutes before<br/>the moment is recorded, once]
-    W --> L[Find a link to give them]
+    W -.->|a cancel, or a move to a different time,<br/>arrives while asleep| X[Run cancelled. No text.]
+    W --> SAVED{Saved booking at THIS time?<br/>bookingStateAt, src/bookings/store.mjs}
+    SAVED -->|moved away| S4[Stop: call moved. No text, no task.]
+    SAVED -->|cancelled or already a no-show| S5[Stop. No text, no task.]
+    SAVED -->|still on, or no saved row| L[Find a link to give them]
     L --> L1{In the booking message?}
     L1 -->|Yes| USE[Use it]
     L1 -->|No| L2{On the saved booking row?}
     L2 -->|Yes| USE
     L2 -->|No| L3[Use the customer's portal sign-in page]
     L3 --> USE
-    USE --> TXT[Send the handoff text]
-    TXT --> TASK[File the advisor follow-up task]
+    USE --> TXT[Send the handoff text<br/>ONE per customer per call time]
+    TXT --> TASK[File the advisor follow-up task<br/>ONE per customer per call time]
 ```
+
+**A moved call gets its text at the new time, and only there (2026-10-05).** A
+move used to leave the old run asleep, so the customer was told "your call
+starts in 15 minutes" at the time they had moved away from. Now a move starts a
+run for the new time and cancels any run whose start time differs from the
+move's (matched by call id or by email, the same way a cancel is). On waking,
+every run also asks the saved booking whether a live booking is still at its
+time; moved away, cancelled or already a no-show means no text. If no saved
+booking speaks to that time, the text goes as it always did. The text and the
+advisor task are keyed on the customer and the call time, not on the event, so
+two runs for one call time can never queue two texts.
 
 The text used to end "link: ." — it asked for a meeting location and was given
 no context at all, so the tag rendered as nothing. ClickFunnels supplies no
@@ -211,6 +255,38 @@ start time nothing can read, a call that has already started, and a booking
 taken inside the last fifteen minutes. The first was refused before this repair
 pass; the other two were not, so a booking carrying yesterday's start time sent
 "Your call starts in 15 minutes" the instant it arrived.
+
+## 5b. The no-show check
+
+`src/workflows/dpc-02-call-outcome-enforcement.mjs`
+
+```mermaid
+flowchart TD
+    B[booking.created, or booking.rescheduled for the new time] --> C{Customer resolved?}
+    C -->|No| S0[Stop]
+    C -->|Yes| T{End or start time?}
+    T -->|No| S1[Stop: no appointment time]
+    T -->|Yes| W[Sleep until 5 minutes after the end]
+    W -.->|a cancel, or a move to a different time,<br/>arrives while asleep| X[Run cancelled. No outcome.]
+    W --> SAVED{Saved booking at THIS time?<br/>bookingStateAt, src/bookings/store.mjs}
+    SAVED -->|moved away| S2[Stop: call moved. No outcome.]
+    SAVED -->|cancelled| S3[Stop: call cancelled. No outcome.]
+    SAVED -->|already marked a no-show| S4[Stop. Nothing marked twice.]
+    SAVED -->|still on, or no saved row| HELD{call.completed for this customer?}
+    HELD -->|Yes| SHOW[Outcome showed, card to showed]
+    HELD -->|No| NS[Outcome no_show, tag call:no_show,<br/>card to lost, emit booking.noshow<br/>key: call id + call time]
+    NS --> REC[booking.noshow starts the no-show texts, s-05a]
+```
+
+**A cancelled or moved call is never a no-show (2026-10-05).** This check used
+to start only on `booking.created` and nothing stopped it, so at the OLD end time
+a cancelled or moved call was tagged a no-show, its sales card went to lost and
+the no-show texts started. Now a cancel, or a move to a different time, cancels
+the run (same rules as the 15-minute text, `src/workflows/booking-cancel-rules.mjs`),
+a move starts a check for the new time, and on waking the run asks the saved
+booking about its own call time first. If no saved booking speaks to that time,
+it decides as before. The `booking.noshow` key now carries the call time,
+because the booking id no longer changes when a call moves.
 
 ## 6. Where a message actually goes out
 
