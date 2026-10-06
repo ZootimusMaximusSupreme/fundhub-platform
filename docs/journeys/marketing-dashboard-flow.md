@@ -1427,3 +1427,22 @@ flowchart TD
   is not yet on `marketing-command-center.html` (the frame unit U34 owns the page and adds the
   script tag); "one filled button" is per card (Build the avatar only while step 1 needs it), as the
   design's §3.2 words it.
+
+## Wave 2c integration: the tab script tags (branch `mm-wave2c`)
+
+Per `docs/specs/command-center-tabs.md` ("The integrator adds each tab's `<script>` tag to the
+page"), `public/app/marketing-command-center.html` now loads, in tab order, `cc-tab-ideas.js`,
+`marketing-cc-scripts.js` (already there from U36), `cc-tab-shoot.js`, `cc-tab-launch.js` and
+`cc-tab-numbers.js`, plus `cc-tab-ideas.css` and `cc-tab-numbers.css` (every rule scoped to the
+tab's own class).
+
+```mermaid
+flowchart TD
+  P["marketing-command-center.html loads"] --> T["each tab file runs:<br/>FundhubCC.registerTab({id, order, render})"]
+  T --> F{"frame cc-frame.js (U34) on the page?"}
+  F -->|"no (today)"| Q["the tab waits in FundhubCC._q;<br/>nothing new is drawn"]
+  F -->|yes| D["the frame drains _q and shows the tab bar"]
+```
+
+- **Gap:** the frame (U34, wave 2b) is not merged, so no tab is drawn on the live page yet. The
+  page looks the same as before; the five files only queue themselves.
