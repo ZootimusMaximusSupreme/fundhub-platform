@@ -35,6 +35,8 @@ const APP = path.resolve(HERE, "../../public/app");
    closer-call.html     — backward-compatible redirect to Closer Dashboard
    payment-success.html — public post-payment thank-you; no CRM shell, no staff nav
    soft-pull-approve.html — public signed-link consent page; no CRM shell, no staff nav
+   teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
+                          page to NO_SIDEBAR"); no shell.js, links back to the Command Center
    *.fragment.html      — a fragment, not a screen */
 const NO_SIDEBAR = new Set([
   "index.html",
@@ -42,7 +44,8 @@ const NO_SIDEBAR = new Set([
   "closer-call.html",
   "present.html",
   "payment-success.html",
-  "soft-pull-approve.html"
+  "soft-pull-approve.html",
+  "teleprompter.html"
 ]);
 
 function navHrefs(html) {

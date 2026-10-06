@@ -153,9 +153,9 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 | `POST marketing/funnels/build` | X4 | owner order 2026-10-05 (build unit X4): page builder job (kind funnel) | 202 |
 | `POST marketing/funnels/push-live` | X4 | owner order 2026-10-05 (build unit X4): push live to a NEW path; design §5 rules 5 and 16 | 202 |
 | `GET marketing/funnel` | X4 | owner order 2026-10-05 (build unit X4): one funnel with its draft pages | 200 |
-| `GET marketing/shoot` | deferred | §8.2 | 200 |
-| `POST marketing/shoot` | deferred | §8.2 | 200 |
-| `POST marketing/shoot/mark` | deferred | §8.2 | 200 |
+| `GET marketing/shoot` | X5 | §8.2 | 200 |
+| `POST marketing/shoot` | X5 | §8.2 | 200 |
+| `POST marketing/shoot/mark` | X5 | §8.2 | 200 |
 | `GET marketing/videos` | deferred | §9.1, §9.6 | 200 |
 | `GET marketing/video` | deferred | §9.1, §9.6 | 200 |
 | `POST marketing/videos/approve` | deferred | §9.1, §9.6, §4 trap 17 | 200 |
@@ -3110,26 +3110,47 @@ Make a book-a-call funnel with its own address and tag, write its three pages, r
 
 The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2 and the 9.1a states, videos wait on the video worker and R2, and the map and page suggestions are outside this pass. Their shapes are drafted from the spec text and the design doc so lane E can mock them. The unit that builds one may change it, and updates this file and the module in the same PR.
 
-### 7.1 Shoot Day (spec §8.2)
+### 7.1 Shoot Day (spec §8.2), built by X5
+
+Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `src/marketing/shoot-store.mjs` and the pure rules in `src/marketing/shoot-plan.mjs`, on U04's `marketing_shoots` table (migration 411). The Shoot tab (`public/app/cc-tab-shoot.js`) and the teleprompter (`public/app/teleprompter.html`) read the same `GET marketing/shoot`. Every route is free: no model, no vendor, nothing queued for the repo.
+
+**The plan fields (P).** Every script in `plan_candidates` and `shoot.scripts` is the Script object S (section 4) plus:
+
+| Key | Meaning |
+|---|---|
+| `angle_name` | The script's title, word for word: the angle in `marketing/ads/NAMING.md`. Null when it has no title. |
+| `offer_word` | The word that starts the file name. Only `SLO` (the roadmap offer) is on file; any other offer is null, never a made-up word. |
+| `take_no` | The next take: the highest take number already used for this ad before the shoot started, plus the takes rolled on this shoot, plus 1. Used means a clip filed in `ad_videos`, or a take rolled on a closed shoot whose clip is not filed yet, so closing a shoot early never hands out the same name twice. |
+| `take_file_name` | `{offer_word} Ad {ad_id} — {angle_name} Take {take_no}.mp4`, the exact name the clip gets. Null when a part is missing; `take_name_problem` says which, in plain words. `src/ad-videos/merge-takes.mjs` `parseTakeName()` reads it back to the same four parts. |
+| `last_take_file_name` | The name of the take just rolled on this shoot, or null. |
+| `takes`, `got_it` | This shoot's marks for the script (0 and false off a shoot). |
+| `first_line_only` | A retake from a new opening (`needs_retake` and an `opening` idea): the teleprompter rolls the hook only. |
+| `teleprompter_text` | What the teleprompter rolls: the body, or the hook for a first-line-only retake. |
+| `words`, `read_seconds` | At `wpm` (default 150): 60/wpm a word, 35% longer at a sentence end, 15% at a comma, 0.8 s per blank line (the v1 teleprompter's clock). |
 
 #### `GET marketing/shoot`
 
-**Owner:** deferred · **Spec:** §8.2 · **Success:** 200 · **Guard:** none
+**Owner:** X5 · **Spec:** §8.2 · **Success:** 200 · **Guard:** none
 
 **Gate:** ROLE_SETS.MARKETING (owner, admin)
 
-**Request (query):** `{}`
+**Request (query):** `{wpm?}`
 
-**Response:** `{shoot:{id, shoot_date, status, root_script_ids, marks, estimated_minutes, board:[{ad_id, angle, step, step_word, since, reason, can_retry, needs_you}], landed_unmatched}, plan_candidates:[S]}`
+**Response:** `{shoot:{id, shoot_date, status, root_script_ids, marks, estimated_minutes, board:[{ad_id, angle, step, step_word, since, reason, can_retry, needs_you}], landed_unmatched, scripts:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], started_at, finished_at, created_at, updated_at}, plan_candidates:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], plan_estimated_minutes, past_shoots:[{id, shoot_date, scripts, filmed, finished, finished_at}], wpm, as_of}`
 
-**Errors:** only the common ones in section 2.
+**Errors** (besides the common ones in section 2):
 
-- `shoot` is the open shoot (any status but `done`), or null.
-- `plan_candidates`: every locked script with no Got it mark on an open shoot, in film order; retakes (`needs_retake`) and new openings first.
-- `marks` is `{<root_script_id>: {takes, got_it}}` (spec §6 step 3).
-- `board`: one row per ad. `step` is `filmed`, `matched`, `cutting`, `captions`, `animations`, `ready_to_approve`, `approved`, `loaded` or `failed` (the spec §8.2 table). `step_word` is the word the screen prints. `needs_you` rows go on top.
-- `estimated_minutes`: each script's read time at the set speed, plus 2 minutes per ad.
-- `landed_unmatched`: clips that landed and are not matched yet ("N clips landed, matching").
+| Status | error | field | When |
+|---|---|---|---|
+| 400 | `invalid` | `wpm` | wpm is not a whole number from 80 to 260 |
+
+- `shoot` is the open shoot (any status but `done`), or null. `shoot.scripts` holds the live version of each script on it, in the shoot's order.
+- `plan_candidates`: every approved script (live version `locked`, or `filmed` with `needs_retake`) with no Got it mark on the open shoot. Retakes and new openings first, then film order (first = 1, unset last), then the ad number.
+- `marks` is `{<root_script_id>: {takes, got_it, at}}` (spec §6 step 3); `at` is the last press.
+- `board`: one row per ad on the shoot that has a Got it mark or a clip that landed after the shoot started. `step` is `filmed`, `matched`, `cutting`, `captions`, `animations`, `ready_to_approve`, `approved`, `loaded` or `failed` (the spec §8.2 table, read from `ad_videos.status`). `step_word` is the word the screen prints. A clip at `staged` says "The join step still runs on the Mac." `needs_you` rows go on top. `can_retry` is false until the Videos routes ship.
+- `estimated_minutes` (the shoot) and `plan_estimated_minutes` (the candidates): each script's read time plus 2 minutes per ad, rounded up.
+- `landed_unmatched`: clips that landed since the shoot started and have no ad yet ("N clips landed, matching").
+- `past_shoots`: the last 5 closed shoots, with how many scripts were on each, how many were marked Got it, and `finished`: how many of its ads now have their finished video (approved or delivered) from a clip that came in after the shoot started. Loaded is not counted: `ad_videos` has no loaded state yet.
 
 **Example**
 
@@ -3145,8 +3166,14 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
         "00000000-0000-4000-8000-000000000101",
         "00000000-0000-4000-8000-000000000201"
       ],
-      "marks": { "00000000-0000-4000-8000-000000000101": { "takes": 2, "got_it": true } },
-      "estimated_minutes": 6,
+      "marks": {
+        "00000000-0000-4000-8000-000000000101": {
+          "takes": 2,
+          "got_it": true,
+          "at": "2026-10-13T16:05:00.000Z"
+        }
+      },
+      "estimated_minutes": 5,
       "board": [
         {
           "ad_id": "91",
@@ -3159,101 +3186,344 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
           "needs_you": false
         }
       ],
-      "landed_unmatched": 0
+      "landed_unmatched": 0,
+      "scripts": [
+        {
+          "id": "00000000-0000-4000-8000-000000000101",
+          "root_script_id": "00000000-0000-4000-8000-000000000101",
+          "version": 1,
+          "status": "locked",
+          "ad_id": "91",
+          "title": "Lenders read two files",
+          "body": "MOST lenders read TWO files before they say yes.\n\nIf one is a mess, they never open the other.\n\nthe personal file\nthe business file\nwhich one they read first\n\nWe check both before you apply anywhere.\n\nTap below and see what both files say today.",
+          "parts": [
+            {
+              "kind": "hook",
+              "text": "MOST lenders read TWO files before they say yes."
+            },
+            {
+              "kind": "line2",
+              "text": "If one is a mess, they never open the other."
+            },
+            {
+              "kind": "cue",
+              "text": "the personal file"
+            },
+            {
+              "kind": "cue",
+              "text": "the business file"
+            },
+            {
+              "kind": "cue",
+              "text": "which one they read first"
+            },
+            {
+              "kind": "reveal",
+              "text": "We check both before you apply anywhere."
+            },
+            {
+              "kind": "cta",
+              "text": "Tap below and see what both files say today."
+            }
+          ],
+          "script_format": "standard",
+          "style": "bullets",
+          "funnel_key": "roadmap_147",
+          "angle_key": "two-files",
+          "hook_key": "two-files-lenders-read",
+          "offer_key": "slo_roadmap",
+          "lane": "uwiq",
+          "batch_id": "00000000-0000-4000-8000-000000000301",
+          "idea_id": "00000000-0000-4000-8000-000000000401",
+          "source": "machine",
+          "check_results": {
+            "strict": {
+              "passed": true,
+              "rounds": 1,
+              "failures": []
+            },
+            "judge": {
+              "passed": true,
+              "notes": []
+            },
+            "compliance": {
+              "state": "passed",
+              "reasons": []
+            }
+          },
+          "flagged": false,
+          "fix_note": null,
+          "animation_plan": [
+            {
+              "anchor": {
+                "cue": 1,
+                "keyword": "personal"
+              },
+              "template": "FileItems",
+              "props": {},
+              "seconds": 2.5
+            },
+            {
+              "anchor": {
+                "cue": 3,
+                "keyword": "first"
+              },
+              "template": "StepPath",
+              "props": {},
+              "seconds": 3
+            }
+          ],
+          "meta_copy": {
+            "primary_text": "Lenders read two files before they say yes. See what both of yours say before you apply.",
+            "headline": "See both files first",
+            "description": "Your Funding Roadmap",
+            "cta_type": "LEARN_MORE"
+          },
+          "film_order": 1,
+          "needs_retake": false,
+          "locked_at": "2026-10-12T15:06:00.000Z",
+          "locked_by": "00000000-0000-4000-8000-000000000002",
+          "rejected_at": null,
+          "rejected_reason": null,
+          "filmed_at": null,
+          "repo_path": "marketing/ads/scripts/machine/2026-W42/03-lenders-read-two-files.md",
+          "repo_commit": "4f2a9c1e7b3d5a8c0e6f1b2d3c4a5e6f7a8b9c0d",
+          "created_at": "2026-10-12T11:12:40.000Z",
+          "updated_at": "2026-10-13T15:30:00.000Z",
+          "angle_name": "Lenders read two files",
+          "offer_word": "SLO",
+          "take_no": 3,
+          "take_file_name": "SLO Ad 91 — Lenders read two files Take 3.mp4",
+          "take_name_problem": null,
+          "last_take_file_name": "SLO Ad 91 — Lenders read two files Take 2.mp4",
+          "takes": 2,
+          "got_it": true,
+          "first_line_only": false,
+          "teleprompter_text": "MOST lenders read TWO files before they say yes.\n\nIf one is a mess, they never open the other.\n\nthe personal file\nthe business file\nwhich one they read first\n\nWe check both before you apply anywhere.\n\nTap below and see what both files say today.",
+          "words": 46,
+          "read_seconds": 22
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000201",
+          "root_script_id": "00000000-0000-4000-8000-000000000201",
+          "version": 1,
+          "status": "locked",
+          "ad_id": "92",
+          "title": "Inquiries off first",
+          "body": "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
+          "parts": [
+            {
+              "kind": "hook",
+              "text": "Every hard pull you did not need is still sitting on your file."
+            },
+            {
+              "kind": "line2",
+              "text": "And lenders count them."
+            }
+          ],
+          "script_format": "sorting",
+          "style": "words",
+          "funnel_key": "book_call",
+          "angle_key": "inquiries-off",
+          "hook_key": "inquiries-off-hard-pulls",
+          "offer_key": "funding_dfy",
+          "lane": "sorting",
+          "batch_id": "00000000-0000-4000-8000-000000000301",
+          "idea_id": null,
+          "source": "machine",
+          "check_results": {
+            "strict": {
+              "passed": true,
+              "rounds": 1,
+              "failures": []
+            },
+            "judge": {
+              "passed": true,
+              "notes": []
+            },
+            "compliance": {
+              "state": "passed",
+              "reasons": []
+            }
+          },
+          "flagged": false,
+          "fix_note": null,
+          "animation_plan": [
+            {
+              "anchor": {
+                "phrase": "lenders count them"
+              },
+              "template": "InquiriesOff",
+              "props": {},
+              "seconds": 2.5
+            }
+          ],
+          "meta_copy": {
+            "primary_text": "Every hard pull you did not need is still on your file. Lenders count them.",
+            "headline": "Lenders count your pulls",
+            "description": "Book a call",
+            "cta_type": "LEARN_MORE"
+          },
+          "film_order": 2,
+          "needs_retake": false,
+          "locked_at": "2026-10-12T15:09:00.000Z",
+          "locked_by": "00000000-0000-4000-8000-000000000002",
+          "rejected_at": null,
+          "rejected_reason": null,
+          "filmed_at": null,
+          "repo_path": "marketing/ads/scripts/machine/2026-W42/04-inquiries-off-first.md",
+          "repo_commit": "4f2a9c1e7b3d5a8c0e6f1b2d3c4a5e6f7a8b9c0d",
+          "created_at": "2026-10-12T11:12:40.000Z",
+          "updated_at": "2026-10-13T15:30:00.000Z",
+          "angle_name": "Inquiries off first",
+          "offer_word": null,
+          "take_no": 1,
+          "take_file_name": null,
+          "take_name_problem": "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+          "last_take_file_name": null,
+          "takes": 0,
+          "got_it": false,
+          "first_line_only": false,
+          "teleprompter_text": "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
+          "words": 17,
+          "read_seconds": 8
+        }
+      ],
+      "started_at": "2026-10-13T15:58:00.000Z",
+      "finished_at": null,
+      "created_at": "2026-10-13T15:30:00.000Z",
+      "updated_at": "2026-10-13T16:05:00.000Z"
     },
     "plan_candidates": [
       {
-        "id": "00000000-0000-4000-8000-000000000101",
-        "root_script_id": "00000000-0000-4000-8000-000000000101",
+        "id": "00000000-0000-4000-8000-000000000201",
+        "root_script_id": "00000000-0000-4000-8000-000000000201",
         "version": 1,
         "status": "locked",
-        "ad_id": "91",
-        "title": "Lenders read two files",
-        "body": "MOST lenders read TWO files before they say yes.\n\nIf one is a mess, they never open the other.\n\nthe personal file\nthe business file\nwhich one they read first\n\nWe check both before you apply anywhere.\n\nTap below and see what both files say today.",
+        "ad_id": "92",
+        "title": "Inquiries off first",
+        "body": "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
         "parts": [
-          { "kind": "hook", "text": "MOST lenders read TWO files before they say yes." },
-          { "kind": "line2", "text": "If one is a mess, they never open the other." },
-          { "kind": "cue", "text": "the personal file" },
-          { "kind": "cue", "text": "the business file" },
-          { "kind": "cue", "text": "which one they read first" },
-          { "kind": "reveal", "text": "We check both before you apply anywhere." },
-          { "kind": "cta", "text": "Tap below and see what both files say today." }
+          {
+            "kind": "hook",
+            "text": "Every hard pull you did not need is still sitting on your file."
+          },
+          {
+            "kind": "line2",
+            "text": "And lenders count them."
+          }
         ],
-        "script_format": "standard",
-        "style": "bullets",
-        "funnel_key": "roadmap_147",
-        "angle_key": "two-files",
-        "hook_key": "two-files-lenders-read",
-        "offer_key": "slo_roadmap",
-        "lane": "uwiq",
+        "script_format": "sorting",
+        "style": "words",
+        "funnel_key": "book_call",
+        "angle_key": "inquiries-off",
+        "hook_key": "inquiries-off-hard-pulls",
+        "offer_key": "funding_dfy",
+        "lane": "sorting",
         "batch_id": "00000000-0000-4000-8000-000000000301",
-        "idea_id": "00000000-0000-4000-8000-000000000401",
+        "idea_id": null,
         "source": "machine",
         "check_results": {
-          "strict": { "passed": true, "rounds": 1, "failures": [] },
-          "judge": { "passed": true, "notes": [] },
-          "compliance": { "state": "passed", "reasons": [] }
+          "strict": {
+            "passed": true,
+            "rounds": 1,
+            "failures": []
+          },
+          "judge": {
+            "passed": true,
+            "notes": []
+          },
+          "compliance": {
+            "state": "passed",
+            "reasons": []
+          }
         },
         "flagged": false,
         "fix_note": null,
         "animation_plan": [
           {
-            "anchor": { "cue": 1, "keyword": "personal" },
-            "template": "FileItems",
+            "anchor": {
+              "phrase": "lenders count them"
+            },
+            "template": "InquiriesOff",
             "props": {},
             "seconds": 2.5
-          },
-          {
-            "anchor": { "cue": 3, "keyword": "first" },
-            "template": "StepPath",
-            "props": {},
-            "seconds": 3
           }
         ],
         "meta_copy": {
-          "primary_text": "Lenders read two files before they say yes. See what both of yours say before you apply.",
-          "headline": "See both files first",
-          "description": "Your Funding Roadmap",
+          "primary_text": "Every hard pull you did not need is still on your file. Lenders count them.",
+          "headline": "Lenders count your pulls",
+          "description": "Book a call",
           "cta_type": "LEARN_MORE"
         },
-        "film_order": null,
+        "film_order": 2,
         "needs_retake": false,
-        "locked_at": "2026-10-12T15:06:00.000Z",
+        "locked_at": "2026-10-12T15:09:00.000Z",
         "locked_by": "00000000-0000-4000-8000-000000000002",
         "rejected_at": null,
         "rejected_reason": null,
         "filmed_at": null,
-        "repo_path": "marketing/ads/scripts/machine/2026-W42/03-lenders-read-two-files.md",
+        "repo_path": "marketing/ads/scripts/machine/2026-W42/04-inquiries-off-first.md",
         "repo_commit": "4f2a9c1e7b3d5a8c0e6f1b2d3c4a5e6f7a8b9c0d",
         "created_at": "2026-10-12T11:12:40.000Z",
-        "updated_at": "2026-10-12T15:06:00.000Z"
+        "updated_at": "2026-10-13T15:30:00.000Z",
+        "angle_name": "Inquiries off first",
+        "offer_word": null,
+        "take_no": 1,
+        "take_file_name": null,
+        "take_name_problem": "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+        "last_take_file_name": null,
+        "takes": 0,
+        "got_it": false,
+        "first_line_only": false,
+        "teleprompter_text": "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
+        "words": 17,
+        "read_seconds": 8
       }
-    ]
+    ],
+    "plan_estimated_minutes": 3,
+    "past_shoots": [
+      {
+        "id": "00000000-0000-4000-8000-000000000900",
+        "shoot_date": "2026-10-06",
+        "scripts": 4,
+        "filmed": 4,
+        "finished": 3,
+        "finished_at": "2026-10-06T19:12:00.000Z"
+      }
+    ],
+    "wpm": 150,
+    "as_of": "2026-10-13T16:06:00.000Z"
   }
 }
 ```
 
 #### `POST marketing/shoot`
 
-**Owner:** deferred · **Spec:** §8.2 · **Success:** 200 · **Guard:** none
+**Owner:** X5 · **Spec:** §8.2 · **Success:** 200 · **Guard:** none
 
 **Gate:** ROLE_SETS.MARKETING (owner, admin)
 
-**Request (JSON body):** `{request_id, id?, shoot_date?, root_script_ids?, status?}`
+**Request (JSON body):** `{request_id, id?, shoot_date?, root_script_ids?, status?, wpm?}`
 
-**Response:** `{shoot:{id, shoot_date, status, root_script_ids, marks, estimated_minutes, board:[], landed_unmatched}}`
+**Response:** `{shoot:{id, shoot_date, status, root_script_ids, marks, estimated_minutes, board:[], landed_unmatched, scripts:[{id, root_script_id, version, status, ad_id, title, body, parts, script_format, style, funnel_key, angle_key, hook_key, offer_key, lane, batch_id, idea_id, source, check_results, flagged, fix_note, animation_plan, meta_copy, film_order, needs_retake, locked_at, locked_by, rejected_at, rejected_reason, filmed_at, repo_path, repo_commit, created_at, updated_at, angle_name, offer_word, take_no, take_file_name, take_name_problem, last_take_file_name, takes, got_it, first_line_only, teleprompter_text, words, read_seconds}], started_at, finished_at, created_at, updated_at}}`
 
 **Errors** (besides the common ones in section 2):
 
 | Status | error | field | When |
 |---|---|---|---|
-| 400 | `invalid` | `root_script_ids` | not a list of root ids of locked scripts in the caller's org |
-| 400 | `invalid` | `status` | status is not planned, filming, uploaded or done |
+| 400 | `invalid` | `root_script_ids` | not a list of root ids of approved scripts (locked, or filmed and needing a retake) in the caller's org; a script already on the shoot stays allowed on a reorder |
+| 400 | `invalid` | `status` | status is not planned, filming, uploaded or done; or a create sends anything but planned |
+| 400 | `invalid` | `shoot_date` | shoot_date is not a real day written YYYY-MM-DD |
+| 400 | `invalid` | `id` | a create while a shoot is already open, or a change to a closed (done) shoot |
 | 404 | `not_found` | none | id names no shoot in the caller's org |
 
-- Create: `{request_id, shoot_date, root_script_ids}`. Reorder: `{request_id, id, root_script_ids}`. Close: `{request_id, id, status: 'done'}`.
-- Answers 200 with the shoot.
-- If the builder finds a stale guard is needed, it uses `updated_at` and 409 the way settings does, and updates this file.
+- Create: `{request_id, shoot_date?, root_script_ids}` (the day defaults to today in Arizona). Reorder: `{request_id, id, root_script_ids}`. Close: `{request_id, id, status: 'done'}`.
+- One open shoot per company: a create while one is open is refused with what to do instead.
+- Saving the order also sets each script's `film_order` (first = 1) through the Scripts tab's own `orderScripts()`, so the two tabs never show two orders.
+- Moving to `filming`, `uploaded` or `done` sets `started_at` once; `done` sets `finished_at`. A done shoot is never changed again.
+- No stale guard: the plan is one person's list, and the last save wins.
+- Answers 200 with the shoot, in the GET's shape.
 
 **Example**
 
@@ -3262,7 +3532,10 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
   "request": {
     "request_id": "00000000-0000-4000-8000-00000000c015",
     "shoot_date": "2026-10-13",
-    "root_script_ids": ["00000000-0000-4000-8000-000000000101", "00000000-0000-4000-8000-000000000201"]
+    "root_script_ids": [
+      "00000000-0000-4000-8000-000000000101",
+      "00000000-0000-4000-8000-000000000201"
+    ]
   },
   "response": {
     "shoot": {
@@ -3274,9 +3547,215 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
         "00000000-0000-4000-8000-000000000201"
       ],
       "marks": {},
-      "estimated_minutes": 6,
+      "estimated_minutes": 5,
       "board": [],
-      "landed_unmatched": 0
+      "landed_unmatched": 0,
+      "scripts": [
+        {
+          "id": "00000000-0000-4000-8000-000000000101",
+          "root_script_id": "00000000-0000-4000-8000-000000000101",
+          "version": 1,
+          "status": "locked",
+          "ad_id": "91",
+          "title": "Lenders read two files",
+          "body": "MOST lenders read TWO files before they say yes.\n\nIf one is a mess, they never open the other.\n\nthe personal file\nthe business file\nwhich one they read first\n\nWe check both before you apply anywhere.\n\nTap below and see what both files say today.",
+          "parts": [
+            {
+              "kind": "hook",
+              "text": "MOST lenders read TWO files before they say yes."
+            },
+            {
+              "kind": "line2",
+              "text": "If one is a mess, they never open the other."
+            },
+            {
+              "kind": "cue",
+              "text": "the personal file"
+            },
+            {
+              "kind": "cue",
+              "text": "the business file"
+            },
+            {
+              "kind": "cue",
+              "text": "which one they read first"
+            },
+            {
+              "kind": "reveal",
+              "text": "We check both before you apply anywhere."
+            },
+            {
+              "kind": "cta",
+              "text": "Tap below and see what both files say today."
+            }
+          ],
+          "script_format": "standard",
+          "style": "bullets",
+          "funnel_key": "roadmap_147",
+          "angle_key": "two-files",
+          "hook_key": "two-files-lenders-read",
+          "offer_key": "slo_roadmap",
+          "lane": "uwiq",
+          "batch_id": "00000000-0000-4000-8000-000000000301",
+          "idea_id": "00000000-0000-4000-8000-000000000401",
+          "source": "machine",
+          "check_results": {
+            "strict": {
+              "passed": true,
+              "rounds": 1,
+              "failures": []
+            },
+            "judge": {
+              "passed": true,
+              "notes": []
+            },
+            "compliance": {
+              "state": "passed",
+              "reasons": []
+            }
+          },
+          "flagged": false,
+          "fix_note": null,
+          "animation_plan": [
+            {
+              "anchor": {
+                "cue": 1,
+                "keyword": "personal"
+              },
+              "template": "FileItems",
+              "props": {},
+              "seconds": 2.5
+            },
+            {
+              "anchor": {
+                "cue": 3,
+                "keyword": "first"
+              },
+              "template": "StepPath",
+              "props": {},
+              "seconds": 3
+            }
+          ],
+          "meta_copy": {
+            "primary_text": "Lenders read two files before they say yes. See what both of yours say before you apply.",
+            "headline": "See both files first",
+            "description": "Your Funding Roadmap",
+            "cta_type": "LEARN_MORE"
+          },
+          "film_order": 1,
+          "needs_retake": false,
+          "locked_at": "2026-10-12T15:06:00.000Z",
+          "locked_by": "00000000-0000-4000-8000-000000000002",
+          "rejected_at": null,
+          "rejected_reason": null,
+          "filmed_at": null,
+          "repo_path": "marketing/ads/scripts/machine/2026-W42/03-lenders-read-two-files.md",
+          "repo_commit": "4f2a9c1e7b3d5a8c0e6f1b2d3c4a5e6f7a8b9c0d",
+          "created_at": "2026-10-12T11:12:40.000Z",
+          "updated_at": "2026-10-13T15:30:00.000Z",
+          "angle_name": "Lenders read two files",
+          "offer_word": "SLO",
+          "take_no": 1,
+          "take_file_name": "SLO Ad 91 — Lenders read two files Take 1.mp4",
+          "take_name_problem": null,
+          "last_take_file_name": null,
+          "takes": 0,
+          "got_it": false,
+          "first_line_only": false,
+          "teleprompter_text": "MOST lenders read TWO files before they say yes.\n\nIf one is a mess, they never open the other.\n\nthe personal file\nthe business file\nwhich one they read first\n\nWe check both before you apply anywhere.\n\nTap below and see what both files say today.",
+          "words": 46,
+          "read_seconds": 22
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000201",
+          "root_script_id": "00000000-0000-4000-8000-000000000201",
+          "version": 1,
+          "status": "locked",
+          "ad_id": "92",
+          "title": "Inquiries off first",
+          "body": "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
+          "parts": [
+            {
+              "kind": "hook",
+              "text": "Every hard pull you did not need is still sitting on your file."
+            },
+            {
+              "kind": "line2",
+              "text": "And lenders count them."
+            }
+          ],
+          "script_format": "sorting",
+          "style": "words",
+          "funnel_key": "book_call",
+          "angle_key": "inquiries-off",
+          "hook_key": "inquiries-off-hard-pulls",
+          "offer_key": "funding_dfy",
+          "lane": "sorting",
+          "batch_id": "00000000-0000-4000-8000-000000000301",
+          "idea_id": null,
+          "source": "machine",
+          "check_results": {
+            "strict": {
+              "passed": true,
+              "rounds": 1,
+              "failures": []
+            },
+            "judge": {
+              "passed": true,
+              "notes": []
+            },
+            "compliance": {
+              "state": "passed",
+              "reasons": []
+            }
+          },
+          "flagged": false,
+          "fix_note": null,
+          "animation_plan": [
+            {
+              "anchor": {
+                "phrase": "lenders count them"
+              },
+              "template": "InquiriesOff",
+              "props": {},
+              "seconds": 2.5
+            }
+          ],
+          "meta_copy": {
+            "primary_text": "Every hard pull you did not need is still on your file. Lenders count them.",
+            "headline": "Lenders count your pulls",
+            "description": "Book a call",
+            "cta_type": "LEARN_MORE"
+          },
+          "film_order": 2,
+          "needs_retake": false,
+          "locked_at": "2026-10-12T15:09:00.000Z",
+          "locked_by": "00000000-0000-4000-8000-000000000002",
+          "rejected_at": null,
+          "rejected_reason": null,
+          "filmed_at": null,
+          "repo_path": "marketing/ads/scripts/machine/2026-W42/04-inquiries-off-first.md",
+          "repo_commit": "4f2a9c1e7b3d5a8c0e6f1b2d3c4a5e6f7a8b9c0d",
+          "created_at": "2026-10-12T11:12:40.000Z",
+          "updated_at": "2026-10-13T15:30:00.000Z",
+          "angle_name": "Inquiries off first",
+          "offer_word": null,
+          "take_no": 1,
+          "take_file_name": null,
+          "take_name_problem": "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+          "last_take_file_name": null,
+          "takes": 0,
+          "got_it": false,
+          "first_line_only": false,
+          "teleprompter_text": "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
+          "words": 17,
+          "read_seconds": 8
+        }
+      ],
+      "started_at": null,
+      "finished_at": null,
+      "created_at": "2026-10-13T15:30:00.000Z",
+      "updated_at": "2026-10-13T15:30:00.000Z"
     }
   }
 }
@@ -3284,7 +3763,7 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
 
 #### `POST marketing/shoot/mark`
 
-**Owner:** deferred · **Spec:** §8.2 · **Success:** 200 · **Guard:** none
+**Owner:** X5 · **Spec:** §8.2 · **Success:** 200 · **Guard:** none
 
 **Gate:** ROLE_SETS.MARKETING (owner, admin)
 
@@ -3297,9 +3776,13 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
 | Status | error | field | When |
 |---|---|---|---|
 | 400 | `invalid` | `mark` | mark is not got_it or another_take |
+| 400 | `invalid` | `shoot_id` | shoot_id is not a uuid, or the shoot is closed (done) |
 | 404 | `not_found` | none | no such shoot, or the script is not on it |
 
-- `mark` is `got_it` or `another_take`. Got it marks the shoot only; the script becomes `filmed` when M3 matches its take (spec §7.4).
+- `mark` is `got_it` or `another_take`. Both count the take just rolled, so the next file name moves to the next take. Got it also keeps it; Another take never un-keeps an earlier Got it.
+- The first mark moves a planned shoot to `filming`.
+- Got it marks the shoot only; the script becomes `filmed` when M3 matches its take (spec §7.4).
+- A repeated `request_id` answers the first press again, so a press queued on the phone while offline is never counted twice.
 - Answers the shoot's `marks`.
 
 **Example**
@@ -3314,8 +3797,16 @@ The plan defers these (`final.deferred` in the plan file): Shoot Day waits on M2
   },
   "response": {
     "marks": {
-      "00000000-0000-4000-8000-000000000101": { "takes": 2, "got_it": true },
-      "00000000-0000-4000-8000-000000000201": { "takes": 1, "got_it": true }
+      "00000000-0000-4000-8000-000000000101": {
+        "takes": 2,
+        "got_it": true,
+        "at": "2026-10-13T16:05:00.000Z"
+      },
+      "00000000-0000-4000-8000-000000000201": {
+        "takes": 1,
+        "got_it": true,
+        "at": "2026-10-13T16:09:00.000Z"
+      }
     }
   }
 }

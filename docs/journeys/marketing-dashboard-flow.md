@@ -378,6 +378,12 @@ Table only. States `planned | filming | uploaded | done`, enforced by the databa
 shoot must have `finished_at`. Nothing reads or writes it yet (Shoot Day routes and screen
 are later units). UNVERIFIED.
 
+**X5 update (branch `mm-x5-shoot-teleprompter`):** the Shoot Day routes now read and write
+it — `GET/POST /api/marketing/shoot` and `POST /api/marketing/shoot/mark` — and so do the
+Shoot tab (`public/app/cc-tab-shoot.js`, tab `shoot`) and the teleprompter page
+(`public/app/teleprompter.html`). The states, the take file name rule and the gaps are
+drawn in [`shoot-flow.md`](./shoot-flow.md). UNVERIFIED on production.
+
 ### Gaps between the spec and this code (findings, not reconciled)
 
 - Spec §6 Step 3 lists `marketing_buzzes` without `attempts`, `last_error`, `failed_at`;

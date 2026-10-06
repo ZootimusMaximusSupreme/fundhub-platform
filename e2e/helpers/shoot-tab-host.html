@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shoot tab host (test only)</title>
+<!-- A tiny stand-in for the Command Center frame (docs/specs/command-center-tabs.md:
+     "until the frame lands, a tab's e2e may load the page with a tiny local stub
+     registry that renders the queued tab"). e2e/cc-tab-shoot.spec.mjs serves this
+     file through page.route(); it is never shipped. It wraps the tab in .app so
+     the brand file's type trap (UI-STANDARDS §12.7) applies exactly as it will
+     inside the real frame. -->
+<link rel="stylesheet" href="/app/fundhub-brand.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--field,#F4F4F5);color:var(--ink);font-family:var(--sans);line-height:1.5}
+.app{padding:16px}
+#toast{position:fixed;left:16px;bottom:16px;background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:8px}
+#confirm{position:fixed;left:16px;right:16px;bottom:16px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px}
+</style>
+</head>
+<body>
+<div class="app"><main id="tab"></main></div>
+<div id="toast" role="status" hidden></div>
+<div id="confirm" role="dialog" hidden><p id="confirm-text"></p><button type="button" id="confirm-yes"></button> <button type="button" id="confirm-no">Keep it</button></div>
+<script>window.FundhubCC = { _q: [], registerTab: function (t) { this._q.push(t); } };</script>
+<script src="/app/cc-tab-shoot.js"></script>
+<script>
+(function () {
+  var tab = window.FundhubCC._q.filter(function (t) { return t.id === "shoot"; })[0];
+  var ctx = {
+    user: { role: "owner" },
+    param: null,
+    go: function () {},
+    toast: function (t) { var el = document.getElementById("toast"); el.textContent = t; el.hidden = false; },
+    fmt: {
+      az: function (ts) { return new Date(ts).toLocaleString("en-US", { timeZone: "America/Phoenix", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); },
+      money: function (c) { return c == null ? "unknown" : "$" + (c / 100).toFixed(2); },
+      ago: function () { return ""; }
+    },
+    confirm: window.__noConfirm ? undefined : function (o) {
+      document.getElementById("confirm-text").textContent = o.consequence;
+      var yes = document.getElementById("confirm-yes");
+      yes.textContent = o.button;
+      document.getElementById("confirm").hidden = false;
+      yes.onclick = function () { document.getElementById("confirm").hidden = true; o.onConfirm(); };
+      document.getElementById("confirm-no").onclick = function () { document.getElementById("confirm").hidden = true; };
+    },
+    api: function (method, path, body) {
+      var h = { accept: "application/json", authorization: "Bearer e2e-token" };
+      if (body) h["content-type"] = "application/json";
+      return fetch("/api/" + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (d) {
+          return { ok: r.ok, status: r.status, data: d, error: d && (d.message || d.error), conflict: r.status === 409, current: d && d.current };
+        });
+      }, function () { return { ok: false, status: 0, data: null, error: "offline" }; });
+    }
+  };
+  tab.render(document.getElementById("tab"), ctx);
+})();
+</script>
+</body>
+</html>
