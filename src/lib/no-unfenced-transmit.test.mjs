@@ -171,10 +171,11 @@ const ALLOWED_RAW_FETCH = {
     "record is written.",
   "src/analytics/clickfunnels.mjs":
     "Reads Chris's own ClickFunnels workspace: funnels, pages, page stats. " +
-    "GET only — listFunnels/listPages/fetchPageStats never POST, PUT or DELETE " +
-    "anything. No client is contacted and no vendor record is changed; this can " +
-    "neither reach a client nor spend money the way the ad-platform adapters " +
-    "above can.",
+    "The raw fetch is GET only — listFunnels/listPages/fetchPageStats never POST, " +
+    "PUT or DELETE anything. Its ONE write, upsertContact (a person's details onto " +
+    "a ClickFunnels contact, since 2026-09-25), goes through transmit() behind the " +
+    "ADAPTERS fence (2026-10-05; until then it rode the raw fetch while this entry " +
+    "said 'GET only').",
   "src/analytics/youtube.mjs":
     "Reads watch time on Chris's own YouTube channel via the Analytics/Data " +
     "APIs. refreshAccessToken exchanges an OAuth token (matching " +
@@ -191,6 +192,32 @@ const ALLOWED_RAW_FETCH = {
   "src/pulse/daily-pulse.mjs":
     "Read-only daily health audit. GET fundhub.ai pages and optional prove Gmail. " +
     "Does not send. Client SMS/WhatsApp go through messaging providers.",
+  // ── Added 2026-10-05 (CI fix). Each was read before it was listed. ──────
+  "src/adapters/clarity-export.mjs":
+    "GET of Microsoft Clarity Data Export for Chris's own site analytics — the " +
+    "one door owner law allows (.claude/rules/clarity-export-rate-limit.md), " +
+    "rate-capped before the request. Reads session counts; no client is " +
+    "contacted and no vendor record is changed.",
+  "src/analytics/clarity-export.mjs":
+    "GET of the same Clarity Data Export, reached only from the unregistered " +
+    "clarity-insights-sweeper (DELIBERATELY_UNSERVED in src/workflows/" +
+    "index.test.mjs). Read-only site analytics; no client, no vendor record.",
+  "src/company-brain/local-whisper.mjs":
+    "Downloads the open speech-to-text model file (WHISPER_CPP_MODEL_URL, a " +
+    "public GET) onto the Mac for the Hormozi knowledge-base ingest. Nothing " +
+    "about anybody leaves; no client, no vendor record.",
+  "src/company-brain/hormozi-kb.mjs":
+    "Conduit: defaults fetchImpl and hands it to whisperBytes " +
+    "(src/company-brain/transcribe.mjs, INTERNAL), callModel " +
+    "(src/agents/model.mjs) and the Drive client. Never calls it itself.",
+  "src/adapters/clickfunnels.mjs":
+    "Conduit: puts the caller's fetchImpl on ctx.fetch and hands it to " +
+    "upsertContact in src/analytics/clickfunnels.mjs, which sends through " +
+    "transmit() behind the ADAPTERS fence. Never calls fetch itself.",
+  "src/slo/cf-contact.mjs":
+    "Conduit: puts the caller's fetchImpl on ctx.fetch and hands it to " +
+    "upsertContact in src/analytics/clickfunnels.mjs, which sends through " +
+    "transmit() behind the ADAPTERS fence. Never calls fetch itself.",
   "src/pulse/registry.mjs":
     "Read-only GET uptime pings for the 7am pulse. Never POSTs. Never sends SMS " +
     "or email. Unrecorded is a local count only."

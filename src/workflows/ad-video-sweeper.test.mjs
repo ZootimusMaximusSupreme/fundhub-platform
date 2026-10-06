@@ -51,7 +51,20 @@ const naming = {
 
 describe("a pass that cannot run", () => {
   test("a pass with nothing behind it is reported, not thrown", async () => {
-    const res = await sweep(noDb, { env: {} });
+    /* "Nothing behind it" means no database too. The real store reaches the
+       pool through process.env.DATABASE_URL, so in CI's Postgres job (which
+       sets it) this pass found a real, empty database and came back ok — the
+       test then failed for having something behind it (measured 2026-10-05).
+       The URL is taken away for this one call only; src/db.mjs creates its
+       pool on first use and does not cache a failed attempt. */
+    const savedUrl = process.env.DATABASE_URL;
+    delete process.env.DATABASE_URL;
+    let res;
+    try {
+      res = await sweep(noDb, { env: {} });
+    } finally {
+      if (savedUrl !== undefined) process.env.DATABASE_URL = savedUrl;
+    }
     /* WHAT THIS ASSERTED BEFORE THE MERGE, and why it changed. The store was
        Builder A's file and might not exist, so this checked that a MISSING
        MODULE was reported rather than taking the deploy down. It now exists, so

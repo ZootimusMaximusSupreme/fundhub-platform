@@ -123,7 +123,12 @@ test("adapters report their auth scheme and emitted events", async () => {
   // stale. Kept as a hard count on purpose — it is what catches an adapter
   // being added or dropped without anyone saying so — but if you change the
   // set, change this line in the same commit.
-  assert.equal(adapters.length, 12, "12 adapters in src/adapters");
+  //
+  // 13 since 2026-09-29: src/adapters/clarity-export.mjs (d62c2820b), the one
+  // door owner law allows for Microsoft Clarity Data Export pulls
+  // (.claude/rules/clarity-export-rate-limit.md). It went in without this
+  // line moving, so the count was one short from then until 2026-10-05.
+  assert.equal(adapters.length, 13, "13 adapters in src/adapters");
 
   const twilio = adapters.find((a) => a.name === "twilio");
   assert.equal(twilio.scheme, "HMAC-SHA1", "Twilio signs with SHA1, unlike the rest");

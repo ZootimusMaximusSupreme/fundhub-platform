@@ -116,6 +116,16 @@ const NO_ORG_COLUMN = new Map([
   /* Ad books — the roll-up SQL lives in src/ads/store.mjs adAttributionRollup(),
      which binds a.org_id = $1 from the session and returns [] without an org. */
   ["ad-books.mjs", "scoped in src/ads/store.mjs adAttributionRollup(), which binds a.org_id = $1 and returns [] without an org"],
+  /* Blueprint combined approval — handler writes no SQL. requireClientInOrg()
+     checks the client is in the caller's company first, then
+     loadCombinedApproval() in src/blueprint/credit-partner.mjs binds
+     org_id = $1::uuid on the link read and on the clients read. Read 2026-10-05. */
+  ["blueprint-combined-approval.mjs", "scoped by requireClientInOrg() and src/blueprint/credit-partner.mjs loadCombinedApproval(), which binds org_id = $1::uuid on every query"],
+  /* EEO aggregates — handler writes no SQL. fetchEeoAggregate() in
+     src/hiring/eeo-selfid.mjs binds org_id = $1::uuid and returns [] without an
+     org. Until 2026-10-05 it took no org at all and returned every company's
+     aggregates; this file is what caught it. */
+  ["eeo-aggregate.mjs", "scoped in src/hiring/eeo-selfid.mjs fetchEeoAggregate(), which binds org_id = $1::uuid and returns [] without an org"],
 ]);
 
 /* An allow-listed endpoint must still prove it hands the SESSION's org to

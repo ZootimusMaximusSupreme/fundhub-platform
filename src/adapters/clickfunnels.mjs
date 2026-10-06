@@ -596,7 +596,8 @@ export async function syncApplySurveyClickfunnelsContact(body, { env = process.e
   const apiKey = String(env?.CLICKFUNNELS_API_KEY || "").trim();
   const subdomain = String(env?.CLICKFUNNELS_SUBDOMAIN || "").trim();
   if (!contact || !apiKey || !subdomain) return { ok: false, skipped: true };
-  const ctx = {};
+  // env also carries ADAPTERS_DRY_RUN to the fence upsertContact goes through.
+  const ctx = { env };
   if (typeof fetchImpl === "function") ctx.fetch = fetchImpl;
   const workspaceId = String(env?.CLICKFUNNELS_WORKSPACE_ID || "").trim();
   if (workspaceId) ctx.workspaceId = workspaceId;
@@ -605,6 +606,7 @@ export async function syncApplySurveyClickfunnelsContact(body, { env = process.e
     return { ok: true, id: res?.id ?? null };
   } catch (err) {
     console.error("apply-survey: clickfunnels contact —", err?.message || err);
+    if (err?.blocked) return { ok: false, held: true, error: "held_by_dry_run" };
     return { ok: false, error: "clickfunnels_refused" };
   }
 }

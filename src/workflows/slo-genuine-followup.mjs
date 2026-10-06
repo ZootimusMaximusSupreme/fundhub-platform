@@ -450,6 +450,16 @@ export async function handleReply({ event, db, step }) {
   return { done: true, sent: true, clientId, sms, email, payUrl };
 }
 
+/* For the journey runner (src/journeys/runner/registry.mjs), which never calls
+   the Inngest wrapper (it closes over the live pool) and instead calls the
+   module's own injectable handler. This one file serves three functions, so a
+   single `handle` cannot be right for all of them: each id names its own. */
+export const handles = Object.freeze({
+  "slo-genuine-followup": handleM1,
+  "slo-genuine-reply": handleReply,
+  "slo-genuine-checkout-sms": handleCheckoutM1Sms
+});
+
 export const sloGenuineFollowup = inngest.createFunction(
   { id: "slo-genuine-followup", name: "SLO — genuine unpaid follow-up (message 1)" },
   { event: "slo.contact_started" },

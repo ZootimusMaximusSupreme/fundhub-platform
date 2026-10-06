@@ -110,6 +110,9 @@ export async function handleNoReply({ event, db, step, mint = mintDiscountLink }
   return { done: true, sent: true, clientId, sms, email, payUrl };
 }
 
+/* handle — the injectable shape src/journeys/runner/registry.mjs calls. */
+export const handle = ({ event, db: handleDb, step }) => handleNoReply({ event, db: handleDb, step });
+
 export const sloNoReply197 = inngest.createFunction(
   { id: "slo-no-reply-197", name: "SLO — $197 offer when they do not reply" },
   { event: "slo.contact_started" },

@@ -581,7 +581,10 @@ test("handleClickFunnelsWebhook: apply-survey upserts the ClickFunnels contact a
     CLICKFUNNELS_APPLY_SURVEY_INGEST_SECRET: APPLY_INGEST,
     CLICKFUNNELS_API_KEY: "test-key",
     CLICKFUNNELS_SUBDOMAIN: "myworkspace",
-    CLICKFUNNELS_WORKSPACE_ID: "42"
+    CLICKFUNNELS_WORKSPACE_ID: "42",
+    // The contact upsert is a vendor write behind the ADAPTERS fence
+    // (src/analytics/clickfunnels.mjs upsertContact); live means switched off.
+    ADAPTERS_DRY_RUN: "0"
   };
   const headers = { "x-fundhub-apply-survey-ingest": APPLY_INGEST };
 

@@ -419,7 +419,13 @@ describe("the enumeration is kept honest", () => {
 
     // ── STAFF SCREENS — nothing here is printed onto a mailed document ────
     "src/sales/closer-deck.mjs",
-    "src/sales/unrecorded.mjs"
+    "src/sales/unrecorded.mjs",
+    // Reviewed 2026-10-05. fundingSnapshotNumbersForClient() hands a "Client"
+    // stand-in to buildBlackReportClient() only to get the two pre-approval
+    // NUMBERS back; the name is dropped right there. What leaves the function
+    // is { preapprovalNow, preapprovalAfter, prequalDisplay, source }, written
+    // onto a staff welcome-kit task. Nothing with the word is printed or sent.
+    "src/blueprint/welcome-kit.mjs"
   ];
 
   it("no NEW place substitutes a word where a person's name goes", () => {

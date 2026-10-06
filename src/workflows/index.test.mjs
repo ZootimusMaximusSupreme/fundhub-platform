@@ -30,7 +30,18 @@ const DELIBERATELY_UNSERVED = {
      netlify/functions/ad-video-sweeper.mjs, 15 minutes instead of 26 seconds —
      which calls the very same sweep() out of this directory. Registering it
      here again would put two crons on the same take. */
-  "ad-video-sweeper": "runs as a Netlify scheduled function; an Inngest pass is killed at 26s mid-upload"
+  "ad-video-sweeper": "runs as a Netlify scheduled function; an Inngest pass is killed at 26s mid-upload",
+
+  /* Arrived on main 2026-10-01 (d61d3677d, parked stash work) and was never
+     registered. It must stay unregistered until the owner law changes: a daily
+     cron is a Clarity Data Export pull nobody asked for, and the law is "one
+     pull per time Chris asks", through src/adapters/clarity-export.mjs only
+     (.claude/rules/clarity-export-rate-limit.md, owner-set 2026-09-29). This
+     sweeper goes through src/analytics/clarity-org-sync.mjs instead, and the
+     adapter's daily counter lives in credentials/, which Netlify cannot write.
+     The marketing machine spec (docs/specs/marketing-machine-2026-10-04.md §3,
+     Clarity row) already records it as "not registered, so it never runs". */
+  "clarity-insights-sweeper": "owner law: one Clarity export pull per time Chris asks; a daily cron would pull unasked"
 };
 
 /* EVERY WORKFLOW THIS REPO SERVES, BY NAME.
