@@ -91,7 +91,7 @@ const message = ({ model, text, stop = "end_turn", content, stopDetails = null }
  *   each is an object (sent as JSON), or {raw: <message fields>} or {status, body}
  * judge: the same, for the judge (default: no violations)
  */
-function fakeAnthropic({ writer = [goodDraft()], judge = [{ violations: [] }], served = null } = {}) {
+function fakeAnthropic({ writer = [goodDraft()], judge = [{ violations: [] }], served = null, tick = null } = {}) {
   const calls = [];
   let w = 0;
   let j = 0;
@@ -99,6 +99,7 @@ function fakeAnthropic({ writer = [goodDraft()], judge = [{ violations: [] }], s
     const body = JSON.parse(init.body);
     const isJudge = !!body.output_config?.format?.schema?.properties?.violations;
     calls.push({ url: String(url), body, headers: init.headers, kind: isJudge ? "judge" : "writer" });
+    if (tick) tick(isJudge ? "judge" : "writer");
     const list = isJudge ? judge : writer;
     const reply = list[Math.min(isJudge ? j++ : w++, list.length - 1)];
     const model = served || body.model;
@@ -154,14 +155,22 @@ function fakeStore(over = {}) {
 }
 
 /** Runs writeSlot with a spy on callModel. */
-async function write({ env = ENV, slot = SLOT, writer, judge, served, store: over, deps = {} } = {}) {
-  const ai = fakeAnthropic({ writer, judge, served });
+async function write({ env = ENV, slot = SLOT, writer, judge, served, tick, store: over, deps = {} } = {}) {
+  const ai = fakeAnthropic({ writer, judge, served, tick });
   const { store, log } = fakeStore(over);
   const modelArgs = [];
   const spy = async (args) => { modelArgs.push(args); return callModel(args); };
   const out = await writeSlot(null, env, { batch: BATCH_ROW, slot }, { orgId: ORG, store, fetchImpl: ai.fetchImpl, callModel: spy, ...deps });
   return { out, ai, log, modelArgs, writerArgs: modelArgs.filter((a) => a.outputSchema === SAVE_SCRIPT_SCHEMA), judgeArgs: modelArgs.filter((a) => a.outputSchema === JUDGE_SCHEMA) };
 }
+
+/** A slot context whose slot came from one of Chris's ideas. */
+const ideaCtx = (extra = {}) => async () => ({
+  batch: BATCH_ROW, settings: SETTINGS, funnel: FUNNELS.roadmap_147, partnerId: PARTNER,
+  idea: { id: IDEA, raw_points: "Lenders look at two files.", topic: null, angle_key: null, status: "new" },
+  recent: [], siblings: [], examples: [], ...extra
+});
+const IDEA_SLOT = { ...SLOT, idea_id: IDEA, angle_key: null, source: "chris_idea" };
 
 /** The user turn of the Nth writer request. */
 const userOf = (ai, n = 0) => ai.calls.filter((c) => c.kind === "writer")[n].body.messages[0].content;
@@ -281,12 +290,93 @@ describe("the writer's call (M1 Done #5)", () => {
     assert.deepEqual(f, { kind: "temporary", reason: "The writer stopped: the model took longer than 5 minutes." });
   });
 
-  test("a missing Anthropic key fails before any call, in plain words", async () => {
-    const { out, ai } = await write({ env: { OPENAI_API_KEY: "sk-openai-test-not-real" } });
+  test("a missing Anthropic key fails before any call, in plain words, and leaves the idea alone", async () => {
+    const { out, ai, log } = await write({ env: { OPENAI_API_KEY: "sk-openai-test-not-real" }, slot: IDEA_SLOT, store: { loadSlotContext: ideaCtx() } });
+    assert.equal(out.failed, true);
+    assert.equal(out.temporary, true, "a setup fault is the machine's: the job runs again, then Retry works");
+    assert.match(out.reason, /ANTHROPIC_API_KEY is not set/);
+    assert.match(out.reason, /setup problem, not the idea\. Fix it, then press Retry/);
+    assert.equal(ai.calls.length, 0, "OpenAI is never called instead");
+    assert.deepEqual(log.ideaFailed, [], "the idea is not marked failed");
+  });
+});
+
+// ── Setup faults never burn an idea (review U24-R1) ───────────────────────────────────
+
+describe("a setup fault is the machine's problem, not the idea's", () => {
+  /** Runs the write_slot job handler on an idea slot. */
+  async function runJob({ env = ENV, writer = [goodDraft()], store: over = {}, deps = {} } = {}) {
+    const ai = fakeAnthropic({ writer });
+    const { store, log } = fakeStore({ loadSlotContext: ideaCtx(), ...over });
+    const job = { id: "job-setup", org_id: ORG, payload: { batch_id: BATCH_ROW, slot: IDEA_SLOT } };
+    let thrown = null;
+    let out = null;
+    try {
+      out = await runWriteSlot(job, { db: null, env, deps: { store, fetchImpl: ai.fetchImpl, ...deps } });
+    } catch (e) {
+      thrown = e;
+    }
+    return { thrown, out, ai, log };
+  }
+
+  test("a masked key: the job throws (so it lands in 'failed' and Retry works), no call, the idea untouched", async () => {
+    const { thrown, ai, log } = await runJob({ env: { OPENAI_API_KEY: "sk-openai-test-not-real", ANTHROPIC_API_KEY: "****************abcd" } });
+    assert.ok(thrown, "the handler throws");
+    assert.match(thrown.message, /ANTHROPIC_API_KEY is masked/);
+    assert.equal(ai.calls.length, 0);
+    assert.deepEqual(log.ideaFailed, []);
+    assert.equal(log.saves.length, 0);
+  });
+
+  for (const status of [400, 401, 403]) {
+    test(`HTTP ${status} from Anthropic: the job throws, the idea untouched`, async () => {
+      const { thrown, ai, log } = await runJob({
+        writer: [{ status, body: { type: "error", error: { type: status === 401 ? "authentication_error" : "invalid_request_error", message: "turned away" } } }]
+      });
+      assert.ok(thrown, "the handler throws");
+      assert.match(thrown.message, new RegExp(`HTTP ${status}`));
+      assert.match(thrown.message, /press Retry/);
+      assert.equal(ai.calls.filter((c) => c.kind === "writer").length, 1, "no second call: waiting will not fix it");
+      assert.deepEqual(log.ideaFailed, []);
+    });
+  }
+
+  test("rule files nobody can read: the job throws before any call, the idea untouched", async () => {
+    const readRuleFiles = async () => ({
+      rules: "", voice: "", recipes: "", catalog: [], angles: [], bannedLive: [],
+      missing: ["marketing/ads/RULES.md", "marketing/broll/catalog.json"], source: { sha: null, from: null }
+    });
+    const { thrown, ai, log } = await runJob({ deps: { readRuleFiles } });
+    assert.ok(thrown);
+    assert.match(thrown.message, /could not read marketing\/ads\/RULES\.md and marketing\/broll\/catalog\.json/);
+    assert.equal(ai.calls.length, 0);
+    assert.deepEqual(log.ideaFailed, []);
+  });
+
+  test("no funnel or no house partner: the job throws, the idea untouched", async () => {
+    for (const extra of [{ funnel: null }, { partnerId: null }]) {
+      const { thrown, ai, log } = await runJob({ store: { loadSlotContext: ideaCtx(extra) } });
+      assert.ok(thrown, JSON.stringify(extra));
+      assert.equal(ai.calls.length, 0);
+      assert.deepEqual(log.ideaFailed, []);
+    }
+  });
+
+  test("a refusal is still the script's: the job is done, the idea is marked failed", async () => {
+    const { thrown, out, log } = await runJob({ writer: [{ raw: { content: [], stop: "refusal", stopDetails: { category: "cyber" } } }] });
+    assert.equal(thrown, null);
     assert.equal(out.failed, true);
     assert.equal(out.temporary, false);
-    assert.match(out.reason, /ANTHROPIC_API_KEY is not set/);
-    assert.equal(ai.calls.length, 0, "OpenAI is never called instead");
+    assert.deepEqual(log.ideaFailed.map((x) => x.ideaId), [IDEA]);
+  });
+
+  test("fixScript: a setup fault is temporary too", async () => {
+    const ai = fakeAnthropic();
+    const { store } = fakeStore();
+    const out = await fixScript(null, { ANTHROPIC_API_KEY: "****************abcd" }, { script_id: SCRIPT, version: 2, note: "shorter" }, { orgId: ORG, store, fetchImpl: ai.fetchImpl });
+    assert.equal(out.failed, true);
+    assert.equal(out.temporary, true);
+    assert.equal(ai.calls.length, 0);
   });
 });
 
@@ -458,6 +548,84 @@ describe("the check loop", () => {
     assert.equal(out.flagged, true);
     assert.equal(out.check_results.time_ran_out, true);
   });
+
+  test("time: a rewrite reply with no JSON is not asked again when a whole call no longer fits (review U24-R3)", async () => {
+    const bad = goodDraft({ cues: ["We do credit repair for your file", ...CUES.slice(1)] });
+    let clock = 0;
+    const { out, ai } = await write({
+      writer: [bad, { raw: { text: "no json here" } }, goodDraft()],
+      tick: () => { clock += 3 * 60_000; },
+      deps: { now: () => clock, deadlineAt: 10 * 60_000 }
+    });
+    // 0:00 first draft → 3:00 the rewrite starts (a 5-minute call fits) → 6:00 no JSON;
+    // 6:00 + 5:00 is past 10:00, so no second ask.
+    assert.equal(ai.calls.filter((c) => c.kind === "writer").length, 2, "the no-JSON retry did not start");
+    assert.equal(ai.calls.filter((c) => c.kind === "judge").length, 0, "no judge either: no time left");
+    assert.equal(out.flagged, true, "the first draft is saved flagged, never lost");
+    assert.equal(out.check_results.time_ran_out, true);
+    assert.match(out.check_results.rewrite_errors.join(" "), /not enough time left to ask again/);
+  });
+
+  test("time: a first draft with no JSON and no room for the retry is the machine's fault, the idea untouched", async () => {
+    let clock = 0;
+    const { out, ai, log } = await write({
+      slot: IDEA_SLOT, store: { loadSlotContext: ideaCtx() },
+      writer: [{ raw: { text: "no json here" } }, goodDraft()],
+      tick: () => { clock += 3 * 60_000; },
+      deps: { now: () => clock, deadlineAt: 6 * 60_000 }
+    });
+    assert.equal(ai.calls.length, 1);
+    assert.equal(out.failed, true);
+    assert.equal(out.temporary, true, "the job runs again with a fresh deadline");
+    assert.match(out.reason, /not enough time left to ask again/);
+    assert.deepEqual(log.ideaFailed, []);
+  });
+
+  test("a compliance screen that could not run is flagged, never sent back (review U24-R4)", async () => {
+    const engine = async () => ({
+      state: "blocked",
+      reasons: [{ code: "screen_error", rule_set: "engine", message: "Compliance screening could not complete, so this is blocked.", detail: "boom" }]
+    });
+    const { out, ai, log } = await write({ store: { screenCopy: engine } });
+    assert.equal(ai.calls.filter((c) => c.kind === "writer").length, 1, "no rewrite: Claude cannot fix an engine fault");
+    assert.equal(out.flagged, true, "it still fails closed");
+    const cr = log.saves[0].checkResults;
+    assert.equal(cr.compliance.engine_blocked, true);
+    assert.equal(cr.compliance.copy_blocked, false);
+    assert.equal(cr.strict.rounds, 0);
+    assert.match(cr.flag_reasons.join(" "), /compliance screen could not run/);
+    assert.doesNotMatch(cr.flag_reasons.join(" "), /still fails/);
+  });
+
+  test("a label key the database would refuse is flagged and saved as NULL, so the draft still saves (review U24-R2)", async () => {
+    const bad = goodDraft({ extra: { hook_key: "3_files_one_lender" } });
+    const { out, ai, log } = await write({ writer: [bad] });
+    assert.equal(ai.calls.filter((c) => c.kind === "writer").length, 1 + STRICT_ROUNDS, "the bad key went back");
+    assert.match(userOf(ai, 1), /hook_key "3_files_one_lender" is not a usable key/);
+    assert.equal(out.flagged, true);
+    const { draft, checkResults } = log.saves[0];
+    assert.equal(checkResults.labels.passed, false);
+    assert.match(checkResults.flag_reasons.join(" "), /label keys/);
+
+    // The real store's INSERT: hook_key goes in as NULL, and no ad_labels row is made for it.
+    const queries = [];
+    const tx = {
+      query: async (sql, params) => {
+        queries.push({ sql, params });
+        if (/INSERT INTO ad_scripts/.test(sql)) return { rows: [{ id: "s1", root_script_id: "s1", version: 1, status: "draft", source: "machine" }] };
+        return { rows: [], rowCount: 0 };
+      }
+    };
+    const store = makeStore(null, { asStaff: (fn) => fn(tx) });
+    const saved = await store.saveDraft({ orgId: ORG, partnerId: PARTNER, batch: null, ideaId: null, draft, checkResults, angleNames: {} });
+    assert.equal(saved.id, "s1");
+    const ins = queries.find((q) => /INSERT INTO ad_scripts/.test(q.sql));
+    assert.equal(ins.params[7], "the_conveyor_belt", "angle_key");
+    assert.equal(ins.params[8], null, "hook_key: NULL = unknown, never the refused key");
+    const labelKeys = queries.filter((q) => /INSERT INTO ad_labels/.test(q.sql)).map((q) => `${q.params[1]}:${q.params[2]}`);
+    assert.ok(labelKeys.includes("angle:the_conveyor_belt"), labelKeys.join(", "));
+    assert.equal(labelKeys.some((k) => k.startsWith("hook:")), false);
+  });
 });
 
 // ── Offer facts ───────────────────────────────────────────────────────────────────────
@@ -490,6 +658,32 @@ describe("offer facts come only from offerFacts()", () => {
     const priced = goodDraft({ cta: "Book a call below. The plan is $147, a soft pull only, so zero impact on your score, and nothing moves until you say so." });
     const { ai } = await write({ slot, writer: [priced, goodDraft()] });
     assert.match(userOf(ai, 1), /This is a book-a-call ad, so it never says a price \(rule 29\)\. It says \$147/);
+  });
+
+  test("a roadmap ad that copies the old list price from an example goes back (review U24-R6)", async () => {
+    const old = dollars(SLO_LIST_PRICE_CENTS);
+    const examples = [{ title: "Older approved script", body: `${HOOK}\n\nGet your Roadmap for ${old} below.` }];
+    const stale = goodDraft({ cta: `Tap below to get your Roadmap for ${old}. It is a soft pull only, so there is zero impact on your score, and nothing moves until you say so.` });
+    const { out, ai } = await write({
+      writer: [stale, goodDraft()],
+      store: { loadSlotContext: async () => ({ batch: BATCH_ROW, settings: SETTINGS, funnel: FUNNELS.roadmap_147, partnerId: PARTNER, idea: null, recent: [], siblings: [], examples }) }
+    });
+    assert.ok(userOf(ai, 0).includes(old), "the approved example carries the old price word for word");
+    const esc = (t) => t.replace(/[$.]/g, (c) => `\\${c}`);
+    assert.match(userOf(ai, 1), new RegExp(`This ad sells the Roadmap for ${esc(dollars(SLO_PRICE_CENTS))}\\. It says ${esc(old)}, which is not its price`));
+    assert.equal(out.flagged, false, "the rewrite dropped it");
+    assert.equal(out.check_results.offer.passed, true);
+  });
+
+  test("a roadmap ad may say its own price, and never another offer's", async () => {
+    const own = goodDraft({ cta: `Tap below to get your Roadmap for ${dollars(SLO_PRICE_CENTS)}. It is a soft pull only, so there is zero impact on your score, and nothing moves until you say so.` });
+    const { log } = await write({ writer: [own] });
+    assert.equal(log.saves[0].checkResults.offer.passed, true, JSON.stringify(log.saves[0].checkResults.offer));
+    assert.equal(log.saves[0].checkResults.offer.price, dollars(SLO_PRICE_CENTS));
+
+    const other = goodDraft({ cta: `Tap below. The done-for-you plan is ${dollars(OFFERS.FUNDING_DFY.priceCents)}, a soft pull only, so zero impact on your score, and nothing moves until you say so.` });
+    const { ai } = await write({ writer: [other, goodDraft()] });
+    assert.match(userOf(ai, 1), /which is not its price/);
   });
 
   test("no literal price is typed into the writer's code", () => {

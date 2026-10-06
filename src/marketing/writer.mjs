@@ -44,7 +44,9 @@
 //      for both funnels, platform meta) on body and meta_copy. Failures go back to
 //      Claude for up to 2 rounds. (The compliance screen is pattern-only, so it runs with
 //      the code checks and its reasons go back too; spec step 3 still holds: it runs on
-//      the final body and meta_copy.)
+//      the final body and meta_copy. A screen that could not run, rule_set 'engine', is
+//      not about the words: it still blocks and flags the draft, but is never sent
+//      back.) A priced ad says only its own price, never another known one.
 //   2. One judge pass with MARKETING_CHECK_MODEL (default claude-sonnet-5-5, effort
 //      'medium', structured output) for Appendix A rules 13-34 plus "carry" (3), "round
 //      two" (9) and "man" (12). Violations go back once. The judge is not run again.
@@ -54,6 +56,14 @@
 // A rewrite replaces the draft only when it passes the code checks, or when the draft it
 // replaces did not pass them either. A draft that still fails anything is saved FLAGGED
 // (check_results.flagged = true, with plain reasons): it ships marked "needs a look".
+// A label key the database would refuse is saved as NULL, so a flagged draft always saves.
+//
+// WHOSE FAULT. A refusal, no script in the reply twice, or a batch duplicate that
+// survived its rewrite is the script's: the slot fails and its idea is marked failed.
+// Anything else (a timeout, 429, 5xx, no key, a masked key, HTTP 400/401/403, rule files
+// nobody can read, no funnel, no house partner, no time left for a retry) is the
+// machine's: the job runs again and lands in 'failed' after its tries, where Retry works,
+// and the idea stays as it was.
 //
 // COST (spec §7.6, Appendix E). Every call that got an answer is logged in
 // marketing_model_usage with the model that SERVED it (a refusal fallback can answer on
@@ -85,6 +95,7 @@ import { checkScriptText, loadBannedLive } from "../../scripts/ads/check-script.
 import { DEFAULT_STYLE } from "../../marketing/ads/rules-data.mjs";
 import { validateAnimationPlan } from "./animation-plan.mjs";
 import { offerFacts, OFFER_KEYS } from "./offer-facts.mjs";
+import { SLO_LIST_PRICE_CENTS } from "../slo/offer.mjs";
 import { logUsage as defaultLogUsage, costStatus as defaultCostStatus } from "./model-usage.mjs";
 import { queueBuzz as defaultQueueBuzz } from "./notify.mjs";
 import { getOrCreateSettings } from "./settings-store.mjs";
@@ -453,6 +464,12 @@ async function upsertLabels(tx, orgId, labels, names = {}) {
   }
 }
 
+/* A label key the database would refuse (ad_scripts_angle_ck / _hook_ck / _offer_ck,
+   377) is saved as NULL: unknown, never a guess (CLAUDE.md §12). The bad key stays in
+   check_results.labels and the draft is flagged, so a flagged draft always saves. */
+/** @param {unknown} k */
+const labelOrNull = (k) => (typeof k === "string" && isLabelKey(k) ? k : null);
+
 /** The columns a saved draft fills, in INSERT order after the fixed ones. */
 function draftColumns(draft, checkResults) {
   return {
@@ -461,9 +478,9 @@ function draftColumns(draft, checkResults) {
     hook_text: hookOf(draft) || null,
     script_type: scriptTypeOf(draft.script_format),
     lane: draft.lane || null,
-    angle_key: draft.angle_key,
-    hook_key: draft.hook_key,
-    offer_key: draft.offer_key || null,
+    angle_key: labelOrNull(draft.angle_key),
+    hook_key: labelOrNull(draft.hook_key),
+    offer_key: labelOrNull(draft.offer_key),
     script_format: draft.script_format,
     style: draft.style,
     parts: JSON.stringify(draft.parts),
@@ -800,34 +817,63 @@ function checkMetaCopy(draft, bannedLive) {
   return { passed: failures.length === 0, failures };
 }
 
-/** Every way a known offer price can be written: with and without the thousands comma,
- *  with and without ".00". Built from offerFacts(), never typed here. */
-function priceForms() {
-  const out = [];
+/**
+ * Every price an ad could copy by mistake, in cents: each offer's own price (offerFacts()
+ * for every OFFER_KEY) and the Roadmap's crossed-out list price (SLO_LIST_PRICE_CENTS,
+ * src/slo/offer.mjs: shown on the page, never charged, so never the price an ad says;
+ * an approved example written before the price change may still carry it). Read from
+ * the files that own them, never typed here.
+ */
+function knownPriceCents() {
+  const out = new Set();
   for (const key of OFFER_KEYS) {
     const f = offerFacts(key);
-    const p = f ? formatPrice(f.price_cents) : null;
-    if (!p) continue;
-    out.push(p, p.replace(/,/g, ""));
-    if (!p.includes(".")) out.push(`${p}.00`, `${p.replace(/,/g, "")}.00`);
+    if (f && Number.isInteger(f.price_cents)) out.add(f.price_cents);
   }
+  if (Number.isInteger(SLO_LIST_PRICE_CENTS)) out.add(SLO_LIST_PRICE_CENTS);
+  return [...out];
+}
+
+/** Every way one price can be written: with and without the thousands comma, with and
+ *  without ".00". */
+function priceForms(cents) {
+  const p = formatPrice(cents);
+  if (!p) return [];
+  const out = [p, p.replace(/,/g, "")];
+  if (!p.includes(".")) out.push(`${p}.00`, `${p.replace(/,/g, "")}.00`);
   return [...new Set(out)];
 }
 
-/** Rule 29: a book-a-call ad never mentions a price. Prices come only from offerFacts(). */
-function checkOffer(draft, bookCall) {
+/** @param {string} p @param {string} text */
+const says = (p, text) => new RegExp(`${p.replace(/[$.]/g, (c) => `\\${c}`)}(?!\\d|[.,]\\d)`).test(text);
+
+/**
+ * The price rule. Rule 29: a book-a-call ad never says a price. A priced ad says only its
+ * own price (offerFacts()), never another known one; an offer whose price is not known
+ * says none of them.
+ * @param {any} draft @param {any} run
+ */
+function checkOffer(draft, run) {
+  const bookCall = !!run.bookCall;
+  const offer = run.offer || null;
+  const own = !bookCall && offer && Number.isInteger(offer.price_cents) ? offer.price_cents : null;
+  const ownText = own == null ? null : formatPrice(own);
+  const m = draft.meta_copy;
+  const text = [draft.body, m.primary_text, m.headline, m.description].join("\n");
   const failures = [];
-  if (bookCall) {
-    const m = draft.meta_copy;
-    const text = [draft.body, m.primary_text, m.headline, m.description].join("\n");
-    for (const p of priceForms()) {
-      const re = new RegExp(`${p.replace(/[$.]/g, (c) => `\\${c}`)}(?!\\d|[.,]\\d)`);
-      if (re.test(text)) {
-        failures.push({ rule: "book-call-price", message: `This is a book-a-call ad, so it never says a price (rule 29). It says ${p}.` });
-      }
+  for (const cents of knownPriceCents()) {
+    if (cents === own) continue;
+    const p = priceForms(cents).find((form) => says(form, text));
+    if (!p) continue;
+    if (bookCall) {
+      failures.push({ rule: "book-call-price", message: `This is a book-a-call ad, so it never says a price (rule 29). It says ${p}.` });
+    } else if (ownText) {
+      failures.push({ rule: "wrong-price", message: `This ad sells the ${offer.label} for ${ownText}. It says ${p}, which is not its price. Say ${ownText}, or say no price.` });
+    } else {
+      failures.push({ rule: "wrong-price", message: `This offer's price is not known here, so the ad says no price. It says ${p}.` });
     }
   }
-  return { passed: failures.length === 0, failures, book_call: bookCall };
+  return { passed: failures.length === 0, failures, book_call: bookCall, price: ownText };
 }
 
 /** The angle and hook keys must be keys the database takes. */
@@ -843,9 +889,14 @@ function checkLabels(draft) {
 
 /* Compliance reasons that say nothing about the words: the approval gate (every ad waits
    for Chris anyway) and a Meta category that is not configured yet (the loader, U28,
-   blocks on that itself at load). Everything else, including an engine error, counts. */
+   blocks on that itself at load). An engine reason (rule_set 'engine': the screen threw,
+   or was called without an offer type or with an unknown platform) is not about the
+   words either, so Claude cannot fix it: it still blocks (the screen fails closed) and
+   flags the draft, but it is never sent back for a rewrite. Everything else counts. */
 /** @param {any} r */
-const isCopyReason = (r) => r && r.rule_set !== "approval" && r.code !== "special_ad_category_unset" && r.severity !== "warn";
+const isEngineReason = (r) => !!r && r.rule_set === "engine";
+/** @param {any} r */
+const isCopyReason = (r) => !!r && !isEngineReason(r) && r.rule_set !== "approval" && r.code !== "special_ad_category_unset" && r.severity !== "warn";
 
 /**
  * Every code check on one candidate. Async only for the compliance screen.
@@ -861,7 +912,7 @@ async function codeChecks(run, cand) {
     errors: [...cand.parseErrors.map((message) => ({ item: null, code: "bad_props", message })), ...anim.errors]
   };
   const meta = checkMetaCopy(d, run.bannedLive);
-  const offer = checkOffer(d, run.bookCall);
+  const offer = checkOffer(d, run);
   const labels = checkLabels(d);
   const m = d.meta_copy;
   const screened = await run.store.screenCopy({
@@ -869,7 +920,11 @@ async function codeChecks(run, cand) {
     text: [d.body, m.primary_text, m.headline, m.description].filter(Boolean).join("\n\n")
   });
   const copyReasons = (screened.reasons || []).filter(isCopyReason);
-  const compliance = { state: screened.state, reasons: screened.reasons || [], copy_blocked: copyReasons.length > 0 };
+  const engineBlocked = (screened.reasons || []).some(isEngineReason);
+  const compliance = {
+    state: screened.state, reasons: screened.reasons || [],
+    copy_blocked: copyReasons.length > 0, engine_blocked: engineBlocked
+  };
 
   const problems = [
     ...strict.failures.map((f) => `Rule check${f.line ? ` (line ${f.line})` : ""}: ${f.message}`),
@@ -889,7 +944,8 @@ async function codeChecks(run, cand) {
     !labels.passed && "the label keys",
     compliance.copy_blocked && "the compliance screen"
   ].filter(Boolean);
-  return { ok: problems.length === 0, strict, parts, animation, meta, offer, labels, compliance, problems, failedAreas };
+  /* problems: what goes back to Claude. ok: nothing blocks, including an engine fault. */
+  return { ok: problems.length === 0 && !engineBlocked, strict, parts, animation, meta, offer, labels, compliance, problems, failedAreas };
 }
 
 // ── Calling Claude ────────────────────────────────────────────────────────────────────
@@ -905,13 +961,23 @@ function temporaryWords(reason) {
   }
 }
 
+/* Said after every setup fault, so the job's failed reason tells Chris what to do. */
+const SETUP_TAIL = "This is a setup problem, not the idea. Fix it, then press Retry.";
+
 /**
  * What went wrong with one reply, in plain words, or null when it holds JSON.
- * kind: no_json (retry once) | refusal | temporary (the job retries) | permanent.
+ * kind:
+ *   no_json    the reply had no script (retry once; twice is the script's problem)
+ *   refusal    Claude would not write it (the script's problem)
+ *   temporary  timeout, 429, 5xx, unreachable, no credit: the job runs again
+ *   setup      the machine's problem, not the idea's: Claude was never called (no key, a
+ *              masked key, a bad model name), or Anthropic turned the request away
+ *              (HTTP 400, 401, 403, 404, ...). The job runs again and then lands in
+ *              'failed', where Retry works; the idea is never marked failed for it.
  * @param {any} res @param {number} timeoutMs
  */
 export function failureOf(res, timeoutMs) {
-  if (!res) return { kind: "permanent", reason: "The writer got no answer at all." };
+  if (!res) return { kind: "setup", reason: `The writer got no answer at all. ${SETUP_TAIL}` };
   if (!res.error) {
     return isObj(res.json) ? null : { kind: "no_json", reason: "Claude's reply had no script in it." };
   }
@@ -923,15 +989,18 @@ export function failureOf(res, timeoutMs) {
   if (e === MODEL_NO_JSON) return { kind: "no_json", reason: "Claude's reply had no script in it." };
   if (e.startsWith("cut off:")) return { kind: "no_json", reason: "Claude's reply was cut off before it finished." };
   if (e.startsWith(MODEL_NOT_SENT)) {
-    return { kind: "permanent", reason: `The writer could not call Claude: ${e.slice(MODEL_NOT_SENT.length)}` };
+    return { kind: "setup", reason: `The writer could not call Claude: ${e.slice(MODEL_NOT_SENT.length)} ${SETUP_TAIL}` };
   }
   if (/^anthropic timeout/.test(e)) {
     return { kind: "temporary", reason: `The writer stopped: the model took longer than ${Math.round(timeoutMs / 60_000)} minutes.` };
   }
   const c = classifyModelFailure({ status: res.status, error: e });
   if (c.temporary) return { kind: "temporary", reason: temporaryWords(c.reason) };
-  return { kind: "permanent", reason: `The writer stopped: Anthropic refused the request (HTTP ${res.status ?? "unknown"}).` };
+  return { kind: "setup", reason: `The writer stopped: Anthropic turned the request away (HTTP ${res.status ?? "unknown"}). ${SETUP_TAIL}` };
 }
+
+/** True for a failure the job should run again for, leaving the idea as it was. */
+const retryKind = (kind) => kind === "temporary" || kind === "setup" || kind === "out_of_time";
 
 /** The cost caps, before every call. At a cap: one buzz, and the caller stops. */
 async function capCheck(run) {
@@ -975,14 +1044,25 @@ async function modelCall(run, { purpose, model, system, user, schema, maxTokens,
   return { res };
 }
 
+/** True when a whole call still fits before the deadline. */
+const timeLeft = (run) => run.now() + WRITER_TIMEOUT_MS <= run.deadlineAt;
+
 /**
- * The writer: one call, with one retry when the reply holds no JSON.
- * @returns {Promise<any>} {draft, parseErrors, raw} | {fail} | {capped}
+ * The writer: one call, with one retry when the reply holds no JSON. The retry starts
+ * only when a whole call still fits before the deadline (spec §4 trap 5): otherwise it
+ * fails 'out_of_time' with timeRanOut set, and nothing runs past the budget.
+ * @returns {Promise<any>} {draft, parseErrors, raw} | {fail, timeRanOut?} | {capped}
  */
 async function writeDraft(run, user) {
   /** @type {any} */
   let last = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
+    if (attempt === 2 && !timeLeft(run)) {
+      return {
+        fail: { kind: "out_of_time", reason: `${last.reason.replace(/\.$/, "")}, and there was not enough time left to ask again.` },
+        timeRanOut: true
+      };
+    }
     const r = await modelCall(run, {
       purpose: "write", model: run.writerModel, system: run.system, user, schema: SAVE_SCRIPT_SCHEMA,
       maxTokens: WRITER_MAX_TOKENS, timeoutMs: WRITER_TIMEOUT_MS, effort: WRITER_EFFORT
@@ -1034,9 +1114,6 @@ async function runJudge(run, draft) {
   return { judge: base };
 }
 
-/** True when a whole call still fits before the deadline. */
-const timeLeft = (run) => run.now() + WRITER_TIMEOUT_MS <= run.deadlineAt;
-
 /**
  * The check loop on a first draft: code-check rounds, the judge, sameness.
  * @param {any} run @param {any} first @param {string} basePrompt
@@ -1050,13 +1127,15 @@ async function checkLoop(run, first, basePrompt) {
     if (!timeLeft(run)) { notes.time_ran_out = true; return { none: true }; }
     const next = await writeDraft(run, buildRewritePrompt(basePrompt, cur.raw, problems));
     if (next.capped) return { capped: next.capped };
+    if (next.timeRanOut) notes.time_ran_out = true;
     if (next.fail) { notes.rewrite_errors.push(next.fail.reason); return { none: true }; }
     return { cand: next, det: await codeChecks(run, next) };
   };
 
-  // 1. Code checks: up to 2 rounds.
+  // 1. Code checks: up to 2 rounds. Only problems Claude can fix go back: a compliance
+  //    screen that could not run (engine) is flagged, never sent back.
   let rounds = 0;
-  while (!det.ok && rounds < STRICT_ROUNDS) {
+  while (det.problems.length && rounds < STRICT_ROUNDS) {
     const r = await rewrite(det.problems);
     if (r.capped) return { capped: r.capped };
     if (r.none) break;
@@ -1099,7 +1178,12 @@ async function checkLoop(run, first, basePrompt) {
 function buildCheckResults(run, loop) {
   const { det, judge, same } = loop;
   const reasons = [];
-  if (!det.ok) reasons.push(`It still fails ${det.failedAreas.join(", ")} after ${plural(loop.rounds, "rewrite round")}.`);
+  if (det.problems.length) {
+    reasons.push(`It still fails ${det.failedAreas.join(", ") || "a code check"} after ${plural(loop.rounds, "rewrite round")}.`);
+  }
+  if (det.compliance.engine_blocked) {
+    reasons.push("The compliance screen could not run, so it counts as blocked. That is a machine problem, not the words.");
+  }
   if (!judge.ran) reasons.push(`The rule judge did not run: ${judge.error || "no reason given"}.`.replace(/\.\.$/, "."));
   else if (judge.notes.length && !judge.taken) reasons.push(`The rule judge found ${plural(judge.notes.length, "problem")} the rewrite did not fix.`);
   if (same.overlap_too_high) {
@@ -1158,6 +1242,10 @@ function batchUse(siblings, batchTotal) {
 
 /** @param {string} reason @param {object} [extra] */
 const failed = (reason, extra = {}) => ({ failed: true, reason, temporary: false, ...extra });
+
+/** A failure that is not the idea's or the script's: the job runs again (and lands in
+ *  'failed' after its tries, where Retry works). @param {string} reason */
+const retryLater = (reason) => ({ failed: true, reason, temporary: true });
 
 /**
  * The parts of a run every path shares.
@@ -1220,6 +1308,10 @@ function angleNames(angles) {
  *   deps   {orgId, jobId, deadlineAt, now, fetchImpl, callModel, store, pool, asStaff, readRuleFiles, getContents}
  * → {script_id, flagged, check_results}
  * | {failed:true, reason, temporary}   temporary:true = the job should run again later
+ *   (a timeout, 429 or 5xx, or a setup fault: no key, a masked key, HTTP 400/401/403,
+ *   rule files nobody can read, no funnel, no house partner). Only temporary:false
+ *   failures about the script itself (a refusal, no script twice, a batch duplicate)
+ *   mark the slot's idea failed; a cost cap never does.
  *
  * @param {any} db @param {Record<string, any>} env
  * @param {{ batch?: any, slot?: any }} input @param {any} [deps]
@@ -1238,13 +1330,18 @@ export async function writeSlot(db, env, { batch = null, slot = null } = {}, dep
 
   const ctx = await store.loadSlotContext({ orgId, batchId, slot });
   const ideaId = ctx.idea ? ctx.idea.id : null;
+  /* Only a fault in the script itself marks its idea failed: a refusal, no script in the
+     reply twice, or a batch duplicate that survived its rewrite. A setup fault (no key, a
+     masked key, Anthropic turning the request away, rule files nobody can read, a missing
+     funnel or house partner) is the machine's: the job runs again and the idea stays as
+     it was, so one bad setting never burns a whole batch of Chris's ideas. */
   const giveUp = async (reason, extra = {}) => {
     await store.markIdeaFailed({ orgId, ideaId, reason });
     return failed(reason, extra);
   };
   if (batchId && !ctx.batch) return giveUp("The batch for this slot was not found.");
-  if (!ctx.funnel) return giveUp(`There is no funnel named ${slot.funnel_key}.`);
-  if (!ctx.partnerId) return giveUp("This company has no Fundhub (house) partner to file the script under.");
+  if (!ctx.funnel) return retryLater(`There is no funnel named ${slot.funnel_key}. Add it in Settings, then press Retry.`);
+  if (!ctx.partnerId) return retryLater("This company has no Fundhub (house) partner to file the script under. Add it, then press Retry.");
 
   const format = slot.script_format;
   const style = STYLES.includes(slot.style) ? slot.style : styleFor(ctx.settings, format);
@@ -1260,7 +1357,7 @@ export async function writeSlot(db, env, { batch = null, slot = null } = {}, dep
     recent: ctx.recent, siblings: ctx.siblings, batchTotal: ctx.batch ? ctx.batch.total : null
   });
   if (rules.missing.length) {
-    return giveUp(`The writer could not read ${rules.missing.join(" and ")}, so nothing was written.`);
+    return retryLater(`The writer could not read ${rules.missing.join(" and ")}, so nothing was written. ${SETUP_TAIL}`);
   }
 
   const use = batchUse(ctx.siblings, ctx.batch ? ctx.batch.total : null);
@@ -1275,7 +1372,7 @@ export async function writeSlot(db, env, { batch = null, slot = null } = {}, dep
   const first = await writeDraft(run, base);
   if (first.capped) return failed(COST_CAP_REASON, { cost_cap: first.capped.which });
   if (first.fail) {
-    if (first.fail.kind === "temporary") return { failed: true, reason: first.fail.reason, temporary: true };
+    if (retryKind(first.fail.kind)) return retryLater(first.fail.reason);
     return giveUp(first.fail.reason, first.fail.category ? { category: first.fail.category } : {});
   }
 
@@ -1342,7 +1439,7 @@ export async function fixScript(db, env, { script_id, version, note } = {}, deps
     angleKey, forceAngle: false, note,
     recent: ctx.recent, siblings: ctx.siblings, batchTotal: ctx.batch ? ctx.batch.total : null
   });
-  if (rules.missing.length) return failed(`The writer could not read ${rules.missing.join(" and ")}, so nothing was changed.`);
+  if (rules.missing.length) return retryLater(`The writer could not read ${rules.missing.join(" and ")}, so nothing was changed. ${SETUP_TAIL}`);
 
   const use = batchUse(ctx.siblings, ctx.batch ? ctx.batch.total : null);
   const base = buildFixPrompt({
@@ -1356,7 +1453,7 @@ export async function fixScript(db, env, { script_id, version, note } = {}, deps
   const first = await writeDraft(run, base);
   if (first.capped) return failed(COST_CAP_REASON, { cost_cap: first.capped.which });
   if (first.fail) {
-    if (first.fail.kind === "temporary") return { failed: true, reason: first.fail.reason, temporary: true };
+    if (retryKind(first.fail.kind)) return retryLater(first.fail.reason);
     return failed(first.fail.reason, first.fail.category ? { category: first.fail.category } : {});
   }
   const loop = await checkLoop(run, first, base);
