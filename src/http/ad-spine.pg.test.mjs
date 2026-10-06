@@ -104,14 +104,19 @@ describe("GET /api/read/ad-spine", { skip: !HAS_DB ? "no DATABASE_URL" : false }
     )).rows[0];
     tokenStaff = (await createSession(db, { staffId: staffRow.id, orgId: org })).token;
 
-    // csm is a real role (290_csm_role.sql) deliberately NOT in ROLE_SETS.STAFF,
-    // so it is the shortest path to a real 403 rather than a 401.
-    const csmRow = (await db.query(
+    // 'partner' is a real role (036_partner_role.sql) deliberately NOT in
+    // ROLE_SETS.STAFF, so it is the shortest path to a real 403 rather than a
+    // 401 — the same fixture scripts-write.pg.test.mjs uses. This used 'csm'
+    // until 2026-10-05, but csm joined STAFF on purpose on 2026-09-05
+    // (2b10dae65, "The CSM can now do the job"; see the STAFF comment in
+    // src/http/read-api.mjs), so a csm is now ALLOWED here and the 403 this
+    // test proves needs a role that is still outside STAFF.
+    const nonStaffRow = (await db.query(
       `INSERT INTO staff (org_id, email, name, role, status)
-       VALUES ($1,$2,'Ad Spine Non-Staff','csm','active') RETURNING id`,
-      [org, `${EMAIL_TAG}.csm@example.com`]
+       VALUES ($1,$2,'Ad Spine Non-Staff','partner','active') RETURNING id`,
+      [org, `${EMAIL_TAG}.partner@example.com`]
     )).rows[0];
-    tokenNonStaff = (await createSession(db, { staffId: csmRow.id, orgId: org })).token;
+    tokenNonStaff = (await createSession(db, { staffId: nonStaffRow.id, orgId: org })).token;
 
     await asStaff(async (tx) => {
       connId = (await tx.query(

@@ -69,7 +69,8 @@ export async function syncSloClickfunnelsContact(input, { env = process.env, fet
   const subdomain = clean(env?.CLICKFUNNELS_SUBDOMAIN);
   if (!contact) return { ok: false, skipped: true, reason: "no_email" };
   if (!apiKey || !subdomain) return { ok: false, skipped: true, reason: "no_credentials" };
-  const ctx = {};
+  // env also carries ADAPTERS_DRY_RUN to the fence upsertContact goes through.
+  const ctx = { env };
   if (typeof fetchImpl === "function") ctx.fetch = fetchImpl;
   const workspaceId = clean(env?.CLICKFUNNELS_WORKSPACE_ID);
   if (workspaceId) ctx.workspaceId = workspaceId;
@@ -78,6 +79,7 @@ export async function syncSloClickfunnelsContact(input, { env = process.env, fet
     return { ok: true, id: body?.id ?? null };
   } catch (err) {
     console.error("slo: clickfunnels contact —", err?.message || err);
+    if (err?.blocked) return { ok: false, held: true, error: "held_by_dry_run" };
     // platformMessage is ClickFunnels' own words with the key already scrubbed
     // (src/analytics/clickfunnels.mjs cfFetch).
     const out = { ok: false, error: "clickfunnels_refused" };

@@ -247,8 +247,13 @@ test("the RAW seed — no emit step — is readable as a real bureau pull", { sk
   });
   assert.deepEqual(adapter.available, ["experian", "equifax", "transunion"],
     "all three bureaus answered in the seeded pull, so all three must reach the engine");
-  assert.deepEqual(adapter.missing.client.map((m) => m.field), ["hasLLC"],
-    "this seed has no businesses row, so hasLLC is missing; " +
+  /* business_age_months joined this list on 2026-09-03 (84a8760ed, walkthrough
+     F15: "a loose business_age_months no longer conjures a company"). The seed
+     still writes custom_fields.business_age_months = 30, but with no businesses
+     row there is no company for that age to belong to, so resolveBusinessAges()
+     returns no ages and the age is reported missing — on purpose. */
+  assert.deepEqual(adapter.missing.client.map((m) => m.field), ["hasLLC", "business_age_months"],
+    "this seed has no businesses row, so hasLLC and the business age are missing; " +
     "anything else in this list is a field the seed forgot to write");
 
   const underwrite = computeUnderwrite(adapter.bureaus, adapter.businessAgeMonths);
@@ -264,11 +269,18 @@ test("the RAW seed — no emit step — is readable as a real bureau pull", { sk
 
   // 4 revolving lines, highest seasoned open limit $25,000 -> x5.5 = $137,500 a
   // bureau, x3 bureaus = $412,500. The $28,000 installment loan -> x3 = $84,000
-  // a bureau, x3 = $252,000. Business is the primary bureau's card funding x2
-  // for a business over two years old = $275,000.
+  // a bureau, x3 = $252,000.
+  //
+  // BUSINESS IS $0, ON PURPOSE, SINCE 2026-09-03. It was $275,000 (the primary
+  // bureau's card funding x2 for a business over two years old), which made the
+  // headline $939,500 — the exact figure walkthrough F15 caught the closer deck
+  // quoting against a stored $199,350, because a loose business_age_months
+  // conjured a company this client does not have. No businesses row, no
+  // business money (84a8760ed).
   assert.equal(underwrite.totals.total_personal_funding, 664500);
-  assert.equal(underwrite.totals.total_business_funding, 275000);
-  assert.equal(underwrite.totals.total_combined_funding, 939500,
+  assert.equal(underwrite.totals.total_business_funding, 0,
+    "no businesses row means no company, so no business funding is quoted");
+  assert.equal(underwrite.totals.total_combined_funding, 664500,
     "THE HEADLINE. A funded demo client reading $0 here is the bug this test exists for");
 
   assert.equal(underwrite.fundable, true,

@@ -48,6 +48,12 @@ function fakeDb({
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject: "Your file" }] };
       if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: null }] };
+      /* The dispatcher asks whether an authorized representative should get the
+         message instead (src/auth/authorized-rep.mjs destinationAddress, added
+         2026-09-27 in 73da2679c). No rep on file here, so the client's own
+         address is used. Without this answer the fake threw, the dispatcher
+         retried, and the fence-DOWN tests saw zero sends for the wrong reason. */
+      if (sql.includes("FROM client_authorized_reps")) return { rows: [] };
       if (sql.includes("FROM clients")) {
         const col = /SELECT (\w+) AS address/.exec(sql)?.[1];
         return { rows: [{ address: client[col] ?? null }] };

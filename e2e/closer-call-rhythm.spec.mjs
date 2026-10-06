@@ -198,10 +198,13 @@ test("real money paints as money, and the fee comes off the closeout", async ({ 
    next_call and the screen prints that; these prove the screen prints THAT and
    not the array. ───────────────────────────────────────────────────────────── */
 
-/** The clock string the browser itself would render, so no assertion here is
-    pinned to the time zone the suite happens to run in. */
+/** The clock string the screen renders: Arizona time, whatever zone the
+    machine running the suite is in. Staff screens name America/Phoenix since
+    ca61e23b5 (2026-10-05, walkthrough-4 defect 14). This helper still used the
+    viewer's own zone, so it only matched on a Mac set to Arizona and failed in
+    CI, which runs in UTC (first CI run that reached it: 2026-10-05). */
 const clock = (page, iso) => page.evaluate(
-  (s) => new Date(s).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), iso);
+  (s) => new Date(s).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }), iso);
 
 test("a call earlier in the day is never named as the one AFTER this call", async ({ page }) => {
   await freezeClock(page, NOW);

@@ -30,6 +30,7 @@ import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createSession } from "../auth/session.mjs";
 import { asStaff } from "../partners/rls.mjs";
+import { rlsPool, closeRlsPool } from "../testing/rls-pool.mjs";
 import writeHandler from "../../api/scripts/write.mjs";
 import listHandler from "../../api/scripts/list.mjs";
 
@@ -67,9 +68,15 @@ describe("GET /api/scripts/list", { skip: !HAS_DB ? "no DATABASE_URL" : false },
     return r;
   }
 
+  /* THE READ RUNS AS THE APP ROLE. The list is filtered by ad_scripts' forced
+     row-level security, and CI's suite connects as the postgres superuser,
+     which ignores every policy — so the partner-leak tests below failed there
+     on 2026-10-05 for a leak production (fundhub_app) cannot have. rlsPool is
+     the unprivileged pool when APP_DATABASE_URL is set, as in CI, and the
+     ordinary one otherwise. Fixtures are still written as the owner. */
   async function list(token, query) {
     const r = res();
-    await listHandler(req(token, { query }), r, { db });
+    await listHandler(req(token, { query }), r, { db, pool: rlsPool });
     return r;
   }
 
@@ -174,6 +181,7 @@ describe("GET /api/scripts/list", { skip: !HAS_DB ? "no DATABASE_URL" : false },
   });
 
   after(async () => {
+    await closeRlsPool();
     await purge();
     await close();
   });

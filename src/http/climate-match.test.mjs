@@ -28,8 +28,19 @@ import handler, {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CLIMATE_DIR = path.resolve(HERE, "../../public/climate");
+/* THE PAGE AT /climate/ CHANGED HANDS ON 2026-09-18, ON PURPOSE.
+   The owner reverted the Claude-built visitor page (index.html + climate.js;
+   f39cec357, "Revert Claude climate visitor page; keep API and map JSON") and
+   shipped the Darwin lending climate dashboard in its place the same day
+   (8547bb72a), a static Next.js export. This file used to read climate.js at
+   import time, so from then on it crashed before a single endpoint test ran
+   (measured 2026-10-05). The endpoint tests are unchanged. The page section at
+   the bottom now reads the page that actually ships: its index.html and the
+   scripts that index.html loads from /climate/. */
 const PAGE = fs.readFileSync(path.join(CLIMATE_DIR, "index.html"), "utf8");
-const PAGE_JS = fs.readFileSync(path.join(CLIMATE_DIR, "climate.js"), "utf8");
+const PAGE_SCRIPTS = [...PAGE.matchAll(/<script[^>]*\bsrc="\/climate\/([^"]+)"/g)]
+  .map((m) => fs.readFileSync(path.join(CLIMATE_DIR, m[1]), "utf8"))
+  .join("\n");
 
 /* A small stand-in book with the three shapes that matter: a national row, a
    row that names states, and a business-table row. Same public field set
@@ -277,16 +288,29 @@ test("climate-match: PUT is refused", async () => {
 
 /* ───────────────────────────── the page ───────────────────────────────── */
 
-test("climate page: it exists and reads the three live endpoints", () => {
+/* Until 2026-10-05 this section held nine tests of the Claude-built page's own
+   layout: its <title>, climate.js calling the three endpoints, the $32 offer
+   line, the soft-pull wording, the five band words, the four states, the map's
+   inline fill and its viewBox. That page is gone by the owner's choice (see the
+   note at the top), so those nine checked files that no longer exist. What they
+   protected that still applies to ANY page at /climate/ is kept below and now
+   reads the page that ships. */
+
+test("climate page: the owner's 2026-09-18 swap holds — the Darwin dashboard ships, the old page does not", () => {
+  assert.equal(fs.existsSync(path.join(CLIMATE_DIR, "climate.js")), false,
+    "the reverted Claude page's script is back — f39cec357 removed it on purpose");
   assert.match(PAGE, /<title>[^<]*Lending Climate/i);
-  assert.match(PAGE_JS, /\/api\/climate/);
-  assert.match(PAGE_JS, /\/api\/public\/climate-match/);
-  assert.match(PAGE_JS, /\/api\/public\/optimize/);
-  assert.match(PAGE, /climate\.js/);
+  assert.ok(PAGE_SCRIPTS.length > 0, "index.html loads its own scripts from /climate/");
 });
 
 test("climate page: no approval odds, no promised amount, no guarantee", () => {
-  const text = PAGE + PAGE_JS;
+  /* Same list as before, now over the page that ships and the scripts it
+     loads. RED ON 2026-10-05, AND LEFT RED ON PURPOSE: the Darwin dashboard's
+     lender table has a column headed "Approval Odds"
+     (_next/static/chunks/375-9c2ed26a6c945538.js). The offer brief this file
+     cites bans approval odds on this page, and the owner shipped this page.
+     Which one stands is the owner's call, not a test edit. */
+  const text = PAGE + PAGE_SCRIPTS;
   const banned = [
     /\b\d{1,3}\s?%\s?(approval|approved|odds)/i,
     /approval\s+(odds|chance|probability)/i,
@@ -304,58 +328,8 @@ test("climate page: no approval odds, no promised amount, no guarantee", () => {
   }
 });
 
-test("climate page: the only price on it is the existing $32 assessment", () => {
-  const prices = (PAGE.match(/\$[\d,]+/g) || []).filter((p) => p !== "$32");
-  assert.deepEqual(prices, [], `unexpected prices on the public page: ${prices.join(", ")}`);
-  assert.match(PAGE, /\$32/);
-  assert.match(PAGE, /Business Financial Assessment/);
-});
-
-test("climate page: soft-pull wording is scoped to the paid assessment only", () => {
-  assert.match(PAGE, /soft pull/i);
-  // "does not affect your credit score" is allowed about the pull; it may never
-  // be said about working with Fundhub generally.
-  assert.doesNotMatch(PAGE, /working with us (?:never|does not) affect/i);
-});
-
-test("climate page: it mints no Commas product and names no catalog title of its own", () => {
-  const text = PAGE + PAGE_JS;
+test("climate page: it mints no Commas product", () => {
+  const text = PAGE + PAGE_SCRIPTS;
   assert.doesNotMatch(text, /products\/create/);
   assert.doesNotMatch(text, /public-api/);
-});
-
-test("climate page: every climate band carries its word, never colour alone", () => {
-  for (const word of ["Very favorable", "Favorable", "Neutral", "Tight", "Very tight"]) {
-    assert.ok(PAGE_JS.includes(word), `the legend must name the band "${word}" in words`);
-  }
-  assert.doesNotMatch(PAGE + PAGE_JS, /the (red|green) ones/i);
-});
-
-test("climate page: all four states are built — loading, empty, error, full", () => {
-  assert.match(PAGE, /class="skel"/, "loading: a skeleton in the real layout");
-  assert.match(PAGE, /Nothing picked yet/, "empty: says what will appear and what to do");
-  assert.match(PAGE, /id="err"/, "error: a real message, in the visitor's words");
-  /* An empty bordered box is not an error state. When the map fails, the frame
-     says what happened and what still works. */
-  assert.match(PAGE, /id="map-msg"/, "error: the map frame says something when it fails");
-  assert.match(PAGE_JS, /map-msg["']\)\.classList\.add\("on"\)/, "error: the map message is actually shown");
-  assert.match(PAGE, /id="count"/, "full: the number");
-  assert.doesNotMatch(PAGE_JS, /Math\.random/, "no sample rows, no invented figures");
-});
-
-test("climate page: the state colour is set as a style, not as an attribute that cannot paint", () => {
-  /* The stylesheet gives every path a default grey fill, and a CSS declaration
-     beats a presentation attribute. setAttribute("fill", …) therefore puts the
-     right colour in the markup and paints nothing — measured on 2026-09-18,
-     all 51 states grey. UI-STANDARDS §12.6: assert what paints. */
-  assert.match(PAGE_JS, /\.style\.fill\s*=/, "the fill must be an inline style");
-  assert.doesNotMatch(PAGE_JS, /setAttribute\(\s*["']fill["']/, "a fill attribute loses to the stylesheet");
-  assert.match(PAGE, /svg\.usmap path\{fill:/, "the default grey fill is what the attribute would lose to");
-});
-
-test("climate page: the map geometry it draws is the file that ships beside it", () => {
-  const paths = JSON.parse(fs.readFileSync(path.join(CLIMATE_DIR, "us-states-paths.json"), "utf8"));
-  assert.equal(Object.keys(paths).length, 51);
-  assert.match(PAGE_JS, /us-states-paths\.json/);
-  assert.match(PAGE, /viewBox="0 0 959 593"/);
 });

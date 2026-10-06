@@ -48,6 +48,9 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       await db.query(`DELETE FROM sales WHERE client_id = ANY($1)`, [clients]);
       await db.query(`DELETE FROM transactions WHERE client_id = ANY($1)`, [clients]);
       await db.query(`DELETE FROM events WHERE client_id = ANY($1) OR payload->>'email' LIKE $2`, [clients, `${MARK}%`]);
+      // tasks.client_id has no cascade, and the money chain now opens tasks on
+      // the client (CI failed here with tasks_client_id_fkey, 2026-10-05).
+      await db.query(`DELETE FROM tasks WHERE client_id = ANY($1)`, [clients]);
       await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [clients]);
     }
     if (frontRuleId) {

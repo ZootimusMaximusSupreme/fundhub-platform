@@ -498,15 +498,19 @@ button,input,select,textarea{font:inherit;color:inherit}
      here on 2026-09-06: an invoice due 2026-09-20 printed "due Sep 19, 2026"
      in Mountain time. That is a wrong date on a bill, which is exactly the
      off-by-one api/read/money-map.mjs casts its date columns to text to avoid.
-     Reading the Y-M-D out of the string and formatting it back in UTC cannot
-     shift, whatever timezone the browser is in. */
+     Reading the Y-M-D out of the string cannot shift, whatever timezone the
+     browser is in. The day is pinned to NOON UTC and printed in Arizona, the
+     one zone staff screens use (src/http/crm-html.test.mjs): noon UTC is 5 a.m.
+     the same day in Phoenix, which has no daylight saving, so the printed date
+     is always the stored one. (It used to print in UTC from midnight UTC,
+     which gave the same date but named a zone the staff-screen guard refuses.) */
   function day(iso) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso == null ? "" : iso));
     if (!m) return "no date";
-    var d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    var d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
     if (isNaN(d.getTime())) return "no date";
     return d.toLocaleDateString(undefined, {
-      timeZone: "UTC", year: "numeric", month: "short", day: "numeric"
+      timeZone: "America/Phoenix", year: "numeric", month: "short", day: "numeric"
     });
   }
 

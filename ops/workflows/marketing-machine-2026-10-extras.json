@@ -1,0 +1,116 @@
+[
+ {
+  "id": "X4",
+  "title": "Funnel builder + automatic funnel URL system + tags + full tracking + Push live to a NEW path",
+  "lane": "A",
+  "wave": "2a",
+  "depends_on": [
+   "U03",
+   "U04",
+   "U06"
+  ],
+  "build_brief": "Read the design docs/specs/command-center-design-2026-10-05.md \u00a73.0, \u00a75 (all safety rules incl. 13-18), and the slice named below in \u00a76 in full, plus the spec sections it cites. Units it builds on are merged on main by the time you start (check git log for their merges): reuse their tables, callModel, worker/clock, costs ledger and outbox; never re-create them. (There is no design slice for this unit: it is the owner's order of 2026-10-05.) OWNER ORDER: 'every time a funnel is made we tag it', 'we should have a url system so I don't have to name them, or allow me to name them in the dash', 'we can push a funnel live, /blueprint or similar', test offer = Capital Blueprint book-a-call ($5k-$10k high ticket; src/config/offers.mjs 'consulting-package', $5,000 list price). BUILD, back end first: (1) Funnel model on top of U03's marketing_funnels (add columns only through a migration number the board assigns from lane A/D pools if U03 lacks them): funnel kind 'book_a_call' with ordered pages (landing/VSL page, booking page that frames the existing call calendar the SLO book-a-call funnel uses \u2014 read marketing/landing-pages/slo/slo-02-booking.html and /funding-book-call \u2014 and a thank-you page), offer code, funnel tag, campaign lane, utm_campaign convention, created_by. (2) URL SYSTEM: on create, generate a short, readable, unique path automatically from the offer (e.g. /blueprint, then /blueprint-2 if taken) by checking the funnel domain's existing pages through the ClickFunnels API (read-only list) AND marketing_funnels; Chris may rename it from the dashboard (POST marketing/funnels/rename), refused if the path exists live or is reserved; never overwrite or change an existing live page or path. (3) TAG + TRACKING: every page gets the full tracking head from marketing/landing-pages/tracking-manifest.mjs (Meta pixel, server events via public/funnel/fh-events.js and fh-attribution.js, GA4 if in the manifest), the funnel tag in the page's tracking config so every event, lead and booking carries the funnel id, UTMs that keep the ad-number law (utm_content = ad number, migration 286; fundhub_ad_id), and Meta Lead/Schedule/Purchase events wired per docs/tracking/meta-events.md. (4) PAGE BUILDER JOB (kind 'funnel', server-side, saved steps on the U22 worker if merged, else the offer background-function pattern): from the approved avatar, offer and copy of the campaign (marketing/flywheel/<campaign>/ files via the outbox/GitHub read, or the marketing_jobs results) write the pages with Anthropic (callModel) using the SLO book-a-call pages and the house brand css as the template; enforce the copy checker and owner copy laws (outcome-first, Fundhub spelling, no SSN mention before checkout step 3 does not apply here but no invented numbers, testimonials only from real sources); save page HTML in the database (and through the outbox when it drains). (5) PUSH LIVE: POST marketing/funnels/push-live (owner/admin, two-tap confirm that names the URL) creates NEW ClickFunnels custom HTML pages through a provider module under src/messaging/providers/ (or the repo's sanctioned CF adapter pattern; reuse scripts/cf-push-custom-html.mjs logic: POST /workspaces/{id}/pages/custom_html, head_code from the tracking manifest), records the live URLs, and proves them with a cache-busted GET; it never PUTs an existing page id it did not create. (6) GET marketing/funnels (list with URL, tag, status draft/live, page links, events seen) and GET marketing/funnel?id=. Contract into docs/specs/marketing-machine-api.md. Tests: unit tests with fake ClickFunnels and fake model; pg tests for the URL uniqueness and tag constraints; prove in GitHub CI. Do NOT push anything live yourself: the main session runs the Blueprint test later.",
+  "acceptance": [
+   "create funnel -> automatic unique path + tag + utm convention stored",
+   "rename refused for a taken or live path",
+   "every page's head contains the tracking manifest scripts and the funnel tag",
+   "push-live creates only new pages and never touches existing page ids (proved with a fake CF)",
+   "GET marketing/funnels returns url, tag, status, pages",
+   "lint, tsc, unit and pg tests green in GitHub CI (except the known climate test)"
+  ]
+ },
+ {
+  "id": "X1",
+  "title": "Slice 5a: Build the avatar (J1) on the server",
+  "lane": "A",
+  "wave": "2b",
+  "depends_on": [
+   "U03",
+   "U04",
+   "U06",
+   "U22"
+  ],
+  "build_brief": "Read the design docs/specs/command-center-design-2026-10-05.md \u00a73.0, \u00a75 (all safety rules incl. 13-18), and the slice named below in \u00a76 in full, plus the spec sections it cites. Units it builds on are merged on main by the time you start (check git log for their merges): reuse their tables, callModel, worker/clock, costs ledger and outbox; never re-create them. Build design \u00a76 'Slice 5a: Who we sell to runs on the server' exactly, using the refined J1 design folded into \u00a72, \u00a73.2 and \u00a75 (web_search/web_fetch server tools, saved steps on the marketing worker, idempotent steps, caps from GET marketing/costs, source-link enforcement in code, the button on the Today stage-1 row and later the Ideas card). The migration number: take the next free number in lane A or D pools not used by U03-U33 (check db/migrations on main and the board) and say it in your report.",
+  "acceptance": [
+   "POST marketing/flywheel/run kind avatar queues a saved-step job; worker runs one step per wake; finished steps never re-run",
+   "cost line from GET marketing/costs; run stops at the cap",
+   "findings without a matching source link are dropped (test)",
+   "tests green in GitHub CI"
+  ]
+ },
+ {
+  "id": "X2",
+  "title": "Slice 10: Research the market (J2) + Research it (J20) on the server",
+  "lane": "A",
+  "wave": "2b",
+  "depends_on": [
+   "U03",
+   "U04",
+   "U06",
+   "U22"
+  ],
+  "build_brief": "Read the design docs/specs/command-center-design-2026-10-05.md \u00a73.0, \u00a75 (all safety rules incl. 13-18), and the slice named below in \u00a76 in full, plus the spec sections it cites. Units it builds on are merged on main by the time you start (check git log for their merges): reuse their tables, callModel, worker/clock, costs ledger and outbox; never re-create them. Build design \u00a76 'Slice 10' exactly (reuse X1's worker pattern if X1 merged first; otherwise build the shared research step runner in src/marketing/research/ and let X1 reuse it). J20's migration number: next free in lane D pool (424-429) not used by U33; say it.",
+  "acceptance": [
+   "both buttons' back ends run as saved steps with caps and source links",
+   "J20 report saved with citations",
+   "tests green in GitHub CI"
+  ]
+ },
+ {
+  "id": "X3",
+  "title": "Slice 5: Ideas back end \u2014 the flywheel on the dashboard (offer exists; port copy.js and ad-strategy.js; stage 6 spend; angles; Quick copy)",
+  "lane": "A",
+  "wave": "2b",
+  "depends_on": [
+   "U03",
+   "U04",
+   "U06",
+   "U22",
+   "U10"
+  ],
+  "build_brief": "Read the design docs/specs/command-center-design-2026-10-05.md \u00a73.0, \u00a75 (all safety rules incl. 13-18), and the slice named below in \u00a76 in full, plus the spec sections it cites. Units it builds on are merged on main by the time you start (check git log for their merges): reuse their tables, callModel, worker/clock, costs ledger and outbox; never re-create them. Build the back end of design \u00a76 'Slice 5: Ideas' exactly: GET marketing/flywheel, POST marketing/flywheel/run|approve|tweak|spend-read|campaign, ports of .claude/workflows/copy.js and ad-strategy.js into src/marketing/flywheel/* with the doctrine bundled (the copy checker regex stays in code), stage 6 spend as SQL writing 06-spend.md through the outbox, GET marketing/angles if U32 did not already, Quick copy forced to Anthropic with the checker verdict. 'Start a flywheel / campaign' creates a new campaign folder (e.g. capital-blueprint) so the Blueprint test can run avatar -> research -> offer -> copy -> strategy from buttons.",
+  "acceptance": [
+   "every flywheel stage can be started, approved, tweaked from routes",
+   "a new campaign can be started for any offer code",
+   "copy checker runs in code before Chris sees copy",
+   "tests green in GitHub CI"
+  ]
+ },
+ {
+  "id": "X8",
+  "title": "Ideas tab screen + Research cards + Funnels cards (lane E)",
+  "lane": "E",
+  "wave": "2c",
+  "depends_on": [
+   "U34",
+   "X1",
+   "X2",
+   "X3",
+   "X4"
+  ],
+  "build_brief": "Read the design docs/specs/command-center-design-2026-10-05.md \u00a73.0, \u00a75 (all safety rules incl. 13-18), and the slice named below in \u00a76 in full, plus the spec sections it cites. Units it builds on are merged on main by the time you start (check git log for their merges): reuse their tables, callModel, worker/clock, costs ledger and outbox; never re-create them. Build the Ideas tab of design \u00a73.2 (idea box, suggestions, angles, Offer and market card with Read it/Approve/Tweak/Redo, Start a flywheel, Quick copy, the Research area with Build the avatar, Research the market, Research it) and the Funnels cards for X4 (create funnel -> automatic URL shown, rename, page previews, tracking/tag status, Push live with the two-tap confirm naming the URL). Beautiful, plain 4th-grade words, 390px phone-first, every cost line from GET marketing/costs, no dead buttons (design safety rule 9). Playwright tap-path tests with mocked API at 390x844 and 1280; annotated screenshots under ops/workflows/marketing-machine-2026-10-evidence/X8/.",
+  "acceptance": [
+   "every Ideas and Funnels action wired to its real route",
+   "cost shown before every paid tap",
+   "390px tap-path tests green",
+   "no 'Runs in chat' text anywhere"
+  ]
+ },
+ {
+  "id": "X5",
+  "title": "Ready to film: Shoot tab (plan, film order) + teleprompter page (spec \u00a78.1 web, \u00a78.2 routes, design slice 6)",
+  "lane": "E",
+  "wave": "2c",
+  "depends_on": [
+   "U04",
+   "U25",
+   "U36"
+  ],
+  "build_brief": "Read the design docs/specs/command-center-design-2026-10-05.md \u00a73.0, \u00a75 (all safety rules incl. 13-18), and the slice named below in \u00a76 in full, plus the spec sections it cites. Units it builds on are merged on main by the time you start (check git log for their merges): reuse their tables, callModel, worker/clock, costs ledger and outbox; never re-create them. Build design \u00a76 'Slice 6: Shoot' (back end marketing_shoots from U04 if present, GET/POST marketing/shoot, shoot/mark, the Shoot tab with plan, film order, time estimate, checklist, Open the teleprompter) and public/app/teleprompter.html (spec \u00a78.1 web version: large text, mirror mode toggle, speed, keyboard/Bluetooth-remote keys: space/arrow to start/stop/next) reading approved scripts in film order. Done-when for the owner: approved scripts are 'ready to film' \u2014 each shows in the Shoot plan with its ad number, angle name (marketing/ads/NAMING.md) and take file name to use, and plays in the teleprompter.",
+  "acceptance": [
+   "approved scripts appear in a shoot plan in film order with the exact take file names",
+   "teleprompter page plays them with mirror mode",
+   "tests green in GitHub CI"
+  ]
+ }
+]

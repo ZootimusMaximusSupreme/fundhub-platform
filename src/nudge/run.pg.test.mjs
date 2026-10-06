@@ -1464,11 +1464,16 @@ test("every waypoint the SQL removes is one the gate would have refused",
         [orgId, c, w, a]);
     });
     await stopped("already replied", async (c, w) => {
+      /* The nudge is dated a day BEFORE the reply, on this test's own clock.
+         It used to take the column default (the real now()), which put it
+         before NOON (2026-09-10) only while the wall clock was earlier than
+         that. From 2026-09-11 on, the nudge was dated after the reply, so the
+         gate correctly saw no reply and this test failed (CI, 2026-10-05). */
       await db.query(
         `INSERT INTO waypoint_nudges (org_id, client_id, waypoint_id, step, kind, channel,
-           template_key, outcome, idempotency_key)
-         VALUES ($1,$2,$3,1,'client_message','sms',NULL,'queued',$4)`,
-        [orgId, c, w, idempotencyKeyFor(w, 1)]);
+           template_key, outcome, idempotency_key, created_at)
+         VALUES ($1,$2,$3,1,'client_message','sms',NULL,'queued',$4,$5::timestamptz)`,
+        [orgId, c, w, idempotencyKeyFor(w, 1), new Date(NOON.getTime() - DAY).toISOString()]);
       await inboundMessage(c, "ok I did it", NOON);
     });
     await stopped("ladder exhausted", async (c, w) => {

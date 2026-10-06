@@ -94,14 +94,20 @@ export function assemble(fns, byId) {
     const id = fn.id();
     const triggers = (fn.opts?.triggers || []).map((t) => t.event).filter(Boolean);
     const found = byId.get(id);
-    if (!found || typeof found.mod.handle !== "function") {
+    /* A module that serves more than one function names a handler per id in
+       `handles` (src/workflows/slo-genuine-followup.mjs serves three); one
+       shared `handle` would run the wrong code for two of them. */
+    const own = found && found.mod.handles && typeof found.mod.handles[id] === "function"
+      ? found.mod.handles[id]
+      : found && found.mod.handle;
+    if (!found || typeof own !== "function") {
       // Registered but not callable by the runner. Reported, never skipped —
       // a workflow quietly missing from the coverage list reads as "no journey
       // reaches it", which is a different and much more alarming finding.
       unrunnable.push({ id, name: fn.opts?.name || id, triggers, reason: found ? "module exports no handle()" : "module not found on disk" });
       continue;
     }
-    workflows.push({ id, name: fn.opts?.name || id, triggers, file: found.file, handle: found.mod.handle });
+    workflows.push({ id, name: fn.opts?.name || id, triggers, file: found.file, handle: own });
   }
 
   /* EVERYTHING REGISTERED AND NOTHING RUNNABLE IS A BROKEN RUNNER, NOT A RESULT.

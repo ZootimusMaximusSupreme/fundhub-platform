@@ -169,7 +169,15 @@ test("client-control-panel.html binds the live URL client and does not fake a pu
     "Apply list must read saved plays and amounts back onto the row");
   assert.ok(fs.readFileSync(path.join(APP, "data.js"), "utf8").includes("/api/applications?client_id="),
     "FHData.applications must still be the applications read for one client");
-  assert.ok(html.includes("Play name (optional)"), "staff can type or pick a play");
+  /* RE-POINTED 2026-10-05. This asserted the "Play name (optional)" box. The
+     owner removed that question on 2026-09-06 (648af7b02, "no more asking how
+     you applied": Chris walking the live file, "what's play name"). The guard
+     now holds his decision the other way round: the box stays gone, and the
+     three answers he named are what staff press. */
+  assert.ok(!html.includes("Play name (optional)"), "the play-name box stays removed (owner, 2026-09-06)");
+  assert.ok(!/setAttribute\("list", "fh-play-names"\)/.test(html), "no play-name picker either");
+  assert.ok(html.includes('[["Approved", "Approved"], ["Declined", "Denied"], ["Pending", "Applied"]]'),
+    "staff record Approved / Declined / Pending");
   assert.ok(
     html.includes("Apply shows the client email, not a Fundhub address"),
     "Apply door must tell staff to use the client email, not Fundhub"

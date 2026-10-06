@@ -69,6 +69,7 @@
 // src/adplatforms/meta.mjs's tokenFor().
 
 import { decryptToken } from "../adplatforms/tokens.mjs";
+import { transmit, ADAPTERS } from "../lib/outbound-fetch.mjs";
 
 export const PLATFORM = "clickfunnels";
 
@@ -210,19 +211,56 @@ async function resolveWorkspaceId(creds, ctx) {
    Docs: https://developers.myclickfunnels.com/reference/upsertcontacts.md
    Empty fields are omitted. ClickFunnels does not clear a field when the
    value is null. */
+/* upsertContact — THE ONE WRITE IN THIS FILE, AND IT GOES THROUGH THE FENCE.
+   It sends a buyer's or applicant's details to ClickFunnels, which changes a
+   vendor record about a person. Everything else here is a GET of Chris's own
+   workspace. It used to go out through cfFetch's raw fetch like the reads, so
+   ADAPTERS_DRY_RUN could not hold it while this file sat on the raw-fetch
+   allow-list as "GET only" (found 2026-10-05 by
+   src/lib/no-unfenced-transmit.test.mjs). It now goes through transmit() with
+   the ADAPTERS fence: held unless ADAPTERS_DRY_RUN is an explicit off value,
+   exactly like every other vendor write. ctx.env picks the switch (defaults to
+   process.env); ctx.fetch is the test seam. A held write throws with
+   `blocked: true` so a caller can say "held", not "refused". */
 export async function upsertContact(creds, contact, ctx = {}) {
   if (!creds?.api_key || !creds?.subdomain) throw new Error("ClickFunnels credentials are missing");
   if (!contact?.email_address) throw new Error("contact email is required");
   const workspaceId = await resolveWorkspaceId(creds, ctx);
   const url = `${baseUrl(creds.subdomain)}/workspaces/${workspaceId}/contacts/upsert`;
-  const { body } = await cfFetch({
-    url,
-    apiKey: creds.api_key,
-    ctx,
+  const r = await transmit(url, {
     method: "POST",
-    body: { contact }
-  });
-  return body;
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${creds.api_key}`,
+      "user-agent": "FundHub-Analytics/1.0 (+https://fundhub.ai)"
+    },
+    body: JSON.stringify({ contact })
+  }, { fence: ADAPTERS, what: "ClickFunnels contact upsert", env: ctx.env, fetchImpl: ctx.fetch });
+
+  if (r.blocked) {
+    const e = new Error(scrubKey(`ClickFunnels contact upsert held: ${r.error}`, creds.api_key));
+    e.platformMessage = "Held by the ADAPTERS_DRY_RUN switch. Nothing was sent to ClickFunnels.";
+    e.blocked = true;
+    e.retryable = false;
+    throw e;
+  }
+  if (!r.ok) {
+    if (!r.status) {
+      const e = new Error(`ClickFunnels unreachable: ${scrubKey(String(r.error || ""), creds.api_key)}`);
+      e.platformMessage = "ClickFunnels could not be reached.";
+      e.retryable = true;
+      throw e;
+    }
+    const message = (r.body && typeof r.body.error === "string")
+      ? r.body.error
+      : String(r.error || `ClickFunnels ${r.status}`).slice(0, 500);
+    const e = new Error(scrubKey(`ClickFunnels ${r.status}: ${message}`, creds.api_key));
+    e.platformMessage = scrubKey(message, creds.api_key);
+    e.status = r.status;
+    e.retryable = r.status === 429 || r.status >= 500;
+    throw e;
+  }
+  return r.body;
 }
 
 export async function listFunnels(connection, ctx = {}) {

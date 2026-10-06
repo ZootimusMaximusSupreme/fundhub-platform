@@ -27,7 +27,7 @@
 #     screen that throws on load is not a soft failure.
 #
 #
-# *** WHY THERE ARE TWO TEST JOBS AND ONLY ONE OF THEM BLOCKS. ***
+# *** WHY THERE ARE TWO TEST JOBS. (Both block now — see below.) ***
 #
 # This suite behaves completely differently depending on whether a database is
 # reachable, and collapsing that into one number is how the most serious finding in
@@ -55,21 +55,15 @@
 # separately as the owner via MIGRATION_DATABASE_URL, and
 # src/security/superuser-guard.test.mjs gates the Netlify build against regressing.
 #
-# THE `continue-on-error` BELOW IS STILL HERE, ON PURPOSE, AND HERE IS THE HONEST
-# REASON. The person who merged the fix could not start a Postgres in their
-# environment (`su` and `useradd` both denied), so the claim "the isolation tests go
-# green once the suite connects as fundhub_app" is REASONED, NOT MEASURED. Deleting
-# the line on the strength of an unverified claim would be the same move that let the
-# original 24 hide for eleven commits — asserting a green nobody watched.
+# *** THE POSTGRES JOB BLOCKS NOW (2026-10-05, marketing machine spec M0 step 6). ***
 #
-# So this job now DOES the switch and REPORTS the result, without betting the branch
-# on it. It creates fundhub_app, then runs the isolation tests as that role in a step
-# of their own. The first CI run after this merge is the measurement that was missing.
-#
-# *** WHEN THAT STEP IS OBSERVED GREEN, DELETE `continue-on-error` FROM THIS JOB. ***
-# One run is enough. That is the whole remaining task, and it is the single
-# highest-value line in this file. A test that is allowed to fail forever is not a
-# test.
+# It used to carry `continue-on-error: true` until the fundhub_app isolation step was
+# seen green once. It never got that far: from 2026-10-01 every run died at
+# "Apply every migration to an empty database" (migrations 114_crm and 372, both
+# rewritten as no-ops on branch mm-c1-ci-fix, with the reason at the top of each),
+# and scripts/run-suite.mjs quit after the unit half, so no pg test ran at all.
+# A test that is allowed to fail forever is not a test, so the line is gone: a red
+# migration, a red pg test, or a red isolation step now fails the branch.
 
 name: tests
 
@@ -191,17 +185,14 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
-  # THE REPORTING JOB. Runs the 442 tests the job above skips, against a real
-  # Postgres. Does not block — yet. See the header for exactly when to change that.
+  # THE DATABASE JOB. Runs the pg tests the job above skips, against a real
+  # Postgres built from zero by db/migrate.mjs. IT BLOCKS (spec M0 step 6,
+  # 2026-10-05): no `continue-on-error` here, ever again. See the header.
   # ---------------------------------------------------------------------------
   postgres:
-    name: suite (real Postgres — reports, does not block)
+    name: suite (real Postgres — blocks)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # <-- DELETE THIS once "Partner isolation, as the unprivileged app role" below
-    #     has been observed green on one run. See the header for why it survived the
-    #     superuser fix instead of going with it.
-    continue-on-error: true
 
     services:
       postgres:
@@ -295,11 +286,11 @@ jobs:
       - name: Run the suite against Postgres
         run: npm test
 
-      # ── The measurement the header is waiting on ──────────────────────────
+      # ── As the app role, the way production connects ──────────────────────
       #
       # Everything above connects as the OWNER. These two steps are the only ones
-      # that connect the way production now does, and they are the reason this job
-      # is worth keeping once `continue-on-error` goes.
+      # that connect the way production now does. Both block, like the rest of
+      # this job.
       #
       # `if: always()` on both: when the suite above fails, THIS is the question
       # worth answering first, and a skipped diagnostic is a wasted CI run.
@@ -313,9 +304,8 @@ jobs:
           ALLOW_SUPERUSER_DB: ""   # no opt-out here — this step exists to fail
         run: npm run guard:db
 
-      # And does that translate into the policies actually applying? This is the
-      # step whose result decides whether `continue-on-error` can be deleted.
-      # Isolation suites only — not the whole suite, which needs ownership.
+      # And does that translate into the policies actually applying? Isolation
+      # suites only — not the whole suite, which needs ownership.
       - name: Partner isolation, as the unprivileged app role
         if: always()
         env:
@@ -327,4 +317,4 @@ jobs:
             src/http/creative-endpoints.pg.test.mjs \
             src/creative/generate.pg.test.mjs \
             src/social/social.pg.test.mjs
-          echo "::notice::These are the ~24 'pre-existing failures' from CLAUDE.md §12, run as fundhub_app instead of the postgres superuser. If this step is GREEN, the superuser fix is confirmed and 'continue-on-error' should be deleted from this job. If it is RED, the remaining failures are NOT superuser-related and need reading on their own terms."
+          echo "::notice::Partner isolation suites passed as fundhub_app (NOSUPERUSER, NOBYPASSRLS) — row-level security applies to the role production uses."

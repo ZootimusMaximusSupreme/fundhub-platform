@@ -108,13 +108,16 @@ test.describe("client control panel — the bank email's amount is offered, neve
     expect(writes.length).toBe(0);
   });
 
-  test("the accepted figure is what Bank yes then sends", async ({ page }) => {
+  /* "Bank yes" is the "Approved" button since the owner named the three answers
+     Approved / Declined / Pending on 2026-09-06 (648af7b02). It still writes
+     status "Approved". */
+  test("the accepted figure is what Approved then sends", async ({ page }) => {
     const writes = [];
     await open(page, [bankRow()], writes);
     const slot = page.locator(`[data-amount-suggest-lender-id="${LENDER_A}"]`);
     await expect(slot).toBeVisible({ timeout: 10_000 });
     await slot.getByRole("button", { name: /\$5,000/ }).click();
-    await page.getByRole("button", { name: "Bank yes" }).first().click();
+    await page.getByRole("button", { name: "Approved", exact: true }).first().click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].status).toBe("Approved");
     expect(writes[0].approved_amount).toBe("5000.00");

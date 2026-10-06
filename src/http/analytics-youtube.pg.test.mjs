@@ -104,12 +104,14 @@ describe("YouTube analytics connect/sync/read", { skip: !HAS_DB ? "no DATABASE_U
     staffId = staff.id;
     tokenStaff = (await createSession(db, { staffId, orgId: org })).token;
 
-    // csm is a real role (290_csm_role.sql) that is deliberately NOT in
+    // 'partner' is a real role (036_partner_role.sql) deliberately NOT in
     // ROLE_SETS.STAFF — the shortest path to a real 403 rather than a 401.
+    // This used 'csm' until 2026-10-05, but csm joined STAFF on purpose on
+    // 2026-09-05 (2b10dae65), so a csm got past the gate and hit a 400.
     const nonStaff = (await db.query(
       `INSERT INTO staff (org_id, email, name, role, status)
-       VALUES ($1,$2,'YT Analytics Non-Staff Fixture','csm','active') RETURNING id`,
-      [org, `${EMAIL_TAG}.csm@example.com`]
+       VALUES ($1,$2,'YT Analytics Non-Staff Fixture','partner','active') RETURNING id`,
+      [org, `${EMAIL_TAG}.partner@example.com`]
     )).rows[0];
     nonStaffId = nonStaff.id;
     tokenNonStaff = (await createSession(db, { staffId: nonStaffId, orgId: org })).token;

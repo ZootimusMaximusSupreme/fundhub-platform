@@ -14,6 +14,7 @@ flowchart LR
   subgraph EXT[External systems]
     direction TB
     ext_bland["Bland AI voice-call"]
+    ext_clarity_export["Microsoft Clarity Data Export API"]
     ext_clickfunnels["ClickFunnels webhook"]
     ext_commas["Commas (formerly FanBasis) payment"]
     ext_crs["CRS engine output"]
@@ -29,6 +30,7 @@ flowchart LR
   subgraph ADP[Adapters — verify, normalize, emit]
     direction TB
     adp_bland["bland<br/>HMAC-SHA256"]
+    adp_clarity_export["clarity-export<br/>direct call"]
     adp_clickfunnels["clickfunnels<br/>HMAC-SHA256"]
     adp_commas["commas<br/>HMAC-SHA256"]
     adp_crs["crs<br/>direct call"]
@@ -46,6 +48,7 @@ flowchart LR
   ING[[Inngest functions<br/>durable, with waits]]
 
   ext_bland --> adp_bland
+  ext_clarity_export --> adp_clarity_export
   ext_clickfunnels --> adp_clickfunnels
   ext_commas --> adp_commas
   ext_crs --> adp_crs
@@ -58,6 +61,7 @@ flowchart LR
   ext_twilio_status --> adp_twilio_status
   ext_twilio --> adp_twilio
   adp_bland -- "call.completed" --> BUS
+  adp_clarity_export -- "—" --> BUS
   adp_clickfunnels -- "entry.captured<br/>survey.submitted<br/>booking.created<br/>booking.rescheduled<br/>booking.cancelled" --> BUS
   adp_commas -- "diagnostic.paid<br/>deposit.paid<br/>sale.closed<br/>payment.received<br/>payment.failed<br/>payment.expired<br/>payment.canceled<br/>payment.refunded<br/>payment.disputed<br/>subscription.started<br/>subscription.renewed<br/>subscription.past_due<br/>subscription.canceled<br/>subscription.completed" --> BUS
   adp_crs -- "analysis.completed<br/>decision.rendered" --> BUS
@@ -123,35 +127,35 @@ flowchart LR
 |---|---|---|---|
 | `entry.captured` | journey spine | `onEntryCaptured` | 5 |
 | `survey.submitted` | journey spine | `onSurveySubmitted` | 1 |
-| `diagnostic.paid` | journey spine | `onDiagnosticPaid`, `onDiagnosticPaidSoftPull`, `onDiagnosticPaidMoney` | 2 |
-| `analysis.completed` | journey spine | `onAnalysisCompleted`, `onAnalysisCompletedDeliverables` | 9 |
+| `diagnostic.paid` | journey spine | `onDiagnosticPaid`, `onDiagnosticPaidSoftPull`, `onMoneyEventForMeta`, `onDiagnosticPaidMoney` | 2 |
+| `analysis.completed` | journey spine | `onAnalysisCompleted`, `onAnalysisCompletedDeliverables`, `onAnalysisCompletedSloPack` | 9 |
 | `booking.created` | journey spine | `onBookingCreated`, `onInterviewBooked` | 9 |
-| `booking.rescheduled` | journey spine | `onBookingRescheduled` | 2 |
+| `booking.rescheduled` | journey spine | `onBookingRescheduled` | 4 |
 | `booking.cancelled` | journey spine | `onBookingCancelled` | 0 |
 | `booking.noshow` | journey spine | `onBookingNoshow` | 1 |
 | `call.completed` | journey spine | `onCallCompleted` | 4 |
 | `decision.rendered` | journey spine | `onDecisionRendered` | 0 |
-| `deposit.paid` | journey spine | `onDepositPaid`, `onPaidMidCheckin`, `onDepositPaidGate`, `onDepositPaidMoney`, `onDealCloseWinAlert` | 3 |
-| `sale.closed` | journey spine | `onSaleClosed`, `onPaidMidCheckin`, `onSaleClosedMoney`, `onDealCloseWinAlert` | 0 |
+| `deposit.paid` | journey spine | `onDepositPaid`, `onPaidMidCheckin`, `onDepositPaidGate`, `onMoneyEventForMeta`, `onDepositPaidMoney`, `onDealCloseWinAlert` | 3 |
+| `sale.closed` | journey spine | `onSaleClosed`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onSaleClosedMoney`, `onDealCloseWinAlert` | 0 |
 | `round.started` | journey spine | `onRoundStartedMoney` | 7 |
 | `round.submitted` | journey spine | — | 1 |
 | `round.approved` | journey spine | — | 3 |
 | `round.funded` | journey spine | `onRoundFundedInsights`, `onRoundFundedMoney` | 4 |
 | `round.closeout` | journey spine | `onRoundCloseoutGate` | 1 |
 | `file.finalized` | journey spine | — | 0 |
-| `payment.received` | side events | `onPaymentReceived`, `onPaidMidCheckin`, `onPaymentReceivedMoney`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 2 |
+| `payment.received` | side events | `onPaymentReceived`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onPaymentReceivedMoney`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 3 |
 | `payment.failed` | side events | `onPaymentFailed` | 0 |
 | `payment.expired` | side events | — | 0 |
 | `payment.canceled` | side events | — | 0 |
 | `payment.refunded` | side events | `onPaymentRefunded`, `onPaymentRefundedMoney` | 0 |
 | `payment.disputed` | side events | `onPaymentDisputed`, `onPaymentDisputedMoney` | 0 |
-| `docs.received` | side events | `onDocsReceivedFlipInquiryGate` | 3 |
+| `docs.received` | side events | `onDocsReceivedReviewChecklist`, `onDocsReceivedFlipInquiryGate` | 3 |
 | `inquiry.removed` | side events | — | 1 |
 | `inquiry.gate.raised` | side events | — | 0 |
 | `inquiry.gate.clear` | side events | — | 0 |
 | `inquiry.docs.needed` | side events | `onInquiryDocsNeeded` | 0 |
 | `letter.generated` | side events | — | 0 |
-| `message.inbound` | side events | `onMessageInbound`, `onInboundMmsDocs` | 1 |
+| `message.inbound` | side events | `onMessageInbound`, `onInboundMmsDocs` | 2 |
 | `mail.response` | side events | `onMailResponse` | 3 |
 | `message.queued` | outbound messaging | — | 0 |
 | `message.sent` | outbound messaging | — | 0 |
@@ -198,6 +202,8 @@ flowchart LR
 | `subscription.past_due` | processor-billed subscriptions | `onSubscriptionPastDue` | 0 |
 | `subscription.canceled` | processor-billed subscriptions | `onSubscriptionEnded` | 0 |
 | `subscription.completed` | processor-billed subscriptions | `onSubscriptionEnded` | 0 |
+| `slo.contact_started` | roadmap funnel | — | 2 |
+| `slo.checkout_started` | roadmap funnel | — | 1 |
 
 An event with no handler and no function is declared but inert — it can be emitted and stored,
 and nothing happens. That is a real state in this repo, not an omission in the diagram.

@@ -62,8 +62,11 @@ export function partnerReadHandler({ fetch, single = false, mapRow = null }) {
       const { limit, offset } = pageParams(query);
       // The scope is always the RESOLVED partner, never a value from the query
       // string for a partner principal — see resolvePartnerId.
+      /* deps.pool is a test seam only: the isolation tests hand in the
+         unprivileged pool (src/testing/rls-pool.mjs) so the policy is what they
+         measure. Production passes nothing and gets the default pool. */
       const rows = await withPartnerScope({ kind: "partner", partnerId }, (tx) =>
-        fetch(tx, { limit, offset, query, partnerId, principal }));
+        fetch(tx, { limit, offset, query, partnerId, principal }), { pool: deps.pool });
 
       const shaped = mapRow ? (Array.isArray(rows) ? rows.map(mapRow) : mapRow(rows)) : rows;
 

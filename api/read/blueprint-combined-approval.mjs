@@ -36,7 +36,7 @@ export default async function handler(req, res, deps = {}) {
   try {
     if (!(await requireClientInOrg(res, database, staff, clientId))) return;
 
-    const data = await loadCombinedApproval(database, { orgId, primaryClientId: clientId });
+    const data = await loadCombinedApproval(database, { orgId: staff.org_id, primaryClientId: clientId });
     if (!data.ok) {
       return res.status(404).json({ ok: false, error: data.error || "not_found" });
     }

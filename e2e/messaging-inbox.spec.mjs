@@ -146,6 +146,9 @@ test.describe("the inbox loads and can be read", () => {
   test("it renders the real conversations, newest first", async ({ page }) => {
     await wire(page);
     await page.goto(SCREEN);
+    /* The inbox opens on "Needs reply" (owner UI-audit answer, 2026-08-17,
+       582c74255). These checks are about every conversation, so open "All". */
+    await page.locator('.ctab[data-filter="all"]').click();
 
     const rows = page.locator(".convo");
     await expect(rows).toHaveCount(2);
@@ -157,6 +160,9 @@ test.describe("the inbox loads and can be read", () => {
   test("the thread waiting on a reply is the one marked", async ({ page }) => {
     await wire(page);
     await page.goto(SCREEN);
+    /* The inbox opens on "Needs reply" (owner UI-audit answer, 2026-08-17,
+       582c74255). These checks are about every conversation, so open "All". */
+    await page.locator('.ctab[data-filter="all"]').click();
 
     await expect(page.locator(".convo").first()).toHaveClass(/unread/);
     await expect(page.locator(".convo").first().locator(".unread-dot")).toBeVisible();
@@ -304,6 +310,9 @@ test.describe("the texting-hours warning", () => {
     await freezeClock(page, "2026-08-02T06:00:00Z");
     await wire(page);
     await page.goto(SCREEN);
+    /* The inbox opens on "Needs reply" (owner UI-audit answer, 2026-08-17,
+       582c74255). These checks are about every conversation, so open "All". */
+    await page.locator('.ctab[data-filter="all"]').click();
     await page.locator(".convo").nth(1).click();       // Marcus, email
 
     await expect(page.locator("#quietNote")).toBeHidden();
@@ -316,6 +325,9 @@ test.describe("honest empty states", () => {
     async ({ page }) => {
     await wire(page, { inbox: EMPTY });
     await page.goto(SCREEN);
+    /* The inbox opens on "Needs reply" (owner UI-audit answer, 2026-08-17,
+       582c74255). These checks are about every conversation, so open "All". */
+    await page.locator('.ctab[data-filter="all"]').click();
 
     await expect(page.locator("#convoList")).toContainText("No conversations yet");
     await expect(page.locator(".convo")).toHaveCount(0);

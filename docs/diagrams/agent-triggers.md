@@ -3,7 +3,7 @@
 # Agent trigger map
 
 Which canonical event wakes which automation. "Agent" here means a registered Inngest function —
-the 81 workflow ports in `src/workflows/`, read off their real `createFunction` triggers.
+the 90 workflow ports in `src/workflows/`, read off their real `createFunction` triggers.
 (The AG-xx prompt-driven agents in `wireframes/agent-editor.html` are a UI mock with no code behind
 them yet, and are deliberately not drawn here.)
 
@@ -70,9 +70,11 @@ flowchart LR
   e_mail_response --> w_f_11_bank_email_event_router["f-11-bank-email-event-router"]
   e_message_inbound(["message.inbound"])
   e_message_inbound --> w_dpc_03_inbound_reply_router["dpc-03-inbound-reply-router"]
+  e_message_inbound --> w_slo_genuine_reply["slo-genuine-reply"]
   e_payment_received(["payment.received"])
   e_payment_received --> w_ar_collections["ar-collections"]
   e_payment_received --> w_ds_02_diy_letters["ds-02-diy-letters"]
+  e_payment_received --> w_slo_paid_form_nudge["slo-paid-form-nudge"]
   e_round_approved(["round.approved"])
   e_round_approved --> w_f_04_round_approvals["f-04-round-approvals"]
   e_round_approved --> w_f_05_inquiry_cleanup_gate["f-05-inquiry-cleanup-gate"]
@@ -94,6 +96,11 @@ flowchart LR
   e_round_started --> w_round_started_client_notify["round-started-client-notify"]
   e_round_submitted(["round.submitted"])
   e_round_submitted --> w_f_03_round_submitted["f-03-round-submitted"]
+  e_slo_checkout_started(["slo.checkout_started"])
+  e_slo_checkout_started --> w_slo_genuine_checkout_sms["slo-genuine-checkout-sms"]
+  e_slo_contact_started(["slo.contact_started"])
+  e_slo_contact_started --> w_slo_genuine_followup["slo-genuine-followup"]
+  e_slo_contact_started --> w_slo_no_reply_197["slo-no-reply-197"]
   e_survey_submitted(["survey.submitted"])
   e_survey_submitted --> w_s_nobook_chase["s-nobook-chase"]
 ```
@@ -114,13 +121,15 @@ flowchart LR
 | `inquiry.removed` | 1 | `c-03-inquiry-removed-resume-or-hold` |
 | `invoice.sent` | 1 | `ar-collections` |
 | `mail.response` | 3 | `f-06-funding-conditions-missing-docs`, `f-09-funding-declined-no-path`, `f-11-bank-email-event-router` |
-| `message.inbound` | 1 | `dpc-03-inbound-reply-router` |
-| `payment.received` | 2 | `ar-collections`, `ds-02-diy-letters` |
+| `message.inbound` | 2 | `dpc-03-inbound-reply-router`, `slo-genuine-reply` |
+| `payment.received` | 3 | `ar-collections`, `ds-02-diy-letters`, `slo-paid-form-nudge` |
 | `round.approved` | 3 | `f-04-round-approvals`, `f-05-inquiry-cleanup-gate`, `sys-01-client-value-calculator` |
 | `round.closeout` | 1 | `n-04-post-funding-nurture` |
 | `round.funded` | 4 | `f-07-funding-locked`, `f-08-post-funding-monitoring`, `n-06-renewal-second-wave`, `sys-01-ltv-calculator` |
 | `round.started` | 7 | `bc-01-customer-responsiveness`, `bc-02-customer-friction`, `c-05-pre-funding-review`, `f-01-funding-intake`, `f-02-portal-id-missing`, `f-10-client-funding-inbox-provisioner`, `round-started-client-notify` |
 | `round.submitted` | 1 | `f-03-round-submitted` |
+| `slo.checkout_started` | 1 | `slo-genuine-checkout-sms` |
+| `slo.contact_started` | 2 | `slo-genuine-followup`, `slo-no-reply-197` |
 | `survey.submitted` | 1 | `s-nobook-chase` |
 
 ## Canonical events that trigger nothing

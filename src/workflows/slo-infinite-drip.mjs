@@ -85,6 +85,13 @@ export async function sweepSloDrip(db, now = new Date()) {
   return { ok: true, scanned: r.rows.length, results };
 }
 
+/* handle — the shape src/journeys/runner/registry.mjs expects. A cron with no
+   event: it sweeps whatever database it is handed. */
+export async function handle({ db: handleDb = db, step } = {}) {
+  const run = () => sweepSloDrip(handleDb);
+  return step && typeof step.run === "function" ? step.run("sweep", run) : run();
+}
+
 export const sloInfiniteDrip = inngest.createFunction(
   { id: "slo-infinite-drip", name: "SLO — infinite roadmap drip" },
   { cron: SWEEP_CRON },
