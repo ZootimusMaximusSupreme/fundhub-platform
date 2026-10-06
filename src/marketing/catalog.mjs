@@ -1447,27 +1447,16 @@ class Program {
     return undefined;
   }
 
+  /* Only what the kit's registration code uses: Root.tsx maps TEMPLATES, and
+     SHEET_FRAMES maps it again. Anything else stops the build by name. */
   callArrayMethod(node, m, args) {
     const arr = m.self;
     const fn = args[0] ? args[0].get() : undefined;
-    const each = (cb) => arr.map((x, i) => cb(x, i));
     const apply = (x, i) => this.call(node, fn, [Thunk.of(x), Thunk.of(i), Thunk.of(arr)]);
     switch (m.name) {
-      case "map": return each(apply);
+      case "map": return arr.map((x, i) => apply(x, i));
       case "filter": return arr.filter((x, i) => truthy(apply(x, i)));
-      case "some": return arr.some((x, i) => truthy(apply(x, i)));
-      case "every": return arr.every((x, i) => truthy(apply(x, i)));
-      case "find": return arr.find((x, i) => truthy(apply(x, i)));
       case "includes": return arr.some((x) => sameValue(x, fn));
-      case "indexOf": return arr.findIndex((x) => sameValue(x, fn));
-      case "join": {
-        if (!arr.every(isPrimitive)) this.fail(node, "join needs an array of text or numbers");
-        return arr.join(fn === undefined ? "," : String(fn));
-      }
-      case "slice": {
-        const end = args[1] ? args[1].get() : undefined;
-        return arr.slice(fn, end);
-      }
       default: return this.fail(node, `the array method "${m.name}" is not supported`);
     }
   }
@@ -1505,14 +1494,12 @@ const num = (name, f) => ({
     return f(...args);
   }
 });
+/* The clamps use min, max and round; floor, ceil and abs are their close kin. */
 const MATH_FUNCS = {
   min: num("min", Math.min), max: num("max", Math.max), round: num("round", Math.round),
-  floor: num("floor", Math.floor), ceil: num("ceil", Math.ceil), abs: num("abs", Math.abs),
-  sqrt: num("sqrt", Math.sqrt), sin: num("sin", Math.sin), cos: num("cos", Math.cos),
-  pow: num("pow", Math.pow), sign: num("sign", Math.sign), trunc: num("trunc", Math.trunc),
-  PI: Math.PI, E: Math.E
+  floor: num("floor", Math.floor), ceil: num("ceil", Math.ceil), abs: num("abs", Math.abs)
 };
-const ARRAY_METHODS = new Set(["map", "filter", "some", "every", "find", "includes", "indexOf", "join", "slice"]);
+const ARRAY_METHODS = new Set(["map", "filter", "includes"]);
 const GLOBALS = new Map([["Math", MATH], ["undefined", undefined], ["NaN", NaN], ["Infinity", Infinity]]);
 
 function external(pkg, name) { return { kind: "external", pkg, name }; }
