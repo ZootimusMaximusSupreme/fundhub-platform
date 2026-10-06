@@ -297,7 +297,11 @@
   .fh-drawer-head,.fh-drawer-body{min-width:380px}
   .fh-drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid var(--line)}
   .fh-drawer-head h2{margin:4px 0 0;font-size:var(--fs-title);font-weight:800;letter-spacing:-.02em;line-height:1.2}
-  .fh-drawer-x,.fh-drawer-del{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:6px 10px;font:600 11px var(--sans);cursor:pointer;color:var(--ink)}
+  /* No size here (walkthrough-4 defect 21): `font:600 11px` was thrown away by
+     fundhub-brand.css's inherit !important, so Close and Archive painted at
+     body size. The buttons carry class "caption", which the brand whitelist
+     sizes to --fs-caption (13px, the floor). */
+  .fh-drawer-x,.fh-drawer-del{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:6px 10px;font-family:var(--sans);font-weight:600;cursor:pointer;color:var(--ink)}
   .fh-drawer-del{color:#6E2A22;border-color:#e8c4bf}
   .fh-drawer-body{flex:1;overflow:auto;padding:14px 16px 28px}
   .fh-drawer-sec{margin:0 0 16px}
@@ -308,7 +312,7 @@
   .fh-drawer-stat span{font-size:var(--fs-caption);color:var(--text-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
   .fh-drawer-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:var(--fs-body)}
   .fh-drawer-row span:first-child{color:var(--text-dim)}
-  .fh-text-btn{display:inline-block;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:3px 8px;font:600 11px var(--sans);color:var(--ink);text-decoration:none;white-space:nowrap}
+  .fh-text-btn{display:inline-block;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:3px 8px;font-family:var(--sans);font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap}
   .fh-drawer-links{display:flex;flex-direction:column;gap:6px;margin-top:8px}
   .fh-drawer-links a{font-size:var(--fs-body);color:var(--ink);font-weight:600}
   .fh-drawer-empty{color:var(--text-faint);font-size:var(--fs-body);line-height:1.45}
@@ -860,8 +864,8 @@
         <h2 id="fhDrawerName">—</h2>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button type="button" class="fh-drawer-del" id="fhDrawerDel">Archive</button>
-        <button type="button" class="fh-drawer-x" id="fhDrawerClose" aria-label="Close">Close</button>
+        <button type="button" class="fh-drawer-del caption" id="fhDrawerDel">Archive</button>
+        <button type="button" class="fh-drawer-x caption" id="fhDrawerClose" aria-label="Close">Close</button>
       </div>
     </div>
     <div class="fh-drawer-body" id="fhDrawerBody">
