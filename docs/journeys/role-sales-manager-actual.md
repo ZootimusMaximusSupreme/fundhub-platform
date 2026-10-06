@@ -19,7 +19,7 @@ flowchart TD
     CAN --> A_adintel[adintel — 1 route]
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 6 routes]
-    CAN --> A_banking[banking — 2 routes]
+    CAN --> A_banking[banking — 4 routes]
     CAN --> A_blueprint[blueprint — 1 route]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
@@ -76,7 +76,7 @@ flowchart TD
 
 ## What they can reach
 
-**180 of 299 routes.**
+**182 of 301 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -95,6 +95,8 @@ flowchart TD
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/banking/link-exchange` | POST | owner, admin, sales_manager |
+| `/api/banking/link-token` | POST | owner, admin, sales_manager |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
@@ -270,7 +272,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**119 of 299 routes.**
+**119 of 301 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

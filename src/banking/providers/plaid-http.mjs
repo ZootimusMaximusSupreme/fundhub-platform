@@ -186,9 +186,63 @@ export async function fetchAccounts(accessToken, opts = {}) {
     currentBalance: a.balances?.current ?? null,
     availableBalance: a.balances?.available ?? null,
     creditLimit: a.balances?.limit ?? null,
-    isoCurrencyCode: a.balances?.iso_currency_code ?? null
+    isoCurrencyCode: a.balances?.iso_currency_code ?? null,
+    /* Plaid's own business/personal tag, carried for the record only. It is NOT
+       written to entity_kind — 082 says a human or a document decides that. */
+    holderCategory: a.holder_category ?? null
   }));
   return { ...r, accounts, item: r.data?.item ?? null, data: null };
 }
 
-export default { PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts };
+/**
+ * createLinkToken — POST /link/token/create
+ *
+ * The short-lived token the browser needs to open Plaid Link. `transactions` is
+ * the product because it covers checking, savings AND credit cards; `auth` would
+ * hide every card. Nothing here decides personal vs business — see fetchAccounts.
+ */
+export async function createLinkToken({ clientUserId, products = ["transactions"] } = {}, opts = {}) {
+  const r = await plaidPost("/link/token/create", {
+    client_name: "Fundhub",
+    language: "en",
+    country_codes: ["US"],
+    user: { client_user_id: String(clientUserId) },
+    products
+  }, opts);
+  if (!r.ok) return r;
+  const linkToken = r.data?.link_token;
+  if (!linkToken) {
+    return { ...r, ok: false, data: null, error: "plaid /link/token/create answered 200 without link_token" };
+  }
+  return { ...r, linkToken, expiration: r.data?.expiration ?? null, data: null };
+}
+
+/**
+ * sandboxPublicToken — POST /sandbox/public_token/create
+ *
+ * SANDBOX HOST ONLY. Makes a public_token for a fake institution without the
+ * browser, so a link can be proved end to end from a script. Refuses any other
+ * environment before anything is sent.
+ */
+export async function sandboxPublicToken({ institutionId, products = ["transactions"], options = undefined } = {}, opts = {}) {
+  if ((opts.environment || "sandbox") !== "sandbox") {
+    return {
+      ok: false, blocked: false, transmitted: false, status: 0, data: null,
+      errorCode: null, errorType: null, retryable: false,
+      error: "sandboxPublicToken only runs against the sandbox host"
+    };
+  }
+  const payload = { institution_id: institutionId, initial_products: products };
+  if (options) payload.options = options;
+  const r = await plaidPost("/sandbox/public_token/create", payload, opts);
+  if (!r.ok) return r;
+  const publicToken = r.data?.public_token;
+  if (!publicToken) {
+    return { ...r, ok: false, data: null, error: "plaid sandbox answered 200 without public_token" };
+  }
+  return { ...r, publicToken, data: null };
+}
+
+export default {
+  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, createLinkToken, sandboxPublicToken
+};
