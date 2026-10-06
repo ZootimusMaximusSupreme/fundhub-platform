@@ -1,0 +1,132 @@
+/* ══ COMMAND CENTER — the Ideas tab (build unit X8) ══════════════════════════
+   Loaded by public/app/cc-tab-ideas.js the first time the tab draws, so the
+   frame needs only the tab's <script> tag. Everything is scoped under .cci so
+   nothing here can reach another tab.
+
+   docs/rules/UI-STANDARDS.md is law here:
+     - No font sizes (§12.7). Sizes come from the brand whitelist: h2 (title),
+       .caption / label / .chip / .eyebrow (caption), body 16px by default.
+     - Containers are .card, already on the brand's shadow list (§12.2), so no
+       shadow value is written here. Groups take a flat tint (§12.5).
+     - 8px spacing scale (§2); 12-column grid with spans 6 and 12 (§2).
+     - Phone first: one column at 390px, 44px taps, no sideways scroll (§11).
+     - Status is never colour alone: every chip says its word (§12.6). */
+
+.cci{display:flex;flex-direction:column;gap:24px;min-width:0}
+.cci .cci-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.cci .s6{grid-column:span 6}
+.cci .s12{grid-column:span 12}
+
+.cci .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px;min-width:0}
+.cci .card-hd{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.cci .card-hd h2{font-weight:600;letter-spacing:-.01em}
+
+.cci .cci-meter{color:var(--gray)}
+.cci .cci-muted{color:var(--gray)}
+.cci .cci-sub{margin:24px 0 8px}
+.cci .eyebrow{display:block;margin:16px 0 8px}
+.cci .cci-honest{padding:16px;border:1px dashed var(--line);border-radius:8px;background:var(--soft);color:var(--ink2)}
+.cci .cci-empty{color:var(--gray)}
+.cci .cci-err{padding:16px;border-radius:8px;border:1px solid var(--line);background:color-mix(in srgb,var(--alert) 22%,#fff);color:#6E2A22}
+.cci .cci-err .actions{margin-top:8px}
+.cci .cci-bad{color:#6E2A22}
+.cci .cci-reason{color:#6E2A22;margin-top:8px}
+.cci .cci-cost{color:var(--gray);margin-top:8px;max-width:78ch;padding-left:8px;border-left:2px solid var(--line)}
+.cci .cci-cost:empty{display:none}
+.cci .cci-sentence{margin-top:8px;max-width:78ch}
+.cci .cci-url{margin-top:8px;overflow-wrap:anywhere}
+.cci .cci-url a{font-weight:600;text-decoration:underline}
+
+/* Forms */
+.cci form{display:flex;flex-direction:column}
+.cci .field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;min-width:0}
+.cci .field label{color:var(--ink2);font-weight:600}
+.cci .field textarea,.cci .field select,.cci .field input[type="text"],.cci .field input[type="number"]{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:#fff;min-height:48px}
+.cci .field textarea{resize:vertical;min-height:96px}
+.cci .cci-inline{margin-top:16px;margin-bottom:0;padding:16px;border-radius:8px;background:var(--soft);border:1px solid var(--line)}
+.cci .cci-inline textarea{min-height:64px}
+.cci .cci-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.cci .cci-stop{max-width:320px}
+.cci .cci-checks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.cci .cci-check{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink2);cursor:pointer}
+.cci .cci-check input{width:20px;height:20px;margin:0}
+.cci .cci-pickers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:8px}
+
+/* Buttons: 44px on every tap (design §3.0). */
+.cci .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--ink2);border-radius:8px;padding:8px 16px;font-weight:600;cursor:pointer;background:#fff;color:var(--ink2);min-height:44px}
+.cci .btn:hover{border-color:var(--ink)}
+.cci .btn.primary{background:var(--ink2);color:var(--paper);min-height:48px;padding:8px 24px}
+.cci .btn.primary:hover{opacity:.9}
+.cci .btn[disabled]{opacity:.45;cursor:not-allowed}
+.cci .btn .spin{display:none;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ccispin .8s linear infinite}
+.cci .btn.busy .spin{display:inline-block}
+@keyframes ccispin{to{transform:rotate(360deg)}}
+.cci .actions{display:flex;gap:8px 16px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.cci .cci-seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.cci .cci-segbtn[aria-checked="true"],.cci .cci-segbtn[aria-selected="true"]{background:var(--ink2);color:var(--paper)}
+
+/* Push live sits apart from the safe buttons (UI-STANDARDS §5). */
+.cci .cci-push{margin-top:24px;padding-top:16px;border-top:1px dashed var(--line)}
+
+/* Every action answers back where Chris is looking (UI-STANDARDS §5). */
+.cci .say{display:none;margin-top:16px;padding:8px 16px;border-radius:8px;border:1px solid var(--line)}
+.cci .say.show{display:block}
+.cci .say.ok{background:color-mix(in srgb,var(--ok) 28%,#fff);color:#2C5138}
+.cci .say.err{background:color-mix(in srgb,var(--alert) 28%,#fff);color:#6E2A22}
+.cci .say.wait{background:color-mix(in srgb,var(--warn) 28%,#fff);color:#6B4A12}
+
+/* Rows */
+.cci .cci-rows{list-style:none;display:flex;flex-direction:column;margin:0;padding:0}
+.cci .cci-row{padding:16px 0;border-top:1px solid var(--line);min-width:0}
+.cci .cci-row:first-child{border-top-color:transparent;padding-top:0}
+.cci .cci-row-hd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:start}
+.cci .cci-row-text{overflow-wrap:anywhere;min-width:0}
+.cci .cci-row .caption{display:block;margin-top:4px}
+.cci .cci-pages{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cci .cci-pages li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;background:var(--soft);border:1px solid var(--line)}
+.cci .cci-pages .caption{display:inline;margin:0}
+.cci .cci-page-name{font-weight:600}
+.cci .cci-list{padding-left:24px;margin-top:8px}
+.cci .cci-list li + li{margin-top:8px}
+.cci .cci-words{white-space:pre-wrap;overflow-wrap:anywhere;max-width:78ch}
+
+/* What unfolds in place: reports, review cards, page previews. */
+.cci .cci-open:empty{display:none}
+.cci .cci-open{margin-top:16px}
+.cci .cci-md{max-width:78ch;overflow-wrap:anywhere}
+.cci .cci-md p + p,.cci .cci-md ul + p,.cci .cci-md p + ul{margin-top:8px}
+.cci .cci-md ul{padding-left:24px}
+.cci .cci-md a{text-decoration:underline}
+.cci .cci-mdh{margin-top:16px}
+.cci .cci-more{margin-top:16px}
+.cci .cci-more summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+.cci .cci-frame{display:block;width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:#fff}
+
+/* A table keeps its own scroll box; nothing else does (UI-STANDARDS §11). */
+.cci .cci-table-wrap{overflow-x:auto}
+.cci .cci-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.cci .cci-table th,.cci .cci-table td{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.cci .cci-table .n{text-align:right}
+
+/* LOADING — skeletons in the real layout (UI-STANDARDS §6). */
+.cci .skel{display:block;height:16px;border-radius:8px;background:var(--soft);animation:ccipulse 1.2s ease-in-out infinite}
+.cci .skel + .skel{margin-top:8px}
+@keyframes ccipulse{0%,100%{opacity:.45}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){ .cci .skel,.cci .btn .spin{animation:none} }
+
+/* The sheet, only when a host gives none of its own. */
+.cci-sheet{position:fixed;inset:0;z-index:60;background:rgba(10,10,10,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.cci-sheet-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px}
+
+/* PHONE (UI-STANDARDS §11): one column. */
+@media (max-width:960px){ .cci .s6{grid-column:span 12} }
+@media (max-width:720px){
+  .cci .card{padding:16px}
+  .cci .cci-two,.cci .cci-pickers{grid-template-columns:minmax(0,1fr)}
+  .cci .cci-frame{height:560px}
+}
+@media (max-width:480px){
+  .cci .actions .btn{flex:1 1 auto}
+  .cci .cci-push .btn{width:100%}
+  .cci .cci-stop{max-width:none}
+}
