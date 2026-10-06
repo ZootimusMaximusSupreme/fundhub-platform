@@ -70,3 +70,45 @@ flowchart TD
 - `GET /api/read/ad-books` folds the roll-up rows but does not yet add up `payments` or `paid_cents` into its groups or totals, so the screen does not show them. The store returns them; the endpoint is not changed here.
 - A new Meta ad gets a visitor number only after someone gives that ad its `fundhub_ad_number` (the Campaign Manager link box, `api/campaigns/link-asset.mjs`). The four SLO ads that ran were numbered by 407 (84, 90, 89, 86). The three August book-a-call ads have no Fundhub number and stay NULL.
 - `vsl_watch_sessions.ad_number` (379) is still the leading-digits rule only. It is not part of this flow.
+
+## U14 One ad number on many Meta ads, the url_tags builder, and mapAdNumber
+
+Traced from the code on 2026-10-05 (branch `mm-u14-ad-number-source`). Spec
+`docs/specs/marketing-machine-2026-10-04.md` §10.3, §10.4 (migration), §10.5
+(sync mapping, pure part only).
+
+```mermaid
+flowchart TD
+    subgraph WRITE ["Where an ads row's number comes from — ads.fundhub_ad_number_source, 416"]
+      P[A person types it<br/>POST /api/campaigns/link-asset] -->|number set| MAN[source = manual]
+      P -->|number cleared: null or blank| NONE[number NULL, source NULL]
+      OLD[Numbers already on ads before 416<br/>84 · 86 · 89 · 90 from 407] -->|416 backfill| MAN
+      LOAD[Machine loads the ad into Meta<br/>spec §10.4 — NOT BUILT, U28] -.->|UNVERIFIED| LDR[source = loader]
+      SYNC[Daily Meta sync reads creative url_tags + ad name<br/>spec §10.5 — wiring NOT BUILT, U27] -.->|UNVERIFIED: calls mapAdNumber| MAP{mapAdNumber<br/>src/ads/ad-number.mjs}
+      MAP -->|leading digits of utm_content, adIdOf = fundhub_ad_id rule| UTM[source = utm]
+      MAP -->|else 'Ad N' as a word in the ad name| NAME[source = name]
+      MAP -->|else, or bad input: never throws| NULLMAP[null — nothing stored]
+      MAN -.->|spec §10.5: the sync never overwrites manual| SYNC
+    end
+    subgraph TAGS ["What a loaded ad sends — src/marketing/url-tags.mjs"]
+      B["buildUrlTags lane, adNumber, variant?"] -->|lane not one fundhub_ad_lane knows| REF[throws — no ad is built]
+      B -->|ok| T["utm_source=fb · utm_medium=paid · utm_campaign=lane · utm_content=N<br/>utm_term=variant only with a variant"]
+      T -->|goes in the creative's url_tags, never in the link — U28| CLICK[person taps the ad]
+      CLICK --> ROW[(client_ad_attribution<br/>ad_id = N by the 407 trigger<br/>lane by fundhub_ad_lane)]
+    end
+```
+
+| State | Where it lives | What moves it |
+|---|---|---|
+| One number, many ads rows | `ads.fundhub_ad_number`, plain index `ads_fundhub_number_idx` (`db/migrations/416_ads_number_index_and_source.sql`). The unique index `ads_fundhub_number_uq` (377:575) is gone. | Any writer may now put the same number on a second ad (another ad set, or a v2). The number's shape CHECK (377:569) is unchanged. |
+| `manual` | `ads.fundhub_ad_number_source` | `api/campaigns/link-asset.mjs` sets it with every typed number and clears it with the number. 416 marks every number already stored as `manual`. Its old `409 ad_number_taken` answer is removed; it could only come from the dropped index. |
+| `loader` | same column | Only the CHECK exists. Nothing writes it yet (U28). `UNVERIFIED`. |
+| `utm` / `name` | same column | `mapAdNumber({urlTags, name})` returns `{number, source}` or null. Nothing calls it yet (U27 wires it into `api/campaigns/sync.mjs`). `UNVERIFIED` end to end. |
+| UTMs on a loaded ad | the Meta creative's `url_tags` | `buildUrlTags` builds them. Nothing calls it yet (U28). The database reads them back with `fundhub_ad_id`, `fundhub_ad_lane` and `fundhub_ad_variant`, proved in `src/http/ad-number-source.pg.test.mjs`. |
+
+Gaps (findings, not reconciled):
+
+- **Counting per number (for M5, spec §11).** One number may now sit on several `ads` rows. A report per number must count leads per number (`client_ad_attribution.ad_id`), never per `ads` row, or one lead counts once per row. `api/read/ad-spine.mjs` already uses `count(DISTINCT a.client_id)` per label group; its comment at about line 209 still names `ads_fundhub_number_uq`.
+- **Roadmap lane: `uwiq` or `slo`.** New roadmap ads take `utm_campaign` from the funnel's lane, which the spec's seed calls `uwiq`, while live roadmap leads read `slo` (406/407). `buildUrlTags` accepts both. Chris's yes/no is open on the board.
+- **"SLO Ad 7" names.** `marketing/ads/NAMING.md` numbers takes per offer ("SLO Ad 7"), and 407 says SLO Ad 7 is Fundhub ad 90. The spec's name rule (`Ad (\d{1,9})`) reads a Meta ad named "SLO Ad 7 — …" as 7, not 90. No live Meta ad is named that way today (the live names are "oVid: SLO1"–"oVid: SLO4", which map to null). U27 or Chris should decide before the sync stores `name` numbers.
+- The name rule is case-sensitive ("Ad", as the spec writes it), needs "Ad" to start a word, and refuses a run of more than nine digits rather than cutting it short.
