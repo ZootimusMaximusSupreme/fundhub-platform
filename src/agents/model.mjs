@@ -8,11 +8,47 @@
 // With no key, callModel() returns a shadow result: nothing is sent, nothing
 // throws, and the caller logs the would-be request.
 //
+// FORCED CLAUDE (added 2026-10-05, marketing machine spec §6 step 4, §4 trap 8).
+// Pass `provider: "anthropic"` and the call goes to Anthropic and nowhere else:
+// no OpenAI first, no gpt-4o-mini swap, no masked key quietly skipped. That path
+// also takes timeoutMs, cache, effort, outputSchema, tools/toolChoice and
+// fallbacks — see callAnthropicForced below. Without `provider`, everything in
+// this file behaves exactly as it did before (the old callers depend on it).
+//
 // No new npm dependency — raw fetch, same posture as src/messaging/providers/*.
 
 export const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 export const DEFAULT_MAX_TOKENS = 600;
+
+// ── Forced-Claude defaults ──────────────────────────────────────────────────
+// Facts below are from the claude-api skill (model table cached 2026-09-25):
+//   * claude-opus-5-5 is the current default model.
+//   * Thinking cannot be turned off on Opus 5.5 and counts toward max_tokens,
+//     so 600 cuts replies off. The skill's non-streaming default is ~16000.
+//   * Opus 5.5's own effort default is "medium" (one level below Opus 5), so
+//     effort is always sent, never left to the vendor's default.
+//   * The SDKs' own request timeout is 10 minutes; a call with no timer at all
+//     could hold a 15-minute background worker until Netlify kills it.
+//   * `fallbacks: "default"` (beta header server-side-fallback-2026-07-01)
+//     re-runs a classifier refusal on the model Anthropic picks for that
+//     category. Only these four models take it; any other model would 400.
+export const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5-5";
+export const DEFAULT_ANTHROPIC_MAX_TOKENS = 16000;
+export const DEFAULT_ANTHROPIC_TIMEOUT_MS = 600_000;
+export const DEFAULT_EFFORT = "medium";
+export const EFFORT_LEVELS = Object.freeze(["low", "medium", "high", "xhigh", "max"]);
+export const FALLBACK_DEFAULT_BETA = "server-side-fallback-2026-07-01";
+export const FALLBACK_MODELS = Object.freeze([
+  "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1"
+]);
+
+/** Plain error when outputSchema was asked for and the reply did not parse. */
+export const MODEL_NO_JSON = "no_json";
+/** Plain error when tools were offered (choice auto) and none was called. */
+export const MODEL_NO_TOOL_CALL = "no_tool_call";
+/** Every refusal made here, before any request, starts with these words. */
+export const MODEL_NOT_SENT = "not sent: ";
 
 // ── WHY A FAILURE IS CLASSIFIED AND NOT JUST REPORTED ──────────────────────
 //
@@ -56,6 +92,12 @@ function statusFromErrorText(text) {
 export function classifyModelFailure({ status = null, error = null } = {}) {
   const text = String(error == null ? "" : error);
   if (!text && status == null) return { temporary: false, reason: null, status: null };
+
+  // Refused here before anything was sent (no key, a forced tool choice, a bad
+  // argument). Waiting will not fix it, and no vendor was ever reached, so it
+  // must not read as "unreachable". Only the provider:'anthropic' path writes
+  // these words; no older error string starts with them.
+  if (text.startsWith(MODEL_NOT_SENT)) return { temporary: false, reason: null, status: null };
 
   const code = Number(status) || statusFromErrorText(text) || null;
   const lower = text.toLowerCase();
@@ -134,7 +176,7 @@ function pickProvider(env, mediaParts) {
 }
 
 /**
- * callModel({ system, user, env?, fetchImpl?, model?, maxTokens? })
+ * callModel({ system, user, env?, fetchImpl?, model?, maxTokens?, media? })
  * → {
  *     mode: 'live' | 'shadow',
  *     text: string | null,          // assistant reply (synthetic marker when keyless)
@@ -142,8 +184,19 @@ function pickProvider(env, mediaParts) {
  *     request: { model, system, user, max_tokens },
  *     error: string | null
  *   }
+ *
+ * With `provider: 'anthropic'` the call is forced onto Claude and takes more
+ * options (timeoutMs, cache, effort, outputSchema, tools, toolChoice,
+ * fallbacks); the result then also carries json, toolInput, stopReason,
+ * servedModel and the full Anthropic usage. See callAnthropicForced.
+ * Without `provider`, nothing about this function changed.
  */
-export async function callModel({
+export async function callModel(args = {}) {
+  if (args && args.provider != null) return callAnthropicForced(args);
+  return callModelDefault(args);
+}
+
+async function callModelDefault({
   system, user, env = process.env, fetchImpl = globalThis.fetch,
   model = DEFAULT_MODEL, maxTokens = DEFAULT_MAX_TOKENS,
   media = []
@@ -280,6 +333,325 @@ async function callAnthropic({ env, fetchImpl, request, mediaParts }) {
 
   const text = extractText(raw);
   return { mode: "live", text, raw, request, error: null, usage };
+}
+
+// ── FORCED CLAUDE: callModel({ provider: 'anthropic', ... }) ────────────────
+//
+// WHY IT EXISTS. The default path above answers "which vendor has a key?" and
+// picks OpenAI first. The marketing machine's writer has to run on Claude, with
+// a schema it can trust, a timer, a cache and a cost it can log. Until now the
+// only way to force Claude was to hand callModel an env holding just the
+// Anthropic key (src/ad-videos/match.mjs, src/marketing/offer-transport.mjs);
+// that still works and is left alone.
+//
+// WHAT IT NEVER SENDS. Request shapes come from the claude-api skill (cache
+// 2026-09-25), "Migrating to Claude Opus 5.5":
+//   * no `thinking` field at all — {type:"disabled"} and budget_tokens are
+//     HTTP 400 on Opus 5.5; effort is the only control;
+//   * no temperature / top_p / top_k — HTTP 400 on the current models;
+//   * no assistant prefill — HTTP 400; outputSchema replaces it;
+//   * no forced tool_choice ({type:"any"} or {type:"tool"}) — HTTP 400 on
+//     claude-opus-5-5 and claude-sonnet-5-5. It is refused HERE, before any
+//     call, so a caller finds out in a test and not on a live run.
+//
+// WHAT COMES BACK. The old result shape, plus:
+//   json        — the parsed reply when outputSchema was given
+//   toolInput   — the input of the first tool_use block when tools were given
+//   stopReason  — Anthropic's stop_reason
+//   servedModel — response.model: the model that actually answered. With a
+//                 refusal fallback this is NOT the model asked for, and the
+//                 cost log has to price the one that ran.
+//   usage       — input, output, cache read and cache write tokens
+//   status      — the HTTP status whenever a reply came back
+// Errors are plain words. Anything refused before sending starts "not sent: ".
+
+const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+
+function emptyAnthropicUsage() {
+  return { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+}
+
+function anthropicUsageOf(raw) {
+  const u = (raw && raw.usage) || {};
+  const n = (v) => Math.max(0, Number(v) || 0);
+  return {
+    input_tokens: n(u.input_tokens),
+    output_tokens: n(u.output_tokens),
+    cache_read_input_tokens: n(u.cache_read_input_tokens),
+    cache_creation_input_tokens: n(u.cache_creation_input_tokens)
+  };
+}
+
+function isPlainObject(v) {
+  return v != null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** 'auto' | 'none' | {type:'auto'|'none'} → the wire form, or { error }. */
+function toolChoiceOf(choice) {
+  if (choice == null) return { type: "auto" };
+  const type = typeof choice === "string" ? choice : (isPlainObject(choice) ? choice.type : undefined);
+  if (type === "auto" || type === "none") {
+    const out = { type };
+    if (type === "auto" && isPlainObject(choice) && choice.disable_parallel_tool_use === true) {
+      out.disable_parallel_tool_use = true;
+    }
+    return out;
+  }
+  return {
+    error: `${MODEL_NOT_SENT}toolChoice ${JSON.stringify(choice)} forces a tool call. ` +
+      "Forced tool use ('any' or a named tool) is HTTP 400 on claude-opus-5-5 and " +
+      "claude-sonnet-5-5. Use 'auto' and name the tool in the prompt, or use outputSchema."
+  };
+}
+
+/**
+ * Strict tool schemas need additionalProperties:false and a required list on
+ * every object (claude-api skill, "Strict tool use"). Missing required lists
+ * are filled with every property. Returns a copy; the caller's schema is
+ * never changed.
+ */
+function strictSchema(node) {
+  if (Array.isArray(node)) return node.map(strictSchema);
+  if (!isPlainObject(node)) return node;
+  const out = { ...node };
+  if (isPlainObject(out.properties)) {
+    out.properties = Object.fromEntries(
+      Object.entries(out.properties).map(([k, v]) => [k, strictSchema(v)])
+    );
+  }
+  if (out.type === "object" || isPlainObject(out.properties)) {
+    out.additionalProperties = false;
+    if (!Array.isArray(out.required)) out.required = Object.keys(out.properties || {});
+  }
+  if (out.items !== undefined) out.items = strictSchema(out.items);
+  for (const k of ["anyOf", "allOf", "oneOf"]) {
+    if (Array.isArray(out[k])) out[k] = out[k].map(strictSchema);
+  }
+  for (const k of ["$defs", "definitions"]) {
+    if (isPlainObject(out[k])) {
+      out[k] = Object.fromEntries(Object.entries(out[k]).map(([name, v]) => [name, strictSchema(v)]));
+    }
+  }
+  return out;
+}
+
+function strictTool(tool) {
+  const out = { name: String(tool.name) };
+  if (tool.description) out.description = String(tool.description);
+  out.input_schema = strictSchema({ type: "object", ...tool.input_schema });
+  out.strict = true;
+  return out;
+}
+
+/** The parsed reply, or undefined when there is nothing usable to parse. */
+function parseJsonReply(text) {
+  if (typeof text !== "string" || !text.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed === null ? undefined : parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseToolInput(input) {
+  if (isPlainObject(input)) return input;
+  if (typeof input === "string") {
+    const parsed = parseJsonReply(input);
+    return isPlainObject(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+async function callAnthropicForced(args) {
+  const {
+    system, user, env = process.env, fetchImpl = globalThis.fetch,
+    model, maxTokens, media = [], provider,
+    timeoutMs, cache = false, effort, outputSchema, tools, toolChoice,
+    fallbacks = "default"
+  } = args;
+
+  const mediaParts = Array.isArray(media) ? media.filter(Boolean) : [];
+  const toolList = Array.isArray(tools) ? tools.filter(Boolean) : [];
+  const modelName = model == null || model === "" ? DEFAULT_ANTHROPIC_MODEL : String(model);
+  const maxTok = maxTokens == null ? DEFAULT_ANTHROPIC_MAX_TOKENS : maxTokens;
+  const effortLevel = effort == null ? DEFAULT_EFFORT : effort;
+  const timeout = timeoutMs == null ? DEFAULT_ANTHROPIC_TIMEOUT_MS : timeoutMs;
+  const choice = toolChoiceOf(toolChoice);
+  const fallbackOn = fallbacks == null || fallbacks === true || fallbacks === "default";
+  const sendFallbacks = fallbackOn && FALLBACK_MODELS.includes(modelName);
+  const systemText = String(system || "");
+
+  const request = {
+    model: modelName,
+    system: systemText,
+    user: String(user || ""),
+    max_tokens: maxTok,
+    media_count: mediaParts.length,
+    provider: provider === "anthropic" ? "anthropic" : String(provider),
+    effort: effortLevel,
+    cache: cache === true,
+    timeout_ms: timeout,
+    output_schema: outputSchema != null,
+    tools: toolList.map((t) => (t && t.name) || null),
+    tool_choice: toolList.length && !choice.error ? choice.type : null,
+    fallbacks: sendFallbacks ? "default" : null
+  };
+
+  const result = (fields) => ({
+    mode: "live", text: null, raw: null, request, error: null, status: null,
+    json: null, toolInput: null, stopReason: null, servedModel: null,
+    usage: emptyAnthropicUsage(),
+    ...fields
+  });
+  const notSent = (why) => result({ mode: "shadow", error: `${MODEL_NOT_SENT}${why}` });
+
+  // ── Refuse before sending ────────────────────────────────────────────────
+  if (provider !== "anthropic") {
+    return notSent(`unknown provider ${JSON.stringify(provider)}. The only forced provider is 'anthropic'.`);
+  }
+  const key = env && env.ANTHROPIC_API_KEY;
+  if (!key) return notSent("ANTHROPIC_API_KEY is not set, so Claude was not called.");
+  if (isMasked(key)) {
+    // Same rule as the OpenAI key above: a value with an asterisk is the hidden
+    // form of a key, not the key. It is never sent and never removed (§11).
+    return notSent("ANTHROPIC_API_KEY is masked (it holds * characters, the hidden form of a key), so Claude was not called.");
+  }
+  if (!/^claude-/.test(modelName)) {
+    return notSent(`model ${JSON.stringify(modelName)} is not a Claude model; provider 'anthropic' only calls Claude.`);
+  }
+  if (!EFFORT_LEVELS.includes(effortLevel)) {
+    return notSent(`effort ${JSON.stringify(effortLevel)} is not one of ${EFFORT_LEVELS.join(", ")}.`);
+  }
+  if (!Number.isInteger(maxTok) || maxTok < 1) {
+    return notSent(`maxTokens ${JSON.stringify(maxTok)} is not a whole number above 0.`);
+  }
+  if (typeof timeout !== "number" || !Number.isFinite(timeout) || timeout <= 0) {
+    return notSent(`timeoutMs ${JSON.stringify(timeout)} is not a number of milliseconds above 0.`);
+  }
+  if (choice.error) return result({ mode: "shadow", error: choice.error });
+  for (const t of toolList) {
+    if (!isPlainObject(t) || typeof t.name !== "string" || !t.name) {
+      return notSent("every tool needs a name.");
+    }
+    if (!isPlainObject(t.input_schema)) {
+      return notSent(`tool ${JSON.stringify(t.name)} has no input_schema object.`);
+    }
+  }
+  if (outputSchema != null && !isPlainObject(outputSchema)) {
+    return notSent("outputSchema must be a JSON schema object.");
+  }
+  if (!(fallbacks == null || fallbacks === true || fallbacks === false || fallbacks === "default")) {
+    return notSent(`fallbacks ${JSON.stringify(fallbacks)} must be 'default' or false.`);
+  }
+  if (typeof fetchImpl !== "function") return notSent("fetch is unavailable.");
+
+  // ── Build the request ────────────────────────────────────────────────────
+  const body = {
+    model: modelName,
+    max_tokens: maxTok
+  };
+  if (systemText) {
+    body.system = cache === true
+      ? [{ type: "text", text: systemText, cache_control: { type: "ephemeral" } }]
+      : systemText;
+  }
+  body.messages = [{ role: "user", content: buildUserContent(request.user, mediaParts) }];
+  if (toolList.length) {
+    body.tools = toolList.map(strictTool);
+    body.tool_choice = choice;
+  }
+  body.output_config = { effort: effortLevel };
+  if (outputSchema != null) {
+    body.output_config.format = { type: "json_schema", schema: outputSchema };
+  }
+  if (sendFallbacks) body.fallbacks = "default";
+
+  const headers = {
+    "content-type": "application/json",
+    "x-api-key": key,
+    "anthropic-version": "2023-06-01"
+  };
+  if (sendFallbacks) headers["anthropic-beta"] = FALLBACK_DEFAULT_BETA;
+
+  // ── Send, with a timer that aborts the request itself ───────────────────
+  // The race makes the timer win even against a fetch that ignores its signal.
+  const controller = new AbortController();
+  const TIMED_OUT = Symbol("timed out");
+  let timer = null;
+  const timedOut = new Promise((resolve) => {
+    timer = setTimeout(() => { controller.abort(); resolve(TIMED_OUT); }, timeout);
+  });
+  const timeoutResult = () => result({
+    error: `anthropic timeout: no answer from Claude after ${timeout} ms, so the request was stopped.`
+  });
+
+  const send = async () => {
+    const res = await fetchImpl(ANTHROPIC_MESSAGES_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    const raw = await res.json().catch(() => null);
+    return { res, raw };
+  };
+
+  let reply;
+  try {
+    reply = await Promise.race([send(), timedOut]);
+  } catch (err) {
+    if (controller.signal.aborted) return timeoutResult();
+    // No status: the call never got an answer, which classifyModelFailure
+    // reads as temporary.
+    return result({ error: String((err && err.message) || err).slice(0, 300) });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (reply === TIMED_OUT) return timeoutResult();
+
+  const { res, raw } = reply;
+  const usage = anthropicUsageOf(raw);
+  const servedModel = raw && typeof raw.model === "string" && raw.model ? raw.model : null;
+  const stopReason = (raw && raw.stop_reason) || null;
+  const answered = { raw, status: res.status, usage, servedModel, stopReason };
+
+  if (!res.ok) {
+    return result({ ...answered, error: `anthropic ${res.status}: ${JSON.stringify(raw).slice(0, 300)}` });
+  }
+
+  // Check the stop reason before reading any content (claude-api skill).
+  if (stopReason === "refusal") {
+    const category = raw.stop_details && raw.stop_details.category;
+    return result({
+      ...answered,
+      error: `refused: Claude declined this request (category: ${category || "none given"}).`
+    });
+  }
+  if (stopReason === "max_tokens") {
+    return result({
+      ...answered,
+      error: `cut off: the reply hit the ${maxTok}-token limit before it finished (thinking counts toward it). Raise maxTokens.`
+    });
+  }
+
+  const text = extractText(raw);
+  const blocks = Array.isArray(raw && raw.content) ? raw.content : [];
+  const toolUse = blocks.find((b) => b && b.type === "tool_use") || null;
+  const toolInput = toolUse ? parseToolInput(toolUse.input) : null;
+
+  let json = null;
+  let error = null;
+  if (outputSchema != null && !toolUse) {
+    const parsed = parseJsonReply(text);
+    if (parsed === undefined) error = MODEL_NO_JSON;
+    else json = parsed;
+  }
+  if (toolList.length && choice.type !== "none" && outputSchema == null && !toolInput) {
+    error = MODEL_NO_TOOL_CALL;
+  }
+
+  return result({ ...answered, text, json, toolInput, error });
 }
 
 function buildUserContent(userText, mediaParts = []) {

@@ -348,3 +348,77 @@ flowchart TD
   spec names none.
 - `docs/journeys/marketing-machine-intended.md` is not on main, so this was checked against
   the spec text, not the intended journey.
+## U06 M0 step 4 model client: callModel provider 'anthropic'
+
+Drawn 2026-10-05 from `src/agents/model.mjs` (`callModel` → `callAnthropicForced`)
+on branch `mm-u06-anthropic-model-client`. Spec §6 step 4 "The model client" and
+§4 trap 8. No screen. Nothing calls this path yet; the writer (U24) is its first
+user.
+
+What it does, in plain words:
+
+- `callModel({ provider: 'anthropic', ... })` only ever calls
+  `api.anthropic.com`. An OpenAI key in the same env is ignored.
+- Without `provider`, `callModel` is the same code as before (OpenAI first, then
+  Anthropic). A test pins the old Anthropic request body byte for byte.
+- A missing key, a masked key (it holds `*`), a forced tool choice (`'any'` or a
+  named tool), a non-Claude model name or a bad option is refused before
+  anything is sent. The error starts `not sent:`.
+- Every request carries `output_config.effort` (default `medium`), a timer
+  (default 10 minutes) that aborts the request, and `max_tokens` (default 16000,
+  because thinking counts toward it). It never carries `thinking`,
+  `temperature`, `top_p`, `top_k` or `budget_tokens`.
+- `cache: true` sends the system prompt as one block marked
+  `cache_control: ephemeral`.
+- `outputSchema` goes out as `output_config.format` (`json_schema`); the parsed
+  reply comes back as `json`, or the error `no_json`.
+- `tools` go out with `strict: true`, `additionalProperties: false` and a
+  `required` list on every object. The first `tool_use` input comes back as
+  `toolInput`; no tool call (choice `auto`) is the error `no_tool_call`.
+- On claude-opus-5-5, claude-opus-5, claude-sonnet-5-5 and claude-fable-5-1 it
+  asks for `fallbacks: "default"` with the beta header
+  `server-side-fallback-2026-07-01` unless `fallbacks: false`. `servedModel` is
+  the model that answered.
+- Every result has `usage` with input, output, cache-read and cache-write tokens.
+
+```mermaid
+flowchart TD
+  A[callModel with provider] --> P{provider is 'anthropic'?}
+  P -->|no| N1[not sent: unknown provider]
+  P -->|yes| K{ANTHROPIC_API_KEY set and not masked?}
+  K -->|no| N2[not sent: key missing or masked<br/>mode shadow, no call]
+  K -->|yes| V{model is claude-*, effort valid,<br/>maxTokens and timeoutMs valid,<br/>toolChoice auto or none, tools named}
+  V -->|no| N3[not sent: plain reason<br/>forced tool choice lands here]
+  V -->|yes| B[build body: model, max_tokens, system or cached system block,<br/>user message, strict tools, output_config effort + format,<br/>fallbacks default on the four listed models]
+  B --> S[POST api.anthropic.com/v1/messages<br/>with AbortSignal]
+  S -->|timer fires| T[anthropic timeout error<br/>temporary]
+  S -->|fetch throws| U[network error, status null<br/>temporary]
+  S -->|HTTP not ok| H[anthropic STATUS: body<br/>429 and 5xx temporary]
+  S -->|HTTP 200| R{stop_reason}
+  R -->|refusal| RF[refused: category named]
+  R -->|max_tokens| MT[cut off: raise maxTokens]
+  R -->|other| C{what was asked for}
+  C -->|outputSchema, no tool call| J{reply parses as JSON?}
+  J -->|yes| OK1[json set]
+  J -->|no| NJ[error no_json]
+  C -->|tools, choice auto, no schema| TU{tool_use block?}
+  TU -->|yes| OK2[toolInput set]
+  TU -->|no| NT[error no_tool_call]
+  C -->|plain text| OK3[text set]
+  OK1 --> Z[result: text, json, toolInput, stopReason,<br/>servedModel = response.model, usage x4, status]
+  OK2 --> Z
+  OK3 --> Z
+```
+
+UNVERIFIED: that Anthropic accepts this exact request shape. Fake-fetch tests
+prove what is sent, not that the vendor takes it. The orchestrator's one small
+live call after the ship is the proof (a 400 means the shape is wrong).
+
+Gaps against the spec (findings, not reconciled):
+
+- Spec §6 step 4 lists `tools` and `toolChoice`, and §7.6 speaks of a forced
+  `save_script` tool. Forced tool use is HTTP 400 on claude-opus-5-5 and
+  claude-sonnet-5-5 (claude-api skill), so only `auto` and `none` are accepted
+  and the writer gets `outputSchema` instead.
+- The spec names no default model, `maxTokens`, timeout or effort for this
+  path. The defaults above come from the claude-api skill.
