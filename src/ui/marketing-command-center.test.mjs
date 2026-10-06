@@ -197,7 +197,10 @@ describe("never fake a number", () => {
     assert.equal(cc.money(undefined), "unknown");
     assert.equal(cc.money(""), "unknown");
     assert.equal(cc.money(0), "$0");
-    assert.equal(cc.money(123456), "$1,235");
+    // To the cent, as the design prints it ("$606.53", "$915.46"): never rounded off.
+    assert.equal(cc.money(123456), "$1,234.56");
+    assert.equal(cc.money(70727), "$707.27");
+    assert.equal(cc.money(130000), "$1,300");
     assert.equal(cc.money(4550), "$45.50");
   });
 
@@ -215,6 +218,33 @@ describe("never fake a number", () => {
     assert.doesNotMatch(thirty, /Today so far: unknown/);
     assert.doesNotMatch(seven + thirty, /\$0/);
     assert.match(seven, /No number for the 7 days before\./);
+    assert.match(seven, /No ad spend saved for Sep 28 to Oct 4\./);
+  });
+
+  test("ads stopped: the windows keep moving, the empty week says so, the week before keeps its money", () => {
+    const cc = load();
+    // As api/marketing/today.mjs answers on Oct 12 when the last ad ran Oct 4:
+    // the midnight pull covered Oct 11, so the windows end there.
+    const v = cc.normalizeToday(today({
+      today: "2026-10-12",
+      spend: { currency: "USD", through: "2026-10-11", windows: {
+        today: { from: "2026-10-12", to: "2026-10-12", days: 1, spend_cents: null, ad_days: 0, days_with_data: 0 },
+        last_7_days: { from: "2026-10-05", to: "2026-10-11", days: 7, spend_cents: null, ad_days: 0, days_with_data: 0 },
+        prior_7_days: { from: "2026-09-28", to: "2026-10-04", days: 7, spend_cents: 70727, ad_days: 28, days_with_data: 7 },
+        last_30_days: { from: "2026-09-12", to: "2026-10-11", days: 30, spend_cents: 91549, ad_days: 36, days_with_data: 9 },
+        prior_30_days: { from: "2026-08-13", to: "2026-09-11", days: 30, spend_cents: 62807, ad_days: 28, days_with_data: 11 }
+      } },
+      last_sync: { meta_synced_at: "2026-10-12T07:01:00Z", metrics_synced_at: "2026-10-12T07:01:30Z",
+        latest_metrics_date: "2026-10-04", clickfunnels_synced_at: null }
+    }));
+    const at = Date.parse("2026-10-12T19:00:00Z");
+    const seven = cc.renderSpendTile(v, 7, at);
+    assert.match(seven, /<span class="vl">unknown<\/span>/, "no rows is unknown, never $0");
+    assert.match(seven, /The 7 days before: \$707\.27\./);
+    assert.match(seven, /No ad spend saved for Oct 5 to Oct 11\./);
+    assert.equal(cc.oldLead(v, at), "", "the pull is fresh, so the numbers are not old");
+    assert.equal(cc.asOfLine(v, at).text, "Numbers through Oct 11, saved 12:01 AM (11 hours ago). ClickFunnels has never been pulled.");
+    assert.match(cc.deriveParts(v, at)[0].note, /Numbers run through Oct 11\. The last day with ad spend was Oct 4\./);
   });
 
   test("today's line: comes in tomorrow while the pull is fresh; unknown only when it is stale; a saved number shows", () => {
@@ -246,7 +276,9 @@ describe("never fake a number", () => {
     const cc = load();
     const line = cc.asOfLine(cc.normalizeToday(today()), NOW);
     assert.equal(line.text, "Numbers through Oct 4, saved 12:01 AM (11 hours ago). ClickFunnels last pulled Oct 4, 3:10 PM.");
-    assert.match(line.title, /Oct 5, 2026/);
+    // UI-STANDARDS §7: each of the two times carries its own exact time.
+    assert.match(line.html, /saved <span title="Oct 5, 2026, 12:01 AM">12:01 AM \(11 hours ago\)<\/span>\./);
+    assert.match(line.html, /ClickFunnels last pulled <span title="Oct 4, 2026, 3:10 PM">Oct 4, 3:10 PM<\/span>\./);
     const never = cc.asOfLine(cc.normalizeToday(today({ last_sync: { meta_synced_at: null, metrics_synced_at: null,
       latest_metrics_date: null, clickfunnels_synced_at: null } })), NOW);
     assert.equal(never.text, "No ad spend saved yet. The Meta pull runs at midnight, Arizona time. ClickFunnels has never been pulled.");
@@ -260,6 +292,7 @@ describe("never fake a number", () => {
     assert.equal(cc.oldLead(v, NOW), "Old numbers: last saved Oct 1.");
     const tile = cc.renderSpendTile(v, 7, NOW);
     assert.ok(tile.indexOf("Old numbers") < tile.indexOf("Ad spend"), "the lead comes first");
+    assert.match(tile, /Old numbers: last saved <span title="Oct 1, 2026, 12:01 AM">Oct 1<\/span>\./, "its date carries the exact time");
     assert.match(cc.asOfLine(v, NOW).text, /^Old numbers: last saved Oct 1, 12:01 AM\. Numbers through Sep 30\./);
     assert.equal(cc.oldLead(cc.normalizeToday(today()), NOW), "", "a fresh pull has no lead");
   });
@@ -287,14 +320,18 @@ describe("never fake a number", () => {
 
   test("every spend number has a comparison, said in words", () => {
     const cc = load();
-    assert.equal(cc.compare(123456, 100000, "7 days"), "Up 23% from $1,000 the 7 days before.");
-    assert.equal(cc.compare(50000, 100000, "7 days"), "Down 50% from $1,000 the 7 days before.");
+    // Plain money, never a percent (design §3.1: "Up from $308.93 the 7 days before").
+    assert.equal(cc.compare(123456, 100000, "7 days"), "Up from $1,000 the 7 days before.");
+    assert.equal(cc.compare(50000, 100000, "7 days"), "Down from $1,000 the 7 days before.");
     assert.equal(cc.compare(100000, 100000, "7 days"), "About the same as the 7 days before ($1,000).");
+    assert.equal(cc.compare(100400, 100000, "7 days"), "About the same as the 7 days before ($1,000).");
     assert.equal(cc.compare(500, 0, "7 days"), "Up from $0 the 7 days before.");
+    assert.equal(cc.compare(70727, 20822, "7 days"), "Up from $208.22 the 7 days before.");
     // Pinned (design §6 slice 0): the 30-day number now has the 30 days before it.
-    assert.equal(cc.compare(500000, 400000, "30 days"), "Up 25% from $4,000 the 30 days before.");
+    assert.equal(cc.compare(500000, 400000, "30 days"), "Up from $4,000 the 30 days before.");
     const thirty = cc.renderSpendTile(cc.normalizeToday(today()), 30, NOW);
-    assert.match(thirty, /Up 25% from \$4,000 the 30 days before\./);
+    assert.match(thirty, /Up from \$4,000 the 30 days before\./);
+    assert.doesNotMatch(thirty, /%/);
     assert.equal(cc.compare(null, 100000, "7 days"), "The 7 days before: $1,000.");
   });
 
@@ -317,7 +354,7 @@ describe("never fake a number", () => {
     const parts = cc.deriveParts(v, NOW);
     assert.deepEqual([...parts.map((p) => p.label)], [
       "Ad numbers from Meta", "Marketing switch for the Fundhub house account", "Copy writer set up",
-      "AI key for writing", "Writing budget this month", "Flywheel files"
+      "AI key for writing", "Writing budget this month", "Offer and market files"
     ]);
     assert.deepEqual([...parts.map((p) => p.ready)], [true, true, null, false, null, true]);
     const tile = cc.renderPartsTile(v, NOW);
@@ -327,7 +364,8 @@ describe("never fake a number", () => {
 
   test("a Meta save older than two days is not ready, and says so", () => {
     const cc = load();
-    const v = cc.normalizeToday(today({ last_sync: { meta_synced_at: "2026-10-01T07:01:00Z", metrics_synced_at: "2026-10-01T07:01:00Z", latest_metrics_date: "2026-09-30" } }));
+    const v = cc.normalizeToday(today({ last_sync: { meta_synced_at: "2026-10-01T07:01:00Z", metrics_synced_at: "2026-10-01T07:01:00Z", latest_metrics_date: "2026-09-30" },
+      spend: { ...today().spend, through: "2026-09-30" } }));
     const meta = cc.deriveParts(v, NOW)[0];
     assert.equal(meta.ready, false);
     assert.match(meta.note, /Numbers run through Sep 30\. It should save every day\./);
@@ -371,7 +409,9 @@ describe("flywheel and what waits on Chris", () => {
     assert.equal(cc.stageWord(v.stages[0], v.stages).why, "Done. 133 customer quotes collected.");
     assert.equal(cc.doneSentence(v.stages[1]), "Done. 361 findings, 8 checked, 160 competitors.");
     assert.equal(cc.stageWord(v.stages[2], v.stages).why, "It did not count its guarantees. Redo the step.");
-    assert.equal(cc.stageWord(v.stages[3], v.stages).why, "It did not count its distinct reasons. Redo the step.");
+    assert.equal(cc.stageWord(v.stages[3], v.stages).why, "It did not count its different reasons. Redo the step.");
+    const noPrice = { n: 3, key: "offer", label: "offer", state: "FAILED", reasons: ["did not report priceSet"], counts: {} };
+    assert.equal(cc.stageWord(noPrice, v.stages).why, "It did not say its price. Redo the step.");
     assert.equal(cc.stageWord(v.stages[4], v.stages).why, "Steps 3 and 4 have to be done first.");
     const stale = { n: 4, key: "copy", label: "copy", state: "STALE", reasons: ["built on the old offer"], counts: {} };
     assert.equal(cc.stageWord(stale, v.stages).why, "Step 3 changed, so this needs a redo.");
@@ -391,18 +431,21 @@ describe("flywheel and what waits on Chris", () => {
     assert.match(html, /This step runs in chat\. It reads live web pages/);
   });
 
-  test("a review card reads as paragraphs: bold label kept, chat-only 'Say one of' dropped, markup escaped", () => {
+  test("a review card reads as paragraphs: bold label kept, 'Say one of' kept as the chat words, markup escaped", () => {
     const cc = load();
     const out = cc.reviewCardHtml(CARD + "\n\n**Not sure:** <img src=x onerror=alert(1)>");
     assert.match(out, /^<p><b>What this decided:<\/b> who the partner is\.<\/p>/);
-    assert.doesNotMatch(out, /Say one of/);
+    // marketing/flywheel/README.md: approving is "Say approve" in chat, so the line stays.
+    assert.match(out, /<p><b>In chat, say one of:<\/b> approve · tweak: &lt;what to change&gt; · redo<\/p>/);
+    assert.doesNotMatch(out, /<b>Say one of/);
     assert.doesNotMatch(out, /<img/);
     assert.match(out, /&lt;img/);
   });
 
   test("code names in a reason become words", () => {
     const cc = load();
-    assert.equal(cc.plainReasons(["did not report distinctReasons"]), "Did not report distinct reasons.");
+    assert.equal(cc.plainReasons(["did not report distinctReasons"]), "Did not report different reasons.");
+    assert.equal(cc.plainReasons(["did not report someNewCount"]), "Did not report some new count.", "a name not in the list is split into words");
     assert.equal(cc.plainReasons(["did not report guarantees"]), "Did not report guarantees.");
     assert.equal(cc.plainReasons([]), "");
   });
@@ -416,11 +459,12 @@ describe("flywheel and what waits on Chris", () => {
       "Redo the offer (step 3 of 6)",
       "Redo ad copy (step 4 of 6)"
     ], "M10's `waiting` names machine parts, not Chris's to-do list");
-    assert.equal(rows[0].how, "Read it under Offer and market. Approving still runs in chat.");
+    assert.equal(rows[0].how, "Read it under Offer and market. To approve, copy this command into Claude Code.");
     assert.match(rows[1].how, /^Write offer, on the Offer card, makes a new offer\. This row clears only when the offer file is redone/);
     assert.equal(rows[2].how, "Not on this page yet. It still runs in chat.");
     assert.equal(rows[1].cmd, "/flywheel stage 3 partner", "the command marketing/flywheel/README.md documents");
-    assert.equal(rows[0].cmd, "", "approving has no command to copy");
+    // .claude/commands/flywheel.md: `approve <n>` marks it approved; `stage <n>` would run it again.
+    assert.equal(rows[0].cmd, "/flywheel approve 2 partner", "approving copies the approve command, never a re-run");
   });
 
   test("the 2 videos waiting since Sep 24 are a Waiting row, first, and say the text links ran out", () => {
@@ -433,6 +477,10 @@ describe("flywheel and what waits on Chris", () => {
     assert.equal(row.what, "Approve or reject 2 videos");
     assert.equal(row.why, "Ad 84 and Ad 86. Waiting since Sep 24.");
     assert.equal(row.how, "Approving is not on this page yet, and the approve links in your text ran out on Sep 27.");
+    // UI-STANDARDS §7: both dates carry their exact time.
+    assert.match(row.whyHtml, /Waiting since <span title="Sep 24, 2026, 12:55 AM">Sep 24<\/span>\./);
+    assert.match(row.howHtml, /ran out on <span title="Sep 27, 2026, 4:39 PM">Sep 27<\/span>\./);
+    assert.match(cc.renderWaiting(cc.normalizeToday(today()), videos, NOW), /Waiting since <span title=/);
     const list = cc.waitingList(cc.normalizeToday(today()), videos, NOW);
     assert.equal(list[0].kind, "videos", "videos come first: they have waited longest");
     assert.equal(list.length, 4);
@@ -457,14 +505,18 @@ describe("flywheel and what waits on Chris", () => {
     const cc = load();
     const empty = cc.normalizeToday(today({ flywheel: { campaigns: [{ campaign: "partner", stages: [], advice: null }] } }));
     assert.match(cc.renderWaiting(empty, { loaded: true, items: [] }, NOW), /Nothing is waiting on you right now\./);
-    assert.match(cc.renderFlywheel(empty), /No flywheel steps are on file yet\./);
+    assert.match(cc.renderFlywheel(empty), /No steps are on file yet\./);
     const none = cc.normalizeToday(today({ flywheel: null }));
-    assert.match(cc.renderFlywheel(none), /not on this server yet/);
+    assert.match(cc.renderFlywheel(none), /The offer and market files are not on this server yet/);
+    assert.doesNotMatch(cc.renderFlywheel(empty) + cc.renderFlywheel(none) + cc.renderOfferStatus(none), /[Ff]lywheel/);
   });
 
-  test("the flywheel card shows the checker's advice line", () => {
+  test("the flywheel card shows the checker's advice line, in the page's words", () => {
     const cc = load();
-    assert.match(cc.renderFlywheel(cc.normalizeToday(today())), /Do them in order: 3, then 4\./);
+    assert.match(cc.renderFlywheel(cc.normalizeToday(today())), /2 steps need a redo\. Do them in order: 3, then 4\./);
+    assert.equal(cc.adviceWords("1 stage needs re-running. Do them in order: 3."), "1 step needs a redo. Do them in order: 3.");
+    assert.equal(cc.adviceWords("Every stage is current."), "Every step is current.");
+    assert.equal(cc.adviceWords("Next to run: stage 6, spend."), "Next to run: step 6, spend.");
   });
 });
 
@@ -713,7 +765,12 @@ describe("cost lines: measured runs or 'unknown', never a constant", () => {
     const cc = load();
     const v = cc.normalizeToday(today({ costs: { ...today().costs, offer: OFFER_MEASURED } }));
     assert.equal(cc.offerCostLine(v),
-      "About 5 minutes, about $0.67 of model spend (last measured run: 4 min 29 s). One run at a time.");
+      "About 5 minutes and about $0.67 (last run: 4 min 29 s). One run at a time.");
+    const quick = cc.normalizeToday(today({ costs: { ...today().costs, offer: { ...OFFER_MEASURED, seconds: 45 } } }));
+    assert.equal(cc.offerCostLine(quick), "About 45 seconds and about $0.67 (last run: 45 s). One run at a time.");
+    const minute = cc.normalizeToday(today({ costs: { ...today().costs, offer: { ...OFFER_MEASURED, seconds: 60 } } }));
+    assert.match(cc.offerCostLine(minute), /^About 1 minute and /, "one minute, not '1 minutes'");
+    assert.equal(cc.aboutTime(1), "about 1 second");
   });
 
   test("Write offer: no run measured yet, a model with no price, the log not readable, not loaded", () => {
@@ -722,11 +779,11 @@ describe("cost lines: measured runs or 'unknown', never a constant", () => {
     const unpriced = cc.normalizeToday(today({ costs: { ...today().costs,
       offer: { ...OFFER_MEASURED, cost_cents: null, unpriced_models: ["gpt-4o-mini"] } } }));
     assert.equal(cc.offerCostLine(unpriced),
-      "About 5 minutes, cost unknown, because no price is on file for gpt-4o-mini (last measured run: 4 min 29 s). One run at a time.");
+      "About 5 minutes. Cost unknown: no price is on file for gpt-4o-mini (last run: 4 min 29 s). One run at a time.");
     const noTable = cc.normalizeToday(today({ costs: { offer: null, copy: today().costs.copy } }));
     assert.equal(cc.offerCostLine(noTable), "Time and cost: unknown. The run log could not be read yet.");
     assert.equal(cc.offerCostLine(cc.normalizeToday(null)), "Time and cost: unknown. The marketing numbers did not load.");
-    assert.equal(cc.copyCostLine(cc.normalizeToday(null)), "Cost: unknown. The marketing numbers did not load.");
+    assert.equal(cc.copyCostLine(cc.normalizeToday(null)), "Time and cost: unknown. The marketing numbers did not load.");
     for (const line of [cc.offerCostLine(cc.normalizeToday(today())), cc.offerCostLine(noTable)]) {
       assert.doesNotMatch(line, /\$\d/, "no dollar figure without a measured run");
     }
@@ -734,18 +791,27 @@ describe("cost lines: measured runs or 'unknown', never a constant", () => {
 
   test("Write ad copy: average of the last runs, or unknown; the writing budget in tokens, as the meter counts it", () => {
     const cc = load();
+    // Design §5 rule 3: cost AND time under the button, before the tap.
     assert.equal(cc.copyCostLine(cc.normalizeToday(today())),
-      "Cost: unknown, not measured yet. Writing budget this month: 1,000 of 250,000 tokens used. A token is a small piece of a word.");
+      "Time: unknown, not measured yet. Cost: unknown, not measured yet. " +
+      "Writing budget this month: 1,000 of 250,000 tokens used. A token is a small piece of a word.");
     const priced = cc.normalizeToday(today({ costs: { ...today().costs,
       copy: { runs: 5, last_at: NOW, models: ["claude-opus-5-5"], avg_cost_cents: 4, under_one_cent: false, unpriced_models: [] } } }));
-    assert.match(cc.copyCostLine(priced), /^About \$0\.04 a run \(average of the last 5 runs\)\./);
+    assert.match(cc.copyCostLine(priced), /^Time: unknown, not measured yet\. Cost: about \$0\.04 a run \(average of the last 5 runs\)\./);
     const sonnet = cc.normalizeToday(today({ costs: { ...today().costs,
       copy: { runs: 2, models: ["claude-sonnet-4-5-20250929"], avg_cost_cents: null, unpriced_models: ["claude-sonnet-4-5-20250929"] } } }));
     assert.match(cc.copyCostLine(sonnet),
-      /^Cost: unknown\. The last 2 runs used a model with no price on file here \(claude-sonnet-4-5-20250929\)\./);
+      /Cost: unknown\. The last 2 runs used a model with no price on file here \(claude-sonnet-4-5-20250929\)\./);
     const tiny = cc.normalizeToday(today({ costs: { ...today().costs,
       copy: { runs: 1, avg_cost_cents: 0, under_one_cent: true, unpriced_models: [] } } }));
-    assert.match(cc.copyCostLine(tiny), /^Under 1 cent a run \(average of the last run\)\./);
+    assert.match(cc.copyCostLine(tiny), /Cost: under 1 cent a run \(average of the last run\)\./);
+    // A finished copy job is a measured time: its own start and finish (never a constant).
+    const timed = cc.normalizeToday(today({ copy: { ...today().copy, jobs: [
+      { id: "j3", status: "running", created_at: "2026-10-05T18:59:00Z", started_at: "2026-10-05T18:59:00Z" },
+      { id: "j2", status: "succeeded", created_at: "2026-10-05T18:00:00Z", started_at: "2026-10-05T18:00:05Z", finished_at: "2026-10-05T18:00:47Z" },
+      { id: "j1", status: "succeeded", created_at: "2026-10-04T18:00:00Z", started_at: "2026-10-04T18:00:00Z", finished_at: "2026-10-04T18:03:00Z" }
+    ] } }));
+    assert.match(cc.copyCostLine(timed), /^Time: about 42 seconds \(last run\)\. Cost: /, "the newest finished job, not a running one");
   });
 
   test("the Offer card says the two checks differ once an offer is on it", () => {
@@ -778,6 +844,17 @@ describe("the footer clock and reload", () => {
     const at = Date.parse("2026-10-05T22:02:00Z");
     assert.equal(cc.refreshBanner({ status: 0, transport: "offline" }, at), "No connection. This page shows the last load from 3:02 PM.");
     assert.equal(cc.refreshBanner({ status: 500, body: null }, at), "The marketing numbers did not refresh. This page shows the last load from 3:02 PM.");
+    assert.equal(cc.refreshBanner({ status: 0, transport: "timeout", timedOut: true }, at),
+      "The server took too long to answer. This page shows the last load from 3:02 PM.");
+    assert.equal(cc.plainError({ status: 0, transport: "timeout", timedOut: true }, "today"),
+      "The server took too long to answer. Try again in a minute.");
+  });
+
+  test("a read that never answers is given up on after 20 seconds, so later reloads still run", () => {
+    const cc = load();
+    assert.equal(cc.FETCH_TIMEOUT_MS, 20 * 1000);
+    assert.match(SRC, /new root\.AbortController\(\)/);
+    assert.match(SRC, /opts\.method === "GET" && typeof root\.AbortController === "function"/, "reads only; a copy run is never cut off");
   });
 
   test("'midnight, Arizona time' is the Meta sweeper's own cron (07:00 UTC)", () => {

@@ -28,11 +28,18 @@ Read only. It writes nothing, calls no model and calls no ad platform.
 - **`null` means unknown.** It is never turned into `0`. A spend window with no saved ad-days is `null`.
 - **Money is integer cents** (`spend_cents`). Divide by 100 only to print it.
 - **"Today" is Arizona's day** (`America/Phoenix`, no daylight saving). Every window is whole Arizona days, both ends included.
-- **The 7 and 30 day windows are whole days.** They end on `spend.through`, the newest day
-  with saved ad numbers (the Meta pull saves through yesterday), never on today. So
-  `last_7_days` is 7 full days and `prior_7_days` is the 7 full days before it, and the same
-  for 30. Only `today` is today. With nothing saved at all the windows end yesterday and
-  `through` is `null`.
+- **The 7 and 30 day windows are whole days.** They end on `spend.through`, never on today
+  or later. `spend.through` is the LATER of two days: the newest day with saved ad numbers,
+  and the last whole day the newest Meta pull covered (the day before the pull's own
+  Arizona day: the midnight pull on Oct 5 covers Oct 4). So `last_7_days` is 7 full days and
+  `prior_7_days` is the 7 full days before it, and the same for 30. Only `today` is today.
+  With nothing saved at all the windows end yesterday and `through` is `null`.
+- **The windows keep moving when ads stop.** Meta sends no row for a day no ad ran, so the
+  newest saved day freezes the moment ads stop. Because the pull's own day counts too,
+  `last_7_days` on Oct 12 is Oct 5 to Oct 11 even when the last ad ran Oct 4. A window the
+  pull covered that holds no rows is still `null` (not `0`), and the page says "No ad spend
+  saved for Oct 5 to Oct 11." `last_sync.latest_metrics_date` still names the last day with
+  any ad numbers.
 - **A cost is measured or it is `null`.** Dollars come only from a model price with a
   source (`src/marketing/model-prices.mjs`). No row, or a model with no price on file, is
   `null`, and the page prints "unknown".
@@ -53,7 +60,7 @@ Read only. It writes nothing, calls no model and calls no ad platform.
   // part is one of: "flywheel", "copy", "copy_ready", "spend", "last_sync",
   // "clickfunnels", "costs"
   "waiting": [
-    { "part": "spend", "reason": "No ad numbers are saved for the last 30 days." }
+    { "part": "spend", "reason": "No ad numbers are saved yet." }
   ],
 
   // null when the flywheel files are not on this server (then "flywheel" is in waiting).
@@ -132,13 +139,13 @@ Read only. It writes nothing, calls no model and calls no ad platform.
   // null only when its table is missing.
   "spend": {
     "currency": "USD",
-    "through": "2026-10-04",               // the last day the 7 and 30 day windows include; null when nothing is saved
+    "through": "2026-10-04",               // the last day the 7 and 30 day windows include (see the rules above); null when nothing is saved
     "windows": {
       "today":         { "from": "2026-10-05", "to": "2026-10-05", "days": 1,  "spend_cents": null,  "ad_days": 0,  "days_with_data": 0 },
-      "last_7_days":   { "from": "2026-09-28", "to": "2026-10-04", "days": 7,  "spend_cents": 70724, "ad_days": 28, "days_with_data": 7 },
+      "last_7_days":   { "from": "2026-09-28", "to": "2026-10-04", "days": 7,  "spend_cents": 70727, "ad_days": 28, "days_with_data": 7 },
       "prior_7_days":  { "from": "2026-09-21", "to": "2026-09-27", "days": 7,  "spend_cents": 20822, "ad_days": 8,  "days_with_data": 2 },
-      "last_30_days":  { "from": "2026-09-05", "to": "2026-10-04", "days": 30, "spend_cents": 91546, "ad_days": 36, "days_with_data": 9 },
-      "prior_30_days": { "from": "2026-08-06", "to": "2026-09-04", "days": 30, "spend_cents": 8686,  "ad_days": 10, "days_with_data": 4 }
+      "last_30_days":  { "from": "2026-09-05", "to": "2026-10-04", "days": 30, "spend_cents": 91549, "ad_days": 36, "days_with_data": 9 },
+      "prior_30_days": { "from": "2026-08-06", "to": "2026-09-04", "days": 30, "spend_cents": 62807, "ad_days": 28, "days_with_data": 11 }
     }
   },
   // ad_days = saved ad-day rows in the window; days_with_data = distinct days that have any.
@@ -185,12 +192,20 @@ Read only. It writes nothing, calls no model and calls no ad platform.
 ```
 
 The spend numbers in the example are the real ones a read-only `SUM(spend_cents)` over
-those exact days returned against the live database on 2026-10-05 (Sep 28 to Oct 4:
-$707.24; Sep 21 to 27: $208.22; Sep 5 to Oct 4: $915.46; Aug 6 to Sep 4: $86.86). The
-ClickFunnels time is the live row. The `costs.offer` example is the shape of the offer
+those exact days returned against the live database, read on 2026-10-05 at 11:32 PM
+Arizona, after the U21 Meta backfill (824054e55) re-saved the rows: Sep 28 to Oct 4:
+$707.27; Sep 21 to 27: $208.22; Sep 5 to Oct 4: $915.49; Aug 6 to Sep 4: $628.07. (An
+earlier read the same day, before the backfill, gave $707.24, $915.46 and $86.86; those are
+dead.) The ClickFunnels time is the live row. The `costs.offer` example is the shape of the offer
 contract's one measured run (`docs/specs/marketing-offer-contract.md`); on 2026-10-05 the
 live `marketing_jobs` table had no rows and `partner_ai_usage` had no `creative` rows, so
 the live page reads both costs as "unknown, not measured yet".
+
+The time printed under Write ad copy is not in `costs`. The page reads it off `copy.jobs`:
+the newest `succeeded` copy job's `started_at` to `finished_at`. With no finished copy job
+(the case on 2026-10-05: a read-only count found no copy jobs at all in the live
+database; the one job on file is a failed `static` job) it prints "Time: unknown, not
+measured yet."
 
 ## Model prices
 

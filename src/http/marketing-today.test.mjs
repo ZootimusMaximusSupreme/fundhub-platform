@@ -81,7 +81,10 @@ function fakeTx(world, log) {
       }
       if (s.includes("spend_end_day")) {
         const days = world.days || [];
-        return { rows: [{ spend_end_day: days.length ? days.map((d) => d.date).sort().at(-1) : null }] };
+        return { rows: [{
+          spend_end_day: days.length ? days.map((d) => d.date).sort().at(-1) : null,
+          meta_synced_at: world.metaSyncedAt ?? null
+        }] };
       }
       if (s.includes("FROM creative_providers")) {
         return { rows: world.provider === false ? [] : [{ provider_key: "copy", config: {} }] };
@@ -168,12 +171,33 @@ describe("marketing/today — pure helpers", () => {
     }
   });
 
-  test("spendEnd: the newest saved day, never after today; nothing saved → yesterday", () => {
+  test("spendEnd: the newest saved day, never today or later; nothing saved → yesterday", () => {
     assert.equal(spendEnd("2026-10-05", "2026-10-04"), "2026-10-04");
     assert.equal(spendEnd("2026-10-05", "2026-10-01"), "2026-10-01", "an old pull keeps its own days");
-    assert.equal(spendEnd("2026-10-05", "2026-10-07"), "2026-10-05", "never a day after today");
+    assert.equal(spendEnd("2026-10-05", "2026-10-05"), "2026-10-04", "today is not a whole day yet");
+    assert.equal(spendEnd("2026-10-05", "2026-10-07"), "2026-10-04", "never a day after today");
     assert.equal(spendEnd("2026-10-05", null), "2026-10-04");
     assert.equal(spendEnd("2026-10-05", "not a day"), "2026-10-04");
+  });
+
+  test("spendEnd: ads stopped — the pull keeps the windows moving past the last saved day", () => {
+    // Ads stopped after Oct 4. The midnight pull on Oct 12 covered Oct 11 and
+    // sent no rows, so the newest saved day is still Oct 4.
+    assert.equal(spendEnd("2026-10-12", "2026-10-04", "2026-10-12"), "2026-10-11");
+    // The same pull, read later that day: still Oct 11.
+    assert.equal(spendEnd("2026-10-12", "2026-10-04", "2026-10-12"), "2026-10-11");
+    // A late pull (ran Oct 9, nothing since): the windows end on Oct 8, never past what was pulled.
+    assert.equal(spendEnd("2026-10-12", "2026-10-04", "2026-10-09"), "2026-10-08");
+    // An old pull: its own days, not today's.
+    assert.equal(spendEnd("2026-10-05", "2026-09-30", "2026-10-01"), "2026-09-30");
+    // A hand pull this afternoon covered only part of today: still yesterday.
+    assert.equal(spendEnd("2026-10-05", "2026-10-05", "2026-10-05"), "2026-10-04");
+    // Never pulled, or a bad day: only the saved day counts.
+    assert.equal(spendEnd("2026-10-05", "2026-10-01", null), "2026-10-01");
+    assert.equal(spendEnd("2026-10-05", "2026-10-01", "nope"), "2026-10-01");
+    const w = Object.fromEntries(spendWindows("2026-10-12", "2026-10-04", "2026-10-12").map((x) => [x.key, x]));
+    assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-10-05", "2026-10-11"]);
+    assert.deepEqual([w.prior_7_days.from, w.prior_7_days.to], ["2026-09-28", "2026-10-04"]);
   });
 
   test("isMissingThing: only 'does not exist' codes, not every database error", () => {
@@ -282,12 +306,37 @@ describe("marketing/today — the answer", () => {
 
   test("an old pull: the windows end on the last saved day, so no window is padded with empty days", async () => {
     const old = [{ date: "2026-09-30", spend_cents: 100 }, { date: "2026-09-24", spend_cents: 40 }];
-    const { r } = await call({ ...WORLD, days: old });
+    // The last pull ran Oct 1 at midnight Arizona and covered through Sep 30.
+    const { r } = await call({ ...WORLD, days: old, metaSyncedAt: new Date("2026-10-01T07:01:50Z") });
     const w = r.body.spend.windows;
     assert.equal(r.body.spend.through, "2026-09-30");
     assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-09-24", "2026-09-30"]);
     assert.equal(w.last_7_days.spend_cents, 140);
     assert.equal(w.today.spend_cents, null);
+  });
+
+  test("ads stopped, the pull is fresh: the windows end on yesterday, the empty week is null, the week before keeps its money", async () => {
+    // The newest saved day is Sep 30 but tonight's midnight pull ran on Oct 5
+    // (Arizona) and covered Oct 4. Meta sent no rows for Oct 1 to Oct 4.
+    const stopped = [{ date: "2026-09-30", spend_cents: 100 }, { date: "2026-09-24", spend_cents: 40 }];
+    const { r } = await call({ ...WORLD, days: stopped, metaSyncedAt: new Date("2026-10-05T07:01:50Z") });
+    const w = r.body.spend.windows;
+    assert.equal(r.body.spend.through, "2026-10-04", "not frozen on the last day with ads");
+    assert.deepEqual([w.last_7_days.from, w.last_7_days.to], ["2026-09-28", "2026-10-04"]);
+    assert.equal(w.last_7_days.spend_cents, 100, "Sep 30 is inside the window");
+    assert.deepEqual([w.prior_7_days.from, w.prior_7_days.to], ["2026-09-21", "2026-09-27"]);
+    assert.equal(w.prior_7_days.spend_cents, 40);
+    assert.equal(r.body.last_sync.latest_metrics_date, "2026-09-30", "the last day with ads is still named");
+
+    // The last ad ran Sep 24: the newest 7 whole days hold no rows → null, never 0.
+    const quiet = await call({ ...WORLD, days: [{ date: "2026-09-24", spend_cents: 40 }],
+      metaSyncedAt: new Date("2026-10-05T07:01:50Z") });
+    const q = quiet.r.body.spend.windows;
+    assert.equal(quiet.r.body.spend.through, "2026-10-04");
+    assert.equal(q.last_7_days.spend_cents, null);
+    assert.equal(q.last_7_days.ad_days, 0);
+    assert.equal(q.prior_7_days.spend_cents, 40);
+    assert.ok(!quiet.r.body.waiting.some((x) => x.part === "spend"), "numbers are saved; this week just has none");
   });
 
   test("ClickFunnels never pulled → null, and the rest of last_sync is untouched", async () => {

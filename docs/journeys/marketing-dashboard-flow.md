@@ -31,7 +31,7 @@ flowchart TD
   H -->|found| H2[copy_ready: switch, writer row, Anthropic key, budget]
   H -->|missing| H3[copy empty, copy_ready false, waiting: copy]
   F --> F2[each stage: its front-matter counts<br/>+ the text under ## Review card]
-  D --> S0[newest saved ad-day = spend.through]
+  D --> S0[spend.through = the later of the newest saved ad-day<br/>and the day before the newest Meta pull's Arizona day,<br/>never today or later]
   S0 --> S[spend: today, then last 7 / prior 7 / last 30 / prior 30<br/>whole days ending on spend.through<br/>from ad_metrics_daily, whole company]
   D --> L[last_sync: Meta connection + newest ad-day]
   D --> CF[clickfunnels_synced_at:<br/>analytics_connections.last_synced_at]
@@ -52,8 +52,12 @@ flowchart TD
 ```
 
 - A window with no saved ad-days is `null`, never `0`.
-- The 7 and 30 day windows end on the newest day with saved numbers, not on today, so
-  both sides of every comparison are whole days. Only `today` is today.
+- The 7 and 30 day windows end on `spend.through`, never on today, so both sides of
+  every comparison are whole days. Only `today` is today. `spend.through` is the later
+  of the newest saved ad-day and the last whole day the newest Meta pull covered, so
+  the windows keep moving after ads stop (Meta sends no row for a day with no ads).
+  A covered window with no rows stays `null`; the page says "No ad spend saved for
+  Oct 5 to Oct 11."
 - A cost is `null` when no run was measured, or when a run's model has no price with a
   source in `src/marketing/model-prices.mjs` (today only `claude-opus-5-5` has one).
 - A table or column that is not in the database yet (Postgres 42P01 / 42703 / 42883)
@@ -99,8 +103,9 @@ flowchart TD
   T1[every 5 minutes while the tab is visible] --> P1
   T2[tab comes back into view or gets focus<br/>more than 30 s after the last read] --> P1
   P1 -->|a reload fails after a good load| P5[keep the last numbers<br/>banner: This page shows the last load from 3:02 PM]
+  P1 -->|a read gets no answer in 20 s| P7[give up on it: same as a failed reload,<br/>banner: The server took too long to answer<br/>the next 5-minute tick reads again]
   P1 -->|ad-videos fails| P6[one line in Waiting on you: The video list did not load]
-  P3 --> W1[Waiting on you: videos first, then flywheel rows<br/>each with where it is done; redo rows offer Copy the chat command]
+  P3 --> W1[Waiting on you: videos first, then flywheel rows<br/>each with where it is done; Copy the chat command:<br/>redo rows /flywheel stage N, approve rows /flywheel approve N]
   P3 --> R1[Read it on each stage row: unfolds its review card in place]
   P3 --> X1[Write ad copy: creative/generate, then creative/run max_jobs 1]
   P2 --> X2[Write offer: POST, then GET ?id= every 10 s]
@@ -108,7 +113,9 @@ flowchart TD
 
 - Nothing on the page approves a video or a flywheel step. The videos row says
   approving is not on the page yet, and when the text message's links ran out
-  (`approval_expires_at`). Approving a stage still runs in chat; the row says so.
+  (`approval_expires_at`). Approving a stage still runs in chat; the row says so and
+  copies `/flywheel approve N <campaign>` (`.claude/commands/flywheel.md`), never
+  `/flywheel stage N`, which would run the step again.
 - No inner scroll box: long ad copy and the offer fold behind Show more.
 
 ## NOT BUILT (on this branch)

@@ -60,6 +60,19 @@
     "ad-strategy": "Which ad strategy",
     "spend": "Read the spend"
   };
+  /* The checker's count names (scripts/flywheel/status.mjs gates and each
+     file's `counts:`), in plain words. A name not here is split into words. */
+  var COUNT_WORDS = {
+    "distinctReasons": "different reasons",
+    "valueEquationScores": "value scores",
+    "strategyNamed": "strategy",
+    "priceSet": "price",
+    "rowsFound": "findings",
+    "rowsVerified": "checked findings",
+    "rowsWithFirstSeen": "dated findings",
+    "competitorsFound": "competitors",
+    "languageEntries": "language entries"
+  };
   /* Where each step runs today. Only the offer has a button on this page. */
   var STAGE_RUNS = {
     "avatar": "This step runs in chat. It reads live web pages, which only the chat agent can do.",
@@ -86,6 +99,12 @@
      into view (design §3.1, the footer) — but not twice in 30 seconds. */
   var RELOAD_MS = 5 * 60 * 1000;
   var FOCUS_GAP_MS = 30 * 1000;
+  /* A read (GET) that has not answered in 20 seconds is given up on, so one
+     hung request (a phone that slept mid-load) cannot stop every later reload:
+     the page says the server took too long, keeps the last numbers, and the
+     next 5-minute tick tries again. Writes (POST) are never cut off here: a
+     copy run can take half a minute and its own answer says what happened. */
+  var FETCH_TIMEOUT_MS = 20 * 1000;
   /* Ad copy longer than this folds behind Show more (no inner scroll box). */
   var FOLD_LINES = 6;
   var FOLD_CHARS = 360;
@@ -158,6 +177,7 @@
       status: str(first(j, ["status"])).toLowerCase(),
       error: first(j, ["error"]) || null,
       createdAt: first(j, ["createdAt"]) || null,
+      startedAt: first(j, ["startedAt"]) || null,
       finishedAt: first(j, ["finishedAt"]) || null
     };
   }
@@ -383,12 +403,13 @@
 
   /* ── turning data into words ─────────────────────────────────────────── */
 
-  /* money — integer cents to dollars. null stays "unknown"; a real 0 is "$0". */
+  /* money — integer cents to dollars, to the cent ("$707.27"; a whole amount
+     is "$1,300"). null stays "unknown"; a real 0 is "$0". */
   function money(cents) {
     var n = num(cents);
     if (n === null) return "unknown";
     var dollars = Math.abs(n) / 100;
-    var whole = dollars >= 100 || Math.round(dollars) === dollars;
+    var whole = Math.round(dollars) === dollars;
     return (n < 0 ? "-$" : "$") + dollars.toLocaleString("en-US", {
       minimumFractionDigits: whole ? 0 : 2,
       maximumFractionDigits: whole ? 0 : 2
@@ -401,7 +422,9 @@
   }
 
   /* compare — every metric has a comparison (UI-STANDARDS §7), said in words,
-     never by colour alone (§12.6). */
+     never by colour alone (§12.6), and as plain money, never a percent (design
+     §3.1: "Up from $308.93 the 7 days before"). Within half a percent is
+     "about the same". */
   function compare(cur, prev, span) {
     var c = num(cur);
     var p = num(prev);
@@ -409,9 +432,8 @@
     if (p === null) return "No number for " + before + ".";
     if (c === null) return "The " + span + " before: " + money(p) + ".";
     if (p === 0) return c === 0 ? "Same as " + before + " ($0)." : "Up from $0 " + before + ".";
-    var pct = Math.round(((c - p) / p) * 100);
-    if (pct === 0) return "About the same as " + before + " (" + money(p) + ").";
-    return (pct > 0 ? "Up " : "Down ") + Math.abs(pct) + "% from " + money(p) + " " + before + ".";
+    if (Math.abs(c - p) / Math.abs(p) < 0.005) return "About the same as " + before + " (" + money(p) + ").";
+    return (c > p ? "Up from " : "Down from ") + money(p) + " " + before + ".";
   }
 
   function fmt(d, opts) {
@@ -431,6 +453,13 @@
     var d = new Date(iso);
     return isNaN(d.getTime()) ? null : d;
   }
+
+  /* tipped — words for a time, wrapped so the exact time is its tooltip
+     (UI-STANDARDS §7: "Always tooltip the exact time"). */
+  function tipped(text, title) {
+    return title ? '<span title="' + esc(title) + '">' + esc(text) + "</span>" : esc(text);
+  }
+  function dateTip(d) { return tipped(dateOf(d), fullTime(d)); }
 
   /* when — relative under a day, a date after, the exact time in the tooltip
      (UI-STANDARDS §7). A missing time is "unknown", not "now". */
@@ -505,41 +534,64 @@
     return age >= 0 ? age <= META_FRESH_MS : true;
   }
 
+  /* pullTime — when Meta last pulled. The "through" day comes from the pull
+     (a pull on a day no ad ran saves no row), so the time beside it is the
+     pull's too, not the newest row's. */
+  function pullTime(v) { return (v && (v.pulledAt || v.asOf)) || null; }
+
   /* oldLead — "Old numbers: last saved Oct 1." when the pull is more than two
      days old, else "". Design §3.1: the money row leads with it. */
   function oldLead(view, nowMs) {
     var v = view || {};
     if (!v.loaded || !v.pulledAt || metaFresh(v, nowMs)) return "";
-    var d = asDate(v.asOf || v.pulledAt);
+    var d = asDate(pullTime(v));
     return "Old numbers: last saved " + (d ? dateOf(d) : "unknown") + ".";
   }
 
-  /* asOfLine — the one as-of sentence under the spend tiles. */
+  /* oldLeadHtml — the same words, the date carrying its exact time. */
+  function oldLeadHtml(view, nowMs) {
+    if (!oldLead(view, nowMs)) return "";
+    var d = asDate(pullTime(view));
+    return "Old numbers: last saved " + (d ? dateTip(d) : "unknown") + ".";
+  }
+
+  /* asOfLine — the one as-of sentence under the spend tiles. `text` is the
+     words; `html` is the same words with every time wrapped in its own
+     exact-time tooltip, since the sentence names two times (Meta and
+     ClickFunnels). */
   function asOfLine(view, nowMs) {
     var v = view || {};
-    if (!v.loaded) return { text: "", title: "" };
-    var parts = [];
-    var title = "";
+    if (!v.loaded) return { text: "", html: "" };
+    var segs = [];
+    function say(t) { segs.push({ text: t, title: "" }); }
+    function at(w) { segs.push({ text: w.text, title: w.title }); }
     var through = v.spendThrough || v.latestMetricsDate;
     if (!v.syncRead) {
-      parts.push("When Meta last sent numbers is not known yet.");
+      say("When Meta last sent numbers is not known yet.");
     } else if (!v.pulledAt) {
-      parts.push("No ad spend saved yet. " + META_PULL_WORDS);
+      say("No ad spend saved yet. " + META_PULL_WORDS);
     } else if (!metaFresh(v, nowMs)) {
-      var old = savedWords(v.asOf, nowMs);
-      title = old.title;
-      parts.push("Old numbers: last saved " + old.text + "." + (through ? " Numbers through " + dayWords(through) + "." : ""));
+      say("Old numbers: last saved ");
+      at(savedWords(pullTime(v), nowMs));
+      say("." + (through ? " Numbers through " + dayWords(through) + "." : ""));
     } else {
-      var saved = savedWords(v.asOf, nowMs);
-      title = saved.title;
-      parts.push((through ? "Numbers through " + dayWords(through) + ", saved " : "Saved ") + saved.text + ".");
+      say(through ? "Numbers through " + dayWords(through) + ", saved " : "Saved ");
+      at(savedWords(pullTime(v), nowMs));
+      say(".");
     }
     if (v.cfRead) {
-      parts.push(v.cfSyncedAt
-        ? "ClickFunnels last pulled " + savedWords(v.cfSyncedAt, nowMs).text + "."
-        : "ClickFunnels has never been pulled.");
+      if (v.cfSyncedAt) {
+        say(" ClickFunnels last pulled ");
+        at(savedWords(v.cfSyncedAt, nowMs));
+        say(".");
+      } else {
+        say(" ClickFunnels has never been pulled.");
+      }
     }
-    return { text: parts.join(" "), title: title };
+    return {
+      text: segs.map(function (g) { return g.text; }).join(""),
+      html: segs.map(function (g) { return tipped(g.text, g.title); }).join("")
+    };
   }
 
   /* todayWords — the today line. Today's Meta spend is saved in tomorrow's
@@ -557,7 +609,7 @@
   function plainReasons(list) {
     var out = arr(list).map(function (r) {
       return str(r).replace(/\b([a-z]+)([A-Z][a-zA-Z]*)\b/g, function (m) {
-        return m.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+        return countWord(m);
       }).trim();
     }).filter(Boolean).join("; ");
     if (!out) return "";
@@ -567,6 +619,22 @@
 
   function codeWords(key) {
     return str(key).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  }
+
+  /* countWord — a checker count name in plain words ("distinctReasons" →
+     "different reasons"); any other name is split into words. */
+  function countWord(key) {
+    return Object.prototype.hasOwnProperty.call(COUNT_WORDS, key) ? COUNT_WORDS[key] : codeWords(key);
+  }
+
+  /* adviceWords — the checker's closing line in this page's words: "step",
+     never "stage", and "a redo", never "re-running" ("2 steps need a redo.
+     Do them in order: 3, then 4."). */
+  function adviceWords(a) {
+    return str(a)
+      .replace(/\b(needs?) re-running\b/gi, function (m, need) { return need.toLowerCase() + " a redo"; })
+      .replace(/\bstages\b/gi, "steps")
+      .replace(/\bstage\b/gi, "step");
   }
 
   function stageName(s) {
@@ -647,7 +715,9 @@
   function failSentence(s) {
     var out = arr(s && s.reasons).map(function (r) {
       var m = /^did not report (\w+)$/i.exec(r);
-      if (m) return "It did not count its " + codeWords(m[1]) + ".";
+      if (m && m[1] === "priceSet") return "It did not say its price.";
+      if (m && m[1] === "strategyNamed") return "It did not name its strategy.";
+      if (m) return "It did not count its " + countWord(m[1]) + ".";
       if (/^has no review card$/i.test(r)) return "It has no review card.";
       return plainReasons([r]);
     }).filter(Boolean);
@@ -691,8 +761,13 @@
     }
   }
 
+  /* The commands .claude/commands/flywheel.md documents: `stage <n>` runs a
+     step again (it costs a run); `approve <n>` only marks it approved. */
   function chatCommand(s, campaign) {
     return s && s.n ? "/flywheel stage " + s.n + " " + (campaign || "partner") : "";
+  }
+  function approveCommand(s, campaign) {
+    return s && s.n ? "/flywheel approve " + s.n + " " + (campaign || "partner") : "";
   }
 
   /* deriveWaiting — what only Chris can do, read off the flywheel rows:
@@ -711,8 +786,8 @@
           kind: "approve", key: s.key,
           what: "Read and approve: " + name,
           why: doneSentence(s),
-          how: "Read it under Offer and market. Approving still runs in chat.",
-          cmd: ""
+          how: "Read it under Offer and market. To approve, copy this command into Claude Code.",
+          cmd: approveCommand(s, campaign)
         });
       } else if (s.state === "FAILED" || s.state === "STALE") {
         out.push({
@@ -755,15 +830,26 @@
     var n = items.length;
     var howMany = n + (videos.more ? " or more" : "") + (n === 1 && !videos.more ? " video" : " videos");
     var how;
-    if (anyLive) how = "Approving is not on this page yet. Use the Approve link in the text we sent you.";
-    else if (latestExpiry) how = "Approving is not on this page yet, and the approve links in your text ran out on " + dateOf(latestExpiry) + ".";
-    else how = "Approving is not on this page yet, and no working approve link was sent for them.";
+    var howHtml;
+    if (anyLive) {
+      how = "Approving is not on this page yet. Use the Approve link in the text we sent you.";
+      howHtml = esc(how);
+    } else if (latestExpiry) {
+      var ranOut = "Approving is not on this page yet, and the approve links in your text ran out on ";
+      how = ranOut + dateOf(latestExpiry) + ".";
+      howHtml = esc(ranOut) + dateTip(latestExpiry) + ".";
+    } else {
+      how = "Approving is not on this page yet, and no working approve link was sent for them.";
+      howHtml = esc(how);
+    }
+    var adWords = ads.length ? listWords(ads.map(function (a) { return "Ad " + a; })) + ". " : "";
     return {
       kind: "videos",
       what: "Approve or reject " + howMany,
-      why: (ads.length ? listWords(ads.map(function (a) { return "Ad " + a; })) + ". " : "") +
-        (since ? "Waiting since " + dateOf(since) + "." : "Waiting since an unknown day."),
+      why: adWords + (since ? "Waiting since " + dateOf(since) + "." : "Waiting since an unknown day."),
+      whyHtml: esc(adWords) + (since ? "Waiting since " + dateTip(since) + "." : "Waiting since an unknown day."),
       how: how,
+      howHtml: howHtml,
       cmd: ""
     };
   }
@@ -786,10 +872,13 @@
       meta = { ready: null, note: "Not known yet." };
     } else if (v.asOf || v.pulledAt) {
       var fresh = metaFresh(v, now);
+      var through = v.spendThrough || v.latestMetricsDate;
       meta = {
         ready: fresh,
-        note: "Last saved " + when(v.asOf || v.pulledAt, now).text + "." +
-          (v.latestMetricsDate ? " Numbers run through " + dayWords(v.latestMetricsDate) + "." : "") +
+        note: "Last saved " + when(pullTime(v), now).text + "." +
+          (through ? " Numbers run through " + dayWords(through) + "." : "") +
+          (v.latestMetricsDate && through && v.latestMetricsDate < through
+            ? " The last day with ad spend was " + dayWords(v.latestMetricsDate) + "." : "") +
           (fresh ? "" : " It should save every day.")
       };
       if (v.spend30 === null && waitingFor(v, ["spend"]).length) meta.note += " No ad numbers are saved yet.";
@@ -814,10 +903,10 @@
     part("Writing budget this month", r.budget, "Has room.", "Used up for this month.");
 
     parts.push(!v.loaded
-      ? { label: "Flywheel files", ready: null, note: "Not known yet." }
+      ? { label: "Offer and market files", ready: null, note: "Not known yet." }
       : (v.flywheelRead
-        ? { label: "Flywheel files", ready: true, note: "Found on the server." }
-        : { label: "Flywheel files", ready: false, note: "The flywheel files are not on this server yet." }));
+        ? { label: "Offer and market files", ready: true, note: "Found on the server." }
+        : { label: "Offer and market files", ready: false, note: "The offer and market files are not on this server yet." }));
     return parts;
   }
 
@@ -860,8 +949,23 @@
   }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
+  /* aboutTime — a measured run's length in rough words: "about 45 seconds",
+     "about 1 minute", "about 5 minutes" (4 min 29 s rounds up). */
+  function aboutTime(seconds) {
+    var s = num(seconds);
+    if (s === null) return "unknown";
+    var r = Math.round(s);
+    if (r < 60) {
+      r = Math.max(1, r);
+      return "about " + r + (r === 1 ? " second" : " seconds");
+    }
+    var m = Math.ceil(s / 60);
+    return "about " + m + (m === 1 ? " minute" : " minutes");
+  }
+
   /* offerCostLine — under Write offer. Only a measured run (costs.offer, the
-     newest finished marketing_jobs offer run) or "unknown". Never a constant. */
+     newest finished marketing_jobs offer run) or "unknown". Never a constant.
+     Design §6 slice 0: "About 5 minutes. About $0.67, last measured run." */
   function offerCostLine(view) {
     var v = view || {};
     if (!v.loaded) return "Time and cost: unknown. The marketing numbers did not load.";
@@ -872,26 +976,46 @@
         : "Time and cost: unknown. This page cannot read run costs yet.";
     }
     if (!o.measured) return "Time and cost: unknown, not measured yet. One run at a time.";
-    var time = o.seconds !== null
-      ? "About " + Math.max(1, Math.ceil(o.seconds / 60)) + " minutes"
-      : "Time unknown";
-    var cost = o.costCents !== null || o.underOneCent
-      ? centsWords(o.costCents, o.underOneCent) + " of model spend"
-      : "cost unknown, because no price is on file for " + (o.unpriced.length ? listWords(o.unpriced) : "its model");
-    return time + ", " + cost + " (last measured run" + (o.seconds !== null ? ": " + minutesWords(o.seconds) : "") + "). One run at a time.";
+    var last = "(last run" + (o.seconds !== null ? ": " + minutesWords(o.seconds) : "") + ")";
+    var priced = o.costCents !== null || o.underOneCent;
+    var spent = centsWords(o.costCents, o.underOneCent);
+    var noPrice = "Cost unknown: no price is on file for " + (o.unpriced.length ? listWords(o.unpriced) : "its model");
+    if (o.seconds !== null) {
+      var time = cap(aboutTime(o.seconds));
+      return (priced ? time + " and " + spent : time + ". " + noPrice) + " " + last + ". One run at a time.";
+    }
+    return "Time unknown. " + (priced ? cap(spent) : noPrice) + " " + last + ". One run at a time.";
   }
 
-  /* copyCostLine — under Write ad copy. The copy writer's own last runs, and
-     the house account's writing budget as the meter counts it (tokens). */
+  /* copySeconds — how long the newest finished copy job took, from its own
+     start and finish times (generation_jobs started_at → finished_at), or null
+     when no copy job has finished. Measured, never a constant. */
+  function copySeconds(view) {
+    var jobs = arr(view && view.jobs);
+    for (var i = 0; i < jobs.length; i++) {
+      if (jobs[i].status !== "succeeded") continue;
+      var a = asDate(jobs[i].startedAt);
+      var b = asDate(jobs[i].finishedAt);
+      if (a && b && b.getTime() >= a.getTime()) return Math.round((b.getTime() - a.getTime()) / 1000);
+    }
+    return null;
+  }
+
+  /* copyCostLine — under Write ad copy: its time (the last finished copy
+     job), its cost (the copy writer's own last runs), and the house account's
+     writing budget as the meter counts it (tokens). Design §5 rule 3: cost
+     AND time before the tap. */
   function copyCostLine(view) {
     var v = view || {};
-    if (!v.loaded) return "Cost: unknown. The marketing numbers did not load.";
+    if (!v.loaded) return "Time and cost: unknown. The marketing numbers did not load.";
+    var secs = copySeconds(v);
+    var time = secs !== null ? "Time: " + aboutTime(secs) + " (last run)." : "Time: unknown, not measured yet.";
     var c = v.copyCost;
     var cost;
     if (!c) cost = "Cost: unknown. The usage log could not be read yet.";
     else if (!c.runs) cost = "Cost: unknown, not measured yet.";
     else if (c.avgCostCents !== null || c.underOneCent) {
-      cost = cap(centsWords(c.avgCostCents, c.underOneCent)) + " a run (average of the last " +
+      cost = "Cost: " + centsWords(c.avgCostCents, c.underOneCent) + " a run (average of the last " +
         (c.runs === 1 ? "run" : c.runs + " runs") + ").";
     } else {
       cost = "Cost: unknown. The last " + (c.runs === 1 ? "run" : c.runs + " runs") +
@@ -902,7 +1026,7 @@
       ? " Writing budget this month: " + count(r.budgetUsed) + " of " + count(r.budgetCap) +
         " tokens used. A token is a small piece of a word."
       : " Writing budget this month: unknown.";
-    return cost + budget;
+    return time + " " + cost + budget;
   }
 
   /* offerHonest — the Offer card's sentence while the offer writer does not
@@ -918,6 +1042,7 @@
   function plainError(res, what) {
     var body = obj(res && res.body);
     var err = str(body.error);
+    if (res && res.timedOut) return "The server took too long to answer. Try again in a minute.";
     if (!res || res.transport || res.status === 0) {
       return "Could not reach the server. Check your connection and try again.";
     }
@@ -945,6 +1070,7 @@
      3:02 PM."), instead of blanking every number. */
   function refreshBanner(res, lastLoadedMs) {
     var at = clockOf(new Date(lastLoadedMs));
+    if (res && res.timedOut) return "The server took too long to answer. This page shows the last load from " + at + ".";
     if (!res || res.transport || res.status === 0) return "No connection. This page shows the last load from " + at + ".";
     if (res.status === 401) return "You are signed out. Sign in and open this page again.";
     return "The marketing numbers did not refresh. This page shows the last load from " + at + ".";
@@ -1196,24 +1322,31 @@
     return d !== null && d < of && d > 0 ? " Numbers saved for " + d + " of " + of + " days." : "";
   }
 
+  /* rangeNote — the window's whole days. A window the Meta pull covered
+     that holds no saved spend says so in words (ads stopped), never $0. */
+  function rangeNote(range, spend) {
+    if (!range) return "";
+    return esc(num(spend) === null ? "No ad spend saved for " + range + "." : range + ".") + " ";
+  }
+
   function renderSpendTile(view, which, nowMs) {
     var v = view || {};
     /* "Old numbers" leads the row once: on its first tile, top-left. */
-    var lead = which === 7 ? oldLead(v, nowMs) : "";
-    var leadHtml = lead ? '<span class="note lead">' + esc(lead) + "</span>" : "";
+    var lead = which === 7 ? oldLeadHtml(v, nowMs) : "";
+    var leadHtml = lead ? '<span class="note lead">' + lead + "</span>" : "";
     if (which === 7) {
       var r7 = v.spendThrough ? rangeWords(v.from7, v.to7) : "";
       return leadHtml + '<span class="caption">Ad spend, all accounts, last 7 days</span>' +
         '<span class="vl">' + esc(money(v.spend7)) + "</span>" +
         '<span class="cmp">' + esc(compare(v.spend7, v.spendPrev7, "7 days") + coverage(v.days7, 7)) + "</span>" +
-        '<span class="note">' + (r7 ? esc(r7) + ". " : "") +
+        '<span class="note">' + rangeNote(r7, v.spend7) +
         '<a href="campaign-manager.html">See every ad in Campaigns</a></span>';
     }
     var r30 = v.spendThrough ? rangeWords(v.from30, v.to30) : "";
     return leadHtml + '<span class="caption">Ad spend, all accounts, last 30 days</span>' +
       '<span class="vl">' + esc(money(v.spend30)) + "</span>" +
       '<span class="cmp">' + esc(compare(v.spend30, v.spendPrev30, "30 days") + coverage(v.days30, 30)) + "</span>" +
-      '<span class="note">' + (r30 ? esc(r30) + ". " : "") + esc(todayWords(v, nowMs)) + "</span>";
+      '<span class="note">' + rangeNote(r30, v.spend30) + esc(todayWords(v, nowMs)) + "</span>";
   }
 
   function renderPartsTile(view, nowMs) {
@@ -1239,8 +1372,8 @@
   function waitRow(w, i) {
     return '<li class="row" data-wait="' + esc(w.kind) + '">' +
       '<div class="row-main"><b>' + esc(w.what) + "</b>" +
-      (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") +
-      (w.how ? '<div class="row-why">' + esc(w.how) + "</div>" : "") +
+      (w.why ? '<div class="row-why">' + (w.whyHtml || esc(w.why)) + "</div>" : "") +
+      (w.how ? '<div class="row-why">' + (w.howHtml || esc(w.how)) + "</div>" : "") +
       (w.cmd
         ? '<div class="row-act"><button class="btn quiet" type="button" data-copy="' + esc(w.cmd) + '">Copy the chat command</button>' +
           '<span class="caption copied" id="copied-' + i + '" role="status" aria-live="polite"></span></div>'
@@ -1267,18 +1400,26 @@
   }
 
   /* reviewCardHtml — the "## Review card" markdown as plain paragraphs.
-     Bold labels stay bold; the "Say one of:" line is a chat instruction and
-     is left off (approving still runs in chat, which the row says). */
+     Bold labels stay bold. The card's "Say one of:" line is the real
+     instruction for approving, which still happens in chat, so it stays,
+     labelled "In chat, say one of:". */
+  var SAY_LABEL = "In chat, say one of:";
   function reviewCardHtml(md) {
     var blocks = str(md).replace(/\r/g, "").split(/\n\s*\n/).map(function (b) { return b.trim(); }).filter(Boolean);
-    return blocks.filter(function (b) { return !/^\*\*Say one of:?\*\*/i.test(b) && !/^Say one of:/i.test(b); })
-      .map(function (b) {
-        var text = b.replace(/\\([<>\\*_])/g, "$1");
-        var label = /^\*\*([^*]+?)\*\*\s*/.exec(text);
-        var rest = label ? text.slice(label[0].length) : text;
-        rest = rest.replace(/\*\*/g, "");
-        return "<p>" + (label ? "<b>" + esc(label[1]) + "</b> " : "") + esc(rest) + "</p>";
-      }).join("");
+    return blocks.map(function (b) {
+      var text = b.replace(/\\([<>\\*_])/g, "$1");
+      var label = /^\*\*([^*]+?)\*\*\s*/.exec(text);
+      var rest = label ? text.slice(label[0].length) : text;
+      var name = label ? label[1] : "";
+      if (/^say one of:?$/i.test(name.trim())) {
+        name = SAY_LABEL;
+      } else if (!label && /^Say one of:\s*/i.test(rest)) {
+        name = SAY_LABEL;
+        rest = rest.replace(/^Say one of:\s*/i, "");
+      }
+      rest = rest.replace(/\*\*/g, "");
+      return "<p>" + (name ? "<b>" + esc(name) + "</b> " : "") + esc(rest) + "</p>";
+    }).join("");
   }
 
   function stageRows(stages, campaign) {
@@ -1302,13 +1443,13 @@
 
   function renderFlywheel(view) {
     if (!view || !view.loaded) return notLoaded();
-    if (!view.flywheelRead) return '<p class="muted">The flywheel files are not on this server yet, so the steps cannot be shown.</p>';
+    if (!view.flywheelRead) return '<p class="muted">The offer and market files are not on this server yet, so the steps cannot be shown.</p>';
     var withRows = view.campaigns.filter(function (c) { return c.stages.length; });
-    if (!withRows.length) return '<p class="muted">No flywheel steps are on file yet.</p>';
+    if (!withRows.length) return '<p class="muted">No steps are on file yet.</p>';
     return withRows.map(function (c) {
       return (withRows.length > 1 ? '<p class="caption sub-hd">' + esc(campaignWords(c.campaign)) + "</p>" : "") +
         stageRows(c.stages, c.campaign) +
-        (c.advice ? '<p class="caption muted gap-top">' + esc(plainReasons([c.advice])) + "</p>" : "");
+        (c.advice ? '<p class="caption muted gap-top">' + esc(plainReasons([adviceWords(c.advice)])) + "</p>" : "");
     }).join("");
   }
 
@@ -1321,7 +1462,7 @@
   function renderOfferStatus(view) {
     if (!view || !view.loaded) return notLoaded();
     var s = offerStage(view);
-    if (!s) return '<p class="muted">The offer step: unknown. No flywheel row for it is on file.</p>';
+    if (!s) return '<p class="muted">The offer step: unknown. No row for it is on file.</p>';
     var w = stageWord(s, view.stages);
     return '<div class="row solo"><div class="row-main"><b>' + esc(stageName(s)) + '</b> <span class="caption faint step">' +
       esc(stepWords(s)) + "</span></div>" + chip(w.word, w.tone) +
@@ -1445,6 +1586,7 @@
     OFFER_POLL_TRIES: OFFER_POLL_TRIES,
     RELOAD_MS: RELOAD_MS,
     FOCUS_GAP_MS: FOCUS_GAP_MS,
+    FETCH_TIMEOUT_MS: FETCH_TIMEOUT_MS,
     META_FRESH_MS: META_FRESH_MS,
     META_PULL_WORDS: META_PULL_WORDS,
     COPY_MAX_JOBS: COPY_MAX_JOBS,
@@ -1463,6 +1605,9 @@
     rangeWords: rangeWords,
     metaFresh: metaFresh,
     oldLead: oldLead,
+    oldLeadHtml: oldLeadHtml,
+    aboutTime: aboutTime,
+    adviceWords: adviceWords,
     asOfLine: asOfLine,
     todayWords: todayWords,
     plainReasons: plainReasons,
@@ -1532,14 +1677,27 @@
         headers["content-type"] = "application/json";
         opts.body = JSON.stringify(init.body);
       }
+      /* Reads give up after FETCH_TIMEOUT_MS (see it, at the top). */
+      var timer = null;
+      var timedOut = false;
+      if (opts.method === "GET" && typeof root.AbortController === "function") {
+        var ctrl = new root.AbortController();
+        opts.signal = ctrl.signal;
+        timer = root.setTimeout(function () { timedOut = true; ctrl.abort(); }, FETCH_TIMEOUT_MS);
+      }
+      function settle(out) {
+        if (timer) root.clearTimeout(timer);
+        if (timedOut) out.timedOut = true;
+        return out;
+      }
       return root.fetch(path, opts).then(
         function (r) {
           return r.json().then(
-            function (b) { return { status: r.status, body: b }; },
-            function () { return { status: r.status, body: null }; }
+            function (b) { return settle({ status: r.status, body: b }); },
+            function () { return settle(timedOut ? { status: 0, body: null, transport: "timeout" } : { status: r.status, body: null }); }
           );
         },
-        function (e) { return { status: 0, body: null, transport: (e && e.message) || "network error" }; }
+        function (e) { return settle({ status: 0, body: null, transport: timedOut ? "timeout" : ((e && e.message) || "network error") }); }
       );
     }
 
@@ -1606,8 +1764,8 @@
       $("tileParts").innerHTML = renderPartsTile(v, now);
       var asOf = asOfLine(v, now);
       var asOfEl = $("mccAsOf");
-      asOfEl.textContent = asOf.text;
-      asOfEl.title = asOf.title;
+      /* Each time in the sentence carries its own exact-time tooltip. */
+      asOfEl.innerHTML = asOf.html;
       asOfEl.hidden = !asOf.text;
       asOfEl.classList.toggle("stale", Boolean(oldLead(v, now)));
       var waiting = v.loaded ? waitingList(v, state.videos, now) : [];

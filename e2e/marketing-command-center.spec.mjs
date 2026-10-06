@@ -150,6 +150,8 @@ function handlers({ t = today(), todayStatus = 200, todayAnswers, videos = [VIDE
       if (todayAnswers) {
         const a = todayAnswers[Math.min(i, todayAnswers.length - 1)];
         if (a === "abort") return route.abort("internetdisconnected");
+        // A read that never answers (a phone that slept mid-load).
+        if (a === "hang") return new Promise(() => {});
         return json(route, a[0], a[1]);
       }
       await json(route, t, todayStatus);
@@ -257,7 +259,7 @@ test("loading: skeletons in the real layout, the button waits", async ({ page })
     { selector: "#tileSpend7", caption: "Spend tile holds its place" },
     { selector: "#copySetup", caption: "Button waits while it checks" }
   ]);
-  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,235", { timeout: 6000 });
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56", { timeout: 6000 });
 });
 
 test("loading at 390: skeletons, one column", async ({ page }) => {
@@ -278,28 +280,33 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
   const errors = await open(page, handlers({
     offerGet: () => [{ ok: true, ready: true, job: { id: "o1", status: "done" }, offer: OFFER_VIEW }, 200]
   }));
-  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,235");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
   await assertPageAlive(page, errors);
 
   // "Ad spend, all accounts", whole days, and both comparisons.
   await expect(page.locator("#tileSpend7 .caption")).toHaveText("Ad spend, all accounts, last 7 days");
-  await expect(page.locator("#tileSpend7 .cmp")).toHaveText("Up 23% from $1,000 the 7 days before.");
+  await expect(page.locator("#tileSpend7 .cmp")).toHaveText("Up from $1,000 the 7 days before.");
   await expect(page.locator("#tileSpend7 .note")).toContainText("Sep 28 to Oct 4.");
   await expect(page.locator("#tileSpend30 .vl")).toHaveText("$5,000");
-  await expect(page.locator("#tileSpend30 .cmp")).toContainText("Up 25% from $4,000 the 30 days before.");
+  await expect(page.locator("#tileSpend30 .cmp")).toContainText("Up from $4,000 the 30 days before.");
   await expect(page.locator("#tileSpend30 .cmp")).toContainText("Numbers saved for 12 of 30 days.");
   await expect(page.locator("#tileSpend30 .note")).toHaveText(
     "Sep 5 to Oct 4. Today's numbers come in tomorrow morning. The Meta pull runs at midnight, Arizona time.");
   await expect(page.locator("#mccAsOf")).toHaveText(
     "Numbers through Oct 4, saved 12:01 AM (11 hours ago). ClickFunnels last pulled Oct 4, 3:10 PM.");
+  // UI-STANDARDS §7: each time in the sentence has its own exact-time tooltip.
+  await expect(page.locator("#mccAsOf span[title]")).toHaveCount(2);
+  await expect(page.locator("#mccAsOf span[title]").nth(0)).toHaveAttribute("title", "Oct 5, 2026, 12:01 AM");
+  await expect(page.locator("#mccAsOf span[title]").nth(1)).toHaveAttribute("title", "Oct 4, 2026, 3:10 PM");
   await expect(page.locator("#tileParts .caption")).toHaveText("What is turned on");
   await expect(page.locator("#tileParts .vl")).toHaveText("6 of 6");
 
   // Cost lines: a measured offer run; no copy run measured yet.
   await expect(page.locator("#offerCost")).toHaveText(
-    "About 5 minutes, about $0.67 of model spend (last measured run: 4 min 29 s). One run at a time.");
+    "About 5 minutes and about $0.67 (last run: 4 min 29 s). One run at a time.");
   await expect(page.locator("#copyCost")).toHaveText(
-    "Cost: unknown, not measured yet. Writing budget this month: 1,000 of 250,000 tokens used. A token is a small piece of a word.");
+    "Time: unknown, not measured yet. Cost: unknown, not measured yet. " +
+    "Writing budget this month: 1,000 of 250,000 tokens used. A token is a small piece of a word.");
   await expect(page.locator("#offerHonest")).toContainText("checked two different ways right now");
 
   await expect(page.locator("#copySetup")).toHaveText("Ready. It writes one ad and checks it against the ad rules.");
@@ -308,7 +315,8 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
   await expect(page.locator("#waitingList li").first()).toContainText("Approve or reject 2 videos");
   await expect(page.locator("#waitingList")).toContainText("Redo the offer (step 3 of 6)");
   await expect(page.locator("#flywheelList li")).toHaveCount(6);
-  await expect(page.locator('#flywheelList [data-stage="copy"]')).toContainText("It did not count its distinct reasons. Redo the step.");
+  await expect(page.locator('#flywheelList [data-stage="copy"]')).toContainText("It did not count its different reasons. Redo the step.");
+  await expect(page.locator("#flywheelList")).toContainText("2 steps need a redo. Do them in order: 3, then 4.");
   await expect(page.locator('#flywheelList [data-stage="avatar"]')).toContainText("Done. 133 customer quotes collected.");
   await expect(page.locator("#offerLatest")).toContainText("Funding Roadmap");
   await expect(page.locator("#latestList")).toContainText("Funding ads may not promise approval.");
@@ -346,7 +354,7 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
     { selector: "#tileSpend7", caption: "Ad spend, all accounts: 7 whole days vs the 7 before" },
     { selector: "#tileSpend30 .note", caption: "Today's numbers come in tomorrow morning" },
     { selector: "#mccAsOf", caption: "Numbers through Oct 4, saved 12:01 AM; ClickFunnels time" },
-    { selector: "#copyCost", caption: "Write ad copy cost: unknown, not measured yet" },
+    { selector: "#copyCost", caption: "Write ad copy: time and cost, unknown until measured" },
     { selector: '#waitingList li[data-wait="videos"]', caption: "2 videos waiting since Sep 24" }
   ]);
 
@@ -369,7 +377,7 @@ test("Read it unfolds the stage's review card on the page; Show more opens long 
   await read.click();
   await expect(row.locator(".review")).toBeVisible();
   await expect(row.locator(".review")).toContainText("What this decided: the partner offer and its price.");
-  await expect(row.locator(".review")).not.toContainText("Say one of");
+  await expect(row.locator(".review")).toContainText("In chat, say one of: approve · tweak: <what to change> · redo");
   await expect(row.getByRole("button", { name: "Hide it" })).toHaveAttribute("aria-expanded", "true");
   // Step 6 has nothing to read: the button is off and says why.
   const spend = page.locator('#flywheelList [data-stage="spend"]');
@@ -496,7 +504,7 @@ test("error: marketing/today not shipped answers 404 and the page says so, inven
   await expect(page.locator("#copyBtn")).toBeDisabled();
   await expect(page.locator("#offerLatest")).toHaveText("The offer writer is not ready yet. It turns on with the next update.");
   await expect(page.locator("#offerCost")).toHaveText("Time and cost: unknown. The marketing numbers did not load.");
-  await expect(page.locator("#copyCost")).toHaveText("Cost: unknown. The marketing numbers did not load.");
+  await expect(page.locator("#copyCost")).toHaveText("Time and cost: unknown. The marketing numbers did not load.");
   await expect(page.locator("#mccAsOf")).toBeHidden();
   await expect(page.locator("#mccStamp")).toHaveText("Not loaded");
   const text = await page.locator("#mcc-root").innerText();
@@ -514,7 +522,7 @@ test("error: marketing/today not shipped answers 404 and the page says so, inven
 test("error per part: the video list fails, the rest of the page stays", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, handlers({ videos: [{ ok: false, error: "boom" }, 500] }));
-  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,235");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
   await expect(page.locator("#waitingList")).toContainText("The video list did not load. The rest of this page is current.");
   await expect(page.locator("#waitingList")).toContainText("Redo the offer (step 3 of 6)");
   await expect(page.locator("#mccBanner")).toBeHidden();
@@ -535,7 +543,7 @@ test("empty: nothing yet, said plainly", async ({ page }) => {
   }));
   await expect(page.locator("#waitingList")).toHaveText("Nothing is waiting on you right now.");
   await expect(page.locator("#waitingCount")).toHaveText("");
-  await expect(page.locator("#flywheelList")).toHaveText("No flywheel steps are on file yet.");
+  await expect(page.locator("#flywheelList")).toHaveText("No steps are on file yet.");
   await expect(page.locator("#latestList")).toHaveText("No ad copy yet. Press Write ad copy to make the first one.");
   await expect(page.locator("#offerLatest")).toHaveText("No offer has been written here yet.");
   await expect(page.locator("#offerCost")).toHaveText("Time and cost: unknown, not measured yet. One run at a time.");
@@ -556,12 +564,46 @@ test("old numbers: a pull older than two days leads with 'Old numbers'", async (
       clickfunnels_synced_at: "2026-10-01T22:10:00Z" }
   }) }));
   await expect(page.locator("#tileSpend7 .lead")).toHaveText("Old numbers: last saved Oct 1.");
+  await expect(page.locator("#tileSpend7 .lead span")).toHaveAttribute("title", "Oct 1, 2026, 12:01 AM");
   await expect(page.locator("#mccAsOf")).toHaveText(
     "Old numbers: last saved Oct 1, 12:01 AM. Numbers through Sep 30. ClickFunnels last pulled Oct 1, 3:10 PM.");
   await expect(page.locator("#tileSpend30 .note")).toContainText("Today so far: unknown.");
   await shot(page, "16-old-numbers-390.png", "Old numbers at 390", [
     { selector: "#tileSpend7 .lead", caption: "The row leads with Old numbers" },
     { selector: "#tileSpend30 .note", caption: "Today: unknown, because the pull is late" }
+  ]);
+});
+
+test("ads stopped: the 7 days keep moving, the empty week says so, the week before keeps its money", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // As api/marketing/today.mjs answers on Oct 12 when the last ad ran Oct 4:
+  // the midnight pull covered Oct 11, so the windows end there. The money is
+  // the live Sep 28 to Oct 4 sum, read on 2026-10-05 after the U21 backfill.
+  await page.clock.install({ time: new Date("2026-10-12T19:00:00Z") });
+  await open(page, handlers({ t: today({
+    today: "2026-10-12",
+    spend: { currency: "USD", through: "2026-10-11", windows: {
+      today: { from: "2026-10-12", to: "2026-10-12", days: 1, spend_cents: null, ad_days: 0, days_with_data: 0 },
+      last_7_days: { from: "2026-10-05", to: "2026-10-11", days: 7, spend_cents: null, ad_days: 0, days_with_data: 0 },
+      prior_7_days: { from: "2026-09-28", to: "2026-10-04", days: 7, spend_cents: 70727, ad_days: 28, days_with_data: 7 },
+      last_30_days: { from: "2026-09-12", to: "2026-10-11", days: 30, spend_cents: 91549, ad_days: 36, days_with_data: 9 },
+      prior_30_days: { from: "2026-08-13", to: "2026-09-11", days: 30, spend_cents: 62807, ad_days: 28, days_with_data: 11 }
+    } },
+    last_sync: { meta_synced_at: "2026-10-12T07:01:00Z", metrics_synced_at: "2026-10-12T07:01:30Z", latest_metrics_date: "2026-10-04",
+      clickfunnels_synced_at: "2026-10-11T22:10:00Z" }
+  }), videos: [NO_VIDEOS, 200] }), OWNER, { clock: false });
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("unknown");
+  await expect(page.locator("#tileSpend7 .cmp")).toHaveText("The 7 days before: $707.27.");
+  await expect(page.locator("#tileSpend7 .note")).toContainText("No ad spend saved for Oct 5 to Oct 11.");
+  await expect(page.locator("#tileSpend7 .lead")).toHaveCount(0);
+  await expect(page.locator("#tileSpend30 .vl")).toHaveText("$915.49");
+  await expect(page.locator("#tileSpend30 .cmp")).toContainText("Up from $628.07 the 30 days before.");
+  await expect(page.locator("#mccAsOf")).toContainText("Numbers through Oct 11, saved 12:01 AM");
+  await expect(page.locator("#healthList")).toContainText("Numbers run through Oct 11. The last day with ad spend was Oct 4.");
+  await shot(page, "21-ads-stopped-390.png", "Ads stopped at 390: the 7 days keep moving", [
+    { selector: "#tileSpend7 .note", caption: "No ad spend saved for Oct 5 to Oct 11" },
+    { selector: "#tileSpend7 .cmp", caption: "The 7 days before: $707.27" },
+    { selector: "#tileSpend30 .cmp", caption: "30 days: plain money, no percent" }
   ]);
 });
 
@@ -609,6 +651,37 @@ test("the footer clock, the 5-minute reload, the reload on focus, and a failed r
   ]);
 });
 
+test("a read that never answers is given up on after 20 seconds, and the next 5-minute reload still runs", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const counter = { today: 0 };
+  const third = today({ spend: { ...today().spend, windows: { ...today().spend.windows,
+    last_7_days: { ...today().spend.windows.last_7_days, spend_cents: 130000 } } } });
+  await open(page, handlers({ counter, todayAnswers: [[today(), 200], "hang", [third, 200]] }));
+  await expect(page.locator("#mccStamp")).toHaveText("Loaded 12:00 PM");
+
+  // 12:05: the read hangs. Nothing on the page changes yet.
+  await page.clock.runFor(5 * 60 * 1000);
+  expect(counter.today).toBe(2);
+  await expect(page.locator("#mccBanner")).toBeHidden();
+
+  // 12:05:20: the page gives up on it, keeps the numbers, and says so.
+  await page.clock.runFor(20_000);
+  await expect(page.locator("#mccBanner")).toHaveText(
+    "The server took too long to answer. This page shows the last load from 12:00 PM.");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+  await shot(page, "22-hung-read-1280.png", "A read that never answers is given up on", [
+    { selector: "#mccBanner", caption: "Gave up after 20 seconds; the last load's time" },
+    { selector: "#tileSpend7 .vl", caption: "The last good number stays" }
+  ]);
+
+  // 12:10: the next tick is not blocked by the hung read.
+  await page.clock.runFor(5 * 60 * 1000 - 20_000);
+  await expect(page.locator("#mccStamp")).toHaveText("Loaded 12:10 PM");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,300");
+  await expect(page.locator("#mccBanner")).toBeHidden();
+  expect(counter.today).toBe(3);
+});
+
 test("a repaint keeps an open review card open", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await open(page, handlers());
@@ -628,6 +701,13 @@ test("Copy the chat command puts the documented command on the clipboard", async
   await row.getByRole("button", { name: "Copy the chat command" }).click();
   await expect(row.locator(".copied")).toHaveText("Copied. Paste it in Claude Code.");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/flywheel stage 3 partner");
+
+  // Read and approve: the approve command (.claude/commands/flywheel.md), never a re-run.
+  const approve = page.locator('#waitingList li[data-wait="approve"]').first();
+  await expect(approve).toContainText("To approve, copy this command into Claude Code.");
+  await approve.getByRole("button", { name: "Copy the chat command" }).click();
+  await expect(approve.locator(".copied")).toHaveText("Copied. Paste it in Claude Code.");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/flywheel approve 2 partner");
 });
 
 test("signed out: a sentence, not a code", async ({ page }) => {
@@ -640,7 +720,7 @@ test("phone, 390x844: one column, no sideways scroll, no inner scroll box, chips
   const errors = await open(page, handlers({
     offerGet: () => [{ ok: true, ready: true, job: { id: "o1", status: "done" }, offer: OFFER_VIEW }, 200]
   }));
-  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,235");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
   await assertPageAlive(page, errors);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(wide).toBeLessThanOrEqual(390);
@@ -688,11 +768,12 @@ test("phone, 390x844: one column, no sideways scroll, no inner scroll box, chips
   ], { anchor: "#tileParts" });
   await shot(page, "10-phone-390-write.png", "Phone 390: the button and its cost", [
     { selector: "#copyBtn", caption: "Write ad copy, full width" },
-    { selector: "#copyCost", caption: "Its cost line: unknown, not measured yet" }
+    { selector: "#copyCost", caption: "Its time and cost line: unknown, not measured yet" }
   ], { anchor: "#copyOffer" });
+  await expect(page.locator('#waitingList li[data-wait="videos"] span[title]').first()).toHaveAttribute("title", "Sep 24, 2026, 12:55 AM");
   await shot(page, "11-phone-390-waiting.png", "Phone 390: Waiting on you", [
     { selector: '#waitingList li[data-wait="videos"]', caption: "2 videos waiting since Sep 24; links ran out Sep 27" },
-    { selector: '#waitingList li[data-wait="approve"]', caption: "Read and approve, honest about chat" }
+    { selector: '#waitingList li[data-wait="approve"]', caption: "Read and approve: copy the approve command" }
   ], { anchor: "#cardWaiting" });
   await shot(page, "12-phone-390-offer.png", "Phone 390: the Offer card", [
     { selector: "#offerStatus", caption: "The offer, step 3 of 6: chip on the first line" },
@@ -720,7 +801,7 @@ test("phone, 390x844: one column, no sideways scroll, no inner scroll box, chips
 test("960px: the three tiles stack one per row", async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 900 });
   await open(page, handlers());
-  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,235");
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
   const a = await page.locator("#tileSpend7").boundingBox();
   const b = await page.locator("#tileSpend30").boundingBox();
   const c = await page.locator("#tileParts").boundingBox();

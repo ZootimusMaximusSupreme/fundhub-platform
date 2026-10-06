@@ -40,9 +40,18 @@
 // FULL DAYS ONLY in the 7 and 30 day windows. The Meta pull saves through
 // yesterday, so a window that ends today always has one empty day in it, and
 // "last 7 days" was really 6 days set against a full 7 before it. Every
-// multi-day window now ends on the newest day that has saved numbers
-// (latest_metrics_date), so both sides of each comparison are whole days.
+// multi-day window now ends on the last whole day the numbers cover, so both
+// sides of each comparison are whole days, and never on today.
 // `spend.through` names that day so the page can say "Numbers through Oct 4".
+//
+// THE WINDOWS KEEP MOVING WHEN ADS STOP. Meta sends no row for a day no ad ran,
+// so the newest saved day (latest_metrics_date) freezes the moment ads stop.
+// Ending the windows there would keep calling Sep 28 to Oct 4 "the last 7 days"
+// for weeks after the spend went to nothing. So the end day is the LATER of the
+// newest saved day and the last whole day the newest Meta pull covered (the day
+// before the pull's own Arizona day: the midnight pull on Oct 5 covers Oct 4).
+// A window the pull covered but holds no rows stays null, and the page says
+// "No ad spend saved for Oct 5 to Oct 11." It is never turned into $0.
 //
 // COSTS ARE MEASURED, NEVER WRITTEN IN. `costs.offer` is the newest finished
 // Write offer run (marketing_jobs, its saved token counts and its own start and
@@ -96,20 +105,30 @@ export function addDays(day, n) {
   return d.toISOString().slice(0, 10);
 }
 
-/* spendEnd(today, latest) — the last day the 7 and 30 day windows include.
+/* spendEnd(today, latest, pulledOn) — the last day the 7 and 30 day windows
+   include.
 
-   The newest day with saved numbers, so every window is made of whole days.
-   Never later than today. With no saved day at all it is yesterday: the newest
-   day the nightly Meta pull could have saved (the windows are all null then
-   anyway, but their dates still read as whole days). */
-export function spendEnd(today, latest) {
-  if (typeof latest === "string" && DAY_RE.test(latest)) return latest <= today ? latest : today;
-  return addDays(today, -1);
+   `latest` is the newest day with saved numbers. `pulledOn` is the Arizona day
+   the newest Meta pull ran; that pull covered every whole day before it. The
+   end day is the later of `latest` and the day before `pulledOn`, so the
+   windows keep moving after ads stop (see the header). Never today or later:
+   today is not over, and `today` is its own window. With neither day known it
+   is yesterday, the newest day the nightly pull could have saved (the windows
+   are all null then anyway, but their dates still read as whole days). */
+export function spendEnd(today, latest, pulledOn = null) {
+  const yesterday = addDays(today, -1);
+  const known = [
+    latest,
+    typeof pulledOn === "string" && DAY_RE.test(pulledOn) ? addDays(pulledOn, -1) : null
+  ].filter((d) => typeof d === "string" && DAY_RE.test(d)).sort();
+  if (!known.length) return yesterday;
+  const end = known[known.length - 1];
+  return end < yesterday ? end : yesterday;
 }
 
-/* spendWindows(today, latest) → [{ key, from, to, days }] */
-export function spendWindows(today, latest = null) {
-  const end = spendEnd(today, latest);
+/* spendWindows(today, latest, pulledOn) → [{ key, from, to, days }] */
+export function spendWindows(today, latest = null, pulledOn = null) {
+  const end = spendEnd(today, latest, pulledOn);
   return SPEND_WINDOWS.map((w) => w.today
     ? { key: w.key, from: today, to: today, days: 1 }
     : {
@@ -165,24 +184,41 @@ export async function readSpend(tx, { orgId, windows }) {
   return out;
 }
 
-/* readSpendEnd(tx, { orgId }) → "YYYY-MM-DD" | null — the newest saved ad-day,
-   read in the same transaction as the sums so the windows and the rows agree. */
+/* readSpendEnd(tx, { orgId }) → { latest, metaSyncedAt }
+
+   The newest saved ad-day and the newest Meta pull, read in the same
+   transaction as the sums so the windows and the rows agree. */
 export async function readSpendEnd(tx, { orgId }) {
   const { rows } = await tx.query(
-    `SELECT max(date)::text AS spend_end_day
-       FROM ad_metrics_daily
-      WHERE org_id = $1`,
+    `SELECT (SELECT max(date)::text
+               FROM ad_metrics_daily
+              WHERE org_id = $1) AS spend_end_day,
+            (SELECT max(last_synced_at)
+               FROM ad_platform_connections
+              WHERE org_id = $1 AND platform = 'meta') AS meta_synced_at`,
     [orgId]
   );
-  return rows[0]?.spend_end_day ?? null;
+  return {
+    latest: rows[0]?.spend_end_day ?? null,
+    metaSyncedAt: rows[0]?.meta_synced_at ?? null
+  };
+}
+
+/* The Arizona day a pull ran on, or null. */
+function pulledOnDay(at) {
+  if (!at) return null;
+  const d = at instanceof Date ? at : new Date(at);
+  return Number.isNaN(d.getTime()) ? null : phoenixDay(d);
 }
 
 /* readSpendAll(tx, { orgId, today }) → { through, windows } */
 export async function readSpendAll(tx, { orgId, today }) {
-  const latest = await readSpendEnd(tx, { orgId });
-  const windows = spendWindows(today, latest);
+  const { latest, metaSyncedAt } = await readSpendEnd(tx, { orgId });
+  const pulledOn = pulledOnDay(metaSyncedAt);
+  const windows = spendWindows(today, latest, pulledOn);
   return {
-    through: latest ? spendEnd(today, latest) : null,
+    // Nothing saved ever → null (and "spend" is named in waiting).
+    through: latest ? spendEnd(today, latest, pulledOn) : null,
     windows: await readSpend(tx, { orgId, windows })
   };
 }
@@ -517,7 +553,7 @@ export default async function handler(req, res, deps = {}) {
       if (ready.ok) copyReady = { partner_id: partnerId, ...ready.value };
     }
 
-    // 3. Spend, in whole days ending on the newest saved day.
+    // 3. Spend, in whole days ending on the last whole day the numbers cover.
     const spendRead = await part("spend", (tx) => readSpendAll(tx, { orgId, today }));
     let spend = null;
     if (spendRead.ok) {

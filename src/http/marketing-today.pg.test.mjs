@@ -34,7 +34,7 @@ import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createSession } from "../auth/session.mjs";
 import { asStaff } from "../partners/rls.mjs";
 import { phoenixDay } from "../slo/visitor.mjs";
-import todayHandler, { addDays, HOUSE_SLUG } from "../../api/marketing/today.mjs";
+import todayHandler, { addDays, HOUSE_SLUG, readSpendEnd } from "../../api/marketing/today.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +52,9 @@ const ENV = { ANTHROPIC_API_KEY: "sk-ant-fake-pg-test" };
 // and the read if the run straddles Arizona midnight.
 const NOW = new Date();
 const TODAY = phoenixDay(NOW);
-const META_SYNCED = new Date("2026-10-05T07:01:50Z");
+// Today's midnight pull (07:01 UTC is 12:01 AM Arizona). It covered yesterday,
+// the same day the newest fixture row is on.
+const META_SYNCED = new Date(`${TODAY}T07:01:50Z`);
 const CF_SYNCED = new Date("2026-10-04T22:10:00Z");
 // One finished Write offer run: picked up, then done 269 seconds later.
 const OFFER_CLAIMED = new Date("2026-10-05T18:00:00Z");
@@ -310,7 +312,7 @@ describe("GET /api/marketing/today", { skip: !HAS_DB ? "no DATABASE_URL" : false
     assert.equal(r.code, 200, JSON.stringify(r.body));
     const w = r.body.spend.windows;
     assert.equal(r.body.today, TODAY);
-    assert.equal(r.body.spend.through, addDays(TODAY, -1), "windows end on the newest saved day");
+    assert.equal(r.body.spend.through, addDays(TODAY, -1), "windows end on yesterday: the newest saved day and the last day the pull covered");
     assert.deepEqual([w.last_7_days.from, w.last_7_days.to], [addDays(TODAY, -7), addDays(TODAY, -1)]);
     assert.equal(w.last_7_days.spend_cents, 1700);
     assert.equal(w.last_7_days.ad_days, 3);
@@ -321,6 +323,12 @@ describe("GET /api/marketing/today", { skip: !HAS_DB ? "no DATABASE_URL" : false
     assert.equal(w.today.spend_cents, null);
     assert.equal(w.today.ad_days, 0);
     assert.ok(!r.body.waiting.some((x) => x.part === "spend"));
+  });
+
+  test("readSpendEnd: the newest saved day and the newest Meta pull, in one read", async () => {
+    const end = await asStaff((tx) => readSpendEnd(tx, { orgId: orgB }));
+    assert.equal(end.latest, addDays(TODAY, -1));
+    assert.equal(new Date(end.metaSyncedAt).toISOString(), META_SYNCED.toISOString());
   });
 
   test("last sync: the Meta connection's time and the newest saved day", async () => {
