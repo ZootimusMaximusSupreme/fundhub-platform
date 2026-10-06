@@ -29,4 +29,7 @@ You fries and a Coke, which then you could supersize on quality as top on top of
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame shows a plain gray background with no distinguishable elements.
+

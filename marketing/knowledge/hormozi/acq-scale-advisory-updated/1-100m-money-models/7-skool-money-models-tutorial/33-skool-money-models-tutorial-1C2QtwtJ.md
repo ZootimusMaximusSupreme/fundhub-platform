@@ -47,4 +47,7 @@ there's a, I think it's eight hours, a very long training that I made explaining
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+Person holding book titled "$100M MONEY MODELS" by ALEX HORMOZI with subtitle "HOW TO MAKE MONEY"
+

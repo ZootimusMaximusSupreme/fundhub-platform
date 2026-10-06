@@ -18,4 +18,7 @@ acquisition, just go to acquisition.com/careers/open/jobs. But probably just car
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

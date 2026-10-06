@@ -28,4 +28,7 @@ get three to five times by monthly rate. At minimum, the commitment less should 
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content - blank gray screen
+

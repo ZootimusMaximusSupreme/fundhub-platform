@@ -18,4 +18,7 @@ have low CAC, which means you have cheap customers. You have high GP who pay you
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

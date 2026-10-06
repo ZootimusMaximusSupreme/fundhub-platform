@@ -11,4 +11,7 @@ demand, the more you have, you give off pretty much that's how it works. The lin
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. The frame appears to be a blank or gray screen with no discernible text, bullets, numbers, or diagrams.
+

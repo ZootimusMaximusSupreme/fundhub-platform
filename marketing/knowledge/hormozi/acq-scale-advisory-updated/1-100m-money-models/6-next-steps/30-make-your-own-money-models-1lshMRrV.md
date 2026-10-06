@@ -24,4 +24,7 @@ all the stuff that I know that I could fit into a presentation within that reaso
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

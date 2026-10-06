@@ -36,4 +36,7 @@ cash and your business is healthy, make sure make this offer to existing custome
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame shows a plain gray background with no discernible training material or on-screen elements.
+

@@ -24,4 +24,7 @@ And the main reason was we had a better money model. Level three, check. So you 
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray background only.
+

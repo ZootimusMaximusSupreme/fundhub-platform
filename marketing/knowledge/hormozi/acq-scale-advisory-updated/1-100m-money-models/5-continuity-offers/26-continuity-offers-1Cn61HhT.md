@@ -32,4 +32,7 @@ equals stability, which is why it's the fourth pillar of this. It's also the thi
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame appears to be blank/gray screen.
+

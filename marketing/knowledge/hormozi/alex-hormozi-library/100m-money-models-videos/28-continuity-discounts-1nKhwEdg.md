@@ -51,4 +51,7 @@ more money, not give more stuff away, and that is how we structure this stuff.
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

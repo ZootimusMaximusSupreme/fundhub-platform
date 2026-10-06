@@ -51,4 +51,7 @@ more money, not give more stuff away, and that is how we structure this stuff.
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame shows a plain gray background with no discernible training material or on-screen elements.
+

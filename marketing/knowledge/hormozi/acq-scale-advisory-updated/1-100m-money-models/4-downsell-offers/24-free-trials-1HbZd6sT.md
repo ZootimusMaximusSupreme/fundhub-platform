@@ -51,4 +51,7 @@ as much or a much higher percentage on the back end, which is why I do them. It 
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Gray blank screen.
+

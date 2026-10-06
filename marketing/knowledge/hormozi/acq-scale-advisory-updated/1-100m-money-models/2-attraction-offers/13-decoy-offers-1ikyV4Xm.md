@@ -38,4 +38,7 @@ the contrast between the offers bigger. By the way, if you're a company doing ov
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, numbers, or diagrams. Frame appears to be a blank gray screen.
+

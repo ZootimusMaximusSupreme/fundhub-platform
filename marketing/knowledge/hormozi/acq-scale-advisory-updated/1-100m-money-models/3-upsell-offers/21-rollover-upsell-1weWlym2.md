@@ -32,4 +32,7 @@ You can price your next offer for at least four times higher than the credit. So
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

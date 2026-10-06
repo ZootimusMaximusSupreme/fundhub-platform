@@ -32,4 +32,7 @@ you build your money model so that you can use other people's money, not banks, 
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+Dark logo on light gray background - stylized mountain or abstract "M" shape in navy blue/black color. No text visible.
+

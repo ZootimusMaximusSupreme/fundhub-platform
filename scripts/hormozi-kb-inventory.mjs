@@ -14,23 +14,17 @@ import {
   readIngestState,
   writeIngestState,
   writeIndex,
+  writeTopicsCatalog,
+  parseSpeechFromMarkdown,
   isPdfFile
 } from "../src/company-brain/hormozi-kb.mjs";
 
 loadEnv();
 
 function speechFromMd(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) return { ok: false, reason: "missing file" };
-  const c = fs.readFileSync(filePath, "utf8");
-  const idx = c.indexOf("## Speech transcript");
-  if (idx < 0) return { ok: false, reason: "no section" };
-  const after = c.slice(idx + "## Speech transcript".length).trim();
-  const next = after.indexOf("\n## ");
-  const body = (next >= 0 ? after.slice(0, next) : after).trim();
-  if (!body || body === "(no transcript)" || body.length < 20) {
-    return { ok: false, reason: "empty", len: body.length };
-  }
-  return { ok: true, len: body.length };
+  const parsed = parseSpeechFromMarkdown(filePath);
+  if (parsed.ok) return { ok: true, len: parsed.len };
+  return { ok: false, reason: parsed.reason, len: parsed.len };
 }
 
 const repair = process.argv.includes("--repair");
@@ -89,6 +83,7 @@ if (repair) {
     }
   }
   writeIndex(outRoot, indexEntries);
+  writeTopicsCatalog(outRoot, indexEntries);
 }
 
 const missing = [];

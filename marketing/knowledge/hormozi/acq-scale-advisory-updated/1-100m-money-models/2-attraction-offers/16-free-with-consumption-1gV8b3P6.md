@@ -45,4 +45,7 @@ But you can go to acquisition.com if you want to create your business. But that'
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content - blank gray screen
+

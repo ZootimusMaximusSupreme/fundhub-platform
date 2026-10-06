@@ -36,4 +36,7 @@ That is the egg rub cell.
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame appears to be blank/gray.
+

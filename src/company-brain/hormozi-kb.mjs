@@ -19,7 +19,14 @@ import {
   classifyWhisperFailure
 } from "./transcribe.mjs";
 import { localWhisperVideoAtPath } from "./local-whisper.mjs";
-import { callModel, classifyModelFailure, MODEL_NO_CREDIT, DEFAULT_OPENAI_MODEL } from "../agents/model.mjs";
+import {
+  callModel,
+  classifyModelFailure,
+  MODEL_NO_CREDIT,
+  DEFAULT_OPENAI_MODEL,
+  DEFAULT_MODEL,
+  liveModelProvider
+} from "../agents/model.mjs";
 import { upsertGeneratedDocument } from "./ingest-generated.mjs";
 
 export const DEFAULT_FFMPEG =
@@ -289,6 +296,23 @@ export function buildVideoMarkdown(meta, { speech = "", visualNotes = [] }) {
   return body;
 }
 
+/** Read speech body from an existing video markdown file (visual-only re-ingest). */
+export function parseSpeechFromMarkdown(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return { ok: false, reason: "missing file", text: "" };
+  }
+  const c = fs.readFileSync(filePath, "utf8");
+  const idx = c.indexOf("## Speech transcript");
+  if (idx < 0) return { ok: false, reason: "no section", text: "" };
+  const after = c.slice(idx + "## Speech transcript".length).trim();
+  const next = after.indexOf("\n## ");
+  const body = (next >= 0 ? after.slice(0, next) : after).trim();
+  if (!body || body === "(no transcript)" || body.length < 20) {
+    return { ok: false, reason: "empty", text: body, len: body.length };
+  }
+  return { ok: true, text: body, len: body.length };
+}
+
 export function formatTimestamp(seconds) {
   const s = Math.max(0, Math.floor(Number(seconds) || 0));
   const h = Math.floor(s / 3600);
@@ -377,10 +401,12 @@ async function describeFrameBatch(frames, { env, fetchImpl }) {
     dataBase64: fs.readFileSync(f.path).toString("base64")
   }));
   const stampList = frames.map((f) => formatTimestamp(f.seconds)).join(", ");
+  const visionModel =
+    liveModelProvider(env) === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_MODEL;
   const res = await callModel({
     env,
     fetchImpl,
-    model: DEFAULT_OPENAI_MODEL,
+    model: visionModel,
     maxTokens: 1200,
     system:
       "You extract on-screen text and slide bullets from Hormozi training videos. " +
@@ -471,6 +497,41 @@ export function writeIndex(outRoot, entries) {
   fs.writeFileSync(path.join(outRoot, "INDEX.md"), md, "utf8");
 }
 
+/** Machine-readable topic catalog for grep / agents / vault apps. */
+export function writeTopicsCatalog(outRoot, entries) {
+  const byTopic = new Map();
+  for (const e of entries) {
+    const key = (e.topicPath || []).join(" / ");
+    if (!byTopic.has(key)) {
+      byTopic.set(key, {
+        topic: key,
+        topicPath: e.topicPath || [],
+        files: []
+      });
+    }
+    byTopic.get(key).files.push({
+      title: e.title,
+      relativePath: e.relativePath,
+      kind: e.kind
+    });
+  }
+  const topics = [...byTopic.values()]
+    .map((t) => ({
+      ...t,
+      files: t.files.sort((a, b) => a.title.localeCompare(b.title))
+    }))
+    .sort((a, b) => a.topic.localeCompare(b.topic));
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    vaultRoot: outRoot,
+    topicCount: topics.length,
+    fileCount: entries.length,
+    topics
+  };
+  fs.writeFileSync(path.join(outRoot, "topics.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return path.join(outRoot, "topics.json");
+}
+
 export async function ingestPdfFile(client, meta, {
   outRoot,
   workDir,
@@ -556,6 +617,9 @@ export async function ingestVideoFile(client, meta, {
       rec.speech = "done";
       rec.speechText = speech;
     }
+  } else if (!speech.trim() && rec.outPath) {
+    const prior = parseSpeechFromMarkdown(rec.outPath);
+    if (prior.ok) speech = prior.text;
   }
 
   let visualNotes = rec.visualNotes || [];
@@ -681,18 +745,20 @@ export async function runHormoziIngest({
   }
 
   let processedVideos = 0;
+  let videoAttempts = 0;
   let creditsStop = false;
   const videoQueue =
     videoSkip > 0 ? videoFiles.slice(Math.max(0, videoSkip)) : videoFiles;
   if (speech || visual) {
     for (const meta of videoQueue) {
-      if (processedVideos >= limit) break;
       const rec = state.videos[meta.id] || {};
       if (resume && rec.done === "done" && (!speech || rec.speech === "done") && (!visual || rec.visual === "done")) {
         if (rec.speech === "done") counts.videosSpeechDone += 1;
         if (rec.visual === "done") counts.videosVisualDone += 1;
         continue;
       }
+      if (Number.isFinite(limit) && videoAttempts >= limit) break;
+      videoAttempts += 1;
       const r = await ingestVideoFile(client, meta, {
         outRoot,
         workDir,
@@ -778,13 +844,15 @@ export async function runHormoziIngest({
     }
   }
   writeIndex(outRoot, indexEntries);
+  const topicsPath = writeTopicsCatalog(outRoot, indexEntries);
 
   const base = {
     inventory: { pdfs: pdfFiles.length, videos: videoFiles.length, total: inventory.length },
     counts,
     outRoot,
     statePath,
-    indexPath: path.join(outRoot, "INDEX.md")
+    indexPath: path.join(outRoot, "INDEX.md"),
+    topicsPath
   };
   if (creditsStop) {
     writeIngestState(outRoot, state);

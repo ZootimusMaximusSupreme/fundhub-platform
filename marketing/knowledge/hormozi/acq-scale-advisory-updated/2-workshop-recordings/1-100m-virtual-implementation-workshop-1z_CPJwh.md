@@ -565,4 +565,7 @@ just wanted to get used and it makes it feel like all the pain and suffering tha
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+Two blank white presentation screens/whiteboards visible. On the right side of the frame, multiple "$100M PLAYBOOK" branded materials are visible, including variations like "$100M PLAYBOOK: CLOSING", "$100M PLAYBOOK: LEAD NURTURE", "$100M PLAYBOOK: GOATED ADS". There is also an "ACQ AI" logo with a Buddha-like figure visible, and text reading "ACQ VIRTUAL IMPLEMENTATION WORKSHOP".
+

@@ -53,4 +53,7 @@ who signs up for continuity to prepay for the next six months or the next year i
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

@@ -47,4 +47,7 @@ as margins or the thing that you're running out of or that you're not running ou
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

@@ -5,6 +5,7 @@
  *   node scripts/hormozi-kb-ingest.mjs --pdfs
  *   node scripts/hormozi-kb-ingest.mjs --speech --visual --resume
  *   node scripts/hormozi-kb-ingest.mjs --local-whisper --no-visual --speech --resume
+ *   node scripts/hormozi-kb-ingest.mjs --visual --resume --no-speech
  *   node scripts/hormozi-kb-ingest.mjs --load-brain --resume
  */
 import pg from "pg";
@@ -47,9 +48,15 @@ function logCreditsStop() {
 }
 
 async function main() {
-  const anyMode = hasFlag("--pdfs") || hasFlag("--speech") || hasFlag("--visual");
+  const anyMode =
+    hasFlag("--pdfs") ||
+    hasFlag("--speech") ||
+    hasFlag("--visual") ||
+    hasFlag("--load-brain");
   const pdfs = hasFlag("--pdfs") || !anyMode;
-  const speech = hasFlag("--speech") || (!anyMode && !hasFlag("--pdfs-only"));
+  const speech = hasFlag("--no-speech")
+    ? false
+    : (hasFlag("--speech") || (!anyMode && !hasFlag("--pdfs-only")));
   const localWhisper = hasFlag("--local-whisper");
   const visual = hasFlag("--no-visual")
     ? false

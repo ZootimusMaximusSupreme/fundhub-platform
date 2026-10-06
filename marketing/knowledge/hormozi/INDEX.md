@@ -1,6 +1,6 @@
 # Hormozi knowledge base index
 
-Generated: 2026-10-05T21:51:03.038Z
+Generated: 2026-10-06T01:39:30.188Z
 
 ## ACQ Scale Advisory (Updated) / 1. $100M Money Models / 1. Intro
 

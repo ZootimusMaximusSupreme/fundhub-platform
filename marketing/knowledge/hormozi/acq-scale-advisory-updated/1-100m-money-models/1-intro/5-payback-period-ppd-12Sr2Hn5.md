@@ -30,4 +30,7 @@ customer already back in my pocket before I even have the next payment 30 days l
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+
+

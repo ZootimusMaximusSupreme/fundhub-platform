@@ -44,4 +44,7 @@ the cancel, which actually extends the LTV and you can discount customers in exc
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

@@ -16,4 +16,7 @@ These downsells boost 30 day profits even further. They do it by making even mor
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

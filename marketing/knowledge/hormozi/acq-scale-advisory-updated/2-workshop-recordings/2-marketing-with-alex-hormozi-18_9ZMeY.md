@@ -518,4 +518,7 @@ for being great. And with that, I bid you do. All right, cool. So flexing you fi
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+The frame appears to be completely black with no visible text, slide titles, bullets, numbers, or diagrams.
+

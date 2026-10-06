@@ -45,4 +45,7 @@ things that's more for kind of up front or defined in periods things and with th
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

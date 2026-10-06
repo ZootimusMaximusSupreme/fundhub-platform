@@ -13,4 +13,7 @@ You cannot lose if you do not quit. I used to repeat that to myself over and ove
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, or slide content. Frame shows a plain gray background with no discernible information.
+

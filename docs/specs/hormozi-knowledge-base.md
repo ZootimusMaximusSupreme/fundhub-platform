@@ -19,8 +19,10 @@ Skip folder `12k3Lw0igfPFKekT88R_01e-OsPj8aftt` (duplicate ACQ tree).
    - **OpenAI path (default):** MP3 chunks → OpenAI Whisper API → ffmpeg frames (~every 90s, max ~25) → `callModel` (gpt-4o-mini) for on-screen notes.
    - **Local speech (free):** `--local-whisper` runs **whisper.cpp** on the same MP3 chunks from `splitMp3Chunks` (`src/company-brain/local-whisper.mjs`). Homebrew `whisper-cpp` on Apple Silicon uses Metal when built with Metal support. No OpenAI key required for speech.
 4. **Resume** — `marketing/knowledge/hormozi/_ingest-state.json` tracks per-file PDF / speech / visual status. Videos that failed with `invalid_api_key` on API Whisper are retried when you re-run with `--local-whisper --speech --resume` (speech errors are cleared for that mode). **OpenAI credits:** API Whisper and on-screen vision are hard-stopped by default (`--stop-on-no-credits`, on). The first credit failure writes `stopped_reason: "openai_credits_exhausted"`, logs one line, and exits **2**. Local whisper ingest ignores that stop flag for speech. After funding the account, delete `stopped_reason` from the state file and re-run API modes with `--resume`.
-5. **Index** — `marketing/knowledge/hormozi/INDEX.md` lists topics and files.
-6. **Company Brain (optional)** — `--load-brain` upserts each finished doc via `upsertGeneratedDocument` (`sourceType: hormozi-kb`, `sourceKey: drive file id`). Requires a valid OpenAI key for embeddings.
+5. **Index** — `marketing/knowledge/hormozi/INDEX.md` lists topics and files; `topics.json` is the machine catalog (see `scripts/hormozi-kb-query.mjs`).
+6. **Company Brain (optional)** — `--load-brain` upserts each finished doc via `upsertGeneratedDocument` (`sourceType: hormozi-kb`, `sourceKey: drive file id`). Requires a valid OpenAI key for embeddings. Use `--load-brain --resume --no-speech --no-visual` alone so ingest does not re-run video/pdf passes.
+
+Open-source graph browser for the vault: `docs/specs/hormozi-vault-visualization.md` (Logseq recommended).
 
 ## Local whisper.cpp setup
 

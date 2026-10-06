@@ -586,4 +586,7 @@ We play to win here. And I think that comes from the top that comes from you. An
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+Black screen with no visible text or slide content.
+

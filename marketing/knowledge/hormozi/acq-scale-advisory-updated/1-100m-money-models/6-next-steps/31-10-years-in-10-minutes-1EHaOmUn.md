@@ -21,4 +21,7 @@ So in the next one, we'll just put it all together and put a nice bow on it and 
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text or slide content. Gray blank screen.
+

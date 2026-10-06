@@ -60,4 +60,7 @@ right. Um, and it, cause it may suit them better. I would just keep the percenta
 
 ## On-screen notes
 
-(no on-screen notes extracted)
+### 0:00
+
+No visible text, bullets, numbers, or diagrams. The frame appears to be a blank gray screen.
+
