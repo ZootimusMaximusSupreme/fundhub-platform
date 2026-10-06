@@ -1,6 +1,7 @@
 import React from 'react';
 import {interpolate} from 'remotion';
 import {BackdropStage, BrandFrame, COLORS, DEPTH, Eyebrow, MoneyGutters, P3D, Stage3D, TRACK, enter, progressBetween, useTimeline} from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type StepPathProps = {
   eyebrow: string;
@@ -8,6 +9,8 @@ export type StepPathProps = {
   steps: string[];
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const STEP_PATH_BASE = 90;
@@ -24,6 +27,7 @@ export const stepPathDefaults: StepPathProps = {
     'Set up the businesses',
     'Apply in the right order',
   ],
+  transparent: false,
 };
 
 const NODE = 70;
@@ -79,7 +83,7 @@ const StepDisc: React.FC<{label: string; on: number}> = ({label, on}) => {
   );
 };
 
-export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFrames, showSafeZones}) => {
+export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useTimeline(STEP_PATH_BASE, durationInFrames);
   const L = STEP_PATH_BASE;
   const list = steps.slice(0, 6);
@@ -88,7 +92,7 @@ export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFra
   const rowH = n >= 6 ? 104 : 118;
   const lineH = (n - 1) * (rowH + ROW_GAP);
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -183,4 +187,5 @@ export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFra
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

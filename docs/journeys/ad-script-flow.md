@@ -250,3 +250,302 @@ flowchart TD
 - `marketing/ads/VOICE.md` now has a header, then `# Real pairs` (every real pair: an AI line next to Chris's own rewrite of it, from a chat or the app), then `# Seed pairs — model side written by hand` (the 9 hand-written seed pairs, unchanged, numbers 1-9).
 - `# Real pairs` holds 0 pairs on this branch. The chat search for real pairs was blocked by the permission check, so the real count is not measured.
 - U05's weekly append adds app-edit pairs at the end of `# Real pairs`, numbered from one more than the highest pair. UNVERIFIED here: that code is not on this branch.
+
+## U24 M1 7.6 writer: one Claude call writes a draft, the checks send it back, the draft is saved
+
+Generated from code on 2026-10-06: `src/marketing/writer.mjs`, `src/marketing/writer-prompt.mjs`,
+`src/marketing/sameness.mjs`, two new lines in `src/marketing/job-kinds.mjs`. Yardstick: spec §7.6,
+Appendix A, Appendix B, §4 traps 3 and 8. Nothing queues `write_slot` yet (U35's `start_batch` will);
+`fix_script` is queued by `POST marketing/scripts/fix` (U26). The background worker (U22) is what runs both.
+
+```mermaid
+flowchart TD
+    J1["job write_slot {batch_id, slot}"] --> L["load the slot: batch, settings, funnel,<br/>house partner, idea, last 30 scripts,<br/>batch scripts, 3 approved examples<br/>(one short staff transaction)"]
+    J2["job fix_script {script_id, version, note}"] --> LF["load the script, its batch and funnel<br/>(one short staff transaction)"]
+    LF -->|"archived, or not the version Chris saw"| SKIP["done: failed 'a newer version was saved', no call"]
+    L -->|"no batch"| GIVE["done: failed, plain reason<br/>idea marked failed"]
+    L -->|"no funnel / no house partner"| THROW
+    L --> R["rule files at the batch's rules_sha from GitHub<br/>(fix: newest), else the bundled copies:<br/>RULES.md, VOICE.md, RECIPES.md, catalog.json,<br/>angles.json, banned-live.json"]
+    LF --> R
+    R -->|"RULES.md or catalog.json unreadable"| THROW
+    R --> CAP{"cost cap reached?<br/>(checked before every call)"}
+    CAP -->|yes| CAPF["done: failed 'cost cap reached', the idea left as it was<br/>one cost_cap buzz per batch or Arizona month"]
+    CAP -->|no| W["Claude writes: provider anthropic, MARKETING_WRITER_MODEL<br/>(claude-opus-5-5), effort medium, 16000 tokens, 5 min,<br/>cached system prompt, outputSchema SAVE_SCRIPT_SCHEMA<br/>call logged in marketing_model_usage (served model)"]
+    W -->|"no JSON"| W2["one retry, only if a whole<br/>5-minute call still fits"] -->|"no JSON again"| GIVE
+    W2 -->|"no time left (first draft)"| THROW
+    W -->|"refusal"| GIVE
+    W -->|"timeout / 429 / 5xx / unreachable"| THROW["handler throws: the queue runs the job again (up to 3),<br/>then the job is 'failed' and Retry works;<br/>the idea is left as it was"]
+    W -->|"setup fault: no key, masked key,<br/>bad model name, HTTP 400 / 401 / 403"| THROW
+    W --> C{"code checks: strict checker, parts in the body,<br/>validateAnimationPlan, Meta copy (headline 40),<br/>price (book-a-call: none; priced: only its own),<br/>label keys, compliance screen on body + meta copy"}
+    C -->|"a check Claude can fix fails, rounds left (2)"| RW["rewrite with every failure listed"] --> C
+    C -.->|"compliance screen could not run (engine)"| FLAG["no rewrite: blocks and flags the draft"]
+    C --> JD["one judge pass: MARKETING_CHECK_MODEL (claude-sonnet-5-5),<br/>effort medium, JUDGE_SCHEMA: rules 3, 9, 12, 13-34"]
+    JD -->|"violations"| RJ["rewrite once (kept if it passes the code checks)"]
+    JD --> S{"sameness: overlap > 0.5 with the last 30 hooks or bodies,<br/>a hook or CTA the batch has, an intro over its cap"}
+    RJ --> S
+    S -->|"yes"| RS["rewrite once"]
+    RS -->|"write_slot: batch duplicate still there"| REF["done: failed 'Refused: ...'<br/>idea marked failed, nothing saved"]
+    S --> SV["save in ONE staff transaction:<br/>lock the batch row, re-check batch duplicates,<br/>INSERT ad_scripts (version 1, draft, machine, root = id;<br/>a label key the database would refuse goes in as NULL),<br/>ad_labels upserts, idea written"]
+    RS --> SV
+    SV --> D1["draft, flagged when any check still fails<br/>(check_results.flagged + flag_reasons)"]
+    S -.->|"fix_script"| SF["save in ONE staff transaction: lock the parent,<br/>archive it (machine: superseded), INSERT version + 1,<br/>same root, same ad_id, locked stays locked, fix_note"]
+    SF --> D2["new version"]
+```
+
+What the save writes: `ad_scripts` (title, body, hook_text, script_type `cold` or `vsl`, lane and
+offer_key from the funnel, angle_key, hook_key, script_format, style, funnel_key, batch_id, idea_id,
+parts, check_results, animation_plan, meta_copy), `ad_labels` (script_type, angle, hook, offer; a
+blank name is filled, a typed one is never overwritten), and `ad_ideas` (status written, script_id).
+No `repo_outbox` row: draft files are committed at release (U35, spec §7.7). No transaction is open
+while Claude is called.
+
+`check_results` keys: `version`, `flagged`, `flag_reasons`, `strict {passed, rounds, failures,
+warnings, words}`, `parts`, `animation`, `meta_copy`, `offer {passed, failures, book_call, price}`,
+`labels`, `judge {passed, ran, model, notes, sent_back, taken, error}`, `compliance {state, reasons,
+copy_blocked, engine_blocked}`, `sameness
+{hook_overlap, body_overlap, duplicate_hook, duplicate_cta, intro, rewritten, refused}`, `rules
+{sha, from, missing}`, `time_ran_out`, `rewrite_errors`, `models`, `calls`.
+
+### Gaps between the spec and the code (findings, not fixed here)
+
+1. **Forced tool → structured output.** Spec §7.6 says "a forced save_script tool". Forced
+   `tool_choice` is HTTP 400 on claude-opus-5-5 and claude-sonnet-5-5 (claude-api skill), so the
+   same schema goes out as `output_config.format` (callModel `outputSchema`). Source: the plan's
+   intended-journey note, item (2). Structured outputs take no `maxLength`, so the 40-character
+   headline is checked in code, and animation `props` travel as JSON text and are parsed.
+2. **Spec numbers changed by the plan:** maxTokens 16000 (spec 8000) and timeoutMs 5 minutes
+   (spec 3 minutes). Opus 5.5 always thinks and thinking counts toward max_tokens.
+3. **A new angle the writer proposes is not added to `angles.json`.** Spec §7.3 says it is added
+   through the outbox; the unit contract says the writer never enqueues repo writes. The new key
+   lands on the script and in `ad_labels` only.
+4. **The judge runs once.** A rewrite made after it (its own fix, or the sameness rewrite) is
+   re-checked by code, not judged again.
+5. **The compliance screen runs inside every code-check round**, not only after the judge, so a
+   blocked line goes back to Claude. Two reasons are not counted as copy problems: the approval
+   gate and an unset Meta special ad category (`special_ad_category_unset`).
+6. **Intro caps for small batches:** floor(N/5) long and floor(2N/5) short, never under 1 each. A
+   3-script Write now may have 1 long and 1 short intro. Picked by this unit; not an owner number.
+7. **A time budget:** with no `deadlineAt` from the worker, a script gets 10 minutes; a rewrite
+   round, and the one retry after a reply with no JSON, only start when a whole 5-minute call still
+   fits. A first draft that runs out of time this way throws (the job runs again). UNVERIFIED: the
+   worker (U22) does not pass `deadlineAt` yet.
+8. **Who reads the job result:** a slot that cannot be written finishes its job with
+   `{failed:true, reason}`; a retryable failure throws. UNVERIFIED: U35's batch counts must read
+   that result.
+9. **`fix_script` on a script with no format** treats it as `standard`.
+10. **Lane comes from the funnel row as-is** (`roadmap_147` is `uwiq`, not `slo`): the uwiq-vs-slo
+    gap U14 recorded is unchanged.
+11. **Whose fault (review U24-R1).** Only a refusal, no script in the reply twice, or a batch
+    duplicate that survived its rewrite marks the slot's idea `failed`. A setup fault (no key, a
+    masked key, a bad model name, HTTP 400 / 401 / 403, RULES.md or catalog.json unreadable, no
+    funnel, no house partner) throws like a timeout: the job runs up to 3 times, lands in `failed`
+    with the reason and "press Retry", and the idea stays as it was. Picked by this unit.
+12. **The price rule (review U24-R6).** A priced ad may say only its own price. Every other known
+    price is sent back: each offer's price from `offerFacts()`, plus the Roadmap's crossed-out list
+    price `SLO_LIST_PRICE_CENTS` (`src/slo/offer.mjs`; display only, never charged), which an
+    approved example from before the price change may still carry. Neither is typed in the writer.
+13. **A compliance screen that could not run** (rule_set `engine`) still blocks and flags the
+    draft, but is not sent back to Claude (review U24-R4).
+## U25 M1 7.8 core script actions + 7.9 repo files + voice pairs on edit
+
+Drawn from code on branch `mm-u25-script-actions`: `api/marketing/scripts.mjs`, `api/marketing/script.mjs`,
+`api/marketing/scripts/{approve,edit,reject,order}.mjs`, `src/marketing/scripts-store.mjs`,
+`src/marketing/script-file.mjs`, `src/marketing/voice.mjs`. Yardstick: spec §7.8, §7.9, §7.2, §7.4
+"How status moves", §7.7 visibility, §4 traps 9, 17, 21. Shapes: `docs/specs/marketing-machine-api.md` §6.2.
+Every arrow below is **UNVERIFIED on production**: proved in GitHub CI only, not live until a ship.
+
+### Who sees a script
+
+| Script | Listed (`GET marketing/scripts`) | Read or acted on by id |
+|---|---|---|
+| source `import` (the rows from before the machine, 413 backfill) | no | no, 404 |
+| from a batch that is not released, or released with `release_at` still ahead | no | no, 404 |
+| from a released batch whose `release_at` has passed | yes | yes |
+| with no batch | yes | yes |
+| another company's | no | no, 404 |
+
+Rule: `VISIBLE_SQL`, `scripts-store.mjs:86`. The list shows live versions; `?status=superseded` shows the replaced ones.
+
+### The moves this unit adds
+
+```mermaid
+flowchart TD
+    D["draft"] -->|"Approve<br/>POST marketing/scripts/approve<br/>scripts-store.mjs:394"| L["locked<br/>ad_id = next_ad_number (91+), once<br/>locked_at, locked_by = staff id"]
+    L -->|"Approve again"| L2["same number back<br/>nothing new queued"]
+    D -->|"Reject<br/>POST marketing/scripts/reject<br/>scripts-store.mjs:583"| R["rejected<br/>rejected_by = staff id<br/>reason, or 'rejected from the app, no reason given'"]
+    D -->|"Edit<br/>POST marketing/scripts/edit<br/>scripts-store.mjs:481"| E{{"one transaction"}}
+    L -->|"Edit"| E
+    F["filmed"] -->|"Edit"| E
+    E -->|"1. old version archived, status superseded<br/>:524"| S["superseded"]
+    E -->|"2. new version, version + 1, same root,<br/>same number, source chris :532"| NV{"old one locked<br/>or filmed?"}
+    NV -->|yes| L
+    NV -->|no| D
+    E -->|"3. voice pairs for the machine lines<br/>Chris changed :564"| V[("voice_pairs")]
+    R -.->|"Approve or Edit"| X["400 invalid id<br/>nothing written"]
+    STALE["a version that is not the live one"] -->|"any write"| C["409 stale<br/>current = {version, body, parts}<br/>lockLiveScript :284"]
+```
+
+### What one save writes, in ONE staff transaction (withRequest)
+
+```mermaid
+flowchart LR
+    P["POST approve / edit / reject<br/>request_id, id, version"] --> G{"owner or admin?<br/>(closer, csm: 403)"}
+    G -->|yes| T["withRequest: lock request_id,<br/>replay a repeat"]
+    T --> K["lock the version FOR UPDATE<br/>stale? 409"]
+    K --> W["the database change"]
+    W --> F["repo file queued<br/>repo_outbox mode replace<br/>marketing/ads/scripts/machine/&lt;week or on-demand&gt;/&lt;nn&gt;-&lt;slug&gt;.md<br/>path set once in repo_path, never moved"]
+    W -->|"approve, lane has a rule"| RG["registry entry queued<br/>repo_outbox mode edit, op registry_add_ad<br/>registry: queued"]
+    W -->|"approve, lane slo or none"| SK["registry: skipped<br/>plain registry_note, never blocks"]
+    F --> A["answer saved in marketing_requests"]
+    RG --> A
+    SK --> A
+    A --> CM["COMMIT"]
+    CM --> WK["wakeWorker after the commit<br/>(the worker commits to GitHub)"]
+```
+
+A save that fails anywhere rolls back whole: no change, no outbox row, no saved answer
+(proved in `src/http/marketing-scripts.pg.test.mjs`). `POST marketing/scripts/order` sets
+`film_order` (first = 1) on the live version of each listed script in the same kind of
+transaction; it writes no repo file and wakes nothing.
+
+### The repo file (§7.9)
+
+Front matter, flat values only: `ad, version, status, offer, funnel, format, style, angle, batch,
+updated_by, updated_at`. Then the body, byte for byte as the database holds it. Then a marker
+line and a fenced JSON block with `parts`, `animation_plan` and `meta_copy`
+(`src/marketing/script-file.mjs`). `nn` is the script's place in its batch (version 1 rows, by
+when they were made); a path another script already holds gets the first 8 characters of the
+script's id added.
+
+### Gaps against the spec and the design (findings, not fixed here)
+
+1. **`flagged` has no column.** It is read from `check_results` (an explicit `flagged: true`, or
+   any check with `passed: false`), and only for machine-written versions. A person's edit is never
+   machine-flagged; its checker result is saved in `check_results.strict` and its warnings come
+   back on the save. U24 owns the inner keys of `check_results`.
+2. **`repo_commit` stays empty.** The outbox drain (U05) stamps `repo_outbox.committed_sha` but
+   nothing copies it to `ad_scripts.repo_commit` yet.
+3. **Editing a rejected or expired script is refused** (400 on `id`). The spec names no move out
+   of those states. The contract's edit error table does not list this answer.
+4. **Editing a filmed script** makes a locked new version (its new words must be filmed again),
+   the same rule `api/scripts/write.mjs` already uses. The spec only names "editing a locked
+   script keeps its number".
+5. **Words changed with no parts sent:** the new version's parts are cleared (null = unknown) with
+   a warning, rather than keeping parts that no longer match the words.
+6. **The film order** changes only the listed scripts; scripts left out keep their old number.
+7. **The design** (`command-center-design-2026-10-05.md`) asks for `slot_reason`, `cost_usd`, a
+   `batch` object, `outbox_id` and `voice_pairs_saved`. The contract's fixed shape 3 wins; edit
+   also answers `voice_pairs` (a count) as an allowed extra key.
+## U26 Ideas, rules, Fix and Write now
+
+Generated from the code on 2026-10-06 (branch `mm-u26-ideas-rules-retry`): `api/marketing/ideas.mjs`,
+`api/marketing/rules.mjs`, `api/marketing/scripts/fix.mjs`, `api/marketing/batches.mjs`,
+`api/marketing/batches/write-now.mjs`, `src/marketing/ideas-store.mjs`, `src/marketing/rules-store.mjs`.
+Spec §7.8 (fix, ideas, batches, write-now, rules rows), §7.5 step 7, §8.1 tabs 4 and 5, §2 item 1.
+Every route: owner and admin only (requireAuth, then requireRole `ROLE_SETS.MARKETING`), the company
+from the session, every write in one `withRequest` staff transaction (a repeated request_id answers
+the first save and writes nothing), the worker woken after COMMIT.
+
+### An idea, from the box to a batch
+
+```mermaid
+flowchart TD
+  P["POST marketing/ideas<br/>raw_points, source chris (default) or suggestion,<br/>format?, funnel?, angle?, write_now?"] --> V{"points there, source not machine,<br/>format known, funnel of this company?"}
+  V -->|no| X["400 invalid, field named<br/>nothing saved"]
+  V -->|yes| T["one staff transaction"]
+  T --> I["ad_ideas row: status new, kind script,<br/>created_by = Chris"]
+  I --> F["repo_outbox replace row:<br/>marketing/ads/ideas/YYYY-MM-DD-id8.md<br/>(Arizona day, flat front matter, the points word for word)"]
+  F --> W{"write_now?"}
+  W -->|no| A["200 {idea}"]
+  W -->|yes| C{"costStatus: month or batch cap reached?"}
+  C -->|yes| N["200 {idea, note}<br/>idea kept, nothing queued"]
+  C -->|no| B["marketing_batches: on_command, planned, release_at now<br/>idea.batch_id = this batch<br/>job start_batch {batch_id, count 1, funnel_key, idea_ids}"]
+  B --> AB["200 {idea, batch_id, job_id}"]
+  A --> K["COMMIT, wake the worker"]
+  N --> K
+  AB --> K
+  K -.->|"the worker drains the outbox"| G[("repo: the idea's file")]
+  K -.->|"start_batch, plan unit U35"| U35["UNVERIFIED: start_batch has no handler yet<br/>the job waits in the queue"]
+```
+
+- Accepting a planner suggestion (spec §7.5 step 7) is the same POST with `source: 'suggestion'`
+  and the suggestion's `angle_key`.
+- `GET marketing/ideas?status=` lists the company's ideas, newest first (at most 200); `status`
+  filters to new, writing, written, failed or dropped.
+
+### Write now
+
+```mermaid
+flowchart TD
+  P["POST marketing/batches/write-now<br/>count?, funnel_key?, idea_ids?"] --> V{"count 1-50, funnel of this company,<br/>ideas of this company?"}
+  V -->|no| X["400 invalid, field named"]
+  V -->|yes| S["settings (made with the defaults on first read)<br/>enabled is NOT read: Write now works with the schedule off"]
+  S --> C{"costStatus: month cap, or this new batch's cap, reached?"}
+  C -->|yes| R["400 cap_reached, plain sentence<br/>rolled back, nothing queued"]
+  C -->|no| B["marketing_batches: on_command, planned, release_at now,<br/>week_key = ISO week in the settings time zone<br/>named ideas with no batch get this batch"]
+  B --> J["job start_batch {batch_id, count (default scripts_per_day), funnel_key, idea_ids}"]
+  J --> K["202 {queued, batch_id, job_id}; wake the worker"]
+  H["GET marketing/batches"] --> L["newest 50 batches with counts {total, ready, flagged, failed}"]
+  H --> RD{"JOB_KINDS has start_batch?"}
+  RD -->|no| F["write_now_ready false: screens hide Write now"]
+  RD -->|yes| TT["write_now_ready true"]
+```
+
+### Fix a script
+
+```mermaid
+flowchart TD
+  P["POST marketing/scripts/fix<br/>id, version, note, make_rule"] --> V{"id, version, note (up to 4,000 characters),<br/>make_rule true or false?"}
+  V -->|no| X["400 invalid, field named"]
+  V -->|yes| T["one staff transaction"]
+  T --> S{"script with that id in this company?"}
+  S -->|no| NF["404 not_found"]
+  S -->|yes| L{"it is the live version of its root,<br/>and version matches?"}
+  L -->|no| ST["409 stale, current = live {version, body, parts}<br/>nothing queued"]
+  L -->|yes| J["job fix_script {script_id, version, note}<br/>(the note exactly as typed)"]
+  J --> M{"make_rule?"}
+  M -->|yes| R["repo_outbox edit row: part0_add_rule, the note on one line<br/>(at most 1,000 characters)"]
+  M -->|no| OK
+  R --> OK["202 {queued, job_id}; wake the worker"]
+  OK -.->|"fix_script, plan unit U24"| W["UNVERIFIED: fix_script has no handler yet<br/>the writer saves the new version when it lands"]
+```
+
+### Rules (Part 0 and banned phrases)
+
+```mermaid
+flowchart TD
+  G["GET marketing/rules"] --> TK{"GITHUB_REPO_TOKEN set and unmasked?"}
+  TK -->|yes| GH["getRef: main's commit, then RULES.md and banned-live.json<br/>at that one commit (8 s deadline)"]
+  GH -->|"answered"| P0["source github, rules_sha = that commit"]
+  GH -->|"refused, missing or late"| BU
+  TK -->|no| BU["the copy built into the site<br/>source bundle, rules_sha = COMMIT_REF or null"]
+  P0 --> OUT["part0 [{n, text}] (readPart0), banned [phrases],<br/>recent: the company's last 20 rule changes from repo_outbox"]
+  BU --> OUT
+  BU -->|"no copy either"| NA["503 rules_unavailable, plain sentence"]
+  PO["POST marketing/rules<br/>action add | edit | ban, n?, text"] --> V{"action known, text there and short enough,<br/>edit names a rule Part 0 has<br/>(or one a waiting add will make)?"}
+  V -->|no| X["400 invalid, field named"]
+  V -->|yes| E["repo_outbox edit row in one staff transaction:<br/>add = part0_add_rule, edit = part0_edit_rule, ban = ban_phrase"]
+  E --> OK["202 {queued, op_id}; wake the worker"]
+  OK -.-> D["the outbox re-applies the op to the newest file and commits"]
+  D -.-> RS["recent: waiting → committed (commit sha) or failed (reason on the row, tried again)"]
+```
+
+- `recent` state: `waiting` = not committed yet; `committed` = on main; `failed` = the last try was
+  refused (the reason is on the outbox row and shows on the health card); the outbox keeps trying.
+- A bundled copy can be older than main: outbox commits carry `[skip ci]` and do not rebuild the
+  site. The answer says `source: 'bundle'` so the screen can say so.
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **No intended journey on main.** `docs/journeys/marketing-machine-intended.md` is not on any
+  branch; this section follows spec §1 and §7.8 as the yardstick (plan note).
+- **The contract's example `angle_key: "two-files"`** has a dash. The database (414
+  `ad_ideas_angle_ck`) and `angles.json` keys use underscores only, so the route refuses a dash.
+- **Ideas held by a batch.** Write now stamps `ad_ideas.batch_id` on the ideas it names (only those
+  with no batch yet), so the weekly planner does not write the same idea twice. The spec names the
+  column, not this use.
+- **`partner_id` on ad_ideas stays null.** The spec lists the column; nothing says which partner
+  an idea from Chris belongs to.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
+  `src/http/marketing-ideas.pg.test.mjs`, `marketing-batches.pg.test.mjs` and
+  `marketing-rules.pg.test.mjs` in GitHub CI.

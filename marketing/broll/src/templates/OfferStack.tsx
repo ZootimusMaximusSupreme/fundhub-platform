@@ -20,6 +20,7 @@ import {
   enter,
   progressBetween,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {useOfferCtaTimeline} from './offer-cta-timeline';
 
 // OfferStack: the six things in the $297 Funding Roadmap stack up in 3D, one
@@ -46,6 +47,8 @@ export type OfferStackProps = {
   footer: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const OFFER_STACK_BASE = 105;
@@ -69,6 +72,7 @@ export const offerStackDefaults: OfferStackProps = {
   ],
   price: '$297',
   footer: null,
+  transparent: false,
 };
 
 // Layout, in content-box px (900 wide, 824 tall).
@@ -156,7 +160,7 @@ const Page: React.FC<{item: OfferItem; w: number; h: number}> = ({item, w, h}) =
   </div>
 );
 
-export const OfferStack: React.FC<OfferStackProps> = ({eyebrow, items, price, footer, durationInFrames, showSafeZones}) => {
+export const OfferStack: React.FC<OfferStackProps> = ({eyebrow, items, price, footer, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useOfferCtaTimeline(OFFER_STACK_BASE, durationInFrames);
   const L = OFFER_STACK_BASE;
   const n = Math.max(1, items.length);
@@ -191,7 +195,7 @@ export const OfferStack: React.FC<OfferStackProps> = ({eyebrow, items, price, fo
   const dollar = price.startsWith('$');
   const priceDigits = dollar ? price.slice(1) : price;
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -393,4 +397,5 @@ export const OfferStack: React.FC<OfferStackProps> = ({eyebrow, items, price, fo
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

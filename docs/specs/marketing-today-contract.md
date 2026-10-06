@@ -4,7 +4,7 @@ The Today tab of the Marketing Command Center (`public/app/marketing-command-cen
 reads this one endpoint. This file is the shape the page codes against.
 
 - Handler: `api/marketing/today.mjs`. Route key `marketing/today` in `netlify/functions/api.mjs`.
-- Tests: `src/http/marketing-today.test.mjs` (no database) and `src/http/marketing-today.pg.test.mjs` (real Postgres).
+- Tests: `src/http/marketing-today.test.mjs` (no database) and `src/http/marketing-today.pg.test.mjs` (real Postgres). The M5 keys (U32): also `src/marketing/metrics-rollups.test.mjs`.
 - Plan: `docs/specs/marketing-dashboard-plan-2026-10-05.md` §4 Step B and §5.
 - Slice 0 of `docs/specs/command-center-design-2026-10-05.md` §6 ("Today tells the truth",
   2026-10-05) added `spend.through`, `prior_30_days`, whole-day windows,
@@ -58,7 +58,8 @@ Read only. It writes nothing, calls no model and calls no ad platform.
 
   // Parts that could not be read yet. Empty when everything answered.
   // part is one of: "flywheel", "copy", "copy_ready", "spend", "last_sync",
-  // "clickfunnels", "costs"
+  // "clickfunnels", "costs",
+  // and since U32: "numbers", "spend_by_funnel", "scripts_waiting", "stuck_jobs"
   "waiting": [
     { "part": "spend", "reason": "No ad numbers are saved yet." }
   ],
@@ -215,6 +216,86 @@ per million output tokens (Anthropic's published list price, and the rate the of
 contract measured with). The copy writer's default, `claude-sonnet-4-5-20250929`, and
 `gpt-4o-mini` have no price written down anywhere in this repo, so a run on either prints
 "unknown". A row is added only with its source beside it.
+
+## Added by U32: the M5 numbers (2026-10-06)
+
+Six keys come AFTER `costs` (slice 0's key, which follows `last_sync`). Every key above keeps its name, its place and its value
+(the M11 board rule: never rename a today key). The fixed shape is
+`docs/specs/marketing-machine-api.md` shape 7; `src/marketing/api-contract.mjs`
+`assertMatchesContract("GET marketing/today", body)` checks it.
+
+- Code: `api/marketing/today.mjs` (part 5) and `src/marketing/metrics-rollups.mjs`. The
+  counting rules are U20's: `src/marketing/metrics.mjs`, in words in
+  `docs/marketing/metrics.md` (spend by Meta's Arizona spend day; everything else by the
+  Arizona lead day; a lead's results count for 14 days; first touch; demo rows out).
+- The four parts read side by side, each in its own short transaction. A part whose table
+  is not there yet comes back empty (`null` for an object, `[]` for a list) and is named
+  in `waiting`, in this order: `numbers`, `spend_by_funnel`, `scripts_waiting`,
+  `stuck_jobs`.
+- Same windows as `spend`: `today` is Arizona's today; `d7` and `d30` are slice 0's whole-day
+  `last_7_days` and `last_30_days` windows, ending on `spend.through` (yesterday when nothing
+  is saved or spend could not be read). `daily` is the last 30 Arizona days ending `today`.
+
+```jsonc
+{
+  // … every key above, unchanged …
+
+  // today / d7 / d30 = spend.windows today / last_7_days / last_30_days.
+  // spend_cents is the same number spend.windows prints (null = no ad-day saved).
+  // leads, booked, showed, sales, roadmaps are people (a real 0 is 0).
+  // cash_cents = succeeded transactions (null only when every payment had no amount);
+  // reported_cash_cents = what closers typed (call_outcomes.cash_collected_cents).
+  // roas = cash ÷ spend as a decimal; null when spend is unknown or 0.
+  "numbers": {
+    "today": { "spend_cents": null,  "leads": 1, "booked": 0, "showed": 0, "sales": 0, "roadmaps": 0, "cash_cents": 0,     "reported_cash_cents": 0,     "roas": null },
+    "d7":    { "spend_cents": 1700,  "leads": 1, "booked": 1, "showed": 1, "sales": 1, "roadmaps": 0, "cash_cents": 50000, "reported_cash_cents": 30000, "roas": 29.4118 },
+    "d30":   { "spend_cents": 2450,  "leads": 2, "booked": 1, "showed": 1, "sales": 1, "roadmaps": 0, "cash_cents": 50000, "reported_cash_cents": 30000, "roas": 20.4082 }
+  },
+
+  // The sparklines: the last 30 Arizona days, oldest first, every day present.
+  // spend_cents null on a day with no saved ad-day. leads sit on the lead's own day.
+  "daily": [ { "date": "2026-09-07", "spend_cents": null, "leads": 0 }, "… 30 rows …" ],
+
+  // Last 7 days. Which funnel: the ad number's live script names one (ad_scripts.funnel_key)
+  // → that funnel; else the ad's Meta campaign is on a funnel's meta_campaign_ids (Chris maps
+  // these in Settings) → that funnel; else Unmapped. Every active funnel is listed, biggest
+  // spend first. A funnel with nothing placed on it is null (unknown) while some spend is
+  // unmapped, and a known 0 when all saved spend is placed. The one row with funnel_key null
+  // is the Unmapped spend; it is there only when some saved spend belongs to no funnel.
+  // Both live funnels start with no campaigns mapped, so most spend reads Unmapped until then.
+  "spend_by_funnel": [
+    { "funnel_key": "roadmap_147", "name": "Roadmap",     "spend_cents": 1200 },
+    { "funnel_key": "book_call",   "name": "Book a call", "spend_cents": null },
+    { "funnel_key": null,          "name": "Unmapped",    "spend_cents": 500 }
+  ],
+
+  // Last 7 days: ad -> page -> lead -> call -> sale.
+  // page_views = funnel.page events from people (payload actor 'person', demo out) on a
+  //   funnel's landing page (each landing page once); null when no funnel lands on a page the
+  //   tracker runs on (src/funnel/pages.mjs) or the funnel list could not be read.
+  // clicks = link clicks on the ads (Meta's link_clicks); null when Meta reported none.
+  // leads, booked, showed, sales = numbers.d7.
+  "flow": { "page_views": 3, "clicks": null, "leads": 1, "booked": 1, "showed": 1, "sales": 1 },
+
+  // Scripts waiting on Chris: drafts he can see and has not decided — status draft, not
+  // archived, not an import, and in no batch or in a batch released with release_at passed
+  // (spec §7.7). flagged = those of them the machine wrote that still failed a check
+  // ("needs a look": check_results.flagged true, or a check section with passed false).
+  "scripts_waiting": { "ready": 4, "flagged": 2 },
+
+  // Failed marketing jobs, newest failure first, at most 20. id is what Retry posts
+  // (POST marketing/jobs/retry {request_id, job_id}). error is the plain reason the worker
+  // saved; since is when it failed (finished_at). Jobs of kind "offer" are left out: they
+  // run on the Write offer button's own path and Retry refuses them.
+  "stuck_jobs": [
+    { "id": "00000000-0000-4000-8000-000000000501", "kind": "write_slot",
+      "error": "The writer stopped: the model took longer than 5 minutes.", "since": "2026-10-06T12:40:00.000Z" }
+  ]
+}
+```
+
+The numbers in this example are the fixture in `src/http/marketing-today.pg.test.mjs`, not
+live ones.
 
 ## Pressing "Write ad copy"
 

@@ -22,6 +22,7 @@ import handler, {
   addDays, spendWindows, spendEnd, isMissingThing, HOUSE_SLUG,
   shapeOfferCost, shapeCopyCost, COPY_COST_RUNS
 } from "../../api/marketing/today.mjs";
+import { assertMatchesContract } from "../marketing/api-contract.mjs";
 import { MODEL_PRICES, costOfCalls, priceOf } from "../marketing/model-prices.mjs";
 
 const ORG = "11111111-2222-3333-4444-555555555555";
@@ -75,7 +76,11 @@ function fakeTx(world, log) {
         return { rows: (world.copyCalls || []).slice(0, params[1]) };
       }
       if (s.includes("FROM partner_ai_usage")) return { rows: [{ used: world.used ?? 0 }] };
-      if (s.includes("FROM marketing_jobs")) return { rows: world.offerRun ? [world.offerRun] : [] };
+      // The offer cost read only. U32's stuck_jobs read also says FROM marketing_jobs;
+      // it carries a "-- m5:" tag and is answered below from world.m5.
+      if (s.includes("FROM marketing_jobs") && !s.includes("-- m5:")) {
+        return { rows: world.offerRun ? [world.offerRun] : [] };
+      }
       if (s.includes("FROM analytics_connections")) {
         return { rows: [{ clickfunnels_synced_at: world.cfSyncedAt ?? null }] };
       }
@@ -114,6 +119,14 @@ function fakeTx(world, log) {
           metrics_synced_at: days.length ? world.metricsSyncedAt : null,
           latest_metrics_date: days.length ? days.map((d) => d.date).sort().at(-1) : null
         }] };
+      }
+      // U32's M5 reads (U20's lead CTE, the "-- m5:" queries, the funnel list).
+      // They answer from world.m5 by query name, else empty. Their exact numbers
+      // are proved against real Postgres in marketing-today.pg.test.mjs and in
+      // src/marketing/metrics-rollups.test.mjs.
+      if (s.includes("lead_rows AS") || s.includes("-- m5:") || s.includes("FROM marketing_funnels")) {
+        const name = (/-- m5:(\w+)/.exec(s) || [])[1] || (s.includes("FROM marketing_funnels") ? "funnels" : "lead_rows");
+        return { rows: (world.m5 && world.m5[name]) || [] };
       }
       throw new Error("fakeTx: unexpected query " + s.slice(0, 80));
     }
@@ -447,6 +460,104 @@ describe("marketing/today — the answer", () => {
   test("any other fault is thrown (a 500), not hidden as 'waiting'", async () => {
     const bug = Object.assign(new Error("syntax error at or near FROM"), { code: "42601" });
     await assert.rejects(() => call({ ...WORLD, fail: { "unnest(": bug } }), /syntax error/);
+  });
+});
+
+// ── U32: the M5 keys (spec §8.3, §11.2; contract shape 7) ───────────────────
+
+describe("marketing/today — the M5 keys (U32)", () => {
+  const WORLD = {
+    days: DAYS,
+    metaSyncedAt: new Date("2026-10-05T07:01:50Z"),
+    metricsSyncedAt: new Date("2026-10-05T07:01:51Z")
+  };
+  // "costs" is slice 0's key (S0); it comes before U32's six.
+  const OLD_KEYS = ["ok", "as_of", "today", "timezone", "waiting", "flywheel", "copy",
+    "copy_ready", "spend", "last_sync", "costs"];
+  const NEW_KEYS = ["numbers", "daily", "spend_by_funnel", "flow", "scripts_waiting", "stuck_jobs"];
+
+  test("every old key is still there; the six new keys are added; the answer matches the contract", async () => {
+    const { r } = await call(WORLD);
+    assert.equal(r.code, 200);
+    assert.deepEqual(Object.keys(r.body), [...OLD_KEYS, ...NEW_KEYS]);
+    assert.doesNotThrow(() => assertMatchesContract("GET marketing/today", r.body));
+    // The old answer is untouched by the new parts.
+    assert.equal(r.body.spend.windows.last_7_days.spend_cents, 1700);
+    assert.deepEqual(r.body.waiting, []);
+  });
+
+  test("no M5 data: unknown money stays null, counts are a real 0, lists are empty", async () => {
+    const { r } = await call(WORLD);
+    const b = r.body;
+    for (const k of ["today", "d7", "d30"]) {
+      assert.equal(b.numbers[k].spend_cents, null, k);
+      assert.equal(b.numbers[k].leads, 0, k);
+      assert.equal(b.numbers[k].roas, null, k);
+    }
+    assert.deepEqual(b.daily, []);
+    assert.deepEqual(b.spend_by_funnel, []);
+    assert.equal(b.flow.page_views, null, "no funnel lands on a tracked page: unknown, not 0");
+    assert.equal(b.flow.clicks, null);
+    assert.deepEqual(b.scripts_waiting, { ready: 0, flagged: 0 });
+    assert.deepEqual(b.stuck_jobs, []);
+  });
+
+  test("spend_by_funnel: the script's funnel first, the campaign's next, the rest Unmapped", async () => {
+    const m5 = {
+      ad_labels: [
+        { ad_row_id: "a1", ad_number: "91", spine_angle_key: null, campaign_external_id: "c1", campaign_funnel_key: "book_call" },
+        { ad_row_id: "a2", ad_number: null, spine_angle_key: null, campaign_external_id: "c1", campaign_funnel_key: "book_call" },
+        { ad_row_id: "a3", ad_number: null, spine_angle_key: null, campaign_external_id: "c2", campaign_funnel_key: null }
+      ],
+      ad_spend: [
+        { ad_row_id: "a1", spend_cents: "1200", link_clicks: null, ad_days: 2, link_click_days: 0 },
+        { ad_row_id: "a2", spend_cents: "300", link_clicks: "9", ad_days: 1, link_click_days: 1 },
+        { ad_row_id: "a3", spend_cents: "50", link_clicks: null, ad_days: 1, link_click_days: 0 }
+      ],
+      script_labels: [{ ad_number: "91", funnel_key: "roadmap_147", angle_key: null }],
+      funnels: [
+        { key: "book_call", name: "Book a call", landing_url: "https://apply.fundhub.ai/watch", active: true },
+        { key: "roadmap_147", name: "Roadmap", landing_url: "https://apply.fundhub.ai/roadmap", active: true }
+      ],
+      funnel_steps: [{ page: "/watch", name: "funnel.page", events: 4 }, { page: "/roadmap-book", name: "funnel.page", events: 9 }]
+    };
+    const { r } = await call({ ...WORLD, m5 });
+    assert.deepEqual(r.body.spend_by_funnel, [
+      { funnel_key: "roadmap_147", name: "Roadmap", spend_cents: 1200 },
+      { funnel_key: "book_call", name: "Book a call", spend_cents: 300 },
+      { funnel_key: null, name: "Unmapped", spend_cents: 50 }
+    ]);
+    assert.equal(r.body.flow.page_views, 4, "landing pages only: /roadmap-book is not a landing page");
+  });
+
+  test("scripts_waiting and stuck_jobs pass through with each job's id for Retry", async () => {
+    const since = new Date("2026-10-05T19:40:00Z");
+    const m5 = {
+      scripts_waiting: [{ ready: 3, flagged: 1 }],
+      stuck_jobs: [{ id: "00000000-0000-4000-8000-000000000501", kind: "write_slot", error: "The writer stopped.", since }]
+    };
+    const { r } = await call({ ...WORLD, m5 });
+    assert.deepEqual(r.body.scripts_waiting, { ready: 3, flagged: 1 });
+    assert.deepEqual(r.body.stuck_jobs, [{
+      id: "00000000-0000-4000-8000-000000000501", kind: "write_slot",
+      error: "The writer stopped.", since: since.toISOString()
+    }]);
+  });
+
+  test("a missing marketing_jobs table → stuck_jobs [] and named in waiting; nothing else moves", async () => {
+    const missing = Object.assign(new Error('relation "marketing_jobs" does not exist'), { code: "42P01" });
+    const { r } = await call({ ...WORLD, fail: { "-- m5:stuck_jobs": missing } });
+    assert.equal(r.code, 200);
+    assert.deepEqual(r.body.stuck_jobs, []);
+    assert.deepEqual(r.body.waiting, [{ part: "stuck_jobs", reason: "The marketing_jobs table is not in the database yet." }]);
+    assert.deepEqual(r.body.scripts_waiting, { ready: 0, flagged: 0 });
+    assert.equal(r.body.spend.windows.last_30_days.spend_cents, 2450);
+  });
+
+  test("a closer is still refused before any M5 read", async () => {
+    const { r, log } = await call(WORLD, { role: "closer" });
+    assert.equal(r.code, 403);
+    assert.equal(log.length, 0);
   });
 });
 

@@ -25,6 +25,7 @@ import {
   enter,
   formatDollars,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {FLOOD_APPROVALS, type FloodApproval} from './proofFloodApprovals';
 
 // ProofFlood: a flood of real approvals. Dozens of approval cards fly in out
@@ -64,6 +65,8 @@ export type ProofFloodProps = {
   /** 120 to 180 frames (4 to 6 seconds). Default 180. */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const PROOF_FLOOD_BASE = 180;
@@ -81,6 +84,7 @@ export const proofFloodDefaults: ProofFloodProps = {
   showTotal: true,
   eyebrow: 'Client approvals',
   caption: 'Real approvals',
+  transparent: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -1135,27 +1139,32 @@ export const ProofFlood: React.FC<ProofFloodProps> = (props) => {
     // BrandFrame clips the words to the text-safe band (y 269 to 1248). Its content box starts at
     // (90, 400); the scene is laid out in full-frame pixels, so it is shifted back by that much.
     return (
-      <AbsoluteFill>
-        <BrandFrame showSafeZones={props.showSafeZones} backdrop={<BackRain g={g} f={f} />}>
-          <div style={{position: 'absolute', left: -90, top: -400, width: g.W, height: g.H}}>{scene}</div>
-        </BrandFrame>
-        <FrontDecor g={g} f={f} plan={plan} />
-      </AbsoluteFill>
+      <SeeThrough on={props.transparent}>
+        <AbsoluteFill>
+          <BrandFrame showSafeZones={props.showSafeZones} backdrop={<BackRain g={g} f={f} />}>
+            <div style={{position: 'absolute', left: -90, top: -400, width: g.W, height: g.H}}>{scene}</div>
+          </BrandFrame>
+          <FrontDecor g={g} f={f} plan={plan} />
+        </AbsoluteFill>
+      </SeeThrough>
     );
   }
 
   // Wide: same brand page (paper, faint grid at the 4K scale, wordmark), words inside a 5% title-safe margin.
+  // See-through drops the page (paper and grid) and keeps everything on it.
   const line = 3;
   return (
     <AbsoluteFill style={{fontFamily: FONT_FAMILY, color: COLORS.ink, WebkitFontSmoothing: 'antialiased'}}>
-      <AbsoluteFill
-        style={{
-          backgroundColor: COLORS.paper,
-          backgroundImage: `linear-gradient(${GRID.color} ${line}px, transparent ${line}px), linear-gradient(90deg, ${GRID.color} ${line}px, transparent ${line}px)`,
-          backgroundSize: `${GRID.cell}px ${GRID.cell}px`,
-          backgroundPosition: `${-line / 2}px ${-line / 2}px`,
-        }}
-      />
+      {props.transparent ? null : (
+        <AbsoluteFill
+          style={{
+            backgroundColor: COLORS.paper,
+            backgroundImage: `linear-gradient(${GRID.color} ${line}px, transparent ${line}px), linear-gradient(90deg, ${GRID.color} ${line}px, transparent ${line}px)`,
+            backgroundSize: `${GRID.cell}px ${GRID.cell}px`,
+            backgroundPosition: `${-line / 2}px ${-line / 2}px`,
+          }}
+        />
+      )}
       <BackRain g={g} f={f} />
       {scene}
       <div style={{position: 'absolute', left: 0, right: 0, top: 150, display: 'flex', justifyContent: 'center'}}>

@@ -8,6 +8,12 @@
 //     last 30 full days and the 30 before that
 //   - when Meta and ClickFunnels last synced
 //   - what the last measured Write offer and Write ad copy runs cost
+//   - ADDED BY U32 (spec §8.3 and §11.2), never renaming a key above:
+//     numbers (spend, leads, booked, showed, sales, roadmaps, cash, reported
+//     cash, ROAS for today / 7 / 30 days), daily (30 days, for the sparklines),
+//     spend_by_funnel (7 days, with an Unmapped row), flow (ad -> page -> lead
+//     -> call -> sale, 7 days), scripts_waiting, stuck_jobs (each with its job
+//     id, so Retry can post marketing/jobs/retry)
 // The JSON shape is written down in docs/specs/marketing-today-contract.md.
 // The page (public/app/marketing-command-center.*) codes against that file.
 //
@@ -69,9 +75,16 @@ import { phoenixDay } from "../../src/slo/visitor.mjs";
 import { flywheelStatus } from "../../src/marketing/flywheel-status.mjs";
 import { resolve as resolveProvider } from "../../src/creative/providers/index.mjs";
 import { remainingTokens } from "../../src/brand/meter.mjs";
+import { readTotals, readDaily } from "../../src/marketing/metrics.mjs";
+import {
+  spendByFunnel, spendByFunnelView, funnelSteps, flowPageViews,
+  readScriptsWaiting, readStuckJobs, numbersFor
+} from "../../src/marketing/metrics-rollups.mjs";
 import { costOfCalls } from "../../src/marketing/model-prices.mjs";
 
 export const TIMEZONE = "America/Phoenix";
+/** daily: the last 30 Arizona days, oldest first (the sparklines). */
+export const DAILY_DAYS = 30;
 export const HOUSE_SLUG = "fundhub-house";
 export const COPY_PIECES = 10;
 export const COPY_JOBS = 5;
@@ -95,6 +108,14 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MISSING_CODES = new Set(["42P01", "42703", "42883"]);
 export function isMissingThing(err) {
   return Boolean(err) && MISSING_CODES.has(String(err.code));
+}
+
+/* The plain sentence for a part whose table or column is not there yet. */
+function missingReason(err) {
+  const what = /relation "([^"]+)"/.exec(String(err?.message || ""));
+  return what
+    ? `The ${what[1]} table is not in the database yet.`
+    : "A table or column this part reads is not in the database yet.";
 }
 
 /* addDays("2026-10-05", -6) → "2026-09-29". Plain calendar arithmetic on the
@@ -506,11 +527,19 @@ export default async function handler(req, res, deps = {}) {
       return { ok: true, value: await staffScope(fn) };
     } catch (err) {
       if (!isMissingThing(err)) throw err;
-      const what = /relation "([^"]+)"/.exec(String(err.message || ""));
-      wait(name, what
-        ? `The ${what[1]} table is not in the database yet.`
-        : "A table or column this part reads is not in the database yet.");
+      wait(name, missingReason(err));
       return { ok: false, value: null };
+    }
+  };
+
+  /* quietPart — the same, for parts that read side by side: the "waiting"
+     line is handed back instead of pushed, so the order stays fixed. */
+  const quietPart = async (name, fn) => {
+    try {
+      return { name, ok: true, value: await staffScope(fn), reason: null };
+    } catch (err) {
+      if (!isMissingThing(err)) throw err;
+      return { name, ok: false, value: null, reason: missingReason(err) };
     }
   };
 
@@ -585,6 +614,55 @@ export default async function handler(req, res, deps = {}) {
       copy: copyCost.ok ? copyCost.value : null
     };
 
+    // 6. The M5 numbers (U32). Four parts read side by side, each in its own
+    //    short transaction. The counting rules are U20's (src/marketing/metrics.mjs);
+    //    which funnel a number belongs to is src/marketing/metrics-rollups.mjs.
+    //    Same windows as spend above (slice 0): today is Arizona's today, and the
+    //    7 and 30 day windows are spend's whole-day windows, ending on
+    //    spend.through. When spend could not be read, the same rule with nothing
+    //    saved: they end yesterday.
+    const win = spendRead.ok
+      ? spendRead.value.windows
+      : Object.fromEntries(spendWindows(today).map((x) => [x.key, x]));
+    const d7 = { from: win.last_7_days.from, to: win.last_7_days.to };
+    const m5 = await Promise.all([
+      quietPart("numbers", async (tx) => ({
+        today: await readTotals(tx, { orgId, from: win.today.from, to: win.today.to, now }),
+        d7: await readTotals(tx, { orgId, ...d7, now }),
+        d30: await readTotals(tx, { orgId, from: win.last_30_days.from, to: win.last_30_days.to, now }),
+        daily: await readDaily(tx, { orgId, days: DAILY_DAYS, now })
+      })),
+      quietPart("spend_by_funnel", async (tx) => {
+        const rollup = await spendByFunnel(tx, { orgId, ...d7 });
+        const steps = await funnelSteps(tx, { orgId, ...d7 });
+        return { rollup, page_views: flowPageViews(rollup.funnels, steps) };
+      }),
+      quietPart("scripts_waiting", (tx) => readScriptsWaiting(tx, { orgId, now })),
+      quietPart("stuck_jobs", (tx) => readStuckJobs(tx, { orgId }))
+    ]);
+    for (const p of m5) if (!p.ok) wait(p.name, p.reason);
+    const [numbersRead, funnelRead, scriptsRead, jobsRead] = m5;
+
+    const totals = numbersRead.ok ? numbersRead.value : null;
+    const numbers = totals
+      ? { today: numbersFor(totals.today), d7: numbersFor(totals.d7), d30: numbersFor(totals.d30) }
+      : null;
+    const daily = totals
+      ? totals.daily.map((d) => ({ date: d.day, spend_cents: d.spend_cents, leads: d.leads }))
+      : [];
+    const flow = totals
+      ? {
+          // People who opened a funnel's landing page; null when it could not be read.
+          page_views: funnelRead.ok ? funnelRead.value.page_views : null,
+          // Link clicks on the ads (Meta). null when Meta reported none in the window.
+          clicks: totals.d7.link_clicks ?? null,
+          leads: numbers.d7.leads,
+          booked: numbers.d7.booked,
+          showed: numbers.d7.showed,
+          sales: numbers.d7.sales
+        }
+      : null;
+
     return res.status(200).json({
       ok: true,
       as_of: now.toISOString(),
@@ -596,7 +674,14 @@ export default async function handler(req, res, deps = {}) {
       copy_ready: copyReady,
       spend,
       last_sync: lastSync,
-      costs
+      costs,
+      // ── added by U32 (docs/specs/marketing-machine-api.md shape 7) ──
+      numbers,
+      daily,
+      spend_by_funnel: funnelRead.ok ? spendByFunnelView(funnelRead.value.rollup) : [],
+      flow,
+      scripts_waiting: scriptsRead.ok ? scriptsRead.value : null,
+      stuck_jobs: jobsRead.ok ? jobsRead.value : []
     });
   } catch (err) {
     if (dbDown(res, err)) return;
