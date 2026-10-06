@@ -2,7 +2,7 @@
 
 Written 2026-09-22. The facts here come from `docs/specs/video-pipeline-api-verification-2026-09-22.md`
 (the owner's API research). The 4K rule comes from `.claude/rules/video-4k-unless-ad.md`. The ad
-number rules come from `db/migrations/286_client_ad_attribution.sql` and `docs/ads/registry.json`.
+number rules come from `db/migrations/286_client_ad_attribution.sql` and `marketing/ads/registry.json`.
 
 Settled: one ad number = one finished video. The pipeline ends when the finished video lands in
 Paul's shared Drive — Paul pushes to Meta, we never touch Meta. Paul gets the approved video, never
@@ -280,9 +280,9 @@ minutes each. 100 ads is about **170 minutes**, 70 over the included 100, metere
 
 **One ad number = one whole video is a build rule now.** The risk is already recorded: "the five
 straight offer ads share nearly the same middle section. Different hooks on one body reads as a
-single creative" (`docs/ads/fundhub-297/FundHub-LOCKED-ADS.md`, Open Items), and "15–20+ diverse
+single creative" (`marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md`, Open Items), and "15–20+ diverse
 creatives a week minimum — diverse in *message*, not fifteen edits of one video"
-(`docs/ads/ascension-ads.md:175`). So the writer produces 100 whole scripts, each around one reason
+(`marketing/ads/ascension/ascension-ads.md:175`). So the writer produces 100 whole scripts, each around one reason
 to buy. The database enforces the filming half: one finished video per ad number.
 
 **The ad number must exist before filming.** Matching a take to a script is what gives the file its
