@@ -5,7 +5,8 @@ import {
   diesBefore25Percent,
   dyingAlertCopy,
   notifyDyingBefore25,
-  DIES_BEFORE_25_THRESHOLD
+  DIES_BEFORE_25_THRESHOLD,
+  tapCount
 } from "./watch-curve.mjs";
 
 describe("diesBefore25Percent", () => {
@@ -233,5 +234,83 @@ describe("notifyDyingBefore25 — buzz only when they are NOT tapping through", 
     const writes = db.calls.filter((c) => /\b(INSERT|UPDATE|DELETE)\b/i.test(c.sql));
     assert.equal(writes.length, 1);
     assert.match(writes[0].sql, /INSERT INTO ad_watch_curve_alerts/i);
+  });
+});
+
+/* ── TAPS = LINK CLICKS / PAGE VIEWS ONCE 408 SAVES THEM (2026-10-05) ─────────
+   M4's tie-out card: the buzz judged a hop on `clicks`, Meta's every-click count
+   (likes, "see more", profile taps). M1's 408 adds link_clicks and
+   landing_page_views. The hop now uses those when the row has them.
+
+   Recorded day: oVid: SLO4 on 2026-09-26 — 339 plays, 22 reached 25%, 32 clicks
+   (ad_metrics_daily), and 17 landing page views (Meta, marketing/ads/
+   curve-optimization.md "Measured example"). On every click it looked like a hop
+   (32 >= 22). On taps to the page it is a broken opening (17 < 22). */
+const SLO4_DAY = {
+  ad_id: "ad-slo4",
+  org_id: "org-1",
+  partner_id: "p-1",
+  ad_name: "oVid: SLO4",
+  metric_date: "2026-09-26",
+  video_plays: 339,
+  video_p25_watched: 22,
+  clicks: 32
+};
+
+describe("tapCount — which taps the hop test reads", () => {
+  test("before 408 (no column on the row): every click, the old number", () => {
+    assert.deepEqual(tapCount({ clicks: 32 }), { taps: 32, source: "clicks" });
+  });
+  test("after 408: the larger of link clicks and landing page views", () => {
+    assert.deepEqual(tapCount({ clicks: 32, link_clicks: 12, landing_page_views: 17, link_clicks_saved: true }),
+      { taps: 17, source: "link_clicks" });
+  });
+  test("after 408, Meta sent no line: no taps reported — not turned into every click", () => {
+    assert.deepEqual(tapCount({ clicks: 32, link_clicks: null, landing_page_views: null, link_clicks_saved: true }),
+      { taps: null, source: "link_clicks" });
+  });
+});
+
+describe("notifyDyingBefore25 — a hop is judged on taps to the page", () => {
+  test("the query reads link clicks and page views when 408 is there, and still runs when it is not", async () => {
+    const db = fakeDb(SLO4_DAY);
+    await notifyDyingBefore25(db, { partnerId: "p-1", send: async () => ({ ok: true, status: "sent" }) });
+    const sql = db.calls.find((c) => /FROM ads a/i.test(c.sql)).sql;
+    assert.match(sql, /to_jsonb\(x\) ->> 'link_clicks'/);
+    assert.match(sql, /to_jsonb\(x\) ->> 'landing_page_views'/);
+    assert.match(sql, /to_jsonb\(x\) \? 'link_clicks'/);
+    assert.doesNotMatch(sql, /\bx\.link_clicks\b/, "naming the column directly fails before 408 ships");
+  });
+
+  test("SLO4's day: 32 clicks but 17 page views for 22 at the quarter mark → buzz, not a hop", async () => {
+    const db = fakeDb({ ...SLO4_DAY, link_clicks: null, landing_page_views: 17, link_clicks_saved: true });
+    let sent = null;
+    const out = await notifyDyingBefore25(db, {
+      partnerId: "p-1",
+      send: async (msg) => { sent = msg; return { ok: true, status: "sent" }; }
+    });
+    assert.equal(out.alerted, 1, "every-click count made this a hop; taps to the page say the opening broke");
+    assert.match(sent.notification.title, /SLO4/);
+  });
+
+  test("taps to the page at least as many as the quarter mark → a hop, no buzz", async () => {
+    const db = fakeDb({ ...SLO4_DAY, link_clicks: 25, landing_page_views: 20, link_clicks_saved: true });
+    let sent = false;
+    const out = await notifyDyingBefore25(db, {
+      partnerId: "p-1",
+      send: async () => { sent = true; return { ok: true, status: "sent" }; }
+    });
+    assert.equal(sent, false);
+    assert.equal(out.skipped, 1);
+  });
+
+  test("before 408 ships the old rule stands: 32 clicks for 22 is a hop", async () => {
+    const db = fakeDb({ ...SLO4_DAY, link_clicks: null, landing_page_views: null, link_clicks_saved: false });
+    let sent = false;
+    await notifyDyingBefore25(db, {
+      partnerId: "p-1",
+      send: async () => { sent = true; return { ok: true, status: "sent" }; }
+    });
+    assert.equal(sent, false);
   });
 });

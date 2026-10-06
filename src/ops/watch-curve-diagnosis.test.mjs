@@ -238,3 +238,31 @@ describe("fillDiagnoses — fills the table from the saved days", () => {
     assert.equal(db.calls.length, 0);
   });
 });
+
+/* Taps to the page (M1's 408 link_clicks / landing_page_views) replace every
+   click once the columns exist. Recorded: SLO4 on 2026-09-26 had 17 landing page
+   views (Meta, marketing/ads/curve-optimization.md "Measured example"). */
+describe("diagnoseCurve — taps to the page, once 408 saves them", () => {
+  const slo4 = (i) => toRow(RECORDED.find((r) => r[0] === "SLO4" && r[1] === "2026-09-26"), i);
+
+  test("SLO4 2026-09-26: a hop on every click (32 >= 22), an opening on taps to the page (17 < 22)", () => {
+    assert.equal(diagnoseCurve(slo4(0)).verdict, "hop");
+    const out = diagnoseCurve({ ...slo4(0), link_clicks: null, landing_page_views: 17, link_clicks_saved: true });
+    assert.equal(out.diagnosis, "opening");
+    assert.equal(out.fix_type, "both");
+  });
+
+  test("the note names taps to the page when that is what was counted", () => {
+    const out = diagnoseCurve({ ...toRow(RECORDED.find((r) => r[0] === "SLO2" && r[1] === "2026-10-04"), 0),
+      link_clicks: 9, landing_page_views: 7, link_clicks_saved: true });
+    assert.equal(out.film_note,
+      "Only 12% of plays reached the quarter mark, and there were fewer taps to the page (9) than people who got that far (35). " +
+      "Film a new first line. Keep the body.");
+  });
+
+  test("the fill reads link clicks and page views without naming the columns (works before 408 ships)", () => {
+    assert.match(UNDIAGNOSED_DAYS_SQL, /to_jsonb\(m\) ->> 'link_clicks'/);
+    assert.match(UNDIAGNOSED_DAYS_SQL, /to_jsonb\(m\) ->> 'landing_page_views'/);
+    assert.match(UNDIAGNOSED_DAYS_SQL, /to_jsonb\(m\) \? 'link_clicks'/);
+  });
+});

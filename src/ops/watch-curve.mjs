@@ -27,14 +27,47 @@ export const DIES_BEFORE_25_THRESHOLD = 0.5;
    many as the people who reached 25%. Used by the buzz and by the next-take
    table, so the two can never disagree about what a hop is.
 
-   `clicks` is ad_metrics_daily.clicks — Meta's all-clicks count. Link clicks and
-   landing page views are not saved yet; when they are, this is the one line to
-   point at them. */
+   `clicks` here is the tap count from tapCount() below — callers pass that,
+   never a raw column. */
 export function tapsThrough({ clicks, p25 } = {}) {
   const clickN = clicks == null || clicks === "" ? null : Number(clicks);
   const p25N = Number(p25);
   return Number.isFinite(clickN) && Number.isFinite(p25N) && clickN >= p25N && clickN > 0;
 }
+
+/* THE TAP COUNT THE HOP TEST USES. The playbook's hop is "link clicks or
+   landing-page views at least as common as the people who reached 25%". M1's
+   408 saves both (ad_metrics_daily.link_clicks, .landing_page_views). When those
+   columns exist, the taps are the larger of the two. NULL there means Meta sent
+   no line that day (Ads Manager's dash): no tap-through was reported, so no hop
+   is claimed — nothing is stored or shown as 0.
+
+   Only when the 408 columns are not on the table yet (before that ship) does
+   this fall back to `clicks`, Meta's every-click count (likes, "see more",
+   profile taps). That is the looser number the buzz used until now; it calls
+   more days a hop. The queries below say which case a row is in with
+   `link_clicks_saved` (does the row have the column at all). */
+export function tapCount(row = {}) {
+  const saved = row.link_clicks_saved === true || row.link_clicks_saved === "t" || row.link_clicks_saved === "true";
+  if (!saved) {
+    const c = row.clicks == null || row.clicks === "" ? null : Number(row.clicks);
+    return { taps: Number.isFinite(c) ? c : null, source: "clicks" };
+  }
+  const seen = [row.link_clicks, row.landing_page_views]
+    .filter((v) => v != null && v !== "")
+    .map(Number)
+    .filter(Number.isFinite);
+  return { taps: seen.length ? Math.max(...seen) : null, source: "link_clicks" };
+}
+
+/* The three columns tapCount() reads, in SQL, for a row alias. to_jsonb(row)
+   reads link_clicks / landing_page_views when 408 has added them and NULL when
+   it has not — so this query runs before and after that migration with no
+   schema check and no error. */
+const tapColumns = (alias) => `
+         (to_jsonb(${alias}) ->> 'link_clicks')::bigint        AS link_clicks,
+         (to_jsonb(${alias}) ->> 'landing_page_views')::bigint AS landing_page_views,
+         (to_jsonb(${alias}) ? 'link_clicks')                  AS link_clicks_saved`;
 
 /** Pure score. Returns { dying, rate, plays, p25, note }. */
 export function diesBefore25Percent({ plays, p25, clicks } = {}) {
@@ -86,7 +119,7 @@ export function dyingAlertCopy(adName) {
   };
 }
 
-const DYING_ADS_SQL = `
+export const DYING_ADS_SQL = `
   SELECT a.id AS ad_id,
          a.org_id,
          a.partner_id,
@@ -94,15 +127,18 @@ const DYING_ADS_SQL = `
          m.date AS metric_date,
          m.video_plays,
          m.video_p25_watched,
-         m.clicks
+         m.clicks,
+         m.link_clicks,
+         m.landing_page_views,
+         m.link_clicks_saved
     FROM ads a
     JOIN LATERAL (
-      SELECT date, video_plays, video_p25_watched, clicks
-        FROM ad_metrics_daily
-       WHERE ad_id = a.id
-         AND video_plays IS NOT NULL
-         AND video_p25_watched IS NOT NULL
-       ORDER BY date DESC
+      SELECT x.date, x.video_plays, x.video_p25_watched, x.clicks,${tapColumns("x")}
+        FROM ad_metrics_daily x
+       WHERE x.ad_id = a.id
+         AND x.video_plays IS NOT NULL
+         AND x.video_p25_watched IS NOT NULL
+       ORDER BY x.date DESC
        LIMIT 1
     ) m ON true
     LEFT JOIN ad_watch_curve_alerts al ON al.ad_id = a.id
@@ -129,7 +165,7 @@ export async function notifyDyingBefore25(db, { partnerId, send = sendBuzz, env 
     const score = diesBefore25Percent({
       plays: row.video_plays,
       p25: row.video_p25_watched,
-      clicks: row.clicks
+      clicks: tapCount(row).taps
     });
     if (!score.dying) {
       skipped += 1;
@@ -222,16 +258,19 @@ export function secondTwoHold({ video_plays, video_continuous_2s_watched, video_
     diagnosis is null when no row should be written (verdict says why). */
 export function diagnoseCurve(row = {}) {
   const none = (verdict) => ({ verdict, diagnosis: null, fix_type: null, film_note: null });
+  const tap = tapCount(row);
   const opening = diesBefore25Percent({
     plays: row.video_plays,
     p25: row.video_p25_watched,
-    clicks: row.clicks
+    clicks: tap.taps
   });
   if (opening.rate == null) return none("too_few");
   if (opening.hopped) return none("hop");
 
   const p25 = opening.p25;
-  const clicks = Number(row.clicks ?? 0);
+  // What the note calls the taps: "taps to the page" once 408 saves link clicks
+  // and landing page views, "clicks" (every click) before that.
+  const clicks = `${tap.source === "link_clicks" ? "taps to the page" : "clicks"} (${tap.taps ?? 0})`;
 
   if (opening.dying) {
     const hold2 = secondTwoHold(row);
@@ -248,13 +287,13 @@ export function diagnoseCurve(row = {}) {
       verdict: "opening",
       diagnosis: "opening",
       fix_type: "words",
-      film_note: `Only ${pct(opening.rate)} of plays reached the quarter mark, and there were fewer clicks (${clicks}) than people who got that far (${p25}). ` +
+      film_note: `Only ${pct(opening.rate)} of plays reached the quarter mark, and there were fewer ${clicks} than people who got that far (${p25}). ` +
         "Film a new first line. Keep the body."
     };
   }
 
   // Most plays reach 25%.
-  if (tapsThrough({ clicks: row.clicks, p25 })) return none("tapping");
+  if (tapsThrough({ clicks: tap.taps, p25 })) return none("tapping");
   if (p25 < MIN_N_RATE) return none("too_few");
   if (row.video_p50_watched == null || row.video_p50_watched === "") return none("too_few");
   const p50 = Number(row.video_p50_watched);
@@ -274,7 +313,7 @@ export function diagnoseCurve(row = {}) {
     verdict: "ask",
     diagnosis: "ask",
     fix_type: "words",
-    film_note: `${pct(halfway)} of the people who reached the quarter mark watched past halfway, but there were fewer clicks (${clicks}) than people who got to the quarter mark (${p25}). ` +
+    film_note: `${pct(halfway)} of the people who reached the quarter mark watched past halfway, but there were fewer ${clicks} than people who got to the quarter mark (${p25}). ` +
       "Change the offer or the last line: one clear ask."
   };
 }
@@ -284,7 +323,7 @@ export const UNDIAGNOSED_DAYS_SQL = `
   SELECT m.id, m.org_id, m.partner_id, m.date,
          m.video_plays, m.video_continuous_2s_watched,
          m.video_p25_watched, m.video_p50_watched,
-         m.clicks, m.video_play_curve
+         m.clicks, m.video_play_curve,${tapColumns("m")}
     FROM ad_metrics_daily m
     LEFT JOIN ad_watch_curve_diagnoses d ON d.ad_metrics_daily_id = m.id
    WHERE m.partner_id = $1
@@ -325,5 +364,5 @@ export async function fillDiagnoses(db, { partnerId, days = 28 } = {}) {
 
 export default {
   diesBefore25Percent, dyingAlertCopy, notifyDyingBefore25,
-  tapsThrough, secondTwoHold, diagnoseCurve, fillDiagnoses
+  tapsThrough, tapCount, secondTwoHold, diagnoseCurve, fillDiagnoses
 };
