@@ -358,7 +358,10 @@ export function creativeFeaturesVerdict(readBack = {}) {
 }
 
 /* getAdSetGuardInfo — what checkAdSetGuard (meta-guards.mjs) needs, in one GET.
-   ads.limit(0).summary(true) asks Meta for the count without the list.
+   ads.limit(0).summary(total_count) asks Meta for the count without the list.
+   summary takes named fields on this edge (v26 Ad Set "Ads" edge reference:
+   https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/ads/
+   — total_count is one of them), so we name the field, not the generic `true`.
    → { effective_status, is_dynamic_creative, ad_count,
        campaign: { special_ad_categories, effective_status } } */
 export async function getAdSetGuardInfo(connection, ad_set_external_id, ctx = {}) {
@@ -367,7 +370,7 @@ export async function getAdSetGuardInfo(connection, ad_set_external_id, ctx = {}
     "effective_status",
     "is_dynamic_creative",
     "campaign{special_ad_categories,effective_status}",
-    "ads.limit(0).summary(true)"
+    "ads.limit(0).summary(total_count)"
   ].join(",");
   const res = await callPlatform({
     url: graph(`${encodeURIComponent(String(ad_set_external_id))}?fields=${encodeURIComponent(fields)}`),

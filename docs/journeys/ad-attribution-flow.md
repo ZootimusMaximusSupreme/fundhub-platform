@@ -117,7 +117,9 @@ because it may already have made the object. When the
 `x-business-use-case-usage` header shows more than 75% used, the next call to
 that connection waits first (2 s at 75%, up to 10 s at 100%). When Meta names a
 regain time longer than 10 s, nothing more is sent and the error carries
-`retryAfterMs` so the loader's job comes back later.
+`retryAfterMs` so the loader's job comes back later. A usage percent alone never
+makes a call repeat: a real rejection (code 100) that arrives while the header
+reads 100% is not asked again; only the next call waits.
 
 ### Gaps and things not drawn (U13)
 
@@ -131,7 +133,7 @@ regain time longer than 10 s, nothing more is sent and the error carries
   keys a Meta documentation page names. 27 more names exist only in Meta's SDK
   type and are not sent; the read-back still stops a load if any comes back
   OPT_IN. `standard_enhancements` is not sent (v22.0: no longer supported).
-- The ad count asks `ads.limit(0).summary(true)`. An ad set with no `ads` key
+- The ad count asks `ads.limit(0).summary(total_count)`. An ad set with no `ads` key
   in Meta's answer counts as 0.
 - Spec §10.2 wants every write through `guardedWrite` with the copy as
   `screenSubject`. That wrapping, the database rows and the 10 s / 20 min wait

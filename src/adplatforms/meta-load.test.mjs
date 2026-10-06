@@ -338,7 +338,7 @@ describe("getAdSetGuardInfo — one GET, real fields only", () => {
     assert.equal(m.calls[0].method, "GET");
     const fields = decodeURIComponent(new URL(m.calls[0].url).searchParams.get("fields"));
     assert.equal(fields,
-      "effective_status,is_dynamic_creative,campaign{special_ad_categories,effective_status},ads.limit(0).summary(true)");
+      "effective_status,is_dynamic_creative,campaign{special_ad_categories,effective_status},ads.limit(0).summary(total_count)");
     assert.deepEqual(info, {
       effective_status: "ACTIVE", is_dynamic_creative: false, ad_count: 12,
       campaign: { special_ad_categories: ["CREDIT"], effective_status: "ACTIVE" }
@@ -438,6 +438,20 @@ describe("_api.mjs — backing off", () => {
     );
     assert.equal(m.calls.length, 1);
     assert.deepEqual(clock.sleeps, []);
+  });
+
+  test("a real rejection while the header reads 100% is not repeated (the header only slows the next call)", async () => {
+    const header = JSON.stringify({ "1": [{ type: "ads_management", call_count: 100, total_cputime: 30, total_time: 30, estimated_time_to_regain_access: 0 }] });
+    const m = fakeMeta(() => ({ ...metaError(100, "Invalid parameter"), headers: { "x-business-use-case-usage": header } }));
+    const clock = fakeClock();
+    await assert.rejects(
+      api.callPlatform({ url: "https://graph.facebook.com/v26.0/act_1/adcreatives", token: TOKEN, body: {}, ctx: ctxFor(m, clock) }),
+      (e) => e.retryable === false && e.throttled === false && e.platformCode === 100
+    );
+    assert.equal(m.calls.length, 1);
+    assert.deepEqual(clock.sleeps, []);
+    assert.equal(api.isThrottle({ status: 400, code: 100, usage: { percent: 100, regainMinutes: 0 } }), false);
+    assert.equal(api.isThrottle({ status: 400, code: 100, usage: { percent: 100, regainMinutes: 5 } }), true);
   });
 
   test("x-business-use-case-usage over 75%: the NEXT call to that connection waits first", async () => {

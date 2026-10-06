@@ -114,13 +114,17 @@ export function retryPauseMs(attempt, usage = {}, { base = BASE_BACKOFF_MS, maxW
   return Math.max(base * 2 ** attempt, usagePauseMs(usage, { base, maxWait }));
 }
 
-/* isThrottle — Meta (or TikTok) said "slow down", in a code or in the header. */
+/* isThrottle — Meta (or TikTok) said "slow down" about THIS call: a 429, a
+   throttle code, or a regain time in the header. A usage percent alone does not
+   count: a real rejection (code 100, Invalid parameter) that happens to arrive
+   while the header reads 100% would only come back the same, and repeating it
+   spends calls on an account that is already at its limit. The percent still
+   slows the NEXT call down (usagePauseMs). */
 export function isThrottle({ status, code, usage = {} } = {}) {
   return status === 429 ||
     META_THROTTLE_CODES.includes(Number(code)) ||
     Number(code) === 40100 ||
-    (usage.regainMinutes ?? 0) > 0 ||
-    (usage.percent ?? 0) >= 100;
+    (usage.regainMinutes ?? 0) > 0;
 }
 
 /* Test hook: forget every remembered pause. */
