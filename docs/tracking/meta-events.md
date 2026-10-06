@@ -6,7 +6,7 @@ Shipped `10a7b8ca` (Netlify) + ClickFunnels pushes (funnel 968281 head pixel, /r
 |---|---|
 | Every funnel page + fundhub.ai homepage | PageView (`pv.<sid>.<rand>`) |
 | /roadmap, /watch, /apply, fundhub.ai homepage | ViewContent (`<pv>.vc`) |
-| /roadmap | Lead (step-1 button, checks passed), InitiateCheckout (card step, once per session, $297), Purchase (`purchase.<order ref>`, $297, once — also sent by the server when the payment lands), ReachedBuyBox, SoftPullSubmitted, VideoProgress |
+| /roadmap | Lead (step-1 button, checks passed), InitiateCheckout (card step, once per session, $147), Purchase (`purchase.<order ref>`, $147, once in the browser; the server copy is sent by the payment webhook when the money lands), ReachedBuyBox, SoftPullSubmitted, VideoProgress |
 | /apply, homepage survey | SurveyStep per question, Lead on the last question |
 | /apply, /roadmap-book, /funding-book-call | Schedule on a real booking |
 | /thank-you | SurveyRouted |
@@ -36,7 +36,7 @@ Each event: `{ event_name, event_time, event_id, event_source_url, action_source
 ## Same event_id in browser and server (dedupe)
 - Browser-started events: `event_id = "<fh_sid>.<seq>"` — the same `seq` the tracker already sends to our database. The browser calls `fbq('track'|'trackCustom', name, data, { eventID })` and posts the track event (with `meta_event_id`, `fbc`, `fbp`, `url`) to `/api/public/slo-interest`; the server sends the same event to Meta with the same id.
 - PageView: the head pixel snippet sets `window.__fhPv = "pv.<fh_sid>.<random>"` and fires `fbq('track','PageView',{}, {eventID: window.__fhPv})`; the tracker's `page_view` carries `meta_event_id = window.__fhPv`.
-- Purchase ($297): `event_id = "purchase.<order ref>"` in the browser (checkout:success) AND on the server when the order is marked paid (payment webhook) — Meta counts it once.
+- Purchase ($147 roadmap order): `event_id = "purchase.<order ref>"` in the browser (checkout:success) AND on the server when the order is marked paid (payment webhook) — Meta counts it once. The payment webhook is the **only** server copy: the track row of checkout:success sends none (Meta drops a server copy that matches a browser copy, but does not promise to drop a second server copy — changed 2026-10-05, M9).
 
 ## Map (database event → Meta)
 | Our event | Meta event | When | custom_data |
@@ -46,7 +46,7 @@ Each event: `{ event_name, event_time, event_id, event_source_url, action_source
 | continue (buy box step 1) | Lead | step-1 button | content_name "roadmap_buybox" |
 | survey_answer on the last question (/apply, /home) | Lead | survey submit | content_name = survey |
 | buybox_tab tab 2 (first time per session) | InitiateCheckout | card step shown | value 147, currency USD |
-| payment_result success | Purchase | once per order, id `purchase.<ref>` | value 147, currency USD |
+| payment_result success | Purchase | browser only, once per order, id `purchase.<ref>`; the server copy is the payment webhook's, same id | value 147, currency USD |
 | booking_confirmed | Schedule | every booking page | content_name = calendar |
 | survey_answer | SurveyStep (custom) | each question answered | survey, step |
 | survey_route | SurveyRouted (custom) | sorting hat route | offer |
