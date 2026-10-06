@@ -39,3 +39,30 @@ export function shareUrlFor(code, env = process.env) {
 }
 
 export default shareUrlFor;
+
+// ONE LINK PER OFFER (owner call 2026-10-06). The affiliate page used to show one
+// generic link that always landed on /watch, while the $297 text sent people to
+// /roadmap, and an affiliate could not tell which link was live. Now every offer
+// a referral can buy through gets its own row: same code, different page.
+//
+// The code rides as BOTH a1 and ref. a1 is the name public/funnel/fh-attribution.js,
+// the ClickFunnels adapter and api/public/slo-checkout.mjs read; ref is the name
+// people expect. /roadmap also uses ?ref= for its paid return, but only together
+// with client_id and a slo_ ref, so an AFF- code never trips it.
+//
+// Only offers with a live page belong here. /blueprint returned 404 on 2026-10-06.
+export const OFFER_PAGES = Object.freeze([
+  Object.freeze({ key: "funding_dfy", name: "Book a call", url: "https://apply.fundhub.ai/watch" }),
+  Object.freeze({ key: "slo_roadmap", name: "Roadmap", url: "https://apply.fundhub.ai/roadmap" })
+]);
+
+/**
+ * offerLinksFor(code) → [{ key, name, url }] one per offer page, or [] for a
+ * missing code (an empty ref would credit a real sale to nobody).
+ */
+export function offerLinksFor(code) {
+  const c = code == null ? "" : String(code).trim();
+  if (!c) return [];
+  const q = encodeURIComponent(c);
+  return OFFER_PAGES.map((o) => ({ key: o.key, name: o.name, url: `${o.url}?a1=${q}&ref=${q}` }));
+}

@@ -66,6 +66,7 @@ import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs
 import { ROLE_SETS, requireRole, isUuid } from "../../src/http/read-api.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { shareUrlFor } from "../affiliates/refer.mjs";
+import { offerLinksFor } from "../../src/affiliates/share-link.mjs";
 
 const REFERRAL_LIMIT = 500;
 const PAYOUT_LIMIT = 100;
@@ -275,6 +276,8 @@ export default async function handler(req, res, deps = {}) {
         name: a.name,
         code: a.tracking_id,
         shareUrl: a.tracking_id ? shareUrlFor(a.tracking_id, deps.env || process.env) : null,
+        // One row per offer on the affiliate page (owner call 2026-10-06).
+        offerLinks: offerLinksFor(a.tracking_id),
         status: a.status,
         tierLevel: a.tier_level,
         activatedAt: a.activated_at,

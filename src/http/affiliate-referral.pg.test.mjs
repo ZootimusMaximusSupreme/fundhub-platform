@@ -192,6 +192,13 @@ describe("refer a friend", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     assert.equal(b.ok, true);
     assert.equal(b.enrolled, true);
     assert.ok(b.affiliate && b.affiliate.code, "no affiliate came back for an enrolled client");
+    // One row per offer (owner call 2026-10-06): same code on every page.
+    assert.deepEqual(b.affiliate.offerLinks.map((l) => l.key), ["funding_dfy", "slo_roadmap"]);
+    for (const l of b.affiliate.offerLinks) {
+      const u = new URL(l.url);
+      assert.equal(u.searchParams.get("a1"), b.affiliate.code, `${l.name} link lost the a1 code`);
+      assert.equal(u.searchParams.get("ref"), b.affiliate.code, `${l.name} link lost the ref code`);
+    }
 
     // Owner-set 2026-08-24, migration 261: 20% direct, 5% downline. Read from
     // affiliate_commission_rules, never hardcoded on the screen. Every rule

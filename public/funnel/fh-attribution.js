@@ -46,6 +46,25 @@
   }
   save(saved);
 
+  /* 1b. Count the affiliate click. A direct offer link
+     (apply.fundhub.ai/roadmap?a1=AFF-…) never passes through
+     fundhub.ai/start.html, which is where clicks were counted, so the
+     affiliate's "Clicks 30d" would never move. Once per code per tab session.
+     Skipped when start.html already counted it (via=start), and for the
+     roadmap paid return, whose ?ref= is a slo_ order ref, not a code. */
+  if (a1 && qs.get("via") !== "start" && !/^slo_/i.test(a1)) {
+    var clickKey = "fh_aff_click_" + a1.slice(0, 64).toUpperCase();
+    var counted = false;
+    try { counted = sessionStorage.getItem(clickKey) === "1"; } catch (e) {}
+    if (!counted) {
+      try { sessionStorage.setItem(clickKey, "1"); } catch (e) {}
+      try {
+        var clickBody = JSON.stringify({ code: a1.slice(0, 64), source: ("offer" + location.pathname).slice(0, 40) });
+        navigator.sendBeacon("https://fundhub.ai/api/public/affiliate-click", new Blob([clickBody], { type: "text/plain" }));
+      } catch (e) {}
+    }
+  }
+
   // 2. Stamp hidden inputs on every form. Re-run when CF re-renders the form.
   function ensure(form, name, value) {
     var el = form.querySelector('input[name="' + name + '"]');

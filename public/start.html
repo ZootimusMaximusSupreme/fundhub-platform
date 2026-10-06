@@ -41,6 +41,9 @@
       }
       var dest = APPLY;
       if (ref) dest += "?a1=" + encodeURIComponent(ref) + "&ref=" + encodeURIComponent(ref);
+      // via=start: this page already counted the click; fh-attribution.js on
+      // the funnel page skips counting it again.
+      if (ref) dest += "&via=start";
       document.getElementById("go").href = dest;
       function goApply() { location.replace(dest); }
       if (!ref) return;
