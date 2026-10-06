@@ -29,3 +29,4 @@ Do **not** run `--visual` or `--load-brain` unless owner opts back into API inge
 - 2026-10-05: Local corpus complete; topic query + Logseq path; API visual/brain cancelled.
 - 2026-10-05: Final verify — 70/70 speech, 39 PDFs, topics catalog refreshed.
 - 2026-10-05: 70/70 on-screen notes via local twin sync (no API).
+- 2026-10-05: Graph options saved on TODO for re-review (not approved). No vault built. Hormozi stays at `marketing/knowledge/hormozi/`.

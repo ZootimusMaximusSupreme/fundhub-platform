@@ -166,6 +166,13 @@ Business only. Every item was checked against the repo and the live site on 10/4
 - [ ] Save the interview research as an SOP (9/20)
 - [ ] Background marketing agents: scheduled ad-script drafts you review in one batch (9/6)
 - [ ] Company brain (already built): transcribe ACQ, your course and the Hormozi content, load them in, then add an open-source visualization (10/3)
+- [ ] Re-review the company brain graph options before any build. Not approved. Do not build the vault. (10/5)
+  - Vault root: open `marketing/` in a free app so Fundhub notes and Hormozi share one graph
+  - Fundhub notes folder (not created): `marketing/brain/` with offers, funnels, angles, ads, decisions. Spec already names this in `docs/specs/marketing-machine-2026-10-04.md` M7
+  - Hormozi stays at `marketing/knowledge/hormozi/`. Do not move it. No API embed
+  - Apps to re-review: Obsidian (free, closed source), Logseq (free, open source), SiYuan (free, open source), Foam (free, open source, inside Cursor). Links are `[[Note Name]]`
+  - CRM Company Brain screen (chat + flat list) stays until a later build. Do not rebuild Obsidian inside fundhub.ai first
+  - Smallest later slice if you approve: create `marketing/brain/` with an index and a few `[[links]]`, then open `marketing/` in the app you pick
 - [ ] CXL Conversion Optimization minidegree (start with Landing Page Optimization), then Digital Psychology & Persuasion. Check your friend's access first. (10/3)
 - [ ] Jeremy Haynes back-end ads once book-a-call has data (10/3)
 - [ ] Focus group: entrepreneurial women in AZ go through the program free and become spokespeople (9/14)

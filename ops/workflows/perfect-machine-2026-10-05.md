@@ -836,3 +836,44 @@ Branch `release-2026-10-05`, **head `2ab65e50b`** (`2ab65e50b5278a944160bc0da67c
 **READY TO FAST-FORWARD MAIN: yes.** Blockers for the fast-forward: none (from the main checkout: `git merge --ff-only release-2026-10-05`). Before `npm run ship`: main checkout clean (see above). The one open risk is that 406–409 + seed 296 have never run on a database.
 
 - [R1 leftover card, not checked further] `409_marketing_jobs.sql` copies the live `pulse_scorecards` pattern: policy `…_app_all` USING (true) for role PUBLIC, and on production `anon` and `authenticated` hold SELECT on `pulse_scorecards` (Supabase default grants). After ship `marketing_jobs` will read the same way. Whether the Supabase Data API exposes the public schema to the anon key was not checked.
+
+## V2 CI database proof
+
+**Result: PASS.** 406, 407, 408, 409 and seed 296 applied on a real database. Every new database test passed. Both guards passed as `fundhub_app`.
+
+- Run: https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/37407801330 (job `112089162889`, green, about 2 minutes).
+- Database: `pgvector/pgvector:pg16` service. Same env, owner URL and "give fundhub_app a login" step as `tests.yml`. (Production is Postgres 17.6.)
+- Branch `ci-proof-2` = `release-2026-10-05` (`bebf03bf7`) + one commit `e07375fc7` that adds only `.github/workflows/migration-proof.yml` and `scripts/ci-proof-migrate.mjs`. Pushed to GitHub only. The push started the run by itself; no dispatch and no `tests.yml` fallback were needed. Main, release, repo settings and production were not touched. Never merge `ci-proof-2`; safe to delete once this is read.
+- `scripts/ci-proof-migrate.mjs` = `db/migrate.mjs`'s order (schema, migrations, seed, sorted) and apply logic (one transaction per file, key in `schema_migrations`), but it keeps going past a failed file and records the error.
+
+**New files on an empty database** (each in its own transaction, in order; 406 committed before 407 ran): 323 of 325 files applied.
+
+| File | Result |
+|---|---|
+| migrations/406_ad_lane_slo.sql | PASS |
+| migrations/407_ad_number_from_meta.sql | PASS (notices: 0 Meta ad rows numbered, 0 visitor rows backfilled — the database was empty) |
+| migrations/408_ad_metrics_meta_results.sql | PASS |
+| migrations/409_marketing_jobs.sql | PASS |
+| seed/296_marketing_copy_writer_house.sql | PASS |
+
+**New database tests** (owner URL + `ALLOW_SUPERUSER_DB=1`, like the suite step in `tests.yml`; `node --test --test-concurrency=1 <file>`):
+
+| Branch | File | Result |
+|---|---|---|
+| m1 | src/http/ad-number.pg.test.mjs | PASS — 29 pass, 0 fail, 2 skipped by design ("needs a fixture this database test does not build": "one Meta ad copied in twice still resolves to its one number", "another company's ad never matches") |
+| m7 | src/messaging/cutover-acceptance.pg.test.mjs | PASS — 8/8 |
+| m8 | src/http/webhooks-clickfunnels.pg.test.mjs | PASS — 3/3 |
+| m10 | src/http/marketing-today.pg.test.mjs | PASS — 11/11 |
+| m12 | src/http/marketing-offer-generate.pg.test.mjs | PASS — 5/5 |
+
+**Guards as `fundhub_app`** (`ALLOW_SUPERUSER_DB` empty): `npm run guard:db` PASS 3/3, `npm run guard:rls` PASS 4/4, 0 skipped.
+
+**Also changed on the release branch by m2 and m4** (ran for the record, not part of the verdict): `src/workflows/clickfunnels-analytics-sweeper.pg.test.mjs` PASS 2/2, `src/http/campaign-endpoints.pg.test.mjs` PASS 12/12, `src/http/creative-endpoints.pg.test.mjs` PASS 43/43, `src/http/ad-spine.pg.test.mjs` 24 pass, 1 FAIL (leftover card below).
+
+**Old files that fail on an empty database** (report only, nothing fixed). Plain `node db/migrate.mjs` cannot build a fresh database from this repo today: it stops at the first one (the `tests.yml` postgres job on this branch, run 37407801299, failed there again).
+1. `migrations/114_crm_agent_seed.sql` line 83: `VALUES lists must all be the same length`. Its own bug. Nothing later broke from it: its older twin `114_ghl_agent_seed.sql` runs right after it and adds the same 4 `agents` columns and the `agents_channel_ck` check.
+2. `migrations/372_rename_legacy_crm_column_and_keys.sql`: `duplicate key value violates unique constraint "schema_migrations_pkey"`. A knock-on, not a typo in 372: on a fresh database the renamed copies `168_retire_legacy_crm_agents.sql` and `255_doc_agent_docs_received.sql` already ran under their new names (next to their old twins), so 372's rename of the old `168_retire_ghl_agents.sql` key onto the new key collides. The whole file rolls back, so the rest of 372 does not happen on a fresh database. (The script's own "why" column said "own error" here; that guess was wrong. This line comes from reading 372.)
+
+**Still unproved:** the 5 files on real production data (the CI database was empty, so 407's backfill changed 0 rows); Postgres 17.6 (CI used 16); ship's own Supabase path (one request per file) — CI used the `migrate.mjs` path; the 2 skipped ad-number tests.
+
+- [V2 leftover card, not checked further] `src/http/ad-spine.pg.test.mjs` (changed by m4): "a signed-in role outside ROLE_SETS.STAFF is refused" got 200, expected 403, on the CI database.
