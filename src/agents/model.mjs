@@ -365,26 +365,80 @@ async function callAnthropic({ env, fetchImpl, request, mediaParts }) {
 //   status      — the HTTP status whenever a reply came back
 // Errors are plain words. Anything refused before sending starts "not sent: ".
 
+// SERVER TOOLS, MESSAGES, PAUSE_TURN AND STREAMING (design
+// docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions", added for
+// the server-side research jobs; unit X1). All of it is opt-in: a call that passes
+// none of these options sends exactly what it sent before.
+//   messages        — a whole conversation ([{role, content}]) in place of `user`.
+//   tools           — an entry with a string `type` (web_search_20260318,
+//                     web_fetch_20260318, …) is an Anthropic SERVER tool and goes
+//                     out as given; every other entry is a strict client tool.
+//                     Only client tools need a tool call back (no_tool_call).
+//   outputSchema    — refused with web search or web fetch in the same call:
+//                     citations plus structured output is HTTP 400.
+//   pause_turn      — the server-side loop can pause a long research turn. The
+//                     paused assistant content is sent back unchanged (with the
+//                     container id when one came back), up to maxContinuations
+//                     times (default 2), each web search tool's max_uses lowered
+//                     by the searches already made, so a whole call can never
+//                     make more searches than the caller allowed.
+//   stream          — true reads the reply as server-sent events, so a call that
+//                     writes for many minutes never waits 300 seconds for headers
+//                     (Node's fetch drops it then). The finished message is the
+//                     same shape either way.
+//   usage           — also counts web_search_requests and web_fetch_requests,
+//                     summed over every continuation.
+//   content         — every content block of the turn, in order, across
+//                     continuations (search results, citations, text).
+//   continuations   — how many times the turn was resumed.
+// One timer covers the whole call, continuations included.
+
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 
+/** How many times a paused turn is resumed by default. */
+export const DEFAULT_MAX_CONTINUATIONS = 2;
+
+/** Error text when a turn is still paused after every allowed continuation. */
+export const MODEL_STILL_PAUSED = "still_paused";
+
 function emptyAnthropicUsage() {
-  return { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+  return {
+    input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0,
+    web_search_requests: 0, web_fetch_requests: 0
+  };
 }
 
 function anthropicUsageOf(raw) {
   const u = (raw && raw.usage) || {};
+  const s = (u && u.server_tool_use) || {};
   const n = (v) => Math.max(0, Number(v) || 0);
   return {
     input_tokens: n(u.input_tokens),
     output_tokens: n(u.output_tokens),
     cache_read_input_tokens: n(u.cache_read_input_tokens),
-    cache_creation_input_tokens: n(u.cache_creation_input_tokens)
+    cache_creation_input_tokens: n(u.cache_creation_input_tokens),
+    web_search_requests: n(s.web_search_requests),
+    web_fetch_requests: n(s.web_fetch_requests)
   };
+}
+
+function addUsage(a, b) {
+  const out = { ...a };
+  for (const k of Object.keys(out)) out[k] = (Number(a[k]) || 0) + (Number(b[k]) || 0);
+  return out;
 }
 
 function isPlainObject(v) {
   return v != null && typeof v === "object" && !Array.isArray(v);
 }
+
+/** A server tool: Anthropic runs it. It carries its own `type` (never 'custom'). */
+function isServerTool(t) {
+  return isPlainObject(t) && typeof t.type === "string" && t.type !== "" && t.type !== "custom";
+}
+
+const isWebTool = (t) => isServerTool(t) && /^web_(search|fetch)_/.test(t.type);
+const isWebSearchTool = (t) => isServerTool(t) && /^web_search_/.test(t.type);
 
 /** 'auto' | 'none' | {type:'auto'|'none'} → the wire form, or { error }. */
 function toolChoiceOf(choice) {
@@ -463,16 +517,115 @@ function parseToolInput(input) {
   return null;
 }
 
+/** A conversation the API will take: a list of {role, content}, user first. */
+function checkMessages(messages) {
+  if (!Array.isArray(messages) || !messages.length) return "messages must be a list with at least one message.";
+  for (const m of messages) {
+    if (!isPlainObject(m)) return "every message must be an object with a role and content.";
+    if (!["user", "assistant", "system"].includes(m.role)) return `message role ${JSON.stringify(m.role)} is not user, assistant or system.`;
+    if (!(typeof m.content === "string" || Array.isArray(m.content))) return "every message needs content (text or a list of blocks).";
+  }
+  if (messages[0].role !== "user") return "the first message must be from the user.";
+  return null;
+}
+
+/**
+ * Read a streamed Messages reply (server-sent events) into the same message
+ * object a plain reply holds. Exported for the tests.
+ * @param {string} text the whole event stream
+ * @returns {{ message: any, error: string | null }}
+ */
+export function messageFromEvents(text) {
+  let message = null;
+  let error = null;
+  /** @type {Record<number, string>} */
+  const partialJson = {};
+  for (const chunk of String(text || "").split(/\r?\n\r?\n/)) {
+    const dataLines = chunk.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart());
+    if (!dataLines.length) continue;
+    let ev;
+    try { ev = JSON.parse(dataLines.join("\n")); } catch { continue; }
+    if (!ev || typeof ev !== "object") continue;
+    switch (ev.type) {
+      case "message_start":
+        message = { ...(ev.message || {}), content: [] };
+        break;
+      case "content_block_start":
+        if (message) message.content[ev.index] = JSON.parse(JSON.stringify(ev.content_block || {}));
+        break;
+      case "content_block_delta": {
+        const block = message && message.content[ev.index];
+        const d = ev.delta || {};
+        if (!block) break;
+        if (d.type === "text_delta") block.text = (block.text || "") + (d.text || "");
+        else if (d.type === "input_json_delta") partialJson[ev.index] = (partialJson[ev.index] || "") + (d.partial_json || "");
+        else if (d.type === "citations_delta") (block.citations = block.citations || []).push(d.citation);
+        else if (d.type === "thinking_delta") block.thinking = (block.thinking || "") + (d.thinking || "");
+        else if (d.type === "signature_delta") block.signature = d.signature;
+        break;
+      }
+      case "content_block_stop": {
+        const block = message && message.content[ev.index];
+        if (block && Object.prototype.hasOwnProperty.call(partialJson, ev.index)) {
+          const parsed = parseJsonReply(partialJson[ev.index] || "{}");
+          block.input = isPlainObject(parsed) ? parsed : {};
+          delete partialJson[ev.index];
+        }
+        break;
+      }
+      case "message_delta":
+        if (message) {
+          const d = ev.delta || {};
+          if (d.stop_reason !== undefined) message.stop_reason = d.stop_reason;
+          if (d.stop_sequence !== undefined) message.stop_sequence = d.stop_sequence;
+          if (d.stop_details !== undefined) message.stop_details = d.stop_details;
+          if (d.container !== undefined) message.container = d.container;
+          if (ev.usage) message.usage = { ...(message.usage || {}), ...ev.usage };
+        }
+        break;
+      case "error":
+        error = `anthropic stream error: ${JSON.stringify(ev.error || ev).slice(0, 300)}`;
+        break;
+      default:
+        break;
+    }
+  }
+  if (message) message.content = message.content.filter(Boolean);
+  if (!message && !error) error = "anthropic stream ended before the message started";
+  return { message, error };
+}
+
+/** The whole event stream as text, read chunk by chunk when the body allows it. */
+async function readEventStream(res) {
+  const body = res && res.body;
+  if (body && typeof body.getReader === "function") {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let out = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      out += typeof value === "string" ? value : decoder.decode(value, { stream: true });
+    }
+    return out + decoder.decode();
+  }
+  if (res && typeof res.text === "function") return res.text();
+  return "";
+}
+
 async function callAnthropicForced(args) {
   const {
     system, user, env = process.env, fetchImpl = globalThis.fetch,
     model, maxTokens, media = [], provider,
     timeoutMs, cache = false, effort, outputSchema, tools, toolChoice,
-    fallbacks = "default"
+    fallbacks = "default", messages, stream = false,
+    maxContinuations = DEFAULT_MAX_CONTINUATIONS
   } = args;
 
   const mediaParts = Array.isArray(media) ? media.filter(Boolean) : [];
   const toolList = Array.isArray(tools) ? tools.filter(Boolean) : [];
+  const serverTools = toolList.filter(isServerTool);
+  const clientTools = toolList.filter((t) => !isServerTool(t));
   const modelName = model == null || model === "" ? DEFAULT_ANTHROPIC_MODEL : String(model);
   const maxTok = maxTokens == null ? DEFAULT_ANTHROPIC_MAX_TOKENS : maxTokens;
   const effortLevel = effort == null ? DEFAULT_EFFORT : effort;
@@ -481,6 +634,8 @@ async function callAnthropicForced(args) {
   const fallbackOn = fallbacks == null || fallbacks === true || fallbacks === "default";
   const sendFallbacks = fallbackOn && FALLBACK_MODELS.includes(modelName);
   const systemText = String(system || "");
+  const useMessages = messages != null;
+  const maxCont = Number.isInteger(maxContinuations) && maxContinuations >= 0 ? maxContinuations : DEFAULT_MAX_CONTINUATIONS;
 
   const request = {
     model: modelName,
@@ -495,13 +650,15 @@ async function callAnthropicForced(args) {
     output_schema: outputSchema != null,
     tools: toolList.map((t) => (t && t.name) || null),
     tool_choice: toolList.length && !choice.error ? choice.type : null,
-    fallbacks: sendFallbacks ? "default" : null
+    fallbacks: sendFallbacks ? "default" : null,
+    messages: useMessages && Array.isArray(messages) ? messages.length : null,
+    stream: stream === true
   };
 
   const result = (fields) => ({
     mode: "live", text: null, raw: null, request, error: null, status: null,
     json: null, toolInput: null, stopReason: null, servedModel: null,
-    usage: emptyAnthropicUsage(),
+    usage: emptyAnthropicUsage(), content: [], continuations: 0,
     ...fields
   });
   const notSent = (why) => result({ mode: "shadow", error: `${MODEL_NOT_SENT}${why}` });
@@ -530,7 +687,7 @@ async function callAnthropicForced(args) {
     return notSent(`timeoutMs ${JSON.stringify(timeout)} is not a number of milliseconds above 0.`);
   }
   if (choice.error) return result({ mode: "shadow", error: choice.error });
-  for (const t of toolList) {
+  for (const t of clientTools) {
     if (!isPlainObject(t) || typeof t.name !== "string" || !t.name) {
       return notSent("every tool needs a name.");
     }
@@ -538,8 +695,19 @@ async function callAnthropicForced(args) {
       return notSent(`tool ${JSON.stringify(t.name)} has no input_schema object.`);
     }
   }
+  for (const t of serverTools) {
+    if (typeof t.name !== "string" || !t.name) return notSent(`server tool ${JSON.stringify(t.type)} needs a name.`);
+  }
   if (outputSchema != null && !isPlainObject(outputSchema)) {
     return notSent("outputSchema must be a JSON schema object.");
+  }
+  if (outputSchema != null && serverTools.some(isWebTool)) {
+    return notSent("outputSchema cannot be combined with web search or web fetch: citations plus structured output is HTTP 400. Ask for JSON in the prompt and parse the text instead.");
+  }
+  if (useMessages) {
+    const why = checkMessages(messages);
+    if (why) return notSent(why);
+    if (mediaParts.length) return notSent("media cannot be combined with messages; put the image blocks in the message content.");
   }
   if (!(fallbacks == null || fallbacks === true || fallbacks === false || fallbacks === "default")) {
     return notSent(`fallbacks ${JSON.stringify(fallbacks)} must be 'default' or false.`);
@@ -556,9 +724,19 @@ async function callAnthropicForced(args) {
       ? [{ type: "text", text: systemText, cache_control: { type: "ephemeral" } }]
       : systemText;
   }
-  body.messages = [{ role: "user", content: buildUserContent(request.user, mediaParts) }];
+  const baseMessages = useMessages
+    ? JSON.parse(JSON.stringify(messages))
+    : [{ role: "user", content: buildUserContent(request.user, mediaParts) }];
+  body.messages = baseMessages;
+  /* Each web search tool's own max_uses, so a continuation can lower it by the
+     searches already made and the whole call never goes past it. */
+  const searchCaps = serverTools.map((t) => (isWebSearchTool(t) && Number.isInteger(t.max_uses) ? t.max_uses : null));
+  const wireTools = () => [
+    ...clientTools.map(strictTool),
+    ...serverTools.map((t) => ({ ...t }))
+  ];
   if (toolList.length) {
-    body.tools = toolList.map(strictTool);
+    body.tools = wireTools();
     body.tool_choice = choice;
   }
   body.output_config = { effort: effortLevel };
@@ -566,6 +744,7 @@ async function callAnthropicForced(args) {
     body.output_config.format = { type: "json_schema", schema: outputSchema };
   }
   if (sendFallbacks) body.fallbacks = "default";
+  if (stream === true) body.stream = true;
 
   const headers = {
     "content-type": "application/json",
@@ -574,16 +753,13 @@ async function callAnthropicForced(args) {
   };
   if (sendFallbacks) headers["anthropic-beta"] = FALLBACK_DEFAULT_BETA;
 
-  // ── Send, with a timer that aborts the request itself ───────────────────
+  // ── Send, with ONE timer for the whole call that aborts the request itself ─
   // The race makes the timer win even against a fetch that ignores its signal.
   const controller = new AbortController();
   const TIMED_OUT = Symbol("timed out");
   let timer = null;
   const timedOut = new Promise((resolve) => {
     timer = setTimeout(() => { controller.abort(); resolve(TIMED_OUT); }, timeout);
-  });
-  const timeoutResult = () => result({
-    error: `anthropic timeout: no answer from Claude after ${timeout} ms, so the request was stopped.`
   });
 
   const send = async () => {
@@ -593,32 +769,82 @@ async function callAnthropicForced(args) {
       body: JSON.stringify(body),
       signal: controller.signal
     });
+    if (stream === true && res.ok) {
+      const { message, error } = messageFromEvents(await readEventStream(res));
+      return { res, raw: message, streamError: error };
+    }
     const raw = await res.json().catch(() => null);
-    return { res, raw };
+    return { res, raw, streamError: null };
   };
 
-  let reply;
+  let usage = emptyAnthropicUsage();
+  /** @type {any[]} */
+  let content = [];
+  let continuations = 0;
+  let last = null;
   try {
-    reply = await Promise.race([send(), timedOut]);
-  } catch (err) {
-    if (controller.signal.aborted) return timeoutResult();
-    // No status: the call never got an answer, which classifyModelFailure
-    // reads as temporary.
-    return result({ error: String((err && err.message) || err).slice(0, 300) });
+    for (;;) {
+      let reply;
+      try {
+        reply = await Promise.race([send(), timedOut]);
+      } catch (err) {
+        if (controller.signal.aborted) {
+          return result({
+            usage, content, continuations,
+            error: `anthropic timeout: no answer from Claude after ${timeout} ms, so the request was stopped.`
+          });
+        }
+        // No status: the call never got an answer, which classifyModelFailure
+        // reads as temporary.
+        return result({ usage, content, continuations, error: String((err && err.message) || err).slice(0, 300) });
+      }
+      if (reply === TIMED_OUT) {
+        return result({
+          usage, content, continuations,
+          error: `anthropic timeout: no answer from Claude after ${timeout} ms, so the request was stopped.`
+        });
+      }
+
+      const { res, raw, streamError } = reply;
+      usage = addUsage(usage, anthropicUsageOf(raw));
+      const servedModel = raw && typeof raw.model === "string" && raw.model ? raw.model : null;
+      const stopReason = (raw && raw.stop_reason) || null;
+      const blocks = Array.isArray(raw && raw.content) ? raw.content : [];
+      content = content.concat(blocks);
+      last = { raw, status: res.status, servedModel, stopReason };
+      const answered = { raw, status: res.status, usage, servedModel, stopReason, content, continuations };
+
+      if (!res.ok) {
+        return result({ ...answered, error: `anthropic ${res.status}: ${JSON.stringify(raw).slice(0, 300)}` });
+      }
+      if (streamError) return result({ ...answered, error: streamError });
+
+      if (stopReason === "pause_turn" && continuations < maxCont) {
+        // Send the paused turn back unchanged; the server resumes it.
+        continuations += 1;
+        body.messages = [...baseMessages, { role: "assistant", content }];
+        if (raw && raw.container && raw.container.id) body.container = raw.container.id;
+        if (body.tools) {
+          const used = usage.web_search_requests;
+          body.tools = wireTools().map((t, i) => {
+            const at = i - clientTools.length;
+            const cap = at >= 0 ? searchCaps[at] : null;
+            return cap == null ? t : { ...t, max_uses: Math.max(0, cap - used) };
+          });
+          // A search tool with nothing left would 400: take it out instead.
+          body.tools = body.tools.filter((t) => !(isWebSearchTool(t) && t.max_uses === 0));
+          if (!body.tools.length) { delete body.tools; delete body.tool_choice; }
+        }
+        continue;
+      }
+      break;
+    }
   } finally {
     clearTimeout(timer);
   }
-  if (reply === TIMED_OUT) return timeoutResult();
 
-  const { res, raw } = reply;
-  const usage = anthropicUsageOf(raw);
-  const servedModel = raw && typeof raw.model === "string" && raw.model ? raw.model : null;
-  const stopReason = (raw && raw.stop_reason) || null;
-  const answered = { raw, status: res.status, usage, servedModel, stopReason };
-
-  if (!res.ok) {
-    return result({ ...answered, error: `anthropic ${res.status}: ${JSON.stringify(raw).slice(0, 300)}` });
-  }
+  const { raw, status, servedModel, stopReason } = /** @type {any} */ (last);
+  const answered = { raw: raw ? { ...raw, content } : raw, status, usage, servedModel, stopReason, content, continuations };
 
   // Check the stop reason before reading any content (claude-api skill).
   if (stopReason === "refusal") {
@@ -634,10 +860,16 @@ async function callAnthropicForced(args) {
       error: `cut off: the reply hit the ${maxTok}-token limit before it finished (thinking counts toward it). Raise maxTokens.`
     });
   }
+  if (stopReason === "pause_turn") {
+    return result({
+      ...answered,
+      text: extractText({ content }),
+      error: MODEL_STILL_PAUSED
+    });
+  }
 
-  const text = extractText(raw);
-  const blocks = Array.isArray(raw && raw.content) ? raw.content : [];
-  const toolUse = blocks.find((b) => b && b.type === "tool_use") || null;
+  const text = extractText({ content });
+  const toolUse = content.find((b) => b && b.type === "tool_use") || null;
   const toolInput = toolUse ? parseToolInput(toolUse.input) : null;
 
   let json = null;
@@ -647,7 +879,7 @@ async function callAnthropicForced(args) {
     if (parsed === undefined) error = MODEL_NO_JSON;
     else json = parsed;
   }
-  if (toolList.length && choice.type !== "none" && outputSchema == null && !toolInput) {
+  if (clientTools.length && choice.type !== "none" && outputSchema == null && !toolInput) {
     error = MODEL_NO_TOOL_CALL;
   }
 

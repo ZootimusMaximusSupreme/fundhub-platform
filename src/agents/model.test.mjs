@@ -483,16 +483,20 @@ test("anthropic: an explicit Claude model is kept (no gpt swap) and maxTokens pa
   assert.match(g.error, /^not sent: model "gpt-4o" is not a Claude model/);
 });
 
-test("anthropic: usage carries all four token counts on every result", async () => {
+test("anthropic: usage carries all four token counts and both server-tool counts on every result", async () => {
   const { fetchImpl } = recorder(textReply("ok", {
     usage: { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 900, cache_creation_input_tokens: 40 }
   }));
   const res = await callModel({ provider: "anthropic", user: "u", env: BOTH_KEYS, fetchImpl, cache: true, system: "s" });
   assert.deepEqual(res.usage, {
-    input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 900, cache_creation_input_tokens: 40
+    input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 900, cache_creation_input_tokens: 40,
+    web_search_requests: 0, web_fetch_requests: 0
   });
 
-  const zero = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+  const zero = {
+    input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0,
+    web_search_requests: 0, web_fetch_requests: 0
+  };
   const noKey = await callModel({ provider: "anthropic", user: "u", env: {}, fetchImpl });
   assert.deepEqual(noKey.usage, zero);
 
