@@ -12,10 +12,11 @@
 //
 // EVIDENCE. Each scenario that matters to Chris screenshots the viewport and
 // records the live bounding box of the element under discussion into
-// shot-marks.json. ops/workflows/perfect-machine-2026-10-05-evidence/m11/
-// _apply-marks.py burns those into numbered red boxes with a legend (CLAUDE.md
-// §8). Output goes to M11_PROOF_OUT, or the system temp directory, never into
-// the repository on an ordinary run.
+// shot-marks.json. A copy of ops/workflows/w4b-proof-2026-09-03/_apply-marks.py
+// burns those into numbered red boxes with a legend (CLAUDE.md §8); evidence
+// folders are gitignored, so that copy lives beside the shots in
+// ops/workflows/perfect-machine-2026-10-05-evidence/m11/. Output goes to
+// M11_PROOF_OUT, or the system temp directory — never into a tracked path.
 
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
@@ -178,9 +179,9 @@ test("loading: skeletons in the real layout, the button waits", async ({ page })
   await open(page, handlers({ delayToday: 2500 }), OWNER, { clock: false });
   await expect(page.locator("#tileSpend7 .skel").first()).toBeVisible();
   await expect(page.locator("#copyBtn")).toBeDisabled();
-  await shot(page, "00-loading.png", "Loading: the real layout, no spinner", [
-    { selector: "#tileSpend7", caption: "Spend tile holds its place while it loads" },
-    { selector: "#copySetup", caption: "Button waits: 'Checking that the copy writer is ready'" }
+  await shot(page, "00-loading.png", "Loading: real layout, no spinner", [
+    { selector: "#tileSpend7", caption: "Spend tile holds its place" },
+    { selector: "#copySetup", caption: "Button waits while it checks" }
   ]);
   await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,235", { timeout: 6000 });
 });
@@ -229,16 +230,16 @@ test("full: spend top-left with a comparison, one primary button, every card fil
   const shadow = await page.locator("#cardCopy").evaluate((el) => getComputedStyle(el).boxShadow);
   expect(shadow).toContain("rgba(10, 10, 10, 0.06)");
 
-  await shot(page, "01-today-desktop.png", "Marketing Command Center, Today (owner, 1440x900)", [
-    { selector: "#tileSpend7", caption: "Top-left: spend 7 days, vs the 7 before, as-of time" },
+  await shot(page, "01-today-desktop.png", "Today, owner, 1440x900", [
+    { selector: "#tileSpend7", caption: "Top-left: spend 7 days vs the 7 before" },
     { selector: "#tileParts", caption: "Machine parts ready: 6 of 6" },
     { selector: "#copyBtn", caption: "The one filled button: Write ad copy" },
     { selector: "#cardWaiting", caption: "Waiting on you: read off the flywheel" }
   ]);
 
-  await shot(page, "02-flywheel-offer-latest.png", "Offer, Flywheel, Machine parts, Latest ad copy", [
-    { selector: '#flywheelList [data-stage="offer"]', caption: "Flywheel step 3: 'Needs a redo' + the reason" },
-    { selector: "#offerLatest .offer-body", caption: "Latest offer from the offer writer (M12)" },
+  await shot(page, "02-flywheel-offer-latest.png", "Offer and Flywheel", [
+    { selector: '#flywheelList [data-stage="offer"]', caption: "Step 3: Needs a redo, and why" },
+    { selector: "#offerLatest .offer-body", caption: "Latest offer from the offer writer" },
     { selector: "#offerBtn", caption: "Write offer (outline, not a second primary)" }
   ], { height: 1300, anchor: "#cardOffer" });
 });
@@ -271,10 +272,10 @@ test("Write ad copy: generate, then run, then the words and the rules result", a
   expect(seen[0].body.idempotency_key).toMatch(/^mcc-copy-\d{14}-\d{6}$/);
   expect(seen[1].body).toMatchObject({ partner_id: HOUSE, max_jobs: 3 });
 
-  await shot(page, "03-write-ad-copy.png", "Pressing Write ad copy", [
+  await shot(page, "03-write-ad-copy.png", "Write ad copy, pressed", [
     { selector: "#copyAngle", caption: "What the ad is about (typed)" },
-    { selector: "#copySay", caption: "Answer in plain words, where you are looking" },
-    { selector: "#copyResult .piece", caption: "The new ad copy + its rules result" }
+    { selector: "#copySay", caption: "Answer in plain words" },
+    { selector: "#copyResult .piece", caption: "New ad copy and its rules result" }
   ]);
 });
 
@@ -322,10 +323,10 @@ test("Write offer: starts a run and follows it until the offer is on the card", 
   await expect(page.locator("#offerLatest")).toContainText("$297");
   await expect(page.locator("#offerLatest")).toContainText("Money back if the plan is not clear.");
 
-  await shot(page, "04-write-offer.png", "Pressing Write offer (M12 runs in the background)", [
+  await shot(page, "04-write-offer.png", "Write offer, pressed", [
     { selector: "#offerBtn", caption: "Write offer" },
-    { selector: "#offerLatest .offer-body", caption: "The new offer, read back when the run finished" },
-    { selector: "#offerSay", caption: "Plain answer: Done. Here is the new offer." }
+    { selector: "#offerLatest .offer-body", caption: "The new offer, read back when done" },
+    { selector: "#offerSay", caption: "Done. Here is the new offer." }
   ], { height: 1300, anchor: "#cardOffer" });
 });
 
@@ -344,11 +345,11 @@ test("not shipped yet: both new endpoints answer 404 and the page says so, inven
   await expect(page.locator("#offerBtn")).toBeDisabled();
   await expect(page.locator("#tileSpend7 .note")).toContainText("No Meta numbers on file yet.");
 
-  await shot(page, "05-not-ready-yet.png", "Before ship: the new endpoints are not live", [
+  await shot(page, "05-not-ready-yet.png", "Before ship: not live yet", [
     { selector: "#mccBanner", caption: "What failed, in plain words" },
     { selector: "#tileSpend7 .vl", caption: "Unknown stays 'unknown', never $0" },
     { selector: "#copySetup", caption: "Write ad copy waits and says why" },
-    { selector: "#offerLatest", caption: "Write offer: 'not ready yet', button resting" }
+    { selector: "#offerLatest", caption: "Write offer: not ready yet" }
   ], { height: 1300 });
 });
 
@@ -363,9 +364,9 @@ test("empty: nothing yet, said plainly", async ({ page }) => {
   await expect(page.locator("#flywheelList")).toHaveText("No flywheel steps are on file yet.");
   await expect(page.locator("#latestList")).toHaveText("No ad copy yet. Press Write ad copy to make the first one.");
   await expect(page.locator("#offerLatest")).toHaveText("No offer has been written here yet.");
-  await shot(page, "06-empty.png", "Empty: what will appear, and how to make it appear", [
+  await shot(page, "06-empty.png", "Empty: nothing yet", [
     { selector: "#waitingList", caption: "Nothing waiting" },
-    { selector: "#latestList", caption: "No ad copy yet + the one action that makes it" }
+    { selector: "#latestList", caption: "No ad copy yet, and how to make one" }
   ], { height: 1300 });
 });
 
@@ -395,12 +396,12 @@ test("phone, 390px: one column, no sideways scroll, the button full width", asyn
     return min;
   });
   expect(minFont).toBeGreaterThanOrEqual(11);
-  await shot(page, "07-phone-390.png", "Phone, 390px wide", [
+  await shot(page, "07-phone-390.png", "Phone 390px", [
     { selector: "#tileSpend7", caption: "One column: spend first" }
   ]);
   await page.locator("#copyBtn").scrollIntoViewIfNeeded();
-  await shot(page, "08-phone-390-write.png", "Phone, 390px: Write ad copy", [
-    { selector: "#copyBtn", caption: "Write ad copy, full width, 48px tall" }
+  await shot(page, "08-phone-390-write.png", "Phone 390px: the button", [
+    { selector: "#copyBtn", caption: "Write ad copy, full width" }
   ]);
 });
 
