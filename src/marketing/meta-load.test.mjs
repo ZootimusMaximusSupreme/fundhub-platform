@@ -869,3 +869,27 @@ describe("the pure parts", () => {
     assert.equal(stepOf({ loaded_at: "x" }), "loaded");
   });
 });
+
+describe("POST marketing/meta/load: the body check (no database)", () => {
+  test("one of ad_video_id or all:true, a uuid, never both", async () => {
+    const { readChoice } = await import("../../api/marketing/meta/load.mjs");
+    assert.deepEqual(readChoice({ all: true }), { adVideoId: null, all: true });
+    assert.deepEqual(readChoice({ ad_video_id: VID.toUpperCase() }), { adVideoId: VID, all: false });
+    for (const bad of [{}, { all: false }, { all: true, ad_video_id: VID }, { ad_video_id: "nope" }, { ad_video_id: VID, all: "yes" }]) {
+      assert.throws(() => readChoice(bad), (e) => e.name === "InvalidError" && /^(ad_video_id|all)$/.test(e.field), JSON.stringify(bad));
+    }
+  });
+
+  test("a GET answers 405 before any sign-in check, so the pulse ping writes nothing", async () => {
+    const { default: handler } = await import("../../api/marketing/meta/load.mjs");
+    const r = { code: null, body: null, headers: {} };
+    r.status = (c) => { r.code = c; return r; };
+    r.json = (b) => { r.body = b; return r; };
+    r.setHeader = (k, v) => { r.headers[k] = v; return r; };
+    let authCalled = false;
+    await handler({ method: "GET", headers: {} }, r, { requireAuth: async () => { authCalled = true; return null; } });
+    assert.equal(r.code, 405);
+    assert.equal(r.headers.Allow, "POST");
+    assert.equal(authCalled, false);
+  });
+});

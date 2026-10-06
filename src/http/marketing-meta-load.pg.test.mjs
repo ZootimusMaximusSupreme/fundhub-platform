@@ -281,10 +281,13 @@ describe("/api/marketing/meta/load + load-status + the meta_load job", { skip: !
     assert.equal(n, 0, "a refused request queues nothing");
   });
 
-  test("load-status before any load: empty list, as_of is the last Meta pull, contract shape", async () => {
+  test("load-status before any load: only the video already loaded shows, as_of is the last Meta pull, contract shape", async () => {
     const r = await callStatus(tokenOwner);
     assert.equal(r.code, 200, JSON.stringify(r.body));
-    assert.deepEqual(r.body.loads, []);
+    // No job yet for any video. 994 has loaded_at already, so it is listed (loaded);
+    // nobody asked to load the rest, so they are not.
+    assert.deepEqual(r.body.loads.map((l) => [l.ad_number, l.state, l.step]), [["994", "loaded", "loaded"]]);
+    assert.equal(r.body.loads[0].ad_row_id, null, "no ads row behind it");
     assert.equal(r.body.as_of, META_SYNCED.toISOString());
     assertMatchesContract("GET marketing/meta/load-status", r.body);
   });
@@ -340,7 +343,7 @@ describe("/api/marketing/meta/load + load-status + the meta_load job", { skip: !
     const status = await callStatus(tokenOwner);
     assertMatchesContract("GET marketing/meta/load-status", status.body);
     const states = Object.fromEntries(status.body.loads.map((l) => [l.ad_number, l.state]));
-    assert.deepEqual(states, { 991: "waiting", 992: "waiting", 993: "waiting", 995: "waiting", 996: "waiting" });
+    assert.deepEqual(states, { 991: "waiting", 992: "waiting", 993: "waiting", 994: "loaded", 995: "waiting", 996: "waiting" });
   });
 
   /* The worker's claim, for one named job (claimJobs would also take another
