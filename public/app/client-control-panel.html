@@ -355,6 +355,12 @@
     border:1px solid var(--line);border-radius:5px;background:var(--paper);padding:10px 8px;
   }
   #ccp-rep-remove{margin-top:8px;}
+  /* .action-btn and .rep-field set `display`, which beats the browser's own
+     [hidden]{display:none} — the same trap as .approve-row and .link-btn below.
+     Without these two lines "Take them off this file" and an empty sign-in
+     link box showed on every client with no representative
+     (e2e/ccp-headline.spec.mjs sweep, 2026-10-05). */
+  #ccp-rep-remove[hidden],.rep-field[hidden]{display:none;}
 
   /* Capital Blueprint group. Only class names this screen already sizes are
      used for text (.kv-label, .fact-note, .fact-row, label), so no second
@@ -2502,7 +2508,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var q = encodeURIComponent(id);
     function href(nid, url) {
       var a = $(nid);
-      if (a) a.setAttribute("href", url);
+      if (!a) return;
+      a.setAttribute("href", url);
+      /* shell.js gateLinks() rebuilds every href from data-fh-href, the copy
+         it took of the ORIGINAL href on its first pass. When that pass ran
+         before this one, its second pass put the bare "lenders.html" back and
+         Open Funding Matrix lost this client (e2e/controls-persist.spec.mjs,
+         2026-10-05). Keeping its copy in step makes the client survive. */
+      a.setAttribute("data-fh-href", url);
     }
     href("ccp-link-present", "present.html?contact=" + q);
     href("ccp-link-present2", "present.html?contact=" + q);

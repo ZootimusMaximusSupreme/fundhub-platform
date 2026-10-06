@@ -84,6 +84,10 @@ test.describe("agent editor writes", () => {
     const writes = [];
     await openScreen(page, "/app/agent-editor.html", OWNER, agentExtra(writes));
     await expect(page.locator("#a_name")).toHaveValue("Lead Follow-up", { timeout: 10_000 });
+    /* + New agent asks for a name first (window.prompt, owner UI-audit answer
+       2026-08-17, 83a3ed507). Playwright dismisses dialogs by default, which
+       reads as "cancelled" and creates nothing — so the test answers it. */
+    page.once("dialog", (d) => d.accept("New agent"));
     await page.locator("#newBtn").click();
     await expect.poll(() => writes.some((w) => w.action === "create"), { timeout: 10_000 }).toBe(true);
     await expect(page.locator("#a_name")).toHaveValue("New agent");

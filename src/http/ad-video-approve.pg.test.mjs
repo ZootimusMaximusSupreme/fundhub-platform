@@ -206,7 +206,13 @@ describe("POST /api/public/ad-video-approve", { skip: !HAVE_DB ? "no DATABASE_UR
 
     test("only approve and reject are decisions", async () => {
       const { id, token } = await armed();
-      for (const decision of ["delete", "delivered", "", "APPROVE ", null]) {
+      /* "APPROVE " was on this list, but the door trims and lower-cases the
+         word on purpose (api/public/ad-video-approve.mjs, same commit as this
+         test, 1f8770a74), so it IS "approve" and was approved. The guard is
+         that nothing but the two words decides; "approved" and "rejects" are
+         the near misses that must still be refused. Changed 2026-10-05, the
+         first time this file ran in CI. */
+      for (const decision of ["delete", "delivered", "", "approved", "rejects", null]) {
         const r = await call({ token, decision });
         assert.equal(r.code, 400, String(decision));
         assert.equal(r.body.error, "bad_decision");

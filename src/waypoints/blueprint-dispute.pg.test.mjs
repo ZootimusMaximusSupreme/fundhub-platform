@@ -7,6 +7,12 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
+import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
+import crsEngine from "../finance/vendor/crs-engine.cjs";
+import { seedClientWaypoints } from "./seed.mjs";
+import { evaluateWaypoints } from "./verify.mjs";
+import { listWaypoints } from "./store.mjs";
+import { seedChecklistForPurchase, BLUEPRINT_PRODUCT_CODE } from "./purchase.mjs";
 
 /* A test identity, so the simulator never reads the owner's gitignored file
    (credentials/sim-identity/owner-identity.local.json). That file exists only
@@ -18,11 +24,6 @@ const TEST_IDENTITY = Object.freeze({
   current: { line1: "100 Test Ave", city: "Denton", state: "TX", postal_code: "76205" },
   priors: [], employer: null
 });
-import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
-import { seedClientWaypoints } from "./seed.mjs";
-import { evaluateWaypoints } from "./verify.mjs";
-import { listWaypoints } from "./store.mjs";
-import { seedChecklistForPurchase, BLUEPRINT_PRODUCT_CODE } from "./purchase.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 const EMAIL_LIKE = "waypoint.blueprint.dispute.pg.%@example.com";
@@ -30,6 +31,23 @@ const ENROLLED_AT = new Date("2026-09-29T12:00:00.000Z");
 
 async function deleteClients(ids) {
   if (!ids.length) return;
+  /* documents refuse DELETE (trg_documents_no_delete, 030_documents.sql), and
+     the proof-upload test leaves a document on this client. The first CI run
+     that got this far (2026-10-05) died here. Past the guard the same way
+     src/contracts/lifecycle.pg.test.mjs does, versions first, guard back on in
+     a finally. */
+  await db.query(`ALTER TABLE document_versions DISABLE TRIGGER trg_document_versions_no_delete`).catch(() => {});
+  await db.query(`ALTER TABLE documents DISABLE TRIGGER trg_documents_no_delete`).catch(() => {});
+  try {
+    await db.query(`UPDATE documents SET current_version_id = NULL WHERE client_id = ANY($1::uuid[])`, [ids]);
+    await db.query(
+      `DELETE FROM document_versions WHERE document_id IN
+         (SELECT id FROM documents WHERE client_id = ANY($1::uuid[]))`, [ids]);
+    await db.query(`DELETE FROM documents WHERE client_id = ANY($1::uuid[])`, [ids]);
+  } finally {
+    await db.query(`ALTER TABLE documents ENABLE TRIGGER trg_documents_no_delete`).catch(() => {});
+    await db.query(`ALTER TABLE document_versions ENABLE TRIGGER trg_document_versions_no_delete`).catch(() => {});
+  }
   const kids = (await db.query(
     `SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
        FROM pg_constraint c
@@ -59,9 +77,14 @@ function creditFile(profile) {
     pulledAt: "2026-09-05T00:00:00.000Z",
     identity: TEST_IDENTITY
   });
+  /* The pull is dated 2026-09-05 on purpose; the engine judges its age
+     against referenceDate, not the wall clock, so it stays a fresh pull after
+     2026-10-05 (same fix as seed.pg.test.mjs). */
   return runTierEngineFromCrsResult(payload, {
     submittedName: "Blueprint Dispute Subject",
     submittedAddress: "100 Test Ave, Denton, TX 76205"
+  }, {
+    runEngine: (args) => crsEngine.runCRSEngine({ ...args, referenceDate: new Date("2026-09-06T00:00:00.000Z") })
   });
 }
 

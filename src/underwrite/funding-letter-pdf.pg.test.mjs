@@ -42,6 +42,11 @@ import assert from "node:assert/strict";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
+import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
+import { FUNDING_TIERS } from "../config/product-path.mjs";
+import { buildLetterPackForClient } from "./letter-pack.mjs";
+import { persistFundingLetterFiles } from "./funding-letter-pdf.mjs";
+import { memoryProvider, createStore } from "../documents/store.mjs";
 
 /* A test identity, so the simulator never reads the owner's gitignored file
    (credentials/sim-identity/owner-identity.local.json). That file exists only
@@ -53,10 +58,6 @@ const TEST_IDENTITY = Object.freeze({
   current: { line1: "100 Test Ave", city: "Denton", state: "TX", postal_code: "76205" },
   priors: [], employer: null
 });
-import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
-import { buildLetterPackForClient } from "./letter-pack.mjs";
-import { persistFundingLetterFiles } from "./funding-letter-pdf.mjs";
-import { memoryProvider, createStore } from "../documents/store.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 const EMAIL_TAG = "f46.fixture";
@@ -109,8 +110,12 @@ async function seedAndSave(label, shape = (p) => p) {
   const tier = runTierEngineFromCrsResult(payload, {
     submittedName: "F46 Fixture", submittedAddress: ""
   });
-  assert.equal(tier.outcome, "FULL_FUNDING",
-    `the ${label} fixture must tier for funding or this proves nothing`);
+  /* Any FUNDING tier (src/config/product-path.mjs FUNDING_TIERS). It said
+     FULL_FUNDING only; with the test identity (no owner file in CI, 2026-10-05)
+     this fresh file tiers PREMIUM_STACK, the tier above it, which builds the
+     same funding pack. What this test needs is a funding client. */
+  assert.ok(FUNDING_TIERS.includes(tier.outcome),
+    `the ${label} fixture must tier for funding or this proves nothing (got ${tier.outcome})`);
   await db.query(
     `INSERT INTO crs_results (org_id, client_id, result, outcome_tier)
      VALUES ($1,$2,$3::jsonb,$4)`,

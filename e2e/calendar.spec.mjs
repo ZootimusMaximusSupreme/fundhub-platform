@@ -355,10 +355,13 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     await expect(page.locator("#statBooked")).toHaveText("0");
     await expect(page.locator("#statDone")).toHaveText("0");
     await expect(page.locator("#statLeft")).toHaveText("0");
-    await expect(page.locator("#fh-data-banner")).toContainText("live schedule");
-    expect(await bannerColour(page),
-      "both reads came back fine, so this must still read as a success")
-      .toBe(MINT_SUCCESS);
+    /* NO STRIP ON A GOOD READ (owner calls 2026-08-27 and 2026-08-28: the
+       "sample" and "real" strips were dropped; public/app/data.js banner()
+       shows a failed read and nothing else). So "no false alarm" means the
+       strip stays away. The LIVE pill is what says the week is real. Until
+       2026-10-05 this asserted the mint "live schedule" strip that no longer
+       exists. */
+    await expect(page.locator("#fh-data-banner")).toBeHidden();
     await expect(page.locator(".live-pill").first()).toContainText("LIVE");
   });
 
@@ -374,7 +377,9 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     await expect(page.locator(".day-wrap")).toContainText("Erin Cole");
     await expect(page.locator(".day-wrap")).not.toContainText("did not load");
     await expect(page.locator(".weekstrip")).toContainText("5 booked");
-    expect(await bannerColour(page)).toBe(MINT_SUCCESS);
+    // A good read draws no strip at all (owner, 2026-08-28; see above).
+    await expect(page.locator("#fh-data-banner")).toBeHidden();
+    await expect(page.locator(".live-pill").first()).toContainText("LIVE");
   });
 
   test("an unreadable answer to the open read is a failure, not an empty day", async ({ page }) => {

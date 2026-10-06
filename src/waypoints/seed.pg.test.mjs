@@ -19,6 +19,14 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
+import crsEngine from "../finance/vendor/crs-engine.cjs";
+import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
+import { seedClientWaypoints } from "./seed.mjs";
+import { evaluateWaypoints } from "./verify.mjs";
+import { listWaypoints } from "./store.mjs";
+import { enrollRepairProgram } from "../repair/enroll.mjs";
+import { onAnalysisCompleted } from "../handlers/client-lifecycle.mjs";
+import { rlsDb, rlsIsReal, closeRlsPool } from "../testing/rls-pool.mjs";
 
 /* A test identity, so the simulator never reads the owner's gitignored file
    (credentials/sim-identity/owner-identity.local.json). That file exists only
@@ -30,13 +38,6 @@ const TEST_IDENTITY = Object.freeze({
   current: { line1: "100 Test Ave", city: "Denton", state: "TX", postal_code: "76205" },
   priors: [], employer: null
 });
-import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
-import { seedClientWaypoints } from "./seed.mjs";
-import { evaluateWaypoints } from "./verify.mjs";
-import { listWaypoints } from "./store.mjs";
-import { enrollRepairProgram } from "../repair/enroll.mjs";
-import { onAnalysisCompleted } from "../handlers/client-lifecycle.mjs";
-import { rlsDb, rlsIsReal, closeRlsPool } from "../testing/rls-pool.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 const EMAIL_LIKE = "waypoint.seed.pg.%@example.com";
@@ -93,9 +94,19 @@ function creditFile(profile, overrides = {}) {
     pulledAt: "2026-09-05T00:00:00.000Z",
     identity: TEST_IDENTITY
   });
+  /* THIS FILE RUNS ON A FROZEN CLOCK (pulled 2026-09-05, enrolled 2026-09-06),
+     but the engine judged the pull's age against the REAL clock, so from early
+     October the same file tiered MANUAL_REVIEW (report too old) instead of
+     REPAIR_ONLY. The cards on it do not change with the tier, but a test file
+     must not change answer with the date it runs on. The vendor engine takes a
+     referenceDate for exactly this ("useful in tests",
+     vendor/underwriteiq-crs/engine.js); it is set to the enrolment day so the
+     file is a day old, as the timeline says. */
   const engine = runTierEngineFromCrsResult(payload, {
     submittedName: "Seed Subject",
     submittedAddress: "100 Test Ave, Denton, TX 76205"
+  }, {
+    runEngine: (args) => crsEngine.runCRSEngine({ ...args, referenceDate: ENROLLED_AT })
   });
   return { ...engine, ...overrides };
 }
@@ -252,26 +263,35 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
     assert.equal(out.creditFile, "crs_result");
 
     const rows = await listWaypoints(db, { orgId: org, clientId: client });
+    /* THE SIMULATOR'S REPAIR FILE CHANGED UNDER THIS TEST. It was written on
+       2026-09-06 against "Capital One Platinum", "Credit One Bank" and an OPEN
+       "Synchrony Bank / Care Credit". The same day 8663c59b4 restored the
+       laptop's scripts/sim/push-credit.mjs, which spells the cards the way a
+       bureau does (CAPITAL ONE, CREDIT ONE BANK, SYNCB/CARE CREDIT) and reports
+       the charged-off Synchrony card CLOSED, as real bureaus do. A closed card
+       gets no paydown (skipped: account_closed), so two paydowns, not three.
+       First run against a real database in CI: 2026-10-05. */
     assert.deepEqual(rows.map((r) => r.key), [
-      "paydown_capital_one_platinum",
+      "paydown_capital_one",
       "paydown_credit_one_bank",
-      "paydown_synchrony_bank_care_credit",
       "no_new_credit",
       "personal_loan",
       "form_llc",
       "get_ein",
       "business_checking"
     ]);
-    // The repair profile reports those three cards EIGHT times across three
-    // bureaus. Three waypoints, not eight.
-    assert.equal(rows.filter((r) => r.verify_kind === "paydown").length, 3);
+    // The repair profile reports its three cards EIGHT times across three
+    // bureaus (3 + 3 + 2). Two open cards, two paydown waypoints — not eight,
+    // and none for the closed one.
+    assert.equal(rows.filter((r) => r.verify_kind === "paydown").length, 2);
+    assert.ok(!rows.some((r) => r.key.startsWith("paydown_syncb")), "a closed card is never a paydown");
     for (const r of rows) assert.equal(r.owner_kind, "client");
   });
 
   test("the paydown says a real creditor and a real number, in integer cents", async () => {
     const rows = await listWaypoints(db, { orgId: org, clientId: client });
-    const w = rows.find((r) => r.key === "paydown_capital_one_platinum");
-    assert.equal(w.title, "Pay Capital One Platinum down to $300");
+    const w = rows.find((r) => r.key === "paydown_capital_one");
+    assert.equal(w.title, "Pay CAPITAL ONE down to $300");
     assert.equal(w.params.target_cents, 30000);
     assert.equal(w.params.balance_at_seed_cents, 287000);
     assert.equal(w.params.limit_at_seed_cents, 300000);
@@ -287,7 +307,7 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
   test("what CAN be checked is marked so, and what cannot is NULL — not guessed at", async () => {
     const rows = await listWaypoints(db, { orgId: org, clientId: client });
     const kinds = Object.fromEntries(rows.map((r) => [r.key, r.verify_kind]));
-    assert.equal(kinds.paydown_capital_one_platinum, "paydown");
+    assert.equal(kinds.paydown_capital_one, "paydown");
     assert.equal(kinds.no_new_credit, "no_new_credit");
     // Nothing in this platform can see an IRS record, a bank account, a
     // Secretary of State filing, or a loan the client took elsewhere.
@@ -304,7 +324,7 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
     const ein = rows.find((r) => r.key === "get_ein");
     assert.equal(ein.due_at, null);
     assert.equal(ein.overdue, false, "no deadline means never overdue, four years later included");
-    const paydown = rows.find((r) => r.key === "paydown_capital_one_platinum");
+    const paydown = rows.find((r) => r.key === "paydown_capital_one");
     assert.equal(paydown.due_at.toISOString(), "2026-10-06T12:00:00.000Z");
     assert.equal(paydown.overdue, true);
   });
@@ -320,16 +340,16 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
 
   test("re-seeding after the balances moved updates the same row and keeps the deadline", async () => {
     const before = await listWaypoints(db, { orgId: org, clientId: client });
-    const beforeRow = before.find((r) => r.key === "paydown_capital_one_platinum");
+    const beforeRow = before.find((r) => r.key === "paydown_capital_one");
 
-    const cheaper = withBalance(creditFile("repair"), "Capital One Platinum", 1200);
+    const cheaper = withBalance(creditFile("repair"), "Capital One", 1200);
     await seedClientWaypoints(db, {
       orgId: org, clientId: client, crsResult: cheaper,
       now: new Date("2026-12-01T00:00:00.000Z")
     });
 
     const after = await listWaypoints(db, { orgId: org, clientId: client });
-    const afterRow = after.find((r) => r.key === "paydown_capital_one_platinum");
+    const afterRow = after.find((r) => r.key === "paydown_capital_one");
     assert.equal(after.length, before.length, "still one set");
     assert.equal(afterRow.id, beforeRow.id, "the same row");
     assert.equal(afterRow.params.balance_at_seed_cents, 120000, "with the fresh balance");
@@ -357,19 +377,21 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
   });
 
   test("a paydown STAYS OPEN when the balance did not move", async () => {
+    /* The Capital One card: the only other open card on the repair file since
+       the Synchrony card is reported closed (see the seeding test above). */
     const rows = await listWaypoints(db, { orgId: org, clientId: client });
-    const w = rows.find((r) => r.key === "paydown_synchrony_bank_care_credit");
+    const w = rows.find((r) => r.key === "paydown_capital_one");
     assert.equal(w.state, "not_started", "untouched by the run that closed the other card");
 
     const out = await evaluateWaypoints(db, {
       orgId: org, clientId: client, crsResult: creditFile("repair"), now: new Date("2026-10-01T00:00:00.000Z")
     });
     assert.equal(
-      out.unchanged.find((u) => u.key === "paydown_synchrony_bank_care_credit").reason,
+      out.unchanged.find((u) => u.key === "paydown_capital_one").reason,
       "above_target"
     );
     const after = await listWaypoints(db, { orgId: org, clientId: client });
-    assert.equal(after.find((r) => r.key === "paydown_synchrony_bank_care_credit").state, "not_started");
+    assert.equal(after.find((r) => r.key === "paydown_capital_one").state, "not_started");
   });
 
   test("a new card on a later pull BLOCKS the do-not-open-credit row, and never closes it", async () => {
@@ -404,17 +426,17 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
      check and leaves that row blocked. This test has to run while the row is
      still untouched. */
   test("A CARD MISSING FROM THE NEW FILE IS UNKNOWN, AND UNKNOWN IS NOT PAID OFF", async () => {
-    // The trial profile has no Capital One Platinum on it at all.
+    // The trial profile has no Capital One card on it at all.
     const out = await evaluateWaypoints(db, {
       orgId: org, clientId: client, crsResult: creditFile("trial"), now: new Date("2026-10-02T00:00:00.000Z")
     });
     assert.equal(
-      out.unchanged.find((u) => u.key === "paydown_capital_one_platinum").reason,
+      out.unchanged.find((u) => u.key === "paydown_capital_one").reason,
       "account_not_on_file"
     );
-    assert.ok(!out.completed.some((c) => c.key === "paydown_capital_one_platinum"));
+    assert.ok(!out.completed.some((c) => c.key === "paydown_capital_one"));
     const rows = await listWaypoints(db, { orgId: org, clientId: client });
-    assert.equal(rows.find((r) => r.key === "paydown_capital_one_platinum").state, "not_started");
+    assert.equal(rows.find((r) => r.key === "paydown_capital_one").state, "not_started");
   });
 
   test("THE EIN STAYS OPEN, BECAUSE NOTHING IN THIS PLATFORM CAN SEE ONE", async () => {
@@ -517,8 +539,8 @@ describe("enrolling a client builds their checklist", { skip: !HAVE_DB ? "no DAT
     assert.equal(first.checklist.ok, true, JSON.stringify(first.checklist));
 
     const seeded = await listWaypoints(db, { orgId: org, clientId: client });
-    assert.equal(seeded.length, 8);
-    assert.equal(seeded.filter((r) => r.verify_kind === "paydown").length, 3);
+    assert.equal(seeded.length, 7);
+    assert.equal(seeded.filter((r) => r.verify_kind === "paydown").length, 2);
 
     await enrollRepairProgram(db, {
       orgId: org, clientId: client, program: "full", priceTotal: 1000, amountPaid: 0
@@ -581,7 +603,7 @@ describe("a renamed card, a genuinely new card, and the way back", { skip: !HAVE
     assert.equal(nnc.params.baseline_locked, true);
 
     const paydown = await rowFor("paydown_credit_one_bank");
-    assert.deepEqual(paydown.params.account_prints, ["o:2022-09-14|n:3018"]);
+    assert.deepEqual(paydown.params.account_prints, ["o:2023-09-05|n:3018"]);
   });
 
   test("THE REVIEWER'S CASE: a creditor renamed is NOT new credit, and the paydown is not lost", async () => {
@@ -606,18 +628,33 @@ describe("a renamed card, a genuinely new card, and the way back", { skip: !HAVE
   });
 
   test("a renamed card that HAS been paid down still closes", async () => {
+    /* ITS OWN CLIENT. This used the open Synchrony card, which the simulator
+       now reports closed (8663c59b4), so the repair file has two open cards,
+       and the re-seed and re-pull tests below each need one of them still
+       open on the suite's client. Same file, same rename-then-pay, a second
+       client (the suite's purge already covers its address). */
+    const other = (await db.query(
+      `INSERT INTO clients (org_id, first_name, last_name, email, custom_fields)
+       VALUES ($1,'Ident','Renamed',$2,$3::jsonb) RETURNING id`,
+      [org, "waypoint.ident.pg.renamed@example.com", JSON.stringify({ state: "TX" })]
+    )).rows[0].id;
+    await seedClientWaypoints(db, { orgId: org, clientId: other, crsResult: REPAIR(), now: ENROLLED_AT });
+    const keyFor = async (key) =>
+      (await listWaypoints(db, { orgId: org, clientId: other })).find((r) => r.key === key);
+    assert.equal((await keyFor("paydown_capital_one")).state, "not_started");
+
     const renamedAndPaid = withBalance(
-      withCreditorRenamed(REPAIR(), "Synchrony Bank", "SYNCHRONY BANK/CARECREDIT"),
-      "SYNCHRONY", 10
+      withCreditorRenamed(REPAIR(), "Capital One", "CAPITAL ONE BANK USA NA"),
+      "CAPITAL ONE", 10
     );
     const out = await evaluateWaypoints(db, {
-      orgId: org, clientId: client, crsResult: renamedAndPaid, now: new Date("2026-10-02T00:00:00.000Z")
+      orgId: org, clientId: other, crsResult: renamedAndPaid, now: new Date("2026-10-02T00:00:00.000Z")
     });
     assert.ok(
-      out.completed.some((c) => c.key === "paydown_synchrony_bank_care_credit"),
+      out.completed.some((c) => c.key === "paydown_capital_one"),
       JSON.stringify(out)
     );
-    assert.equal((await rowFor("paydown_synchrony_bank_care_credit")).state, "done");
+    assert.equal((await keyFor("paydown_capital_one")).state, "done");
   });
 
   test("A GENUINELY NEW CARD IS STILL CAUGHT, and the sentence reads like a person wrote it", async () => {
@@ -706,12 +743,12 @@ describe("a renamed card, a genuinely new card, and the way back", { skip: !HAVE
   // raises.
   // ─────────────────────────────────────────────────────────────────────────
   test("A RE-PULL CLOSES THE CHECKLIST, because the credit-pull handler now reads it", async () => {
-    const beforeCap = await rowFor("paydown_capital_one_platinum");
+    const beforeCap = await rowFor("paydown_capital_one");
     assert.equal(beforeCap.state, "not_started");
 
-    // The client pays Capital One Platinum down under its $300 target, and the
+    // The client pays the Capital One card down under its $300 target, and the
     // pull that reports it lands as a real crs_results row.
-    const paid = withBalance(REPAIR(), "Capital One Platinum", 120);
+    const paid = withBalance(REPAIR(), "Capital One", 120);
     const crsRow = (await db.query(
       `INSERT INTO crs_results (org_id, client_id, result, outcome_tier)
        VALUES ($1,$2,$3::jsonb,'repair') RETURNING id`,
@@ -728,7 +765,7 @@ describe("a renamed card, a genuinely new card, and the way back", { skip: !HAVE
 
     const after = await listWaypoints(db, { orgId: org, clientId: client });
     assert.equal(
-      after.find((r) => r.key === "paydown_capital_one_platinum").state, "done",
+      after.find((r) => r.key === "paydown_capital_one").state, "done",
       "the card that was paid down closed itself"
     );
     // AND NOTHING ELSE MOVED.

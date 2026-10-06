@@ -50,7 +50,11 @@ test.describe("Social connect", () => {
     });
     await gotoScreen(page, "social-studio.html");
     await expect(page.locator("#oauthFb")).toBeVisible({ timeout: 10_000 });
-    await page.locator("#oauthFb").click();
+    /* With no partner chosen the Connect buttons are disabled and the line
+       under them says why (social-studio.html, since 2026-08-17 fe5e7ba5a):
+       nothing can be connected for nobody. Clicking a disabled button waited
+       30 seconds. The honest answer is the disabled button and its reason. */
+    await expect(page.locator("#oauthFb")).toBeDisabled();
     await expect(page.locator("#oauthMsg")).toContainText(/META_APP_ID|unset|not_configured|partner/i, { timeout: 10_000 });
   });
 });

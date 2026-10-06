@@ -16,16 +16,21 @@
 import { test, expect } from "@playwright/test";
 import { openScreen } from "./harness.mjs";
 
+/* Statuses are the four affiliate_referrals.status can hold (Referred,
+   Converted, Paid, Void — 033_affiliates.sql). The screen's filter offers only
+   those since 2026-09-05 (c743eead3); this file still used the six invented
+   ones (Funded, Deposit paid, Assessment paid…), so the filter test waited 30
+   seconds for a "Funded" option that no longer exists. */
 const ROWS = [
   // A funding deposit of $3,000. The ledger's 20% Tier 1 rule makes this
   // $600.00. The deleted browser-side 12% would have shown $360.00.
-  { d: "2026-08-24", biz: "Northwind Freight", st: "Funded", prod: "Consulting Services Deposit",
-    basis: 3000, pay: "Accrued", commission_due: "600.00" },
+  { d: "2026-08-24", biz: "Northwind Freight", st: "Paid", prod: "Consulting Services Deposit",
+    basis: 3000, pay: "Paid", commission_due: "600.00" },
   // Converted with no rate in force. commission_due is NULL and must stay
   // unknown on screen.
-  { d: "2026-08-25", biz: "Cedar Lane Bakery", st: "Deposit paid", prod: "Credit Optimization Bundle",
+  { d: "2026-08-25", biz: "Cedar Lane Bakery", st: "Converted", prod: "Credit Optimization Bundle",
     basis: 2000, pay: "Accrued", commission_due: null },
-  { d: "2026-08-26", biz: "Halstead Tools", st: "Assessment paid", prod: "Business Financial Assessment",
+  { d: "2026-08-26", biz: "Halstead Tools", st: "Converted", prod: "Business Financial Assessment",
     basis: 32, pay: "Accrued", commission_due: "6.40" }
 ];
 
@@ -77,7 +82,7 @@ test("with no rows at all the total is a dash, not $0", async ({ page }) => {
 test("filtering still leaves every commission read from its own row", async ({ page }) => {
   await openScreen(page, "/app/affiliate.html");
   await loadRows(page, ROWS);
-  await page.locator("#stFilter").selectOption("Funded");
+  await page.locator("#stFilter").selectOption("Paid");
   const cells = page.locator("#leadBody tr td:nth-child(6)");
   await expect(cells).toHaveCount(1);
   await expect(cells.nth(0)).toHaveText("$600.00");
