@@ -110,6 +110,20 @@
     # without this line the Today tab says the flywheel is "waiting" on Netlify.
     # (M10 and M12 both added this line; the release merge keeps one copy.)
     "marketing/flywheel/**",
+    # The marketing machine's rule files (spec docs/specs/marketing-machine-2026-10-04.md
+    # §6 Step 2, "Reads"). The writer and the rules routes read them from GitHub
+    # at one commit (src/repo/github.mjs getContents); when GitHub cannot be
+    # reached they fall back to these copies bundled with the function. A file
+    # that does not exist yet (RECIPES.md, angles.json, banned-live.json and
+    # catalog.json land in later units) simply matches nothing.
+    # Never add anything under credentials/ here (the nft trap above).
+    "marketing/ads/RULES.md",
+    "marketing/ads/VOICE.md",
+    "marketing/ads/RECIPES.md",
+    "marketing/ads/angles.json",
+    "marketing/ads/banned-live.json",
+    "marketing/ads/registry.json",
+    "marketing/broll/catalog.json",
     # src/finance/vendor/crs-engine.cjs is a one-line CommonJS shim:
     #   module.exports = require("../../../vendor/underwriteiq-full/…/engine.js")
     # esbuild leaves that require() external, so the zip shipped without the

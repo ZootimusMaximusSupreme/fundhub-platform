@@ -74,6 +74,14 @@ const ALLOWED_RAW_FETCH = {
     "owner's own session, to start the 15-minute writer the 26 s /api function cannot " +
     "hold (spec docs/specs/marketing-machine-2026-10-04.md §6 Step 4 names this wake). " +
     "Added 2026-10-05.",
+  "src/marketing/wake.mjs":
+    "The marketing machine's wake (spec docs/specs/marketing-machine-2026-10-04.md §6 " +
+    "Step 2: a save writes its outbox row, then wakes the worker). Its ONE call is a POST " +
+    "to our own deploy (process.env.URL or DEPLOY_URL) at /.netlify/functions/" +
+    "marketing-worker-background, behind the MARKETING_WORKER_SECRET header, to start the " +
+    "15-minute worker. Same shape as ad-video-sweeper above. Nothing leaves fundhub.ai and " +
+    "no vendor is reached; the GitHub, Meta and model calls happen inside the worker, " +
+    "through src/messaging/providers/* and the fence. Added 2026-10-05 (U05).",
   // ── Not actually the global fetch ────────────────────────────────────────
   "src/http/read-api.mjs":
     "`fetch` here is a local parameter holding a database reader, not the global.",
