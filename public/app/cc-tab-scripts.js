@@ -1083,7 +1083,10 @@
       rules: { status: "idle", loaded: false, data: null, error: null },
       versions: {}, open: {}, busy: {}, intents: {},
       panel: null, conflict: null, say: null, ruleEdit: null, showAllIdeas: false,
-      pendingFix: {}, writeWatch: null, timer: null, last: {}, swipe: null
+      pendingFix: {}, writeWatch: null, timer: null, last: {}, swipe: null,
+      /* Counts this screen's own saves. A list read that started before a save
+         came back is older than what the screen shows, so it is dropped. */
+      mutations: 0
     };
   }
 
@@ -1134,7 +1137,13 @@
   async function loadScripts() {
     st.scripts.status = "loading";
     paint();
+    const seen = st.mutations;
     const r = await call("GET", "marketing/scripts");
+    if (seen !== st.mutations) {
+      st.scripts.status = st.scripts.loaded ? "ok" : st.scripts.status;
+      paint();
+      return;
+    }
     if (r.ok && isObj(r.data) && Array.isArray(r.data.scripts)) {
       st.scripts = { status: "ok", loaded: true, items: r.data.scripts, as_of: r.data.as_of || new Date().toISOString(), error: null };
       settleFixes();
@@ -1328,6 +1337,7 @@
   function replaceScript(oldId, next) {
     let i = st.scripts.items.findIndex((s) => s.id === oldId);
     if (i < 0) i = st.scripts.items.findIndex((s) => s.root_script_id === next.root_script_id);
+    st.mutations++;
     if (i >= 0) st.scripts.items.splice(i, 1, next);
     else st.scripts.items.unshift(next);
   }
@@ -1489,6 +1499,7 @@
     delete st.busy.order;
     if (r.ok) {
       intentDone(key);
+      st.mutations++;
       next.forEach((root, i) => {
         const s = st.scripts.items.find((x) => x.root_script_id === root && x.status === "locked");
         if (s) s.film_order = i + 1;
