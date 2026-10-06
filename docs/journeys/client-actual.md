@@ -32,11 +32,11 @@ flowchart TD
     CAN --> A_top_level[Everything else — 9 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 245 routes]
+    WHO -->|Yes| CANT[Blocked — 247 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 7 blocked]
-    CANT --> B_banking[banking — 3 blocked]
+    CANT --> B_banking[banking — 5 blocked]
     CANT --> B_blueprint[blueprint — 1 blocked]
     CANT --> B_brand[brand — 1 blocked]
     CANT --> B_campaigns[Campaigns — 10 blocked]
@@ -68,7 +68,7 @@ flowchart TD
 
 ## What they can reach
 
-**54 of 299 routes.**
+**54 of 301 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -134,7 +134,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**245 of 299 routes.**
+**247 of 301 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -156,6 +156,8 @@ flowchart TD
 | `/api/auth/staff-update` | POST | owner, admin |
 | `/api/auth/suspend` | POST | owner, admin |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/banking/link-exchange` | POST | owner, admin, sales_manager |
+| `/api/banking/link-token` | POST | owner, admin, sales_manager |
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |

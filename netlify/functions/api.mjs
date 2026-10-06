@@ -141,6 +141,8 @@ import customerInsightsWrite from "../../api/customer-insights.mjs";
 import marketingFlagsWrite from "../../api/marketing-flags.mjs";
 import marketingToday from "../../api/marketing/today.mjs";
 import bankingSyncAccounts from "../../api/banking/sync-accounts.mjs";
+import bankingLinkToken from "../../api/banking/link-token.mjs";
+import bankingLinkExchange from "../../api/banking/link-exchange.mjs";
 import inquiries from "../../api/inquiries.mjs";
 import repairExceptions from "../../api/repair/exceptions.mjs";
 import repairEnroll from "../../api/repair/enroll.mjs";
@@ -708,6 +710,9 @@ export const ROUTES = {
   // transmits: the mock reads a fixture in this repository, and the Plaid seam
   // is deliberately unclosed and returns its refusal unchanged.
   "banking/sync-accounts": bankingSyncAccounts,
+  /* Plaid Link: open, then finish. ROLE_SETS.FINANCE, same as sync-accounts. */
+  "banking/link-token": bankingLinkToken,
+  "banking/link-exchange": bankingLinkExchange,
 
   // Write endpoints. Hand-rolled rather than readHandler-based, so each one owns
   // its own method switch, its 405 + allow header, and its domain-error mapping.

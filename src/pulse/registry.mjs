@@ -60,6 +60,8 @@ const API_KEYS = [
   "auth/staff-update",
   "auth/suspend",
   "banking/accounts",
+  "banking/link-exchange",
+  "banking/link-token",
   "banking/revoke",
   "banking/sync-accounts",
   "bookings",
