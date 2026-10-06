@@ -55,7 +55,15 @@ async function pullAdPerformance(db, { orgId, from, to }) {
   return { available: true, totalLeads, totalBooks, byLane: folded.groups };
 }
 
-async function pullFunnelPages(db, { orgId, from, to }) {
+/* EACH funnel_page_stats / video_watch_stats ROW IS ALREADY A RUNNING TOTAL —
+   one pull over the 7, 30 or 90 days before stat_date (the Sync button, the
+   nightly job and a hand pull use different windows, and the row does not save
+   which). Summing the rows in a week adds overlapping totals: seven nightly
+   30-day pulls would report about seven months of views as "this week". And a
+   single 90-day row was reported as the week's views (measured 2026-10-05: the
+   VSL's 642 views were 90 days; that week was 77). So the brief takes the
+   LATEST row per page in the window and says what it is. */
+export async function pullFunnelPages(db, { orgId, from, to }) {
   const conn = (await db.query(
     `SELECT connection_state, last_synced_at, last_error FROM analytics_connections
       WHERE org_id = $1 AND platform = 'clickfunnels'`,
@@ -65,18 +73,21 @@ async function pullFunnelPages(db, { orgId, from, to }) {
     return { available: false, reason: conn ? `ClickFunnels connection state: ${conn.connection_state}` : "ClickFunnels is not connected yet" };
   }
   const rows = (await db.query(
-    `SELECT funnel_name, page_name, sum(views) AS views, sum(conversions) AS conversions
-       FROM funnel_page_stats
-      WHERE org_id = $1 AND stat_date >= $2 AND stat_date < $3
-      GROUP BY funnel_name, page_name
-      ORDER BY sum(views) DESC NULLS LAST
+    `SELECT * FROM (
+       SELECT DISTINCT ON (clickfunnels_page_id)
+              funnel_name, page_name, stat_date::text AS stat_date, views, conversions
+         FROM funnel_page_stats
+        WHERE org_id = $1 AND stat_date >= $2 AND stat_date < $3
+        ORDER BY clickfunnels_page_id, stat_date DESC
+     ) latest
+      ORDER BY views DESC NULLS LAST
       LIMIT 10`,
     [orgId, fmtDate(from), fmtDate(to)]
   )).rows;
   return { available: true, pages: rows, lastSyncedAt: conn.last_synced_at };
 }
 
-async function pullVideoStats(db, { orgId, from, to }) {
+export async function pullVideoStats(db, { orgId, from, to }) {
   const conn = (await db.query(
     `SELECT connection_state, last_synced_at, last_error FROM analytics_connections
       WHERE org_id = $1 AND platform = 'youtube'`,
@@ -86,11 +97,15 @@ async function pullVideoStats(db, { orgId, from, to }) {
     return { available: false, reason: conn ? `YouTube connection state: ${conn.connection_state}` : "YouTube is not connected yet" };
   }
   const rows = (await db.query(
-    `SELECT video_title, sum(views) AS views, sum(estimated_minutes_watched) AS minutes_watched
-       FROM video_watch_stats
-      WHERE org_id = $1 AND stat_date >= $2 AND stat_date < $3
-      GROUP BY video_title
-      ORDER BY sum(views) DESC NULLS LAST
+    `SELECT * FROM (
+       SELECT DISTINCT ON (youtube_video_id)
+              video_title, stat_date::text AS stat_date, views,
+              estimated_minutes_watched AS minutes_watched
+         FROM video_watch_stats
+        WHERE org_id = $1 AND stat_date >= $2 AND stat_date < $3
+        ORDER BY youtube_video_id, stat_date DESC
+     ) latest
+      ORDER BY views DESC NULLS LAST
       LIMIT 10`,
     [orgId, fmtDate(from), fmtDate(to)]
   )).rows;
@@ -114,7 +129,7 @@ async function pullFeaturesShipped(db, { from, to }, { exec } = {}) {
 }
 
 /** Build the deterministic, numbers-only section. Never touches a model. */
-function buildNumbersSection({ ads, funnel, video, features, from, to }) {
+export function buildNumbersSection({ ads, funnel, video, features, from, to }) {
   const lines = [];
   lines.push(`# Weekly ops brief — ${fmtDate(from)} to ${fmtDate(to)}`);
   lines.push("");
@@ -133,10 +148,11 @@ function buildNumbersSection({ ads, funnel, video, features, from, to }) {
   if (!funnel.available) {
     lines.push(`Not available: ${funnel.reason}.`);
   } else if (!funnel.pages.length) {
-    lines.push("Connected, but no page views recorded this week.");
+    lines.push("Connected, but no page stats were pulled this week.");
   } else {
+    lines.push("Each number is ClickFunnels' running total as of the day it was pulled (7 to 90 days back; the window is not saved). It is not this week's count.");
     for (const p of funnel.pages) {
-      lines.push(`- ${p.funnel_name || "?"} / ${p.page_name || "?"}: ${p.views == null ? "unknown" : p.views} views, ${p.conversions == null ? "unknown" : p.conversions} conversions`);
+      lines.push(`- ${p.funnel_name || "?"} / ${p.page_name || "?"}: ${p.views == null ? "unknown" : p.views} views, ${p.conversions == null ? "unknown" : p.conversions} conversions (pulled ${p.stat_date || "?"})`);
     }
   }
   lines.push("");
@@ -144,11 +160,12 @@ function buildNumbersSection({ ads, funnel, video, features, from, to }) {
   if (!video.available) {
     lines.push(`Not available: ${video.reason}.`);
   } else if (!video.videos.length) {
-    lines.push("Connected, but no watch data recorded this week.");
+    lines.push("Connected, but no watch data was pulled this week.");
   } else {
+    lines.push("Each number is YouTube's running total as of the day it was pulled (the days before it; the window is not saved). It is not this week's count.");
     for (const v of video.videos) {
       const mins = v.minutes_watched == null ? "unknown" : Math.round(Number(v.minutes_watched));
-      lines.push(`- ${v.video_title || "?"}: ${v.views == null ? "unknown" : v.views} views, ${mins === "unknown" ? "unknown" : mins + " minutes"} watched total`);
+      lines.push(`- ${v.video_title || "?"}: ${v.views == null ? "unknown" : v.views} views, ${mins === "unknown" ? "unknown" : mins + " minutes"} watched (pulled ${v.stat_date || "?"})`);
     }
   }
   lines.push("");

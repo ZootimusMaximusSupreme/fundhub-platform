@@ -276,10 +276,16 @@ describe("ad-spine: the date window", () => {
     assert.equal(spanDays, 30, `the 30-day window covers ${spanDays} days`);
   });
 
-  test("the window is computed in UTC, so two machines get the same answer", () => {
-    // Late in the UTC day and early in it must land on the same date string.
-    assert.equal(windowFor(1, new Date("2026-09-09T23:59:59Z")).to, "2026-09-09");
-    assert.equal(windowFor(1, new Date("2026-09-09T00:00:01Z")).to, "2026-09-09");
+  test("the window is the ad account's days (Arizona), so it matches Meta's rows on every machine", () => {
+    // Meta dates ad_metrics_daily in the ad account's zone, America/Phoenix
+    // (UTC-7 all year). Arizona's whole day runs 07:00 UTC to 06:59:59 UTC.
+    assert.equal(windowFor(1, new Date("2026-09-09T07:00:00Z")).to, "2026-09-09");
+    assert.equal(windowFor(1, new Date("2026-09-10T06:59:59Z")).to, "2026-09-09");
+    // The measured failure: 5:45pm Arizona on Oct 5 is already Oct 6 in UTC.
+    // The window must still end on Oct 5, or a 7-day window drops Sep 29.
+    const late = windowFor(7, new Date("2026-10-06T00:45:43Z"));
+    assert.equal(late.to, "2026-10-05");
+    assert.equal(late.from, "2026-09-29");
   });
 });
 

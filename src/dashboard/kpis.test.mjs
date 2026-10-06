@@ -17,6 +17,23 @@ test("formatCents: null is em dash, not zero", () => {
   assert.equal(formatCents(19840000), "$198k");
 });
 
+test("formatCents: cents are always two digits", () => {
+  assert.equal(formatCents(60650), "$606.50");
+  assert.equal(formatCents(60653), "$606.53");
+  assert.equal(formatCents(60600), "$606");
+});
+
+test("computeKpis new clients leaves out demo rows and test addresses", async () => {
+  const sqls = [];
+  const db = { query: async (sql) => { sqls.push(String(sql)); return { rows: [{ cents: 0, n: 0 }] }; } };
+  await computeKpis(db, { orgId: "00000000-0000-4000-8000-000000000001", period: "7d" });
+  const clientsSql = sqls.find((s) => /FROM clients c/.test(s));
+  assert.ok(clientsSql, "the new-clients query was not sent");
+  assert.match(clientsSql, /COALESCE\(c\.is_demo, false\) = false/);
+  assert.match(clientsSql, /'fundhub\.ai', 'example\.com', 'example\.net', 'example\.org'/);
+  assert.match(clientsSql, /\(e2e\|sim\|test\)/);
+});
+
 test("formatRate: null is em dash", () => {
   assert.equal(formatRate(null), "—");
   assert.equal(formatRate(0.5), "50%");

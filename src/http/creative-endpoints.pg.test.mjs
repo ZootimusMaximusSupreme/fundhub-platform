@@ -305,7 +305,7 @@ describe("creative read endpoints", { skip: !HAVE_DB ? "no DATABASE_URL" : false
         await tx.query(
           `INSERT INTO ad_metrics_daily (org_id, partner_id, ad_id, date, spend_cents,
                                          impressions, clicks, conversions, frequency, ctr, cpa_cents, roas)
-           VALUES ($1,$2,$3,CURRENT_DATE - $4::int, 5000, 10000, 80, 2, 4.5, 0.8, 2500, 1.2)`,
+           VALUES ($1,$2,$3,(now() AT TIME ZONE 'America/Phoenix')::date - $4::int, 5000, 10000, 80, 2, 4.5, 0.8, 2500, 1.2)`,
           [org, partnerId, adId, i]);
       }
 

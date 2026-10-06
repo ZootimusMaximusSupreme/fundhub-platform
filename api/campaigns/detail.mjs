@@ -9,6 +9,7 @@
 // Same reasoning as assertCanReadClient in src/partners/scope.mjs.
 import { db } from "../../src/db.mjs";
 import { partnerReadHandler } from "../../src/http/partner-read-api.mjs";
+import { AD_TODAY_SQL } from "../../src/lib/ad-account-day.mjs";
 
 /* fetchRows is exported so the SQL can be executed directly by
    src/http/creative-endpoints.pg.test.mjs. An endpoint whose query only ever runs
@@ -36,18 +37,23 @@ export const fetchRows = async (tx, { query }) => {
          FROM ad_sets s WHERE s.campaign_id = $1 ORDER BY s.created_at`, [id]).then((r) => r.rows),
 
     // The series the fatigue and optimiser screens read. Aggregated per day
-    // across the campaign's ads; spend sums, rates average.
+    // across the campaign's ads; spend sums, rates average — EXCEPT ctr, which
+    // is that day's clicks over that day's impressions. The plain average of
+    // each ad's ctr weighed a 3-impression ad the same as a 2,000-impression
+    // one (measured 2026-10-05: Oct 3 read 7.29% against a true 4.83%).
+    // Days are the ad account's days (src/lib/ad-account-day.mjs).
     tx.query(
       `SELECT m.date,
               sum(m.spend_cents)::bigint AS spend_cents,
               sum(m.impressions)::bigint AS impressions,
               sum(m.clicks)::bigint      AS clicks,
               sum(m.conversions)::bigint AS conversions,
-              avg(m.frequency) AS frequency, avg(m.ctr) AS ctr,
+              avg(m.frequency) AS frequency,
+              round(100.0 * sum(m.clicks) / NULLIF(sum(m.impressions), 0), 6) AS ctr,
               avg(m.cpa_cents) AS cpa_cents, avg(m.roas) AS roas
          FROM ad_metrics_daily m
          JOIN ads a ON a.id = m.ad_id
-        WHERE a.campaign_id = $1 AND m.date > CURRENT_DATE - ($2::int || ' days')::interval
+        WHERE a.campaign_id = $1 AND m.date > ${AD_TODAY_SQL} - ($2::int || ' days')::interval
         GROUP BY m.date ORDER BY m.date ASC`, [id, days]).then((r) => r.rows),
 
     tx.query(

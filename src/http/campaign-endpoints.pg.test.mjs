@@ -165,12 +165,14 @@ describe("GET /api/campaigns/* — the campaign-manager query strings",
       [org, partnerId, connectionId, campaignId, adSetId])).rows[0].id;
 
     // Yesterday, so it lands inside both the ?days=7 fatigue window and the
-    // list endpoint's deliberate "yesterday, not today" spend column.
+    // list endpoint's deliberate "yesterday, not today" spend column. The ad
+    // account's yesterday (America/Phoenix), as the endpoints count it — a UTC
+    // CURRENT_DATE - 1 is the account's TODAY from 5pm to midnight Arizona time.
     await db.query(
       `INSERT INTO ad_metrics_daily
          (org_id, partner_id, ad_id, date, spend_cents, impressions, clicks,
           conversions, frequency, ctr, cpa_cents, roas)
-       VALUES ($1, $2, $3, CURRENT_DATE - 1, 12345, 10000, 250, 5, 3.5, 2.5, 2469, 1.8)`,
+       VALUES ($1, $2, $3, (now() AT TIME ZONE 'America/Phoenix')::date - 1, 12345, 10000, 250, 5, 3.5, 2.5, 2469, 1.8)`,
       [org, partnerId, adId]);
 
     // action_log_agent_ck: an 'agent' action must carry both a rule_key and an

@@ -78,6 +78,16 @@ describe("public/app/pipeline.html — board-summary totals", () => {
     assert.equal(totals.count, 5);
     assert.equal(totals.money, 1000);
   });
+
+  test("cards on the board with no estimate on any of them is unknown, never $0", () => {
+    // Measured 2026-10-05: New Lead (8 cards) and Survey Complete (2), not one
+    // estimate between them, read "$0 funding est." The API now sends null.
+    const fn = loadSummaryFn();
+    assert.equal(fn([stage(8, null), stage(2, null), stage(0, 0)]).money, null);
+    assert.equal(fn([stage(8, null), stage(3, 4200)]).money, 4200, "a known estimate still counts");
+    assert.match(HTML, /totals && totals\.money != null \? usd\(totals\.money\) : "—"/);
+    assert.match(HTML, /stage\.amount == null \? "—" : usd\(stage\.amount\)/);
+  });
 });
 
 /* ────────────────────────────────────────────────────────────────────────────

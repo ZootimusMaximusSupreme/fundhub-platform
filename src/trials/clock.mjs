@@ -94,17 +94,17 @@ export const DAY_PLAN = Object.freeze([
   { day: 2, title: "First optimisation pass", human: false,
     detail: "Budget shifts toward whichever ad set is working." },
   { day: 3, title: "Mid-trial check", human: true,
-    detail: "A FundHub person checks that spend is flowing, nothing is blocked, and the funnel looks right." },
+    detail: "A Fundhub person checks that spend is flowing, nothing is blocked, and the funnel looks right." },
   { day: 4, title: "Creative refresh if the first set is tiring", human: true,
     detail: "New assets are generated automatically and approved by a named human before they run." },
-  { day: 5, title: "FundHub starts fulfilling", human: true,
+  { day: 5, title: "Fundhub starts fulfilling", human: true,
     detail: "Any lead that booked is worked by the real team. This is the day it stops being a demo." },
   { day: 6, title: "Nothing new", human: false,
     detail: "The numbers are the pitch now." },
   { day: 7, title: "Trial ends at the end of the seventh live day", human: false,
     detail: "The dashboard freezes and stays readable for 30 days." },
   { day: 8, title: "The conversion call", human: true,
-    detail: "Join, or keep every lead and get paid as an affiliate on the ones FundHub closes." }
+    detail: "Join, or keep every lead and get paid as an affiliate on the ones Fundhub closes." }
 ]);
 
 /** phaseFor(status, now, startsAt) → a plain-language phase for the screen.

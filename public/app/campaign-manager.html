@@ -475,13 +475,14 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
         <div class="tblscroll">
           <table class="grid">
             <thead><tr>
-              <th>Funnel</th><th>Page</th><th>Date</th><th>Views</th><th>Conversions</th>
+              <th>Funnel</th><th>Page</th><th>Pulled on</th><th>Views</th><th>Conversions</th>
             </tr></thead>
             <tbody id="funnelPagesRows"></tbody>
           </table>
         </div>
         <div class="pager" id="funnelPagesFoot"></div>
         <div class="cap">
+          <b>Each row is a running total, not one day.</b> It counts the days before <b>Pulled on</b>: 7 days from Sync now, 30 from the nightly job, up to 90 from a hand pull. The row does not save which, so never add two rows together.
           <b>Conversions</b> shows a dash when ClickFunnels did not answer for that page and date — never a zero it did not report.
         </div>
       </div>
@@ -785,12 +786,16 @@ function dt(iso,withTime){
 function day(iso){ if(!iso) return nul(); var d=new Date(iso+'T00:00:00Z'); return MON[d.getUTCMonth()]+' '+String(d.getUTCDate()).padStart(2,'0'); }
 function jsonline(o){ try{ return JSON.stringify(o); }catch(e){ return '{}'; } }
 
-/* TODAY — 'today' on these endpoints is the DATABASE's CURRENT_DATE. There is
-   no timezone column in the module, so the screen does not pretend to localise;
-   this is UTC, read from the clock at render time. It was a frozen string
-   ('2026-07-30') until the sample data was removed, which made every "partial"
-   marker below a claim about a day that had already passed. */
-var TODAY = new Date().toISOString().slice(0,10);
+/* TODAY — the AD ACCOUNT's today. Meta dates every daily row in the ad
+   account's zone, America/Phoenix (measured 2026-10-05), and the endpoints now
+   count "yesterday" and "last N days" the same way (src/lib/ad-account-day.mjs).
+   It was UTC, which put the "partial" marker on tomorrow from 5pm to midnight
+   Arizona time and left today's real partial row unmarked. It was a frozen
+   string ('2026-07-30') before that, until the sample data was removed. */
+var TODAY = (function(){
+  try { return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Phoenix'}).format(new Date()); }
+  catch(e){ return new Date(Date.now() - 7*3600000).toISOString().slice(0,10); }
+})();
 
 /* ══ NO SAMPLE DATA ══════════════════════════════════════════════════════
    These start EMPTY and are only ever filled by a read that answered. There is
@@ -1991,7 +1996,7 @@ function renderDrawerBody(){
             '<div><div class="k">clicks · total</div><div class="v mono">'+int(sum('clicks'))+'</div></div>' +
             '<div><div class="k">conversions · total</div><div class="v mono">'+int(sum('conversions'))+'</div></div>' +
             '<div><div class="k">times per person · average</div><div class="v mono">'+dec(avg('frequency'),2)+'</div></div>' +
-            '<div><div class="k">click rate · average</div><div class="v mono">'+pctv(avg('ctr'))+'</div></div>' +
+            '<div><div class="k">click rate · whole window</div><div class="v mono">'+pctv(sum('impressions') > 0 ? 100*sum('clicks')/sum('impressions') : null)+'</div></div>' +
             '<div><div class="k">cost per conversion · average</div><div class="v mono">'+cents(avg('cpa_cents'))+'</div></div>' +
             '<div><div class="k">return on ad spend · average</div><div class="v mono">'+dec(avg('roas'),2)+'</div></div>' +
           '</div>' +
