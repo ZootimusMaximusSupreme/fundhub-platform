@@ -374,3 +374,60 @@ which is the only kind of proof available on a machine with no Postgres.
 local Postgres on this Mac. Nothing about migration 389, migration 390, the
 constraints, the row-level security policies, or any SQL statement in
 `store.mjs` or `token.mjs` has been executed even once.
+
+---
+
+## U17 M3 9.3: ffmpeg argument builders and cut checks
+
+Generated 2026-10-06 from `src/ad-videos/ffmpeg-plan.mjs` (spec §9.3 and §9.1
+step 3). Pure code: it only writes the argument lists and reads what ffmpeg
+prints. **Nothing calls it yet.** The video worker that runs these lists
+(spec §9.5) and the `prepared` / `cut` states (spec §9.1) are other units, so
+every arrow below that starts a run is UNVERIFIED until they land.
+
+Ads only. Every builder refuses a video whose `video_kind` is not `'ad'`, and a
+missing `video_kind` too (`NotAnAdError`, code `not_an_ad`). The master is
+1080x1920; non-ad videos keep 4K end to end (`.claude/rules/video-4k-unless-ad.md`).
+
+```mermaid
+flowchart TD
+    T["one raw take (ad)"] --> PR["probeArgs (ffprobe JSON)<br/>parseProbe: size as shown (±90 swaps), fps,<br/>color_transfer, creation_time, duration, sound"]
+    PR --> AU["audioExtractArgs<br/>mono 16 kHz Opus 32 kbps .ogg (for Whisper)"]
+    PR --> SI["silenceArgs: silencedetect noise -35 dB d=0.12<br/>parseSilence → silences"]
+    AU -.->|"UNVERIFIED: worker not built"| PREP["prepared"]
+    SI -.-> PREP
+    PREP -.->|"aligner U16 gives the pieces"| PC["pieceArgs, one run per piece<br/>-ss S -t D on the 1/30 s grid<br/>[HDR tonemap] → scale 1080:1920 lanczos → fps 30 → [hflip] → setsar 1<br/>exactly N = round(30·D) frames (trim=end_frame)<br/>sound padded/trimmed to N×1600 samples, 15 ms fades, PCM in .mov"]
+    PC --> M1["loudnormPass1Args + blackdetectArgs on each piece"]
+    M1 --> CC{"cutChecks"}
+    CC -->|"short piece, loudness 3 dB off the middle,<br/>peak above -1 dBTP, any black frame, not an ad"| HOLD["blocked, plain reasons<br/>(gain_db says how far each piece is off)"]
+    CC -->|ok| CAT["concatList + concatArgs<br/>stream copy, no encode"]
+    CAT --> L1["loudnormPass1Args on the join → parseLoudnorm"]
+    L1 --> FIN["finalArgs: loudnorm pass 2 (I -14, TP -1.5, LRA 11, linear) + aresample 48000<br/>H.264 High crf 18, 12M / 24M, yuv420p bt709, 30 fps cfr<br/>AAC 192k 48 kHz stereo, +faststart, no metadata"]
+    FIN -.->|"UNVERIFIED: worker not built"| CUT["master saved (cut)"]
+```
+
+Measured, not guessed (ffmpeg 6.0 on this Mac, synthetic clips, outside the suite):
+
+* `-frames:v N` (the spec's words) gave N frames but stopped the file at the
+  Nth frame, so every piece lost 192-848 sound samples (up to 18 ms). The
+  frame cap is `trim=end_frame=N` inside the filter chain instead: 14 of 14
+  in-range pieces came out at exactly N frames and N×1600 samples.
+* A piece past the end of its take came out short of frames with made-up
+  silence, so `pieceArgs` refuses a piece that ends more than half a frame
+  after the take.
+* The HLG tonemap chain ran and wrote bt709 1080x1920; a wide picture stored
+  with a 90° display matrix came out turned (not squashed) with no matrix left;
+  the joined master read back 1080x1920, 30 fps, AAC 48 kHz stereo, moov before
+  mdat, 192 of 192 frames.
+
+Gaps found (not reconciled):
+
+* Two encodes exist now. `merge-takes-media.mjs` (the 2026-10-05 join at
+  `staged`) keeps the takes' own size and levels to -16 LUFS in one pass; this
+  plan cuts to 1080x1920 and levels to -14 LUFS in two passes. Nothing switches
+  the old join off yet.
+* Spec §9.3 says loudness is "matched" but sets no number. Default here: a piece
+  more than 3 dB from the middle piece blocks; pieces under 1 s are not matched.
+* Spec §9.3 names `-frames:v N`; see the measurement above.
+* `ffprobe` is not on this Mac, so `parseProbe` is proved on JSON in ffprobe 6's
+  shape, not on a real iPhone file.
