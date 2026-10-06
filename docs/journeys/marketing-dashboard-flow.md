@@ -613,3 +613,109 @@ flowchart TD
   orchestrator's precondition records them.
 - **UNVERIFIED:** Netlify's own handling of the exit code (0 skips, 1 builds) is from
   Netlify's docs, not seen on a live build.
+## U22 M0 step 4: marketing clock + background worker (in-pass waits) + GET marketing/health (heartbeats 415)
+
+Drawn 2026-10-06 from the code on branch `mm-u22-marketing-clock`:
+`src/marketing/clock.mjs` (tick), `src/marketing/worker.mjs` (runPass, the door),
+`netlify/functions/marketing-clock.mjs`, `netlify/functions/marketing-worker-background.mjs`,
+`api/marketing/health.mjs`, `db/migrations/415_marketing_heartbeats.sql`. Spec §6 Step 4,
+§8.3 (health card), §2 item 4 (buzzes). Back end only: the health card screen is lane E.
+
+### The clock (`marketing-clock`, every 15 minutes, a 30-second scheduled function)
+
+```mermaid
+flowchart TD
+  T["Netlify cron */15 * * * *<br/>marketing-clock.mjs → tick()"] --> S["read every company's marketing_settings<br/>(never makes a row)"]
+  S --> B{"enabled? (read as the weekly-batch switch only)"}
+  B -->|false| BD["batch part: log 'disabled', plan nothing"]
+  B -->|true| BO["batch part: 'on', plan nothing yet<br/>(weekly scheduling is U35 — NOT BUILT)"]
+  BD & BO --> W["count waiting work (all companies):<br/>repo_outbox rows not committed · buzzes due ·<br/>queued jobs due of a JOB_KINDS kind (never 'offer') ·<br/>running claims older than 16 min"]
+  W --> HB["'clock' heartbeat on every company the machine serves<br/>(settings row, a waiting save, or an open job)"]
+  HB --> K{anything waiting?}
+  K -->|no| N["log 'nothing waiting'; no wake"]
+  K -->|yes| WK["wakeWorker: POST /.netlify/functions/marketing-worker-background<br/>header x-fundhub-worker"]
+  WK -->|"MARKETING_WORKER_SECRET unset or masked"| WN["no-op, logged; nothing runs"]
+  T -->|"database error"| E["log it, still answer 200 — the next tick is the retry"]
+```
+
+- The clock imports no model, GitHub, Meta or texting module (`clock.test.mjs` walks the imports).
+- It queues nothing in this unit. The only row it writes is its heartbeat.
+
+### One worker pass (`marketing-worker-background`, up to 15 minutes)
+
+```mermaid
+flowchart TD
+  D["POST from the clock, a save's wake, or the last pass"] --> G{"x-fundhub-worker = MARKETING_WORKER_SECRET?<br/>(unset or masked secret = closed door)"}
+  G -->|no| X["404 'no', nothing runs"]
+  G -->|yes| H1["'worker' heartbeat: running"]
+  H1 --> R["reclaimStale: claims older than 16 min → queued (or failed on the 3rd); never 'offer'"]
+  R --> L{"minute 9 yet?"}
+  L -->|yes| STOP["stop taking work"]
+  L -->|no| DR{"last drain (any pass) a minute or more ago?<br/>('outbox_drain' heartbeat)"}
+  DR -->|yes| DO["drainOutbox → record the result on 'outbox_drain'<br/>('busy' moves the time, keeps the last real result)"]
+  DR -->|no| BZ
+  DO --> BZ{"30 s since the last buzz check?"}
+  BZ -->|yes| SB["sendDueBuzzes with notify-fanout send()"]
+  BZ -->|no| CL
+  SB --> CL["claim per group: writer up to 3 at once, every other group 1<br/>(one short transaction: advisory xact lock, count running, SKIP LOCKED claim, never 'offer')"]
+  CL --> RJ["run each claimed job's handler (JOB_KINDS run(job, ctx))<br/>return → finishJob · throw → failJob (final:true fails at once)"]
+  RJ --> F{"jobs still running?"}
+  F -->|yes| WT["wait for one to end, at most 15 s"] --> L
+  F -->|no| NX{"earliest queued run_after, or the next drain minute<br/>when saves wait and the last drain was not held,<br/>falls before minute 9?"}
+  NX -->|yes| SL["wait until then (a job due but unclaimable: 5 s)"] --> L
+  NX -->|no| IDLE["stop: idle"]
+  STOP & IDLE --> FIN["let running jobs finish (killed at 15 min; reclaimStale takes them back)"]
+  FIN --> RW{"a queued job due within the next 9 minutes?"}
+  RW -->|yes| WAKE["wake the next pass"]
+  RW -->|no| END
+  WAKE --> END["'worker' heartbeat: done, with what the pass did"]
+```
+
+- A job that re-queues itself 10 seconds out (U28's Meta video poll) runs again in the same
+  pass. NOT BUILT: no job kind is registered yet (`JOB_KINDS` is empty until U24, U28 and U35),
+  so today a pass drains, sends buzzes and ends.
+- Concurrent passes are safe: claims skip locked rows, the outbox drain holds a 10-minute
+  lease, buzzes take a lease, and the group caps count running jobs in the database.
+
+### GET /api/marketing/health
+
+```mermaid
+flowchart TD
+  Q["GET /api/marketing/health"] --> A{"signed in?"}
+  A -->|no| E401["401"]
+  A -->|yes| RL{"owner or admin (ROLE_SETS.MARKETING), with a company?"}
+  RL -->|no| E403["403, nothing written"]
+  RL -->|yes| TX["one short staff transaction"]
+  TX --> S1["settings row (made with defaults on the first read)"]
+  S1 --> PS["'page_seen' heartbeat: who read it"]
+  PS --> RD["read: heartbeats · this company's jobs (never 'offer') ·<br/>repo_outbox · last Meta sync · cost this month and the newest batch"]
+  RD --> OUT["200 {clock, worker, outbox, sync, model, as_of}"]
+  OUT --> HR{"held_reason"}
+  HR -->|"GITHUB_REPO_TOKEN unset or masked"| NT["'no_token'"]
+  HR -->|"last drain held by the dry-run fence"| DRY["'dry_run'"]
+  HR -->|otherwise| NUL["null"]
+  TX -->|"a marketing_* table not live yet"| E503["503 not_ready"]
+```
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **The clock and `enabled`.** Spec M0 step 4 says the clock "does nothing while `enabled` is
+  false". This unit reads `enabled` as the weekly-batch switch only: with it off the batch part
+  logs "disabled" and plans nothing (M0 Done #4), but the clock still wakes the worker for saves,
+  due buzzes, due jobs and stale claims, because those come from Chris's own taps (Write now,
+  rule edits, script saves) and must work while the weekly schedule is off. For Chris to see once.
+- Spec §6 Step 4 says the clock's self-wake `fetch` goes on `ALLOWED_RAW_FETCH`. The clock calls
+  `wakeWorker` (`src/marketing/wake.mjs`, already on that list from U05), so no new entry.
+- Spec says "runs up to 3 writer jobs at once". The other groups (loader, system) run 1 at a time
+  each, per the plan brief; the spec does not name them.
+- Heartbeats for the clock, the worker and the drain are written on every company the machine
+  serves; the health card reads its own company's. `marketing_heartbeats.org_id` cascades when a
+  company is deleted (a status light, not a record). The spec names no heartbeat table; the plan
+  contract does (415).
+- `sync.last_sync_at` is the later of the Meta connection's `last_synced_at` and the newest
+  `ad_metrics_daily.synced_at`. `model.last_batch_cost_usd` is the newest `marketing_batches`
+  row's cost; null when there is no batch.
+- Buzz retries use the one company's quiet hours when exactly one company has settings, else the
+  spec default (21:00-07:00 Arizona). A new buzz already waits through quiet hours when queued.
+- `docs/journeys/marketing-machine-intended.md` is not on main, so this was checked against the
+  spec text and the plan contract, not the intended journey.
