@@ -148,7 +148,7 @@ export function canonicalJson(value) {
  * cacheKey(template, props) → sha256 hex of template + canonical props
  * (spec §9.1 step 11.1: "cached in R2 by a hash of template + props").
  * The props are the ones the render receives, so they hold the clip's length
- * (durationInFrames) and, in overlay mode, transparent: true — a 2 s and a
+ * (durationInFrames) and the see-through switch (transparent) — a 2 s and a
  * 3 s render, or an opaque and a see-through one, never share a key.
  * @param {string} template @param {unknown} props
  */
@@ -405,7 +405,8 @@ export function remapThroughWords(masterWords, submagicWords, o = ANIMATION_DEFA
  * items    [{index, template, props, start, end, start_frame, frames, seconds,
  *            cache_key, anchor, anchor_time, line_idx, fallback}] in play order.
  *          props are the render's props: the writer's, plus durationInFrames,
- *          plus transparent: true in overlay mode. start / end are seconds on
+ *          plus transparent (true in overlay mode, false in full-frame mode,
+ *          whatever the writer sent; data-tied templates too). start / end are seconds on
  *          the export, on the 1/30 s frame grid (start_frame, frames exact).
  *          fallback: the anchor's words were not heard as written, so the clip
  *          lands on the start of its line (words) or its cue (bullets).
@@ -588,10 +589,13 @@ export function planAnimations({
       continue;
     }
 
+    /* The mode owns the see-through switch (U29's `transparent` prop, default
+       false): a writer's own `transparent` never decides it, and a data-tied
+       template gets it too. A full-frame clip must be opaque to cover the frame. */
     const props = {
       ...(isPlainObject(p.row.props) ? p.row.props : {}),
       durationInFrames: frames,
-      ...(mode === "overlay" ? { transparent: true } : {})
+      transparent: mode === "overlay"
     };
     items.push({
       index: p.index,

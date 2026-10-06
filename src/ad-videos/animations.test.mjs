@@ -476,7 +476,20 @@ describe("overlay mode keeps clear of the captions (caption_position_y)", () => 
   test("full-frame mode ignores the caption zone (the clip covers the captions for its 2–3 s)", () => {
     const r = planFull(cut, [row("Banks pull", "FileItems", 2)], { captionZone: { top: 900, bottom: 1100 } });
     assert.deepEqual(kept(r), [[0, 120, 60]]);
-    assert.equal("transparent" in r.items[0].props, false);
+    assert.equal(r.items[0].props.transparent, false);
+  });
+
+  test("the mode owns the see-through switch: a writer's transparent never decides it", () => {
+    /* After U29 every template's default_props carries transparent, so the
+       writer may send it. Full frame must stay opaque; overlay must be see-through. */
+    const cat = CATALOG.map((e) => ({ ...e, default_props: { ...e.default_props, transparent: false } }));
+    const base = { cutPlan: cut.cutPlan, catalog: cat, parts: cut.parts, style: "words", exportDuration: 12, captionZone: { top: 1300, bottom: 1500 } };
+    const full = planAnimations({ ...base, mode: "fullframe", animationPlan: [row("Banks pull", "FileItems", 2, { transparent: true })] });
+    assert.deepEqual(full.items[0].props, { transparent: false, durationInFrames: 60 });
+    const over = planAnimations({ ...base, mode: "overlay", animationPlan: [row("Banks pull", "FileItems", 2, { transparent: false })] });
+    assert.deepEqual(over.items[0].props, { transparent: true, durationInFrames: 60 });
+    const tied = planAnimations({ ...base, mode: "overlay", animationPlan: [row("Banks pull", "ProofWall", 4)] });
+    assert.deepEqual(tied.items[0].props, { durationInFrames: 120, transparent: true }, "a data-tied template gets the switch too");
   });
 
   test("captionZoneFrom: pixels, Submagic's 0–80 number (15% band), or not set", () => {
@@ -524,20 +537,20 @@ describe("each clip: the catalog's checks, the size, the cache key", () => {
   test("cache_key = sha256(template + canonical props); props carry the length and the see-through switch", () => {
     const r = planFull(cut, [row("Your score hides", "HiddenDataPoints", 3, { label: "hidden data points", count: 13 })]);
     const it = r.items[0];
-    assert.deepEqual(it.props, { label: "hidden data points", count: 13, durationInFrames: 90 });
-    const canonical = '{"count":13,"durationInFrames":90,"label":"hidden data points"}';
+    assert.deepEqual(it.props, { label: "hidden data points", count: 13, durationInFrames: 90, transparent: false });
+    const canonical = '{"count":13,"durationInFrames":90,"label":"hidden data points","transparent":false}';
     assert.equal(canonicalJson(it.props), canonical);
     assert.equal(it.cache_key, createHash("sha256").update("HiddenDataPoints" + canonical).digest("hex"));
-    assert.equal(cacheKey("HiddenDataPoints", { durationInFrames: 90, label: "hidden data points", count: 13 }), it.cache_key, "key order does not matter");
+    assert.equal(cacheKey("HiddenDataPoints", { transparent: false, durationInFrames: 90, label: "hidden data points", count: 13 }), it.cache_key, "key order does not matter");
     assert.notEqual(cacheKey("HiddenDataPoints", { ...it.props, durationInFrames: 75 }), it.cache_key, "another length renders again");
     assert.notEqual(cacheKey("HiddenDataPoints", { ...it.props, transparent: true }), it.cache_key, "see-through renders again");
     assert.notEqual(cacheKey("FileItems", it.props), it.cache_key);
     assert.equal(canonicalJson({ b: [3, { y: 1, x: undefined, a: null }], a: "s" }), '{"a":"s","b":[3,{"a":null,"y":1}]}');
   });
 
-  test("a data-tied template gets no props but its length", () => {
+  test("a data-tied template gets no props but its length and the see-through switch", () => {
     const r = planFull(cut, [row("Banks pull", "ProofWall", 4)]);
-    assert.deepEqual(r.items[0].props, { durationInFrames: 120 });
+    assert.deepEqual(r.items[0].props, { durationInFrames: 120, transparent: false });
   });
 
   test("the same plan twice gives the same answer (pure)", () => {

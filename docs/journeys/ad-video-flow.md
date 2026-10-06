@@ -675,7 +675,7 @@ flowchart TD
     T --> FF{"fullframe limits, in play order"}
     FF -->|"in the first 3 s · on the CTA line · under 4 s after the last clip ·<br/>can't be cut short enough for the CTA, the end or the 35% share ·<br/>template can't run 3 s or less (ProofWall 4, ProofFlood 6)"| SK
     FF -->|"kept: at most 3 s (4 / 6), cut short at the CTA,<br/>the end, or the 35% share"| IT
-    T -->|"overlay mode: no full-frame limits; never two clips at once"| IT["items: template, props (+ durationInFrames,<br/>+ transparent in overlay), start / end, frames,<br/>cache_key = sha256(template + canonical props)"]
+    T -->|"overlay mode: no full-frame limits; never two clips at once"| IT["items: template, props (+ durationInFrames,<br/>+ transparent from the mode: true in overlay, false in full frame,<br/>whatever the writer sent), start / end, frames,<br/>cache_key = sha256(template + canonical props)"]
     IT -. "UNVERIFIED: worker not built" .-> R["render each clip once per cache_key (R2 cache)"]
     R -.-> OV["overlayArgs: each clip over the Submagic export at its frame<br/>ONE video encode (master settings), sound copied"]
     OV -.-> L1["loudness pass 1 on the overlaid file"]
@@ -712,9 +712,11 @@ word on a kept line lands on that line's start, flagged `fallback`.
 1. **The old Submagic B-roll placement is still live** (`broll.mjs`,
    `placeBrollAndExport`). It has to be switched off when this goes live, or the
    animations land twice.
-2. **Overlay mode cannot render yet.** The kit's templates have no `transparent`
-   switch (spec §9.4 "see-through renders", step 1 of the 10/2 saved plan, in
-   `marketing/broll/`). Until then `animation_mode` stays `fullframe`.
+2. **Overlay mode cannot render on main yet.** The kit's `transparent` switch
+   (spec §9.4 "see-through renders") is U29, not merged when this was written.
+   This planner sends U29's prop name, `transparent`, and sets it from the mode
+   on every clip (data-tied ones too), so a writer's own value never decides it.
+   Until U29 lands and Chris switches it, `animation_mode` stays `fullframe`.
 3. **`caption_position_y` is not measured.** Spec §8.3 says it is set from a test
    export; until it is, overlay mode skips every clip.
 4. **The cache key does not change when a template's code changes.** It hashes
