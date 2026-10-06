@@ -366,7 +366,10 @@ const API_KEYS = [
   "marketing/scripts/fix",
   "marketing/batches",
   "marketing/batches/write-now",
-  "marketing/jobs/retry"
+  "marketing/jobs/retry",
+  /* U23: GET answers 401 to an unsigned ping and never writes (the plan is a live
+     preview); the POST half is never pinged. */
+  "marketing/batches/next"
 ];
 
 const DESK_FILES = [

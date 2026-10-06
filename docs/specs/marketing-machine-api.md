@@ -1582,7 +1582,9 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 - `funnels`: each funnel's 7-day spend, `share` (0..1) and slot count. `slots`: one per script, each with `source` (`chris_idea`, `follow_money`, `fresh_angle` or `competitor`) and a plain `reason`. The example shows 3 of the 21 slots.
 - `suggestions`: 3 angle suggestions. `numbers` is a flat object of named numbers (money keys end in `_cents`); U23 owns its keys. Accepting one is `POST marketing/ideas` with `source: 'suggestion'`.
 - `unmapped_spend_cents`: spend that maps to no funnel.
-- `overrides`: the one-time changes saved for the next batch, or null. U23 owns its inner keys and adds them here when it lands.
+- `overrides`: the one-time changes saved for the next batch, or null. Its keys (U23): `total` (1 to 100 scripts), `funnel_slots` (`{funnel_key: 0..100}`, that many for that funnel; 0 leaves it out this time; the rest is split by spend as usual), `skip_angles` (`[angle_key]`, left out this time; Chris's own ideas with that angle are still written). They apply to the next weekly batch only, never to Write now, and the weekly plan that uses them clears them.
+- Two keys beyond the shape (extra keys are allowed): `funnels[].name` (the funnel's name, for "Roadmap $147: 14") and `suggestions[].last_ran_on` (the last Arizona day an ad with that angle spent, `YYYY-MM-DD`, or null).
+- `numbers` keys (U23): `spend_7d_cents` and `leads` (null when the angle had no ad running last week), `cpl_cents` (null when there were no leads).
 - `as_of` is the last Meta sync.
 
 **Example**
@@ -1679,7 +1681,7 @@ Key order: `id, root_script_id, version, status, ad_id, title, body, parts, scri
 | 400 | `invalid` | `overrides` | overrides is not an object (send {} to clear them) |
 | 409 | `stale` | none | updated_at is older than marketing_settings.updated_at; current is {updated_at, overrides} |
 
-- Saves one-time overrides into `marketing_settings.next_overrides`. `{}` clears them.
+- Saves one-time overrides into `marketing_settings.next_overrides`. `{}` clears them. A bad inner value answers 400 with its own field (`overrides.total`, `overrides.funnel_slots.<key>`, `overrides.skip_angles`); a funnel in `funnel_slots` must be an active funnel of the company.
 - `updated_at` is `marketing_settings.updated_at`, because the overrides live on that row. Read it from `GET marketing/settings`.
 - Answers the same body as GET, with the overrides applied.
 

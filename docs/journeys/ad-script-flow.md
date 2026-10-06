@@ -549,3 +549,74 @@ flowchart TD
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
   `src/http/marketing-ideas.pg.test.mjs`, `marketing-batches.pg.test.mjs` and
   `marketing-rules.pg.test.mjs` in GitHub CI.
+
+## U23 M1 7.5 planner: "reads the room" + GET/POST marketing/batches/next
+
+Generated from code on 2026-10-06: `src/marketing/planner.mjs` (pure `planBatch`), `src/marketing/planner-data.mjs`
+(`gatherPlanInputs`, `savePlan`, `saveOverrides`), `api/marketing/batches/next.mjs`. Yardstick: spec §7.5, §2 items
+2, 3 and 5, Appendix A rule 34, API contract §6.4. Nothing calls `savePlan` yet: U35's `start_batch` job will
+(gatherPlanInputs → planBatch → savePlan). The route only previews and saves one-time changes.
+
+### The plan (planBatch, pure)
+
+```mermaid
+flowchart TD
+    IN["gatherPlanInputs, one staff transaction:<br/>settings, funnels, every ads row with a saved ad-day<br/>(7-day spend, last day it spent, its number's LIVE script's funnel and angle,<br/>its v_ad_label_spine angle, its campaign's funnel), leads by number (U20 readAdNumbers),<br/>angles used lately (scripts not 'import', unreleased plans), waiting ideas,<br/>competitor new entrants (latest board week, 14 days old at most), angles.json (bundled copy)"] --> MAP
+    MAP["step 3: each ads row's spend → the number's script funnel (when that funnel exists)<br/>→ else the campaign's funnel (meta_campaign_ids) → else Unmapped<br/>angle: the script's angle → else the spine angle"] --> PLAY
+    PLAY{"step 2: active funnels<br/>with 7-day spend?"} -->|"some"| SP["those funnels are in play"]
+    PLAY -->|"none"| ALL["every active funnel is in play"]
+    SP --> TOT
+    ALL --> TOT
+    TOT["step 1: total = scripts_per_day x days_per_batch<br/>(x funnels in play when size_rule = per_funnel)<br/>next_overrides.total replaces it (weekly only); Write now: its count"] --> PIN
+    PIN["pins: next_overrides.funnel_slots (0 = left out);<br/>an active funnel with no spend that a waiting idea names gets 1 slot per idea"] --> SPLIT
+    SPLIT["step 4: the rest by spend share x weight, largest remainder;<br/>each funnel at least scripts_per_day when that fits for all"] --> FILL
+    FILL["step 5, inside each funnel, in this order"] --> F1["a. Chris's ideas (chris or suggestion, status new, not held),<br/>oldest first; VSL ideas wait unless on command"]
+    F1 --> F2["b. follow the money: the angles with the most 7-day spend on that funnel,<br/>at most 40% of its slots, 'New hook and new body.' (rule 34)<br/>winner_rule has no shape yet, so spend decides"]
+    F2 --> F3["c. fresh angles from angles.json not used in 30 days,<br/>taken in turn by each funnel"]
+    F3 --> F4["d. competitor new entrants, only when the board has rows"]
+    F4 --> F5["e. the rest: the writer picks a new angle"]
+    F5 --> FMT["step 6: formats from format_mix (smooth round robin);<br/>long only from ideas with points; VSL only on command;<br/>style from format_style"]
+    FMT --> OUT["step 7: every slot has a reason; 3 angle suggestions<br/>{angle_key, name, why, last_ran_on, numbers:{spend_7d_cents, leads, cpl_cents}}"]
+```
+
+### The route and the save
+
+```mermaid
+flowchart TD
+    G["GET marketing/batches/next"] --> GATE{"signed in, owner or admin,<br/>a company on the session?"}
+    P["POST marketing/batches/next<br/>{request_id, updated_at, overrides}"] --> GATE
+    GATE -->|no| X["401 / 403"]
+    GATE -->|"GET"| READ["staffRead: gatherPlanInputs → planBatch,<br/>next release (Monday 7:00 am Arizona = 14:00 UTC) and its ISO week,<br/>saved = the weekly batch of that week once its plan is saved, last Meta sync"]
+    READ --> A["200 {next, saved, as_of}; nothing written<br/>(only the settings row on its first read)"]
+    GATE -->|"POST"| V{"request_id, updated_at,<br/>overrides an object with known keys?"}
+    V -->|no| B["400 invalid, field named"]
+    V -->|yes| W["withRequest (one staff transaction):<br/>funnel_slots name active funnels (else 400),<br/>marketing_settings.next_overrides saved ({} = cleared)"]
+    W -->|"updated_at older than the saved one"| S["409 stale, current {updated_at, overrides}"]
+    W --> READ2["re-plan in the same transaction"] --> A2["200, the same body as GET with the overrides on;<br/>the answer saved under request_id (a repeat answers it again, writes nothing)"]
+    J["U35 start_batch (not built yet)"] -.-> SAVE["savePlan: plan, rules_sha, total on the 'planned' batch;<br/>the ideas its slots use are held (batch_id);<br/>a weekly plan clears next_overrides if still the same"]
+    SAVE -.->|"batch not 'planned'"| NULL["returns null, writes nothing"]
+```
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **No intended journey on main.** `docs/journeys/marketing-machine-intended.md` is not on any branch; this
+  section follows spec §1 and §7.5 as the yardstick (plan note).
+- **Winner rule.** The spec says follow the winners "once the winner rule exists" but gives the rule no shape.
+  `rankFollowMoney` takes it and ignores it; spend decides until it has one.
+- **"Not run in 30 days"** counts spend, plus scripts written (not imports) and unreleased plans, so last week's
+  unfilmed angles are not planned again as fresh. The spec names spend only.
+- **An idea naming an active funnel with no spend** still gets a slot there (Chris's word wins). The spec's
+  funnels-in-play rule does not cover it. An idea naming a turned-off or unknown funnel, a VSL idea on a weekly
+  batch, and ideas past the batch size wait in the inbox; the plan does not list them.
+- **The writer's new angle comes last** (after the competitor board), so the board gets slots when the list runs
+  out. The spec puts "or a new angle the writer proposes" with the fresh angles.
+- **per_funnel** grows the total; the split still follows spend share x weight. §17 decision 6 words it as
+  "3 a day for each running funnel".
+- **Overrides** (`total`, `funnel_slots`, `skip_angles`) are U23's own keys; the spec names `next_overrides` only.
+  They apply to the next weekly batch, never to Write now.
+- **Extra answer keys** beyond the contract: `funnels[].name` (the Today strip prints it) and
+  `suggestions[].last_ran_on` (the Ideas tab prints "last ran Sep 28").
+- **Two copies of the spend-to-funnel rule.** U32's `src/marketing/metrics-rollups.mjs resolveLabels` (wave 2a,
+  not merged with this branch) and this unit's `resolveAdRows` follow the same order; they should become one.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
+  `src/http/marketing-batches-next.pg.test.mjs` in GitHub CI.
