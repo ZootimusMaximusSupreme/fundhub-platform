@@ -67,7 +67,9 @@ Read only. It writes nothing, calls no model and calls no ad platform.
     ]
   },
 
-  // The house partner's ad copy (slug fundhub-house). null only when its table is missing.
+  // The house partner's ad copy (slug fundhub-house). Empty lists (and "copy" in waiting)
+  // when there is no house partner or its copy tables are missing; null only if the
+  // house partner could not be looked up at all.
   "copy": {
     "partner_id": "55272246-…",           // pass this as partner_id to POST /api/creative/generate and /api/creative/run
     "pieces": [                           // newest first, at most 10, archived left out
