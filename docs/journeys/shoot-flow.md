@@ -26,7 +26,7 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     A["Approved in Scripts<br/>ad_scripts.status = locked, ad_id set<br/>(or filmed + needs_retake)"] --> B["GET marketing/shoot<br/>plan_candidates, retakes first, then film_order"]
-    B --> N["take_file_name = '{offer word} Ad {n} — {title} Take {k}.mp4'<br/>offer word on file: SLO only (slo_roadmap or lane slo)<br/>k = highest take used before the shoot + takes rolled + 1<br/>used = a clip filed in ad_videos, or a take rolled on a closed shoot<br/>whose clip is not filed yet (closing early never repeats a name)"]
+    B --> N["take_file_name = '{offer word} Ad {n} — {title} Take {k}.mp4'<br/>offer words on file: SLO (slo_roadmap or lane slo),<br/>Blueprint (capital_blueprint, owner default 2026-10-06, unit GL)<br/>k = highest take used before the shoot + takes rolled + 1<br/>used = a clip filed in ad_videos, or a take rolled on a closed shoot<br/>whose clip is not filed yet (closing early never repeats a name)"]
     N -->|"no ad number, no title,<br/>or an offer with no word"| X["take_file_name null<br/>take_name_problem says why in words"]
     B --> P["Shoot tab: Save the plan"]
     P --> T["Teleprompter rolls teleprompter_text<br/>(the hook only for a new-opening retake)"]

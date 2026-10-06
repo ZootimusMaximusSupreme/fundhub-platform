@@ -11,10 +11,11 @@
 //
 //   `{Offer} Ad {number} — {angle} Take {number}.mp4`
 //
-//   * Offer  the offer's own word. Only ONE offer word is on file in the repo:
-//            SLO, for the roadmap offer (every name in NAMING.md). An offer with
-//            no word on file gets NO name and a sentence saying why. A word is
-//            never made up (CLAUDE.md §2 "Never invent").
+//   * Offer  the offer's own word. Two words are on file: SLO, for the roadmap
+//            offer (every name in NAMING.md), and Blueprint, for the Capital
+//            Blueprint (owner default taken 2026-10-06 for the Blueprint test, unit
+//            GL). An offer with no word on file gets NO name and a sentence saying
+//            why. A word is never made up (CLAUDE.md §2 "Never invent").
 //   * Ad #   the script's ad number (ad_scripts.ad_id, given once on Approve).
 //   * Angle  "the name of that script. The words in the title." So the script's
 //            title, word for word (spaces folded), never angle_key and never a
@@ -33,9 +34,13 @@ import { offerFacts } from "./offer-facts.mjs";
 /* ── the offer word ──────────────────────────────────────────────────────── */
 
 /** Offer key (marketing_funnels.offer_key, src/marketing/offer-facts.mjs) → the
-    word that starts the file name. Add a word here only when Chris names one. */
+    word that starts the file name. Add a word here only when Chris names one.
+    capital_blueprint → "Blueprint": the owner default taken for the Blueprint
+    test (board ops/workflows/marketing-machine-2026-10.md, 2026-10-06, unit GL).
+    marketing/ads/NAMING.md is not changed by this; it still lists SLO names only. */
 export const OFFER_WORDS = Object.freeze(Object.assign(Object.create(null), {
-  slo_roadmap: "SLO"
+  slo_roadmap: "SLO",
+  capital_blueprint: "Blueprint"
 }));
 
 /** The ad lane 'slo' (migration 406) is the roadmap's own lane: same word. */

@@ -65,12 +65,25 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     assert.equal(takeFileName({ offerWord: "SLO", adId: "91", angle: "x", takeNo: 0 }), null);
   });
 
-  test("the offer word: SLO for the roadmap only; other offers have none on file", () => {
+  test("the offer word: SLO for the roadmap, Blueprint for the Capital Blueprint; other offers have none on file", () => {
     assert.equal(offerWordFor({ offer_key: "slo_roadmap", lane: "uwiq" }), "SLO");
     assert.equal(offerWordFor({ offer_key: null, lane: "slo" }), "SLO");
+    assert.equal(offerWordFor({ offer_key: "capital_blueprint", lane: "uwiq" }), "Blueprint");
+    assert.equal(offerWordFor({ offer_key: null, lane: "uwiq" }), null, "the uwiq lane alone names no offer word");
     assert.equal(offerWordFor({ offer_key: "funding_dfy", lane: "sorting" }), null);
     assert.equal(offerWordFor({ offer_key: "toString", lane: "__proto__" }), null);
-    assert.deepEqual(Object.keys(OFFER_WORDS), ["slo_roadmap"]);
+    assert.deepEqual(Object.keys(OFFER_WORDS), ["slo_roadmap", "capital_blueprint"]);
+  });
+
+  test("a Blueprint take name: 'Blueprint Ad <n> — <angle> Take 1.mp4', read back by the join step (unit GL)", () => {
+    const name = takeFileName({ offerWord: offerWordFor({ offer_key: "capital_blueprint" }), adId: "92", angle: "The plan before the call", takeNo: 1 });
+    assert.equal(name, "Blueprint Ad 92 — The plan before the call Take 1.mp4");
+    assert.deepEqual(parseTakeName(name), { offer: "BLUEPRINT", adNumber: 92, angle: "The plan before the call", takeNo: 1, ext: "mp4" });
+    assert.equal(takeNameProblem({ ad_id: "92", title: "The plan before the call", offer_key: "capital_blueprint", lane: "uwiq" }), null);
+    const row = planFields({ ad_id: "92", title: "The plan before the call", offer_key: "capital_blueprint", lane: "uwiq", body: "Hook. Line two." }, {});
+    assert.equal(row.offer_word, "Blueprint");
+    assert.equal(row.take_file_name, "Blueprint Ad 92 — The plan before the call Take 1.mp4");
+    assert.equal(row.take_name_problem, null);
   });
 
   test("the angle is the title, word for word (spaces folded)", () => {
