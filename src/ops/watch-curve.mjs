@@ -9,9 +9,16 @@
 //
 // Ping path: the same ntfy + SMS fan-out the ad-video pipeline uses
 // (src/ad-videos/notify-fanout.mjs). No new vendor.
+//
+// THE BUZZ NEVER FIRED UNTIL 2026-10-05. This file imported notify-fanout's
+// DEFAULT export and called `notify.send`. That default export IS the send
+// function, so `notify.send` was undefined, and the first dying ad threw
+// "send is not a function". sync.mjs catches that so a good sync is kept, which
+// also hid it: ad_watch_curve_alerts held 0 rows while SLO2 kept 10% of plays at
+// the quarter mark. The named import below is the send function itself.
 
 import { MIN_N_RATE } from "./discoveries.mjs";
-import notify from "../ad-videos/notify-fanout.mjs";
+import { send as sendBuzz } from "../ad-videos/notify-fanout.mjs";
 
 export const DIES_BEFORE_25_THRESHOLD = 0.5;
 
@@ -55,11 +62,13 @@ export function diesBefore25Percent({ plays, p25, clicks } = {}) {
   };
 }
 
-/** One or two sentences for the phone. */
+/** One or two sentences for the phone. The TEXT carries only the title
+    (smsBody() in notify-fanout.mjs), so the title alone must say which ad,
+    that people leave before the quarter mark, and that the opening must change. */
 export function dyingAlertCopy(adName) {
   const name = String(adName || "A Fundhub ad").trim() || "A Fundhub ad";
   return {
-    title: `${name}: people leave before the quarter mark`,
+    title: `${name}: people leave before the quarter mark, so change the opening.`,
     body: "Most plays never reach 25%. Change the opening — new first line, same body."
   };
 }
@@ -71,7 +80,8 @@ const DYING_ADS_SQL = `
          a.name AS ad_name,
          m.date AS metric_date,
          m.video_plays,
-         m.video_p25_watched
+         m.video_p25_watched,
+         m.clicks
     FROM ads a
     JOIN LATERAL (
       SELECT date, video_plays, video_p25_watched, clicks
@@ -93,11 +103,14 @@ const DYING_ADS_SQL = `
  * After a Meta sync: find running ads that die before 25% and buzz Chris once
  * per ad per day. Read-only on campaigns/budgets. Never pauses anything.
  */
-export async function notifyDyingBefore25(db, { partnerId, send = notify.send, env = process.env } = {}) {
-  if (!partnerId) return { checked: 0, alerted: 0, skipped: 0 };
+export async function notifyDyingBefore25(db, { partnerId, send = sendBuzz, env = process.env } = {}) {
+  if (!partnerId) return { checked: 0, alerted: 0, skipped: 0, failed: 0 };
   const rows = await db.query(DYING_ADS_SQL, [partnerId]).then((r) => r.rows);
   let alerted = 0;
   let skipped = 0;
+  // A buzz that did not land. No alert row is written, so tomorrow's sync tries
+  // again. Counted so a held or failed buzz is not the same as "nothing dying".
+  let failed = 0;
 
   for (const row of rows) {
     const score = diesBefore25Percent({
@@ -129,10 +142,12 @@ export async function notifyDyingBefore25(db, { partnerId, send = notify.send, e
         [row.ad_id, row.org_id, row.partner_id]
       );
       alerted += 1;
+    } else {
+      failed += 1;
     }
   }
 
-  return { checked: rows.length, alerted, skipped };
+  return { checked: rows.length, alerted, skipped, failed };
 }
 
 export default { diesBefore25Percent, dyingAlertCopy, notifyDyingBefore25 };
