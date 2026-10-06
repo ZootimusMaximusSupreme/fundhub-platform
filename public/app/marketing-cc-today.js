@@ -255,6 +255,72 @@
     };
   }
 
+  /* normalizeWindow — one window of U32's M5 numbers (numbers.today, .d7,
+     .d30). Every null stays null: unknown, never 0. */
+  function normalizeWindow(w) {
+    var o = obj(w);
+    return {
+      spend: num(first(o, ["spend_cents"])),
+      leads: num(first(o, ["leads"])),
+      booked: num(first(o, ["booked"])),
+      showed: num(first(o, ["showed"])),
+      sales: num(first(o, ["sales"])),
+      roadmaps: num(first(o, ["roadmaps"])),
+      cash: num(first(o, ["cash_cents"])),
+      reportedCash: num(first(o, ["reported_cash_cents"])),
+      roas: num(first(o, ["roas"]))
+    };
+  }
+
+  /* normalizeM5 — the keys U32 added to GET marketing/today (contract shape
+     7): numbers, daily, spend_by_funnel, flow, scripts_waiting, stuck_jobs.
+     A key that is missing or null is "not read", never an empty zero. */
+  function normalizeM5(b) {
+    var numbersRaw = first(b, ["numbers"]);
+    var numbers = obj(numbersRaw);
+    var flowRaw = first(b, ["flow"]);
+    var flow = obj(flowRaw);
+    var byFunnelRaw = first(b, ["spend_by_funnel"]);
+    var swRaw = first(b, ["scripts_waiting"]);
+    var stuckRaw = first(b, ["stuck_jobs"]);
+    var sw = obj(swRaw);
+    return {
+      m5Read: numbersRaw != null && typeof numbersRaw === "object",
+      numbers: {
+        today: normalizeWindow(first(numbers, ["today"])),
+        d7: normalizeWindow(first(numbers, ["d7"])),
+        d30: normalizeWindow(first(numbers, ["d30"]))
+      },
+      daily: arr(first(b, ["daily"])).map(function (d) {
+        d = obj(d);
+        return { date: str(first(d, ["date"])), spend: num(first(d, ["spend_cents"])), leads: num(first(d, ["leads"])) };
+      }).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d.date); }),
+      byFunnelRead: Array.isArray(byFunnelRaw),
+      byFunnel: arr(byFunnelRaw).map(function (f) {
+        f = obj(f);
+        var key = first(f, ["funnel_key"]);
+        return { key: key == null || key === "" ? null : str(key), name: str(first(f, ["name"])), spend: num(first(f, ["spend_cents"])) };
+      }),
+      flowRead: flowRaw != null && typeof flowRaw === "object",
+      flow: {
+        clicks: num(first(flow, ["clicks"])),
+        pageViews: num(first(flow, ["page_views"])),
+        leads: num(first(flow, ["leads"])),
+        booked: num(first(flow, ["booked"])),
+        showed: num(first(flow, ["showed"])),
+        sales: num(first(flow, ["sales"]))
+      },
+      scriptsWaiting: swRaw != null && typeof swRaw === "object"
+        ? { ready: num(first(sw, ["ready"])), flagged: num(first(sw, ["flagged"])) }
+        : null,
+      stuckRead: Array.isArray(stuckRaw),
+      stuckJobs: arr(stuckRaw).map(function (j) {
+        j = obj(j);
+        return { id: str(first(j, ["id"])), kind: str(first(j, ["kind"])), error: str(first(j, ["error"])), since: first(j, ["since"]) || null };
+      }).filter(function (j) { return j.id; })
+    };
+  }
+
   /* normalizeToday — GET marketing/today (M10, api/marketing/today.mjs) in the
      one shape this page draws from. Called with null when the read failed:
      every number comes back unknown and `loaded` is false. */
@@ -299,8 +365,20 @@
     var costs = obj(costsRaw);
     var metaAt = first(sync, ["metaSyncedAt"]) || null;
     var metricsAt = first(sync, ["metricsSyncedAt"]) || null;
+    var m5 = normalizeM5(b);
 
     return {
+      /* U32's M5 keys (U37 reads them): see normalizeM5. */
+      m5Read: m5.m5Read,
+      numbers: m5.numbers,
+      daily: m5.daily,
+      byFunnelRead: m5.byFunnelRead,
+      byFunnel: m5.byFunnel,
+      flowRead: m5.flowRead,
+      flow: m5.flow,
+      scriptsWaiting: m5.scriptsWaiting,
+      stuckRead: m5.stuckRead,
+      stuckJobs: m5.stuckJobs,
       /* true when the server answered at all. A 200 with none of these keys
          is still loaded: every number in it is honestly unknown. */
       loaded: body != null && typeof body === "object",
@@ -1376,25 +1454,35 @@
     return '<p class="muted">Not loaded. The note at the top of the page says why.</p>';
   }
 
+  /* waitRow — one thing only Chris can do. `actHtml` (U37) is its one
+     working control (Open Scripts, Retry); `say` is the answer to a tap. */
   function waitRow(w) {
-    return '<li class="row" data-wait="' + esc(w.kind) + '">' +
+    return '<li class="row" data-wait="' + esc(w.kind) + '"' + (w.job ? ' data-job-row="' + esc(w.job) + '"' : "") + ">" +
       '<div class="row-main"><b>' + esc(w.what) + "</b>" +
-      (w.why ? '<div class="row-why">' + (w.whyHtml || esc(w.why)) + "</div>" : "") +
-      (w.how ? '<div class="row-why">' + (w.howHtml || esc(w.how)) + "</div>" : "") +
+      (w.why || w.whyHtml ? '<div class="row-why">' + (w.whyHtml || esc(w.why)) + "</div>" : "") +
+      (w.how || w.howHtml ? '<div class="row-why">' + (w.howHtml || esc(w.how)) + "</div>" : "") +
+      (w.actHtml ? '<div class="row-act">' + w.actHtml + "</div>" : "") +
+      (w.say && w.say.text ? '<div class="say show ' + esc(w.say.tone || "wait") + '" role="status">' + esc(w.say.text) + "</div>" : "") +
       "</div></li>";
   }
 
-  /* waitingList — the rows, videos first (they have waited longest). */
-  function waitingList(view, videos, nowMs) {
+  /* waitingList — the rows: scripts to approve first (the weekly job), then
+     the videos (they have waited longest), then stuck machine steps with
+     Retry (U37), then the flywheel rows. `ui` is the page's memory of Retry
+     taps; the vm tests leave it out. */
+  function waitingList(view, videos, nowMs, ui) {
     var out = [];
+    var s = view && view.loaded ? scriptsWait(view) : null;
+    if (s) out.push(s);
     var v = videoWait(videos, nowMs);
     if (v) out.push(v);
+    if (view && view.loaded) out = out.concat(stuckWaits(view, ui, nowMs));
     return out.concat(view && view.loaded ? deriveWaiting(view) : []);
   }
 
-  function renderWaiting(view, videos, nowMs) {
+  function renderWaiting(view, videos, nowMs, ui) {
     if (!view || !view.loaded) return notLoaded();
-    var list = waitingList(view, videos, nowMs);
+    var list = waitingList(view, videos, nowMs, ui);
     var videoErr = videos && videos.loaded === false && videos.tried
       ? '<p class="caption muted gap-top">The video list did not load. The rest of this page is current.</p>'
       : "";
@@ -1580,6 +1668,874 @@
     }).join("") + "</ol>";
   }
 
+  /* ══ U37: the next drop, the machine, the numbers, stuck work ═══════════
+     Plan unit U37 (spec §8.3 Today, §11.3, §7.5 step 7; design §3.1).
+     Four more reads, each its own part of the page, each failing on its own
+     ("The rest of this page is current"):
+       GET  marketing/batches/next  the next drop: time, count, split, the
+                                    planner's 3 angle suggestions (U23)
+       GET  marketing/batches       batch history and write_now_ready (U26)
+       GET  marketing/health        clock, worker, repo saves, last sync,
+                                    model spend against the caps (U22)
+       GET  marketing/today         numbers, daily, spend_by_funnel, flow,
+                                    scripts_waiting, stuck_jobs (U32; already
+                                    read above)
+     Three taps, each answering in plain words where Chris is looking:
+       Write now        POST marketing/batches/write-now {request_id, count}
+                        after the frame's cost sheet (design §5 rule 3).
+                        Drawn ONLY while write_now_ready is true; then it is
+                        Today's one filled button and Write ad copy turns
+                        into an outline button that still works.
+       Use this angle   POST marketing/ideas {request_id, angle_key,
+                        raw_points: the suggestion's why, source:'suggestion'}
+                        (spec §7.5 step 7: accepting a suggestion makes an
+                        idea). Free.
+       Retry            POST marketing/jobs/retry {request_id, job_id}, one
+                        per stuck job. Free.
+     Charts are drawn by hand (spec §4 trap 15): an inline <svg> polyline, a
+     bar made of two <span>s. No chart library, no canvas. */
+
+  /* The worker's job kinds (src/marketing/job-kinds.mjs, plus the batch
+     kinds U35 adds), in words. A kind not here is "a machine step": the page
+     never prints a code name. */
+  var KIND_WORDS = {
+    write_slot: "writing one script",
+    fix_script: "fixing a script",
+    start_batch: "starting a batch of scripts",
+    finish_batch: "finishing a batch of scripts",
+    release_batch: "sending out a batch of scripts",
+    expire_drafts: "clearing old drafts",
+    voice_export: "saving your voice edits",
+    nightly_script_check: "the nightly script check",
+    funnel: "building a funnel",
+    funnel_push: "putting a funnel live",
+    avatar: "building the avatar",
+    flywheel_stage: "a flywheel step",
+    deep_research: "deep research",
+    meta_load: "loading an ad into Meta (paused)",
+    meta_video_poll: "waiting on a video at Meta"
+  };
+  function kindWords(kind) {
+    return Object.prototype.hasOwnProperty.call(KIND_WORDS, kind) ? KIND_WORDS[kind] : "a machine step";
+  }
+
+  /* The clock ticks every 15 minutes (netlify/functions/marketing-clock.mjs,
+     SWEEP_CRON "*\/15 * * * *"). Two missed ticks and it reads "Late". */
+  var CLOCK_LATE_MS = 30 * 60 * 1000;
+  /* After Write now, GET marketing/batches is read again every 20 seconds
+     while that batch is waiting or writing and the page is in view, for at
+     most 10 minutes. Then the 5-minute reload carries on. */
+  var BATCH_POLL_MS = 20 * 1000;
+  var BATCH_POLL_TRIES = 30;
+  /* How many scripts Write now may ask for from this page. The server takes
+     any whole number of 1 or more; the default is the design's 3. */
+  var WRITE_NOW_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  var WRITE_NOW_DEFAULT = 3;
+  /* The filled-button class. Today has exactly one filled button at a time
+     (UI-STANDARDS §1): Write ad copy (in TODAY_HTML) until write_now_ready,
+     then Write now. placePrimary() moves the class when Write now is drawn. */
+  var PRIMARY = "primary";
+
+  /* partState — one read's answer: "ok", "missing" (the route or its table
+     is not on this server yet) or "error". `key` is the key a real answer
+     always carries; a 200 without it is a server that does not have the
+     route yet. */
+  function partState(res, key) {
+    if (!res || res.transport || res.timedOut || res.status === 0) return "error";
+    var b = obj(res.body);
+    if (res.status === 404) return "missing";
+    if (res.status === 503 && b.error === "not_ready") return "missing";
+    if (res.status !== 200 || b.ok === false) return "error";
+    return Object.prototype.hasOwnProperty.call(b, key) ? "ok" : "missing";
+  }
+
+  /* partError — a read that failed, as one sentence. The rest of the page
+     stays painted (design §3.1: "one banner per part that failed"). */
+  function partError(res, name) {
+    if (res && res.status === 401) return "You are signed out. Sign in and open this page again.";
+    if (res && res.status === 403) return "Only the owner or an admin can see " + name + ".";
+    if (res && res.timedOut) return cap(name) + " took too long to load. The rest of this page is current. It tries again in 5 minutes.";
+    if (!res || res.transport || res.status === 0) return "No connection, so " + name + " did not load. The rest of this page is current.";
+    return cap(name) + " did not load. The rest of this page is current. It tries again in 5 minutes.";
+  }
+
+  function partMissing(name) {
+    return cap(name) + " is not on this server yet. It turns on with the next update.";
+  }
+
+  /* normalizeHealth — GET marketing/health (U22, contract shape 6). */
+  function normalizeHealth(res) {
+    var state = partState(res, "clock");
+    var out = { state: state, message: state === "error" ? partError(res, "the machine's health") : (state === "missing" ? partMissing("The machine's health") : "") };
+    if (state !== "ok") return out;
+    var b = obj(res.body);
+    var c = obj(first(b, ["clock"]));
+    var w = obj(first(b, ["worker"]));
+    var o = obj(first(b, ["outbox"]));
+    var s = obj(first(b, ["sync"]));
+    var m = obj(first(b, ["model"]));
+    out.clock = { lastTickAt: first(c, ["last_tick_at"]) || null, enabled: bool(first(c, ["enabled"])) };
+    out.worker = {
+      lastRunAt: first(w, ["last_run_at"]) || null,
+      queued: num(first(w, ["queued"])),
+      running: num(first(w, ["running"])),
+      failed: arr(first(w, ["failed_24h"])).map(function (f) {
+        f = obj(f);
+        return { kind: str(first(f, ["kind"])), error: str(first(f, ["error"])), at: first(f, ["at"]) || null };
+      })
+    };
+    out.outbox = {
+      waiting: num(first(o, ["waiting"])),
+      oldestAt: first(o, ["oldest_waiting_at"]) || null,
+      lastSha: str(first(o, ["last_commit_sha"])) || null,
+      lastCommitAt: first(o, ["last_commit_at"]) || null,
+      lastError: str(first(o, ["last_error"])) || null,
+      tokenPresent: bool(first(o, ["token_present"])),
+      held: str(first(o, ["held_reason"])) || null
+    };
+    out.syncAt = first(s, ["last_sync_at"]) || null;
+    out.model = {
+      monthUsd: num(first(m, ["month_cost_usd"])),
+      monthCapUsd: num(first(m, ["max_month_cost_usd"])),
+      lastBatchUsd: num(first(m, ["last_batch_cost_usd"])),
+      batchCapUsd: num(first(m, ["max_batch_cost_usd"]))
+    };
+    out.asOf = first(b, ["as_of"]) || null;
+    return out;
+  }
+
+  /* normalizeNext — GET marketing/batches/next (U23, contract shape 5). */
+  function normalizeNext(res) {
+    var state = partState(res, "next");
+    var out = { state: state, message: state === "error" ? partError(res, "the next drop") : (state === "missing" ? partMissing("The next drop") : ""), next: null, saved: null };
+    if (state !== "ok") return out;
+    var b = obj(res.body);
+    var n = obj(first(b, ["next"]));
+    var overrides = first(n, ["overrides"]);
+    out.next = {
+      releaseAt: first(n, ["release_at"]) || null,
+      weekKey: str(first(n, ["week_key"])),
+      enabled: bool(first(n, ["enabled"])),
+      total: num(first(n, ["total"])),
+      sizeRule: str(first(n, ["size_rule"])),
+      funnels: arr(first(n, ["funnels"])).map(function (f) {
+        f = obj(f);
+        return {
+          key: str(first(f, ["funnel_key"])), name: str(first(f, ["name"])),
+          spend7: num(first(f, ["spend_7d_cents"])), share: num(first(f, ["share"])), slots: num(first(f, ["slots"]))
+        };
+      }),
+      suggestions: arr(first(n, ["suggestions"])).map(function (s) {
+        s = obj(s);
+        var nums = obj(first(s, ["numbers"]));
+        return {
+          angleKey: str(first(s, ["angle_key"])), name: str(first(s, ["name"])), why: str(first(s, ["why"])),
+          lastRanOn: first(s, ["last_ran_on"]) || null,
+          spend7: num(first(nums, ["spend_7d_cents"])), leads: num(first(nums, ["leads"])), cpl: num(first(nums, ["cpl_cents"]))
+        };
+      }),
+      unmapped: num(first(n, ["unmapped_spend_cents"])),
+      hasOverrides: overrides != null && typeof overrides === "object" && Object.keys(overrides).length > 0
+    };
+    var saved = first(b, ["saved"]);
+    out.saved = saved && typeof saved === "object" ? { batchId: first(saved, ["batch_id"]) || null, status: str(first(saved, ["status"])) } : null;
+    return out;
+  }
+
+  /* normalizeBatches — GET marketing/batches (U26, contract shape 4).
+     write_now_ready is true only once the start_batch job kind is
+     registered (U35). Anything but an explicit true keeps Write now off
+     the page: no dead button (UI-STANDARDS §5). */
+  function normalizeBatches(res) {
+    var state = partState(res, "batches");
+    var out = { state: state, ready: false, batches: [] };
+    if (state !== "ok") return out;
+    var b = obj(res.body);
+    out.ready = first(b, ["write_now_ready"]) === true;
+    out.batches = arr(first(b, ["batches"])).map(function (x) {
+      x = obj(x);
+      var c = obj(first(x, ["counts"]));
+      return {
+        id: str(first(x, ["id"])), kind: str(first(x, ["kind"])), status: str(first(x, ["status"])),
+        releaseAt: first(x, ["release_at"]) || null, releasedAt: first(x, ["released_at"]) || null,
+        total: num(first(c, ["total"])), ready: num(first(c, ["ready"])), flagged: num(first(c, ["flagged"])), failed: num(first(c, ["failed"])),
+        error: str(first(x, ["error"]))
+      };
+    });
+    return out;
+  }
+
+  /* writeNowShown — Write now is on the page only when the server said
+     write_now_ready: true. While it is, it is Today's one filled button. */
+  function writeNowShown(batches) { return Boolean(batches && batches.ready === true); }
+
+  function plural(n, one, many) { return count(n) + " " + (num(n) === 1 ? one : (many || one + "s")); }
+
+  /* prettyKey — a funnel key in words when no name came with it
+     ("book_call" → "Book call"). */
+  function prettyKey(key) {
+    var k = str(key).replace(/[_-]+/g, " ").trim();
+    return k ? k.charAt(0).toUpperCase() + k.slice(1) : "A funnel";
+  }
+
+  /* funnelNames — key → name, from GET marketing/today's spend_by_funnel
+     (names come from marketing_funnels there). */
+  function funnelNames(view) {
+    var out = {};
+    arr(view && view.byFunnel).forEach(function (f) { if (f.key && f.name) out[f.key] = f.name; });
+    return out;
+  }
+
+  function funnelName(f, names) {
+    return f.name || (names && names[f.key]) || prettyKey(f.key);
+  }
+
+  /* dropWhen — "Monday, Oct 19 at 7:00 AM Arizona time". */
+  function dropWhen(iso) {
+    var d = asDate(iso);
+    if (!d) return "unknown";
+    return fmt(d, { weekday: "long", month: "short", day: "numeric" }) + " at " + clockOf(d) + " Arizona time";
+  }
+
+  /* nextDropModel — the Next drop card's sentences (design §3.1 item 4). */
+  function nextDropModel(part, names) {
+    var n = part && part.next;
+    if (!n) return null;
+    var split = n.funnels.filter(function (f) { return num(f.slots) !== null && f.slots > 0; })
+      .map(function (f) { return funnelName(f, names) + ": " + count(f.slots); });
+    return {
+      when: dropWhen(n.releaseAt),
+      count: n.total === null ? "Number of scripts: unknown" : plural(n.total, "script"),
+      split: split.join(" · "),
+      splitWhy: split.length ? "Split by each funnel's ad spend over the last 7 days." : "",
+      off: n.enabled === false ? "The weekly drop is off, so nothing comes on its own. Turn it on in Settings." : "",
+      unmapped: num(n.unmapped) !== null && n.unmapped > 0
+        ? money(n.unmapped) + " of last week's ad spend is not tied to a funnel yet." : "",
+      saved: part.saved ? "The plan for this drop is saved." : "",
+      changed: n.hasOverrides ? "Your changes for this drop are saved." : ""
+    };
+  }
+
+  /* batchLine — the newest batch in one line ("Write now (Oct 6): writing.
+     1 of 3 ready."). */
+  function batchLine(b) {
+    if (!b) return "";
+    var day = asDate(b.releaseAt || b.releasedAt);
+    var name = b.kind === "on_command" ? "Write now" + (day ? " (" + dateOf(day) + ")" : "") : (day ? dateOf(day) + " drop" : "Weekly drop");
+    var ofTotal = count(b.ready === null ? 0 : b.ready) + " of " + (b.total === null ? "unknown" : count(b.total)) + " ready";
+    if (b.status === "failed") return name + " stopped: " + (b.error ? b.error.replace(/[.\s]+$/, "") : "no reason was saved") + ".";
+    if (b.status === "planned") return name + ": waiting to start.";
+    if (b.status === "writing") return name + ": writing. " + ofTotal + ".";
+    var bits = [ofTotal];
+    if (num(b.flagged) > 0) bits.push(count(b.flagged) + " need a look");
+    if (num(b.failed) > 0) bits.push(count(b.failed) + " did not get written");
+    return name + ": " + bits.join(", ") + ".";
+  }
+
+  function batchBusy(b) { return Boolean(b && (b.status === "planned" || b.status === "writing")); }
+
+  /* suggestionNumbers — "$412 spent last week · 9 leads · $45.78 a lead.
+     Last ran Oct 4." A null is said in words, never as $0. */
+  function suggestionNumbers(s) {
+    var bits = [];
+    if (s.spend7 === null) bits.push("No ads ran on it last week");
+    else bits.push(money(s.spend7) + " spent last week");
+    if (s.leads !== null) bits.push(plural(s.leads, "lead"));
+    if (s.cpl !== null) bits.push(money(s.cpl) + " a lead");
+    return bits.join(" · ") + "." + (s.lastRanOn && dayWords(s.lastRanOn) ? " Last ran " + dayWords(s.lastRanOn) + "." : "");
+  }
+
+  /* A request_id the marketing routes take: 8 to 200 letters, digits,
+     . _ : - (src/marketing/http.mjs REQUEST_ID_RE). One per tap. */
+  var REQUEST_ID_RE = /^[A-Za-z0-9._:-]{8,200}$/;
+  function newRequestId() {
+    var c = root.crypto;
+    if (c && typeof c.randomUUID === "function") return c.randomUUID();
+    return "mcc-" + Date.now().toString(36) + "-" + String(Math.random()).replace(/\D/g, "").slice(0, 12);
+  }
+
+  /* ideaRequest — "Use this angle" (spec §7.5 step 7; contract §6.3): the
+     suggestion's why is the idea's words, and source says Chris accepted a
+     planner suggestion. */
+  function ideaRequest(s, requestId) {
+    var body = { request_id: requestId, raw_points: s.why || s.name, source: "suggestion" };
+    if (s.angleKey) body.angle_key = s.angleKey;
+    return body;
+  }
+
+  function writeNowRequest(n, requestId) {
+    return { request_id: requestId, count: n };
+  }
+
+  function retryRequest(jobId, requestId) {
+    return { request_id: requestId, job_id: jobId };
+  }
+
+  /* answerWords — a refused tap in plain words. The marketing routes write
+     their own `message` for the page; signed out, not allowed and no
+     connection are worded here. */
+  function answerWords(res) {
+    if (!res || res.transport || res.status === 0 || res.status === 401 || res.status === 403) return plainError(res, "action");
+    return serverWords(res) || plainError(res, "action");
+  }
+
+  function tapOk(res) { return Boolean(res && (res.status === 200 || res.status === 202) && obj(res.body).ok !== false); }
+
+  /* summarizeIdea — what "Use this angle" did. */
+  function summarizeIdea(res, name, nowMs) {
+    if (tapOk(res) && obj(res.body).idea) {
+      return { ok: true, tone: "ok", text: "Saved “" + (name || "this angle") + "” as an idea at " + clockOf(new Date(nowMs)) + ". Ideas go first in the next batch." };
+    }
+    return { ok: false, tone: "err", text: "That angle was not saved. " + answerWords(res) };
+  }
+
+  /* summarizeWriteNow — what Write now did. */
+  function summarizeWriteNow(res, n) {
+    var b = obj(res && res.body);
+    if (tapOk(res) && (b.queued === true || b.batch_id)) {
+      return { ok: true, tone: "wait", text: "Writing " + plural(n, "script") + " now. They show up in Scripts when they are done. You can leave this page." };
+    }
+    if (res && res.status === 400 && b.error === "cap_reached") {
+      return { ok: false, tone: "err", text: (str(b.message) || "A model spend cap is reached.") + " Nothing was started." };
+    }
+    return { ok: false, tone: "err", text: answerWords(res) };
+  }
+
+  /* summarizeRetry — what Retry did ("Running again. Started 3:04 PM."). */
+  function summarizeRetry(res, nowMs) {
+    if (tapOk(res) && obj(res.body).job) {
+      return { ok: true, tone: "ok", text: "Running again. Started " + clockOf(new Date(nowMs)) + "." };
+    }
+    return { ok: false, tone: "err", text: answerWords(res) };
+  }
+
+  /* writeNowSheet — the words on the frame's cost sheet before Write now
+     (design §3.1 Actions, §5 rule 3). The frame prints the cost line for
+     ONE script (GET marketing/costs kind "script") and the month line. */
+  function writeNowSheet(n, health) {
+    var m = health && health.state === "ok" ? health.model : null;
+    var caps = m && (m.batchCapUsd !== null || m.monthCapUsd !== null)
+      ? "It stops by itself at " + [m.batchCapUsd !== null ? usd(m.batchCapUsd) + " a batch" : null,
+        m.monthCapUsd !== null ? usd(m.monthCapUsd) + " a month" : null].filter(Boolean).join(" and ") + "."
+      : "It stops by itself at the batch and month caps in Settings.";
+    return {
+      kind: "script",
+      title: "Write " + plural(n, "script") + " now?",
+      button: "Write " + count(n),
+      lines: [
+        "The cost line is for one script. You asked for " + count(n) + ".",
+        "It writes with the model. The scripts show up in Scripts when they are done.",
+        caps,
+        "It spends no ad money."
+      ]
+    };
+  }
+
+  /* usd — a model bill in dollars ("$12.48", "$300"). Null is unknown. */
+  function usd(v) {
+    var n = num(v);
+    if (n === null) return "unknown";
+    var whole = Math.round(n) === n;
+    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  }
+
+  /* ── the machine (the health card) ── */
+
+  /* healthModel — GET marketing/health in rows of words. Every row says
+     what the part does, how it is now, and a chip with a WORD (never colour
+     alone, UI-STANDARDS §12.6). The first problem leads the health line. */
+  function healthModel(h, view, nowMs) {
+    if (!h || h.state !== "ok") return null;
+    var now = typeof nowMs === "number" ? nowMs : Date.now();
+    var rows = [];
+    var problems = [];
+
+    var tick = asDate(h.clock.lastTickAt);
+    var clock = { key: "clock", label: "Clock", what: "Wakes the machine every 15 minutes." };
+    if (!tick) {
+      clock.word = "Not run yet"; clock.tone = "bad"; clock.text = "The clock has not ticked yet.";
+      problems.push("the clock has not ticked yet");
+    } else if (now - tick.getTime() > CLOCK_LATE_MS) {
+      clock.word = "Late"; clock.tone = "bad"; clock.text = "Last tick " + when(h.clock.lastTickAt, now).text + ". It should tick every 15 minutes.";
+      problems.push("the clock is late");
+    } else {
+      clock.word = "Running"; clock.tone = "on"; clock.text = "Last tick " + when(h.clock.lastTickAt, now).text + ".";
+    }
+    clock.text += h.clock.enabled === true ? " The weekly drop is on." : (h.clock.enabled === false ? " The weekly drop is off." : "");
+    clock.title = tick ? fullTime(tick) : "";
+    rows.push(clock);
+
+    var w = h.worker;
+    var ran = asDate(w.lastRunAt);
+    var failed = w.failed.length;
+    var worker = { key: "worker", label: "Worker", what: "Does the jobs: writing, research, saves." };
+    worker.text = (ran ? "Last ran " + when(w.lastRunAt, now).text + ". " : "It has not run yet. ") +
+      count(w.queued) + " waiting, " + count(w.running) + " running. " +
+      (failed
+        ? plural(failed, "job") + " failed in the last 24 hours. Stuck ones are under Waiting on you, each with Retry."
+        : "Nothing failed in the last 24 hours.");
+    worker.title = ran ? fullTime(ran) : "";
+    if (failed) { worker.word = "Had trouble"; worker.tone = "bad"; problems.push(plural(failed, "job") + " failed today"); }
+    else if (num(w.running) > 0) { worker.word = "Working"; worker.tone = "wip"; }
+    else if (ran) { worker.word = "Ready"; worker.tone = "on"; }
+    else { worker.word = "Not run yet"; worker.tone = ""; }
+    rows.push(worker);
+
+    var o = h.outbox;
+    var saves = { key: "outbox", label: "Saves to GitHub", what: "Puts every approve, edit and idea in the repo." };
+    var bits = [];
+    if (o.held === "no_token" || o.tokenPresent === false) {
+      saves.word = "Held"; saves.tone = "bad";
+      bits.push("Repo saves are held: the GitHub token is not set.");
+      problems.push("repo saves are held: the GitHub token is not set");
+    } else if (o.held === "dry_run") {
+      saves.word = "Held"; saves.tone = "wip";
+      bits.push("Repo saves are held by the dry-run flag, so nothing goes to GitHub yet.");
+      problems.push("repo saves are held by the dry-run flag");
+    } else if (num(o.waiting) > 0) {
+      saves.word = "Saving"; saves.tone = "wip";
+    } else if (o.waiting === 0) {
+      saves.word = "Up to date"; saves.tone = "on";
+    } else {
+      saves.word = "Unknown"; saves.tone = "";
+    }
+    if (num(o.waiting) > 0) {
+      var oldest = asDate(o.oldestAt);
+      bits.push(plural(o.waiting, "save") + " waiting" + (oldest ? " since " + savedWords(o.oldestAt, now).text : "") + ".");
+    } else if (o.waiting === 0) {
+      bits.push("Nothing is waiting.");
+    }
+    bits.push(o.lastSha
+      ? "Last save " + o.lastSha.slice(0, 7) + (o.lastCommitAt ? ", " + when(o.lastCommitAt, now).text : "") + "."
+      : "No save has reached GitHub yet.");
+    if (o.lastError) bits.push("Last error: " + o.lastError.replace(/[.\s]+$/, "") + ".");
+    saves.text = bits.join(" ");
+    saves.title = o.lastCommitAt && asDate(o.lastCommitAt) ? fullTime(asDate(o.lastCommitAt)) : "";
+    rows.push(saves);
+
+    var sync = asDate(h.syncAt);
+    var meta = { key: "sync", label: "Meta pull", what: "Brings in last night's ad numbers." };
+    if (!sync) {
+      meta.word = "Never"; meta.tone = "bad"; meta.text = "Meta has never sent numbers. " + META_PULL_WORDS;
+      problems.push("Meta has never sent numbers");
+    } else if (now - sync.getTime() > META_FRESH_MS) {
+      meta.word = "Old"; meta.tone = "bad"; meta.text = "Last pulled " + savedWords(h.syncAt, now).text + ". It should pull every day.";
+      problems.push("the Meta numbers are old");
+    } else {
+      meta.word = "Fresh"; meta.tone = "on"; meta.text = "Last pulled " + savedWords(h.syncAt, now).text + ".";
+    }
+    meta.title = sync ? fullTime(sync) : "";
+    rows.push(meta);
+
+    var m = h.model;
+    var spend = { key: "model", label: "Model spend", what: "What the AI writing cost this month." };
+    var share = m.monthUsd !== null && m.monthCapUsd !== null && m.monthCapUsd > 0 ? m.monthUsd / m.monthCapUsd : null;
+    if (m.monthUsd === null) { spend.word = "Unknown"; spend.tone = ""; }
+    else if (share !== null && share >= 1) { spend.word = "At the cap"; spend.tone = "bad"; problems.push("model spend is at the month cap"); }
+    else if (share !== null && share >= 0.8) { spend.word = "Near the cap"; spend.tone = "wip"; }
+    else { spend.word = "Under the cap"; spend.tone = "on"; }
+    spend.text = "This month: " + usd(m.monthUsd) + (m.monthCapUsd !== null ? " of " + usd(m.monthCapUsd) : "") + "." +
+      (m.lastBatchUsd !== null || m.batchCapUsd !== null
+        ? " Last batch: " + usd(m.lastBatchUsd) + (m.batchCapUsd !== null ? " of " + usd(m.batchCapUsd) : "") + "." : "");
+    spend.meter = share === null ? null : Math.max(0, Math.min(100, Math.round(share * 100)));
+    spend.meterLabel = share === null ? "" : usd(m.monthUsd) + " of " + usd(m.monthCapUsd) + " used this month";
+    rows.push(spend);
+
+    var healthy = !problems.length;
+    return {
+      healthy: healthy,
+      word: healthy ? "Healthy" : "Needs a look",
+      tone: healthy ? "on" : "bad",
+      line: healthy ? "The machine is healthy." : "The machine needs a look: " + problems[0] + ".",
+      rows: rows
+    };
+  }
+
+  /* ── the numbers (spec §11.3 on Today) ── */
+
+  /* roasWords — cash ÷ ad spend, as money back per dollar ("$2.58"). */
+  function roasWords(roas, spend) {
+    if (roas === null) return { value: "unknown", note: spend === 0 ? "No ad spend, so nothing to compare." : "" };
+    return { value: "$" + roas.toFixed(2), note: "back for each $1 of ads" };
+  }
+
+  /* numberCells — one window's six rows (spend, leads, booked calls, sales,
+     cash, return). `which` is "today", "d7" or "d30". */
+  function numberCells(view, which, nowMs) {
+    var v = view || {};
+    var w = (v.numbers && v.numbers[which]) || normalizeWindow(null);
+    var spendNote = "";
+    var spendValue = money(w.spend);
+    if (which === "today" && w.spend === null) {
+      spendValue = v.loaded && metaFresh(v, nowMs) ? "Comes in tomorrow" : "unknown";
+      spendNote = v.loaded && metaFresh(v, nowMs) ? META_PULL_WORDS : "";
+    } else if (which === "d7") {
+      spendNote = compare(w.spend, v.spendPrev7, "7 days");
+    } else if (which === "d30") {
+      spendNote = compare(w.spend, v.spendPrev30, "30 days");
+    }
+    var r = roasWords(w.roas, w.spend);
+    return [
+      { key: "spend", label: "Ad spend", value: spendValue, note: spendNote },
+      { key: "leads", label: "Leads", value: count(w.leads), note: "" },
+      { key: "booked", label: "Calls booked", value: count(w.booked), note: w.showed === null ? "" : count(w.showed) + " showed" },
+      { key: "sales", label: "Sales", value: count(w.sales), note: w.roadmaps === null ? "" : plural(w.roadmaps, "roadmap") + " bought" },
+      { key: "cash", label: "Cash", value: money(w.cash), note: w.reportedCash === null ? "" : "Closers typed " + money(w.reportedCash) },
+      { key: "roas", label: "Cash back per $1 of ads", value: r.value, note: r.note }
+    ];
+  }
+
+  /* sparkModel — the last 30 days of one number as a hand-drawn line in a
+     100 × 32 box. A day with no saved number (null) breaks the line: the
+     gap is the truth, never a dip to 0. */
+  function sparkModel(daily, key) {
+    var days = arr(daily);
+    var vals = days.map(function (d) { return num(d[key]); });
+    var n = vals.length;
+    if (!n) return null;
+    var known = vals.filter(function (x) { return x !== null; });
+    var max = known.length ? Math.max.apply(null, known) : null;
+    var segs = [];
+    var cur = [];
+    vals.forEach(function (x, i) {
+      if (x === null) { if (cur.length) segs.push(cur); cur = []; return; }
+      var px = n === 1 ? 50 : (i / (n - 1)) * 100;
+      var py = max > 0 ? 30 - (x / max) * 28 : 30;
+      cur.push([px, py]);
+    });
+    if (cur.length) segs.push(cur);
+    var hi = max === null ? -1 : vals.indexOf(max);
+    return {
+      segs: segs, max: max, n: n, unknownDays: n - known.length,
+      hiDate: hi >= 0 ? days[hi].date : null,
+      from: days[0].date, to: days[n - 1].date
+    };
+  }
+
+  function sparkSvg(m, label) {
+    var lines = m.segs.map(function (seg) {
+      var pts = seg.length === 1
+        ? [[Math.max(0, seg[0][0] - 0.8), seg[0][1]], [Math.min(100, seg[0][0] + 0.8), seg[0][1]]]
+        : seg;
+      return '<polyline points="' + pts.map(function (p) { return p[0].toFixed(2) + "," + p[1].toFixed(2); }).join(" ") +
+        '" vector-effect="non-scaling-stroke"></polyline>';
+    }).join("");
+    return '<svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="' + esc(label) +
+      '" focusable="false"><line class="spark-base" x1="0" x2="100" y1="31" y2="31" vector-effect="non-scaling-stroke"></line>' +
+      lines + "</svg>";
+  }
+
+  /* sparkWords — the sentence under a sparkline. */
+  function sparkWords(m, key) {
+    if (!m) return "";
+    if (m.max === null) return key === "spend" ? "No ad spend saved on any of these days." : "No leads saved on any of these days.";
+    var said;
+    if (m.max === 0) said = key === "spend" ? "No ad spend on any day with numbers." : "No leads on any of these days.";
+    else if (key === "spend") said = "Highest day: " + money(m.max) + " on " + dayWords(m.hiDate) + ".";
+    else said = "Most leads in a day: " + count(m.max) + ", on " + dayWords(m.hiDate) + ".";
+    if (m.unknownDays && key === "spend") said += " No spend saved on " + count(m.unknownDays) + " of " + count(m.n) + " days.";
+    return said;
+  }
+
+  /* funnelBars — spend by funnel as a short bar list (last 7 days). The
+     longest bar is the biggest spend; null is "unknown" with no bar. The
+     row with no funnel is the spend not tied to one yet. */
+  function funnelBars(list) {
+    var max = 0;
+    arr(list).forEach(function (f) { if (f.spend !== null && f.spend > max) max = f.spend; });
+    return arr(list).map(function (f) {
+      return {
+        name: f.key === null ? "Not tied to a funnel" : (f.name || prettyKey(f.key)),
+        unmapped: f.key === null,
+        value: money(f.spend),
+        pct: f.spend === null || max <= 0 ? null : (f.spend > 0 ? Math.max(2, Math.round((f.spend / max) * 100)) : 0)
+      };
+    });
+  }
+
+  /* flowSteps — ad → page → lead → call → sale, last 7 days. */
+  function flowSteps(f) {
+    f = f || {};
+    var fv = function (k) { return f[k] === undefined ? null : f[k]; };
+    return [
+      { key: "clicks", label: "Ad taps", value: count(fv("clicks")), note: "" },
+      { key: "page", label: "On the page", value: count(fv("pageViews")), note: "" },
+      { key: "leads", label: "Leads", value: count(fv("leads")), note: "" },
+      { key: "booked", label: "Calls booked", value: count(fv("booked")), note: fv("showed") === null ? "" : count(fv("showed")) + " showed" },
+      { key: "sales", label: "Sales", value: count(fv("sales")), note: "" }
+    ];
+  }
+
+  /* ── stuck work and scripts on Waiting on you ── */
+
+  /* scriptsWait — "Approve or fix 18 scripts" (scripts_waiting, U32). */
+  function scriptsWait(view) {
+    var sw = view && view.scriptsWaiting;
+    if (!sw || !(num(sw.ready) > 0)) return null;
+    return {
+      kind: "scripts",
+      what: "Approve or fix " + plural(sw.ready, "script"),
+      why: num(sw.flagged) > 0 ? plural(sw.flagged, "script") + (sw.flagged === 1 ? " needs" : " need") + " a look first." : "They are ready to read.",
+      actHtml: '<a class="btn quiet" href="#scripts">Open Scripts</a>'
+    };
+  }
+
+  /* stuckWaits — one row per stuck job, each with ONE Retry button
+     (design §3.1: "Retry (only on a failed machine row): free, one tap").
+     `ui` is the page's memory of taps: retrying (busy) and retried (the
+     answer). A job that failed again after a retry gets its button back. */
+  function stuckWaits(view, ui, nowMs) {
+    var u = ui || {};
+    var retrying = u.retrying || {};
+    var retried = u.retried || {};
+    return arr(view && view.stuckJobs).map(function (j) {
+      var r = retried[j.id];
+      var since = asDate(j.since);
+      var failedAgain = Boolean(r && r.ok && since && since.getTime() > r.at);
+      var done = Boolean(r && r.ok && !failedAgain);
+      var reason = j.error ? j.error.replace(/\s+$/, "") : "No reason was saved.";
+      if (!/[.!?]$/.test(reason)) reason += ".";
+      var sinceHtml = since ? "Stuck since " + tipped(savedWords(j.since, nowMs).text, fullTime(since)) + "." : "Stuck since an unknown time.";
+      var busy = Boolean(retrying[j.id]);
+      var say = done ? { tone: "ok", text: r.text } : (r && !r.ok ? { tone: "err", text: r.text } : null);
+      return {
+        kind: "stuck",
+        job: j.id,
+        what: "Stuck: " + kindWords(j.kind),
+        why: (failedAgain ? "It failed again after the retry. " : "") + reason,
+        howHtml: sinceHtml,
+        actHtml: done ? "" :
+          '<button class="btn quiet' + (busy ? " busy" : "") + '" type="button" data-act="retry" data-job="' + esc(j.id) + '"' +
+          (busy ? ' disabled aria-busy="true"' : "") + '><span class="spin" aria-hidden="true"></span><span class="lbl">' +
+          (busy ? "Retrying…" : "Retry") + "</span></button>",
+        say: say
+      };
+    });
+  }
+
+  /* ── the new cards' markup ── */
+
+  function skeleton(n) {
+    var out = "";
+    for (var i = 0; i < n; i++) out += '<span class="skel"></span>';
+    return out;
+  }
+
+  function sayHtml(s, extra) {
+    if (!s || !s.text) return "";
+    return '<div class="say show ' + esc(s.tone || "wait") + (extra ? " " + extra : "") + '" role="status">' + esc(s.text) + "</div>";
+  }
+
+  /* renderNext — the Next drop card: when, how many, the split, Write now
+     (only while write_now_ready), the newest batch, and the 3 angles.
+     `ui` carries the taps: count, writing, wnSay, saving, accepted, ideaSay. */
+  function renderNext(part, batches, view, ui, nowMs) {
+    var u = ui || {};
+    var bt = batches || { state: "none", ready: false, batches: [] };
+    var html = "";
+    if (!part) {
+      html += skeleton(3);
+    } else if (part.state !== "ok") {
+      html += '<p class="muted">' + esc(part.message) + "</p>";
+    } else {
+      var m = nextDropModel(part, funnelNames(view));
+      html += '<p class="drop-when" title="' + esc(asDate(part.next.releaseAt) ? fullTime(asDate(part.next.releaseAt)) : "") + '">' + esc(m.when) + "</p>" +
+        '<p class="drop-count"><b>' + esc(m.count) + "</b>" + (m.split ? " · " + esc(m.split) : "") + "</p>" +
+        (m.splitWhy ? '<p class="caption muted">' + esc(m.splitWhy) + "</p>" : "");
+    }
+    /* Write now: drawn only when the server says it can run (U26
+       write_now_ready, U35 registers start_batch). While drawn it is the one
+       filled button on Today; Write ad copy is an outline button then. */
+    if (writeNowShown(bt)) {
+      var n = WRITE_NOW_COUNTS.indexOf(u.count) === -1 ? WRITE_NOW_DEFAULT : u.count;
+      var busy = Boolean(u.writing);
+      html += '<div class="wn">' +
+        '<div class="field"><label for="writeNowCount">How many scripts?</label><select id="writeNowCount"' + (busy ? " disabled" : "") + ">" +
+        WRITE_NOW_COUNTS.map(function (c) { return '<option value="' + c + '"' + (c === n ? " selected" : "") + ">" + c + "</option>"; }).join("") +
+        "</select></div>" +
+        /* Filled (PRIMARY): while Write now is drawn it is Today's one filled
+           button; placePrimary() takes the filled look off Write ad copy. */
+        '<button class="btn ' + PRIMARY + (busy ? " busy" : "") + '" type="button" id="writeNowBtn" data-act="write-now"' + (busy ? ' disabled aria-busy="true"' : "") +
+        '><span class="spin" aria-hidden="true"></span><span class="lbl">' + (busy ? "Starting…" : "Write now") + "</span></button>" +
+        "</div>" +
+        '<p class="caption muted">Writes scripts today, outside the weekly drop. You see the cost before it starts.</p>' +
+        sayHtml(u.wnSay);
+    }
+    if (part && part.state === "ok") {
+      var mm = nextDropModel(part, funnelNames(view));
+      var notes = [mm.off, mm.unmapped, mm.saved, mm.changed].filter(Boolean);
+      if (notes.length) {
+        html += '<ul class="drop-notes">' + notes.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+        if (mm.off || mm.unmapped) html += '<div class="row-act"><a class="btn quiet" href="#settings">Open Settings</a></div>';
+      }
+    }
+    var latest = bt.batches.length ? batchLine(bt.batches[0]) : "";
+    if (latest) html += '<p class="caption batch-line">Newest batch: ' + esc(latest) + "</p>";
+    if (part && part.state === "ok") html += renderSuggestions(part, u);
+    return html;
+  }
+
+  /* renderSuggestions — the planner's 3 angles, each with Use this angle
+     (spec §7.5 step 7). An angle Chris already saved this week says so and
+     has no button. */
+  function renderSuggestions(part, u) {
+    var list = part.next.suggestions;
+    var head = '<p class="eyebrow sugg-hd">Angles to try next</p>' + sayHtml(u.ideaSay);
+    if (!list.length) return head + '<p class="muted">The planner has no angle to suggest right now.</p>';
+    var week = part.next.weekKey;
+    var saving = u.saving || {};
+    var accepted = u.accepted || {};
+    return head + '<ol class="rows sugg">' + list.map(function (s) {
+      var key = s.angleKey || s.name;
+      var isBusy = Boolean(saving[key]);
+      var done = Boolean(accepted[week + ":" + key]);
+      var act = done
+        ? '<span class="caption">Saved as an idea.</span>'
+        : '<button class="btn quiet' + (isBusy ? " busy" : "") + '" type="button" data-act="use-angle" data-angle="' + esc(key) + '"' +
+          (isBusy ? ' disabled aria-busy="true"' : "") + '><span class="spin" aria-hidden="true"></span><span class="lbl">' +
+          (isBusy ? "Saving…" : "Use this angle") + "</span></button>";
+      return '<li class="row" data-angle-row="' + esc(key) + '"><div class="row-main"><b>' + esc(s.name || prettyKey(s.angleKey)) + "</b>" +
+        (s.why ? '<div class="row-why">' + esc(s.why) + "</div>" : "") +
+        '<div class="row-why caption">' + esc(suggestionNumbers(s)) + "</div></div>" +
+        '<div class="row-body"><div class="row-act">' + act + "</div></div></li>";
+    }).join("") + "</ol>";
+  }
+
+  /* renderMachine — the health card (design §3.1 item 7). */
+  function renderMachine(h, view, nowMs) {
+    if (!h) return skeleton(4);
+    if (h.state !== "ok") return '<p class="muted">' + esc(h.message) + "</p>";
+    var m = healthModel(h, view, nowMs);
+    return '<p class="health-line">' + esc(m.line) + "</p>" +
+      '<ol class="rows">' + m.rows.map(function (r) {
+        return '<li class="row" data-health="' + esc(r.key) + '"><div class="row-main"><b>' + esc(r.label) + "</b>" +
+          '<div class="row-why caption">' + esc(r.what) + "</div></div>" + chip(r.word, r.tone) +
+          '<div class="row-body"><div class="row-why"' + (r.title ? ' title="' + esc(r.title) + '"' : "") + ">" + esc(r.text) + "</div>" +
+          (r.meter !== null && r.meter !== undefined
+            ? '<div class="meter" role="img" aria-label="' + esc(r.meterLabel) + '"><span style="width:' + r.meter + '%"></span></div>' : "") +
+          "</div></li>";
+      }).join("") + "</ol>" +
+      '<p class="caption muted gap-top">It never turns an ad on, pauses one, or changes a budget. You do that in Launch.</p>';
+  }
+
+  /* renderNumbers — today / 7 days / 30 days, two hand-drawn sparklines,
+     spend by funnel and the flow, with the as-of words (spec §8.3, §11.3). */
+  function renderNumbers(view, nowMs) {
+    var v = view || {};
+    if (!v.loaded) return notLoaded();
+    if (!v.m5Read) {
+      var why = waitingFor(v, ["numbers"]);
+      return '<p class="muted">' + esc(why.length && why[0].reason ? why[0].reason : "The numbers are not on this server yet. They turn on with the next update.") + "</p>";
+    }
+    var cols = [
+      { key: "today", name: "Today", sub: dayWords(v.today) },
+      { key: "d7", name: "Last 7 days", sub: rangeWords(v.from7, v.to7) },
+      { key: "d30", name: "Last 30 days", sub: rangeWords(v.from30, v.to30) }
+    ];
+    var html = '<div class="num-cols">' + cols.map(function (c) {
+      return '<div class="num-col" data-win="' + c.key + '"><p class="eyebrow">' + esc(c.name) + "</p>" +
+        (c.sub ? '<p class="caption muted">' + esc(c.sub) + "</p>" : "") +
+        '<dl class="num-list">' + numberCells(v, c.key, nowMs).map(function (r) {
+          return '<div class="num-row" data-num="' + r.key + '"><dt class="caption">' + esc(r.label) + "</dt>" +
+            '<dd><b class="' + (r.value === "unknown" ? "unk" : "") + '">' + esc(r.value) + "</b></dd>" +
+            (r.note ? '<dd class="caption num-note">' + esc(r.note) + "</dd>" : "") + "</div>";
+        }).join("") + "</dl></div>";
+    }).join("") + "</div>";
+
+    var spend = sparkModel(v.daily, "spend");
+    var leads = sparkModel(v.daily, "leads");
+    if (spend || leads) {
+      html += '<div class="sparks">' + [["spend", "Ad spend, each day", spend], ["leads", "Leads, each day", leads]].map(function (s) {
+        var m = s[2];
+        if (!m) return "";
+        var said = sparkWords(m, s[0]);
+        return '<div class="spark-box" data-spark="' + s[0] + '"><p class="caption">' + esc(s[1]) + "</p>" +
+          (m.max === null ? "" : sparkSvg(m, s[1] + ", " + rangeWords(m.from, m.to) + ". " + said)) +
+          '<div class="spark-ends caption muted"><span>' + esc(dayWords(m.from)) + "</span><span>" + esc(dayWords(m.to)) + "</span></div>" +
+          '<p class="caption">' + esc(said) + "</p></div>";
+      }).join("") + "</div>";
+    }
+
+    var bars = funnelBars(v.byFunnel);
+    var flow = flowSteps(v.flow);
+    html += '<div class="two">' +
+      '<div class="two-box" data-part="by-funnel"><p class="eyebrow">Spend by funnel, last 7 days</p>' +
+      (!v.byFunnelRead
+        ? '<p class="muted">Spend by funnel is not on this server yet.</p>'
+        : (!bars.length
+          ? '<p class="muted">No funnels are set up yet.</p>'
+          : '<ol class="bars">' + bars.map(function (b) {
+            return '<li class="bar-row' + (b.unmapped ? " unmapped" : "") + '"><span>' + esc(b.name) + "</span><b>" + esc(b.value) + "</b>" +
+              (b.pct === null ? "" : '<span class="bar" aria-hidden="true"><span style="width:' + b.pct + '%"></span></span>') +
+              (b.unmapped ? '<a class="caption" href="#settings">Tie it to a funnel in Settings</a>' : "") + "</li>";
+          }).join("") + "</ol>")) +
+      "</div>" +
+      '<div class="two-box" data-part="flow"><p class="eyebrow">The flow, last 7 days</p>' +
+      '<p class="caption muted">Ad → page → lead → call → sale.</p>' +
+      (!v.flowRead
+        ? '<p class="muted">The flow is not on this server yet.</p>'
+        : '<ol class="flow">' + flow.map(function (s) {
+          return '<li data-step="' + s.key + '"><span class="caption">' + esc(s.label) + '</span><b class="' + (s.value === "unknown" ? "unk" : "") + '">' +
+            esc(s.value) + "</b>" + (s.note ? '<span class="caption num-note">' + esc(s.note) + "</span>" : "") + "</li>";
+        }).join("") + "</ol>") +
+      "</div></div>";
+    var asOf = asOfLine(v, nowMs);
+    if (asOf.html) html += '<p class="caption asof gap-top">' + asOf.html + "</p>";
+    return html;
+  }
+
+  /* Today's own look for the U37 cards, added once through the frame's
+     ctx.style and scoped to #tab-today (docs/specs/command-center-tabs.md).
+     No px font sizes (UI-STANDARDS §12.7: captions are .caption/.eyebrow,
+     values are body), no hand-written shadow (§12.2: group boxes take a tint
+     and a hairline, §12.5), 8px spacing only (§2). One column at 390px. */
+  var CSS = [
+    "#tab-today .drop-when{font-weight:600}",
+    "#tab-today .drop-count{margin-top:8px}",
+    "#tab-today .drop-count b{font-weight:600}",
+    "#tab-today .drop-notes{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:8px;color:var(--ink2)}",
+    "#tab-today .wn{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-top:16px}",
+    "#tab-today .wn .field{margin-bottom:0;min-width:160px}",
+    "#tab-today .wn select{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:#fff;min-height:48px}",
+    "#tab-today .wn + .caption{margin-top:8px}",
+    "#tab-today .batch-line{margin-top:16px;color:var(--ink2)}",
+    "#tab-today .sugg-hd{margin-top:24px;margin-bottom:8px}",
+    "#tab-today .health-line{margin-bottom:8px;font-weight:600}",
+    "#tab-today .meter{height:8px;border-radius:4px;background:var(--soft);margin-top:8px;overflow:hidden;max-width:320px}",
+    "#tab-today .meter span{display:block;height:100%;background:var(--ink2)}",
+    "#tab-today .num-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}",
+    "#tab-today .num-col,#tab-today .spark-box,#tab-today .two-box{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}",
+    "#tab-today .num-list{margin-top:8px}",
+    "#tab-today .num-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}",
+    "#tab-today .num-row:first-child{border-top:0}",
+    "#tab-today .num-row dt{color:var(--gray)}",
+    "#tab-today .num-row dd{text-align:right;font-variant-numeric:tabular-nums;min-width:0}",
+    "#tab-today .num-row dd b,#tab-today .flow b,#tab-today .bar-row b{font-weight:600;font-variant-numeric:tabular-nums}",
+    "#tab-today .num-note{display:block;color:var(--gray)}",
+    "#tab-today .num-row dd.num-note{grid-column:1 / -1;text-align:right}",
+    "#tab-today .unk{color:var(--gray);font-weight:400}",
+    "#tab-today .sparks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}",
+    "#tab-today svg.spark{display:block;width:100%;height:48px;margin-top:8px}",
+    "#tab-today svg.spark polyline{fill:none;stroke:var(--ink2);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}",
+    "#tab-today svg.spark .spark-base{stroke:var(--line);stroke-width:1}",
+    "#tab-today .spark-ends{display:flex;justify-content:space-between;margin:0 0 8px}",
+    "#tab-today .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}",
+    "#tab-today .bars{list-style:none;display:flex;flex-direction:column;gap:16px;margin-top:8px}",
+    "#tab-today .bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:8px;align-items:baseline}",
+    "#tab-today .bar{grid-column:1 / -1;display:block;height:8px;border-radius:4px;background:#fff;border:1px solid var(--line);overflow:hidden}",
+    "#tab-today .bar span{display:block;height:100%;background:var(--ink2)}",
+    "#tab-today .bar-row a{grid-column:1 / -1;text-decoration:underline;min-height:40px;display:inline-flex;align-items:center}",
+    "#tab-today .flow{list-style:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px}",
+    "#tab-today .flow li{display:flex;flex-direction:column;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:#fff}",
+    "#tab-today .flow li > .caption:first-child{color:var(--gray)}",
+    "#tab-today a.btn{text-decoration:none}",
+    "#tab-today .card-hd a{min-height:40px;display:inline-flex;align-items:center;text-decoration:underline}",
+    "@media (max-width:1200px){#tab-today .flow{grid-template-columns:repeat(3,minmax(0,1fr))}}",
+    "@media (max-width:960px){#tab-today .num-cols{grid-template-columns:minmax(0,1fr)}}",
+    "@media (max-width:720px){#tab-today .sparks,#tab-today .two{grid-template-columns:minmax(0,1fr)}}",
+    "@media (max-width:480px){#tab-today .wn{flex-direction:column;align-items:stretch}#tab-today .wn .btn{width:100%}#tab-today .flow{grid-template-columns:minmax(0,1fr)}#tab-today .flow li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:baseline}#tab-today .flow li .num-note{grid-column:1 / -1;text-align:right}#tab-today .row-act .btn{min-height:44px}}"
+  ].join("\n");
+
   var API = {
     OFFER_TYPES: OFFER_TYPES,
     STAGE_KEYS: STAGE_KEYS,
@@ -1652,16 +2608,69 @@
     renderOfferLatest: renderOfferLatest,
     renderPieces: renderPieces,
     renderLatest: renderLatest,
-    renderParts: renderParts
+    renderParts: renderParts,
+    /* U37 */
+    KIND_WORDS: KIND_WORDS,
+    CLOCK_LATE_MS: CLOCK_LATE_MS,
+    BATCH_POLL_MS: BATCH_POLL_MS,
+    BATCH_POLL_TRIES: BATCH_POLL_TRIES,
+    WRITE_NOW_COUNTS: WRITE_NOW_COUNTS,
+    WRITE_NOW_DEFAULT: WRITE_NOW_DEFAULT,
+    REQUEST_ID_RE: REQUEST_ID_RE,
+    CSS: CSS,
+    kindWords: kindWords,
+    partState: partState,
+    partError: partError,
+    normalizeWindow: normalizeWindow,
+    normalizeHealth: normalizeHealth,
+    normalizeNext: normalizeNext,
+    normalizeBatches: normalizeBatches,
+    writeNowShown: writeNowShown,
+    funnelNames: funnelNames,
+    dropWhen: dropWhen,
+    nextDropModel: nextDropModel,
+    batchLine: batchLine,
+    batchBusy: batchBusy,
+    suggestionNumbers: suggestionNumbers,
+    newRequestId: newRequestId,
+    ideaRequest: ideaRequest,
+    writeNowRequest: writeNowRequest,
+    retryRequest: retryRequest,
+    summarizeIdea: summarizeIdea,
+    summarizeWriteNow: summarizeWriteNow,
+    summarizeRetry: summarizeRetry,
+    writeNowSheet: writeNowSheet,
+    usd: usd,
+    healthModel: healthModel,
+    roasWords: roasWords,
+    numberCells: numberCells,
+    sparkModel: sparkModel,
+    sparkSvg: sparkSvg,
+    sparkWords: sparkWords,
+    funnelBars: funnelBars,
+    flowSteps: flowSteps,
+    scriptsWait: scriptsWait,
+    stuckWaits: stuckWaits,
+    renderNext: renderNext,
+    renderMachine: renderMachine,
+    renderNumbers: renderNumbers
   };
   root.FHMarketingCC = API;
 
   /* ── the markup ──────────────────────────────────────────────────────── */
 
   /* Today's cards, word for word as they stood in marketing-command-center.html
-     before the frame came (U34). The page's <style> still styles them. The one
-     filled button on Today is Write ad copy (UI-STANDARDS §1); nothing below the
-     markup paints another. */
+     before the frame came (U34), plus U37's three cards: Next drop and The
+     machine in their own row under the Offer cards, and Money and leads under
+     them. (They sit below the Offer cards so every older card keeps its
+     place: U34's tests pin those places.) The page's <style> styles the old
+     cards; U37's look is CSS above, added through ctx.style.
+     ONE filled button on Today (UI-STANDARDS §1): Write ad copy, as written
+     here, until GET marketing/batches says write_now_ready. Then Write now is
+     drawn filled in the Next drop card, the page takes the filled look off
+     Write ad copy (it stays an outline button that works), and Next drop
+     and Write ad copy trade places, so the one job sits top-left of the work
+     row, above the fold. */
   var TODAY_HTML = [
     '<div class="banner err" id="mccBanner" role="alert"></div>',
     '',
@@ -1683,8 +2692,8 @@
     '<!-- The one as-of sentence: how fresh the numbers above are. -->',
     '<p class="caption asof" id="mccAsOf" hidden></p>',
     '',
-    '<!-- 2. THE ONE JOB, and what waits on Chris. -->',
-    '<section class="grid">',
+    '<!-- 2. THE ONE JOB, and what waits on Chris. While Write now is live, Next drop takes the first slot here (U37). -->',
+    '<section class="grid" id="todayWork">',
     '  <div class="card span-6" id="cardCopy">',
     '    <div class="card-hd"><h2>Write ad copy</h2></div>',
     '    <p class="setup caption" id="copySetup">Checking that the copy writer is ready…</p>',
@@ -1738,6 +2747,27 @@
     '  </div>',
     '</section>',
     '',
+    '<!-- 3b. The next drop and the machine (U37). While Write now is live, Write ad copy takes the Next drop slot here. -->',
+    '<section class="grid" id="todayMore">',
+    '  <div class="card span-6" id="cardNext">',
+    '    <div class="card-hd"><h2>Next drop</h2></div>',
+    '    <div id="nextBody"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>',
+    '  </div>',
+    '',
+    '  <div class="card span-6" id="cardMachine">',
+    '    <div class="card-hd"><h2>The machine</h2></div>',
+    '    <div id="machineBody"><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>',
+    '  </div>',
+    '</section>',
+    '',
+    '<!-- 3c. The M5 numbers: today, 7 and 30 days, sparklines, spend by funnel, the flow (U37). -->',
+    '<section class="grid">',
+    '  <div class="card span-12" id="cardNumbers">',
+    '    <div class="card-hd"><h2>Money and leads</h2><a class="caption" href="#numbers">Open Numbers</a></div>',
+    '    <div id="numbersBody"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>',
+    '  </div>',
+    '</section>',
+    '',
     '<!-- 4. Health detail and the latest copy. -->',
     '<section class="grid">',
     '  <div class="card span-6" id="cardHealth">',
@@ -1763,9 +2793,9 @@
     label: "Today",
     order: 10,
     rules: API,
-    render: function (panel) {
+    render: function (panel, ctx) {
       panel.innerHTML = TODAY_HTML;
-      boot(panel);
+      boot(panel, ctx);
     }
   };
   if (root.FHMarketingCCTabs && typeof root.FHMarketingCCTabs.register === "function") {
@@ -1780,9 +2810,13 @@
   if (!doc || typeof doc.getElementById !== "function") return;
 
   /* boot — wire Today inside its panel. Called once, by render, the first time
-     the frame shows Today. Ids are unique on the page, so $ still reads them. */
-  function boot(panel) {
+     the frame shows Today. Ids are unique on the page, so $ still reads them.
+     `ctx` is the frame's (docs/specs/command-center-tabs.md): Today uses its
+     style() for U37's look, costSheet() before Write now, and requestId(). */
+  function boot(panel, ctx) {
     function $(id) { return doc.getElementById(id); }
+    var frameCtx = ctx && typeof ctx === "object" ? ctx : {};
+    if (typeof frameCtx.style === "function") frameCtx.style("today", CSS);
 
     /* Same session handling as csm-queue.html: a Bearer header when the screen
        has a token, the same-origin cookie otherwise. */
@@ -1830,8 +2864,21 @@
       polling: false,
       loadedAt: null,
       loading: false,
-      lastTry: 0
+      lastTry: 0,
+      /* U37: null until the first answer (its card shows skeletons). */
+      health: null,
+      next: null,
+      batches: { state: "none", ready: false, batches: [] },
+      batchPoll: null,
+      /* What Chris tapped, kept across repaints: the Write now count and
+         answer, the angles being saved and saved, the Retry taps. */
+      ui: { count: WRITE_NOW_DEFAULT, writing: false, wnSay: null, saving: {}, accepted: {}, ideaSay: null, retrying: {}, retried: {} }
     };
+
+    function requestId() {
+      var id = typeof frameCtx.requestId === "function" ? frameCtx.requestId() : "";
+      return REQUEST_ID_RE.test(String(id || "")) ? String(id) : newRequestId();
+    }
 
     function say(id, tone, text) {
       var el = $(id);
@@ -1889,9 +2936,11 @@
       asOfEl.innerHTML = asOf.html;
       asOfEl.hidden = !asOf.text;
       asOfEl.classList.toggle("stale", Boolean(oldLead(v, now)));
-      var waiting = v.loaded ? waitingList(v, state.videos, now) : [];
+      var waiting = v.loaded ? waitingList(v, state.videos, now, state.ui) : [];
       $("waitingCount").textContent = waiting.length ? waiting.length + " to do" : "";
-      $("waitingList").innerHTML = renderWaiting(v, state.videos, now);
+      $("waitingList").innerHTML = renderWaiting(v, state.videos, now, state.ui);
+      $("numbersBody").innerHTML = renderNumbers(v, now);
+      paintParts();
       $("flywheelCampaign").textContent = v.loaded && v.campaign ? campaignWords(v.campaign) : "";
       $("flywheelList").innerHTML = renderFlywheel(v);
       $("offerStatus").innerHTML = renderOfferStatus(v);
@@ -1940,12 +2989,184 @@
       });
     }
 
+    /* ── U37: the next drop, the machine, the taps ── */
+
+    /* paintParts — the Next drop and The machine cards, and which button is
+       the one filled button. They do not need GET marketing/today, so they
+       paint as soon as their own answer lands. */
+    function paintParts() {
+      var keep = openPanels();
+      var now = Date.now();
+      $("nextBody").innerHTML = renderNext(state.next, state.batches, state.view, state.ui, now);
+      $("machineBody").innerHTML = renderMachine(state.health, state.view, now);
+      reopen(keep);
+      placePrimary();
+    }
+
+    /* placePrimary — ONE filled button (UI-STANDARDS §1). While Write now is
+       drawn it is the filled one and Next drop takes the top-left slot of the
+       work grid (above the fold); Write ad copy turns outline and still
+       works. Otherwise the grid is as it always was and Write ad copy is the
+       filled one. */
+    function placePrimary() {
+      var ready = writeNowShown(state.batches) && Boolean($("writeNowBtn"));
+      var work = $("todayWork");
+      var more = $("todayMore");
+      var copy = $("cardCopy");
+      var next = $("cardNext");
+      var machine = $("cardMachine");
+      $("copyBtn").classList.toggle(PRIMARY, !ready);
+      if (ready && next.parentNode !== work) {
+        work.insertBefore(next, copy);
+        more.insertBefore(copy, machine);
+      } else if (!ready && copy.parentNode !== work) {
+        work.insertBefore(copy, next);
+        more.insertBefore(next, machine);
+      }
+    }
+
+    function loadHealth() {
+      return api("/api/marketing/health").then(function (res) { state.health = normalizeHealth(res); paintParts(); });
+    }
+    function loadNext() {
+      return api("/api/marketing/batches/next").then(function (res) { state.next = normalizeNext(res); paintParts(); });
+    }
+    function loadBatches() {
+      return api("/api/marketing/batches").then(function (res) {
+        var b = normalizeBatches(res);
+        /* A failed re-read keeps what the page last knew, so Write now does
+           not blink away on one dropped answer. */
+        if (b.state === "ok" || state.batches.state !== "ok") state.batches = b;
+        paintParts();
+      });
+    }
+    /* loadParts — the three reads, side by side. Each paints on its own
+       answer; none waits for another or for GET marketing/today. */
+    function loadParts() {
+      loadHealth();
+      loadNext();
+      loadBatches();
+    }
+
+    /* watchBatch — after Write now, read the batch list again every 20
+       seconds while the newest batch is waiting or writing and the page is
+       in view, at most 10 minutes. */
+    function watchBatch() {
+      if (state.batchPoll) return;
+      var tries = 0;
+      state.batchPoll = root.setInterval(function () {
+        tries += 1;
+        var newest = state.batches.batches[0];
+        if (tries > BATCH_POLL_TRIES || (tries > 1 && !batchBusy(newest))) {
+          root.clearInterval(state.batchPoll);
+          state.batchPoll = null;
+          return;
+        }
+        if (!doc.hidden) loadBatches();
+      }, BATCH_POLL_MS);
+    }
+
+    /* Write now: the frame's cost sheet first (design §5 rule 3), then one
+       POST with a fresh request_id. No sheet, no spend. */
+    function writeNow() {
+      if (state.ui.writing || !writeNowShown(state.batches)) return;
+      var n = state.ui.count;
+      if (typeof frameCtx.costSheet !== "function") {
+        state.ui.wnSay = { tone: "err", text: "This page could not show the cost first, so nothing was started. Reload the page and try again." };
+        paintParts();
+        return;
+      }
+      var sheet = writeNowSheet(n, state.health);
+      Promise.resolve(frameCtx.costSheet(sheet)).then(function (yes) {
+        if (yes !== true) return null;
+        state.ui.writing = true;
+        state.ui.wnSay = { tone: "wait", text: "Starting…" };
+        paintParts();
+        return api("/api/marketing/batches/write-now", { method: "POST", body: writeNowRequest(n, requestId()) }).then(function (res) {
+          var out = summarizeWriteNow(res, n);
+          state.ui.writing = false;
+          state.ui.wnSay = out;
+          paintParts();
+          if (out.ok) { loadBatches(); watchBatch(); }
+        });
+      }).then(null, function () {
+        state.ui.writing = false;
+        state.ui.wnSay = { tone: "err", text: "Something went wrong on this page. Reload it and try again." };
+        paintParts();
+      });
+    }
+
+    /* Use this angle: saves the planner's suggestion as an idea (spec §7.5
+       step 7). Free, so no sheet. The plan is read again after, and the
+       planner leaves out an angle a waiting idea already names. */
+    function useAngle(key) {
+      var part = state.next;
+      if (!part || part.state !== "ok" || state.ui.saving[key]) return;
+      var s = null;
+      part.next.suggestions.forEach(function (x) { if ((x.angleKey || x.name) === key) s = x; });
+      if (!s) return;
+      var week = part.next.weekKey;
+      state.ui.saving[key] = true;
+      state.ui.ideaSay = null;
+      paintParts();
+      api("/api/marketing/ideas", { method: "POST", body: ideaRequest(s, requestId()) }).then(function (res) {
+        var out = summarizeIdea(res, s.name || prettyKey(s.angleKey), Date.now());
+        delete state.ui.saving[key];
+        state.ui.ideaSay = out;
+        if (out.ok) state.ui.accepted[week + ":" + key] = Date.now();
+        paintParts();
+        if (out.ok) loadNext();
+      }, function () {
+        delete state.ui.saving[key];
+        state.ui.ideaSay = { tone: "err", text: "Something went wrong on this page. Reload it and try again." };
+        paintParts();
+      });
+    }
+
+    /* Retry: one stuck job back in the queue (POST marketing/jobs/retry).
+       Free. The row says what happened; the health card is read again. */
+    function retry(jobId) {
+      if (!jobId || state.ui.retrying[jobId]) return;
+      state.ui.retrying[jobId] = true;
+      delete state.ui.retried[jobId];
+      paint();
+      api("/api/marketing/jobs/retry", { method: "POST", body: retryRequest(jobId, requestId()) }).then(function (res) {
+        var now = Date.now();
+        var out = summarizeRetry(res, now);
+        delete state.ui.retrying[jobId];
+        state.ui.retried[jobId] = { at: now, ok: out.ok, tone: out.tone, text: out.text };
+        paint();
+        if (out.ok) loadHealth();
+      }, function () {
+        delete state.ui.retrying[jobId];
+        state.ui.retried[jobId] = { at: Date.now(), ok: false, tone: "err", text: "Something went wrong on this page. Reload it and try again." };
+        paint();
+      });
+    }
+
+    panel.addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
+      if (!t || t.disabled) return;
+      var act = t.getAttribute("data-act");
+      if (act === "write-now") writeNow();
+      else if (act === "use-angle") useAngle(t.getAttribute("data-angle"));
+      else if (act === "retry") retry(t.getAttribute("data-job"));
+    });
+    panel.addEventListener("change", function (e) {
+      var t = e.target;
+      if (t && t.id === "writeNowCount") {
+        var n = Number(t.value);
+        state.ui.count = WRITE_NOW_COUNTS.indexOf(n) === -1 ? WRITE_NOW_DEFAULT : n;
+      }
+    });
+
     /* load — GET marketing/today (and the videos waiting). A failed reload
        after a good load keeps the page painted and says how old it is. */
     function load() {
       if (state.loading) return Promise.resolve();
       state.loading = true;
       state.lastTry = Date.now();
+      loadParts();
       return Promise.all([api("/api/marketing/today"), loadVideos()]).then(function (all) {
         var res = all[0];
         var banner = $("mccBanner");

@@ -1797,3 +1797,156 @@ Today, Ideas, Scripts, Shoot, Launch, Numbers (Videos has no module yet, so it i
 strip; a `#videos` link lands on Today). Settings stays behind the gear. The gap above (no tab
 drawn) is closed on this branch. U34's frame tests now read that strip (they were written when
 Today was the only tab with a module).
+
+## U37 Command Center Today additions: next drop + Write now (when ready) + suggestion accept, health card, M5 numbers with sparklines, spend by funnel, the flow, waiting items, stuck jobs with Retry
+
+Drawn from code on branch `mm-u37-today-additions`: `public/app/marketing-cc-today.js` only
+(the Today tab module; U34 moved it there). Spec §8.3 (Today), §11.3 (numbers on Today),
+§7.5 step 7 (accepting a suggestion makes an idea), §2 items 1 and 4; design
+`docs/specs/command-center-design-2026-10-05.md` §3.0 and §3.1. No route, table, migration,
+event or env var added: the page reads U22's, U23's, U26's and U32's routes as built. Proved by
+`src/ui/marketing-cc-today.test.mjs` (node:vm, fed the API contract's examples) and
+`e2e/marketing-cc-today.spec.mjs` (Playwright, 390x844 and 1280, `page.clock`).
+
+### What Today reads, and how each part paints
+
+```mermaid
+flowchart TD
+  O[Today opens, every 5 minutes, and on coming back into view] --> T[GET marketing/today]
+  O --> V[GET ad-videos?status=awaiting_approval]
+  O --> H[GET marketing/health]
+  O --> N[GET marketing/batches/next]
+  O --> B[GET marketing/batches]
+  T --> P1[spend tiles, Waiting on you,<br/>Money and leads]
+  V --> P1
+  H --> P2[The machine]
+  N --> P3[Next drop: when, how many, split, 3 angles]
+  B --> P4{write_now_ready === true?}
+  P4 -->|no, or no answer| C1[Write now NOT drawn<br/>Write ad copy is the one filled button]
+  P4 -->|yes| C2[Write now drawn, filled<br/>Write ad copy turns outline, still works<br/>Next drop and Write ad copy trade places:<br/>Next drop top-left of the work row]
+  H -->|404, 503 not_ready, or 200 without its key| M1[one sentence: not on this server yet]
+  H -->|other failure| M2[one sentence: did not load; the rest of this page is current]
+```
+
+Each of the three new reads paints its own card when it answers; none waits for another or for
+GET marketing/today. A failed re-read of GET marketing/batches keeps the last good answer, so
+Write now does not blink away on one dropped answer.
+
+### Write now (spec §2 item 1; drawn only while write_now_ready is true)
+
+```mermaid
+flowchart TD
+  A[Chris picks how many: 1 to 10, default 3] --> B[taps Write now]
+  B --> S{the frame's cost sheet<br/>ctx.costSheet, kind script}
+  S -->|no sheet on the page| X[nothing sent: 'This page could not show the cost first']
+  S -->|Cancel| X2[nothing sent]
+  S -->|Write N| P[POST marketing/batches/write-now<br/>request_id + count]
+  P -->|202 queued| W["'Writing N scripts now. They show up in Scripts when they are done.'"]
+  W --> R[GET marketing/batches again now, then every 20 s<br/>while the newest batch is planned or writing,<br/>page in view, at most 10 minutes]
+  P -->|400 cap_reached| CR[the server's cap sentence + 'Nothing was started.']
+  P -->|401 / 403 / no connection / other| E[plain words; Write now comes back]
+```
+
+The sheet says: the cost line is the frame's for ONE script (`GET marketing/costs` kind
+`script`, "unknown, not measured yet" until a ledger row), "You asked for N", where the scripts
+show up, the batch and month caps from GET marketing/health, and "It spends no ad money".
+
+### Use this angle (spec §7.5 step 7)
+
+```mermaid
+flowchart TD
+  A[one of the planner's 3 angles<br/>name, why, last week's spend, leads, cost a lead, last ran] --> B[Use this angle]
+  B --> P[POST marketing/ideas<br/>request_id, angle_key, raw_points = the suggestion's why, source 'suggestion']
+  P -->|200 idea| OK["'Saved “name” as an idea at 3:04 PM. Ideas go first in the next batch.'"]
+  OK --> N[GET marketing/batches/next again<br/>the planner leaves out an angle a waiting idea names]
+  P -->|refused| E["'That angle was not saved.' + the server's sentence; the button comes back"]
+```
+
+Free: no sheet. An angle saved in this page visit shows "Saved as an idea." with no button.
+
+### Retry a stuck job (spec §8.3; owner goal: run marketing from the dashboard)
+
+```mermaid
+flowchart TD
+  S[GET marketing/today stuck_jobs<br/>failed jobs, not offer, newest first] --> R[a Waiting on you row each:<br/>'Stuck: writing one script', the saved reason, stuck since]
+  R --> T[ONE Retry button]
+  T --> P[POST marketing/jobs/retry<br/>request_id + job_id]
+  P -->|200 queued| OK["'Running again. Started 3:04 PM.' The button goes.<br/>GET marketing/health is read again"]
+  OK -->|the job fails again later| R2[its row shows 'It failed again after the retry.' and Retry again]
+  P -->|400 not failed / 404 not retryable| E[the server's own sentence; Retry stays]
+```
+
+### Waiting on you (order)
+
+1. Scripts to approve (`scripts_waiting.ready` > 0): "Approve or fix 18 scripts", "2 scripts
+   need a look first.", **Open Scripts** (`#scripts`).
+2. Videos waiting (unchanged from slice 0).
+3. Each stuck job, with Retry (above). Job kinds print in words (`write_slot` → "writing one
+   script"); an unknown kind is "a machine step", never a code name.
+4. The flywheel rows (unchanged from slice 0).
+
+### The machine (GET marketing/health)
+
+| Row | Word (chip) | Sentence |
+|---|---|---|
+| Clock | Running / Late (no tick for 30 minutes) / Not run yet | last tick; "The weekly drop is on/off." |
+| Worker | Ready / Working / Had trouble / Not run yet | last run; waiting and running counts; failed in 24 h, "Stuck ones are under Waiting on you, each with Retry." |
+| Saves to GitHub | Held (`no_token`: "the GitHub token is not set"; `dry_run`: "held by the dry-run flag") / Saving / Up to date | saves waiting since; last save (7-letter sha, when); last error |
+| Meta pull | Fresh / Old (over 2 days) / Never | last pull time |
+| Model spend | Under the cap / Near the cap (80%) / At the cap / Unknown | "This month: $12.48 of $300. Last batch: $9.70 of $40." and a bar |
+
+One line first: "The machine is healthy." or "The machine needs a look: <the first problem>."
+Last line always: "It never turns an ad on, pauses one, or changes a budget. You do that in
+Launch."
+
+### Money and leads (GET marketing/today numbers, daily, spend_by_funnel, flow)
+
+- Three blocks, Today / Last 7 days / Last 30 days (side by side above 960px, stacked on a
+  phone): Ad spend, Leads, Calls booked (+ showed), Sales (+ roadmaps bought), Cash (+ what
+  closers typed), Cash back per $1 of ads (roas). Null prints "unknown"; a measured 0 prints 0.
+  Today's spend reads "Comes in tomorrow" while the Meta pull is fresh, "unknown" when it is old.
+  The 7 and 30 day spend carries "Up from / Down from … the 7 days before" from `spend.windows`.
+- Two sparklines, drawn by hand as an inline `<svg>` polyline: ad spend and leads for each of
+  the last 30 days. A day with no saved spend breaks the line (never a dip to $0); the sentence
+  under it names the highest day and how many days had no number.
+- Spend by funnel (7 days): one bar each, longest = biggest spend; an unknown spend has no bar;
+  the spend tied to no funnel is "Not tied to a funnel" with "Tie it to a funnel in Settings"
+  (`#settings`).
+- The flow (7 days): Ad taps → On the page → Leads → Calls booked (showed) → Sales.
+- The as-of sentence under it (the same words as under the spend tiles).
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+1. **Today's primary button.** Design §3.1 draws Write now as an outline button and makes the
+   top Waiting row the filled one. The plan (spec v3, owner-approved, newer) makes Write now the
+   one filled button once write_now_ready is true; built that way. U34's test
+   (`src/ui/marketing-command-center.test.mjs`, "the only one is copyBtn in TODAY_HTML") still
+   holds for the markup; at run time the page moves the filled look to Write now, and the U37
+   e2e proves exactly one filled button in both states. That test's message is now out of date.
+2. **Where the new cards sit.** The design orders Today: Waiting, Alerts, strip, Next drop,
+   shoot board, money, machine. Next drop, The machine and Money and leads sit under the Offer
+   cards, because U34's evidence test pins the Offer card inside a 1300px frame; Next drop moves
+   up to the top-left of the work row whenever Write now is live.
+3. **Not built in U37** (not in its acceptance): Alerts, the 7-box pipeline strip, Decide rows,
+   Change the plan, Pull Meta now, Make this week's brief, New opening, Show all jobs, the shoot
+   board (M2, out of scope).
+4. **Sparklines and comparisons.** `daily` carries spend and leads only, so only those two have
+   sparklines (the design puts one on every 7 and 30 day cell). Only spend has a "before"
+   window in the answer, so only spend carries a comparison; the page never adds numbers up
+   itself (design §3.0).
+5. **Sales.** One count (our checkout's sales) plus roadmaps bought. The design's "Meta says"
+   purchases is not in GET marketing/today, so it is not shown.
+6. **Write now's split and cost.** The page sends only `count` (1 to 10); the split is the
+   server's (`start_batch`, U35). The cost line is one script's; the sheet says so instead of
+   multiplying.
+7. **Stuck rows live on Waiting on you**, not inside the machine card as design §3.1 item 7
+   draws them; the machine card's worker row points there.
+8. **Page memory.** "Running again" after a Retry and "Saved as an idea" after Use this angle
+   live in this page visit only. After a reload a retried job's row is gone while it is not
+   failed, and GET marketing/batches/next leaves out an angle a waiting idea names. UNVERIFIED
+   against a live planner run.
+9. **"Late" clock** = no tick for 30 minutes (two missed 15-minute ticks): this page's rule;
+   GET marketing/health carries no threshold.
+10. **UNVERIFIED:** the live click path on https://fundhub.ai/app/marketing-command-center.html#today
+    (the orchestrator walks it after ship). write_now_ready is false on main until U35 lands, so
+    Write now is not on the live page yet.
