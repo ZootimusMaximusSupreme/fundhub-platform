@@ -163,6 +163,10 @@ The company is **Fundhub**. Never write FundHub. Domain stays `fundhub.ai`. Same
 
 When a chat gets long, or the named task is done, remind Chris once: the loud `/summarize` line, then the picture that spells BITCH in hash letters. A long chat resends the whole history every reply. Same law: `.cursor/rules/fresh-thread-when-long.mdc` and `.claude/rules/fresh-thread-when-long.md`.
 
+### 4th grade English (owner-set 2026-10-05)
+
+Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This replaces the 5th grade level in §10; where they differ, this wins. Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
+
 ### Chris never clicks ClickFunnels (owner-set 2026-09-21)
 
 Chris never logs into ClickFunnels admin. Agents push funnel HTML via API using `CLICKFUNNELS_API_KEY`. Same law: `.cursor/rules/chris-never-clickfunnels.mdc` and `.claude/rules/chris-never-clickfunnels.md`.
