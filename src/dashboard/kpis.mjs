@@ -5,6 +5,7 @@
 // (migration 038); when spend is unknown the field is null with a reason.
 
 import { AD_TODAY_SQL } from "../lib/ad-account-day.mjs";
+import { andNotDemo, andNotTestAddress } from "../demo/exclude-demo.mjs";
 
 /**
  * daysForPeriod(period) → number of days to look back (inclusive of today).
@@ -101,10 +102,15 @@ export async function computeKpis(db, { orgId, period = "7d" } = {}) {
       [orgId, days]
     ),
     db.query(
+      /* Real people only: not demo rows, and not the e2e / @fundhub.ai /
+         @example.com rows test runs leave on production (23 shown, 4 real,
+         measured 2026-10-05 — see andNotTestAddress). */
       `SELECT count(*)::int AS n
-         FROM clients
-        WHERE org_id = $1
-          AND created_at >= now() - ($2::int || ' days')::interval`,
+         FROM clients c
+        WHERE c.org_id = $1
+          AND c.created_at >= now() - ($2::int || ' days')::interval
+          ${andNotDemo("c")}
+          ${andNotTestAddress("c")}`,
       [orgId, days]
     ),
     db.query(
@@ -189,7 +195,9 @@ export function formatCents(cents) {
   const dollars = n / 100;
   if (Math.abs(dollars) >= 1_000_000) return "$" + (dollars / 1_000_000).toFixed(2).replace(/\.?0+$/, "") + "M";
   if (Math.abs(dollars) >= 10_000) return "$" + Math.round(dollars / 1000) + "k";
-  return "$" + dollars.toLocaleString("en-US", { maximumFractionDigits: dollars % 1 ? 2 : 0 });
+  /* Cents, when there are any, are always two digits: $606.50, never $606.5. */
+  const digits = dollars % 1 ? 2 : 0;
+  return "$" + dollars.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 export function formatRate(rate) {

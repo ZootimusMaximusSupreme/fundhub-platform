@@ -480,7 +480,7 @@
   </main>
 
   <footer class="statusbar">
-    <span>FUNDHUB-ADMIN · v1</span>
+    <span>Fundhub admin · v1</span>
     <span>ORG: fundhub</span>
     <span>you're signed in as the owner</span>
     <span id="foot-period">last 7 days</span>
@@ -687,7 +687,9 @@
     }
     if(adsEl){
       adsEl.textContent = ads.status === 'ok'
-        ? ('Ad spend this window: ' + (ads.spend_cents == null ? 'missing' : ads.spend_cents) + ' cents. Read only. Do not buy ads from here.')
+        ? ('Ad spend this window: ' + (ads.spend_cents == null ? 'missing'
+            : '$' + (Number(ads.spend_cents) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) +
+           '. Read only. Do not buy ads from here.')
         : ('Ad spend: ' + (ads.status || 'missing') + '.');
     }
     if(fire) fire.textContent = 'Fire: no fire rule yet. Raise: no raise rule yet. Bonus: no bonus rule yet. The brain writes a C-suite task only. It does not kick anyone out or change pay.';
