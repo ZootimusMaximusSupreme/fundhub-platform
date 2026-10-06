@@ -71,3 +71,34 @@ flowchart TD
 - The page `public/app/marketing-command-center.*` (workflow M11).
 - Running a flywheel stage from the page (slice 2). The flywheel rows are read only.
 - The offer generator (workflow M12).
+
+## U01 API contract for every marketing/* route
+
+Added 2026-10-05 by plan unit U01. This adds no step, state, route or screen. It writes down the
+request and answer shape of every `marketing/*` route in spec v3 (M1 to M8), plus
+`POST marketing/jobs/retry` and the `resume_ad` action on `campaigns/write`, so the back-end units
+and the screens build to one shape.
+
+- Doc: `docs/specs/marketing-machine-api.md` (46 routes).
+- Twin: `src/marketing/api-contract.mjs` (`CONTRACT`, `assertMatchesContract`, `exampleResponse`).
+- Test: `src/marketing/api-contract.test.mjs` fails when the doc and the module drift apart.
+
+What is in the code today, traced through `ROUTES` in `netlify/functions/api.mjs`:
+
+| Routes | Owner | In ROUTES today |
+|---|---|---|
+| `GET marketing/today` | existing; U32 adds keys | yes (existing keys only; the M5 keys are UNVERIFIED until U32 lands) |
+| `POST campaigns/write` | existing; U15 adds `resume_ad` | yes (pause, resume, update_budget only; `resume_ad` is UNVERIFIED until U15 lands) |
+| settings, funnels | U03 | no |
+| scripts, script, approve, edit, reject, order | U25 | no |
+| scripts/fix, ideas, batches, write-now, rules, jobs/retry | U26 | no |
+| batches/next | U23 | no |
+| health | U22 | no |
+| angles, funnels/stats | U32 | no |
+| ads, ad | U31 | no |
+| meta/load, meta/load-status | U28 | no |
+| shoot, shoot/mark, videos/*, video, map, pages/* | deferred | no |
+
+Every route marked "no" is a shape only. Each owner unit adds its own flow section here when its
+route lands. Gaps between the spec, the design doc and the fixed shapes are listed in the
+contract's section 8.
