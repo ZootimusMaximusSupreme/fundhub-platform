@@ -105,6 +105,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "f-10-client-funding-inbox-provisioner",
   "f-11-bank-email-event-router",
   "finance-os-pull-sweeper",
+  "finance-os-card-due-reminders",
   "blueprint-finance-os-alerts",
   "blueprint-next-funding-sequence-sweeper",
   "hiring-bench-sweeper",

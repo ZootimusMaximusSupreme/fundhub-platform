@@ -139,8 +139,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 90 -> 91 on 2026-10-05 (marketing machine M0 step 5) with
    meta-campaign-sync-hourly, the hourly 3-day Meta pull. A cron with no event
    trigger, so it sits in neverFired like every sweeper here; it shares its
-   module with meta-campaign-sync-sweeper and is told apart by `handles`. */
-const REGISTERED = 91;
+   module with meta-campaign-sync-sweeper and is told apart by `handles`.
+
+   Moved 91 -> 92 on 2026-10-06 (Finance OS unit C) with
+   finance-os-card-due-reminders, the daily card due text. A cron with no
+   event trigger, so it sits in neverFired like every sweeper here. */
+const REGISTERED = 92;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

@@ -195,6 +195,65 @@ export async function fetchAccounts(accessToken, opts = {}) {
 }
 
 /**
+ * fetchLiabilities — POST /liabilities/get
+ *
+ * The card BILL facts: when the next payment is due, the minimum, the last
+ * statement and the last payment. Field names are Plaid's own
+ * (https://plaid.com/docs/api/products/liabilities/), carried one-for-one so a
+ * disputed reading can be checked against Plaid's docs without a mapping table.
+ *
+ * Only `liabilities.credit` is read. Mortgage and student loans come back in the
+ * same response and are not this caller's job.
+ *
+ * DOLLARS STAY DOLLARS HERE. Plaid sends decimal dollars; the cents conversion
+ * happens once, in src/banking/plaid-liabilities.mjs, next to the store. And
+ * NULL STAYS NULL: Plaid returns null for a figure it does not have, and an
+ * unknown minimum is not a $0 minimum.
+ *
+ * An Item that was never set up for liabilities answers with a Plaid error, not
+ * an empty list. That comes back as `ok:false` with Plaid's errorCode, the same
+ * flat shape as every other call here — the caller records it and moves on.
+ *
+ * `liabilities.credit` may be null when the Item has no credit cards. That is a
+ * real answer (no cards), returned as an empty list, and is not the same as an
+ * error.
+ */
+export async function fetchLiabilities(accessToken, opts = {}) {
+  const payload = { access_token: accessToken };
+  if (Array.isArray(opts.accountIds) && opts.accountIds.length) {
+    payload.options = { account_ids: opts.accountIds.map(String) };
+  }
+  const r = await plaidPost("/liabilities/get", payload, opts);
+  if (!r.ok) return r;
+  const liabilities = r.data?.liabilities;
+  if (!liabilities || typeof liabilities !== "object") {
+    return { ...r, ok: false, data: null, error: "plaid /liabilities/get answered 200 without a liabilities object" };
+  }
+  const rawCredit = Array.isArray(liabilities.credit) ? liabilities.credit : [];
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const date = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const credit = rawCredit.map((c) => ({
+    account_id: c?.account_id ?? null,
+    next_payment_due_date: date(c?.next_payment_due_date),
+    minimum_payment_amount: num(c?.minimum_payment_amount),
+    last_statement_balance: num(c?.last_statement_balance),
+    last_statement_issue_date: date(c?.last_statement_issue_date),
+    last_payment_amount: num(c?.last_payment_amount),
+    last_payment_date: date(c?.last_payment_date),
+    is_overdue: typeof c?.is_overdue === "boolean" ? c.is_overdue : null,
+    aprs: Array.isArray(c?.aprs)
+      ? c.aprs.map((a) => ({
+        apr_percentage: num(a?.apr_percentage),
+        apr_type: a?.apr_type ?? null,
+        balance_subject_to_apr: num(a?.balance_subject_to_apr),
+        interest_charge_amount: num(a?.interest_charge_amount)
+      }))
+      : []
+  }));
+  return { ...r, credit, item: r.data?.item ?? null, data: null };
+}
+
+/**
  * createLinkToken — POST /link/token/create
  *
  * The short-lived token the browser needs to open Plaid Link. `transactions` is
@@ -244,5 +303,5 @@ export async function sandboxPublicToken({ institutionId, products = ["transacti
 }
 
 export default {
-  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, createLinkToken, sandboxPublicToken
+  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchLiabilities, createLinkToken, sandboxPublicToken
 };
