@@ -838,6 +838,10 @@ flowchart TD
 
 ### Push live — `POST /api/marketing/funnels/push-live` and job `funnel_push`
 
+> Replaced by X4F (2026-10-06): the push below made standalone pages, which ClickFunnels never
+> serves on apply.fundhub.ai. The push as the code runs it now is drawn in `## X4F` at the end of
+> this file. This diagram is kept as the record of what shipped in X4.
+
 ```mermaid
 flowchart TD
   P[POST push-live<br/>request_id, id, confirm_url] --> V{pages built, not live,<br/>confirm_url = the funnel's address,<br/>nothing in flight?}
@@ -1797,3 +1801,116 @@ Today, Ideas, Scripts, Shoot, Launch, Numbers (Videos has no module yet, so it i
 strip; a `#videos` link lands on Today). Settings stays behind the gear. The gap above (no tab
 drawn) is closed on this branch. U34's frame tests now read that strip (they were written when
 Today was the only tab with a module).
+
+## X4F Push live on apply.fundhub.ai: one ClickFunnels funnel per marketing funnel
+
+Drawn from code on branch `mm-x4f-funnel-push-on-domain`: `src/marketing/funnel-push.mjs`,
+`src/messaging/providers/clickfunnels-pages.mjs`, `src/marketing/funnel-store.mjs`
+(`markPageAddress`, `backfillTags`), `src/marketing/funnel-paths.mjs` (`pathsFromFunnels`,
+`isTag`, `/fnl` reserved) and `src/marketing/funnel-copy.mjs` (`fundingLeadFailures`).
+Found in the live test on 2026-10-06 (funnel `fnl-blueprint`, push job ef7db844): the X4 push
+made a standalone page (25568231, `/blueprint-thank-you`), and ClickFunnels serves standalone
+pages on the workspace subdomain only. Every live apply.fundhub.ai page is a step of a
+ClickFunnels funnel whose domain is apply.fundhub.ai.
+
+What ClickFunnels answers (read only, 2026-10-06): a page's `url` is always the subdomain plus
+the page's own path, even for a funnel step on apply.fundhub.ai. The address people open is the
+funnel's domain plus `show_page_step.current_path`. A funnel's own path sends people on to its
+first step (apply.fundhub.ai/vsl goes to /watch). The domain list holds apply.fundhub.ai
+(id 673591).
+
+### Push live — job `funnel_push`, as the code runs it now
+
+```mermaid
+flowchart TD
+  P[POST push-live<br/>confirm_url = the funnel's address] --> J[job funnel_push]
+  J --> R[READ ClickFunnels: pages, funnels, domains]
+  R --> D{apply.fundhub.ai<br/>in the domain list?}
+  D -->|no| DX[failed, nothing made]
+  D -->|yes| F{our ClickFunnels funnel already there?<br/>name = Fundhub tag + our row id}
+  F -->|two of them| FX[failed, nothing changed]
+  F -->|yes, on another domain| FX
+  F -->|none yet, or yes on apply.fundhub.ai| C{every address free of anything<br/>this machine did not make?<br/>page paths, step paths, funnel paths}
+  C -->|no| CX[failed before anything was made]
+  C -->|yes| M{funnel there?}
+  M -->|no| MF[POST funnels: name, /fnl-tag,<br/>domain apply.fundhub.ai, live mode]
+  MF -->|answer has another domain| MX[failed, no page made;<br/>Retry finds it by name and stops again]
+  MF --> L
+  M -->|yes| L[each page: thank-you, booking, landing last]
+  L --> H{page row has a ClickFunnels page?}
+  H -->|no, ours by marker| AD[take it back]
+  H -->|no| MK[POST custom_html INSIDE our funnel<br/>at the page's path, sort_order puts it<br/>after the pages already in it]
+  MK -->|429 or no answer| RT[tried again later, nothing saved]
+  MK -->|401, 403, 404, 422| FX2[failed for good with the reason]
+  MK --> NA{answer names an address?}
+  AD --> NA
+  NA -->|no| NAX[failed before saving: never guessed;<br/>Retry takes it back by its marker]
+  NA -->|yes| SV[save page id and address at once<br/>address = apply.fundhub.ai + step path<br/>only when the step is in OUR funnel]
+  H -->|yes| AT
+  SV --> AT{at apply.fundhub.ai + its own path?}
+  AT -->|yes| TK
+  AT -->|no| GP[GET the page]
+  GP --> SA{standalone page of ours,<br/>not proven yet?}
+  SA -->|yes| MV[make a step for it: our new page in our funnel<br/>at that path, marked; Retry finds it by marker<br/>then PUT our page onto that step<br/>the step's first page stays, unlinked]
+  MV -->|ClickFunnels refuses, or puts the step elsewhere| MVX[failed: funnel stays a draft,<br/>the page stays where it is]
+  MV --> GP2[GET it again]
+  GP2 --> OK2{now at its own address?}
+  SA -->|no| OK2
+  OK2 -->|no| WH[failed: funnel stays a draft,<br/>no token, no proof, no next page]
+  OK2 -->|yes| UA[save the address]
+  UA --> TK[page token into OUR page: PUT custom_html]
+  TK --> L
+  L -->|all three placed| ST{GET the funnel's steps:<br/>our three pages, landing, booking, thank-you?}
+  ST -->|no| STX[failed, nothing called live]
+  ST -->|yes| PR[cache-busted GET of each page<br/>on apply.fundhub.ai: tag + tracking?]
+  PR -->|not yet, 4 tries| PRX[failed: Retry proves again,<br/>makes nothing new]
+  PR -->|all proven| LV[one transaction: funnel live,<br/>landing_url, active<br/>+ 3 pages queued in repo_outbox]
+```
+
+- Never: a DELETE, a page made outside a funnel (the provider refuses it before any request),
+  a PUT on a page id this funnel did not save, a change to a funnel this machine did not make.
+- The page the X4 push made on its own (25568231 on the live database) is never made again and
+  never deleted. Its row keeps that page id for good (425's trigger); the push moves it into the
+  new funnel. The page made for its step is left on ClickFunnels, unlinked.
+
+### Tag on create — the funnels mapped by hand
+
+```mermaid
+flowchart LR
+  C[POST funnels/create] --> K[lock: one create per company]
+  K --> B[every funnel row with no tag:<br/>tag = tagFor key, when it is a valid tag<br/>and no other funnel has it]
+  B --> N[then the new funnel as before]
+```
+
+- book_call (/watch) gets `fnl-book-call`; roadmap_147 (/roadmap) gets `fnl-roadmap-147`, at the
+  next create. A database tag only: the row's address, live page, status, active and
+  `updated_at` stay as they are. 425's trigger keeps a tag from ever changing after.
+
+### Lead with funding — the page writer's check
+
+- The prompt's rule 8: lead with funding, never credit repair; inquiries cost fundability, said in
+  the body as a step toward funding.
+- `checkCopy` refuses: a landing headline that names no funding word (funding, funded, capital,
+  approved, business loan, credit line); one that says credit before funding; any headline or
+  the landing eyebrow that leads with fixing, repairing or cleaning up credit, or a score. The
+  live test's headline ("Get a clear plan to fix your credit and find funding") fails it.
+
+### Gaps (findings, not reconciled)
+
+- **UNVERIFIED on live ClickFunnels.** No live push was run from this branch (owner law for this
+  unit; the main session reruns the live test after ship). Three answers are read from the docs,
+  not seen: that `POST custom_html` with `funnel.funnel_id` puts the step at `current_path` on
+  the funnel's domain; that `PUT /pages/{id}` with `funnel.show_page_step_id` takes a standalone
+  page; that a new funnel's step path is not taken by the standalone page's own path (they live
+  in different places: the subdomain and the domain). Each wrong answer stops the push with the
+  funnel a draft (tests: `src/marketing/funnel-push.test.mjs`).
+- **The Push live button stays off for the live-test funnel.** `public/app/cc-tab-ideas.js`
+  `funnelBlock` turns Push live off once any page is on ClickFunnels ("A page is already on
+  ClickFunnels, so the address is fixed."). The thank-you page is, so the push can be started
+  again only through the API (push-live) or the jobs Retry route, not from the Command Center.
+- **Create does not read funnel paths.** The create route's address check reads the ClickFunnels
+  page list only. The push now also refuses a ClickFunnels funnel's own path (/vsl,
+  /fundhub-297-roadmap), so such a name is caught at push time, not at create.
+- **The step page left behind.** Moving a standalone page into the funnel leaves the page made
+  for its step on ClickFunnels, unlinked (ClickFunnels has no other way to add an existing page
+  to a funnel; workflow steps have no page step type). Deleting it is an owner call.

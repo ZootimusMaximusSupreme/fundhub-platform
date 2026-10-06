@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkCopy, buildPrompt, offerFactsBlock, numbersIn, pageLines, COPY_SCHEMA, FUNNEL_MODEL } from "./funnel-copy.mjs";
+import { checkCopy, buildPrompt, offerFactsBlock, numbersIn, pageLines, fundingLeadFailures, COPY_SCHEMA, FUNNEL_MODEL } from "./funnel-copy.mjs";
 import { FUNNEL_OFFERS, pagePaths } from "./funnel-paths.mjs";
 import { OFFERS, formatCents } from "../config/offers.mjs";
 
@@ -72,6 +72,49 @@ describe("the copy check", () => {
     assert.match(check(c).failures.join("\n"), /about us/);
   });
 
+  test("lead with funding: the live test's headline is refused (credit before funding, fixing credit)", () => {
+    // The headline the writer made in the live test on 2026-10-06 (funnel fnl-blueprint).
+    const c = copy();
+    c.landing.headline = "Get a clear plan to fix your credit and find funding";
+    const f = check(c).failures.join("\n");
+    assert.match(f, /puts credit before funding/);
+    assert.match(f, /leads with fixing credit or a score\. Fundhub sells funding, never credit repair/);
+    assert.equal(check(c).ok, false);
+  });
+
+  test("lead with funding: the landing headline must name funding", () => {
+    const c = copy();
+    c.landing.headline = "Know exactly what stands between you and a plan";
+    assert.match(check(c).failures.join("\n"), /does not name funding/);
+    for (const ok of [
+      "Know exactly what stands between you and funding",
+      "Get funded for the most your file allows",
+      "Find the capital your business qualifies for",
+      "Get approved for the most, then clean up what holds you back"
+    ]) {
+      const g = copy();
+      g.landing.headline = ok;
+      assert.deepEqual(fundingLeadFailures(g), [], ok);
+    }
+  });
+
+  test("lead with funding: no headline and no landing eyebrow leads with fixing credit or a score", () => {
+    for (const [role, key, text] of [
+      ["landing", "eyebrow", "Credit repair plan"],
+      ["landing", "headline", "Funding starts when you raise your score"],
+      ["booking", "headline", "Book your credit fix call"],
+      ["thank_you", "headline", "Your dispute call is booked, credit cleanup next"]
+    ]) {
+      const c = copy();
+      c[role][key] = text;
+      assert.match(fundingLeadFailures(c).join("\n"), new RegExp(`${role}: the ${key} .* leads with fixing credit or a score`), text);
+    }
+    // Credit work in the body is fine: it is a step on the way to funding.
+    const body = copy();
+    body.landing.bullets[0].detail = "We clean up the inquiries that cost you fundability.";
+    assert.deepEqual(fundingLeadFailures(body), []);
+  });
+
   test("the ad checker's hook rule holds on the landing headline only", () => {
     const land = copy();
     land.landing.headline = "Book your call today";
@@ -120,6 +163,8 @@ describe("the prompt", () => {
     assert.match(system, /Fundhub/);
     assert.match(system, /Never invent a number/);
     assert.match(system, /Social Security/);
+    assert.match(system, /Lead with funding\. Fundhub sells funding, never credit repair/);
+    assert.match(system, /inquiries cost fundability/);
   });
 
   test("names the campaign files when there are some, and the failures to fix", () => {

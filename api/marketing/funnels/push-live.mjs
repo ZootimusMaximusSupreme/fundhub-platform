@@ -12,7 +12,8 @@
 // The screen sends it online only, never from its offline queue.
 //
 // The push itself is job kind 'funnel_push' (src/marketing/funnel-push.mjs): it
-// checks all three addresses are still free, makes three NEW custom HTML pages,
+// checks all three addresses are still free, makes one NEW ClickFunnels funnel on
+// the apply.fundhub.ai domain and three NEW custom HTML pages inside it (X4F),
 // never changes a page it did not make, and proves each page live with a
 // cache-busted read before the funnel says "live". Costs $0; no ad changes.
 //

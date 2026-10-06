@@ -8,7 +8,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  cfCreds, listPages, createCustomHtmlPage, putOwnPageHtml, fetchLivePage, getPage, workspaceId, TRANSMITS
+  cfCreds, listPages, listFunnels, listDomains, createFunnel, createCustomHtmlPage, putOwnPageHtml,
+  moveOwnPageOntoStep, fetchLivePage, getPage, funnelStructure, stepOf, workspaceId, TRANSMITS
 } from "./clickfunnels-pages.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -80,38 +81,79 @@ describe("reading the page list (read only)", () => {
   });
 });
 
-describe("making a page", () => {
-  test("POST custom_html with name, description, the whole page and the address; no head_code, no funnel", async () => {
-    const cf = fakeCf((m, u) => (m === "POST" && u.pathname === "/api/v2/workspaces/77/pages/custom_html"
-      ? { status: 201, body: { id: 501, public_id: "AbC", current_path: "/blueprint", url: "https://apply.fundhub.ai/blueprint", sdk: { token: "cfp_t" } } }
+describe("making a funnel", () => {
+  test("POST funnels: name, its own address, the domain id and live mode; answers the id and the domain", async () => {
+    const cf = fakeCf((m, u) => (m === "POST" && u.pathname === "/api/v2/workspaces/77/funnels"
+      ? { status: 201, body: { id: 991, public_id: "FnL", name: "Fundhub fnl-blueprint x", current_path: "/fnl-blueprint", domain_id: 673591, live_mode: true } }
       : null));
-    const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "Blueprint - Landing", description: "marker", html: "<!doctype html><p>x</p>", path: "/blueprint" });
-    assert.deepEqual(out, { ok: true, id: "501", publicId: "AbC", url: "https://apply.fundhub.ai/blueprint", currentPath: "/blueprint", token: "cfp_t" });
+    const out = await createFunnel({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "Fundhub fnl-blueprint x", path: "/fnl-blueprint", domainId: "673591" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(out.id, "991");
+    assert.equal(out.domainId, "673591");
+    assert.deepEqual(cf.calls[0].body, { funnel: { name: "Fundhub fnl-blueprint x", current_path: "/fnl-blueprint", domain_id: 673591, live_mode: true } });
+  });
+
+  test("no domain or a dirty address is refused before any request", async () => {
+    const cf = fakeCf(() => ({ status: 201, body: { id: 1 } }));
+    assert.equal((await createFunnel({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", path: "/fnl-x", domainId: "" })).ok, false);
+    assert.equal((await createFunnel({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", path: "/../x", domainId: "5" })).ok, false);
+    assert.equal(cf.calls.length, 0);
+  });
+});
+
+describe("making a page", () => {
+  test("POST custom_html INSIDE a funnel: name, description, the whole page, the address, the step position; no head_code", async () => {
+    const answer = {
+      id: 501, public_id: "AbC", current_path: "/capital-blueprint-landing-page", url: "https://acme.myclickfunnels.com/capital-blueprint-landing-page",
+      show_page_step: { id: 77001, public_id: "StP", current_path: "/blueprint", sort_order: 0 },
+      funnel: { id: 991, public_id: "FnL", name: "Fundhub fnl-blueprint x" }, sdk: { token: "cfp_t" }
+    };
+    const cf = fakeCf((m, u) => (m === "POST" && u.pathname === "/api/v2/workspaces/77/pages/custom_html" ? { status: 201, body: answer } : null));
+    const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", funnelId: "991", sortOrder: 0, name: "Blueprint - Landing", description: "marker", html: "<!doctype html><p>x</p>", path: "/blueprint" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(out.id, "501");
+    assert.equal(out.token, "cfp_t");
+    assert.equal(out.url, "https://acme.myclickfunnels.com/capital-blueprint-landing-page", "the url ClickFunnels answers is the subdomain, kept as it is");
+    assert.equal(out.funnelId, "991");
+    assert.equal(out.stepId, "77001");
+    assert.equal(out.stepPath, "/blueprint");
     assert.equal(cf.calls.length, 1);
-    assert.deepEqual(cf.calls[0].body, { page: { name: "Blueprint - Landing", description: "marker", custom_html: "<!doctype html><p>x</p>", current_path: "/blueprint" } });
-    assert.ok(!("head_code" in cf.calls[0].body.page) && !("funnel" in cf.calls[0].body.page));
+    assert.deepEqual(cf.calls[0].body, { page: { name: "Blueprint - Landing", description: "marker", custom_html: "<!doctype html><p>x</p>", current_path: "/blueprint", sort_order: 0, funnel: { funnel_id: "991" } } });
+    assert.ok(!("head_code" in cf.calls[0].body.page));
+  });
+
+  test("a page outside a funnel is refused before any request: it would never be served on apply.fundhub.ai", async () => {
+    const cf = fakeCf(() => ({ status: 201, body: { id: 1 } }));
+    for (const funnelId of [undefined, "", "../x"]) {
+      const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", funnelId, name: "x", description: "x", html: "x", path: "/x" });
+      assert.equal(out.ok, false);
+      assert.match(out.error, /outside a funnel/);
+    }
+    assert.equal(cf.calls.length, 0);
   });
 
   test("a failed make carries the HTTP status, so a busy 429 can be told from a refused 422", async () => {
     for (const status of [429, 422, 401]) {
       const cf = fakeCf(() => ({ status, body: { error: "no" } }));
-      const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", description: "x", html: "x", path: "/x" });
+      const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", funnelId: "9", name: "x", description: "x", html: "x", path: "/x" });
       assert.equal(out.ok, false);
       assert.equal(out.status, status);
       assert.match(out.error, new RegExp(`HTTP ${status}`));
     }
   });
 
-  test("a dirty address is refused before any request", async () => {
+  test("a dirty address or step position is refused before any request", async () => {
     const cf = fakeCf(() => ({ body: {} }));
-    const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", description: "x", html: "x", path: "/../watch" });
+    const out = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", funnelId: "9", name: "x", description: "x", html: "x", path: "/../watch" });
     assert.equal(out.ok, false);
+    const bad = await createCustomHtmlPage({ env: ENV, fetchImpl: cf.fetchImpl, workspace: "77", funnelId: "9", sortOrder: -1, name: "x", description: "x", html: "x", path: "/x" });
+    assert.equal(bad.ok, false);
     assert.equal(cf.calls.length, 0);
   });
 
   test("held by the fence unless ADAPTERS_DRY_RUN is an explicit off value", async () => {
     const cf = fakeCf(() => ({ status: 201, body: { id: 1 } }));
-    const out = await createCustomHtmlPage({ env: { ...ENV, ADAPTERS_DRY_RUN: undefined }, fetchImpl: cf.fetchImpl, workspace: "77", name: "x", description: "x", html: "x", path: "/x" });
+    const out = await createCustomHtmlPage({ env: { ...ENV, ADAPTERS_DRY_RUN: undefined }, fetchImpl: cf.fetchImpl, workspace: "77", funnelId: "9", name: "x", description: "x", html: "x", path: "/x" });
     assert.equal(out.ok, false);
     assert.match(out.error, /held by the outbound fence/);
     assert.equal(cf.calls.length, 0, "nothing was sent");
@@ -136,22 +178,65 @@ describe("changing a page: only our own", () => {
     assert.deepEqual(cf.calls[0].body, { page: { custom_html: "<p>y</p>" } });
   });
 
-  test("the module has no delete and no head or footer code write", () => {
+  test("moving a page onto a step: only our own page, one PUT with the step id only", async () => {
+    const cf = fakeCf((m, u) => (m === "PUT" && u.pathname === "/api/v2/pages/25568231" ? { body: { id: 25568231 } } : null));
+    const refused = await moveOwnPageOntoStep({ env: ENV, fetchImpl: cf.fetchImpl, pageId: "25516164", stepId: "77001", ownedIds: ["25568231"] });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.refused, true);
+    assert.equal(cf.calls.length, 0, "a page we did not make: no request");
+    const out = await moveOwnPageOntoStep({ env: ENV, fetchImpl: cf.fetchImpl, pageId: "25568231", stepId: "77001", ownedIds: ["25568231"] });
+    assert.deepEqual(out, { ok: true });
+    assert.deepEqual(cf.calls[0].body, { page: { funnel: { show_page_step_id: "77001" } } });
+    assert.equal((await moveOwnPageOntoStep({ env: ENV, fetchImpl: cf.fetchImpl, pageId: "25568231", stepId: "", ownedIds: ["25568231"] })).refused, true);
+  });
+
+  test("the module has no delete and no head or footer code write; one PUT for our own pages, two POSTs (funnel, page)", () => {
     const src = fs.readFileSync(path.join(HERE, "clickfunnels-pages.mjs"), "utf8")
       .split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join("\n");
     assert.ok(!/"DELETE"/.test(src), "no DELETE");
+    assert.ok(!/"PATCH"/.test(src), "no PATCH");
     assert.ok(!/head_code|footer_code/.test(src), "no head_code or footer_code");
-    assert.equal((src.match(/"PUT"/g) || []).length, 1, "one PUT, inside putOwnPageHtml");
-    assert.equal((src.match(/"POST"/g) || []).length, 1, "one POST, the page create");
+    assert.equal((src.match(/"PUT"/g) || []).length, 1, "one PUT, inside putOwnPage (the owned-id check)");
+    assert.equal((src.match(/"POST"/g) || []).length, 2, "two POSTs: the funnel create and the page create");
   });
 });
 
 describe("reading pages back", () => {
-  test("getPage reads the page token of a page we made", async () => {
+  test("getPage reads the page token of a page we made, and where it sits", async () => {
     const cf = fakeCf((m, u) => (u.pathname === "/api/v2/pages/501" ? { body: { id: 501, sdk: { token: "cfp_z" } } } : null));
     const out = await getPage({ env: ENV, fetchImpl: cf.fetchImpl, pageId: "501" });
     assert.equal(out.ok, true);
     assert.equal(out.token, "cfp_z");
+    assert.equal(out.standalone, true, "no funnel, no step");
+  });
+
+  test("stepOf: the funnel and the step's path (lower case, no trailing slash); the url is not the address", () => {
+    assert.deepEqual(stepOf({ url: "https://acme.myclickfunnels.com/x-page", show_page_step: { id: 3, current_path: "/Roadmap/" }, funnel: { id: 984178, public_id: "YxAGqw" } }),
+      { funnelId: "984178", funnelPublicId: "YxAGqw", stepId: "3", stepPath: "/roadmap", standalone: false });
+    assert.deepEqual(stepOf({ url: "https://acme.myclickfunnels.com/blueprint-thank-you", show_page_step: null, funnel: null }),
+      { funnelId: null, funnelPublicId: null, stepId: null, stepPath: null, standalone: true });
+  });
+
+  test("lists of funnels and domains, and a funnel's steps in order (read only)", async () => {
+    const cf = fakeCf((m, u) => {
+      if (u.pathname === "/api/v2/workspaces/77/funnels") return { body: [{ id: 984178, name: "Fundhub $297 Roadmap", current_path: "/fundhub-297-roadmap", domain_id: 673591 }] };
+      if (u.pathname === "/api/v2/workspaces/77/domains") return { body: [{ id: 673591, name: "apply.fundhub.ai" }] };
+      if (u.pathname === "/api/v2/funnels/984178/structure") {
+        return { body: { funnel: { id: 984178 }, steps: [
+          { step_type: "show_page_step", show_page_step_id: "oyEOAN", page: { id: 25516164 } },
+          { step_type: "show_page_step", show_page_step_id: "gVOBpl", page: { id: 25516165 } }
+        ] } };
+      }
+      return null;
+    });
+    const f = await listFunnels({ env: ENV, fetchImpl: cf.fetchImpl });
+    assert.equal(f.ok, true);
+    assert.equal(f.funnels[0].domain_id, 673591);
+    const d = await listDomains({ env: ENV, fetchImpl: cf.fetchImpl });
+    assert.equal(d.domains[0].name, "apply.fundhub.ai");
+    const st = await funnelStructure({ env: ENV, fetchImpl: cf.fetchImpl, funnelId: "984178" });
+    assert.deepEqual(st.steps.map((x) => x.pageId), ["25516164", "25516165"]);
+    assert.ok(cf.calls.every((c) => c.method === "GET"));
   });
 
   test("fetchLivePage busts the cache and sends no key", async () => {
