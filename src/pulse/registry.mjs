@@ -374,7 +374,12 @@ const API_KEYS = [
   "marketing/funnels/create",
   "marketing/funnels/rename",
   "marketing/funnels/build",
-  "marketing/funnels/push-live"
+  "marketing/funnels/push-live",
+  /* The Meta loader (U28). load is POST only: a GET answers 405 before it reads
+     anything, which isUp() counts as up, and the ping queues nothing.
+     load-status answers 401 to an unsigned GET. Neither ever calls Meta. */
+  "marketing/meta/load",
+  "marketing/meta/load-status"
 ];
 
 const DESK_FILES = [

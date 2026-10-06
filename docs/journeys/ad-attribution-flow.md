@@ -309,3 +309,80 @@ Gaps and things not drawn (findings, not reconciled):
   matched by 407 once a person numbers the ad.
 - `UNVERIFIED` live: the field was checked against Meta's SDK, not a live call.
   The first real sync after ship is the confirmation.
+## U28 M4 loader: meta_load job, POST marketing/meta/load, GET load-status (paused only)
+
+Generated from the code on 2026-10-06 (branch `mm-u28-meta-loader`):
+`src/marketing/meta-load.mjs` (`runLoad`, `planLoad`, `createStore`,
+`queueLoads`, `readLoadStatus`, `deriveLoadState`), `api/marketing/meta/load.mjs`,
+`api/marketing/meta/load-status.mjs`, migration 417. Spec §10.2, §10.4, §10.5,
+§2 items 6 and 11. Not live until ship. The Launch tab that presses these is a
+separate unit (U39). The worker that runs the job is U22 (not merged when this
+was written), so a queued load waits for it.
+
+```mermaid
+flowchart TD
+    P1[POST /api/marketing/meta/load<br/>ad_video_id, or all: true · request_id] --> G{requireAuth → ROLE_SETS.MARKETING<br/>owner or admin → a company}
+    G -->|no| E[401 / 403 · nothing queued]
+    G -->|yes| W[withRequest: ONE staff transaction<br/>request_id seen → the saved answer]
+    W -->|all: true| Q1[every ad video: approved or delivered,<br/>approved_at + approver, not loaded, kind ad]
+    W -->|ad_video_id| Q2[that video in this company<br/>else 404 · any state is queued]
+    Q1 --> J[one meta_load job per video<br/>a video with a job waiting or running gets that job back]
+    Q2 --> J
+    J --> A[202 queued: true, jobs<br/>then wake the worker, after the commit]
+    A --> RUN[worker runs meta_load]
+    RUN --> PRE{planLoad: approved by a person? Meta copy?<br/>funnel + default ad set synced? connection active?<br/>final video an R2 key + R2 env? Page + Instagram ids?<br/>lane known? no UTMs in the link?}
+    PRE -->|any no| REF[refused · plain reasons<br/>ad_videos.load_error · job done]
+    PRE -->|all yes| SCR{screenAndRecord on the Meta copy<br/>approveBeforeLaunch false because a person approved}
+    SCR -->|blocked or needs_approval| REF
+    SCR -->|passed| UP[uploadVideo through guardedWrite<br/>24-hour signed R2 link<br/>meta_video_id saved at once]
+    UP --> ST{getVideoStatus, once}
+    ST -->|processing, or ready with no thumbnail| WT{20 minutes since the upload?}
+    WT -->|no| RQ[requeueJob 10 s out · no attempt counted]
+    RQ --> RUN
+    WT -->|yes| FAIL[failed · upload let go · Retry uploads again]
+    ST -->|error or expired| FAIL
+    ST -->|ready + thumbnail| CR[createCreative through guardedWrite<br/>url_tags = buildUrlTags · every enhancement OPT_OUT<br/>meta_creative_id saved at once]
+    CR --> RB{readCreativeFeatures: all OPT_OUT?}
+    RB -->|no| REF2[refused · creative let go]
+    RB -->|yes| GD{getAdSetGuardInfo + checkAdSetGuard}
+    GD -->|archived · dynamic · 50 ads · category| REF
+    GD -->|ok, paused is a note| CL[claim: reserve our ads row id<br/>on ad_videos.ad_row_id]
+    CL --> AD[createAd through guardedWrite<br/>PAUSED, no status argument<br/>meta_ad_external_id saved at once]
+    AD --> FIN[ONE transaction: creative_assets house, video, 9x16<br/>+ ads PAUSED, number, source loader,<br/>ON CONFLICT connection_id, external_id DO UPDATE<br/>+ ad_videos.loaded_at]
+    FIN --> DONE[loaded · job done]
+    S[GET /api/marketing/meta/load-status] --> SG{same gate}
+    SG --> SR[one staff read: every video with a meta_load job<br/>or a Meta id or loaded_at · its job · our ads row<br/>· the ad set and campaign from our rows]
+    SR --> OUT[loads: state waiting · loading · loaded · refused · failed,<br/>reasons, Meta ids, ad_status, ad_set, campaign, step · as_of]
+```
+
+| Step | Where | What fires it | What it never does |
+|---|---|---|---|
+| Queue | `queueLoads` in withRequest's transaction | Load to Meta / Load all approved | call Meta; queue a second job for a video that has one waiting |
+| Preflight | `planLoad` | each run | reach Meta when a reason exists |
+| Screen | `screenAndRecord`, then `guardedWrite` on every write | each run, each Meta write | pass `needs_approval`; skip the audit row |
+| Upload, creative, ad | `meta.uploadVideo`, `meta.createCreative`, `meta.createAd` via `guardedWrite` on a staff handle | the run | hold a transaction open while Meta answers; send ACTIVE |
+| Wait | `getVideoStatus` + `requeueJob` | Meta still processing | wait inside the function; count an attempt |
+| Claim | `store.claim` (ad_row_id) | before createAd | make an ad while another load of the same video runs |
+| Our rows | `store.finishLoad` | after createAd | change `ad_videos.status` (the loaded state is 9.1a) |
+| Status | `readLoadStatus` + `deriveLoadState` | GET load-status | write anything |
+
+How a run ends: loaded, refused and busy return (the worker marks the job done
+with that result). A Meta wait or a "slow down" re-queues the job itself. A
+failure for good (Meta said no, the video errored or expired, 20 minutes passed)
+fails the job itself with `final`, so Retry is the way back. A passing hiccup
+(Meta 5xx, unreachable, our database) is thrown and the queue tries again at 1
+and 5 minutes.
+
+### Gaps and things not drawn (U28)
+
+- `UNVERIFIED` live: no load has reached real Meta. Proven with a fake Meta (`src/marketing/meta-load.test.mjs`, also through the real `meta.mjs` with a fake fetch) and against Postgres in CI (`src/http/marketing-meta-load.pg.test.mjs`). Production today has 0 approved videos and 0 `storage_final_key` values, so every live load refuses with "The final video is not in storage yet." until M3 and R2 exist (spec §16.4).
+- Two partners in production (read-only SELECT, 2026-10-06): the Meta connection, campaigns and ad sets sit on `fundhub-direct`; videos and scripts on `fundhub-house`. `creative_assets` follows the video (house: its storage key must start with `partners/<partner_id>/`, 045). `trg_ads_asset_partner` (377) refuses a cross-partner `ads.asset_id`, so the ads row is written with `asset_id` NULL and the ad ties to its script by `fundhub_ad_number` only. A same-partner setup links the asset.
+- Spec §10.4 "sync first if they're missing": the loader does not start a sync. An ad set that is not in our rows yet is refused with "It shows up after the next Meta pull."
+- The design doc (§3.6) draws `POST {script_id}` and rows keyed by script; the API contract (U01, the fixed shapes win) says `ad_video_id` and `loads[]`. Built to the contract, plus extra keys `step`, `angle`, `funnel_key`, `loaded_at`, `ad_set.name`.
+- `creative_assets.duration_sec` is NULL (unknown): the finished cut's length arrives with 9.1a's `master_duration_seconds`; the raw take's length is not the ad's. `compliance_state` is written `approved` (a person approved the video and the screen passed); the spec does not name a value.
+- The 20-minute window starts at the upload's `action_log.executed_at` (no seventh column). A timeout or a Meta error lets the upload go (`meta_video_id` NULL, the old id kept in `load_error`), so Retry starts a fresh window.
+- A claim whose run died while asking Meta for the ad is retried with the same reserved row id. If Meta had made the ad, the ad set may hold a second PAUSED copy; paused ads spend nothing.
+- `ads.approval_state` is left at its default (`draft`), the same as the sync writes.
+- The roadmap funnel's lane is `uwiq` (seed 297), while live roadmap leads use `slo` (406/407). The loader writes `utm_campaign` from the funnel's lane, so this plan gap carries into new ads.
+- Both `META_PAGE_ID` and `META_INSTAGRAM_USER_ID` are required before any load (spec §10.2 lists both in `object_story_spec`).
+- The worker contract assumed for U22: a handler may re-queue or fail its own job before it returns; the worker's `finishJob` then finds the row not running and changes nothing (`jobs.mjs` checks `status = 'running'`).

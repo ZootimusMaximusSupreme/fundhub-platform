@@ -65,3 +65,4 @@ export async function checkJobKinds(registry = JOB_KINDS) {
   }
   return problems;
 }
+JOB_KINDS.meta_load = { group: "loader", load: () => import("./meta-load.mjs") }; // U28: one approved video → one PAUSED Meta ad
