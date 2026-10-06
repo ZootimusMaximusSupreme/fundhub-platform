@@ -181,7 +181,7 @@ describe("caps (design §5 rule 13)", () => {
     const db = fakeResearchDb();
     const model = fakeResearchModel();
     // Room for the plan and the vault, not for a sweep call on top of the write-up's reserve.
-    const cap = reportReserveUsd() + 0.25;
+    const cap = reportReserveUsd() + 0.45;
     const job = db.addJob({ org_id: ORG, kind: "deep_research", payload: payload({ max_cost_usd: cap }) });
     const { job: done } = await driveJob(db, job.id, deep, ctxFor(db, model));
     assert.equal(done.status, "done", done.error);

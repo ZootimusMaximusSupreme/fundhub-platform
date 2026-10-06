@@ -152,14 +152,14 @@ describe("a market research run in 5 saved steps", () => {
   });
 
   test("the run cap stops it with what it found saved, and Resume continues from the saved steps", async () => {
-    // A 75-cent cap for market research (run_caps.ad_research, the Settings dial): room for
+    // A 95-cent cap for market research (run_caps.ad_research, the Settings dial): room for
     // step 1 with the board's reserve held back, not for one sweep call on top.
-    const db = fakeResearchDb({ settings: { run_caps: { ad_research: 0.75 } } });
+    const db = fakeResearchDb({ settings: { run_caps: { ad_research: 0.95 } } });
     const model = fakeMarketModel();
     const job = db.addJob({ org_id: ORG, kind: "flywheel_stage", payload: payload() });
     const first = await driveJob(db, job.id, stageJob, ctxFor(db, model));
     assert.equal(first.job.status, "failed");
-    assert.equal(first.job.error, "Stopped at the $0.75 run cap after step 1. What it found so far is saved.");
+    assert.equal(first.job.error, "Stopped at the $0.95 run cap after step 1. What it found so far is saved.");
     const cp = first.job.result;
     assert.ok(cp.stopped && cp.stopped.reason === "run_cap");
     assert.equal(cp.step, "sweep");

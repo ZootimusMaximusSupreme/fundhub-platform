@@ -80,9 +80,13 @@ export function searchCeiling({ withRetries = false } = {}) {
 }
 
 export const FETCH_TOKENS = 10_000;
-export const SEARCH_MAX_TOKENS = 12_000;
-export const PLAN_MAX_TOKENS = 8_000;
-export const BOARD_MAX_TOKENS = 16_000;
+/* Output limits per call. Thinking counts toward max_tokens on Opus 5.5 and Sonnet 5.5
+   and cannot be turned off, so a tight limit cuts a reply off ("cut off" is an error).
+   These leave room for thinking and stay under the 270-second call cap without streaming:
+   the long write-ups run at effort "medium" (Opus 5.5's own default) so they finish in time. */
+export const SEARCH_MAX_TOKENS = 16_000;
+export const PLAN_MAX_TOKENS = 16_000;
+export const BOARD_MAX_TOKENS = 20_000;
 export const BOARD_PROMPT_CHARS = 70_000;
 export const VERIFY_WAVE = 4;
 
@@ -741,7 +745,7 @@ export const AD_RESEARCH_DEF = {
           const res = await researchCall({
             callModel: io.deps.callModel, env: io.env, model: WRITER_MODEL,
             prompt: boardPrompt(state, { solid: solid.map(strip), weaker: weaker.map(strip), killed }).slice(0, BOARD_PROMPT_CHARS),
-            maxTokens: BOARD_MAX_TOKENS, effort: "high"
+            maxTokens: BOARD_MAX_TOKENS, effort: "medium"
           });
           await logCalls(io, "board", res);
           if (!res.ok) return { ok: false, plain: res.plain, final: res.final };

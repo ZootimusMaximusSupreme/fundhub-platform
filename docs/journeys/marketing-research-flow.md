@@ -92,7 +92,7 @@ What each step checks in code (design §5 rule 14):
 What the caps do (design §5 rule 13):
 
 - Before every batch: spent so far (from `marketing_model_usage`, job id) plus the batch's
-  worst case, with the write-up's reserve (about $0.42) held back, against the run's stop
+  worst case, with the write-up's reserve (about $0.50) held back, against the run's stop
   amount, and against the month cap when research shares it. The batch shrinks first
   (the row says so: "Round 3 read 2 of 4 sub-questions to stay under $5."), then the run
   skips to the write-up and ends "Done, stopped at the cap".

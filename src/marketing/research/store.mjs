@@ -104,7 +104,7 @@ export function checkResearchStart(body, settingsRow) {
   }
   if (typeof cap !== "number" || !Number.isFinite(cap)) throw new InvalidError("max_cost_usd", "The stop amount must be a number of dollars, like 5.");
   if (cap < MIN_RESEARCH_CAP_USD) {
-    throw new BadQuestionError("max_cost_usd", `The stop amount is too small. The write-up alone can cost up to about 45 cents, so type at least ${dollars(MIN_RESEARCH_CAP_USD)}.`);
+    throw new BadQuestionError("max_cost_usd", `The stop amount is too small. The write-up alone can cost up to about 50 cents, so type at least ${dollars(MIN_RESEARCH_CAP_USD)}.`);
   }
   if (cap > MAX_RESEARCH_CAP_USD) throw new InvalidError("max_cost_usd", `The stop amount can be at most ${dollars(MAX_RESEARCH_CAP_USD)}.`);
   return { question, depth, sources, belief, max_cost_usd: Math.round(cap * 100) / 100 };

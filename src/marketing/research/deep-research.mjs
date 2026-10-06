@@ -78,10 +78,13 @@ export function searchCeiling(depth) {
 export const VERIFY_WAVE = 8;
 /** Page size limit for a fetched page in research calls, in tokens. */
 export const FETCH_TOKENS = 8000;
-/** Output limits per call (thinking counts toward them). */
-export const SEARCH_MAX_TOKENS = 12_000;
-export const PLAN_MAX_TOKENS = 8_000;
-export const REPORT_MAX_TOKENS = 16_000;
+/* Output limits per call. Thinking counts toward max_tokens on Opus 5.5 and Sonnet 5.5
+   and cannot be turned off, so a tight limit cuts a reply off ("cut off" is an error).
+   These leave room for thinking and stay under the 270-second call cap without streaming:
+   the long write-ups run at effort "medium" (Opus 5.5's own default) so they finish in time. */
+export const SEARCH_MAX_TOKENS = 16_000;
+export const PLAN_MAX_TOKENS = 16_000;
+export const REPORT_MAX_TOKENS = 20_000;
 /** The write-up's prompt is cut to about this many characters. */
 export const REPORT_PROMPT_CHARS = 75_000;
 
@@ -775,7 +778,7 @@ export const DEEP_RESEARCH_DEF = {
                 solid: parts.solid.map(strip), others: parts.others.map(strip), killed: parts.killed,
                 unreachable: state.unreachable, ownFiles: ownFilesText(state)
               }).slice(0, REPORT_PROMPT_CHARS),
-              maxTokens: REPORT_MAX_TOKENS, effort: "high"
+              maxTokens: REPORT_MAX_TOKENS, effort: "medium"
             });
             for (const c of res.calls) {
               await logResearchUsage(io.db, { orgId: io.orgId, jobId: io.job.id, model: c.model, usage: c.usage, searches: 0, fetches: 0, step: "report" });
