@@ -15,8 +15,9 @@
 // construction, because a prompt is a request and a regex is a rule.
 
 import { assetFrom } from "./_http.mjs";
-import { callModel, DEFAULT_MODEL } from "../../agents/model.mjs";
-import { readWithBackupReader } from "../../handlers/doc-check.mjs";
+import {
+  callModel, classifyModelFailure, DEFAULT_MODEL, MODEL_NO_CREDIT
+} from "../../agents/model.mjs";
 import { assertSuiteEnabled, assertUnderCap, recordUsage } from "../../brand/meter.mjs";
 
 export const PROVIDER_KEY = "copy";
@@ -50,13 +51,9 @@ export async function generate(spec = {}, ctx = {}) {
      job failed on that 429 three times and wrote nothing, while the working
      Anthropic key was never asked.
 
-     Same backup Social Studio's callWriter (api/social/generate.mjs) and the
-     ID reader use — the shared readWithBackupReader: only when the first call
-     went to OpenAI AND OpenAI said "no credit", ask Anthropic once, with the
-     OpenAI keys left out of that one call's copy of the environment. The
-     stored keys are not touched (CLAUDE.md §11). Any other failure, or a
-     backup that fails too, leaves the first answer standing. */
-  const backup = await readWithBackupReader(model, { env, modelArgs });
+     Same rule Social Studio's callWriter (api/social/generate.mjs) and the
+     ID reader use — see backupOnNoCredit below. */
+  const backup = await backupOnNoCredit(model, { env, modelArgs });
   if (backup) model = backup;
 
   if (tx && ctx.partnerId) {
@@ -97,6 +94,37 @@ export async function generate(spec = {}, ctx = {}) {
     })),
     cost_cents: Number(ctx.config?.unit_cost_cents ?? 0)
   };
+}
+
+/* backupOnNoCredit — the backup writer, the same rule as readWithBackupReader
+   in src/handlers/doc-check.mjs (the one Social Studio's callWriter and the ID
+   reader use): only when the first call went to OpenAI AND OpenAI said "no
+   credit", ask Anthropic once, with the OpenAI keys left out of that one call's
+   copy of the environment. The stored keys are not touched (CLAUDE.md §11). Any
+   other failure, or a backup that fails too, leaves the first answer standing.
+
+   WHY A COPY OF THE RULE AND NOT AN IMPORT. doc-check.mjs pulls in a large
+   module graph that reaches the vendor letter generator
+   (vendor/underwriteiq-full/api/lite/letter-generator.js). Importing it here
+   put that into the creative-job-runner function's zip, which then needs
+   @pdf-lib/fontkit and dies at load without it
+   (src/payments/sweeper-fontkit-in-zip.test.mjs caught exactly that). The rule
+   needs nothing but model.mjs. src/creative/providers/copy.test.mjs runs both
+   functions over the same cases, so the two cannot drift apart unnoticed. */
+export async function backupOnNoCredit(first, {
+  env = process.env, modelArgs = {}, callModelImpl = callModel
+} = {}) {
+  if (!first || first.text) return null;
+  if (first.request?.provider !== "openai") return null;
+  if (!env || !env.ANTHROPIC_API_KEY) return null;
+  const failure = classifyModelFailure({ status: first.status, error: first.error });
+  if (failure.reason !== MODEL_NO_CREDIT) return null;
+  const backupEnv = { ...env };
+  delete backupEnv.OPENAI_API_KEY;
+  delete backupEnv.COMPANY_BRAIN_OPENAI_API_KEY;
+  const second = await callModelImpl({ ...modelArgs, env: backupEnv });
+  if (!second || !second.text) return null;
+  return { ...second, backupReader: true };
 }
 
 /* The rules, restated for the model. A yield improvement, NOT the control — see

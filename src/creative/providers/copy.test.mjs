@@ -14,7 +14,10 @@
 
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
-import { generate } from "./copy.mjs";
+import { generate, backupOnNoCredit } from "./copy.mjs";
+// Test-only import: doc-check.mjs is too heavy for the runner's zip (see
+// copy.mjs), but a test is never bundled, so the drift check below can use it.
+import { readWithBackupReader } from "../../handlers/doc-check.mjs";
 
 const OPENAI_NO_CREDIT = {
   error: {
@@ -141,5 +144,57 @@ describe("copy writer: the Anthropic backup", () => {
     assert.equal(writes.length, 1);
     // (org_id, partner_id, purpose, source_id, input_tokens, output_tokens, model)
     assert.deepEqual(writes[0], ["org-1", "p-1", "creative", null, 120, 60, "claude-sonnet-4-5-20250929"]);
+  });
+});
+
+/* copy.mjs carries its own copy of the backup rule (the shared one is too heavy
+   to bundle into the runner). Same input, same answer, same backup call — for
+   every branch of the rule — or this fails. */
+describe("copy writer: the backup rule is the same as readWithBackupReader", () => {
+  const NO_CREDIT_ERR = "openai 429: " + JSON.stringify(OPENAI_NO_CREDIT);
+  const openaiFail = (status, error) =>
+    ({ mode: "live", text: null, status, error, request: { provider: "openai" } });
+  const CASES = [
+    ["no first result", null, ENV(), { text: "x" }],
+    ["the first call wrote words",
+      { mode: "live", text: "ok", request: { provider: "openai" } }, ENV(), { text: "x" }],
+    ["the first call went to Anthropic",
+      { mode: "live", text: null, status: 429, error: NO_CREDIT_ERR, request: { provider: "anthropic" } },
+      ENV(), { text: "x" }],
+    ["no Anthropic key", openaiFail(429, NO_CREDIT_ERR), { OPENAI_API_KEY: OPENAI_KEY }, { text: "x" }],
+    ["OpenAI 401", openaiFail(401, "openai 401: bad key"), ENV(), { text: "x" }],
+    ["OpenAI rate limit, not no-credit", openaiFail(429, "openai 429: rate limit reached"), ENV(), { text: "x" }],
+    ["OpenAI no credit, the backup writes",
+      openaiFail(429, NO_CREDIT_ERR), { ...ENV(), COMPANY_BRAIN_OPENAI_API_KEY: "sk-fake-brain" },
+      { text: "backup words", request: { provider: "anthropic" } }],
+    ["OpenAI no credit, the backup writes nothing",
+      openaiFail(429, NO_CREDIT_ERR), ENV(), { text: null, error: "anthropic 500" }]
+  ];
+  for (const [name, first, env, second] of CASES) {
+    test(name, async () => {
+      const run = async (fn) => {
+        const calls = [];
+        const out = await fn(first, {
+          env,
+          modelArgs: { system: "s", user: "u", model: "m" },
+          callModelImpl: async (a) => { calls.push(a); return second; }
+        });
+        return { out, calls };
+      };
+      const ours = await run(backupOnNoCredit);
+      const shared = await run(readWithBackupReader);
+      assert.deepEqual(ours, shared);
+    });
+  }
+
+  test("the backup's copy of the env has no OpenAI key of either name", async () => {
+    const calls = [];
+    await backupOnNoCredit(openaiFail(429, NO_CREDIT_ERR), {
+      env: { ...ENV(), COMPANY_BRAIN_OPENAI_API_KEY: "sk-fake-brain" },
+      modelArgs: {},
+      callModelImpl: async (a) => { calls.push(a); return { text: "w" }; }
+    });
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].env, { ANTHROPIC_API_KEY: ANT_KEY });
   });
 });
