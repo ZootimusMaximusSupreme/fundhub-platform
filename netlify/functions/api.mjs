@@ -248,6 +248,8 @@ import financeEntities from "../../api/finance/entities.mjs";
 import financeBills from "../../api/finance/bills.mjs";
 import financeCashflow from "../../api/finance/cashflow.mjs";
 import moneyOverview from "../../api/money/overview.mjs";
+import moneyConnections from "../../api/money/connections.mjs";
+import merchantEvents from "../../api/merchant/events.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1084,6 +1086,13 @@ export const ROUTES = {
   // Finance OS client dashboard (/app/money.html). Client session = own file
   // only; staff = ROLE_SETS.FINANCE + ?client_id= in their org.
   "money/overview": moneyOverview,
+  /* Finance OS Connections (/app/money-connections.html): a client's OWN
+     Commas / Whop / open-API merchant hook-ups. Same gate as money/overview.
+     merchant/events is the open API — the per-connection Bearer key is the
+     whole credential, POST only. The Whop and Commas receivers go through the
+     webhooks/ prefix (src/http/router.mjs, merchant-whop/<id>, merchant-commas/<id>). */
+  "money/connections": moneyConnections,
+  "merchant/events": merchantEvents,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,

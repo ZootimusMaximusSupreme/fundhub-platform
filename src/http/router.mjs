@@ -29,6 +29,7 @@ import { onMailDelivered } from "../inquiry-ops/call-scheduler.mjs";
 import { onRepairEvent } from "../repair/handlers.mjs";
 import * as submagicProvider from "../messaging/providers/submagic.mjs";
 import { recordSubmagicWebhook } from "../ad-videos/pipeline.mjs";
+import { parseMerchantProvider, handleMerchantWebhook } from "../merchant/webhooks.mjs";
 
 /* PROVIDER TABLES ARE NULL-PROTOTYPE. Read this before turning either of the
    two below back into a plain `{}` literal.
@@ -226,6 +227,13 @@ async function captureInboundWebhook({ db, provider, rawBody, headers, env, out 
      bytes are not evidence; they are someone else's writable disk. */
   if (!out || out.status !== 200) return;
 
+  /* A CLIENT'S OWN merchant webhooks (merchant-whop/<id>, merchant-commas/<id>)
+     are not captured here. Their verified payload is already stored, once,
+     in merchant_events.raw — scoped to that client's connection. A second
+     copy in this table (no row security, no org, no retention) would put the
+     client's customers' details somewhere nothing scopes or clears. */
+  if (parseMerchantProvider(provider)) return;
+
   if (adapterWritesItsOwnCapture(provider)) return;
   if (!db || typeof db.query !== "function") return;
 
@@ -309,6 +317,17 @@ export async function handleWebhook({ db, provider, rawBody, headers = {}, url, 
 async function dispatchWebhook({ db, provider, rawBody, headers = {}, url, env = process.env }) {
   ensureRegistered();
   const h = (name) => headers[name] ?? headers[String(name).toLowerCase()];
+
+  /* A CLIENT'S OWN merchant processor — Finance OS, not Fundhub billing.
+     /api/webhooks/merchant-whop/<connection id> and
+     /api/webhooks/merchant-commas/<connection id>. The connection id in the
+     path picks the client's signing secret; src/merchant/webhooks.mjs checks
+     the signature and answers 401 for every kind of refusal alike. Fundhub's
+     own /api/webhooks/commas below is untouched. */
+  const merchant = parseMerchantProvider(provider);
+  if (merchant) {
+    return handleMerchantWebhook({ db, provider: merchant.provider, connectionId: merchant.connectionId, rawBody, headers, env });
+  }
 
   // Twilio: urlencoded body + signature over the full URL + params (adapter parses).
   if (provider === "twilio") {

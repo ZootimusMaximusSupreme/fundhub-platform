@@ -37,6 +37,7 @@ const APP = path.resolve(HERE, "../../public/app");
    soft-pull-approve.html — public signed-link consent page; no CRM shell, no staff nav
    money.html           — the client's Finance OS page; client-facing like client-portal,
                           no shell.js, no staff navigation (finance spec §8 step 4)
+   money-connections.html — Finance OS merchant connections; same client-facing frame as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
    *.fragment.html      — a fragment, not a screen */
@@ -48,6 +49,7 @@ const NO_SIDEBAR = new Set([
   "payment-success.html",
   "soft-pull-approve.html",
   "money.html",
+  "money-connections.html",
   "teleprompter.html"
 ]);
 
