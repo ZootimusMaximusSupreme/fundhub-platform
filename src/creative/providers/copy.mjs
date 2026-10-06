@@ -16,9 +16,12 @@
 
 import { assetFrom } from "./_http.mjs";
 import {
-  callModel, classifyModelFailure, DEFAULT_MODEL, MODEL_NO_CREDIT
+  callModel, classifyModelFailure, MODEL_NO_CREDIT
 } from "../../agents/model.mjs";
 import { assertSuiteEnabled, assertUnderCap, recordUsage } from "../../brand/meter.mjs";
+
+/** The model Quick copy is written with (unit X3). Forced: never swapped for gpt-4o-mini. */
+export const QUICK_COPY_MODEL = "claude-sonnet-5-5";
 
 export const PROVIDER_KEY = "copy";
 export const ASSET_KIND = "copy";
@@ -35,26 +38,29 @@ export async function generate(spec = {}, ctx = {}) {
     await assertUnderCap(tx, ctx.partnerId);
   }
 
+  /* FORCED TO CLAUDE (design docs/specs/command-center-design-2026-10-05.md
+     §2 J9 and §3.2 "Existing", unit X3: Quick copy is "forced to Anthropic with
+     an explicit model as src/marketing/offer-transport.mjs does"). callModel's
+     default path asks OpenAI first whenever an OpenAI key is set and swaps any
+     non-gpt model name for gpt-4o-mini; the production OpenAI account has no
+     credit (measured 2026-09-18). provider:'anthropic' calls only
+     api.anthropic.com, with an explicit model, a token limit and a timer under
+     the 26-second /api limit. backupOnNoCredit below is no longer needed on this
+     path (the first call is already Claude); it stays for its drift test.
+     A configured Claude model name wins; anything else uses QUICK_COPY_MODEL. */
+  const configured = String(ctx.config?.model || "");
   const modelArgs = {
+    provider: "anthropic",
     system: systemPrompt(spec),
     user: userPrompt(spec, variants),
     env,
     fetchImpl: ctx.fetch,
-    model: ctx.config?.model || DEFAULT_MODEL,
-    maxTokens: Number(ctx.config?.max_tokens || 2000)
+    model: /^claude-/.test(configured) ? configured : QUICK_COPY_MODEL,
+    maxTokens: Number(ctx.config?.max_tokens || 2000),
+    effort: "low",
+    timeoutMs: 22_000
   };
-  let model = await callModel(modelArgs);
-
-  /* THE BACKUP WRITER. callModel asks OpenAI first whenever an OpenAI key is
-     set, and the production OpenAI account has no credit (measured live
-     2026-09-18: `openai 429 … insufficient_quota`). Without this, every copy
-     job failed on that 429 three times and wrote nothing, while the working
-     Anthropic key was never asked.
-
-     Same rule Social Studio's callWriter (api/social/generate.mjs) and the
-     ID reader use — see backupOnNoCredit below. */
-  const backup = await backupOnNoCredit(model, { env, modelArgs });
-  if (backup) model = backup;
+  const model = await callModel(modelArgs);
 
   if (tx && ctx.partnerId) {
     const org = (await tx.query(
@@ -67,7 +73,7 @@ export async function generate(spec = {}, ctx = {}) {
         purpose: "creative",
         inputTokens: model.usage?.input_tokens,
         outputTokens: model.usage?.output_tokens,
-        model: model.request?.model
+        model: model.servedModel || model.request?.model
       });
     }
   }
@@ -92,7 +98,9 @@ export async function generate(spec = {}, ctx = {}) {
       aiGenerated: true,
       syntheticPerformer: false
     })),
-    cost_cents: Number(ctx.config?.unit_cost_cents ?? 0)
+    cost_cents: Number(ctx.config?.unit_cost_cents ?? 0),
+    // The model that actually wrote it, for the Quick copy card (design §2 J9).
+    model: model.servedModel || model.request?.model || null
   };
 }
 

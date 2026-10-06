@@ -357,7 +357,16 @@ const API_KEYS = [
   "marketing/scripts/fix",
   "marketing/batches",
   "marketing/batches/write-now",
-  "marketing/jobs/retry"
+  "marketing/jobs/retry",
+  /* X3: the flywheel. The GET answers 401 to an unsigned ping; the POST-only
+     routes answer 405 to a GET before they read anything. A ping never
+     writes, queues or spends. */
+  "marketing/flywheel",
+  "marketing/flywheel/run",
+  "marketing/flywheel/approve",
+  "marketing/flywheel/tweak",
+  "marketing/flywheel/spend-read",
+  "marketing/flywheel/campaign"
 ];
 
 const DESK_FILES = [

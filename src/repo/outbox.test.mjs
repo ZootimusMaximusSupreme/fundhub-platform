@@ -54,7 +54,9 @@ describe("enqueueRepoWrite", () => {
 
   test("refuses a path outside the allow-list before touching the database", async () => {
     const tx = fakeTx();
-    for (const p of ["netlify.toml", "marketing/ads/../../CLAUDE.md", "/etc/passwd", "marketing/flywheel/avatar.md"]) {
+    // marketing/flywheel/ is on the list since unit X3 (design §6 slice 1 additions);
+    // the folder next to it is not.
+    for (const p of ["netlify.toml", "marketing/ads/../../CLAUDE.md", "/etc/passwd", "marketing/flywheel-old/avatar.md"]) {
       await assert.rejects(enqueueRepoWrite(tx, { orgId: ORG, opId: "x", path: p, mode: "replace", content: "x" }), RepoPathError);
     }
     assert.equal(tx.seen.length, 0);

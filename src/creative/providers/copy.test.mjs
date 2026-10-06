@@ -1,11 +1,12 @@
 // The Creative Factory copy writer — which writer answers.
 //
 // The production OpenAI account has no credit (measured live 2026-09-18:
-// `openai 429 … insufficient_quota`). callModel asks OpenAI first whenever an
-// OpenAI key is set, so every copy job died on that 429 and the working
-// Anthropic key was never asked. copy.mjs now uses the same backup as Social
-// Studio's callWriter and the ID reader (readWithBackupReader): on "no credit",
-// ask Anthropic once, without the OpenAI key.
+// `openai 429 … insufficient_quota`). callModel's default path asks OpenAI first
+// whenever an OpenAI key is set. Since unit X3 (Quick copy, design §2 J9) the
+// writer is forced to Claude with an explicit model (callModel provider
+// 'anthropic'), so OpenAI is never asked and nothing can become gpt-4o-mini.
+// backupOnNoCredit stays exported and its drift check against
+// readWithBackupReader (below) still runs.
 //
 // NO REAL REQUEST LEAVES THIS FILE. Every model call goes through the fake
 // fetch passed as ctx.fetch, and globalThis.fetch is swapped for one that throws
@@ -14,7 +15,7 @@
 
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
-import { generate, backupOnNoCredit } from "./copy.mjs";
+import { generate, backupOnNoCredit, QUICK_COPY_MODEL } from "./copy.mjs";
 // Test-only import: doc-check.mjs is too heavy for the runner's zip (see
 // copy.mjs), but a test is never bundled, so the drift check below can use it.
 import { readWithBackupReader } from "../../handlers/doc-check.mjs";
@@ -58,58 +59,50 @@ beforeEach(() => {
 });
 afterEach(() => { globalThis.fetch = realFetch; });
 
-describe("copy writer: the Anthropic backup", () => {
-  test("OpenAI has no credit → Anthropic writes the copy, once, without the OpenAI key", async () => {
+describe("copy writer: forced to Claude (Quick copy, design §2 J9, unit X3)", () => {
+  test("with both keys set, only Anthropic is called, once, with the explicit model; OpenAI is never asked", async () => {
     const { fetch, calls } = fakeFetch({
-      openai: { status: 429, body: OPENAI_NO_CREDIT },
+      openai: { status: 200, body: OPENAI_OK },
       anthropic: { status: 200, body: ANTHROPIC_OK }
     });
     const out = await generate(SPEC, { env: ENV(), fetch });
 
-    assert.equal(calls.length, 2, "one OpenAI call, then exactly one Anthropic call");
-    assert.match(calls[0].url, /api\.openai\.com/);
-    assert.match(calls[1].url, /api\.anthropic\.com/);
-    assert.equal(calls[1].headers["x-api-key"], ANT_KEY);
-    assert.ok(!JSON.stringify(calls[1]).includes(OPENAI_KEY), "the OpenAI key must not travel to the backup");
+    assert.equal(calls.length, 1, "exactly one call");
+    assert.match(calls[0].url, /api\.anthropic\.com/);
+    assert.equal(calls[0].headers["x-api-key"], ANT_KEY);
+    assert.ok(!JSON.stringify(calls[0]).includes(OPENAI_KEY), "the OpenAI key never travels");
+    const sent = JSON.parse(calls[0].body);
+    assert.equal(sent.model, QUICK_COPY_MODEL, "the explicit model, never gpt-4o-mini");
+    assert.equal(sent.max_tokens, 2000);
 
     assert.equal(out.assets.length, 2);
     assert.deepEqual(out.assets.map((a) => a.text), ["Hook one. Body one.", "Hook two. Body two."]);
     assert.ok(out.assets.every((a) => a.kind === "copy" && a.provider === "copy"));
+    assert.equal(out.model, QUICK_COPY_MODEL, "the model that wrote it comes back for the card");
   });
 
-  test("the stored env is not changed by the backup — no key is removed or rewritten", async () => {
-    const { fetch } = fakeFetch({
-      openai: { status: 429, body: OPENAI_NO_CREDIT },
-      anthropic: { status: 200, body: ANTHROPIC_OK }
-    });
+  test("a configured Claude model is used; a configured non-Claude model is not", async () => {
+    const { fetch, calls } = fakeFetch({ anthropic: { status: 200, body: ANTHROPIC_OK } });
+    await generate(SPEC, { env: ENV(), fetch, config: { model: "claude-opus-5-5" } });
+    await generate(SPEC, { env: ENV(), fetch, config: { model: "gpt-4o-mini" } });
+    assert.equal(JSON.parse(calls[0].body).model, "claude-opus-5-5");
+    assert.equal(JSON.parse(calls[1].body).model, QUICK_COPY_MODEL);
+  });
+
+  test("the stored env is not changed — no key is removed or rewritten", async () => {
+    const { fetch } = fakeFetch({ anthropic: { status: 200, body: ANTHROPIC_OK } });
     const env = ENV();
     await generate(SPEC, { env, fetch });
     assert.deepEqual(env, ENV());
   });
 
-  test("OpenAI answers → one call, no backup", async () => {
-    const { fetch, calls } = fakeFetch({ openai: { status: 200, body: OPENAI_OK } });
-    const out = await generate({ ...SPEC, variants: 1 }, { env: ENV(), fetch });
-    assert.equal(calls.length, 1);
-    assert.equal(out.assets[0].text, "OpenAI wrote this.");
-  });
-
-  test("a failure that is not 'no credit' is not retried on Anthropic, and the job sees the error", async () => {
+  test("Claude's error reaches the job, with no second call to anyone", async () => {
     const { fetch, calls } = fakeFetch({
-      openai: { status: 401, body: { error: { message: "Incorrect API key provided" } } },
-      anthropic: { status: 200, body: ANTHROPIC_OK }
-    });
-    await assert.rejects(() => generate(SPEC, { env: ENV(), fetch }), /^Error: openai 401/);
-    assert.equal(calls.length, 1);
-  });
-
-  test("the backup fails too → the first (OpenAI) error stands", async () => {
-    const { fetch, calls } = fakeFetch({
-      openai: { status: 429, body: OPENAI_NO_CREDIT },
+      openai: { status: 200, body: OPENAI_OK },
       anthropic: { status: 500, body: { error: { message: "overloaded" } } }
     });
-    await assert.rejects(() => generate(SPEC, { env: ENV(), fetch }), /openai 429/);
-    assert.equal(calls.length, 2);
+    await assert.rejects(() => generate(SPEC, { env: ENV(), fetch }), /anthropic 500/);
+    assert.equal(calls.length, 1);
   });
 
   test("no Anthropic key → refused before any call (the existing key check is unchanged)", async () => {
@@ -119,11 +112,8 @@ describe("copy writer: the Anthropic backup", () => {
     assert.equal(calls.length, 0);
   });
 
-  test("the usage row records what the backup spent, under the model that wrote it", async () => {
-    const { fetch } = fakeFetch({
-      openai: { status: 429, body: OPENAI_NO_CREDIT },
-      anthropic: { status: 200, body: ANTHROPIC_OK }
-    });
+  test("the usage row records what the call spent, under the model that wrote it", async () => {
+    const { fetch } = fakeFetch({ anthropic: { status: 200, body: { ...ANTHROPIC_OK, model: "claude-sonnet-5-5" } } });
     const writes = [];
     const tx = {
       query: async (sql, params) => {
@@ -143,7 +133,7 @@ describe("copy writer: the Anthropic backup", () => {
     await generate(SPEC, { env: ENV(), fetch, tx, partnerId: "p-1" });
     assert.equal(writes.length, 1);
     // (org_id, partner_id, purpose, source_id, input_tokens, output_tokens, model)
-    assert.deepEqual(writes[0], ["org-1", "p-1", "creative", null, 120, 60, "claude-sonnet-4-5-20250929"]);
+    assert.deepEqual(writes[0], ["org-1", "p-1", "creative", null, 120, 60, "claude-sonnet-5-5"]);
   });
 });
 

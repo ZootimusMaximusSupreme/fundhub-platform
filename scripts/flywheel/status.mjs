@@ -127,12 +127,29 @@ export function parseFrontMatter (fm) {
   return out
 }
 
-function readStage (dir, file) {
-  const path = join(dir, file)
-  if (!existsSync(path)) return null
-  const text = readFileSync(path, 'utf8')
+function readStage (read, file) {
+  const text = read(file)
+  if (text == null) return null
   const { frontMatter, body } = splitFrontMatter(text)
-  return { path, text, body, meta: parseFrontMatter(frontMatter) }
+  return { path: file, text, body, meta: parseFrontMatter(frontMatter) }
+}
+
+/** A reader over one campaign folder on disk: file name -> text, or null. */
+export function diskReader (dir) {
+  return (file) => {
+    const path = join(dir, file)
+    return existsSync(path) ? readFileSync(path, 'utf8') : null
+  }
+}
+
+/**
+ * The same states as evaluate(dir), over any reader: `read(file)` returns the
+ * file's text or null when it is not there. The Command Center reads the stage
+ * files from GitHub with the dashboard's pending saves on top
+ * (src/marketing/flywheel/reader.mjs) and decides with exactly these rules.
+ */
+export function evaluateFiles (read) {
+  return evaluateWith(read)
 }
 
 /**
@@ -146,9 +163,13 @@ function readStage (dir, file) {
  * READY    - good.
  */
 export function evaluate (dir) {
+  return evaluateWith(diskReader(dir))
+}
+
+function evaluateWith (read) {
   const rows = []
   for (const stage of STAGES) {
-    const loaded = readStage(dir, stage.file)
+    const loaded = readStage(read, stage.file)
     const row = { ...stage, state: 'READY', reasons: [], meta: loaded ? loaded.meta : null }
 
     if (!loaded) {
@@ -161,8 +182,8 @@ export function evaluate (dir) {
     // Inputs: required ones must exist and match; optional ones only matter if present.
     for (const input of [...stage.inputs, ...stage.optionalInputs]) {
       const required = stage.inputs.includes(input)
-      const inputPath = join(dir, input)
-      if (!existsSync(inputPath)) {
+      const inputText = read(input)
+      if (inputText == null) {
         if (required) { row.state = 'BLOCKED'; row.reasons.push(`${input} is missing`) }
         continue
       }
@@ -171,7 +192,7 @@ export function evaluate (dir) {
         if (required) { row.state = 'STALE'; row.reasons.push(`was built without recording ${input}`) }
         continue
       }
-      const actual = bodyHash(readFileSync(inputPath, 'utf8'))
+      const actual = bodyHash(inputText)
       if (actual !== recorded) {
         row.state = 'STALE'
         const src = STAGES.find(s => s.file === input)

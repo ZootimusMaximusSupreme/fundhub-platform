@@ -203,7 +203,9 @@ export async function run(tx, job, ctx = {}) {
     [job.id, Math.max(0, Math.round(Number(result.cost_cents) || 0))]
   );
 
-  return { status: "succeeded", assets: stored, cost_cents: result.cost_cents || 0 };
+  // `model`: the model that wrote it, when the provider says (the copy writer
+  // does; the Quick copy card prints it, design §2 J9). null otherwise.
+  return { status: "succeeded", assets: stored, cost_cents: result.cost_cents || 0, model: result.model || null };
 }
 
 /* storeAsset — insert the asset, then screen it.

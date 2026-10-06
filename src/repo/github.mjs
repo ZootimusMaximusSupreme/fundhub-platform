@@ -16,6 +16,7 @@
 
 export {
   getContents,
+  listFolder,
   getRef,
   listCommits,
   repoToken,

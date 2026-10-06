@@ -14,7 +14,8 @@
 //           and ctx is { db, env, deps }. A handler that returns finishes the job (its
 //           return value is the result); one that throws fails it (jobs.mjs failJob).
 //
-// EMPTY ON PURPOSE. Units U24 (writer), U28 (Meta loader) and U35 (batch lifecycle) add
+// ONE LINE PER UNIT THAT HAS LANDED. X3 added 'flywheel_stage' (the Ideas tab's flywheel
+// stages). Units U24 (writer), U28 (Meta loader) and U35 (batch lifecycle) add
 // their lines here when their handlers land. A kind that is not here is never claimed, and
 // "Retry" refuses it (retryJob only re-queues kinds the caller passes, and the route passes
 // these keys).
@@ -29,7 +30,11 @@
 export const JOB_GROUPS = Object.freeze(["writer", "loader", "system"]);
 
 /** @type {Record<string, { group: 'writer' | 'loader' | 'system', load: () => Promise<any> }>} */
-export const JOB_KINDS = {};
+export const JOB_KINDS = {
+  // The flywheel's server stages (unit X3: 4 copy, 5 strategy; X2 adds 2), started
+  // by POST marketing/flywheel/run. One kind; payload.stage picks the stage.
+  flywheel_stage: { group: "writer", load: () => import("./flywheel/stage-job.mjs") }
+};
 
 /**
  * checkJobKinds(registry) → a list of problems, in plain words (empty when every entry is good).
