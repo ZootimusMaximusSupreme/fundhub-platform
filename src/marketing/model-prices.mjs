@@ -19,8 +19,14 @@
 // Money is integer cents (CLAUDE.md §12). The sum is kept exact until the end and
 // rounded once.
 
+//   claude-code       $0. The Claude Code command line on Chris's Mac, run by
+//                     scripts/marketing-run-queue.mjs under his Claude subscription
+//                     (src/agents/claude-code.mjs, added 2026-10-06). No bill per call,
+//                     so the true cost of a call is zero — not a guess.
+
 export const MODEL_PRICES = Object.freeze({
-  "claude-opus-5-5": Object.freeze({ inCentsPerMTok: 400, outCentsPerMTok: 2000 })
+  "claude-opus-5-5": Object.freeze({ inCentsPerMTok: 400, outCentsPerMTok: 2000 }),
+  "claude-code": Object.freeze({ inCentsPerMTok: 0, outCentsPerMTok: 0 })
 });
 
 /** The price row for a model name, or null when none is on file. Exact name only. */

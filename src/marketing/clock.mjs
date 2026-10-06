@@ -60,6 +60,7 @@ import { OFFER_KIND, STALE_AFTER_MINUTES, enqueueJob } from "./jobs.mjs";
 import { wakeWorker } from "./wake.mjs";
 import { weeklyWindow, BATCH_KINDS, PLAN_LEAD_MS, PLAN_RETRY_MS, LATE_FOLLOW_DAYS } from "./schedule.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
+import { netlifyRegistry } from "./ai-runner.mjs";
 
 /** The schedule. netlify.toml [functions."marketing-clock"] must say the same. */
 export const CLOCK_CRON = "*/15 * * * *";
@@ -459,7 +460,8 @@ const reasonOf = (err) =>
  */
 export async function tick(ctx = {}) {
   const deps = { ...clockDeps({ db: /** @type {Db} */ (ctx.db), env: ctx.env }), ...(ctx.deps || {}) };
-  const kinds = workerKinds(ctx.registry || JOB_KINDS);
+  // MARKETING_AI_RUNNER=local: AI jobs wait for the Mac, so they never wake the worker.
+  const kinds = workerKinds(ctx.registry || netlifyRegistry(ctx.env || process.env, JOB_KINDS));
   const at = deps.now();
 
   const settings = await deps.readSettings();

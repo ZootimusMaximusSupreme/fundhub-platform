@@ -24,7 +24,10 @@ export const RUN_BUDGET_MS = 14 * 60 * 1000;
  * Never throws: every way out leaves the row done or failed with a reason.
  */
 export async function runOfferJob(db, {
-  jobId, orgId, ask = askAnthropic, now = Date.now, budgetMs = RUN_BUDGET_MS
+  jobId, orgId, ask = askAnthropic, now = Date.now, budgetMs = RUN_BUDGET_MS,
+  // The model saved on the result. The Mac queue runner passes 'claude-code'
+  // (scripts/marketing-run-queue.mjs), so the cost reads $0, never Opus prices.
+  modelName = OFFER_MODEL
 } = {}) {
   let job;
   try {
@@ -44,7 +47,7 @@ export async function runOfferJob(db, {
       today: payload.today || null,
       timeLeft: () => budgetMs - (now() - started)
     });
-    result.model = OFFER_MODEL;
+    result.model = modelName;
     await finishOfferJob(db, { jobId, orgId, result });
     return { ok: true, status: "done" };
   } catch (err) {

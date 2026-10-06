@@ -39,6 +39,8 @@ export function makeHandler({ database = db, run = runFunnelJob, auth = authenti
     if (!isUuid(jobId)) return json(400, { ok: false, error: "bad_job_id" });
 
     console.log(`[marketing-funnel] build ${String(process.env.COMMIT_REF || "unknown").slice(0, 8)} job ${jobId}`);
+    // MARKETING_AI_RUNNER=local: runFunnelJob (reading process.env) leaves the page writer
+    // ('funnel', AI work) queued for the Mac and still pushes pages live here.
     const out = await run(database, { jobId, orgId: who.staff.org_id });
     console.log(`[marketing-funnel] job ${jobId}: ${out.status}${out.error ? ` (${String(out.error).slice(0, 200)})` : ""}`);
     return json(200, { ok: out.status === "done", status: out.status, job_id: out.job_id });
