@@ -129,14 +129,23 @@ With `?id=`, `offer` is filled only when that run is `done`. Without `id`, `job`
   "unjudged": [],
   "candidates": ["all six candidates as written, each with its blindId and archetype"],
   "counts": { "priceSet": 1, "bonuses": 3, "guarantees": 2, "valueEquationScores": 4 },
-  "checks": { "priceIssues": ["plain sentence per price not on src/config/offers.mjs"] },
+  "checks": {
+    "priceIssues": ["plain sentence per price not on src/config/offers.mjs"],
+    "gate": { "passes": false, "misses": ["The flywheel's stage 3 check wants at least 3 bonuses; this offer has 0."] }
+  },
   "inputs": { "sources": { "avatar": "supplied | marketing/flywheel/partner/01-avatar.md | null", "adResearch": "…", "ownerNotes": "…" }, "cut": { "avatar": true, "adResearch": true, "ownerNotes": false } },
   "model": "claude-opus-5-5",
   "usage": { "calls": [{ "step": "candidates", "model": "…", "input_tokens": 0, "output_tokens": 0, "stop_reason": "end_turn" }], "input_tokens": 0, "output_tokens": 0 }
 }
 ```
 
+`checks.gate` is the same minimum `npm run flywheel:status` holds stage 3 to (one price, 3+ bonuses, 2+ guarantees, all four value scores). A miss is also the first lines of `review_card.notSureAbout`. Nothing is padded to pass it.
+
 **What the Offer card should show first:** `review_card` (the four lines), then `offer.name` and `offer.price`. `document` is the long read. `synthesized: false` means the write-up step failed and the card shows the winning offer as first written; the first line of `notSureAbout` says so.
+
+## How long and how much
+
+Measured on one real run, 2026-10-05, model `claude-opus-5-5`, the partner flywheel files as inputs: **4 minutes 29 seconds** (six offers 118 s, judges 97 s, write-up 54 s), **24,551 input and 28,640 output tokens** — about **$0.67** at $4 / $20 per million tokens. Poll for at least 10 minutes before calling a run stuck; the server closes a run with no word for 16 minutes as `failed`.
 
 ## What the generator may read
 
