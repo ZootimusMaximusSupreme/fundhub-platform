@@ -109,3 +109,36 @@ flowchart TD
 all-clicks count, because link clicks and landing page views are not saved yet; fix type
 is "both" only when under half are still watching at second 2, else "words"; middle and
 ask are always "words".
+
+---
+
+## 3. The ClickFunnels night pull
+
+Every morning at 07:15 UTC a clock pulls the last 30 days of page views and opt-ins for
+every active ClickFunnels account into `funnel_page_stats`. It only reads from
+ClickFunnels.
+
+**What was broken from 2026-09-22 to 2026-10-05.** The clock asked for the active accounts
+with a plain database connection. The accounts table is staff-only by row security
+(`302_analytics_connections.sql`), so a plain connection sees zero rows. It is not an
+error, just empty, so every pass was "0 accounts, nothing to do". Measured 2026-09-28:
+plain sees 0, staff sees 1 (`ops/workflows/2026-09-28-landing-page-conversion.md:55-63`).
+Live on 2026-10-05: `funnel_page_stats` holds rows only for 2026-09-22 and 2026-10-04,
+both hand pulls. Now the list is read with the staff scope, the same one the per-account
+pull and the Meta clock already use. No row security was loosened.
+
+```mermaid
+flowchart TD
+    A["07:15 UTC clock<br/>clickfunnelsAnalyticsSweeper, cron 15 7 * * *<br/>src/workflows/clickfunnels-analytics-sweeper.mjs:21"] --> B["active ClickFunnels accounts,<br/>read as STAFF<br/>activeOrgs(), :29 → ACTIVE_ORGS_SQL, :23"]
+    B -->|"before 2026-10-05: plain connection,<br/>row security hid the row → 0 accounts, nothing ran"| X["nothing written"]
+    B -->|"now: staff scope sees the account"| C["for each account<br/>runClickfunnelsOrgSync(), src/analytics/clickfunnels-org-sync.mjs:16<br/>inside asStaff(), :22"]
+    C --> D["ClickFunnels read: funnels → pages → stats<br/>30 days"]
+    D -->|ok| E["funnel_page_stats row per page, today's date<br/>:48<br/>last_synced_at stamped, state active, :71"]
+    D -->|"ClickFunnels refused or failed"| F["state error + ClickFunnels' own words<br/>:81<br/>counted in the run's errors"]
+```
+
+| From | To | What fires it | Where | Works today? |
+|---|---|---|---|---|
+| nothing | the list of active ClickFunnels accounts | the 07:15 UTC clock | `src/workflows/clickfunnels-analytics-sweeper.mjs:29` | **yes on this branch, after ship.** Proved offline with a fake pool that hides the row unless the transaction is stamped staff; the real-database proof runs in CI (`clickfunnels-analytics-sweeper.pg.test.mjs`) |
+| an active account | a day of page numbers saved | the same pass | `src/analytics/clickfunnels-org-sync.mjs:48` | **yes** (the hand pull already used this path) |
+| a failed pull | the account marked `error` | ClickFunnels refusing | `src/analytics/clickfunnels-org-sync.mjs:81` | **yes** — and the clock then skips that account until a hand pull sets it back to `active`. Left as a card on the board, not changed here |
