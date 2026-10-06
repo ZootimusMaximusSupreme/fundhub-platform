@@ -538,3 +538,88 @@ test("no provider: the old Anthropic-only request body is exactly what it was", 
   });
   assert.equal(calls[0].init.signal, undefined, "the old path has no timer");
 });
+
+// ── Server tools, continuations and the whole content array (unit X2, design
+//    docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions") ──────
+
+test("anthropic: server tools (web search, web fetch) go out exactly as given; no 'no tool call' error", async () => {
+  const reply = {
+    model: "claude-sonnet-5-5",
+    stop_reason: "end_turn",
+    content: [
+      { type: "server_tool_use", id: "srvtoolu_1", name: "web_search", input: { query: "q" } },
+      { type: "web_search_tool_result", tool_use_id: "srvtoolu_1", content: [{ type: "web_search_result", url: "https://a.example/x", title: "A", encrypted_content: "e" }] },
+      { type: "text", text: "{\"findings\":[]}" }
+    ],
+    usage: { input_tokens: 10, output_tokens: 5, server_tool_use: { web_search_requests: 2, web_fetch_requests: 1 } }
+  };
+  const { calls, fetchImpl } = recorder(reply);
+  const search = { type: "web_search_20260318", name: "web_search", max_uses: 4 };
+  const fetchTool = { type: "web_fetch_20260318", name: "web_fetch", max_uses: 3, max_content_tokens: 20000 };
+  const res = await callModel({
+    provider: "anthropic", model: "claude-sonnet-5-5", user: "find it", env: BOTH_KEYS, fetchImpl,
+    tools: [search, fetchTool], maxTokens: 8000
+  });
+  assert.equal(res.error, null);
+  assert.deepEqual(calls[0].body.tools, [search, fetchTool], "sent unchanged: no strict flag, no input_schema");
+  assert.deepEqual(calls[0].body.tool_choice, { type: "auto" });
+  assert.deepEqual(res.serverToolUse, { web_search_requests: 2, web_fetch_requests: 1 });
+  assert.equal(res.content.length, 3, "the whole content array comes back");
+  // Wave 2b merge: X1 also counts the two server-tool numbers in usage (summed over
+  // continuations); the four token keys stay first, and serverToolUse holds the same two.
+  assert.deepEqual(Object.keys(res.usage), [
+    "input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens",
+    "web_search_requests", "web_fetch_requests"
+  ], "the old four token keys first, then X1's two server-tool counts");
+  assert.equal(res.usage.web_search_requests, res.serverToolUse.web_search_requests);
+  assert.equal(res.usage.web_fetch_requests, res.serverToolUse.web_fetch_requests);
+});
+
+test("anthropic: messages[] replaces user, so a paused turn is resent unchanged; pause_turn is not an error", async () => {
+  const paused = [{ type: "server_tool_use", id: "srvtoolu_9", name: "web_search", input: { query: "q" } }];
+  const { calls, fetchImpl } = recorder({ model: "claude-sonnet-5-5", stop_reason: "pause_turn", content: paused, usage: { input_tokens: 1, output_tokens: 1 } });
+  const messages = [{ role: "user", content: "go" }, { role: "assistant", content: paused }];
+  const res = await callModel({
+    provider: "anthropic", model: "claude-sonnet-5-5", messages, env: BOTH_KEYS, fetchImpl,
+    tools: [{ type: "web_search_20260318", name: "web_search" }]
+  });
+  assert.equal(res.error, null);
+  assert.equal(res.stopReason, "pause_turn");
+  assert.deepEqual(calls[0].body.messages, messages);
+});
+
+test("anthropic: a bad messages list, a nameless server tool, or outputSchema beside web search is refused before sending", async () => {
+  let fetched = 0;
+  const fetchImpl = async () => { fetched += 1; throw new Error("must not fetch"); };
+  const a = await callModel({ provider: "anthropic", messages: [{ role: "assistant", content: "x" }], env: BOTH_KEYS, fetchImpl });
+  assert.match(a.error, /^not sent: the first message must be the user's/);
+  const b = await callModel({ provider: "anthropic", messages: [], env: BOTH_KEYS, fetchImpl });
+  assert.match(b.error, /^not sent: messages must be/);
+  const c = await callModel({ provider: "anthropic", user: "u", tools: [{ type: "web_search_20260318" }], env: BOTH_KEYS, fetchImpl });
+  assert.match(c.error, /^not sent: server tool "web_search_20260318" needs a name/);
+  const d = await callModel({
+    provider: "anthropic", user: "u", env: BOTH_KEYS, fetchImpl,
+    tools: [{ type: "web_search_20260318", name: "web_search" }], outputSchema: { type: "object", properties: {} }
+  });
+  // Wave 2b merge: next to web search the wording is X1's (model-server-tools.test.mjs);
+  // next to any other server tool it is X2's.
+  assert.match(d.error, /^not sent: outputSchema cannot be combined with web search or web fetch/);
+  const e = await callModel({
+    provider: "anthropic", user: "u", env: BOTH_KEYS, fetchImpl,
+    tools: [{ type: "code_execution_20250825", name: "code_execution" }], outputSchema: { type: "object", properties: {} }
+  });
+  assert.match(e.error, /^not sent: outputSchema cannot be used with a server tool/);
+  assert.equal(fetched, 0);
+});
+
+test("anthropic: system as content blocks; cache marks only the last block", async () => {
+  const { calls, fetchImpl } = recorder(textReply("ok"));
+  await callModel({
+    provider: "anthropic", user: "u", env: BOTH_KEYS, fetchImpl, cache: true,
+    system: [{ type: "text", text: "rules" }, { type: "text", text: "facts" }]
+  });
+  assert.deepEqual(calls[0].body.system, [
+    { type: "text", text: "rules" },
+    { type: "text", text: "facts", cache_control: { type: "ephemeral" } }
+  ]);
+});

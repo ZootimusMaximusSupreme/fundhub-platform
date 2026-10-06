@@ -26,9 +26,11 @@
 // length of that test (for example to show a screen that appears once a kind exists).
 // src/marketing/job-kinds.test.mjs fails if any entry lacks a group, a load, or a run().
 
-// 'research' (unit X1): the long, many-call web research runs Chris taps (Build the
-// avatar). The worker runs one at a time (GROUP_CAPS default), so a research step never
-// takes the slot a system chore or a script writer needs.
+// 'research' (units X1 and X2, both added it): the long, many-call web research runs
+// Chris taps (Build the avatar, Research the market, Research it): saved steps with live
+// web reading. Not named in the worker's GROUP_CAPS, so one research step runs at a time
+// (it never takes the slot a system chore or a script writer needs); each step is one
+// claim, so two research runs take turns step by step.
 export const JOB_GROUPS = Object.freeze(["writer", "loader", "system", "research"]);
 
 /** @type {Record<string, { group: 'writer' | 'loader' | 'system' | 'research', load: () => Promise<any> }>} */
@@ -41,7 +43,12 @@ export const JOB_KINDS = {
   funnel: { group: "writer", load: () => import("./funnel-build.mjs") },
   funnel_push: { group: "system", load: () => import("./funnel-push.mjs") },
   // Build the avatar (flywheel step 1), 10 saved steps: src/marketing/avatar/run.mjs. Unit X1.
-  avatar: { group: "research", load: () => import("./avatar/run.mjs") }
+  avatar: { group: "research", load: () => import("./avatar/run.mjs") },
+  // Flywheel stage runs (design §3.2 "Endpoints"): stage 2, market research (unit X2).
+  // src/marketing/flywheel/stage-job.mjs sends each row to its stage's code.
+  flywheel_stage: { group: "research", load: () => import("./flywheel/stage-job.mjs") },
+  // "Research it" — deep research (design §2 row J20, unit X2).
+  deep_research: { group: "research", load: () => import("./research/deep-research.mjs") }
 };
 
 /**

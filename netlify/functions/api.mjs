@@ -326,6 +326,10 @@ import marketingFlywheelJob from "../../api/marketing/flywheel/job.mjs";
 import marketingFlywheelApprove from "../../api/marketing/flywheel/approve.mjs";
 import marketingFlywheelTweak from "../../api/marketing/flywheel/tweak.mjs";
 import marketingFlywheelCampaign from "../../api/marketing/flywheel/campaign.mjs";
+import marketingResearch from "../../api/marketing/research.mjs";
+import marketingResearchApprove from "../../api/marketing/research/approve.mjs";
+import marketingResearchTweak from "../../api/marketing/research/tweak.mjs";
+import marketingResearchBrain from "../../api/marketing/research/brain.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1258,7 +1262,13 @@ export const ROUTES = {
   "marketing/flywheel/job": marketingFlywheelJob,
   "marketing/flywheel/approve": marketingFlywheelApprove,
   "marketing/flywheel/tweak": marketingFlywheelTweak,
-  "marketing/flywheel/campaign": marketingFlywheelCampaign
+  "marketing/flywheel/campaign": marketingFlywheelCampaign,
+  // the research buttons (unit X2, design slice 10): Research it (J20) and
+  // Research the market (J2, flywheel step 2)
+  "marketing/research": marketingResearch,
+  "marketing/research/approve": marketingResearchApprove,
+  "marketing/research/tweak": marketingResearchTweak,
+  "marketing/research/brain": marketingResearchBrain
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

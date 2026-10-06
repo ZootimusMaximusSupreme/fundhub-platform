@@ -18,7 +18,10 @@
 // unit X4), plus the flywheel folder: unit X1 (design
 // docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions": the outbox
 // allow-list gains marketing/flywheel/) so "Build the avatar", Approve, Tweak and
-// Start a flywheel can save the stage files from the dashboard.
+// Start a flywheel can save the stage files from the dashboard, plus the folder the
+// research buttons save into (design "Slice 10", unit X2): marketing/research/ (deep
+// research reports and their sources.json). X2 also added marketing/flywheel/ (the
+// stage files, e.g. marketing/flywheel/partner/02-ad-research.md).
 
 import path from "node:path";
 
@@ -29,6 +32,7 @@ export const ALLOWED_DIRS = Object.freeze([
   "marketing/ads/videos/",
   "marketing/brain/",
   "marketing/flywheel/",
+  "marketing/research/",
   "ops/page-requests/",
   // Build unit X4 (owner order 2026-10-05): the pages of a dashboard-built funnel,
   // saved to the repo when the push proves them live. Its own folder only; the

@@ -10,6 +10,12 @@ outbox (`src/repo/outbox.mjs`). The yardstick is the design
 17, 18, §6 slice 5a); there is no `marketing-machine-intended.md` yet (design §7
 question 7). Anything not traced to code is marked UNVERIFIED.
 
+Wave 2b merge (2026-10-06): `api/marketing/flywheel/run.mjs` now checks the gate once and
+hands stage 1 to `src/marketing/avatar/run-route.mjs` (`runAvatarStage`, the code drawn
+below, unchanged) and stage 2 to unit X2's market research
+(`src/marketing/research/market-run-route.mjs`). The tap, the answers and the states below
+are the same.
+
 ## The record and the states it moves through
 
 One `marketing_jobs` row, `kind = 'avatar'`. `payload.campaign` and `payload.step` are

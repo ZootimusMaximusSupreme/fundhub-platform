@@ -200,6 +200,18 @@
 [functions."marketing-clock"]
   schedule = "*/15 * * * *"
 
+# The marketing worker reads the Hormozi vault for deep research ("Research it", design
+# docs/specs/command-center-design-2026-10-05.md §6 slice 10, unit X2): the 110 notes under
+# marketing/knowledge/hormozi/ (4.6 MB), read by src/marketing/research/vault.mjs. FOR THIS
+# FUNCTION ONLY — never in the global list above, so no other function grows by 4.6 MB.
+# The "!credentials/**" line is repeated on purpose: per-function lists are merged with the
+# global one, and the credentials/ folder must never ride into any bundle (the nft trap).
+[functions."marketing-worker-background"]
+  included_files = [
+    "!credentials/**",
+    "marketing/knowledge/hormozi/**"
+  ]
+
 # ---------------------------------------------------------------------------
 # Routing
 #

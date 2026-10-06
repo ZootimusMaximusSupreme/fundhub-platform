@@ -197,9 +197,10 @@ describe("Build the avatar on the server (real Postgres)", { skip: !HAS_DB ? "no
     const bad = await call(runRoute, ownerA.token, { method: "POST", body: { campaign: "../../.env", stage: 1, request_id: rid("b") } });
     assert.equal(bad.code, 400);
     assert.equal(bad.body.field, "campaign");
-    const s2 = await call(runRoute, ownerA.token, { method: "POST", body: { campaign: "partner", stage: 2, request_id: rid("s") } });
+    // Wave 2b merge: step 2 now runs (unit X2), so "another stage" is one past the last.
+    const s2 = await call(runRoute, ownerA.token, { method: "POST", body: { campaign: "partner", stage: 7, request_id: rid("s") } });
     assert.equal(s2.code, 400);
-    assert.match(s2.body.message, /Only step 1/);
+    assert.equal(s2.body.field, "stage");
     const nokey = await call(runRoute, ownerA.token, { method: "POST", env: {}, body: { campaign: "partner", stage: 1, request_id: rid("k") } });
     assert.equal(nokey.code, 503);
     assert.equal(nokey.body.error, "no_model");

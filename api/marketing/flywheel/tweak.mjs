@@ -36,7 +36,7 @@ import { isCampaign, defaultServiceDescription } from "../../../src/marketing/av
 import { arizonaDate } from "../../../src/marketing/avatar/run.mjs";
 import { dollars } from "../../../src/marketing/avatar/plan.mjs";
 import { createAvatarJob, avatarRunCap, avatarJobView, latestAvatarJob } from "../../../src/marketing/avatar/store.mjs";
-import { hasModelKey } from "./run.mjs";
+import { hasModelKey } from "../../../src/marketing/avatar/run-route.mjs";
 
 export const ROUTE = "marketing/flywheel/tweak";
 const MAX_NOTE = 500;

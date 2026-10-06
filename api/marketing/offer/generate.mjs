@@ -24,7 +24,8 @@ import { requireAuth, bearerToken } from "../../../src/http/middleware/requireAu
 import { ROLE_SETS, requireRole, isUuid } from "../../../src/http/read-api.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
 import { safeError } from "../../../src/http/health.mjs";
-import { resolveOfferInputs } from "../../../src/marketing/offer-inputs.mjs";
+import { resolveOfferInputs, isCampaign, DEFAULT_CAMPAIGN } from "../../../src/marketing/offer-inputs.mjs";
+import { repoFlywheelDefaults } from "../../../src/marketing/research/repo-read.mjs";
 import { anthropicKeyOf, wakeOfferWorker } from "../../../src/marketing/offer-transport.mjs";
 import {
   createOfferJob, failOfferJob, getOfferJob, latestOfferJobs,
@@ -68,7 +69,19 @@ export default async function handler(req, res, deps = {}) {
       message: "The writing robot is not set on this site (no Anthropic key), so nothing was started." });
   }
 
-  const resolved = readInputs(req.body || {});
+  // The default inputs come through the repo reader (GitHub at one commit, saves waiting
+  // in the outbox on top, the bundled copy when GitHub cannot be read), so a board that
+  // "Research the market" just saved reaches this run without a ship (design §6 slice 10,
+  // unit X2). Any trouble reading falls back to the bundled files exactly as before.
+  let readOpts;
+  if (!deps.resolveInputs) {
+    const body = req.body || {};
+    const wanted = typeof body.campaign === "string" ? body.campaign.trim().toLowerCase() : "";
+    const campaign = wanted && isCampaign(wanted) ? wanted : DEFAULT_CAMPAIGN;
+    const d = await (deps.repoDefaults ?? repoFlywheelDefaults)(database, campaign, { env }).catch(() => null);
+    if (d) readOpts = { readDefaults: () => d };
+  }
+  const resolved = readInputs(req.body || {}, readOpts);
   if (!resolved.ok) {
     return res.status(400).json({ ok: false, error: resolved.error, message: resolved.message });
   }

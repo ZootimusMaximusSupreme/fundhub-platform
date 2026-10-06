@@ -237,6 +237,12 @@ export async function reclaimStale(db, { olderThanMin = STALE_AFTER_MINUTES } = 
  * that org, whose kind is in `kinds` (the caller passes the kinds the worker knows),
  * and never 'offer'. Starts clean: attempts 0, no error, no result, due now.
  * Another org's job, an unknown kind, a job that is not failed, or a bad id → null.
+ *
+ * SAVED STEPS ARE KEPT (unit X2, design §5 rule 18 and §3.2 "Retry … resumes from the
+ * saved steps"; "Resume … continues from the saved steps"): a job whose result is a
+ * saved-step checkpoint (src/marketing/research/runner.mjs: an object with `steps` and
+ * `state`) keeps it, so Retry and Resume carry on from the step that stopped and never pay
+ * for a finished step twice. Any other result is cleared as before.
  */
 export async function retryJob(dbOrTx, { orgId, id, kinds } = /** @type {any} */ ({})) {
   if (!orgId || !id || !UUID_RE.test(String(id))) return null;
@@ -244,7 +250,12 @@ export async function retryJob(dbOrTx, { orgId, id, kinds } = /** @type {any} */
   if (!only || only.length === 0) return null;
   const r = await dbOrTx.query(
     `UPDATE marketing_jobs
-        SET status = 'queued', attempts = 0, error = NULL, result = NULL,
+        SET status = 'queued', attempts = 0, error = NULL,
+            result = CASE
+                       WHEN jsonb_typeof(result -> 'steps') = 'object' AND jsonb_typeof(result -> 'state') = 'object'
+                         THEN result
+                       ELSE NULL
+                     END,
             claimed_at = NULL, finished_at = NULL, run_after = now()
       WHERE id = $1 AND org_id = $2
         AND status = 'failed'

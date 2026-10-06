@@ -31,6 +31,10 @@ export const ALLOWED_UNMONITORED = {
   "ops/weekly-brief": "POST only. A GET answers 405 by design, and pinging it with a body would generate a real brief every time — a real model call, a real write into Company Brain (brain_files/brain_chunks) — on whatever schedule the pulse runs, not the weekly cadence Chris actually wants. This is meant to be run when a person (or a job Chris explicitly schedules) asks for it, not pinged for uptime.",
   "public/slo-repair-checkout": "POST only. A GET answers 405 by design, and pinging it with a body would record a repair plan choice (and, off demo, mint a real Commas link) for a buyer. It also refuses anyone slo-status would not show the repair offer to. The monitored doors for this offer are public/slo-checkout and public/slo-status.",
   "public/slo-pull": "POST only. A GET answers 405 by design, and pinging it with a body would store identity (including SSN) against a paid SLO file and emit diagnostic.paid, which starts C-00. The monitored door for this offer is public/slo-checkout, which answers GET with the price.",
+  "marketing/research/approve": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would stamp Chris's approval on a research report nobody read. Its read sibling marketing/research answers GET and is the monitored door for the research card.",
+  "marketing/research/tweak": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would start a paid research run (model calls and web searches) that nobody asked for. The monitored door is marketing/research.",
+  "marketing/research/brain": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would write a report into Company Brain and pay for embedding it. The monitored door is marketing/research.",
+  "marketing/flywheel/run": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would start a paid flywheel run (model calls and web searches). Its job shows on marketing/research's sibling reads and on the health card (marketing/health), which is monitored.",
   "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting."
 };
 
@@ -395,7 +399,10 @@ const API_KEYS = [
   "marketing/flywheel/run",
   "marketing/flywheel/approve",
   "marketing/flywheel/tweak",
-  "marketing/flywheel/campaign"
+  "marketing/flywheel/campaign",
+  /* Research it (unit X2): GET lists the runs, 401 to an unsigned ping; the POST
+     that starts a paid run is never pinged. */
+  "marketing/research"
 ];
 
 const DESK_FILES = [

@@ -60,7 +60,18 @@ export const SETTINGS_KEYS = Object.freeze([
 
 /** Set by the server, never by a patch. */
 const SERVER_SET = new Set(["org_id", "updated_at", "updated_by"]);
-export const SETTINGS_PATCH_KEYS = Object.freeze(SETTINGS_KEYS.filter((k) => !SERVER_SET.has(k)));
+
+/* The two research dials (migration 429, design docs/specs/command-center-design-2026-10-05.md
+   §3.8 item 3 and §6 "Slice 10", unit X2): "Research: stop at $__ a run" and "Research
+   counts against the $300 month cap". Kept OUT of SETTINGS_KEYS on purpose: that list
+   is spec §6 Step 3's column table, pinned to migration 410. The answer carries these
+   two after it. */
+export const RESEARCH_SETTINGS_KEYS = Object.freeze(["max_research_cost_usd", "research_shares_month_cap"]);
+
+export const SETTINGS_PATCH_KEYS = Object.freeze([
+  ...SETTINGS_KEYS.filter((k) => !SERVER_SET.has(k)),
+  ...RESEARCH_SETTINGS_KEYS
+]);
 
 /** GET marketing/funnels → funnels:[{...these keys}]. */
 export const FUNNEL_KEYS = Object.freeze([
@@ -203,7 +214,17 @@ const SETTINGS_CHECKS = {
   flip_horizontal: bool,
   settle_minutes: positiveInt,
   quiet_start: hhmm,
-  quiet_end: hhmm
+  quiet_end: hhmm,
+  /* Dollars of model spend, up to 2 decimals, 0.01 to 1000; null = not set (the
+     deep research card then asks for a stop amount on every run). */
+  max_research_cost_usd: (f, v) => {
+    if (v === null) return null;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0.01 || v > 1000 || Math.abs(Math.round(v * 100) - v * 100) > 1e-9) {
+      throw new InvalidError(f, "max_research_cost_usd must be dollars from 0.01 to 1000 (like 5 or 2.50), or null to leave it blank.");
+    }
+    return v;
+  },
+  research_shares_month_cap: bool
 };
 
 /**
@@ -260,7 +281,11 @@ export function settingsView(row) {
     quiet_start: hhmmOf(row.quiet_start),
     quiet_end: hhmmOf(row.quiet_end),
     updated_at: iso(row.updated_at),
-    updated_by: row.updated_by ?? null
+    updated_by: row.updated_by ?? null,
+    // Migration 429. NULL is "not set", never 0. A row read before 429 ran has no
+    // column at all: research then counts against the month cap (the default).
+    max_research_cost_usd: row.max_research_cost_usd == null ? null : Number(row.max_research_cost_usd),
+    research_shares_month_cap: row.research_shares_month_cap == null ? true : row.research_shares_month_cap === true
   };
 }
 

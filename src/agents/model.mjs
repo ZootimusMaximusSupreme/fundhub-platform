@@ -375,19 +375,32 @@ async function callAnthropic({ env, fetchImpl, request, mediaParts }) {
 //                     out as given; every other entry is a strict client tool.
 //                     Only client tools need a tool call back (no_tool_call).
 //   outputSchema    — refused with web search or web fetch in the same call:
-//                     citations plus structured output is HTTP 400.
+//                     citations plus structured output is HTTP 400. (Unit X2:
+//                     refused next to any other server tool too.)
+//   system          — may be a list of content blocks (unit X2); cache marks
+//                     only the last one.
 //   pause_turn      — the server-side loop can pause a long research turn. The
 //                     paused assistant content is sent back unchanged (with the
 //                     container id when one came back), up to maxContinuations
 //                     times (default 2), each web search tool's max_uses lowered
 //                     by the searches already made, so a whole call can never
 //                     make more searches than the caller allowed.
+//                     WHO OWNS THE LOOP (wave 2b merge of X1 and X2): a call that
+//                     passes `messages` and no maxContinuations owns the loop
+//                     itself (X2's researchCall): a pause_turn comes back with
+//                     stopReason "pause_turn", its content and NO error, and
+//                     nothing is resent here. Any call that names
+//                     maxContinuations, or sends `user`, is resumed here, and a
+//                     turn still paused after the last continuation is the error
+//                     MODEL_STILL_PAUSED (X1).
 //   stream          — true reads the reply as server-sent events, so a call that
 //                     writes for many minutes never waits 300 seconds for headers
 //                     (Node's fetch drops it then). The finished message is the
 //                     same shape either way.
 //   usage           — also counts web_search_requests and web_fetch_requests,
 //                     summed over every continuation.
+//   serverToolUse   — {web_search_requests, web_fetch_requests}: the same two
+//                     counts on their own (unit X2 reads them here).
 //   content         — every content block of the turn, in order, across
 //                     continuations (search results, citations, text).
 //   continuations   — how many times the turn was resumed.
@@ -434,7 +447,14 @@ function isPlainObject(v) {
 
 /** A server tool: Anthropic runs it. It carries its own `type` (never 'custom'). */
 function isServerTool(t) {
-  return isPlainObject(t) && typeof t.type === "string" && t.type !== "" && t.type !== "custom";
+  return isPlainObject(t) && typeof t.type === "string" && t.type !== "" && t.type !== "custom" &&
+    !isPlainObject(t.input_schema);
+}
+
+/** The two server-tool counts of a usage object, on their own (unit X2's serverToolUse). */
+function serverToolUseOf(usage) {
+  const n = (v) => Math.max(0, Math.floor(Number(v) || 0));
+  return { web_search_requests: n(usage && usage.web_search_requests), web_fetch_requests: n(usage && usage.web_fetch_requests) };
 }
 
 const isWebTool = (t) => isServerTool(t) && /^web_(search|fetch)_/.test(t.type);
@@ -525,7 +545,7 @@ function checkMessages(messages) {
     if (!["user", "assistant", "system"].includes(m.role)) return `message role ${JSON.stringify(m.role)} is not user, assistant or system.`;
     if (!(typeof m.content === "string" || Array.isArray(m.content))) return "every message needs content (text or a list of blocks).";
   }
-  if (messages[0].role !== "user") return "the first message must be from the user.";
+  if (messages[0].role !== "user") return "the first message must be the user's.";
   return null;
 }
 
@@ -619,7 +639,7 @@ async function callAnthropicForced(args) {
     model, maxTokens, media = [], provider,
     timeoutMs, cache = false, effort, outputSchema, tools, toolChoice,
     fallbacks = "default", messages, stream = false,
-    maxContinuations = DEFAULT_MAX_CONTINUATIONS
+    maxContinuations
   } = args;
 
   const mediaParts = Array.isArray(media) ? media.filter(Boolean) : [];
@@ -633,9 +653,17 @@ async function callAnthropicForced(args) {
   const choice = toolChoiceOf(toolChoice);
   const fallbackOn = fallbacks == null || fallbacks === true || fallbacks === "default";
   const sendFallbacks = fallbackOn && FALLBACK_MODELS.includes(modelName);
-  const systemText = String(system || "");
+  const systemBlocks = Array.isArray(system) ? system.filter(Boolean) : null;
+  const systemText = systemBlocks
+    ? systemBlocks.map((b) => (b && typeof b.text === "string" ? b.text : "")).join("\n")
+    : String(system || "");
   const useMessages = messages != null;
-  const maxCont = Number.isInteger(maxContinuations) && maxContinuations >= 0 ? maxContinuations : DEFAULT_MAX_CONTINUATIONS;
+  /* The caller owns the pause_turn loop when it sends messages and names no
+     maxContinuations (unit X2); otherwise this function resumes (unit X1). */
+  const callerOwnsLoop = useMessages && maxContinuations == null;
+  const maxCont = callerOwnsLoop
+    ? 0
+    : (Number.isInteger(maxContinuations) && maxContinuations >= 0 ? maxContinuations : DEFAULT_MAX_CONTINUATIONS);
 
   const request = {
     model: modelName,
@@ -659,7 +687,8 @@ async function callAnthropicForced(args) {
     mode: "live", text: null, raw: null, request, error: null, status: null,
     json: null, toolInput: null, stopReason: null, servedModel: null,
     usage: emptyAnthropicUsage(), content: [], continuations: 0,
-    ...fields
+    ...fields,
+    serverToolUse: serverToolUseOf((fields && fields.usage) || emptyAnthropicUsage())
   });
   const notSent = (why) => result({ mode: "shadow", error: `${MODEL_NOT_SENT}${why}` });
 
@@ -704,6 +733,9 @@ async function callAnthropicForced(args) {
   if (outputSchema != null && serverTools.some(isWebTool)) {
     return notSent("outputSchema cannot be combined with web search or web fetch: citations plus structured output is HTTP 400. Ask for JSON in the prompt and parse the text instead.");
   }
+  if (outputSchema != null && serverTools.length) {
+    return notSent("outputSchema cannot be used with a server tool (server tool results plus structured output is not allowed). Ask for JSON in the prompt instead.");
+  }
   if (useMessages) {
     const why = checkMessages(messages);
     if (why) return notSent(why);
@@ -719,7 +751,11 @@ async function callAnthropicForced(args) {
     model: modelName,
     max_tokens: maxTok
   };
-  if (systemText) {
+  if (systemBlocks && systemBlocks.length) {
+    body.system = systemBlocks.map((b, i) => (cache === true && i === systemBlocks.length - 1)
+      ? { ...b, cache_control: { type: "ephemeral" } }
+      : b);
+  } else if (systemText) {
     body.system = cache === true
       ? [{ type: "text", text: systemText, cache_control: { type: "ephemeral" } }]
       : systemText;
@@ -859,6 +895,10 @@ async function callAnthropicForced(args) {
       ...answered,
       error: `cut off: the reply hit the ${maxTok}-token limit before it finished (thinking counts toward it). Raise maxTokens.`
     });
+  }
+  if (stopReason === "pause_turn" && callerOwnsLoop) {
+    // The caller resends the paused content itself (unit X2's researchCall).
+    return result({ ...answered, text: extractText({ content }) });
   }
   if (stopReason === "pause_turn") {
     return result({
