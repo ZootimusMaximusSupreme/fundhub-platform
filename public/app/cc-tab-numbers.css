@@ -1,0 +1,192 @@
+/* cc-tab-numbers.css — the Command Center's Numbers tab (Ads · Angles · Funnels).
+   Loaded by public/app/cc-tab-numbers.js itself, so the frame only adds the
+   script tag. Everything is scoped under .ccn so no other tab can be touched.
+
+   docs/rules/UI-STANDARDS.md is law here:
+     - NO font-size anywhere in this file. fundhub-brand.css throws screen sizes
+       away inside the shell (§12.7); sizes come from its whitelist only
+       (.caption .eyebrow .chip th label .mono = 13px, .big = 32px, h2 = 20px,
+       everything else 16px).
+     - Containers are .card, which is on the brand's shadow list (§12.2). The
+       only other shadow is the drawer's, because it floats above the page
+       (§12.3: shadow beyond the token means something is happening).
+     - 8px spacing scale (§2). Taps at least 44px (§5). One column at 390px,
+       and the Ads table is the only thing that scrolls sideways, inside its
+       own box (§11). */
+
+.ccn{display:flex;flex-direction:column;gap:24px;min-width:0;color:var(--ink)}
+.ccn .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px;min-width:0}
+.ccn .unk{color:var(--gray)}
+.ccn .num{text-align:right;font-variant-numeric:tabular-nums}
+
+/* The view switch and the shared as-of line. */
+.ccn-top{display:flex;flex-direction:column;gap:8px}
+.ccn-views{display:flex;gap:8px;flex-wrap:wrap}
+.ccn-view{min-height:44px;padding:8px 24px;border:1px solid var(--line);border-radius:22px;background:#fff;color:var(--gray);font-weight:600;cursor:pointer}
+.ccn-view:hover{border-color:var(--gray2)}
+.ccn-view.on{border-color:var(--ink2);color:var(--ink2);background:var(--soft)}
+.ccn-asof,.ccn-rangeline{color:var(--gray)}
+.ccn-body{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* Buttons. One filled button at most on a view (§1): only "Save idea". */
+.ccn-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border:1px solid var(--ink2);border-radius:8px;background:#fff;color:var(--ink2);font-weight:600;cursor:pointer;white-space:nowrap}
+.ccn-btn:hover{border-color:var(--ink)}
+.ccn-btn.primary{background:var(--ink2);color:var(--paper);padding:8px 24px}
+.ccn-btn.primary:hover{opacity:.9}
+.ccn-btn.ccn-text{border-color:transparent;background:transparent;text-decoration:underline;padding:8px}
+.ccn-btn[disabled]{opacity:.45;cursor:not-allowed}
+.ccn-spin{display:none;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ccnspin .8s linear infinite}
+.ccn-btn.busy .ccn-spin{display:inline-block}
+.ccn-actions{display:flex;gap:16px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
+
+/* Filters above the table, left (§8). The label sits beside the control, not
+   around it, so the control keeps the 16px body size (no phone zoom). */
+.ccn-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px;align-items:end}
+.ccn-f{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ccn-f label{color:var(--gray);font-weight:600}
+.ccn-f select,.ccn-f input{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:#fff;color:var(--ink)}
+.ccn-f-clear{justify-content:flex-end}
+
+/* The Ads table: its own scroll box, the ad column pinned on the left. */
+.ccn .ccn-tablebox{padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ccn-table{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
+.ccn-table th,.ccn-table td{padding:8px 16px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+.ccn-table tbody tr:last-child td{border-bottom:0}
+.ccn-table thead th{padding:0;background:var(--soft);color:var(--gray);font-weight:600;vertical-align:bottom}
+.ccn-table thead th:first-child{position:sticky;left:0;z-index:2}
+.ccn-table th.num{text-align:right}
+.ccn-sort{display:flex;align-items:center;width:100%;min-height:44px;padding:8px 16px;border:0;background:transparent;color:inherit;font-weight:600;cursor:pointer;white-space:nowrap;text-align:left}
+.ccn-table th.num .ccn-sort{justify-content:flex-end;text-align:right}
+.ccn-table th[aria-sort="ascending"] .ccn-sort,.ccn-table th[aria-sort="descending"] .ccn-sort{color:var(--ink)}
+.ccn-table tbody tr{cursor:pointer}
+.ccn-table tbody tr:hover td{background:var(--soft)}
+.ccn-adcell{position:sticky;left:0;z-index:1;background:#fff;border-right:1px solid var(--line);min-width:208px;max-width:264px;white-space:normal}
+.ccn-adbtn{display:inline-flex;align-items:center;min-height:40px;padding:0;border:0;background:transparent;color:var(--ink);font-weight:600;text-decoration:underline;cursor:pointer}
+.ccn-adtitle{display:block;max-width:232px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccn-adlabels{display:block;color:var(--gray)}
+.ccn-mat{margin-top:8px}
+
+/* Cards in a 12-column grid (§2: no uneven rows). Angles: 3 across, 2, then 1.
+   Funnels: one funnel per row, so its five steps sit side by side. */
+.ccn-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.ccn-span{grid-column:span 4}
+.ccn-spanall{grid-column:span 12}
+.ccn-card-hd{display:flex;flex-direction:column;gap:0;min-width:0}
+.ccn-card-hd b{font-weight:600;overflow-wrap:anywhere}
+.ccn-card-hd .caption{color:var(--gray)}
+.ccn-empty p + p{margin-top:8px}
+.ccn-empty .ccn-btn{margin-top:16px}
+
+/* Label over value pairs (§3: the value is the hero, the label is muted). */
+.ccn-kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:16px;margin:16px 0 0}
+.ccn-kv-i{min-width:0}
+.ccn-kv dt{color:var(--gray)}
+.ccn-kv dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+.ccn-kv dd.unk{font-weight:400}
+
+/* Answers back (§5). The word always says the state; colour is extra (§12.6). */
+.ccn-say{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 16px;border:1px solid var(--line);border-radius:8px}
+.ccn-say.ok{background:color-mix(in srgb,var(--ok) 28%,#fff);color:#2C5138}
+.ccn-say.err{background:color-mix(in srgb,var(--alert) 28%,#fff);color:#6E2A22}
+.ccn-say.wait{background:color-mix(in srgb,var(--warn) 28%,#fff);color:#6B4A12}
+.ccn-card .ccn-say{margin-top:16px}
+
+/* Lists (unmapped spend, Meta ads). */
+.ccn-list{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column}
+.ccn-list li{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:16px 0;border-top:1px solid var(--line)}
+.ccn-list li:first-child{border-top:0;padding-top:0}
+.ccn-li{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.ccn-li-main{flex:1 1 200px;min-width:0;display:flex;flex-direction:column;overflow-wrap:anywhere}
+.ccn-li-main .caption{color:var(--gray)}
+.ccn-li-num{font-weight:600;font-variant-numeric:tabular-nums}
+.ccn-unmapped p.caption{color:var(--gray);margin-top:8px}
+
+/* The "Make more of this" sheet, inside its card. Save sits bottom-right (§8). */
+.ccn-sheet{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.ccn-sheet label{color:var(--ink2);font-weight:600}
+.ccn-sheet textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:#fff;color:var(--ink);font:inherit;resize:vertical}
+.ccn-sheet .caption{color:var(--gray)}
+.ccn-sheet .ccn-actions{margin-top:8px}
+
+/* Funnels: ad -> page -> lead -> call -> sale. Steps are tinted blocks inside
+   the card, never a shadow inside a shadow (§12.5). */
+.ccn-flow{list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.ccn-step{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--soft);min-width:0}
+.ccn-rate{color:var(--gray)}
+.ccn-rate b{color:var(--ink);font-weight:600}
+.ccn-rate b.unk{color:var(--gray);font-weight:400}
+.ccn-stepn{font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.ccn-steplabel{color:var(--ink2)}
+.ccn-stepn.unk{color:var(--gray)}
+.ccn-unmapped .big{font-weight:600;line-height:1.1}
+
+/* The drawer: a side sheet on a laptop, the whole screen on a phone. It stops
+   above data.js's fixed status strip. */
+html.ccn-lock,html.ccn-lock body{overflow:hidden}
+.ccn-scrim{position:fixed;inset:0;z-index:500;background:rgba(10,10,10,.32)}
+.ccn-drawer{position:fixed;top:0;right:0;bottom:calc(var(--fh-statusbar,0px) + env(safe-area-inset-bottom,0px));z-index:501;width:min(600px,100%);display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--line);box-shadow:var(--panel-shadow),0 8px 32px rgba(10,10,10,.16)}
+.ccn-drawer-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 24px;border-bottom:1px solid var(--line)}
+.ccn-drawer-t{min-width:0}
+.ccn-drawer-t h2{font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+.ccn-drawer-t .caption{color:var(--gray)}
+.ccn-drawer-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:24px;display:flex;flex-direction:column;gap:24px}
+.ccn-drawer-body > .ccn-kv{margin-top:0}
+.ccn-sec{display:flex;flex-direction:column;gap:16px;border-top:1px solid var(--line);padding-top:24px}
+.ccn-sec .caption{color:var(--gray)}
+.ccn-dayf{max-width:320px}
+.ccn-note{font-weight:600}
+.ccn-diag{display:flex;flex-direction:column;gap:8px}
+.ccn-diag.old{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+.ccn-details summary{cursor:pointer;padding:8px 0;color:var(--gray)}
+.ccn-pts{list-style:none;margin:8px 0 0;padding:0;columns:2;column-gap:24px}
+.ccn-pts li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;break-inside:avoid;border-bottom:1px solid var(--line)}
+
+/* The watch curve, drawn by hand: an SVG line with HTML labels, no library. */
+.ccn-chart{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:192px auto;column-gap:8px;row-gap:8px}
+.ccn-yaxis{grid-row:1;grid-column:1;display:flex;flex-direction:column;justify-content:space-between;text-align:right;color:var(--gray)}
+.ccn-plot{grid-row:1;grid-column:2;position:relative;border-left:1px solid var(--gray2);border-bottom:1px solid var(--gray2)}
+.ccn-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.ccn-line{fill:none;stroke:var(--ink2);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.ccn-area{fill:color-mix(in srgb,var(--info) 40%,transparent);stroke:none}
+.ccn-grid-line{stroke:var(--line);stroke-width:1}
+.ccn-xaxis{grid-row:2;grid-column:2;position:relative;height:24px;color:var(--gray)}
+.ccn-xaxis span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.ccn-xaxis span:first-child{transform:none}
+.ccn-xaxis span:last-child{transform:translateX(-100%)}
+
+/* Loading: skeletons in the real layout, never a full-page spinner (§6). */
+.ccn-skel{display:block;height:16px;border-radius:8px;background:var(--soft);animation:ccnpulse 1.2s ease-in-out infinite}
+.ccn-skel + .ccn-skel{margin-top:8px}
+.ccn-skel.short{width:40%}
+.ccn-skel.tall{height:160px}
+.ccn-skel-table{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px}
+.ccn-skel-table .ccn-skel{height:32px}
+@keyframes ccnpulse{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes ccnspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.ccn-skel,.ccn-spin{animation:none}}
+
+/* Narrower screens: 2 across, then one column (§11). */
+@media (max-width:960px){
+  .ccn-span{grid-column:span 6}
+}
+@media (max-width:720px){
+  .ccn .card{padding:16px}
+  .ccn-span{grid-column:span 12}
+  .ccn-drawer{width:100%;border-left:0}
+  .ccn-drawer-hd{padding:16px}
+  .ccn-drawer-body{padding:16px}
+  .ccn-flow{grid-template-columns:1fr}
+  .ccn-step{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:0 16px;padding:8px 16px}
+  .ccn-step .ccn-rate{flex-basis:100%;order:0}
+  .ccn-step .ccn-rate.none{display:none}
+  .ccn-steplabel{order:1;flex:1 1 auto}
+  .ccn-stepn{order:2}
+  .ccn-pts{columns:1}
+}
+@media (max-width:480px){
+  .ccn-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ccn-view{flex:1 1 0;padding:8px 16px}
+  .ccn-actions .ccn-btn.primary{flex:1 1 auto}
+  .ccn-adcell{min-width:160px;max-width:192px}
+  .ccn-adtitle{max-width:160px}
+}

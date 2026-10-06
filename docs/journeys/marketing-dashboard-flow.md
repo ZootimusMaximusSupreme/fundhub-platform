@@ -1215,3 +1215,93 @@ flowchart TD
     `marketing-cc-today.js` and `marketing-cc-settings.js`.
 12. **No cost sheet in U34's frame:** under U34's contract Fix and Write now are one tap with the cost
     printed under the button (design safety rule 3); the design's two-tap list does not include them.
+## U38 Command Center Numbers tab: Ads, Angles and Funnels views
+
+Drawn 2026-10-06 from the code on branch `mm-u38-numbers-views`: `public/app/cc-tab-numbers.js`
+(+ `cc-tab-numbers.css`). One tab module, registered through `window.FundhubCC.registerTab`
+(`docs/specs/command-center-tabs.md`): id `numbers`, order 7. Design §3.7; spec §11.3. It reads
+U31's and U32's routes, posts U26's ideas route, and changes no ad, budget or page. The frame
+(`cc-frame.js`) is not on main yet, so the integrator adds
+`<script defer src="cc-tab-numbers.js"></script>` to `marketing-command-center.html`; the tab loads
+its own stylesheet.
+
+```mermaid
+flowchart TD
+  R[frame calls render root, ctx] --> P{ctx.param or the URL hash numbers/...}
+  P -->|ads / ads/91| A
+  P -->|angles| G
+  P -->|funnels| F
+  P -->|none| M[last view this viewer used<br/>localStorage, try/catch; else Ads]
+  M --> A & G & F
+  A[Ads view] --> AQ[GET marketing/ads?from&to&funnel&format&angle<br/>window = Arizona days, last 30 by default]
+  A --> AN[GET marketing/funnels + GET marketing/angles<br/>names for the filters only]
+  AQ -->|loading| SK[skeleton table]
+  AQ -->|error| AE[one plain sentence + Try again<br/>the rest of the page stays]
+  AQ -->|no rows| AY[No ad numbers saved for Sep 7 to Oct 6<br/>+ Clear filters when filters are on]
+  AQ -->|rows| T[table: one row per ad number, sort by any column<br/>unknown sorts last, null prints unknown<br/>still maturing chip on leads under 14 days]
+  T -->|filter change| AQ
+  T -->|tap a row| D[drawer: GET marketing/ad?n=<br/>URL hash numbers/ads/n]
+  D --> DC[watch curve: SVG polyline drawn by hand<br/>newest day with a curve; day picker per Meta ad per day<br/>no curve: Meta sent no curve for that day]
+  D --> DW[diagnosis in words: opening / middle / ask,<br/>fix type, film note, next take; buzz day if alerted]
+  D --> DM[Meta ads with the number + status]
+  D -->|Close / Escape| T
+  AQ --> U[unmapped spend per campaign<br/>Link to a funnel]
+  U -->|tap| S[ctx.go settings, funnels]
+  G[Angles view] --> GQ[GET marketing/angles, last 30 days]
+  GQ --> GC[card per angle, most spend first:<br/>spend, ads, leads, cost per lead, booked, sales, cash, ROAS]
+  GC -->|Make more of this| SH[sheet: words prefilled from the angle name<br/>Save idea = the one filled button]
+  SH -->|Save idea| PI[POST marketing/ideas<br/>request_id, raw_points, angle_key if a store key, source chris]
+  PI -->|200| OK[Saved to your ideas. The next batch of scripts starts with your ideas.]
+  PI -->|error| ER[Not saved + why; words kept;<br/>the same request_id is sent again]
+  F[Funnels view] --> FQ[GET marketing/funnels/stats, last 30 days]
+  FQ --> FC[card per funnel: spend, cash, ROAS;<br/>page views - click to page; leads - page to lead;<br/>booked - lead to call; showed; sales - call to sale]
+  FQ --> FU[spend not tied to a funnel + Link to a funnel]
+  FU -->|tap| S
+```
+
+- **Numbers are the server's.** Counts, money, CTR, the 2-second and 25% rates, thruplay rate, cost
+  per lead / booked call and ROAS print as U31 and U32 send them. The page divides only what no route
+  carries: lead to call (booked ÷ leads), call to sale (sales ÷ showed) and an angle's cost per lead
+  (spend ÷ leads). `src/ui/cc-tab-numbers.test.mjs` holds those to `src/marketing/metrics.mjs`'s
+  own rule (4 places, null on an unknown side or a 0 bottom).
+- **Arizona days.** The window ends on today's Arizona day (UTC−7, no daylight saving); the unit
+  test holds it equal to `src/lib/ad-account-day.mjs` across the year.
+- **as-of.** One line under the view switch: "Meta numbers pulled <time> Arizona time.", from the
+  open view's `as_of`; "never pulled yet" when it is null.
+- **Phone.** One column at 390px; the Ads table is the only sideways scroll, inside its own box,
+  with the ad column pinned; the drawer is a full-screen sheet that stops above the status strip.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+1. **Ads columns the design names that no route sends:** plays, "Meta says" purchases, the last
+   day an ad ran, and the unmapped lead count ("18 leads, 0 tied to an ad number yet"). Not shown.
+   The 2-second and quarter-mark columns use the design's labels, "Still there at 2 s" and
+   "Still there at 25%" (design §3.1 and safety rule 7); the math stays metrics.md's (2-second
+   plays ÷ impressions; 25% plays ÷ plays). Short terms keep their meaning next to them, because a
+   phone shows no hover: "Taps per show (CTR)", "Cash per $1 (ROAS)", "Shows (impressions)",
+   "Watched 15 s (ThruPlay)", "Sales per show-up (close rate)".
+2. **Drawer parts the design names that `GET marketing/ad` does not send:** the 25/50/75/100%
+   quartiles, the hop note, the script's hook and line 2, links to Meta and the repo file.
+   **New opening** is out of this unit's scope (plan U38 brief).
+3. **Angles:** last run date, best and worst ad, and the planner's 3 suggestions with Accept are
+   not in U32's answer (suggestions live in U23's `GET marketing/batches/next`). Not built here.
+4. **Funnels:** the page funnel (opened, scrolled, played, pressed buy, paid), the Clarity table
+   and the Pages card are out of scope (design slices 4b and 9).
+5. **Map view and Make the report** have no back end; they are not drawn (UI-STANDARDS §5: no
+   "coming soon").
+6. **Link button.** The plan's contract sends it to the Settings funnel mapping
+   (`ctx.go('settings', 'funnels')`); the design's Ads "unknown ad" row names the
+   `campaigns/link-asset` control instead. Built per the plan, labelled "Link to a funnel". That
+   counts the campaign's spend on the Funnels view; it does not give the ads a number, so they stay
+   in the Ads unmapped list. **UNVERIFIED:** that the Settings tab (U34) opens on its funnel part
+   for the param `funnels`.
+7. **No 10-play floor.** The design prints "unknown (fewer than 10 plays)"; the routes have no
+   floor (U31 gap), so a rate on a handful of plays prints as a number.
+8. **Angles and Funnels are always the last 30 days.** Their routes take no window; only Ads does.
+9. **UNVERIFIED in the frame.** Proved in a stub frame (`e2e/helpers/cc-numbers-stub.mjs`) until
+   `cc-frame.js` lands; the live load time of each view is recorded by the orchestrator after ship.
+10. **Two drawer reads past the contract.** The drawer reads `ad.maturing_leads` and
+    `ad.curve[].ad_id`. `api/marketing/ad.mjs` always sends both (the unit test proves it against
+    the handler), but `GET marketing/ad` in `src/marketing/api-contract.mjs` does not list them.
+    The tab falls back to "Some leads are" and day-only labels without them. Adding them to the
+    contract is U31's file and `docs/specs/marketing-machine-api.md`; not changed here.
