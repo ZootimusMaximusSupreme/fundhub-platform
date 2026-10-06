@@ -1,6 +1,6 @@
 # Affiliate link + show password (2026-10-06)
 
-Status: W1 plan waiting for Chris (Blueprint row yes/no). W2 can start now.
+Status: W1 built, marked draft with Chris. W2 can start now.
 
 (An earlier draft of this board guessed at a 4-part affiliate audit before Chris gave the task. That draft is dead.)
 
@@ -8,7 +8,7 @@ Status: W1 plan waiting for Chris (Blueprint row yes/no). W2 can start now.
 
 | # | Task | Owner | Status |
 |---|---|---|---|
-| W1 | One row per offer on the affiliate page | this session | claimed — plan waiting for Chris |
+| W1 | One row per offer on the affiliate page | this session | built on branch affiliate-offer-links — marked draft sent, waiting for "push it" |
 | W2 | Eye button to show the password while typing | open — paste prompt below | pending |
 
 No dependencies — W1 and W2 touch different files. All parallel.
@@ -109,8 +109,17 @@ Other breaks: one leftover card on the board, then stop. Do not fix them.
 
 ## Manifests
 
-(none yet)
+### W1 (not live yet — branch affiliate-offer-links)
+- `src/affiliates/share-link.mjs` — `OFFER_PAGES` + `offerLinksFor(code)`: Book a call -> /watch, Roadmap -> /roadmap, each `?a1=<code>&ref=<code>`. Blueprint left off: https://apply.fundhub.ai/blueprint is 404 (checked 2026-10-06).
+- `api/read/affiliate-portal.mjs` — adds `affiliate.offerLinks`. `shareUrl` unchanged.
+- `public/app/affiliate.html` — one row per offer with Copy link; Copy code kept. The page no longer builds a start link itself.
+- `public/funnel/fh-attribution.js` (+ paste-in copy `marketing/landing-pages/06-utm-hidden-fields.html`) — counts the click on a direct offer link, once per code per tab; skips `via=start` and slo_ order refs.
+- `public/start.html` — adds `&via=start` so its own click is not counted twice. Still lands on /watch.
+- Checked, no change needed: the roadmap checkout already sends a1 (fh-attribution.js fetch wrapper adds it to the slo-checkout POST).
+- Tests: `src/affiliates/share-link.test.mjs` (new), `src/ads/fh-attribution-contact.test.mjs` (+4), `src/http/affiliate-referral.pg.test.mjs` (+offerLinks asserts, runs in CI).
+- Journeys: no route change; `npm run journeys` regenerates affiliate-actual.md unchanged. CHANGELOG line added.
+- Draft shots (gitignored): `ops/workflows/affiliate-tracking-2026-10-06-evidence/`.
 
 ## Leftover cards
 
-(none yet)
+- **climate page test fails** — `src/http/climate-match.test.mjs` "climate page: no approval odds…" matches /approval odds/ inside the built `public/climate/_next` bundle. Not touched by W1. Not fixed.
