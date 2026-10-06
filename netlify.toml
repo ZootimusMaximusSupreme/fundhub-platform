@@ -4,6 +4,7 @@
 
 [build]
   publish = "public"
+  ignore = "node scripts/netlify-ignore-machine-only.mjs"
   # Public/ is static and the functions are bundled by Netlify. The command
   # applies pending SQL (cloud build has MIGRATION_DATABASE_URL), then the
   # database privilege guard.

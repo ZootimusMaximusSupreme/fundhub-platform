@@ -422,3 +422,81 @@ Gaps against the spec (findings, not reconciled):
   and the writer gets `outputSchema` instead.
 - The spec names no default model, `maxTokens`, timeout or effort for this
   path. The defaults above come from the claude-api skill.
+## U08 Ship stays in step with GitHub (spec M0 step 8)
+
+Drawn 2026-10-05 from `scripts/ship.mjs`, `scripts/ship-machine-paths.mjs`,
+`scripts/netlify-ignore-machine-only.mjs` and the `[build] ignore` line in
+`netlify.toml`, on branch `mm-u08-ship-pull-push`. Ops only, no screen.
+
+Machine-only folders (one list, `MACHINE_ONLY_PATHS`, read by both ship and the
+Netlify skip rule): `marketing/ads/scripts/machine/`, `marketing/ads/ideas/`,
+`marketing/ads/videos/`, `marketing/brain/`, `ops/page-requests/`. Rule, voice and
+registry files (`marketing/ads/RULES.md`, `VOICE.md`, `registry.json`,
+`banned-live.json`, `angles.json`) are not on it, so they still ship.
+
+### `npm run ship`
+
+```mermaid
+flowchart TD
+  S[npm run ship] --> B{on main and the tree clean?}
+  B -->|no| X1[stop: ship from main / commit first]
+  B -->|yes| D{--dry?}
+  D -->|yes| P0[says it would pull; pulls nothing]
+  D -->|no| P1[git pull --ff-only origin main<br/>no prompt, no editor, 90 s limit]
+  P1 -->|works, or already up to date| H
+  P1 -->|no answer in 90 s: no second try| R
+  P1 -->|cannot fast-forward| P2[git pull --rebase=merges --autostash origin main]
+  P2 -->|works| H
+  P2 -->|clash, error or no answer| A[list clashing files<br/>git rebase --abort]
+  A --> R{back on main, same commit, clean tree?}
+  R -->|yes| L2[one line naming the clashing file, git's reason,<br/>or no answer: shipping this Mac's main as it is] --> H
+  R -->|no| X2[stop: the pull could not be undone,<br/>nothing deployed]
+  P0 --> H
+  H[read the commit to ship] --> K{changed since the last ship, leaving out<br/>ops/ship-log.md and the machine-only folders?}
+  K -->|no| N[Nothing to ship, exit 0]
+  K -->|yes, or git errors| C[lint + guards, database, netlify deploy --prod,<br/>/api/health pending 0, Inngest]
+  C --> LOG[append ops/ship-log.md<br/>commit: ship: head is live]
+  LOG --> F[git fetch origin main<br/>no prompt, 90 s limit]
+  F -->|fails| Q1[one line: did not push]
+  F -->|works| I{GitHub's main inside this Mac's main?}
+  I -->|no| Q2[one line: did not push,<br/>it would overwrite GitHub's newer commits]
+  I -->|yes| PUSH[node scripts/github-push-whole-repo.mjs<br/>main, every local branch, every tag; 10 min limit]
+  PUSH -->|works| OK[one line: pushed]
+  PUSH -->|fails| Q3[one line with the reason, token hidden]
+  Q1 & Q2 & Q3 & OK --> E[ship ends; the deploy stands]
+```
+
+- A failed pull never stops the ship. The only stop in the pull step is a folder left
+  half way through a pull, because deploying it would ship a broken tree.
+- The push runs only after the ship-log commit. Nothing after it can stop the ship or
+  undo the deploy.
+- Why the push is checked first: `github-push-whole-repo.mjs` leases `main` on the copy
+  it fetches a moment before, so on its own it would overwrite GitHub commits this Mac
+  does not have (the outbox's saves). Ship pushes only when GitHub's main is already
+  inside this Mac's main; the next ship pulls first.
+- A rebase copies this Mac's local commits, including the commits of branches merged
+  locally since the last push. The merge commits stay merges, but the old branch tips
+  are no longer inside `main` afterwards.
+
+### Netlify build started by a GitHub push
+
+```mermaid
+flowchart TD
+  G[Netlify starts a build from a GitHub push] --> IG[ignore = node scripts/netlify-ignore-machine-only.mjs]
+  IG --> E1{CACHED_COMMIT_REF and COMMIT_REF both set,<br/>plain commit ids, different?}
+  E1 -->|no| BUILD[exit 1: build]
+  E1 -->|yes| DF[git diff --name-only --no-renames between them]
+  DF -->|git fails, or no files| BUILD
+  DF --> M{every changed file in a machine-only folder?}
+  M -->|no| BUILD
+  M -->|yes| SKIP[exit 0: build skipped]
+  LAP[npm run ship on the Mac:<br/>netlify deploy --build] -.->|Netlify's CLI never runs the ignore command| ALWAYS[always builds]
+```
+
+- A commit that changes only `ops/ship-log.md` is "nothing to ship" for `npm run ship`
+  but builds on Netlify (the skip list is the machine-only folders only).
+- **UNVERIFIED:** whether the live site still starts builds from GitHub pushes at all
+  (repo link, stop_builds). This unit did not read the site's build settings; the
+  orchestrator's precondition records them.
+- **UNVERIFIED:** Netlify's own handling of the exit code (0 skips, 1 builds) is from
+  Netlify's docs, not seen on a live build.
