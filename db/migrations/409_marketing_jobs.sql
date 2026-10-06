@@ -99,3 +99,17 @@ BEGIN
     GRANT SELECT, INSERT, UPDATE, DELETE ON public.marketing_jobs TO fundhub_app;
   END IF;
 END $$;
+
+-- Supabase's web roles (anon = not logged in, authenticated = any signed-in user of
+-- the public API) must never touch this table. The policy above applies to every role
+-- and says "true", so the table grants are the only gate: take them away from those
+-- two roles. The app does not connect as either one. Skipped where a role is absent.
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('REVOKE ALL ON public.marketing_jobs FROM %I', r);
+    END IF;
+  END LOOP;
+END $$;
