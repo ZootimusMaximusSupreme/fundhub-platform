@@ -121,6 +121,10 @@ Recommended answer on each, except q10: the approval deck stays OFF /roadmap (Ch
 
 Wave order (updated 2:45 am): 2a = U22, U24-U32, X4, S0 (running); 2b = U23, U34, X1, X2, X3; 2c = U35, U36, U37, U38, U39; 2d = X5, X8. U33 waits on U02. U34 runs after S0 because both change the Today screen. Then one ship, then the Blueprint test.
 
+## Owner note for U34 and every lane E unit (Chris, 2026-10-06 ~3 am, pointing at the sidebar's Marketing group: "those are the tabs")
+
+The Command Center's tabs live in the left sidebar under MARKETING, not only in a strip on the page. The Marketing group becomes: Today, Ideas, Scripts, Shoot, Videos, Launch, Numbers (each opens marketing-command-center.html#<tab>; the current tab is highlighted; Settings stays behind the gear). The older pages fold in so the group stays at seven rows: Campaigns -> reached from Numbers and Launch; Social Studio, Creative Factory and Content -> reached from Ideas. A phone keeps the same order in the sidebar menu. U34 builds the routing and the sidebar group (node scripts/sync-sidebar.mjs); later screen units add their tab's page only.
+
 ## Blockers / only-Chris items (spec §16)
 
 - The intended journey `docs/journeys/marketing-machine-intended.md` was approved in the archived chat but never committed. A hook blocks agents from writing `*-intended.md`.
