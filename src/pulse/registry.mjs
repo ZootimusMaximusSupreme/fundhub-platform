@@ -348,7 +348,16 @@ const API_KEYS = [
      never writes; the POST half is never pinged. */
   "marketing/settings",
   "marketing/funnels",
-  "marketing/health"
+  "marketing/health",
+  /* U25 script actions. The two GETs answer 401 unsigned; the four POST-only
+     routes answer 405 to a GET before reading anything (isUp counts 405 as up,
+     as for waypoint-tick). No ping writes. */
+  "marketing/scripts",
+  "marketing/script",
+  "marketing/scripts/approve",
+  "marketing/scripts/edit",
+  "marketing/scripts/reject",
+  "marketing/scripts/order"
 ];
 
 const DESK_FILES = [
