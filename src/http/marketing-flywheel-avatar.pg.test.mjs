@@ -400,7 +400,10 @@ describe("Build the avatar on the server (real Postgres)", { skip: !HAS_DB ? "no
     await db.query(`DELETE FROM marketing_jobs WHERE org_id = $1`, [orgA]);
     const s3 = await call(tweakRoute, ownerA.token, { method: "POST", body: { campaign: "partner", stage: 2, note: "keep the price | at 10k", request_id: rid("t3") } });
     assert.equal(s3.code, 202);
-    assert.equal(s3.body.job, null);
+    // Unit GL: step 2 runs from the card now, so its Tweak also starts X2's market research run.
+    assert.equal(s3.body.job.kind, "flywheel_stage");
+    assert.equal(s3.body.job.stage, 2);
+    assert.equal(s3.body.rerun.started, true);
     const e3 = (await db.query(`SELECT path, edit FROM repo_outbox WHERE id = $1`, [s3.body.outbox_id])).rows[0];
     assert.equal(e3.path, "marketing/flywheel/partner/00-OWNER-NOTES.md");
     assert.equal(e3.edit.op, "append_line_under_heading");

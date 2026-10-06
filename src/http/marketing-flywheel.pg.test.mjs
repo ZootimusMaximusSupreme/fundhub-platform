@@ -585,7 +585,7 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       const run = (await db.query(`SELECT result FROM marketing_jobs WHERE id = $1`, [offerJob.id])).rows[0];
       assert.equal(run.result.stage_file.version, 1);
       assert.equal(run.result.stage_file.approved_by, ownerA);
-      assert.equal(run.result.stage_file.outbox_id, rows[0].id);
+      assert.equal(run.result.stage_file.outbox_id, Number(rows[0].id), "pg hands bigint back as text");
       assert.ok(run.result.document, "the run keeps its own answer");
 
       const replay = await call(postApprove, tokenOwnerA, { body: { request_id: id, campaign: "capital-blueprint", stage: 3 } });
