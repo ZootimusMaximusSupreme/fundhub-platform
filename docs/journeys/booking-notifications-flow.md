@@ -92,7 +92,7 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 | `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02` |
 | `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
 | `booking.created` | confirm + reminders, the AI setter, the 15-minute handoff, staff alert, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `ai-set-01`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
-| `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04` |
+| `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
 
 ## 3. The never-booked chase
 
@@ -255,6 +255,38 @@ start time nothing can read, a call that has already started, and a booking
 taken inside the last fifteen minutes. The first was refused before this repair
 pass; the other two were not, so a booking carrying yesterday's start time sent
 "Your call starts in 15 minutes" the instant it arrived.
+
+## 5b. The no-show check
+
+`src/workflows/dpc-02-call-outcome-enforcement.mjs`
+
+```mermaid
+flowchart TD
+    B[booking.created, or booking.rescheduled for the new time] --> C{Customer resolved?}
+    C -->|No| S0[Stop]
+    C -->|Yes| T{End or start time?}
+    T -->|No| S1[Stop: no appointment time]
+    T -->|Yes| W[Sleep until 5 minutes after the end]
+    W -.->|a cancel, or a move to a different time,<br/>arrives while asleep| X[Run cancelled. No outcome.]
+    W --> SAVED{Saved booking at THIS time?<br/>bookingStateAt, src/bookings/store.mjs}
+    SAVED -->|moved away| S2[Stop: call moved. No outcome.]
+    SAVED -->|cancelled| S3[Stop: call cancelled. No outcome.]
+    SAVED -->|already marked a no-show| S4[Stop. Nothing marked twice.]
+    SAVED -->|still on, or no saved row| HELD{call.completed for this customer?}
+    HELD -->|Yes| SHOW[Outcome showed, card to showed]
+    HELD -->|No| NS[Outcome no_show, tag call:no_show,<br/>card to lost, emit booking.noshow<br/>key: call id + call time]
+    NS --> REC[booking.noshow starts the no-show texts, s-05a]
+```
+
+**A cancelled or moved call is never a no-show (2026-10-05).** This check used
+to start only on `booking.created` and nothing stopped it, so at the OLD end time
+a cancelled or moved call was tagged a no-show, its sales card went to lost and
+the no-show texts started. Now a cancel, or a move to a different time, cancels
+the run (same rules as the 15-minute text, `src/workflows/booking-cancel-rules.mjs`),
+a move starts a check for the new time, and on waking the run asks the saved
+booking about its own call time first. If no saved booking speaks to that time,
+it decides as before. The `booking.noshow` key now carries the call time,
+because the booking id no longer changes when a call moves.
 
 ## 6. Where a message actually goes out
 

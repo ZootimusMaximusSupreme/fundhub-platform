@@ -20,6 +20,7 @@ import { createTask } from "../lib/create-task.mjs";
 import { appointmentContext, REMINDER_SKEW_MS } from "./s-04b-booking-reminders.mjs";
 import { portalLoginUrl } from "../auth/magic-link.mjs";
 import { bookingStateAt, SLOT_STATE } from "../bookings/store.mjs";
+import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mjs";
 
 export const SMS_TEMPLATE_KEY = "SMS-AISET04-HANDOFF";
 const SOURCE_WORKFLOW = "ai-set-04-3way-handoff";
@@ -164,38 +165,14 @@ export function sendKeyFor(clientId, startTime) {
   return `booking-start:${clientId}:${new Date(startTime).toISOString()}`;
 }
 
-/* A MOVE stops the run for the old time and starts one for the new time.
-   The move cancels only a run whose start time differs from the move's, so the
-   run the move itself starts is never cancelled by it, and a "move" to the same
-   time leaves the existing run alone (the one-per-call-time key above stops a
-   second text). Same uid-or-email matching as the cancel rules, which is what
-   reaches a run started from a call saved under an old message id. */
-export const RESCHEDULE_CANCEL_RULES = [
-  {
-    event: "booking.rescheduled",
-    if: "event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid && event.data.payload.startTime != async.data.payload.startTime"
-  },
-  {
-    event: "booking.rescheduled",
-    if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email && event.data.payload.startTime != async.data.payload.startTime"
-  }
-];
-
+/* A cancel stops this run; a move to a different time stops the run for the
+   old time, and the booking.rescheduled trigger starts one for the new time.
+   Rules shared with dpc-02 (src/workflows/booking-cancel-rules.mjs). */
 export const aiSet043WayHandoff = inngest.createFunction(
   {
     id: "ai-set-04-3way-handoff",
     name: "AI-SET-04 — 3-Way Text Handoff",
-    cancelOn: [
-      {
-        event: "booking.cancelled",
-        if: "event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid"
-      },
-      {
-        event: "booking.cancelled",
-        if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
-      },
-      ...RESCHEDULE_CANCEL_RULES
-    ]
+    cancelOn: [...CANCEL_RULES, ...RESCHEDULE_CANCEL_RULES]
   },
   [{ event: "booking.created" }, { event: "booking.rescheduled" }],
   ({ event, step }) => handle({ event: event.data, db, step })
