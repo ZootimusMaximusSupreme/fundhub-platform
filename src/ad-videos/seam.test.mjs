@@ -238,14 +238,25 @@ describe("the pipeline only calls naming functions that exist", () => {
       .replace(/^\s*import\b.*$/gm, "");        // `from "./naming.mjs"` is a path, not a call
     const called = new Set();
     for (const m of src.matchAll(/\bnaming\??\.(\w+)/g)) called.add(m[1]);
-    assert.ok(called.size >= 4, `expected the pipeline to call naming functions, found ${[...called].join(", ")}`);
+    /* Three, not four, since spec §9.1 step 5 took the raw-file rename out of
+       matchAndRename (owner law: never move or rename raw files). The three
+       left are delivery's: Paul's folder, the brief, the finished file. */
+    assert.ok(called.size >= 3, `expected the pipeline to call naming functions, found ${[...called].join(", ")}`);
     const missing = [...called].filter((fn) => typeof naming[fn] !== "function");
     assert.deepStrictEqual(missing, [],
       `pipeline.mjs calls naming.${missing.join(", naming.")} but naming.mjs exports no such function — ` +
       "this is the gap that skipped the rename on the first real take");
   });
 
-  test("the real module names a raw take the way the rename step calls it", async () => {
+  test("the pipeline never renames a raw take (spec §9.1 step 5)", () => {
+    const src = fs.readFileSync(new URL("./pipeline.mjs", import.meta.url), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    assert.doesNotMatch(src, /\brenameFile\b/, "raw files keep the camera's name");
+    assert.doesNotMatch(src, /\brawFileName\b/, "the 084_t01_raw_… name is the one NAMING.md marks wrong");
+  });
+
+  test("the real module still names files in its own shapes", async () => {
     const { rawFileName, finalFileName, briefFileName, paulFolderName } = await import("./naming.mjs");
     assert.strictEqual(rawFileName("84", 1, new Date("2026-09-24T01:45:25Z")), "084_t01_raw_2026-09-24.mp4");
     assert.strictEqual(finalFileName("84", 1, 1), "084_t01_final_v1.mp4");
