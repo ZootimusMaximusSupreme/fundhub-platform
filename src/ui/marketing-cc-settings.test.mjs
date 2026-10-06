@@ -248,6 +248,30 @@ describe("Save sends only what changed", () => {
     assert.equal(out.errors[1].message, "The landing page for Book a call must be a full web address that starts with https://.");
     assert.equal(out.patch, null);
   });
+
+  test("a funnel saved with no mix yet ({}, as the funnel builder makes them) never blocks a Save; a mix being sent still needs one above 0", () => {
+    const s = S();
+    const bare = { ...FUNNELS().funnels[0], key: "blueprint", name: "Capital Blueprint book a call", format_mix: {} };
+    const untouched = s.diffFunnel(bare, s.draftOfFunnel(bare));
+    assert.equal(untouched.patch, null, "untouched: nothing sent");
+    assert.deepEqual(plain(untouched.errors), [], "and nothing wrong");
+    const renamed = s.draftOfFunnel(bare);
+    renamed.name = "Blueprint call";
+    assert.deepEqual(plain(s.diffFunnel(bare, renamed).patch),
+      { name: "Blueprint call", key: "blueprint", updated_at: bare.updated_at }, "another box saves without a mix");
+    const zero = s.draftOfFunnel(bare);
+    zero.format_mix.standard = "0";
+    assert.equal(s.diffFunnel(bare, zero).patch, null, "a 0 is the same as no mix: nothing changed");
+    assert.deepEqual(plain(s.diffFunnel(bare, zero).errors), []);
+    const mixed = s.draftOfFunnel(bare);
+    mixed.format_mix.standard = "2";
+    assert.deepEqual(plain(s.diffFunnel(bare, mixed).patch.format_mix), { standard: 2 });
+    validateFunnelInput(plain(s.diffFunnel(bare, mixed).patch));
+    const cleared = s.draftOfFunnel(FUNNELS().funnels[0]);
+    for (const k of Object.keys(cleared.format_mix)) cleared.format_mix[k] = "";
+    assert.deepEqual(plain(s.diffFunnel(FUNNELS().funnels[0], cleared).errors.map((e) => e.key)), ["format_mix"],
+      "clearing a saved mix to nothing is refused, as the server would");
+  });
 });
 
 describe("campaigns and ad sets", () => {
@@ -359,7 +383,15 @@ describe("answers in plain words", () => {
     assert.equal(s.timeWords("00:30"), "12:30 AM");
     assert.equal(s.timeWords("12:00"), "12:00 PM");
     assert.equal(s.scheduleLine(SETTINGS(), FUNNELS().funnels), "Every Monday at 7:00 AM Arizona time: 21 scripts.");
+    // The contract's example grows funnels as units land (X4 added a third, the
+    // blueprint), so the count is read from the example, and the sum is also
+    // pinned on a fixed list: two running funnels and one turned off.
+    const running = FUNNELS().funnels.filter((f) => f.active === true).length;
+    assert.ok(running >= 2, "the contract example runs at least two funnels");
     assert.equal(s.scheduleLine({ ...SETTINGS(), size_rule: "per_funnel" }, FUNNELS().funnels),
+      `Every Monday at 7:00 AM Arizona time: ${3 * 7 * running} scripts.`, `3 a day x 7 days x ${running} running funnels`);
+    const two = FUNNELS().funnels.slice(0, 3).map((f, i) => ({ ...f, active: i < 2 }));
+    assert.equal(s.scheduleLine({ ...SETTINGS(), size_rule: "per_funnel" }, two),
       "Every Monday at 7:00 AM Arizona time: 42 scripts.", "3 a day x 7 days x 2 running funnels");
     assert.equal(s.scheduleLine({ ...SETTINGS(), scripts_per_day: null }, []), "The schedule is not complete yet.");
     assert.equal(s.sizeRuleWords("total", 3), "3 a day in total");

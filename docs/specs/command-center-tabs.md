@@ -33,7 +33,7 @@ What the frame does with it (as built in U34):
 - `order` is the slot, 1 (Today) to 7 (Numbers). The frame keeps it times ten (Scripts 3 is slot 30), the same scale as the frame's own spelling below, so tabs from both spellings sort into one strip.
 - `render(root, ctx)` runs once, the first time the tab is shown, and never from inside `registerTab`. A buzz link to `#settings` never draws a tab nobody opened. `root` is the tab's own `<section class="cc-panel" id="tab-<id>">`. A `render` that throws, or whose promise fails before it drew anything, leaves one plain sentence: "This tab did not open. Reload the page and try again." The other tabs keep working.
 - `hide()` runs when another tab is shown.
-- `refresh(ctx)` runs when the tab is shown again after `hide()`, when the page comes back into view after a minute or more away, and every 5 minutes while the tab is open and the page is in view. A tab with no `refresh` keeps its own timers (Today reads `GET marketing/today` every 5 minutes and on focus by itself).
+- `refresh(ctx)` runs when the tab is shown again after `hide()`, when the page comes back into view after a minute or more away, and every 5 minutes while the tab is open and the page is in view (never while a sheet is open). A tab with no `refresh` keeps its own timers (Today reads `GET marketing/today` every 5 minutes and on focus by itself).
 - A tab that registers twice under the same id (for example once in each spelling) counts once: the first one wins.
 - `registerTab` answers `true` when the tab was added. A bad shape is refused with a plain reason in `FHMarketingCCTabs.problems()`.
 

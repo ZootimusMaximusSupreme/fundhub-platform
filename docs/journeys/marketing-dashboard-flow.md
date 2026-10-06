@@ -1114,7 +1114,8 @@ Gaps between the spec, the design and this code (recorded, not reconciled):
 Drawn from code on branch `mm-u34-frame`: `public/app/marketing-command-center.html` (the
 frame's markup and shared style), `public/app/marketing-command-center.js` (the frame),
 `public/app/marketing-cc-today.js` (Today, moved unchanged), `public/app/marketing-cc-settings.js`
-(Settings). The tab-file contract is `docs/specs/command-center-tabs.md`. Spec §8.3 (tabs,
+(Settings). The tab-file contract is `docs/specs/command-center-tabs.md` (main's text, with what
+the frame accepts as built). Spec §8.3 (tabs,
 Settings); design `docs/specs/command-center-design-2026-10-05.md` §3.0, §3.1, §3.8, §6 slices 0-2.
 No route, table or migration added; Settings reads and writes U03's routes and U22's health read.
 
@@ -1122,11 +1123,17 @@ No route, table or migration added; Settings reads and writes U03's routes and U
 
 ```mermaid
 flowchart TD
-  L[page loads: shell.js, then the frame, then one script per tab] --> R[each tab file calls FHMarketingCCTabs.register<br/>key, label, order, place, render, rules]
-  R --> Q{registry there yet?}
-  Q -->|no| QU[FHMarketingCCTabsQueue; the frame drains it when it starts]
-  Q -->|yes| ST[strip: tabs in order<br/>gear: the one place:gear tab, Settings]
-  QU --> ST
+  L[page loads: shell.js, then the frame, then one script per tab] --> R[each tab file registers in either spelling]
+  R --> R1[main's: FundhubCC.registerTab<br/>id, label, order 1-7, render, refresh, hide]
+  R --> R2[the frame's: FHMarketingCCTabs.register<br/>key, label, order 10-70, place, render, show, hide, rules]
+  R1 --> Q{frame there yet?}
+  R2 --> Q
+  Q -->|no| QU[FHMarketingCCTabsQueue, then FundhubCC._q;<br/>the frame drains both when it starts]
+  Q -->|yes| MAP[main's tab: id is the key, order x10,<br/>settings goes behind the gear]
+  QU --> MAP
+  MAP --> DUP{same key already there?}
+  DUP -->|yes| IGN[ignored: the first one wins<br/>a file that registers in both spellings counts once]
+  DUP -->|no| ST[strip: tabs in work order<br/>gear: the one gear tab, Settings]
   ST --> W[after the tab file has finished running: route]
   H[hashchange / Back / Forward] --> W
   W --> A{what the address asks}
@@ -1137,9 +1144,13 @@ flowchart TD
   F --> S
   S --> FR{first time this tab is shown?}
   FR -->|yes| RN[render panel, ctx<br/>Today: paints its cards and reads GET marketing/today, ad-videos, offer<br/>Settings: reads settings, funnels, health]
-  FR -->|no| SH[show panel, ctx if the tab has one]
+  FR -->|no| SH[show panel, ctx if the tab has one,<br/>else refresh ctx if it has one]
   RN --> M[remember the tab; strip + gear marked aria-current;<br/>footer bits with data-cc-tab show only on their tab]
   SH --> M
+  LV[another tab is shown] --> HD[an open sheet closes as Cancel; hide runs]
+  TK[every 5 minutes in view, or back in view after a minute away] --> RF{shown tab has refresh, no sheet open?}
+  RF -->|yes| RFX[refresh ctx]
+  RF -->|no| RFN[nothing: the tab keeps its own timers, as Today does]
 ```
 
 - A tab whose file is not on the page never shows: today the strip has Today only, and Settings
@@ -1147,6 +1158,33 @@ flowchart TD
 - Today is drawn only when it is opened: a buzz link to `#settings` reads no Today numbers.
 - Today's own reads, timers and words are unchanged (the e2e suite for Today runs as before).
   Its footer clock ("Loaded 3:02 PM") hides on Settings.
+- A main-contract tab's `render` may be async. If it throws, or its promise fails before it drew
+  anything, the panel says "This tab did not open. Reload the page and try again."
+
+### The sheets a tab asks through (ctx.costSheet, ctx.confirm)
+
+```mermaid
+flowchart TD
+  T1[a paid tap in a tab] --> CS[ctx.costSheet kind, title, lines, button]
+  CS --> CW[sheet opens; the page under it is inert;<br/>Checking the cost... and the yes button waits]
+  CW --> GC[GET marketing/costs, at most once a minute]
+  GC -->|answers| CL[About $X and about N minutes last run<br/>Model spend this month: $X of $Y]
+  GC -->|404 not built yet, or no answer| CU[Cost: unknown, not measured yet.<br/>Model spend this month: unknown.]
+  CL --> YES{tap}
+  CU --> YES
+  T2[Reject, Turn on, Push live and the like] --> CF[ctx.confirm title, consequence, button<br/>the second tap names the consequence]
+  CF --> YES
+  YES -->|yes button| Y[sheet closes; promise true; onConfirm runs once]
+  YES -->|Cancel, Escape, tap outside, a new sheet, leaving the tab| N[sheet closes; promise false; nothing runs]
+  Y --> API[the tab calls ctx.api method, path, body, version, requestId<br/>the body gets request_id and version]
+  API --> AN[ok, status, data, error, conflict, current<br/>a 409 hands back the saved copy]
+```
+
+- One sheet at a time. Cancel has the first focus. The yes button is the only filled button on
+  screen while the sheet is open. At 480px and below it is a bottom sheet, yes above Cancel,
+  32px apart, both 48px tall, above the status strip and over the shell's Chat button.
+- Proved in a real browser with a probe tab written to main's contract and loaded from its own
+  file before the frame (`e2e/helpers/cc-frame-probe.mjs`).
 
 ### Settings — what one press does
 
@@ -1175,6 +1213,9 @@ flowchart TD
 
 - `enabled` is sent only from the switch's own confirm (`switchPatch`); the form's patch never
   carries it. A unit test counts the one place.
+- A funnel saved with no mix yet (`{}`, the table's default; X4's funnel builder makes them that
+  way) does not block a Save. The mix rule ("at least one above 0") applies only when the mix is
+  being sent, which is when U03 checks it too.
 - Video choices (Submagic template, caption place, zooms, clean audio, caption words, animation
   mode, flip, settle minutes) are not shown and never sent; they keep their saved values.
 - A Meta campaign already on another funnel is disabled with "Linked to <funnel>." (U03 refuses
@@ -1188,7 +1229,12 @@ flowchart TD
   hash, and buzz links use `#scripts`. Built: the hash, plus `?tab=` read once when there is no
   hash.
 - **Registry name.** The plan names `window.FHMarketingCCTabs.register({key, label, render,
-  rules})`; built as named, plus `order` and `place`, and `id` read as `key`.
+  rules})`; built as named, plus `order` and `place`, and `id` read as `key`. Main's contract
+  (`docs/specs/command-center-tabs.md`, written by the main session while U34 was building) names
+  `window.FundhubCC.registerTab` and a different `ctx`. The frame now takes both, and the contract
+  file says so. The Ideas, Scripts, Launch and Numbers tab files on their branches were loaded into
+  this frame in a trial run: all four showed on the strip in work order and drew with no script
+  error.
 - **Design §3.8 items not on the page**, each because nothing behind it exists yet (UI-STANDARDS
   §5): per-run caps (avatar, research, page draft, proof; no `run_caps` column yet), "Research
   counts against the month cap", the buzz list and **Test buzz** (no `POST marketing/buzz/test`),

@@ -50,6 +50,8 @@ test.use({ timezoneId: "America/Phoenix", locale: "en-US" });
 /* SETTINGS is the settings object; GET answers wrap it as {settings}. */
 const SETTINGS = () => exampleResponse("GET marketing/settings").settings;
 const FUNNELS = () => exampleResponse("GET marketing/funnels");
+/* One fieldset per funnel in the contract's example. Read, never typed in:
+   the example grows as units land (X4 added the blueprint funnel). */
 const HEALTH = () => exampleResponse("GET marketing/health");
 
 /* api — the three reads and the two writes. Each answer can be swapped per
@@ -221,7 +223,7 @@ test("full at 390: every dial in plain words, the video choices hidden, one Save
   await expect(page.locator("#setWinner")).toContainText("Until you fill this in, the machine writes more new versions of the angles you spend the most on.");
 
   // 6. Funnels, with each campaign's 7-day spend: null reads "unknown", never $0.
-  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(2);
+  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(FUNNELS().funnels.length);
   const road = page.locator('[data-funnel="roadmap_147"]');
   await expect(road.locator("h3")).toHaveText("Roadmap $147");
   await expect(page.locator("#fn-roadmap_147-name")).toHaveValue("Roadmap $147");
@@ -553,7 +555,7 @@ test("a part that does not load says so in words; the rest of the tab stays", as
   const { errors } = await open(page, { settings: [notLive], health: [[{ ok: false, error: "boom" }, 500]] });
   await expect(page.locator("#setProblem")).toContainText(
     "The settings did not load. This part is built but not live yet. It turns on with the next update. The rest of this page is current.");
-  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(2);
+  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(FUNNELS().funnels.length);
   await assertPageAlive(page, errors);
   const text = await page.locator("#tab-settings").innerText();
   expect(text).not.toMatch(/\b(500|503)\b|not_ready|boom/);
@@ -580,5 +582,5 @@ test("the funnels fail, the settings stay; Try again reads them again", async ({
   await expect(page.locator("#setFunnels")).toContainText("The funnels did not load. The server had a problem. The rest of this page is current.");
   await expect(page.locator("#setSwitch")).toBeVisible();
   await page.locator('#setFunnels [data-act="reload"]').click();
-  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(2);
+  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(FUNNELS().funnels.length);
 });

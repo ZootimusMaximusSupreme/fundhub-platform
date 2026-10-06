@@ -92,6 +92,22 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
 .cc-toast{position:fixed;right:16px;left:auto;bottom:calc(var(--fh-statusbar,0px) + env(safe-area-inset-bottom,0px) + 16px);z-index:30;max-width:calc(100% - 32px);padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink)}
 .cc-toast.ok{background:color-mix(in srgb,var(--ok) 28%,#fff);color:#2C5138}
 .cc-toast.err{background:color-mix(in srgb,var(--alert) 28%,#fff);color:#6E2A22}
+/* THE SHEET (U34; design §5 rules 3 and 5): the cost sheet before a paid tap
+   and the two-tap confirm, drawn by the frame for every tab. It covers the
+   page (the rest is inert while it is open), so its yes button is the one
+   filled button on screen. Centred on a wide screen; a bottom sheet at 480px
+   and below, its buttons full width, yes above Cancel. It sits above data.js's
+   status strip and the phone's home bar, and over the shell's Chat button.
+   Cancel and yes stay at least 32px apart (design §3.0). The box is a .card,
+   so the brand gives it its shadow. */
+.cc-sheet{position:fixed;inset:0;z-index:2147482900;display:flex;align-items:center;justify-content:center;padding:16px;padding-bottom:calc(var(--fh-statusbar,0px) + env(safe-area-inset-bottom,0px) + 16px);background:rgba(10,10,10,.45)}
+.cc-sheet-box{width:100%;max-width:560px;display:flex;flex-direction:column;gap:16px}
+.cc-sheet-box h2{font-weight:600;letter-spacing:-.01em}
+.cc-sheet-body{display:flex;flex-direction:column;gap:8px;max-width:78ch}
+.cc-sheet-cost{font-weight:600}
+.cc-sheet-month{color:var(--gray)}
+.cc-sheet-acts{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;margin-top:8px}
+.cc-sheet-acts .btn{min-height:48px}
 .foot{border-top:1px solid var(--line);padding:16px 24px;display:flex;align-items:center;gap:8px;color:var(--gray2)}
 .spacer{flex:1}
 
@@ -211,6 +227,9 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
   .cc-gear{order:-1}
   .tabs{flex:1 1 100%;padding:0 4px;gap:0}
   .tab{flex:0 0 25%;padding:8px}
+  .cc-sheet{align-items:flex-end}
+  .cc-sheet-acts{flex-direction:column-reverse;align-items:stretch}
+  .cc-sheet-acts .btn{width:100%}
 }
 </style>
 <script defer src="shell.js"></script>

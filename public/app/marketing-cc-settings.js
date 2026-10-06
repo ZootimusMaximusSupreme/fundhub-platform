@@ -457,7 +457,11 @@
       if (n > 0) { mix[k] = n; any = true; }
       if (n !== (num(savedMix[k]) || 0)) mixChanged = true;
     });
-    if (!mixOk || !any) bad("format_mix", "The mix for " + who + " needs numbers, 0 or more, with at least one above 0.");
+    /* The rule bites only on a mix being sent. A funnel saved with no mix yet
+       ({}, the table's default; the funnel builder makes them that way) does
+       not block a Save of anything else. The server refuses an all-zero mix,
+       so a changed mix still needs one number above 0. */
+    if (!mixOk || (mixChanged && !any)) bad("format_mix", "The mix for " + who + " needs numbers, 0 or more, with at least one above 0.");
     else if (mixChanged) out.format_mix = mix;
 
     var cta = str(draft.cta_type);

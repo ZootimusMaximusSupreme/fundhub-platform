@@ -24,7 +24,9 @@
 // unchanged against it. The frame tests at the bottom prove the strip shows
 // only tabs that exist, Settings behind the gear top-right, hash routing
 // (#today, #settings, an unknown #ideas falls back to Today), Back, the
-// remembered tab, and the strip at 390px.
+// remembered tab, and the strip at 390px. The last test loads a tab written to
+// main's FundhubCC contract from its own file, before the frame, and proves it
+// shows, reads through ctx.api and asks through the cost sheet and the confirm.
 //
 // EVIDENCE. Each scenario that matters to Chris screenshots the viewport and
 // records the live bounding box of the element under discussion into
@@ -40,6 +42,7 @@ import os from "node:os";
 import path from "node:path";
 import { OWNER, CLOSER, json, wireApi, withSession, trackErrors, assertPageAlive } from "./harness.mjs";
 import { exampleResponse } from "../src/marketing/api-contract.mjs";
+import { withProbe } from "./helpers/cc-frame-probe.mjs";
 
 const OUT_DIR = process.env.MCC_PROOF_OUT || process.env.M11_PROOF_OUT;
 const OUT = OUT_DIR ? path.resolve(OUT_DIR) : path.join(os.tmpdir(), "mcc-marketing-command-center");
@@ -967,4 +970,108 @@ test("the frame at 390: the gear on its own row, top-right; the strip under it; 
     { selector: "#mccGear .gear", caption: "Settings, top-right, 44px tall" },
     { selector: "#mccTabs .tab.on", caption: "Today, the tab shown" }
   ]);
+});
+
+test("the frame hosts main's FundhubCC tabs: a cc-tab file loaded before the frame shows, reads, and asks through the sheets (390)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const posted = [];
+  const errors = trackErrors(page);
+  await page.clock.install({ time: new Date(NOW) });
+  await withSession(page, OWNER);
+  await wireApi(page, OWNER, withSettings({
+    ...handlers(),
+    "/api/marketing/probe": async (route, { method }) => {
+      if (method === "POST") {
+        posted.push(route.request().postDataJSON());
+        return json(route, { error: "stale", message: "Someone saved first.", current: { version: 4 } }, 409);
+      }
+      return json(route, { ok: true, word: "Read through ctx.api.", spend_cents: 123456, as_of: NOW });
+    },
+    // GET marketing/costs is not built yet: the router's own 404.
+    "/api/marketing/costs": async (route) => json(route, { ok: false, error: "not_found", path: "marketing/costs" }, 404)
+  }));
+  await withProbe(page);
+  await page.goto(PAGE + "#probe/ads");
+
+  // It registered before the frame existed, and the frame drained the queue.
+  await expect(page.locator("#prWord")).toHaveText("Read through ctx.api.");
+  expect(await page.evaluate(() => [window.__probe.queuedBeforeFrame, window.FundhubCC._q.length, window.__probe.renders]))
+    .toEqual([true, 0, 1]);
+  // On the strip in its slot (6: after Today), shown, with Settings still behind the gear.
+  await expect(page.locator("#mccTabs .tab")).toHaveText(["Today", "Probe"]);
+  await expect(page.locator('#mccTabs .tab[data-tab="probe"]')).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#mccGear .gear")).toHaveText(/Settings/);
+  await expect(page).toHaveTitle(/Command Center · Probe$/);
+  // ctx.fmt, ctx.param and ctx.user, as the contract names them.
+  await expect(page.locator("#prMoney")).toHaveText("Spend: $1,234.56");
+  await expect(page.locator("#prNull")).toHaveText("Null money: unknown");
+  await expect(page.locator("#prTime")).toHaveText("As of Oct 5, 12:00 PM");
+  await expect(page.locator("#prParam")).toHaveText("View: ads");
+  await expect(page.locator("#prRole")).toHaveText("Role: owner");
+
+  // The cost sheet: the cost and the month line first, then the tap.
+  await page.locator("#prCost").click();
+  const sheet = page.locator(".cc-sheet");
+  await expect(sheet).toHaveCount(1);
+  await expect(sheet.locator('[role="dialog"]')).toHaveAttribute("aria-modal", "true");
+  await expect(sheet.locator("h2")).toHaveText("Write 3 scripts?");
+  await expect(sheet.locator("[data-sheet-cost]")).toHaveText("Cost: unknown, not measured yet.");
+  await expect(sheet.locator("[data-sheet-month]")).toHaveText("Model spend this month: unknown.");
+  await expect(sheet.locator('[data-sheet="yes"]')).toBeEnabled();
+  await expect(sheet.locator('[data-sheet="no"]')).toBeFocused();
+  await expect(page.locator(".app > .main")).toHaveAttribute("inert", "");
+  await expect(page.locator(".btn.primary:visible")).toHaveText(["Write 3"]);
+  // Phone-safe: inside the screen, full-width buttons 48px tall, 32px apart, yes above Cancel.
+  const box = await sheet.locator(".cc-sheet-box").boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(16);
+  expect(box.x + box.width).toBeLessThanOrEqual(390 - 16 + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(844);
+  const yes = await sheet.locator('[data-sheet="yes"]').boundingBox();
+  const no = await sheet.locator('[data-sheet="no"]').boundingBox();
+  expect(yes.height).toBeGreaterThanOrEqual(48);
+  expect(no.height).toBeGreaterThanOrEqual(48);
+  expect(yes.y + yes.height + 32).toBeLessThanOrEqual(no.y + 1);
+  expect(Math.round(yes.width)).toBe(Math.round(no.width));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await shot(page, "26-frame-cost-sheet-390.png", "The cost sheet a tab gets from the frame (390)", [
+    { selector: ".cc-sheet-box h2", caption: "What the tap will do" },
+    { selector: ".cc-sheet [data-sheet-cost]", caption: "The cost, before the tap: unknown until measured" },
+    { selector: '.cc-sheet [data-sheet="yes"]', caption: "Yes: the only filled button on screen" },
+    { selector: '.cc-sheet [data-sheet="no"]', caption: "Cancel, 32px below" }
+  ]);
+  // Cancel: nothing runs.
+  await sheet.locator('[data-sheet="no"]').click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator(".app > .main")).not.toHaveAttribute("inert", "");
+  await expect(page.locator("#prCost")).toBeFocused();
+  // Yes: onConfirm runs once.
+  await page.locator("#prCost").click();
+  await page.locator('.cc-sheet [data-sheet="yes"]').click();
+  await expect(sheet).toHaveCount(0);
+  expect(await page.evaluate(() => [window.__probe.answers, window.__probe.confirmed])).toEqual([[["cost", false], ["cost", true]], 1]);
+
+  // The two-tap confirm: it names the consequence; Escape is a no.
+  await page.locator("#prTurn").click();
+  await expect(page.locator('.cc-sheet [role="alertdialog"]')).toBeVisible();
+  await expect(page.locator(".cc-sheet .cc-sheet-body")).toHaveText("Ad 84 starts spending $40.00 a day.");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  expect(posted).toEqual([]);
+  // Yes: the write goes through ctx.api with its request_id and version; the 409 comes back as conflict + current.
+  await page.locator("#prTurn").click();
+  await page.locator('.cc-sheet [data-sheet="yes"]').click();
+  await expect(page.locator("#prSay")).toHaveText("Someone saved this first. The saved one is version 4.");
+  expect(posted).toEqual([{ a: 1, request_id: "req-probe-1", version: 3 }]);
+  expect(await page.evaluate(() => window.__probe.sent)).toEqual({
+    ok: false, status: 409, data: { error: "stale", message: "Someone saved first.", current: { version: 4 } },
+    error: "stale", conflict: true, current: { version: 4 }
+  });
+
+  // Leave and come back: hide() once, refresh(ctx) once, render still once.
+  await page.locator("#mccTabs .tab", { hasText: "Today" }).click();
+  await expect(page.locator("#tab-probe")).toBeHidden();
+  await page.locator("#mccTabs .tab", { hasText: "Probe" }).click();
+  await expect(page.locator("#tab-probe")).toBeVisible();
+  expect(await page.evaluate(() => [window.__probe.renders, window.__probe.hides, window.__probe.refreshes])).toEqual([1, 1, 1]);
+  await assertPageAlive(page, errors);
 });
