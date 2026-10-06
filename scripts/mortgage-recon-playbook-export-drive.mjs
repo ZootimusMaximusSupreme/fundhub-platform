@@ -2,6 +2,7 @@
 /**
  * Build styled playbook PDF + upload to Reconveyance Drive folder.
  *   node --env-file=.env scripts/mortgage-recon-playbook-export-drive.mjs
+ *   node --env-file=.env scripts/mortgage-recon-playbook-export-drive.mjs --simple   (5th-grade guide, Bryan's process only)
  *
  * Mermaid blocks in the markdown are drawn as plain HTML boxes here (no mermaid
  * library, no network), so the diagrams show in the PDF too.
@@ -18,10 +19,14 @@ loadEnv();
 const ROOT = process.cwd();
 const MD_PATH = path.join(ROOT, "docs/sops/mortgage-reconveyance-playbook-2026-10-05.md");
 const OUT_DIR = path.join(ROOT, "credentials/mortgage-recon-playbook");
-const HTML_PATH = path.join(OUT_DIR, "Mortgage-ReCONveyance-Playbook.html");
-const PDF_PATH = path.join(OUT_DIR, "Mortgage-ReCONveyance-Playbook.pdf");
+const SIMPLE = process.argv.includes("--simple");
+const SIMPLE_HTML = path.join(ROOT, "docs/sops/mortgage-reconveyance-simple-guide-2026-10-05.html");
+const HTML_PATH = SIMPLE ? SIMPLE_HTML : path.join(OUT_DIR, "Mortgage-ReCONveyance-Playbook.html");
+const PDF_PATH = path.join(OUT_DIR, SIMPLE ? "Mortgage-ReCONveyance-Simple-Guide.pdf" : "Mortgage-ReCONveyance-Playbook.pdf");
 const DRIVE_FOLDER = "1coNo39Vbm7830hyOct-Gcn23UWHqYElF";
-const PDF_NAME = "Mortgage ReCONveyance SOP — Any Property (example Unit 4011).pdf";
+const PDF_NAME = SIMPLE
+  ? "Mortgage ReCONveyance — The Simple Guide (Bryan's process).pdf"
+  : "Mortgage ReCONveyance SOP — Any Property (example Unit 4011).pdf";
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap');
@@ -473,7 +478,9 @@ async function htmlToPdf() {
     path: PDF_PATH,
     format: "Letter",
     printBackground: true,
-    margin: { top: "0.5in", bottom: "0.6in", left: "0.5in", right: "0.5in" }
+    ...(SIMPLE
+      ? { preferCSSPageSize: true, margin: { top: "0", bottom: "0", left: "0", right: "0" } }
+      : { margin: { top: "0.5in", bottom: "0.6in", left: "0.5in", right: "0.5in" } })
   });
   await browser.close();
 }
@@ -509,7 +516,8 @@ async function driveUpload(filePath, name, mime) {
 }
 
 async function main() {
-  await buildHtml();
+  if (!SIMPLE) await buildHtml();
+  fs.mkdirSync(OUT_DIR, { recursive: true });
   console.log("HTML:", HTML_PATH);
   await htmlToPdf();
   console.log("PDF:", PDF_PATH, fs.statSync(PDF_PATH).size, "bytes");

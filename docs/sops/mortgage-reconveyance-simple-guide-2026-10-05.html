@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mortgage ReCONveyance — The Simple Guide</title>
+<!--
+  Simple 5th-grade guide to Bryan Stay Strong's process only (no "our steps", no example property).
+  Source of every fact: docs/sops/mortgage-reconveyance-playbook-2026-10-05.md (Part A, checked against the transcripts).
+  Build the PDF: node --env-file=.env scripts/mortgage-recon-playbook-export-drive.mjs --simple
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap');
+:root {
+  --navy: #0c1929;
+  --navy2: #1a365d;
+  --gold: #c9a227;
+  --gold-soft: #f7efd6;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --paper: #fbfaf7;
+  --p1: #0d9488;
+  --p2: #7c3aed;
+  --p3: #d97706;
+  --p4: #e11d48;
+  --p5: #0284c7;
+  --p6: #059669;
+  --p7: #4f46e5;
+  --p8: #475569;
+}
+@page { size: Letter; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #d6d3cc; }
+body { font-family: 'Nunito', system-ui, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.38; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sheet {
+  width: 8.5in; height: 11in; overflow: hidden; position: relative;
+  margin: 0 auto 0.3in; padding: 0.5in 0.55in 0.45in;
+  background: var(--paper); page-break-after: always; break-after: page;
+}
+.sheet:last-child { page-break-after: auto; break-after: auto; }
+@media print { html, body { background: var(--paper); } .sheet { margin: 0; } }
+.foot { position: absolute; left: 0.55in; right: 0.55in; bottom: 0.22in; display: flex; justify-content: space-between; font-size: 7.5pt; color: var(--muted); }
+h1, h2 { font-family: 'Fraunces', Georgia, serif; margin: 0; }
+h2 { font-size: 26pt; line-height: 1.05; color: var(--navy); }
+.kicker { font-weight: 900; font-size: 8.5pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+.lead { font-size: 12pt; color: #334155; margin: 6px 0 14px; }
+
+/* Cover */
+.cover { background: radial-gradient(circle at 85% 12%, #24508a 0%, transparent 40%), linear-gradient(150deg, var(--navy) 0%, var(--navy2) 60%, #0a1422 100%); color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 0.8in 0.75in 0.6in; }
+.cover .bar { width: 84px; height: 6px; background: var(--gold); border-radius: 3px; margin-bottom: 22px; }
+.cover h1 { font-size: 50pt; line-height: 0.98; letter-spacing: -0.01em; }
+.cover h1 span { color: var(--gold); }
+.cover .sub { font-family: 'Fraunces', Georgia, serif; font-size: 24pt; color: #e8d9a6; margin-top: 10px; }
+.cover .tag { font-size: 14pt; max-width: 30em; margin-top: 18px; color: #dbe4f0; }
+.cover .stats { display: flex; gap: 14px; margin-top: 30px; }
+.cover .stat { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 12px 16px; min-width: 1.35in; }
+.cover .stat b { display: block; font-size: 26pt; font-family: 'Fraunces', Georgia, serif; color: var(--gold); line-height: 1; }
+.cover .stat span { font-size: 9.5pt; color: #cbd5e1; }
+.cover .road { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 34px; }
+.cover .road i { font-style: normal; font-size: 8.5pt; font-weight: 800; padding: 5px 10px; border-radius: 999px; color: #fff; }
+.cover .meta { font-size: 9pt; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 14px; }
+
+/* Rules + words */
+.rules { display: grid; grid-template-columns: 1fr; gap: 7px; margin: 10px 0 18px; }
+.rule { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--gold); border-radius: 12px; padding: 9px 14px; }
+.rule b.n { font-family: 'Fraunces', Georgia, serif; font-size: 18pt; color: var(--gold); width: 22px; text-align: center; }
+.rule div { font-size: 11pt; }
+.words { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; }
+.word { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 7px 11px; }
+.word b { display: block; color: var(--navy); font-size: 10.5pt; }
+.word span { color: #334155; font-size: 9.5pt; }
+
+/* Road map */
+.roadmap { position: relative; margin-top: 8px; }
+.roadmap::before { content: ''; position: absolute; left: 27px; top: 22px; bottom: 22px; width: 6px; border-radius: 3px; background: linear-gradient(var(--p1), var(--p2), var(--p3), var(--p4), var(--p5), var(--p6), var(--p7), var(--p8)); }
+.stop { position: relative; display: flex; gap: 16px; align-items: center; margin-bottom: 11px; }
+.stop .dot { flex: none; width: 60px; height: 60px; border-radius: 50%; background: var(--c); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid var(--paper); box-shadow: 0 2px 6px rgba(15,23,42,0.18); z-index: 1; }
+.stop .dot small { font-size: 6.5pt; font-weight: 800; letter-spacing: 0.08em; opacity: 0.85; }
+.stop .dot b { font-family: 'Fraunces', Georgia, serif; font-size: 20pt; line-height: 1; }
+.stop .box { flex: 1; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 9px 14px; border-left: 6px solid var(--c); }
+.stop .box h3 { margin: 0; font-size: 13pt; color: var(--navy); }
+.stop .box h3 em { font-style: normal; font-size: 9pt; font-weight: 800; color: var(--c); margin-left: 6px; }
+.stop .box p { margin: 2px 0 0; font-size: 10pt; color: #334155; }
+
+/* Clock + trail */
+.clock { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 20px; }
+.tick { background: #fff; border: 1px solid var(--line); border-top: 6px solid var(--c); border-radius: 12px; padding: 8px 10px; position: relative; }
+.tick b { display: block; font-family: 'Fraunces', Georgia, serif; font-size: 15pt; color: var(--c); line-height: 1.05; margin-bottom: 2px; }
+.tick span { font-size: 9pt; color: #334155; }
+.tick em { display: block; font-style: normal; font-size: 7.5pt; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.trail { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; counter-reset: t; }
+.paper { position: relative; display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 9.8pt; font-weight: 700; }
+.paper::before { counter-increment: t; content: counter(t); flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--c); color: #fff; font-size: 9pt; display: flex; align-items: center; justify-content: center; }
+.paper small { display: block; font-weight: 600; color: var(--muted); font-size: 8pt; }
+
+/* Phase pages */
+.phase-head { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 16px; color: #fff; background: linear-gradient(120deg, var(--c), color-mix(in srgb, var(--c) 70%, #0c1929)); margin-bottom: 10px; }
+.phase-head .big { font-family: 'Fraunces', Georgia, serif; font-size: 38pt; line-height: 0.9; opacity: 0.95; }
+.phase-head .t small { display: block; font-size: 8pt; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; }
+.phase-head .t h2 { color: #fff; font-size: 22pt; }
+.phase-head .t p { margin: 3px 0 0; font-size: 10.5pt; opacity: 0.95; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 12px; padding: 9px 12px; background: #fff; border: 1px dashed color-mix(in srgb, var(--c) 55%, #ffffff); border-radius: 12px; }
+.flow .chip { font-size: 8.8pt; font-weight: 800; padding: 5px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c) 12%, #ffffff); color: color-mix(in srgb, var(--c) 80%, #0c1929); border: 1px solid color-mix(in srgb, var(--c) 40%, #ffffff); }
+.flow .chip.wait { background: var(--gold-soft); color: #6b5413; border: 1px dashed var(--gold); }
+.flow .arr { color: var(--gold); font-weight: 900; }
+.card { display: flex; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 11px 14px 11px 12px; margin-bottom: 9px; box-shadow: 0 1px 2px rgba(15,23,42,0.05); break-inside: avoid; }
+.card .num { flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--c); color: #fff; font-family: 'Fraunces', Georgia, serif; font-size: 19pt; display: flex; align-items: center; justify-content: center; }
+.card .body { flex: 1; }
+.card h3 { margin: 0 0 3px; font-size: 13pt; color: var(--navy); }
+.card h3 .les { font-size: 8pt; font-weight: 700; color: var(--muted); margin-left: 6px; }
+.card ul { margin: 2px 0 6px; padding-left: 1.15em; }
+.card li { margin: 1px 0; font-size: 10pt; }
+.card .row { display: flex; gap: 8px; }
+.card .need, .card .done { flex: 1; font-size: 9pt; border-radius: 9px; padding: 5px 9px; }
+.card .need { background: #f1f5f9; color: #334155; }
+.card .done { background: #ecfdf5; color: #065f46; }
+.card .need b, .card .done b { display: block; font-size: 7.5pt; letter-spacing: 0.1em; text-transform: uppercase; }
+.card.wait { background: var(--gold-soft); border: 1px dashed var(--gold); }
+.card.wait .num { background: var(--gold); }
+.quote { margin: 0 0 10px; padding: 9px 14px; border-radius: 12px; background: var(--navy); color: #fff; font-size: 11pt; display: flex; gap: 10px; align-items: center; }
+.quote b { color: var(--gold); font-family: 'Fraunces', Georgia, serif; font-size: 24pt; line-height: 0.6; }
+.quote span { font-size: 8.5pt; color: #94a3b8; margin-left: auto; white-space: nowrap; }
+.note { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; padding: 9px 14px; margin-bottom: 9px; font-size: 10pt; }
+.note h3 { margin: 0 0 4px; font-size: 12pt; color: var(--navy); }
+.note ul { margin: 2px 0 0; padding-left: 1.15em; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.tight .card { padding-top: 8px; padding-bottom: 8px; margin-bottom: 7px; }
+.tight .phase-head { padding: 10px 16px; }
+.tight .flow { margin-bottom: 9px; padding: 7px 10px; }
+/* Bryan's timeline */
+.tl { position: relative; margin-top: 6px; }
+.tl::before { content: ''; position: absolute; left: 1.32in; top: 8px; bottom: 8px; width: 4px; border-radius: 2px; background: #cbd5e1; }
+.ev { position: relative; display: flex; align-items: center; gap: 0; margin-bottom: 6px; }
+.ev .d { width: 1.2in; text-align: right; font-weight: 800; font-size: 9.5pt; color: var(--navy); padding-right: 14px; }
+.ev .pin { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--c); border: 3px solid var(--paper); box-shadow: 0 0 0 1px #cbd5e1; z-index: 1; margin-right: 12px; }
+.ev .w { flex: 1; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px 11px; font-size: 9.8pt; }
+.ev .w em { font-style: normal; font-size: 8pt; font-weight: 800; color: var(--c); margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- 1 · COVER -->
+<section class="sheet cover">
+  <div>
+    <div class="bar"></div>
+    <h1>Mortgage<br/>Re<span>{CON}</span>veyance</h1>
+    <div class="sub">The Simple Guide</div>
+    <p class="tag">Bryan Stay Strong's process, start to finish, in plain words. What to do, what you need, and how you know each step is done.</p>
+    <div class="stats">
+      <div class="stat"><b>24</b><span>steps</span></div>
+      <div class="stat"><b>8</b><span>phases</span></div>
+      <div class="stat"><b>37</b><span>course lessons</span></div>
+      <div class="stat"><b>1</b><span>webinar that shows the order</span></div>
+    </div>
+    <div class="road">
+      <i style="background:var(--p1)">1 Get ready</i>
+      <i style="background:var(--p2)">2 Accept &amp; secure</i>
+      <i style="background:var(--p3)">3 Dispute &amp; pay</i>
+      <i style="background:var(--p4)">4 Statement of account</i>
+      <i style="background:var(--p5)">5 Notary</i>
+      <i style="background:var(--p6)">6 Record &amp; wait</i>
+      <i style="background:var(--p7)">7 Reconveyance</i>
+      <i style="background:var(--p8)">8 After</i>
+    </div>
+  </div>
+  <div class="meta">
+    Source: Bryan Stay Strong's Mortgage Re{CON}veyance course (37 lessons) and his 154-minute webinar (lesson 33), where he walks his own file in order.<br/>
+    Bryan's process only. Made 2026-10-05.
+  </div>
+</section>
+
+<!-- 2 · READ THIS FIRST -->
+<section class="sheet">
+  <div class="kicker">Start here</div>
+  <h2>Read this first</h2>
+  <p class="lead">Five rules Bryan gives. Then the words you will see in this guide.</p>
+  <div class="rules">
+    <div class="rule"><b class="n">1</b><div><b>Learn each step before you do it.</b> Bryan: "don't do nothing you don't understand."</div></div>
+    <div class="rule"><b class="n">2</b><div><b>Go in order.</b> Accept your deed first, before you challenge anyone.</div></div>
+    <div class="rule"><b class="n">3</b><div><b>Keep every paper and every mail receipt.</b> Your receipts are your proof.</div></div>
+    <div class="rule"><b class="n">4</b><div><b>Use your own state and your own county.</b> Bryan lives in Texas. He says find your state's version of each rule.</div></div>
+    <div class="rule"><b class="n">5</b><div><b>Bryan says he is not a lawyer.</b> He says this is information, not legal advice.</div></div>
+  </div>
+  <div class="kicker">Word list</div>
+  <div class="words">
+    <div class="word"><b>Deed</b><span>The paper that says who owns the land.</span></div>
+    <div class="word"><b>Deed of trust</b><span>The lender's paper on your home. Some states call it a mortgage.</span></div>
+    <div class="word"><b>Note</b><span>Your written promise to pay the loan.</span></div>
+    <div class="word"><b>Trustor (borrower)</b><span>Bryan's word for the borrower. That is you.</span></div>
+    <div class="word"><b>Beneficiary (lender)</b><span>The company that made the loan.</span></div>
+    <div class="word"><b>Trustee</b><span>The middle person named in the deed of trust.</span></div>
+    <div class="word"><b>County recorder</b><span>The county office that keeps the public list of land papers.</span></div>
+    <div class="word"><b>Record</b><span>Take a paper to the county so it goes on that public list.</span></div>
+    <div class="word"><b>Certified copy</b><span>An official copy with the county's stamp on it.</span></div>
+    <div class="word"><b>Notary</b><span>A person who watches you sign and then stamps the paper.</span></div>
+    <div class="word"><b>Certified or registered mail</b><span>Mail with a tracking number and proof it arrived.</span></div>
+    <div class="word"><b>UCC</b><span>Business rules. Every state has its own copy of them.</span></div>
+    <div class="word"><b>Secretary of State</b><span>The state office where UCC papers are filed.</span></div>
+    <div class="word"><b>Lien</b><span>A claim someone has on your property.</span></div>
+  </div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>2</span></div>
+</section>
+
+<!-- 3 · BIG PICTURE -->
+<section class="sheet">
+  <div class="kicker">The big picture</div>
+  <h2>The whole trip, in 8 stops</h2>
+  <p class="lead">This is the order Bryan used on his own home. Each stop is one page in this guide.</p>
+  <div class="roadmap">
+    <div class="stop" style="--c:var(--p1)"><div class="dot"><small>PHASE</small><b>1</b></div><div class="box"><h3>Get ready <em>Steps 1–5</em></h3><p>Find and read your papers. No mailing yet.</p></div></div>
+    <div class="stop" style="--c:var(--p2)"><div class="dot"><small>PHASE</small><b>2</b></div><div class="box"><h3>Accept and secure <em>Steps 6–8</em></h3><p>Accept your deed on the record. Check for liens. File your UCC papers.</p></div></div>
+    <div class="stop" style="--c:var(--p3)"><div class="dot"><small>PHASE</small><b>3</b></div><div class="box"><h3>Dispute and pay <em>Steps 9–12</em></h3><p>Tell them there is a problem. Pay "in full" with money orders. Wait 90 days.</p></div></div>
+    <div class="stop" style="--c:var(--p4)"><div class="dot"><small>PHASE</small><b>4</b></div><div class="box"><h3>Statement of account <em>Steps 13–16</em></h3><p>Ask them to confirm what you owe. If they stay quiet, send default notices.</p></div></div>
+    <div class="stop" style="--c:var(--p5)"><div class="dot"><small>PHASE</small><b>5</b></div><div class="box"><h3>Notary <em>Steps 17–20</em></h3><p>A notary sends two letters and becomes your witness that they ignored you.</p></div></div>
+    <div class="stop" style="--c:var(--p6)"><div class="dot"><small>PHASE</small><b>6</b></div><div class="box"><h3>Record and wait <em>Steps 21–22</em></h3><p>Put four papers on the public record. Wait about two weeks.</p></div></div>
+    <div class="stop" style="--c:var(--p7)"><div class="dot"><small>PHASE</small><b>7</b></div><div class="box"><h3>Reconveyance <em>Step 23</em></h3><p>Record the substitution of trustee for reconveyance. It is the last paper.</p></div></div>
+    <div class="stop" style="--c:var(--p8)"><div class="dot"><small>PHASE</small><b>8</b></div><div class="box"><h3>After <em>Step 24</em></h3><p>Keep the whole file. Answer any letters that come.</p></div></div>
+  </div>
+  <div class="kicker" style="margin-top:16px">How to read each step</div>
+  <div class="card" style="--c:var(--navy)"><div class="num">#</div><div class="body">
+    <h3>Step name <span class="les">The course lessons it comes from</span></h3>
+    <ul><li>What to do, in order.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The papers or tools for this step.</div><div class="done"><b>✓ Done when</b>How you know you can move on.</div></div>
+  </div></div>
+  <div class="card wait"><div class="num">⏳</div><div class="body"><h3>Gold card = a waiting step</h3><ul><li>Write down the day the wait starts and the day it ends.</li></ul></div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>3</span></div>
+</section>
+
+<!-- 4 · CLOCK + PAPER TRAIL -->
+<section class="sheet">
+  <div class="kicker">Timing</div>
+  <h2>The waiting clock</h2>
+  <p class="lead">Some steps make you wait. Write down every start date and end date.</p>
+  <div class="clock">
+    <div class="tick" style="--c:var(--p3)"><em>Step 9</em><b>15–90 days</b><span>Time you give them to answer the dispute letter.</span></div>
+    <div class="tick" style="--c:var(--p3)"><em>Step 11</em><b>Monthly × 3</b><span>Send a money order every month for three months.</span></div>
+    <div class="tick" style="--c:var(--p3)"><em>Step 12</em><b>90+ days</b><span>Bryan: "it can't be no sooner than 90 days."</span></div>
+    <div class="tick" style="--c:var(--p4)"><em>Step 14</em><b>14 days</b><span>After they get your statement of account.</span></div>
+    <div class="tick" style="--c:var(--p4)"><em>Step 16</em><b>10 business days</b><span>You ask them to release the lien in this time.</span></div>
+    <div class="tick" style="--c:var(--p5)"><em>Step 18</em><b>10 days</b><span>From the postmark on the notary's first letter.</span></div>
+    <div class="tick" style="--c:var(--p5)"><em>Step 19</em><b>10 days + ~5</b><span>From the postmark on the notary's second letter.</span></div>
+    <div class="tick" style="--c:var(--p6)"><em>Step 22</em><b>~2 weeks</b><span>After you record your papers. Then the last step.</span></div>
+  </div>
+  <div class="kicker">The paper trail</div>
+  <h2 style="font-size:20pt">Which paper leads to which</h2>
+  <p class="lead" style="font-size:10.5pt">Each paper uses the one before it. Read across, then down.</p>
+  <div class="trail">
+    <div class="paper" style="--c:var(--p1)"><div>County list of your papers<small>Step 2</small></div></div>
+    <div class="paper" style="--c:var(--p2)"><div>Deed acceptance, recorded<small>Step 6</small></div></div>
+    <div class="paper" style="--c:var(--p2)"><div>UCC-1 package<small>Step 8</small></div></div>
+    <div class="paper" style="--c:var(--p3)"><div>Dispute letter (UCC-1 attached)<small>Step 9</small></div></div>
+    <div class="paper" style="--c:var(--p3)"><div>Money orders + "cashed" printouts<small>Step 11</small></div></div>
+    <div class="paper" style="--c:var(--p4)"><div>Statement of account + receipt<small>Step 13</small></div></div>
+    <div class="paper" style="--c:var(--p4)"><div>Default notice + notice of dishonor<small>Steps 15–16</small></div></div>
+    <div class="paper" style="--c:var(--p5)"><div>Notary packet (your sworn request)<small>Step 17</small></div></div>
+    <div class="paper" style="--c:var(--p5)"><div>Certificate of Dishonor<small>Step 20</small></div></div>
+    <div class="paper" style="--c:var(--p6)"><div>Four papers recorded<small>Step 21</small></div></div>
+    <div class="paper" style="--c:var(--p7)"><div>Substitution of trustee for reconveyance<small>Step 23 · the last paper</small></div></div>
+  </div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>4</span></div>
+</section>
+
+<!-- 5 · PHASE 1 -->
+<section class="sheet tight" style="--c:var(--p1)">
+  <div class="phase-head"><div class="big">1</div><div class="t"><small>Phase 1 · Steps 1–5</small><h2>Get ready</h2><p>Find your papers and read them. You do not mail anything yet.</p></div></div>
+  <div class="flow"><span class="chip">1 Read the warning</span><span class="arr">➜</span><span class="chip">2 Get the county list</span><span class="arr">➜</span><span class="chip">3 Read your deed</span><span class="arr">➜</span><span class="chip">4 Read the deed of trust</span><span class="arr">➜</span><span class="chip">5 Get the note</span></div>
+  <div class="card"><div class="num">1</div><div class="body">
+    <h3>Read Bryan's warning <span class="les">Lessons 1, 2, 14</span></h3>
+    <ul><li>Watch the intro and the disclaimer. Bryan says he is not a lawyer.</li><li>Learn each step before you do it.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The course videos.</div><div class="done"><b>✓ Done when</b>You watched both and know the rules.</div></div>
+  </div></div>
+  <div class="card"><div class="num">2</div><div class="body">
+    <h3>Get the county list <span class="les">Lessons 12, 33</span></h3>
+    <ul><li>Look up your name in your county's land records. Go from the first paper to the last.</li><li>Write down each paper's number and date. Save your deed and your deed of trust.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your county records website.</div><div class="done"><b>✓ Done when</b>You have a list of every paper with its number and date.</div></div>
+  </div></div>
+  <div class="card"><div class="num">3</div><div class="body">
+    <h3>Read your deed <span class="les">Lessons 3, 21</span></h3>
+    <ul><li>Who gave it to you? Who got it? What did you pay?</li><li>Was it signed, sealed, witnessed, and handed over? Did you ever accept it?</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your recorded deed.</div><div class="done"><b>✓ Done when</b>You can answer every question above.</div></div>
+  </div></div>
+  <div class="card"><div class="num">4</div><div class="body">
+    <h3>Read the deed of trust <span class="les">Lessons 5–12, 33</span></h3>
+    <ul><li>Read the word list at the front first. Bryan says the tricks are there.</li><li>Find the borrower, lender, trustee, and loan amount. Ask what "loan" really means.</li><li>Check the signature page. Who signed? Did the trustee sign?</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your recorded deed of trust. One sheet for notes.</div><div class="done"><b>✓ Done when</b>Your notes sheet has every answer.</div></div>
+  </div></div>
+  <div class="card"><div class="num">5</div><div class="body">
+    <h3>Get the note and closing papers <span class="les">Lessons 18, 21, 33</span></h3>
+    <ul><li>Ask the lender for a copy of your note. Look for a notary stamp, and for "pay to the order of" on the last page.</li><li>Ask for the closing papers with everyone's signatures. Check for an arbitration rule.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your written requests.</div><div class="done"><b>✓ Done when</b>The copies, or your requests, are in your folder.</div></div>
+  </div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>5</span></div>
+</section>
+
+<!-- 6 · PHASE 2 -->
+<section class="sheet" style="--c:var(--p2)">
+  <div class="phase-head"><div class="big">2</div><div class="t"><small>Phase 2 · Steps 6–8</small><h2>Accept and secure</h2><p>Make your ownership official on the record. Then check for liens and file your UCC papers.</p></div></div>
+  <div class="flow"><span class="chip">6 Accept your deed</span><span class="arr">➜</span><span class="chip">7 Check for liens (UCC-11)</span><span class="arr">➜</span><span class="chip">8 File your UCC-1 package</span></div>
+  <div class="quote"><b>“</b>That's actually the first step is accepting that.<span>Bryan, lesson 33</span></div>
+  <div class="card"><div class="num">6</div><div class="body">
+    <h3>Accept your deed <span class="les">Lessons 3, 4, 8, 33</span></h3>
+    <ul><li>Get a certified copy of your deed from the county.</li><li>Write a one-page "Acknowledgment and Acceptance of Warranty Deed." Say you are the owner on the deed and you accept it. Black out any Social Security or driver's license number.</li><li>Have it notarized before you go. Bryan says a UPS store notary works, about $5.</li><li>Record both papers together at the county.</li><li>If the clerk says no, stay calm. Ask them to write down why.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Certified copy of your deed + your signed, notarized acceptance.</div><div class="done"><b>✓ Done when</b>Both are recorded and you wrote down the number. Or you have the clerk's "no" in writing.</div></div>
+  </div></div>
+  <div class="card"><div class="num">7</div><div class="body">
+    <h3>Check for liens (UCC-11 search) <span class="les">Lessons 16, 17, 33</span></h3>
+    <ul><li>Get your state's UCC-11 form from the Secretary of State.</li><li>Fill it out and send it in. It shows who has a claim on you or your property.</li><li>Get a certified copy of the answer. Bryan says check again now and then.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your state's UCC-11 form.</div><div class="done"><b>✓ Done when</b>The certified answer is in your folder, with its date.</div></div>
+  </div></div>
+  <div class="card"><div class="num">8</div><div class="body">
+    <h3>File your UCC-1 package <span class="les">Lessons 15, 16, 33</span></h3>
+    <ul><li>Put three papers together: your note, your security agreement, and the UCC-1 form. Get them notarized.</li><li>Record them at the county first. Bryan: "You register first on the county level."</li><li>Then file the UCC-1 with the Secretary of State. Write the county's number on it.</li><li>Bryan used his trust as the secured party. He says you don't have to use a trust.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Note + security agreement + UCC-1 form.</div><div class="done"><b>✓ Done when</b>You have the county number and the state filing number.</div></div>
+  </div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>6</span></div>
+</section>
+
+<!-- 7 · PHASE 3 -->
+<section class="sheet" style="--c:var(--p3)">
+  <div class="phase-head"><div class="big">3</div><div class="t"><small>Phase 3 · Steps 9–12</small><h2>Dispute and pay</h2><p>Tell them there is a problem. Then pay in a special way and wait.</p></div></div>
+  <div class="flow"><span class="chip">9 Dispute letter</span><span class="arr">➜</span><span class="chip">10 Conditional acceptance</span><span class="arr">➜</span><span class="chip">11 Money orders × 3</span><span class="arr">➜</span><span class="chip wait">12 Wait 90+ days</span></div>
+  <div class="card"><div class="num">9</div><div class="body">
+    <h3>Send the dispute letter <span class="les">Lessons 26, 33</span></h3>
+    <ul><li>Ask for 3 things: a certified copy of the note, a certified copy of the deed of trust, and where to send payment.</li><li>Give them 15 to 90 days to answer.</li><li>Tell them a "payment in full" is coming. Say no answer means they agree.</li><li>Attach your UCC-1. Sign it and seal it. Mail it and keep the tracking number.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The letter + your UCC-1.</div><div class="done"><b>✓ Done when</b>Your copy and the mail receipt are in your folder.</div></div>
+  </div></div>
+  <div class="card"><div class="num">10</div><div class="body">
+    <h3>Send the conditional acceptance offer <span class="les">Lesson 33</span></h3>
+    <ul><li>Tell them there is a problem, give them time to fix it, and say what happens if they don't.</li><li>Send it by certified mail. Bryan: "a gentleman always gives notice."</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The offer letter.</div><div class="done"><b>✓ Done when</b>Your copy and the certified receipt are in your folder.</div></div>
+  </div></div>
+  <div class="card"><div class="num">11</div><div class="body">
+    <h3>Pay with money orders <span class="les">Lessons 24–26, 33</span></h3>
+    <ul><li>Use post office money orders. Each one holds $1,000 at most.</li><li>Front: write that it is payment in full, on the condition the debt is canceled. Add the loan number.</li><li>Back: write that cashing it means "full and final settlement" of the account.</li><li>Add a short note. Send by registered mail. Do it every month for 3 months.</li><li>Check online that each one was cashed. Print it.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Money orders, notes, registered mail.</div><div class="done"><b>✓ Done when</b>Front/back copies, notes, receipts, and "cashed" printouts are saved.</div></div>
+  </div></div>
+  <div class="card wait"><div class="num">12</div><div class="body">
+    <h3>Wait 90 days or more <span class="les">Lessons 26, 33</span></h3>
+    <ul><li>Bryan: "it can't be no sooner than 90 days." In that time they can send your money back.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>A calendar.</div><div class="done"><b>✓ Done when</b>90 days passed and you wrote down the end date.</div></div>
+  </div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>7</span></div>
+</section>
+
+<!-- 8 · PHASE 4 -->
+<section class="sheet" style="--c:var(--p4)">
+  <div class="phase-head"><div class="big">4</div><div class="t"><small>Phase 4 · Steps 13–16</small><h2>Statement of account</h2><p>Ask them to confirm what you owe. If they stay quiet, tell them they are in default.</p></div></div>
+  <div class="flow"><span class="chip">13 Statement of account</span><span class="arr">➜</span><span class="chip wait">14 Wait 14 days</span><span class="arr">➜</span><span class="chip">15 Default notice</span><span class="arr">➜</span><span class="chip">16 Notice of dishonor</span></div>
+  <div class="card"><div class="num">13</div><div class="body">
+    <h3>Ask for a statement of account <span class="les">Lessons 27, 28, 33</span></h3>
+    <ul><li>Fill in the form: your account number, your property, what you started with, what you paid, and what you believe you owe now.</li><li>Send it to a real person by name, like the company's CEO.</li><li>Sign it in front of a notary. Send it by certified mail.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The statement of account form + cover letter.</div><div class="done"><b>✓ Done when</b>Your copy and receipt are saved, with the delivery date.</div></div>
+  </div></div>
+  <div class="card wait"><div class="num">14</div><div class="body">
+    <h3>Wait 14 days for their signed answer <span class="les">Lessons 27, 28</span></h3>
+    <ul><li>They must sign and send back a "yes" or a fix within 14 days after they get it.</li><li>If no one signs it, Bryan says your number stands.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>A calendar.</div><div class="done"><b>✓ Done when</b>The deadline passed. Any answer is saved.</div></div>
+  </div></div>
+  <div class="card"><div class="num">15</div><div class="body">
+    <h3>Send a default notice <span class="les">Lesson 28</span></h3>
+    <ul><li>Say they did not answer by the deadline.</li><li>List everything you already sent: the offer, the payments, the money orders.</li><li>Say your number stands. Sign it and seal it. Mail it.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Dates and receipts from your folder.</div><div class="done"><b>✓ Done when</b>Your copy and receipt are saved.</div></div>
+  </div></div>
+  <div class="card"><div class="num">16</div><div class="body">
+    <h3>Send the notice of dishonor <span class="les">Lesson 33</span></h3>
+    <ul><li>Send it to the lender's CEO and to the trustee.</li><li>Say they never accepted or signed the deed of trust. Tell the whole story so far.</li><li>Ask them to release the lien within 10 business days and refund you. Attach your fee list.</li><li>Sign as the trustor (the borrower). Mail it to both.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The notice + your fee list.</div><div class="done"><b>✓ Done when</b>Both mail receipts are saved.</div></div>
+  </div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>8</span></div>
+</section>
+
+<!-- 9 · PHASE 5 -->
+<section class="sheet" style="--c:var(--p5)">
+  <div class="phase-head"><div class="big">5</div><div class="t"><small>Phase 5 · Steps 17–20</small><h2>Notary</h2><p>A notary sends two letters for you and becomes your witness that they ignored you.</p></div></div>
+  <div class="flow"><span class="chip">17 Notary packet</span><span class="arr">➜</span><span class="chip">18 Notice of Breach</span><span class="arr">➜</span><span class="chip wait">10 days</span><span class="arr">➜</span><span class="chip">19 Chance to fix</span><span class="arr">➜</span><span class="chip wait">10 days</span><span class="arr">➜</span><span class="chip">20 Certificate</span></div>
+  <div class="quote"><b>“</b>first is always the presentment<span>Bryan, lesson 29</span></div>
+  <div class="card"><div class="num">17</div><div class="body">
+    <h3>Give the notary your packet <span class="les">Lessons 29, 30, 33</span></h3>
+    <ul><li>Find a notary who will do a "notarial presentment." Bryan says many don't know it, so you may need to explain it.</li><li>Write and sign a request to the notary. It counts as your sworn statement.</li><li>Give the notary one copy of everything you sent, with the mail receipts.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your signed request + one full set of copies.</div><div class="done"><b>✓ Done when</b>The notary has your packet and you kept a copy.</div></div>
+  </div></div>
+  <div class="card"><div class="num">18</div><div class="body">
+    <h3>Notary sends the "Notice of Breach" <span class="les">Lesson 30</span></h3>
+    <ul><li>The notary signs and mails it, not you. It says they ignored your papers.</li><li>They have 10 days from the postmark to answer the notary.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Nothing new.</div><div class="done"><b>✓ Done when</b>10 days passed. Copy and receipt are saved.</div></div>
+  </div></div>
+  <div class="card"><div class="num">19</div><div class="body">
+    <h3>Notary sends the "Opportunity to Cure" <span class="les">Lesson 30</span></h3>
+    <ul><li>This is their last chance to fix it. They get 10 more days from the postmark.</li><li>Bryan says the notary may give about 5 extra days.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Nothing new.</div><div class="done"><b>✓ Done when</b>The time passed with no fix. Copy and receipt are saved.</div></div>
+  </div></div>
+  <div class="card"><div class="num">20</div><div class="body">
+    <h3>Notary signs the "Certificate of Dishonor" <span class="les">Lessons 29, 30</span></h3>
+    <ul><li>The notary signs it as a witness that no one answered.</li><li>A second, different notary stamps the first notary's signature.</li><li>Your signed request from step 17 is attached.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>A second notary.</div><div class="done"><b>✓ Done when</b>It is signed, double-stamped, and your request is attached.</div></div>
+  </div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>9</span></div>
+</section>
+
+<!-- 10 · PHASES 6 + 7 -->
+<section class="sheet" style="--c:var(--p6)">
+  <div class="phase-head"><div class="big">6</div><div class="t"><small>Phase 6 · Steps 21–22</small><h2>Record and wait</h2><p>Put four papers on the public record. Then give them about two weeks.</p></div></div>
+  <div class="flow"><span class="chip">21 Record 4 papers</span><span class="arr">➜</span><span class="chip wait">22 Wait ~2 weeks</span></div>
+  <div class="card"><div class="num">21</div><div class="body">
+    <h3>Record four papers at the county <span class="les">Lessons 19, 33</span></h3>
+    <ul><li>A copy of your notice of dishonor (step 16).</li><li>Your note. Bryan's has a notary stamp and a line where he accepts it.</li><li>Your fee list.</li><li>The Certificate of Dishonor (step 20).</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The four papers.</div><div class="done"><b>✓ Done when</b>Each one has a county number and a copy is saved.</div></div>
+  </div></div>
+  <div class="card wait"><div class="num">22</div><div class="body">
+    <h3>Wait about two weeks <span class="les">Lesson 33</span></h3>
+    <ul><li>Bryan: "I just give them about two weeks to try to respond."</li></ul>
+    <div class="row"><div class="need"><b>You need</b>A calendar.</div><div class="done"><b>✓ Done when</b>About two weeks passed. Any answer is saved.</div></div>
+  </div></div>
+  <div class="phase-head" style="--c:var(--p7); margin-top:14px"><div class="big">7</div><div class="t"><small>Phase 7 · Step 23</small><h2>Reconveyance</h2><p>The last paper. It goes on the county record last.</p></div></div>
+  <div class="card" style="--c:var(--p7)"><div class="num">23</div><div class="body">
+    <h3>Record the substitution of trustee for reconveyance <span class="les">Lessons 11, 33</span></h3>
+    <ul><li>You, as the borrower, remove the old trustee. Bryan says that trustee never accepted.</li><li>You name a new trustee. Bryan named his son.</li><li>The paper says everything is paid, and the note and deed of trust are canceled.</li><li>The new trustee signs the property back "without warranty."</li><li>Record it. In Bryan's file it was the last paper on the county list.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>The substitution paper + your new trustee.</div><div class="done"><b>✓ Done when</b>It is recorded and it is the last paper on your county list.</div></div>
+  </div></div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>10</span></div>
+</section>
+
+<!-- 11 · PHASE 8 + EXTRAS -->
+<section class="sheet" style="--c:var(--p8)">
+  <div class="phase-head"><div class="big">8</div><div class="t"><small>Phase 8 · Step 24</small><h2>After</h2><p>Keep everything. Answer any letters that come.</p></div></div>
+  <div class="card"><div class="num">24</div><div class="body">
+    <h3>Keep the file and answer letters <span class="les">Lesson 33</span></h3>
+    <ul><li>Keep the whole file and every receipt, start to finish.</li><li>If a lawyer or the loan company writes, Bryan sends it back and lists what they did wrong.</li><li>He points to the county numbers of your recorded papers.</li><li>He tells them to mail his trust by certified or registered mail.</li></ul>
+    <div class="row"><div class="need"><b>You need</b>Your folder.</div><div class="done"><b>✓ Done when</b>Every letter is answered and saved.</div></div>
+  </div></div>
+  <div class="kicker" style="margin-top:12px">Extras</div>
+  <div class="two">
+    <div class="note" style="--c:var(--p5)"><h3>Optional: MERS check</h3>Lessons 35–37.<ul><li>Is "MERS" named on your deed of trust?</li><li>If yes, look at the county list for an "assignment."</li><li>Check who signed it and who stamped it.</li></ul></div>
+    <div class="note" style="--c:var(--p4)"><h3>If the county won't record</h3>Lesson 33.<ul><li>File it at your federal district court as a "miscellaneous" filing.</li><li>Get a certified copy.</li><li>Take that copy to the county.</li></ul></div>
+    <div class="note" style="--c:var(--p3)"><h3>If you are in a foreclosure case</h3>Lesson 33.<ul><li>Bryan still says get your deed acceptance (step 6) and your certified UCC-11 (step 7) ready.</li><li>He says his way is for before trouble starts, not after.</li></ul></div>
+    <div class="note" style="--c:var(--p8)"><h3>If the home was already sold</h3>Lesson 33.<ul><li>Ask the county if there was extra money from the sale.</li><li>Get the answer in writing.</li></ul></div>
+  </div>
+  <div class="note" style="--c:var(--gold)"><h3>Your state, not Texas</h3>Bryan cites Texas law next to each UCC rule. Find your own state's version of each one and use your own county recorder. Bryan: "you need to also find your state, if you're not in Texas."</div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>11</span></div>
+</section>
+
+<!-- 12 · BRYAN'S REAL FILE -->
+<section class="sheet">
+  <div class="kicker">Proof of the order</div>
+  <h2>How Bryan did it — his real dates</h2>
+  <p class="lead">His second home, Henderson County, Texas. From the webinar (lesson 33) and lessons 28 and 30.</p>
+  <div class="tl">
+    <div class="ev" style="--c:var(--p1)"><div class="d">Jan 25, 2022</div><div class="pin"></div><div class="w">Closing day. Warranty deed Jan 26.</div></div>
+    <div class="ev" style="--c:var(--p2)"><div class="d">Jan 27, 2022</div><div class="pin"></div><div class="w">His company moves the property to his trust. His trust's UCC-1 is filed before the next letter.<em>Step 8</em></div></div>
+    <div class="ev" style="--c:var(--p3)"><div class="d">Feb 26</div><div class="pin"></div><div class="w">Dispute letter.<em>Step 9</em></div></div>
+    <div class="ev" style="--c:var(--p3)"><div class="d">Mar 1, 2022</div><div class="pin"></div><div class="w">Conditional acceptance offer, certified mail.<em>Step 10</em></div></div>
+    <div class="ev" style="--c:var(--p3)"><div class="d">Mar 2, 2022</div><div class="pin"></div><div class="w">First money order, registered mail. Then one a month for 3 months.<em>Step 11</em></div></div>
+    <div class="ev" style="--c:var(--p4)"><div class="d">Apr 25, 2022</div><div class="pin"></div><div class="w">Statement of account mailed Apr 25, delivered Apr 29.<em>Step 13</em></div></div>
+    <div class="ev" style="--c:var(--p4)"><div class="d">May 20, 2022</div><div class="pin"></div><div class="w">Default notice on the statement of account.<em>Step 15</em></div></div>
+    <div class="ev" style="--c:var(--p4)"><div class="d">May 23, 2022</div><div class="pin"></div><div class="w">Notice of dishonor mailed to the CEO and the trustee.<em>Step 16</em></div></div>
+    <div class="ev" style="--c:var(--p5)"><div class="d">Jun–Jul 2022</div><div class="pin"></div><div class="w">Notary letters. The "chance to fix" letter went out July 5.<em>Steps 17–20</em></div></div>
+    <div class="ev" style="--c:var(--p6)"><div class="d">Jul 14, 2022</div><div class="pin"></div><div class="w">Notice of dishonor and note recorded at the county.<em>Step 21</em></div></div>
+    <div class="ev" style="--c:var(--p7)"><div class="d">Jul 27, 2022</div><div class="pin"></div><div class="w">Substitution of trustee for reconveyance recorded. The last paper.<em>Step 23</em></div></div>
+    <div class="ev" style="--c:var(--p8)"><div class="d">Jul 28, 2022</div><div class="pin"></div><div class="w">His answer to the lender's lawyer (letter dated Jul 13).<em>Step 24</em></div></div>
+  </div>
+  <div class="note" style="--c:var(--gold); margin-top:10px">Good to know: Bryan's own statement of account went out 54 days after his first payment. That is shorter than the 90 days he tells students to wait (step 12).</div>
+  <div class="foot"><span>Mortgage Re{CON}veyance — The Simple Guide</span><span>12</span></div>
+</section>
+
+</body>
+</html>
