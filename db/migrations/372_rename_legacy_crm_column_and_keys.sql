@@ -1,72 +1,31 @@
--- 372_rename_legacy_crm_column_and_keys.sql
--- Retire legacy vendor column/key names without editing applied migration files.
+-- 372_rename_legacy_crm_column_and_keys.sql — a no-op on purpose. Read this
+-- before changing it.
+--
+-- PRODUCTION ALREADY HAS THIS KEY, SO EDITING THIS FILE CANNOT CHANGE PRODUCTION.
+-- db/migrate.mjs skips every key already in schema_migrations, and it keeps no
+-- checksum of a file's text. Production applied
+-- `migrations/372_rename_legacy_crm_column_and_keys.sql` on 2026-09-19 07:38 UTC.
+--
+-- WHAT IT USED TO DO, AND WHY NONE OF IT BELONGS ON A NEW DATABASE. The old text
+-- (see git history, d61d3677d) did three things. Production's state today
+-- (read 2026-10-05, SELECT only) shows none of them stuck, and the code agrees:
+--
+--   1. Re-keyed schema_migrations rows from the old vendor names to the new ones
+--      (114, 168, 255). Production then re-applied the old-name files on
+--      2026-09-21, so it now holds BOTH names for all three. On an empty
+--      database both names are applied before 372 runs, so the rename hit
+--      "duplicate key value violates unique constraint schema_migrations_pkey"
+--      and stopped every fresh build (GitHub run 37406614118). Nothing to
+--      rename there: both rows already exist, exactly as on production.
+--   2. Renamed clients.ghl_contact_id to legacy_contact_id. Production still has
+--      ghl_contact_id and no legacy_contact_id, and the app reads ghl_contact_id
+--      (src/handlers/client-lifecycle.mjs and others). Renaming it on a new
+--      database would build a database the code cannot use.
+--   3. Moved custom_fields keys ghl_link_* to crm_link_*. Production has 24
+--      clients with the ghl_link_* keys and none with crm_link_*, and the app
+--      writes ghl_link_missing. Same reason: leave them.
+--
+-- SAME END STATE AS PRODUCTION: do nothing. Changed 2026-10-05 for the M0 step 6
+-- CI fix (mm-c1-ci-fix).
 
-DO $m$
-DECLARE
-  v_old text := chr(103) || chr(104) || chr(108);
-BEGIN
-  EXECUTE format(
-    'UPDATE schema_migrations SET key = %L WHERE key = %L',
-    'migrations/114_crm_agent_seed.sql',
-    'migrations/114_' || v_old || '_agent_seed.sql'
-  );
-  EXECUTE format(
-    'UPDATE schema_migrations SET key = %L WHERE key = %L',
-    'migrations/168_retire_legacy_crm_agents.sql',
-    'migrations/168_retire_' || v_old || '_agents.sql'
-  );
-  EXECUTE format(
-    'UPDATE schema_migrations SET key = %L WHERE key = %L',
-    'migrations/255_doc_agent_docs_received.sql',
-    'migrations/255_' || v_old || '_doc_docs_received.sql'
-  );
-END $m$;
-
-DO $$
-DECLARE
-  old_col text := chr(103) || chr(104) || chr(108) || '_contact_id';
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = old_col
-  ) AND NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = 'legacy_contact_id'
-  ) THEN
-    EXECUTE format('ALTER TABLE clients RENAME COLUMN %I TO legacy_contact_id', old_col);
-  ELSIF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = old_col
-  ) AND EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = 'legacy_contact_id'
-  ) THEN
-    EXECUTE format(
-      'UPDATE clients SET legacy_contact_id = COALESCE(NULLIF(legacy_contact_id, ''''), %I) WHERE %I IS NOT NULL',
-      old_col, old_col
-    );
-    EXECUTE format('ALTER TABLE clients DROP COLUMN %I', old_col);
-  END IF;
-END $$;
-
-DO $m$
-DECLARE
-  p text := chr(103) || chr(104) || chr(108);
-  k_missing text := p || '_link_missing';
-  k_reason text := p || '_link_missing_reason';
-  k_dry text := p || '_link_dry_run';
-BEGIN
-  EXECUTE format($sql$
-    UPDATE clients SET custom_fields =
-      custom_fields
-      || CASE WHEN custom_fields ? %1$L THEN jsonb_build_object('crm_link_missing', custom_fields->%1$L) ELSE '{}'::jsonb END
-      || CASE WHEN custom_fields ? %2$L THEN jsonb_build_object('crm_link_missing_reason', custom_fields->%2$L) ELSE '{}'::jsonb END
-      || CASE WHEN custom_fields ? %3$L THEN jsonb_build_object('crm_link_dry_run', custom_fields->%3$L) ELSE '{}'::jsonb END
-    WHERE custom_fields ?| ARRAY[%1$L, %2$L, %3$L]
-  $sql$, k_missing, k_reason, k_dry);
-
-  EXECUTE format($sql$
-    UPDATE clients SET custom_fields = custom_fields - %1$L - %2$L - %3$L
-    WHERE custom_fields ?| ARRAY[%1$L, %2$L, %3$L]
-  $sql$, k_missing, k_reason, k_dry);
-END $m$;
+SELECT 1 AS noop_see_header;
