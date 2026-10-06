@@ -56,5 +56,5 @@ Owner-set by Chris, 2026-10-06. Adds to `client-finance-os-build-spec-2026-09-19
 - All data is sample data for now. That is fine. Build and show with it.
 - Price per container: show it as **X** until Chris sets a number.
 - Merchant integrations: **Commas**, **Whop**, and an **open API** so any other merchant processor can send sales and payouts in.
-- Past due: when clients start making payments, track them and check in when one is late (agent first, then a person).
+- Past due: a **Clarity Payment** is debt a client owes to Fundhub LLC. Track each one; when it is late, check in (agent first, then a person).
 - AI agent: build it in-house. (No outside AI spend yet — the agent runs on rules until an AI brain is switched on.)
