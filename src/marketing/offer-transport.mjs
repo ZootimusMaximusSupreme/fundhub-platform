@@ -53,7 +53,7 @@ const defaultFetch = (url, init) => globalThis.fetch(url, init);
  * slow answer cannot keep the worker alive past its own limit.
  */
 export async function askAnthropic({
-  system, user, maxTokens = 16000, timeoutMs = 240_000,
+  system, user, maxTokens = 24000, timeoutMs = 270_000,
   env = process.env, model = OFFER_MODEL, fetchImpl = defaultFetch, call = callModel
 } = {}) {
   const key = anthropicKeyOf(env);

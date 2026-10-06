@@ -24,6 +24,7 @@ import {
   RUNOFF_MARGIN, SPREAD_ALARM, MIN_CANDIDATES, SAY_ONE_OF
 } from "./offer-rubric.mjs";
 import { offerFactsText, knownPriceCents } from "./offer-inputs.mjs";
+import { STAGES } from "../../scripts/flywheel/status.mjs";
 
 /* ── ERRORS ──────────────────────────────────────────────────────────────── */
 
@@ -48,9 +49,14 @@ function str(v, max = FIELD_MAX) {
   return s.trim().slice(0, max);
 }
 
+/* "None" is not a bonus. Measured on the real run (2026-10-05): the write-up
+   returned bonuses ["None"], which counted as one bonus. A list entry that only
+   says there is nothing is dropped. */
+const NOTHING = /^(none|n\/a|na|nothing|-|—)\.?$/i;
+
 function strList(v, max = LIST_MAX) {
   if (!Array.isArray(v)) return [];
-  return v.map((x) => str(x)).filter(Boolean).slice(0, max);
+  return v.map((x) => str(x)).filter((x) => x && !NOTHING.test(x)).slice(0, max);
 }
 
 /** A 1-10 score, or null. A score outside the scale is clamped, not invented. */
@@ -117,7 +123,7 @@ export function normalizeCandidate(raw) {
     name: str(raw.name, 200),
     promise: str(raw.promise),
     mechanism: str(raw.mechanism),
-    price: str(raw.price, 400),
+    price: str(raw.price, 800),
     paymentTerms: str(raw.paymentTerms, 400),
     whatTheyGet: strList(raw.whatTheyGet),
     guarantees: (Array.isArray(raw.guarantees) ? raw.guarantees : [])
@@ -303,7 +309,7 @@ export function parseSynthesis(text) {
   const offer = {
     oneSentence: str(o.oneSentence, 600),
     name: str(o.name, 200),
-    price: str(o.price, 400),
+    price: str(o.price, 800),
     whyThisPrice: str(o.whyThisPrice),
     whatTheyGet: strList(o.whatTheyGet),
     guarantees: (Array.isArray(o.guarantees) ? o.guarantees : [])
@@ -350,7 +356,8 @@ export function offerFromCandidate(c) {
 /** Every "$1,000" / "$10k" / "$297.00" in a piece of text, as whole cents. */
 export function dollarAmounts(text) {
   const out = [];
-  const re = /\$\s?([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*([kK])?\b/g;
+  // Thousands commas only inside the number: "$297, then" is $297, not "297,".
+  const re = /\$\s?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\s*([kK])?\b/g;
   let m;
   while ((m = re.exec(String(text || ""))) !== null) {
     const n = Number(m[1].replace(/,/g, ""));
@@ -385,6 +392,23 @@ export function checkPrices(offer, known = knownPriceCents()) {
   return issues;
 }
 
+/* ── THE FLYWHEEL GATE ───────────────────────────────────────────────────── */
+
+/* The same minimums `npm run flywheel:status` holds stage 3 to
+   (scripts/flywheel/status.mjs STAGES): read from there, not copied. A thin
+   offer is reported on the card, never padded — an invented bonus is an
+   invented fact about Fundhub. */
+export const OFFER_GATES = Object.freeze({ ...((STAGES.find((st) => st.key === "offer") || {}).gates || {}) });
+
+const GATE_WORDS = { priceSet: "price", bonuses: "bonuses", valueEquationScores: "value scores", guarantees: "guarantees" };
+
+/** gateMisses(counts) → one plain sentence per minimum this offer does not meet. */
+export function gateMisses(counts, gates = OFFER_GATES) {
+  return Object.entries(gates)
+    .filter(([k, min]) => (Number(counts && counts[k]) || 0) < min)
+    .map(([k, min]) => `The flywheel's stage 3 check wants at least ${min} ${GATE_WORDS[k] || k}; this offer has ${Number(counts && counts[k]) || 0}.`);
+}
+
 /* ── THE REVIEW CARD ─────────────────────────────────────────────────────── */
 
 const DIM_WORDS = {
@@ -403,15 +427,27 @@ const DIM_WORDS = {
  * The flywheel's own block (marketing/flywheel/README.md), filled from the run.
  * The three checks are offer.js's three, with the real price put in.
  */
+/* The price as the review card asks about it: the line itself when it is short,
+   else its dollar figures. Measured on the real run: the model wrote a 400-character
+   price line, and "The price is <a paragraph> — yes or no?" is not a question. */
+export function shortPrice(price) {
+  const line = String(price || "").trim();
+  if (!line) return "not set";
+  if (line.length <= 120) return line;
+  const amounts = dollarAmounts(line).map((a) => a.text);
+  if (amounts.length) return [...new Set(amounts)].join(", ") + " (see the price section)";
+  return line.slice(0, 117).trimEnd() + "…";
+}
+
 export function buildReviewCard({
   offer, winner, runnerUp, runoffAdvised, unjudged = [], candidateCount = 0,
   priceIssues = [], modelReview = null, synthesized = true, synthesisProblem = null,
-  winnerCandidate = null, research = true
+  winnerCandidate = null, research = true, gateMisses = []
 }) {
   const decided = (modelReview && modelReview.whatThisDecided) ||
     `Sell "${offer.name}" at ${offer.price}.`;
   const three = [
-    `The price is ${offer.price || "not set"} — yes or no?`,
+    `The price is ${shortPrice(offer.price)} — yes or no?`,
     "Can we deliver this every time?",
     "Can we afford the guarantee if three people claim it?"
   ];
@@ -421,6 +457,7 @@ export function buildReviewCard({
     notSure.push(`The final write-up step did not come back (${synthesisProblem || "no reason given"}), so this is the winning offer exactly as first written, with nothing taken from the others.`);
   }
   for (const p of priceIssues) notSure.push(p);
+  for (const g of gateMisses) notSure.push(g);
   if (unjudged.length) {
     notSure.push(`${unjudged.length} of ${candidateCount} offers were never scored by any judge (${unjudged.map((u) => u.archetype).join(", ")}). The winner was picked from ${candidateCount - unjudged.length}, not ${candidateCount}.`);
   }
@@ -433,7 +470,7 @@ export function buildReviewCard({
   if (!research) notSure.push("No ad research was on file, so the offer was designed from the buyer summary alone.");
   for (const g of offer.guarantees || []) {
     if (g.needsOwnerDecision && !/^none\.?$/i.test(g.needsOwnerDecision)) {
-      notSure.push(`Guarantee "${g.name || g.promise}" needs a number from Chris: ${g.needsOwnerDecision}`);
+      notSure.push(`Guarantee "${g.name || g.promise}" needs a decision from Chris: ${g.needsOwnerDecision}`);
     }
   }
   if (modelReview) for (const n of modelReview.notSureAbout || []) notSure.push(n);
@@ -602,7 +639,7 @@ ${NO_INVENTED_PROOF}
 
 Reply with exactly this JSON shape. "review.whatThisDecided" is one sentence. "review.notSureAbout"
 lists what you were not sure about, or is empty.
-{"offer":{"oneSentence":"","name":"","price":"","whyThisPrice":"","whatTheyGet":[""],"guarantees":[{"name":"","promise":"","shape":"","conditions":"","whatItCostsUsIfItFires":"","needsOwnerDecision":""}],"bonuses":[""],"tookFromLosers":[{"from":"archetype id","what":"","why":""}],"killShotsAnswered":[{"killShot":"","whatWeDid":""}],"thirtyDayMath":"","claimsRemoved":[""]},"review":{"whatThisDecided":"","notSureAbout":[""]}}`;
+{"offer":{"oneSentence":"","name":"","price":"one short line, under 120 characters — the detail goes in whyThisPrice","whyThisPrice":"","whatTheyGet":[""],"guarantees":[{"name":"","promise":"","shape":"","conditions":"","whatItCostsUsIfItFires":"","needsOwnerDecision":""}],"bonuses":[""],"tookFromLosers":[{"from":"archetype id","what":"","why":""}],"killShotsAnswered":[{"killShot":"","whatWeDid":""}],"thirtyDayMath":"","claimsRemoved":[""]},"review":{"whatThisDecided":"","notSureAbout":[""]}}`;
 }
 
 /* ── MODEL FAILURES IN PLAIN WORDS ───────────────────────────────────────── */
@@ -633,7 +670,11 @@ export function plainModelFailure(reply) {
 
 /* ── THE RUN ─────────────────────────────────────────────────────────────── */
 
-export const STEP_MAX_TOKENS = 16000;
+/* Room per call, thinking included. Measured on the one real run (2026-10-05,
+   claude-opus-5-5): the six-offer call used 12,931 output tokens of 16,000 and
+   the judges 10,204, at about 110 tokens a second. A reply cut off at the cap is
+   unparseable JSON and the whole run fails, so the cap sits well above that. */
+export const STEP_MAX_TOKENS = 24000;
 
 function addUsage(usage, step, reply) {
   const u = (reply && reply.usage) || {};
@@ -661,7 +702,7 @@ function addUsage(usage, step, reply) {
  */
 export async function generateOffer({
   inputs, ask, seed = "offer", today = null,
-  timeLeft = () => Infinity, stepTimeoutMs = 240_000
+  timeLeft = () => Infinity, stepTimeoutMs = 270_000
 }) {
   const facts = offerFactsText();
   const usage = { calls: [], input_tokens: 0, output_tokens: 0 };
@@ -729,10 +770,17 @@ export async function generateOffer({
   }
 
   const priceIssues = checkPrices(offer);
+  const counts = {
+    priceSet: offer.price ? 1 : 0,
+    bonuses: offer.bonuses.length,
+    guarantees: offer.guarantees.length,
+    valueEquationScores: VALUE_EQUATION_KEYS.filter((k) => winnerCandidate.valueEquation[k] != null).length
+  };
+  const misses = gateMisses(counts);
   const reviewCard = buildReviewCard({
     offer, winner, runnerUp, runoffAdvised, unjudged, candidateCount: blinded.length,
     priceIssues, modelReview, synthesized, synthesisProblem, winnerCandidate,
-    research: !!inputs.adResearchSummary
+    research: !!inputs.adResearchSummary, gateMisses: misses
   });
   const asOf = today || new Date().toISOString().slice(0, 10);
   const document = renderOfferDocument({ campaign: inputs.campaign, asOf, offer, reviewCard });
@@ -756,13 +804,8 @@ export async function generateOffer({
     unjudged: unjudged.map((u) => u.archetype),
     candidates: blinded,
     rejectedCandidates: rejected,
-    counts: {
-      priceSet: offer.price ? 1 : 0,
-      bonuses: offer.bonuses.length,
-      guarantees: offer.guarantees.length,
-      valueEquationScores: VALUE_EQUATION_KEYS.filter((k) => winnerCandidate.valueEquation[k] != null).length
-    },
-    checks: { priceIssues },
+    counts,
+    checks: { priceIssues, gate: { passes: misses.length === 0, misses } },
     inputs: { sources: inputs.sources || null, cut: inputs.cut || null },
     usage
   };

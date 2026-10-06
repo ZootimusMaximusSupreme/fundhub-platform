@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   parseJsonReply, normalizeCandidate, parseCandidates, blindCandidates, blindView,
   parsePanels, aggregate, rank, parseSynthesis, dollarAmounts, checkPrices,
-  buildReviewCard, plainModelFailure, generateOffer, OfferError,
+  buildReviewCard, plainModelFailure, generateOffer, OfferError, shortPrice, gateMisses, OFFER_GATES,
   candidatesPrompt, judgesPrompt, synthesisPrompt, SYSTEM
 } from "./offer-generator.mjs";
 import { ARCHETYPE_IDS, DIMS, WEIGHT, NO_INVENTED_PROOF, GUARANTEE_RULES } from "./offer-rubric.mjs";
@@ -175,7 +175,7 @@ test("the review card is the flywheel's block: three checks with the real price,
   assert.match(doubts, /disagreed by 6 points on whether we can deliver it every time/);
   assert.match(doubts, /within 5%/);
   assert.match(doubts, /No ad research/);
-  assert.match(doubts, /needs a number from Chris: how many redos/);
+  assert.match(doubts, /needs a decision from Chris: how many redos/);
   assert.match(doubts, /the cost to get a customer/);
   assert.match(card.markdown, /^## Review card/);
   assert.match(card.markdown, /\*\*Say one of:\*\* approve · tweak: <what to change> · redo/);
@@ -250,7 +250,8 @@ test("a full run: six offers, four judges, one winner, one review card — three
   assert.deepEqual(out.counts, { priceSet: 1, bonuses: 3, guarantees: 2, valueEquationScores: 4 });
   assert.equal(out.reviewCard.whatThisDecided, "Sell the partner program at $10,000 with a 30-day live-or-we-keep-building guarantee.");
   assert.match(out.reviewCard.notSureAbout.join("\n"), /disagreed by 6 points/);
-  assert.match(out.reviewCard.notSureAbout.join("\n"), /needs a number from Chris: How many redos/);
+  assert.match(out.reviewCard.notSureAbout.join("\n"), /needs a decision from Chris: How many redos/);
+  assert.deepEqual(out.checks.gate, { passes: true, misses: [] });
   assert.equal(out.asOf, "2026-10-05");
   for (const h of ["## 1. The offer in one sentence", "## 8. The 30-day cash arithmetic", "## 9. What we could not prove", "## Review card"]) {
     assert.ok(out.document.includes(h), `document is missing ${h}`);
@@ -324,4 +325,28 @@ test("parseSynthesis needs a name, a price and what they get", () => {
   o.offer.price = "";
   assert.equal(parseSynthesis(JSON.stringify(o)), null);
   assert.equal(parseSynthesis("{}"), null);
+});
+
+test("the stage 3 gate is the flywheel's own, and a thin offer is named, not padded", () => {
+  // Read from scripts/flywheel/status.mjs STAGES, not copied.
+  assert.deepEqual(OFFER_GATES, { priceSet: 1, bonuses: 3, valueEquationScores: 4, guarantees: 2 });
+  assert.deepEqual(gateMisses({ priceSet: 1, bonuses: 3, valueEquationScores: 4, guarantees: 2 }), []);
+  assert.deepEqual(gateMisses({ priceSet: 1, bonuses: 0, valueEquationScores: 4, guarantees: 5 }),
+    ["The flywheel's stage 3 check wants at least 3 bonuses; this offer has 0."]);
+});
+
+test("a bonus that says None is not a bonus", () => {
+  const o = JSON.parse(SYNTHESIS_TEXT);
+  o.offer.bonuses = ["None"];
+  o.offer.claimsRemoved = ["none."];
+  const parsed = parseSynthesis(JSON.stringify(o));
+  assert.deepEqual(parsed.offer.bonuses, []);
+  assert.deepEqual(parsed.offer.claimsRemoved, []);
+});
+
+test("the card asks about a short price, even when the price line is a paragraph", () => {
+  assert.equal(shortPrice("$10,000 once, can be financed"), "$10,000 once, can be financed");
+  const long = "Step 1: Live Trial $297, one time (price list: LIVE_TRIAL). Step 2: White-label partner program $10,000, one time, can be financed, nothing monthly (price list: PARTNER_ENTRY). Optional add-on: Lead Flow $99 per booked call.";
+  assert.equal(shortPrice(long), "$297, $10,000, $99 (see the price section)");
+  assert.equal(shortPrice(""), "not set");
 });
