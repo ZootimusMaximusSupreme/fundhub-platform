@@ -395,7 +395,7 @@
     var n = isNum(b.containers) ? b.containers : list(d.containers).length;
     var price = isNum(b.price_per_container_cents)
       ? money(b.price_per_container_cents) + " per container · " + money(b.price_per_container_cents * n) + " a month"
-      : "price not set";
+      : "$X per container";
     return '<p class="billing caption">Your plan: ' + esc(plural(n, "container", "containers")) + ' · ' + esc(price) + '</p>';
   }
 
@@ -608,6 +608,15 @@
       if (t.getAttribute("data-act") === "connect") connect(t);
       if (t.getAttribute("data-act") === "retry") load();
     });
+    /* Staff open this page with ?client_id=. Carry it on the money nav so the
+       next money page opens on the same file instead of asking whose it is. */
+    if (param("client_id")) {
+      var navLinks = root.document.querySelectorAll(".mnav a[href]");
+      for (var i = 0; i < navLinks.length; i++) {
+        navLinks[i].setAttribute("href", navLinks[i].getAttribute("href").split("?")[0] +
+          "?client_id=" + encodeURIComponent(param("client_id")));
+      }
+    }
     var back = root.document.getElementById("money-back");
     if (back && param("client_id")) {
       back.setAttribute("href", "finance-os.html?client_id=" + encodeURIComponent(param("client_id")));

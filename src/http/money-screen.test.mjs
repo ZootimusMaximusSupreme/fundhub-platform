@@ -125,12 +125,13 @@ test("error and loading states say what is happening in words", () => {
   assert.equal(M.classify({ status: 200, body: { ok: true } }), "ok");
 });
 
-test("tip is printed verbatim, billing line says the count and 'price not set'", () => {
+test("tip is printed verbatim, billing line says the count and '$X per container' until a price is set", () => {
   const d = fixture();
   d.tip = "Engine words <b>here</b> & there.";
   const html = M.render(d);
   assert.match(html, /Engine words &lt;b&gt;here&lt;\/b&gt; &amp; there\./);
-  assert.match(text(html), /2 containers · price not set/);
+  assert.match(text(html), /2 containers · \$X per container/);
+  assert.doesNotMatch(text(html), /price not set/);
   d.billing.price_per_container_cents = 4900;
   assert.match(text(M.render(d)), /\$49\.00 per container · \$98\.00 a month/);
 });
@@ -140,4 +141,19 @@ test("containers list their own accounts with masks and card details", () => {
   assert.equal((html.match(/class="card box"/g) || []).length, 2);
   for (const mask of ["1101", "2202", "3303", "4404"]) assert.match(html, new RegExp("••" + mask));
   assert.match(text(html), /Fundhub LLC Business \$5,400\.00 owed here/);
+});
+
+test("the money nav: six links in the board's order, Money marked as the current page", () => {
+  const nav = HTML.match(/<nav class="mnav"[\s\S]*?<\/nav>/);
+  assert.ok(nav, "money.html lost the shared money nav");
+  const links = [...nav[0].matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(links, [
+    ["money.html", "Money"],
+    ["money-accounts.html", "Accounts"],
+    ["money-credit.html", "Credit"],
+    ["money-connections.html", "Connections"],
+    ["money-payments.html", "Payments"],
+    ["money-setup.html", "Setup"]
+  ]);
+  assert.match(nav[0], /<a href="money\.html" aria-current="page">Money<\/a>/);
 });

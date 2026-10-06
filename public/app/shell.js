@@ -400,7 +400,14 @@
        id, so they reach the screen and it tells them they are not enrolled —
        which is the state the screen is written to show. Nothing about what any
        client can READ changes by adding this line. */
-    client: ["client-portal.html", "affiliate.html"],
+    /* THE MONEY PAGES (Finance OS, 2026-10-06). The portal's Money card links
+       to money.html, and gateLinks() hides a card whose link this list does not
+       name. Same as affiliate.html above: NAVIGATION, NOT A GATE. The money
+       pages load no shell.js; each endpoint behind them pins a client session to
+       its own file (api/money/overview.mjs, api/money/setup.mjs). */
+    client: ["client-portal.html", "affiliate.html",
+      "money.html", "money-accounts.html", "money-credit.html",
+      "money-connections.html", "money-payments.html", "money-setup.html"],
     affiliate: ["affiliate.html"],
     /* NO CAMPAIGNS ROW YET, AND THAT IS AN OPEN QUESTION, NOT AN OVERSIGHT.
        A partner cannot reach campaign-manager.html from any screen (proven live
