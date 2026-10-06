@@ -37,7 +37,7 @@ flowchart TD
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 8 routes]
     CAN --> A_journeys[journeys — 2 routes]
-    CAN --> A_marketing[marketing — 6 routes]
+    CAN --> A_marketing[marketing — 14 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
@@ -64,7 +64,7 @@ flowchart TD
 
 ## What they can reach
 
-**254 of 262 routes.**
+**262 of 270 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -183,9 +183,15 @@ flowchart TD
 | `/api/marketing/ad` | GET | owner, admin |
 | `/api/marketing/ads` | GET | owner, admin |
 | `/api/marketing/angles` | GET | owner, admin |
+| `/api/marketing/batches` | GET | owner, admin |
+| `/api/marketing/batches/write-now` | POST | owner, admin |
 | `/api/marketing/funnels` | GET, POST | owner, admin |
 | `/api/marketing/funnels/stats` | GET | owner, admin |
+| `/api/marketing/ideas` | GET, POST | owner, admin |
+| `/api/marketing/jobs/retry` | POST | owner, admin |
 | `/api/marketing/offer/generate` | GET, POST | owner, admin |
+| `/api/marketing/rules` | GET, POST | owner, admin |
+| `/api/marketing/scripts/fix` | POST | owner, admin |
 | `/api/marketing/settings` | GET, POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -334,7 +340,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**8 of 262 routes.**
+**8 of 270 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

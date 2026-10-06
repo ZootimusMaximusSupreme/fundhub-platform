@@ -34,7 +34,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 7 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 186 routes]
+    WHO -->|Yes| CANT[Blocked — 194 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
@@ -49,7 +49,7 @@ flowchart TD
     CANT --> B_finance[Finance — 12 blocked]
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
-    CANT --> B_marketing[marketing — 6 blocked]
+    CANT --> B_marketing[marketing — 14 blocked]
     CANT --> B_ops[ops — 2 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partners[partners — 1 blocked]
@@ -67,7 +67,7 @@ flowchart TD
 
 ## What they can reach
 
-**76 of 262 routes.**
+**76 of 270 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -155,7 +155,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**186 of 262 routes.**
+**194 of 270 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -243,9 +243,15 @@ flowchart TD
 | `/api/marketing/ad` | GET | owner, admin |
 | `/api/marketing/ads` | GET | owner, admin |
 | `/api/marketing/angles` | GET | owner, admin |
+| `/api/marketing/batches` | GET | owner, admin |
+| `/api/marketing/batches/write-now` | POST | owner, admin |
 | `/api/marketing/funnels` | GET, POST | owner, admin |
 | `/api/marketing/funnels/stats` | GET | owner, admin |
+| `/api/marketing/ideas` | GET, POST | owner, admin |
+| `/api/marketing/jobs/retry` | POST | owner, admin |
 | `/api/marketing/offer/generate` | GET, POST | owner, admin |
+| `/api/marketing/rules` | GET, POST | owner, admin |
+| `/api/marketing/scripts/fix` | POST | owner, admin |
 | `/api/marketing/settings` | GET, POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
