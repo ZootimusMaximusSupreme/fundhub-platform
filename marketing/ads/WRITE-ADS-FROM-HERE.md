@@ -2,7 +2,7 @@
 
 Use this when Chris wants **ad copy**, not a repo audit.
 
-**Best door:** Cursor Agent with **only** `docs/ads/` open — or paste this file into a chat **without** attaching the whole FundHub repo.  
+**Best door:** Cursor Agent with **only** `docs/ads/` open — or paste this file into a chat **without** attaching the whole Fundhub repo.  
 **Slow door:** Claude Code with the full company loaded (`CLAUDE.md`, every cursor rule, journeys, tests). That path is for shipping product code, not hooks.
 
 ---
@@ -17,10 +17,10 @@ Use this when Chris wants **ad copy**, not a repo audit.
 
 ## Read only (in this order)
 
-1. **`docs/ads/RULES.md`** — hard no's, word counts, three ad shapes (cold / VSL / evergreen).
+1. **`docs/ads/RULES.md`** — Part 0 (Chris's rules) first, and it wins over everything else; then hard no's, word counts, three ad shapes (cold / VSL / evergreen).
 2. **`docs/ads/VOICE.md`** — how Chris actually talks (before/after pairs).
 3. **`docs/ads/fundhub-297/INDEX.md`** — which ad numbers are **already written**. Open **one** pack file for the id Chris named. **Do not regenerate** a locked script.
-4. **`docs/ads/CONTROLS.md`** — five live ads, **locked**. Match voice; never change their words.
+4. **`docs/ads/CONTROLS.md`** — five live ads, **locked**. Match voice; never change their words. Where their wording breaks RULES.md Part 0, Part 0 wins for new ads.
 
 **Optional — only if Chris named a lane, concept, or new angle:**
 
@@ -51,7 +51,8 @@ npm run ads:check -- path/to/draft.md
 ```
 
 Fix what it names. Run again until exit 0.  
-The checker reads **`docs/ads/rules-data.mjs` only** — not all of `RULES.md` prose. That is intentional (fast, cannot lie about having run).
+The checker reads **`docs/ads/rules-data.mjs` only** — not all of `RULES.md` prose. That is intentional (fast, cannot lie about having run).  
+`npm run ads:check` runs the old lists. Part 0's patterns and Chris's banned phrases run in strict mode (`checkScriptText` with `strict: true`, RULES.md 4.1 item 10), which the app's writer uses.
 
 Twelve compliance rules run **later** inside Creative Factory / `storeAsset` (needs live DB). Not part of this pass.
 

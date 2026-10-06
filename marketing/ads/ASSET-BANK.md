@@ -7,6 +7,9 @@ closer pack. If you're writing an ad, this is the only file you need open beside
 **Rules for this file:** nothing gets invented here. Every line traces to something Chris said, wrote,
 or shipped. If a fact is missing, that absence is the finding — leave the gap, don't fill it.
 
+**Part 0 of `RULES.md` (Chris's rules) wins over anything in this file.** The names and labels here
+are ours. Ad copy follows Part 0.
+
 ---
 
 ## 1. The offer
@@ -66,11 +69,14 @@ ones that say "you might not even need funding" and let the call decide.
 
 ---
 
-## 2. The mechanisms — what only FundHub has
+## 2. The mechanisms — what only Fundhub has
 
 ### Mechanism 1 — The Conveyor Belt ← the hero, and it has never run in an ad
 
 The single strongest asset in this entire file. Not in any control.
+
+"The Conveyor Belt" is our name for it, not ad copy. An ad never says "the belt" (Part 0 rule 13).
+It says what happens to the file.
 
 1. **Soft pull, tri-bureau.** No handing over an Experian login. No hard pull. Instant pre-approval,
    zero score impact, no friction at the starting line.
@@ -87,7 +93,7 @@ Up to **12 funding rounds**.
 
 **Why this matters more than anything else here:** it answers *"this takes too long and ruins my
 credit"* — their #1 objection — with a mechanism instead of a promise. Everyone else says "we protect
-your score." Only FundHub can say *how*.
+your score." Only Fundhub can say *how*.
 
 ### Mechanism 2 — The Event-Driven Engine
 
@@ -181,7 +187,7 @@ Chris's own words, plus the avatar's complaints. Every one of these is an ad.
 |---|---|---|---|
 | **A** | **The Bank-Rejected Builder** | Bank decline, embarrassment, researches before reapplying | "Judged on your business performance, not just your FICO" |
 | **B** | **The MCA Survivor** | Merchant cash advance regret, fear, anti-daily-payment | "No daily payments. Know the real cost." |
-| **C** | **The Spam-Scarred Skeptic** | Marketplace spam, distrust, screens every call | "We don't sell your number." *Strongest on Meta — this trauma is universal.* |
+| **C** | **The Spam-Scarred Skeptic** | Marketplace spam, distrust, screens every call | "We don't sell your phone number." *Strongest on Meta — this trauma is universal.* |
 | **D** | **The Credit-Protective Planner** | Watched the score drop from inquiries, abandons at the hard pull | "Before anyone pulls your credit." *Cleanest fit for the Conveyor Belt.* |
 
 ### The sixth — The Unsorted
@@ -231,23 +237,12 @@ the ones who do fit lean in. "If you're under 600, this isn't for you" is a hook
 
 ## 6. Proof
 
-| Claim | Status |
-|---|---|
-| **$25M+ deployed for clients** | Live in the presentation deck. Used in every control. |
-| **$2M+ self-funded** | From the offer doc. |
-| **9+ years / close to a decade** | Used in every control. |
-| **Koi Poke** — single restaurant, already turned away once → franchise with multiple locations | The only case study on file. Carries all seven controls. |
-| **Thousands of lenders in network** | Live in the deck. |
-| **1,000+ hours** building the system himself | From the offer doc. |
-| **30–50 matched lenders per file** | From the mechanism doc. |
-| **$100K–$200K stacks** | From the mechanism doc. |
-
-**The gap:** one case study across every ad. Koi Poke is doing all the work. More named results are
-the highest-value thing anyone could add to this file.
+The proof Chris allows is Part 0 of `RULES.md`, rules 35–38. Use only that. The proof table that
+sat here was dropped on 2026-10-05 because it broke Part 0.
 
 ---
 
-## 7. Objections — 18, in FundHub words
+## 7. Objections — 18, in Fundhub words
 
 From the closer pack. Shape is **Align → Educate → Reframe → Close**. An objection is usually a
 question — listen, ask one follow-up, don't argue.
@@ -294,7 +289,7 @@ Every one of these is also an ad. The best pre-handled objection makes a better 
 
 ### Use these
 
-"no spam calls" · "we don't sell your number" · "soft pull" · "won't touch your credit score" ·
+"no spam calls" · "we don't sell your phone number" · "soft pull" · "won't touch your credit score" ·
 "see your real offers" · "one honest application" · "no equity" · "no daily payments" ·
 "know the real cost" · "judged on your business, not just your FICO" · "owners the banks ignore" ·
 "bridge the gap" · **"before anyone pulls your credit"**
@@ -317,7 +312,8 @@ real number (7 days vs 30–45), not an adjective.
 From the controls, which are working at $32–36 a booked call. Don't drift from this.
 
 - **First person. Chris talking.** Never brand voice.
-- **Short sentences. One idea each.** Line breaks carry the pacing.
+- **Short, full sentences. One idea each.** Plain paragraphs, not line-broken fragments. A blank
+  line is a pause (Part 0 rules 17, 39 and 40).
 - **Name the cost before the fix.** Spend real time on what the problem already took from them.
 - **Absolution.** *"That's not on you."* The system failed them.
 - **The refusal.** *"I know there are a lot of people in this space who will tell you whatever you

@@ -9,10 +9,12 @@ Fundhub already defines the hook as the **first two sentences** (`docs/ads/RULES
 Sentence two does **one** of these jobs. Pick one. Do it in that sentence.
 
 1. **The win.** Say what they get if they stay.
-2. **The proof.** One specific fact. A number, a file, a thing that happened.
+2. **The proof.** One specific fact. A number, a file, a thing that happened. Only proof that RULES.md Part 0 allows (rules 35–38).
 3. **The stakes.** What the old way costs them.
 4. **The open loop.** One new detail the rest of the ad will explain.
 5. **The reassure.** They heard a bold first line. Sentence two shows you can deliver on it. This line is already in the Drive SOP "Bridge from Hook to CTA."
+
+RULES.md Part 0 wins here: rule 27 says line 2 is a bridge and the open loop is the best pick, and rule 28 pays the loop off right before the call to action, never announced.
 
 Sentence two still has to obey the hook checks. A cause is named by the end of sentence two. No ask. No question in sentence one. Sentence one is not about us.
 
@@ -31,6 +33,8 @@ Use `docs/ads/watch-curve.md`. Do not invent a 3-second score.
 
 - Most plays never reach 25%, and they are not tapping through: change **sentence one**. Same body.
 - Sentence one is landing and they still fall off before the body pays off: change **sentence two**. Same first line.
+
+This is a new take of one running ad. It is not a new ad in a batch. Inside a batch, Part 0 rule 34 still holds: every ad is a whole different ad, with no hook swaps on the same body.
 
 ## Where this came from
 
