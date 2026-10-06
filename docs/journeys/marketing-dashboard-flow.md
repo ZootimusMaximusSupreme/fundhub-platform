@@ -552,3 +552,169 @@ flowchart TD
   orchestrator's precondition records them.
 - **UNVERIFIED:** Netlify's own handling of the exit code (0 skips, 1 builds) is from
   Netlify's docs, not seen on a live build.
+
+## X4 Funnel builder: automatic addresses, tags, full tracking, Push live to a NEW path
+
+Drawn from code on branch `mm-x4-funnel-builder`: migration `425_marketing_funnel_builder.sql`,
+`api/marketing/funnels/{create,rename,build,push-live}.mjs`, `api/marketing/funnel.mjs`,
+`src/marketing/funnel-{paths,tracking,pages,copy,store,build,push,worker,routes,transport}.mjs`,
+`src/messaging/providers/clickfunnels-pages.mjs`, `netlify/functions/marketing-funnel-background.mjs`,
+and the tracking changes in `public/funnel/fh-events.js` and `src/funnel/track.mjs`. Owner order
+2026-10-05 ("every time a funnel is made we tag it", "a url system so I don't have to name them,
+or allow me to name them in the dash", "we can push a funnel live, /blueprint or similar"). Owner
+and admin only on every route (requireAuth, then requireRole `ROLE_SETS.MARKETING`).
+
+### A funnel's states
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft_empty: POST funnels/create<br/>address picked or typed + checked,<br/>tag fnl-word saved once, utm_campaign = lane,<br/>active false
+  draft_empty --> draft_built: job funnel done<br/>(one model call, copy check passed,<br/>3 pages with tag + tracking saved)
+  draft_empty --> draft_empty: job funnel failed<br/>(copy check failed twice, month cap, no key)
+  draft_built --> draft_built: POST funnels/build (write again)<br/>POST funnels/rename (pages redrawn from saved words)
+  draft_empty --> draft_empty: POST funnels/rename
+  draft_built --> pushing: POST funnels/push-live<br/>confirm_url = the funnel's address
+  pushing --> draft_built: an address is a page we did not make<br/>(stopped before anything was made)
+  pushing --> pushed: pages made (POST custom_html), ids saved,<br/>token PUT on our own page ids
+  pushed --> pushed: proof not seen yet (job fails, Retry proves again, makes nothing new)
+  pushed --> live: every page proven by a cache-busted read<br/>(tag + tracking on the live page)<br/>status live, live_at, active true
+  live --> [*]
+```
+
+- A live funnel never changes: rename, build and push-live are refused (400), and the
+  database refuses any change to a pushed page's address, HTML or page id, a live
+  funnel's address, and any tag.
+
+### Make — `POST /api/marketing/funnels/create`
+
+```mermaid
+flowchart TD
+  P[POST create<br/>request_id, offer_key, lane?, name?, campaign?, path?, build?] --> V{offer sold on a call?<br/>capital_blueprint or funding_dfy}
+  V -->|no| V1[400 offer_key]
+  V -->|yes| L[READ the live ClickFunnels page list<br/>GET /workspaces/id/pages]
+  L -->|cannot read| L1[503 clickfunnels_unreadable<br/>nothing made]
+  L -->|read| W[withRequest: one staff transaction<br/>lock: one create per company at a time]
+  W --> T[taken = live pages + every address our funnels use<br/>+ reserved words + funnel keys]
+  T --> A{path typed?}
+  A -->|yes| A1{all three addresses free?<br/>word, word-book, word-thank-you}
+  A1 -->|no| A2[400 path, says which one]
+  A1 -->|yes| M
+  A -->|no| N[offer word: /blueprint, then /blueprint-2, -3 ...]
+  N --> M[insert funnel: kind book_a_call, status draft,<br/>tag fnl-key, utm_campaign = lane, created_by, active false<br/>+ 3 empty pages]
+  M --> B{build true?}
+  B -->|yes| J[queue job funnel]
+  B -->|no| R
+  J --> R[COMMIT, 200 funnel + job]
+  R --> K[wake marketing-funnel-background<br/>with the owner's session]
+  K -->|wake failed| K1[job failed with the reason]
+```
+
+### Write the pages — job `funnel` (`src/marketing/funnel-build.mjs`)
+
+```mermaid
+flowchart TD
+  S[worker claims the job by id<br/>queued, this company] --> G{funnel built here,<br/>nothing on ClickFunnels?}
+  G -->|no| F1[failed: a live page is never rewritten]
+  G -->|yes| D{every page already<br/>saved by this job?}
+  D -->|yes| OK[done, nothing paid again]
+  D -->|no| C{month model spend under the cap?}
+  C -->|no| F2[failed: cap reached, nothing written]
+  C -->|yes| M[one Anthropic call, claude-opus-5-5,<br/>structured output COPY_SCHEMA<br/>facts: src/config/offers.mjs + campaign files if any<br/>cost logged to marketing_model_usage]
+  M --> K{copy check<br/>strict ad checker + outcome first,<br/>no invented numbers, no price,<br/>no testimonials, no SSN, no guarantee}
+  K -->|fails, first round| M
+  K -->|fails twice| F3[failed with the reasons, nothing saved]
+  K -->|passes| R[draw 3 pages in the house template<br/>tag block first in head + manifest tracking]
+  R --> DB[(save each page;<br/>the database refuses a page<br/>without the tag or the scripts)]
+  DB --> OK
+```
+
+### Push live — `POST /api/marketing/funnels/push-live` and job `funnel_push`
+
+```mermaid
+flowchart TD
+  P[POST push-live<br/>request_id, id, confirm_url] --> V{pages built, not live,<br/>confirm_url = the funnel's address,<br/>nothing in flight?}
+  V -->|no| V1[400 id or confirm_url]
+  V -->|yes| J[queue job funnel_push, 202, wake the worker]
+  J --> L[READ live page list]
+  L --> C{each of the 3 addresses:<br/>free, ours already, or ours from a crash<br/>by its description marker?}
+  C -->|a page we did not make| X[failed before anything was made]
+  C -->|ok| O[thank-you, booking, then landing:<br/>POST custom_html = a NEW page]
+  O -->|429 or no answer| RT[tried again later by the worker,<br/>nothing saved, nothing made twice]
+  O -->|401, 403, 404, 422| FX[failed for good with the reason]
+  O --> A{ClickFunnels answered<br/>the page address?}
+  A -->|no address| NA[failed before saving: never guessed;<br/>Retry takes the page back by its marker]
+  A -->|yes| SV[save its id and that address at once]
+  SV --> H{address = https://apply.fundhub.ai<br/>+ this page's path?}
+  H -->|another host or path| WH[failed: funnel stays a draft,<br/>no token, no proof, no more pages;<br/>a Retry stops here again]
+  H -->|yes| T[page token into that page:<br/>PUT /pages/id, only for ids this push made]
+  T --> R[cache-busted GET of each page at its own address:<br/>tag + tracking there?]
+  R -->|not yet, 4 tries| F[failed: Retry proves again,<br/>makes nothing new]
+  R -->|all proven| CK{all 3 pages at their own address,<br/>landing page at the funnel's address?}
+  CK -->|no| WH
+  CK -->|yes| LV[one transaction: funnel live: status, live_at,<br/>landing_url = live address, active true<br/>+ the 3 pages queued in repo_outbox:<br/>marketing/landing-pages/funnels/key/page.html]
+  LV --> WK[wake the marketing worker<br/>the outbox commits them when it drains]
+```
+
+- The repo save needed one more folder on the outbox allow-list
+  (`src/repo/allow-list.mjs`): `marketing/landing-pages/funnels/`. Nothing else under
+  `marketing/landing-pages/` is writable by the app.
+
+### The tag and the tracking on every page
+
+```mermaid
+flowchart LR
+  H[page head: fh-funnel-tag meta +<br/>window.FH_FUNNEL first,<br/>then Meta pixel PageView eventID,<br/>Clarity and GA4 when set, CF SDK + token] --> E[fh-events.js:<br/>page not on its fixed list but<br/>FH_FUNNEL names it -> sends, + funnel_tag]
+  E --> D[POST /api/public/slo-interest kind track]
+  D --> Q{tag + address in<br/>marketing_funnel_pages?}
+  Q -->|no| Q1[page_invalid, nothing saved]
+  Q -->|yes| S[events row funnel = tag, step = position,<br/>funnel_tag, funnel_id; page events_seen + 1]
+  S --> M[Meta server copy as before:<br/>PageView; Schedule on booking_confirmed]
+  A[fh-attribution.js] --> F[every form, the framed calendar too:<br/>UTMs + landing_path = this funnel's first page]
+```
+
+- UTMs keep the ad-number law: the ad's url_tags are `utm_source=fb&utm_medium=paid&utm_campaign=<lane>&utm_content=<ad number>`
+  (`utm_template` on the funnel). The tag never rides in a UTM.
+- Leads and bookings carry the funnel through `landing_path`; the address belongs to one funnel only.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+- **No design slice.** The design (`docs/specs/command-center-design-2026-10-05.md`) has no
+  funnel-builder slice; this unit follows the owner order of 2026-10-05 and the extras brief.
+  No screen is built here (X8 draws the Funnels cards).
+- **Build route added.** The brief names create, rename, push-live and the two reads. The page
+  writer needs a press to start or redo it, so `POST marketing/funnels/build` was added; create
+  also queues the first build (build: true by default).
+- **Head code.** The brief says "head_code from the tracking manifest". ClickFunnels refuses
+  head_code on a custom HTML page (422, OpenAPI read 2026-10-06), so the manifest's tracking
+  rides inside the page document, the same way the /roadmap pages do it.
+- **Meta Lead.** docs/tracking/meta-events.md maps Lead to the /roadmap buy box and the survey's
+  last answer only. A book-a-call funnel page fires PageView and, on a real booking, Schedule;
+  no Lead fires from these pages. Purchase stays server-only (the payment path). Adding a Lead
+  on booking needs a new row in that contract table.
+- **No VSL slot.** No Capital Blueprint video exists, so the landing page has no video block
+  (a missing file would 404 on a live page, as slo-02-booking does today).
+- **Standalone pages.** The pages are made as standalone custom HTML pages (no `funnel` block),
+  so no existing ClickFunnels funnel is changed. Which domain ClickFunnels serves a standalone
+  page on is UNVERIFIED until the first push (the /roadmap pages sit inside a ClickFunnels funnel
+  whose domain is apply.fundhub.ai; `docs/sops/clickfunnels-custom-html-push.md`). The push saves
+  the `url` ClickFunnels answers as it is and stops at the first page whose address is not
+  `https://apply.fundhub.ai` + its path: the funnel stays a draft and no more pages are made.
+  If that happens, the thank-you page is left on ClickFunnels at the other host, and the funnel
+  cannot be renamed (a page is on ClickFunnels); it needs an owner call (move the pages into a
+  ClickFunnels funnel on apply.fundhub.ai, the /roadmap way) before it can go live.
+- **Rename keeps the first word.** A rename moves the address but keeps the funnel's key, its
+  tag (law: a tag never changes) and its repo folder. After /blueprint-2 is renamed to
+  /blueprint-vip, its tag stays `fnl-blueprint-2` and its live pages save under
+  `marketing/landing-pages/funnels/blueprint_2/`; the next automatic create skips /blueprint-2
+  (its key is still taken). The Funnels card (X8) should print the tag and the repo folder next
+  to the address so this shows.
+- **Draft campaign files.** The writer reads the campaign's stage files whatever their approval
+  stamp and reports each file's status on the job result; it does not wait for approval.
+- **U22 worker.** Not on main, so the jobs run in their own background function (the offer
+  pattern). Both kinds are in `JOB_KINDS` for U22's worker to pick up later. The wake carries
+  the owner's session to that function; design §5 rule 18 says every wake carries the worker
+  secret, never the owner's session. When U22's worker lands, kinds `funnel` and `funnel_push`
+  move to it and `netlify/functions/marketing-funnel-background.mjs` retires.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
+  `src/http/marketing-funnel-builder.pg.test.mjs` in GitHub CI. Never run against live
+  ClickFunnels: every ClickFunnels call in the tests is a fake behind the real provider.

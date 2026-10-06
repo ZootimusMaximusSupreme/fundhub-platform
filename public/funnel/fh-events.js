@@ -8,7 +8,11 @@
        landing_path, referrer_domain, webdriver }
 
    The server works out funnel and step from page. A page that is not on PAGES
-   sends nothing.
+   sends nothing, with one exception: a page of a funnel the dashboard built
+   (build unit X4) carries window.FH_FUNNEL = { tag, page: { path } } in its
+   head. When that path is this page, it sends, and every post carries
+   funnel_tag; the server checks the tag and the page against its own list
+   (marketing_funnel_pages) and works out the funnel and step from there.
 
    What this file sends by itself:
      page_view     once per session per page                   { title }
@@ -317,13 +321,15 @@
   function send(event, props) {
     try {
       var page = pagePath();
-      if (!has.call(PAGES, page)) return;
+      var built = builtFunnel(page);
+      if (!has.call(PAGES, page) && !built) return;
       var seq = nextSeq(), session = sid(), kept = cleanProps(props);
       var body = { kind: "track", event: event, seq: seq, session_id: session, page: page, props: kept };
       var saved = attribution();
       for (var i = 0; i < KEYS.length; i++) if (saved[KEYS[i]]) body[KEYS[i]] = saved[KEYS[i]];
       body.webdriver = navigator.webdriver === true;
       body.url = pageUrl();
+      if (built) body.funnel_tag = built;
       var fbc = cookie("_fbc") || storedFbc(), fbp = cookie("_fbp");
       if (fbc) body.fbc = fbc;
       if (fbp) body.fbp = fbp;
@@ -342,6 +348,20 @@
       try { fire(list); } catch (e) {}
       beacon(JSON.stringify(body));
     } catch (e) {}
+  }
+
+  /* A dashboard-built funnel page: the funnel tag when window.FH_FUNNEL names
+     this very page, else "". The server checks it again; this only decides
+     whether the page may send. */
+  var FUNNEL_TAG = /^fnl-[a-z0-9]+(-[a-z0-9]+)*$/;
+  function builtFunnel(page) {
+    try {
+      var f = window.FH_FUNNEL;
+      if (!f || typeof f !== "object" || !f.page || typeof f.page !== "object") return "";
+      var tag = typeof f.tag === "string" ? f.tag : "";
+      var path = typeof f.page.path === "string" ? f.page.path.toLowerCase().replace(/\/+$/, "") : "";
+      return FUNNEL_TAG.test(tag) && tag.length <= 64 && path && path === page ? tag : "";
+    } catch (e) { return ""; }
   }
 
   function fhTrack(event, props) {
@@ -763,7 +783,7 @@
 
   try {
     var here = pagePath();
-    if (has.call(PAGES, here)) {
+    if (has.call(PAGES, here) || builtFunnel(here)) {
       var flag = "fh_pg_" + here;
       var seen = false;
       try { seen = !!sessionStorage.getItem(flag); if (!seen) sessionStorage.setItem(flag, "1"); } catch (e) {}

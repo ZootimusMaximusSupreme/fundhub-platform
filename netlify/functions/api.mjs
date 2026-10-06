@@ -294,6 +294,11 @@ import climateGeocode from "../../api/climate/geocode.mjs";
 import climateConfig from "../../api/climate/config.mjs";
 import marketingSettings from "../../api/marketing/settings.mjs";
 import marketingFunnels from "../../api/marketing/funnels.mjs";
+import marketingFunnel from "../../api/marketing/funnel.mjs";
+import marketingFunnelsCreate from "../../api/marketing/funnels/create.mjs";
+import marketingFunnelsRename from "../../api/marketing/funnels/rename.mjs";
+import marketingFunnelsBuild from "../../api/marketing/funnels/build.mjs";
+import marketingFunnelsPushLive from "../../api/marketing/funnels/push-live.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1191,7 +1196,13 @@ export const ROUTES = {
 
   // marketing machine
   "marketing/settings": marketingSettings,
-  "marketing/funnels": marketingFunnels
+  "marketing/funnels": marketingFunnels,
+  // the funnel builder (build unit X4): make, rename, write, push live, read one
+  "marketing/funnel": marketingFunnel,
+  "marketing/funnels/create": marketingFunnelsCreate,
+  "marketing/funnels/rename": marketingFunnelsRename,
+  "marketing/funnels/build": marketingFunnelsBuild,
+  "marketing/funnels/push-live": marketingFunnelsPushLive
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

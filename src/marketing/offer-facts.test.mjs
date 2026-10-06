@@ -38,15 +38,26 @@ test("an unknown key is null, never a guess", () => {
   }
 });
 
-test("the keys are the two the seed uses, and each answers with the same shape", () => {
-  assert.deepEqual([...OFFER_KEYS].sort(), ["funding_dfy", "slo_roadmap"]);
+test("the keys are the two the seed uses plus the Blueprint, and each answers with the same shape", () => {
+  assert.deepEqual([...OFFER_KEYS].sort(), ["capital_blueprint", "funding_dfy", "slo_roadmap"]);
   for (const k of OFFER_KEYS) {
     const f = offerFacts(k);
     assert.deepEqual(Object.keys(f).sort(), ["book_call", "key", "label", "price_cents", "source"]);
     assert.ok(f.price_cents === null || Number.isInteger(f.price_cents), `${k}: integer cents or null`);
   }
   const seed = fs.readFileSync(path.resolve(HERE, "../../db/seed/297_marketing_funnels.sql"), "utf8");
-  for (const k of OFFER_KEYS) assert.ok(seed.includes(`'${k}'`), `seed 297 names ${k}`);
+  // The seed makes the two hand-mapped funnels. capital_blueprint is not seeded:
+  // its funnel is made by the dashboard's funnel builder (build unit X4).
+  for (const k of ["funding_dfy", "slo_roadmap"]) assert.ok(seed.includes(`'${k}'`), `seed 297 names ${k}`);
+  assert.ok(!seed.includes("'capital_blueprint'"), "no seeded funnel for the Blueprint");
+});
+
+test("capital_blueprint reads the Capital Blueprint from src/config/offers.mjs", () => {
+  const f = offerFacts("capital_blueprint");
+  assert.equal(f.label, OFFERS.UWIQ_DELIVERABLES.name);
+  assert.equal(f.price_cents, OFFERS.UWIQ_DELIVERABLES.priceCents);
+  assert.equal(f.book_call, true);
+  assert.equal(OFFERS.UWIQ_DELIVERABLES.productCode, "consulting-package");
 });
 
 test("no literal roadmap price is typed anywhere in src/marketing/ code", () => {
