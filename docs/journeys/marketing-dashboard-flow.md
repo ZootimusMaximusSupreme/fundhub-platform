@@ -1221,6 +1221,7 @@ flowchart TD
     `marketing-cc-today.js` and `marketing-cc-settings.js`.
 12. **No cost sheet in U34's frame:** under U34's contract Fix and Write now are one tap with the cost
     printed under the button (design safety rule 3); the design's two-tap list does not include them.
+
 ## U38 Command Center Numbers tab: Ads, Angles and Funnels views
 
 Drawn 2026-10-06 from the code on branch `mm-u38-numbers-views`: `public/app/cc-tab-numbers.js`
@@ -1369,3 +1370,60 @@ flowchart TD
   then only `e2e/helpers/cc-launch-stub.mjs` renders it.
 - **UNVERIFIED:** how the real frame's `ctx.confirm` answers (callback or promise). The tab takes
   either; only an explicit yes sends.
+
+## X8 The Ideas tab: what each tap sends (`public/app/cc-tab-ideas.js`)
+
+Drawn from the code on branch `mm-x8-ideas-funnels-tab`: `public/app/cc-tab-ideas.js` (the tab,
+registered with `window.FundhubCC` per `docs/specs/command-center-tabs.md`) and
+`public/app/cc-tab-ideas.css`. Owner and admin only, because every route it calls gates on
+`ROLE_SETS.MARKETING`. The intended flow used is the design (`docs/specs/command-center-design-2026-10-05.md`
+§3.2, §5) and spec §1; `docs/journeys/marketing-machine-intended.md` does not exist (design §7 q7).
+
+```mermaid
+flowchart TD
+  L["Tab opens"] --> R["GET marketing/costs, ideas, batches, batches/next, angles,<br/>research, flywheel, funnels, today<br/>(each part paints alone; a failed part says so, the rest stays)"]
+  R --> NB{"route answers the router's 404<br/>(names the path)?"}
+  NB -->|yes| H["one honest sentence: Not on this page yet: it ships in slice N<br/>no button"]
+  NB -->|no| C["cards drawn; every paid button prints its cost line<br/>from GET marketing/costs, or 'Cost: unknown, not measured yet.'"]
+
+  C --> I1["Save idea (free)"] --> P1["POST marketing/ideas {raw_points, script_format?, funnel_key?}"]
+  C --> I2["Write now from this idea<br/>(only when write_now_ready)"] --> S1["cost sheet"] --> P2["POST marketing/batches/write-now {count:1, idea_ids}"]
+  C --> I3["Accept / Make more of this (free)"] --> P3["POST marketing/ideas {source:'suggestion'?, angle_key}"]
+  C --> D1["Research it<br/>(off until a stop amount is typed, or while the research list failed to load,<br/>with the reason printed; Deep off until a Quick look is measured)"] --> S2["cost sheet: the server's search ceiling and its fee, cap, month"] --> P4["POST marketing/research {question, depth, sources, belief?, max_cost_usd}"]
+  C --> D2["Read it / Approve / Tweak / Redo / Save to the brain / Retry"] --> P5["GET marketing/research?id= · POST research/approve · research/tweak (sheet) · research (sheet) · research/brain · jobs/retry"]
+  C --> F1["Build the avatar · Research the market · Write the copy · Pick the strategy<br/>(off with the server's can_run reason, e.g. 4 until 3 is approved;<br/>a step the site cannot run yet shows its sentence and no button)"] --> S3["cost sheet with caps and search ceilings"] --> P6["POST marketing/flywheel/run {campaign, stage, kind, service_description? | market?, competitors?}"]
+  C --> F2["Write the offer"] --> S4["cost sheet"] --> P7["POST marketing/flywheel/run {campaign, stage:3, kind:'offer'}<br/>(X3 hands it to the Write offer path with the campaign's files)"]
+  C --> F3["Approve (free) · Tweak (sheet) · Retry / Resume (free) · Start over (sheet)"] --> P8["POST flywheel/approve · flywheel/tweak · jobs/retry (else flywheel/run {retry_job_id}) · flywheel/run"]
+  C --> F4["Read the spend (free) · Start a flywheel (free)"] --> P9["POST flywheel/spend-read {campaign} · flywheel/campaign {key}"]
+  C --> U1["Make the funnel"] --> S5["cost sheet (one model call)"] --> P10["POST marketing/funnels/create {offer_key, path?}<br/>answer shows the automatic address and tag"]
+  C --> U2["Change the address (free) · Write the pages (sheet) · See the pages<br/>(off with 'write the pages first' until a page is written)"] --> P11["POST funnels/rename {id, path} · funnels/build {id} · GET marketing/funnel?id=<br/>(preview in a sandboxed frame: scripts off, no visit counted)"]
+  C --> U3["Push live: tap 1"] --> CF["confirm naming the address, Costs $0"] --> U4["tap 2 (online only)<br/>a yes by onConfirm, a promise of true or true; sent once"] --> P12["POST marketing/funnels/push-live {id, confirm_url}"]
+  C --> Q1["Write one piece (Quick copy)"] --> S6["cost sheet"] --> P13["POST creative/generate, then POST creative/run {max_jobs:1}"]
+  P4 & P6 & P7 & P10 & P11 & P12 --> PO["the row polls its GET every 10 s while something runs<br/>and the tab is shown (hide() stops it)"]
+```
+
+- Nothing on the tab spends ad money, and no tap posts before its sheet's button: proved by
+  `e2e/cc-tab-ideas.spec.mjs` at 390x844 and 1280 (36 tap paths, mocked answers) and the word rules
+  by `src/ui/cc-tab-ideas.test.mjs`.
+- **Search ceilings come from the server** (design §3.2, §5 rule 3), first match wins:
+  `GET marketing/research` `limits.{quick, deep}.searches` (X2's `researchLimits()`), then
+  `GET marketing/costs` `limits.<kind>` (X1 sends `limits.avatar.max_searches` and
+  `max_search_usd`; market research would be `limits.ad_research` with
+  `searches_with_retries`), then `kinds.<kind>.max_searches`. Only when no server sends one does
+  the line fall back to the design's numbers (184, 106/138, 62/542).
+- **Sheets:** `ctx.costSheet` and `ctx.confirm` may say yes by calling `onConfirm`, by returning a
+  promise that resolves `true`, or by returning `true`; the work runs once even if a frame does
+  two of these, and a sheet that throws sends nothing. The contract does not pin the shape yet.
+- **UNVERIFIED against a real back end:** `GET marketing/costs`, `GET/POST marketing/flywheel*` and
+  `GET/POST marketing/research*` are being built in units X1, X2 and X3 and are not merged on this
+  branch. The flywheel card reads unit X3's real answer (branch `mm-x3-ideas-flywheel` at 8a2aaf4b4:
+  `label_words`, `state_word`, `sentence`, `can_run`, `can_approve`, `run.stopped_at_cap`,
+  `campaigns[{name, words}]`, `offers[{key, name}]`); research and costs follow the design's shapes.
+  `flywheel/run` gets both `stage` and `kind`. Until a route ships, its card prints the honest
+  sentence. Market research (stage 2) has no server limit yet: X2's `marketLimits()` is not sent
+  by any route, so its 106/138 line is the design's number until one is.
+- **Gaps against the design (findings, not reconciled):** the Proof card is one honest sentence
+  (slice 11 not built); the Ideas tab
+  is not yet on `marketing-command-center.html` (the frame unit U34 owns the page and adds the
+  script tag); "one filled button" is per card (Build the avatar only while step 1 needs it), as the
+  design's §3.2 words it.
