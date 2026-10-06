@@ -215,11 +215,13 @@ BEGIN
     fundhub_ad_id(NEW.utm_content),
     fundhub_meta_ad_number(NEW.org_id, NEW.utm_term, NEW.utm_content)
   );
-  IF derived IS NULL AND TG_OP = 'UPDATE'
-     AND NEW.utm_content IS NOT DISTINCT FROM OLD.utm_content
-     AND NEW.utm_term    IS NOT DISTINCT FROM OLD.utm_term
-     AND NEW.org_id      IS NOT DISTINCT FROM OLD.org_id THEN
-    derived := OLD.ad_id;
+  -- OLD is read only inside the UPDATE branch: on an INSERT there is no old row.
+  IF derived IS NULL AND TG_OP = 'UPDATE' THEN
+    IF NEW.utm_content IS NOT DISTINCT FROM OLD.utm_content
+       AND NEW.utm_term IS NOT DISTINCT FROM OLD.utm_term
+       AND NEW.org_id   IS NOT DISTINCT FROM OLD.org_id THEN
+      derived := OLD.ad_id;
+    END IF;
   END IF;
   NEW.ad_id := derived;
   RETURN NEW;
