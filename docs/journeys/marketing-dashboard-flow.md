@@ -693,3 +693,116 @@ flowchart TD
 `GET marketing/batches` and `POST marketing/batches/write-now` are drawn in `ad-script-flow.md`,
 section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
 JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
+
+## X3 The flywheel on the dashboard (Ideas: Offer and market card back end)
+
+Drawn 2026-10-06 from the code on branch `mm-x3-ideas-flywheel`: `api/marketing/flywheel.mjs`,
+`api/marketing/flywheel/{run,approve,tweak,spend-read,campaign}.mjs`, `src/marketing/flywheel/*`
+(reader, stages, store, steps, copy-stage, strategy-stage, spend-read, campaigns, stamp, save,
+doctrine, copy-checks, stage-job), `src/marketing/job-kinds.mjs` (`flywheel_stage`),
+`src/repo/{allow-list,edit-ops}.mjs`, `scripts/flywheel/status.mjs` (`evaluateFiles`).
+Design `docs/specs/command-center-design-2026-10-05.md` §3.2 row 6, §5, §6 slice 5. Owner and admin
+only on every route (requireAuth, then requireRole `ROLE_SETS.MARKETING`). Back end only: the
+Ideas tab screen is unit X8.
+
+### Where the stage files are read from (every answer names its source)
+
+```mermaid
+flowchart TD
+  R["readFlywheel(campaign)"] --> T{"GITHUB_REPO_TOKEN set and not masked?"}
+  T -->|no| B["bundle-fallback: marketing/flywheel/** shipped with the function"]
+  T -->|yes| REF["getRef: the branch's commit"]
+  REF -->|error| B
+  REF --> L["listFolder marketing/flywheel @commit: the campaigns"]
+  L --> F["getContents x8 @commit (ETag cache): 00-OWNER-NOTES, 01-avatar, the word bank, 02 to 06"]
+  F -->|error| B
+  F --> P["lay on top: repo_outbox rows of this company not yet committed<br/>(replace = the new file, edit = re-applied) → source 'outbox-pending'"]
+  B --> PB["lay on top: every flywheel row of this company, committed too<br/>(both edit ops are idempotent)"]
+  P & PB --> S["states: scripts/flywheel/status.mjs evaluateFiles (the same rules as npm run flywheel:status)"]
+```
+
+### The six rows and what each button does
+
+```mermaid
+flowchart TD
+  G["GET marketing/flywheel?campaign="] --> V["six rows: label_words, state_word, sentence,<br/>can_run{ok, reason}, run{step, step_word, cost_so_far_usd}, review_card_md, files"]
+  RUN["POST marketing/flywheel/run {campaign, stage, request_id}"] --> W{stage}
+  W -->|1 or 2| NB["409 not_built: 'Not on this page yet: it ships in slice 5a / 10.'"]
+  W -->|3| OF["hand to POST marketing/offer/generate with the campaign's own files (kind 'offer')"]
+  W -->|6| SR["spend read now, one staff transaction → 200"]
+  W -->|4 or 5| GATE{"step 3 approved? (5: 3 and 4)"}
+  GATE -->|no| BL["409 blocked, the reason printed"]
+  GATE -->|yes| KEY{"Anthropic key? month cap left?"}
+  KEY -->|no key| NM["503 no_model"]
+  KEY -->|cap reached| CH["409 cap_hit"]
+  KEY -->|yes| J["one staff transaction: advisory lock (company, campaign, stage) →<br/>a queued/running flywheel_stage row? answer it : insert one"]
+  J --> A202["202 {started, already_running, job, poll}; wake the worker after the commit"]
+  AP["POST marketing/flywheel/approve {campaign, stage}"] --> AE["file there? → outbox edit set_front_matter_key status: approved<br/>(the body hash does not change, nothing downstream goes out of date)"]
+  TW["POST marketing/flywheel/tweak {campaign, stage, note}"] --> TN["outbox edit append_line_under_heading '## Notes':<br/>'YYYY-MM-DD | stage N | note' (append only, a repeat writes once)"]
+  TN --> TR["re-run where it can: 4/5 a job with the note in its payload · 6 the read now ·<br/>3 the offer path with the line in its notes · 1/2 not yet (reason given)"]
+  CA["POST marketing/flywheel/campaign {key}"] --> CN["offer key → folder (UWIQ_DELIVERABLES → capital-blueprint) →<br/>outbox replace 00-OWNER-NOTES.md with 'Offer key: …' (201; exists → 200)"]
+```
+
+### Steps 4 and 5 on the worker (job kind `flywheel_stage`, group writer)
+
+```mermaid
+flowchart TD
+  C["worker claims flywheel_stage → stage-job.mjs run(job)"] --> D{"payload.stage has a runner? campaign a folder name?"}
+  D -->|no| FF["fail now (final), plain reason"]
+  D -->|yes| ST["runSteps: start at result.state, else payload.resume (kept for Retry), else fresh"]
+  ST --> CAP{"before every batch: run spend + batch worst case under the run cap<br/>(max_batch_cost_usd, $40) and the month cap ($300)?"}
+  CAP -->|shrink to fit| CALL["callModel provider 'anthropic', explicit model, maxTokens, timeout;<br/>one marketing_model_usage row per call (served model, job_id)"]
+  CAP -->|not one call fits| STOP["'Stopped at the $40 run cap while …' : result.stopped_at_cap, place kept, failed (final)"]
+  CALL --> SAVE["save the place in result (one statement)"]
+  SAVE --> SL{"2-minute slice used?"}
+  SL -->|yes| BACK["requeueJob (no attempt counted), due now → the next claim resumes"]
+  SL -->|no| NEXT["next step"]
+  NEXT --> CAP
+  NEXT --> OUT["save step: stamp (stage, version+1, draft, input hashes, counts) →<br/>repo_outbox replace 0N-*.md, op id flywheel:job:file → job done with the evidence"]
+```
+
+- Step 4 (copy.js port): inputs → angles (Opus) → write per reason (Sonnet) → humanize per piece
+  (banScan in code with rules-data.mjs lists; up to 3 attack and rewrite passes; still dirty or
+  figures sanded off = dropped) → verify (closing-line collisions dropped by code, then three
+  lenses) → assemble (Opus) → save `04-copy.md`.
+- Step 5 (ad-strategy.js port): inputs (offer, copy, the company's own 30-day totals as staff, the
+  ground files from GitHub or beside the code; missing ones listed) → ground (Sonnet) → plans x2
+  (Opus, doctrine bundled in `doctrine.mjs`) → checks (`screenTargeting` run in code on each plan,
+  then three lenses) → repair once → assemble → save `05-ad-strategy.md`.
+- Step 6 (spend read): `readAdNumbers` + `readTotals` + Meta purchases per number, 30 Arizona days
+  ending yesterday, as staff; the conclusion is code (watch-curve law words, no benchmark) →
+  `06-spend.md` through the outbox.
+- Quick copy: `src/creative/providers/copy.mjs` is forced to Claude (`claude-sonnet-5-5` unless a
+  Claude model is configured); `POST creative/run` adds `check` (checkScriptText strict, in words)
+  to every copy asset and `model` to every job.
+
+### Gaps between the design and this code (findings, not reconciled)
+
+- **Stages 1 and 2 do not run here.** Units X1 (avatar, kind `avatar`) and X2 (market research,
+  `flywheel_stage` stage 2) own them; `STAGE_RUNNERS[1|2]` is null and the routes answer
+  `not_built` with the row's sentence. X1/X2 add their runner lines (`stages.mjs`,
+  `stage-job.mjs`) rather than new routes.
+- **One run in flight per campaign and stage is held in code** (advisory transaction lock plus a
+  look), not by the partial unique index the design names: X3 has no migration number. The index
+  belongs in the `marketing_jobs` follow-up migration (design slice 10).
+- **The run cap for steps 4 and 5 is the batch cap** (`max_batch_cost_usd`, $40). The design names
+  no cap of its own for them.
+- **Retry clears `result`** (U04 `retryJob`), so the runner keeps its place in `payload.resume`
+  as well; a retried run picks up there.
+- **The spend read reads every ad in the account.** Ads are not tied to one flywheel campaign yet
+  (no column links them); the file says so.
+- **Step 5's ground files** (`ops/workflows/ads-waterfall-projections-2026-08-26.md`,
+  `ops/workflows/ads-revenue-model-2026-08-24.md`, `marketing/ads/ascension/ascension-ads.md`) are
+  read from GitHub; with no token they are read only where the function bundle has them (the
+  `ops/` files are not in `included_files`), and the run lists them as missing. The revenue model
+  file is not in the repo at all.
+- **The doctrine** is the repo's excerpts only (`ascension-ads.md` §1 and §5, the Drive index
+  lines); the full SOPs are in Drive and are not read. The plans are told so.
+- **GET marketing/angles** is unit U32's (`mm-u32-angles-funnel-stats`, not merged here);
+  **GET/POST marketing/batches/next** is unit U23's. Not built twice.
+- **GET marketing/flywheel/job?id=** (design slice 5a) is unit X1's; `GET marketing/flywheel`
+  carries each row's run instead.
+- `docs/journeys/marketing-machine-intended.md` is not on main, so this was checked against the
+  design and spec text, not the intended journey.
+- **UNVERIFIED on this Mac** (no Postgres): the routes and the worker run against real tables
+  are proved by `src/http/marketing-flywheel.pg.test.mjs` in GitHub CI.

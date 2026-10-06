@@ -7,6 +7,7 @@
 // what readers need so they never import a provider module directly.
 //
 //   getContents(path, {ref, etag}) -> {content, sha, etag, notModified, missing}
+//   listFolder(path, {ref})        -> {entries: [{name, path, type, sha}], missing}
 //   getRef()                       -> {sha}   (pin a batch's rules at one commit)
 //   repoToken(env)                 -> the token, or null when missing or masked
 //
