@@ -71,3 +71,78 @@ flowchart TD
 - The page `public/app/marketing-command-center.*` (workflow M11).
 - Running a flywheel stage from the page (slice 2). The flywheel rows are read only.
 - The offer generator (workflow M12).
+
+## U05 M0 step 2: repo outbox (412), GitHub client provider, path allow-list, edit ops, lease-based drain (pooler-safe), worker wake
+
+Drawn 2026-10-05 from the code on branch `mm-u05-repo-outbox`: `src/repo/outbox.mjs`,
+`src/repo/allow-list.mjs`, `src/repo/edit-ops.mjs`, `src/messaging/providers/github-repo.mjs`,
+`src/marketing/wake.mjs`, `db/migrations/412_repo_outbox.sql`. Spec §6 Step 2 and §2 item 8
+("every save goes to the database and the repo").
+
+**Nothing calls this yet.** The save routes (U25, U26, U35) call `enqueueRepoWrite` and
+`wakeWorker`; the worker (U22) calls `drainOutbox` at most once a minute. Those boxes are
+marked **NOT BUILT** below. Live commits also need `GITHUB_REPO_TOKEN` (only Chris can make it,
+spec §16) and `MARKETING_WORKER_SECRET`; neither is set by this unit.
+
+### A save, from the app to the repo
+
+```mermaid
+flowchart TD
+  S["A save in the app — NOT BUILT (U25, U26, U35)<br/>inside the caller's transaction"] --> P{"path on the allow-list?<br/>normal form only"}
+  P -->|no| P1["refused (RepoPathError), nothing saved"]
+  P -->|yes| V{"replace: JSON loads, registry passes parseRegistry?<br/>edit: a known op aimed at its own file?"}
+  V -->|no| V1["refused (EditOpError / OutboxError), nothing saved"]
+  V -->|"op id already used for this same save"| V2["the saved row is returned, nothing new"]
+  V -->|yes| E["repo_outbox row: waiting<br/>same transaction as the database change"]
+  E -->|"the transaction rolls back"| X["no row"]
+  E -->|"the transaction commits"| W["wakeWorker: POST /.netlify/functions/marketing-worker-background<br/>header x-fundhub-worker"]
+  W -->|"MARKETING_WORKER_SECRET unset or masked"| W1["no-op; the clock wakes the worker later"]
+  W --> D["drainOutbox — the worker, NOT BUILT (U22)"]
+```
+
+### One drain pass (`drainOutbox`)
+
+```mermaid
+flowchart TD
+  D["drainOutbox"] --> T{"GITHUB_REPO_TOKEN set and not masked?<br/>(GITHUB_TOKEN is never read)"}
+  T -->|no| T1["skipped no_token — nothing claimed, rows keep waiting"]
+  T -->|yes| C{"claimOutbox: one short transaction<br/>pg_try_advisory_xact_lock, one global key"}
+  C -->|"lock taken, or a claim younger than 10 min on any waiting row"| C1["skipped busy"]
+  C -->|"nothing waiting"| C2["skipped empty"]
+  C -->|yes| CL["claimed: claimed_at, claim_id, attempts + 1"]
+  CL --> G["getRef, then listCommits (last 20)"]
+  G -->|"blocked by the ADAPTERS dry-run fence"| H["claim cleared, attempt not counted<br/>skipped dry_run"]
+  G --> TR{"id already in an 'Outbox:' trailer?"}
+  TR -->|yes| DONE1["committed with that commit's sha (never twice)"]
+  TR -->|no| A["read each edited file at the head<br/>apply rows in id order<br/>JSON parses, registry passes parseRegistry"]
+  A -->|"a row the file cannot take"| R["that row only: error kept, claim cleared<br/>retried next pass"]
+  A --> TREE["createTree: base_tree + files inline<br/>allow-list checked again"]
+  TREE -->|"same tree as the head"| DONE2["committed at the head, no empty commit"]
+  TREE --> CM["createCommit: author Fundhub app<br/>message 'app: …', trailer 'Outbox: ids', ends '[skip ci]'"]
+  CM --> U["updateRef refs/heads/GITHUB_BRANCH, force false"]
+  U -->|ok| DONE3["committed: committed_sha + committed_at"]
+  U -->|"422 not a fast forward, or 409"| G2{"tries left (3 in all)?"}
+  G2 -->|yes| G
+  G2 -->|no| RT["claim cleared, error kept — next pass retries"]
+  U -->|"5xx, no answer, 429, rate limit"| RT
+  U -->|"any other 422 (branch protection), 401, 403, 404"| ER["error recorded for the health card<br/>claim kept, expires after 10 min (no hammering)"]
+```
+
+- No lock and no transaction is held across any GitHub call. A drain whose lease was taken
+  over writes nothing: every update is limited to rows that still carry its `claim_id`.
+- The health card that shows `error` and the dry-run hold is U22 — **NOT BUILT**.
+- Fallback reads: `netlify.toml` now bundles RULES.md, VOICE.md, RECIPES.md, angles.json,
+  banned-live.json, registry.json and `marketing/broll/catalog.json` with every function. The
+  code that falls back to them is in the readers (U24, U26) — **NOT BUILT**.
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- Spec §6 Step 2 says the drain "takes `pg_try_advisory_lock`". Built instead as
+  `pg_try_advisory_xact_lock` plus a 10-minute lease, per the plan's critique fix B1: a session
+  lock leaks on the Supabase transaction pooler.
+- Spec §6 Step 2 cites `parseRegistry` at `src/ads/registry.mjs:108`; it is at :118 today.
+- A save that does not fit its file (for example an edit to a Part 0 rule number that is not
+  there) is retried every pass with its reason on the row. There is no "gave up" state; the
+  spec names none.
+- `docs/journeys/marketing-machine-intended.md` is not on main, so this was checked against
+  the spec text, not the intended journey.
