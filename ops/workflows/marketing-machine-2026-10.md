@@ -104,6 +104,23 @@ Full briefs: `ops/workflows/marketing-machine-2026-10-plan.json` (key final.unit
 - A Submagic retry that makes a new project may pay again: yes, only behind a confirm that prints the minutes and "a retry pays again".
 - Per-ad Pause and ad-set budget on Launch in v1: no; Launch links to Campaigns; per-ad Pause comes with slice 9.
 
+## Design defaults taken without asking (design §7 q4-q14, 2026-10-05 night)
+
+Recommended answer on each, except q10: the approval deck stays OFF /roadmap (Chris said no earlier tonight). q7 (intended journey) stays an only-Chris item. q11 (Render, R2) waits for Chris's accounts. q12: no new image library; crops are cut in the browser.
+
+## Extra units (owner orders not in the plan): `ops/workflows/marketing-machine-2026-10-extras.json`
+
+| Id | Work | Wave | Status |
+|---|---|---|---|
+| X4 | Funnel builder + automatic funnel URLs + tags + tracking + Push live to a new path | 2a | pending |
+| X1 | Build the avatar on the server (slice 5a) | 2b | pending |
+| X2 | Research the market + Research it on the server (slice 10) | 2b | pending |
+| X3 | Ideas back end: flywheel stages from buttons (slice 5) | 2b | pending |
+| X8 | Ideas tab + Research + Funnels cards | 2c | pending |
+| X5 | Ready to film: Shoot tab + teleprompter page | 2c | pending |
+
+Wave order: 2a = U22, U24-U34 (minus U23) + X4; 2b = U23, U36, U38, U39, X1, X2, X3; 2c = U35, U37, X5, X8. Then one ship, then the Blueprint test.
+
 ## Blockers / only-Chris items (spec §16)
 
 - The intended journey `docs/journeys/marketing-machine-intended.md` was approved in the archived chat but never committed. A hook blocks agents from writing `*-intended.md`.
