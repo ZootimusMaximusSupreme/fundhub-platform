@@ -296,6 +296,8 @@ import marketingSettings from "../../api/marketing/settings.mjs";
 import marketingFunnels from "../../api/marketing/funnels.mjs";
 import marketingAds from "../../api/marketing/ads.mjs";
 import marketingAd from "../../api/marketing/ad.mjs";
+import marketingAngles from "../../api/marketing/angles.mjs";
+import marketingFunnelsStats from "../../api/marketing/funnels/stats.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1195,7 +1197,9 @@ export const ROUTES = {
   "marketing/settings": marketingSettings,
   "marketing/funnels": marketingFunnels,
   "marketing/ads": marketingAds,
-  "marketing/ad": marketingAd
+  "marketing/ad": marketingAd,
+  "marketing/angles": marketingAngles,
+  "marketing/funnels/stats": marketingFunnelsStats
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

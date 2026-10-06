@@ -349,7 +349,9 @@ const API_KEYS = [
   "marketing/settings",
   "marketing/funnels",
   "marketing/ads",
-  "marketing/ad"
+  "marketing/ad",
+  "marketing/angles",
+  "marketing/funnels/stats"
 ];
 
 const DESK_FILES = [

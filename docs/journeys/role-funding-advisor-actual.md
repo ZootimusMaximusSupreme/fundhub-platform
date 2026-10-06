@@ -306,7 +306,9 @@ flowchart TD
 | `/api/marketing-flags` | POST | owner, admin, sales_manager |
 | `/api/marketing/ad` | GET | owner, admin |
 | `/api/marketing/ads` | GET | owner, admin |
+| `/api/marketing/angles` | GET | owner, admin |
 | `/api/marketing/funnels` | GET, POST | owner, admin |
+| `/api/marketing/funnels/stats` | GET | owner, admin |
 | `/api/marketing/offer/generate` | GET, POST | owner, admin |
 | `/api/marketing/settings` | GET, POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |

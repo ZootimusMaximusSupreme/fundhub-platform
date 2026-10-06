@@ -644,3 +644,99 @@ without an index condition. The live timing of each route is taken after ship
 - **Lead days are not range-scanned.** U20's lead read finds the company's tagged
   leads by index, then keeps the window by Arizona day of `captured_at` (not sargable).
 - **UNVERIFIED on this Mac** (no Postgres here): proved only by the pg test in GitHub CI.
+
+## U32 M5 11.2 part 2: angles, funnel numbers, and the M5 keys on Today
+
+Written 2026-10-06 from the code on branch `mm-u32-angles-funnel-stats`. Read only: nothing
+here writes a row, calls Meta or calls a model. Code: `api/marketing/angles.mjs`,
+`api/marketing/funnels/stats.mjs`, `api/marketing/today.mjs` (part 5),
+`src/marketing/metrics-rollups.mjs`. The counting rules are U20's
+(`src/marketing/metrics.mjs`); this unit only decides which funnel and which angle a number
+belongs to, and adds the per-number results up.
+
+Three routes, one gate (owner and admin, `ROLE_SETS.MARKETING`; the company from the
+session):
+
+```mermaid
+flowchart TD
+  A[GET marketing/angles<br/>GET marketing/funnels/stats] --> B{signed in?}
+  T[GET marketing/today] --> B
+  B -->|no| B1[401]
+  B -->|yes| C{owner or admin?}
+  C -->|no| C1[403, nothing read]
+  C -->|yes| W[window: last 30 Arizona days<br/>Today: today, 7 and 30 days]
+  W --> R[one asStaff read<br/>Today: four parts side by side]
+  R -->|a marketing_ table not there yet| NR[angles, funnels/stats: 503 not_ready<br/>Today: that part empty + named in waiting]
+  R -->|database not answering| DD[503 db down]
+  R --> OK[200 + as_of<br/>angles, funnels/stats: last Meta sync<br/>Today: when built; Meta time is last_sync]
+```
+
+Which funnel and which angle a number belongs to:
+
+```mermaid
+flowchart TD
+  AD[ads row with spend<br/>ad_metrics_daily, Arizona spend day] --> N{ad number?}
+  N -->|yes| S{its LIVE script<br/>ad_scripts.ad_id, archived_at NULL}
+  S -->|names funnel_key| F1[that funnel]
+  S -->|no script, or no funnel_key| CA{campaign on a funnel's<br/>meta_campaign_ids?}
+  N -->|no| CA
+  CA -->|yes| F2[that funnel]
+  CA -->|no| UM[Unmapped spend]
+  S -->|names angle_key| A1[that angle]
+  S -->|no angle_key| SP{v_ad_label_spine:<br/>creative's script angle?}
+  SP -->|yes| A2[that angle]
+  SP -->|no| NA[no angle: in no angle row]
+  L[lead: client_ad_attribution<br/>first touch, Arizona lead day] --> LN{ad number?}
+  LN -->|no| LU[not placed]
+  LN -->|yes| LS[number: script's funnel and angle,<br/>else the one its ads rows agree on]
+  LS -->|two funnels disagree| LU
+  LS --> RES[readAdNumbers results: booked, showed,<br/>sales, roadmaps, cash, reported cash — 14 days]
+```
+
+- **GET marketing/angles** → `{rows:[{angle_key, name, spend_cents, ads, leads, booked, sales,
+  cash_cents, roas}], as_of}`. One row per angle with spend or leads in the window. `ads` =
+  distinct ad numbers (an ads row with no number counts on its own). `name` from
+  `marketing/ads/angles.json` (bundled through netlify.toml `included_files`); a key not in
+  the file shows the key.
+- **GET marketing/funnels/stats** → `{rows:[{funnel_key, name, spend_cents, page_views,
+  click_to_page, page_to_lead, leads, booked, showed, sales, cash_cents, roas}],
+  unmapped_spend_cents, as_of}`. Every active funnel plus any funnel spend or leads were placed
+  on. `page_views` = `funnel.page` events from people on the funnel's landing page (its
+  `landing_url` path; null when the tracker does not run on that page). `click_to_page` =
+  page views ÷ the funnel's ads' link clicks; `page_to_lead` = leads ÷ page views.
+- **GET marketing/today, added keys** (every old key unchanged): `numbers` (today / d7 / d30
+  from `readTotals`), `daily` (30 days from `readDaily`), `spend_by_funnel` (7 days, with an
+  Unmapped row), `flow` (7 days: landing page views, Meta link clicks, then `numbers.d7`'s
+  leads, booked, showed, sales), `scripts_waiting` (released drafts and the machine's flagged
+  ones), `stuck_jobs` (failed `marketing_jobs`, not `offer`, newest first, each with its id
+  for Retry).
+- **Unknown stays null.** Spend with no saved ad-day is null. A funnel with nothing placed is
+  null while some spend is unmapped, and a known 0 only when all saved spend is placed. Cash
+  over several numbers is null only when payments exist and none reported an amount.
+- **Index proof.** Every query starts with a `-- m5:<name>` line;
+  `src/http/marketing-funnels-stats.pg.test.mjs` runs EXPLAIN (ANALYZE) on each with sequential
+  scans priced out and fails if `ad_metrics_daily`, `events`, `ad_scripts` or
+  `marketing_jobs` is read without an index. `ad_spend` walks `ads` then
+  `ad_metrics_daily (ad_id, date)`; `funnel_steps` walks `idx_events_name (org_id, name,
+  created_at)` with constant Arizona-midnight bounds.
+
+Gaps between the spec, the design and this code (recorded, not reconciled):
+
+1. **Design vs contract shapes.** The design doc (`command-center-design-2026-10-05.md` §3.1,
+   §3.7) draws `money{…, prior_30_days}`, `by_funnel`, `flow{page, pressed_buy, paid, booked}`,
+   angles `{ok, angles[], suggestions[]}` and funnels `{ok, funnels[{key, flow{}, page_funnel{},
+   clarity{}}]}`. This code builds the plan's fixed shapes 7 and 9
+   (`docs/specs/marketing-machine-api.md`), which win per the plan. The design's per-angle
+   "cost per lead, last run date, best and worst ad", the page funnel (pressed buy, paid) and
+   Clarity rows are not in these answers.
+2. **Two populations in one rate.** `page_views` counts every person on the landing page (ad
+   or not); `leads` counts only leads tagged with an ad number that maps to the funnel. So
+   `page_to_lead` understates while most leads carry no number (2 of 18 on 2026-10-06,
+   `docs/marketing/metrics.md` gap 8).
+3. **Flagged and visible rules are copied, not shared.** `scripts_waiting` repeats U25's
+   visibility rule and `isFlagged` (`src/marketing/scripts-store.mjs`, not on main when this
+   was written) in SQL. If either changes, this count must change with it.
+4. **Angle names lag one ship.** Names come from the bundled `angles.json`; an angle added
+   through the repo outbox shows its key until the next ship.
+5. **UNVERIFIED:** the live timing of each route (spec M5 "under 2 seconds with 30 days of
+   data"). The orchestrator records one live timing per route after ship.
