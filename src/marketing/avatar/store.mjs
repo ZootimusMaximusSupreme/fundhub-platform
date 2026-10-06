@@ -135,10 +135,15 @@ export function avatarJobView(row, ledger = null) {
   const stepKey = String(payload.step || FIRST_STEP);
   const step = stepOf(stepKey);
   const counts = runCounts(progress);
-  const spent = ledger && ledger.cost_usd != null ? Number(ledger.cost_usd) : (progress.cost_so_far_usd ?? null);
+  // A run nothing has happened in yet has really spent $0 (a measured zero); otherwise
+  // the ledger, else the run's own last save, else unknown.
+  const untouched = !Object.keys(progress.steps || {}).length;
+  const spent = ledger && ledger.cost_usd != null
+    ? Number(ledger.cost_usd)
+    : (progress.cost_so_far_usd != null ? Number(progress.cost_so_far_usd) : (untouched ? 0 : null));
   const searches = ledger && ledger.searches != null ? Number(ledger.searches) : counts.searches;
   const fetches = ledger && ledger.fetches != null ? Number(ledger.fetches) : counts.fetches;
-  const round = stepKey === "quotes" && progress.quotes ? Number(progress.quotes.round) || 1 : null;
+  const round = stepKey === "quotes" ? (Number(progress.quotes && progress.quotes.round) || 1) : null;
   const stop = progress.stopped_at_cap || null;
   const result = row.result || null;
 
