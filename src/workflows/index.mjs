@@ -20,6 +20,7 @@ import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
 import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
+import { financeOsCardDueReminders } from './finance-os-card-due-reminders.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
@@ -211,6 +212,11 @@ export const functions = [
   waypointNudgeSweeper,
   blueprintCloserReadySweeper,
   financeOsPullSweeper,
+  /* CARD DUE REMINDERS (Finance OS, 2026-10-06). Daily: reads card bills from
+     Plaid, then queues one text per card per due date, 0-3 days out, when no
+     payment is on file. Never moves money. Keyed in cashflow_reminders and in
+     messages.provider_ref so a retry cannot send twice. */
+  financeOsCardDueReminders,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
 

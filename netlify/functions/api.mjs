@@ -143,6 +143,7 @@ import marketingToday from "../../api/marketing/today.mjs";
 import bankingSyncAccounts from "../../api/banking/sync-accounts.mjs";
 import bankingLinkToken from "../../api/banking/link-token.mjs";
 import bankingLinkExchange from "../../api/banking/link-exchange.mjs";
+import bankingSyncLiabilities from "../../api/banking/sync-liabilities.mjs";
 import inquiries from "../../api/inquiries.mjs";
 import repairExceptions from "../../api/repair/exceptions.mjs";
 import repairEnroll from "../../api/repair/enroll.mjs";
@@ -714,6 +715,8 @@ export const ROUTES = {
   /* Plaid Link: open, then finish. ROLE_SETS.FINANCE, same as sync-accounts. */
   "banking/link-token": bankingLinkToken,
   "banking/link-exchange": bankingLinkExchange,
+  // Card bills (due date, minimum) from Plaid /liabilities/get → statement cycles.
+  "banking/sync-liabilities": bankingSyncLiabilities,
 
   // Write endpoints. Hand-rolled rather than readHandler-based, so each one owns
   // its own method switch, its 405 + allow header, and its domain-error mapping.
