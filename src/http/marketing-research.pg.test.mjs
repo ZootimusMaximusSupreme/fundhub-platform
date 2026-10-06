@@ -164,6 +164,10 @@ describe("research buttons (real Postgres)", { skip: !HAS_DB ? "no DATABASE_URL"
       /marketing_jobs_research_report_ck/, "a finished research run must hold a report with words in it"
     );
     await assert.rejects(
+      db.query(`INSERT INTO marketing_jobs (org_id, kind, status, result) VALUES ($1, 'deep_research', 'done', '{}')`, [orgB]),
+      /marketing_jobs_research_report_ck/, "a missing report is refused too (a NULL check would let it in)"
+    );
+    await assert.rejects(
       db.query(`INSERT INTO marketing_jobs (org_id, kind, payload) VALUES ($1, 'flywheel_stage', '{"stage":2}')`, [orgB]),
       /marketing_jobs_flywheel_stage_payload_ck/, "a flywheel stage run names its campaign"
     );

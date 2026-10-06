@@ -51,29 +51,33 @@ ALTER TABLE public.marketing_jobs ADD CONSTRAINT marketing_jobs_approved_done_ck
   CHECK (approved_at IS NULL OR status = 'done');
 
 -- A flywheel stage run says which campaign and which stage it is for.
+-- COALESCE(…, false) on purpose: a missing key makes jsonb_typeof NULL, and a CHECK that
+-- comes out NULL PASSES. Without it, a row with no campaign at all would be let in.
 ALTER TABLE public.marketing_jobs DROP CONSTRAINT IF EXISTS marketing_jobs_flywheel_stage_payload_ck;
 ALTER TABLE public.marketing_jobs ADD CONSTRAINT marketing_jobs_flywheel_stage_payload_ck
   CHECK (
     kind <> 'flywheel_stage'
-    OR (
+    OR COALESCE(
       jsonb_typeof(payload -> 'campaign') = 'string'
       AND btrim(payload ->> 'campaign') <> ''
-      AND jsonb_typeof(payload -> 'stage') = 'number'
+      AND jsonb_typeof(payload -> 'stage') = 'number',
+      false
     )
   );
 
 -- A finished deep research run holds a report with words in it (the write-up, or the
 -- report built by code when the write-up failed twice). "Done" with nothing to read
--- is the silent empty result.
+-- is the silent empty result. COALESCE for the same NULL reason as above.
 ALTER TABLE public.marketing_jobs DROP CONSTRAINT IF EXISTS marketing_jobs_research_report_ck;
 ALTER TABLE public.marketing_jobs ADD CONSTRAINT marketing_jobs_research_report_ck
   CHECK (
     kind <> 'deep_research'
     OR status <> 'done'
-    OR (
+    OR COALESCE(
       jsonb_typeof(result -> 'report') = 'object'
       AND jsonb_typeof(result -> 'report' -> 'markdown') = 'string'
-      AND btrim(result -> 'report' ->> 'markdown') <> ''
+      AND btrim(result -> 'report' ->> 'markdown') <> '',
+      false
     )
   );
 
