@@ -74,6 +74,8 @@ export const MAX_IDEA_IDS = 50;
 
 /* Same shape as the label keys in 377/414 (ad_ideas_*_ck). */
 const KEY_RE = /^[a-z][a-z0-9_]{1,48}$/;
+/* A funnel key as marketing_funnels takes it (410 marketing_funnels_key_ck). */
+const FUNNEL_KEY_RE = /^[a-z0-9][a-z0-9_]{0,62}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const iso = (v) => (v == null ? null : v instanceof Date ? v.toISOString() : new Date(v).toISOString());
@@ -121,10 +123,10 @@ export function validateIdeaInput(body) {
 }
 
 /** A label key that may be left out: null, or the key's shape. */
-function optionalKey(v, field) {
+function optionalKey(v, field, re = KEY_RE) {
   if (v === undefined || v === null || v === "") return null;
-  if (typeof v !== "string" || !KEY_RE.test(v)) {
-    throw new InvalidError(field, `${field} must be a short key: lower case letters, numbers and underscores, starting with a letter.`);
+  if (typeof v !== "string" || !re.test(v)) {
+    throw new InvalidError(field, `${field} must be a short key: lower case letters, numbers and underscores, like roadmap_147.`);
   }
   return v;
 }
@@ -146,7 +148,8 @@ export function validateWriteNowInput(body) {
     }
     count = b.count;
   }
-  const funnelKey = optionalKey(b.funnel_key, "funnel_key");
+  // Not saved on an idea, so any key marketing_funnels takes; assertFunnel then checks it exists.
+  const funnelKey = optionalKey(b.funnel_key, "funnel_key", FUNNEL_KEY_RE);
 
   let ideaIds = [];
   if (b.idea_ids !== undefined && b.idea_ids !== null) {
