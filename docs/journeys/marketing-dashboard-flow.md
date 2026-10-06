@@ -189,3 +189,88 @@ flowchart TD
   say this either way.
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
   `src/http/marketing-settings.pg.test.mjs` and `marketing-funnels.pg.test.mjs` in GitHub CI.
+## U04 Jobs, buzzes, model cost and shoots — the records (migration 411)
+
+Drawn 2026-10-05 from the code on branch `mm-u04-jobs-buzzes-usage`:
+`src/marketing/jobs.mjs`, `src/marketing/job-kinds.mjs`, `src/marketing/notify.mjs`,
+`src/marketing/model-usage.mjs`, `db/migrations/411_marketing_buzzes_usage_shoots.sql`.
+These are libraries and tables only. **No route, clock or worker calls them yet**: the
+worker that claims jobs and sends buzzes is U22, the Retry button's route is U26, the
+writer that logs model cost is U24. Those calls are marked UNVERIFIED below.
+
+### A queued job (marketing_jobs, table from 409; claim index from 411)
+
+`attempts` counts runs that went wrong (a failure, or a claim nobody finished). Claiming
+and requeueing do not count. Kind `offer` is never touched by any of this: it runs on the
+Write offer path above (`src/marketing/offer-store.mjs`).
+
+```mermaid
+stateDiagram-v2
+  [*] --> queued: enqueueJob (refuses kind 'offer')
+  queued --> running: claimJobs — one statement, FOR UPDATE SKIP LOCKED, due now, never 'offer'
+  running --> done: finishJob(result) — saves an empty result when the handler returned nothing
+  running --> queued: requeueJob(runAfter) — wait loop, attempts unchanged
+  running --> queued: failJob, 1st or 2nd time — attempts+1, run_after +1 min then +5 min, reason kept
+  running --> failed: failJob 3rd time — "Tried 3 times and it still failed. Last error: …"
+  running --> failed: failJob with final true — reason as given (e.g. cost cap reached)
+  running --> queued: reclaimStale — claim older than 16 min, attempts+1
+  running --> failed: reclaimStale 3rd time — "The worker stopped without finishing 3 times …"
+  failed --> queued: retryJob — same company only, kind in the list passed, attempts 0, error and result cleared, due now
+```
+
+- `nextRunAfter({kinds})` reads the earliest queued `run_after` (never `offer`), so the
+  worker can wait inside its pass for a job due in a few seconds. UNVERIFIED: no worker yet (U22).
+- `JOB_KINDS` (`src/marketing/job-kinds.mjs`) is **empty**. A kind not in it is never
+  claimed by the worker and cannot be retried from the screen. U24, U28 and U35 add kinds.
+- Retry button → `POST marketing/jobs/retry` → `retryJob`: UNVERIFIED, the route is U26.
+
+### A buzz (marketing_buzzes, 411)
+
+```mermaid
+stateDiagram-v2
+  [*] --> waiting: queueBuzz — send_after = now, or 07:00 Arizona when inside quiet hours (one waiting per company + kind + group; a repeat refreshes the words)
+  waiting --> sending: sendDueBuzzes — due, none of that kind sent in 10 min, one per kind per pass; lease: attempts+1, send_after +5 min
+  sending --> sent: send() answered ok:true AND status 'sent' — sent_at set
+  sending --> waiting: anything else (ok:false, other status, a throw) — last_error kept, send_after = +5 min, pushed past quiet hours
+  sending --> given_up: 5th failed attempt — failed_at set, never tried again
+  sent --> [*]
+  given_up --> [*]
+```
+
+- `send()` is always passed in. The worker will pass notify-fanout's `send`
+  (`src/ad-videos/notify-fanout.mjs`); tests pass a fake. UNVERIFIED: no worker yet (U22).
+- Which events buzz (scripts ready, videos ready, stuck) is decided by the callers
+  (U24, U35, M3). UNVERIFIED: none of them call `queueBuzz` yet.
+
+### Model cost (marketing_model_usage, 411)
+
+```mermaid
+flowchart TD
+  C[a model call returns] --> L[logUsage: model = the model that SERVED it]
+  L --> P{price known?<br/>MODEL_PRICES: claude-opus-5-5, claude-sonnet-5-5}
+  P -->|yes| R1[cost_usd = tokens x price]
+  P -->|no| R2[cost_usd NULL, never 0]
+  R1 & R2 --> S[costStatus: batch total + this Arizona calendar month]
+  S --> W[NULL rows counted at the highest known rate<br/>unpriced_rows reported]
+  W --> K{at or over max_batch_cost_usd / max_month_cost_usd?<br/>missing cap = 40 / 300}
+  K -->|yes| X[batch_capped / month_capped true]
+  K -->|no| Y[keep writing]
+```
+
+UNVERIFIED: the writer that logs every call and stops at a cap is U24; Write now's refusal is U26.
+
+### A shoot (marketing_shoots, 411)
+
+Table only. States `planned | filming | uploaded | done`, enforced by the database; a done
+shoot must have `finished_at`. Nothing reads or writes it yet (Shoot Day routes and screen
+are later units). UNVERIFIED.
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- Spec §6 Step 3 lists `marketing_buzzes` without `attempts`, `last_error`, `failed_at`;
+  the plan added them because notify-fanout's `send()` resolves `{ok:false}` instead of
+  throwing. Built as the plan says.
+- Spec §6 Step 4 says "After 3 attempts, a job fails". Here an attempt is a run that went
+  wrong, not a claim, so wait loops (requeue) never use up tries.
+- `group_key` is `NOT NULL DEFAULT ''` (spec lists it with no type) so "one waiting per
+  group" also holds when no group is given.
