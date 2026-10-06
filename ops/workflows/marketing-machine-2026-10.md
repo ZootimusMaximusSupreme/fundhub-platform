@@ -30,9 +30,17 @@ Note: production also holds migrations 430–433 from another session (files not
 | Id | Work | Status |
 |---|---|---|
 | C1 | CI fix (M0 step 6): fresh database builds, unit suite green, pg suite runs and blocks | claimed |
+| D | Fable design team: `docs/specs/command-center-design-2026-10-05.md` (4 audits, 3 designs, 3 judges) | done |
+| S0 | Slice 0 "Today tells the truth" (design §6): Opus build, 3 Fable reviews, Opus fix, Fable re-check | claimed |
 | G | Ground: map M0–M5 + Command Center tabs against the repo; plan units; Fable critique | claimed |
 
 ## Units (filled in from the plan)
+
+## Owner defaults taken (design §7, 2026-10-05)
+
+- Seven tabs (Today, Ideas, Scripts, Shoot, Videos, Launch, Numbers; Settings behind the gear): yes.
+- A Submagic retry that makes a new project may pay again: yes, only behind a confirm that prints the minutes and "a retry pays again".
+- Per-ad Pause and ad-set budget on Launch in v1: no; Launch links to Campaigns; per-ad Pause comes with slice 9.
 
 ## Blockers / only-Chris items (spec §16)
 
