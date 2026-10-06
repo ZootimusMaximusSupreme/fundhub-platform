@@ -44,9 +44,19 @@ export const UNKNOWN_AD = Object.freeze({
 /* JS mirrors of the SQL derivations in 286. The database is the source of
    truth for stored rows; these exist so a caller holding raw UTMs (a test, a
    preview, the fragment) can ask the same question without a round trip. */
+/* The roadmap (SLO) lane, added to the ad_lane enum in 406 and mapped in 407.
+   It is NOT in LANES on purpose: LANES is what a person may pick for a script
+   (api/scripts/write.mjs, the Creative Factory picker), while `slo` is a lane
+   that arrives on the wire from a campaign NAME like "oPur: TOF-SLO: $297".
+   Same rule as fundhub_ad_lane() in 407: the five exact names first, then the
+   word SLO standing on its own ("slow" and "slo2" do not count). */
+export const SLO_LANE = "slo";
+const SLO_WORD = /(^|[^a-z0-9])slo([^a-z0-9]|$)/;
+
 export function laneOf(utmCampaign) {
   const s = String(utmCampaign ?? "").trim().toLowerCase();
-  return LANES.includes(s) ? s : "unknown";
+  if (LANES.includes(s)) return s;
+  return SLO_WORD.test(s) ? SLO_LANE : "unknown";
 }
 
 export function adIdOf(utmContent) {
