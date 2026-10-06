@@ -188,6 +188,14 @@
 [functions."commas-inbox-sweeper"]
   schedule = "* * * * *"
 
+# The marketing machine's clock (spec docs/specs/marketing-machine-2026-10-04.md §6
+# Step 4). Every 15 minutes it reads the database, writes the 'clock' heartbeat and
+# wakes netlify/functions/marketing-worker-background.mjs when work waits. All real
+# work runs in that 15-minute background worker, never in this 30-second clock.
+# SWEEP_CRON in netlify/functions/marketing-clock.mjs must match.
+[functions."marketing-clock"]
+  schedule = "*/15 * * * *"
+
 # ---------------------------------------------------------------------------
 # Routing
 #
