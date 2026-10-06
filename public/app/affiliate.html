@@ -398,7 +398,7 @@ table.grid tbody tr:hover{background:var(--soft)}
           <div style="padding:12px 16px;border-top:1px solid var(--line);background:var(--soft);font-size:var(--fs-body);color:var(--gray);line-height:1.55">
             Commission accrues on the <strong>first</strong> qualified paid outcome on a referred client:
             <strong>Tier 1 = 20%</strong> (direct), <strong>Tier 2 = 5%</strong> override (downline, after unlock).
-            Funding pays on deposit collected once funded; repair pays on the enrollment fee.
+            Funding pays on every payment on the funding sale — the deposit and the 10% success fee — counted on the partner's half (the whole payment on a Fundhub-direct client); repair pays on the enrollment fee.
             Later purchases by the same client do not pay again. A lead that
             never pays never accrues, which is why "Clicked" and "Signed up" rows show no commission.
           </div>
@@ -418,8 +418,14 @@ table.grid tbody tr:hover{background:var(--soft)}
             <div class="eyebrow" style="margin-bottom:12px">PARTNER TERMS</div>
             <dl class="terms" style="max-width:74ch">
               <dt>Rate</dt><dd>Tier 1: 20% · Tier 2: 5% override. First qualified paid outcome on any client attributed to your code. Effective 2026-08-24. If the rate ever changes, the version open on the day of the outcome governs that payout.</dd>
-              <dt>Attribution window</dt><dd>60 days from first click. Last-touch: if another affiliate's link is clicked after yours inside the window, the later click takes the commission.</dd>
-              <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. The 10% success fee is not a qualifying product.</dd>
+              <!-- Walkthrough-4 defects 3 and 13 (2026-09-06). This tab used to
+                   promise "60 days, last-touch" and say the success fee earns
+                   nothing. Both were false: attribution is first touch with no
+                   expiry (src/affiliates/economics.mjs, 033_affiliates.sql
+                   unique index), and since 272 the funding rate reads every
+                   payment on the sale, success fee included (W0 decision). -->
+              <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
+              <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
               <dt>Payout schedule</dt><dd>Fridays, ACH, on balances above $50. Below that the balance rolls to the next run.</dd>
               <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
               <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>

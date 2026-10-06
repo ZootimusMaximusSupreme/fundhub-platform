@@ -603,7 +603,7 @@ details.how .howbd p+p{margin-top:9px}
           <span class="lgi"><span class="badge b-info">Waiting</span><span class="lgt">Checked and lined up. It will go out at its set time.</span></span>
           <span class="lgi transient"><span class="badge b-butter">Sending now</span><span class="lgt">Going out right now. This lasts a second or two. A post that sits here means something crashed.</span></span>
           <span class="lgi"><span class="badge b-ok">Sent</span><span class="lgt">It went out. It is live on the account.</span></span>
-          <span class="lgi"><span class="badge b-warn">Could not be sent</span><span class="lgt">The system tried three times and could not get it out.</span></span>
+          <span class="lgi"><span class="badge b-alert">Could not be sent</span><span class="lgt">The system tried three times and could not get it out.</span></span>
           <span class="lgi"><span class="badge b-alert">Needs a rewrite</span><span class="lgt">The copy check refused it. It will never go out. Write a new one.</span></span>
         </div>
 
@@ -857,14 +857,18 @@ function rel(iso){
   var s = m<60 ? m+'m' : (m<1440 ? Math.round(m/60)+'h' : Math.round(m/1440)+'d');
   return ms<0 ? s+' ago' : 'in '+s;
 }
-var STATUS_BADGE={draft:'b-gray',queued:'b-info',scheduled:'b-info',awaiting_approval:'b-accent',posting:'b-butter',posted:'b-ok',failed:'b-warn',blocked:'b-alert'};
+/* Failed and expired are coral, the brand's "blocked, failed" colour, as on
+   Documents, Creative Factory, Hiring and Campaign Manager — and as this same
+   screen already paints a dead account in the post check (walkthrough-4
+   defect 12). Peach is "in progress, behind". */
+var STATUS_BADGE={draft:'b-gray',queued:'b-info',scheduled:'b-info',awaiting_approval:'b-accent',posting:'b-butter',posted:'b-ok',failed:'b-alert',blocked:'b-alert'};
 /* The words a person reads. The system's own state words are never shown.
    'scheduled' is in both maps because an approved post lands there, and without
    an entry the details panel would print the system's own word at a reader. */
 var STATUS_LABEL={draft:'Draft',queued:'Waiting',scheduled:'Lined up',awaiting_approval:'Held for a person',posting:'Sending now',posted:'Sent',failed:'Could not be sent',blocked:'Needs a rewrite'};
 var CONN_LABEL={active:'ready to post',pending:'still being set up',expired:'the sign-in has run out',revoked:'the sign-in was taken away'};
 var CHECK_LABEL={passed:'Looks fine',needs_approval:'Someone must approve it',blocked:'Refused'};
-var STATE_BADGE={active:'b-ok',pending:'b-info',expired:'b-warn',revoked:'b-alert'};
+var STATE_BADGE={active:'b-ok',pending:'b-info',expired:'b-alert',revoked:'b-alert'};
 var SCREEN_BADGE={passed:'b-ok',needs_approval:'b-accent',blocked:'b-alert'};
 var RULESET_BADGE={croa:'b-alert',claims:'b-warn',disclosure:'b-info',platform:'b-gray',engine:'b-butter',approval:'b-accent'};
 function statusBadge(s){return '<span class="badge '+(STATUS_BADGE[s]||'b-gray')+'">'+esc(STATUS_LABEL[s]||s)+'</span>';}

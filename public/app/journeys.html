@@ -609,8 +609,7 @@ const ORDER=['client','setter','closer','advisor','affiliate','partner'];
 let active='client', selId=null, dirty=0, touched={}, undoStack=[], tab='step';
 let pending=null, busy=false, askErr='', askText='';
 let log=[], versions=[];
-let sim={running:false,done:false,feed:[],report:null,timer:null,
-  phone:'+1 (480) 555-0142',email:'chris@fundhub.ai',mode:'first'};
+let sim={running:false,done:false,feed:[],report:null,timer:null,mode:'first'};
 
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const now=()=>new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
@@ -860,9 +859,9 @@ function startSim(fromId){
     if(row){ row.classList.add('now'); row.scrollIntoView({block:'center',behavior:'smooth'}); }
     fired++;
     if(n.type==='sms'){ sent++;
-      sim.feed.push({t:'sms',time:now(),body:fill(n.cfg.body),to:sim.phone,step:n.title}); }
+      sim.feed.push({t:'sms',time:now(),body:fill(n.cfg.body),step:n.title}); }
     else if(n.type==='email'){ sent++;
-      sim.feed.push({t:'email',time:now(),subj:fill(n.cfg.subject),body:fill(n.cfg.body),to:sim.email,step:n.title}); }
+      sim.feed.push({t:'email',time:now(),subj:fill(n.cfg.subject),body:fill(n.cfg.body),step:n.title}); }
     else if(n.type==='wait'){
       sim.feed.push({t:'evt',time:now(),text:'Waited '+n.cfg.amount+' '+n.cfg.unit+' (skipped ahead)'}); }
     else if(n.type==='condition'){
@@ -875,8 +874,7 @@ function startSim(fromId){
     document.querySelectorAll('.nrow.now').forEach(r=>{r.classList.remove('now');r.classList.add('fired')});
     sim.running=false; sim.done=true;
     sim.report={steps:fired,messages:sent,
-      unreached:countNodes(active)-fired,
-      to:sim.phone+' / '+sim.email};
+      unreached:countNodes(active)-fired};
     renderPanel();
   };
   sim.timer=setTimeout(tick,420);
@@ -1053,10 +1051,13 @@ function stepHTML(){
 }
 function simHTML(){
   let h='<div class="eyebrow">Simulate</div>'+
-    '<div class="testbanner"><b>Test mode.</b> Everything goes to the two destinations below and nowhere else. '+
-    'A simulated run can never reach a real client record.</div>'+
-    '<div class="fld"><label>Texts go to</label><input value="'+esc(sim.phone)+'" data-sim="phone"></div>'+
-    '<div class="fld"><label>Emails go to</label><input value="'+esc(sim.email)+'" data-sim="email"></div>'+
+    /* NOTHING IS SENT (walkthrough-4 defect 15, 2026-09-06). startSim() is a
+       timer on this page with no network call, so the two "go to" boxes did
+       nothing and the report said "Messages sent 4 · Everything went to <your
+       phone>" while nothing left the browser. The boxes are gone and every
+       line says the truth: the run plays here and sends nothing. */
+    '<div class="testbanner"><b>Test mode — nothing is sent.</b> This run plays on this screen only. '+
+    'No text or email leaves Fundhub, and a simulated run can never reach a real client record.</div>'+
     '<div class="fld"><label>At a question</label><select data-sim="mode">'+
       [['first','Take the first path'],['second','Take the second path'],['both','Run both paths']]
         .map(([v,l])=>'<option value="'+v+'"'+(sim.mode===v?' selected':'')+'>'+l+'</option>').join('')+
@@ -1069,9 +1070,9 @@ function simHTML(){
     h+='<div class="runstat">'+(sim.running?'<span class="sp"></span>Running':'Run finished')+'</div><div class="feed">';
     sim.feed.forEach(m=>{
       if(m.t==='sms') h+='<div class="msg sms"><div class="mh2"><span>Text</span><span>'+m.time+'</span></div>'+
-        esc(m.body)+'<div class="to">to '+esc(m.to)+' · '+esc(m.step)+'</div></div>';
+        esc(m.body)+'<div class="to">not sent · '+esc(m.step)+'</div></div>';
       else if(m.t==='email') h+='<div class="msg email"><div class="mh2"><span>Email</span><span>'+m.time+'</span></div>'+
-        '<div class="subj">'+esc(m.subj)+'</div>'+esc(m.body)+'<div class="to">to '+esc(m.to)+' · '+esc(m.step)+'</div></div>';
+        '<div class="subj">'+esc(m.subj)+'</div>'+esc(m.body)+'<div class="to">not sent · '+esc(m.step)+'</div></div>';
       else h+='<div class="evt"><span class="t">'+m.time+'</span><span>'+esc(m.text)+'</span></div>';
     });
     h+='</div>';
@@ -1079,9 +1080,9 @@ function simHTML(){
   if(sim.report){
     h+='<div class="report"><div class="rh">Run report</div>'+
       '<div class="rrow"><span>Steps that fired</span><span class="v">'+sim.report.steps+'</span></div>'+
-      '<div class="rrow"><span>Messages sent</span><span class="v">'+sim.report.messages+'</span></div>'+
+      '<div class="rrow"><span>Messages drafted (not sent)</span><span class="v">'+sim.report.messages+'</span></div>'+
       '<div class="rrow"><span>Steps not reached</span><span class="v">'+sim.report.unreached+'</span></div>'+
-      '<div class="rrow"><span>Everything went to</span><span class="v">'+esc(sim.phone)+'</span></div></div>';
+      '<div class="rrow"><span>Sent to anyone</span><span class="v">No — test mode</span></div></div>';
   }
   return h;
 }
