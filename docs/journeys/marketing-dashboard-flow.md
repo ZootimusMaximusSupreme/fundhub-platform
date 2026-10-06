@@ -1305,3 +1305,61 @@ flowchart TD
     the handler), but `GET marketing/ad` in `src/marketing/api-contract.mjs` does not list them.
     The tab falls back to "Some leads are" and day-only labels without them. Adding them to the
     contract is U31's file and `docs/specs/marketing-machine-api.md`; not changed here.
+
+## U39 Command Center Launch tab (`public/app/cc-tab-launch.js`)
+
+Generated from `public/app/cc-tab-launch.js` on branch `mm-u39-launch-tab` (2026-10-06).
+Design §3.6 and §5 rules 1, 2, 4, 5; spec §10.5 and §2 item 6. The tab plugs into the
+Command Center through `window.FundhubCC.registerTab` (`docs/specs/command-center-tabs.md`,
+id `launch`, order 6). It reads two routes and sends three bodies, nothing else.
+
+```mermaid
+flowchart TD
+  OPEN[Chris opens the Launch tab] --> SK[skeleton: count + rows]
+  SK --> R1[GET marketing/meta/load-status]
+  SK --> R2[GET ad-videos?status=approved,delivered&limit=200]
+  R1 -->|fails| E1[banner: The Meta loads did not load. Try again.<br/>Load all is off]
+  R2 -->|fails| E2[banner: The list of approved videos did not load.<br/>The rest of this page is current.]
+  R1 & R2 --> V[one row per ad video: load-status rows,<br/>then approved videos it does not list; non-ad videos dropped]
+  V -->|no rows| EMPTY[No approved videos to load. Approve one on Videos first.<br/>Open Videos -> ctx.go videos]
+  V --> ROW{row state}
+  ROW -->|not loaded yet| LOAD[Load to Meta, one tap]
+  ROW -->|refused or failed| RETRY[reasons as sentences + Retry load]
+  ROW -->|waiting or loading| STEP[Step N of 4 in words; tab re-reads every 20 s while any load is in flight]
+  ROW -->|loaded, PAUSED| TON{ad set daily budget known?}
+  ROW -->|loaded, ACTIVE| ON[On: no button]
+  LOAD & RETRY --> P1[POST marketing/meta/load<br/>ad_video_id + request_id]
+  V --> ALL[Load all approved into Meta, paused<br/>the one filled button]
+  ALL --> C1[ctx.confirm: N ads load PAUSED ... Costs $0.]
+  C1 -->|Load them| P2[POST marketing/meta/load<br/>all: true + request_id]
+  C1 -->|Cancel| NOTHING1[nothing sent]
+  P1 & P2 -->|202| Q[Queued. It loads paused. Row re-reads in 3 s]
+  TON -->|no| OFF[Turn on disabled: Turn on is off: we cannot see this ad set's daily budget yet.]
+  TON -->|yes| C2[ctx.confirm: Turn on Ad N? It can spend up to $X a day in ad set.<br/>+ ad set / campaign paused lines]
+  C2 -->|Cancel| NOTHING2[nothing sent]
+  C2 -->|Yes, turn on Ad N| P3[POST campaigns/write<br/>action resume_ad, ad_id = our ads.id, request_id]
+  P3 -->|200| ONNOW[Ad N is on. Row says On]
+  P3 -->|403| ONLY[Only Chris can turn ads on.]
+  P3 -->|Meta said no| SAID[the server's sentence; the ad is still paused]
+```
+
+- Flags on every loaded or asked row: "Ad set is paused: nothing in it spends until the ad set
+  is on." and the same for the campaign, read from `ad_set.status` and `campaign.status`.
+  A row with no ad set says "Pick one in Settings" with Open Settings (`ctx.go('settings')`).
+- Turn on is only on a loaded, paused row that has our `ads.id` (`ad_row_id`). It never sends
+  a Meta id, a campaign id, or the campaign-level actions; `src/ui/cc-tab-launch.test.mjs`
+  reads the file to hold that, and `e2e/cc-tab-launch.spec.mjs` checks the body the browser sends.
+- Open Campaigns (`campaign-manager.html`) is the only way to pause or change a budget (owner
+  default: no per-ad pause on Launch in v1).
+- **Gap, measured:** `GET marketing/meta/load-status` (U28) sends no daily budget, so today
+  every Turn on is disabled with its reason. The tab reads `ad_set.daily_budget_cents` the day
+  load-status sends it (design §3.6 shape). Until then nothing can be turned on from this tab.
+- **Gap, measured:** load-status has no `counts`; the count line is counted from the rows the
+  tab shows (one list, so it cannot disagree with itself). "Ads on now" counts only loaded ads,
+  not every live ad in the account (design §3.6 item 1 wants all).
+- **Gap:** the "unknown ad" bucket (design §3.6 item 5) and the loader-down line (worker last
+  check-in) are not on this tab; no route gives them to it.
+- **Gap:** the tab is not on the live page yet. The frame (U34) adds its `<script>` tag; until
+  then only `e2e/helpers/cc-launch-stub.mjs` renders it.
+- **UNVERIFIED:** how the real frame's `ctx.confirm` answers (callback or promise). The tab takes
+  either; only an explicit yes sends.
