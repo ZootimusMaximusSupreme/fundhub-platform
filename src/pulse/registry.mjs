@@ -167,6 +167,7 @@ const API_KEYS = [
   "message-templates",
   "messages-outbound",
   "messages",
+  "money/overview",
   "ops/hire-closer",
   "org-brand",
   "partner-brand/verify-domain",

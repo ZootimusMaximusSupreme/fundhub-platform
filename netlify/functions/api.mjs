@@ -246,6 +246,7 @@ import financeContainers from "../../api/finance/containers.mjs";
 import financeEntities from "../../api/finance/entities.mjs";
 import financeBills from "../../api/finance/bills.mjs";
 import financeCashflow from "../../api/finance/cashflow.mjs";
+import moneyOverview from "../../api/money/overview.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1077,6 +1078,9 @@ export const ROUTES = {
   "finance/entities": financeEntities,
   "finance/bills": financeBills,
   "finance/cashflow": financeCashflow,
+  // Finance OS client dashboard (/app/money.html). Client session = own file
+  // only; staff = ROLE_SETS.FINANCE + ?client_id= in their org.
+  "money/overview": moneyOverview,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
