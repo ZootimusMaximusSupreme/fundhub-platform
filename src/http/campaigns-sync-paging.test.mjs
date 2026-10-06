@@ -20,8 +20,9 @@
 // Lives under src/ deliberately: npm test's glob is "src/**" and "scripts/**",
 // so a test placed under api/ silently never runs (CLAUDE.md §12).
 
-import { test, describe } from "node:test";
+import { test, describe, before, after } from "node:test";
 import assert from "node:assert";
+import crypto from "node:crypto";
 
 import {
   fetchAllPages,
@@ -29,9 +30,14 @@ import {
   metaListUrl,
   listTruncationMessage,
   buildSyncResponse,
+  syncPartnerConnections,
+  newAdNumberTally,
+  AD_LIST_FIELDS,
   LIST_PAGE_SIZE,
   LIST_MAX_PAGES
 } from "../../api/campaigns/sync.mjs";
+import { encryptToken } from "../adplatforms/tokens.mjs";
+import { adAccountDay } from "../lib/ad-account-day.mjs";
 
 /* A fake Meta. Answers the shape callPlatform reads — ok plus text()
    (src/adplatforms/_api.mjs:22-39) — handing out `pages` in order and
@@ -252,5 +258,241 @@ describe("what the screen is told when a list was cut short", () => {
     });
     assert.equal(body.ok, false);
     assert.match(body.message, /campaign 23849 — ad set 987 — stopped after 50 pages of ads/);
+  });
+});
+
+// ── U27: the ad list asks for url_tags, and the sync stores the ad number ───
+//
+// Spec docs/specs/marketing-machine-2026-10-04.md §10.5 "Sync mapping". The ad
+// list now asks Meta for creative{url_tags}; each ad saved by the sync gets the
+// number its url_tags or its name carries (mapAdNumber), never over a 'manual'
+// number, and a failed number write is counted, never thrown, and never costs
+// the campaign. The whole pass runs here against a fake transaction and a fake
+// Meta. The same rules against real Postgres: src/http/ad-number-sync.pg.test.mjs.
+
+describe("U27: the ad list asks for url_tags, and each ad gets its number", () => {
+  const PARTNER = "11111111-1111-1111-1111-111111111127";
+  const ORG = "22222222-2222-2222-2222-222222222227";
+  const CONN = "33333333-3333-3333-3333-333333333327";
+  const SET = "120270000000027001";
+
+  const saved = {};
+  before(() => {
+    for (const k of ["AD_TOKEN_ENC_KEY", "META_API_VERSION"]) saved[k] = process.env[k];
+    // A throwaway key for this process only. Never a real key.
+    process.env.AD_TOKEN_ENC_KEY = crypto.randomBytes(32).toString("base64");
+    delete process.env.META_API_VERSION;
+  });
+  after(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  const tags = (content) =>
+    `utm_source=fb&utm_medium=paid&utm_campaign=funding600&utm_content=${content}`;
+  const LIVE_TAGS = "utm_source=fb&utm_medium=paid&utm_campaign=sorting" +
+    "&utm_content={{ad.name}}&utm_term={{adset.id}}";
+
+  /* The ads Meta hands back, in this order. `pre` is the row already in our
+     table before this sync (null = a new ad). */
+  const ADS = [
+    { id: "a91", name: "Fresh angle", creative: { id: "cr91", url_tags: tags(91) }, pre: null },
+    { id: "a92", name: "SLO Ad 92 — x", creative: { id: "cr92" }, pre: null },
+    { id: "live1", name: "oVid: SLO1", creative: { id: "crL1", url_tags: LIVE_TAGS }, pre: null },
+    { id: "live2", name: "oVid: SLO2", pre: null },
+    { id: "man", name: "Typed by a person", creative: { id: "crM", url_tags: tags(94) },
+      pre: { fundhub_ad_number: "93", fundhub_ad_number_source: "manual" } },
+    { id: "ldr", name: "Loaded by the machine", creative: { id: "crLd", url_tags: tags(95) },
+      pre: { fundhub_ad_number: "95", fundhub_ad_number_source: "loader" } }
+  ];
+
+  function connectionRow() {
+    return {
+      id: CONN, org_id: ORG, partner_id: PARTNER, platform: "meta",
+      connection_state: "active", external_ad_account_id: "act_2700000000000027",
+      external_business_id: null,
+      encrypted_access_token: encryptToken("fake-meta-token-for-tests", { partnerId: PARTNER }),
+      created_at: "2026-08-01T00:00:00Z"
+    };
+  }
+
+  /* The fake transaction: every statement is recorded and answered by what it
+     reads. `failNumberFor` makes the number UPDATE for those Meta ad ids throw
+     the way Postgres does (a CHECK refusal). `failInsights` makes the day write
+     throw, which rolls the whole campaign back. */
+  function fakeDb({ failNumberFor = [], failInsights = false } = {}) {
+    const statements = [];
+    const numberWrites = [];
+    const rows = new Map();          // our ads row id → row
+    const byMeta = new Map();        // Meta ad id → our ads row id
+    for (const a of ADS) {
+      if (!a.pre) continue;
+      const id = `row-${a.id}`;
+      rows.set(id, { id, external_id: a.id, name: a.name, ...a.pre });
+      byMeta.set(a.id, id);
+    }
+    const tx = {
+      async query(sql, params = []) {
+        const s = String(sql);
+        statements.push({ sql: s, params });
+        if (/FROM ad_platform_connections/.test(s) && /^\s*SELECT/i.test(s)) {
+          return { rows: [connectionRow()], rowCount: 1 };
+        }
+        if (/FROM pg_attribute/.test(s)) return { rows: [{ n: 4 }], rowCount: 1 };
+        // Days older than the window are stored, so the 28-day window is used.
+        if (/min\(m\.date\)/.test(s)) return { rows: [{ d: "2026-01-01" }], rowCount: 1 };
+        if (/INSERT INTO campaigns/.test(s)) return { rows: [{ id: "camp-1" }], rowCount: 1 };
+        if (/INSERT INTO ad_sets/.test(s)) return { rows: [{ id: "set-1" }], rowCount: 1 };
+        if (/SELECT id FROM ads WHERE connection_id/.test(s)) {
+          const id = byMeta.get(String(params[1]));
+          return id ? { rows: [{ id }], rowCount: 1 } : { rows: [], rowCount: 0 };
+        }
+        if (/INSERT INTO ads\s*\(/.test(s)) {
+          const id = `row-${params[5]}`;
+          const row = { id, external_id: params[5], name: params[6],
+            fundhub_ad_number: null, fundhub_ad_number_source: null };
+          rows.set(id, row);
+          byMeta.set(String(params[5]), id);
+          return { rows: [{ ...row }], rowCount: 1 };
+        }
+        if (/UPDATE ads SET name = \$2/.test(s)) {
+          const row = rows.get(params[0]);
+          row.name = params[1];
+          return { rows: [{ ...row }], rowCount: 1 };
+        }
+        if (/SET fundhub_ad_number = \$2/.test(s)) {
+          const row = rows.get(params[0]);
+          if (failNumberFor.includes(row.external_id)) {
+            const e = new Error('new row for relation "ads" violates check constraint');
+            e.code = "23514";
+            throw e;
+          }
+          numberWrites.push({ meta: row.external_id, number: params[1], source: params[2] });
+          row.fundhub_ad_number = params[1];
+          row.fundhub_ad_number_source = params[2];
+          return { rows: [{ ...row }], rowCount: 1 };
+        }
+        if (/INSERT INTO ad_metrics_daily/.test(s)) {
+          if (failInsights) throw new Error("the day write failed");
+          return { rows: [], rowCount: 1 };
+        }
+        if (/fundhub_reresolve_ad_numbers/.test(s)) return { rows: [{ filled: 2 }], rowCount: 1 };
+        return { rows: [], rowCount: 0 };
+      }
+    };
+    const scope = async (_who, fn) => fn(tx);
+    return { scope, statements, numberWrites, rows };
+  }
+
+  /* The fake Meta: one campaign, one ad set, the ads above, one day of numbers
+     for the first ad. Records every URL. */
+  function fakeMeta() {
+    const urls = [];
+    const fetch = async (url) => {
+      const u = String(url);
+      urls.push(u);
+      let body = { data: [] };
+      if (u.includes("/insights?")) {
+        body = { data: [{ ad_id: "a91", date_start: adAccountDay(new Date()),
+          spend: "10.00", impressions: "100", clicks: "5" }] };
+      } else if (u.includes("/campaigns?")) {
+        body = { data: [{ id: "c1", name: "Campaign", status: "PAUSED", objective: "OUTCOME_SALES" }] };
+      } else if (u.includes("/adsets?")) {
+        body = { data: [{ id: SET, name: "Ad set", status: "PAUSED", campaign_id: "c1" }] };
+      } else if (u.includes("/ads?")) {
+        body = { data: ADS.map(({ pre: _pre, ...a }) => ({ ...a, status: "PAUSED", adset_id: SET })) };
+      }
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+    };
+    return { fetch, urls };
+  }
+
+  const run = (db, meta = fakeMeta()) =>
+    syncPartnerConnections({ partnerId: PARTNER, deps: { fetch: meta.fetch }, scope: db.scope });
+
+  test("the ad list's fields are the old four plus creative{url_tags}", () => {
+    assert.deepEqual(AD_LIST_FIELDS.split(","),
+      ["id", "name", "status", "adset_id", "creative{url_tags}"]);
+  });
+
+  test("the ads request Meta gets asks for creative{url_tags}, on v26.0", async () => {
+    const meta = fakeMeta();
+    await run(fakeDb(), meta);
+    const adsCalls = meta.urls.filter((u) => u.includes("/ads?"));
+    assert.equal(adsCalls.length, 1);
+    const url = new URL(adsCalls[0]);
+    assert.equal(url.pathname, `/v26.0/${SET}/ads`);
+    assert.equal(url.searchParams.get("fields"), "id,name,status,adset_id,creative{url_tags}");
+    assert.equal(url.searchParams.get("limit"), String(LIST_PAGE_SIZE));
+  });
+
+  test("utm_content 91 → 91 (utm); 'SLO Ad 92 — x' → 92 (name); the live ads → nothing", async () => {
+    const db = fakeDb();
+    const stats = await run(db);
+    assert.deepEqual(stats.errors, [], JSON.stringify(stats.errors));
+    assert.deepEqual(db.numberWrites, [
+      { meta: "a91", number: "91", source: "utm" },
+      { meta: "a92", number: "92", source: "name" }
+    ]);
+    for (const live of ["live1", "live2"]) {
+      const row = db.rows.get(`row-${live}`);
+      assert.equal(row.fundhub_ad_number, null, `${live} got a number from {{ad.name}} or "oVid"`);
+      assert.equal(row.fundhub_ad_number_source, null);
+    }
+  });
+
+  test("a 'manual' number is never overwritten, and the same number keeps its source", async () => {
+    const db = fakeDb();
+    const stats = await run(db);
+    const man = db.rows.get("row-man");
+    assert.equal(man.fundhub_ad_number, "93", "the sync overwrote a number a person typed");
+    assert.equal(man.fundhub_ad_number_source, "manual");
+    const ldr = db.rows.get("row-ldr");
+    assert.equal(ldr.fundhub_ad_number, "95");
+    assert.equal(ldr.fundhub_ad_number_source, "loader", "the same number was re-stamped as utm");
+    assert.ok(!db.numberWrites.some((w) => w.meta === "man" || w.meta === "ldr"));
+    assert.deepEqual(stats.ad_number_map,
+      { set: 2, kept_manual: 1, same: 1, none: 2, failed: 0, failures: [] });
+  });
+
+  test("a failed number write is counted, the ad is still saved, the campaign still commits", async () => {
+    const db = fakeDb({ failNumberFor: ["a91"] });
+    const stats = await run(db);
+    assert.deepEqual(stats.errors, [], "a number write failure became a sync failure");
+    assert.equal(stats.campaigns, 1, "the campaign was rolled back over one ad number");
+    assert.equal(stats.ads, ADS.length);
+    assert.equal(stats.insights, 1, "the failed ad's day of numbers was lost");
+    assert.equal(stats.ad_number_map.failed, 1);
+    assert.equal(stats.ad_number_map.failures[0].ad, "a91");
+    assert.match(stats.ad_number_map.failures[0].error, /check constraint/);
+    // The ad after it still got its number: the transaction was not left aborted.
+    assert.deepEqual(db.numberWrites, [{ meta: "a92", number: "92", source: "name" }]);
+    // And the failure rolled back to its own savepoint, not the campaign's start.
+    const sqls = db.statements.map((x) => x.sql.trim());
+    const fail = sqls.findIndex((x) => /SET fundhub_ad_number = \$2/.test(x));
+    assert.equal(sqls[fail - 1], "SAVEPOINT fundhub_ad_number_map");
+    assert.equal(sqls[fail + 1], "ROLLBACK TO SAVEPOINT fundhub_ad_number_map");
+  });
+
+  test("numbers are counted only after the campaign commits", async () => {
+    const db = fakeDb({ failInsights: true });
+    const stats = await run(db);
+    assert.equal(stats.campaigns, 0);
+    assert.equal(stats.errors.length, 1, "the campaign's own failure is still named");
+    assert.deepEqual(stats.ad_number_map, newAdNumberTally(),
+      "numbers from a campaign that rolled back were counted as written");
+  });
+
+  test("reresolveAdNumbers still runs after the sync, once, after every number write", async () => {
+    const db = fakeDb();
+    const stats = await run(db);
+    const sqls = db.statements.map((x) => x.sql);
+    const reresolve = sqls.flatMap((s, i) => (/fundhub_reresolve_ad_numbers/.test(s) ? [i] : []));
+    assert.equal(reresolve.length, 1, `visitor numbers were re-found ${reresolve.length} times`);
+    const lastNumberWrite = sqls.flatMap((s, i) => (/SET fundhub_ad_number = \$2/.test(s) ? [i] : [])).at(-1);
+    assert.ok(reresolve[0] > lastNumberWrite, "visitor numbers were re-found before the ads had theirs");
+    assert.deepEqual(stats.ad_numbers, { filled: 2 });
   });
 });
