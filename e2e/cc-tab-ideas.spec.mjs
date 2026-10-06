@@ -376,6 +376,10 @@ for (const size of SIZES) {
       await expect(page.locator("#cci-research-go")).toBeDisabled();
       await expect(page.locator("#cci-research-cost")).toHaveText("Your research did not load, so nothing can start. Tap Try again below.");
       await expect(page.locator("#cci-research-list").getByRole("button", { name: "Try again" })).toBeVisible();
+      if (size.width === 390) await shoot(page, "x8-11-research-reason-390.png", "Research it is off and says why", [
+        { locator: page.locator("#cci-research-go"), caption: "Research it: off" },
+        { locator: page.locator("#cci-research-cost"), caption: "The reason, printed beside it" }
+      ]);
     });
 
     test("a funnel with no pages yet: See the pages is off and says why", async ({ page }) => {
@@ -383,6 +387,11 @@ for (const size of SIZES) {
       const row = page.locator('[data-funnel="00000000-0000-4000-8000-000000000603"]');
       await expect(row.getByRole("button", { name: "See the pages" })).toBeDisabled();
       await expect(row.locator('[data-why="see-pages"]')).toHaveText("See the pages: write the pages first.");
+      if (size.width === 390) await shoot(page, "x8-10-see-pages-reason-390.png", "See the pages is off and says why", [
+        { locator: row.getByRole("button", { name: "See the pages" }), caption: "See the pages: off" },
+        { locator: row.locator('[data-why="see-pages"]'), caption: "The reason, printed under it" },
+        { locator: row.locator(".cci-row-text + *, .cci-muted").filter({ hasText: "Its ads are tagged" }).first(), caption: "Plain words for the ad tag" }
+      ]);
     });
 
     for (const mode of ["promise", "both"]) {
