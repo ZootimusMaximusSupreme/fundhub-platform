@@ -32,7 +32,11 @@ export const JOB_GROUPS = Object.freeze(["writer", "loader", "system"]);
 export const JOB_KINDS = {
   // U24 — the script writer (src/marketing/writer.mjs, spec §7.6). One module, two handlers.
   write_slot: { group: "writer", load: () => import("./writer.mjs").then((m) => ({ run: m.runWriteSlot })) },
-  fix_script: { group: "writer", load: () => import("./writer.mjs").then((m) => ({ run: m.runFixScript })) }
+  fix_script: { group: "writer", load: () => import("./writer.mjs").then((m) => ({ run: m.runFixScript })) },
+  // X4 funnel builder: write a book-a-call funnel's three pages (one model call,
+  // checked words), then put them on ClickFunnels as NEW pages on Chris's Push live.
+  funnel: { group: "writer", load: () => import("./funnel-build.mjs") },
+  funnel_push: { group: "system", load: () => import("./funnel-push.mjs") }
 };
 
 /**
@@ -61,3 +65,4 @@ export async function checkJobKinds(registry = JOB_KINDS) {
   }
   return problems;
 }
+JOB_KINDS.meta_load = { group: "loader", load: () => import("./meta-load.mjs") }; // U28: one approved video → one PAUSED Meta ad

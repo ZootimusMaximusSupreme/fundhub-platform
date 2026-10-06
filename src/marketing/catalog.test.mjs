@@ -118,7 +118,7 @@ test("default props are read from the source, spreads included", () => {
   assert.equal(byId.get("QualifyToday").default_props.today.value, 199350);
   assert.deepEqual(byId.get("LenderSlots").default_props.landOn, ["Chase", "American Express", "Bank of America"]);
   // {...bankPocketsDefaults, format: 'wide' as const}: the override keeps its place.
-  assert.deepEqual(Object.keys(byId.get("BankPocketsWide").default_props), ["format", "eyebrow", "headline", "subline"]);
+  assert.deepEqual(Object.keys(byId.get("BankPocketsWide").default_props), ["format", "eyebrow", "headline", "subline", "transparent"]);
   assert.equal(byId.get("BankPocketsWide").default_props.format, "wide");
   assert.equal(byId.get("ProofFloodWide").default_props.format, "wide");
   assert.equal(byId.get("FundingRounds").default_props.amounts, null, "null survives as null");

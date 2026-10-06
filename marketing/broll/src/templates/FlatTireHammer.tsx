@@ -1,5 +1,6 @@
 import React from 'react';
 import {COLORS, BrandFrame, Decor, P3D, Stage3D, enter} from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {
   CarCorner,
   CaptionBlock,
@@ -37,6 +38,8 @@ export type FlatTireHammerProps = {
   /** Clip length in frames, 75 to 105 (2.5 to 3.5 seconds at 30 fps). Default 90. */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const FLAT_TIRE_HAMMER_BASE = 90;
@@ -49,6 +52,7 @@ export const flatTireHammerDefaults: FlatTireHammerProps = {
   eyebrow: 'Wrong tool',
   caption: 'An hour with a hammer',
   bendRim: true,
+  transparent: false,
 };
 
 /** The three hits (template frames). */
@@ -140,7 +144,7 @@ const ImpactLines: React.FC<{t: number; big?: boolean}> = ({t, big}) => {
   );
 };
 
-export const FlatTireHammer: React.FC<FlatTireHammerProps> = ({eyebrow, caption, bendRim = true, durationInFrames, showSafeZones}) => {
+export const FlatTireHammer: React.FC<FlatTireHammerProps> = ({eyebrow, caption, bendRim = true, durationInFrames, showSafeZones, transparent}) => {
   const L = FLAT_TIRE_HAMMER_BASE;
   const {f, fps} = useToolTimeline(L, durationInFrames, FLAT_TIRE_HAMMER_MIN, FLAT_TIRE_HAMMER_MAX);
   const [h1, h2, h3] = HITS;
@@ -161,7 +165,7 @@ export const FlatTireHammer: React.FC<FlatTireHammerProps> = ({eyebrow, caption,
   const speed = Math.abs(swingAngle(f) - swingAngle(f - 1));
   const smear = Math.min(1, Math.max(0, (speed - 6) / 14));
 
-  return (
+  const page = (
     <BrandFrame showSafeZones={showSafeZones}>
       <ToolDefs />
       <Stage3D f={f} length={L}>
@@ -208,4 +212,5 @@ export const FlatTireHammer: React.FC<FlatTireHammerProps> = ({eyebrow, caption,
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

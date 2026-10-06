@@ -22,6 +22,7 @@ import {
   fadeUp,
   progressBetween,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {useClipTimeline} from './clipTimeline';
 
 // A funding sequence that runs round by round (3 to 6 rounds). Each round
@@ -53,6 +54,8 @@ export type FundingRoundsProps = {
   amounts?: number[] | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const fundingRoundsDefaults: FundingRoundsProps = {
@@ -63,6 +66,7 @@ export const fundingRoundsDefaults: FundingRoundsProps = {
   captionStruck: 'Hard inquiries',
   captionRest: 'removed between rounds',
   amounts: null,
+  transparent: false,
 };
 
 const clampRounds = (n: number): number => Math.min(6, Math.max(3, Math.round(Number.isFinite(n) ? n : 4)));
@@ -170,6 +174,7 @@ export const FundingRounds: React.FC<FundingRoundsProps> = ({
   amounts,
   durationInFrames,
   showSafeZones,
+  transparent,
 }) => {
   const N = clampRounds(rounds);
   const L = fundingRoundsBase(N);
@@ -196,7 +201,7 @@ export const FundingRounds: React.FC<FundingRoundsProps> = ({
   /** Full-frame y of the tower's top once round k's bundle is on. */
   const topAfter = (k: number) => lay.towerFloorY - (baseOf(k) + slabH(k)) * RISE;
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -397,4 +402,5 @@ export const FundingRounds: React.FC<FundingRoundsProps> = ({
       </Decor>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

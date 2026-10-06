@@ -16,6 +16,7 @@ import {
   progressBetween,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type InquiriesOffProps = {
   eyebrow: string;
@@ -27,6 +28,8 @@ export type InquiriesOffProps = {
   toNote: string;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const INQUIRIES_OFF_BASE = 90;
@@ -42,6 +45,7 @@ export const inquiriesOffDefaults: InquiriesOffProps = {
   afterTag: 'Removed',
   toLabel: 'Next funding round',
   toNote: 'Goes in clean',
+  transparent: false,
 };
 
 const DIAGRAM_W = 700; // centered in the content box
@@ -84,6 +88,7 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
   toNote,
   durationInFrames,
   showSafeZones,
+  transparent,
 }) => {
   const {f, fps} = useTimeline(INQUIRIES_OFF_BASE, durationInFrames);
   const L = INQUIRIES_OFF_BASE;
@@ -99,7 +104,7 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
   const note = enter(f, fps, 64, 12);
   const diagramH = B_Y + 120;
 
-  return (
+  const page = (
     <BrandFrame showSafeZones={showSafeZones}>
       <Stage3D f={f} length={L}>
         <Eyebrow text={eyebrow} progress={enter(f, fps, 0, 14)} />
@@ -219,4 +224,5 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

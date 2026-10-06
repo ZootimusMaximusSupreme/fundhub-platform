@@ -13,6 +13,7 @@ test("allow-list: exactly the spec list, and no flywheel folder", () => {
     "marketing/ads/scripts/machine/",
     "marketing/ads/videos/",
     "marketing/brain/",
+    "marketing/landing-pages/funnels/",
     "ops/page-requests/"
   ]);
   assert.deepEqual([...ALLOWED_FILES].sort(), [
@@ -23,6 +24,10 @@ test("allow-list: exactly the spec list, and no flywheel folder", () => {
     "marketing/ads/registry.json"
   ]);
   assert.equal(isAllowedRepoPath("marketing/flywheel/avatar.md"), false);
+  // X4: a built funnel's pages, and nothing else under landing-pages.
+  assert.equal(isAllowedRepoPath("marketing/landing-pages/funnels/blueprint/landing.html"), true);
+  assert.equal(isAllowedRepoPath("marketing/landing-pages/slo/slo-01-sales.html"), false);
+  assert.equal(isAllowedRepoPath("marketing/landing-pages/tracking-manifest.mjs"), false);
 });
 
 test("allow-list: the spec's files and folders are allowed", () => {

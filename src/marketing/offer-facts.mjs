@@ -6,8 +6,11 @@
 //
 // NO PRICE IS WRITTEN HERE. Each price is read from the one file that already
 // owns it, so a price change there changes it here too:
-//   slo_roadmap  → SLO_PRICE_CENTS        (src/slo/offer.mjs)
-//   funding_dfy  → OFFERS.FUNDING_DFY      (src/config/offers.mjs)
+//   slo_roadmap        → SLO_PRICE_CENTS              (src/slo/offer.mjs)
+//   funding_dfy        → OFFERS.FUNDING_DFY            (src/config/offers.mjs)
+//   capital_blueprint  → OFFERS.UWIQ_DELIVERABLES      (src/config/offers.mjs; product
+//                        code consulting-package — added 2026-10-06 for the funnel
+//                        builder, build unit X4; no seeded funnel names it)
 // src/marketing/offer-facts.test.mjs fails if a literal price shows up in
 // src/marketing/.
 //
@@ -41,6 +44,15 @@ const FACTS = Object.freeze(Object.assign(Object.create(null), {
     price_cents: cents(OFFERS.FUNDING_DFY.priceCents),
     book_call: true,
     source: "src/config/offers.mjs OFFERS.FUNDING_DFY"
+  }),
+  /* The Capital Blueprint (product code consulting-package), sold on a booked
+     call. The test offer of the dashboard's funnel builder (owner, 2026-10-05). */
+  capital_blueprint: () => ({
+    key: "capital_blueprint",
+    label: OFFERS.UWIQ_DELIVERABLES.name,
+    price_cents: cents(OFFERS.UWIQ_DELIVERABLES.priceCents),
+    book_call: true,
+    source: "src/config/offers.mjs OFFERS.UWIQ_DELIVERABLES"
   })
 }));
 

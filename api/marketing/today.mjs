@@ -4,8 +4,16 @@
 //   - where each flywheel step stands (same words as `npm run flywheel:status`)
 //   - the latest ad copy the writer made, and its last few jobs
 //   - can "Write ad copy" run right now, and if not, what is missing
-//   - ad spend for today, the last 7 days, the 7 days before that, 30 days
-//   - when Meta last synced
+//   - ad spend for today, the last 7 full days, the 7 days before that, the
+//     last 30 full days and the 30 before that
+//   - when Meta and ClickFunnels last synced
+//   - what the last measured Write offer and Write ad copy runs cost
+//   - ADDED BY U32 (spec §8.3 and §11.2), never renaming a key above:
+//     numbers (spend, leads, booked, showed, sales, roadmaps, cash, reported
+//     cash, ROAS for today / 7 / 30 days), daily (30 days, for the sparklines),
+//     spend_by_funnel (7 days, with an Unmapped row), flow (ad -> page -> lead
+//     -> call -> sale, 7 days), scripts_waiting, stuck_jobs (each with its job
+//     id, so Retry can post marketing/jobs/retry)
 // The JSON shape is written down in docs/specs/marketing-today-contract.md.
 // The page (public/app/marketing-command-center.*) codes against that file.
 //
@@ -33,7 +41,30 @@
 // integer cents.
 //
 // "TODAY" IS ARIZONA'S DAY (America/Phoenix, no daylight saving), the same day
-// the ad account and the floor use.
+// the ad account and the floor use (src/lib/ad-account-day.mjs).
+//
+// FULL DAYS ONLY in the 7 and 30 day windows. The Meta pull saves through
+// yesterday, so a window that ends today always has one empty day in it, and
+// "last 7 days" was really 6 days set against a full 7 before it. Every
+// multi-day window now ends on the last whole day the numbers cover, so both
+// sides of each comparison are whole days, and never on today.
+// `spend.through` names that day so the page can say "Numbers through Oct 4".
+//
+// THE WINDOWS KEEP MOVING WHEN ADS STOP. Meta sends no row for a day no ad ran,
+// so the newest saved day (latest_metrics_date) freezes the moment ads stop.
+// Ending the windows there would keep calling Sep 28 to Oct 4 "the last 7 days"
+// for weeks after the spend went to nothing. So the end day is the LATER of the
+// newest saved day and the last whole day the newest Meta pull covered (the day
+// before the pull's own Arizona day: the midnight pull on Oct 5 covers Oct 4).
+// A window the pull covered but holds no rows stays null, and the page says
+// "No ad spend saved for Oct 5 to Oct 11." It is never turned into $0.
+//
+// COSTS ARE MEASURED, NEVER WRITTEN IN. `costs.offer` is the newest finished
+// Write offer run (marketing_jobs, its saved token counts and its own start and
+// end times). `costs.copy` is the copy writer's last five model calls
+// (partner_ai_usage, purpose 'creative', the house partner). Dollars come from
+// src/marketing/model-prices.mjs, which lists only prices with a source. No row,
+// or a model with no price on file, is null: the page prints "unknown".
 
 import { db } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
@@ -44,25 +75,47 @@ import { phoenixDay } from "../../src/slo/visitor.mjs";
 import { flywheelStatus } from "../../src/marketing/flywheel-status.mjs";
 import { resolve as resolveProvider } from "../../src/creative/providers/index.mjs";
 import { remainingTokens } from "../../src/brand/meter.mjs";
+import { readTotals, readDaily } from "../../src/marketing/metrics.mjs";
+import {
+  spendByFunnel, spendByFunnelView, funnelSteps, flowPageViews,
+  readScriptsWaiting, readStuckJobs, numbersFor
+} from "../../src/marketing/metrics-rollups.mjs";
+import { costOfCalls } from "../../src/marketing/model-prices.mjs";
 
 export const TIMEZONE = "America/Phoenix";
+/** daily: the last 30 Arizona days, oldest first (the sparklines). */
+export const DAILY_DAYS = 30;
 export const HOUSE_SLUG = "fundhub-house";
 export const COPY_PIECES = 10;
 export const COPY_JOBS = 5;
+/* How many of the copy writer's model calls the "about $X a run" line averages. */
+export const COPY_COST_RUNS = 5;
 
-/* The spend windows. `back` is how many days before today the window ends;
-   `len` is how many days it covers. Both ends are inclusive Arizona days. */
+/* The spend windows. `today` is Arizona's today and nothing else. Every other
+   window ends `back` days before the END DAY (see spendEnd) and covers `len`
+   days. Both ends are inclusive Arizona days. */
 export const SPEND_WINDOWS = Object.freeze([
-  { key: "today", back: 0, len: 1 },
+  { key: "today", today: true, len: 1 },
   { key: "last_7_days", back: 0, len: 7 },
   { key: "prior_7_days", back: 7, len: 7 },
-  { key: "last_30_days", back: 0, len: 30 }
+  { key: "last_30_days", back: 0, len: 30 },
+  { key: "prior_30_days", back: 30, len: 30 }
 ]);
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /* Postgres says "this does not exist (yet)": table, column, function. */
 const MISSING_CODES = new Set(["42P01", "42703", "42883"]);
 export function isMissingThing(err) {
   return Boolean(err) && MISSING_CODES.has(String(err.code));
+}
+
+/* The plain sentence for a part whose table or column is not there yet. */
+function missingReason(err) {
+  const what = /relation "([^"]+)"/.exec(String(err?.message || ""));
+  return what
+    ? `The ${what[1]} table is not in the database yet.`
+    : "A table or column this part reads is not in the database yet.";
 }
 
 /* addDays("2026-10-05", -6) → "2026-09-29". Plain calendar arithmetic on the
@@ -73,14 +126,38 @@ export function addDays(day, n) {
   return d.toISOString().slice(0, 10);
 }
 
-/* spendWindows(today) → [{ key, from, to, days }] */
-export function spendWindows(today) {
-  return SPEND_WINDOWS.map((w) => ({
-    key: w.key,
-    from: addDays(today, -(w.back + w.len - 1)),
-    to: addDays(today, -w.back),
-    days: w.len
-  }));
+/* spendEnd(today, latest, pulledOn) — the last day the 7 and 30 day windows
+   include.
+
+   `latest` is the newest day with saved numbers. `pulledOn` is the Arizona day
+   the newest Meta pull ran; that pull covered every whole day before it. The
+   end day is the later of `latest` and the day before `pulledOn`, so the
+   windows keep moving after ads stop (see the header). Never today or later:
+   today is not over, and `today` is its own window. With neither day known it
+   is yesterday, the newest day the nightly pull could have saved (the windows
+   are all null then anyway, but their dates still read as whole days). */
+export function spendEnd(today, latest, pulledOn = null) {
+  const yesterday = addDays(today, -1);
+  const known = [
+    latest,
+    typeof pulledOn === "string" && DAY_RE.test(pulledOn) ? addDays(pulledOn, -1) : null
+  ].filter((d) => typeof d === "string" && DAY_RE.test(d)).sort();
+  if (!known.length) return yesterday;
+  const end = known[known.length - 1];
+  return end < yesterday ? end : yesterday;
+}
+
+/* spendWindows(today, latest, pulledOn) → [{ key, from, to, days }] */
+export function spendWindows(today, latest = null, pulledOn = null) {
+  const end = spendEnd(today, latest, pulledOn);
+  return SPEND_WINDOWS.map((w) => w.today
+    ? { key: w.key, from: today, to: today, days: 1 }
+    : {
+      key: w.key,
+      from: addDays(end, -(w.back + w.len - 1)),
+      to: addDays(end, -w.back),
+      days: w.len
+    });
 }
 
 /* A bigint arrives from node-postgres as a string. Integer cents, or null. */
@@ -128,6 +205,45 @@ export async function readSpend(tx, { orgId, windows }) {
   return out;
 }
 
+/* readSpendEnd(tx, { orgId }) → { latest, metaSyncedAt }
+
+   The newest saved ad-day and the newest Meta pull, read in the same
+   transaction as the sums so the windows and the rows agree. */
+export async function readSpendEnd(tx, { orgId }) {
+  const { rows } = await tx.query(
+    `SELECT (SELECT max(date)::text
+               FROM ad_metrics_daily
+              WHERE org_id = $1) AS spend_end_day,
+            (SELECT max(last_synced_at)
+               FROM ad_platform_connections
+              WHERE org_id = $1 AND platform = 'meta') AS meta_synced_at`,
+    [orgId]
+  );
+  return {
+    latest: rows[0]?.spend_end_day ?? null,
+    metaSyncedAt: rows[0]?.meta_synced_at ?? null
+  };
+}
+
+/* The Arizona day a pull ran on, or null. */
+function pulledOnDay(at) {
+  if (!at) return null;
+  const d = at instanceof Date ? at : new Date(at);
+  return Number.isNaN(d.getTime()) ? null : phoenixDay(d);
+}
+
+/* readSpendAll(tx, { orgId, today }) → { through, windows } */
+export async function readSpendAll(tx, { orgId, today }) {
+  const { latest, metaSyncedAt } = await readSpendEnd(tx, { orgId });
+  const pulledOn = pulledOnDay(metaSyncedAt);
+  const windows = spendWindows(today, latest, pulledOn);
+  return {
+    // Nothing saved ever → null (and "spend" is named in waiting).
+    through: latest ? spendEnd(today, latest, pulledOn) : null,
+    windows: await readSpend(tx, { orgId, windows })
+  };
+}
+
 /* readLastSync(tx, { orgId }) → { meta_synced_at, metrics_synced_at, latest_metrics_date } */
 export async function readLastSync(tx, { orgId }) {
   const conn = await tx.query(
@@ -147,6 +263,117 @@ export async function readLastSync(tx, { orgId }) {
     metrics_synced_at: metrics.rows[0]?.metrics_synced_at ?? null,
     latest_metrics_date: metrics.rows[0]?.latest_metrics_date ?? null
   };
+}
+
+/* readClickfunnelsSync(tx, { orgId }) → the ClickFunnels account's last pull, or null.
+
+   analytics_connections.last_synced_at, which the night pull and a hand pull
+   both stamp on success (src/analytics/clickfunnels-org-sync.mjs). Staff-only
+   row security (302), so it is read inside asStaff() like every other part. */
+export async function readClickfunnelsSync(tx, { orgId }) {
+  const { rows } = await tx.query(
+    `SELECT max(last_synced_at) AS clickfunnels_synced_at
+       FROM analytics_connections
+      WHERE org_id = $1 AND platform = 'clickfunnels'`,
+    [orgId]
+  );
+  return rows[0]?.clickfunnels_synced_at ?? null;
+}
+
+function count(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
+}
+
+function seconds(from, to) {
+  if (!from || !to) return null;
+  const ms = new Date(to).getTime() - new Date(from).getTime();
+  return Number.isFinite(ms) && ms >= 0 ? Math.round(ms / 1000) : null;
+}
+
+/* shapeOfferCost(row) — one finished offer run as the cost line needs it. */
+export function shapeOfferCost(row) {
+  if (!row) {
+    return {
+      measured: false, job_id: null, finished_at: null, seconds: null,
+      input_tokens: null, output_tokens: null, models: [],
+      cost_cents: null, under_one_cent: false, unpriced_models: []
+    };
+  }
+  const usage = row.usage && typeof row.usage === "object" ? row.usage : {};
+  const calls = Array.isArray(usage.calls) && usage.calls.length
+    ? usage.calls
+    : [{ model: null, input_tokens: usage.input_tokens, output_tokens: usage.output_tokens }];
+  const cost = costOfCalls(calls);
+  const sum = (k) => calls.reduce((a, c) => a + count(c && c[k]), 0);
+  return {
+    measured: true,
+    job_id: row.id,
+    finished_at: row.finished_at ?? null,
+    // From the moment the writer picked the run up to the moment it finished.
+    seconds: seconds(row.claimed_at, row.finished_at),
+    input_tokens: usage.input_tokens != null ? count(usage.input_tokens) : sum("input_tokens"),
+    output_tokens: usage.output_tokens != null ? count(usage.output_tokens) : sum("output_tokens"),
+    models: [...new Set(calls.map((c) => c && c.model).filter(Boolean))],
+    cost_cents: cost.cents,
+    under_one_cent: cost.exact_cents !== null && cost.exact_cents > 0 && cost.cents === 0,
+    unpriced_models: cost.unpriced
+  };
+}
+
+/* readOfferCost(tx, { orgId }) — the newest finished Write offer run that saved
+   its token counts (marketing_jobs.result.usage, src/marketing/offer-generator.mjs). */
+export async function readOfferCost(tx, { orgId }) {
+  const { rows } = await tx.query(
+    `SELECT id, claimed_at, finished_at, result->'usage' AS usage
+       FROM marketing_jobs
+      WHERE org_id = $1 AND kind = 'offer' AND status = 'done'
+        AND jsonb_typeof(result->'usage') = 'object'
+      ORDER BY finished_at DESC NULLS LAST, created_at DESC
+      LIMIT 1`,
+    [orgId]
+  );
+  return shapeOfferCost(rows[0] || null);
+}
+
+/* shapeCopyCost(rows) — the copy writer's newest model calls, averaged. */
+export function shapeCopyCost(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) {
+    return {
+      runs: 0, last_at: null, models: [], avg_input_tokens: null, avg_output_tokens: null,
+      avg_cost_cents: null, under_one_cent: false, unpriced_models: []
+    };
+  }
+  const costs = list.map((r) => costOfCalls([{ model: r.model, input_tokens: r.input_tokens, output_tokens: r.output_tokens }]));
+  const unpriced = [...new Set(costs.flatMap((c) => c.unpriced))];
+  const exact = unpriced.length ? null : costs.reduce((a, c) => a + c.exact_cents, 0) / list.length;
+  const avg = (k) => Math.round(list.reduce((a, r) => a + count(r[k]), 0) / list.length);
+  return {
+    runs: list.length,
+    last_at: list[0].created_at ?? null,
+    models: [...new Set(list.map((r) => r.model).filter(Boolean))],
+    avg_input_tokens: avg("input_tokens"),
+    avg_output_tokens: avg("output_tokens"),
+    avg_cost_cents: exact === null ? null : Math.round(exact),
+    under_one_cent: exact !== null && exact > 0 && Math.round(exact) === 0,
+    unpriced_models: unpriced
+  };
+}
+
+/* readCopyCost(tx, { partnerId }) — what the copy writer (src/creative/providers/
+   copy.mjs) recorded for its last few calls. purpose 'creative' is written by
+   that provider and nothing else. */
+export async function readCopyCost(tx, { partnerId }) {
+  const { rows } = await tx.query(
+    `SELECT created_at, input_tokens, output_tokens, model
+       FROM partner_ai_usage
+      WHERE partner_id = $1 AND purpose = 'creative'
+      ORDER BY created_at DESC, id DESC
+      LIMIT $2`,
+    [partnerId, COPY_COST_RUNS]
+  );
+  return shapeCopyCost(rows);
 }
 
 /* readHousePartner(tx, { orgId }) → { id, org_id } | null */
@@ -300,11 +527,19 @@ export default async function handler(req, res, deps = {}) {
       return { ok: true, value: await staffScope(fn) };
     } catch (err) {
       if (!isMissingThing(err)) throw err;
-      const what = /relation "([^"]+)"/.exec(String(err.message || ""));
-      wait(name, what
-        ? `The ${what[1]} table is not in the database yet.`
-        : "A table or column this part reads is not in the database yet.");
+      wait(name, missingReason(err));
       return { ok: false, value: null };
+    }
+  };
+
+  /* quietPart — the same, for parts that read side by side: the "waiting"
+     line is handed back instead of pushed, so the order stays fixed. */
+  const quietPart = async (name, fn) => {
+    try {
+      return { name, ok: true, value: await staffScope(fn), reason: null };
+    } catch (err) {
+      if (!isMissingThing(err)) throw err;
+      return { name, ok: false, value: null, reason: missingReason(err) };
     }
   };
 
@@ -347,23 +582,86 @@ export default async function handler(req, res, deps = {}) {
       if (ready.ok) copyReady = { partner_id: partnerId, ...ready.value };
     }
 
-    // 3. Spend.
-    const windows = spendWindows(today);
-    const spendRead = await part("spend", (tx) => readSpend(tx, { orgId, windows }));
+    // 3. Spend, in whole days ending on the last whole day the numbers cover.
+    const spendRead = await part("spend", (tx) => readSpendAll(tx, { orgId, today }));
     let spend = null;
     if (spendRead.ok) {
-      spend = { currency: "USD", windows: spendRead.value };
-      if (spendRead.value.last_30_days.ad_days === 0) {
-        wait("spend", "No ad numbers are saved for the last 30 days.");
-      }
+      spend = { currency: "USD", through: spendRead.value.through, windows: spendRead.value.windows };
+      if (!spendRead.value.through) wait("spend", "No ad numbers are saved yet.");
     }
 
-    // 4. Last sync.
+    // 4. Last sync: Meta, then ClickFunnels in its own transaction so a missing
+    //    analytics table cannot blank the Meta times.
     const syncRead = await part("last_sync", (tx) => readLastSync(tx, { orgId }));
-    const lastSync = syncRead.ok ? syncRead.value : null;
+    const cfRead = await part("clickfunnels", (tx) => readClickfunnelsSync(tx, { orgId }));
+    const lastSync = syncRead.ok
+      ? { ...syncRead.value, clickfunnels_synced_at: cfRead.ok ? cfRead.value : null }
+      : null;
     if (syncRead.ok && !lastSync.meta_synced_at && !lastSync.metrics_synced_at) {
       wait("last_sync", "Meta has never synced for this company.");
     }
+
+    // 5. What the last measured runs cost. Each in its own transaction: the
+    //    marketing_jobs table ships with the offer writer and may be missing.
+    const offerCost = await part("costs", (tx) => readOfferCost(tx, { orgId }));
+    // No house partner: nobody has written copy, so nothing is measured (runs 0).
+    // The house partner could not be looked up at all: unknown (null).
+    const copyCost = partnerId
+      ? await part("costs", (tx) => readCopyCost(tx, { partnerId }))
+      : { ok: house.ok, value: house.ok ? shapeCopyCost([]) : null };
+    const costs = {
+      offer: offerCost.ok ? offerCost.value : null,
+      copy: copyCost.ok ? copyCost.value : null
+    };
+
+    // 6. The M5 numbers (U32). Four parts read side by side, each in its own
+    //    short transaction. The counting rules are U20's (src/marketing/metrics.mjs);
+    //    which funnel a number belongs to is src/marketing/metrics-rollups.mjs.
+    //    Same windows as spend above (slice 0): today is Arizona's today, and the
+    //    7 and 30 day windows are spend's whole-day windows, ending on
+    //    spend.through. When spend could not be read, the same rule with nothing
+    //    saved: they end yesterday.
+    const win = spendRead.ok
+      ? spendRead.value.windows
+      : Object.fromEntries(spendWindows(today).map((x) => [x.key, x]));
+    const d7 = { from: win.last_7_days.from, to: win.last_7_days.to };
+    const m5 = await Promise.all([
+      quietPart("numbers", async (tx) => ({
+        today: await readTotals(tx, { orgId, from: win.today.from, to: win.today.to, now }),
+        d7: await readTotals(tx, { orgId, ...d7, now }),
+        d30: await readTotals(tx, { orgId, from: win.last_30_days.from, to: win.last_30_days.to, now }),
+        daily: await readDaily(tx, { orgId, days: DAILY_DAYS, now })
+      })),
+      quietPart("spend_by_funnel", async (tx) => {
+        const rollup = await spendByFunnel(tx, { orgId, ...d7 });
+        const steps = await funnelSteps(tx, { orgId, ...d7 });
+        return { rollup, page_views: flowPageViews(rollup.funnels, steps) };
+      }),
+      quietPart("scripts_waiting", (tx) => readScriptsWaiting(tx, { orgId, now })),
+      quietPart("stuck_jobs", (tx) => readStuckJobs(tx, { orgId }))
+    ]);
+    for (const p of m5) if (!p.ok) wait(p.name, p.reason);
+    const [numbersRead, funnelRead, scriptsRead, jobsRead] = m5;
+
+    const totals = numbersRead.ok ? numbersRead.value : null;
+    const numbers = totals
+      ? { today: numbersFor(totals.today), d7: numbersFor(totals.d7), d30: numbersFor(totals.d30) }
+      : null;
+    const daily = totals
+      ? totals.daily.map((d) => ({ date: d.day, spend_cents: d.spend_cents, leads: d.leads }))
+      : [];
+    const flow = totals
+      ? {
+          // People who opened a funnel's landing page; null when it could not be read.
+          page_views: funnelRead.ok ? funnelRead.value.page_views : null,
+          // Link clicks on the ads (Meta). null when Meta reported none in the window.
+          clicks: totals.d7.link_clicks ?? null,
+          leads: numbers.d7.leads,
+          booked: numbers.d7.booked,
+          showed: numbers.d7.showed,
+          sales: numbers.d7.sales
+        }
+      : null;
 
     return res.status(200).json({
       ok: true,
@@ -375,7 +673,15 @@ export default async function handler(req, res, deps = {}) {
       copy,
       copy_ready: copyReady,
       spend,
-      last_sync: lastSync
+      last_sync: lastSync,
+      costs,
+      // ── added by U32 (docs/specs/marketing-machine-api.md shape 7) ──
+      numbers,
+      daily,
+      spend_by_funnel: funnelRead.ok ? spendByFunnelView(funnelRead.value.rollup) : [],
+      flow,
+      scripts_waiting: scriptsRead.ok ? scriptsRead.value : null,
+      stuck_jobs: jobsRead.ok ? jobsRead.value : []
     });
   } catch (err) {
     if (dbDown(res, err)) return;

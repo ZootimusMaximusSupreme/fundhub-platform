@@ -112,6 +112,7 @@ import {
   metaResultMetrics
 } from "../../src/ads/meta-results.mjs";
 import { reresolveAdNumbers } from "../../src/ads/store.mjs";
+import { mapAdNumber } from "../../src/ads/ad-number.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { adAccountDay } from "../../src/lib/ad-account-day.mjs";
 
@@ -613,26 +614,145 @@ async function upsertAdSet(tx, { orgId, partnerId, connectionId, campaignId, row
   return ins.rows[0];
 }
 
-async function upsertAd(tx, { orgId, partnerId, connectionId, campaignId, adSetId, row }) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE AD LIST ASKS FOR EACH AD'S url_tags, AND THE SYNC STORES THE AD NUMBER
+   META'S OWN RECORD CARRIES (spec docs/specs/marketing-machine-2026-10-04.md
+   §10.5 "Sync mapping"; marketing machine unit U27, 2026-10-06).
+
+   `creative{url_tags}` asks Meta for each ad's creative and, inside it, only
+   its url_tags: the UTMs a click on the ad carries (spec §10.3 puts the UTMs
+   in url_tags, never in the link).
+
+   CHECKED, NOT ASSUMED. Meta refuses the WHOLE list when one field name is
+   unknown (the trap at VIDEO_INSIGHT_FIELDS in src/adplatforms/meta.mjs), and
+   a refused ad list costs that campaign every ad and every day of numbers.
+   Meta's own v26.0 SDK — facebook-business 26.0.2, whose apiconfig.py pins
+   API_VERSION 'v26.0' — declares Ad.creative as an AdCreative
+   (adobjects/ad.py, _field_types) and AdCreative.url_tags as a string
+   (adobjects/adcreative.py, _field_types). Checked 2026-10-06. The other four
+   names are the ones this list always asked for. */
+export const AD_LIST_FIELDS = "id,name,status,adset_id,creative{url_tags}";
+
+/* What the sync did with each ad's number, per run (stats.ad_number_map).
+     set          a number (and its source, 'utm' or 'name') was written
+     kept_manual  Meta's record named a number, but a person set this one
+                  ('manual'), so it was left alone
+     same         the row already held that number; nothing written, so the
+                  source it had ('loader', for one) is kept
+     none         Meta's record names no number — the live ads today
+                  (utm_content={{ad.name}}, names like "oVid: SLO1")
+     failed       the write failed; the ad is saved without it, the campaign
+                  still commits, and the first few are named in `failures` */
+export function newAdNumberTally() {
+  return { set: 0, kept_manual: 0, same: 0, none: 0, failed: 0, failures: [] };
+}
+
+const AD_NUMBER_FAILURES_NAMED = 5;
+const AD_NUMBER_SAVEPOINT = "fundhub_ad_number_map";
+
+function addAdNumberTally(into, from) {
+  if (!from) return into;
+  for (const k of ["set", "kept_manual", "same", "none", "failed"]) into[k] += from[k] || 0;
+  for (const f of from.failures || []) {
+    if (into.failures.length < AD_NUMBER_FAILURES_NAMED) into.failures.push(f);
+  }
+  return into;
+}
+
+/* syncAdNumber — runs right after an ad row is saved, inside the campaign's
+   transaction. The number comes from mapAdNumber (src/ads/ad-number.mjs): the
+   leading digits of utm_content in the creative's url_tags (source 'utm'),
+   else "Ad N" in the ad name (source 'name'), else nothing.
+
+   THE RULES (spec §10.5, migration 416):
+     - A 'manual' number is never overwritten.
+     - No number found → nothing is written. This never clears a number.
+     - The same number already on the row → nothing is written.
+     - Otherwise — no number yet, or a different number that a person did not
+       set — the number and its source are written.
+   The UPDATE's WHERE says the manual rule again, so the database holds it too.
+
+   IT NEVER THROWS, AND IT NEVER COSTS THE CAMPAIGN. In Postgres a failed
+   statement aborts the whole transaction: catching the error in JS alone is
+   not enough, because every later write in this campaign would then fail and
+   its COMMIT would quietly become a ROLLBACK (see the header, point 2). So the
+   UPDATE runs inside a SAVEPOINT. A failure rolls back to it, the ad keeps the
+   name and status already saved, the campaign goes on, and the failure is
+   counted in `tally` — never thrown. */
+async function syncAdNumber(tx, ad, row, tally) {
+  let opened = false;
+  try {
+    const mapped = mapAdNumber({ urlTags: row?.creative?.url_tags, name: row?.name });
+    if (!mapped) { tally.none += 1; return ad; }
+    const current = ad?.fundhub_ad_number == null ? null : String(ad.fundhub_ad_number);
+    if (current != null && ad.fundhub_ad_number_source === "manual") {
+      tally.kept_manual += 1;
+      return ad;
+    }
+    if (current === mapped.number) { tally.same += 1; return ad; }
+
+    await tx.query(`SAVEPOINT ${AD_NUMBER_SAVEPOINT}`);
+    opened = true;
+    const u = await tx.query(
+      `UPDATE ads
+          SET fundhub_ad_number = $2::text,
+              fundhub_ad_number_source = $3::text,
+              updated_at = now()
+        WHERE id = $1
+          AND (fundhub_ad_number IS NULL
+               OR (fundhub_ad_number_source IS DISTINCT FROM 'manual'
+                   AND fundhub_ad_number IS DISTINCT FROM $2::text))
+        RETURNING *`,
+      [ad.id, mapped.number, mapped.source]
+    );
+    await tx.query(`RELEASE SAVEPOINT ${AD_NUMBER_SAVEPOINT}`);
+    opened = false;
+    if (u.rows?.[0]) { tally.set += 1; return u.rows[0]; }
+    /* The database's own guard said no. This transaction has held the row's
+       lock since the save above, so only the manual rule can say no here. */
+    tally.kept_manual += 1;
+    return ad;
+  } catch (err) {
+    if (opened) {
+      try {
+        await tx.query(`ROLLBACK TO SAVEPOINT ${AD_NUMBER_SAVEPOINT}`);
+        await tx.query(`RELEASE SAVEPOINT ${AD_NUMBER_SAVEPOINT}`);
+      } catch { /* a dead connection fails the campaign on its next write anyway */ }
+    }
+    tally.failed += 1;
+    if (tally.failures.length < AD_NUMBER_FAILURES_NAMED) {
+      tally.failures.push({
+        ad: String(row?.id ?? ""),
+        error: String((err && err.message) || err).slice(0, 300)
+      });
+    }
+    return ad;
+  }
+}
+
+async function upsertAd(tx, { orgId, partnerId, connectionId, campaignId, adSetId, row, tally }) {
   const externalId = String(row.id);
   const existing = await tx.query(
     `SELECT id FROM ads WHERE connection_id = $1 AND external_id = $2`,
     [connectionId, externalId]
   );
+  let ad;
   if (existing.rows[0]) {
     const u = await tx.query(
       `UPDATE ads SET name = $2, status = $3, updated_at = now() WHERE id = $1 RETURNING *`,
       [existing.rows[0].id, row.name, row.status || null]
     );
-    return u.rows[0];
+    ad = u.rows[0];
+  } else {
+    const ins = await tx.query(
+      `INSERT INTO ads (
+         org_id, partner_id, connection_id, campaign_id, ad_set_id, external_id, name, status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [orgId, partnerId, connectionId, campaignId, adSetId, externalId, row.name, row.status || null]
+    );
+    ad = ins.rows[0];
   }
-  const ins = await tx.query(
-    `INSERT INTO ads (
-       org_id, partner_id, connection_id, campaign_id, ad_set_id, external_id, name, status
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [orgId, partnerId, connectionId, campaignId, adSetId, externalId, row.name, row.status || null]
-  );
-  return ins.rows[0];
+  return syncAdNumber(tx, ad, row, tally || newAdNumberTally());
 }
 
 /* storeInsights → the number of days actually written
@@ -884,6 +1004,9 @@ export async function syncPartnerConnections({
   stats.meta_results_saved = withResults;
   /* One entry per connection whose pull asked Meta for the whole history. */
   stats.full_history = [];
+  /* What happened to each ad's number (syncAdNumber). Counted per campaign
+     and added here only after that campaign commits, like every count. */
+  stats.ad_number_map = newAdNumberTally();
 
   for (const connection of usable) {
     stats.connections += 1;
@@ -1033,7 +1156,7 @@ export async function syncPartnerConnections({
           for (const srow of setPull.rows) {
             const adPull = await metaList(
               `${srow.id}/ads`,
-              "id,name,status,adset_id",
+              AD_LIST_FIELDS,
               { token, ctx: deps }
             );
             if (adPull.truncated) {
@@ -1054,7 +1177,7 @@ export async function syncPartnerConnections({
            Counted only after it has committed — see buildSyncResponse. */
         try {
           const written = await inScope(async (tx) => {
-            const done = { ad_sets: 0, ads: 0, insights: 0 };
+            const done = { ad_sets: 0, ads: 0, insights: 0, ad_number_map: newAdNumberTally() };
             const camp = await upsertCampaign(tx, {
               orgId, partnerId, connectionId: connection.id, row: crow
             });
@@ -1067,7 +1190,8 @@ export async function syncPartnerConnections({
               for (const arow of ads) {
                 const ad = await upsertAd(tx, {
                   orgId, partnerId, connectionId: connection.id,
-                  campaignId: camp.id, adSetId: adSet.id, row: arow
+                  campaignId: camp.id, adSetId: adSet.id, row: arow,
+                  tally: done.ad_number_map
                 });
                 done.ads += 1;
                 done.insights += await storeInsights(tx, {
@@ -1083,6 +1207,7 @@ export async function syncPartnerConnections({
           stats.ad_sets += written.ad_sets;
           stats.ads += written.ads;
           stats.insights += written.insights;
+          addAdNumberTally(stats.ad_number_map, written.ad_number_map);
         } catch (err) {
           stats.errors.push({ campaign: crow.id, error: String(err.message || err) });
         }

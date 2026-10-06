@@ -54,6 +54,32 @@ function stateText(row) {
     : "ready       not reviewed";
 }
 
+/* reviewCard(text) → the text under "## Review card", or null.
+
+   Every stage file ends with this block (marketing/flywheel/README.md, "What you
+   actually read"), and the checker fails a file without it. It is what "Read it"
+   on the Command Center unfolds. The block runs to the next heading of the same
+   or a higher level, or to the end of the file. Capped so one runaway file
+   cannot make the Today answer huge. Plain markdown; the page escapes it. */
+export const REVIEW_CARD_MAX = 4000;
+export function reviewCard(text) {
+  const lines = String(text || "").split("\n");
+  const at = lines.findIndex((l) => /^##\s+Review card\s*$/i.test(l));
+  if (at === -1) return null;
+  const rest = lines.slice(at + 1);
+  const end = rest.findIndex((l) => /^#{1,2}\s/.test(l));
+  const body = (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+  return body ? body.slice(0, REVIEW_CARD_MAX) : null;
+}
+
+function readCard(dir, file) {
+  try {
+    return reviewCard(fs.readFileSync(path.join(dir, file), "utf8"));
+  } catch {
+    return null; // no file (MISSING) — nothing to read
+  }
+}
+
 /* campaignStatus(dir, campaign) → { campaign, stages, advice }
 
    stages[i].line is render()'s line for that stage, trimmed and otherwise
@@ -82,7 +108,12 @@ export function campaignStatus(dir, campaign) {
       status: status.replace(/\s+/g, " "),
       why: raw.slice(whyAt).trim() || null,
       reasons: [...row.reasons],
-      line: raw.trim()
+      line: raw.trim(),
+      // The counts the stage file wrote in its own front matter (the checker's
+      // gates read the same numbers). The page turns them into its Done
+      // sentence ("133 customer quotes collected."). {} when the file is missing.
+      counts: { ...((row.meta && row.meta.counts) || {}) },
+      review_card: readCard(dir, row.file)
     };
   });
 

@@ -15,7 +15,8 @@
 <style>
 /* ══ MARKETING COMMAND CENTER — Today ════════════════════════════════════════
    docs/specs/marketing-machine-2026-10-04.md §8.3 (the Today tab) and the
-   "smallest first slice" in docs/specs/marketing-dashboard-plan-2026-10-05.md.
+   "smallest first slice" in docs/specs/marketing-dashboard-plan-2026-10-05.md,
+   made honest by slice 0 of docs/specs/command-center-design-2026-10-05.md.
    docs/rules/UI-STANDARDS.md is law here. What that means on this screen:
      - Top-left answers the owner's first question, "is the machine healthy?":
        ad spend for the last 7 days beside the 7 days before it (§1, §10).
@@ -26,7 +27,10 @@
        .caption/.cmp/.note/label/.chip = caption, everything else body.
      - Containers are .card, which is on the brand's shadow list, so this file
        never writes a shadow value (§12.2).
-     - 8px spacing scale only (§2). One column at 390px (§11).
+     - 8px spacing scale only (§2). One column at 390px (§11). Tiles stack
+       one per row up to 960px (design §3.1).
+     - No inner scroll boxes (design §3.0). Long words fold behind Show more
+       or Read it; the [hidden] blocks below are what those buttons open.
    ══════════════════════════════════════════════════════════════════════════ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
@@ -42,13 +46,23 @@ button,input,select,textarea{font:inherit;color:inherit}
    shell.js (clock, Search, the role chip with its LIVE mark, Sign out). The
    shell owns the clock's size and when it hides (fh-shell-clock-css), so no
    clock rule is written here. The height is a floor,
-   not a pin, so the bar can wrap on a phone without hiding its second row. */
-header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 16px;min-height:48px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--cardline)}
-.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+   not a pin, so the bar can wrap without hiding its second row.
+   WRAP, NEVER OVERFLOW. The right cluster (Search and the role chip, plus the
+   clock above 1100px) is about 680px wide with Mac fonts and wider with
+   Linux's: CI measured this page 993px wide at a 960px screen, and the name
+   shrank to 6px under Search. So the bar may wrap at any width, not only at
+   480px. Line-breaking reads the brand at 104px (the wordmark and the slash),
+   so on a wide screen the bar stays one row and the name truncates as before;
+   when even that does not fit, the cluster drops to a second row, right-
+   aligned, and wraps inside itself. The controls still never shrink
+   (UI-STANDARDS §12.8: flex 0 0 auto, and shell.js pins them flex-shrink 0);
+   max-width:100% only stops the cluster's own box running past the edge. */
+header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 16px;padding:0 16px;min-height:48px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--cardline)}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 104px;min-height:48px}
 .brand .logo{height:16px;aspect-ratio:2698/543;flex-shrink:0}
 .brand .sep{color:var(--gray2)}
 .brand .sub{font-weight:600;color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar-right{display:flex;align-items:center;gap:16px;flex:0 0 auto;color:var(--gray2)}
+.topbar-right{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 16px;flex:0 0 auto;max-width:100%;margin-left:auto;color:var(--gray2)}
 
 .content{padding:24px;display:flex;flex-direction:column;gap:24px;flex:1}
 .foot{border-top:1px solid var(--line);padding:16px 24px;display:flex;align-items:center;gap:8px;color:var(--gray2)}
@@ -57,6 +71,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 /* 12-column grid; cards span 4, 6 or 12 — never uneven in one row (§2). */
 .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
 .span-4{grid-column:span 4}
+[hidden]{display:none !important}
 .span-6{grid-column:span 6}
 .span-12{grid-column:span 12}
 
@@ -74,6 +89,10 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .tile .cmp{color:var(--gray)}
 .tile .note{color:var(--gray2)}
 .tile a{text-decoration:underline}
+/* "Old numbers: last saved Oct 1." leads the spend row when the pull is late.
+   Words first; the colour is the same literal amber the .say.wait answer uses. */
+.tile .lead,.asof.stale{color:#6B4A12;font-weight:600}
+.asof{color:var(--gray)}
 
 /* Status: the chip always says its word (§12.6). The dot is extra. */
 .chip .cd{background:var(--gray2)}
@@ -81,13 +100,22 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .chip.wip .cd{background:var(--warn)}
 .chip.bad .cd{background:var(--alert)}
 
+/* A row is a grid: name | state chip on the first line, always — even at
+   390px — with its sentences and buttons on a full-width line under them
+   (design §3.2, phone layout). */
 .rows{list-style:none;display:flex;flex-direction:column}
-.row{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;padding:16px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:8px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
 .row:first-child{border-top-color:transparent;padding-top:0}
-.row-main{flex:1 1 240px;min-width:0}
+.row.solo{padding:0;border-top:0}
+.row-main{grid-column:1;min-width:0}
+.row > .chip{grid-column:2;grid-row:1;justify-self:end}
+.row-body{grid-column:1 / -1;min-width:0}
 .row-main b{font-weight:600}
+.row-main .step{white-space:nowrap}
 .row-why{color:var(--gray);margin-top:4px}
-.row-n{color:var(--gray2);font-family:var(--mono);flex:0 0 24px}
+.row-act{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.review{margin-top:8px;max-width:78ch}
+.review p + p{margin-top:8px}
 
 /* The form for the one primary action. */
 .field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
@@ -101,6 +129,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .btn:hover{border-color:var(--ink)}
 .btn.primary{background:var(--ink2);color:var(--paper);min-height:48px;padding:8px 24px}
 .btn.primary:hover{opacity:.9}
+.btn.quiet{min-height:44px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 .btn .spin{display:none;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:mccspin .8s linear infinite}
 .btn.busy .spin{display:inline-block}
@@ -110,7 +139,9 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .gap-top{margin-top:16px}
 .bullets{padding-left:24px;margin-top:8px}
 .bullets li + li{margin-top:8px}
-.offer-body{max-height:640px;overflow:auto;max-width:78ch}
+.offer-body{max-width:78ch}
+.cost{color:var(--gray);margin-top:16px}
+.honest{color:var(--ink2);margin-top:16px}
 
 /* Every action answers back where the person is looking (§5). */
 .say{display:none;margin-top:16px;padding:8px 16px;border-radius:8px;border:1px solid var(--line)}
@@ -123,9 +154,10 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 .banner.show{display:block}
 .banner.err{background:color-mix(in srgb,var(--alert) 22%,#fff);color:#6E2A22}
 
-/* Words someone will read: the ad copy and the offer. Capped as a BLOCK
-   (a reading measure), never the page (§1). */
-.words{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;margin-top:8px;max-width:78ch}
+/* Words someone will read: the ad copy and the offer. Capped in WIDTH as a
+   block (a reading measure), never the page (§1), and never in height: a long
+   piece folds behind Show more instead of scrolling inside a box. */
+.words{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px;max-width:78ch}
 .pieces{display:flex;flex-direction:column;gap:16px;margin-top:16px}
 .piece{border-top:1px solid var(--line);padding-top:16px}
 .piece:first-child{border-top-color:transparent;padding-top:0}
@@ -141,11 +173,12 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 @media (prefers-reduced-motion: reduce){ .skel,.btn .spin{animation:none} }
 
 /* PHONE (§11): one column, no sideways scroll. */
-@media (max-width:960px){ .span-6{grid-column:span 12} }
-@media (max-width:720px){ .span-4{grid-column:span 12} .content{padding:16px} .card{padding:16px} }
+@media (max-width:960px){ .span-6,.span-4{grid-column:span 12} }
+@media (max-width:720px){ .content{padding:16px} .card{padding:16px} }
 @media (max-width:480px){
   header.topbar{height:auto;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
-  .topbar-right{width:100%;gap:8px;flex-wrap:wrap}
+  .brand{min-height:0}
+  .topbar-right{width:100%;gap:8px;flex-wrap:wrap;justify-content:flex-start}
   .btn.primary{width:100%}
 }
 </style>
@@ -238,18 +271,20 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
       <!-- 1. IS THE MACHINE HEALTHY? Top-left, largest (UI-STANDARDS §1, §10). -->
       <section class="grid" aria-label="This week at a glance">
         <div class="card tile span-4" id="tileSpend7">
-          <span class="caption">Ad spend, last 7 days</span>
+          <span class="caption">Ad spend, all accounts, last 7 days</span>
           <span class="skel big"></span><span class="skel"></span>
         </div>
         <div class="card tile span-4" id="tileSpend30">
-          <span class="caption">Ad spend, last 30 days</span>
+          <span class="caption">Ad spend, all accounts, last 30 days</span>
           <span class="skel big"></span><span class="skel"></span>
         </div>
         <div class="card tile span-4" id="tileParts">
-          <span class="caption">Machine parts ready</span>
+          <span class="caption">What is turned on</span>
           <span class="skel big"></span><span class="skel"></span>
         </div>
       </section>
+      <!-- The one as-of sentence: how fresh the numbers above are. -->
+      <p class="caption asof" id="mccAsOf" hidden></p>
 
       <!-- 2. THE ONE JOB, and what waits on Chris. -->
       <section class="grid">
@@ -272,6 +307,8 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
             <div class="actions">
               <button class="btn primary" type="submit" id="copyBtn" disabled><span class="spin" aria-hidden="true"></span><span class="lbl">Write ad copy</span></button>
             </div>
+            <!-- What a run costs: the copy writer's last measured runs, or "unknown". -->
+            <p class="caption cost" id="copyCost">Checking what a run costs…</p>
           </form>
           <div class="say" id="copySay" role="status" aria-live="polite"></div>
           <div id="copyResult"></div>
@@ -291,12 +328,15 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
           <div class="actions offer-actions">
             <button class="btn" type="button" id="offerBtn"><span class="spin" aria-hidden="true"></span><span class="lbl">Write offer</span></button>
           </div>
+          <!-- Time and cost: the last measured offer run, or "unknown". -->
+          <p class="caption cost" id="offerCost">Checking what a run costs…</p>
+          <p class="honest" id="offerHonest" hidden></p>
           <div class="say" id="offerSay" role="status" aria-live="polite"></div>
           <div id="offerLatest" class="gap-top"><span class="skel"></span><span class="skel"></span></div>
         </div>
 
         <div class="card span-6" id="cardFlywheel">
-          <div class="card-hd"><h2>Flywheel</h2><span class="caption faint" id="flywheelCampaign"></span></div>
+          <div class="card-hd"><h2>Offer and market</h2><span class="caption faint" id="flywheelCampaign"></span></div>
           <div id="flywheelList"><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
         </div>
       </section>
@@ -304,7 +344,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
       <!-- 4. Health detail and the latest copy. -->
       <section class="grid">
         <div class="card span-6" id="cardHealth">
-          <div class="card-hd"><h2>Machine parts</h2></div>
+          <div class="card-hd"><h2>What is turned on</h2></div>
           <div id="healthList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
         </div>
 
@@ -316,7 +356,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:
 
     </div>
 
-    <div class="foot caption"><span>Fundhub</span><span class="spacer"></span><span id="mccStamp">Loading…</span></div>
+    <div class="foot caption"><span>Fundhub</span><span class="spacer"></span><span id="mccStamp" title="">Loading…</span></div>
   </div>
 </div>
 <script defer src="marketing-command-center.js"></script>
