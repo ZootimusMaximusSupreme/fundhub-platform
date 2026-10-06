@@ -306,6 +306,8 @@ import marketingScriptsFix from "../../api/marketing/scripts/fix.mjs";
 import marketingBatches from "../../api/marketing/batches.mjs";
 import marketingBatchesWriteNow from "../../api/marketing/batches/write-now.mjs";
 import marketingJobsRetry from "../../api/marketing/jobs/retry.mjs";
+import marketingShoot from "../../api/marketing/shoot.mjs";
+import marketingShootMark from "../../api/marketing/shoot/mark.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1215,7 +1217,9 @@ export const ROUTES = {
   "marketing/scripts/fix": marketingScriptsFix,
   "marketing/batches": marketingBatches,
   "marketing/batches/write-now": marketingBatchesWriteNow,
-  "marketing/jobs/retry": marketingJobsRetry
+  "marketing/jobs/retry": marketingJobsRetry,
+  "marketing/shoot": marketingShoot,
+  "marketing/shoot/mark": marketingShootMark
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is

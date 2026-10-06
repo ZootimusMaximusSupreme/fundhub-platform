@@ -164,9 +164,18 @@ const VIDEO_KEYS = [
 
 const SHOOT_KEYS = [
   "id", "shoot_date", "status", "root_script_ids", "marks", "estimated_minutes",
-  "board[]", "landed_unmatched"
+  "board[]", "landed_unmatched", "scripts[]", "started_at", "finished_at",
+  "created_at", "updated_at"
 ];
 const BOARD_KEYS = ["ad_id", "angle", "step", "step_word", "since", "reason", "can_retry", "needs_you"];
+/* What Shoot Day adds to the Script object S (X5): the NAMING.md take file
+   name and the parts it is built from, the takes rolled, and the read time. */
+const PLAN_KEYS = [
+  "angle_name", "offer_word", "take_no", "take_file_name", "take_name_problem",
+  "last_take_file_name", "takes", "got_it", "first_line_only", "teleprompter_text",
+  "words", "read_seconds"
+];
+const PAST_SHOOT_KEYS = ["id", "shoot_date", "scripts", "filmed", "finished_at"];
 
 const SUGGESTION_KEYS = [
   "id", "batch_id", "page", "problem", "numbers", "new_words", "status", "change",
@@ -369,6 +378,54 @@ const SCRIPT_2_DRAFT = {
     cta_type: "LEARN_MORE"
   },
   repo_path: "marketing/ads/scripts/machine/2026-W42/04-inquiries-off-first.md"
+};
+
+/* Shoot Day (X5): a locked script on the open shoot, rolled twice, the second
+   take kept; and a second one not rolled yet whose offer has no file-name word
+   on file (marketing/ads/NAMING.md names only SLO). Plan fields from
+   src/marketing/shoot-plan.mjs planFields() at 150 words a minute. */
+const SHOOT_SCRIPT_1 = {
+  ...SCRIPT_DRAFT,
+  status: "locked",
+  ad_id: "91",
+  film_order: 1,
+  locked_at: "2026-10-12T15:06:00.000Z",
+  locked_by: CHRIS,
+  updated_at: "2026-10-13T15:30:00.000Z",
+  angle_name: "Lenders read two files",
+  offer_word: "SLO",
+  take_no: 3,
+  take_file_name: "SLO Ad 91 — Lenders read two files Take 3.mp4",
+  take_name_problem: null,
+  last_take_file_name: "SLO Ad 91 — Lenders read two files Take 2.mp4",
+  takes: 2,
+  got_it: true,
+  first_line_only: false,
+  teleprompter_text: BODY_V1,
+  words: 46,
+  read_seconds: 22
+};
+
+const SHOOT_SCRIPT_2 = {
+  ...SCRIPT_2_DRAFT,
+  status: "locked",
+  ad_id: "92",
+  film_order: 2,
+  locked_at: "2026-10-12T15:09:00.000Z",
+  locked_by: CHRIS,
+  updated_at: "2026-10-13T15:30:00.000Z",
+  angle_name: "Inquiries off first",
+  offer_word: null,
+  take_no: 1,
+  take_file_name: null,
+  take_name_problem: "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+  last_take_file_name: null,
+  takes: 0,
+  got_it: false,
+  first_line_only: false,
+  teleprompter_text: "Every hard pull you did not need is still sitting on your file.\n\nAnd lenders count them.",
+  words: 17,
+  read_seconds: 8
 };
 
 const SCRIPT_REJECTED = {
@@ -1330,22 +1387,27 @@ export const CONTRACT = deepFreeze({
     }
   },
 
-  /* ---------------- DEFERRED: Shoot Day (spec §8.2) ---------------- */
+  /* ---------------- Shoot Day (spec §8.2), built by X5 ---------------- */
 
   "GET marketing/shoot": {
-    owner: "deferred",
+    owner: "X5",
     spec: "§8.2",
     method: "GET",
     path: "marketing/shoot",
     gate: GATE,
     success: 200,
     guard: null,
-    requestKeys: [],
+    requestKeys: ["wpm?"],
     responseKeys: [
       "shoot", ...under("shoot.", SHOOT_KEYS), ...under("shoot.board[].", BOARD_KEYS),
-      "plan_candidates[]", ...under("plan_candidates[].", [...SCRIPT_KEYS])
+      ...under("shoot.scripts[].", [...SCRIPT_KEYS, ...PLAN_KEYS]),
+      "plan_candidates[]", ...under("plan_candidates[].", [...SCRIPT_KEYS, ...PLAN_KEYS]),
+      "plan_estimated_minutes", "past_shoots[]", ...under("past_shoots[].", PAST_SHOOT_KEYS),
+      "wpm", "as_of"
     ],
-    errors: [],
+    errors: [
+      { status: 400, error: "invalid", field: "wpm", when: "wpm is not a whole number from 80 to 260" }
+    ],
     example: {
       request: {},
       response: {
@@ -1354,29 +1416,40 @@ export const CONTRACT = deepFreeze({
           shoot_date: "2026-10-13",
           status: "filming",
           root_script_ids: [ROOT_1, ROOT_2],
-          marks: { [ROOT_1]: { takes: 2, got_it: true } },
-          estimated_minutes: 6,
+          marks: { [ROOT_1]: { takes: 2, got_it: true, at: "2026-10-13T16:05:00.000Z" } },
+          estimated_minutes: 5,
           board: [{ ad_id: "91", angle: "Lenders read two files", step: "filmed", step_word: "Filmed", since: "2026-10-13T16:05:00.000Z", reason: null, can_retry: false, needs_you: false }],
-          landed_unmatched: 0
+          landed_unmatched: 0,
+          scripts: [SHOOT_SCRIPT_1, SHOOT_SCRIPT_2],
+          started_at: "2026-10-13T15:58:00.000Z",
+          finished_at: null,
+          created_at: "2026-10-13T15:30:00.000Z",
+          updated_at: "2026-10-13T16:05:00.000Z"
         },
-        plan_candidates: [SCRIPT_LOCKED]
+        plan_candidates: [SHOOT_SCRIPT_2],
+        plan_estimated_minutes: 3,
+        past_shoots: [{ id: "00000000-0000-4000-8000-000000000900", shoot_date: "2026-10-06", scripts: 4, filmed: 4, finished_at: "2026-10-06T19:12:00.000Z" }],
+        wpm: 150,
+        as_of: "2026-10-13T16:06:00.000Z"
       }
     }
   },
 
   "POST marketing/shoot": {
-    owner: "deferred",
+    owner: "X5",
     spec: "§8.2",
     method: "POST",
     path: "marketing/shoot",
     gate: GATE,
     success: 200,
     guard: null,
-    requestKeys: ["request_id", "id?", "shoot_date?", "root_script_ids?", "status?"],
-    responseKeys: ["shoot", ...under("shoot.", SHOOT_KEYS)],
+    requestKeys: ["request_id", "id?", "shoot_date?", "root_script_ids?", "status?", "wpm?"],
+    responseKeys: ["shoot", ...under("shoot.", SHOOT_KEYS), ...under("shoot.scripts[].", [...SCRIPT_KEYS, ...PLAN_KEYS])],
     errors: [
-      { status: 400, error: "invalid", field: "root_script_ids", when: "not a list of root ids of locked scripts in the caller's org" },
-      { status: 400, error: "invalid", field: "status", when: "status is not planned, filming, uploaded or done" },
+      { status: 400, error: "invalid", field: "root_script_ids", when: "not a list of root ids of approved scripts (locked, or filmed and needing a retake) in the caller's org; a script already on the shoot stays allowed on a reorder" },
+      { status: 400, error: "invalid", field: "status", when: "status is not planned, filming, uploaded or done; or a create sends anything but planned" },
+      { status: 400, error: "invalid", field: "shoot_date", when: "shoot_date is not a real day written YYYY-MM-DD" },
+      { status: 400, error: "invalid", field: "id", when: "a create while a shoot is already open, or a change to a closed (done) shoot" },
       { status: 404, error: "not_found", when: "id names no shoot in the caller's org" }
     ],
     example: {
@@ -1388,16 +1461,24 @@ export const CONTRACT = deepFreeze({
           status: "planned",
           root_script_ids: [ROOT_1, ROOT_2],
           marks: {},
-          estimated_minutes: 6,
+          estimated_minutes: 5,
           board: [],
-          landed_unmatched: 0
+          landed_unmatched: 0,
+          scripts: [
+            { ...SHOOT_SCRIPT_1, take_no: 1, take_file_name: "SLO Ad 91 — Lenders read two files Take 1.mp4", last_take_file_name: null, takes: 0, got_it: false },
+            SHOOT_SCRIPT_2
+          ],
+          started_at: null,
+          finished_at: null,
+          created_at: "2026-10-13T15:30:00.000Z",
+          updated_at: "2026-10-13T15:30:00.000Z"
         }
       }
     }
   },
 
   "POST marketing/shoot/mark": {
-    owner: "deferred",
+    owner: "X5",
     spec: "§8.2",
     method: "POST",
     path: "marketing/shoot/mark",
@@ -1408,11 +1489,17 @@ export const CONTRACT = deepFreeze({
     responseKeys: ["marks"],
     errors: [
       { status: 400, error: "invalid", field: "mark", when: "mark is not got_it or another_take" },
+      { status: 400, error: "invalid", field: "shoot_id", when: "shoot_id is not a uuid, or the shoot is closed (done)" },
       { status: 404, error: "not_found", when: "no such shoot, or the script is not on it" }
     ],
     example: {
       request: { request_id: REQ("016"), shoot_id: SHOOT_1, root_script_id: ROOT_2, mark: "got_it" },
-      response: { marks: { [ROOT_1]: { takes: 2, got_it: true }, [ROOT_2]: { takes: 1, got_it: true } } }
+      response: {
+        marks: {
+          [ROOT_1]: { takes: 2, got_it: true, at: "2026-10-13T16:05:00.000Z" },
+          [ROOT_2]: { takes: 1, got_it: true, at: "2026-10-13T16:09:00.000Z" }
+        }
+      }
     }
   },
 

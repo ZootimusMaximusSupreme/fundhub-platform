@@ -1,0 +1,373 @@
+// Shoot Day against real Postgres (unit X5, spec §8.2, design §3.4):
+// GET marketing/shoot, POST marketing/shoot, POST marketing/shoot/mark. Lives
+// under src/http/ because npm test globs src/** and scripts/** only (CLAUDE.md
+// §12); it imports the api/ handlers.
+//
+// Never pointed at the live database (CLAUDE.md §12, spec §0.7): CI builds a
+// scratch database from db/migrations. Without DATABASE_URL every test skips,
+// and a skipped .pg.test.mjs is not green.
+//
+// TWO COMPANIES OF ITS OWN (slugs below). Every row is removed after.
+
+import { test, before, after, describe } from "node:test";
+import assert from "node:assert/strict";
+import { db, pool, close } from "../db.mjs";
+import { createSession } from "../auth/session.mjs";
+import { assertMatchesContract } from "../marketing/api-contract.mjs";
+import { parseTakeName } from "../ad-videos/merge-takes.mjs";
+import shootHandler from "../../api/marketing/shoot.mjs";
+import markHandler from "../../api/marketing/shoot/mark.mjs";
+
+const HAS_DB = !!process.env.DATABASE_URL;
+const SLUG_A = "zz-x5-shoot-a";
+const SLUG_B = "zz-x5-shoot-b";
+const EMAIL_TAG = "x5_shoot_pg";
+
+let seq = 0;
+const rid = (tag) => `x5-pg-${tag}-${process.pid}-${Date.now()}-${++seq}`;
+
+const PARTS = [
+  { kind: "hook", text: "MOST lenders read TWO files before they say yes." },
+  { kind: "line2", text: "If one is a mess, they never open the other." },
+  { kind: "cue", text: "the personal file" },
+  { kind: "reveal", text: "We check both before you apply anywhere." },
+  { kind: "cta", text: "Tap below and see what both files say today." }
+];
+const BODY = PARTS.map((p) => p.text).join("\n\n");
+
+const res = () => {
+  const r = { code: null, body: null, headers: {} };
+  r.status = (c) => { r.code = c; return r; };
+  r.json = (b) => { r.body = b; return r; };
+  r.setHeader = (k, v) => { r.headers[k] = v; return r; };
+  return r;
+};
+
+async function call(handler, token, { method = "GET", query = {}, body } = {}) {
+  const r = res();
+  await handler(
+    { method, headers: token ? { authorization: "Bearer " + token } : {}, query, body },
+    r,
+    { db }
+  );
+  if (r.body !== null) r.body = JSON.parse(JSON.stringify(r.body));
+  return r;
+}
+const get = (token, query) => call(shootHandler, token, { query });
+const save = (token, body) => call(shootHandler, token, { method: "POST", body });
+const mark = (token, body) => call(markHandler, token, { method: "POST", body });
+
+/* ad_scripts, ad_videos and marketing_shoots force row security: read and
+   write them as staff, in a short transaction of their own. */
+async function staffTx(fn) {
+  const client = await pool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('fundhub.actor', 'staff', true)");
+    const out = await fn(client);
+    await client.query("COMMIT");
+    return out;
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch { /* the first error is the one worth throwing */ }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
+  let orgA, orgB, partnerA, partnerB, ownerA, closerA, ownerB;
+  let s91, s92, s93, sDraft, sHidden, sBook, sRetake, sB;
+  let hiddenBatch;
+  let n = 0;
+
+  async function mkScript(fields = {}) {
+    const row = {
+      org_id: orgA,
+      partner_id: partnerA,
+      source: "machine",
+      status: "locked",
+      title: `X5 angle ${++n}`,
+      body: BODY,
+      parts: JSON.stringify(PARTS),
+      lane: "uwiq",
+      script_format: "standard",
+      style: "bullets",
+      angle_key: "two_files",
+      offer_key: "slo_roadmap",
+      funnel_key: "roadmap_147",
+      locked_at: new Date(Date.now() - (100 - n) * 60000).toISOString(),
+      ...fields
+    };
+    if (row.parts !== null && typeof row.parts !== "string") row.parts = JSON.stringify(row.parts);
+    const cols = Object.keys(row);
+    return staffTx(async (c) => (await c.query(
+      `INSERT INTO ad_scripts (${cols.join(", ")})
+       VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING *`,
+      cols.map((k) => row[k])
+    )).rows[0]);
+  }
+
+  async function mkVideo(fields) {
+    const row = { org_id: orgA, partner_id: partnerA, video_kind: "ad", ...fields };
+    const cols = Object.keys(row);
+    return staffTx(async (c) => (await c.query(
+      `INSERT INTO ad_videos (${cols.join(", ")})
+       VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING *`,
+      cols.map((k) => row[k])
+    )).rows[0]);
+  }
+
+  const scriptRow = (id) => staffTx(async (c) => (await c.query(`SELECT * FROM ad_scripts WHERE id = $1`, [id])).rows[0]);
+  const shootRow = (id) => staffTx(async (c) => (await c.query(`SELECT * FROM marketing_shoots WHERE id = $1`, [id])).rows[0]);
+
+  async function purge() {
+    const orgs = (await db.query(`SELECT id FROM orgs WHERE slug = ANY($1)`, [[SLUG_A, SLUG_B]])).rows.map((r) => r.id);
+    if (orgs.length) {
+      await db.query(`DELETE FROM marketing_requests WHERE org_id = ANY($1)`, [orgs]);
+      await staffTx(async (c) => {
+        await c.query(`DELETE FROM marketing_shoots WHERE org_id = ANY($1)`, [orgs]);
+        await c.query(`DELETE FROM ad_videos WHERE org_id = ANY($1)`, [orgs]);
+        await c.query(`UPDATE ad_scripts SET idea_id = NULL WHERE org_id = ANY($1)`, [orgs]);
+        await c.query(`DELETE FROM ad_ideas WHERE org_id = ANY($1)`, [orgs]);
+        for (let i = 0; i < 30; i++) {
+          const gone = await c.query(
+            `DELETE FROM ad_scripts s
+              WHERE s.org_id = ANY($1)
+                AND NOT EXISTS (SELECT 1 FROM ad_scripts k
+                                 WHERE k.id <> s.id
+                                   AND (k.parent_script_id = s.id OR k.root_script_id = s.id))`,
+            [orgs]
+          );
+          if (!gone.rowCount) break;
+        }
+      });
+      await db.query(`DELETE FROM marketing_batches WHERE org_id = ANY($1)`, [orgs]);
+      await db.query(`DELETE FROM partners WHERE org_id = ANY($1)`, [orgs]);
+    }
+    await db.query(`DELETE FROM sessions WHERE staff_id IN (SELECT id FROM staff WHERE email LIKE $1)`, [`${EMAIL_TAG}%`]);
+    await db.query(`DELETE FROM staff WHERE email LIKE $1`, [`${EMAIL_TAG}%`]);
+    try { await db.query(`DELETE FROM orgs WHERE slug = ANY($1)`, [[SLUG_A, SLUG_B]]); } catch { /* reused next run */ }
+  }
+
+  const mkOrg = async (slug) => (await db.query(
+    `INSERT INTO orgs (slug, name) VALUES ($1, 'X5 shoot fixture')
+     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`, [slug]
+  )).rows[0].id;
+  const mkPartner = async (org, slug) => (await db.query(
+    `INSERT INTO partners (org_id, name, slug) VALUES ($1, 'X5 house', $2) RETURNING id`, [org, slug]
+  )).rows[0].id;
+  async function staffIn(org, role, tag) {
+    const row = (await db.query(
+      `INSERT INTO staff (org_id, email, name, role, status) VALUES ($1,$2,$3,$4,'active') RETURNING id`,
+      [org, `${EMAIL_TAG}.${tag}@example.com`, `X5 ${tag}`, role]
+    )).rows[0];
+    return { id: row.id, token: (await createSession(db, { staffId: row.id, orgId: org })).token };
+  }
+
+  before(async () => {
+    await purge();
+    orgA = await mkOrg(SLUG_A);
+    orgB = await mkOrg(SLUG_B);
+    partnerA = await mkPartner(orgA, "zz-x5-house-a");
+    partnerB = await mkPartner(orgB, "zz-x5-house-b");
+    ownerA = await staffIn(orgA, "owner", "a.owner");
+    closerA = await staffIn(orgA, "closer", "a.closer");
+    ownerB = await staffIn(orgB, "owner", "b.owner");
+    hiddenBatch = (await db.query(
+      `INSERT INTO marketing_batches (org_id, kind, week_key, status, release_at, total, ready)
+       VALUES ($1, 'weekly', '2026-W52', 'ready', now() + interval '7 days', 1, 1) RETURNING id`, [orgA]
+    )).rows[0].id;
+
+    s93 = await mkScript({ ad_id: "93", title: "Lenders read two files", film_order: 2 });
+    s92 = await mkScript({ ad_id: "92", film_order: 1 });
+    s91 = await mkScript({ ad_id: "91" });
+    sDraft = await mkScript({ status: "draft" });
+    sHidden = await mkScript({ ad_id: "94", batch_id: hiddenBatch });
+    sBook = await mkScript({ ad_id: "95", offer_key: "funding_dfy", lane: "sorting", funnel_key: "book_call" });
+    sRetake = await mkScript({ ad_id: "96", status: "filmed", needs_retake: true });
+    sB = await mkScript({ org_id: orgB, partner_id: partnerB, ad_id: "91" });
+    // A new opening for Ad 96: the retake rolls the first line only.
+    const idea = (await staffTx(async (c) => (await c.query(
+      `INSERT INTO ad_ideas (org_id, partner_id, kind, target_script_id, status) VALUES ($1, $2, 'opening', $3, 'written') RETURNING id`,
+      [orgA, partnerA, sRetake.id]
+    )).rows[0]));
+    await staffTx((c) => c.query(`UPDATE ad_scripts SET idea_id = $2 WHERE id = $1`, [sRetake.id, idea.id]));
+    // Ad 93 already has two takes on file from an earlier shoot.
+    await mkVideo({ ad_id: "93", take_no: 2, status: "matched", created_at: new Date(Date.now() - 86400000).toISOString() });
+  });
+
+  after(async () => {
+    try { await purge(); } finally { await close(); }
+  });
+
+  test("owner and admin only: unsigned 401, a closer 403, the wrong method 405", async () => {
+    assert.equal((await get(null)).code, 401);
+    assert.equal((await get(closerA.token)).code, 403);
+    assert.equal((await save(closerA.token, { request_id: rid("c"), root_script_ids: [s91.id] })).code, 403);
+    const r = await call(markHandler, ownerA.token, { method: "GET" });
+    assert.equal(r.code, 405);
+    assert.equal(r.headers.Allow, "POST");
+    assert.equal((await call(shootHandler, ownerA.token, { method: "DELETE" })).code, 405);
+  });
+
+  test("no shoot yet: every approved script is ready to film, retakes first, then film order, each with its exact take file name", async () => {
+    const r = await get(ownerA.token);
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assertMatchesContract("GET marketing/shoot", r.body);
+    assert.equal(r.body.shoot, null);
+    assert.equal(r.body.wpm, 150);
+    const ids = r.body.plan_candidates.map((s) => s.root_script_id);
+    assert.deepEqual(ids, [sRetake.id, s92.id, s93.id, s91.id, sBook.id], "retake, film order 1, 2, then ad numbers; no draft, no hidden batch, no other company");
+
+    const by = Object.fromEntries(r.body.plan_candidates.map((s) => [s.root_script_id, s]));
+    assert.equal(by[s93.id].take_file_name, "SLO Ad 93 — Lenders read two files Take 3.mp4", "two takes already on file → Take 3");
+    assert.deepEqual(parseTakeName(by[s93.id].take_file_name), { offer: "SLO", adNumber: 93, angle: "Lenders read two files", takeNo: 3, ext: "mp4" });
+    assert.equal(by[s91.id].take_file_name, `SLO Ad 91 — ${s91.title} Take 1.mp4`);
+    assert.equal(by[s91.id].angle_name, s91.title);
+    assert.equal(by[s91.id].ad_id, "91");
+    assert.equal(by[sBook.id].take_file_name, null, "no offer word on file for Book a call");
+    assert.match(by[sBook.id].take_name_problem, /no file-name word/);
+    assert.equal(by[sRetake.id].first_line_only, true);
+    assert.equal(by[sRetake.id].teleprompter_text, PARTS[0].text);
+    assert.equal(by[s91.id].teleprompter_text, BODY);
+    assert.ok(by[s91.id].read_seconds > 0);
+    assert.ok(r.body.plan_estimated_minutes >= 2 * 5);
+
+    const fast = await get(ownerA.token, { wpm: "260" });
+    assert.equal(fast.body.wpm, 260);
+    assert.ok(fast.body.plan_candidates[1].read_seconds < r.body.plan_candidates[1].read_seconds);
+    const bad = await get(ownerA.token, { wpm: "20" });
+    assert.equal(bad.code, 400);
+    assert.equal(bad.body.field, "wpm");
+  });
+
+  let shootId;
+
+  test("save the plan: one shoot, in this order, film order follows; a repeat press saves nothing new", async () => {
+    const draft = await save(ownerA.token, { request_id: rid("draft"), root_script_ids: [s91.id, sDraft.id] });
+    assert.equal(draft.code, 400);
+    assert.equal(draft.body.field, "root_script_ids");
+    const other = await save(ownerA.token, { request_id: rid("other"), root_script_ids: [sB.id] });
+    assert.equal(other.code, 400, "another company's script is not found");
+    const hidden = await save(ownerA.token, { request_id: rid("hidden"), root_script_ids: [sHidden.id] });
+    assert.equal(hidden.code, 400);
+
+    const req = rid("create");
+    const order = [s93.id, s91.id, s92.id];
+    const r = await save(ownerA.token, { request_id: req, shoot_date: "2026-10-13", root_script_ids: order });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assertMatchesContract("POST marketing/shoot", r.body);
+    shootId = r.body.shoot.id;
+    assert.equal(r.body.shoot.status, "planned");
+    assert.equal(r.body.shoot.shoot_date, "2026-10-13");
+    assert.deepEqual(r.body.shoot.root_script_ids, order);
+    assert.deepEqual(r.body.shoot.scripts.map((s) => s.root_script_id), order);
+    assert.deepEqual(r.body.shoot.marks, {});
+    assert.ok(r.body.shoot.estimated_minutes >= 6);
+    for (const [i, id] of order.entries()) assert.equal(Number((await scriptRow(id)).film_order), i + 1);
+
+    const again = await save(ownerA.token, { request_id: req, shoot_date: "2026-10-13", root_script_ids: order });
+    assert.deepEqual(again.body, r.body);
+    const count = await staffTx(async (c) => (await c.query(`SELECT count(*)::int AS n FROM marketing_shoots WHERE org_id = $1`, [orgA])).rows[0].n);
+    assert.equal(count, 1);
+
+    const second = await save(ownerA.token, { request_id: rid("second"), root_script_ids: [sBook.id] });
+    assert.equal(second.code, 400);
+    assert.equal(second.body.field, "id");
+    assert.match(second.body.message, /already planned/);
+  });
+
+  test("mark a take: Another take and Got it count takes; the next file name moves on; a script not on the shoot is 404", async () => {
+    const bad = await mark(ownerA.token, { request_id: rid("bad"), shoot_id: shootId, root_script_id: s93.id, mark: "maybe" });
+    assert.equal(bad.code, 400);
+    assert.equal(bad.body.field, "mark");
+    const off = await mark(ownerA.token, { request_id: rid("off"), shoot_id: shootId, root_script_id: sBook.id, mark: "got_it" });
+    assert.equal(off.code, 404);
+    const otherCo = await mark(ownerB.token, { request_id: rid("b"), shoot_id: shootId, root_script_id: s93.id, mark: "got_it" });
+    assert.equal(otherCo.code, 404);
+
+    const a = await mark(ownerA.token, { request_id: rid("a1"), shoot_id: shootId, root_script_id: s93.id, mark: "another_take" });
+    assert.equal(a.code, 200, JSON.stringify(a.body));
+    assertMatchesContract("POST marketing/shoot/mark", a.body);
+    assert.equal(a.body.marks[s93.id].takes, 1);
+    assert.equal(a.body.marks[s93.id].got_it, false);
+    assert.equal((await shootRow(shootId)).status, "filming");
+
+    const req = rid("g1");
+    const g = await mark(ownerA.token, { request_id: req, shoot_id: shootId, root_script_id: s93.id, mark: "got_it" });
+    assert.equal(g.body.marks[s93.id].takes, 2);
+    assert.equal(g.body.marks[s93.id].got_it, true);
+    const repeat = await mark(ownerA.token, { request_id: req, shoot_id: shootId, root_script_id: s93.id, mark: "got_it" });
+    assert.deepEqual(repeat.body, g.body, "a queued press sent twice counts once");
+    assert.equal((await scriptRow(s93.id)).status, "locked", "Got it marks the shoot only");
+
+    const page = await get(ownerA.token);
+    assertMatchesContract("GET marketing/shoot", page.body);
+    const on = page.body.shoot.scripts.find((s) => s.root_script_id === s93.id);
+    assert.equal(on.got_it, true);
+    assert.equal(on.takes, 2);
+    assert.equal(on.last_take_file_name, "SLO Ad 93 — Lenders read two files Take 4.mp4");
+    assert.equal(on.take_file_name, "SLO Ad 93 — Lenders read two files Take 5.mp4");
+    assert.ok(!page.body.plan_candidates.some((s) => s.root_script_id === s93.id), "a Got it script leaves the plan list");
+    assert.ok(page.body.plan_candidates.some((s) => s.root_script_id === s91.id), "an unmarked script on the shoot stays on it");
+    assert.deepEqual(page.body.shoot.board.map((b) => [b.ad_id, b.step]), [["93", "filmed"]]);
+  });
+
+  test("the board follows the clips that land after the shoot started", async () => {
+    await mkVideo({ ad_id: "93", take_no: 4, status: "awaiting_approval" });
+    await mkVideo({ ad_id: "91", take_no: 1, status: "staged" });
+    await mkVideo({ status: "raw_landed", drive_raw_file_id: `x5-raw-${process.pid}-${Date.now()}` });
+    const page = await get(ownerA.token);
+    const board = page.body.shoot.board;
+    assert.equal(board[0].ad_id, "93", "what needs Chris is on top");
+    assert.equal(board[0].step, "ready_to_approve");
+    assert.equal(board[0].needs_you, true);
+    const ad91 = board.find((b) => b.ad_id === "91");
+    assert.equal(ad91.step, "cutting");
+    assert.equal(ad91.reason, "The join step still runs on the Mac.");
+    assert.equal(page.body.shoot.landed_unmatched, 1);
+  });
+
+  test("reorder and close: the order saves, a closed shoot never changes, the next plan starts clean", async () => {
+    const r = await save(ownerA.token, { request_id: rid("reorder"), id: shootId, root_script_ids: [s92.id, s91.id, s93.id] });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assert.deepEqual(r.body.shoot.root_script_ids, [s92.id, s91.id, s93.id]);
+    assert.equal(Number((await scriptRow(s92.id)).film_order), 1);
+    const nope = await save(ownerA.token, { request_id: rid("nope"), id: "00000000-0000-4000-8000-0000000000ff", status: "done" });
+    assert.equal(nope.code, 404);
+    const badStatus = await save(ownerA.token, { request_id: rid("bs"), id: shootId, status: "partying" });
+    assert.equal(badStatus.code, 400);
+    assert.equal(badStatus.body.field, "status");
+
+    const done = await save(ownerA.token, { request_id: rid("close"), id: shootId, status: "done" });
+    assert.equal(done.code, 200);
+    assert.equal(done.body.shoot.status, "done");
+    assert.ok(done.body.shoot.finished_at);
+    const row = await shootRow(shootId);
+    assert.ok(row.finished_at && row.started_at);
+
+    const late = await mark(ownerA.token, { request_id: rid("late"), shoot_id: shootId, root_script_id: s91.id, mark: "got_it" });
+    assert.equal(late.code, 400);
+    assert.equal(late.body.field, "shoot_id");
+    const reopen = await save(ownerA.token, { request_id: rid("reopen"), id: shootId, status: "planned" });
+    assert.equal(reopen.code, 400);
+
+    const page = await get(ownerA.token);
+    assert.equal(page.body.shoot, null);
+    assert.equal(page.body.past_shoots[0].id, shootId);
+    assert.equal(page.body.past_shoots[0].filmed, 1);
+    assert.ok(page.body.plan_candidates.some((s) => s.root_script_id === s93.id), "a Got it on a closed shoot no longer hides the script");
+    assert.ok(page.body.plan_candidates.some((s) => s.root_script_id === s91.id), "scripts not marked Got it stay on the next plan");
+
+    const next = await save(ownerA.token, { request_id: rid("next"), root_script_ids: [s91.id] });
+    assert.equal(next.code, 200, "a new shoot once the old one is closed");
+  });
+
+  test("another company sees none of it", async () => {
+    const r = await get(ownerB.token);
+    assert.equal(r.code, 200);
+    assert.equal(r.body.shoot, null);
+    assert.deepEqual(r.body.plan_candidates.map((s) => s.root_script_id), [sB.id]);
+  });
+});

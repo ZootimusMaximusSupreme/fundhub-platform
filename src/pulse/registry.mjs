@@ -365,7 +365,11 @@ const API_KEYS = [
   "marketing/scripts/fix",
   "marketing/batches",
   "marketing/batches/write-now",
-  "marketing/jobs/retry"
+  "marketing/jobs/retry",
+  /* X5 Shoot Day: the GET answers 401 to an unsigned ping; mark is POST-only
+     and answers 405 to a GET before it reads anything. A ping never writes. */
+  "marketing/shoot",
+  "marketing/shoot/mark"
 ];
 
 const DESK_FILES = [
