@@ -349,6 +349,15 @@ const API_KEYS = [
   "marketing/settings",
   "marketing/funnels",
   "marketing/health",
+  /* U25 script actions. The two GETs answer 401 unsigned; the four POST-only
+     routes answer 405 to a GET before reading anything (isUp counts 405 as up,
+     as for waypoint-tick). No ping writes. */
+  "marketing/scripts",
+  "marketing/script",
+  "marketing/scripts/approve",
+  "marketing/scripts/edit",
+  "marketing/scripts/reject",
+  "marketing/scripts/order",
   /* U26: the GETs answer 401 to an unsigned ping; the POST-only routes answer
      405 to a GET before they read anything (isUp counts both as up). A ping
      never writes, queues or spends. */
@@ -358,6 +367,23 @@ const API_KEYS = [
   "marketing/batches",
   "marketing/batches/write-now",
   "marketing/jobs/retry",
+  /* The funnel builder (build unit X4). GET marketing/funnel answers 401 to an
+     unsigned ping. The four POST siblings answer 405 to a GET before they read
+     anything (isUp() counts 405 as up), so a ping writes nothing. */
+  "marketing/funnel",
+  "marketing/funnels/create",
+  "marketing/funnels/rename",
+  "marketing/funnels/build",
+  "marketing/funnels/push-live",
+  /* The Meta loader (U28). load is POST only: a GET answers 405 before it reads
+     anything, which isUp() counts as up, and the ping queues nothing.
+     load-status answers 401 to an unsigned GET. Neither ever calls Meta. */
+  "marketing/meta/load",
+  "marketing/meta/load-status",
+  "marketing/ads",
+  "marketing/ad",
+  "marketing/angles",
+  "marketing/funnels/stats",
   /* X3: the flywheel. The GET answers 401 to an unsigned ping; the POST-only
      routes answer 405 to a GET before they read anything. A ping never
      writes, queues or spends. */

@@ -13,6 +13,7 @@ import {
   fadeUp,
   progressBetween,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {LENDER_LANDING_DEFAULT, LENDER_NAMES} from '../data/lenders';
 import {useClipTimeline} from './clipTimeline';
 
@@ -38,6 +39,8 @@ export type LenderSlotsProps = {
   landOn: string[];
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const LENDER_SLOTS_BASE = 105; // 3.5 s
@@ -48,6 +51,7 @@ export const lenderSlotsDefaults: LenderSlotsProps = {
   count: '30–50',
   countLabel: 'lenders matched',
   landOn: [...LENDER_LANDING_DEFAULT],
+  transparent: false,
 };
 
 // Housing and reel geometry (content box is 900 wide).
@@ -235,7 +239,7 @@ const Pointer: React.FC<{side: 'left' | 'right'; on: number}> = ({side, on}) => 
   />
 );
 
-export const LenderSlots: React.FC<LenderSlotsProps> = ({eyebrow, count, countLabel, landOn, durationInFrames, showSafeZones}) => {
+export const LenderSlots: React.FC<LenderSlotsProps> = ({eyebrow, count, countLabel, landOn, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useClipTimeline(LENDER_SLOTS_BASE, durationInFrames);
   const L = LENDER_SLOTS_BASE;
   const names = LENDER_NAMES;
@@ -251,7 +255,7 @@ export const LenderSlots: React.FC<LenderSlotsProps> = ({eyebrow, count, countLa
   const housing = enter(f, fps, 2, 18);
   const result = enter(f, fps, ALL_LANDED + 4, 16);
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -327,4 +331,5 @@ export const LenderSlots: React.FC<LenderSlotsProps> = ({eyebrow, count, countLa
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

@@ -14,11 +14,12 @@
 // encoded dot) is refused outright rather than cleaned: a path that needs
 // rewriting to look safe came from somewhere that should not be trusted.
 //
-// The list is the spec list plus the flywheel folder. Design
+// The list is the spec list plus two folders. Design
 // docs/specs/command-center-design-2026-10-05.md §6 "Slice 1 additions" puts
 // marketing/flywheel/ on the list so the Ideas tab's flywheel buttons (unit X3:
 // Start a flywheel, Approve, Tweak, the copy, strategy and spend stages) save
-// their stage files and owner notes to git through the outbox.
+// their stage files and owner notes to git through the outbox. The funnel
+// builder (build unit X4) adds its own folder of built funnel pages.
 
 import path from "node:path";
 
@@ -28,8 +29,12 @@ export const ALLOWED_DIRS = Object.freeze([
   "marketing/ads/ideas/",
   "marketing/ads/videos/",
   "marketing/brain/",
-  "marketing/flywheel/",
-  "ops/page-requests/"
+  "ops/page-requests/",
+  // Build unit X4 (owner order 2026-10-05): the pages of a dashboard-built funnel,
+  // saved to the repo when the push proves them live. Its own folder only; the
+  // hand-made pages beside it (marketing/landing-pages/*.html, slo/) stay off.
+  "marketing/landing-pages/funnels/",
+  "marketing/flywheel/"
 ]);
 
 /** Single files the app may write. */

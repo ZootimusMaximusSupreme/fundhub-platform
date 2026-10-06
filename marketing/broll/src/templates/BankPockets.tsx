@@ -23,6 +23,7 @@ import {
   fadeUp,
   progressBetween,
 } from '../brand';
+import {SeeThrough, useSeeThrough} from '../brand/Grid';
 import {clampClip, useClipTimeline} from './clipTimeline';
 
 // BankPockets (Unit I, broll-v2-2026-10-02). Chris: "When interest rates rise,
@@ -54,6 +55,8 @@ export type BankPocketsProps = {
   subline: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const bankPocketsDefaults: BankPocketsProps = {
@@ -61,6 +64,7 @@ export const bankPocketsDefaults: BankPocketsProps = {
   eyebrow: 'Interest rates',
   headline: 'Rates went up. Banks tightened.',
   subline: 'Money gets harder to get.',
+  transparent: false,
 };
 
 /** Base length 3.2 s; a shot list may ask for 2.5 to 3.5 s (75 to 105 frames). */
@@ -923,8 +927,11 @@ const WIDE_BANK = {u: 2.2, left: 1560, right: 240} as const;
 
 const wideHeadlineSize = (text: string): number => (text.length <= 20 ? 220 : text.length <= 36 ? 184 : 160);
 
+/** The wide page: paper and the faint grid at the 4K scale. Draws nothing when the clip is see-through. */
 const WideGrid: React.FC = () => {
+  const seeThrough = useSeeThrough();
   const line = 3;
+  if (seeThrough) return null;
   return (
     <AbsoluteFill
       style={{
@@ -1046,7 +1053,8 @@ const Wide: React.FC<BankPocketsProps & {f: number; fps: number}> = ({f, fps, ey
 
 export const BankPockets: React.FC<BankPocketsProps> = (props) => {
   const {f, fps} = useClipTimeline(BANK_POCKETS_BASE, props.durationInFrames, BANK_POCKETS_MIN, BANK_POCKETS_MAX);
-  return props.format === 'wide' ? <Wide {...props} f={f} fps={fps} /> : <Vertical {...props} f={f} fps={fps} />;
+  const page = props.format === 'wide' ? <Wide {...props} f={f} fps={fps} /> : <Vertical {...props} f={f} fps={fps} />;
+  return <SeeThrough on={props.transparent}>{page}</SeeThrough>;
 };
 
 const size = (format?: BankPocketsFormat) => (format === 'wide' ? {width: WIDE.width, height: WIDE.height} : {width: FRAME.width, height: FRAME.height});

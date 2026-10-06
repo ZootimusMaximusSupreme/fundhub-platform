@@ -36,6 +36,7 @@
 import { InvalidError, StaleError } from "./http.mjs";
 import { isOfferKey, OFFER_KEYS } from "./offer-facts.mjs";
 import { adAccountDay } from "../lib/ad-account-day.mjs";
+import { pageView, PAGES_JSON_SQL } from "./funnel-store.mjs";
 
 /* ── vocabularies ────────────────────────────────────────────────────────── */
 
@@ -65,8 +66,14 @@ export const SETTINGS_PATCH_KEYS = Object.freeze(SETTINGS_KEYS.filter((k) => !SE
 export const FUNNEL_KEYS = Object.freeze([
   "id", "key", "name", "landing_url", "offer_key", "lane", "book_call", "format_mix",
   "cta_type", "meta_campaign_ids", "default_ad_set_external_id", "weight", "active",
-  "created_at", "updated_at"
+  "created_at", "updated_at",
+  // The funnel builder (build unit X4, migration 425). A funnel mapped by hand
+  // has kind null, no tag, status 'live', pages [] and events_seen null (unknown).
+  "kind", "url", "path", "tag", "utm_campaign", "utm_template", "campaign", "status",
+  "live_at", "created_by", "pages", "events_seen"
 ]);
+/** The fields a built funnel's pages were written for. Settings cannot change them. */
+const BUILT_FIXED = Object.freeze(["landing_url", "lane", "offer_key", "book_call"]);
 /** What POST marketing/funnels may send inside `funnel`. */
 export const FUNNEL_WRITE_KEYS = Object.freeze([
   "key", "name", "landing_url", "offer_key", "lane", "book_call", "format_mix",
@@ -416,6 +423,7 @@ export function validateFunnelInput(funnel) {
 /** A funnel row as GET/POST marketing/funnels answer it. */
 export function funnelView(row) {
   if (!row) return null;
+  const pages = Array.isArray(row.pages) ? row.pages : [];
   return {
     id: row.id,
     key: row.key,
@@ -432,15 +440,39 @@ export function funnelView(row) {
     weight: row.weight == null ? null : Number(row.weight),
     active: row.active,
     created_at: iso(row.created_at),
-    updated_at: iso(row.updated_at)
+    updated_at: iso(row.updated_at),
+    kind: row.kind ?? null,
+    url: row.landing_url,
+    path: row.path ?? null,
+    tag: row.tag ?? null,
+    utm_campaign: row.utm_campaign ?? null,
+    utm_template: utmTemplate(row.utm_campaign ?? row.lane),
+    campaign: row.campaign ?? null,
+    status: row.status ?? "live",
+    live_at: iso(row.live_at),
+    created_by: row.created_by ?? null,
+    pages: pages.map((p) => pageView(p)),
+    events_seen: row.kind ? pages.reduce((n, p) => n + (Number(p.events_seen) || 0), 0) : null
   };
+}
+
+/* The UTMs every ad for a funnel carries (migration 286, src/marketing/url-tags.mjs):
+   utm_campaign is the funnel's lane, utm_content the ad's number. null when the
+   lane is one the database files as "unknown". */
+function utmTemplate(lane) {
+  const l = String(lane ?? "");
+  if (!l || l === "unknown" || !AD_LANES.includes(l)) return null;
+  return `utm_source=fb&utm_medium=paid&utm_campaign=${l}&utm_content={ad_number}`;
 }
 
 /* ── funnels: read and save ──────────────────────────────────────────────── */
 
 export async function listFunnels(db, orgId) {
   const { rows } = await db.query(
-    `SELECT * FROM marketing_funnels WHERE org_id = $1 ORDER BY active DESC, key`,
+    `SELECT f.*, ${PAGES_JSON_SQL}
+       FROM marketing_funnels f
+      WHERE f.org_id = $1
+      ORDER BY f.active DESC, f.key`,
     [orgId]
   );
   return rows;
@@ -477,6 +509,13 @@ export async function upsertFunnel(tx, orgId, { funnel } = {}) {
         "This funnel already exists. Open it, then save with its updated_at so a newer save is not lost.");
     }
     if (msOf(row.updated_at) !== Date.parse(updatedAt)) throw new StaleError(funnelView(row));
+    if (row.kind) {
+      const fixed = BUILT_FIXED.find((k) => values[k] !== undefined);
+      if (fixed) {
+        throw new InvalidError(`funnel.${fixed}`,
+          `This funnel was built on the dashboard, so its ${fixed} is set by the builder. Rename it from its funnel card instead.`);
+      }
+    }
   } else {
     for (const k of FUNNEL_REQUIRED) {
       if (values[k] === undefined) throw new InvalidError(`funnel.${k}`, `A new funnel needs ${k}.`);

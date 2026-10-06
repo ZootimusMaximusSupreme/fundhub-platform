@@ -19,6 +19,7 @@ import {
   fadeUp,
   formatDollars,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {PROOF_APPROVALS, type ProofApproval} from './proofWallApprovals';
 
 // ProofWall: the real client approvals turn past on a 3D carousel of floating
@@ -53,6 +54,8 @@ export type ProofWallProps = {
   /** 90 to 120 frames (3 to 4 seconds). Default 120. */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const PROOF_WALL_BASE = 120;
@@ -80,6 +83,7 @@ export const proofWallDefaults: ProofWallProps = {
   ],
   proofLines: ['A decade', 'Hundreds of files', 'Thousands of data points', 'A little over a million dollars funded for myself'],
   speed: 1,
+  transparent: false,
 };
 
 /** Every screen is fitted (whole picture, never cropped) inside this box. */
@@ -200,7 +204,7 @@ const Screen: React.FC<{a: ProofApproval; theta: number; alpha: number; bob: num
   );
 };
 
-export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLines, speed, durationInFrames, showSafeZones}) => {
+export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLines, speed, durationInFrames, showSafeZones, transparent}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const L = PROOF_WALL_BASE;
@@ -249,7 +253,7 @@ export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLi
   const LAST_AT = 72;
   const revealAt = (j: number) => (lines.length <= 1 ? 6 : 4 + (j * (LAST_AT - 4)) / (lines.length - 1));
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -401,6 +405,7 @@ export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLi
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
 
 /** Registered in Root.tsx. Its own composition because it runs 3 to 4 seconds, longer than the kit's 2 to 3. */

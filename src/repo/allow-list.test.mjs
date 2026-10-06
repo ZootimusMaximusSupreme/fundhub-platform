@@ -7,13 +7,14 @@ import {
   ALLOWED_DIRS, ALLOWED_FILES, assertAllowedRepoPath, isAllowedRepoPath, normalizeRepoPath, RepoPathError
 } from "./allow-list.mjs";
 
-test("allow-list: exactly the spec list plus the flywheel folder (design slice 1 additions)", () => {
+test("allow-list: exactly the spec list plus the flywheel folder (design slice 1 additions) and the built-funnel folder (X4)", () => {
   assert.deepEqual([...ALLOWED_DIRS].sort(), [
     "marketing/ads/ideas/",
     "marketing/ads/scripts/machine/",
     "marketing/ads/videos/",
     "marketing/brain/",
     "marketing/flywheel/",
+    "marketing/landing-pages/funnels/",
     "ops/page-requests/"
   ]);
   assert.deepEqual([...ALLOWED_FILES].sort(), [
@@ -30,6 +31,10 @@ test("allow-list: exactly the spec list plus the flywheel folder (design slice 1
   assert.equal(isAllowedRepoPath("marketing/flywheel"), false);
   assert.equal(isAllowedRepoPath("marketing/flywheel-old/x.md"), false);
   assert.equal(isAllowedRepoPath("marketing/flywheel/../ads/x.md"), false);
+  // X4: a built funnel's pages, and nothing else under landing-pages.
+  assert.equal(isAllowedRepoPath("marketing/landing-pages/funnels/blueprint/landing.html"), true);
+  assert.equal(isAllowedRepoPath("marketing/landing-pages/slo/slo-01-sales.html"), false);
+  assert.equal(isAllowedRepoPath("marketing/landing-pages/tracking-manifest.mjs"), false);
 });
 
 test("allow-list: the spec's files and folders are allowed", () => {

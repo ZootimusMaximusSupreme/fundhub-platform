@@ -8,6 +8,11 @@ Required by `CLAUDE.md` §3a step 4. Written 2026-10-05 from the code on branch
 Drawn from code, not from the plan. Anything the code does not do yet is marked
 **NOT BUILT** rather than drawn as if it ran.
 
+Updated 2026-10-05 on branch `cc-slice0-today-truth` for slice 0 of
+`docs/specs/command-center-design-2026-10-05.md` ("Today tells the truth"): whole-day
+spend windows, `prior_30_days`, the ClickFunnels time, measured costs, the stage counts
+and review cards, the page that reads them, and `max_jobs: 1` on Write ad copy.
+
 ## The Today read — `GET /api/marketing/today`
 
 Read only. Each part reads in its own short transaction (`asStaff()`), so one part
@@ -25,17 +30,36 @@ flowchart TD
   H -->|found| H1[copy: last 10 copy pieces + last 5 copy jobs]
   H -->|found| H2[copy_ready: switch, writer row, Anthropic key, budget]
   H -->|missing| H3[copy empty, copy_ready false, waiting: copy]
-  D --> S[spend: today, last 7, prior 7, last 30<br/>from ad_metrics_daily, whole company]
+  F --> F2[each stage: its front-matter counts<br/>+ the text under ## Review card]
+  D --> S0[spend.through = the later of the newest saved ad-day<br/>and the day before the newest Meta pull's Arizona day,<br/>never today or later]
+  S0 --> S[spend: today, then last 7 / prior 7 / last 30 / prior 30<br/>whole days ending on spend.through<br/>from ad_metrics_daily, whole company]
   D --> L[last_sync: Meta connection + newest ad-day]
-  F & H1 & H2 & S & L --> Z[200 with as_of and waiting]
+  D --> CF[clickfunnels_synced_at:<br/>analytics_connections.last_synced_at]
+  D --> CO[costs.offer: newest done marketing_jobs offer run<br/>seconds, tokens, dollars]
+  H -->|found| CC[costs.copy: house partner's last 5<br/>partner_ai_usage rows, purpose creative]
+  CO & CC --> PR{model price on file?<br/>src/marketing/model-prices.mjs}
+  PR -->|yes| PR1[cost in whole cents]
+  PR -->|no / no run| PR2[cost null: the page prints unknown]
+  F2 & H1 & H2 & S & L & CF & PR1 & PR2 --> Z[200 with as_of and waiting]
   F -->|files not on server| W[that part null + named in waiting]
-  S -->|table missing / no rows in 30 days| W
+  S0 -->|no saved ad-day at all| W
+  S -->|table missing| W
   L -->|table missing / never synced| W
+  CF -->|table missing| W
+  CO -->|marketing_jobs missing| W
   W --> Z
   D -->|database not answering| E[503 db down]
 ```
 
 - A window with no saved ad-days is `null`, never `0`.
+- The 7 and 30 day windows end on `spend.through`, never on today, so both sides of
+  every comparison are whole days. Only `today` is today. `spend.through` is the later
+  of the newest saved ad-day and the last whole day the newest Meta pull covered, so
+  the windows keep moving after ads stop (Meta sends no row for a day with no ads).
+  A covered window with no rows stays `null`; the page says "No ad spend saved for
+  Oct 5 to Oct 11."
+- A cost is `null` when no run was measured, or when a run's model has no price with a
+  source in `src/marketing/model-prices.mjs` (today only `claude-opus-5-5` has one).
 - A table or column that is not in the database yet (Postgres 42P01 / 42703 / 42883)
   makes that part `waiting`. Any other database error is a 503 (connection) or a 500.
 
@@ -49,7 +73,7 @@ flowchart TD
   C0[POST creative/generate<br/>asset_kind=copy, house partner] --> G{marketing switch on?}
   G -->|no| G1[403 suite_off, nothing saved]
   G -->|yes| C1[generation_jobs: queued]
-  C1 -->|POST creative/run, or the runner every 2 min| C2[running]
+  C1 -->|POST creative/run max_jobs 1 from the page:<br/>claims at most one job, or the runner every 2 min| C2[running]
   C2 --> R{copy writer row?}
   R -->|no| C9[failed: no active provider]
   R -->|yes| M[OpenAI first]
@@ -65,6 +89,49 @@ flowchart TD
   C3 -->|a rule fires| C5[blocked, reasons kept]
   C4 -->|a person approves| C6[approved]
 ```
+
+## The page — `public/app/marketing-command-center.*` (Today view)
+
+What the page reads, and when. Drawn from `public/app/marketing-command-center.js`.
+
+```mermaid
+flowchart TD
+  P0[page opens] --> P1[GET marketing/today<br/>+ GET ad-videos?status=awaiting_approval]
+  P0 --> P2[GET marketing/offer/generate]
+  P1 -->|200| P3[paint: spend tiles, as-of line, Waiting on you,<br/>Offer and market rows, cost lines, footer clock]
+  P1 -->|first load fails| P4[banner in words, every number unknown]
+  T1[every 5 minutes while the tab is visible] --> P1
+  T2[tab comes back into view or gets focus<br/>more than 30 s after the last read] --> P1
+  P1 -->|a reload fails after a good load| P5[keep the last numbers<br/>banner: This page shows the last load from 3:02 PM]
+  P1 -->|a read gets no answer in 20 s| P7[give up on it: same as a failed reload,<br/>banner: The server took too long to answer<br/>the next 5-minute tick reads again]
+  P1 -->|ad-videos fails| P6[one line in Waiting on you: The video list did not load]
+  P3 --> W1[Waiting on you: videos first, then flywheel rows<br/>each with where it is done: the button on this page,<br/>or Not on this page yet: it ships in slice N]
+  P3 --> R1[Read it on each stage row: unfolds its review card in place;<br/>its Say one of line becomes Approve or tweak: Not on this page yet]
+  P3 --> X1[Write ad copy: creative/generate, then creative/run max_jobs 1]
+  P2 --> X2[Write offer: POST, then GET ?id= every 10 s]
+```
+
+- Nothing on the page approves a video or a flywheel step. The videos row says
+  approving is not on the page yet, and when the text message's links ran out
+  (`approval_expires_at`).
+- Nothing on the page sends Chris to chat or Claude Code (owner law 2026-10-05,
+  design §3.9). A row whose button is not built says "Not on this page yet: it ships
+  in slice N" (design safety rule 9) and shows no button: approve the avatar 5a, approve
+  any other step 5; run the avatar 5a ("Cost not measured."), market research 10
+  ("Cost not measured."), steps 4 to 6 5; saving the offer file 1. No chat command is
+  copied, and no row says "runs in chat".
+- No inner scroll box: long ad copy and the offer fold behind Show more.
+- The topbar wraps rather than pushing the page sideways: one row on a wide screen,
+  Search and the account chip on a second row when they do not fit beside the name.
+
+## NOT BUILT (on this branch)
+
+- Running a flywheel stage from the page, approving one, tweaking one (design slice 5).
+  The flywheel rows are read only.
+- Approving or rejecting a video from the page (design slice 2). Only the count, the
+  ads and the dates are shown.
+- `GET marketing/costs` and the cost ledger (design slice 1). Until then the cost lines
+  come from `GET marketing/today` `costs`, as above.
 
 ## U20 M5 11.1: metric definitions (`src/marketing/metrics.mjs`)
 
@@ -117,12 +184,6 @@ Gaps between the spec and the live data (recorded, not fixed) are listed in
 `booking.created` events carry no client; call_outcomes has 0 rows; cash here is
 transactions while `adAttributionRollup` counts payment links; "25% hold" is not
 ad-spine's `hold_rate`; 2-second plays are stored on 0 of 69 ad-days.
-
-## NOT BUILT (on this branch)
-
-- The page `public/app/marketing-command-center.*` (workflow M11).
-- Running a flywheel stage from the page (slice 2). The flywheel rows are read only.
-- The offer generator (workflow M12).
 
 ## U01 API contract for every marketing/* route
 
@@ -694,6 +755,360 @@ flowchart TD
 section "U26 Ideas, rules, Fix and Write now". `write_now_ready` is false until `start_batch` is in
 JOB_KINDS, so the Today and Scripts screens show no Write now button that cannot produce drafts.
 
+## X4 Funnel builder: automatic addresses, tags, full tracking, Push live to a NEW path
+
+Drawn from code on branch `mm-x4-funnel-builder`: migration `425_marketing_funnel_builder.sql`,
+`api/marketing/funnels/{create,rename,build,push-live}.mjs`, `api/marketing/funnel.mjs`,
+`src/marketing/funnel-{paths,tracking,pages,copy,store,build,push,worker,routes,transport}.mjs`,
+`src/messaging/providers/clickfunnels-pages.mjs`, `netlify/functions/marketing-funnel-background.mjs`,
+and the tracking changes in `public/funnel/fh-events.js` and `src/funnel/track.mjs`. Owner order
+2026-10-05 ("every time a funnel is made we tag it", "a url system so I don't have to name them,
+or allow me to name them in the dash", "we can push a funnel live, /blueprint or similar"). Owner
+and admin only on every route (requireAuth, then requireRole `ROLE_SETS.MARKETING`).
+
+### A funnel's states
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft_empty: POST funnels/create<br/>address picked or typed + checked,<br/>tag fnl-word saved once, utm_campaign = lane,<br/>active false
+  draft_empty --> draft_built: job funnel done<br/>(one model call, copy check passed,<br/>3 pages with tag + tracking saved)
+  draft_empty --> draft_empty: job funnel failed<br/>(copy check failed twice, month cap, no key)
+  draft_built --> draft_built: POST funnels/build (write again)<br/>POST funnels/rename (pages redrawn from saved words)
+  draft_empty --> draft_empty: POST funnels/rename
+  draft_built --> pushing: POST funnels/push-live<br/>confirm_url = the funnel's address
+  pushing --> draft_built: an address is a page we did not make<br/>(stopped before anything was made)
+  pushing --> pushed: pages made (POST custom_html), ids saved,<br/>token PUT on our own page ids
+  pushed --> pushed: proof not seen yet (job fails, Retry proves again, makes nothing new)
+  pushed --> live: every page proven by a cache-busted read<br/>(tag + tracking on the live page)<br/>status live, live_at, active true
+  live --> [*]
+```
+
+- A live funnel never changes: rename, build and push-live are refused (400), and the
+  database refuses any change to a pushed page's address, HTML or page id, a live
+  funnel's address, and any tag.
+
+### Make — `POST /api/marketing/funnels/create`
+
+```mermaid
+flowchart TD
+  P[POST create<br/>request_id, offer_key, lane?, name?, campaign?, path?, build?] --> V{offer sold on a call?<br/>capital_blueprint or funding_dfy}
+  V -->|no| V1[400 offer_key]
+  V -->|yes| L[READ the live ClickFunnels page list<br/>GET /workspaces/id/pages]
+  L -->|cannot read| L1[503 clickfunnels_unreadable<br/>nothing made]
+  L -->|read| W[withRequest: one staff transaction<br/>lock: one create per company at a time]
+  W --> T[taken = live pages + every address our funnels use<br/>+ reserved words + funnel keys]
+  T --> A{path typed?}
+  A -->|yes| A1{all three addresses free?<br/>word, word-book, word-thank-you}
+  A1 -->|no| A2[400 path, says which one]
+  A1 -->|yes| M
+  A -->|no| N[offer word: /blueprint, then /blueprint-2, -3 ...]
+  N --> M[insert funnel: kind book_a_call, status draft,<br/>tag fnl-key, utm_campaign = lane, created_by, active false<br/>+ 3 empty pages]
+  M --> B{build true?}
+  B -->|yes| J[queue job funnel]
+  B -->|no| R
+  J --> R[COMMIT, 200 funnel + job]
+  R --> K[wake marketing-funnel-background<br/>with the owner's session]
+  K -->|wake failed| K1[job failed with the reason]
+```
+
+### Write the pages — job `funnel` (`src/marketing/funnel-build.mjs`)
+
+```mermaid
+flowchart TD
+  S[worker claims the job by id<br/>queued, this company] --> G{funnel built here,<br/>nothing on ClickFunnels?}
+  G -->|no| F1[failed: a live page is never rewritten]
+  G -->|yes| D{every page already<br/>saved by this job?}
+  D -->|yes| OK[done, nothing paid again]
+  D -->|no| C{month model spend under the cap?}
+  C -->|no| F2[failed: cap reached, nothing written]
+  C -->|yes| M[one Anthropic call, claude-opus-5-5,<br/>structured output COPY_SCHEMA<br/>facts: src/config/offers.mjs + campaign files if any<br/>cost logged to marketing_model_usage]
+  M --> K{copy check<br/>strict ad checker + outcome first,<br/>no invented numbers, no price,<br/>no testimonials, no SSN, no guarantee}
+  K -->|fails, first round| M
+  K -->|fails twice| F3[failed with the reasons, nothing saved]
+  K -->|passes| R[draw 3 pages in the house template<br/>tag block first in head + manifest tracking]
+  R --> DB[(save each page;<br/>the database refuses a page<br/>without the tag or the scripts)]
+  DB --> OK
+```
+
+### Push live — `POST /api/marketing/funnels/push-live` and job `funnel_push`
+
+```mermaid
+flowchart TD
+  P[POST push-live<br/>request_id, id, confirm_url] --> V{pages built, not live,<br/>confirm_url = the funnel's address,<br/>nothing in flight?}
+  V -->|no| V1[400 id or confirm_url]
+  V -->|yes| J[queue job funnel_push, 202, wake the worker]
+  J --> L[READ live page list]
+  L --> C{each of the 3 addresses:<br/>free, ours already, or ours from a crash<br/>by its description marker?}
+  C -->|a page we did not make| X[failed before anything was made]
+  C -->|ok| O[thank-you, booking, then landing:<br/>POST custom_html = a NEW page]
+  O -->|429 or no answer| RT[tried again later by the worker,<br/>nothing saved, nothing made twice]
+  O -->|401, 403, 404, 422| FX[failed for good with the reason]
+  O --> A{ClickFunnels answered<br/>the page address?}
+  A -->|no address| NA[failed before saving: never guessed;<br/>Retry takes the page back by its marker]
+  A -->|yes| SV[save its id and that address at once]
+  SV --> H{address = https://apply.fundhub.ai<br/>+ this page's path?}
+  H -->|another host or path| WH[failed: funnel stays a draft,<br/>no token, no proof, no more pages;<br/>a Retry stops here again]
+  H -->|yes| T[page token into that page:<br/>PUT /pages/id, only for ids this push made]
+  T --> R[cache-busted GET of each page at its own address:<br/>tag + tracking there?]
+  R -->|not yet, 4 tries| F[failed: Retry proves again,<br/>makes nothing new]
+  R -->|all proven| CK{all 3 pages at their own address,<br/>landing page at the funnel's address?}
+  CK -->|no| WH
+  CK -->|yes| LV[one transaction: funnel live: status, live_at,<br/>landing_url = live address, active true<br/>+ the 3 pages queued in repo_outbox:<br/>marketing/landing-pages/funnels/key/page.html]
+  LV --> WK[wake the marketing worker<br/>the outbox commits them when it drains]
+```
+
+- The repo save needed one more folder on the outbox allow-list
+  (`src/repo/allow-list.mjs`): `marketing/landing-pages/funnels/`. Nothing else under
+  `marketing/landing-pages/` is writable by the app.
+
+### The tag and the tracking on every page
+
+```mermaid
+flowchart LR
+  H[page head: fh-funnel-tag meta +<br/>window.FH_FUNNEL first,<br/>then Meta pixel PageView eventID,<br/>Clarity and GA4 when set, CF SDK + token] --> E[fh-events.js:<br/>page not on its fixed list but<br/>FH_FUNNEL names it -> sends, + funnel_tag]
+  E --> D[POST /api/public/slo-interest kind track]
+  D --> Q{tag + address in<br/>marketing_funnel_pages?}
+  Q -->|no| Q1[page_invalid, nothing saved]
+  Q -->|yes| S[events row funnel = tag, step = position,<br/>funnel_tag, funnel_id; page events_seen + 1]
+  S --> M[Meta server copy as before:<br/>PageView; Schedule on booking_confirmed]
+  A[fh-attribution.js] --> F[every form, the framed calendar too:<br/>UTMs + landing_path = this funnel's first page]
+```
+
+- UTMs keep the ad-number law: the ad's url_tags are `utm_source=fb&utm_medium=paid&utm_campaign=<lane>&utm_content=<ad number>`
+  (`utm_template` on the funnel). The tag never rides in a UTM.
+- Leads and bookings carry the funnel through `landing_path`; the address belongs to one funnel only.
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+- **No design slice.** The design (`docs/specs/command-center-design-2026-10-05.md`) has no
+  funnel-builder slice; this unit follows the owner order of 2026-10-05 and the extras brief.
+  No screen is built here (X8 draws the Funnels cards).
+- **Build route added.** The brief names create, rename, push-live and the two reads. The page
+  writer needs a press to start or redo it, so `POST marketing/funnels/build` was added; create
+  also queues the first build (build: true by default).
+- **Head code.** The brief says "head_code from the tracking manifest". ClickFunnels refuses
+  head_code on a custom HTML page (422, OpenAPI read 2026-10-06), so the manifest's tracking
+  rides inside the page document, the same way the /roadmap pages do it.
+- **Meta Lead.** docs/tracking/meta-events.md maps Lead to the /roadmap buy box and the survey's
+  last answer only. A book-a-call funnel page fires PageView and, on a real booking, Schedule;
+  no Lead fires from these pages. Purchase stays server-only (the payment path). Adding a Lead
+  on booking needs a new row in that contract table.
+- **No VSL slot.** No Capital Blueprint video exists, so the landing page has no video block
+  (a missing file would 404 on a live page, as slo-02-booking does today).
+- **Standalone pages.** The pages are made as standalone custom HTML pages (no `funnel` block),
+  so no existing ClickFunnels funnel is changed. Which domain ClickFunnels serves a standalone
+  page on is UNVERIFIED until the first push (the /roadmap pages sit inside a ClickFunnels funnel
+  whose domain is apply.fundhub.ai; `docs/sops/clickfunnels-custom-html-push.md`). The push saves
+  the `url` ClickFunnels answers as it is and stops at the first page whose address is not
+  `https://apply.fundhub.ai` + its path: the funnel stays a draft and no more pages are made.
+  If that happens, the thank-you page is left on ClickFunnels at the other host, and the funnel
+  cannot be renamed (a page is on ClickFunnels); it needs an owner call (move the pages into a
+  ClickFunnels funnel on apply.fundhub.ai, the /roadmap way) before it can go live.
+- **Rename keeps the first word.** A rename moves the address but keeps the funnel's key, its
+  tag (law: a tag never changes) and its repo folder. After /blueprint-2 is renamed to
+  /blueprint-vip, its tag stays `fnl-blueprint-2` and its live pages save under
+  `marketing/landing-pages/funnels/blueprint_2/`; the next automatic create skips /blueprint-2
+  (its key is still taken). The Funnels card (X8) should print the tag and the repo folder next
+  to the address so this shows.
+- **Draft campaign files.** The writer reads the campaign's stage files whatever their approval
+  stamp and reports each file's status on the job result; it does not wait for approval.
+- **U22 worker.** Not on main, so the jobs run in their own background function (the offer
+  pattern). Both kinds are in `JOB_KINDS` for U22's worker to pick up later. The wake carries
+  the owner's session to that function; design §5 rule 18 says every wake carries the worker
+  secret, never the owner's session. When U22's worker lands, kinds `funnel` and `funnel_push`
+  move to it and `netlify/functions/marketing-funnel-background.mjs` retires.
+- **UNVERIFIED in a real database on this Mac** (no Postgres here): the SQL is proved by
+  `src/http/marketing-funnel-builder.pg.test.mjs` in GitHub CI. Never run against live
+  ClickFunnels: every ClickFunnels call in the tests is a fake behind the real provider.
+
+## U31 M5 11.2 part 1: GET marketing/ads and GET marketing/ad?n=
+
+Drawn from code on branch `mm-u31-ads-routes`: `api/marketing/ads.mjs`,
+`api/marketing/ad.mjs`, the readers in `src/marketing/metrics.mjs` (U20) and
+`readLastSync` in `api/marketing/today.mjs`. Spec §11.2, §11.1, §11.3; shapes are
+fixed shape 8 in `docs/specs/marketing-machine-api.md` §6.7. Read only: no row is
+written, nothing is texted, Meta and models are not called. Owner and admin only
+(requireAuth, then requireRole `ROLE_SETS.MARKETING`, then a company on the session).
+Every query runs in one `asStaff()` transaction.
+
+### The Ads view — `GET /api/marketing/ads?from&to&funnel&format&angle`
+
+```mermaid
+flowchart TD
+  A[GET marketing/ads] --> B{signed in?}
+  B -->|no| B1[401]
+  B -->|yes| C{owner or admin?<br/>ROLE_SETS.MARKETING}
+  C -->|no| C1[403, nothing read]
+  C -->|yes| D{from / to real YYYY-MM-DD,<br/>from not after to?}
+  D -->|no| D1[400 invalid, field from or to]
+  D -->|yes| W[window: Arizona days, both ends in<br/>none sent = the last 30 days ending today]
+  W --> F{funnel, format or angle sent?}
+  F -->|yes| L[script labels per number:<br/>live ad_scripts version, else newest<br/>keep numbers whose labels all match]
+  L -->|no number matches| E[rows empty]
+  L --> R1[readAdNumbers for those numbers]
+  F -->|no| R2[readAdNumbers for every number<br/>with spend or a lead in the window]
+  R2 --> L2[script labels for those numbers]
+  R1 & L2 --> ROW[one row per ad NUMBER:<br/>counts from the reader, rates from ratiosFor<br/>labels null when no script]
+  ROW --> S[most spend first, unknown spend last, then number]
+  W --> U[unmapped: spend of ads with no number,<br/>per campaign, same window, filters do not apply]
+  W --> T[as_of = connection last_synced_at,<br/>else newest saved ad-day; null if never synced]
+  S & E & U & T --> OK[200 rows, unmapped, as_of]
+```
+
+- Every number is U20's: `readAdNumbers` gives the counts and `ratiosFor` the rates.
+  The route adds, divides and rounds nothing of its own.
+- A row also carries the reader's raw counts after the contract keys: `ads`,
+  `link_clicks`, `plays`, `ad_days`, `reported_days`, `maturing_leads`,
+  `cash_unknown` (extra keys are allowed by the contract).
+- Unknown stays `null`: spend of a number with leads but no ad-days, a rate whose
+  bottom is 0 or never reported. `maturing` is true when a lead is under 14 days old.
+
+### The drawer — `GET /api/marketing/ad?n=91`
+
+```mermaid
+flowchart TD
+  A[GET marketing/ad?n=] --> G[same gate: 401 / 403]
+  G --> N{n is 1-9 digits?}
+  N -->|no| N1[400 invalid, field n]
+  N -->|yes| K{this company has a Meta ad,<br/>a script or a tagged lead with n?}
+  K -->|no| K1[404 not_found]
+  K -->|yes| R[the Ads row for n over the last 30 Arizona days<br/>nothing in the window: spend null, counts 0]
+  R --> M[meta_ads: every ads row with n, oldest first]
+  R --> CU[curve: one entry per Meta ad per saved ad-day in the 30 days<br/>video_play_curve as stored, null when Meta sent none]
+  R --> WA[watch.alerts: ad_watch_curve_alerts of those ads<br/>watch.diagnoses: ad_watch_curve_diagnoses, newest day first, at most 100,<br/>not limited to the 30 days]
+  M & CU & WA --> OK[200 ad, as_of]
+```
+
+- `watch` inner keys (U31 owns them): an alert is `{ad_id, dies_before_25_alerted_on,
+  updated_at}`; a diagnosis is `{date, diagnosis, fix_type, film_note,
+  next_take_improved, id, ad_id, created_at}`. `ad_id` is `ads.id` (the Meta ad row).
+- Two Meta ads with one number keep two curves (each entry names its `ad_id`); they
+  are never averaged.
+
+### Fast with 30 days (spec M5 done 2)
+
+`src/http/marketing-ads.pg.test.mjs` runs every read of both routes under
+`EXPLAIN (ANALYZE)` on a 30-day fixture with seq scans turned off for that one
+transaction, and fails if `ad_metrics_daily` or `client_ad_attribution` is read
+without an index condition. The live timing of each route is taken after ship
+(the orchestrator writes it on the board).
+
+### Gaps between the spec, the design and this code (findings, not reconciled)
+
+- **Design keys not built.** The design doc's Ads row (`ad_id`, `angle`, `hold_2s`,
+  `sales_ours`, `sales_meta`, `cpb_cents`, `last_day`, `unknown_ad`) and drawer
+  (`quartiles`, `diagnosis`, `script{hook, line2}`, `links`) differ from fixed
+  shape 8; the contract wins. Meta's own purchase count, the last day an ad ran,
+  the script's hook and line 2 and the unmapped lead count are not in these answers.
+- **Funnel of a row comes from the script only.** U32's funnel roll-up falls back
+  to `marketing_funnels.meta_campaign_ids`; this route does not, so a number with no
+  script funnel reads `funnel_key` null here while its spend can count on Funnels.
+- **Unmapped spend ignores funnel / format / angle.** Spend with no number has no
+  script, so no label can match it.
+- **No 10-play floor.** The design prints "unknown (fewer than 10 plays)" through
+  `watchRate()`; U20's rates and this route have no floor.
+- **`readLastSync` is not index-checked.** Its `max(synced_at)` reads the company's
+  ad-days with no index that orders them; it is today's shared helper, not this unit's.
+- **Lead days are not range-scanned.** U20's lead read finds the company's tagged
+  leads by index, then keeps the window by Arizona day of `captured_at` (not sargable).
+- **UNVERIFIED on this Mac** (no Postgres here): proved only by the pg test in GitHub CI.
+
+## U32 M5 11.2 part 2: angles, funnel numbers, and the M5 keys on Today
+
+Written 2026-10-06 from the code on branch `mm-u32-angles-funnel-stats`. Read only: nothing
+here writes a row, calls Meta or calls a model. Code: `api/marketing/angles.mjs`,
+`api/marketing/funnels/stats.mjs`, `api/marketing/today.mjs` (part 5),
+`src/marketing/metrics-rollups.mjs`. The counting rules are U20's
+(`src/marketing/metrics.mjs`); this unit only decides which funnel and which angle a number
+belongs to, and adds the per-number results up.
+
+Three routes, one gate (owner and admin, `ROLE_SETS.MARKETING`; the company from the
+session):
+
+```mermaid
+flowchart TD
+  A[GET marketing/angles<br/>GET marketing/funnels/stats] --> B{signed in?}
+  T[GET marketing/today] --> B
+  B -->|no| B1[401]
+  B -->|yes| C{owner or admin?}
+  C -->|no| C1[403, nothing read]
+  C -->|yes| W[window: last 30 Arizona days<br/>Today: today, 7 and 30 days]
+  W --> R[one asStaff read<br/>Today: four parts side by side]
+  R -->|a marketing_ table not there yet| NR[angles, funnels/stats: 503 not_ready<br/>Today: that part empty + named in waiting]
+  R -->|database not answering| DD[503 db down]
+  R --> OK[200 + as_of<br/>angles, funnels/stats: last Meta sync<br/>Today: when built; Meta time is last_sync]
+```
+
+Which funnel and which angle a number belongs to:
+
+```mermaid
+flowchart TD
+  AD[ads row with spend<br/>ad_metrics_daily, Arizona spend day] --> N{ad number?}
+  N -->|yes| S{its LIVE script<br/>ad_scripts.ad_id, archived_at NULL}
+  S -->|names funnel_key| F1[that funnel]
+  S -->|no script, or no funnel_key| CA{campaign on a funnel's<br/>meta_campaign_ids?}
+  N -->|no| CA
+  CA -->|yes| F2[that funnel]
+  CA -->|no| UM[Unmapped spend]
+  S -->|names angle_key| A1[that angle]
+  S -->|no angle_key| SP{v_ad_label_spine:<br/>creative's script angle?}
+  SP -->|yes| A2[that angle]
+  SP -->|no| NA[no angle: in no angle row]
+  L[lead: client_ad_attribution<br/>first touch, Arizona lead day] --> LN{ad number?}
+  LN -->|no| LU[not placed]
+  LN -->|yes| LS[number: script's funnel and angle,<br/>else the one its ads rows agree on]
+  LS -->|two funnels disagree| LU
+  LS --> RES[readAdNumbers results: booked, showed,<br/>sales, roadmaps, cash, reported cash — 14 days]
+```
+
+- **GET marketing/angles** → `{rows:[{angle_key, name, spend_cents, ads, leads, booked, sales,
+  cash_cents, roas}], as_of}`. One row per angle with spend or leads in the window. `ads` =
+  distinct ad numbers (an ads row with no number counts on its own). `name` from
+  `marketing/ads/angles.json` (bundled through netlify.toml `included_files`); a key not in
+  the file shows the key.
+- **GET marketing/funnels/stats** → `{rows:[{funnel_key, name, spend_cents, page_views,
+  click_to_page, page_to_lead, leads, booked, showed, sales, cash_cents, roas}],
+  unmapped_spend_cents, as_of}`. Every active funnel plus any funnel spend or leads were placed
+  on. `page_views` = `funnel.page` events from people on the funnel's landing page (its
+  `landing_url` path; null when the tracker does not run on that page). `click_to_page` =
+  page views ÷ the funnel's ads' link clicks; `page_to_lead` = leads ÷ page views.
+- **GET marketing/today, added keys** (every old key unchanged): `numbers` (today / d7 / d30
+  from `readTotals`), `daily` (30 days from `readDaily`), `spend_by_funnel` (7 days, with an
+  Unmapped row), `flow` (7 days: landing page views, Meta link clicks, then `numbers.d7`'s
+  leads, booked, showed, sales), `scripts_waiting` (released drafts and the machine's flagged
+  ones), `stuck_jobs` (failed `marketing_jobs`, not `offer`, newest first, each with its id
+  for Retry).
+- **Unknown stays null.** Spend with no saved ad-day is null. A funnel with nothing placed is
+  null while some spend is unmapped, and a known 0 only when all saved spend is placed. Cash
+  over several numbers is null only when payments exist and none reported an amount.
+- **Index proof.** Every query starts with a `-- m5:<name>` line;
+  `src/http/marketing-funnels-stats.pg.test.mjs` runs EXPLAIN (ANALYZE) on each with sequential
+  scans priced out and fails if `ad_metrics_daily`, `events`, `ad_scripts` or
+  `marketing_jobs` is read without an index. `ad_spend` walks `ads` then
+  `ad_metrics_daily (ad_id, date)`; `funnel_steps` walks `idx_events_name (org_id, name,
+  created_at)` with constant Arizona-midnight bounds.
+
+Gaps between the spec, the design and this code (recorded, not reconciled):
+
+1. **Design vs contract shapes.** The design doc (`command-center-design-2026-10-05.md` §3.1,
+   §3.7) draws `money{…, prior_30_days}`, `by_funnel`, `flow{page, pressed_buy, paid, booked}`,
+   angles `{ok, angles[], suggestions[]}` and funnels `{ok, funnels[{key, flow{}, page_funnel{},
+   clarity{}}]}`. This code builds the plan's fixed shapes 7 and 9
+   (`docs/specs/marketing-machine-api.md`), which win per the plan. The design's per-angle
+   "cost per lead, last run date, best and worst ad", the page funnel (pressed buy, paid) and
+   Clarity rows are not in these answers.
+2. **Two populations in one rate.** `page_views` counts every person on the landing page (ad
+   or not); `leads` counts only leads tagged with an ad number that maps to the funnel. So
+   `page_to_lead` understates while most leads carry no number (2 of 18 on 2026-10-06,
+   `docs/marketing/metrics.md` gap 8).
+3. **Flagged and visible rules are copied, not shared.** `scripts_waiting` repeats U25's
+   visibility rule and `isFlagged` (`src/marketing/scripts-store.mjs`, not on main when this
+   was written) in SQL. If either changes, this count must change with it.
+4. **Angle names lag one ship.** Names come from the bundled `angles.json`; an angle added
+   through the repo outbox shows its key until the next ship.
+5. **UNVERIFIED:** the live timing of each route (spec M5 "under 2 seconds with 30 days of
+   data"). The orchestrator records one live timing per route after ship.
+
 ## X3 The flywheel on the dashboard (Ideas: Offer and market card back end)
 
 Drawn 2026-10-06 from the code on branch `mm-x3-ideas-flywheel`: `api/marketing/flywheel.mjs`,
@@ -798,7 +1213,7 @@ flowchart TD
   file is not in the repo at all.
 - **The doctrine** is the repo's excerpts only (`ascension-ads.md` §1 and §5, the Drive index
   lines); the full SOPs are in Drive and are not read. The plans are told so.
-- **GET marketing/angles** is unit U32's (`mm-u32-angles-funnel-stats`, not merged here);
+- **GET marketing/angles** is unit U32's (on main since merge 1b3961ab4; not built here);
   **GET/POST marketing/batches/next** is unit U23's. Not built twice.
 - **GET marketing/flywheel/job?id=** (design slice 5a) is unit X1's; `GET marketing/flywheel`
   carries each row's run instead.

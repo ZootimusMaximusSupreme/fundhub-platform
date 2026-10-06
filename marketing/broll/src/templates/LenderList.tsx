@@ -16,6 +16,7 @@ import {
   fadeUp,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type LenderListProps = {
   eyebrow: string;
@@ -31,6 +32,8 @@ export type LenderListProps = {
   names: string[];
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const LENDER_LIST_BASE = 75;
@@ -44,6 +47,7 @@ export const lenderListDefaults: LenderListProps = {
   footer: 'Apply in that order',
   rows: 5,
   names: [],
+  transparent: false,
 };
 
 const BAR_WIDTHS = [0.74, 0.6, 0.68, 0.54, 0.64, 0.58];
@@ -73,14 +77,14 @@ const BankIcon: React.FC = () => (
   </div>
 );
 
-export const LenderList: React.FC<LenderListProps> = ({eyebrow, headline, footer, rows, names, durationInFrames, showSafeZones}) => {
+export const LenderList: React.FC<LenderListProps> = ({eyebrow, headline, footer, rows, names, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useTimeline(LENDER_LIST_BASE, durationInFrames);
   const L = LENDER_LIST_BASE;
   const n = Math.max(3, Math.min(6, Math.round(rows)));
   const rowH = n >= 6 ? 76 : 86;
   const gap = n >= 6 ? 10 : 12;
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -177,4 +181,5 @@ export const LenderList: React.FC<LenderListProps> = ({eyebrow, headline, footer
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
