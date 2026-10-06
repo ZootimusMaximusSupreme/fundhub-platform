@@ -6,10 +6,15 @@ Business only. Every item was checked against the repo and the live site on 10/4
 
 ### Do first
 - [ ] Follow-up texts: the no-reply drip (`src/workflows/slo-no-reply-197.mjs`, live) still offers the roadmap for $197, which is now $50 more than the $147 page price. Lower the offer or turn that text off.
+  - Checked 10/5: still $197 (`src/slo/discount-197.mjs` `DISCOUNT_CENTS = 19700`; page `SLO_PRICE_CENTS = 14700`). Last sent: email 10/3, text 10/2; none since the $147 change. Chris decides (yes/no on `ops/workflows/finish-builds-2026-10-05.md`).
 - [ ] Financing approval (expected 10/4)
+  - Checked 10/5: nothing about it in the repo. Chris only.
 - [ ] Confirm Lead and Schedule fire in Meta Test Events. Server-side CAPI is built (10/2) but stays off until `META_CAPI_ENABLED` and `META_CAPI_ACCESS_TOKEN` are set.
+  - Checked 10/5: server events are ON, not off. Production has `META_CAPI_ENABLED=1`; `META_CAPI_ACCESS_TOKEN` is not needed (the sender uses the token saved in `ad_platform_connections`, `src/meta/token.mjs`). Meta accepted every server send on record, 0 errors. **Lead: fired once, accepted** (10/2 22:43 UTC, the SLO2 checkout). **Schedule: never fired**, because there has been no booking since tracking went live 10/2 (0 rows in `bookings`). Proving Schedule needs one booking; that makes a real calendar slot, so it is Chris's call.
 - [ ] Launch book-a-call at $250/day once those events show
+  - Spending money: Chris only. Waits on the Schedule proof above.
 - [ ] Compare /roadmap conversion for one week at $147 against the last week at $297, at the same daily spend
+  - Checked 10/5: cannot run yet. $147 went live 10/4 15:07 Arizona, so the week ends 10/11 15:07. $297 week on record: ad spend 9/28–10/4 = $707.24, 0 paid orders, 2 real Meta checkouts started (10/1, 10/2); per-visit /roadmap counts only exist from 10/2. Watch: /roadmap had 1 tracked visit on 10/5 (Arizona) against 32 on 10/4, while /home had 187, so the spend may not be the same on both sides.
 
 ### Today
 - [x] Film the 2 VSLs, the bank ad and the penthouse ad
