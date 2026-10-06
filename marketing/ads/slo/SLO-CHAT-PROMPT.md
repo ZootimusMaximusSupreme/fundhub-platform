@@ -4,7 +4,7 @@
 
 Written 2026-09-18. This is the self-contained prompt Chris pastes into a Claude chat to generate
 the $297 SLO ads and short VSL without the repo attached. Every rule below is copied from
-`docs/ads/RULES.md`, `docs/ads/VOICE.md` and `docs/ads/ANGLE-GENERATOR.md` — nothing here is new.
+`marketing/ads/RULES.md`, `marketing/ads/VOICE.md` and `marketing/ads/ANGLE-GENERATOR.md` — nothing here is new.
 
 **Pricing and scope, OWNER-SET 2026-09-18.** $297 buys all six deliverables plus the full six-round
 dispute letter program with escalation letters. `src/config/offers.mjs` still prices Capital
@@ -18,7 +18,7 @@ like an e-commerce offer. The buyer sends their own letters; FundHub sends them 
 add-on. That distinction IS the offer, and it changes every script: nobody is being sold a service
 performed on them, they are buying the finished playbook built on their own file.
 
-**What that does to the compliance screen, mechanically.** `docs/ads/RULES.md` §1.5: *"The offer
+**What that does to the compliance screen, mechanically.** `marketing/ads/RULES.md` §1.5: *"The offer
 type decides which rules fire. A funding ad is not screened under the credit-repair rules."* The
 screen in `src/compliance/screen.mjs` is a plain pattern match keyed on the campaign's offer type.
 Classified as a funding/deliverables offer, rules 1–6, 11 and 12 do not fire — so the earlier hard

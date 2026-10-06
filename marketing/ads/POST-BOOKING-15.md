@@ -4,7 +4,7 @@
 timing, and credit-pull type. Nothing here claims a credit outcome. Keep it that way in the shoot.
 
 These run as ads to people who **already booked a call**, in the 72 hours before it. One shared
-set, all product paths. Not cold traffic. See `docs/ads/CONCEPTS.md` for the cold-traffic sheet.
+set, all product paths. Not cold traffic. See `marketing/ads/CONCEPTS.md` for the cold-traffic sheet.
 
 **Format per concept:** the hook as you'd say it to camera, what it argues. All 30 are short
 vertical video for reels. Post organic to Instagram, cross-post to Facebook. **No copyrighted

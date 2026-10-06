@@ -2,7 +2,7 @@
 
 The first sentence stops the thumb. The second sentence makes them stay.
 
-Fundhub already defines the hook as the **first two sentences** (`docs/ads/RULES.md` §2.2). This file is the job of **sentence two**. It does not replace cause-first. It does not replace the watch-curve law in `docs/ads/watch-curve.md`.
+Fundhub already defines the hook as the **first two sentences** (`marketing/ads/RULES.md` §2.2). This file is the job of **sentence two**. It does not replace cause-first. It does not replace the watch-curve law in `marketing/ads/watch-curve.md`.
 
 ## The rule
 
@@ -29,7 +29,7 @@ Each sentence exists to earn the next one. Sentence two earns sentence three.
 
 ## What to fix
 
-Use `docs/ads/watch-curve.md`. Do not invent a 3-second score.
+Use `marketing/ads/watch-curve.md`. Do not invent a 3-second score.
 
 - Most plays never reach 25%, and they are not tapping through: change **sentence one**. Same body.
 - Sentence one is landing and they still fall off before the body pays off: change **sentence two**. Same first line.
@@ -48,8 +48,8 @@ There is no public list of three official bridge names. Do not invent bridge 2 a
 
 ## Sources
 
-- Hook = first two sentences, cause-first, no ask: `docs/ads/RULES.md`
-- Watch curve, no invented 3-second field: `docs/ads/watch-curve.md`
+- Hook = first two sentences, cause-first, no ask: `marketing/ads/RULES.md`
+- Watch curve, no invented 3-second field: `marketing/ads/watch-curve.md`
 - Drive SOP, "Bridge from Hook to CTA": https://docs.google.com/document/d/1wa6A8_dCg66Z9DH8rzRLkvdk9KS5z4WUWdQ7-BIOOE0/edit
 - Bridge / hook-to-payoff: https://www.wavevision.io/blog/instagram-reel-retention-drops-after-the-hook-how-to-repair-the-hook-to-payoff-gap
 - Second-sentence problem: https://www.smartpostly.com/blogs/common-hook-mistakes-that-make-people-keep-scrolling/

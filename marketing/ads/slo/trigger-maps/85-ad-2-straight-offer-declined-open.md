@@ -2,7 +2,7 @@
 
 There is **no per-script trigger table in the repo**. At export time `src/ad-videos/broll.mjs` (`planBroll`) reads Submagic word timings and matches **clip file names** to spoken words. Clip order comes from `src/messaging/providers/google-drive-write.mjs` (`listBrollClips`): deliverables folder first, then portal, then approvals; videos before stills inside each folder.
 
-**Script words:** `docs/ads/fundhub-297/FundHub-LOCKED-ADS.md`
+**Script words:** `marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md`
 
 **Coverage matrix (measured 2026-09-23):** `docs/workflows/submagic-settings-lock-2026-09-23.md` (W3 section 4)
 

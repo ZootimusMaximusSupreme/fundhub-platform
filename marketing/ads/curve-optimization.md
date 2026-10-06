@@ -1,6 +1,6 @@
 # Curve optimization — what broke and what to film
 
-Owner-set 2026-09-27. This is the human-in-the-loop playbook: Meta reports the curve, we label the break, Chris films the next take, the next sync scores it. Definitions come from Meta’s help and Marketing API — see `docs/ads/watch-curve.md`. We do **not** invent a 3-second insights field; the closest opening hold we store is **2-second continuous plays** (`video_continuous_2_sec_watched_actions`).
+Owner-set 2026-09-27. This is the human-in-the-loop playbook: Meta reports the curve, we label the break, Chris films the next take, the next sync scores it. Definitions come from Meta’s help and Marketing API — see `marketing/ads/watch-curve.md`. We do **not** invent a 3-second insights field; the closest opening hold we store is **2-second continuous plays** (`video_continuous_2_sec_watched_actions`).
 
 ## Meta definitions we diagnose against
 
