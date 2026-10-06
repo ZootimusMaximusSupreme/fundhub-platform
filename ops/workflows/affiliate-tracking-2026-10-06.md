@@ -1,6 +1,6 @@
 # Affiliate link + show password (2026-10-06)
 
-Status: **waiting for Chris** — he picks A, B or C for W1. W2 can start now.
+Status: W1 plan waiting for Chris (Blueprint row yes/no). W2 can start now.
 
 (An earlier draft of this board guessed at a 4-part affiliate audit before Chris gave the task. That draft is dead.)
 
@@ -8,7 +8,7 @@ Status: **waiting for Chris** — he picks A, B or C for W1. W2 can start now.
 
 | # | Task | Owner | Status |
 |---|---|---|---|
-| W1 | One clear affiliate link (A / B / C) | this session | blocked — waiting for Chris's pick |
+| W1 | One row per offer on the affiliate page | this session | claimed — plan waiting for Chris |
 | W2 | Eye button to show the password while typing | open — paste prompt below | pending |
 
 No dependencies — W1 and W2 touch different files. All parallel.
@@ -22,7 +22,22 @@ No dependencies — W1 and W2 touch different files. All parallel.
 - Chris's "297" text sends people to `https://apply.fundhub.ai/roadmap`.
 - Roadmap already carries a ref: `src/slo/discount-197.mjs:19` builds `https://apply.fundhub.ai/roadmap/?offer=197&ref=<id>#fhw`.
 
-Options (Chris picks one):
+**Owner call (2026-10-06):** one row per offer on the affiliate page. Same code on every link,
+a different page per offer. Each URL carries `ref=<code>` and `a1=<code>`.
+Example: `https://apply.fundhub.ai/roadmap?a1=AFF-000121&ref=AFF-000121`.
+Not one generic link that hides which offer it is.
+
+Offers with a live page (from `src/marketing/api-contract.mjs`):
+- Book a call (`funding_dfy`) → `https://apply.fundhub.ai/watch`
+- Roadmap (`slo_roadmap`) → `https://apply.fundhub.ai/roadmap`
+- Capital Blueprint (`capital_blueprint`) → `https://apply.fundhub.ai/blueprint` — affiliates earn on it (migration 399). Row or not: waiting for Chris.
+
+Notes for the build:
+- `/roadmap` already uses `?ref=` for the paid return, but only with `client_id` and a `slo_` ref. An `AFF-` code does not trip it.
+- Clicks are counted today by `public/start.html` before the bounce. Direct apply links skip it,
+  so each funnel page must count the click itself or the "Clicks 30d" number stops moving. Prove it.
+
+Old options (superseded by the owner call above):
 - **A** — one share link. It lands on roadmap with `a1` + `ref`.
 - **B** — two links on `affiliate.html`: watch and roadmap.
 - **C** — change the 297 text so it points at watch only.
