@@ -1,0 +1,89 @@
+# Plaid — live bank connect for 2 testers (2026-10-06)
+
+Status: **waiting for Chris's go** (split proposed, nothing built).
+
+## Ask
+
+Chris got off a call with Plaid. He wants Plaid working for himself and 1 other person, to test.
+
+## What already exists (measured 2026-10-06)
+
+- `src/banking/plaid.mjs` — config check, token encryption, `linkAccount()` (public_token → encrypted access_token), `getAccounts()`.
+- `src/banking/providers/plaid-http.mjs` — `/item/public_token/exchange`, `/accounts/get`.
+- Tables: `plaid_items` (080), `bank_accounts` (081), `bank_transactions` (085), provider column (103).
+- Needs env: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_TOKEN_ENC_KEY`, `PLAID_ENV`. **None are set** in `.env`, `credentials/env.full.snapshot`.
+
+## What is missing
+
+1. No `/link/token/create` call anywhere. Plaid Link cannot open without it.
+2. No HTTP route that starts Link or takes the public_token back and saves the item.
+3. No "Connect your bank" button in the client portal (`public/app/`).
+4. No keys.
+5. `development` host in `PLAID_HOSTS` is dead at Plaid (retired 2024). Real banks = `production` host with Plaid's free Limited Production access.
+
+## Decision only Chris can make
+
+- **Real banks or fake test banks?** Real = production keys (Limited Production / "Try for free"). Fake = sandbox keys only.
+
+## Split
+
+| # | Workflow | Owner | Status | Waits on |
+|---|---|---|---|---|
+| W1 | Back end: keys, link-token + exchange routes, 2-person gate, tests | **this session** | pending | — |
+| W2 | Front end: portal "Connect bank" button + Plaid Link | open | pending | API contract below (fixed now, so parallel) |
+| W3 | Live proof: sandbox walk, then both real people link | open | pending | W1 + W2 done |
+
+W1 and W2 run at the same time. W3 waits.
+
+## API contract (fixed — both sides build to this)
+
+- `POST /api/banking/link-token` → `200 { link_token, expiration }` or `403 { error: "not_a_tester" }` or `503 { error: "plaid_not_configured" }`. Client must be signed in.
+- `POST /api/banking/link-exchange` body `{ public_token }` → `200 { item_id, accounts: [{ name, mask, type, subtype }] }`. Saves `plaid_items` + `bank_accounts`, sets `consent_granted_at` (the click is the consent).
+- Gate: env `PLAID_TESTER_EMAILS` (comma list). Anyone not on it gets 403. This is how it stays at 2 people.
+
+## Prompts
+
+### W1 — back end (this session)
+
+```
+Fundhub repo. Board: ops/workflows/plaid-two-testers-2026-10-06.md — read it first, mark W1 claimed.
+Work in a worktree under .claude/worktrees/plaid-w1, never switch the main checkout's branch.
+Build the back end for Plaid Link for 2 testers:
+1. Keys: get PLAID_CLIENT_ID + PLAID_SECRET (sandbox and production) from the Plaid dashboard, generate PLAID_TOKEN_ENC_KEY, write full values to .env and credentials/env.full.snapshot, then Netlify without --secret. Set PLAID_ENV and PLAID_TESTER_EMAILS.
+2. Add createLinkToken() to src/banking/providers/plaid-http.mjs (POST /link/token/create). Network stays in that file only.
+3. Add api/banking/link-token.mjs and api/banking/link-exchange.mjs to the contract on the board. Route both in netlify/functions/api.mjs. Gate by PLAID_TESTER_EMAILS.
+4. Exchange saves plaid_items + bank_accounts via the existing linkAccount()/accounts store. Reuse, do not rebuild.
+5. Tests: src/http/plaid-link.test.mjs and a .pg.test.mjs. Lint, tsc, tests green.
+6. Write the manifest on the board, mark W1 done, commit, push with node scripts/github-push-whole-repo.mjs, npm run ship.
+```
+
+### W2 — front end (paste in a new session)
+
+```
+Fundhub repo. Board: ops/workflows/plaid-two-testers-2026-10-06.md — read it first, mark W2 claimed.
+Work in a worktree under .claude/worktrees/plaid-w2, never switch the main checkout's branch.
+Read docs/rules/UI-STANDARDS.md first — it is law for public/app/.
+Add a "Connect your bank" button to the client portal bank/money screen in public/app/.
+On click: POST /api/banking/link-token, open Plaid Link (script https://cdn.plaid.com/link/v2/stable/link-initialize.js) with that token,
+onSuccess POST /api/banking/link-exchange { public_token }, then show the linked accounts (name + last 4).
+403 not_a_tester → hide the button. 503 → show "Bank connect is not on yet."
+Build to the API contract on the board exactly. Do not touch api/ or src/ — W1 owns those.
+Playwright check of the button and states. Write the manifest on the board, mark W2 done, commit, push with node scripts/github-push-whole-repo.mjs.
+```
+
+### W3 — live proof (paste after W1 and W2 are done)
+
+```
+Fundhub repo. Board: ops/workflows/plaid-two-testers-2026-10-06.md — read it, confirm W1 and W2 are done, mark W3 claimed.
+1. With PLAID_ENV=sandbox: sign in as a tester client on the live site, click Connect your bank, use Plaid's sandbox login (user_good / pass_good), confirm accounts show on screen and rows land in plaid_items + bank_accounts (read-only query, BEGIN READ ONLY).
+2. Switch PLAID_ENV to production (ship once). Chris and the second tester each link one real bank. Confirm both show.
+3. Marked screenshots per CLAUDE.md §8. Write results on the board, mark W3 done, commit, push.
+```
+
+## Manifests
+
+(none yet)
+
+## Blockers
+
+- Waiting on Chris: go + real vs fake banks + the second tester's email.
