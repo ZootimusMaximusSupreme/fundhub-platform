@@ -131,3 +131,59 @@ integration would have bought.
   attributed per ad. Named in `docs/ops/2026-09-06-self-analysis.md`, separate batch.
 - **The 83 chat scripts.** They are not in the repo and are deliberately not the seed.
   `docs/ads/VOICE.md` is seeded from the five filmed and running ads only.
+
+---
+
+## U10 M1 7.3: RECIPES.md, angles.json, Remotion animation catalog builder, animation-plan validator
+
+Generated from the code on 2026-10-05 (branch `mm-u10-recipes-catalog`). These are the three
+files the machine writer (spec §7.6, unit U24) reads, and the check its animation plan must pass.
+Nothing calls any of it yet: the writer is not built. Every arrow into "the writer" is
+**UNVERIFIED** until U24 lands.
+
+```mermaid
+flowchart TD
+    subgraph KIT["marketing/broll/src (the Remotion kit, never run here)"]
+        R["Root.tsx: RemotionRoot"] --> REG["templates/registry.tsx<br/>TEMPLATES (8)"]
+        R --> MODS["CompanyLine, offer-cta, lenderMatching,<br/>ProofWall, ProofFlood, BankPockets, toolAnalogy (14)"]
+        R --> TOOLS["ContactSheet, DepthKitDemo<br/>skipped: kit tools"]
+    end
+    KIT -->|"node marketing/broll/scripts/catalog.mjs<br/>reads the source text only"| B{"src/marketing/catalog.mjs<br/>buildCatalog"}
+    B -->|"a value it cannot read"| STOP["CatalogReadError with file:line<br/>nothing is written"]
+    B -->|"read"| CAT["marketing/broll/catalog.json<br/>22 entries: id, size, fps,<br/>min/max frames from each clamp,<br/>default_props, purpose, data_tied"]
+    CAT -->|"catalog.test.mjs compares bytes"| SYNC{"same as a fresh build?"}
+    SYNC -->|no| RED["test fails: run the script again"]
+    AB["marketing/ads/ASSET-BANK.md<br/>§2 mechanisms, §3 enemy list, §4 audiences"] -->|"copied once, names exact"| ANG["marketing/ads/angles.json<br/>29 angles: key, name, notes, source"]
+    APX["spec Appendix B"] -->|"word for word"| REC["marketing/ads/RECIPES.md"]
+    CAT -.->|UNVERIFIED: U24| W["the writer"]
+    ANG -.->|UNVERIFIED: U24| W
+    REC -.->|UNVERIFIED: U24| W
+    W -.->|"animation_plan [{anchor, template, props, seconds}]"| V{"src/marketing/animation-plan.mjs<br/>validateAnimationPlan"}
+    V -->|"every rule holds"| OK["ok: true"]
+    V -->|"a rule breaks"| ERR["ok: false, errors [{item, code, message}]"]
+```
+
+### What `validateAnimationPlan` refuses
+
+| Code | When |
+|---|---|
+| `unknown_template` | the template is not in catalog.json |
+| `seconds_out_of_range` / `bad_seconds` | seconds is outside min_frames / fps to max_frames / fps, or not a number |
+| `unknown_props` | a props key that is not in the template's default_props |
+| `data_tied_props` | any props key on QualifyToday, ProofWall, ProofFlood, ProofFloodWide, or a future LettersWritten* / ApprovalCarousel* / ProofFlood* |
+| `anchor_not_in_body` / `bad_anchor` | words style: `{phrase}` is not the exact phrase in the body (capitals count, line breaks count as spaces, whole words) |
+| `no_such_cue` / `keyword_not_in_cue` / `bad_anchor` | bullets style: `{cue, keyword}`, cue counts the `cue` parts from 1, the keyword must be whole words in that cue |
+| `too_few` | standard under 2, sorting under 1, any other format under 1 |
+| `unknown_format` / `unknown_style` / `not_a_list` / `not_an_object` / `bad_props` / `no_catalog` | the plan or its inputs have the wrong shape |
+
+### Gaps between the spec and the code (findings, not fixed here)
+
+- Spec §3 says the registry has 16 templates that run 2 to 3 s. The registry has 8. The other
+  14 register from their own modules with their own clamps: 75-105, 75-120, 90-120 (ProofWall),
+  105-135 (LenderMatchScroll) and 120-180 (ProofFlood) frames. The catalog reads each clamp.
+- Spec §7.3 says the builder "transpiles registry.tsx with TypeScript". It reads the source text
+  instead, because TypeScript and the kit's packages are not dependencies here.
+- Spec §7.3 names LettersWritten and "the ApprovalCarousel family". Neither exists in the kit or
+  in git history. They are tied by name prefix the day they are added.
+- angles.json gets later additions through the repo outbox (spec §6 step 2, §7.3). That path is
+  not built yet.
