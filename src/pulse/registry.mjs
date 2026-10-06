@@ -347,7 +347,16 @@ const API_KEYS = [
   /* marketing machine. GET answers 401 to an unsigned ping (counts as up) and
      never writes; the POST half is never pinged. */
   "marketing/settings",
-  "marketing/funnels"
+  "marketing/funnels",
+  /* U26: the GETs answer 401 to an unsigned ping; the POST-only routes answer
+     405 to a GET before they read anything (isUp counts both as up). A ping
+     never writes, queues or spends. */
+  "marketing/ideas",
+  "marketing/rules",
+  "marketing/scripts/fix",
+  "marketing/batches",
+  "marketing/batches/write-now",
+  "marketing/jobs/retry"
 ];
 
 const DESK_FILES = [
