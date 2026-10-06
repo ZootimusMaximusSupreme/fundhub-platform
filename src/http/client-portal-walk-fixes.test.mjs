@@ -59,11 +59,15 @@ describe("client portal — the 2026-09-03 walk findings", () => {
   });
 
   test("F36 — one empty row in the Messages tab, not two", () => {
-    // Rendered rows only — the surrounding comment names the sentence too.
-    const empties = html.match(/>No messages yet\.</g) || [];
-    // One in the static pane, one in paintMessages' replacement markup.
-    assert.equal(empties.length, 2, "there must be exactly one static empty row and one painted one");
+    // ONE static empty row in the pane, never a second.
+    assert.equal((html.match(/id="msg-empty"/g) || []).length, 1, "there must be exactly one static empty row");
     assert.ok(!html.includes('id="msg-live-empty"'), "the duplicate row must be gone");
+    /* Walkthrough-4 defect 18: the static row no longer says "No messages
+       yet." — a client is never given a messages read, so that sentence stood
+       forever. Only paintMessages() (the staff read, which really answered)
+       may say it. Rendered rows only — comments name the sentence too. */
+    const empties = html.match(/>No messages yet\.</g) || [];
+    assert.equal(empties.length, 1, "only paintMessages' replacement markup may say No messages yet.");
   });
 
   test("F37 — an owned offer is not priced as a locked upsell", () => {

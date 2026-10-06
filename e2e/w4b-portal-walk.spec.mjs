@@ -334,9 +334,13 @@ test.describe(`client portal — W4B ROUND 2 rows 14-18 (${PHASE})`, () => {
     await page.waitForTimeout(200);
     await shot(page, "18-messages-one-empty.png",
       "F36 — one empty row, not two", [
-        { selector: "#tp-msg", caption: "'No messages yet.' appears once" }
+        { selector: "#tp-msg", caption: "one empty row, and it makes no false claim" }
       ]);
-    const empties = page.locator("#tp-msg .timeline-item", { hasText: "No messages yet." });
+    /* Walkthrough-4 defect 18: a client gets no messages read, so the pane
+       must not tell them "No messages yet." — it says where messages go. */
+    const empties = page.locator("#tp-msg #msg-empty");
     await expect(empties).toHaveCount(1);
+    await expect(empties).toContainText("arrive on your phone and in your inbox");
+    await expect(page.locator("#tp-msg .timeline-item", { hasText: "No messages yet." })).toHaveCount(0);
   });
 });

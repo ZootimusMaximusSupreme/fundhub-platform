@@ -973,7 +973,13 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
                  [hidden]{display:none} — so both painted and the tab showed the
                  same sentence twice. Nothing in this file or any other ever
                  referenced either id. Walk finding F36, 2026-09-03. -->
-            <div class="timeline-item" id="msg-empty"><span class="td">—</span><span>No messages yet.</span></div>
+            <!-- NOT "No messages yet." (walkthrough-4 defect 18, 2026-09-06).
+                 A client never gets a messages read on this page — only staff
+                 do, through /api/dashboard/client, and paintMessages() replaces
+                 this whole pane for them. So for a client the old sentence
+                 stood forever, telling someone we had texted and emailed that
+                 we had never contacted them. This line says what is true. -->
+            <div class="timeline-item" id="msg-empty"><span class="td">—</span><span>Texts and emails we send you arrive on your phone and in your inbox. They are not copied onto this page.</span></div>
             <div class="msgs-note">Nothing here needs a reply right now.</div>
           </div>
         </div>
