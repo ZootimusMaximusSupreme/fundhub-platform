@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Marketing Command Center</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="stylesheet" href="crm-sidebar.css">
+<style>
+/* ══ MARKETING COMMAND CENTER — Today ════════════════════════════════════════
+   docs/specs/marketing-machine-2026-10-04.md §8.3 (the Today tab) and the
+   "smallest first slice" in docs/specs/marketing-dashboard-plan-2026-10-05.md.
+   docs/rules/UI-STANDARDS.md is law here. What that means on this screen:
+     - Top-left answers the owner's first question, "is the machine healthy?":
+       ad spend for the last 7 days beside the 7 days before it (§1, §10).
+     - ONE filled button: "Write ad copy". Every other control is an outline
+       or a text link (§1, §5).
+     - No px font sizes anywhere in this file. The brand file throws them away
+       (§12.7). Sizes come from its whitelist: h2 = title, .vl = metric,
+       .caption/.cmp/.note/label/.chip = caption, everything else body.
+     - Containers are .card, which is on the brand's shadow list, so this file
+       never writes a shadow value (§12.2).
+     - 8px spacing scale only (§2). One column at 390px (§11).
+   ══════════════════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{background:var(--field,#F4F4F5);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+
+.app{display:flex;min-height:100vh}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* THE TOPBAR CONTRACT (UI-STANDARDS §12.8, after client-control-panel.html):
+   wordmark, separator, this screen's name; the right cluster is filled by
+   shell.js (clock, Search, the role chip with its LIVE mark, Sign out). The
+   shell owns the clock's size and when it hides (fh-shell-clock-css), so no
+   clock rule is written here. The height is a floor,
+   not a pin, so the bar can wrap on a phone without hiding its second row. */
+header.topbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 16px;min-height:48px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--cardline)}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:16px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sep{color:var(--gray2)}
+.brand .sub{font-weight:600;color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-right{display:flex;align-items:center;gap:16px;flex:0 0 auto;color:var(--gray2)}
+
+.content{padding:24px;display:flex;flex-direction:column;gap:24px;flex:1}
+.foot{border-top:1px solid var(--line);padding:16px 24px;display:flex;align-items:center;gap:8px;color:var(--gray2)}
+.spacer{flex:1}
+
+/* 12-column grid; cards span 4, 6 or 12 — never uneven in one row (§2). */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.span-4{grid-column:span 4}
+.span-6{grid-column:span 6}
+.span-12{grid-column:span 12}
+
+/* THE RESTING CONTAINER (§12.1). The shadow comes from fundhub-brand.css. */
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px;min-width:0}
+.card-hd{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.card-hd h2{font-weight:600;letter-spacing:-.01em}
+.muted{color:var(--gray)}
+.faint{color:var(--gray2)}
+
+/* Big numbers (§3, §7): the value is the hero, the label sits above it in a
+   muted caption, the comparison sits under it. */
+.tile{display:flex;flex-direction:column;gap:8px}
+.tile .vl{font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.tile .cmp{color:var(--gray)}
+.tile .note{color:var(--gray2)}
+.tile a{text-decoration:underline}
+
+/* Status: the chip always says its word (§12.6). The dot is extra. */
+.chip .cd{background:var(--gray2)}
+.chip.on .cd{background:var(--ok)}
+.chip.wip .cd{background:var(--warn)}
+.chip.bad .cd{background:var(--alert)}
+
+.rows{list-style:none;display:flex;flex-direction:column}
+.row{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;padding:16px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.row:first-child{border-top-color:transparent;padding-top:0}
+.row-main{flex:1 1 240px;min-width:0}
+.row-main b{font-weight:600}
+.row-why{color:var(--gray);margin-top:4px}
+.row-n{color:var(--gray2);font-family:var(--mono);flex:0 0 24px}
+
+/* The form for the one primary action. */
+.field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.field label{color:var(--ink2);font-weight:600}
+.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:#fff;min-height:48px}
+.field textarea{resize:vertical;min-height:96px}
+.setup{color:var(--gray);margin-bottom:16px}
+.setup.bad{color:#6E2A22}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--ink2);border-radius:8px;padding:8px 16px;font-weight:600;cursor:pointer;background:#fff;color:var(--ink2);min-height:40px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink2);color:var(--paper);min-height:48px;padding:8px 24px}
+.btn.primary:hover{opacity:.9}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn .spin{display:none;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:mccspin .8s linear infinite}
+.btn.busy .spin{display:inline-block}
+@keyframes mccspin{to{transform:rotate(360deg)}}
+.actions{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.offer-actions{margin-top:16px}
+.gap-top{margin-top:16px}
+.bullets{padding-left:24px;margin-top:8px}
+.bullets li + li{margin-top:8px}
+.offer-body{max-height:640px;overflow:auto;max-width:78ch}
+
+/* Every action answers back where the person is looking (§5). */
+.say{display:none;margin-top:16px;padding:8px 16px;border-radius:8px;border:1px solid var(--line)}
+.say.show{display:block}
+.say.ok{background:color-mix(in srgb,var(--ok) 28%,#fff);color:#2C5138}
+.say.err{background:color-mix(in srgb,var(--alert) 28%,#fff);color:#6E2A22}
+.say.wait{background:color-mix(in srgb,var(--warn) 28%,#fff);color:#6B4A12}
+
+.banner{display:none;border:1px solid var(--line);border-radius:8px;padding:16px;background:#fff}
+.banner.show{display:block}
+.banner.err{background:color-mix(in srgb,var(--alert) 22%,#fff);color:#6E2A22}
+
+/* Words someone will read: the ad copy and the offer. Capped as a BLOCK
+   (a reading measure), never the page (§1). */
+.words{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;margin-top:8px;max-width:78ch}
+.pieces{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+.piece{border-top:1px solid var(--line);padding-top:16px}
+.piece:first-child{border-top-color:transparent;padding-top:0}
+.piece-hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.reasons{margin-top:8px;padding-left:24px;color:#6E2A22}
+.sub-hd{margin-top:24px;margin-bottom:8px}
+
+/* LOADING — skeletons in the real layout, never a full-page spinner (§6). */
+.skel{display:block;height:16px;border-radius:8px;background:var(--soft);animation:mccpulse 1.2s ease-in-out infinite}
+.skel.big{height:32px;width:50%}
+.skel + .skel{margin-top:8px}
+@keyframes mccpulse{0%,100%{opacity:.45}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){ .skel,.btn .spin{animation:none} }
+
+/* PHONE (§11): one column, no sideways scroll. */
+@media (max-width:960px){ .span-6{grid-column:span 12} }
+@media (max-width:720px){ .span-4{grid-column:span 12} .content{padding:16px} .card{padding:16px} }
+@media (max-width:480px){
+  header.topbar{height:auto;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
+  .topbar-right{width:100%;gap:8px;flex-wrap:wrap}
+  .btn.primary{width:100%}
+}
+</style>
+<script defer src="shell.js"></script>
+</head>
+<body>
+<div class="app">
+<aside class="side" id="side">
+  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav">
+
+<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
+        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
+        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
+        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
+        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
+        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
+        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
+        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
+        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
+        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
+        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
+        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
+        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
+        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
+        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem on" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
+        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
+        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
+        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
+        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
+        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
+        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
+        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
+        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
+</div></div>
+
+<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
+        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
+        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
+</div></div>
+
+  </nav>
+  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+</aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo inv" role="img" aria-label="Fundhub"></div>
+        <div class="sep">/</div>
+        <div class="sub">Marketing Command Center</div>
+      </div>
+      <!-- Filled by shell.js: clock, Search, the role chip (with LIVE), Sign out. -->
+      <div class="topbar-right"></div>
+    </header>
+
+    <div class="content" id="mcc-root">
+
+      <div class="banner err" id="mccBanner" role="alert"></div>
+
+      <!-- 1. IS THE MACHINE HEALTHY? Top-left, largest (UI-STANDARDS §1, §10). -->
+      <section class="grid" aria-label="This week at a glance">
+        <div class="card tile span-4" id="tileSpend7">
+          <span class="caption">Ad spend, last 7 days</span>
+          <span class="skel big"></span><span class="skel"></span>
+        </div>
+        <div class="card tile span-4" id="tileSpend30">
+          <span class="caption">Ad spend, last 30 days</span>
+          <span class="skel big"></span><span class="skel"></span>
+        </div>
+        <div class="card tile span-4" id="tileParts">
+          <span class="caption">Machine parts ready</span>
+          <span class="skel big"></span><span class="skel"></span>
+        </div>
+      </section>
+
+      <!-- 2. THE ONE JOB, and what waits on Chris. -->
+      <section class="grid">
+        <div class="card span-6" id="cardCopy">
+          <div class="card-hd"><h2>Write ad copy</h2></div>
+          <p class="setup caption" id="copySetup">Checking that the copy writer is ready…</p>
+          <form id="copyForm" novalidate>
+            <div class="field">
+              <label for="copyAngle">What is this ad about?</label>
+              <textarea id="copyAngle" rows="3" placeholder="For example: business owners who got turned down by their bank"></textarea>
+            </div>
+            <div class="field">
+              <label for="copyOffer">What are we selling?</label>
+              <select id="copyOffer">
+                <option value="funding" selected>Funding</option>
+                <option value="credit_cards">Credit cards</option>
+                <option value="credit_repair">Credit repair</option>
+              </select>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit" id="copyBtn" disabled><span class="spin" aria-hidden="true"></span><span class="lbl">Write ad copy</span></button>
+            </div>
+          </form>
+          <div class="say" id="copySay" role="status" aria-live="polite"></div>
+          <div id="copyResult"></div>
+        </div>
+
+        <div class="card span-6" id="cardWaiting">
+          <div class="card-hd"><h2>Waiting on you</h2><span class="caption faint" id="waitingCount"></span></div>
+          <div id="waitingList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
+        </div>
+      </section>
+
+      <!-- 3. The offer and the five flywheel steps. -->
+      <section class="grid">
+        <div class="card span-6" id="cardOffer">
+          <div class="card-hd"><h2>Offer</h2></div>
+          <div id="offerStatus"><span class="skel"></span></div>
+          <div class="actions offer-actions">
+            <button class="btn" type="button" id="offerBtn"><span class="spin" aria-hidden="true"></span><span class="lbl">Write offer</span></button>
+          </div>
+          <div class="say" id="offerSay" role="status" aria-live="polite"></div>
+          <div id="offerLatest" class="gap-top"><span class="skel"></span><span class="skel"></span></div>
+        </div>
+
+        <div class="card span-6" id="cardFlywheel">
+          <div class="card-hd"><h2>Flywheel</h2><span class="caption faint" id="flywheelCampaign"></span></div>
+          <div id="flywheelList"><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
+        </div>
+      </section>
+
+      <!-- 4. Health detail and the latest copy. -->
+      <section class="grid">
+        <div class="card span-6" id="cardHealth">
+          <div class="card-hd"><h2>Machine parts</h2></div>
+          <div id="healthList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
+        </div>
+
+        <div class="card span-6" id="cardLatest">
+          <div class="card-hd"><h2>Latest ad copy</h2><a class="caption" href="creative-factory.html">Open Creative Factory</a></div>
+          <div id="latestList"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="foot caption"><span>Fundhub</span><span class="spacer"></span><span id="mccStamp">Loading…</span></div>
+  </div>
+</div>
+<script defer src="marketing-command-center.js"></script>
+</body>
+</html>
