@@ -12,13 +12,14 @@ The ad-script generator reads this file as an input, before it writes a word —
 reads `RULES.md`. It never opens this file itself. A small loader piece of code hands the generator
 the text inside this file. Today that loader reads this one markdown file. Later it might read a row
 out of a database instead. If that happens, only the loader changes — the generator's job (learn
-from these pairs) and the shape of the pairs (hook, body, cta, close) stay the same.
+from these pairs) and the shape of the pairs (hook, line 2, body, cta, close) stay the same.
 
 ## Where the pairs come from
 
-Every pair in this file is one AI-written ad line next to the words Chris used in its place. The
-"Chris wrote" side is always Chris's own words, copied exactly. Nothing in this file is invented,
-and no agent ever writes a "Chris wrote" line or a "Why" line for a real pair.
+Every real pair in this file is one AI-written ad line next to the words Chris used in its place.
+The "Chris wrote" side is always Chris's own words, copied exactly. Nothing under `# Real pairs` is
+invented, and no agent ever writes a "Chris wrote" line or a "Why" line for a real pair. The 9 seed
+pairs are different; see "The seed pairs" below.
 
 A real pair comes from Chris's own rewrite of an AI line, in one of two places:
 
@@ -43,10 +44,12 @@ Each real pair goes at the end of `# Real pairs`, in this exact block, one line 
 - **Model wrote:** <the AI line>
 - **Chris wrote:** "<Chris's exact words>"
 - **Why:** <Chris's own stated reason, or the words: not given>
-- **Source:** chat YYYY-MM-DD   (from the app: app edit YYYY-MM-DD, script <first 8 of its id>)
+- **Source:** chat YYYY-MM-DD
 ```
 
 - `<N>` is one more than the highest pair number in this file. Pair numbers never repeat.
+- A pair from the app has a different Source line: `app edit YYYY-MM-DD, script <first 8 of its
+  id>`. Every other line is the same.
 - **Why** is only a reason Chris gave himself. If he gave none, it says `not given`.
 - This repo is public. A pair never holds a phone number, an email, a client's name, or a dollar
   amount next to a person's name.

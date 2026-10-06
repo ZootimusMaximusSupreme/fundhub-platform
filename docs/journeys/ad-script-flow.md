@@ -131,3 +131,9 @@ integration would have bought.
   attributed per ad. Named in `docs/ops/2026-09-06-self-analysis.md`, separate batch.
 - **The 83 chat scripts.** They are not in the repo and are deliberately not the seed.
   `docs/ads/VOICE.md` is seeded from the five filmed and running ads only.
+
+## U12 VOICE.md layout
+
+- `marketing/ads/VOICE.md` now has a header, then `# Real pairs` (every real pair: an AI line next to Chris's own rewrite of it, from a chat or the app), then `# Seed pairs — model side written by hand` (the 9 hand-written seed pairs, unchanged, numbers 1-9).
+- `# Real pairs` holds 0 pairs on this branch. The chat search for real pairs was blocked by the permission check, so the real count is not measured.
+- U05's weekly append adds app-edit pairs at the end of `# Real pairs`, numbered from one more than the highest pair. UNVERIFIED here: that code is not on this branch.
