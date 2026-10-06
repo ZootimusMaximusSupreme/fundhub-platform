@@ -45,5 +45,8 @@ export function makeHandler({ database = db, run = runOfferJob, auth = authentic
   };
 }
 
-export const handler = makeHandler();
+// Default export only. A named `handler` export makes Netlify treat this as an old
+// Lambda-style function, and those fail to deploy once the site's variables pass 4 KB
+// ("Your environment variables exceed the 4KB limit"). The other functions do the same.
+const handler = makeHandler();
 export default handler;
