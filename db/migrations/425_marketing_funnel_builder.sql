@@ -98,9 +98,19 @@ DROP INDEX IF EXISTS public.marketing_funnels_org_path_uq;
 CREATE UNIQUE INDEX marketing_funnels_org_path_uq
   ON public.marketing_funnels (org_id, path) WHERE path IS NOT NULL;
 
--- So a page can name its funnel AND its company in one foreign key.
-ALTER TABLE public.marketing_funnels DROP CONSTRAINT IF EXISTS marketing_funnels_id_org_uq;
-ALTER TABLE public.marketing_funnels ADD CONSTRAINT marketing_funnels_id_org_uq UNIQUE (id, org_id);
+-- So a page can name its funnel AND its company in one foreign key. Added only
+-- when missing: the pages' foreign key below depends on it, so it is never
+-- dropped and re-added the way the checks above are.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'marketing_funnels_id_org_uq'
+       AND conrelid = 'public.marketing_funnels'::regclass
+  ) THEN
+    ALTER TABLE public.marketing_funnels ADD CONSTRAINT marketing_funnels_id_org_uq UNIQUE (id, org_id);
+  END IF;
+END $$;
 
 -- A tag never changes. A built funnel stays built. A live one keeps its address
 -- and stays live (a live page is never moved or taken down from here).
