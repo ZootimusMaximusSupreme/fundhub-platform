@@ -303,7 +303,7 @@ export function measureLoudness(ffmpeg, file, { spawn = spawnSync } = {}) {
    gets a -45 dB floor. A fixed floor would call quiet speech silence and cut
    words in half. */
 export function silenceFloor(inputI) {
-  const i = Number(inputI);
+  const i = inputI === null || inputI === undefined || inputI === "" ? NaN : Number(inputI);
   if (!Number.isFinite(i)) return -45;
   return Math.max(-60, Math.min(-30, Math.round(i - 25)));
 }
