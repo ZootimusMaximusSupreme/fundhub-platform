@@ -27,6 +27,7 @@ import { affiliatePayoutRun } from './affiliate-payout-run.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
 import { metaCampaignSyncSweeper } from './meta-campaign-sync-sweeper.mjs';
 import { clickfunnelsAnalyticsSweeper } from './clickfunnels-analytics-sweeper.mjs';
+import { watchCurveDiagnosisSweeper } from './watch-curve-diagnosis-sweeper.mjs';
 import { subscriptionBillingSweeper } from './subscription-billing-sweeper.mjs';
 import { partnerProductionFloorReview } from './partner-production-floor.mjs';
 import { c00CrsSoftPullRequest } from './c-00-crs-soft-pull-request.mjs';
@@ -315,6 +316,14 @@ export const functions = [
      screen already shows. */
   metaCampaignSyncSweeper,
   clickfunnelsAnalyticsSweeper,
+
+  /* THE NEXT-TAKE TABLE'S CLOCK. Registered 2026-10-05, daily at 07:30 UTC,
+     half an hour after the Meta pull above. ad_watch_curve_diagnoses (395) had
+     0 rows: nothing ever wrote it. This labels each saved ad-day opening /
+     middle / ask with a fix type and a film note, by the watch-curve law. It
+     reads saved rows only and writes only that table — no Meta call, no text,
+     no campaign or budget change, and it never overwrites a row. */
+  watchCurveDiagnosisSweeper,
 
   /* THE RECURRING BILLING RAIL. Registered 2026-08-31. Until it, nothing in
      this platform charged a card on a cycle: 075_subscriptions.sql recorded the
