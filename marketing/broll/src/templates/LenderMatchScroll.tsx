@@ -15,6 +15,7 @@ import {
   enter,
   fadeUp,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 import {SCROLL_BANKS, type ScrollBank} from '../data/lenderMatchScroll';
 import {useClipTimeline} from './clipTimeline';
 
@@ -44,6 +45,8 @@ export type LenderMatchScrollProps = {
   countLabel: string;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const LENDER_MATCH_SCROLL_BASE = 120; // 4.0 s
@@ -59,6 +62,7 @@ export const lenderMatchScrollDefaults: LenderMatchScrollProps = {
   notPulledLabel: 'No pull',
   count: '30–50',
   countLabel: 'lenders matched to your file',
+  transparent: false,
 };
 
 // Panel and drum geometry (content box is 900 wide).
@@ -193,6 +197,7 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
   countLabel,
   durationInFrames,
   showSafeZones,
+  transparent,
 }) => {
   const L = LENDER_MATCH_SCROLL_BASE;
   const {f, fps} = useClipTimeline(L, durationInFrames, LENDER_MATCH_SCROLL_MIN, LENDER_MATCH_SCROLL_MAX);
@@ -230,7 +235,7 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
 
   const headerStyle: React.CSSProperties = {fontSize: 22, fontWeight: 700, letterSpacing: '0.02em', color: COLORS.gray, whiteSpace: 'nowrap'};
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -335,4 +340,5 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

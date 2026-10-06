@@ -13,6 +13,7 @@ import {
   fadeUp,
   useTimeline,
 } from '../brand';
+import {SeeThrough} from '../brand/Grid';
 
 export type HiddenDataPointsProps = {
   eyebrow: string;
@@ -22,6 +23,8 @@ export type HiddenDataPointsProps = {
   subline: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
+  transparent?: boolean;
 };
 
 export const HIDDEN_DATA_POINTS_BASE = 90;
@@ -35,6 +38,7 @@ export const hiddenDataPointsDefaults: HiddenDataPointsProps = {
   count: 13,
   label: 'hidden data points',
   subline: 'An additional $100,000+ in low-interest funding',
+  transparent: false,
 };
 
 const BOX_W = 900;
@@ -63,7 +67,7 @@ const Dot: React.FC<{p: number}> = ({p}) => {
   );
 };
 
-export const HiddenDataPoints: React.FC<HiddenDataPointsProps> = ({eyebrow, count, label, subline, durationInFrames, showSafeZones}) => {
+export const HiddenDataPoints: React.FC<HiddenDataPointsProps> = ({eyebrow, count, label, subline, durationInFrames, showSafeZones, transparent}) => {
   const {f, fps} = useTimeline(HIDDEN_DATA_POINTS_BASE, durationInFrames);
   const L = HIDDEN_DATA_POINTS_BASE;
   const n = Math.max(1, Math.min(24, Math.round(count)));
@@ -74,7 +78,7 @@ export const HiddenDataPoints: React.FC<HiddenDataPointsProps> = ({eyebrow, coun
   // The orbit turns slowly the whole clip; lighting starts at the front.
   const spin = interpolate(f, [0, L], [-24, 18]);
 
-  return (
+  const page = (
     <BrandFrame
       showSafeZones={showSafeZones}
       backdrop={
@@ -170,4 +174,5 @@ export const HiddenDataPoints: React.FC<HiddenDataPointsProps> = ({eyebrow, coun
       </Stage3D>
     </BrandFrame>
   );
+  return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
