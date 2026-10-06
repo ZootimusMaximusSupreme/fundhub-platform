@@ -15,7 +15,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 import {
-  parseProbe, parseSilence, parseBlack, parseLoudnorm, parseWhisperJson,
+  parseProbe, parseSilence, parseBlack, parseLoudnorm, parseWhisperJson, parseWhisperTokens,
+  dtwPreset, whisperArgs, DTW_LAG,
   segmentArgs, concatArgs, fpsExpr, masterFormat, silenceFloor, findFfmpeg,
   resolveLocalJoiner, buildMaster, probe, measureLoudness, TARGET_LUFS
 } from "./merge-takes-media.mjs";
@@ -61,6 +62,32 @@ describe("reading what ffmpeg and whisper.cpp print", () => {
       { offsets: { from: 2450, to: 2980 }, text: " um," }
     ] });
     assert.deepEqual(words, [{ word: "Hook,", start: 0.04, end: 0.57 }, { word: "um,", start: 2.45, end: 2.98 }]);
+  });
+
+  test("aligned (DTW) word times: a word starts at its first token and ends where the next word starts", () => {
+    const tok = (text, t) => ({ text, t_dtw: t, offsets: { from: 0, to: 0 } });
+    const out = { transcription: [
+      { offsets: { from: 0, to: 7420 }, tokens: [
+        tok("[_BEG_]", -1), tok(" They", 268), tok(" told", 292), tok(" they", 436), tok("'d", 442), tok(" file", 550), tok(".", 680), tok("[_TT_371]", -1)
+      ] },
+      { offsets: { from: 7420, to: 13720 }, tokens: [tok(" Remove", 726)] }
+    ] };
+    const words = parseWhisperTokens(out, { lag: 0 });
+    assert.deepEqual(words.map((w) => [w.word, w.start, w.end]), [
+      ["They", 2.68, 2.92], ["told", 2.92, 4.36], ["they'd", 4.36, 5.5], ["file.", 5.5, 7.26], ["Remove", 7.26, 13.72]
+    ]);
+    assert.equal(parseWhisperTokens(out)[0].start, 2.6, `aligned times run late; by default they move ${DTW_LAG} s earlier`);
+    assert.deepEqual(parseWhisperTokens({ transcription: [{ tokens: [tok(" They", -1)] }] }), [],
+      "no aligned times (the build ignored -dtw): the caller falls back to plain word times");
+  });
+
+  test("whisper.cpp is asked for aligned times with the model's own preset", () => {
+    assert.equal(dtwPreset("/m/ggml-base.en.bin"), "base.en");
+    assert.equal(dtwPreset("/m/ggml-large-v3.bin"), "large.v3");
+    assert.equal(dtwPreset("/m/custom.bin"), null);
+    const a = whisperArgs({ model: "m.bin", wav: "a.wav", base: "/w/x", preset: "base.en" });
+    assert.match(a.join(" "), /-dtw base\.en -nfa -ojf -of \/w\/x-dtw/);
+    assert.match(whisperArgs({ model: "m.bin", wav: "a.wav", base: "/w/x" }).join(" "), /-ml 1 -sow -oj -of \/w\/x$/);
   });
 });
 
@@ -175,7 +202,7 @@ describe("a real join of synthetic takes", () => {
        of the two takes. Each burst ends where the tone stops, not 0.4 s later
        where the fake "whisper" said it did. */
     const speech = 1.0 + 1.0 + 1.0;
-    assert.ok(built.duration < speech + 1.0, `master ${built.duration}s is the speech plus pads`);
+    assert.ok(built.duration < speech + 1.3, `master ${built.duration}s is the speech plus about 0.35 s of air per cut`);
     assert.ok(built.duration > speech - 0.2, `master ${built.duration}s keeps every word`);
 
     const info = probe(FFMPEG, built.path);

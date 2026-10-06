@@ -49,9 +49,13 @@ export const DEFAULTS = Object.freeze({
   settleMinutes: 30,
   /* Seconds of air kept before the first word and after the last word of a
      kept run. Enough to keep the consonants, short enough that a line never
-     opens or closes on dead air. */
-  padIn: 0.08,
+     opens or closes on dead air. padIn is the bigger one: measured 2026-10-05,
+     0.08 s clipped the first sound of four lines ("Nobody" came back as
+     "but he"). */
+  padIn: 0.15,
   padOut: 0.12,
+  /* The master's very first cut: the ad opens on Chris speaking, not on air. */
+  padFirst: 0.08,
   /* A pause longer than this INSIDE a line is cut down to the two pads. */
   maxGap: 0.45,
   /* A pause longer than this inside a line counts against that attempt. */
@@ -562,6 +566,7 @@ function describeHit(lineIndex, line, take, aligned, opts) {
 
   return {
     lineIndex, score, ops, jStart, jEnd, matched, coverage, complete, remove,
+    firstI, lastI, lineLen: m,
     start: take[jStart].start, end: take[jEnd].end,
     defects: { fillers, repeats, stumbles, subs, dels, pauses },
     defectScore: 3 * dels + 2 * stumbles + 2 * repeats + 2 * fillers + subs + pauses
@@ -606,7 +611,32 @@ export function findHits(lines, takeWords, opts = {}) {
     for (let q = h.jStart; q <= h.jEnd; q++) claimed[q] = 1;
     kept.push(h);
   }
+  for (const h of kept) extendEdges(h, take, claimed, o);
   return kept.sort((a, b) => a.jStart - b.jStart);
+}
+
+/* A misheard first or last word is still that word. The aligner starts an
+   attempt at its first MATCHING word, so when speech-to-text hears "Getting
+   told the call" as "Everything told the call" (measured 2026-10-05), the cut
+   would start at "told" and lose the first word. When the script has words
+   before the first one heard (or after the last), the attempt takes in that
+   many of the take's own neighbouring words — only words no other attempt
+   owns, with no pause between, and never a filler. */
+function extendEdges(h, take, claimed, o) {
+  let lead = h.firstI ?? 0;
+  while (lead > 0 && h.jStart > 0 && !claimed[h.jStart - 1] && !FILLERS.has(take[h.jStart - 1].n) &&
+    take[h.jStart].start - take[h.jStart - 1].end <= o.maxGap) {
+    h.jStart -= 1; claimed[h.jStart] = 1; lead -= 1; h.defects.subs += 1;
+  }
+  let trail = (h.lineLen ?? 0) - 1 - (h.lastI ?? 0);
+  while (trail > 0 && h.jEnd + 1 < take.length && !claimed[h.jEnd + 1] && !FILLERS.has(take[h.jEnd + 1].n) &&
+    take[h.jEnd + 1].start - take[h.jEnd].end <= o.maxGap) {
+    h.jEnd += 1; claimed[h.jEnd] = 1; trail -= 1; h.defects.subs += 1;
+  }
+  h.start = take[h.jStart].start;
+  h.end = take[h.jEnd].end;
+  const d = h.defects;
+  h.defectScore = 3 * d.dels + 2 * d.stumbles + 2 * d.repeats + 2 * d.fillers + d.subs + d.pauses;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -717,7 +747,7 @@ export function buildEdl(plan, opts = {}) {
          or next word: cut audio stays cut. */
       const before = r.first > 0 ? words[r.first - 1].end : 0;
       const after = r.last + 1 < words.length ? words[r.last + 1].start : dur;
-      const start = Math.max(0, before, words[r.first].start - o.padIn);
+      const start = Math.max(0, before, words[r.first].start - (segs.length ? o.padIn : o.padFirst));
       const end = Math.min(dur, after, words[r.last].end + o.padOut);
       if (end - start <= 0) continue;
       segs.push({ takeIndex: take.takeIndex, takeNo: take.takeNo, start: round3(start), end: round3(end), lineIndex: line.lineIndex });
@@ -748,15 +778,38 @@ const round3 = (x) => Math.round(x * 1000) / 1000;
  * a silence is ended where the silence starts, and one that starts inside a
  * silence is started where it ends.
  */
-export function refineWordsWithSilence(words, silences = [], { keep = 0.03 } = {}) {
+export function refineWordsWithSilence(words, silences = [], { keep = 0.03, onset = 0.06, lead = 0.15 } = {}) {
   if (!silences?.length) return (words || []).map((w) => ({ ...w }));
-  return (words || []).map((w) => {
+  return (words || []).map((w, i, all) => {
     let { start, end } = w;
+    /* The first word after a pause starts where the pause ends. A short first
+       word ("If") can be aligned up to a third of a second late (measured
+       2026-10-05: "If"@58.92 after a pause that ended at 58.56), and a cut
+       made there loses it. */
+    const prevStart = i > 0 ? Number(all[i - 1].start) : -Infinity;
+    const gapBefore = silences.find((s) => s.end <= start && start - s.end <= 0.5 && prevStart < s.start);
+    if (gapBefore) start = Math.min(start, gapBefore.end - onset);
     for (const s of silences) {
-      if (s.start > start + 0.05 && s.start < end) end = Math.min(end, s.start + keep);
-      if (s.end > start && s.end < end - 0.05 && s.start <= start) start = Math.max(start, s.end - keep);
+      if (start >= s.start && start < s.end) {
+        /* The word's own time lands INSIDE a silence. An aligned time can be a
+           little late or a little early, so it belongs to the nearer edge:
+           near the silence's start, it is the last word before the pause
+           (measured 2026-10-05: "up."@55.88 against a pause from 55.85 —
+           pushing it past the pause stranded it after 1.4 s of air); near its
+           end, it is the first word after the pause. */
+        if (start - s.start <= s.end - start) {
+          end = s.start + keep;
+          start = Math.min(start, s.start - lead);
+        } else {
+          /* A soft first sound ("n", "h") sits under the silence floor, so
+             the word starts a little before the measured end of the pause. */
+          start = s.end - onset;
+        }
+      } else if (s.start > start + 0.05 && s.start < end) {
+        end = Math.min(end, s.start + keep);
+      }
     }
-    return { ...w, start: round3(start), end: round3(Math.max(end, start + 0.02)) };
+    return { ...w, start: round3(Math.max(0, start)), end: round3(Math.max(end, start + 0.02)) };
   });
 }
 

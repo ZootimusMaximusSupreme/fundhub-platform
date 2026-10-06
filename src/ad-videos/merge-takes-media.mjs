@@ -218,6 +218,67 @@ export function parseWhisperJson(json) {
   return out;
 }
 
+/* whisper.cpp's alignment presets, by the model file they belong to. */
+const DTW_PRESETS = new Set([
+  "tiny", "tiny.en", "base", "base.en", "small", "small.en", "medium", "medium.en",
+  "large.v1", "large.v2", "large.v3", "large.v3.turbo"
+]);
+
+/** ggml-base.en.bin → "base.en"; a model with no preset → null. */
+export function dtwPreset(modelPath) {
+  const name = path.basename(String(modelPath || ""))
+    .replace(/^ggml-/, "").replace(/\.bin$/, "")
+    .replace(/-v(\d)/, ".v$1").replace(/-turbo$/, ".turbo");
+  return DTW_PRESETS.has(name) ? name : null;
+}
+
+/**
+ * whisper.cpp `-dtw <preset> -ojf` output → [{ word, start, end }] in seconds.
+ *
+ * WHY THIS AND NOT -ml 1. Measured 2026-10-05 on a spoken test take with 2.6 s
+ * of silence before the first word: plain word timestamps put the first seven
+ * words INSIDE that silence (They@0.00 … a@2.28), so every cut would have been
+ * seconds off. The aligned (DTW) time for the same word was 2.68 s against a
+ * measured silence end of 2.61 s. So a word starts at its first token's DTW
+ * time, ends where the next word starts, and refineWordsWithSilence() then
+ * pulls that end back to where the sound actually stopped.
+ *
+ * A token with no leading space ("'d", ",", ".") belongs to the word before
+ * it. Special tokens ([_BEG_], [_TT_371]) are skipped. Returns [] when the
+ * output carries no DTW times, so the caller can fall back.
+ */
+/* The aligned times run a little LATE. Measured 2026-10-05 on four words that
+   follow a measured pause: 0.05, 0.07, 0.07 and 0.16 s after the sound
+   started. A cut made on a late start clips the first sound of the word
+   ("hundreds" came back as "drids"), so every aligned time is moved this much
+   earlier. */
+export const DTW_LAG = 0.08;
+
+export function parseWhisperTokens(json, { lag = DTW_LAG } = {}) {
+  const obj = typeof json === "string" ? JSON.parse(json) : json;
+  const words = [];
+  let lastEnd = null;
+  for (const seg of obj?.transcription || []) {
+    for (const t of seg?.tokens || []) {
+      const text = String(t?.text ?? "");
+      if (!text.trim() || /^\[_[A-Za-z0-9_]+\]$/.test(text.trim())) continue;
+      const at = Number(t?.t_dtw);
+      if (!Number.isFinite(at) || at < 0) return [];
+      const time = Math.max(0, Math.round((at / 100 - lag) * 1000) / 1000);
+      if (/^\s/.test(text) || !words.length) words.push({ word: text.trim(), start: time, end: null });
+      else words[words.length - 1].word += text;
+    }
+    const to = Number(seg?.offsets?.to);
+    if (Number.isFinite(to)) lastEnd = to / 1000;
+  }
+  for (let i = 0; i < words.length; i++) {
+    const next = words[i + 1]?.start;
+    const end = Number.isFinite(next) ? next : Math.max(lastEnd ?? 0, words[i].start + 0.3);
+    words[i].end = Math.max(words[i].start + 0.05, end);
+  }
+  return words.filter((w) => /[A-Za-z0-9]/.test(w.word));
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    The argument lists. Pure, so a test reads them without running anything.
    ───────────────────────────────────────────────────────────────────────── */
@@ -318,22 +379,40 @@ export function detectBlack(ffmpeg, file, { spawn = spawnSync } = {}) {
   return parseBlack(r.stderr);
 }
 
-/** whisper.cpp, word by word, on this machine. */
+/** whisper.cpp, word by word, on this machine. Aligned (DTW) word times when
+    the model has a preset; plain word times otherwise. */
+export function whisperArgs({ model, wav, base, threads = 4, preset = null }) {
+  const common = ["-m", model, "-f", wav, "-l", "en", "-t", String(threads), "-np"];
+  /* -nfa: this Mac's whisper.cpp build leaves every DTW time at -1 while
+     flash attention is on (measured 2026-10-05). */
+  return preset
+    ? [...common, "-dtw", preset, "-nfa", "-ojf", "-of", `${base}-dtw`]
+    : [...common, "-ml", "1", "-sow", "-oj", "-of", base];
+}
+
 export function whisperTranscriber({ ffmpeg, whisperBin, model, spawn = spawnSync, threads = 4 }) {
   return async (file, { workDir }) => {
     const base = path.join(workDir, `${path.basename(file).replace(/\.[^.]+$/, "")}-words`);
     const wav = `${base}.wav`;
     const a = run(ffmpeg, wavArgs(file, wav), { spawn });
     if (!a.ok) return { ok: false, error: `ffmpeg could not pull the sound out: ${tail(a.stderr) || a.error}` };
-    const w = run(whisperBin, [
-      "-m", model, "-f", wav, "-l", "en", "-t", String(threads),
-      "-ml", "1", "-sow", "-oj", "-of", base, "-np"
-    ], { spawn });
-    const jsonPath = `${base}.json`;
-    if (!fs.existsSync(jsonPath)) return { ok: false, error: `whisper.cpp wrote no words: ${tail(w.stderr) || w.error}` };
     try {
+      const preset = dtwPreset(model);
+      if (preset) {
+        const w = run(whisperBin, whisperArgs({ model, wav, base, threads, preset }), { spawn });
+        const p = `${base}-dtw.json`;
+        if (fs.existsSync(p)) {
+          const words = parseWhisperTokens(fs.readFileSync(p, "utf8"));
+          if (words.length) return { ok: true, words, timing: "dtw" };
+        } else if (w.error) {
+          return { ok: false, error: `whisper.cpp did not run: ${w.error}` };
+        }
+      }
+      const w = run(whisperBin, whisperArgs({ model, wav, base, threads }), { spawn });
+      const jsonPath = `${base}.json`;
+      if (!fs.existsSync(jsonPath)) return { ok: false, error: `whisper.cpp wrote no words: ${tail(w.stderr) || w.error}` };
       const words = parseWhisperJson(fs.readFileSync(jsonPath, "utf8"));
-      return words.length ? { ok: true, words } : { ok: false, error: "whisper.cpp heard no words" };
+      return words.length ? { ok: true, words, timing: "plain" } : { ok: false, error: "whisper.cpp heard no words" };
     } catch (err) {
       return { ok: false, error: `whisper.cpp words could not be read: ${String(err?.message || err)}` };
     }

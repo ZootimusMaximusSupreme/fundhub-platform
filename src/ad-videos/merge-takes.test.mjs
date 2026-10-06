@@ -282,6 +282,14 @@ describe("alignment — every attempt at every line", () => {
     assert.equal(cut.defects.fillers, 1);
   });
 
+  test("a misheard first word is still kept in the cut", () => {
+    const line = "Getting told the call is a roadmap when it never was is a different thing.";
+    const words = normalizeWords(say("fine / Everything told the call is a roadmap when it never was is a different thing"));
+    const hit = findHits([line], words).find((h) => h.complete);
+    assert.equal(hit.jStart, 1, "the cut starts at the misheard 'Everything', not at 'told' — and not at 'fine' before the pause");
+    assert.equal(hit.complete, true);
+  });
+
   test("two short lines that differ by one word each find their own words", () => {
     const words = normalizeWords(say(`Nobody calls you / Nobody pitches you`));
     const hits = findHits([LINES[3], LINES[4]], words);
@@ -331,7 +339,7 @@ describe("the edit list — dead air, pauses, filler", () => {
     const words = say(`/ / ${L[0]} / /`);
     const plan = planBestOf({ lines: [LINES[0]], takes: [{ takeNo: 1, words, duration: 30 }] });
     const [seg] = buildEdl(plan);
-    assert.equal(seg.start, +(words[0].start - DEFAULTS.padIn).toFixed(3));
+    assert.equal(seg.start, +(words[0].start - DEFAULTS.padFirst).toFixed(3));
     assert.equal(seg.end, +(words.at(-1).end + DEFAULTS.padOut).toFixed(3));
   });
 
@@ -342,7 +350,7 @@ describe("the edit list — dead air, pauses, filler", () => {
     assert.equal(segs.length, 2);
     assert.ok(words[8].start - words[7].end > 1, "there was a one-second pause");
     const dropped = segs[1].start - segs[0].end;
-    assert.ok(dropped > 0.8, `about ${(words[8].start - words[7].end - DEFAULTS.padIn - DEFAULTS.padOut).toFixed(2)} s of the pause is cut out, got ${dropped}`);
+    assert.ok(dropped > 0.7, `about ${(words[8].start - words[7].end - DEFAULTS.padIn - DEFAULTS.padOut).toFixed(2)} s of the pause is cut out, got ${dropped}`);
   });
 
   test("the filler's own seconds are cut out of the line", () => {
@@ -364,6 +372,21 @@ describe("the edit list — dead air, pauses, filler", () => {
     const refined = refineWordsWithSilence([{ word: "call,", start: 1.66, end: 2.45 }], [{ start: 1.98, end: 2.44 }]);
     assert.equal(refined[0].end, 2.01);
     assert.equal(refined[0].start, 1.66);
+  });
+
+  test("a word whose time lands inside a pause goes to the nearer side of it", () => {
+    const pause = { start: 55.85, end: 57.31 };
+    const [tail] = refineWordsWithSilence([{ word: "up.", start: 55.88, end: 57.62 }], [pause]);
+    assert.deepEqual([tail.start, tail.end], [55.7, 55.88], "the last word before the pause stays before it");
+    const [head] = refineWordsWithSilence([{ word: "Nobody", start: 57.25, end: 57.6 }], [pause]);
+    assert.deepEqual([head.start, head.end], [57.25, 57.6], "the first word after the pause starts after it");
+  });
+
+  test("the first word after a pause starts where the pause ends, even when it was aligned late", () => {
+    const words = [{ word: "it.", start: 56.96, end: 57.18 }, { word: "If", start: 58.92, end: 58.97 }, { word: "somebody's", start: 58.97, end: 59.36 }];
+    const out = refineWordsWithSilence(words, [{ start: 57.15, end: 58.56 }]);
+    assert.equal(out[1].start, 58.5, "'If' starts at the end of the pause, not 0.36 s later");
+    assert.equal(out[2].start, 58.97, "the word after it is untouched");
   });
 
   test("black frames at a cut's edges are trimmed, an all-black cut is dropped", () => {
