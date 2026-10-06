@@ -107,6 +107,42 @@ describe("cost lines (design §5 rule 3)", () => {
   });
 });
 
+describe("search ceilings come from the server's own limits (design §3.2, §5 rule 3)", () => {
+  test("X1's GET marketing/costs: limits.avatar.max_searches and its dollars", () => {
+    const c = T.normalizeCosts({ ok: true, data: { kinds: { avatar: null }, month: {}, run_caps: { avatar: 20 }, limits: { avatar: { steps: 7, max_searches: 200, max_search_usd: 2 } } } });
+    assert.match(T.costLines("avatar", c).join(" "), /At most 200 web searches \(\$2\.00 of it is search/);
+    assert.equal(T.searchCeiling(c, "avatar").from, "server");
+  });
+
+  test("X2's GET marketing/research: limits.quick and limits.deep", () => {
+    const rl = { quick: { searches: 70, search_usd: 0.7, rounds: 2 }, deep: { searches: 600, search_usd: 6, rounds: 5 } };
+    assert.match(T.costLines("research", COSTS, { depth: "quick", cap: 5, researchLimits: rl }).join(" "), /About 70 web searches\..*about \$0\.70 in search fees/);
+    assert.match(T.costLines("research", COSTS, { depth: "deep", cap: 20, researchLimits: rl }).join(" "), /About 600 web searches\..*about \$6\.00 in search fees/);
+  });
+
+  test("market research: limits.ad_research with its retries pair", () => {
+    const c = T.normalizeCosts({ ok: true, data: { kinds: {}, month: {}, limits: { ad_research: { searches: 110, searches_with_retries: 140 } } } });
+    assert.match(T.costLines("ad_research", c).join(" "), /At most 110 web searches \(\$1\.10\), 140 if a slow part is tried again \(\$1\.40\)/);
+  });
+
+  test("order: research limits, then costs limits, then kinds.max_searches, then the design", () => {
+    const c = T.normalizeCosts({ ok: true, data: { kinds: { avatar: { last_cost_usd: null, max_searches: 150 }, research_quick: { max_searches: 40 } }, month: {}, limits: { avatar: { max_searches: 190 }, research_quick: { max_searches: 50 } } } });
+    assert.equal(T.searchCeiling(c, "avatar").n, 190);
+    assert.equal(T.searchCeiling(c, "research_quick", { researchLimits: { quick: { searches: 66 } } }).n, 66);
+    assert.equal(T.searchCeiling(c, "research_quick").n, 50);
+    const k = T.normalizeCosts({ ok: true, data: { kinds: { research_quick: { max_searches: 40 } }, month: {} } });
+    assert.equal(T.searchCeiling(k, "research_quick").n, 40);
+  });
+
+  test("nothing sent: the design's numbers, and the page knows they are the design's", () => {
+    for (const [kind, n] of [["avatar", 184], ["ad_research", 106], ["ad_research_retries", 138], ["research_quick", 62], ["research_deep", 542]]) {
+      const s = T.searchCeiling(NO_COSTS, kind, { researchLimits: {} });
+      assert.equal(s.n, n, kind);
+      assert.equal(s.from, "design", kind);
+    }
+  });
+});
+
 describe("the API answer", () => {
   test("the router's 404 (it names the path) means not built; a handler 404 does not", () => {
     const router = T.answer({ ok: false, status: 404, data: { ok: false, error: "not_found", path: "/api/marketing/flywheel" } });
@@ -261,6 +297,18 @@ describe("funnels (X4)", () => {
     assert.equal(c.button, "Push live to apply.fundhub.ai/blueprint");
     assert.match(c.consequence, /3 new pages on ClickFunnels at apply\.fundhub\.ai\/blueprint/);
     assert.match(c.consequence, /Costs \$0\. No ad is made or changed\./);
+  });
+
+  test("a blocked See the pages prints why; the ad tag is in plain words", () => {
+    const st = { funnelJobs: {}, open: {}, drafts: {}, costs: COSTS, funnelDetail: {}, previewRole: {} };
+    const empty = { ...draft, pages: draft.pages.map((p) => ({ ...p, status: "empty" })) };
+    assert.match(T.renderFunnels({ ok: true, data: { funnels: [empty] } }, st), /See the pages: write the pages first\./);
+    const writing = T.renderFunnels({ ok: true, data: { funnels: [empty] } }, { ...st, funnelJobs: { f1: { running: true, what: "write" } } });
+    assert.match(writing, /See the pages: they are being written now\./);
+    const built = T.renderFunnels({ ok: true, data: { funnels: [draft] } }, st);
+    assert.doesNotMatch(built, /data-why="see-pages"/);
+    assert.match(built, /Its ads are tagged uwiq plus the ad number\./);
+    assert.doesNotMatch(built, /utm_campaign=/);
   });
 
   test("the newest funnel job in words", () => {

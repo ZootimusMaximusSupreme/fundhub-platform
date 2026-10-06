@@ -23,7 +23,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { mountIdeas, flywheel, blueprintFunnel, funnelDetail } from "./helpers/cc-tab-ideas-host.mjs";
+import { mountIdeas, fixtures, flywheel, blueprintFunnel, funnelDetail } from "./helpers/cc-tab-ideas-host.mjs";
 
 const OUT = process.env.X8_PROOF_OUT ? path.resolve(process.env.X8_PROOF_OUT) : null;
 const MANIFEST = OUT ? path.join(OUT, "shots", "shot-marks.json") : null;
@@ -161,6 +161,11 @@ for (const size of SIZES) {
       const row = page.locator("#cci-stage-1");
       await expect(row).toContainText("Who we sell to");
       await expect(row).toContainText("Not run yet");
+      /* "step 1 of 6" stays on one line beside the chip (it broke as "step 1 of / 6" at 390). */
+      const step = row.locator(".cci-step");
+      await expect(step).toHaveText("step 1 of 6");
+      const lines = await step.evaluate((el) => el.getClientRects().length);
+      expect(lines, "the step caption is one line box").toBe(1);
       const cost = page.locator("#cci-cost-1");
       await expect(cost).toContainText("Cost: unknown, not measured yet.");
       await expect(cost).toContainText("It stops by itself at $20.00.");
@@ -318,7 +323,8 @@ for (const size of SIZES) {
       const row = page.locator('[data-funnel="00000000-0000-4000-8000-000000000603"]');
       await expect(row).toContainText("apply.fundhub.ai/blueprint");
       await expect(row).toContainText("Tag fnl-blueprint and the full tracking are on every page.");
-      await expect(row).toContainText("utm_campaign=uwiq");
+      await expect(row).toContainText("Its ads are tagged uwiq plus the ad number.");
+      await expect(row).not.toContainText("utm_campaign=");
       await expect(row).toContainText("Written, not live");
 
       /* Rename: free, one tap after typing. */
@@ -350,6 +356,62 @@ for (const size of SIZES) {
       expect(w[0].body).toMatchObject({ id: "00000000-0000-4000-8000-000000000603", confirm_url: "https://apply.fundhub.ai/blueprint-vip" });
       await expect(row).toContainText("Pushing live: making the pages and checking them.");
     });
+
+    test("search ceilings come from the server: a changed limit changes the line", async ({ page }) => {
+      const base = fixtures();
+      await mountIdeas(page, {
+        "GET marketing/costs": { ...base["GET marketing/costs"], limits: { avatar: { steps: 7, max_searches: 200, max_search_usd: 2 } } },
+        "GET marketing/research": { ...base["GET marketing/research"], limits: { quick: { searches: 70, search_usd: 0.7 }, deep: { searches: 600, search_usd: 6 } } }
+      });
+      await expect(page.locator("#cci-cost-1")).toContainText("At most 200 web searches ($2.00 of it is search");
+      await page.locator("#cci-cap").fill("5");
+      const cost = page.locator("#cci-research-cost");
+      await expect(cost).toContainText("About 70 web searches.");
+      await expect(cost).toContainText("about $0.70 in search fees");
+    });
+
+    test("research that did not load: Research it is off and says why", async ({ page }) => {
+      await mountIdeas(page, { "GET marketing/research": { status: 500, body: { ok: false, error: "internal_error" } } });
+      await page.locator("#cci-cap").fill("5");
+      await expect(page.locator("#cci-research-go")).toBeDisabled();
+      await expect(page.locator("#cci-research-cost")).toHaveText("Your research did not load, so nothing can start. Tap Try again below.");
+      await expect(page.locator("#cci-research-list").getByRole("button", { name: "Try again" })).toBeVisible();
+    });
+
+    test("a funnel with no pages yet: See the pages is off and says why", async ({ page }) => {
+      await mountIdeas(page, { "GET marketing/funnels": { ok: true, funnels: [blueprintFunnel({ pages: "empty" })], campaigns: [], ad_sets: [] } });
+      const row = page.locator('[data-funnel="00000000-0000-4000-8000-000000000603"]');
+      await expect(row.getByRole("button", { name: "See the pages" })).toBeDisabled();
+      await expect(row.locator('[data-why="see-pages"]')).toHaveText("See the pages: write the pages first.");
+    });
+
+    for (const mode of ["promise", "both"]) {
+      test(`a frame whose sheets answer by ${mode}: a yes sends once, a no sends nothing`, async ({ page }) => {
+        const { posts } = await mountIdeas(page, {
+          "GET marketing/funnels": { ok: true, funnels: [blueprintFunnel({})], campaigns: [], ad_sets: [] },
+          "POST marketing/funnels/push-live": { status: 202, body: { ok: true, queued: true, job: { id: "job-push", kind: "funnel_push", status: "queued" }, url: "https://apply.fundhub.ai/blueprint", worker: { started: true, reason: null } } },
+          "POST creative/generate": { ok: true, created: true, provider_ready: true, job: { id: "cj1" } },
+          "POST creative/run": { ok: true, jobs: [{ job_id: "cj1", status: "succeeded", assets: [] }] }
+        }, { confirmMode: mode });
+        /* A paid tap: Cancel sends nothing, then one yes sends one. */
+        await page.locator("#cci-quick-angle").fill("Turned down by the bank");
+        await page.locator("#cci-quick-go").click();
+        await page.getByRole("dialog", { name: "Write one piece of quick copy?" }).getByRole("button", { name: "Cancel" }).click();
+        await page.waitForTimeout(200);
+        expect(writesTo(posts, "creative/generate"), "a no sends nothing").toHaveLength(0);
+        await page.locator("#cci-quick-go").click();
+        await page.getByRole("dialog", { name: "Write one piece of quick copy?" }).getByRole("button", { name: "Write it" }).click();
+        await expect(page.locator('[data-say="quick"]')).toContainText("Done.");
+        expect(writesTo(posts, "creative/generate"), "one yes, one write").toHaveLength(1);
+        /* Push live: the second tap sends exactly one push. */
+        const row = page.locator('[data-funnel="00000000-0000-4000-8000-000000000603"]');
+        await row.getByRole("button", { name: "Push live" }).click();
+        await page.getByRole("dialog").getByRole("button", { name: "Push live to apply.fundhub.ai/blueprint" }).click();
+        await expect(row).toContainText("Pushing live: making the pages and checking them.");
+        await page.waitForTimeout(200);
+        expect(writesTo(posts, "marketing/funnels/push-live"), "one yes, one push").toHaveLength(1);
+      });
+    }
 
     test("Quick copy: cost first, then one piece through the copy runner", async ({ page }) => {
       const { posts } = await mountIdeas(page, {

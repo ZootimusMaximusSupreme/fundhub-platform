@@ -8,6 +8,10 @@
 //   ctx.api(method, path, body, opts) -> {ok, status, data, error, conflict, current}
 //   ctx.costSheet({kind, title, lines, button, onConfirm})   the sheet before a paid tap
 //   ctx.confirm({title, consequence, button, onConfirm})     the two-tap confirm
+//     The contract does not pin how a sheet says yes, so mountIdeas(page, answers,
+//     { confirmMode }) can make both sheets answer three ways: "callback" (the
+//     default: call onConfirm), "promise" (return a promise of true/false and never
+//     call onConfirm) or "both" (call onConfirm AND resolve true).
 //   ctx.toast, ctx.go, ctx.param, ctx.fmt, ctx.user
 //
 // The API answers come from the contract examples in
@@ -75,14 +79,25 @@ function hostSheet(o, kind) {
   var no = document.createElement("button"); no.type = "button"; no.className = "host-no"; no.textContent = "Cancel";
   acts.appendChild(yes); acts.appendChild(no); box.appendChild(acts); el.appendChild(box);
   yes.addEventListener("click", function () { el.remove(); if (o.onConfirm) o.onConfirm(); });
-  no.addEventListener("click", function () { el.remove(); });
+  no.addEventListener("click", function () { el.remove(); if (o.onCancel) o.onCancel(); });
   document.body.appendChild(el);
   window.__sheets.push({ kind: kind, title: o.title, lines: o.lines || [] });
 }
+function hostAsk(o, lines, kind) {
+  var mode = window.__confirmMode || "callback";
+  if (mode === "callback") { hostSheet({ title: o.title, lines: lines, button: o.button, onConfirm: o.onConfirm }, kind); return undefined; }
+  return new Promise(function (resolve) {
+    hostSheet({
+      title: o.title, lines: lines, button: o.button,
+      onConfirm: function () { if (mode === "both" && o.onConfirm) o.onConfirm(); resolve(true); },
+      onCancel: function () { resolve(false); }
+    }, kind);
+  });
+}
 window.__ctx = {
   api: hostApi,
-  costSheet: function (o) { hostSheet({ title: o.title, lines: o.lines, button: o.button, onConfirm: o.onConfirm }, "cost"); },
-  confirm: function (o) { hostSheet({ title: o.title, lines: [o.consequence], button: o.button, onConfirm: o.onConfirm }, "confirm"); },
+  costSheet: function (o) { return hostAsk(o, o.lines, "cost"); },
+  confirm: function (o) { return hostAsk(o, [o.consequence], "confirm"); },
   toast: function (t) { window.__toasts.push(t); },
   go: function (id, p) { window.__went = [id, p || null]; },
   param: (location.hash.split("/")[1] || ""),
@@ -117,7 +132,9 @@ export function fixtures() {
         avatar: null, ad_research: null, research: null, quick_copy: null, funnel: null, copy: null, ad_strategy: null
       },
       month: { used_usd: 12.34, cap_usd: 300 },
-      run_caps: { avatar: 20, ad_research: 40 }
+      run_caps: { avatar: 20, ad_research: 40 },
+      /* X1's real shape (api/marketing/costs.mjs on mm-x1-avatar-server). */
+      limits: { avatar: { steps: 7, max_searches: 184, max_search_usd: 1.84 } }
     },
     "GET marketing/ideas": {
       ok: true,
@@ -158,7 +175,12 @@ export function fixtures() {
           created_at: "2026-10-05T18:00:00.000Z" },
         { id: "r-failed", question: "Which lenders skip personal guarantees?", depth: "quick", status: "failed", error: "Anthropic's reader could not open any page. Nothing was researched", created_at: "2026-10-04T18:00:00.000Z" }
       ],
-      settings: { max_research_cost_usd: null, research_shares_month_cap: true, month_used_usd: 12.34, month_cap_usd: 300, measured: false }
+      settings: { max_research_cost_usd: null, research_shares_month_cap: true, month_used_usd: 12.34, month_cap_usd: 300, measured: false },
+      /* X2's real shape (researchLimits() on mm-x2-market-deep-research). */
+      limits: {
+        quick: { searches: 62, search_usd: 0.62, rounds: 1, sub_questions: 4, key_claims: 5 },
+        deep: { searches: 542, search_usd: 5.42, rounds: 6, sub_questions: 8, key_claims: 15 }
+      }
     },
     "GET marketing/research?id=r-done": {
       ok: true,
@@ -253,9 +275,10 @@ export function funnelDetail({ path = "/blueprint" } = {}) {
    `answers` overrides fixtures by "METHOD path" (path with its query for
    GETs that have one, else without). A value may be a body (200), an object
    {status, body}, or a function(req) returning either. null = the router's 404. */
-export async function mountIdeas(page, answers = {}) {
+export async function mountIdeas(page, answers = {}, opts = {}) {
   const table = { ...fixtures(), ...answers };
   const posts = [];
+  if (opts.confirmMode) await page.addInitScript((m) => { window.__confirmMode = m; }, opts.confirmMode);
   await page.route("**" + HOST_PATH + "*", (route) => route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: HOST_HTML }));
   await page.route("**/api/**", async (route) => {
     const req = route.request();

@@ -84,6 +84,8 @@
 .cci .cci-row-text{overflow-wrap:anywhere;min-width:0}
 .cci .cci-row .caption{display:block;margin-top:4px}
 .cci .cci-row .cci-url .caption,.cci .cci-row-text .caption{display:inline;margin:0}
+/* "step 1 of 6" never breaks across lines beside the state chip at 390px. */
+.cci .cci-row-text .cci-step{white-space:nowrap}
 .cci .cci-pages{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .cci .cci-pages li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;background:var(--soft);border:1px solid var(--line)}
 .cci .cci-pages .caption{display:inline;margin:0}

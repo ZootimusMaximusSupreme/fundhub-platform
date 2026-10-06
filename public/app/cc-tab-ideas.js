@@ -71,8 +71,8 @@
 
   /* Anthropic bills web search at $10 per 1,000 searches. */
   var USD_PER_SEARCH = 0.01;
-  /* The server's own search limits, from design §2 J1, J2, J20. Used only
-     when GET marketing/costs does not send max_searches for that kind. */
+  /* The design's search limits (§2 J1, J2, J20). The last fallback only: the
+     page reads the server's own limits first (searchCeiling below). */
   var SEARCH_LIMITS = Object.freeze({
     avatar: 184,
     ad_research: 106,
@@ -267,10 +267,11 @@
   /* ── cost lines (design §5 rule 3) ────────────────────────────────────── */
 
   /* normalizeCosts — GET marketing/costs: {kinds{<kind>:{last_cost_usd,
-     last_minutes, measured_at, ...}|null}, month{used_usd, cap_usd}, run_caps}. */
+     last_minutes, measured_at, ...}|null}, month{used_usd, cap_usd}, run_caps,
+     limits{avatar:{max_searches, max_search_usd}}}. */
   function normalizeCosts(a) {
     a = obj(a);
-    if (!a.ok) return { loaded: false, notBuilt: a.notBuilt === true, kinds: {}, month: { used: null, cap: null }, runCaps: {} };
+    if (!a.ok) return { loaded: false, notBuilt: a.notBuilt === true, kinds: {}, month: { used: null, cap: null }, runCaps: {}, limits: {} };
     var d = obj(a.data);
     var m = obj(pick(d, ["month"]));
     return {
@@ -278,7 +279,8 @@
       notBuilt: false,
       kinds: obj(pick(d, ["kinds"])),
       month: { used: num(pick(m, ["used_usd"])), cap: num(pick(m, ["cap_usd"])) },
-      runCaps: obj(pick(d, ["run_caps"]))
+      runCaps: obj(pick(d, ["run_caps"])),
+      limits: obj(pick(d, ["limits"]))
     };
   }
 
@@ -296,10 +298,38 @@
     };
   }
 
-  function searchLimit(costs, kind, fallbackKey) {
-    var k = obj(obj(costs).kinds ? obj(costs).kinds[kind] : null);
-    var n = num(pick(k, ["max_searches"]));
-    return n !== null ? n : SEARCH_LIMITS[fallbackKey || kind];
+  /* limitFrom — one limits object as a server sends it: X1's {max_searches,
+     max_search_usd}, X2's {searches, search_usd} and the market research pair
+     {searches_with_retries, search_usd_with_retries}. null when not sent. */
+  function limitFrom(o, retries) {
+    o = obj(o);
+    var n = num(pick(o, retries ? ["max_searches_with_retries", "searches_with_retries"] : ["max_searches", "searches"]));
+    if (n === null) return null;
+    var usd = num(pick(o, retries ? ["max_search_usd_with_retries", "search_usd_with_retries"] : ["max_search_usd", "search_usd"]));
+    return { n: n, usd: usd !== null ? usd : n * USD_PER_SEARCH, from: "server" };
+  }
+
+  /* searchCeiling — the most web searches one run makes, and what they cost,
+     from the server's own limits (design §3.2, §5 rule 3), in this order:
+       1. a research run: GET marketing/research limits.{quick, deep} (opts.researchLimits)
+       2. GET marketing/costs limits.<kind> (X1 sends limits.avatar)
+       3. GET marketing/costs kinds.<kind>.max_searches
+       4. last: the design's numbers in SEARCH_LIMITS (from: "design").
+     kind: avatar, ad_research, ad_research_retries, research_quick, research_deep. */
+  function searchCeiling(costs, kind, opts) {
+    opts = obj(opts);
+    var c = obj(costs);
+    var retries = kind === "ad_research_retries";
+    var key = retries ? "ad_research" : kind;
+    var found = null;
+    if (kind === "research_quick" || kind === "research_deep") {
+      found = limitFrom(obj(opts.researchLimits)[kind === "research_deep" ? "deep" : "quick"], false);
+    }
+    if (!found) found = limitFrom(obj(c.limits)[key], retries);
+    if (!found) found = limitFrom(obj(obj(c.kinds)[kind]), false);
+    if (found) return found;
+    var n = SEARCH_LIMITS[kind];
+    return { n: n, usd: n * USD_PER_SEARCH, from: "design" };
   }
 
   function runCap(costs, kind) {
@@ -340,21 +370,21 @@
       out.push(lastRunLine(kc));
       var cap = runCap(costs, "avatar");
       out.push(cap === null ? "It stops by itself at the run cap in Settings." : "It stops by itself at " + dollars(cap) + ".");
-      var s = searchLimit(costs, "avatar");
-      out.push("At most " + count(s) + " web searches (" + dollars(s * USD_PER_SEARCH) + " of it is search; Anthropic bills $10 per 1,000).");
+      var s = searchCeiling(costs, "avatar");
+      out.push("At most " + count(s.n) + " web searches (" + dollars(s.usd) + " of it is search; Anthropic bills $10 per 1,000).");
       if (!kc) out.push("Time: unknown, not measured yet. Worst case about 3 hours.");
     } else if (kind === "ad_research") {
       out.push(lastRunLine(kc));
       var capR = runCap(costs, "ad_research");
       out.push("It cannot go past " + (capR === null ? "the batch cap in Settings" : dollars(capR)) + " a run.");
-      var s2 = searchLimit(costs, "ad_research");
-      var s3 = searchLimit(costs, "ad_research_retries", "ad_research_retries");
-      out.push("At most " + count(s2) + " web searches (" + dollars(s2 * USD_PER_SEARCH) + "), " + count(s3) + " if a slow part is tried again (" + dollars(s3 * USD_PER_SEARCH) + ").");
+      var s2 = searchCeiling(costs, "ad_research");
+      var s3 = searchCeiling(costs, "ad_research_retries");
+      out.push("At most " + count(s2.n) + " web searches (" + dollars(s2.usd) + "), " + count(s3.n) + " if a slow part is tried again (" + dollars(s3.usd) + ").");
       if (!kc) out.push("Time: unknown until the first run. It saves each step, so a stop never loses work.");
     } else if (kind === "research") {
       var deep = opts.depth === "deep";
-      var n = searchLimit(costs, deep ? "research_deep" : "research_quick", deep ? "research_deep" : "research_quick");
-      out.push("About " + count(n) + " web searches. Anthropic bills $10 per 1,000, so about " + dollars(n * USD_PER_SEARCH) + " in search fees. A search that fails is not billed.");
+      var n = searchCeiling(costs, deep ? "research_deep" : "research_quick", opts);
+      out.push("About " + count(n.n) + " web searches. Anthropic bills $10 per 1,000, so about " + dollars(n.usd) + " in search fees. A search that fails is not billed.");
       out.push(kc ? "Tokens: last run " + dollars(kc.usd) + (kc.minutes !== null ? " in " + minutesWords(kc.minutes) : "") + "." : "Tokens: unknown, not measured yet. Time: unknown, not measured yet.");
       var stop = num(opts.cap);
       out.push(stop === null ? "Type a stop amount first." : "It stops at your cap: " + dollars(stop) + " for this run.");
@@ -1102,7 +1132,7 @@
     out += '<ol class="cci-rows cci-stages">';
     all.forEach(function (v) {
       out += '<li class="cci-row cci-stage" id="cci-stage-' + v.n + '" data-stage="' + v.n + '">';
-      out += '<div class="cci-row-hd"><p class="cci-row-text"><b>' + esc(v.name) + '</b> <span class="caption cci-muted">step ' + v.n + " of 6</span></p>" + chip(v.word, v.tone) + "</div>";
+      out += '<div class="cci-row-hd"><p class="cci-row-text"><b>' + esc(v.name) + '</b> <span class="caption cci-muted cci-step">step ' + v.n + " of 6</span></p>" + chip(v.word, v.tone) + "</div>";
       var live = v.running && v.run && (v.run.stepN !== null || v.run.spent !== null) ? runningWords(v.run) : "";
       if (live) out += '<p class="cci-sentence">' + esc(live) + "</p>";
       else if (v.sentence) out += '<p class="cci-sentence">' + esc(v.sentence) + "</p>";
@@ -1172,7 +1202,7 @@
       out += '<li class="cci-row cci-funnel" data-funnel="' + esc(v.id) + '">';
       out += '<div class="cci-row-hd"><p class="cci-row-text"><b>' + esc(v.name || v.key) + "</b></p>" + chip(job && job.running ? (job.what === "push" ? "Pushing" : "Writing") : (v.status === "live" ? "Live" : "Draft"), job && job.running ? "wip" : (v.status === "live" ? "on" : "")) + "</div>";
       out += '<p class="cci-url"><a href="' + esc(v.url) + '" target="_blank" rel="noopener noreferrer">' + esc(hostless(v.url)) + "</a>" + (v.status === "live" ? "" : ' <span class="caption cci-muted">(not live yet)</span>') + "</p>";
-      out += '<p class="caption cci-muted">' + esc(tagLine(v)) + " " + esc(v.utmCampaign ? "Ads for it carry utm_campaign=" + v.utmCampaign + " and the ad number." : "") + "</p>";
+      out += '<p class="caption cci-muted">' + esc(tagLine(v)) + " " + esc(v.utmCampaign ? "Its ads are tagged " + v.utmCampaign + " plus the ad number." : "") + "</p>";
       if (job && job.words) out += '<p class="cci-sentence' + (job.status === "failed" ? " cci-bad" : "") + '">' + esc(job.words) + "</p>";
       out += '<ul class="cci-pages">' + v.pages.map(function (p) {
         return '<li><span class="cci-page-name">' + esc(p.roleWord) + '</span> <span class="caption cci-muted">' + esc(p.path) + "</span> " + chip(p.word, p.status === "live" ? "on" : (p.status === "empty" ? "" : "wip")) + ' <span class="caption cci-muted">' + esc(eventsLine(p.events)) + "</span></li>";
@@ -1180,11 +1210,14 @@
       var renameBlock = funnelBlock("rename", v, job);
       var buildBlock = funnelBlock("build", v, job);
       var pushBlock = funnelBlock("push", v, job);
+      var noPages = !v.pages.some(function (p) { return p.status !== "empty"; });
       out += '<div class="actions">' +
-        btn(st.open["preview:" + v.id] ? "Hide the pages" : "See the pages", "funnel-preview", { data: { id: v.id }, disabled: !v.pages.some(function (p) { return p.status !== "empty"; }) }) +
+        btn(st.open["preview:" + v.id] ? "Hide the pages" : "See the pages", "funnel-preview", { data: { id: v.id }, disabled: noPages }) +
         btn("Change the address", "funnel-rename-open", { data: { id: v.id }, disabled: !!renameBlock }) +
         btn(v.built ? "Write the pages again" : "Write the pages", "funnel-build", { data: { id: v.id }, disabled: !!buildBlock }) +
         "</div>";
+      /* Blocked taps print why (design §3.0). */
+      if (noPages) out += '<p class="caption cci-reason" data-why="see-pages">' + esc(job && job.running && job.what !== "push" ? "See the pages: they are being written now." : "See the pages: write the pages first.") + "</p>";
       if (renameBlock) out += '<p class="caption cci-reason">' + esc(renameBlock) + "</p>";
       if (!buildBlock) out += costHtml(costLines("funnel", st.costs));
       if (st.open["rename:" + v.id]) {
@@ -1333,10 +1366,27 @@
       b.setAttribute("aria-busy", on ? "true" : "false");
     }
 
+    /* askHost — the frame's sheet, whichever way it says yes: it calls
+       onConfirm, or it returns a promise that resolves true, or it returns
+       true. Only an explicit yes runs the work, and the fired flag runs it
+       once even when a frame does two of these. A sheet that throws sends
+       nothing. */
+    function askHost(fn, opts, run) {
+      var fired = false;
+      function go() { if (!fired) { fired = true; run(); } }
+      var o = {};
+      Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
+      o.onConfirm = go;
+      var out;
+      try { out = fn(o); } catch (e) { return; }
+      if (out && typeof out.then === "function") out.then(function (yes) { if (yes === true) go(); }, function () {});
+      else if (out === true) go();
+    }
+
     /* paidTap — the cost sheet first, then the work (design §5 rule 3). */
     function paidTap(kind, title, lines, button, run) {
-      if (st.ctx.costSheet) {
-        st.ctx.costSheet({ kind: kind, title: title, lines: lines, button: button, onConfirm: run });
+      if (typeof st.ctx.costSheet === "function") {
+        askHost(st.ctx.costSheet, { kind: kind, title: title, lines: lines, button: button }, run);
       } else {
         localSheet({ title: title, lines: lines, button: button, onConfirm: run });
       }
@@ -1344,8 +1394,11 @@
 
     /* twoTap — the confirm that names the consequence (design §5 rule 5). */
     function twoTap(opts) {
-      if (st.ctx.confirm) st.ctx.confirm(opts);
-      else localSheet({ title: opts.title, lines: [opts.consequence], button: opts.button, onConfirm: opts.onConfirm });
+      if (typeof st.ctx.confirm === "function") {
+        askHost(st.ctx.confirm, { title: opts.title, consequence: opts.consequence, button: opts.button }, opts.onConfirm);
+      } else {
+        localSheet({ title: opts.title, lines: [opts.consequence], button: opts.button, onConfirm: opts.onConfirm });
+      }
     }
 
     /* localSheet — only when a host gives no sheet of its own. */
@@ -1408,6 +1461,7 @@
         var d = obj(a.data);
         st.research = a.ok ? arr(pick(d, ["runs"])).map(researchView) : [];
         st.researchSettings = obj(pick(d, ["settings"]));
+        st.researchLimits = obj(pick(d, ["limits"]));
         var wrap = $("#cci-research-form-wrap");
         if (wrap && a.notBuilt) wrap.innerHTML = honest("research");
         var sub = $("#cci-research-sub");
@@ -1443,9 +1497,13 @@
         b.setAttribute("aria-checked", b.getAttribute("data-depth") === st.depth ? "true" : "false");
       });
       var blocked = capVal === null || capVal <= 0;
+      var failed = !!(st.researchAnswer && !st.researchAnswer.ok && !st.researchAnswer.notBuilt);
       go.disabled = blocked || !(st.researchAnswer && st.researchAnswer.ok);
-      var lines = blocked ? ["Type a stop amount first."] : costLines("research", st.costs, { depth: st.depth, cap: capVal });
+      var lines = failed ? ["Your research did not load, so nothing can start. Tap Try again below."]
+        : (blocked ? ["Type a stop amount first."] : costLines("research", st.costs, { depth: st.depth, cap: capVal, researchLimits: st.researchLimits }));
       set("#cci-research-cost", arr(lines).map(esc).join(" "));
+      var rc = $("#cci-research-cost");
+      if (rc) rc.classList.toggle("cci-reason", failed);
     }
 
     function loadFlywheel() {
@@ -1671,7 +1729,7 @@
       if (!body.question) { say("research", "err", "Type your question first."); return; }
       if (body.max_cost_usd === null || body.max_cost_usd <= 0) { say("research", "err", "Type a stop amount first."); return; }
       if (!body.sources.web && !body.sources.vault && !body.sources.own_files) { say("research", "err", "Pick at least one place to look."); return; }
-      var lines = ["Deep research on: " + body.question].concat(costLines("research", st.costs, { depth: body.depth, cap: body.max_cost_usd }))
+      var lines = ["Deep research on: " + body.question].concat(costLines("research", st.costs, { depth: body.depth, cap: body.max_cost_usd, researchLimits: st.researchLimits }))
         .concat(["It runs in the background. This card shows the step it is on. You get a buzz when the report is ready."]);
       paidTap("research", source ? "Run this research again?" : "Start the research?", lines, "Start the research", function () {
         busy(b, true);
@@ -1712,7 +1770,7 @@
       var id = b.getAttribute("data-id");
       var note = str(st.drafts["rtweak:" + id]).trim();
       if (!note) { say("run:" + id, "err", "Type one line first."); return; }
-      paidTap("research", "Run a short tweak of this research?", ["Tweak: " + note].concat(costLines("research", st.costs, { depth: "quick", cap: num(($("#cci-cap") || {}).value) })), "Run the tweak", function () {
+      paidTap("research", "Run a short tweak of this research?", ["Tweak: " + note].concat(costLines("research", st.costs, { depth: "quick", cap: num(($("#cci-cap") || {}).value), researchLimits: st.researchLimits })), "Run the tweak", function () {
         researchSimple(b, "marketing/research/tweak", "Running the tweak. This card shows the step it is on.", { note: note });
         st.open["tweak:" + id] = false;
         st.drafts["rtweak:" + id] = "";
@@ -2048,7 +2106,7 @@
         if (st && st.timer) root.clearTimeout(st.timer);
         st = {
           root: rootEl, ctx: ctx || {}, costs: normalizeCosts(null), depth: "quick",
-          ideas: [], research: [], researchSettings: {}, batches: { writeNowReady: false },
+          ideas: [], research: [], researchSettings: {}, researchLimits: {}, batches: { writeNowReady: false },
           accepted: {}, open: {}, drafts: {}, funnelJobs: {}, funnelDetail: {}, previewRole: {},
           campaign: null, spendRead: null, timer: null, hidden: false
         };
@@ -2081,7 +2139,7 @@
   root.FundhubIdeasTab = {
     esc: esc, money: money, dollars: dollars, count: count, shortDate: shortDate,
     campaignWords: campaignWords, plannerWhen: plannerWhen, answer: answer, plainError: plainError,
-    normalizeCosts: normalizeCosts, kindCost: kindCost, costLines: costLines, meterLine: meterLine,
+    normalizeCosts: normalizeCosts, kindCost: kindCost, searchCeiling: searchCeiling, costLines: costLines, meterLine: meterLine,
     ideaView: ideaView, suggestionNumbers: suggestionNumbers, angleView: angleView, angleLine: angleLine,
     researchView: researchView, researchWords: researchWords,
     stageView: stageView, runningWords: runningWords, blockedReason: blockedReason, runBody: runBody,
