@@ -3,7 +3,7 @@
 // The Netlify creative-job-runner cron calls the same runDue path on a schedule.
 
 import { db } from "../../src/db.mjs";
-import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
+import { requirePrincipal as principalGate } from "../../src/http/middleware/requirePrincipal.mjs";
 import { withPartnerScope } from "../../src/partners/rls.mjs";
 import { resolvePartnerId } from "../../src/http/partner-read-api.mjs";
 import { claim, run } from "../../src/creative/generate.mjs";
@@ -58,7 +58,9 @@ export function maxJobsFrom(body) {
    default below is the real one. */
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
-  const principalOf = deps.requirePrincipal ?? requirePrincipal;
+  // Named requirePrincipal on purpose: scripts/journeys/extract.mjs traces the
+  // gate by the literal call requirePrincipal(req, res, [...]).
+  const requirePrincipal = deps.requirePrincipal ?? principalGate;
   const partnerScope = deps.withPartnerScope ?? withPartnerScope;
   const claimJob = deps.claim ?? claim;
   const runJob = deps.run ?? run;
@@ -69,7 +71,7 @@ export default async function handler(req, res, deps = {}) {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 
-  const principal = await principalOf(req, res, ["partner", "staff"], { db: database });
+  const principal = await requirePrincipal(req, res, ["partner", "staff"], { db: database });
   if (!principal) return;
 
   const body = req.body || {};

@@ -2,29 +2,37 @@
 
    WHAT THIS SCREEN IS. Chris's marketing dashboard: docs/specs/
    marketing-machine-2026-10-04.md §8.3 (the Today tab), built as the
-   "smallest first slice" in docs/specs/marketing-dashboard-plan-2026-10-05.md.
-   One page where the owner sees whether marketing is healthy, what waits on
-   him, and presses ONE button — "Write ad copy".
+   "smallest first slice" in docs/specs/marketing-dashboard-plan-2026-10-05.md,
+   then made honest by slice 0 of docs/specs/command-center-design-2026-10-05.md
+   ("Today tells the truth"): every cost line from a measured run or "unknown",
+   whole-day spend windows, the as-of words, the per-stage word table, Read it,
+   the videos waiting on Chris, no inner scroll boxes, a real footer clock.
 
    WHAT IT READS AND CALLS.
      GET  /api/marketing/today           everything on the page (owner/admin)
+     GET  /api/ad-videos?status=awaiting_approval
+                                         finished videos waiting on Chris
+                                         (one row in Waiting on you)
      POST /api/creative/generate         saves one ad copy job for the house partner
-     POST /api/creative/run              runs it now instead of waiting for the clock
+     POST /api/creative/run              runs it now (max_jobs: 1, so one press
+                                         runs and pays for at most one job)
      GET  /api/marketing/offer/generate  the newest offer, or one run by ?id=
      POST /api/marketing/offer/generate  starts an offer run (it takes minutes,
                                          so the page asks again every few seconds)
-   marketing/today and marketing/offer/generate are new. Until they ship, the
-   page says so in plain words ("not ready yet") and invents nothing.
+   GET marketing/today is read again when the tab comes back into view and
+   every 5 minutes.
 
    THE TWO "WAITING" LISTS ARE DIFFERENT THINGS. marketing/today's `waiting`
    names PARTS of the machine that are not live yet (a table not shipped, no
-   Meta numbers). Those feed the Machine parts card. "Waiting on you" is what
-   only Chris can do — read and approve a flywheel step, or redo one — and is
-   read off the flywheel rows.
+   Meta numbers). Those feed the "What is turned on" card. "Waiting on you" is
+   what only Chris can do — read and approve a flywheel step, redo one, or
+   decide the finished videos — and is read off the flywheel rows and the
+   ad-videos list.
 
    NEVER FAKE A NUMBER. A missing or null value shows as "unknown", never as 0
-   (CLAUDE.md §12: NULL means unknown and must survive). An empty list says
-   "nothing yet". There is no sample data anywhere in this file.
+   (CLAUDE.md §12: NULL means unknown and must survive). A cost line is a
+   measured run or "unknown, not measured yet" — never a constant. An empty list
+   says "nothing yet". There is no sample data anywhere in this file.
 
    TESTABLE WITHOUT A BROWSER. Every rule that turns data into words is a plain
    function on window.FHMarketingCC, and src/ui/marketing-command-center.test.mjs
@@ -40,26 +48,50 @@
      OFFER_TYPES). The endpoint refuses anything else, so this list is exact. */
   var OFFER_TYPES = ["funding", "credit_cards", "credit_repair"];
 
-  /* The five flywheel steps (marketing/flywheel/README.md). A sixth row,
-     spend, checks results; it is not one of the five and is not shown. */
-  var FIVE = ["avatar", "ad-research", "offer", "copy", "ad-strategy"];
+  /* The six flywheel steps, in order (scripts/flywheel/status.mjs STAGES).
+     Step 6 reads the spend; the page says "step 3 of 6", never "Flywheel
+     step 3" (design §3.0, the word table). */
+  var STAGE_KEYS = ["avatar", "ad-research", "offer", "copy", "ad-strategy", "spend"];
   var STAGE_NAMES = {
-    "avatar": "Avatar",
-    "ad-research": "Ad research",
-    "offer": "Offer",
-    "copy": "Copy",
-    "ad-strategy": "Ad strategy"
+    "avatar": "Who we sell to",
+    "ad-research": "What the market sells",
+    "offer": "The offer",
+    "copy": "Ad copy",
+    "ad-strategy": "Which ad strategy",
+    "spend": "Read the spend"
+  };
+  /* Where each step runs today. Only the offer has a button on this page. */
+  var STAGE_RUNS = {
+    "avatar": "This step runs in chat. It reads live web pages, which only the chat agent can do.",
+    "ad-research": "This step runs in chat. It reads live web pages, which only the chat agent can do.",
+    "offer": "Write offer, on the Offer card, writes a new offer on this page.",
+    "copy": "This step runs in chat for now.",
+    "ad-strategy": "This step runs in chat for now.",
+    "spend": "This step runs in chat for now."
   };
 
   var DAY_MS = 86400000;
-  /* The Meta pull runs once a day (meta-campaign-sync-sweeper, cron 0 7 * * *).
-     Older than two days means at least one daily pull was missed. */
+  /* The Meta pull runs once a day: meta-campaign-sync-sweeper, SWEEP_CRON
+     "0 7 * * *" (07:00 UTC is midnight in Arizona). Older than two days means
+     at least one daily pull was missed. src/ui/marketing-command-center.test.mjs
+     holds the cron and this sentence together. */
   var META_FRESH_MS = 2 * DAY_MS;
+  var META_PULL_WORDS = "The Meta pull runs at midnight, Arizona time.";
   /* An offer run takes a few minutes in a 15-minute background function
      (M12, netlify/functions/marketing-offer-background.mjs). Ask every 10
      seconds; give up after 16 minutes and say where to look. */
   var OFFER_POLL_MS = 10000;
   var OFFER_POLL_TRIES = 96;
+  /* GET marketing/today again every 5 minutes, and when the tab comes back
+     into view (design §3.1, the footer) — but not twice in 30 seconds. */
+  var RELOAD_MS = 5 * 60 * 1000;
+  var FOCUS_GAP_MS = 30 * 1000;
+  /* Ad copy longer than this folds behind Show more (no inner scroll box). */
+  var FOLD_LINES = 6;
+  var FOLD_CHARS = 360;
+
+  /* Times print in the viewer's own clock. Tests pin a zone here. */
+  var display = { tz: undefined };
 
   function esc(v) {
     return String(v == null ? "" : v)
@@ -85,6 +117,10 @@
       }
     }
     return undefined;
+  }
+  function has(o, name) {
+    return o != null && typeof o === "object" &&
+      (Object.prototype.hasOwnProperty.call(o, name) || Object.prototype.hasOwnProperty.call(o, snakeOf(name)));
   }
   function num(v) {
     if (v === null || v === undefined || v === "" || typeof v === "boolean") return null;
@@ -129,21 +165,51 @@
     r = obj(r);
     var meta = obj(first(r, ["meta"]));
     var key = str(first(r, ["key"]));
+    var counts = obj(first(r, ["counts"]));
+    var card = first(r, ["reviewCard"]);
     return {
       n: num(first(r, ["n"])),
       key: key,
       label: str(first(r, ["label"]) || key),
+      file: str(first(r, ["file"])),
       state: str(first(r, ["state"])).toUpperCase() || null,
       why: str(first(r, ["why"])),
       reasons: strs(first(r, ["reasons"])),
-      approved: first(r, ["approved"]) === true || str(first(meta, ["status"])).toLowerCase() === "approved"
+      approved: first(r, ["approved"]) === true || str(first(meta, ["status"])).toLowerCase() === "approved",
+      counts: counts,
+      reviewCard: typeof card === "string" && card.trim() ? card : null
     };
   }
 
-  function fiveStages(list) {
+  function sixStages(list) {
     return arr(list).map(normalizeStage)
-      .filter(function (s) { return FIVE.indexOf(s.key) !== -1; })
+      .filter(function (s) { return STAGE_KEYS.indexOf(s.key) !== -1; })
       .sort(function (a, c) { return (a.n || 0) - (c.n || 0); });
+  }
+
+  function normalizeOfferCost(o) {
+    if (!o || typeof o !== "object") return null;
+    return {
+      measured: first(o, ["measured"]) === true,
+      seconds: num(first(o, ["seconds"])),
+      costCents: num(first(o, ["costCents"])),
+      underOneCent: first(o, ["underOneCent"]) === true,
+      models: strs(first(o, ["models"])),
+      unpriced: strs(first(o, ["unpricedModels"])),
+      finishedAt: first(o, ["finishedAt"]) || null
+    };
+  }
+
+  function normalizeCopyCost(c) {
+    if (!c || typeof c !== "object") return null;
+    return {
+      runs: num(first(c, ["runs"])) || 0,
+      avgCostCents: num(first(c, ["avgCostCents"])),
+      underOneCent: first(c, ["underOneCent"]) === true,
+      models: strs(first(c, ["models"])),
+      unpriced: strs(first(c, ["unpricedModels"])),
+      lastAt: first(c, ["lastAt"]) || null
+    };
   }
 
   /* normalizeToday — GET marketing/today (M10, api/marketing/today.mjs) in the
@@ -151,10 +217,12 @@
      every number comes back unknown and `loaded` is false. */
   function normalizeToday(body) {
     var b = obj(body);
-    var windows = obj(first(obj(first(b, ["spend"])), ["windows"]));
+    var spendRaw = obj(first(b, ["spend"]));
+    var windows = obj(first(spendRaw, ["windows"]));
     var w7 = obj(first(windows, ["last7Days"]));
     var wPrev7 = obj(first(windows, ["prior7Days"]));
     var w30 = obj(first(windows, ["last30Days"]));
+    var wPrev30 = obj(first(windows, ["prior30Days"]));
     var wToday = obj(first(windows, ["today"]));
     var syncRaw = first(b, ["lastSync"]);
     var sync = obj(syncRaw);
@@ -171,42 +239,65 @@
       };
     });
     function check(key) {
-      for (var i = 0; i < checks.length; i++) if (checks[i].key === key) return checks[i].ok;
+      for (var i = 0; i < checks.length; i++) if (checks[i].key === key) return checks[i];
       return null;
     }
+    function checkOk(key) { var c = check(key); return c ? c.ok : null; }
+    var budget = check("writing_budget");
     var flyRaw = first(b, ["flywheel"]);
     var campaigns = arr(first(obj(flyRaw), ["campaigns"])).map(function (c) {
       c = obj(c);
-      return { campaign: str(first(c, ["campaign"])), stages: fiveStages(first(c, ["stages"])), advice: str(first(c, ["advice"])) };
+      return { campaign: str(first(c, ["campaign"])), stages: sixStages(first(c, ["stages"])), advice: str(first(c, ["advice"])) };
     });
     var main = null;
     for (var i = 0; i < campaigns.length; i++) if (campaigns[i].campaign === "partner") main = campaigns[i];
     if (!main) main = campaigns[0] || null;
+    var costsRaw = first(b, ["costs"]);
+    var costs = obj(costsRaw);
+    var metaAt = first(sync, ["metaSyncedAt"]) || null;
+    var metricsAt = first(sync, ["metricsSyncedAt"]) || null;
 
     return {
       /* true when the server answered at all. A 200 with none of these keys
          is still loaded: every number in it is honestly unknown. */
       loaded: body != null && typeof body === "object",
       today: str(first(b, ["today"])) || null,
-      asOf: first(sync, ["metricsSyncedAt"]) || first(sync, ["metaSyncedAt"]) || null,
+      /* When the newest ad-day row was saved (the "saved" time). */
+      asOf: metricsAt || metaAt,
+      /* When Meta last pulled at all — the freshness test. A pull on a day no
+         ad ran saves no row, so the row time alone would call it stale. */
+      pulledAt: metaAt || metricsAt,
       latestMetricsDate: first(sync, ["latestMetricsDate"]) || null,
       syncRead: syncRaw != null && typeof syncRaw === "object",
+      cfRead: has(sync, "clickfunnelsSyncedAt"),
+      cfSyncedAt: first(sync, ["clickfunnelsSyncedAt"]) || null,
       partnerId: first(ready, ["partnerId"]) || first(copy, ["partnerId"]) || null,
+      spendThrough: first(spendRaw, ["through"]) || null,
       spendToday: num(first(wToday, ["spendCents"])),
       spend7: num(first(w7, ["spendCents"])),
       days7: num(first(w7, ["daysWithData"])),
+      from7: first(w7, ["from"]) || null,
+      to7: first(w7, ["to"]) || null,
       spendPrev7: num(first(wPrev7, ["spendCents"])),
       spend30: num(first(w30, ["spendCents"])),
       days30: num(first(w30, ["daysWithData"])),
+      from30: first(w30, ["from"]) || null,
+      to30: first(w30, ["to"]) || null,
+      spendPrev30: num(first(wPrev30, ["spendCents"])),
       copyReady: {
         ready: bool(first(ready, ["ready"])),
-        house: check("house_partner"),
-        switchOn: check("marketing_switch"),
-        provider: check("copy_provider"),
-        anthropicKey: check("anthropic_key"),
-        budget: check("writing_budget"),
+        house: checkOk("house_partner"),
+        switchOn: checkOk("marketing_switch"),
+        provider: checkOk("copy_provider"),
+        anthropicKey: checkOk("anthropic_key"),
+        budget: checkOk("writing_budget"),
+        budgetUsed: budget ? budget.used : null,
+        budgetCap: budget ? budget.cap : null,
         checks: checks
       },
+      costsRead: costsRaw != null && typeof costsRaw === "object",
+      offerCost: normalizeOfferCost(first(costs, ["offer"])),
+      copyCost: normalizeCopyCost(first(costs, ["copy"])),
       pieces: arr(first(copy, ["pieces"])).map(normalizePiece),
       jobs: arr(first(copy, ["jobs"])).map(normalizeJob),
       flywheelRead: flyRaw != null && typeof flyRaw === "object",
@@ -217,6 +308,29 @@
       partsWaiting: arr(first(b, ["waiting"])).map(function (w) {
         w = obj(w);
         return { part: str(first(w, ["part"])), reason: str(first(w, ["reason"])) };
+      })
+    };
+  }
+
+  /* normalizeVideos — GET ad-videos?status=awaiting_approval (api/ad-videos.mjs)
+     as the one Waiting on you row needs it. A failed read is `loaded: false`,
+     never an empty list: "nothing waiting" and "could not tell" differ. */
+  function normalizeVideos(res) {
+    if (!res || res.transport || res.status !== 200 || !res.body || res.body.ok === false) {
+      return { loaded: false, items: [], more: false };
+    }
+    var b = obj(res.body);
+    return {
+      loaded: true,
+      more: b.hasMore === true || b.has_more === true,
+      items: arr(first(b, ["items"])).map(function (v) {
+        v = obj(v);
+        return {
+          adId: str(first(v, ["adId"])),
+          takeNo: num(first(v, ["takeNo"])),
+          since: first(v, ["updatedAt"]) || first(v, ["createdAt"]) || null,
+          expiresAt: first(v, ["approvalExpiresAt"]) || null
+        };
       })
     };
   }
@@ -278,6 +392,11 @@
     });
   }
 
+  function count(n) {
+    var v = num(n);
+    return v === null ? "unknown" : Math.round(v).toLocaleString("en-US");
+  }
+
   /* compare — every metric has a comparison (UI-STANDARDS §7), said in words,
      never by colour alone (§12.6). */
   function compare(cur, prev, span) {
@@ -292,17 +411,32 @@
     return (pct > 0 ? "Up " : "Down ") + Math.abs(pct) + "% from " + money(p) + " " + before + ".";
   }
 
+  function fmt(d, opts) {
+    var o = {};
+    for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k];
+    if (display.tz) o.timeZone = display.tz;
+    return d.toLocaleString("en-US", o);
+  }
+  function fullTime(d) {
+    return fmt(d, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  function clockOf(d) { return fmt(d, { hour: "numeric", minute: "2-digit" }); }
+  function dateTimeOf(d) { return fmt(d, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+  function dateOf(d) { return fmt(d, { month: "short", day: "numeric" }); }
+  function asDate(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   /* when — relative under a day, a date after, the exact time in the tooltip
      (UI-STANDARDS §7). A missing time is "unknown", not "now". */
   function when(iso, nowMs) {
-    if (!iso) return { text: "unknown", title: "" };
-    var d = new Date(iso);
+    var d = asDate(iso);
+    if (!d) return { text: "unknown", title: "" };
     var t = d.getTime();
-    if (isNaN(t)) return { text: "unknown", title: "" };
     var now = typeof nowMs === "number" ? nowMs : Date.now();
-    var title = d.toLocaleString("en-US", {
-      month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit"
-    });
+    var title = fullTime(d);
     var diff = now - t;
     if (diff >= 0 && diff < DAY_MS) {
       var mins = Math.floor(diff / 60000);
@@ -311,10 +445,22 @@
       var h = Math.floor(mins / 60);
       return { text: h + (h === 1 ? " hour ago" : " hours ago"), title: title };
     }
-    return {
-      text: d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
-      title: title
-    };
+    return { text: dateTimeOf(d), title: title };
+  }
+
+  /* savedWords — earlier today: a clock time with "how long ago" ("12:01 AM
+     (7 hours ago)"). Any other day: the date and time ("Oct 4, 3:10 PM"), so
+     yesterday afternoon never reads like this afternoon. Design §3.1: any time
+     older than a day prints its date in the text. */
+  function savedWords(iso, nowMs) {
+    var d = asDate(iso);
+    if (!d) return { text: "unknown", title: "" };
+    var now = typeof nowMs === "number" ? nowMs : Date.now();
+    var diff = now - d.getTime();
+    if (diff >= 0 && diff < DAY_MS && dateOf(d) === dateOf(new Date(now))) {
+      return { text: clockOf(d) + " (" + when(iso, now).text + ")", title: fullTime(d) };
+    }
+    return { text: dateTimeOf(d), title: fullTime(d) };
   }
 
   /* dayWords("2026-10-04") → "Oct 4". A calendar day, not a moment. */
@@ -323,6 +469,84 @@
     if (!m) return "";
     var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  }
+
+  function rangeWords(from, to) {
+    var a = dayWords(from);
+    var b = dayWords(to);
+    return a && b ? a + " to " + b : "";
+  }
+
+  /* loadedWords — the footer clock: "Loaded 3:02 PM", the exact time in the
+     tooltip. */
+  function loadedWords(ms) {
+    var d = new Date(typeof ms === "number" ? ms : Date.now());
+    return { text: "Loaded " + clockOf(d), title: fullTime(d) };
+  }
+
+  function minutesWords(seconds) {
+    var s = num(seconds);
+    if (s === null) return "unknown";
+    var m = Math.floor(s / 60);
+    var r = Math.round(s - m * 60);
+    if (!m) return r + " s";
+    return m + " min" + (r ? " " + r + " s" : "");
+  }
+
+  /* metaFresh — Meta pulled within two days. Unknown (never pulled, not read)
+     is not fresh. */
+  function metaFresh(view, nowMs) {
+    var d = asDate(view && view.pulledAt);
+    if (!d) return false;
+    var age = (typeof nowMs === "number" ? nowMs : Date.now()) - d.getTime();
+    return age >= 0 ? age <= META_FRESH_MS : true;
+  }
+
+  /* oldLead — "Old numbers: last saved Oct 1." when the pull is more than two
+     days old, else "". Design §3.1: the money row leads with it. */
+  function oldLead(view, nowMs) {
+    var v = view || {};
+    if (!v.loaded || !v.pulledAt || metaFresh(v, nowMs)) return "";
+    var d = asDate(v.asOf || v.pulledAt);
+    return "Old numbers: last saved " + (d ? dateOf(d) : "unknown") + ".";
+  }
+
+  /* asOfLine — the one as-of sentence under the spend tiles. */
+  function asOfLine(view, nowMs) {
+    var v = view || {};
+    if (!v.loaded) return { text: "", title: "" };
+    var parts = [];
+    var title = "";
+    var through = v.spendThrough || v.latestMetricsDate;
+    if (!v.syncRead) {
+      parts.push("When Meta last sent numbers is not known yet.");
+    } else if (!v.pulledAt) {
+      parts.push("No ad spend saved yet. " + META_PULL_WORDS);
+    } else if (!metaFresh(v, nowMs)) {
+      var old = savedWords(v.asOf, nowMs);
+      title = old.title;
+      parts.push("Old numbers: last saved " + old.text + "." + (through ? " Numbers through " + dayWords(through) + "." : ""));
+    } else {
+      var saved = savedWords(v.asOf, nowMs);
+      title = saved.title;
+      parts.push((through ? "Numbers through " + dayWords(through) + ", saved " : "Saved ") + saved.text + ".");
+    }
+    if (v.cfRead) {
+      parts.push(v.cfSyncedAt
+        ? "ClickFunnels last pulled " + savedWords(v.cfSyncedAt, nowMs).text + "."
+        : "ClickFunnels has never been pulled.");
+    }
+    return { text: parts.join(" "), title: title };
+  }
+
+  /* todayWords — the today line. Today's Meta spend is saved in tomorrow's
+     midnight pull, so while the pull is fresh it "comes in tomorrow morning";
+     only a stale pull makes it "unknown" (design §5 rule 8). */
+  function todayWords(view, nowMs) {
+    var v = view || {};
+    if (v.spendToday !== null && v.spendToday !== undefined) return "Today so far: " + money(v.spendToday) + ".";
+    if (!v.loaded || !metaFresh(v, nowMs)) return "Today so far: unknown.";
+    return "Today's numbers come in tomorrow morning. " + META_PULL_WORDS;
   }
 
   /* plainReasons — the flywheel checker's reasons, readable. It writes count
@@ -338,53 +562,215 @@
     return /[.!?]$/.test(out) ? out : out + ".";
   }
 
+  function codeWords(key) {
+    return str(key).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  }
+
   function stageName(s) {
     return STAGE_NAMES[s.key] || (s.label ? s.label.charAt(0).toUpperCase() + s.label.slice(1) : "Step");
   }
 
-  /* stageWord — the checker's state names, in words a person uses. */
-  function stageWord(s) {
+  function stepWords(s, total) {
+    return s && s.n ? "Step " + s.n + " of " + (total || STAGE_KEYS.length) : "";
+  }
+
+  function campaignWords(c) {
+    var k = str(c);
+    if (!k) return "";
+    if (k === "partner") return "Partner offer";
+    return k.charAt(0).toUpperCase() + k.slice(1).replace(/[-_]/g, " ") + " offer";
+  }
+
+  function listWords(items) {
+    if (items.length <= 1) return items.join("");
+    return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+  }
+
+  /* stepNumbers — the step numbers named in a reason ("waiting on offer and
+     copy" → [3, 4]; "03-offer.md is missing" → [3]). */
+  var LABEL_N = { "avatar": 1, "ad research": 2, "offer": 3, "copy": 4, "ad strategy": 5, "spend": 6 };
+  function stepNumbers(reason, stages) {
+    var r = str(reason);
+    var out = [];
+    var waiting = /^waiting on (.+)$/i.exec(r);
+    if (waiting) {
+      waiting[1].split(/\s+and\s+|,\s*/).forEach(function (label) {
+        var l = label.trim().toLowerCase();
+        var n = null;
+        arr(stages).forEach(function (s) { if (s.label === l && s.n) n = s.n; });
+        if (n === null && LABEL_N[l]) n = LABEL_N[l];
+        if (n !== null) out.push(n);
+      });
+      return out;
+    }
+    var file = /^0?(\d)-[\w-]+\.md is missing$/i.exec(r);
+    if (file) out.push(Number(file[1]));
+    var old = /^built on the old (.+)$/i.exec(r);
+    if (old && LABEL_N[old[1].trim().toLowerCase()]) out.push(LABEL_N[old[1].trim().toLowerCase()]);
+    return out;
+  }
+
+  function stepsWords(ns) {
+    return ns.length === 1 ? "step " + ns[0] : "steps " + listWords(ns.map(String));
+  }
+
+  /* doneSentence — a finished step's own numbers, in words (the word table:
+     "Done. 133 customer quotes collected."). Only counts the file wrote. */
+  function doneSentence(s) {
+    var c = obj(s && s.counts);
+    var n = function (k) { return num(c[k]); };
+    var said = "";
+    if (s.key === "avatar" && n("quotes") !== null) {
+      said = count(n("quotes")) + " customer quotes collected.";
+    } else if (s.key === "ad-research") {
+      var bits = [];
+      if (n("rowsFound") !== null) bits.push(count(n("rowsFound")) + " findings");
+      if (n("rowsVerified") !== null) bits.push(count(n("rowsVerified")) + " checked");
+      if (n("competitorsFound") !== null) bits.push(count(n("competitorsFound")) + " competitors");
+      said = bits.length ? bits.join(", ") + "." : "";
+    } else if (s.key === "offer" && n("bonuses") !== null) {
+      said = (n("priceSet") ? "Price set, " : "") + count(n("bonuses")) + " bonuses.";
+    } else if (s.key === "copy" && n("hooks") !== null) {
+      said = count(n("hooks")) + " hooks written.";
+    } else if (s.key === "ad-strategy" && n("strategyNamed")) {
+      said = "Strategy chosen.";
+    }
+    if (!said && s.why) said = plainReasons([s.why]);
+    if (said) said = said.charAt(0).toUpperCase() + said.slice(1);
+    return "Done." + (said ? " " + said : "");
+  }
+
+  /* failSentence — why a step failed its own check, said plainly. */
+  function failSentence(s) {
+    var out = arr(s && s.reasons).map(function (r) {
+      var m = /^did not report (\w+)$/i.exec(r);
+      if (m) return "It did not count its " + codeWords(m[1]) + ".";
+      if (/^has no review card$/i.test(r)) return "It has no review card.";
+      return plainReasons([r]);
+    }).filter(Boolean);
+    return out.join(" ");
+  }
+
+  /* stageWord — the word table (design §3.0): Done / Done, approved / Needs a
+     redo / Waiting on step 3 / Out of date / Not run yet. Each with one
+     sentence. */
+  function stageWord(s, stages) {
     switch (s && s.state) {
       case "READY":
         return s.approved
-          ? { word: "Done", tone: "on", why: plainReasons([s.why]) }
-          : { word: "Needs your OK", tone: "wip", why: "It is done. It waits for you to read it and say yes." };
+          ? { word: "Done, approved", tone: "on", why: doneSentence(s) }
+          : { word: "Done", tone: "wip", why: doneSentence(s) + " It waits for you to read it and approve it." };
       case "FAILED":
-        return { word: "Needs a redo", tone: "bad", why: plainReasons(s.reasons) };
-      case "STALE":
-        return { word: "Out of date", tone: "wip", why: plainReasons(s.reasons) || "An earlier step changed." };
-      case "BLOCKED":
-        return { word: "Waiting", tone: "wip", why: plainReasons(s.reasons) || "It waits on an earlier step." };
+        return { word: "Needs a redo", tone: "bad", why: (failSentence(s) || "It did not pass its own check.") + " Redo the step." };
+      case "STALE": {
+        var changed = [];
+        arr(s.reasons).forEach(function (r) { changed = changed.concat(stepNumbers(r, stages)); });
+        return {
+          word: "Out of date", tone: "wip",
+          why: changed.length
+            ? "Step " + listWords(changed.map(String)) + " changed, so this needs a redo."
+            : (plainReasons(s.reasons) || "An earlier step changed, so this needs a redo.")
+        };
+      }
+      case "BLOCKED": {
+        var on = [];
+        arr(s.reasons).forEach(function (r) { on = on.concat(stepNumbers(r, stages)); });
+        on = on.filter(function (n, i) { return on.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+        return on.length
+          ? { word: "Waiting on " + stepsWords(on), tone: "wip",
+            why: (on.length === 1 ? "Step " + on[0] + " has" : "Steps " + listWords(on.map(String)) + " have") + " to be done first." }
+          : { word: "Waiting", tone: "wip", why: plainReasons(s.reasons) || "An earlier step has to be done first." };
+      }
       case "MISSING":
-        return { word: "Not started", tone: "", why: plainReasons(s.reasons) || "It has not been run yet." };
+        return { word: "Not run yet", tone: "", why: "It has not been run yet." };
       default:
         return { word: "Unknown", tone: "", why: "" };
     }
   }
 
-  /* deriveWaiting — what only Chris can do, read off the flywheel rows and
-     nothing else: approve a finished step, or redo a failed or stale one. */
+  function chatCommand(s, campaign) {
+    return s && s.n ? "/flywheel stage " + s.n + " " + (campaign || "partner") : "";
+  }
+
+  /* deriveWaiting — what only Chris can do, read off the flywheel rows:
+     approve a finished step, or redo a failed or stale one. Each row says
+     honestly where it is done (design §3.1: "Not on this page yet. It still
+     runs in chat.") and offers the chat command when there is one. */
   function deriveWaiting(view) {
     var out = [];
-    arr(view && view.stages).forEach(function (s) {
-      var name = stageName(s).toLowerCase();
+    var stages = arr(view && view.stages);
+    var campaign = (view && view.campaign) || "partner";
+    stages.forEach(function (s) {
+      var name = stageName(s) + " (" + stepWords(s).toLowerCase() + ")";
+      var w = stageWord(s, stages);
       if (s.state === "READY" && !s.approved) {
-        out.push({ what: "Read and approve the " + name + " step", why: "It is done and waits for your yes." });
-      } else if (s.state === "FAILED") {
-        out.push({ what: "Redo the " + name + " step", why: plainReasons(s.reasons) });
-      } else if (s.state === "STALE") {
-        out.push({ what: "Redo the " + name + " step", why: "An earlier step changed, so this one is out of date." });
+        out.push({
+          kind: "approve", key: s.key,
+          what: "Read and approve: " + name,
+          why: doneSentence(s),
+          how: "Read it under Offer and market. Approving still runs in chat.",
+          cmd: ""
+        });
+      } else if (s.state === "FAILED" || s.state === "STALE") {
+        out.push({
+          kind: "redo", key: s.key,
+          what: "Redo " + name.charAt(0).toLowerCase() + name.slice(1),
+          why: w.why,
+          how: s.key === "offer"
+            ? "Write offer, on the Offer card, makes a new offer. This row clears only when the offer file is redone, and that still runs in chat."
+            : "Not on this page yet. It still runs in chat.",
+          cmd: chatCommand(s, campaign)
+        });
       }
     });
     return out;
+  }
+
+  /* videoWait — the finished videos waiting on Chris, as one Waiting row.
+     null when none wait. Approving is not on this page yet (the Videos tab is
+     slice 2); the row says where it is done, and when the text's links ran
+     out, it says that instead of pointing at a dead link. */
+  function videoWait(videos, nowMs) {
+    if (!videos || !videos.loaded || !videos.items.length) return null;
+    var now = typeof nowMs === "number" ? nowMs : Date.now();
+    var items = videos.items;
+    var ads = [];
+    items.forEach(function (v) { if (v.adId && ads.indexOf(v.adId) === -1) ads.push(v.adId); });
+    ads.sort(function (a, b) { return Number(a) - Number(b); });
+    var since = null;
+    var latestExpiry = null;
+    var anyLive = false;
+    items.forEach(function (v) {
+      var s = asDate(v.since);
+      if (s && (!since || s < since)) since = s;
+      var e = asDate(v.expiresAt);
+      if (e) {
+        if (e.getTime() > now) anyLive = true;
+        if (!latestExpiry || e > latestExpiry) latestExpiry = e;
+      }
+    });
+    var n = items.length;
+    var howMany = n + (videos.more ? " or more" : "") + (n === 1 && !videos.more ? " video" : " videos");
+    var how;
+    if (anyLive) how = "Approving is not on this page yet. Use the Approve link in the text we sent you.";
+    else if (latestExpiry) how = "Approving is not on this page yet, and the approve links in your text ran out on " + dateOf(latestExpiry) + ".";
+    else how = "Approving is not on this page yet, and no working approve link was sent for them.";
+    return {
+      kind: "videos",
+      what: "Approve or reject " + howMany,
+      why: (ads.length ? listWords(ads.map(function (a) { return "Ad " + a; })) + ". " : "") +
+        (since ? "Waiting since " + dateOf(since) + "." : "Waiting since an unknown day."),
+      how: how,
+      cmd: ""
+    };
   }
 
   function waitingFor(view, names) {
     return arr(view && view.partsWaiting).filter(function (w) { return names.indexOf(w.part) !== -1; });
   }
 
-  /* deriveParts — the Machine parts card. Each part is Ready, Not ready or
-     Unknown; unknown is never counted as ready. */
+  /* deriveParts — the "What is turned on" card. Each part is Ready, Not ready
+     or Unknown; unknown is never counted as ready. */
   function deriveParts(view, nowMs) {
     var v = view || {};
     var r = v.copyReady || {};
@@ -395,16 +781,15 @@
     var meta;
     if (!v.loaded) {
       meta = { ready: null, note: "Not known yet." };
-    } else if (v.asOf) {
-      var age = now - new Date(v.asOf).getTime();
-      var fresh = !isNaN(age) && age <= META_FRESH_MS;
+    } else if (v.asOf || v.pulledAt) {
+      var fresh = metaFresh(v, now);
       meta = {
         ready: fresh,
-        note: "Last saved " + when(v.asOf, now).text + "." +
+        note: "Last saved " + when(v.asOf || v.pulledAt, now).text + "." +
           (v.latestMetricsDate ? " Numbers run through " + dayWords(v.latestMetricsDate) + "." : "") +
           (fresh ? "" : " It should save every day.")
       };
-      if (v.spend30 === null && waitingFor(v, ["spend"]).length) meta.note += " No ad numbers are saved for the last 30 days.";
+      if (v.spend30 === null && waitingFor(v, ["spend"]).length) meta.note += " No ad numbers are saved yet.";
     } else if (v.syncRead) {
       meta = { ready: false, note: "Meta has never sent numbers for this company." };
     } else {
@@ -464,6 +849,67 @@
     return { bad: false, text: "It writes one ad and checks it against the ad rules." };
   }
 
+  /* centsWords — "about $0.67", or "under 1 cent" for a run that cost a
+     fraction of a cent (a measured 0 would be a lie). */
+  function centsWords(cents, underOneCent) {
+    if (underOneCent) return "under 1 cent";
+    return "about " + money(cents);
+  }
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+  /* offerCostLine — under Write offer. Only a measured run (costs.offer, the
+     newest finished marketing_jobs offer run) or "unknown". Never a constant. */
+  function offerCostLine(view) {
+    var v = view || {};
+    if (!v.loaded) return "Time and cost: unknown. The marketing numbers did not load.";
+    var o = v.offerCost;
+    if (!o) {
+      return v.costsRead
+        ? "Time and cost: unknown. The run log could not be read yet."
+        : "Time and cost: unknown. This page cannot read run costs yet.";
+    }
+    if (!o.measured) return "Time and cost: unknown, not measured yet. One run at a time.";
+    var time = o.seconds !== null
+      ? "About " + Math.max(1, Math.ceil(o.seconds / 60)) + " minutes"
+      : "Time unknown";
+    var cost = o.costCents !== null || o.underOneCent
+      ? centsWords(o.costCents, o.underOneCent) + " of model spend"
+      : "cost unknown, because no price is on file for " + (o.unpriced.length ? listWords(o.unpriced) : "its model");
+    return time + ", " + cost + " (last measured run" + (o.seconds !== null ? ": " + minutesWords(o.seconds) : "") + "). One run at a time.";
+  }
+
+  /* copyCostLine — under Write ad copy. The copy writer's own last runs, and
+     the house account's writing budget as the meter counts it (tokens). */
+  function copyCostLine(view) {
+    var v = view || {};
+    if (!v.loaded) return "Cost: unknown. The marketing numbers did not load.";
+    var c = v.copyCost;
+    var cost;
+    if (!c) cost = "Cost: unknown. The usage log could not be read yet.";
+    else if (!c.runs) cost = "Cost: unknown, not measured yet.";
+    else if (c.avgCostCents !== null || c.underOneCent) {
+      cost = cap(centsWords(c.avgCostCents, c.underOneCent)) + " a run (average of the last " +
+        (c.runs === 1 ? "run" : c.runs + " runs") + ").";
+    } else {
+      cost = "Cost: unknown. The last " + (c.runs === 1 ? "run" : c.runs + " runs") +
+        " used a model with no price on file here" + (c.unpriced.length ? " (" + listWords(c.unpriced) + ")" : "") + ".";
+    }
+    var r = v.copyReady || {};
+    var budget = r.budgetUsed !== null && r.budgetUsed !== undefined && r.budgetCap !== null && r.budgetCap !== undefined
+      ? " Writing budget this month: " + count(r.budgetUsed) + " of " + count(r.budgetCap) +
+        " tokens used. A token is a small piece of a word."
+      : " Writing budget this month: unknown.";
+    return cost + budget;
+  }
+
+  /* offerHonest — the Offer card's sentence while the offer writer does not
+     write the stage file (until slice 1): design §3.1. */
+  function offerHonest(view, offerRead) {
+    if (!offerRead || !offerRead.offer) return "";
+    return "The flywheel step and the latest offer are checked two different ways right now. " +
+      "The step reads the offer file. Write offer saves its offer on this page, not in that file yet.";
+  }
+
   /* plainError — what failed, in the words of the person it happened to.
      Never a raw status code (UI-STANDARDS §6.3). */
   function plainError(res, what) {
@@ -489,6 +935,16 @@
     if (res.status === 503) return "The database is not reachable right now. Try again in a moment.";
     if (what === "today") return "The marketing numbers could not load. Try again in a minute.";
     return "That did not work, and nothing changed. Try again in a moment.";
+  }
+
+  /* refreshBanner — a reload that failed after a good load keeps the page
+     painted and says so (design §3.1: "This page shows the last load from
+     3:02 PM."), instead of blanking every number. */
+  function refreshBanner(res, lastLoadedMs) {
+    var at = clockOf(new Date(lastLoadedMs));
+    if (!res || res.transport || res.status === 0) return "No connection. This page shows the last load from " + at + ".";
+    if (res.status === 401) return "You are signed out. Sign in and open this page again.";
+    return "The marketing numbers did not refresh. This page shows the last load from " + at + ".";
   }
 
   /* serverWords — the offer writer (M12) answers every refusal with a
@@ -517,6 +973,10 @@
   }
 
   /* ── Write ad copy ───────────────────────────────────────────────────── */
+
+  /* One press runs, and pays for, at most one job (api/creative/run.mjs
+     maxJobsFrom honours it exactly). */
+  var COPY_MAX_JOBS = 1;
 
   function newKey(nowMs, rand) {
     var stamp = new Date(typeof nowMs === "number" ? nowMs : Date.now())
@@ -620,7 +1080,7 @@
       var jobId = obj(g.job).id;
       return deps.api("/api/creative/run", {
         method: "POST",
-        body: { partner_id: view.partnerId, max_jobs: 3 }
+        body: { partner_id: view.partnerId, max_jobs: COPY_MAX_JOBS }
       }).then(function (run) {
         var out = summarizeRun(run, jobId);
         out.sent = true;
@@ -718,6 +1178,16 @@
     return '<span title="' + esc(w.title) + '">' + esc(w.text) + "</span>";
   }
 
+  /* toggle — a button that shows and hides one block in place. Long text
+     folds behind it instead of sitting in an inner scroll box (design §3.0,
+     UI-STANDARDS §11). The page wires every [data-toggle] once. `swapId`, when
+     given, is a short version shown while the block is closed. */
+  function toggle(id, closedLabel, openLabel, swapId) {
+    return '<button class="btn quiet" type="button" data-toggle="' + esc(id) + '" aria-controls="' + esc(id) +
+      '" aria-expanded="false" data-closed="' + esc(closedLabel) + '" data-open="' + esc(openLabel) + '"' +
+      (swapId ? ' data-swap="' + esc(swapId) + '"' : "") + ">" + esc(closedLabel) + "</button>";
+  }
+
   function coverage(days, of) {
     var d = num(days);
     return d !== null && d < of && d > 0 ? " Numbers saved for " + d + " of " + of + " days." : "";
@@ -725,17 +1195,22 @@
 
   function renderSpendTile(view, which, nowMs) {
     var v = view || {};
+    /* "Old numbers" leads the row once: on its first tile, top-left. */
+    var lead = which === 7 ? oldLead(v, nowMs) : "";
+    var leadHtml = lead ? '<span class="note lead">' + esc(lead) + "</span>" : "";
     if (which === 7) {
-      return '<span class="caption">Ad spend, last 7 days</span>' +
+      var r7 = v.spendThrough ? rangeWords(v.from7, v.to7) : "";
+      return leadHtml + '<span class="caption">Ad spend, all accounts, last 7 days</span>' +
         '<span class="vl">' + esc(money(v.spend7)) + "</span>" +
         '<span class="cmp">' + esc(compare(v.spend7, v.spendPrev7, "7 days") + coverage(v.days7, 7)) + "</span>" +
-        '<span class="note">' + (v.asOf ? "Meta numbers as of " + timeTag(v.asOf, nowMs) + ". " : "No Meta numbers on file yet. ") +
+        '<span class="note">' + (r7 ? esc(r7) + ". " : "") +
         '<a href="campaign-manager.html">See every ad in Campaigns</a></span>';
     }
-    return '<span class="caption">Ad spend, last 30 days</span>' +
+    var r30 = v.spendThrough ? rangeWords(v.from30, v.to30) : "";
+    return leadHtml + '<span class="caption">Ad spend, all accounts, last 30 days</span>' +
       '<span class="vl">' + esc(money(v.spend30)) + "</span>" +
-      '<span class="cmp">' + esc(compare(v.spend30, null, "30 days") + coverage(v.days30, 30)) + "</span>" +
-      '<span class="note">Today so far: ' + esc(money(v.spendToday)) + ".</span>";
+      '<span class="cmp">' + esc(compare(v.spend30, v.spendPrev30, "30 days") + coverage(v.days30, 30)) + "</span>" +
+      '<span class="note">' + (r30 ? esc(r30) + ". " : "") + esc(todayWords(v, nowMs)) + "</span>";
   }
 
   function renderPartsTile(view, nowMs) {
@@ -749,7 +1224,7 @@
     else if (notReady.length) cmp = "Not ready: " + notReady.join("; ") + ".";
     else if (known.length < parts.length) cmp = "The rest are not known yet.";
     else cmp = "Every part is ready.";
-    return '<span class="caption">Machine parts ready</span>' +
+    return '<span class="caption">What is turned on</span>' +
       '<span class="vl">' + esc(value) + "</span>" +
       '<span class="cmp">' + esc(cmp) + "</span>";
   }
@@ -758,24 +1233,67 @@
     return '<p class="muted">Not loaded. The note at the top of the page says why.</p>';
   }
 
-  function renderWaiting(view) {
-    if (!view || !view.loaded) return notLoaded();
-    var list = deriveWaiting(view);
-    if (!list.length) return '<p class="muted">Nothing is waiting on you right now.</p>';
-    return '<ol class="rows">' + list.map(function (w) {
-      return '<li class="row"><div class="row-main"><b>' + esc(w.what) + "</b>" +
-        (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") + "</div></li>";
-    }).join("") + "</ol>";
+  function waitRow(w, i) {
+    return '<li class="row" data-wait="' + esc(w.kind) + '">' +
+      '<div class="row-main"><b>' + esc(w.what) + "</b>" +
+      (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") +
+      (w.how ? '<div class="row-why">' + esc(w.how) + "</div>" : "") +
+      (w.cmd
+        ? '<div class="row-act"><button class="btn quiet" type="button" data-copy="' + esc(w.cmd) + '">Copy the chat command</button>' +
+          '<span class="caption copied" id="copied-' + i + '" role="status" aria-live="polite"></span></div>'
+        : "") +
+      "</div></li>";
   }
 
-  function stageRows(stages) {
+  /* waitingList — the rows, videos first (they have waited longest). */
+  function waitingList(view, videos, nowMs) {
+    var out = [];
+    var v = videoWait(videos, nowMs);
+    if (v) out.push(v);
+    return out.concat(view && view.loaded ? deriveWaiting(view) : []);
+  }
+
+  function renderWaiting(view, videos, nowMs) {
+    if (!view || !view.loaded) return notLoaded();
+    var list = waitingList(view, videos, nowMs);
+    var videoErr = videos && videos.loaded === false && videos.tried
+      ? '<p class="caption muted gap-top">The video list did not load. The rest of this page is current.</p>'
+      : "";
+    if (!list.length) return '<p class="muted">Nothing is waiting on you right now.</p>' + videoErr;
+    return '<ol class="rows">' + list.map(waitRow).join("") + "</ol>" + videoErr;
+  }
+
+  /* reviewCardHtml — the "## Review card" markdown as plain paragraphs.
+     Bold labels stay bold; the "Say one of:" line is a chat instruction and
+     is left off (approving still runs in chat, which the row says). */
+  function reviewCardHtml(md) {
+    var blocks = str(md).replace(/\r/g, "").split(/\n\s*\n/).map(function (b) { return b.trim(); }).filter(Boolean);
+    return blocks.filter(function (b) { return !/^\*\*Say one of:?\*\*/i.test(b) && !/^Say one of:/i.test(b); })
+      .map(function (b) {
+        var text = b.replace(/\\([<>\\*_])/g, "$1");
+        var label = /^\*\*([^*]+?)\*\*\s*/.exec(text);
+        var rest = label ? text.slice(label[0].length) : text;
+        rest = rest.replace(/\*\*/g, "");
+        return "<p>" + (label ? "<b>" + esc(label[1]) + "</b> " : "") + esc(rest) + "</p>";
+      }).join("");
+  }
+
+  function stageRows(stages, campaign) {
     return '<ol class="rows">' + stages.map(function (s) {
-      var w = stageWord(s);
+      var w = stageWord(s, stages);
+      var id = "rc-" + str(campaign || "c").replace(/[^a-z0-9-]/gi, "") + "-" + s.key;
+      var read = s.reviewCard
+        ? toggle(id, "Read it", "Hide it") + '<div class="review" id="' + esc(id) + '" hidden>' + reviewCardHtml(s.reviewCard) + "</div>"
+        : '<button class="btn quiet" type="button" disabled>Read it</button>' +
+          '<span class="caption muted">Nothing to read yet: ' + (s.state === "MISSING" ? "this step has not been run." : "this step has no review card.") + "</span>";
       return '<li class="row" data-stage="' + esc(s.key) + '">' +
-        '<span class="row-n">' + esc(s.n == null ? "" : s.n) + "</span>" +
-        '<div class="row-main"><b>' + esc(stageName(s)) + "</b>" +
-        (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") + "</div>" +
-        chip(w.word, w.tone) + "</li>";
+        '<div class="row-main"><b>' + esc(stageName(s)) + '</b> <span class="caption faint step">' + esc(stepWords(s)) + "</span></div>" +
+        chip(w.word, w.tone) +
+        '<div class="row-body">' +
+          (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") +
+          (STAGE_RUNS[s.key] ? '<div class="row-why">' + esc(STAGE_RUNS[s.key]) + "</div>" : "") +
+          '<div class="row-act">' + read + "</div>" +
+        "</div></li>";
     }).join("") + "</ol>";
   }
 
@@ -785,8 +1303,8 @@
     var withRows = view.campaigns.filter(function (c) { return c.stages.length; });
     if (!withRows.length) return '<p class="muted">No flywheel steps are on file yet.</p>';
     return withRows.map(function (c) {
-      return (withRows.length > 1 ? '<p class="caption sub-hd">Campaign: ' + esc(c.campaign) + "</p>" : "") +
-        stageRows(c.stages) +
+      return (withRows.length > 1 ? '<p class="caption sub-hd">' + esc(campaignWords(c.campaign)) + "</p>" : "") +
+        stageRows(c.stages, c.campaign) +
         (c.advice ? '<p class="caption muted gap-top">' + esc(plainReasons([c.advice])) + "</p>" : "");
     }).join("");
   }
@@ -800,10 +1318,11 @@
   function renderOfferStatus(view) {
     if (!view || !view.loaded) return notLoaded();
     var s = offerStage(view);
-    if (!s) return '<p class="muted">Offer step: unknown. No flywheel row for it is on file.</p>';
-    var w = stageWord(s);
-    return '<div class="row-main"><div class="piece-hd"><span>Flywheel step 3</span>' + chip(w.word, w.tone) + "</div>" +
-      (w.why ? '<div class="row-why">' + esc(w.why) + "</div>" : "") + "</div>";
+    if (!s) return '<p class="muted">The offer step: unknown. No flywheel row for it is on file.</p>';
+    var w = stageWord(s, view.stages);
+    return '<div class="row solo"><div class="row-main"><b>' + esc(stageName(s)) + '</b> <span class="caption faint step">' +
+      esc(stepWords(s)) + "</span></div>" + chip(w.word, w.tone) +
+      (w.why ? '<div class="row-body"><div class="row-why">' + esc(w.why) + "</div></div>" : "") + "</div>";
   }
 
   function list(items) {
@@ -811,10 +1330,15 @@
   }
 
   /* renderOffer — the review card first, then the offer's name and price, then
-     the detail (M12's contract: docs/specs/marketing-offer-contract.md, "What
-     the Offer card should show first"). */
+     the whole offer behind Show more (design §3.2; M12's contract,
+     docs/specs/marketing-offer-contract.md, "What the Offer card should show
+     first"). No inner scroll box. */
   function renderOffer(offer, nowMs) {
     if (!offer) return "";
+    var rest = (offer.sentence ? "<p>" + esc(offer.sentence) + "</p>" : "") +
+      (offer.whatTheyGet.length ? '<p class="caption sub-hd">What they get</p>' + list(offer.whatTheyGet) : "") +
+      (offer.guarantees.length ? '<p class="caption sub-hd">Guarantee</p>' + list(offer.guarantees) : "") +
+      (offer.bonuses.length ? '<p class="caption sub-hd">Bonuses</p>' + list(offer.bonuses) : "");
     return '<div class="offer-body">' +
       '<div class="piece-hd"><b>Latest offer</b>' +
       (offer.finishedAt ? '<span class="caption faint">Written ' + timeTag(offer.finishedAt, nowMs) + "</span>" : "") + "</div>" +
@@ -823,10 +1347,10 @@
       (offer.notSure.length ? '<p class="caption sub-hd">Not sure about</p>' + list(offer.notSure) : "") +
       '<p class="gap-top"><b>' + esc(offer.name || "Unnamed offer") + "</b>" +
       (offer.price ? " · " + esc(offer.price) : "") + "</p>" +
-      (offer.sentence ? '<p class="gap-top">' + esc(offer.sentence) + "</p>" : "") +
-      (offer.whatTheyGet.length ? '<p class="caption sub-hd">What they get</p>' + list(offer.whatTheyGet) : "") +
-      (offer.guarantees.length ? '<p class="caption sub-hd">Guarantee</p>' + list(offer.guarantees) : "") +
-      (offer.bonuses.length ? '<p class="caption sub-hd">Bonuses</p>' + list(offer.bonuses) : "") +
+      (rest
+        ? '<div class="row-act">' + toggle("offerMore", "Show more", "Show less") + "</div>" +
+          '<div class="offer-more" id="offerMore" hidden>' + rest + "</div>"
+        : "") +
       "</div>";
   }
 
@@ -842,14 +1366,35 @@
 
   var SCREEN_WORDS = { passed: "Passed the ad rules", blocked: "Stopped by the ad rules", pending: "Being checked" };
 
-  function renderPieces(pieces, nowMs) {
+  /* foldText — the head of a long piece, or null when it is short enough to
+     show whole. */
+  function foldText(text) {
+    var t = str(text);
+    var lines = t.split("\n");
+    if (lines.length <= FOLD_LINES && t.length <= FOLD_CHARS) return null;
+    var head = lines.slice(0, FOLD_LINES).join("\n");
+    if (head.length > FOLD_CHARS) head = head.slice(0, FOLD_CHARS);
+    return head.replace(/\s+$/, "") + "…";
+  }
+
+  function renderPieces(pieces, nowMs, prefix) {
     if (!pieces || !pieces.length) return "";
-    return '<div class="pieces">' + pieces.map(function (p) {
+    var pre = str(prefix || "piece").replace(/[^a-z0-9-]/gi, "");
+    return '<div class="pieces">' + pieces.map(function (p, i) {
       var tone = p.state === "passed" ? "on" : (p.state === "blocked" ? "bad" : "wip");
+      var head = p.text ? foldText(p.text) : null;
+      var id = pre + "-" + i;
+      var words = !p.text
+        ? '<p class="muted">No words were saved with this one.</p>'
+        : (head
+          ? '<div class="words" id="' + esc(id) + '-short">' + esc(head) + "</div>" +
+            '<div class="words" id="' + esc(id) + '" hidden>' + esc(p.text) + "</div>" +
+            '<div class="row-act">' + toggle(id, "Show more", "Show less", id + "-short") + "</div>"
+          : '<div class="words">' + esc(p.text) + "</div>");
       return '<div class="piece">' +
         '<div class="piece-hd">' + chip(SCREEN_WORDS[p.state] || "Unknown", tone) +
         (p.createdAt ? '<span class="caption faint">' + timeTag(p.createdAt, nowMs) + "</span>" : "") + "</div>" +
-        (p.text ? '<div class="words">' + esc(p.text) + "</div>" : '<p class="muted">No words were saved with this one.</p>') +
+        words +
         (p.state === "blocked" && p.reasons.length
           ? '<ul class="reasons">' + p.reasons.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>"
           : "") +
@@ -865,7 +1410,7 @@
     if (!view.pieces.length) {
       html += '<p class="muted">No ad copy yet. Press Write ad copy to make the first one.</p>';
     } else {
-      html += renderPieces(view.pieces.slice(0, 10), nowMs);
+      html += renderPieces(view.pieces.slice(0, 10), nowMs, "latest");
     }
     if (view.jobs.length) {
       html += '<p class="caption sub-hd">Last tries</p><ol class="rows">' + view.jobs.slice(0, 5).map(function (j) {
@@ -891,23 +1436,49 @@
 
   var API = {
     OFFER_TYPES: OFFER_TYPES,
-    FIVE: FIVE,
+    STAGE_KEYS: STAGE_KEYS,
+    STAGE_NAMES: STAGE_NAMES,
     OFFER_POLL_MS: OFFER_POLL_MS,
     OFFER_POLL_TRIES: OFFER_POLL_TRIES,
+    RELOAD_MS: RELOAD_MS,
+    FOCUS_GAP_MS: FOCUS_GAP_MS,
+    META_FRESH_MS: META_FRESH_MS,
+    META_PULL_WORDS: META_PULL_WORDS,
+    COPY_MAX_JOBS: COPY_MAX_JOBS,
+    display: display,
     normalizeToday: normalizeToday,
+    normalizeVideos: normalizeVideos,
     normalizePiece: normalizePiece,
     normalizeOffer: normalizeOffer,
     money: money,
     compare: compare,
     when: when,
+    savedWords: savedWords,
+    loadedWords: loadedWords,
+    minutesWords: minutesWords,
     dayWords: dayWords,
+    rangeWords: rangeWords,
+    metaFresh: metaFresh,
+    oldLead: oldLead,
+    asOfLine: asOfLine,
+    todayWords: todayWords,
     plainReasons: plainReasons,
+    stageName: stageName,
+    stepWords: stepWords,
+    campaignWords: campaignWords,
+    doneSentence: doneSentence,
     stageWord: stageWord,
     deriveWaiting: deriveWaiting,
+    videoWait: videoWait,
+    waitingList: waitingList,
     deriveParts: deriveParts,
     setupBlock: setupBlock,
     setupLine: setupLine,
+    offerCostLine: offerCostLine,
+    copyCostLine: copyCostLine,
+    offerHonest: offerHonest,
     plainError: plainError,
+    refreshBanner: refreshBanner,
     jobReason: jobReason,
     newKey: newKey,
     checkCopyInput: checkCopyInput,
@@ -920,6 +1491,8 @@
     offerPollStep: offerPollStep,
     startOffer: startOffer,
     readOffer: readOffer,
+    foldText: foldText,
+    reviewCardHtml: reviewCardHtml,
     renderSpendTile: renderSpendTile,
     renderPartsTile: renderPartsTile,
     renderWaiting: renderWaiting,
@@ -968,7 +1541,15 @@
     }
 
     var deps = { api: api };
-    var state = { view: normalizeToday(null), offerRead: null, polling: false };
+    var state = {
+      view: normalizeToday(null),
+      videos: { loaded: false, items: [], more: false, tried: false },
+      offerRead: null,
+      polling: false,
+      loadedAt: null,
+      loading: false,
+      lastTry: 0
+    };
 
     function say(id, tone, text) {
       var el = $(id);
@@ -984,31 +1565,83 @@
       if (lbl && label) lbl.textContent = label;
     }
 
+    /* A repaint (every 5 minutes, or on focus) must not snap shut a review
+       card Chris is reading. Note what is open, repaint, open it again. */
+    function openPanels() {
+      var out = [];
+      var btns = $("mcc-root").querySelectorAll('button[data-toggle][aria-expanded="true"]');
+      for (var i = 0; i < btns.length; i++) out.push(btns[i].getAttribute("data-toggle"));
+      return out;
+    }
+    function reopen(ids) {
+      ids.forEach(function (id) {
+        var btn = $("mcc-root").querySelector('button[data-toggle="' + id + '"]');
+        if (btn && btn.getAttribute("aria-expanded") !== "true") setOpen(btn, true);
+      });
+    }
+    function setOpen(btn, open) {
+      var panel = $(btn.getAttribute("data-toggle"));
+      if (!panel) return;
+      panel.hidden = !open;
+      var swap = btn.getAttribute("data-swap");
+      if (swap && $(swap)) $(swap).hidden = open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.textContent = open ? btn.getAttribute("data-open") : btn.getAttribute("data-closed");
+    }
+
     function paint() {
+      var keep = openPanels();
+      repaint();
+      reopen(keep);
+    }
+
+    function repaint() {
       var v = state.view;
       var now = Date.now();
       $("tileSpend7").innerHTML = renderSpendTile(v, 7, now);
       $("tileSpend30").innerHTML = renderSpendTile(v, 30, now);
       $("tileParts").innerHTML = renderPartsTile(v, now);
-      var waiting = v.loaded ? deriveWaiting(v) : [];
+      var asOf = asOfLine(v, now);
+      var asOfEl = $("mccAsOf");
+      asOfEl.textContent = asOf.text;
+      asOfEl.title = asOf.title;
+      asOfEl.hidden = !asOf.text;
+      asOfEl.classList.toggle("stale", Boolean(oldLead(v, now)));
+      var waiting = v.loaded ? waitingList(v, state.videos, now) : [];
       $("waitingCount").textContent = waiting.length ? waiting.length + " to do" : "";
-      $("waitingList").innerHTML = renderWaiting(v);
-      $("flywheelCampaign").textContent = v.loaded && v.campaign ? "Campaign: " + v.campaign : "";
+      $("waitingList").innerHTML = renderWaiting(v, state.videos, now);
+      $("flywheelCampaign").textContent = v.loaded && v.campaign ? campaignWords(v.campaign) : "";
       $("flywheelList").innerHTML = renderFlywheel(v);
       $("offerStatus").innerHTML = renderOfferStatus(v);
+      $("offerCost").textContent = offerCostLine(v);
       $("healthList").innerHTML = renderParts(v, now);
       $("latestList").innerHTML = renderLatest(v, now);
+      $("copyCost").textContent = copyCostLine(v);
       var line = setupLine(v);
       var setup = $("copySetup");
       setup.textContent = line.text;
       setup.className = "setup caption" + (line.bad ? " bad" : "");
       var btn = $("copyBtn");
       if (!btn.classList.contains("busy")) btn.disabled = line.bad;
-      $("mccStamp").textContent = v.loaded ? "Loaded " + when(new Date(now).toISOString(), now).text : "Not loaded";
+      var stamp = $("mccStamp");
+      if (state.loadedAt) {
+        var lw = loadedWords(state.loadedAt);
+        stamp.textContent = lw.text;
+        stamp.title = lw.title;
+      } else {
+        stamp.textContent = "Not loaded";
+        stamp.title = "";
+      }
     }
 
     function paintOffer() {
+      var keep = openPanels();
       $("offerLatest").innerHTML = renderOfferLatest(state.offerRead, Date.now());
+      reopen(keep);
+      var honest = offerHonest(state.view, state.offerRead);
+      var h = $("offerHonest");
+      h.textContent = honest;
+      h.hidden = !honest;
       /* Until the offer writer ships, the button says so and does nothing
          (the line under it is the reason). Any other answer leaves it on. */
       var btn = $("offerBtn");
@@ -1017,20 +1650,47 @@
       }
     }
 
+    function loadVideos() {
+      return api("/api/ad-videos?status=awaiting_approval").then(function (res) {
+        var v = normalizeVideos(res);
+        v.tried = true;
+        state.videos = v;
+      });
+    }
+
+    /* load — GET marketing/today (and the videos waiting). A failed reload
+       after a good load keeps the page painted and says how old it is. */
     function load() {
-      return api("/api/marketing/today").then(function (res) {
+      if (state.loading) return Promise.resolve();
+      state.loading = true;
+      state.lastTry = Date.now();
+      return Promise.all([api("/api/marketing/today"), loadVideos()]).then(function (all) {
+        var res = all[0];
         var banner = $("mccBanner");
         if (res.status === 200 && res.body && res.body.ok !== false) {
           state.view = normalizeToday(res.body);
+          state.loadedAt = Date.now();
           banner.className = "banner err";
           banner.textContent = "";
+        } else if (state.loadedAt) {
+          banner.className = "banner err show";
+          banner.textContent = refreshBanner(res, state.loadedAt);
         } else {
           state.view = normalizeToday(null);
           banner.className = "banner err show";
           banner.textContent = plainError(res, "today");
         }
+        state.loading = false;
         paint();
+        paintOffer();
+      }, function () {
+        state.loading = false;
       });
+    }
+
+    function refresh() {
+      if (Date.now() - state.lastTry < FOCUS_GAP_MS) return;
+      load();
     }
 
     function loadOffer() {
@@ -1072,6 +1732,28 @@
       root.setTimeout(step, OFFER_POLL_MS);
     }
 
+    /* One listener for every Show more / Read it and Copy the chat command
+       button the renderers paint, so a repaint never loses its wiring. */
+    $("mcc-root").addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest("button[data-toggle], button[data-copy]") : null;
+      if (!t || t.disabled) return;
+      if (t.hasAttribute("data-toggle")) {
+        setOpen(t, t.getAttribute("aria-expanded") !== "true");
+        return;
+      }
+      var cmd = t.getAttribute("data-copy");
+      var note = t.parentNode && t.parentNode.querySelector(".copied");
+      function tell(text) { if (note) note.textContent = text; }
+      var fail = function () { tell("Could not copy. Type this in Claude Code: " + cmd); };
+      try {
+        if (root.navigator && root.navigator.clipboard && root.navigator.clipboard.writeText) {
+          root.navigator.clipboard.writeText(cmd).then(function () { tell("Copied. Paste it in Claude Code."); }, fail);
+        } else {
+          fail();
+        }
+      } catch (err) { fail(); }
+    });
+
     $("copyForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var btn = $("copyBtn");
@@ -1085,9 +1767,10 @@
       $("copyResult").innerHTML = "";
       writeAdCopy(deps, state.view, angle, offerType).then(function (out) {
         say("copySay", out.tone, out.message);
-        $("copyResult").innerHTML = renderPieces(out.pieces, Date.now());
+        $("copyResult").innerHTML = renderPieces(out.pieces, Date.now(), "result");
         busy(btn, false, "Write ad copy");
-        return out.sent ? load() : null;
+        if (out.sent) { state.lastTry = 0; return load(); }
+        return null;
       }, function () {
         say("copySay", "err", "Something went wrong on this page. Reload it and try again.");
         busy(btn, false, "Write ad copy");
@@ -1109,6 +1792,12 @@
         busy(btn, false, "Write offer");
       });
     });
+
+    /* Fresh numbers without a manual reload: when the tab comes back into
+       view, and every 5 minutes while the page is open. */
+    doc.addEventListener("visibilitychange", function () { if (!doc.hidden) refresh(); });
+    root.addEventListener("focus", refresh);
+    root.setInterval(function () { if (!doc.hidden) load(); }, RELOAD_MS);
 
     load();
     loadOffer();
