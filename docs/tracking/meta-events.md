@@ -87,14 +87,14 @@ Meta's pages (read 2026-10-05):
 | ph (phone) | SHA-256 of digits, country code, no leading zeros (R2) | FIXED | FIXED | FIXED | FIXED — leading zeros were kept |
 | external_id | hashing recommended (R2) | PASS (hash of session id) | PASS | PASS | PASS (hash of client id) |
 | fbc / fbp | raw, `fb.1.<ms>.<id>`, click id case kept (R2, R3) | PASS | PASS | PASS | PASS |
-| value + currency | Purchase needs both; value is a number (R4) | — | server PASS 147 USD; **browser FAIL 297** | — | server PASS (charged cents / 100, e.g. 14700 → 147); **browser FAIL 297** |
+| value + currency | Purchase needs both; value is a number (R4) | — | server PASS 147 USD; browser FIXED (was 297) | — | server PASS (charged cents / 100, e.g. 14700 → 147); browser FIXED (was 297) |
 | event_id same in browser and server | eventID = event_id, same name (R5) | PASS `<sid>.<seq>` | PASS `<sid>.<seq>` | PASS `<sid>.<seq>` | PASS `purchase.<order ref>` both sides |
 | one server copy per event | Meta drops a server copy that matches a browser copy; it does not promise to drop a second server copy (R5) | PASS | PASS | PASS | FIXED — the track door also sent one; now only the payment webhook does |
 | ad id / campaign id | Conversions API has no ad id or campaign id field (R1); Meta ties the event to the ad through fbc (the click id) | fbc sent | fbc sent | fbc sent | fbc sent (from the checkout, else kept on the client) |
 
 Live proof already on record (production `events`, read only): the Lead and the InitiateCheckout of 2026-10-02 22:43 UTC both carried the browser's `<sid>.<seq>` id, fbc, fbp and the page url, and Meta answered `sent: 1` with no error.
 
-**Still wrong, and not ours to change here:** the live browser tracker (`public/funnel/fh-events.js`, `var PRICE`) still says $297 for InitiateCheckout and Purchase. The page charges $147 since 2026-10-04. Meta keeps the copy it gets first, usually the browser's, so a sale would show as $297. The exact patch is on `ops/workflows/perfect-machine-2026-10-05.md` (M9).
+**Browser price fixed (2026-10-05, M9, owner-authorized):** the browser tracker (`public/funnel/fh-events.js`, `var PRICE`) said $297 for InitiateCheckout and Purchase while the page has charged $147 since 2026-10-04. Meta keeps the copy it gets first, usually the browser's, so a sale would have shown as $297. It now says 147, and `src/ads/fh-events-meta.test.mjs` fails if the browser price and `SLO_VALUE` ever differ again. Live only after the next `npm run ship` (Netlify serves the file; the ClickFunnels pages load it from fundhub.ai).
 
 ## After the first real booking or sale — what to look at (5 minutes)
 
@@ -105,7 +105,7 @@ Test Events only shows events sent with a test code, and real visitors never car
    - It counts **1** for that sale or booking, not 2.
    - Connection method says **Browser and Server** (or "Multiple").
    - Open the event, then its deduplication details: the server copy is deduplicated against the browser copy by **Event ID**.
-   - Purchase value: **$147** once the fh-events.js patch is live. Before that it may show $297 — that is the browser bug above, not the server.
+   - Purchase value: **$147** (if it shows $297, the ship that carries the browser price fix has not gone out).
    - Schedule: content name **funding-book-call**.
    - Event Match Quality is shown; email and phone count among the customer information received.
 3. **No third sender.** The event's sources must not name the Conversions API Gateway or ClickFunnels as a partner. If either is there, Meta gets a second server copy and the sale can count twice.
