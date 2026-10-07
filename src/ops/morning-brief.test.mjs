@@ -59,6 +59,19 @@ test("the evening text reuses a stored systems line and does not invent a second
   assert.match(text, /kind=evening/);
 });
 
+test("a dry run does not call the text sender", async () => {
+  let calls = 0;
+  const out = await textMorningBrief({
+    body: "Good morning, Chris.",
+    env: { PULSE_SMS_TO: "+15555550865" },
+    dryRun: true,
+    sendImpl: async () => { calls += 1; return { status: "sent" }; }
+  });
+  assert.equal(calls, 0);
+  assert.equal(out.delivery_status, "dry_run");
+  assert.equal(out.sent_to_last4, "0865");
+});
+
 test("the text uses PULSE_SMS_TO and does not invent a number", async () => {
   const missing = await textMorningBrief({ body: "Good morning, Chris.", env: {}, dryRun: false });
   assert.equal(missing.delivery_status, "no_number");

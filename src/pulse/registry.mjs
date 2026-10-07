@@ -332,6 +332,7 @@ const API_KEYS = [
   "read/message-templates",
   "read/messages",
   "read/money-map",
+  "read/morning-brief",
   "read/my-numbers",
   "read/ops-pulse",
   "read/partners",
