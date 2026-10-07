@@ -45,7 +45,11 @@
 //   * The KIND of an account is its container's kind when it sits in one
 //     (entities, migration 106), else its stored entity_kind. 'unknown' is never
 //     folded into personal.
-//   * Closed accounts are left out of every number and list.
+//   * Closed accounts are left out of every number and list — and so are the
+//     repeating bills found on them. The detector never retires a bill, so a
+//     closed account's rent would otherwise sit next to the same rent on the
+//     account that replaced it and count twice (found 2026-10-06 when the test
+//     client's sandbox bank v2 was closed for v3).
 //   * An overpaid card (negative balance) owes 0 in the debt sums; its own row
 //     still shows the real balance.
 //
@@ -323,8 +327,13 @@ export function buildMoneyOverview({
   });
 
   /* ---- bills ---- */
+  /* A bill found on a closed account is that account's history, not a bill
+     still to pay. */
+  const closedIds = new Set((Array.isArray(accounts) ? accounts : [])
+    .filter((a) => a && a.id && a.closed_at).map((a) => String(a.id)));
   const billRows = (Array.isArray(bills) ? bills : [])
     .filter((b) => b && PROJECTABLE_LABELS.includes(b.confidence_label))
+    .filter((b) => !(b.bank_account_id && closedIds.has(String(b.bank_account_id))))
     .map((b) => {
       const ent = b.entity_id ? entById.get(String(b.entity_id)) ?? null : null;
       const acct = viewById.get(String(b.bank_account_id)) ?? null;

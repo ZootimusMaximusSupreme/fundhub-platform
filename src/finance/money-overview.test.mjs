@@ -233,6 +233,26 @@ describe("buildMoneyOverview — holes and the never-combine rule", () => {
     assert.equal(out.accounts.length, 1);
   });
 
+  test("a bill found on a closed account is left out of bills and upcoming (no double rent)", () => {
+    const rent = (id, acctId) => ({
+      id, bank_account_id: acctId, merchant_key: "oakwood apartments rent", merchant_display: "Oakwood Apartments Rent",
+      cadence: "monthly", typical_amount_cents: "-250000", next_expected_on: "2026-11-01", confidence_label: "medium"
+    });
+    const out = buildMoneyOverview({
+      client: CLIENT, asOf: AS_OF,
+      accounts: [
+        acct({ id: "old", account_type: "depository", entity_kind: "personal", current_balance_cents: "421055", closed_at: "2026-10-06T23:00:00Z" }),
+        acct({ id: "new", account_type: "depository", entity_kind: "personal", current_balance_cents: "1338500" })
+      ],
+      bills: [rent("b-old", "old"), rent("b-new", "new"),
+        // A bill whose account is not on the list at all is still shown, as before.
+        { ...rent("b-loose", null), merchant_display: "Loose bill", next_expected_on: "2026-10-20" }]
+    });
+    assert.deepEqual(out.bills.map((b) => b.name), ["Loose bill", "Oakwood Apartments Rent"]);
+    assert.equal(out.upcoming.filter((u) => u.name === "Oakwood Apartments Rent").length, 1);
+    assert.equal(out.bills.find((b) => b.name === "Oakwood Apartments Rent").kind, "personal");
+  });
+
   test("a long mask is cut to the last four", () => {
     const out = buildMoneyOverview({
       client: CLIENT, asOf: AS_OF,

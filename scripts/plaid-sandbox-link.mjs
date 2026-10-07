@@ -4,9 +4,11 @@
 //
 //   node scripts/plaid-sandbox-link.mjs --client <uuid> [--preset mixed|good] [--no-sync]
 //
-// --preset mixed (default): test bank v2 (src/banking/plaid-sandbox-user.mjs) —
+// --preset mixed (default): test bank v3 (src/banking/plaid-sandbox-user.mjs) —
 //   personal checking, business checking, a personal credit card and a business
-//   credit card, three months of charges and deposits, and card liability data.
+//   credit card, three months of charges and deposits whose sum IS each
+//   balance, and card liability data. (The FinanceOS test client itself is
+//   linked by scripts/finance-os-sample-v3.mjs, which also closes bank v2.)
 // --preset good: Plaid's stock user_good at First Platypus Bank.
 // --no-sync: link only; do not pull transactions afterwards.
 //
