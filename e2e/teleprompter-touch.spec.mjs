@@ -9,8 +9,9 @@
 // GET marketing/script (every version), GET marketing/health (repo copy held,
 // no token). No database, no session, nothing sent anywhere.
 //
-// It proves: one tap pauses and a tap again rolls on; a double tap is scroll
-// mode and a drag moves the words; paused, a drag moves them by hand too; hold
+// It proves: a tap on the words plays and a tap again pauses; a drag down
+// rolls the words up and a drag up sends them down; minus and plus still
+// change the speed while the words roll; paused, a drag moves them by hand; hold
 // a line to change it in place; the change saves itself through the edit route
 // (a new version, the pulse says so, honestly, with the repo copy waiting); an
 // edit made offline waits on the phone, lives through a reload, and is sent
@@ -131,11 +132,6 @@ async function finger(page) {
       await send("touchStart", [{ x, y }]);
       await page.waitForTimeout(ms);
       await send("touchEnd", []);
-    },
-    async doubleTap(x, y) {
-      await send("touchStart", [{ x, y }]); await send("touchEnd", []);
-      await page.waitForTimeout(60);
-      await send("touchStart", [{ x, y }]); await send("touchEnd", []);
     }
   };
 }
@@ -177,44 +173,38 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(errors).toEqual([]);
     });
 
-    test("a double tap is scroll mode: drag moves the words, a tap rolls from there, a double tap leaves", async ({ page }) => {
+    test("tap the words to play, tap again to pause, drag down rolls them up, and speed still changes while they roll", async ({ page }) => {
       await open(page);
-      await roll(page);
       const m = await middle(page);
       const f = await finger(page);
-      const before = (await state(page)).t;
-      await f.doubleTap(m.x, m.y);
-      await expect(page.locator("#scrollchip")).toBeVisible();
-      let s = await state(page);
-      expect(s.scrollMode).toBe(true);
-      expect(s.playing).toBe(false);
-      expect(s.mode).toBe("scroll");
-      expect(Math.abs(s.t - before)).toBeLessThan(1); // the first tap of the two is undone
-      // Finger up the glass: the words move on.
-      await f.drag(m.x, m.y + 100, -250);
-      const moved = (await state(page)).t;
-      expect(moved).toBeGreaterThan(s.t + 0.5);
-      // Finger down: back.
-      await f.drag(m.x, m.y - 100, 120);
-      expect((await state(page)).t).toBeLessThan(moved);
-      expect((await state(page)).scrollMode).toBe(true);
-      // Double tap again: out of scroll mode, still paused.
-      await page.waitForTimeout(400);
-      await f.doubleTap(m.x, m.y);
-      await expect(page.locator("#scrollchip")).toBeHidden();
-      s = await state(page);
-      expect(s.scrollMode).toBe(false);
-      expect(s.playing).toBe(false);
-      // Double tap in, then one tap: it rolls from where the words are.
-      await page.waitForTimeout(400);
-      await f.doubleTap(m.x, m.y);
-      await expect(page.locator("#scrollchip")).toBeVisible();
-      await f.drag(m.x, m.y + 100, -150);
-      const at = (await state(page)).word;
-      await page.waitForTimeout(400);
       await page.touchscreen.tap(m.x, m.y);
       await expect.poll(async () => (await state(page)).playing).toBe(true);
+      const wpm = (await state(page)).wpm;
+      await page.locator("#b-fast").tap();
+      await expect.poll(async () => (await state(page)).wpm).toBe(wpm + 5);
+      expect((await state(page)).playing).toBe(true);
+      await page.locator("#b-slow").tap();
+      await expect.poll(async () => (await state(page)).wpm).toBe(wpm);
+      expect((await state(page)).playing).toBe(true);
+      await page.waitForTimeout(350);
+      await page.touchscreen.tap(m.x, m.y);
+      await expect.poll(async () => (await state(page)).playing).toBe(false);
+      const paused = (await state(page)).t;
+      await page.waitForTimeout(400);
+      expect((await state(page)).t).toBe(paused);
+      // Drag down: the words roll up.
+      await f.drag(m.x, m.y - 80, 250);
+      const moved = (await state(page)).t;
+      expect(moved).toBeGreaterThan(paused + 0.5);
+      // Drag up: the words go down.
+      await f.drag(m.x, m.y + 40, -120);
+      expect((await state(page)).t).toBeLessThan(moved);
+      expect((await state(page)).playing).toBe(false);
       expect((await state(page)).scrollMode).toBe(false);
+      await expect(page.locator("#scrollchip")).toBeHidden();
+      const at = (await state(page)).word;
+      await page.touchscreen.tap(m.x, m.y);
+      await expect.poll(async () => (await state(page)).playing).toBe(true);
       expect((await state(page)).word).toBeGreaterThanOrEqual(at);
     });
 
@@ -227,7 +217,7 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       const t0 = (await state(page)).t;
       const f = await finger(page);
       await page.waitForTimeout(400);
-      await f.drag(m.x, m.y + 100, -200);
+      await f.drag(m.x, m.y - 40, 200);
       const s = await state(page);
       expect(s.t).toBeGreaterThan(t0);
       expect(s.playing).toBe(false);

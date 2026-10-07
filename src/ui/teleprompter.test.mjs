@@ -172,8 +172,8 @@ describe("teleprompter, pure", () => {
   });
 });
 
-/* The touch rules (owner, 2026-10-06): one tap pauses, a tap again rolls on,
-   a double tap is scroll mode, drag moves the words, hold a line to edit. */
+/* The touch rules: a tap plays, the next tap pauses, a drag reports the
+   finger's own movement, hold a line to edit. */
 describe("teleprompter touch rules (gestureStep)", () => {
   function run(T, events, mode) {
     let g = T.gestureStart();
@@ -213,9 +213,9 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("a double tap turns scroll mode on (undoing the first tap), and a double tap in scroll mode turns it off", () => {
+  test("two quick taps play, then pause. They do not open a layer over the words", () => {
     const T = load();
-    let mode = "rolling";
+    let mode = "paused";
     const seen = [];
     let g = T.gestureStart();
     const step = (ev) => {
@@ -225,15 +225,10 @@ describe("teleprompter touch rules (gestureStep)", () => {
         seen.push(a.do);
         if (a.do === "pause") mode = "paused";
         if (a.do === "resume") mode = "rolling";
-        if (a.do === "scroll-on") mode = "scroll";
-        if (a.do === "scroll-off") mode = "paused";
       }
     };
     [...tap(0), ...tap(200)].forEach(step);
-    assert.deepEqual(seen, ["pause", "scroll-on"]);
-    assert.equal(mode, "scroll");
-    [...tap(2000), ...tap(2200)].forEach(step);
-    assert.deepEqual(seen, ["pause", "scroll-on", "resume", "scroll-off"]);
+    assert.deepEqual(seen, ["resume", "pause"]);
     assert.equal(mode, "paused");
   });
 
@@ -331,6 +326,19 @@ describe("teleprompter page", () => {
     assert.match(HTML, /body\.rolling #top,body\.rolling #status,body\.rolling #tools\{opacity:0;pointer-events:none\}/);
     assert.match(SRC, /\$\("b-fast"\)\.onclick = function \(\) \{ setWpm\(S\.wpm \+ 5\); \}/);
     assert.match(SRC, /\$\("b-slow"\)\.onclick = function \(\) \{ setWpm\(S\.wpm - 5\); \}/);
+  });
+
+  test("a word save uses the script edit route and does not stop the camera", () => {
+    assert.match(SRC, /send: function \(body\) \{ return api\("POST", "marketing\/scripts\/edit", body\); \}/);
+    const stopFn = SRC.slice(SRC.indexOf("function stop()"), SRC.indexOf("function hold("));
+    const begin = SRC.slice(SRC.indexOf("function beginEdit"), SRC.indexOf("function grow"));
+    const end = SRC.slice(SRC.indexOf("function endEdit"), SRC.indexOf("function putBack"));
+    assert.match(stopFn, /edits\.commit\(\)/);
+    assert.match(end, /edits\.commit\(\)/);
+    assert.doesNotMatch(stopFn, /endRec\(/);
+    assert.doesNotMatch(begin, /endRec\(/);
+    assert.doesNotMatch(end, /endRec\(/);
+    assert.match(SRC, /if \(cam\.rec && cam\.rec\.state === "recording"\) return;/);
   });
 
   test("Save the video sends the original file to this Mac", () => {

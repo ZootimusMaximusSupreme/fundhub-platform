@@ -21,11 +21,12 @@
  * counted once. And POST /api/marketing/scripts/edit — the shipped edit route,
  * the one store — for every change to the words (teleprompter-edits.js).
  *
- * TOUCH (owner, 2026-10-06). One tap pauses; a tap again rolls on. A double
- * tap is scroll mode: drag or flick the words up and down, tap to roll from
- * there, double tap to leave it. Paused, a drag moves the words by hand too.
- * Hold a line (or press Edit) to change its words in place; it saves itself and
- * rolls on from where you were. The touch rules are the pure gestureStep below.
+ * TOUCH (owner, 2026-10-07, the film page). Tap the script: it plays. Tap
+ * again: it pauses. Drag down: the words roll up. Drag up: the words go down.
+ * Minus and plus still change the speed while it rolls. A blank gap keeps that
+ * same speed. Hold a line (or press Edit) to change its words in place; it
+ * saves itself and rolls on from where you were. The touch rules are the pure
+ * gestureStep below. The page turns a downward drag into words rolling up.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -167,13 +168,10 @@
     return slot;
   }
 
-  /* ── the touch rules (owner, 2026-10-06) ─────────────────────────────── */
+  /* ── the touch rules (owner, 2026-10-07) ─────────────────────────────── */
 
   /** A finger that moves less than this is a tap. */
   var TAP_SLOP = 10;
-  /** Two taps this close in time (and place) are a double tap. */
-  var DOUBLE_MS = 320;
-  var DOUBLE_SLOP = 60;
   /** A finger held this long without moving is a long press: edit that line. */
   var LONG_MS = 550;
   /** A flick at least this fast (px per ms) keeps the words moving in scroll mode. */
@@ -189,18 +187,17 @@
    *         'timer' is the page's long-press check, LONG_MS after a down
    *   mode  'rolling' (rolling or counting down) | 'paused' | 'scroll'
    * Returns {g, acts}. acts, in order:
-   *   {do:'pause'}      a tap while rolling
-   *   {do:'resume'}     a tap while paused or in scroll mode (roll from here)
-   *   {do:'scroll-on'}  a double tap: undo the first tap, then scroll mode
-   *   {do:'scroll-off'} a double tap in scroll mode: undo the first tap, then paused
-   *   {do:'grab'}       a finger started dragging: stop rolling (keep the mode)
-   *   {do:'drag', dy}   move the words by dy pixels (finger down = words down)
+   *   {do:'pause'}      a tap while rolling (stop the scroll)
+   *   {do:'resume'}     a tap while paused or in scroll mode (play from here)
+   *   {do:'grab'}       a finger started dragging: stop the auto-scroll
+   *   {do:'drag', dy}   the finger moved dy pixels (down is positive). The page
+   *                     applies the opposite, so a drag down rolls the words up.
    *   {do:'fling', v}   in scroll mode, let go fast: keep moving at v px/ms
    *   {do:'edit', x, y} a long press: edit the line under the finger
    *   {do:'edit-focus'} the long-press finger lifted: open the keyboard now
    *                     (iPhone opens it only inside a touch)
-   * A tap acts at once — no waiting to see if a second tap comes — and a double
-   * tap undoes it, so a pause never lags.
+   * A tap acts at once. A second tap is the next play or pause. It does not
+   * open a layer over the words.
    */
   function gestureStep(g, ev, mode) {
     var out = { down: g && g.down ? Object.assign({}, g.down) : null, lastTap: g ? g.lastTap : null };
@@ -229,13 +226,8 @@
         acts.push({ do: "edit-focus" });
       } else if (d.moved) {
         if (mode === "scroll" && Math.abs(d.v) >= FLING_MIN && ev.t - d.lastT < 120) acts.push({ do: "fling", v: d.v });
-      } else if (out.lastTap && ev.t - out.lastTap.t <= DOUBLE_MS &&
-                 Math.abs(ev.x - out.lastTap.x) <= DOUBLE_SLOP && Math.abs(ev.y - out.lastTap.y) <= DOUBLE_SLOP) {
-        acts.push({ do: out.lastTap.mode === "scroll" ? "scroll-off" : "scroll-on" });
-        out.lastTap = null;
       } else {
         acts.push({ do: mode === "rolling" ? "pause" : "resume" });
-        out.lastTap = { t: ev.t, x: ev.x, y: ev.y, mode: mode };
       }
     } else if (ev.type === "timer" && d) {
       if (!d.moved && !d.long && ev.t - d.t >= LONG_MS) {
@@ -379,7 +371,7 @@
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, wordAfterEdit: wordAfterEdit,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
-    TAP_SLOP: TAP_SLOP, DOUBLE_MS: DOUBLE_MS, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
+    TAP_SLOP: TAP_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime
   };
@@ -1011,9 +1003,10 @@
     } else if (a.do === "grab") {
       stopFling(); stop(); hideEnd();
     } else if (a.do === "drag") {
-      moveBy(a.dy);
+      // Finger down is positive. Words roll up when time moves forward.
+      moveBy(-a.dy);
     } else if (a.do === "fling") {
-      fling(a.v);
+      fling(-a.v);
     } else if (a.do === "edit") {
       var el = doc.elementFromPoint(a.x, a.y), p = el && el.closest ? el.closest("#content p") : null;
       beginEdit(p ? Number(p.dataset.p) : paraAtLine(), false);
