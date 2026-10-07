@@ -58,7 +58,7 @@ struct PrompterView: UIViewRepresentable {
 /// The words on the dimmed camera: clear behind the type, white words, an amber reading line. Rolls on v1's
 /// clock (PromptClock), flips for a beam-splitter rig, takes taps, drags,
 /// a long press to edit, and Bluetooth remote / keyboard keys.
-/// Thumb down moves the words up. Thumb up moves them down. A pause stops
+/// Thumb up rolls the words up. Thumb down moves them down. A pause stops
 /// the words only. This view never stops the camera.
 final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDelegate {
     private let flipBox = UIView()
@@ -476,7 +476,7 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         controller.onEditRequest?(para)
     }
 
-    /// Thumb down: the words move up. Thumb up: the words move down.
+    /// Thumb up: the words roll up. Thumb down: the words move down.
     /// The words pause. The camera is not stopped.
     @objc private func panned(_ g: UIPanGestureRecognizer) {
         switch g.state {

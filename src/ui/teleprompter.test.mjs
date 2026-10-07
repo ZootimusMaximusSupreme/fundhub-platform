@@ -226,7 +226,7 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("two quick taps play, then pause. They do not open a layer over the words", () => {
+  test("two quick taps while paused edit the word", () => {
     const T = load();
     let mode = "paused";
     const seen = [];
@@ -241,14 +241,21 @@ describe("teleprompter touch rules (gestureStep)", () => {
       }
     };
     [...tap(0), ...tap(200)].forEach(step);
-    assert.deepEqual(seen, ["resume", "pause"]);
-    assert.equal(mode, "paused");
+    assert.deepEqual(seen, ["resume", "edit-word"]);
   });
 
   test("a second tap too far away is not a double tap", () => {
     const T = load();
     const r = run(T, [...tap(0, 100, 300), ...tap(150, 300, 600)], "paused");
     assert.deepEqual(r.acts.map((a) => a.do), ["resume", "resume"]);
+  });
+
+  test("thumb up rolls the words up; thumb down moves them down with the hand", () => {
+    const T = load();
+    assert.equal(T.scriptDelta(-80, false), 80, "thumb up: next lines come from below");
+    assert.equal(T.scriptDelta(80, false), -80, "thumb down: the words go down with the hand");
+    assert.equal(T.scriptDelta(80, true), 80, "upside-down glass: the thumb still matches");
+    assert.equal(T.scriptDelta(-30, true), -30);
   });
 
   test("a drag grabs the words, then moves them by the finger's distance; a tap is not a drag", () => {

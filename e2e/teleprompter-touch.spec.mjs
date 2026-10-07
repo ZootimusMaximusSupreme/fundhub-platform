@@ -9,8 +9,8 @@
 // GET marketing/script (every version), GET marketing/health (repo copy held,
 // no token). No database, no session, nothing sent anywhere.
 //
-// It proves: a tap on the words plays and a tap again pauses; a drag down
-// rolls the words up and a drag up sends them down; minus and plus still
+// It proves: a tap on the words plays and a tap again pauses; a drag up
+// rolls the words up and a drag down sends them down with the thumb; minus and plus still
 // change the speed while the words roll; paused, a drag moves them by hand; hold
 // a line to change it in place; the change saves itself through the edit route
 // (a new version, the pulse says so, honestly, with the repo copy waiting); an
@@ -173,7 +173,7 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(errors).toEqual([]);
     });
 
-    test("tap the words to play, tap again to pause, drag down rolls them up, and speed still changes while they roll", async ({ page }) => {
+    test("tap the words to play, tap again to pause, drag up rolls them up, and speed still changes while they roll", async ({ page }) => {
       await open(page);
       const m = await middle(page);
       const f = await finger(page);
@@ -192,13 +192,13 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       const paused = (await state(page)).t;
       await page.waitForTimeout(400);
       expect((await state(page)).t).toBe(paused);
-      // Drag down: the words roll up.
+      // Drag down: the words go down with the thumb.
       await f.drag(m.x, m.y - 80, 250);
       const moved = (await state(page)).t;
-      expect(moved).toBeGreaterThan(paused + 0.5);
-      // Drag up: the words go down.
+      expect(moved).toBeLessThan(paused);
+      // Drag up: the words roll up. Next lines come from below.
       await f.drag(m.x, m.y + 40, -120);
-      expect((await state(page)).t).toBeLessThan(moved);
+      expect((await state(page)).t).toBeGreaterThan(moved);
       expect((await state(page)).playing).toBe(false);
       expect((await state(page)).scrollMode).toBe(false);
       await expect(page.locator("#scrollchip")).toBeHidden();
@@ -219,7 +219,7 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       await page.waitForTimeout(400);
       await f.drag(m.x, m.y - 40, 200);
       const s = await state(page);
-      expect(s.t).toBeGreaterThan(t0);
+      expect(s.t).toBeLessThan(t0);
       expect(s.playing).toBe(false);
       expect(s.mode).toBe("paused");
     });

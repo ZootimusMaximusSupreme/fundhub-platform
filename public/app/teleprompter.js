@@ -22,11 +22,12 @@
  * the one store — for every change to the words (teleprompter-edits.js).
  *
  * TOUCH (owner, 2026-10-07, the film page). Tap the script: it plays. Tap
- * again: it pauses. Drag down: the words roll up. Drag up: the words go down.
- * Minus and plus still change the speed while it rolls. A blank gap keeps that
- * same speed. Hold a line (or press Edit) to change its words in place; it
- * saves itself and rolls on from where you were. The touch rules are the pure
- * gestureStep below. The page turns a downward drag into words rolling up.
+ * again: it pauses. Drag up: the words roll up (next lines come from below).
+ * Drag down: the words go down with the thumb. Minus and plus still change
+ * the speed while it rolls. A blank gap keeps that same speed. Hold a line
+ * (or press Edit) to change its words in place; it saves itself and rolls on
+ * from where you were. The touch rules are the pure gestureStep below.
+ * scriptDelta turns an upward drag into words rolling up.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -190,8 +191,8 @@
    *   {do:'pause'}      a tap while rolling (stop the scroll)
    *   {do:'resume'}     a tap while paused or in scroll mode (play from here)
    *   {do:'grab'}       a finger started dragging: stop the auto-scroll
-   *   {do:'drag', dy}   the finger moved dy pixels (down is positive). The page
-   *                     applies the opposite, so a drag down rolls the words up.
+   *   {do:'drag', dy}   the finger moved dy pixels (down is positive). scriptDelta
+   *                     rolls the words up when the thumb moves up.
    *   {do:'fling', v}   in scroll mode, let go fast: keep moving at v px/ms
    *   {do:'edit', x, y} a long press: edit the line under the finger
    *   {do:'edit-focus'} the long-press finger lifted: open the keyboard now
@@ -239,6 +240,18 @@
       out.down = null;
     }
     return { g: out, acts: acts };
+  }
+
+  /**
+   * How far the script moves for a finger or a wheel.
+   * dy: screen pixels. Down is positive. A wheel's deltaY uses the same sign.
+   * Positive result moves forward: the words travel up, and the next lines
+   * come from below. Thumb up does that. Thumb down moves the words down
+   * with the hand. flipV is the upside-down glass: the thumb still feels
+   * the same on that rig.
+   */
+  function scriptDelta(dy, flipV) {
+    return -dy * (flipV ? -1 : 1);
   }
 
   /** A fresh request id for one press or one save. */
@@ -369,7 +382,7 @@
   root.FundhubTeleprompter = {
     fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
-    gestureStart: gestureStart, gestureStep: gestureStep, wordAfterEdit: wordAfterEdit,
+    gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
@@ -968,7 +981,7 @@
   }
   function moveBy(dy) {
     if (!kf.length) return;
-    t = tAt(yAt(t) - dy * (S.flipV ? -1 : 1));
+    t = tAt(yAt(t) + scriptDelta(dy, S.flipV));
     seeked = true;
     apply();
   }
@@ -1003,10 +1016,9 @@
     } else if (a.do === "grab") {
       stopFling(); stop(); hideEnd();
     } else if (a.do === "drag") {
-      // Finger down is positive. Words roll up when time moves forward.
-      moveBy(-a.dy);
+      moveBy(a.dy);
     } else if (a.do === "fling") {
-      fling(-a.v);
+      fling(a.v);
     } else if (a.do === "edit") {
       var el = doc.elementFromPoint(a.x, a.y), p = el && el.closest ? el.closest("#content p") : null;
       beginEdit(p ? Number(p.dataset.p) : paraAtLine(), false);
@@ -1046,7 +1058,7 @@
   stage.addEventListener("wheel", function (e) {
     if (editing) return;
     e.preventDefault(); stop(); hideEnd();
-    moveBy(-e.deltaY);
+    moveBy(e.deltaY);
   }, { passive: false });
 
   /* ── edit on the fly ─────────────────────────────────────────────────── */

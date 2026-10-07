@@ -59,10 +59,10 @@ final class PromptClockTests: XCTestCase {
         XCTAssertEqual(track.advance(from: 1, wall: 9), 9, accuracy: 1e-6)
     }
 
-    func testThumbDownMovesTheWordsUp() {
-        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: false), 80)
-        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: -30, flippedVertically: false), -30)
-        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: true), -80)
+    func testThumbUpRollsTheWordsUp() {
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: -30, flippedVertically: false), 30, "thumb up rolls the words up")
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: false), -80, "thumb down moves the words down")
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: true), 80, "upside-down glass keeps the same feel")
     }
 }
 
