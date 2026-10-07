@@ -207,6 +207,9 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     assertMatchesContract("GET marketing/shoot", open.body);
     assert.equal(JSON.stringify(open.body).includes(s91.id), false, "the open read is the default company, not this fixture");
     assert.equal((await save(null, { request_id: rid("open"), root_script_ids: [s91.id] })).code, 401);
+    const openMark = await mark(null, { request_id: rid("openmark"), shoot_id: s91.id, root_script_id: s91.id, mark: "maybe" });
+    assert.equal(openMark.code, 400, "Got it with no sign-in is refused as a bad mark, not as a login");
+    assert.notEqual(openMark.code, 401);
     assert.equal((await get(closerA.token)).code, 403);
     assert.equal((await save(closerA.token, { request_id: rid("c"), root_script_ids: [s91.id] })).code, 403);
     const r = await call(markHandler, ownerA.token, { method: "GET" });
