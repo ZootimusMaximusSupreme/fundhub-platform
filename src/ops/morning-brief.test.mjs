@@ -11,8 +11,8 @@ import { textMorningBrief } from "../pulse/notify.mjs";
 
 const SIX_AM_AZ = new Date("2026-10-05T13:00:00Z");
 
-test("the morning and evening texts are on", () => {
-  assert.equal(MORNING_BRIEF_LIVE, true);
+test("the morning and evening texts stay off until a real number can be read", () => {
+  assert.equal(MORNING_BRIEF_LIVE, false);
   assert.equal(EVENING_BRIEF_CRON, "0 4 * * *");
 });
 

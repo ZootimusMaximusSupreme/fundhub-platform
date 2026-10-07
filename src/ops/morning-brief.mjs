@@ -16,12 +16,13 @@
 // numbers-section pattern. A section with no source today prints one plain
 // line saying what it is waiting on. It never prints a guessed number.
 //
-// LIVE. MORNING_BRIEF_LIVE is true. The brief is built, saved, and texted.
-// The send path is textMorningBrief, which reads PULSE_SMS_TO and never
-// invents a number. That key is already stored on Netlify. The same switch
-// holds the evening brief. The morning brief REPLACES the old "Fundhub morning
-// check" pulse text — one text, not two (src/workflows/daily-pulse.mjs passes
-// sendPulseText: false).
+// DRY-RUN. MORNING_BRIEF_LIVE is false. The brief is built and saved. Nothing
+// is texted. The send path is textMorningBrief, which reads PULSE_SMS_TO and
+// never invents a number. The laptop copy of that key is a mask, so the switch
+// stays off. The same switch holds the evening brief. Once it is true, the
+// morning brief REPLACES the old "Fundhub morning check" pulse text — one
+// text, not two (src/workflows/daily-pulse.mjs passes sendPulseText: false).
+// While it is false the old pulse text still goes.
 //
 // SAME CONTENT, MORNING AND EVENING (owner-set 2026-10-05): systems first,
 // then sales team, money, and ads — ads and sales organized per offer and per
@@ -44,7 +45,7 @@ import { textMorningBrief } from "../pulse/notify.mjs";
 import { buildSuggestions } from "./suggestions.mjs";
 import { groupByOfferFunnel, groupClosers, loadOfferNumbers, readClosersByOffer, OFFER_NOTES } from "./brief-offers.mjs";
 
-export const MORNING_BRIEF_LIVE = true;
+export const MORNING_BRIEF_LIVE = false;
 export const BRIEF_TZ = "America/Phoenix";
 // Arizona keeps no daylight time, so its offset never moves.
 export const BRIEF_UTC_OFFSET = "-07:00";
@@ -598,7 +599,7 @@ export async function saveMorningBrief(db, brief, delivery, { dryRun = true } = 
 /**
  * runMorningBrief — build, (maybe) text, save. Called by step 2 of the pulse job
  * (kind 'morning') and by the evening-brief job (kind 'evening').
- * live defaults to MORNING_BRIEF_LIVE (true): the text goes to PULSE_SMS_TO.
+ * live defaults to MORNING_BRIEF_LIVE (false): nothing is texted.
  */
 export async function runMorningBrief({
   db, orgId = null, kind = "morning", env = process.env, now = new Date(), pulse = null, scorecard = null,
