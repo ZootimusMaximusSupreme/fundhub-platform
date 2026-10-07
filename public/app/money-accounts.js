@@ -109,7 +109,8 @@
 
   function accountRow(d, a) {
     var card = a.type === "credit" || a.subtype === "credit card" || a.type === "revolving";
-    var owed = card || a.type === "loan" || a.type === "installment";
+    var loan = a.type === "loan" || a.type === "installment";
+    var owed = card || loan;
     var facts = [typeWord(a)];
     if (a.provider === "plaid") facts.push("connected bank");
     else if (a.provider === "manual") facts.push("added by hand");
@@ -117,9 +118,9 @@
       '<span class="caption">' + (owed ? "owed" : "balance") + '</span>';
     var extra = [];
     if (card) extra.push("Limit " + money(a.limit_cents));
-    if (card && a.source === "bank_account") {
+    if ((card || loan) && a.source === "bank_account") {
       extra.push(isNum(a.due_day) ? "Due the " + ordinal(a.due_day) : "Due day —");
-      extra.push("Minimum " + money(a.min_due_cents));
+      extra.push((loan ? "Payment " : "Minimum ") + money(a.min_due_cents));
     }
     return '<li class="acct" data-account="' + esc(a.id) + '"><div>' +
       '<span class="acct-name">' + esc(a.name || "Account") + '</span> ' +
@@ -142,7 +143,7 @@
   function field(name, text, opts) {
     var o = opts || {};
     var id = (o.prefix || "f") + "-" + name;
-    var cls = "f" + (o.wide ? " wide" : "") + (o.full ? " full" : "") + (o.onlyCard ? " only-card" : "");
+    var cls = "f" + (o.wide ? " wide" : "") + (o.full ? " full" : "") + (o.onlyCard || o.onlyDue ? " only-card" : "");
     var input;
     if (o.options) {
       input = '<select id="' + esc(id) + '" name="' + esc(name) + '"' + (o.required ? " required" : "") + '>' +
@@ -159,7 +160,7 @@
         (o.autocomplete ? ' autocomplete="' + esc(o.autocomplete) + '"' : ' autocomplete="off"') +
         (o.required ? " required" : "") + '>';
     }
-    return '<div class="' + cls + '"' + (o.onlyCard ? ' data-only-card="1"' : "") + '>' +
+    return '<div class="' + cls + '"' + (o.onlyCard ? ' data-only-card="1"' : "") + (o.onlyDue ? ' data-only-due="1"' : "") + '>' +
       '<label for="' + esc(id) + '">' + esc(text) + '</label>' + input + '</div>';
   }
 
@@ -270,8 +271,8 @@
       field("last4", "Last 4 digits", { prefix: "na", inputmode: "numeric", maxlength: 4, placeholder: "1234" }) +
       field("balance", "Balance (owed, for a card or loan)", { prefix: "na", inputmode: "decimal", placeholder: "2,000" }) +
       field("limit", "Credit limit", { prefix: "na", inputmode: "decimal", placeholder: "10,000", onlyCard: true }) +
-      field("due_day", "Due day of the month", { prefix: "na", inputmode: "numeric", maxlength: 2, placeholder: "15", onlyCard: true }) +
-      field("minimum", "Minimum payment", { prefix: "na", inputmode: "decimal", placeholder: "35", onlyCard: true }) +
+      field("due_day", "Due day of the month", { prefix: "na", inputmode: "numeric", maxlength: 2, placeholder: "15", onlyDue: true }) +
+      field("minimum", "Minimum payment (for a loan, the monthly payment)", { prefix: "na", inputmode: "decimal", placeholder: "35", onlyDue: true }) +
       '<div class="form-act"><span class="act-msg caption" aria-live="polite"></span>' +
       '<button class="btn-primary" type="submit">Save account</button></div></div></form></details>' +
       '<div class="card"><span class="eyebrow">Connect a bank</span>' +
@@ -474,17 +475,24 @@
 
     function paint(html) { el.innerHTML = html; syncCardFields(); }
 
-    /* Limit, due day and minimum only show for a credit card. */
+    /* The limit only shows for a credit card. Due day and minimum show for a
+       credit card or a loan. */
     function syncCardFields() {
       var form = q('form[data-form="add_account"]');
       if (!form) return;
-      var isCard = form.elements.type && form.elements.type.value === "credit_card";
-      var bits = form.querySelectorAll("[data-only-card]");
-      for (var i = 0; i < bits.length; i++) {
-        bits[i].hidden = !isCard;
-        var inp = bits[i].querySelector("input");
-        if (inp && !isCard) inp.value = "";
-      }
+      var type = form.elements.type ? form.elements.type.value : "";
+      var isCard = type === "credit_card";
+      var hasDue = isCard || type === "loan";
+      var toggle = function (sel, show) {
+        var bits = form.querySelectorAll(sel);
+        for (var i = 0; i < bits.length; i++) {
+          bits[i].hidden = !show;
+          var inp = bits[i].querySelector("input");
+          if (inp && !show) inp.value = "";
+        }
+      };
+      toggle("[data-only-card]", isCard);
+      toggle("[data-only-due]", hasDue);
     }
 
     function load() {

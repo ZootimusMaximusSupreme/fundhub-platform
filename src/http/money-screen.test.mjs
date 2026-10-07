@@ -157,3 +157,12 @@ test("the money nav: six links in the board's order, Money marked as the current
   ]);
   assert.match(nav[0], /<a href="\/app\/financeos\.html#overview" aria-current="page">Money<\/a>/);
 });
+
+test("a loan payment in upcoming reads 'Loan payment', not 'Bill' (wave 3, G2)", () => {
+  const d = fixture();
+  d.upcoming = [{ type: "loan_due", name: "SBA Loan", on: "2026-11-01", amount_cents: 105000 }];
+  const t = text(M.render(d));
+  assert.match(t, /SBA Loan/);
+  assert.match(t, /Loan payment/);
+  assert.doesNotMatch(t, /SBA Loan[^·]*Bill/);
+});

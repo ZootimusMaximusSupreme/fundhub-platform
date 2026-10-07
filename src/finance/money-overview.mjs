@@ -31,8 +31,13 @@
 //     credit-file `tradelines` are NOT merged in: the existing math never merges
 //     the two (money-map reads cards from tradelines only, the banking surface
 //     reads bank_accounts only), and adding one card from each would count the
-//     same card twice. Loans are not in the debt numbers yet — the contract has
-//     no loan row.
+//     same card twice.
+//   * LOANS are open `bank_accounts` rows with account_type = 'loan' (wave 3,
+//     G2). Their balance (the payoff balance) adds into debt.total_cents,
+//     by_kind and by_container exactly as a card's does, and they are listed in
+//     debt.loans — a NEW key; debt.cards is unchanged and still cards only. A
+//     loan's due date and monthly payment come from its statement-cycle row
+//     (097, widened to loans by 451) and show in `upcoming` as type 'loan_due'.
 //   * CASHFLOW counts depository accounts only (checking, savings). Paying a card
 //     from checking is money out of checking AND money into the card; counting
 //     both would double every card payment. Card spending shows up when the card
@@ -51,6 +56,7 @@ import { bankingSurface, readEntityKind, ENTITY_KINDS } from "./banking-surface.
 import { sumKnown } from "./os-grid.mjs";
 import { nextDueDate, daysBetween } from "../banking/statement-cycles.mjs";
 import { PROJECTABLE_LABELS } from "../banking/cashflow-seam.mjs";
+import { loanDueOn } from "../banking/card-due-reminders.mjs";
 import { computeUnderwrite, buildSuggestions } from "../underwrite/engine.mjs";
 import { toBureaus } from "../underwrite/adapter.mjs";
 import { applyStackedBusinessFunding } from "../underwrite/business-funding.mjs";
@@ -250,10 +256,28 @@ export function buildMoneyOverview({
     };
   });
 
-  const total = sumKnown(cards.map((c) => owed(c.balance_cents)));
+  const loans = views.filter((v) => v.type === "loan").map((v) => {
+    const cycle = cycleByAccount.get(v.id) ?? null;
+    return {
+      account_id: v.id,
+      name: v.name,
+      mask: v.mask,
+      container_id: v.container_id,
+      kind: v.kind,
+      balance_cents: v.current,
+      /* The same date the reminder text uses (loanDueOn): an exact provider
+         date while it has not passed, else the next due day. */
+      due_on: cycle ? loanDueOn(cycle, today) : null,
+      payment_cents: cents(cycle?.minimum_payment_cents)
+    };
+  });
+
+  /* Everything owed: cards and loans. debt.cards stays cards only. */
+  const owing = [...cards, ...loans];
+  const total = sumKnown(owing.map((c) => owed(c.balance_cents)));
   const byKind = {};
   for (const k of ENTITY_KINDS) {
-    byKind[k] = sumKnown(cards.filter((c) => c.kind === k).map((c) => owed(c.balance_cents))).total;
+    byKind[k] = sumKnown(owing.filter((c) => c.kind === k).map((c) => owed(c.balance_cents))).total;
   }
 
   const byContainer = [];
@@ -263,10 +287,10 @@ export function buildMoneyOverview({
     byContainer.push({ container_id, name, kind, owed_cents: s.total, is_floor: s.unknown > 0 });
   };
   for (const e of ents) {
-    pile(String(e.id), text(e.name), readEntityKind(e.kind), cards.filter((c) => c.container_id === String(e.id)));
+    pile(String(e.id), text(e.name), readEntityKind(e.kind), owing.filter((c) => c.container_id === String(e.id)));
   }
   for (const k of ENTITY_KINDS) {
-    pile(null, LOOSE_NAMES[k], k, cards.filter((c) => c.container_id === null && c.kind === k));
+    pile(null, LOOSE_NAMES[k], k, owing.filter((c) => c.container_id === null && c.kind === k));
   }
 
   /* ---- cashflow by month, depository only, kinds kept apart ---- */
@@ -328,6 +352,8 @@ export function buildMoneyOverview({
   const upcoming = [
     ...cards.filter((c) => soon(c.due_on))
       .map((c) => ({ type: "card_due", name: c.name, on: c.due_on, amount_cents: c.min_due_cents })),
+    ...loans.filter((l) => soon(l.due_on))
+      .map((l) => ({ type: "loan_due", name: l.name, on: l.due_on, amount_cents: l.payment_cents })),
     ...billRows.filter((b) => soon(b.next_on))
       .map((b) => ({ type: "bill", name: b.name, on: b.next_on, amount_cents: b.amount_cents }))
   ].sort((a, b) => (a.on < b.on ? -1 : a.on > b.on ? 1 : 0));
@@ -347,7 +373,8 @@ export function buildMoneyOverview({
       is_floor: total.unknown > 0,
       by_kind: byKind,
       by_container: byContainer,
-      cards
+      cards,
+      loans
     },
     accounts: views.map((v) => ({
       id: v.id,

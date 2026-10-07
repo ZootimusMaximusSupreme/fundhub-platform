@@ -208,6 +208,15 @@ test("a statement cycle cannot be attached to a savings account", { skip: !HAS_D
     (e) => /credit account/.test(e.message));
 });
 
+test("a loan takes a due day and its monthly payment (451)", { skip: !HAS_DB }, async () => {
+  const loan = await createManualBankAccount(db,
+    { name: "SBA Loan", account_type: "loan", current_balance_cents: 4800000 }, { orgId, clientId });
+  const cycle = await saveStatementCycle(db, { payment_due_day: 1, minimum_payment_cents: 105000 },
+    { orgId, clientId, bankAccountId: loan.id });
+  assert.equal(cycle.payment_due_day, 1);
+  assert.equal(Number(cycle.minimum_payment_cents), 105000);
+});
+
 /* ------------------------------------------------------------- org scoping */
 
 test("an account in another org is invisible and unwritable", { skip: !HAS_DB }, async () => {

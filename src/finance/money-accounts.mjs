@@ -17,9 +17,10 @@
 //   savings     → account_type 'depository', subtype 'savings'
 //   credit_card → account_type 'credit',     subtype 'credit card'
 //   loan        → account_type 'loan'
-// The balance is current_balance_cents (for a card or a loan: what is owed).
-// A limit is only for a card. A due day and a minimum are only for a card,
-// because account_statement_cycles is card-only by its writer's rule.
+// The balance is current_balance_cents (for a card or a loan: what is owed —
+// for a loan that is the payoff balance). A limit is only for a card. A due day
+// and a minimum are for a card or a loan (451): account_statement_cycles holds
+// both, and for a loan the minimum is the monthly payment.
 //
 // EVERYTHING IS CHECKED BEFORE THE FIRST WRITE. The account, its container and
 // its due day are three writes through three tested functions, so every value
@@ -40,6 +41,9 @@ export const HAND_TYPES = Object.freeze({
   credit_card: { account_type: "credit", account_subtype: "credit card" },
   loan: { account_type: "loan", account_subtype: null }
 });
+
+/** Hand types that take a due day and a minimum (a loan's minimum is its monthly payment). */
+export const DUE_TYPES = Object.freeze(["credit_card", "loan"]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (v) => typeof v === "string" && UUID_RE.test(v.trim());
@@ -99,9 +103,9 @@ export function readHandAccount(body = {}) {
     dueDay = n;
   }
 
-  if (type !== "credit_card") {
-    if (limit !== null) throw new TypeError("limit is only for a credit card");
-    if (dueDay !== null || minimum !== null) throw new TypeError("due day and minimum are only for a credit card");
+  if (type !== "credit_card" && limit !== null) throw new TypeError("limit is only for a credit card");
+  if (!DUE_TYPES.includes(type) && (dueDay !== null || minimum !== null)) {
+    throw new TypeError("due day and minimum are only for a credit card or a loan");
   }
   if (limit !== null && limit < 0) throw new TypeError("limit cannot be below zero");
   if (minimum !== null && minimum < 0) throw new TypeError("minimum cannot be below zero");
@@ -164,7 +168,7 @@ export async function addHandAccount(db, { orgId, clientId, input, by = {} }) {
     if (!r.ok) return { ok: false, reason: r.reason, account_id: acct.id };
   }
 
-  if (a.type === "credit_card" && (a.dueDay !== null || a.minimum !== null)) {
+  if (DUE_TYPES.includes(a.type) && (a.dueDay !== null || a.minimum !== null)) {
     await saveStatementCycle(db, {
       payment_due_day: a.dueDay,
       minimum_payment_cents: a.minimum,
@@ -182,8 +186,8 @@ export async function addHandAccount(db, { orgId, clientId, input, by = {} }) {
  *   unassigned, billing }
  *
  * Each business container carries `business` (its info, or null when none is
- * saved yet). Each hand-entered or bank card carries due_day and min_due_cents
- * from its statement cycle (null = not told).
+ * saved yet). Each hand-entered or bank card or loan carries due_day and
+ * min_due_cents from its statement cycle (null = not told).
  */
 export async function accountsView(db, { orgId, clientId, env = {} }) {
   const [list, info, billing, cycles] = await Promise.all([

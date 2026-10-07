@@ -132,6 +132,13 @@
       lim: counted ? lim : null, counted: counted, missing: missing };
   }
 
+  /* What a "coming up" row is. loan_due was added in wave 3 (G2). */
+  function upcomingWord(u) {
+    if (u.type === "card_due") return "Card payment";
+    if (u.type === "loan_due") return "Loan payment";
+    return "Bill";
+  }
+
   function sortedUpcoming(d) {
     return list(d.upcoming).slice().sort(function (a, b) {
       return String(a.on || "9999").localeCompare(String(b.on || "9999"));
@@ -181,7 +188,7 @@
         '<h2 class="eyebrow" id="t-next">Next due</h2>' +
         '<span class="big">' + esc(day(next.on).replace(/, \d{4}$/, "")) + '</span>' +
         '<p class="next-name">' + esc(next.name) + '</p>' +
-        '<p class="caption">' + esc(next.type === "card_due" ? "Card payment" : "Bill") + ' · ' +
+        '<p class="caption">' + esc(upcomingWord(next)) + ' · ' +
         esc(money(next.amount_cents)) + (next.type === "card_due" ? " minimum" : "") + '</p></section>';
     } else {
       nextTile = '<section class="card tile" aria-labelledby="t-next">' +
@@ -386,7 +393,7 @@
   function renderUpcoming(d) {
     var rows = sortedUpcoming(d).map(function (u) {
       return '<li class="row"><div><div>' + esc(u.name || "") + '</div><div class="caption">' +
-        esc(u.type === "card_due" ? "Card payment" : "Bill") + '</div></div>' +
+        esc(upcomingWord(u)) + '</div></div>' +
         '<div class="acct-num"><span class="num">' + esc(day(u.on)) + '</span>' +
         '<span class="caption">' + esc(money(u.amount_cents)) + '</span></div></li>';
     }).join("");

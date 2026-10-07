@@ -145,3 +145,21 @@ test("a refused write is said in words, not a status code", () => {
   assert.match(M.writeWords({ status: 404, body: { ok: false, error: "container_not_found" } }), /not found/);
   assert.match(M.writeWords({ status: 400, body: { ok: false, error: "last 4 only — that looks like a full account number" } }), /Not saved/);
 });
+
+test("loans (wave 3, G2): the add form's due day and minimum show for a loan; a loan row shows due day and payment", () => {
+  const html = M.render(view());
+  // Due day and minimum carry data-only-due (card or loan); the limit stays card-only.
+  assert.match(html, /<div class="f only-card" data-only-due="1"><label for="na-due_day">/);
+  assert.match(html, /<div class="f only-card" data-only-due="1"><label for="na-minimum">/);
+  assert.match(html, /<div class="f only-card" data-only-card="1"><label for="na-limit">/);
+  assert.match(JS, /var hasDue = isCard \|\| type === "loan";/);
+
+  const v = view();
+  v.containers[0].loans = [{ id: "l1", source: "bank_account", name: "SBA Loan", type: "loan", subtype: null,
+    container_id: BIZ, current_cents: 4800000, limit_cents: null, provider: "manual", closed_at: null,
+    due_day: 1, min_due_cents: 105000 }];
+  const t = text(M.render(v));
+  assert.match(t, /SBA Loan/);
+  assert.match(t, /\$48,000\.00 owed/);
+  assert.match(t, /Due the 1st · Payment \$1,050\.00/);
+});

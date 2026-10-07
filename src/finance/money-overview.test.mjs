@@ -56,6 +56,7 @@ describe("buildMoneyOverview — empty client", () => {
     assert.deepEqual(out.accounts, []);
     assert.deepEqual(out.containers, []);
     assert.deepEqual(out.debt.cards, []);
+    assert.deepEqual(out.debt.loans, []);
     assert.deepEqual(out.debt.by_container, []);
     assert.deepEqual(out.cashflow, { has_transactions: false, months: [] });
     assert.deepEqual(out.bills, []);
@@ -275,6 +276,62 @@ describe("buildMoneyOverview — holes and the never-combine rule", () => {
     });
     assert.deepEqual(out.containers, [{ id: null, kind: "unknown", name: "Not sorted yet", accounts: 1 }]);
     assert.equal(out.billing.containers, 0);
+  });
+});
+
+describe("buildMoneyOverview — loans (wave 3, G2)", () => {
+  const LOAN = acct({ id: "l1", name: "SBA Loan", mask: null, provider: "manual", institution_name: null,
+    account_type: "loan", account_subtype: null, current_balance_cents: "4800000", entity_id: "e-biz" });
+  const out = buildMoneyOverview({
+    client: CLIENT, asOf: AS_OF,
+    accounts: [...FOUR, LOAN],
+    entities: [BIZ, PER],
+    cycles: [{ bank_account_id: "l1", payment_due_day: 1, minimum_payment_cents: "105000", source: "manual", raw: {} }]
+  });
+
+  test("a loan adds into the total, its kind and its container", () => {
+    assert.equal(out.debt.total_cents, 672040 + 4800000);
+    assert.equal(out.debt.by_kind.business, 540000 + 4800000);
+    assert.equal(out.debt.by_kind.personal, 132040, "personal is untouched");
+    const biz = out.debt.by_container.find((c) => c.container_id === "e-biz");
+    assert.equal(biz.owed_cents, 540000 + 4800000);
+    assert.equal(biz.is_floor, false);
+  });
+
+  test("debt.cards stays cards only; the loan is in the new debt.loans list", () => {
+    assert.equal(out.debt.cards.length, 2);
+    assert.equal(out.debt.cards.some((c) => c.account_id === "l1"), false);
+    assert.deepEqual(out.debt.loans, [{
+      account_id: "l1", name: "SBA Loan", mask: null, container_id: "e-biz", kind: "business",
+      balance_cents: 4800000, due_on: "2026-11-01", payment_cents: 105000
+    }]);
+  });
+
+  test("the loan payment shows in upcoming as loan_due, same four keys", () => {
+    const row = out.upcoming.find((u) => u.type === "loan_due");
+    assert.deepEqual(row, { type: "loan_due", name: "SBA Loan", on: "2026-11-01", amount_cents: 105000 });
+    assert.deepEqual(Object.keys(row).sort(), ["amount_cents", "name", "on", "type"]);
+  });
+
+  test("a loan with no balance makes debt a floor; no cycle → no due date and no upcoming row", () => {
+    const o = buildMoneyOverview({
+      client: CLIENT, asOf: AS_OF,
+      accounts: [acct({ id: "l2", name: "Car Loan", account_type: "loan", current_balance_cents: null })]
+    });
+    assert.equal(o.debt.total_cents, null);
+    assert.equal(o.debt.is_floor, true);
+    assert.equal(o.debt.loans[0].due_on, null);
+    assert.equal(o.debt.loans[0].payment_cents, null, "unknown payment is null, never 0");
+    assert.deepEqual(o.upcoming, []);
+  });
+
+  test("a closed loan is left out", () => {
+    const o = buildMoneyOverview({
+      client: CLIENT, asOf: AS_OF,
+      accounts: [acct({ id: "l3", account_type: "loan", current_balance_cents: "100", closed_at: "2026-10-01T00:00:00Z" })]
+    });
+    assert.deepEqual(o.debt.loans, []);
+    assert.equal(o.debt.total_cents, null);
   });
 });
 

@@ -40,9 +40,19 @@ describe("reading a hand-entered account", () => {
     assert.throws(() => readLast4("1"), /at least 2/);
   });
 
-  test("limit, due day and minimum are for cards only", () => {
+  test("a limit is for cards only; due day and minimum are for cards and loans", () => {
     assert.throws(() => readHandAccount({ name: "Checking", type: "checking", limit: "100" }), /only for a credit card/);
-    assert.throws(() => readHandAccount({ name: "Loan", type: "loan", due_day: "3" }), /only for a credit card/);
+    assert.throws(() => readHandAccount({ name: "Loan", type: "loan", limit: "100" }), /only for a credit card/);
+    assert.throws(() => readHandAccount({ name: "Savings", type: "savings", due_day: "3" }), /credit card or a loan/);
+    assert.throws(() => readHandAccount({ name: "Checking", type: "checking", minimum: "10" }), /credit card or a loan/);
+  });
+
+  test("a loan takes a due day and its monthly payment as the minimum", () => {
+    const a = readHandAccount({ name: "SBA Loan", type: "loan", balance: "48,000", due_day: "1", minimum: "1,050" });
+    assert.equal(a.balance, 4800000, "payoff balance in cents");
+    assert.equal(a.dueDay, 1);
+    assert.equal(a.minimum, 105000);
+    assert.equal(a.limit, null);
   });
 
   test("name and type are required; bad values name the field", () => {
@@ -92,6 +102,27 @@ describe("addHandAccount", () => {
     const cyc = db.calls.find((c) => /INSERT INTO account_statement_cycles/.test(c.sql));
     assert.ok(cyc.params.includes(15));
     assert.ok(cyc.params.includes(3500));
+  });
+
+  test("a loan with a due day and payment writes its cycle row", async () => {
+    const db = fakeDb([
+      [/INSERT INTO bank_accounts/, [{ id: NEW_ACCT }]],
+      [/SELECT account_type FROM bank_accounts/, [{ account_type: "loan" }]],
+      [/INSERT INTO account_statement_cycles/, [{ id: "cy-2" }]]
+    ]);
+    const r = await addHandAccount(db, {
+      orgId: ORG, clientId: CLIENT,
+      input: readHandAccount({ name: "SBA Loan", type: "loan", balance: "48000", due_day: "1", minimum: "1050" }),
+      by: { kind: "staff", id: "st-1" }
+    });
+    assert.deepEqual(r, { ok: true, account_id: NEW_ACCT });
+    const ins = db.calls.find((c) => /INSERT INTO bank_accounts/.test(c.sql));
+    assert.ok(ins.params.includes("loan"));
+    assert.ok(ins.params.includes(4800000));
+    const cyc = db.calls.find((c) => /INSERT INTO account_statement_cycles/.test(c.sql));
+    assert.ok(cyc, "loan due day saved");
+    assert.ok(cyc.params.includes(1));
+    assert.ok(cyc.params.includes(105000));
   });
 
   test("another client's container: refused before any write", async () => {

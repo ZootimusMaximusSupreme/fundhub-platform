@@ -131,7 +131,8 @@
         "min_due_cents": null,
         "past_due_cents": null
       }
-    ]
+    ],
+    "loans": []
   },
   "accounts": [
     {

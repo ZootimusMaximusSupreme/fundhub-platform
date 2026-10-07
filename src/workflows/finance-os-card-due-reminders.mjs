@@ -27,6 +27,19 @@
 // ONLY PLAID CARDS ARE REMINDED. A cycle typed in by hand (source='manual') has
 // no exact due date and no payment record, so it cannot say "no payment on
 // file" truthfully. Those rows are left alone.
+//
+// LOANS TOO (wave 3, G2) — hand-entered or not. A loan's payment is fixed and
+// due every month on its due day, so the schedule alone is enough to say "your
+// SBA Loan payment of $1,050.00 is due Nov 1" truthfully (planLoanDue). Same
+// window, same one-text-per-due-date keys, same template. The reminder row is
+// filed under subject_kind 'loan' (451), not 'card_liability'.
+//
+// WHY HERE AND NOT THE MONEY HELPER (src/finance/money-agent.mjs). The helper
+// owns what happens AFTER a due date (late check-ins, a CSM task) and says in
+// its header that reminders before a due date are this job's, so it never
+// repeats them. A loan's before-the-date reminder is the same job as a card's.
+// No new workflow, no new template. loanCycles is a separate query so
+// providerCycles — which the money helper also reads — still returns cards only.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -34,7 +47,7 @@ import { sendTemplated as defaultSend } from "./messaging.mjs";
 import { entitledFinanceOsClients } from "./blueprint-finance-os-alerts.mjs";
 import { syncClientLiabilities as defaultSync } from "../banking/plaid-liabilities.mjs";
 import { createReminder as defaultCreateReminder } from "../banking/reminders.mjs";
-import { planCardDue, TEMPLATE_KEY } from "../banking/card-due-reminders.mjs";
+import { planCardDue, planLoanDue, TEMPLATE_KEY } from "../banking/card-due-reminders.mjs";
 
 export const SWEEP_CRON = "0 16 * * *"; // 16:00 UTC = 9am Arizona, inside the SMS day window
 export const SOURCE_WORKFLOW = "finance-os-card-due-reminders";
@@ -56,6 +69,22 @@ export async function providerCycles(conn, { orgId, clientId }) {
   return res.rows;
 }
 
+/** Loan cycles for one client, any source (a hand-entered loan counts), joined
+ *  to the loan's name and balance. Closed loans are skipped. */
+export async function loanCycles(conn, { orgId, clientId }) {
+  const res = await conn.query(
+    `SELECT c.id AS cycle_id, c.bank_account_id, c.payment_due_day, c.minimum_payment_cents,
+            c.raw, a.name, a.mask, a.current_balance_cents
+       FROM account_statement_cycles c
+       JOIN bank_accounts a ON a.id = c.bank_account_id AND a.org_id = c.org_id
+      WHERE c.org_id = $1 AND c.client_id = $2
+        AND a.account_type = 'loan'
+        AND a.closed_at IS NULL`,
+    [orgId, clientId]
+  );
+  return res.rows;
+}
+
 /**
  * remindClient(conn, { orgId, clientId, todayIso, send, createReminder })
  * — step 2 and 3 for one client. Exported so the endpoint and tests can drive it.
@@ -63,12 +92,18 @@ export async function providerCycles(conn, { orgId, clientId }) {
 export async function remindClient(conn, {
   orgId, clientId, todayIso, send = defaultSend, createReminder = defaultCreateReminder
 } = {}) {
-  const out = { cards: 0, reminded: 0, alreadyReminded: 0, queued: 0, notQueued: [], skipped: [] };
-  const rows = await providerCycles(conn, { orgId, clientId });
-  out.cards = rows.length;
+  const out = { cards: 0, loans: 0, reminded: 0, alreadyReminded: 0, queued: 0, notQueued: [], skipped: [] };
+  const cardRows = await providerCycles(conn, { orgId, clientId });
+  const loanRows = await loanCycles(conn, { orgId, clientId });
+  out.cards = cardRows.length;
+  out.loans = loanRows.length;
 
-  for (const row of rows) {
-    const plan = planCardDue(row, { today: todayIso });
+  const work = [
+    ...cardRows.map((row) => ({ row, subjectKind: "card_liability", plan: planCardDue(row, { today: todayIso }) })),
+    ...loanRows.map((row) => ({ row, subjectKind: "loan", plan: planLoanDue(row, { today: todayIso }) }))
+  ];
+
+  for (const { row, subjectKind, plan } of work) {
     if (!plan.remind) {
       out.skipped.push({ bankAccountId: row.bank_account_id, reason: plan.reason });
       continue;
@@ -77,7 +112,7 @@ export async function remindClient(conn, {
     const claim = await createReminder(conn, {
       orgId,
       clientId,
-      subjectKind: "card_liability",
+      subjectKind,
       subjectId: row.bank_account_id,
       subjectLabel: plan.label,
       reminderKind: "payment_due",

@@ -20,13 +20,25 @@ const CARD = {
 const PAID = { ...CARD, cycle_id: "cy-2", bank_account_id: "ba-2", name: "Chase Ink",
   raw: { next_payment_due_date: "2026-10-20", last_payment_date: "2026-10-02" } };
 
-function stubDb({ entitled = [{ org_id: ORG, client_id: CLIENT }], cycles = [CARD, PAID] } = {}) {
+/* A loan typed in by hand: no provider date, due the 1st, $1,050 a month. */
+const LOAN = {
+  cycle_id: "cy-9", bank_account_id: "ba-9", name: "SBA Loan", mask: null,
+  payment_due_day: 1, minimum_payment_cents: "105000", current_balance_cents: "4800000", raw: {}
+};
+
+function stubDb({ entitled = [{ org_id: ORG, client_id: CLIENT }], cycles = [CARD, PAID], loans = [] } = {}) {
   const seen = [];
   return {
     seen,
     async query(sql, params) {
       seen.push(sql);
       if (/FROM subscriptions/.test(sql)) return { rows: entitled };
+      if (/FROM account_statement_cycles/.test(sql) && /a\.account_type = 'loan'/.test(sql)) {
+        assert.equal(/c\.source = 'provider'/.test(sql), false, "a hand-entered loan counts");
+        assert.match(sql, /a\.closed_at IS NULL/);
+        assert.deepEqual(params, [ORG, CLIENT]);
+        return { rows: loans };
+      }
       if (/FROM account_statement_cycles/.test(sql)) {
         assert.match(sql, /c\.source = 'provider'/);
         assert.deepEqual(params, [ORG, CLIENT]);
@@ -146,6 +158,91 @@ describe("finance-os-card-due-reminders sweep", () => {
     });
     assert.equal(tally.errored.length, 1);
     assert.equal(tally.errored[0].clientId, "boom");
+  });
+});
+
+describe("loans (wave 3, G2)", () => {
+  const OCT29 = new Date("2026-10-29T16:00:00.000Z"); // the 1st is 3 days away
+
+  test("a hand-entered loan due in 3 days gets one reminder, filed as a loan, card wording", async () => {
+    const store = stubStore();
+    const tally = await sweep(stubDb({ cycles: [], loans: [LOAN] }), { now: OCT29, env: {}, ...store, sync: okSync });
+    assert.equal(tally.reminded, 1);
+    assert.equal(tally.queued, 1);
+    const [r] = [...store.reminders.values()];
+    assert.equal(r.subjectKind, "loan");
+    assert.equal(r.subjectId, "ba-9");
+    assert.equal(r.reminderKind, "payment_due");
+    assert.equal(r.body, "Fundhub reminder: your SBA Loan payment of $1,050.00 is due Nov 1.");
+    const [s] = [...store.queued.values()];
+    assert.equal(s.templateKey, TEMPLATE_KEY, "same template as a card — no new template");
+    assert.equal(s.eventId, "loan-due:ba-9:2026-11-01");
+    assert.deepEqual(s.context.card, { name: "SBA Loan", amount_phrase: " of $1,050.00", due_phrase: "Nov 1" });
+  });
+
+  test("one reminder per loan per due date across daily passes; next month is a new one", async () => {
+    const store = stubStore();
+    for (const day of ["2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]) {
+      await sweep(stubDb({ cycles: [], loans: [LOAN] }), { now: new Date(`${day}T16:00:00.000Z`), env: {}, ...store, sync: okSync });
+    }
+    assert.equal(store.reminders.size, 1);
+    assert.equal(store.queued.size, 1);
+    await sweep(stubDb({ cycles: [], loans: [LOAN] }), { now: new Date("2026-11-29T16:00:00.000Z"), env: {}, ...store, sync: okSync });
+    assert.equal(store.queued.size, 2, "Dec 1 is its own due date");
+  });
+
+  test("cards and loans in one pass: both reminded, each under its own subject", async () => {
+    const store = stubStore();
+    const card = { ...CARD, raw: { ...CARD.raw, next_payment_due_date: "2026-10-31" } };
+    const r = await remindClient(stubDb({ cycles: [card], loans: [LOAN] }), {
+      orgId: ORG, clientId: CLIENT, todayIso: "2026-10-29", ...store
+    });
+    assert.equal(r.cards, 1);
+    assert.equal(r.loans, 1);
+    assert.equal(r.reminded, 2);
+    assert.deepEqual([...store.reminders.values()].map((x) => x.subjectKind).sort(), ["card_liability", "loan"]);
+  });
+
+  test("not yet, paid off, no due day, $0 payment: no text", async () => {
+    const store = stubStore();
+    const r = await remindClient(stubDb({ cycles: [], loans: [
+      { ...LOAN, bank_account_id: "ba-a", payment_due_day: 15 },
+      { ...LOAN, bank_account_id: "ba-b", current_balance_cents: "0" },
+      { ...LOAN, bank_account_id: "ba-c", payment_due_day: null },
+      { ...LOAN, bank_account_id: "ba-d", minimum_payment_cents: "0" }
+    ] }), { orgId: ORG, clientId: CLIENT, todayIso: "2026-10-29", ...store });
+    assert.equal(r.reminded, 0);
+    assert.equal(store.queued.size, 0);
+    assert.deepEqual(r.skipped.map((x) => x.reason), ["not_yet", "paid_off", "no_due_date", "nothing_due"]);
+  });
+
+  test("an unknown payment still reminds, with no amount", async () => {
+    const store = stubStore();
+    await remindClient(stubDb({ cycles: [], loans: [{ ...LOAN, minimum_payment_cents: null }] }), {
+      orgId: ORG, clientId: CLIENT, todayIso: "2026-11-01", ...store
+    });
+    const [r] = [...store.reminders.values()];
+    assert.equal(r.body, "Fundhub reminder: your SBA Loan payment is due today, Nov 1.");
+  });
+
+  test("a stale provider date falls back to the due day", async () => {
+    const store = stubStore();
+    await remindClient(stubDb({ cycles: [], loans: [{ ...LOAN, raw: { next_payment_due_date: "2026-10-01" } }] }), {
+      orgId: ORG, clientId: CLIENT, todayIso: "2026-10-30", ...store
+    });
+    const [s] = [...store.queued.values()];
+    assert.equal(s.eventId, "loan-due:ba-9:2026-11-01");
+  });
+});
+
+describe("migration 451", () => {
+  const sql = readFileSync(new URL("../../db/migrations/451_loan_due_dates.sql", import.meta.url), "utf8");
+  test("adds 'loan' to cashflow_reminders.subject_kind and keeps the old two", () => {
+    assert.match(sql, /DROP CONSTRAINT IF EXISTS cashflow_reminders_subject_kind_check/);
+    assert.match(sql, /CHECK \(subject_kind IN \('card_liability', 'recurring_bill', 'loan'\)\)/);
+  });
+  test("does not create a new table for loan terms", () => {
+    assert.equal(/CREATE TABLE/i.test(sql), false);
   });
 });
 

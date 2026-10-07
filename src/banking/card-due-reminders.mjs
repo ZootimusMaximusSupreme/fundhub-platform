@@ -23,7 +23,7 @@
 // one can cost a late fee. We never claim the card was paid, either way.
 
 import { fromCents } from "../commissions/money.mjs";
-import { daysBetween, parseIsoDate, formatIsoDate } from "./statement-cycles.mjs";
+import { daysBetween, parseIsoDate, formatIsoDate, nextDueDate } from "./statement-cycles.mjs";
 
 export const REMIND_DAYS_BEFORE = 3;
 export const TEMPLATE_KEY = "SMS-FINANCE-OS-CARD-DUE";
@@ -129,4 +129,84 @@ export function planCardDue(row, { today } = {}) {
   };
 }
 
-export default { planCardDue, cardLabel, shortDate, dollars, TEMPLATE_KEY, REMIND_DAYS_BEFORE };
+/* ------------------------------------------------------------------ *
+ * Loans (wave 3, G2)
+ *
+ * A LOAN IS REMINDED FROM ITS SCHEDULE. Unlike a card, a loan's payment is the
+ * same every month and is due whether or not anyone made a payment last month,
+ * so a loan typed in by hand ("due the 1st, $1,050") is reminded too. The text
+ * says only that the payment is due — it never claims nothing was paid.
+ *
+ * THE DUE DATE: an exact provider date (raw.next_payment_due_date) when it is
+ * still today or later; otherwise the next date that falls on payment_due_day,
+ * worked out by statement-cycles.mjs (the one month-end rule). A provider date
+ * that has passed is a stale read, and the loan still has a due day next month.
+ *
+ * Same window (0-3 days), same one-per-due-date keys, same template and wording
+ * as a card: "Fundhub reminder: your SBA Loan payment of $1,050.00 is due Nov 1."
+ * ------------------------------------------------------------------ */
+
+/** loanDueOn(cycle, today) → 'YYYY-MM-DD' or null. Pure. */
+export function loanDueOn(cycle, today) {
+  if (!parseIsoDate(today)) return null;
+  const raw = cycle?.raw && typeof cycle.raw === "object" ? cycle.raw : {};
+  const exact = parseIsoDate(raw.next_payment_due_date) ? raw.next_payment_due_date : null;
+  if (exact && daysBetween(today, exact) >= 0) return exact;
+  return nextDueDate(cycle ?? {}, { today }).dueOn;
+}
+
+/** What the loan is called in a text. Its own name; its last four; "loan". */
+export function loanLabel(row) {
+  const name = typeof row?.name === "string" ? row.name.trim() : "";
+  if (name) return name;
+  if (row?.mask) return `loan ending ${row.mask}`;
+  return "loan";
+}
+
+/**
+ * planLoanDue(row, { today }) → { remind, reason, ... } — the same shape
+ * planCardDue returns, so the workflow handles both the same way.
+ *
+ * `row` is one account_statement_cycles row on a loan account, joined to the
+ * account's name, mask and current_balance_cents.
+ */
+export function planLoanDue(row, { today } = {}) {
+  const skip = (reason, extra = {}) => ({ remind: false, reason, ...extra });
+  if (!parseIsoDate(today)) return skip("bad_today");
+
+  const dueOn = loanDueOn(row, today);
+  if (!dueOn) return skip("no_due_date");
+
+  const daysAway = daysBetween(today, dueOn);
+  if (daysAway > REMIND_DAYS_BEFORE) return skip("not_yet", { dueOn, daysAway });
+
+  const payCents = toInt(row.minimum_payment_cents);
+  const balance = toInt(row.current_balance_cents);
+  if (payCents === 0) return skip("nothing_due", { dueOn, daysAway });
+  // A known balance at or below zero is a paid-off loan. Unknown still reminds.
+  if (balance !== null && Number.isFinite(balance) && balance <= 0) return skip("paid_off", { dueOn, daysAway });
+
+  const label = loanLabel(row);
+  const dueText = shortDate(dueOn);
+  const card = {
+    name: label,
+    amount_phrase: payCents !== null ? ` of ${dollars(payCents)}` : "",
+    due_phrase: daysAway === 0 ? `today, ${dueText}` : dueText
+  };
+  return {
+    remind: true,
+    reason: null,
+    dueOn,
+    daysAway,
+    amountCents: payCents,
+    label,
+    card,
+    body: `Fundhub reminder: your ${card.name} payment${card.amount_phrase} is due ${card.due_phrase}.`,
+    surfaceAt: `${addDays(dueOn, -REMIND_DAYS_BEFORE)}T${String(SURFACE_HOUR_UTC).padStart(2, "0")}:00:00.000Z`,
+    eventId: `loan-due:${row.bank_account_id}:${dueOn}`
+  };
+}
+
+export default {
+  planCardDue, planLoanDue, loanDueOn, cardLabel, loanLabel, shortDate, dollars, TEMPLATE_KEY, REMIND_DAYS_BEFORE
+};
