@@ -22,12 +22,13 @@ flowchart TD
     CAN --> A_documents[Documents — 1 route]
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 1 route]
+    CAN --> A_merchant[merchant — 1 route]
     CAN --> A_public[public — 18 routes]
     CAN --> A_read[Reading data — 3 routes]
     CAN --> A_top_level[Everything else — 5 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 265 routes]
+    WHO -->|Yes| CANT[Blocked — 270 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
@@ -47,7 +48,7 @@ flowchart TD
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 43 blocked]
-    CANT --> B_money[money — 1 blocked]
+    CANT --> B_money[money — 6 blocked]
     CANT --> B_ops[ops — 2 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -66,7 +67,7 @@ flowchart TD
 
 ## What they can reach
 
-**40 of 305 routes.**
+**41 of 311 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -85,6 +86,7 @@ flowchart TD
 | `/api/health` | — | anyone |
 | `/api/hiring/apply` | GET, POST | anyone |
 | `/api/inngest` | — | **not a sign-in** — Inngest request signing |
+| `/api/merchant/events` | POST | anyone |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/public/ad-video-approve` | — | anyone |
 | `/api/public/affiliate-click` | POST | anyone |
@@ -113,12 +115,12 @@ flowchart TD
 
 ### Worth knowing
 
-- **29 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
+- **30 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
 - **6 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
-**265 of 305 routes.**
+**270 of 311 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -273,7 +275,12 @@ flowchart TD
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
+| `/api/money/connections` | GET, POST | owner, admin, sales_manager |
+| `/api/money/credit` | GET | owner, admin, sales_manager |
 | `/api/money/overview` | GET | owner, admin, sales_manager |
+| `/api/money/payments` | GET, POST | owner, admin, sales_manager |
+| `/api/money/setup` | GET, POST | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/paid-services` | GET, POST | staff, client |

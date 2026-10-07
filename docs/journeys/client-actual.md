@@ -26,13 +26,14 @@ flowchart TD
     CAN --> A_documents[Documents — 1 route]
     CAN --> A_finance[Finance — 1 route]
     CAN --> A_hiring[Hiring — 1 route]
+    CAN --> A_merchant[merchant — 1 route]
     CAN --> A_public[public — 18 routes]
     CAN --> A_push[push — 3 routes]
     CAN --> A_read[Reading data — 5 routes]
     CAN --> A_top_level[Everything else — 9 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 251 routes]
+    WHO -->|Yes| CANT[Blocked — 256 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 7 blocked]
@@ -51,7 +52,7 @@ flowchart TD
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 43 blocked]
-    CANT --> B_money[money — 1 blocked]
+    CANT --> B_money[money — 6 blocked]
     CANT --> B_ops[ops — 2 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -69,7 +70,7 @@ flowchart TD
 
 ## What they can reach
 
-**54 of 305 routes.**
+**55 of 311 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -95,6 +96,7 @@ flowchart TD
 | `/api/health` | — | anyone |
 | `/api/hiring/apply` | GET, POST | anyone |
 | `/api/inngest` | — | **not a sign-in** — Inngest request signing |
+| `/api/merchant/events` | POST | anyone |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | staff, client |
 | `/api/public/ad-video-approve` | — | anyone |
@@ -130,12 +132,12 @@ flowchart TD
 
 ### Worth knowing
 
-- **29 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
+- **30 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
 - **6 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
-**251 of 305 routes.**
+**256 of 311 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -283,7 +285,12 @@ flowchart TD
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
+| `/api/money/connections` | GET, POST | owner, admin, sales_manager |
+| `/api/money/credit` | GET | owner, admin, sales_manager |
 | `/api/money/overview` | GET | owner, admin, sales_manager |
+| `/api/money/payments` | GET, POST | owner, admin, sales_manager |
+| `/api/money/setup` | GET, POST | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/partner-addons` | GET, POST | owner, admin |
