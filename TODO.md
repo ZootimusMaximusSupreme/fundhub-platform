@@ -1,5 +1,13 @@
 # TODO
 
+## Capital Blueprint launch — added 2026-10-06 (launch in 48 hours)
+
+- [ ] Tomorrow: work on Blueprint. Map the whole client journey end to end so it pops at launch.
+- [ ] Load Blueprint into the presentation part (the closer deck / sales presentation).
+- [ ] Blueprint gets its own payment webhook instead of Commas.
+- [ ] Set up Whop for multiple items (Chris said "WOP"; earlier in the same chat he used "WAP" for Whop).
+- [ ] Add tests and quizzes to Blueprint (owner idea 2026-10-06 — funding courses use them).
+
 ## Now — 2026-10-04 (Sunday)
 
 Business only. Every item was checked against the repo and the live site on 10/4, and anything already done was taken off. Personal errands live in `TODO-personal.md` (local only, not in git).
