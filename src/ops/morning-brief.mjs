@@ -45,7 +45,7 @@ import { textMorningBrief } from "../pulse/notify.mjs";
 import { buildSuggestions } from "./suggestions.mjs";
 import { groupByOfferFunnel, groupClosers, loadOfferNumbers, readClosersByOffer, OFFER_NOTES } from "./brief-offers.mjs";
 
-export const MORNING_BRIEF_LIVE = false;
+export const MORNING_BRIEF_LIVE = true;
 export const BRIEF_TZ = "America/Phoenix";
 // Arizona keeps no daylight time, so its offset never moves.
 export const BRIEF_UTC_OFFSET = "-07:00";
