@@ -44,7 +44,7 @@ import { buildMoneyOverview } from "./money-overview.mjs";
 import { readEntityKind, ENTITY_KINDS } from "./banking-surface.mjs";
 import { sumKnown } from "./os-grid.mjs";
 import { scorePoints } from "./credit-overview.mjs";
-import { merchantSummary, listConnections } from "../merchant/store.mjs";
+import { merchantSummary } from "../merchant/store.mjs";
 
 /* The ranges the page offers. `days` is the daily window (today included);
    `months` is the month window for the in/out and sales lines. */
@@ -588,6 +588,31 @@ const TX_MONTHS_SQL = `
      AND posted_on >= $3::date AND posted_on <= $4::date
    GROUP BY 1, 2`;
 
+/* The merchant connections, for the sales line: only what it needs (container,
+   when it was made, last event). Not the store's listConnections — that read
+   carries the encrypted secret columns, which a trend line has no use for. */
+const MERCHANT_CONNECTIONS_SQL = `
+  SELECT c.id, c.entity_id, c.created_at, c.last_event_at,
+         e.name AS entity_name, e.kind AS entity_kind
+    FROM merchant_connections c
+    JOIN entities e ON e.id = c.entity_id
+   WHERE c.org_id = $1 AND c.client_id = $2
+   ORDER BY c.created_at`;
+
+/* The sales part on its own, so a merchant read that fails cannot take the
+   cash and debt lines down with it. A failure says so (sales_unavailable),
+   it is not passed off as "no processor connected". */
+async function readSales(db, { orgId, clientId, months, asOf }) {
+  try {
+    const conns = (await db.query(MERCHANT_CONNECTIONS_SQL, [orgId, clientId])).rows;
+    if (!conns.length) return { connections: [], sales: null, failed: false };
+    const sales = await merchantSummary(db, { orgId, clientId, months, asOf, connections: conns });
+    return { connections: conns, sales, failed: false };
+  } catch {
+    return { connections: [], sales: null, failed: true };
+  }
+}
+
 const CRS_SQL = `
   SELECT id, result, created_at FROM crs_results
    WHERE client_id = $1 AND org_id = $2 AND is_demo IS NOT TRUE
@@ -609,12 +634,12 @@ export async function moneyTrends(db, { orgId, clientId, range = DEFAULT_RANGE, 
   const client = clientRes.rows[0];
   if (!client) return null;
 
-  const [rollups, txMonths, acc, crs, connections] = await Promise.all([
+  const [rollups, txMonths, acc, crs, merchant] = await Promise.all([
     db.query(ROLLUP_READ_SQL, [clientId, orgId, from, to]),
     db.query(TX_MONTHS_SQL, [clientId, orgId, firstMonthDay, to]),
     readAccounts(db, { orgId, clientId }),
     db.query(CRS_SQL, [clientId, orgId]),
-    listConnections(db, { orgId, clientId })
+    readSales(db, { orgId, clientId, months: r.months, asOf: new Date(asOfIso) })
   ]);
   const entById = new Map(acc.entities.map((e) => [String(e.id), e]));
   const accounts = acc.accounts.map((a) => {
@@ -624,14 +649,12 @@ export async function moneyTrends(db, { orgId, clientId, range = DEFAULT_RANGE, 
       kind: ent ? readEntityKind(ent.kind) : readEntityKind(a.entity_kind)
     };
   });
-  const sales = connections.length
-    ? await merchantSummary(db, { orgId, clientId, months: r.months, asOf: new Date(asOfIso), connections })
-    : null;
-
-  return buildTrends({
+  const out = buildTrends({
     client, asOf: asOfIso, range, rollups: rollups.rows, txMonths: txMonths.rows,
-    accounts, sales, connections, crsRows: crs.rows
+    accounts, sales: merchant.sales, connections: merchant.connections, crsRows: crs.rows
   });
+  out.sales_unavailable = merchant.failed;
+  return out;
 }
 
 export default moneyTrends;

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import {
   addDays, dayRange, lastMonths, readRange, cardsUsed, buildSnapshot,
-  rebuildBalances, backfillRollups, buildTrends, planBackfill, backfillClient, snapshotClient
+  rebuildBalances, backfillRollups, buildTrends, planBackfill, backfillClient, snapshotClient, moneyTrends
 } from "./money-trends.mjs";
 
 const ENT_P = { id: "e-p", kind: "personal", name: "Chris" };
@@ -276,5 +276,48 @@ describe("the read", () => {
   test("credit history only from two pulls up", () => {
     const one = [{ created_at: "2026-09-01T00:00:00Z", result: {} }];
     assert.deepEqual(buildTrends({ asOf: ASOF, crsRows: one }).credit.history, []);
+  });
+});
+
+describe("moneyTrends — the read against a stand-in db", () => {
+  function readDb({ merchantFails = false, conns = [] } = {}) {
+    const seen = [];
+    return {
+      seen,
+      query: async (sql, params) => {
+        seen.push(sql);
+        if (/FROM clients/.test(sql)) return { rows: [{ id: "c", first_name: "Sam", last_name: "Lee" }] };
+        if (/FROM merchant_connections c/.test(sql) && !/merchant_events/.test(sql)) {
+          if (merchantFails) throw Object.assign(new Error("column c.mode does not exist"), { code: "42703" });
+          assert.doesNotMatch(sql, /encrypted/, "the trend read never selects secret columns");
+          return { rows: conns };
+        }
+        if (/FROM finance_client_daily/.test(sql)) {
+          assert.deepEqual(params.slice(0, 2), ["c", "o"], "every query carries client and org");
+          return { rows: [{ day: "2026-10-06", cash_personal_cents: "100", cash_business_cents: "200", estimated: false }] };
+        }
+        return { rows: [] };
+      }
+    };
+  }
+
+  test("unknown client → null (the endpoint answers 404)", async () => {
+    const db = { query: async () => ({ rows: [] }) };
+    assert.equal(await moneyTrends(db, { orgId: "o", clientId: "c", range: "30d", asOf: new Date("2026-10-06T12:00:00Z") }), null);
+  });
+
+  test("no processor: sales null and not marked unavailable", async () => {
+    const t = await moneyTrends(readDb(), { orgId: "o", clientId: "c", range: "30d", asOf: new Date("2026-10-06T12:00:00Z") });
+    assert.equal(t.sales, null);
+    assert.equal(t.sales_unavailable, false);
+    assert.equal(t.daily.cash.personal.cents.at(-1), 100);
+  });
+
+  test("a merchant read that fails does not take the cash lines down, and says so", async () => {
+    const t = await moneyTrends(readDb({ merchantFails: true }), { orgId: "o", clientId: "c", range: "30d", asOf: new Date("2026-10-06T12:00:00Z") });
+    assert.equal(t.ok, true);
+    assert.equal(t.sales, null);
+    assert.equal(t.sales_unavailable, true);
+    assert.equal(t.daily.cash.business.cents.at(-1), 200);
   });
 });
