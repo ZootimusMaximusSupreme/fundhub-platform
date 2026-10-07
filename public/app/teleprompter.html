@@ -33,7 +33,7 @@
 :root{
   color-scheme:dark;
   --bg:#000;
-  --panel:#0d0e10;
+  --panel:#000;
   --panel-2:#17191d;
   --rule:#2b2f36;
   --ink:#fff;
@@ -48,7 +48,7 @@
   --data-face:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;background:#000}
 body{background:var(--bg);color:var(--ink);font-family:var(--read-face);overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit}
 a{color:inherit}
@@ -56,11 +56,11 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 [hidden]{display:none !important}
 
 /* layout: header row, the stage, the change pulse, the thumb bar */
-#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto}
+#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto;background:#000}
 
 /* header: which ad, which take, the file name to give the clip */
 #top{padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;border-bottom:1px solid var(--rule);background:var(--panel);display:grid;gap:4px;transition:opacity .4s;min-width:0}
-#top .row1{display:flex;align-items:center;gap:8px;min-width:0}
+#top .row1{display:flex;align-items:center;gap:8px;min-width:0;padding-right:84px}
 #s-ad{font-family:var(--data-face);font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 #top a.home{font-size:13px;color:var(--ink-2);white-space:nowrap;padding:8px 0;min-height:40px;display:inline-flex;align-items:center}
 #s-title{font-size:18px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -70,12 +70,12 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 .mini{border:1px solid var(--rule);background:var(--panel-2);border-radius:10px;padding:8px 12px;min-height:40px;font-size:13px;cursor:pointer;white-space:nowrap}
 
 /* the stage */
-#flip{position:relative;overflow:hidden;min-height:0}
+#flip{position:relative;overflow:visible;z-index:2;min-height:0;background:#000}
 #flip.mirror-x{transform:scaleX(-1)}
 #flip.mirror-y{transform:scaleY(-1)}
 #flip.mirror-x.mirror-y{transform:scale(-1,-1)}
-#stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform;--measure:30ch}
+#stage{position:absolute;inset:0;overflow:hidden;background:#000;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform;--measure:30ch;color:#fff;background:transparent}
 #content p{margin:0 auto .9em;line-height:1.32;max-width:var(--measure)}
 #content p.cue{color:var(--cue);border-left:4px solid var(--cue);padding-left:.4em}
 #content .w{transition:color .25s}
@@ -90,25 +90,25 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 #line::after{right:0;border-right-color:var(--tally)}
 #progress{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--rule);pointer-events:none}
 #progress-fill{height:100%;width:0;background:var(--tally)}
-#scrollchip{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--cue);color:#000;border-radius:999px;padding:4px 16px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
+#scrollchip{position:absolute;top:auto;bottom:-28px;left:50%;transform:translateX(-50%);height:28px;line-height:26px;padding:0 12px;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;background:#000;color:var(--cue);border:1px solid #3a3a3a;border-radius:999px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
 #count{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-family:var(--data-face);font-size:min(38vw,240px);color:var(--tally);text-shadow:0 0 40px rgba(0,0,0,.8)}
-#cuehold{position:absolute;left:16px;right:16px;bottom:16px;text-align:center;font-size:15px;color:var(--bg);background:var(--cue);border-radius:12px;padding:8px 16px;pointer-events:none}
+#cuehold{position:absolute;left:50%;right:auto;bottom:-28px;transform:translateX(-50%);height:28px;line-height:26px;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:13px;font-weight:700;color:var(--cue);background:#000;border:1px solid #3a3a3a;border-radius:999px;padding:0 12px;pointer-events:none;white-space:nowrap}
 .card{position:absolute;left:16px;right:16px;bottom:24px;margin:0 auto;max-width:560px;background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:16px;display:grid;gap:12px;box-shadow:0 -20px 60px rgba(0,0,0,.6)}
 .card h2{margin:0;font-size:20px}
 .card p{margin:0;color:var(--ink-2);font-size:15px;line-height:1.45}
 .card .file{font-family:var(--data-face);font-size:13px;color:var(--ink);overflow-wrap:anywhere}
 .card .acts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .big{min-height:56px;border-radius:12px;border:1px solid var(--rule);background:var(--panel-2);font-size:17px;font-weight:700;cursor:pointer;padding:8px 16px;text-decoration:none;display:grid;place-items:center;text-align:center}
-.big.primary{background:var(--ok);border-color:var(--ok);color:#06210d}
+.big.primary{background:#000;border-color:var(--ok);color:#fff}
 .keys{font-family:var(--data-face);font-size:12px;color:var(--ink-2)}
 #empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center}
 #empty .box{display:grid;gap:16px;max-width:420px;justify-items:center}
 #empty p{margin:0;color:var(--ink-2);font-size:17px;line-height:1.45}
 
 /* the change pulse: the take name and the save status. It never hides. */
-#pulse{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px;min-height:28px;background:var(--bg);border-top:1px solid var(--rule);min-width:0}
-#p-file{font-family:var(--data-face);font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-#p-save{border:0;background:none;color:var(--ok);font-size:12px;padding:8px 0;min-height:28px;cursor:pointer;white-space:nowrap;flex:none;text-align:right}
+#pulse{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px;min-height:28px;background:transparent;border-top:1px solid var(--rule);min-width:0}
+#p-file{position:relative;z-index:1;background:#000;font-family:var(--data-face);font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#p-save{position:relative;z-index:1;border:0;background:#000;color:var(--ok);font-size:12px;padding:8px 0;min-height:28px;cursor:pointer;white-space:nowrap;flex:none;text-align:right}
 #p-save.busy{color:var(--ink-2)}
 #p-save.warn{color:var(--cue);font-weight:700}
 body.rolling #pulse{opacity:.7}
@@ -166,7 +166,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 .edit-box{display:block;width:100%;max-width:var(--measure);margin:0 auto .9em;padding:8px 12px;border:2px solid var(--cue);border-radius:12px;background:#111;color:var(--ink);font-family:var(--read-face);line-height:1.32;resize:none;overflow:hidden;-webkit-user-select:text;user-select:text}
 #editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
 #e-status{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-#e-done{background:var(--ok);border-color:var(--ok);color:#06210d;font-weight:700}
+#e-done{background:#000;border-color:var(--ok);color:#fff;font-weight:700}
 
 /* a tablet (iPad, either way up): bigger taps, one row of controls, and the
    sheets open as a drawer from the right so the script stays in view */
@@ -191,15 +191,15 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 #cam-line{font-size:13px;color:var(--cue);margin:0}
 /* Small face box, same job as the iPhone app: line up, then fade to dark glass.
    It sits outside #flip, so the beam-splitter switch only flips the words. */
-#cam{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));right:8px;width:96px;height:170px;border-radius:12px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.3)}
+#cam{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));right:8px;width:72px;height:40px;border-radius:12px;overflow:hidden;background:#000;border:1px solid #2a2a2a}
 #cam-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#000}
 #cam-shade{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.2s ease-out;pointer-events:none}
-#cam.glass #cam-shade{opacity:.78}
+#cam.glass #cam-shade{opacity:1}
 #cam-corner{position:absolute;inset:0;margin:0;border:0;padding:0;background:transparent;cursor:pointer}
 #rec{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(0,0,0,.6);border-radius:999px;font-family:var(--data-face);font-size:12px;font-weight:600}
 #rec-dot{width:10px;height:10px;border-radius:50%;background:var(--tally);flex:none}
 #b-save{position:fixed;z-index:6;top:calc(40px + env(safe-area-inset-top,0px));left:8px}
-@media (orientation:landscape){#cam{width:170px;height:96px}}
+@media (orientation:landscape){#cam{width:120px;height:40px}#top .row1{padding-right:132px}}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top,#cam-shade{transition:none}}
 </style>
 </head>
