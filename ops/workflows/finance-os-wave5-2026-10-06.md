@@ -56,3 +56,10 @@ Each UI part is `window.FinanceOS.sections.<name> = { title, mount(el, ctx) }`, 
 
 ## Manifests
 (orchestrator fills in)
+
+### Merged so far
+- H5 merchant API-key pull (migration 457, workflow 95) — merged.
+- H6 trends + line graphs (migration 458, workflow 96) — merged. Backfill `scripts/finance-os-backfill-trends.mjs --apply` after ship.
+
+### Fix in the final pass (sample-data law)
+- Test client's sandbox bank v2: stored transactions don't add up to its balances, so rebuilt history dips below zero (~−$17,929 personal Jul 13, ~−$10,920 business Jul 11). One sample file must agree with itself → make a consistent sandbox bank (balances = sum of activity) before showing trends.
