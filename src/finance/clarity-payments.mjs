@@ -98,6 +98,9 @@ export function planView(plan = {}, installments = [], today) {
     kind: plan.kind ?? null,
     owed_to: plan.owed_to || DEFAULT_OWED_TO,
     label: plan.label || null,
+    // The invoice this plan mirrors, when there is one. A Commas payment that
+    // names this invoice is matched to this plan first (clarity-autopay.mjs).
+    invoice_id: plan.invoice_id ?? null,
     name: planWords(plan),
     status: plan.status ?? "open",
     settled_at: plan.settled_at ? new Date(plan.settled_at).toISOString() : null,
@@ -315,13 +318,16 @@ export async function logMoneyAction(conn, row) {
   return { created: r.rows.length > 0, id: r.rows[0]?.id ?? null };
 }
 
-/** The newest steps for one client, for the page. */
+/** The newest steps for one client, for the page. A Commas payment that could
+ *  not be matched is staff work, not a step the client sees — it is left out
+ *  here and read by readUnmatchedPayments instead. `via` says where an
+ *  automatic payment came from ('commas'), or null. */
 export async function readMoneyLog(conn, { orgId, clientId, limit = 25 }) {
   const r = await conn.query(
     `SELECT id, item_kind, item_label, decided_on::text AS decided_on, action, actor, brain,
-            reason, message_status, task_id, amount_cents, created_at
+            reason, message_status, task_id, amount_cents, created_at, detail->>'via' AS via
        FROM money_agent_log
-      WHERE org_id = $1 AND client_id = $2
+      WHERE org_id = $1 AND client_id = $2 AND action <> 'payment_unmatched'
       ORDER BY created_at DESC, id
       LIMIT $3`,
     [orgId, clientId, limit]
@@ -338,6 +344,30 @@ export async function readMoneyLog(conn, { orgId, clientId, limit = 25 }) {
     message_status: x.message_status,
     task_created: !!x.task_id,
     amount_cents: x.amount_cents === null || x.amount_cents === undefined ? null : Number(x.amount_cents),
+    via: x.via || null,
+    at: x.created_at ? new Date(x.created_at).toISOString() : null
+  }));
+}
+
+/** Commas payments from this client that could not be tied to a plan, newest
+ *  first, for staff (src/finance/clarity-autopay.mjs writes them). */
+export async function readUnmatchedPayments(conn, { orgId, clientId, limit = 25 }) {
+  const r = await conn.query(
+    `SELECT id, decided_on::text AS decided_on, reason, amount_cents, created_at,
+            detail->>'via' AS via, detail->>'payment_id' AS payment_id
+       FROM money_agent_log
+      WHERE org_id = $1 AND client_id = $2 AND action = 'payment_unmatched'
+      ORDER BY created_at DESC, id
+      LIMIT $3`,
+    [orgId, clientId, limit]
+  );
+  return r.rows.map((x) => ({
+    id: x.id,
+    decided_on: x.decided_on,
+    reason: x.reason,
+    amount_cents: x.amount_cents === null || x.amount_cents === undefined ? null : Number(x.amount_cents),
+    via: x.via || null,
+    payment_id: x.payment_id || null,
     at: x.created_at ? new Date(x.created_at).toISOString() : null
   }));
 }
@@ -345,5 +375,5 @@ export async function readMoneyLog(conn, { orgId, clientId, limit = 25 }) {
 export default {
   planView, installmentView, allocatePayment, validatePlanInput, planWords,
   listClarityPayments, addClarityPayment, recordClarityPayment, settleClarityPayment,
-  logMoneyAction, readMoneyLog
+  logMoneyAction, readMoneyLog, readUnmatchedPayments
 };

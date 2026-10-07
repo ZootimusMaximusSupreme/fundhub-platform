@@ -40,6 +40,7 @@ function spies() {
       listClarityPayments: spy("list", []),
       moneyOverview: spy("overview", { ok: true, client: { id: MINE, name: "Sam" }, upcoming: [] }),
       readMoneyLog: spy("readLog", []),
+      readUnmatchedPayments: spy("readUnmatched", [{ id: "u1", decided_on: "2026-10-06", reason: "amount_does_not_match", amount_cents: 20000, via: "commas", payment_id: "pay_x" }]),
       addClarityPayment: spy("add", { id: PLAN, plan: { kind: "clarity", owed_to: "Fundhub LLC", label: null, original_cents: 150000, installments: [1, 2, 3] } }),
       recordClarityPayment: spy("record", { ok: true, settled: false, moves: [], plan: { kind: "clarity" } }),
       settleClarityPayment: spy("settle", { ok: true, plan: { kind: "clarity" } }),
@@ -82,6 +83,16 @@ describe("GET /api/money/payments", () => {
     assert.equal(outside.res.statusCode, 404);
     const none = await call({ method: "GET", query: {} }, staffP("owner"));
     assert.equal(none.res.statusCode, 400);
+  });
+
+  test("unmatched Commas payments: listed for staff, never read or sent for a client", async () => {
+    const staff = await call({ method: "GET", query: { client_id: MINE } }, staffP("admin"));
+    assert.equal(staff.res.body.unmatched_payments.length, 1);
+    assert.equal(staff.res.body.unmatched_payments[0].reason, "amount_does_not_match");
+    assert.equal(staff.calls.readUnmatched[0].clientId, MINE);
+    const client = await call({ method: "GET", query: {} }, clientP());
+    assert.equal("unmatched_payments" in client.res.body, false);
+    assert.equal(client.calls.readUnmatched, undefined);
   });
 
   test("a staff role outside FINANCE is refused", async () => {

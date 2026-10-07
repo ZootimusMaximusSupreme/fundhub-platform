@@ -62,6 +62,23 @@ test("a client never sees plan controls; staff do", () => {
   assert.match(staff, /data-act="settle"/);
 });
 
+test("a payment Commas marked paid says 'Paid via Commas'; a staff-recorded one does not", () => {
+  assert.equal(P.logSentence({ action: "payment_recorded", amount_cents: 50000, via: "commas" }), "Paid via Commas: recorded your payment of $500.00. Thank you.");
+  assert.equal(P.logSentence({ action: "payment_recorded", amount_cents: 50000, via: null }), "Recorded your payment of $500.00. Thank you.");
+});
+
+test("unmatched Commas payments: a staff-only list, in words, and never on the client's page", () => {
+  const d = fixture();
+  d.unmatched_payments = [{ id: "u1", decided_on: "2026-10-06", reason: "amount_does_not_match", amount_cents: 20000 }];
+  const staff = text(P.render(d, { staff: true }));
+  assert.match(staff, /Commas payments not matched to a plan/);
+  assert.match(staff, /The amount is not the next payment or the full balance\. Nothing was applied\./);
+  assert.match(staff, /\$200\.00 Oct 6/);
+  assert.doesNotMatch(text(P.render(d)), /not matched to a plan/);
+  d.unmatched_payments = [];
+  assert.doesNotMatch(text(P.render(d, { staff: true })), /not matched to a plan/);
+});
+
 test("one primary button on the page", () => {
   const html = P.render(fixture(), { staff: true });
   assert.equal((html.match(/class="btn-primary"/g) || []).length, 1);
