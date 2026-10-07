@@ -22,6 +22,15 @@ final class PromptClockTests: XCTestCase {
         XCTAssertEqual(PromptClock.clock(65), "1:05")
     }
 
+    func testVolumeButtonsStepSpeedAndDoNotStickAtTheEnds() {
+        XCTAssertEqual(VolumeWpm.direction(from: 0.4, to: 0.55), 1)
+        XCTAssertEqual(VolumeWpm.direction(from: 0.55, to: 0.4), -1)
+        XCTAssertEqual(VolumeWpm.direction(from: 0.5, to: 0.5), 0)
+        XCTAssertTrue(VolumeWpm.shouldRecenter(0.05))
+        XCTAssertTrue(VolumeWpm.shouldRecenter(0.95))
+        XCTAssertFalse(VolumeWpm.shouldRecenter(0.5))
+    }
+
     func testScrollTrackIsSmoothAndInverts() {
         let paras = [Paragraph(text: "a b c d", cue: false)]
         let c = PromptClock(paragraphs: paras, wpm: 80, pauseSeconds: 0)

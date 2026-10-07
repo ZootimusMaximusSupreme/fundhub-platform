@@ -273,6 +273,7 @@ body.wording #flip{transform:none !important}
     <div id="stage" aria-label="Script">
       <div id="content"></div>
       <div id="line"></div>
+      <div id="script-fade" aria-hidden="true"></div>
     </div>
     <div id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
     <div id="scrollchip" hidden>Scroll mode · drag to move · tap to roll</div>
@@ -315,6 +316,10 @@ body.wording #flip{transform:none !important}
   <div id="bar">
     <div id="status"><span class="note">Play rolls the words. Tap Play again and the words pause. The camera keeps recording. When the words are paused, double-tap a word to change it. A blank gap keeps that same speed, so you can breathe.</span><span id="s-time"></span></div>
     <div id="rows">
+      <div id="wpm-tap" aria-label="Speed">
+        <button type="button" id="wpm-down" aria-label="Slower">−</button>
+        <button type="button" id="wpm-up" aria-label="Faster">+</button>
+      </div>
       <div id="controls">
         <button type="button" class="btn word" id="b-rec" aria-label="Record"><span>Record</span></button>
         <button type="button" class="btn word" id="b-stop" aria-label="Stop"><span>Stop</span></button>

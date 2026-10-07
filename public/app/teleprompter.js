@@ -372,6 +372,62 @@
     return out;
   }
 
+  /**
+   * The red line is the top reading point. The word sits on it.
+   * safeTop is the phone clock band. This is not the middle of the page.
+   */
+  function readingLinePx(safeTop) {
+    var safe = safeTop > 0 ? safeTop : 0;
+    return Math.round(safe + 8);
+  }
+
+  /** Line position: just under the clock, through the top of the word being read. */
+  function readingLineTop(safeTop, lineHeight) {
+    var h = lineHeight > 0 ? lineHeight : 0;
+    return readingLinePx(safeTop) + h * 0.45;
+  }
+
+  /** Pause keeps this scroll time. It does not jump back to the start. */
+  function pausePlace(t) { return t; }
+
+  /**
+   * Which half the words use when the phone is sideways.
+   * iPhone: front camera on the left in landscape-primary, on the right in
+   * landscape-secondary. Portrait uses the full width. Unknown landscape
+   * defaults to the left, then flips when the other orientation is known.
+   * info: { type, angle, landscape }
+   */
+  function cameraWordSide(info) {
+    var o = info || {};
+    var type = String(o.type || "");
+    if (type === "landscape-primary") return "left";
+    if (type === "landscape-secondary") return "right";
+    if (type === "portrait-primary" || type === "portrait-secondary") return "full";
+    var angle = typeof o.angle === "number" ? o.angle : null;
+    if (angle === 90) return "left";
+    if (angle === -90 || angle === 270) return "right";
+    if (angle === 0 || angle === 180) return "full";
+    if (o.landscape === true) return "left";
+    return "full";
+  }
+
+  /** Hardware volume key, if the browser actually sends one. 1 faster, -1 slower, 0 otherwise. */
+  function volumeKeyDir(key, code) {
+    var k = String(key || "");
+    var c = String(code || "");
+    if (k === "VolumeUp" || k === "AudioVolumeUp" || c === "VolumeUp" || c === "AudioVolumeUp") return 1;
+    if (k === "VolumeDown" || k === "AudioVolumeDown" || c === "VolumeDown" || c === "AudioVolumeDown") return -1;
+    return 0;
+  }
+
+  /** A real volumechange on a media element. No step when the level did not move. */
+  function volumeLevelDir(prev, next) {
+    if (typeof prev !== "number" || typeof next !== "number") return 0;
+    if (next > prev + 0.001) return 1;
+    if (next < prev - 0.001) return -1;
+    return 0;
+  }
+
   /** Where time t on the old scroll lands after paceThroughBlanks. */
   function scrollTime(oldKeys, newKeys, t) {
     if (!oldKeys || !oldKeys.length || !newKeys || !newKeys.length) return t;
@@ -396,7 +452,9 @@
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
-    paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime
+    paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime,
+    readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
+    cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir
   };
 
   var doc = root.document;
@@ -821,20 +879,32 @@
 
   /* ── drawing ─────────────────────────────────────────────────────────── */
 
-  function readPx() { return stage.clientHeight * S.line / 100; }
+  function measureSafeTop() {
+    var n = 0;
+    try {
+      var d = doc.createElement("div");
+      d.style.cssText = "position:fixed;left:0;top:0;height:env(safe-area-inset-top,0px);width:0;visibility:hidden;pointer-events:none;";
+      doc.body.appendChild(d);
+      n = d.offsetHeight || 0;
+      d.remove();
+    } catch (e) { n = 0; }
+    measureSafeTop.n = n;
+    return n;
+  }
+  function safeTopPx() {
+    if (measureSafeTop.n == null) return measureSafeTop();
+    return measureSafeTop.n;
+  }
+  function readPx() {
+    var h = words[0] && words[0].el ? words[0].el.offsetHeight : 0;
+    return readingLineTop(safeTopPx(), h);
+  }
   function apply() {
     if (editing) return;
     if (!kf.length) { content.style.transform = ""; return; }
-    var off = yAt(t) - readPx() + (words[0] ? words[0].el.offsetHeight * 0.15 : 0);
+    var off = yAt(t) - readPx();
     content.style.transform = "translate3d(0," + (-off).toFixed(1) + "px,0)";
     line.style.top = readPx() + "px";
-    var idx = t >= total ? words.length : wordAt(t);
-    if (idx !== curIdx) {
-      var a = Math.min(idx, curIdx < 0 ? 0 : curIdx), b = Math.max(idx, curIdx < 0 ? 0 : curIdx);
-      if (curIdx < 0) { a = 0; b = words.length; }
-      for (var i = a; i < b && i < words.length; i++) words[i].el.classList.toggle("read", i < idx);
-      curIdx = idx;
-    }
     $("progress-fill").style.width = (total > 0 ? Math.min(100, (t / total) * 100) : 0).toFixed(2) + "%";
     $("s-time").textContent = S.wpm + " wpm · " + clock(total - t) + " left";
   }
@@ -886,7 +956,9 @@
   function cancelCount() { if (countTimer) { clearInterval(countTimer); countTimer = null; } countEl.hidden = true; setPlayIcon(); }
   function stop() {
     var was = playing || !!countTimer;
-    playing = false; cancelCount(); setPlayIcon(); rolling(false); stopFling();
+    playing = false;
+    t = pausePlace(t);
+    cancelCount(); setPlayIcon(); rolling(false); stopFling();
     if (was) edits.commit(); // a pause is a save point
   }
   function hold(i) { holding = i; released[i] = true; playing = false; setPlayIcon(); $("cuehold").hidden = false; }
@@ -904,7 +976,7 @@
     t = times[takeWord] || 0; apply();
     endRec(function () { start(true); });
   }
-  function markStart() { words.forEach(function (w, i) { w.el.classList.toggle("start", i === takeWord && takeWord > 0); }); }
+  function markStart() { /* The red line is the only mark. No per-word underline. */ }
   function rolling(on) {
     clearTimeout(dimTimer);
     if (on) dimTimer = setTimeout(function () { doc.body.classList.add("rolling"); }, 1500);
@@ -1729,6 +1801,30 @@
   $("b-rec").onclick = recordClick;
   $("b-stop").onclick = stopRecClick;
   $("b-script-save").onclick = saveScript;
+  $("wpm-down").onclick = function (e) { e.stopPropagation(); setWpm(S.wpm - 5); };
+  $("wpm-up").onclick = function (e) { e.stopPropagation(); setWpm(S.wpm + 5); };
+  doc.addEventListener("keydown", function (e) {
+    var dir = volumeKeyDir(e.key, e.code);
+    if (!dir) return;
+    var tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    e.preventDefault();
+    setWpm(S.wpm + dir * 5);
+  });
+  (function armVideoVolume() {
+    var video = $("cam-video");
+    if (!video || video.__fhtpVol) return;
+    video.__fhtpVol = true;
+    var last = null;
+    video.addEventListener("volumechange", function () {
+      var v = video.volume;
+      if (typeof v !== "number") return;
+      if (last == null) { last = v; return; }
+      var dir = volumeLevelDir(last, v);
+      last = v;
+      if (dir) setWpm(S.wpm + dir * 5);
+    });
+  })();
   $("q-4k").onclick = function () { setCamMode("4k"); };
   $("q-1080").onclick = function () { setCamMode("1080p"); };
   $("cam-corner").onclick = function (e) { e.preventDefault(); e.stopPropagation(); showFace(); };
@@ -1792,7 +1888,7 @@
   $("r-measure").oninput = function () { var p = progress(); S.measure = +this.value; save(); applyFont(); layout(); restore(p); apply(); syncSettings(); };
   $("r-line").oninput = function () { S.line = +this.value; save(); apply(); syncSettings(); };
   $("r-pause").oninput = function () { var p = progress(); S.pause = +this.value; save(); layout(); restore(p); apply(); syncSettings(); };
-  $("t-mirror").onchange = function () { S.mirror = this.checked; save(); applyFont(); };
+  $("t-mirror").onchange = function () { S.mirror = this.checked; save(); applyFont(); applyCameraSide(); };
   $("t-flipv").onchange = function () { S.flipV = this.checked; save(); applyFont(); };
   $("t-count").onchange = function () { S.countdown = this.checked; save(); };
 
@@ -1846,8 +1942,37 @@
     else if (a === "another_take") { if (atEnd) anotherTake(); }
   });
 
+  function applyCameraSide() {
+    measureSafeTop.n = null;
+    var info = {};
+    try {
+      var so = root.screen && root.screen.orientation;
+      if (so) {
+        if (so.type) info.type = so.type;
+        if (typeof so.angle === "number") info.angle = so.angle;
+      } else if (typeof root.orientation === "number") info.angle = root.orientation;
+      info.landscape = !!(root.matchMedia && root.matchMedia("(orientation: landscape)").matches);
+    } catch (e) { /* no orientation api */ }
+    var side = cameraWordSide(info);
+    if (S.mirror && side === "left") side = "right";
+    else if (S.mirror && side === "right") side = "left";
+    doc.body.classList.toggle("cam-side-left", side === "left");
+    doc.body.classList.toggle("cam-side-right", side === "right");
+    doc.body.classList.toggle("tp-portrait", side === "full");
+    if (words.length) layout();
+  }
   var rz = null;
-  root.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(layout, 120); });
+  root.addEventListener("resize", function () { measureSafeTop.n = null; clearTimeout(rz); rz = setTimeout(function () { applyCameraSide(); }, 120); });
+  root.addEventListener("orientationchange", applyCameraSide);
+  try {
+    var landQ = root.matchMedia && root.matchMedia("(orientation: landscape)");
+    if (landQ && landQ.addEventListener) landQ.addEventListener("change", applyCameraSide);
+    else if (landQ && landQ.addListener) landQ.addListener(applyCameraSide);
+    if (root.screen && root.screen.orientation && root.screen.orientation.addEventListener) {
+      root.screen.orientation.addEventListener("change", applyCameraSide);
+    }
+  } catch (e) { /* orientation events are missing */ }
+  applyCameraSide();
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(function () { layout(); });
 
   /* Poll every 5 seconds while the page is visible and nothing is rolling,

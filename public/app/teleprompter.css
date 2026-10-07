@@ -41,6 +41,113 @@ body {
   font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
 }
 
+/* The red line stays. It is the top reading point, not the middle. */
+#line {
+  top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+/* Save, Record, Stop, Play, and the speed taps: dark glass, not a solid slab.
+   The camera shows through. */
+#b-script-save,
+#b-save,
+#b-rec,
+#b-stop,
+#play,
+#wpm-tap button {
+  background: rgba(12, 14, 18, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #fff;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+#bar {
+  background: transparent;
+  border-top-color: transparent;
+}
+#wpm-tap {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+#wpm-tap button {
+  width: 44px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+/* A paused double-tap opens a word box. The stage blocks selection, so the
+   box has to turn that back on or the phone will not let him type. */
+body.wording #stage,
+body.wording #content,
+.word-box {
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+
+/* Sideways: words only on the front-camera half. The other half stays the camera. */
+body.cam-side-left #content,
+body.cam-side-left #line {
+  left: 0;
+  right: auto;
+  width: 50%;
+}
+body.cam-side-left #content {
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+}
+body.cam-side-right #content,
+body.cam-side-right #line {
+  left: auto;
+  right: 0;
+  width: 50%;
+}
+body.cam-side-right #content {
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+body.cam-side-left #wpm-tap { justify-content: flex-start; }
+body.cam-side-right #wpm-tap { justify-content: flex-end; }
+
+/* No per-word underline and no per-word dim. The red line is the only mark. */
+#content .w.read,
+#content p.cue .w.read {
+  color: inherit;
+}
+#content .w.start {
+  box-shadow: none;
+  text-decoration: none;
+}
+
+/* Portrait only: the bottom third goes gray and soft, then sharpens as it rolls up. */
+#script-fade {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 33%;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55));
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 60%);
+  mask-image: linear-gradient(to bottom, transparent, #000 60%);
+}
+body.tp-portrait #script-fade {
+  display: block;
+}
+body.cam-side-left #script-fade,
+body.cam-side-right #script-fade {
+  display: none;
+}
+
 /* Dark glass over the mirrored front camera.
    The black is see-through, so the face stays under the words.
    It is not a flat empty black page. */

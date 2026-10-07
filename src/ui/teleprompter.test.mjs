@@ -386,3 +386,80 @@ describe("teleprompter page", () => {
     assert.doesNotMatch(SRC, /ffmpeg/);
   });
 });
+
+describe("teleprompter film look", () => {
+  const CSS = fs.readFileSync(path.join(APP, "teleprompter.css"), "utf8");
+
+  test("the red line is the top reading point, not the middle", () => {
+    const T = load();
+    assert.equal(T.readingLinePx(0), 8);
+    assert.equal(T.readingLinePx(47), 55);
+    assert.ok(T.readingLineTop(47, 48) < 844 * 0.2);
+    assert.ok(T.readingLineTop(0, 48) < 400);
+  });
+
+  test("pause keeps the scroll time", () => {
+    const T = load();
+    assert.equal(T.pausePlace(4.25), 4.25);
+    assert.notEqual(T.pausePlace(4.25), 0);
+    const stopFn = SRC.slice(SRC.indexOf("function stop()"), SRC.indexOf("function hold("));
+    assert.match(stopFn, /t = pausePlace\(t\)/);
+  });
+
+  test("sideways words sit on the front-camera half", () => {
+    const T = load();
+    assert.equal(T.cameraWordSide({ type: "landscape-primary" }), "left");
+    assert.equal(T.cameraWordSide({ type: "landscape-secondary" }), "right");
+    assert.equal(T.cameraWordSide({ type: "portrait-primary" }), "full");
+    assert.equal(T.cameraWordSide({ angle: 90 }), "left");
+    assert.equal(T.cameraWordSide({ angle: -90 }), "right");
+    assert.equal(T.cameraWordSide({ angle: 270 }), "right");
+    assert.equal(T.cameraWordSide({ landscape: true }), "left");
+    assert.equal(T.cameraWordSide({}), "full");
+    assert.equal(T.cameraWordSide({ type: "landscape-secondary", angle: 90 }), "right");
+    assert.match(CSS, /body\.cam-side-left #content/);
+    assert.match(CSS, /width: 50%/);
+    assert.match(SRC, /tp-portrait/);
+  });
+
+  test("save, record, stop, and play are glass, and a tiny speed control is on the page", () => {
+    assert.match(HTML, /id="wpm-down"/);
+    assert.match(HTML, /id="wpm-up"/);
+    assert.match(HTML, /aria-label="Slower"/);
+    assert.match(HTML, /aria-label="Faster"/);
+    assert.match(CSS, /#b-script-save/);
+    assert.match(CSS, /#play/);
+    assert.match(CSS, /#b-rec/);
+    assert.match(CSS, /#b-stop/);
+    assert.match(CSS, /backdrop-filter:\s*blur\(16px\)/);
+    assert.match(CSS, /rgba\(12,\s*14,\s*18,\s*0\.28\)/);
+    assert.match(SRC, /\$\("wpm-down"\)\.onclick/);
+    assert.match(SRC, /\$\("wpm-up"\)\.onclick/);
+  });
+
+  test("no per-word underline, and the portrait bottom third fades", () => {
+    assert.match(CSS, /#content \.w\.start[\s\S]*box-shadow:\s*none/);
+    assert.match(CSS, /#content \.w\.read[\s\S]*color:\s*inherit/);
+    assert.doesNotMatch(SRC, /classList\.toggle\("read"/);
+    assert.doesNotMatch(SRC, /classList\.toggle\("start"/);
+    assert.match(HTML, /id="script-fade"/);
+    assert.match(CSS, /body\.tp-portrait #script-fade/);
+    assert.match(CSS, /height:\s*33%/);
+    assert.match(CSS, /body\.cam-side-left #script-fade[\s\S]*display:\s*none/);
+  });
+
+  test("volume up is faster and volume down is slower, only when the level actually moves", () => {
+    const T = load();
+    assert.equal(T.volumeKeyDir("VolumeUp", ""), 1);
+    assert.equal(T.volumeKeyDir("VolumeDown", ""), -1);
+    assert.equal(T.volumeKeyDir("", "AudioVolumeUp"), 1);
+    assert.equal(T.volumeKeyDir("", "AudioVolumeDown"), -1);
+    assert.equal(T.volumeKeyDir(" ", ""), 0);
+    assert.equal(T.volumeLevelDir(0.4, 0.55), 1);
+    assert.equal(T.volumeLevelDir(0.55, 0.4), -1);
+    assert.equal(T.volumeLevelDir(0.5, 0.5), 0);
+    assert.equal(T.volumeLevelDir(null, 0.5), 0);
+    assert.match(SRC, /volumechange/);
+    assert.match(SRC, /volumeKeyDir\(e\.key, e\.code\)/);
+  });
+});

@@ -32,6 +32,17 @@ final class PrompterController: ObservableObject {
     func releaseCue() { view?.releaseCue() }
     func currentParagraph() -> Int { view?.currentParagraph ?? 0 }
     func focusKeys() { view?.becomeFirstResponder() }
+
+    private let volumeWatch = VolumeButtonWatch()
+
+    /// Hardware volume buttons. Up is faster. Down is slower.
+    /// The level is nudged back from the ends so a press still moves.
+    func watchHardwareVolume(on host: UIView) {
+        volumeWatch.onStep = { [weak self] dir in self?.onSpeed?(dir * 10) }
+        volumeWatch.start(on: host)
+    }
+
+    func stopHardwareVolume() { volumeWatch.stop() }
 }
 
 /// SwiftUI wrapper.
@@ -436,7 +447,12 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        if window != nil { DispatchQueue.main.async { self.becomeFirstResponder() } }
+        if window != nil {
+            DispatchQueue.main.async { self.becomeFirstResponder() }
+            controller.watchHardwareVolume(on: self)
+        } else {
+            controller.stopHardwareVolume()
+        }
     }
 
     // MARK: - Touch
