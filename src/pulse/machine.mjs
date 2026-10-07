@@ -324,9 +324,9 @@ export const MEET_SYNC_SQL = `
          (SELECT count(*)::int FROM brain_files
            WHERE needs_transcription = true
              AND (
-               mime_type LIKE 'video/%'
-               OR mime_type LIKE 'audio/%'
-               OR name ILIKE '%recording%'
+               name ILIKE '%meet%recording%'
+               OR name ILIKE '%google meet%'
+               OR name ~* 'gmt[0-9]{8}'
              )
              AND COALESCE(indexed_at, created_at) < now() - interval '30 minutes') AS pending_old,
          (SELECT count(*)::int FROM call_outcomes
