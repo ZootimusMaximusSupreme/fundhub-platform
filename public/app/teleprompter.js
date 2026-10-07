@@ -319,13 +319,69 @@
     return { line: line, short: short, width: w, height: h, fps: fps };
   }
 
+  /**
+   * One scroll speed through a blank.
+   * keys: [{t, y, blank}] in order. blank on a key means the step that lands
+   * on that key is empty space (the gap between paragraphs).
+   * The pace is the speed of the other steps that actually move (pixels per
+   * second). A blank that was faster is stretched so it matches that pace.
+   * A blank that was already slower stays slower (more time to breathe).
+   * Later times shift by the same amount. y does not change.
+   */
+  function paceThroughBlanks(keys) {
+    var src = keys || [];
+    var out = [];
+    if (!src.length) return out;
+    if (src.length === 1) return [{ t: src[0].t, y: src[0].y }];
+    var dySum = 0, dtSum = 0, i, dy, dt;
+    for (i = 1; i < src.length; i++) {
+      if (src[i].blank) continue;
+      dy = src[i].y - src[i - 1].y;
+      dt = src[i].t - src[i - 1].t;
+      if (dy > 0.5 && dt > 1e-6) { dySum += dy; dtSum += dt; }
+    }
+    var pace = dtSum > 0 ? dySum / dtSum : 0;
+    var t = src[0].t;
+    out.push({ t: t, y: src[0].y });
+    for (i = 1; i < src.length; i++) {
+      dy = src[i].y - src[i - 1].y;
+      dt = src[i].t - src[i - 1].t;
+      var use = dt > 0 ? dt : 0;
+      if (src[i].blank && dy > 0.5 && pace > 0) {
+        var need = dy / pace;
+        if (need > use) use = need;
+      }
+      t += use;
+      out.push({ t: t, y: src[i].y });
+    }
+    return out;
+  }
+
+  /** Where time t on the old scroll lands after paceThroughBlanks. */
+  function scrollTime(oldKeys, newKeys, t) {
+    if (!oldKeys || !oldKeys.length || !newKeys || !newKeys.length) return t;
+    if (t <= oldKeys[0].t) return newKeys[0].t;
+    var n = oldKeys.length - 1;
+    if (t >= oldKeys[n].t) return newKeys[n].t + (t - oldKeys[n].t);
+    var lo = 0, hi = n;
+    while (hi - lo > 1) {
+      var m = (lo + hi) >> 1;
+      if (oldKeys[m].t <= t) lo = m; else hi = m;
+    }
+    var od = oldKeys[hi].t - oldKeys[lo].t;
+    if (!(od > 0)) return newKeys[hi].t;
+    var f = (t - oldKeys[lo].t) / od;
+    return newKeys[lo].t + (newKeys[hi].t - newKeys[lo].t) * f;
+  }
+
   root.FundhubTeleprompter = {
     fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, wordAfterEdit: wordAfterEdit,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DOUBLE_MS: DOUBLE_MS, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport
+    cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
+    paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime
   };
 
   var doc = root.document;
@@ -724,17 +780,21 @@
       words[i].line = L; words[i].x = left;
     }
     kf = []; var prevY = -1e9;
-    function push(tt, y) { y = Math.max(y, prevY); prevY = y; kf.push({ t: tt, y: y }); }
+    function push(tt, y, blank) { y = Math.max(y, prevY); prevY = y; kf.push({ t: tt, y: y, blank: !!blank }); }
     for (var j = 0; j < words.length; j++) {
       var wd = words[j], LL = wd.line, span = Math.max(1, LL.right - LL.left);
-      push(times[j], LL.top + LL.h * ((wd.x - LL.left) / span));
+      // The step into the first word of a new paragraph is the blank gap.
+      push(times[j], LL.top + LL.h * ((wd.x - LL.left) / span), j > 0 && words[j - 1].last);
       if (wd.last) {
         var endT = times[j] + wd.dur;
-        push(endT, LL.top + LL.h);
-        if (j < words.length - 1) push(endT + S.pause * 0.5, LL.top + LL.h);
+        push(endT, LL.top + LL.h, false);
       }
     }
     if (!kf.length) kf = [{ t: 0, y: 0 }];
+    var rawKf = kf;
+    kf = paceThroughBlanks(rawKf);
+    for (var ti = 0; ti < times.length; ti++) times[ti] = scrollTime(rawKf, kf, times[ti]);
+    total = scrollTime(rawKf, kf, total);
     restore(keep); apply();
   }
   function seg(tt) { var lo = 0, hi = kf.length - 1; if (tt <= kf[0].t) return 0; if (tt >= kf[hi].t) return hi; while (hi - lo > 1) { var m = (lo + hi) >> 1; if (kf[m].t <= tt) lo = m; else hi = m; } return lo; }
@@ -894,6 +954,7 @@
     var p = progress();
     S.wpm = Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(v / 5) * 5));
     save(); timeline(); layout(); restore(p); apply(); syncSettings();
+    if (playing) last = root.performance.now();
   }
   function save() { LS.set("settings", S); }
 

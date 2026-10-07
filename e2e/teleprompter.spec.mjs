@@ -117,6 +117,7 @@ test.describe("teleprompter at 390px", () => {
 
   test("v1's keys: the arrows change the speed, Space counts down then rolls, Space again pauses", async ({ page }) => {
     await open(page);
+    await expect(page.locator("#status .note")).toContainText("blank gap keeps that same speed");
     await expect(page.locator("#s-time")).toContainText("150 wpm");
     await page.keyboard.press("ArrowUp");
     await expect(page.locator("#s-time")).toContainText("155 wpm");
@@ -126,8 +127,17 @@ test.describe("teleprompter at 390px", () => {
     await page.keyboard.press(" ");
     await expect(page.locator("#count")).toBeVisible();
     await expect.poll(async () => (await state(page)).playing, { timeout: 5000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.body.classList.contains("rolling"))).toBe(true);
     await page.waitForTimeout(400);
     expect((await state(page)).t).toBeGreaterThan(0);
+    const mid = await state(page);
+    await page.locator("#b-fast").click();
+    await expect.poll(async () => (await state(page)).wpm).toBe(mid.wpm + 5);
+    expect((await state(page)).playing).toBe(true);
+    await page.locator("#b-slow").click();
+    await expect.poll(async () => (await state(page)).wpm).toBe(mid.wpm);
+    expect((await state(page)).playing).toBe(true);
+    await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
     await page.keyboard.press(" ");
     expect((await state(page)).playing).toBe(false);
   });

@@ -115,10 +115,10 @@ body.rolling #pulse{opacity:.7}
 
 /* the thumb bar */
 #bar{background:var(--panel);border-top:1px solid var(--rule);padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;transition:opacity .4s}
-body.rolling #bar,body.rolling #top{opacity:0;pointer-events:none}
+body.rolling #top,body.rolling #status,body.rolling #tools{opacity:0;pointer-events:none}
 #rows{display:grid;gap:8px}
 #status{display:flex;justify-content:space-between;gap:12px;font-family:var(--data-face);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:0}
-#status .note{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--read-face);font-size:12px}
+#status .note{white-space:normal;overflow:visible;min-width:0;font-family:var(--read-face);font-size:12px;line-height:1.35}
 #tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center}
 #controls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center}
 .btn.word{font-size:14px}
@@ -264,7 +264,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
   </div>
 
   <div id="bar">
-    <div id="status"><span class="note">Tap to pause. Double tap to scroll. Hold a line to change it.</span><span id="s-time"></span></div>
+    <div id="status"><span class="note">Play rolls the words. Tap the words to pause. Tap again to play. Minus and plus change the speed while it rolls. A blank gap keeps that same speed, so you can breathe.</span><span id="s-time"></span></div>
     <div id="rows">
       <div id="tools">
         <button type="button" class="btn" id="b-lib" aria-label="Scripts on this shoot"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
@@ -298,11 +298,13 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 
 <section class="sheet" id="set" hidden aria-label="Settings">
   <div class="row"><h2>Settings</h2><button type="button" class="x" data-close>Close</button></div>
+  <p class="note" id="how">Play rolls the words. Tap the words to pause. Tap again to play. Minus and plus change the speed while it rolls. A blank gap keeps that same speed, so you can breathe.</p>
   <div class="field"><label for="r-wpm">Speed <span id="v-wpm"></span></label><input type="range" id="r-wpm" min="80" max="260" step="5"></div>
   <div class="field"><label for="r-font">Text size <span id="v-font"></span></label><input type="range" id="r-font" min="24" max="120" step="2"></div>
   <div class="field"><label for="r-measure">Line width <span id="v-measure"></span></label><input type="range" id="r-measure" min="12" max="60" step="1"></div>
   <div class="field"><label for="r-line">Reading line <span id="v-line"></span></label><input type="range" id="r-line" min="8" max="60" step="1"></div>
-  <div class="field"><label for="r-pause">Pause at each blank line <span id="v-pause"></span></label><input type="range" id="r-pause" min="0" max="2.5" step="0.1"></div>
+  <div class="field"><label for="r-pause">Extra time on a blank gap <span id="v-pause"></span></label><input type="range" id="r-pause" min="0" max="2.5" step="0.1"></div>
+  <p class="note">A blank gap keeps the same speed as the words. This only adds more time. It does not make the gap race.</p>
   <label class="toggle" for="t-mirror">Mirror left to right (beam-splitter glass) <input type="checkbox" id="t-mirror"></label>
   <label class="toggle" for="t-flipv">Flip upside down (some rigs need it) <input type="checkbox" id="t-flipv"></label>
   <label class="toggle" for="t-count">3-2-1 countdown before each take <input type="checkbox" id="t-count"></label>

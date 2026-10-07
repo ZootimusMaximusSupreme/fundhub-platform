@@ -115,6 +115,52 @@ describe("teleprompter, pure", () => {
     assert.equal(T.nextInOrder([{ got_it: true }, { got_it: true }], 1), -1);
   });
 
+  test("a blank gap keeps the same pixel speed as the words", () => {
+    const T = load();
+    // Words move 20px in 2s (10 px per second). The gap of 40px was given 0.4s
+    // (100 px per second). That is the race. After the fix it takes 4s.
+    const raw = [
+      { t: 0, y: 0 },
+      { t: 2, y: 20 },
+      { t: 2.4, y: 60, blank: true },
+      { t: 4.4, y: 80 }
+    ];
+    const out = T.paceThroughBlanks(raw);
+    const speed = (a, b) => (b.y - a.y) / (b.t - a.t);
+    assert.equal(speed(out[0], out[1]), 10);
+    assert.equal(speed(out[1], out[2]), 10);
+    assert.equal(out[2].t, 6);
+    assert.equal(out[2].y, 60);
+    assert.equal(out[3].t, 8);
+    // A word that started when the old gap ended now starts when the blank is done.
+    assert.equal(T.scrollTime(raw, out, 2.4), 6);
+    assert.equal(T.scrollTime(raw, out, 0), 0);
+    assert.equal(T.scrollTime(raw, out, 4.4), 8);
+  });
+
+  test("a taller blank takes longer, still at the word speed, and a slow blank is not sped up", () => {
+    const T = load();
+    const raw = [
+      { t: 0, y: 0 },
+      { t: 2, y: 20 },
+      { t: 2.2, y: 40, blank: true },
+      { t: 4.2, y: 60 },
+      { t: 4.4, y: 100, blank: true }
+    ];
+    const out = T.paceThroughBlanks(raw);
+    const speed = (a, b) => (b.y - a.y) / (b.t - a.t);
+    const words = speed(out[0], out[1]);
+    assert.ok(Math.abs(speed(out[1], out[2]) - words) < 1e-9);
+    assert.ok(Math.abs(speed(out[3], out[4]) - words) < 1e-9);
+    assert.ok(out[4].t - out[3].t > out[2].t - out[1].t);
+    const slow = [
+      { t: 0, y: 0 },
+      { t: 2, y: 20 },
+      { t: 10, y: 40, blank: true }
+    ];
+    assert.equal(T.paceThroughBlanks(slow)[2].t, 10);
+  });
+
   test("after an edit it rolls on from the same word, or from the start of the line that changed", () => {
     const T = load();
     // paragraphs of 4, 5, 3 words; paragraph 1 grew to 7
@@ -276,6 +322,15 @@ describe("teleprompter page", () => {
     assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js"'));
     // Editing turns the glass flip off so the words read the right way round.
     assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
+    assert.match(HTML, /Play rolls the words/);
+    assert.match(HTML, /A blank gap keeps that same speed/);
+    assert.match(HTML, /id="how"/);
+    assert.match(HTML, /id="b-slow"/);
+    assert.match(HTML, /id="b-fast"/);
+    assert.doesNotMatch(HTML, /body\.rolling #bar,body\.rolling #top\{opacity:0/);
+    assert.match(HTML, /body\.rolling #top,body\.rolling #status,body\.rolling #tools\{opacity:0;pointer-events:none\}/);
+    assert.match(SRC, /\$\("b-fast"\)\.onclick = function \(\) \{ setWpm\(S\.wpm \+ 5\); \}/);
+    assert.match(SRC, /\$\("b-slow"\)\.onclick = function \(\) \{ setWpm\(S\.wpm - 5\); \}/);
   });
 
   test("Save the video sends the original file to this Mac", () => {
