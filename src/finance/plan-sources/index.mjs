@@ -40,6 +40,7 @@ import * as dues from "./dues.mjs";
 import * as clarity from "./clarity.mjs";
 import * as bankStrategy from "./bank-strategy.mjs";
 import * as fundingRounds from "./funding-rounds.mjs";
+import * as payoff from "./payoff.mjs";
 import { parseIsoDate } from "../../banking/statement-cycles.mjs";
 import { safeError } from "../../http/health.mjs";
 
@@ -48,7 +49,7 @@ export const PIN_STATUSES = Object.freeze(["planned", "done", "missed"]);
 export const MARK_STATUSES = Object.freeze(["done", "missed"]);
 
 /** Registered sources, in de-dupe priority order. */
-export const SOURCES = Object.freeze([waypoints, dues, clarity, bankStrategy, fundingRounds]);
+export const SOURCES = Object.freeze([waypoints, dues, clarity, bankStrategy, fundingRounds, payoff]);
 
 const text = (v) => (v === null || v === undefined || String(v).trim() === "" ? null : String(v).trim());
 

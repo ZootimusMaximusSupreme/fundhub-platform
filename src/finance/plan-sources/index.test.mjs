@@ -100,8 +100,8 @@ describe("allPins", () => {
     );
   });
 
-  test("the registered sources: waypoints, dues, clarity, bank strategy and funding rounds, each named, each with pins()", () => {
-    assert.deepEqual(SOURCES.map((s) => s.name), ["waypoints", "dues", "clarity", "bank-strategy", "funding-rounds"]);
+  test("the registered sources: waypoints, dues, clarity, bank strategy, funding rounds and payoff, each named, each with pins()", () => {
+    assert.deepEqual(SOURCES.map((s) => s.name), ["waypoints", "dues", "clarity", "bank-strategy", "funding-rounds", "payoff"]);
     for (const s of SOURCES) assert.equal(typeof s.pins, "function", s.name);
     assert.equal(typeof SOURCES[0].mark, "function", "waypoints can be marked by staff");
     assert.equal(SOURCES[1].mark, undefined, "a due date is never marked here");
