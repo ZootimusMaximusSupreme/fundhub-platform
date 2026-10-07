@@ -229,13 +229,15 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("two quick taps place a cursor and do not play or pause", () => {
+  test("two quick taps place a cursor only when the words are paused", () => {
     const T = load();
-    for (const mode of ["paused", "rolling", "scroll"]) {
+    const paused = run(T, [...tap(0), ...tap(200), settle(T, 200)], "paused");
+    assert.deepEqual(paused.acts.map((a) => a.do), ["caret"]);
+    assert.equal(paused.acts[0].x, 100);
+    assert.equal(paused.acts[0].y, 300);
+    for (const mode of ["rolling", "scroll"]) {
       const r = run(T, [...tap(0), ...tap(200), settle(T, 200)], mode);
-      assert.deepEqual(r.acts.map((a) => a.do), ["caret"], mode);
-      assert.equal(r.acts[0].x, 100);
-      assert.equal(r.acts[0].y, 300);
+      assert.deepEqual(r.acts.map((a) => a.do), [], mode);
     }
   });
 
@@ -345,12 +347,17 @@ describe("teleprompter page", () => {
     assert.match(HTML, /A blank gap keeps that same speed/);
     assert.match(HTML, /id="how"/);
     assert.match(HTML, /id="b-rec"/);
-    assert.match(HTML, /id="b-stop"/);
-    assert.match(HTML, /id="b-script-save"/);
+    assert.match(HTML, /id="b-script-save" hidden/);
     assert.match(HTML, />Record</);
-    assert.match(HTML, />Stop</);
     assert.match(HTML, />Play</);
-    assert.match(HTML, />Save</);
+    assert.doesNotMatch(HTML, /id="b-stop"/);
+    assert.doesNotMatch(HTML, />Stop</);
+    const controlsAt = HTML.indexOf('<div id="controls">');
+    const controls = HTML.slice(controlsAt, HTML.indexOf("</div>", controlsAt));
+    assert.match(controls, /id="b-rec"/);
+    assert.match(controls, /id="play"/);
+    assert.doesNotMatch(controls, /id="b-stop"/);
+    assert.doesNotMatch(controls, /Save/);
     assert.doesNotMatch(HTML, /id="b-slow"/);
     assert.doesNotMatch(HTML, /id="b-fast"/);
     assert.doesNotMatch(HTML, /id="b-hist"/);
@@ -358,11 +365,11 @@ describe("teleprompter page", () => {
     assert.doesNotMatch(HTML, /id="play-ico"/);
     assert.doesNotMatch(HTML, /body\.rolling #bar,body\.rolling #top\{opacity:0/);
     assert.match(HTML, /body\.rolling #top,body\.rolling #status,body\.rolling #tools\{opacity:0;pointer-events:none\}/);
-    assert.match(SRC, /\$\("b-rec"\)\.onclick = recordClick/);
-    assert.match(SRC, /\$\("b-stop"\)\.onclick = stopRecClick/);
-    assert.match(SRC, /\$\("b-script-save"\)\.onclick = saveScript/);
-    assert.match(SRC, /aria-label", "Play"/);
-    assert.doesNotMatch(SRC, /aria-label", playing \? "Pause"/);
+    assert.match(SRC, /\$\("b-rec"\)\.onclick = recordToggle/);
+    assert.match(SRC, /function recordToggle\(\) \{[\s\S]*?if \(wantRec\) stopRecClick\(\);\s*else recordClick\(\)/);
+    assert.match(SRC, /scriptSave\.onclick = saveScript/);
+    assert.match(SRC, /on \? "Pause" : "Play"/);
+    assert.doesNotMatch(SRC, /label\.textContent = "Play"/);
     const startFn = SRC.slice(SRC.indexOf("function start("), SRC.indexOf("function cancelCount("));
     assert.doesNotMatch(startFn, /ensureRecording/);
     assert.match(SRC, /function recordClick\(\) \{[\s\S]*?ensureRecording\(\)/);
@@ -375,7 +382,24 @@ describe("teleprompter page", () => {
     assert.doesNotMatch(SRC, /word-box/);
     const caret = SRC.slice(SRC.indexOf("function placeCaret"), SRC.indexOf("function flatWords"));
     assert.doesNotMatch(caret, /endRec\(/);
-    assert.match(SRC, /function saveScript\(\) \{\s*if \(textEdit\) syncCaretText\(\)/);
+    assert.doesNotMatch(caret, /stop\(\)/);
+    assert.match(caret, /playing \|\| countTimer \|\| scrollMode\) return/);
+    assert.match(SRC, /function saveScript\(\) \{\s*if \(textEdit\) syncCaretText\(true\)/);
+    assert.match(SRC, /function leaveCaret\(redrawNow\) \{\s*if \(!textEdit\) return;\s*syncCaretText\(true\);\s*edits\.commit\(\)/);
+    const cancel = SRC.slice(SRC.indexOf("function cancelCaret"), SRC.indexOf("function setRecLabel"));
+    assert.doesNotMatch(cancel, /edits\.commit/);
+    assert.doesNotMatch(cancel, /endRec\(/);
+    assert.match(cancel, /edits\.drop\(snap\.root\)/);
+    assert.match(cancel, /withWords\(scripts\[i\], snap\.body, snap\.parts\)/);
+    assert.match(HTML, /id="b-cancel"/);
+    assert.match(HTML, /aria-label="Cancel"/);
+    assert.match(SRC, /\$\("b-cancel"\)\.addEventListener\("pointerdown"/);
+    assert.match(SRC, /if \(textEdit\) leaveCaret\(true\)/);
+    const editMove = SRC.slice(SRC.indexOf('stage.addEventListener("pointermove"'), SRC.indexOf('stage.addEventListener("pointerup"'));
+    assert.match(editMove, /if \(textEdit\)/);
+    assert.match(editMove, /moveBy\(/);
+    assert.match(SRC, /if \(editing \|\| \(textEdit && !force\)\) return/);
+    assert.match(SRC, /apply\(!!textEdit\)/);
     assert.match(SRC, /send: function \(body\) \{ return api\("POST", "marketing\/scripts\/edit", body\); \}/);
   });
 
@@ -436,19 +460,38 @@ describe("teleprompter film look", () => {
     assert.match(SRC, /tp-portrait/);
   });
 
-  test("save, record, stop, and play are glass, and a tiny speed control is on the page", () => {
+  test("the two film buttons are glass, the shade is a little lighter, and speed is a tiny control", () => {
     assert.match(HTML, /id="wpm-down"/);
     assert.match(HTML, /id="wpm-up"/);
     assert.match(HTML, /aria-label="Slower"/);
     assert.match(HTML, /aria-label="Faster"/);
-    assert.match(CSS, /#b-script-save/);
     assert.match(CSS, /#play/);
     assert.match(CSS, /#b-rec/);
-    assert.match(CSS, /#b-stop/);
+    assert.doesNotMatch(CSS, /#b-stop/);
     assert.match(CSS, /backdrop-filter:\s*blur\(16px\)/);
     assert.match(CSS, /rgba\(12,\s*14,\s*18,\s*0\.28\)/);
+    assert.match(CSS, /rgba\(0,\s*0,\s*0,\s*0\.72\)/);
+    assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.8\)/);
+    assert.match(CSS, /#b-script-save,\s*#b-save \{\s*display: none !important;/);
+    assert.match(CSS, /body\.wording #controls \{\s*display: none !important;/);
+    assert.match(CSS, /body\.wording #b-cancel \{\s*display: grid;/);
+    assert.match(CSS, /#b-cancel \{\s*display: none;/);
+    assert.match(CSS, /#controls \{\s*grid-template-columns: repeat\(2, 1fr\);/);
     assert.match(SRC, /\$\("wpm-down"\)\.onclick/);
     assert.match(SRC, /\$\("wpm-up"\)\.onclick/);
+    assert.match(SRC, /LS\.set\("wpm", S\.wpm\)/);
+  });
+
+  test("a saved speed stays until he changes it", () => {
+    const T = load();
+    assert.equal(T.storedWpm(null, 150), 150);
+    assert.equal(T.storedWpm("", 150), 150);
+    assert.equal(T.storedWpm("nope", 150), 150);
+    assert.equal(T.storedWpm(180, 150), 180);
+    assert.equal(T.storedWpm("165", 150), 165);
+    assert.equal(T.storedWpm(153, 150), 155);
+    assert.equal(T.storedWpm(10, 150), 80);
+    assert.equal(T.storedWpm(9999, 150), 260);
   });
 
   test("no per-word underline, and the portrait bottom third fades", () => {

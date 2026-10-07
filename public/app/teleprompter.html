@@ -125,7 +125,7 @@ body.rolling #top,body.rolling #status,body.rolling #tools{opacity:0;pointer-eve
 #status{display:flex;justify-content:space-between;gap:12px;font-family:var(--data-face);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:0}
 #status .note{white-space:normal;overflow:visible;min-width:0;font-family:var(--read-face);font-size:12px;line-height:1.35}
 #tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center}
-#controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:center}
+#controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-items:center}
 #controls .btn.word{font-size:17px;font-weight:700}
 .btn.word{font-size:14px}
 .btn.word span{white-space:nowrap}
@@ -251,7 +251,8 @@ body.wording #flip{transform:none !important}
 </script>
 </head>
 <body>
-<button type="button" class="mini" id="b-script-save">Save</button>
+<button type="button" class="mini" id="b-script-save" hidden>Save</button>
+<button type="button" id="b-cancel" aria-label="Cancel">X</button>
 <div id="app">
   <!-- Kept for the script name. teleprompter.css hides this whole bar. -->
   <header id="top">
@@ -322,7 +323,6 @@ body.wording #flip{transform:none !important}
       </div>
       <div id="controls">
         <button type="button" class="btn word" id="b-rec" aria-label="Record"><span>Record</span></button>
-        <button type="button" class="btn word" id="b-stop" aria-label="Stop"><span>Stop</span></button>
         <button type="button" class="btn word" id="play" aria-label="Play" aria-pressed="false"><span>Play</span></button>
       </div>
     </div>

@@ -24,13 +24,16 @@
  * TOUCH (owner, 2026-10-07, the film page). Tap the words: they pause if they
  * are rolling, and they play if they are stopped. The camera keeps recording.
  * The tap waits a short beat so a double tap is not also a play or a pause.
- * Double tap: a text cursor lands in the words at that spot. The phone keyboard
- * comes up. He edits the live script there. No extra edit box. Save still sends
- * those words through the script edit route. Drag up: the words roll up (next
- * lines come from below). Drag down: the words go down with the thumb. A blank
- * gap keeps that same speed. Hold a line to change the whole line. The touch
- * rules are the pure gestureStep below. scriptDelta turns an upward drag into
- * words rolling up.
+ * Double tap while the words are paused: a text cursor lands in the words.
+ * The phone keyboard comes up. A double tap while the words are rolling does
+ * nothing. He presses Pause first. The Record and Play buttons hide until
+ * that edit ends. A finger drag still moves the script. The camera keeps
+ * recording. X throws away every change from this edit. Leaving without X
+ * still sends the words through the script edit route.
+ * Drag up: the words roll up (next lines come from below). Drag down: the words
+ * go down with the thumb. A blank gap keeps that same speed. Hold a line to
+ * change the whole line. The touch rules are the pure gestureStep below.
+ * scriptDelta turns an upward drag into words rolling up.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -198,7 +201,8 @@
    * Returns {g, acts}. acts, in order:
    *   {do:'pause'}      one tap while rolling, after the short wait
    *   {do:'resume'}     one tap while paused or in scroll mode, after the wait
-   *   {do:'caret', x, y} two quick taps: put the cursor there. No play, no pause.
+   *   {do:'caret', x, y} two quick taps while paused: put the cursor there.
+   *                     No play, no pause. While rolling or scrolling, no edit.
    *   {do:'grab'}       a finger started dragging: stop the auto-scroll
    *   {do:'drag', dy}   the finger moved dy pixels (down is positive). scriptDelta
    *                     rolls the words up when the thumb moves up.
@@ -250,7 +254,7 @@
         if (near) {
           out.lastTap = null;
           out.pending = null;
-          acts.push({ do: "caret", x: ev.x, y: ev.y });
+          if (mode === "paused") acts.push({ do: "caret", x: ev.x, y: ev.y });
         } else {
           var nowMode = mode;
           if (out.pending) {
@@ -456,6 +460,17 @@
     return 0;
   }
 
+  /**
+   * Words per minute to use. A saved number stays (stepped to 5, inside the
+   * min and max). Nothing saved yet uses fallback, which is 150 on first open.
+   */
+  function storedWpm(saved, fallback) {
+    if (saved == null || saved === "") return fallback;
+    var n = Number(saved);
+    if (!isFinite(n)) return fallback;
+    return Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(n / 5) * 5));
+  }
+
   /** Where time t on the old scroll lands after paceThroughBlanks. */
   function scrollTime(oldKeys, newKeys, t) {
     if (!oldKeys || !oldKeys.length || !newKeys || !newKeys.length) return t;
@@ -482,7 +497,8 @@
     cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
-    cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir
+    cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
+    storedWpm: storedWpm
   };
 
   var doc = root.document;
@@ -503,7 +519,13 @@
   /* A tablet gets bigger words by default (read from the camera distance). */
   var bigScreen = false;
   try { bigScreen = Math.min(root.screen.width, root.screen.height) >= 700; } catch (e) { /* no screen */ }
-  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k" }, LS.get("settings", {}));
+  var savedSettings = LS.get("settings", {});
+  if (!savedSettings || typeof savedSettings !== "object") savedSettings = {};
+  var rememberedWpm = LS.get("wpm", null);
+  if (rememberedWpm == null && savedSettings.wpm != null) rememberedWpm = savedSettings.wpm;
+  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k" }, savedSettings);
+  S.wpm = storedWpm(rememberedWpm, 150);
+  LS.set("wpm", S.wpm);
   var learned = LS.get("keys", {});
   var queue = LS.get("queue", []);
 
@@ -512,7 +534,7 @@
   var words = [], times = [], holds = [], kf = [], total = 0, t = 0, playing = false, last = 0, takeWord = 0, seeked = false, curIdx = -1;
   var countTimer = null, dimTimer = null, wake = null, holding = -1, released = {};
   var data = null, scripts = [], cur = -1, atEnd = false, learning = null, pollTimer = null, signedOut = false;
-  var scrollMode = false, flingRaf = 0, gest = gestureStart(), longTimer = null, tapSnap = null;
+  var scrollMode = false, flingRaf = 0, gest = gestureStart(), longTimer = null, tapSnap = null, editDrag = null, editMovedAt = 0;
   var editing = null, textEdit = null, repoHeld = false, healthAt = 0, shownParas = "";
 
   /* ── talking to the server ──────────────────────────────────────────── */
@@ -928,8 +950,8 @@
     var h = words[0] && words[0].el ? words[0].el.offsetHeight : 0;
     return readingLineTop(safeTopPx(), h);
   }
-  function apply() {
-    if (editing || textEdit) return;
+  function apply(force) {
+    if (editing || (textEdit && !force)) return;
     if (!kf.length) { content.style.transform = ""; return; }
     var off = yAt(t) - readPx();
     content.style.transform = "translate3d(0," + (-off).toFixed(1) + "px,0)";
@@ -958,10 +980,12 @@
   function setPlayIcon() {
     var btn = $("play");
     if (!btn) return;
+    var on = !!(playing || countTimer);
+    var word = on ? "Pause" : "Play";
     var label = btn.querySelector("span");
-    if (label) label.textContent = "Play";
-    btn.setAttribute("aria-label", "Play");
-    btn.setAttribute("aria-pressed", (playing || countTimer) ? "true" : "false");
+    if (label) label.textContent = word;
+    btn.setAttribute("aria-label", word);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
   }
   function go() {
     setScroll(false);
@@ -1071,7 +1095,8 @@
 
   function setWpm(v) {
     var p = progress();
-    S.wpm = Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(v / 5) * 5));
+    S.wpm = storedWpm(v, S.wpm);
+    LS.set("wpm", S.wpm);
     save(); timeline(); layout(); restore(p); apply(); syncSettings();
     if (playing) last = root.performance.now();
   }
@@ -1097,7 +1122,7 @@
     if (!kf.length) return;
     t = tAt(yAt(t) + scriptDelta(dy, S.flipV));
     seeked = true;
-    apply();
+    apply(!!textEdit);
   }
   function stopFling() { if (flingRaf) { root.cancelAnimationFrame(flingRaf); flingRaf = 0; } }
   function fling(v) {
@@ -1131,8 +1156,8 @@
     stage.style.webkitUserSelect = v;
     stage.style.userSelect = v;
     stage.style.webkitTouchCallout = call;
-    stage.style.touchAction = on ? "manipulation" : "";
-    content.style.touchAction = on ? "manipulation" : "";
+    stage.style.touchAction = on ? "none" : "";
+    content.style.touchAction = on ? "none" : "";
   }
   /* The words become editable on the first tap, before a second tap can land.
      iPhone only shows the keyboard if the words were already editable when the
@@ -1169,6 +1194,7 @@
     } else if (a.do === "caret") {
       cancelSettle();
       placeCaret(a.x, a.y);
+      if (!textEdit) disarmEdit();
       if (e && e.preventDefault) e.preventDefault();
     } else if (a.do === "scroll-on") {
       stop(); unsnap(tapSnap); hideEnd(); setScroll(true);
@@ -1197,7 +1223,11 @@
   }
 
   stage.addEventListener("pointerdown", function (e) {
-    if (textEdit) return;
+    if (textEdit) {
+      if (e.button > 0) return;
+      editDrag = { x: e.clientX, y: e.clientY, lastY: e.clientY, moved: false, id: e.pointerId };
+      return;
+    }
     if (e.button > 0 || editing || atEnd) return;
     if (e.isPrimary === false) return;
     stopFling();
@@ -1213,22 +1243,41 @@
     longTimer = setTimeout(function () { feed("timer", null); }, LONG_MS + 10);
   });
   stage.addEventListener("pointermove", function (e) {
-    if (textEdit) return;
+    if (textEdit) {
+      if (!editDrag || e.pointerId !== editDrag.id) return;
+      var adx = Math.abs(e.clientX - editDrag.x);
+      var ady = Math.abs(e.clientY - editDrag.y);
+      if (!editDrag.moved && adx <= TAP_SLOP && ady <= TAP_SLOP) return;
+      if (!editDrag.moved) {
+        editDrag.moved = true;
+        editMovedAt = root.performance.now();
+        try { stage.setPointerCapture(e.pointerId); } catch (x) { /* old browser */ }
+      }
+      moveBy(e.clientY - editDrag.lastY);
+      editDrag.lastY = e.clientY;
+      editMovedAt = root.performance.now();
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     if (!gest.down || editing) return;
     feed("move", e);
     if (gest.down && gest.down.moved) clearTimeout(longTimer);
   });
   stage.addEventListener("pointerup", function (e) {
     clearTimeout(longTimer);
-    if (textEdit) return;
+    if (textEdit) {
+      if (editDrag && editDrag.moved) editMovedAt = root.performance.now();
+      editDrag = null;
+      return;
+    }
     if (!gest.down) return;
     feed("up", e);
     if (gest.pending) { primeEdit(); armSettle(); }
-    else cancelSettle();
+    else { cancelSettle(); if (!textEdit) disarmEdit(); }
   });
   stage.addEventListener("pointercancel", function () {
     clearTimeout(longTimer);
-    if (textEdit) return;
+    if (textEdit) { editDrag = null; return; }
     feed("cancel", null);
     if (gest.pending) armSettle();
   });
@@ -1237,14 +1286,20 @@
     e.preventDefault();
   });
   stage.addEventListener("wheel", function (e) {
-    if (editing || textEdit) return;
+    if (editing) return;
+    if (textEdit) {
+      e.preventDefault();
+      editMovedAt = root.performance.now();
+      moveBy(e.deltaY);
+      return;
+    }
     e.preventDefault(); stop(); hideEnd();
     moveBy(e.deltaY);
   }, { passive: false });
   content.addEventListener("input", function (e) {
     if (!textEdit) return;
     if (e.target && e.target.id === "edit-box") return;
-    syncCaretText();
+    syncCaretText(false);
   });
   content.addEventListener("blur", function () {
     if (!textEdit) return;
@@ -1252,8 +1307,16 @@
     setTimeout(function () {
       if (!textEdit) return;
       if (doc.activeElement === content) return;
-      if (root.performance.now() - opened < 500) {
+      if (editDrag && editDrag.moved) {
         try { content.focus({ preventScroll: true }); } catch (err) { /* keep the cursor */ }
+        return;
+      }
+      if (root.performance.now() - editMovedAt < 500) {
+        try { content.focus({ preventScroll: true }); } catch (err2) { /* keep the cursor */ }
+        return;
+      }
+      if (root.performance.now() - opened < 500) {
+        try { content.focus({ preventScroll: true }); } catch (err3) { /* keep the cursor */ }
         return;
       }
       leaveCaret(true);
@@ -1539,9 +1602,8 @@
       var file = new root.File(chunks, name, { type: type });
       cam.file = file;
       var btn = $("b-save");
-      if (btn) btn.hidden = false;
-      if (!isPhone()) downloadFile(file);
-      say(isPhone() ? "Take ready. Tap Save the video." : ("Saved " + name));
+      if (btn) btn.hidden = true;
+      saveClick();
     } catch (e) {
       camLine("The take did not save. The words still roll.", true);
     }
@@ -1620,6 +1682,7 @@
     rec.onstop = function () { onRecStop(); };
     try { rec.start(1000); }
     catch (e3) { camLine("The recording did not start. The words still roll.", true); return; }
+    setRecLabel();
     var dot = $("rec");
     if (dot) dot.hidden = false;
     var tm = $("rec-time");
@@ -1646,6 +1709,7 @@
   }
   function endRec(then) {
     wantRec = false;
+    setRecLabel();
     var rec = cam.rec;
     if (!rec || rec.state === "inactive") { if (then) then(); return; }
     cam.stopping = true;
@@ -1784,6 +1848,7 @@
       say("Saved " + (file.name || "the video"));
     }, function () {
       shareOrDownload(file);
+      say("Saved " + (file.name || "the video"));
     });
   }
 
@@ -1822,15 +1887,15 @@
   }
   function placeCaret(x, y) {
     if (atEnd || editing || !scripts[cur]) return;
-    if (playing || countTimer) stop();
+    if (playing || countTimer || scrollMode) return;
     hideEnd();
-    setScroll(false);
     cancelSettle();
     primeEdit();
     var base = scripts[cur];
     textEdit = {
       root: base.root_script_id, id: base.id, version: base.version,
-      body: base.body, parts: base.parts, at: root.performance.now()
+      body: base.body, parts: base.parts, at: root.performance.now(),
+      prior: !!edits.item(base.root_script_id)
     };
     doc.body.classList.add("wording");
     allowSelect(true);
@@ -1870,7 +1935,7 @@
     while (out.length && !out[out.length - 1]) out.pop();
     return out;
   }
-  function syncCaretText() {
+  function syncCaretText(queue) {
     if (!textEdit) return;
     var s = scripts[cur];
     if (!s || s.root_script_id !== textEdit.root) return;
@@ -1903,7 +1968,7 @@
       }
     }
     scripts[cur] = curS;
-    if (changed || edits.item(textEdit.root)) {
+    if (queue && (changed || edits.item(textEdit.root))) {
       edits.edit(textEdit.root, {
         id: textEdit.id, version: textEdit.version, body: textEdit.body, parts: textEdit.parts
       }, curS.body, curS.parts);
@@ -1912,7 +1977,7 @@
   }
   function leaveCaret(redrawNow) {
     if (!textEdit) return;
-    syncCaretText();
+    syncCaretText(true);
     edits.commit();
     textEdit = null;
     disarmEdit();
@@ -1922,16 +1987,46 @@
     }
     pulse();
   }
+  function cancelCaret() {
+    if (!textEdit) return;
+    var snap = textEdit;
+    textEdit = null;
+    editDrag = null;
+    editMovedAt = 0;
+    try { content.blur(); } catch (e) { /* keyboard is already down */ }
+    var sel = root.getSelection ? root.getSelection() : null;
+    if (sel && sel.removeAllRanges) sel.removeAllRanges();
+    disarmEdit();
+    var i = indexOfRoot(snap.root);
+    if (i >= 0) scripts[i] = withWords(scripts[i], snap.body, snap.parts);
+    if (!snap.prior && edits.item(snap.root)) edits.drop(snap.root);
+    if (i === cur) redraw(Math.max(0, wordAt(t)));
+    pulse();
+  }
+  function setRecLabel() {
+    var btn = $("b-rec");
+    if (!btn) return;
+    var word = wantRec ? "Stop" : "Record";
+    var span = btn.querySelector("span");
+    if (span) span.textContent = word;
+    btn.setAttribute("aria-label", word);
+  }
   function recordClick() {
-    if (editing) return;
+    if (editing || textEdit) return;
     ensureCamera();
     ensureRecording();
+    setRecLabel();
   }
   function stopRecClick() {
     endRec();
   }
+  function recordToggle() {
+    if (editing || textEdit) return;
+    if (wantRec) stopRecClick();
+    else recordClick();
+  }
   function saveScript() {
-    if (textEdit) syncCaretText();
+    if (textEdit) syncCaretText(true);
     if (editing && editing.box) typed();
     var list = edits.list();
     for (var i = 0; i < list.length; i++) {
@@ -1944,9 +2039,15 @@
   /* ── buttons ─────────────────────────────────────────────────────────── */
 
   $("play").onclick = toggle;
-  $("b-rec").onclick = recordClick;
-  $("b-stop").onclick = stopRecClick;
-  $("b-script-save").onclick = saveScript;
+  $("b-rec").onclick = recordToggle;
+  var scriptSave = $("b-script-save");
+  if (scriptSave) scriptSave.onclick = saveScript;
+  $("b-cancel").addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelCaret();
+  });
+  setRecLabel();
   $("wpm-down").onclick = function (e) { e.stopPropagation(); setWpm(S.wpm - 5); };
   $("wpm-up").onclick = function (e) { e.stopPropagation(); setWpm(S.wpm + 5); };
   doc.addEventListener("keydown", function (e) {

@@ -97,7 +97,38 @@ test.describe("teleprompter at 390px", () => {
     expect(w[0]).toBeLessThanOrEqual(w[1]);
     const small = await page.locator("#controls .btn").evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 44).length);
     expect(small).toBe(0);
+    await expect(page.locator("#controls .btn")).toHaveCount(2);
+    await expect(page.locator("#b-rec")).toHaveText("Record");
+    await expect(page.locator("#play")).toHaveText("Play");
+    await expect(page.locator("#b-stop")).toHaveCount(0);
+    await expect(page.locator("#b-script-save")).toBeHidden();
+    await expect(page.locator("#wpm-down")).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
+  test("a saved speed is still there after a reload", async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => localStorage.setItem("fhtp.wpm", JSON.stringify(180)));
+    await page.reload();
+    await expect(page.locator("#s-time")).toContainText("180 wpm");
+  });
+
+  test("Play becomes Pause while the words roll, and the buttons hide while the cursor is in the words", async ({ page }) => {
+    await open(page);
+    await expect(page.locator("#content")).toContainText("MOST lenders");
+    await page.locator("#play").click();
+    await expect(page.locator("#play")).toHaveText("Pause");
+    await page.locator("#play").click();
+    await expect(page.locator("#play")).toHaveText("Play");
+    await page.evaluate(() => {
+      document.body.classList.add("wording");
+    });
+    await expect(page.locator("#controls")).toBeHidden();
+    await page.evaluate(() => {
+      document.body.classList.remove("wording");
+    });
+    await expect(page.locator("#b-rec")).toBeVisible();
+    await expect(page.locator("#play")).toBeVisible();
   });
 
   test("mirror flips the reading area (text, line, progress, end card) and never the controls", async ({ page }) => {
