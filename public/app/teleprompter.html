@@ -188,7 +188,20 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 /* messages */
 #toast{position:fixed;left:16px;right:16px;top:calc(16px + env(safe-area-inset-top,0px));margin:0 auto;max-width:560px;background:var(--panel-2);border:1px solid var(--rule);border-radius:12px;padding:12px 16px;font-size:15px;z-index:9;overflow-wrap:anywhere}
 .banner{font-size:13px;color:var(--cue);margin:0}
-@media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
+.pill.on{border-color:var(--tally)}
+#cam-line{font-size:13px;color:var(--cue);margin:0}
+/* Small face box, same job as the iPhone app: line up, then fade to dark glass.
+   It sits outside #flip, so the beam-splitter switch only flips the words. */
+#cam{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));right:8px;width:96px;height:170px;border-radius:12px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.3)}
+#cam-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#000}
+#cam-shade{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.2s ease-out;pointer-events:none}
+#cam.glass #cam-shade{opacity:.78}
+#cam-corner{position:absolute;inset:0;margin:0;border:0;padding:0;background:transparent;cursor:pointer}
+#rec{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(0,0,0,.6);border-radius:999px;font-family:var(--data-face);font-size:12px;font-weight:600}
+#rec-dot{width:10px;height:10px;border-radius:50%;background:var(--tally);flex:none}
+#b-save{position:fixed;z-index:6;top:calc(40px + env(safe-area-inset-top,0px));left:8px}
+@media (orientation:landscape){#cam{width:170px;height:96px}}
+@media (prefers-reduced-motion:reduce){#content .w,#bar,#top,#cam-shade{transition:none}}
 </style>
 </head>
 <body>
@@ -205,6 +218,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
     </div>
     <p class="banner" id="offline" hidden></p>
     <p class="banner" id="pending" hidden>Your marks are saved on this phone and send when you are back online.</p>
+    <p id="cam-line" hidden></p>
   </header>
 
   <div id="flip">
@@ -293,6 +307,11 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
   <label class="toggle" for="t-mirror">Mirror left to right (beam-splitter glass) <input type="checkbox" id="t-mirror"></label>
   <label class="toggle" for="t-flipv">Flip upside down (some rigs need it) <input type="checkbox" id="t-flipv"></label>
   <label class="toggle" for="t-count">3-2-1 countdown before each take <input type="checkbox" id="t-count"></label>
+  <h3>Camera</h3>
+  <p class="note" id="cam-now">The front camera is starting.</p>
+  <button type="button" class="pill" id="q-4k">4K (3840×2160) — VSLs, thank-you, testimonials</button>
+  <button type="button" class="pill" id="q-1080">1080p (1920×1080) — ads</button>
+  <p class="note">4K for VSLs, thank-you videos and testimonials. 1080p for ads. Each one uses the fastest real frame rate at that size. A smaller picture is never stretched and called 4K.</p>
   <h3>Learn remote</h3>
   <p class="note">Tap a slot, then press the button on your remote or foot pedal. It is saved on this device.</p>
   <div class="list" id="learn"></div>
@@ -320,6 +339,14 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
     <a class="big primary" href="/login.html?next=/app/teleprompter.html">Sign in</a>
   </div>
 </div>
+
+<div id="cam" hidden>
+  <video id="cam-video" playsinline autoplay muted></video>
+  <div id="cam-shade"></div>
+  <button type="button" id="cam-corner" aria-label="Show the camera"></button>
+</div>
+<div id="rec" hidden><span id="rec-dot"></span><span id="rec-time">0:00</span></div>
+<button type="button" class="mini" id="b-save" hidden>Save the video</button>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 

@@ -277,12 +277,54 @@
     return Math.max(0, Math.min(out, Math.max(0, total(newCounts) - 1)));
   }
 
+  /**
+   * What we ask the front camera for. 4K is 3840×2160. 1080p is 1920×1080.
+   * frameRate ideal is the highest the camera listed (or 60 before we know).
+   * ideal, not a stretched picture: the phone may give less, and we keep that.
+   */
+  function cameraAsk(mode, maxFps) {
+    var uhd = mode !== "1080p";
+    var fps = maxFps > 0 ? maxFps : 60;
+    return {
+      facingMode: "user",
+      width: { ideal: uhd ? 3840 : 1920 },
+      height: { ideal: uhd ? 2160 : 1080 },
+      frameRate: { ideal: fps }
+    };
+  }
+
+  /** VSLs and thank-you videos stay 4K. Ads may use the 1080p choice. */
+  function stays4K(s) {
+    if (!s) return false;
+    if (String(s.script_format || "").toLowerCase() === "vsl") return true;
+    var blob = [s.title, s.angle_name, s.take_file_name, s.funnel_key, s.style].filter(Boolean).join(" ").toLowerCase();
+    if (/\bvsl\b/.test(blob)) return true;
+    if (/thank[- ]?you/.test(blob)) return true;
+    return false;
+  }
+
+  /** The real size the camera gave. Never calls a smaller picture 4K. */
+  function cameraReport(got, want) {
+    var w = got && got.width ? got.width : 0;
+    var h = got && got.height ? got.height : 0;
+    var fps = got && got.frameRate ? Math.round(got.frameRate) : 0;
+    var four = w >= 3840 && h >= 2160;
+    var hd = w >= 1920 && h >= 1080;
+    var label = four ? "4K" : hd ? "1080p" : (w && h ? (w + "×" + h) : "no picture");
+    var line = label + (fps ? " · " + fps + " fps" : "");
+    var short = "";
+    if (want === "4k" && !four) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 4K.";
+    else if (want === "1080p" && !hd) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 1080p.";
+    return { line: line, short: short, width: w, height: h, fps: fps };
+  }
+
   root.FundhubTeleprompter = {
     fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, wordAfterEdit: wordAfterEdit,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
-    TAP_SLOP: TAP_SLOP, DOUBLE_MS: DOUBLE_MS, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN
+    TAP_SLOP: TAP_SLOP, DOUBLE_MS: DOUBLE_MS, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
+    cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport
   };
 
   var doc = root.document;
@@ -300,7 +342,7 @@
   /* A tablet gets bigger words by default (read from the camera distance). */
   var bigScreen = false;
   try { bigScreen = Math.min(root.screen.width, root.screen.height) >= 700; } catch (e) { /* no screen */ }
-  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30 }, LS.get("settings", {}));
+  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k" }, LS.get("settings", {}));
   var learned = LS.get("keys", {});
   var queue = LS.get("queue", []);
 
@@ -582,6 +624,7 @@
   }
 
   function open(i) {
+    endRec();
     stop();
     hideEnd();
     setScroll(false);
@@ -592,6 +635,8 @@
     render(paragraphsFor(s));
     takeWord = 0; t = 0; seeked = false; released = {}; holding = -1;
     markStart(); apply();
+    showFace();
+    ensureCamera();
   }
 
   /* Draw the current script again (its words changed) and keep the place:
@@ -735,6 +780,8 @@
     setScroll(false);
     if (seeked) { takeWord = Math.max(0, wordAt(t)); t = times[takeWord] || 0; seeked = false; released = {}; markStart(); apply(); }
     if (t >= total) { t = times[takeWord] || 0; released = {}; apply(); }
+    ensureRecording();
+    fadeSoon();
     if (withCount && S.countdown) {
       var n = 3; countEl.textContent = n; countEl.hidden = false; setPlayIcon(); rolling(true);
       countTimer = setInterval(function () { n--; if (n <= 0) { cancelCount(); go(); } else countEl.textContent = n; }, 800);
@@ -756,7 +803,12 @@
     var atTake = Math.abs(t - (times[takeWord] || 0)) < 0.01;
     start(atTake || seeked || t >= total);
   }
-  function restart() { if (editing) return; stop(); hideEnd(); seeked = false; released = {}; holding = -1; $("cuehold").hidden = true; t = times[takeWord] || 0; apply(); start(true); }
+  function restart() {
+    if (editing) return;
+    stop(); hideEnd(); seeked = false; released = {}; holding = -1; $("cuehold").hidden = true;
+    t = times[takeWord] || 0; apply();
+    endRec(function () { start(true); });
+  }
   function markStart() { words.forEach(function (w, i) { w.el.classList.toggle("start", i === takeWord && takeWord > 0); }); }
   function rolling(on) {
     clearTimeout(dimTimer);
@@ -775,6 +827,7 @@
 
   function finish() {
     stop();
+    endRec();
     atEnd = true;
     $("end").hidden = false;
     $("cuehold").hidden = true;
@@ -1130,9 +1183,261 @@
     openHistory();
   }
 
+  /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
+
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4" };
+  var wantRec = false;
+
+  function activeMode() {
+    if (stays4K(scripts[cur])) return "4k";
+    return S.cam === "1080p" ? "1080p" : "4k";
+  }
+  function paintPicks() {
+    var mode = activeMode();
+    var a = $("q-4k"), b = $("q-1080");
+    if (a) a.classList.toggle("on", mode === "4k");
+    if (b) b.classList.toggle("on", mode === "1080p");
+  }
+  function camLine(text, bad) {
+    var el = $("cam-line");
+    if (!el) return;
+    el.hidden = !text;
+    el.textContent = text || "";
+    el.style.color = bad ? "var(--tally)" : "";
+    var now = $("cam-now");
+    if (now && text) now.textContent = text;
+  }
+  function showFace() {
+    var box = $("cam");
+    if (!box || box.hidden) return;
+    box.classList.remove("glass");
+    clearTimeout(cam.fadeT);
+    cam.fadeT = setTimeout(function () { box.classList.add("glass"); }, 5000);
+  }
+  function fadeSoon() {
+    var box = $("cam");
+    if (!box || box.hidden) return;
+    clearTimeout(cam.fadeT);
+    cam.fadeT = setTimeout(function () { box.classList.add("glass"); }, 600);
+  }
+  function pickMime() {
+    if (!root.MediaRecorder || !root.MediaRecorder.isTypeSupported) return "";
+    var list = ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    for (var i = 0; i < list.length; i++) if (root.MediaRecorder.isTypeSupported(list[i])) return list[i];
+    return "";
+  }
+  function videoBits(width, fps) {
+    var hi = fps > 30;
+    if (width >= 3840) return hi ? 75000000 : 50000000;
+    if (width >= 1920) return hi ? 30000000 : 20000000;
+    if (width > 0) return hi ? 16000000 : 10000000;
+    return 8000000;
+  }
+  function isPhone() {
+    var ua = (root.navigator && root.navigator.userAgent) || "";
+    return /iPhone|iPad|iPod/.test(ua) || (root.navigator.platform === "MacIntel" && root.navigator.maxTouchPoints > 1);
+  }
+  function downloadFile(file) {
+    var url = root.URL.createObjectURL(file);
+    var a = doc.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.rel = "noopener";
+    if (isPhone()) a.target = "_blank";
+    doc.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function keepFile(chunks) {
+    try {
+      var type = cam.mime || (chunks[0] && chunks[0].type) || "video/mp4";
+      var name = cam.fileName || "Take.mp4";
+      if (type.indexOf("webm") >= 0) name = name.replace(/\.mp4$/i, ".webm");
+      var file = new root.File(chunks, name, { type: type });
+      cam.file = file;
+      var btn = $("b-save");
+      if (btn) btn.hidden = false;
+      if (!isPhone()) downloadFile(file);
+      say(isPhone() ? "Take ready. Tap Save the video." : ("Saved " + name));
+    } catch (e) {
+      camLine("The take did not save. The words still roll.", true);
+    }
+  }
+  function tickRec() {
+    if (!cam.rec || cam.rec.state !== "recording") return;
+    var el = $("rec-time");
+    if (el) el.textContent = clock((Date.now() - cam.started) / 1000);
+    cam.tick = setTimeout(tickRec, 500);
+  }
+  function beginRec() {
+    if (!wantRec || !cam.stream) return;
+    if (cam.rec && cam.rec.state === "recording") return;
+    if (cam.stopping) { cam.again = true; return; }
+    if (!root.MediaRecorder) { camLine("This phone cannot save a video file. The words still roll.", true); return; }
+    var mime = pickMime();
+    cam.mime = mime;
+    cam.chunks = [];
+    var track = cam.stream.getVideoTracks()[0];
+    var st = track && track.getSettings ? track.getSettings() : {};
+    var opts = {};
+    if (mime) opts.mimeType = mime;
+    opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
+    var rec;
+    try { rec = new root.MediaRecorder(cam.stream, opts); }
+    catch (e1) {
+      try { rec = new root.MediaRecorder(cam.stream); }
+      catch (e2) { camLine("This phone cannot save a video file. The words still roll.", true); return; }
+    }
+    cam.rec = rec;
+    var s = scripts[cur];
+    cam.fileName = (s && s.take_file_name) ? s.take_file_name : "Take.mp4";
+    cam.started = Date.now();
+    rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) cam.chunks.push(ev.data); };
+    rec.onstop = function () { onRecStop(); };
+    try { rec.start(1000); }
+    catch (e3) { camLine("The recording did not start. The words still roll.", true); return; }
+    var dot = $("rec");
+    if (dot) dot.hidden = false;
+    var tm = $("rec-time");
+    if (tm) tm.textContent = "0:00";
+    clearTimeout(cam.tick);
+    cam.tick = setTimeout(tickRec, 500);
+  }
+  function onRecStop() {
+    cam.stopping = false;
+    var dot = $("rec");
+    if (dot) dot.hidden = true;
+    clearTimeout(cam.tick);
+    var chunks = cam.chunks;
+    cam.chunks = [];
+    var next = cam.after;
+    cam.after = null;
+    var again = cam.again;
+    cam.again = false;
+    if (chunks.length) keepFile(chunks);
+    if (again) { wantRec = true; beginRec(); }
+    else if (next) next();
+    ensureCamera();
+  }
+  function endRec(then) {
+    wantRec = false;
+    var rec = cam.rec;
+    if (!rec || rec.state === "inactive") { if (then) then(); return; }
+    cam.stopping = true;
+    cam.after = then || null;
+    try { rec.stop(); }
+    catch (e) { cam.stopping = false; if (then) then(); }
+  }
+  function ensureRecording() {
+    wantRec = true;
+    beginRec();
+  }
+  function attachStream(stream, mode, noMic) {
+    if (cam.stream && cam.stream !== stream) {
+      cam.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* already stopped */ } });
+    }
+    cam.stream = stream;
+    cam.applied = mode;
+    var video = $("cam-video");
+    if (video) {
+      video.srcObject = stream;
+      video.muted = true;
+      var p = video.play();
+      if (p && p.catch) p.catch(function () { /* a tap may be required before the picture shows */ });
+    }
+    var box = $("cam");
+    if (box) box.hidden = false;
+    showFace();
+    var track = stream.getVideoTracks()[0];
+    var got = track && track.getSettings ? track.getSettings() : {};
+    var rep = cameraReport(got, mode);
+    var text = rep.short || ("Front camera · " + rep.line);
+    if (noMic) text += " · no sound";
+    camLine(text, !!rep.short);
+    paintPicks();
+    if (wantRec) beginRec();
+  }
+  function ensureCamera() {
+    if (cam.rec && cam.rec.state === "recording") return;
+    if (cam.stopping) return;
+    var mode = activeMode();
+    if (cam.stream && cam.applied === mode) { paintPicks(); return; }
+    if (cam.opening === mode) return;
+    openCamera();
+  }
+  function openCamera() {
+    try {
+      var md = root.navigator.mediaDevices;
+      if (!md || !md.getUserMedia) { camLine("This browser cannot use the camera. The words still roll.", true); return; }
+      var gen = ++cam.gen;
+      var mode = activeMode();
+      cam.opening = mode;
+      camLine(mode === "1080p" ? "Asking the front camera for 1080p at its highest frame rate." : "Asking the front camera for 4K (3840×2160) at its highest frame rate.", false);
+      paintPicks();
+      function takeStream(stream, noMic, triedExact) {
+        if (gen !== cam.gen) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+        var track = stream.getVideoTracks()[0];
+        if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
+        var caps = track.getCapabilities ? track.getCapabilities() : {};
+        var maxFps = caps.frameRate && caps.frameRate.max ? caps.frameRate.max : 60;
+        var ask = cameraAsk(mode, maxFps);
+        var apply = track.applyConstraints ? track.applyConstraints({ width: ask.width, height: ask.height, frameRate: ask.frameRate }).catch(function () { /* keep the real size */ }) : Promise.resolve();
+        apply.then(function () {
+          if (gen !== cam.gen) return;
+          var facing = track.getSettings && track.getSettings().facingMode;
+          if (facing && facing !== "user" && !triedExact) {
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            var exact = cameraAsk(mode, maxFps);
+            exact.facingMode = { exact: "user" };
+            md.getUserMedia({ audio: !noMic, video: exact }).then(function (s2) { takeStream(s2, noMic, true); }, function () {
+              if (gen === cam.gen) { cam.opening = ""; camLine("The front camera did not start. The words still roll.", true); }
+            });
+            return;
+          }
+          cam.opening = "";
+          attachStream(stream, mode, noMic);
+        });
+      }
+      md.getUserMedia({ audio: true, video: cameraAsk(mode, 60) }).then(function (s) { takeStream(s, false, false); }, function () {
+        md.getUserMedia({ audio: false, video: cameraAsk(mode, 60) }).then(function (s) { takeStream(s, true, false); }, function () {
+          if (gen === cam.gen) { cam.opening = ""; camLine("The camera did not start. Allow the camera, then reload. The words still roll.", true); }
+        });
+      });
+    } catch (e) {
+      cam.opening = "";
+      camLine("The camera did not start. The words still roll.", true);
+    }
+  }
+  function setCamMode(mode) {
+    if (mode === "1080p" && stays4K(scripts[cur])) { say("This one stays 4K."); paintPicks(); return; }
+    S.cam = mode === "1080p" ? "1080p" : "4k";
+    save();
+    paintPicks();
+    if (cam.rec && cam.rec.state === "recording") { say("The next take uses " + (S.cam === "1080p" ? "1080p" : "4K") + "."); return; }
+    cam.applied = "";
+    cam.opening = "";
+    ensureCamera();
+  }
+  function saveClick() {
+    var file = cam.file;
+    if (!file) return;
+    var nav = root.navigator;
+    try {
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        nav.share({ files: [file], title: file.name }).catch(function () { downloadFile(file); });
+        return;
+      }
+    } catch (e) { /* fall through to a download */ }
+    downloadFile(file);
+  }
+
   /* ── buttons ─────────────────────────────────────────────────────────── */
 
   $("play").onclick = toggle;
+  $("q-4k").onclick = function () { setCamMode("4k"); };
+  $("q-1080").onclick = function () { setCamMode("1080p"); };
+  $("cam-corner").onclick = function (e) { e.preventDefault(); e.stopPropagation(); showFace(); };
+  $("b-save").onclick = saveClick;
   $("b-restart").onclick = restart;
   $("b-next").onclick = nextScript;
   $("b-slow").onclick = function () { setWpm(S.wpm - 5); };
@@ -1274,7 +1579,10 @@
   }
 
   syncSettings();
+  paintPicks();
   pulse();
+  root.addEventListener("pagehide", function () { endRec(); });
+  ensureCamera();
   if (queue.length) { $("pending").hidden = false; }
   load(true).then(function () { flush(); poll(); checkHealth(true); });
 
