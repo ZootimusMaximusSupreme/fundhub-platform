@@ -36,7 +36,6 @@ const EXPECTED_IDS = [
 
 const EXPECTED_GAP_IDS = [
   "s-04-call-booked",
-  "meet-transcript-sweeper",
   "s-05a-no-show-recovery",
   "s-offer-bucket",
   "contract-chaser",
@@ -76,12 +75,15 @@ test("slice 27-closer: sweepers use live cron constants; gaps are registry and m
   assert.ok(meet && chaser);
 
   const machineFiles = new Set(MACHINE_CHECKS.map((r) => r.file));
-  for (const row of [meet, chaser]) {
-    assert.equal(row.alreadyInRegistry, false);
-    assert.equal(row.machineId, null);
-    assert.match(row.proof, /MACHINE_CHECKS/);
-    assert.ok(!machineFiles.has(row.workflowFile));
-  }
+  assert.equal(meet.alreadyInRegistry, true);
+  assert.equal(meet.machineId, "meet-transcript-sweeper");
+  assert.match(meet.proof, /^PASS/);
+  assert.ok(machineFiles.has(meet.workflowFile));
+
+  assert.equal(chaser.alreadyInRegistry, false);
+  assert.equal(chaser.machineId, null);
+  assert.match(chaser.proof, /MACHINE_CHECKS/);
+  assert.ok(!machineFiles.has(chaser.workflowFile));
 
   for (const id of ["bookings", "present.html", "payment-links", "call-outcomes"]) {
     const row = CHECKS.find((r) => r.id === id);

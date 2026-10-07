@@ -47,7 +47,12 @@ test("slice 13-calls: sweepers are MACHINE_CHECKS gaps; bookings is in PULSE_REG
   assert.ok(meet && blake && inquiry && bookings);
 
   const machineFiles = new Set(MACHINE_CHECKS.map((r) => r.file));
-  for (const row of [meet, blake, inquiry]) {
+  assert.equal(meet.alreadyInRegistry, true);
+  assert.equal(meet.machineId, "meet-transcript-sweeper");
+  assert.match(meet.proof, /^PASS/);
+  assert.ok(machineFiles.has(meet.workflowFile));
+
+  for (const row of [blake, inquiry]) {
     assert.equal(row.alreadyInRegistry, false);
     assert.equal(row.machineId, null);
     assert.match(row.proof, /MACHINE_CHECKS/);
@@ -60,6 +65,6 @@ test("slice 13-calls: sweepers are MACHINE_CHECKS gaps; bookings is in PULSE_REG
   const open = gaps();
   assert.deepEqual(
     open.map((r) => r.id).sort(),
-    ["blake-lead-watch", "inquiry-call-sweeper", "meet-transcript-sweeper"]
+    ["blake-lead-watch", "inquiry-call-sweeper"]
   );
 });

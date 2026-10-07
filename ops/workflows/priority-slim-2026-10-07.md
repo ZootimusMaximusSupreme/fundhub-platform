@@ -22,11 +22,21 @@ Chris direction: focus on essential automated systems. Over-built personal tools
 - **Coverage slices:** closer + calls slices expect sweeper + machine row.
 - **API:** `POST /api/call-outcomes` accepts `recording_url`; `GET /api/read/unrecorded-calls`; Drive sync via `api/company-brain/sync` (Meet pickup — tied to paused Brain stack but sweeper still runs).
 
-### Known gaps (not “100%” yet)
+### Finished 2026-10-07 (this chat)
 
-- Board **LEFTOVER:** 6 logged sales calls still had no recording/transcript (2026-09-18 AG-07 snapshot) — re-check on next pulse.
-- **Closer context:** system map notes live `/api/read/agent-context` has lagged on **spoken words** (`said:` from transcript) — Meet tape → transcriber → `fetchContext` is a dictator e2e row, not proven end-to-end on live.
-- **Encryption/decryption API** for sales recordings: **no dedicated sales-recording encrypt module found** in repo (push/Plaid use row-bound encrypt elsewhere). Needs a **written spec** from Chris: what is encrypted (Drive link, blob, at-rest file), who decrypts, which API routes — then build backend first.
+- Sweeper now **scans Drive first**, then pairs words. No one has to open Company Brain.
+- Words still stamp on the sales call when Brain embed is down (Brain is paused).
+- Morning pulse **MACHINE_CHECKS** row `meet-transcript-sweeper` watches last Drive scan (red after 30 min = 3× the 10 min job) plus stuck files with no words.
+- Job heartbeat list already had `meet-transcript-sweeper`.
+- Closer pack already prints `said:` from `call_outcomes.transcript` (`src/agents/context.mjs`). That stays.
+
+### Encryption (looked up — not a new build)
+
+Tapes stay in **Google Drive**. Google holds the file. We store the Drive link and the spoken words on the call. There is no second encrypt/decrypt API for sales video. Building one would be the same over-build as Company Brain. Do not add it unless Chris names the exact lock.
+
+### Still a leftover (not this finish)
+
+- Board **LEFTOVER:** old AG-07 snapshot of 6 calls with no tape (2026-09-18). Pulse `unrecorded` still counts live misses.
 
 ### Heartbeat (when “done”)
 

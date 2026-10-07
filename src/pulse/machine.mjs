@@ -18,6 +18,7 @@
 
 import { diesBefore25Percent } from "../ops/watch-curve.mjs";
 import { SWEEP_CRON as CF_SWEEP_CRON } from "../workflows/clickfunnels-analytics-sweeper.mjs";
+import { SWEEP_CRON as MEET_TRANSCRIPT_CRON } from "../workflows/meet-transcript-sweeper.mjs";
 
 /** A daily job that has not written in this long has missed a day. */
 export const FRESH_HOURS = 36;
@@ -309,6 +310,82 @@ export async function checkDyingAdScan({ scope, now = new Date() } = {}) {
   return row(id, "PASS", `scan ran with the Meta sync of ${stamp(last)} (${age} h ago): ${scanned}. Buzzes ever recorded: ${ever}.`);
 }
 
+// ── Sales Meet recordings (Drive pickup + words on the call) ─────────────────
+// Sweeper is every 10 minutes. Red after 3x that (30 minutes), same law as
+// job_heartbeats. Watches what the job leaves behind, never restarts it.
+
+export const MEET_FRESH_MINUTES = 30;
+
+export const MEET_SYNC_SQL = `
+  SELECT (SELECT max(last_sync_at) FROM brain_drive_sync) AS last_sync_at,
+         (SELECT count(*)::int FROM brain_drive_sync) AS sync_rows,
+         (SELECT string_agg(left(last_error, 160), ' / ')
+            FROM brain_drive_sync WHERE last_error IS NOT NULL) AS errors,
+         (SELECT count(*)::int FROM brain_files
+           WHERE needs_transcription = true
+             AND (
+               mime_type LIKE 'video/%'
+               OR mime_type LIKE 'audio/%'
+               OR name ILIKE '%recording%'
+             )
+             AND COALESCE(indexed_at, created_at) < now() - interval '30 minutes') AS pending_old,
+         (SELECT count(*)::int FROM call_outcomes
+           WHERE transcript IS NOT NULL AND btrim(transcript) <> '') AS words_on_file`;
+
+export async function checkMeetTranscripts({ scope, now = new Date() } = {}) {
+  const id = "meet-transcript-sweeper";
+  const r = await scope((tx) => tx.query(MEET_SYNC_SQL).then((x) => x.rows[0] || {}));
+  const fix =
+    "Read brain_drive_sync and meet-transcript-sweeper (every 10 min). " +
+    "It picks Meet files from Drive and stamps words on the sales call. " +
+    "Do not auto-fix from this pulse.";
+  const last = toDate(r.last_sync_at);
+  const err = r.errors ? ` Drive sync error: ${clip(r.errors)}.` : "";
+  if (!Number(r.sync_rows) && !last) {
+    return row(
+      id,
+      "FAIL",
+      "Google Drive has never been scanned. Sales tapes stay in Meet Recordings until the sweeper picks them up.",
+      fix
+    );
+  }
+  if (!last) {
+    return row(id, "FAIL", `Drive sync row exists but has no last_sync_at.${err}`, fix);
+  }
+  const ageMin = Math.round(((now.getTime() - last.getTime()) / 60000) * 10) / 10;
+  if (ageMin > MEET_FRESH_MINUTES) {
+    return row(
+      id,
+      "FAIL",
+      `Drive last scanned ${stamp(last)} (${ageMin} min ago, red after ${MEET_FRESH_MINUTES} min / 3x ${MEET_TRANSCRIPT_CRON}).${err}`,
+      fix
+    );
+  }
+  if (r.errors) {
+    return row(
+      id,
+      "FAIL",
+      `Drive scanned ${stamp(last)} (${ageMin} min ago), but the last scan failed: ${clip(r.errors)}.`,
+      fix
+    );
+  }
+  const pending = Number(r.pending_old || 0);
+  if (pending > 0) {
+    return row(
+      id,
+      "FAIL",
+      `${pending} Meet file${pending === 1 ? "" : "s"} still have no words after 30 minutes.`,
+      "Open the recording in Drive. If Google wrote a Transcript sibling, wait for the next sweep. Long files wait for that doc. Do not auto-fix from this pulse."
+    );
+  }
+  const words = Number(r.words_on_file || 0);
+  return row(
+    id,
+    "PASS",
+    `Drive scanned ${stamp(last)} (${ageMin} min ago); ${words} sales call${words === 1 ? "" : "s"} have spoken words on file.`
+  );
+}
+
 // ── The registry and its runner ──────────────────────────────────────────────
 
 export const MACHINE_CHECKS = [
@@ -335,6 +412,12 @@ export const MACHINE_CHECKS = [
     watches: "dying-before-25% buzz, end of each Meta sync",
     file: "src/ops/watch-curve.mjs",
     run: checkDyingAdScan
+  },
+  {
+    id: "meet-transcript-sweeper",
+    watches: "Meet recordings from Drive + spoken words on the sales call, every 10 minutes",
+    file: "src/workflows/meet-transcript-sweeper.mjs",
+    run: checkMeetTranscripts
   }
 ];
 
