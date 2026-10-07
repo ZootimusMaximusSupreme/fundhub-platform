@@ -485,6 +485,7 @@ const DESK_FILES = [
   "money-fundability.html",
   "money-helper.html",
   "money-declines.html",
+  "money-vault.html",
   "money.html",
   "money-setup.html",
   "money-connections.html",

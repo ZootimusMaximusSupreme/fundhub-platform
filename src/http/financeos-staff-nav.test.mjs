@@ -56,7 +56,7 @@ const { allowedFor } = box;
 
 const MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-credit.html",
   "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
-  "money-strategy.html", "money-fundability.html", "money-next.html", "money-transfers.html", "money-declines.html", "money-alerts.html"];
+  "money-strategy.html", "money-fundability.html", "money-next.html", "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"];
 
 test("owner, admin and sales_manager may follow the FinanceOS card", () => {
   for (const role of ["owner", "admin", "sales_manager"]) {
