@@ -1,7 +1,7 @@
 /* Banks — FinanceOS bank strategy (/app/money-banks.html, FinanceOS wave 5 W2).
  *
  * Reads ONE endpoint, GET /api/money/banks, and paints four parts:
- *   Banks near you · Card stacking order · Next funding round · Your bank relationships
+ *   Banks near you · Card stacking order · Next funding sequence · Your bank relationships
  * Every figure and every rule is a field from that read. Each rule carries the
  * source it came from (the bank book row, the bank match, the funding order,
  * Next Funding Sequence, UnderwriteIQ) and the screen prints it beside the rule.
@@ -15,7 +15,7 @@
  *
  * Staff (a ?client_id= in the bar, FINANCE role on the server) also see the
  * plan controls: add a bank to the plan, mark it opened, add a deposit, skip it,
- * set the next-round date. A client never does — and the server refuses every
+ * set the next funding sequence date. A client never does — and the server refuses every
  * POST from a client session anyway.
  *
  * Every render function returns an HTML string and touches no DOM, so
@@ -92,15 +92,15 @@
     var who = d && d.client && d.client.name ? d.client.name : "";
     var place = where(d);
     var line = (place ? "Banks to open near " + place : "Banks to open near you") +
-      ", the order to apply for cards, and your next funding round";
+      ", the order to apply for cards, and your next funding sequence";
     return '<div class="head"><div><h1>Banks</h1><p class="caption">' + esc(who ? who + " · " + line : line) + "</p></div></div>";
   }
 
   function renderTiles(d) {
-    var nr = (d && d.next_round) || {};
+    var nr = (d && (d.next_sequence || d.next_round)) || {};
     var rels = list(d && d.relationships).filter(function (r) { return r.status !== "skipped"; });
     var opened = rels.filter(function (r) { return !!r.opened_on; }).length;
-    var round = '<section class="card tile" aria-labelledby="bk-t-round"><h2 class="eyebrow" id="bk-t-round">Next funding round</h2>' +
+    var round = '<section class="card tile" aria-labelledby="bk-t-round"><h2 class="eyebrow" id="bk-t-round">Next funding sequence</h2>' +
       '<span class="big">' + (nr.date ? esc(day(nr.date)) : "Not set") + "</span>" +
       '<p class="caption">' + (nr.date ? esc(plural(list(nr.readiness_gaps).length, "thing", "things") + " left to do") : "Staff set this date") + "</p></section>";
     var amount = '<section class="card tile" aria-labelledby="bk-t-amt"><h2 class="eyebrow" id="bk-t-amt">Estimated amount</h2>' +
@@ -241,21 +241,21 @@
       body + (counts ? '<p class="caption">' + esc(counts) + "</p>" : "") + "</section>";
   }
 
-  /* ── next funding round ────────────────────────────────────────────────── */
+  /* ── next funding sequence ────────────────────────────────────────────────── */
 
   function renderRound(d, staff) {
-    var nr = (d && d.next_round) || {};
+    var nr = (d && (d.next_sequence || d.next_round)) || {};
     var gaps = list(nr.readiness_gaps);
     var gapList = gaps.length
       ? '<ul class="gaps">' + gaps.map(function (g) { return "<li><span>" + esc(g.text) + src(g.source) + "</span></li>"; }).join("") + "</ul>"
       : '<p class="caption">Nothing left on the list.</p>';
     var dateForm = staff && nr.can_set_date
-      ? '<div class="staff"><span class="eyebrow">Staff only · Next round date</span>' +
+      ? '<div class="staff"><span class="eyebrow">Staff only · Next funding sequence date</span>' +
         '<form data-form="round"><label class="field"><span class="caption">Ready date</span><input name="ready_date" type="date" value="' + esc(nr.date || "") + '" required></label>' +
         '<button class="btn-line" type="submit">Save date</button></form><p class="act-msg caption" aria-live="polite"></p></div>'
-      : (staff ? '<p class="caption">The next-round date is part of the Capital Blueprint. This client has not bought it, so it stays not set.</p>' : "");
-    return '<section class="block" aria-labelledby="bk-round"><h2 id="bk-round">Next funding round</h2>' +
-      '<p class="caption">When your file is ready for the next round, how much, and what is left to do.</p>' +
+      : (staff ? '<p class="caption">The next funding sequence date is part of the Capital Blueprint. This client has not bought it, so it stays not set.</p>' : "");
+    return '<section class="block" aria-labelledby="bk-round"><h2 id="bk-round">Next funding sequence</h2>' +
+      '<p class="caption">When your file is ready for the next funding sequence, how much, and what is left to do.</p>' +
       '<div class="card round">' +
       '<dl class="facts"><div><dt class="caption">Date</dt><dd class="big">' + (nr.date ? esc(day(nr.date)) : "Not set") + "</dd>" +
       (nr.date_source ? "<dd>" + src(nr.date_source) + "</dd>" : '<dd class="caption">Staff set it (Next Funding Sequence).</dd>') + "</div>" +
@@ -522,7 +522,7 @@
           msg, btn, "Deposit recorded.").then(function (ok) { if (ok) load(); });
       }
       if (kind === "round") {
-        post({ action: "set_next_round_date", ready_date: els.ready_date.value }, msg, btn, "Date saved.")
+        post({ action: "set_next_sequence_date", ready_date: els.ready_date.value }, msg, btn, "Date saved.")
           .then(function (ok) { if (ok) load(); });
       }
     }

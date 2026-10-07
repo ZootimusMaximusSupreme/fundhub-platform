@@ -1026,7 +1026,7 @@
   "not_set": [
     {
       "key": "next_round_date",
-      "text": "Next round date"
+      "text": "Next funding sequence date"
     },
     {
       "key": "funding_estimate",
