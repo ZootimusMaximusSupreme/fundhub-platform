@@ -28,3 +28,8 @@ Copy the header from `public/app/money.html` and add this nav. P5 adds the same 
 
 ## Manifests
 (orchestrator fills in)
+
+### Result — 2026-10-06 (all done, shipped 27211ea6)
+- P1 credit, P2 accounts, P3 connections (migration 442, MERCHANT_SECRET_ENC_KEY set), P4 Clarity Payments + money helper (443, 444; workflow count 94), P5 setup + portal card, P6 one page `/app/financeos.html` — all merged and live. `/api/health` pending 0.
+- Live proof: open API POST to fundhub.ai inserted 4 events, re-post 0 inserted / 4 duplicates. Clarity sample seeded for Test Test ($1,500 clarity, $600 BNPL); client not entitled, so the helper sends nothing.
+- Not done: business scores (none stored), Commas payouts format, paying setup fee does not grant the plan, staff don't see the portal card, loans have no due-date home.
