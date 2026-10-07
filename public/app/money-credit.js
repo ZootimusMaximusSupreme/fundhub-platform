@@ -271,11 +271,22 @@
       '<text class="chart-label" x="0" y="' + (y(lo) + 4) + '">' + lo + '</text>';
     BUREAUS.forEach(function (b) {
       var pts = [];
-      h.forEach(function (p, i) { if (isNum(p[b.key])) pts.push([x(i), y(p[b.key]), p[b.key], p.pulled_at]); });
-      if (pts.length >= 2) {
+      /* A pull with no score from this bureau is a gap: the line breaks there
+         instead of bridging it (wave 4, H6). One run per stretch of pulls. */
+      var runs = [], run = [];
+      h.forEach(function (p, i) {
+        if (isNum(p[b.key])) {
+          var q = [x(i), y(p[b.key]), p[b.key], p.pulled_at];
+          pts.push(q);
+          run.push(q);
+        } else if (run.length) { runs.push(run); run = []; }
+      });
+      if (run.length) runs.push(run);
+      runs.forEach(function (r) {
+        if (r.length < 2) return;
         svg += '<polyline class="line line-' + b.short.toLowerCase() + '" points="' +
-          pts.map(function (q) { return q[0].toFixed(1) + "," + q[1].toFixed(1); }).join(" ") + '"></polyline>';
-      }
+          r.map(function (q) { return q[0].toFixed(1) + "," + q[1].toFixed(1); }).join(" ") + '"></polyline>';
+      });
       pts.forEach(function (q) {
         svg += '<circle class="dot" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3"><title>' +
           esc(b.label + " " + q[2] + " on " + day(q[3])) + '</title></circle>';

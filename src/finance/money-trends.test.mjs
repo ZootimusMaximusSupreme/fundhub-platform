@@ -155,6 +155,17 @@ describe("backfill and snapshot against a recording db", () => {
     assert.equal(plan.rollups[0].cash_business_cents, null);
   });
 
+  test("when the bank's balance is from before today, that day is the stored balance", async () => {
+    const conn = fakeDb({
+      tx: [{ bank_account_id: "a1", day: "2026-10-06", net_cents: "-5000" }],
+      earliest: [{ bank_account_id: "a1", earliest: "2026-10-04" }]
+    });
+    const plan = await planBackfill(conn, { orgId: "o", clientId: "c", today: "2026-10-07", days: 30 });
+    const a1 = plan.accounts.find((a) => a.id === "a1");
+    assert.deepEqual(a1.points.map((p) => p.day), ["2026-10-04", "2026-10-05", "2026-10-06"]);
+    assert.equal(a1.points[2].cents, 421055);
+  });
+
   test("backfill writes are estimated and never overwrite a real snapshot", async () => {
     const conn = fakeDb({
       tx: [{ bank_account_id: "a1", day: "2026-10-06", net_cents: "-5000" }],

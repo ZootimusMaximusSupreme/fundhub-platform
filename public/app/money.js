@@ -456,8 +456,13 @@
   function renderFull(d) {
     return renderSandbox(d) + renderHead(d, true) + renderTiles(d) + renderTip(d) +
       '<div class="grid two">' + renderUpcoming(d) + renderBills(d) + '</div>' +
-      renderContainers(d) + renderDebt(d) + renderCashflow(d) + renderBilling(d);
+      renderTrendsSlot() + renderContainers(d) + renderDebt(d) + renderCashflow(d) + renderBilling(d);
   }
+
+  /* Trends (wave 4, H6): money-trends.js draws the line graphs into this slot
+     after the page paints (mountTrends below). Without that file the slot stays
+     an empty box with nothing in it — no heading, no fake lines. */
+  function renderTrendsSlot() { return '<div class="trends-slot" data-trends-slot></div>'; }
 
   function renderEmpty(d) {
     return renderSandbox(d) + renderHead(d, false) +
@@ -605,7 +610,16 @@
         state.data = res.body;
         if (!asked && res.body.client && res.body.client.id) state.clientId = res.body.client.id;
         paint(render(res.body));
+        mountTrends();
       });
+    }
+
+    /* The Trends line graphs, from money-trends.js when the page loaded it. */
+    function mountTrends() {
+      var slot = el.querySelector ? el.querySelector("[data-trends-slot]") : null;
+      var t = root.FinanceOS && root.FinanceOS.trends;
+      if (!slot || !t || typeof t.mount !== "function") return;
+      try { t.mount(slot, { clientId: asked, apiGet: get, onSignIn: ctx.onSignIn }); } catch (e) { slot.innerHTML = ""; }
     }
 
     function connect(btn) {

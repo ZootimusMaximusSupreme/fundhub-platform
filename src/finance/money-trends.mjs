@@ -520,13 +520,19 @@ export async function planBackfill(conn, { orgId, clientId, today, days = BACKFI
 
   const points = new Map();
   const planned = dep.map((a) => {
+    const anchorDay = a.anchor > today ? today : a.anchor;
     const pts = rebuildBalances({
       currentCents: a.current,
-      anchorDay: a.anchor > today ? today : a.anchor,
+      anchorDay,
       earliestDay: earliestBy.get(a.id) ?? null,
       fromDay,
       dailyNet: netBy.get(a.id) ?? new Map()
     });
+    /* The day the bank's balance was true, when that is before today: the
+       stored balance itself. Today's own point is the snapshot's job. */
+    if (pts.length && anchorDay < today && anchorDay >= fromDay && Number.isFinite(a.current)) {
+      pts.push({ day: anchorDay, cents: a.current });
+    }
     points.set(a.id, new Map(pts.map((p) => [p.day, p.cents])));
     return { ...a, points: pts };
   });

@@ -402,6 +402,86 @@ main{padding:24px 24px 64px}
 @media (max-width:760px){
   :where(#fos-payments) .card{padding:16px}
 }
+/* ── trends — from money-trends.js (wave 4, H6). Overview's Trends area and
+   the sales line under Connections. The plot is a stretched SVG with
+   non-scaling strokes; the axis words are HTML captions, so they stay readable
+   at 375px. Series colours are literal (validated for colour-blind separation,
+   2026-10-06) so a one-hue tenant brand cannot wash them into one line, and
+   every series also carries a word in the legend and a dot shape (round or
+   square) — never colour alone (UI-STANDARDS §12.6). Personal is always blue,
+   business always orange. Estimated = dashed, said in words above the charts. */
+:is(#fos-overview,#fos-connections) .trends{margin-bottom:48px}
+:is(#fos-overview,#fos-connections) .trends>h2,:is(#fos-overview,#fos-connections) .thead h2{font-weight:600;color:var(--ink)}
+:is(#fos-overview,#fos-connections) .trends>.caption{color:var(--text-dim);margin-bottom:16px;max-width:80ch}
+:is(#fos-overview,#fos-connections) .thead{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin-bottom:8px}
+:is(#fos-overview,#fos-connections) .trange{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+:is(#fos-overview,#fos-connections) .trange-btn{min-height:40px;padding:0 16px;border:0;border-left:1px solid var(--line);background:var(--surface);color:var(--text-dim)}
+:is(#fos-overview,#fos-connections) .trange-btn:first-child{border-left:0}
+:is(#fos-overview,#fos-connections) .trange-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:600}
+:is(#fos-overview,#fos-connections) .trange-btn:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+:is(#fos-overview,#fos-connections) .trends .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:16px}
+:is(#fos-overview,#fos-connections) .trends .tgrid3>*{grid-column:span 4}
+:is(#fos-overview,#fos-connections) .trends .two>*{grid-column:span 6}
+:is(#fos-overview,#fos-connections) .trends .one>*{grid-column:span 12}
+:is(#fos-overview,#fos-connections) .trends .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0;margin:0}
+:is(#fos-overview,#fos-connections) .trends .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+:is(#fos-overview,#fos-connections) .trends .caption{color:var(--text-dim)}
+:is(#fos-overview,#fos-connections) .trends .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink)}
+:is(#fos-overview,#fos-connections) .tlegend{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:8px}
+:is(#fos-overview,#fos-connections) .tkey-item{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tkey{display:inline-block;width:10px;height:10px}
+:is(#fos-overview,#fos-connections) .tkey.rd{border-radius:999px}
+:is(#fos-overview,#fos-connections) .tkey.sq{border-radius:1px}
+:is(#fos-overview,#fos-connections) .tkey.s0{background:#18181B}
+:is(#fos-overview,#fos-connections) .tkey.s1{background:#2563EB}
+:is(#fos-overview,#fos-connections) .tkey.s2{background:#C2410C}
+:is(#fos-overview,#fos-connections) .tkey.s3{background:#0D9488}
+:is(#fos-overview,#fos-connections) .tplot{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:160px auto;gap:0 8px}
+:is(#fos-overview,#fos-connections) .ty{grid-column:1;grid-row:1;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+:is(#fos-overview,#fos-connections) .tsvg{grid-column:2;grid-row:1;display:block;width:100%;height:160px;overflow:visible}
+:is(#fos-overview,#fos-connections) .tx{grid-column:2;grid-row:2;display:flex;justify-content:space-between;gap:8px;padding-top:8px;white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tgrid{stroke:var(--line);stroke-width:1}
+:is(#fos-overview,#fos-connections) .tzero{stroke:var(--gray2);stroke-width:1}
+:is(#fos-overview,#fos-connections) .tline{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+:is(#fos-overview,#fos-connections) .tline.test{stroke-dasharray:6 5}
+:is(#fos-overview,#fos-connections) .tdot{fill:none;stroke-width:8}
+:is(#fos-overview,#fos-connections) .tdot.rd{stroke-linecap:round}
+:is(#fos-overview,#fos-connections) .tdot.sq{stroke-linecap:square}
+:is(#fos-overview,#fos-connections) .thit{fill:none;stroke:transparent;stroke-width:16;stroke-linecap:round;pointer-events:stroke}
+:is(#fos-overview,#fos-connections) .s0:is(.tline,.tdot){stroke:#18181B}
+:is(#fos-overview,#fos-connections) .s1:is(.tline,.tdot){stroke:#2563EB}
+:is(#fos-overview,#fos-connections) .s2:is(.tline,.tdot){stroke:#C2410C}
+:is(#fos-overview,#fos-connections) .s3:is(.tline,.tdot){stroke:#0D9488}
+:is(#fos-overview,#fos-connections) .tdata{margin-top:16px}
+:is(#fos-overview,#fos-connections) .tdata>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+:is(#fos-overview,#fos-connections) .tdata .scroll-x{overflow-x:auto;max-height:320px;overflow-y:auto}
+:is(#fos-overview,#fos-connections) .tdata table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+:is(#fos-overview,#fos-connections) .tdata th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tdata td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tdata .r{text-align:right}
+:is(#fos-overview,#fos-connections) .tnone{padding:16px 0}
+:is(#fos-overview,#fos-connections) .trends .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+:is(#fos-overview,#fos-connections) .trends .btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+:is(#fos-overview,#fos-connections) .trends .skel{display:flex;flex-direction:column;gap:8px;min-height:200px}
+:is(#fos-overview,#fos-connections) .trends .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+:is(#fos-overview,#fos-connections) .trends .sk-s{height:12px;width:40%}
+:is(#fos-overview,#fos-connections) .trends .sk-m{height:16px;width:70%}
+:is(#fos-overview,#fos-connections) .trends .sk-l{height:120px;width:100%}
+#fos-connections .fos-extra:empty{display:none}
+#fos-connections .fos-extra{margin-top:48px}
+@media (prefers-reduced-motion:reduce){
+  :is(#fos-overview,#fos-connections) .trends .sk{animation:none}
+}
+@media (max-width:1100px){
+  :is(#fos-overview,#fos-connections) .trends .tgrid3>*{grid-column:span 6}
+  :is(#fos-overview,#fos-connections) .trends .tgrid3>:last-child{grid-column:span 12}
+}
+@media (max-width:760px){
+  :is(#fos-overview,#fos-connections) .trends .tgrid3>*,:is(#fos-overview,#fos-connections) .trends .two>*{grid-column:span 12}
+  :is(#fos-overview,#fos-connections) .trends .card{padding:16px}
+  :is(#fos-overview,#fos-connections) .trange{width:100%}
+  :is(#fos-overview,#fos-connections) .trange-btn{flex:1 1 0;padding:0 8px}
+}
 /* Accounts' .grid has no bottom margin on its own page; keep it that way. */
 #fos-accounts .grid{margin-bottom:0}
 
@@ -441,6 +521,7 @@ main{padding:24px 24px 64px}
   </main>
 </div>
 <script defer src="money.js"></script>
+<script defer src="money-trends.js"></script>
 <script defer src="money-accounts.js"></script>
 <script defer src="money-credit.js"></script>
 <script defer src="money-connections.js"></script>

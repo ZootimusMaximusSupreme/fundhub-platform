@@ -180,11 +180,25 @@
         mounted[k] = { soon: true };
         return;
       }
+      /* An extra for this tab (window.FinanceOS.extras.<key>, e.g. the sales
+         trend line from money-trends.js under Connections) gets its own box
+         after the section's, so neither repaint can wipe the other. */
+      var extras = root.FinanceOS && root.FinanceOS.extras;
+      var extra = extras && extras[k] && typeof extras[k].mount === "function" ? extras[k] : null;
+      var target = el;
+      if (extra) {
+        el.innerHTML = '<div class="fos-sec"></div><div class="fos-extra"></div>';
+        target = el.firstChild;
+      }
       try {
-        mounted[k] = sec.mount(el, ctx) || {};
+        mounted[k] = sec.mount(target, ctx) || {};
       } catch (e) {
         el.innerHTML = renderComingSoon(labelOf(k));
         mounted[k] = { soon: true };
+        return;
+      }
+      if (extra) {
+        try { extra.mount(el.lastChild, ctx); } catch (e) { el.lastChild.innerHTML = ""; }
       }
     }
 

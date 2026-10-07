@@ -38,7 +38,10 @@ test("the page has all six tabs, in order, each opening its own panel", () => {
 
 test("the page loads every section script, then financeos.js last, and both section stylesheets", () => {
   const srcs = [...HTML.matchAll(/<script defer src="([^"]+)"><\/script>/g)].map((m) => m[1]);
-  assert.deepEqual(srcs, [...SCRIPTS, "financeos.js"]);
+  // money-trends.js (wave 4, H6) is not a tab: it draws the Trends line graphs
+  // inside Overview and the sales line under Connections. It loads right after
+  // money.js, before financeos.js mounts anything.
+  assert.deepEqual(srcs, [SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "financeos.js"]);
   assert.match(HTML, /<link rel="stylesheet" href="money-connections\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-payments\.css">/);
   // Each section script says which tab it fills.
