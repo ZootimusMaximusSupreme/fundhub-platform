@@ -274,4 +274,12 @@ describe("teleprompter page", () => {
     // Editing turns the glass flip off so the words read the right way round.
     assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
   });
+
+  test("Save the video sends the original file to this Mac", () => {
+    assert.match(SRC, /http:\/\/127\.0\.0\.1:8787/);
+    assert.match(SRC, /http:\/\/CHRISs-Mac-mini\.local:8787/);
+    assert.match(SRC, /method:\s*"PUT"/);
+    assert.match(SRC, /\$\("b-save"\)\.onclick = saveClick/);
+    assert.doesNotMatch(SRC, /ffmpeg/);
+  });
 });

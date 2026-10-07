@@ -1418,9 +1418,11 @@
     cam.opening = "";
     ensureCamera();
   }
-  function saveClick() {
-    var file = cam.file;
-    if (!file) return;
+  var MAC_DROPS = [
+    { url: "http://127.0.0.1:8787", space: "loopback" },
+    { url: "http://CHRISs-Mac-mini.local:8787", space: "local" }
+  ];
+  function shareOrDownload(file) {
     var nav = root.navigator;
     try {
       if (nav.canShare && nav.canShare({ files: [file] })) {
@@ -1429,6 +1431,35 @@
       }
     } catch (e) { /* fall through to a download */ }
     downloadFile(file);
+  }
+  function sendOriginal(file) {
+    var name = file.name || "Take.mp4";
+    function once(i) {
+      if (i >= MAC_DROPS.length) return Promise.reject(new Error("drop"));
+      var drop = MAC_DROPS[i];
+      var ctl = root.AbortController ? new root.AbortController() : null;
+      var timer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) { /* already done */ } }, 4000) : null;
+      var opts = { method: "PUT", body: file };
+      if (ctl) opts.signal = ctl.signal;
+      try { opts.targetAddressSpace = drop.space; } catch (e) { /* older browser */ }
+      return root.fetch(drop.url + "/takes/" + encodeURIComponent(name), opts).then(function (r) {
+        if (timer) clearTimeout(timer);
+        if (!r.ok) throw new Error("refused");
+      }).catch(function () {
+        if (timer) clearTimeout(timer);
+        return once(i + 1);
+      });
+    }
+    return once(0);
+  }
+  function saveClick() {
+    var file = cam.file;
+    if (!file) return;
+    sendOriginal(file).then(function () {
+      say("Saved " + (file.name || "the video"));
+    }, function () {
+      shareOrDownload(file);
+    });
   }
 
   /* ── buttons ─────────────────────────────────────────────────────────── */
