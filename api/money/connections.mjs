@@ -1,10 +1,16 @@
 // /api/money/connections[?client_id=<uuid>] — a client's merchant processors.
 //
 //   GET  → { ok, connections, containers, summary, open_api_url }
-//   POST { action: "create",  provider: "commas"|"whop"|"api", entity_id }
+//   POST { action: "create",  provider: "commas"|"whop"|"api", entity_id, mode?: "push"|"pull" }
 //          → { ok, connection, api_key? }   api_key is shown THIS ONCE, never again
-//   POST { action: "secret",  connection_id, secret }   (Whop / Commas signing secret)
+//          mode "pull" (Commas / Whop only): we read the processor with the
+//          client's own API key instead of waiting for webhooks (migration 457).
+//   POST { action: "secret",  connection_id, secret }   (Whop / Commas signing secret, push)
 //          → { ok, connection }
+//   POST { action: "api_key", connection_id, api_key }  (Whop / Commas API key, pull)
+//          → { ok, connection, sync }   saved encrypted, never returned; one
+//          short pull runs right away so a bad key shows up now, not tomorrow.
+//   POST { action: "sync",    connection_id } → { ok, connection, sync }   "Sync now"
 //   POST { action: "disable", connection_id } → { ok, connection }
 //
 // The client's OWN Commas / Whop / other processor — their sales and payouts in
@@ -23,8 +29,22 @@ import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import {
   listConnections, listContainers, createConnection, setWebhookSecret, disableConnection,
-  merchantSummary, publicConnection, openApiUrl, MerchantError
+  setProcessorApiKey, getOwnConnection, merchantSummary, publicConnection, openApiUrl, MerchantError
 } from "../../src/merchant/store.mjs";
+import { syncConnection } from "../../src/merchant/sync.mjs";
+
+/* A request has 26 seconds on Netlify. Each page is one GET with a 15 s
+   ceiling, so "Sync now" reads a few pages and the daily pull does the rest. */
+const SYNC_NOW_PAGES = 3;
+
+/* What a sync result may say to a browser: counts and a plain-words error. */
+function publicSync(r) {
+  return {
+    ok: !!r.ok, done: !!r.done, pages: r.pages || 0, inserted: r.inserted || 0,
+    duplicates: r.duplicates || 0, ignored: r.ignored || 0,
+    code: r.code || null, error: r.error || null
+  };
+}
 
 function readBody(raw) {
   if (raw === null || raw === undefined || raw === "") return {};
@@ -107,8 +127,9 @@ export default async function handler(req, res, deps = {}) {
     if (action === "create") {
       const provider = String(body.provider || "");
       if (!isUuid(body.entity_id)) return res.status(400).json({ ok: false, error: "entity_id is required and must be a uuid" });
+      const mode = body.mode === undefined || body.mode === null || body.mode === "" ? "push" : String(body.mode);
       const { row, apiKey } = await createConnection(database, {
-        orgId, clientId, entityId: String(body.entity_id).trim(), provider,
+        orgId, clientId, entityId: String(body.entity_id).trim(), provider, mode,
         createdByKind: who.kind, createdBy: who.id
       });
       res.setHeader("cache-control", "no-store");
@@ -123,15 +144,35 @@ export default async function handler(req, res, deps = {}) {
       const row = await setWebhookSecret(database, { orgId, clientId, connectionId: String(body.connection_id).trim(), secret: body.secret, env });
       return res.status(200).json({ ok: true, connection: show(row) });
     }
+    if (action === "api_key" || action === "sync") {
+      if (!isUuid(body.connection_id)) return res.status(400).json({ ok: false, error: "connection_id is required and must be a uuid" });
+      const connectionId = String(body.connection_id).trim();
+      if (action === "api_key") {
+        await setProcessorApiKey(database, { orgId, clientId, connectionId, apiKey: body.api_key, env });
+      }
+      const row = await getOwnConnection(database, { orgId, clientId, connectionId });
+      if (row.mode !== "pull") {
+        return res.status(400).json({ ok: false, error: "not_pull", message: "This connection gets its sales by webhook. There is nothing to sync." });
+      }
+      if (row.status === "disabled") {
+        return res.status(409).json({ ok: false, error: "disabled", message: "That connection is turned off." });
+      }
+      const result = await syncConnection(database, row, {
+        env, fetchImpl: deps.fetchImpl, now: clock(), maxPages: SYNC_NOW_PAGES
+      });
+      const fresh = await getOwnConnection(database, { orgId, clientId, connectionId });
+      res.setHeader("cache-control", "no-store");
+      return res.status(200).json({ ok: true, connection: show(fresh), sync: publicSync(result) });
+    }
     if (action === "disable") {
       if (!isUuid(body.connection_id)) return res.status(400).json({ ok: false, error: "connection_id is required and must be a uuid" });
       const row = await disableConnection(database, { orgId, clientId, connectionId: String(body.connection_id).trim() });
       return res.status(200).json({ ok: true, connection: show(row) });
     }
-    return res.status(400).json({ ok: false, error: "action must be create, secret or disable" });
+    return res.status(400).json({ ok: false, error: "action must be create, secret, api_key, sync or disable" });
   } catch (e) {
     if (e instanceof MerchantError) return res.status(e.status).json({ ok: false, error: e.code, message: e.message });
-    if (e && e.code === "NOT_CONFIGURED") return res.status(503).json({ ok: false, error: "not_configured", message: "Webhook secrets cannot be saved yet. The encryption key is not set." });
+    if (e && e.code === "NOT_CONFIGURED") return res.status(503).json({ ok: false, error: "not_configured", message: "Secrets and API keys cannot be saved yet. The encryption key is not set." });
     if (CLIENT_DATA_ERRORS.has(e && e.code)) return res.status(400).json({ ok: false, error: "invalid_parameter" });
     if (dbDown(res, e)) return;
     throw e;

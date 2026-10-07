@@ -23,6 +23,7 @@ import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
 import { financeOsCardDueReminders } from './finance-os-card-due-reminders.mjs';
 import { financeOsMoneyAgent } from './finance-os-money-agent.mjs';
 import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
+import { merchantPullSweeper } from './merchant-pull-sweeper.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
@@ -229,6 +230,11 @@ export const functions = [
      client with an active consented Plaid login. Reads only; does nothing when
      Plaid is not configured. Finance OS build 2026-10-06, unit A. */
   plaidTransactionsSweeper,
+  /* Daily merchant processing pull (Finance OS wave 4b, unit H5, 2026-10-06):
+     every client connection set to "Paste your API key" (Commas, Whop) is read
+     with the client's own key into merchant_events. GET only, behind the
+     ADAPTERS fence; moves no money and sends nothing to anyone. */
+  merchantPullSweeper,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
 

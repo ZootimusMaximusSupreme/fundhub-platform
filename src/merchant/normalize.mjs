@@ -278,3 +278,104 @@ export function commasEventsFrom(body) {
   }
   return { events: [], ignored: `event type ${type || "unknown"}` };
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   4. PULLED ROWS — what src/merchant/providers/* read with the client's own
+   API key (migration 457, mode 'pull'). Pure, like everything above.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* whopListItemEvents(stream, item) — one row from a Whop list endpoint.
+   Whop's list endpoints return the SAME objects its webhooks carry in `data`
+   (Payment, Refund, Payout — docs below), so each row is wrapped in the
+   webhook envelope and handed to whopEventsFrom. One mapping, two doors: the
+   ids, kinds and signs are identical whether a sale was pushed or pulled.
+     https://docs.whop.com/api-reference/beta/payments/list-payments
+     https://docs.whop.com/api-reference/beta/refunds/list-refunds
+     https://docs.whop.com/api-reference/beta/payouts/list-payouts
+
+   payments: only `status: "paid"` is money that moved ("`paid` once the money
+     moved"). Anything else is ignored.
+   refunds:  whopEventsFrom already keeps only `status: "succeeded"`.
+   payouts:  `completed` is money sent to the bank. A payout the list shows as
+     `reversed` was completed first and then returned, so it yields BOTH rows —
+     the payout and its reversal — which net to zero. The webhook path gets the
+     same two rows from two deliveries. */
+export function whopListItemEvents(stream, item) {
+  const d = item && typeof item === "object" ? item : null;
+  if (!d) return { events: [], ignored: "not an object" };
+  if (stream === "payments") {
+    if (String(d.status || "") !== "paid") return { events: [], ignored: `payment status ${d.status || "unknown"}` };
+    return whopEventsFrom({ type: "payment.succeeded", data: d });
+  }
+  if (stream === "refunds") return whopEventsFrom({ type: "refund.updated", data: d });
+  if (stream === "payouts") {
+    const status = String(d.status || "");
+    if (status === "reversed") {
+      const sent = whopEventsFrom({ type: "payout.updated", data: { ...d, status: "completed" } });
+      const back = whopEventsFrom({ type: "payout.reversed", data: d, timestamp: d.updated_at || d.created_at });
+      return { events: [...sent.events, ...back.events], ignored: sent.ignored || back.ignored };
+    }
+    return whopEventsFrom({ type: "payout.updated", data: d });
+  }
+  return { events: [], ignored: `unknown stream ${stream}` };
+}
+
+/* commasTransactionEvents(t) — one row from Commas' List Transactions.
+     https://commasdocs.com — "List Transactions"
+       GET /public-api/checkout-sessions/transactions
+     Row: id (integer), transaction_date (ISO 8601), amount (number, dollars —
+     "Gross amount charged, in dollars (29.99 = $29.99)"), fee_amount ("Commas
+     fee, in dollars"), net_amount, product / service { id, title, price },
+     refunds ("Refunds issued against this transaction; empty when none").
+   Commas documents no currency on a transaction row; every amount is stated
+   "in dollars", so the rows are usd.
+
+   The refund objects inside `refunds` are NOT field-by-field documented on
+   that endpoint. Only the field names Commas documents for a refund elsewhere
+   are read — refund_id with amount (the refund.created webhook) or
+   refund_amount / refund_amount_cents (the Create a Refund response). A refund
+   without them is counted as ignored, never guessed at.
+
+   The ids are `txn:<id>` / `txn:<id>:fee` / `refund:<refund_id>` — NOT the
+   webhook path's `sale:<ORD-…>`. Commas' webhooks name a payment by its order
+   id and this list names it by a numeric id, which is why a connection is
+   either push or pull, never both (migration 457). */
+export function commasTransactionEvents(t) {
+  const row = t && typeof t === "object" ? t : null;
+  if (!row) return { events: [], ignored: "not an object" };
+  const id = row.id === null || row.id === undefined ? null : text(row.id, 150);
+  if (!id) return { events: [], ignored: "no transaction id" };
+  const when = isoOrNull(row.transaction_date);
+  if (!when) return { events: [], ignored: "no transaction_date" };
+  const gross = decimalToMinor(row.amount, 2);
+  if (gross === null) return { events: [], ignored: "no amount" };
+  const title = text((row.product && row.product.title) || (row.service && row.service.title));
+
+  const events = [{
+    provider_event_id: `txn:${id}`, kind: "sale", amount_cents: signFor("sale", gross),
+    currency: "usd", occurred_at: when, description: title || "Commas payment", raw: row
+  }];
+  const fee = decimalToMinor(row.fee_amount, 2);
+  if (fee !== null && fee !== 0) {
+    events.push({
+      provider_event_id: `txn:${id}:fee`, kind: "fee", amount_cents: signFor("fee", fee),
+      currency: "usd", occurred_at: when, description: "Commas fees", raw: null
+    });
+  }
+
+  let skipped = 0;
+  for (const r of Array.isArray(row.refunds) ? row.refunds : []) {
+    const rid = r && r.refund_id !== undefined && r.refund_id !== null ? text(r.refund_id, 150) : null;
+    const status = r && r.status !== undefined && r.status !== null ? String(r.status).toLowerCase() : null;
+    const cents = !r ? null
+      : Number.isSafeInteger(r.refund_amount_cents) ? r.refund_amount_cents
+        : decimalToMinor(r.amount ?? r.refund_amount, 2);
+    if (!rid || cents === null || (status && status !== "success" && status !== "succeeded")) { skipped++; continue; }
+    events.push({
+      provider_event_id: `refund:${rid}`, kind: "refund", amount_cents: signFor("refund", cents),
+      currency: "usd", occurred_at: isoOrNull(r.created_at) || when,
+      description: text(title ? `Refund of ${title}` : "Commas refund"), raw: r
+    });
+  }
+  return skipped ? { events, ignored: `${skipped} refund(s) without a documented id and amount` } : { events };
+}

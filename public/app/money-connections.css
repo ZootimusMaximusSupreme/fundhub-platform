@@ -47,6 +47,9 @@
 .fos-connections .copyrow code{flex:1;min-width:0;display:block;font-family:var(--mono);background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px;overflow-wrap:anywhere}
 .fos-connections .once{background:var(--soft);border:1px solid var(--ink);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px}
 .fos-connections .act-msg:empty{display:none}
+/* Last sync failed — same literal amber as "waiting", and it starts with words. */
+.fos-connections .sync-error{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px;margin:0}
+.fos-connections .conn > .btn{align-self:flex-start}
 .fos-connections .off-row{display:flex;justify-content:flex-end;margin-top:8px}
 
 .fos-connections .block{margin-bottom:48px}

@@ -3,10 +3,19 @@
 // Every function takes `db` (anything with query(sql, params)) and is scoped by
 // org AND client, except the two lookups an inbound webhook or API call makes
 // before it knows whose it is (findActiveByApiKey, findForWebhook). Those find
-// the connection by a credential, and the connection then names the client.
-import { newApiKey, hashApiKey, apiKeyHint, encryptWebhookSecret, decryptWebhookSecret } from "./secrets.mjs";
+// the connection by a credential, and the connection then names the client —
+// and the daily pull sweeper's three (listPullConnections, getPullConnection,
+// saveSync*), which walk every live pull connection by id.
+import {
+  newApiKey, hashApiKey, apiKeyHint, encryptWebhookSecret, decryptWebhookSecret, encryptProcessorApiKey
+} from "./secrets.mjs";
 
 export const PROVIDERS = Object.freeze(["commas", "whop", "api"]);
+/* push = the processor sends to us (webhook, or the open API).
+   pull = we read the processor with the client's own API key (migration 457).
+   Only processors with a module in src/merchant/providers/ can pull. */
+export const MODES = Object.freeze(["push", "pull"]);
+export const PULL_PROVIDERS = Object.freeze(["commas", "whop"]);
 export const PROVIDER_LABEL = Object.freeze({ commas: "Commas", whop: "Whop", api: "Open API" });
 
 export class MerchantError extends Error {
@@ -22,21 +31,30 @@ export class MerchantError extends Error {
 export function publicConnection(row, { baseUrl } = {}) {
   if (!row) return null;
   const base = String(baseUrl || "").replace(/\/+$/, "");
+  const pull = row.mode === "pull";
+  const iso = (v) => (v ? new Date(v).toISOString() : null);
   return {
     id: row.id,
     provider: row.provider,
     provider_label: PROVIDER_LABEL[row.provider] || row.provider,
+    mode: pull ? "pull" : "push",
     status: row.status,
     entity_id: row.entity_id,
     entity_name: row.entity_name ?? null,
     entity_kind: row.entity_kind ?? null,
-    api_key_hint: row.provider === "api" ? row.api_key_hint || null : null,
-    has_secret: row.provider === "api" ? null : Boolean(row.encrypted_webhook_secret),
-    webhook_url: row.provider === "api" ? null : webhookUrl(base, row.provider, row.id),
+    // The open-API key's last four, or the pasted processor key's last four.
+    api_key_hint: row.provider === "api" || pull ? row.api_key_hint || null : null,
+    has_api_key: pull ? Boolean(row.encrypted_api_key) : null,
+    has_secret: row.provider === "api" || pull ? null : Boolean(row.encrypted_webhook_secret),
+    webhook_url: row.provider === "api" || pull ? null : webhookUrl(base, row.provider, row.id),
     event_count: row.event_count == null ? 0 : Number(row.event_count),
-    last_event_at: row.last_event_at ? new Date(row.last_event_at).toISOString() : null,
-    created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
-    disabled_at: row.disabled_at ? new Date(row.disabled_at).toISOString() : null
+    last_event_at: iso(row.last_event_at),
+    last_synced_at: pull ? iso(row.last_synced_at) : null,
+    last_sync_error: pull ? row.last_sync_error || null : null,
+    // A pull that stopped at its page budget and carries on next time.
+    sync_partway: pull ? Boolean(row.sync_cursor) : null,
+    created_at: iso(row.created_at),
+    disabled_at: iso(row.disabled_at)
   };
 }
 
@@ -49,8 +67,9 @@ export function openApiUrl(baseUrl) {
 }
 
 const SELECT_CONNECTION = `
-  SELECT c.id, c.org_id, c.client_id, c.entity_id, c.provider, c.status, c.api_key_hint,
-         c.encrypted_webhook_secret, c.last_event_at, c.disabled_at, c.created_at,
+  SELECT c.id, c.org_id, c.client_id, c.entity_id, c.provider, c.mode, c.status, c.api_key_hint,
+         c.encrypted_webhook_secret, c.encrypted_api_key, c.sync_cursor, c.synced_through,
+         c.last_synced_at, c.last_sync_error, c.last_event_at, c.disabled_at, c.created_at,
          e.name AS entity_name, e.kind AS entity_kind,
          (SELECT count(*) FROM merchant_events me WHERE me.connection_id = c.id) AS event_count
     FROM merchant_connections c
@@ -78,8 +97,12 @@ export async function listContainers(db, { orgId, clientId }) {
 
 /* createConnection → { row, apiKey? }. The api key exists in this return value
    and nowhere else, ever. */
-export async function createConnection(db, { orgId, clientId, entityId, provider, createdByKind = null, createdBy = null }) {
+export async function createConnection(db, { orgId, clientId, entityId, provider, mode = "push", createdByKind = null, createdBy = null }) {
   if (!PROVIDERS.includes(provider)) throw new MerchantError("bad_provider", `provider must be one of ${PROVIDERS.join(", ")}`);
+  if (!MODES.includes(mode)) throw new MerchantError("bad_mode", "mode must be push or pull");
+  if (mode === "pull" && !PULL_PROVIDERS.includes(provider)) {
+    throw new MerchantError("bad_mode", "Only Commas and Whop can be read with an API key. Use the open API for other processors.");
+  }
   const ent = await db.query(
     `SELECT id, kind, name FROM entities
       WHERE id = $1 AND org_id = $2 AND client_id = $3 AND archived_at IS NULL`,
@@ -90,16 +113,18 @@ export async function createConnection(db, { orgId, clientId, entityId, provider
   const apiKey = provider === "api" ? newApiKey() : null;
   const ins = await db.query(
     `INSERT INTO merchant_connections
-        (org_id, client_id, entity_id, provider, status, api_key_hash, api_key_hint, created_by_kind, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING id, org_id, client_id, entity_id, provider, status, api_key_hint,
-               encrypted_webhook_secret, last_event_at, disabled_at, created_at`,
+        (org_id, client_id, entity_id, provider, status, api_key_hash, api_key_hint, created_by_kind, created_by, mode)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id, org_id, client_id, entity_id, provider, mode, status, api_key_hint,
+               encrypted_webhook_secret, encrypted_api_key, sync_cursor, synced_through,
+               last_synced_at, last_sync_error, last_event_at, disabled_at, created_at`,
     [
       orgId, clientId, entityId, provider,
       provider === "api" ? "active" : "waiting",
       apiKey ? hashApiKey(apiKey) : null,
       apiKey ? apiKeyHint(apiKey) : null,
-      createdByKind, createdBy
+      createdByKind, createdBy,
+      provider === "api" ? "push" : mode
     ]
   );
   const row = { ...ins.rows[0], entity_name: ent.rows[0].name, entity_kind: ent.rows[0].kind, event_count: 0 };
@@ -120,6 +145,7 @@ async function ownConnection(db, { orgId, clientId, connectionId }) {
 export async function setWebhookSecret(db, { orgId, clientId, connectionId, secret, env = process.env }) {
   const row = await ownConnection(db, { orgId, clientId, connectionId });
   if (row.provider === "api") throw new MerchantError("no_secret_for_api", "An open-API connection uses its key, not a webhook secret.");
+  if (row.mode === "pull") throw new MerchantError("no_secret_for_pull", "This connection reads with your API key. It does not use a webhook secret.");
   if (row.status === "disabled") throw new MerchantError("disabled", "That connection is turned off.", 409);
   const s = String(secret || "").trim();
   if (s.length < 8 || s.length > 500) throw new MerchantError("bad_secret", "Paste the full signing secret from the processor.");
@@ -131,6 +157,82 @@ export async function setWebhookSecret(db, { orgId, clientId, connectionId, secr
     [enc, row.id, orgId, clientId]
   );
   return { ...row, encrypted_webhook_secret: enc, status: "active" };
+}
+
+/* setProcessorApiKey — the client pastes their Commas or Whop API key on a
+   pull connection. Stored encrypted (secrets.mjs encryptProcessorApiKey), the
+   last four kept as a hint; the connection goes live. A new key clears the old
+   error and any half-finished pull, so the next sync starts clean. */
+export async function setProcessorApiKey(db, { orgId, clientId, connectionId, apiKey, env = process.env }) {
+  const row = await ownConnection(db, { orgId, clientId, connectionId });
+  if (row.mode !== "pull") {
+    throw new MerchantError("not_pull", "This connection takes a webhook signing secret, not an API key. Add a new connection and choose \"Paste your API key\".");
+  }
+  if (row.status === "disabled") throw new MerchantError("disabled", "That connection is turned off.", 409);
+  const k = String(apiKey || "").trim();
+  if (k.length < 8 || k.length > 1000 || /\s/.test(k)) throw new MerchantError("bad_api_key", "Paste the full API key from the processor.");
+  const enc = encryptProcessorApiKey(k, { connectionId: row.id, env });
+  const hint = apiKeyHint(k);
+  await db.query(
+    `UPDATE merchant_connections
+        SET encrypted_api_key = $1, api_key_hint = $2, status = 'active',
+            sync_cursor = NULL, last_sync_error = NULL
+      WHERE id = $3 AND org_id = $4 AND client_id = $5`,
+    [enc, hint, row.id, orgId, clientId]
+  );
+  return { ...row, encrypted_api_key: enc, api_key_hint: hint, status: "active", sync_cursor: null, last_sync_error: null };
+}
+
+/* getOwnConnection — one connection on this client's file (404 otherwise). */
+export async function getOwnConnection(db, { orgId, clientId, connectionId }) {
+  return ownConnection(db, { orgId, clientId, connectionId });
+}
+
+/* listPullConnections — every live pull connection, least recently synced
+   first. The daily sweeper's whole work list. */
+export async function listPullConnections(db) {
+  const r = await db.query(
+    `SELECT id, org_id, client_id
+       FROM merchant_connections
+      WHERE mode = 'pull' AND status = 'active' AND encrypted_api_key IS NOT NULL
+      ORDER BY last_synced_at NULLS FIRST, created_at`
+  );
+  return r.rows;
+}
+
+/* getPullConnection — one live pull connection with its stored (encrypted)
+   key and sync bookkeeping, by id alone. Only the sweeper calls this, with an
+   id it just read from listPullConnections. */
+export async function getPullConnection(db, connectionId) {
+  const r = await db.query(
+    `SELECT id, org_id, client_id, entity_id, provider, mode, status, encrypted_api_key,
+            sync_cursor, synced_through, last_synced_at
+       FROM merchant_connections
+      WHERE id = $1 AND mode = 'pull' AND status = 'active'`,
+    [connectionId]
+  );
+  return r.rows[0] || null;
+}
+
+/* saveSyncProgress — after each page a pull reads. `cursor` null means the
+   pull finished, and `completedAt` becomes synced_through. */
+export async function saveSyncProgress(db, connectionId, { cursor = null, completedAt = null } = {}) {
+  await db.query(
+    `UPDATE merchant_connections
+        SET sync_cursor = $2, last_synced_at = now(), last_sync_error = NULL,
+            synced_through = COALESCE($3::timestamptz, synced_through)
+      WHERE id = $1`,
+    [connectionId, cursor, completedAt]
+  );
+}
+
+/* saveSyncError — the failure in plain words (never a key), at most 300
+   characters. The cursor stays where it was, so the next pull resumes. */
+export async function saveSyncError(db, connectionId, message) {
+  await db.query(
+    `UPDATE merchant_connections SET last_sync_error = $2 WHERE id = $1`,
+    [connectionId, String(message || "The last sync failed.").slice(0, 300)]
+  );
 }
 
 export async function disableConnection(db, { orgId, clientId, connectionId }) {

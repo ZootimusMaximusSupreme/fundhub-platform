@@ -179,3 +179,101 @@ describe("create → events → summary, end to end through the handlers", () =>
     assert.equal(noKey.body.error, "not_configured");
   });
 });
+
+describe("pull mode — paste your API key, Sync now (migration 457)", () => {
+  const PULL_ENV = { ...ENV, ADAPTERS_DRY_RUN: "0" };
+  const COMMAS_KEY = "commas_live_key_abcdefghijklmnop";
+  /* Commas List Transactions, shaped from commasdocs.com. */
+  const txn = (id, amount, fee) => ({
+    id, transaction_date: "2026-10-02T14:55:09.000000Z",
+    fan: { id: "5yWjR", name: "Jane Doe", email: "jane@example.com" },
+    product: { id: "NLxj6", title: "Pro Monthly Membership", price: String(amount) },
+    refunds: [], fee_amount: fee, net_amount: amount - fee, amount
+  });
+  function commasFetch(pages, { status = 200 } = {}) {
+    const calls = [];
+    const fn = async (url, init) => {
+      const u = new URL(url);
+      calls.push({ u, init });
+      const page = Number(u.searchParams.get("page") || 1);
+      const body = status === 200
+        ? { status: "success", data: { transactions: pages[page - 1] || [], pagination: { current_page: page, has_more: page < pages.length } } }
+        : { status: "error", message: "Invalid API key or unauthorized user context" };
+      return new Response(JSON.stringify(body), { status });
+    };
+    fn.calls = calls;
+    return fn;
+  }
+  async function post(db, body, fetchImpl, principal = clientP()) {
+    const res = makeRes();
+    await connections({ method: "POST", query: {}, body }, res, { db, requirePrincipal: gateAs(principal), now: NOW, env: PULL_ENV, fetchImpl });
+    return res;
+  }
+
+  test("create pull → paste key (pulls right away) → Sync now → the key is never read back", async () => {
+    const db = seed();
+    const made = await post(db, { action: "create", provider: "commas", entity_id: BIZ, mode: "pull" });
+    assert.equal(made.statusCode, 201);
+    const c0 = made.body.connection;
+    assert.deepEqual([c0.mode, c0.status, c0.webhook_url, c0.has_api_key, c0.last_synced_at], ["pull", "waiting", null, false, null]);
+
+    const f = commasFetch([[txn(1, 29.99, 1.2), txn(2, 100, 3.5)]]);
+    const keyed = await post(db, { action: "api_key", connection_id: c0.id, api_key: COMMAS_KEY }, f);
+    assert.equal(keyed.statusCode, 200);
+    assert.equal(keyed.headers["cache-control"], "no-store");
+    assert.deepEqual([keyed.body.sync.ok, keyed.body.sync.done, keyed.body.sync.inserted], [true, true, 4]);
+    assert.equal(keyed.body.connection.status, "active");
+    assert.equal(keyed.body.connection.has_api_key, true);
+    assert.equal(keyed.body.connection.api_key_hint, COMMAS_KEY.slice(-4));
+    assert.ok(keyed.body.connection.last_synced_at);
+    assert.equal(f.calls[0].init.headers["x-api-key"], COMMAS_KEY);
+    assert.equal(JSON.stringify(keyed.body).includes(COMMAS_KEY), false);
+
+    const again = await post(db, { action: "sync", connection_id: c0.id }, commasFetch([[txn(1, 29.99, 1.2), txn(2, 100, 3.5), txn(3, 10, 0.5)]]));
+    assert.equal(again.statusCode, 200);
+    assert.deepEqual([again.body.sync.inserted, again.body.sync.duplicates], [2, 4]);
+
+    const list = await call(db, clientP(), {});
+    assert.equal(JSON.stringify(list.body).includes(COMMAS_KEY), false, "GET never carries the key");
+    assert.equal(list.body.connections[0].event_count, 6);
+    const oct = list.body.summary.totals.at(-1);
+    assert.deepEqual([oct.sales_cents, oct.fees_cents, oct.sale_count], [13999, 520, 3]);
+  });
+
+  test("a rejected key comes back as a plain-words sync error and stays on the connection", async () => {
+    const db = seed();
+    const made = await post(db, { action: "create", provider: "commas", entity_id: BIZ, mode: "pull" });
+    const r = await post(db, { action: "api_key", connection_id: made.body.connection.id, api_key: COMMAS_KEY }, commasFetch([], { status: 401 }));
+    assert.equal(r.statusCode, 200);
+    assert.equal(r.body.sync.ok, false);
+    assert.equal(r.body.sync.code, "auth_failed");
+    assert.match(r.body.connection.last_sync_error, /did not accept this API key/);
+    assert.equal(r.body.sync.error.includes(COMMAS_KEY), false);
+  });
+
+  test("refusals: open API cannot pull; push takes no key; sync on push is 400; staff need FINANCE", async () => {
+    const db = seed();
+    const api = await post(db, { action: "create", provider: "api", entity_id: BIZ, mode: "pull" });
+    assert.equal(api.statusCode, 400);
+    assert.equal(api.body.error, "bad_mode");
+    assert.equal((await post(db, { action: "create", provider: "whop", entity_id: BIZ, mode: "sideways" })).body.error, "bad_mode");
+    const push = await post(db, { action: "create", provider: "whop", entity_id: BIZ });
+    assert.equal(push.body.connection.mode, "push");
+    const k = await post(db, { action: "api_key", connection_id: push.body.connection.id, api_key: COMMAS_KEY });
+    assert.equal(k.statusCode, 400);
+    assert.equal(k.body.error, "not_pull");
+    const s = await post(db, { action: "sync", connection_id: push.body.connection.id });
+    assert.equal(s.statusCode, 400);
+    assert.equal((await post(db, { action: "sync", connection_id: "nope" })).statusCode, 400);
+    assert.equal((await post(db, { action: "sync", connection_id: OTHER })).statusCode, 404);
+    assert.equal((await post(db, { action: "sync", connection_id: push.body.connection.id, client_id: MINE }, undefined, staffP("closer"))).statusCode, 403);
+  });
+
+  test("a turned-off pull connection will not sync", async () => {
+    const db = seed();
+    const made = await post(db, { action: "create", provider: "whop", entity_id: BIZ, mode: "pull" });
+    await post(db, { action: "disable", connection_id: made.body.connection.id });
+    const r = await post(db, { action: "sync", connection_id: made.body.connection.id });
+    assert.equal(r.statusCode, 409);
+  });
+});

@@ -124,6 +124,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "n-04-post-funding-nurture",
   "n-06-renewal-second-wave",
   "next-action-catch-up",
+  "merchant-pull-sweeper",
   "paid-checkout-expiry-sweeper",
   "partner-production-floor",
   "plaid-transactions-sweeper",

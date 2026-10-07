@@ -38,14 +38,20 @@ export function memoryDb({ clients = [], entities = [] } = {}) {
         .map(({ id, kind, name }) => ({ id, kind, name })) };
     }
     if (/^INSERT INTO merchant_connections/.test(s)) {
-      const [org_id, client_id, entity_id, provider, status, api_key_hash, api_key_hint, created_by_kind, created_by] = params;
+      const [org_id, client_id, entity_id, provider, status, api_key_hash, api_key_hint, created_by_kind, created_by, mode = "push"] = params;
       const e = ent(entity_id);
       if (!e || e.client_id !== client_id || e.org_id !== org_id) {
         const err = new Error("merchant_connections: entity does not belong to client"); err.code = "23514"; throw err;
       }
+      // 457 merchant_connections_pull_provider
+      if (mode === "pull" && provider !== "commas" && provider !== "whop") {
+        const err = new Error("merchant_connections_pull_provider"); err.code = "23514"; throw err;
+      }
       const row = {
-        id: crypto.randomUUID(), org_id, client_id, entity_id, provider, status, api_key_hash, api_key_hint,
-        encrypted_webhook_secret: null, created_by_kind, created_by, last_event_at: null, disabled_at: null, created_at: new Date()
+        id: crypto.randomUUID(), org_id, client_id, entity_id, provider, mode, status, api_key_hash, api_key_hint,
+        encrypted_webhook_secret: null, encrypted_api_key: null, sync_cursor: null, synced_through: null,
+        last_synced_at: null, last_sync_error: null,
+        created_by_kind, created_by, last_event_at: null, disabled_at: null, created_at: new Date()
       };
       state.connections.push(row);
       return { rows: [{ ...row }] };
@@ -61,6 +67,40 @@ export function memoryDb({ clients = [], entities = [] } = {}) {
       const c = state.connections.find((x) => x.id === params[1] && x.org_id === params[2] && x.client_id === params[3]);
       if (c) { c.encrypted_webhook_secret = params[0]; c.status = "active"; }
       return { rows: [], rowCount: c ? 1 : 0 };
+    }
+    if (/^UPDATE merchant_connections SET encrypted_api_key = \$1, api_key_hint = \$2, status = 'active'/.test(s)) {
+      const c = state.connections.find((x) => x.id === params[2] && x.org_id === params[3] && x.client_id === params[4]);
+      if (c) {
+        // 457 merchant_connections_push_no_api_key
+        if (c.mode !== "pull") { const err = new Error("merchant_connections_push_no_api_key"); err.code = "23514"; throw err; }
+        Object.assign(c, { encrypted_api_key: params[0], api_key_hint: params[1], status: "active", sync_cursor: null, last_sync_error: null });
+      }
+      return { rows: [], rowCount: c ? 1 : 0 };
+    }
+    if (/^UPDATE merchant_connections SET sync_cursor = \$2, last_synced_at = now\(\), last_sync_error = NULL/.test(s)) {
+      const c = state.connections.find((x) => x.id === params[0]);
+      if (c) {
+        c.sync_cursor = params[1];
+        c.last_synced_at = new Date();
+        c.last_sync_error = null;
+        if (params[2]) c.synced_through = new Date(params[2]);
+      }
+      return { rows: [], rowCount: c ? 1 : 0 };
+    }
+    if (/^UPDATE merchant_connections SET last_sync_error = \$2 WHERE id = \$1/.test(s)) {
+      const c = state.connections.find((x) => x.id === params[0]);
+      if (c) c.last_sync_error = params[1];
+      return { rows: [], rowCount: c ? 1 : 0 };
+    }
+    if (/^SELECT id, org_id, client_id FROM merchant_connections WHERE mode = 'pull' AND status = 'active'/.test(s)) {
+      return { rows: state.connections
+        .filter((c) => c.mode === "pull" && c.status === "active" && c.encrypted_api_key)
+        .sort((a, b) => (a.last_synced_at ? +a.last_synced_at : -Infinity) - (b.last_synced_at ? +b.last_synced_at : -Infinity))
+        .map(({ id, org_id, client_id }) => ({ id, org_id, client_id })) };
+    }
+    if (/FROM merchant_connections WHERE id = \$1 AND mode = 'pull' AND status = 'active'/.test(s)) {
+      const c = state.connections.find((x) => x.id === params[0] && x.mode === "pull" && x.status === "active");
+      return { rows: c ? [{ ...c }] : [] };
     }
     if (/^UPDATE merchant_connections SET status = 'disabled'/.test(s)) {
       const c = state.connections.find((x) => x.id === params[0] && x.org_id === params[1] && x.client_id === params[2]);

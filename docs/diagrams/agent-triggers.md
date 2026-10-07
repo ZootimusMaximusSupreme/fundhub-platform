@@ -3,7 +3,7 @@
 # Agent trigger map
 
 Which canonical event wakes which automation. "Agent" here means a registered Inngest function —
-the 94 workflow ports in `src/workflows/`, read off their real `createFunction` triggers.
+the 95 workflow ports in `src/workflows/`, read off their real `createFunction` triggers.
 (The AG-xx prompt-driven agents in `wireframes/agent-editor.html` are a UI mock with no code behind
 them yet, and are deliberately not drawn here.)
 

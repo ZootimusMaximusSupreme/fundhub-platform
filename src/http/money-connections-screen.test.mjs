@@ -143,6 +143,57 @@ test("the CSS is scoped to the section, so it cannot leak into other FinanceOS t
   assert.doesNotMatch(css, /font-size:\s*\d+px/);
 });
 
+/* Pull mode (migration 457): the same fixture with Whop switched to "Paste your
+   API key". Fields are the ones publicConnection() adds for a pull row. */
+function pullFixture(patch = {}) {
+  const d = fixture();
+  const w = d.connections.find((c) => c.provider === "whop");
+  Object.assign(w, {
+    mode: "pull", status: "active", webhook_url: null, has_secret: null, has_api_key: true, api_key_hint: "9f2c",
+    last_synced_at: "2026-10-06T11:00:00.000Z", last_sync_error: null, sync_partway: false
+  }, patch);
+  d.__now = Date.parse("2026-10-06T12:00:00Z");
+  return { d, w };
+}
+
+test("Commas and Whop offer 'Paste your API key' (default) or webhook; the open API does not", () => {
+  const html = M.render(fixture(), null);
+  for (const p of ["commas", "whop"]) {
+    assert.match(html, new RegExp(`<select id="mode-${p}" data-mode="${p}"><option value="pull">Paste your API key`));
+  }
+  assert.doesNotMatch(html, /data-mode="api"/);
+});
+
+test("pull connection: key hint, last synced, Sync now, a key box — never a webhook address or a saved key", () => {
+  const { d, w } = pullFixture();
+  const html = M.render(d, null);
+  const block = html.slice(html.indexOf(`data-conn="${w.id}"`));
+  const t = text(block.slice(0, block.indexOf("act-msg")));
+  assert.match(t, /Read with your API key ending in 9f2c · Last synced: 1h ago/);
+  assert.match(block, new RegExp(`data-act="sync" data-id="${w.id}">Sync now<`));
+  assert.match(block, new RegExp(`data-apikey="${w.id}"`));
+  assert.match(t, /API key saved\. Paste a new one to replace it\./);
+  assert.doesNotMatch(block.slice(0, block.indexOf("act-msg")), /merchant-whop|data-secret/);
+});
+
+test("pull connection waiting for a key says so in words; no Sync now until a key is saved", () => {
+  const { d, w } = pullFixture({ status: "waiting", has_api_key: false, api_key_hint: null, last_synced_at: null });
+  const html = M.render(d, null);
+  assert.match(html, /class="state state-waiting">Waiting for API key</);
+  const block = html.slice(html.indexOf(`data-conn="${w.id}"`));
+  assert.match(text(block), /Paste your Whop API key/);
+  assert.match(text(block), /Last synced: never/);
+  assert.doesNotMatch(block.slice(0, block.indexOf("act-msg")), /data-act="sync"/);
+});
+
+test("a failed or partway sync is said in words; Sync now answers back under the connection", () => {
+  const { d, w } = pullFixture({ last_sync_error: "The processor did not accept this API key.", sync_partway: true });
+  const html = M.render(d, null, { id: w.id, text: "Synced. 4 new items." });
+  assert.match(text(html), /Last sync did not finish: The processor did not accept this API key\./);
+  assert.match(text(html), /Still reading your history/);
+  assert.match(html, /aria-live="polite">Synced\. 4 new items\.</);
+});
+
 test("money: cents to dollars, null is a dash", () => {
   assert.equal(M.money(179100), "$1,791.00");
   assert.equal(M.money(null), "—");

@@ -97,3 +97,18 @@ export function decryptWebhookSecret(stored, { connectionId, env = process.env }
     throw new MerchantSecretError("decryptWebhookSecret: authentication failed", { code: "SECRET_AUTH_FAILED" });
   }
 }
+
+/* ── The client's PROCESSOR API KEY (pull mode, migration 457) ──────────────
+   Same cipher and the same MERCHANT_SECRET_ENC_KEY as the webhook secret, but a
+   different additional-data string ("<connection id>:api-key"). So a webhook
+   secret's ciphertext copied into the api-key column — or the other way round —
+   fails to decrypt instead of being used as the wrong credential. */
+const apiKeyAad = (connectionId) => (connectionId ? `${connectionId}:api-key` : connectionId);
+
+export function encryptProcessorApiKey(plain, { connectionId, keyId = "v1", env = process.env } = {}) {
+  return encryptWebhookSecret(plain, { connectionId: apiKeyAad(connectionId), keyId, env });
+}
+
+export function decryptProcessorApiKey(stored, { connectionId, env = process.env } = {}) {
+  return decryptWebhookSecret(stored, { connectionId: apiKeyAad(connectionId), env });
+}

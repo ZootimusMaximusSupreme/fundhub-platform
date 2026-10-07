@@ -1,8 +1,11 @@
 /* Connections — a client's OWN merchant processors (/app/money-connections.html).
  *
  * Reads GET /api/money/connections and writes POST /api/money/connections
- * (create / secret / disable). Shape: the header of api/money/connections.mjs
- * and merchantSummary() in src/merchant/store.mjs.
+ * (create / secret / api_key / sync / disable). Shape: the header of
+ * api/money/connections.mjs and merchantSummary() in src/merchant/store.mjs.
+ * Commas and Whop can be read with the client's own API key ("Paste your API
+ * key", mode pull) — the key box is cleared the moment it is sent, and a
+ * saved key is only ever shown as its last four characters.
  *
  * HONESTY RULES, same as money.js:
  *   - Money is integer cents. A null is a dash, never $0.00.
@@ -18,12 +21,23 @@
 
   var PATH = "/api/money/connections";
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  /* pull: true → this processor can be read with the client's own API key
+     (POST action "api_key" / "sync"; src/merchant/providers/). keyWhere says
+     where in the processor the key lives. */
   var PROVIDERS = [
-    { id: "commas", name: "Commas", blurb: "Your Commas sales and refunds come in by webhook." },
-    { id: "whop", name: "Whop", blurb: "Your Whop sales, refunds, fees and payouts come in by webhook." },
+    { id: "commas", name: "Commas", pull: true, blurb: "Your Commas sales, fees and refunds. Paste your API key and we read them every day, or Commas sends each sale by webhook.",
+      keyWhere: "In Commas: Account → API Keys." },
+    { id: "whop", name: "Whop", pull: true, blurb: "Your Whop sales, refunds, fees and payouts. Paste your API key and we read them every day, or Whop sends each one by webhook.",
+      keyWhere: "In Whop: Developer → Account API keys." },
     { id: "api", name: "Open API", blurb: "Any other processor, or your own system, sends sales and payouts to one address with a key." }
   ];
   var STATE_WORD = { active: "Connected", waiting: "Waiting for secret", disabled: "Turned off" };
+  var PULL_STATE_WORD = { active: "Connected", waiting: "Waiting for API key", disabled: "Turned off" };
+  function stateWord(c) { return (c.mode === "pull" ? PULL_STATE_WORD : STATE_WORD)[c.status] || c.status; }
+  function providerOf(id) {
+    for (var i = 0; i < PROVIDERS.length; i++) if (PROVIDERS[i].id === id) return PROVIDERS[i];
+    return null;
+  }
 
   /* ── helpers ───────────────────────────────────────────────────────────── */
 
@@ -115,11 +129,36 @@
       '<button class="btn" type="button" data-act="copy" data-copy="' + esc(value) + '">' + esc(label || "Copy") + '</button></div>';
   }
 
-  function connectionBlock(d, c, reveal) {
+  /* A pull connection: last synced, the last error in plain words, the key
+     box (saved keys are never shown — only their last four), and Sync now. */
+  function pullBlock(d, c) {
+    var p = providerOf(c.provider) || {};
+    var html = '<span class="caption" title="' + esc(exactTime(c.last_synced_at)) + '">' +
+      (c.has_api_key ? "Read with your API key ending in " + '<span class="mono">' + esc(c.api_key_hint || "····") + '</span> · ' : "") +
+      'Last synced: ' + esc(when(c.last_synced_at, d.__now)) + '</span>';
+    if (c.sync_partway) {
+      html += '<span class="caption">Still reading your history. The next sync picks up where this one stopped.</span>';
+    }
+    if (c.last_sync_error) {
+      html += '<p class="caption sync-error" role="status"><strong>Last sync did not finish:</strong> ' + esc(c.last_sync_error) + '</p>';
+    }
+    if (c.status === "disabled") return html;
+    html += '<div class="field"><label for="key-' + esc(c.id) + '">' +
+      (c.has_api_key ? "API key saved. Paste a new one to replace it." : "Paste your " + esc(c.provider_label) + " API key") +
+      '</label><span class="caption">' + esc(p.keyWhere || "") + ' Fundhub only reads. It never moves money.</span>' +
+      '<input id="key-' + esc(c.id) + '" type="password" autocomplete="off" spellcheck="false" data-apikey="' + esc(c.id) + '">' +
+      '<button class="btn" type="button" data-act="apikey" data-id="' + esc(c.id) + '">Save key</button></div>';
+    if (c.has_api_key) {
+      html += '<button class="btn" type="button" data-act="sync" data-id="' + esc(c.id) + '">Sync now</button>';
+    }
+    return html;
+  }
+
+  function connectionBlock(d, c, reveal, flash) {
     var stateCls = c.status === "active" ? "state-active" : (c.status === "waiting" ? "state-waiting" : "");
     var html = '<div class="conn" data-conn="' + esc(c.id) + '">' +
       '<div class="conn-top"><span class="conn-name">' + esc(c.entity_name || "Business") + '</span>' +
-      '<span class="state ' + stateCls + '">' + esc(STATE_WORD[c.status] || c.status) + '</span></div>' +
+      '<span class="state ' + stateCls + '">' + esc(stateWord(c)) + '</span></div>' +
       '<span class="caption" title="' + esc(exactTime(c.last_event_at)) + '">Last sale or payout: ' + esc(when(c.last_event_at, d.__now)) +
       ' · ' + esc(String(c.event_count || 0)) + (c.event_count === 1 ? " event" : " events") + '</span>';
 
@@ -133,7 +172,9 @@
         copyRow(d.open_api_url || "/api/merchant/events", "Copy address");
     }
 
-    if (c.provider !== "api" && c.status !== "disabled") {
+    if (c.mode === "pull") {
+      html += pullBlock(d, c);
+    } else if (c.provider !== "api" && c.status !== "disabled") {
       html += '<span class="caption">Webhook address — paste this into ' + esc(c.provider_label) + '</span>' + copyRow(c.webhook_url, "Copy address");
       html += '<div class="field"><label for="sec-' + esc(c.id) + '">' +
         (c.has_secret ? "Signing secret saved. Paste a new one to replace it." : "Paste the signing secret " + esc(c.provider_label) + " shows you") +
@@ -144,27 +185,39 @@
       html += '<div class="off-row"><button class="btn-text" type="button" data-act="disable" data-id="' + esc(c.id) + '" data-name="' +
         esc(c.provider_label + " for " + (c.entity_name || "this business")) + '">Turn off</button></div>';
     }
-    html += '<p class="act-msg caption" aria-live="polite"></p></div>';
+    var said = flash && flash.id === c.id ? flash.text : "";
+    html += '<p class="act-msg caption" aria-live="polite">' + esc(said) + '</p></div>';
     return html;
   }
 
-  function renderProviders(d, reveal) {
+  /* Commas and Whop: read with your API key (the default) or by webhook. */
+  function modeSelect(p) {
+    if (!p.pull) return "";
+    return '<div class="field"><label for="mode-' + esc(p.id) + '">How should sales come in?</label>' +
+      '<select id="mode-' + esc(p.id) + '" data-mode="' + esc(p.id) + '">' +
+      '<option value="pull">Paste your API key — we read your sales every day</option>' +
+      '<option value="push">Webhook — ' + esc(p.name) + ' sends each sale to us</option>' +
+      '</select></div>';
+  }
+
+  function renderProviders(d, reveal, flash) {
     var conns = list(d.connections);
     var noContainers = list(d.containers).length === 0;
     var cards = PROVIDERS.map(function (p) {
       var mine = conns.filter(function (c) { return c.provider === p.id; });
       var live = mine.filter(function (c) { return c.status === "active"; }).length;
-      var word = live ? "Connected" : (mine.some(function (c) { return c.status === "waiting"; }) ? "Waiting for secret" : "Not connected");
-      var stateCls = live ? "state-active" : (word === "Waiting for secret" ? "state-waiting" : "");
+      var waiting = mine.filter(function (c) { return c.status === "waiting"; })[0];
+      var word = live ? "Connected" : (waiting ? stateWord(waiting) : "Not connected");
+      var stateCls = live ? "state-active" : (waiting ? "state-waiting" : "");
       var body = noContainers
         ? '<p class="caption">Add a business first, then connect it here.</p>'
-        : containerSelect(d, p.id) +
+        : containerSelect(d, p.id) + modeSelect(p) +
           '<button class="btn" type="button" data-act="create" data-provider="' + esc(p.id) + '">Connect ' + esc(p.name) + '</button>' +
           '<p class="act-msg caption" aria-live="polite"></p>';
       return '<section class="card prov" data-provider="' + esc(p.id) + '">' +
         '<div class="prov-head"><div><h2 class="prov-name">' + esc(p.name) + '</h2><p class="caption">' + esc(p.blurb) + '</p></div>' +
         '<span class="state ' + stateCls + '">' + esc(word) + '</span></div>' +
-        body + mine.map(function (c) { return connectionBlock(d, c, reveal); }).join("") + '</section>';
+        body + mine.map(function (c) { return connectionBlock(d, c, reveal, flash); }).join("") + '</section>';
     }).join("");
     return '<div class="grid thirds">' + cards + '</div>';
   }
@@ -216,8 +269,18 @@
       '<p>Connect Commas, Whop, or any other processor below. Your sales, refunds and payouts will show here month by month.</p></section>';
   }
 
-  function render(d, reveal) {
-    return renderHead(d) + renderEmptyNote(d) + renderTiles(d) + renderProviders(d, reveal) + renderMonths(d);
+  function render(d, reveal, flash) {
+    return renderHead(d) + renderEmptyNote(d) + renderTiles(d) + renderProviders(d, reveal, flash) + renderMonths(d);
+  }
+
+  /* What Sync now / Save key says back, in words (UI-STANDARDS §5: every
+     action answers back). */
+  function syncWords(sync) {
+    if (!sync) return "";
+    if (!sync.ok) return sync.error || "That sync did not finish. Try again in a few minutes.";
+    var n = sync.inserted || 0;
+    var got = n === 0 ? "Synced. Nothing new." : "Synced. " + n + (n === 1 ? " new item." : " new items.");
+    return sync.done ? got : got + " More to read — it carries on at the next sync.";
   }
 
   function renderLoading() {
@@ -316,7 +379,7 @@
     badrequest: "That was not accepted."
   };
   function actionWords(res) {
-    if (res.body && res.body.error === "not_configured") return "Webhook secrets cannot be saved yet. We are fixing it.";
+    if (res.body && res.body.error === "not_configured") return "Secrets and API keys cannot be saved yet. We are fixing it.";
     if (res.body && res.body.message && res.status === 400) return res.body.message;
     return ACTION_WORDS[classify(res)] || ACTION_WORDS.server;
   }
@@ -333,13 +396,13 @@
     var clientId = c.clientId || "";
     var get = c.apiGet || function (p) { return call("GET", p); };
     var post = c.apiPost || function (p, b) { return call("POST", p, b); };
-    var state = { data: null, reveal: null, alive: true };
+    var state = { data: null, reveal: null, flash: null, alive: true };
 
     function paint(html) { if (state.alive) el.innerHTML = html; }
     function show() {
       if (!state.data) return;
       state.data.__now = Date.now();
-      paint(render(state.data, state.reveal));
+      paint(render(state.data, state.reveal, state.flash));
     }
     function signIn() {
       if (typeof c.onSignIn === "function") c.onSignIn();
@@ -352,7 +415,7 @@
         if (kind === "signin") { signIn(); return; }
         if (kind !== "ok") { paint(renderError(kind)); return; }
         state.data = res.body;
-        if (!keepReveal) state.reveal = null;
+        if (!keepReveal) { state.reveal = null; state.flash = null; }
         show();
       });
     }
@@ -366,8 +429,11 @@
       var sel = el.querySelector('[data-ent="' + provider + '"]');
       var msg = msgNear(btn);
       if (!sel || !sel.value) { if (msg) msg.textContent = "Pick a business first."; return; }
+      var modeSel = el.querySelector('[data-mode="' + provider + '"]');
+      var body = { action: "create", provider: provider, entity_id: sel.value };
+      if (modeSel && modeSel.value) body.mode = modeSel.value;
       busy(btn, "Connecting…");
-      send({ action: "create", provider: provider, entity_id: sel.value }).then(function (res) {
+      send(body).then(function (res) {
         if (res.status !== 201 || !res.body || res.body.ok !== true) {
           if (res.status === 401) { signIn(); return; }
           idle(btn); if (msg) msg.textContent = actionWords(res); return;
@@ -390,6 +456,35 @@
         if (classify(res) !== "ok") { idle(btn); if (msg) msg.textContent = actionWords(res); return; }
         return load(false);
       });
+    }
+
+    /* Save key and Sync now both answer with { connection, sync }: the page
+       reloads and the result is said under that connection. */
+    function pull(btn, body, label) {
+      var msg = msgNear(btn);
+      var id = btn.getAttribute("data-id");
+      busy(btn, label);
+      if (msg) msg.textContent = label;
+      return send(body).then(function (res) {
+        if (classify(res) === "signin") { signIn(); return; }
+        if (classify(res) !== "ok") { idle(btn); if (msg) msg.textContent = actionWords(res); return; }
+        state.flash = { id: id, text: syncWords(res.body.sync) };
+        return load(true);
+      });
+    }
+
+    function saveKey(btn) {
+      var id = btn.getAttribute("data-id");
+      var input = el.querySelector('[data-apikey="' + id + '"]');
+      var msg = msgNear(btn);
+      var key = input ? input.value.trim() : "";
+      if (!key) { if (msg) msg.textContent = "Paste the API key first."; return; }
+      if (input) input.value = ""; // never kept in the page
+      pull(btn, { action: "api_key", connection_id: id, api_key: key }, "Saving and syncing…");
+    }
+
+    function syncNow(btn) {
+      pull(btn, { action: "sync", connection_id: btn.getAttribute("data-id") }, "Syncing…");
     }
 
     function disable(btn) {
@@ -420,6 +515,8 @@
       var a = t.getAttribute("data-act");
       if (a === "create") create(t);
       else if (a === "secret") saveSecret(t);
+      else if (a === "apikey") saveKey(t);
+      else if (a === "sync") syncNow(t);
       else if (a === "disable") disable(t);
       else if (a === "copy") copy(t);
       else if (a === "retry") load(false);
