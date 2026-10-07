@@ -84,6 +84,11 @@ function makeDb(state) {
         state.tasks.set(key, row);
         return { rows: [{ id: row.id }] };
       }
+      if (/FROM blueprint_declines/.test(s)) {
+        if (state.declinesMissing) throw Object.assign(new Error('relation "blueprint_declines" does not exist'), { code: "42P01" });
+        if (/outcome = 'open'/.test(s)) return { rows: [{ n: state.declinesOpen || 0 }] };
+        return { rows: state.declineNotes || [] };
+      }
       if (/FROM applications a/.test(s)) return { rows: state.apps || [] };
       if (/FROM funding_rounds/.test(s)) return { rows: state.rounds || [] };
       if (/FROM payment_strategy_plans/.test(s)) return { rows: state.savedPlan ? [state.savedPlan] : [] };
@@ -172,6 +177,38 @@ describe("computeNextSequenceDate", () => {
     assert.equal(plan.reasons.find((r) => r.factor === "new_credit").detail.newest_on, "2026-10-06");
     assert.equal(plan.after_funding.credit_file_stale, true, "the pull ran before this application");
     assert.ok(plan.blockers.some((b) => b.id === "credit_file_stale"));
+  });
+
+  test("a decline still being worked blocks, and the plan says how many; closed declines are notes and never a date", async () => {
+    const f = funded({ declinesOpen: 2, declineNotes: [
+      { id: "d1", bank: "Chase", product: "Ink Cash", outcome: "reapply_later", reapply_on: "2027-01-10" },
+      { id: "d2", bank: "Wells Fargo", product: null, outcome: "still_declined", reapply_on: null }
+    ] });
+    const plan = await computeNextSequenceDate(makeDb(f), { orgId: ORG, clientId: CLIENT, asOf: new Date("2027-04-04T12:00:00Z") });
+    const b = plan.blockers.find((x) => x.id === "open_reconsiderations");
+    assert.equal(b.count, 2);
+    assert.match(b.text, /2 bank declines are still being worked\. Finish them before the next funding sequence\./);
+    assert.match(b.source.ref, /blueprint_declines/);
+    assert.equal(plan.ready, false);
+    assert.deepEqual(plan.declines.notes.map((n) => n.note), [
+      "Chase · Ink Cash: re-apply on or after Jan 10, 2027.",
+      "Wells Fargo: still declined after reconsideration."
+    ]);
+    assert.equal(plan.declines.tracked, true);
+    assert.equal(plan.declines.open, 2);
+    /* the re-apply day is a note: the suggested date is the same with or without it */
+    const without = await computeNextSequenceDate(makeDb(funded()), { orgId: ORG, clientId: CLIENT, asOf: new Date("2027-04-04T12:00:00Z") });
+    assert.equal(plan.suggested_date, without.suggested_date);
+  });
+
+  test("declines tracked and none open: no blocker. Declines table missing: not tracked, no blocker, nothing breaks", async () => {
+    const tracked = await computeNextSequenceDate(makeDb(funded()), { orgId: ORG, clientId: CLIENT, asOf: new Date("2027-04-04T12:00:00Z") });
+    assert.deepEqual(tracked.declines, { tracked: true, open: 0, notes: [] });
+    assert.deepEqual(tracked.blockers, []);
+    const missing = await computeNextSequenceDate(makeDb(funded({ declinesMissing: true })), { orgId: ORG, clientId: CLIENT, asOf: new Date("2027-04-04T12:00:00Z") });
+    assert.deepEqual(missing.declines, { tracked: false, open: null, notes: [] });
+    assert.deepEqual(missing.blockers, []);
+    assert.equal(missing.ready, true);
   });
 
   test("card use over 30% with a saved plan from after the sequence: the plan's date is the card-use date", async () => {
@@ -277,6 +314,16 @@ describe("sweepSuggested: the closer is told once, on the day the file math says
     const db2 = makeDb(blocked);
     assert.equal((await sweepSuggested(db2, { now: NOW_READY })).waiting, 1);
     assert.equal(db2.state.tasks.size, 0);
+  });
+
+  test("an open decline reconsideration stops the alert until ops closes it", async () => {
+    const db = makeDb(funded({ candidates, declinesOpen: 1 }));
+    const waiting = await sweepSuggested(db, { now: NOW_READY });
+    assert.equal(waiting.waiting, 1);
+    assert.equal(db.state.tasks.size, 0);
+    db.state.declinesOpen = 0; // ops records the outcome
+    const sent = await sweepSuggested(db, { now: NOW_READY });
+    assert.equal(sent.created, 1);
   });
 
   test("a client who is not a Blueprint buyer gets no task", async () => {

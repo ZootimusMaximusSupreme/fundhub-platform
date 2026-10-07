@@ -499,6 +499,8 @@ describe("planNextSequence: the date is the latest any known factor names", () =
     assert.equal(plan.after_funding.alert_key, "r1");
     assert.equal(plan.after_funding.last_activity_on, "2026-10-02");
     assert.equal(plan.after_funding.credit_file_stale, false);
+    assert.equal(plan.after_funding.credit_file_age_days, 1, "shown for people; no rule uses it");
+    assert.equal(planNextSequence({ asOf: ASOF }).after_funding.credit_file_age_days, null);
   });
 
   test("on the day after the last window closes it is ready", () => {
@@ -609,10 +611,37 @@ describe("planNextSequence: the date is the latest any known factor names", () =
     assert.deepEqual(later.flags, []);
   });
 
+  test("declines: not tracked is not 'none open'; tracked carries the count and the notes, and the notes never move the date", () => {
+    const off = planNextSequence(afterSequence());
+    assert.deepEqual(off.declines, { tracked: false, open: null, notes: [] });
+    const notes = [{ decline_id: "d1", note: "Chase: still declined after reconsideration." }];
+    const on = planNextSequence(afterSequence({ reconsiderations: { open: 1, notes, source: SOURCES.declineDefense } }));
+    assert.deepEqual(on.declines, { tracked: true, open: 1, notes });
+    assert.ok(on.blockers.some((b) => b.id === "open_reconsiderations"));
+    assert.equal(on.suggested_date, off.suggested_date);
+    const closed = planNextSequence(afterSequence({ reconsiderations: { open: 0, notes, source: SOURCES.declineDefense } }));
+    assert.deepEqual(closed.blockers, []);
+    assert.equal(closed.declines.open, 0);
+  });
+
   test("no staff date: the suggestion is the effective date", () => {
     const plan = planNextSequence(afterSequence());
     assert.equal(plan.effective_date, "2027-04-03");
     assert.equal(plan.effective_source, "suggested");
+  });
+
+  test("a partial or blocked answer is shown but never promoted to the date; a staff date still is the date", () => {
+    const partial = planNextSequence(afterSequence({ plan: null }));
+    assert.equal(partial.suggested_date, "2027-04-03");
+    assert.equal(partial.effective_date, null);
+    assert.equal(partial.effective_source, null);
+    const blocked = planNextSequence(afterSequence({ rounds: [] }));
+    assert.deepEqual(blocked.blockers.map((b) => b.id), ["no_funding_yet"]);
+    assert.equal(blocked.suggested_date, "2027-04-03");
+    assert.equal(blocked.effective_date, null);
+    const staff = planNextSequence(afterSequence({ rounds: [], staffDate: "2026-12-01" }));
+    assert.equal(staff.effective_date, "2026-12-01");
+    assert.equal(staff.effective_source, "staff");
   });
 
   test("a bad asOf is refused, not guessed", () => {

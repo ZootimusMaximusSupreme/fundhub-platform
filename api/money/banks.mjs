@@ -73,6 +73,15 @@ async function scope(req, res, { database, gate, body }) {
 
 const NOT_FOUND_WORDS = "That bank is not on this client's plan. Reload and try again.";
 
+/* The file math's `flags` ("the staff date is before the day the file math says
+   ...") are commentary for staff. A client reads the same answer without them.
+   `next_round` is the same object as `next_sequence`, so one change covers both. */
+function withoutStaffFlags(payload) {
+  const s = payload && payload.next_sequence && payload.next_sequence.suggestion;
+  if (s && Array.isArray(s.flags)) s.flags = [];
+  return payload;
+}
+
 export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
   const gate = deps.requirePrincipal || requirePrincipal;
@@ -108,7 +117,7 @@ export default async function handler(req, res, deps = {}) {
     if (method === "GET") {
       const payload = await store.read(database, { orgId, clientId, asOf: now });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
-      return res.status(200).json(payload);
+      return res.status(200).json(who.kind === "client" ? withoutStaffFlags(payload) : payload);
     }
 
     if (who.kind !== "staff") {

@@ -74,8 +74,10 @@ export const WINDOWS = Object.freeze({
   fundableMinScore: 700
 });
 
-const legacy = (page, folder) =>
-  `Legacy Strong page "${page}" (credentials/notion-scrape/output/${folder}/FULL.md)`;
+/* A citation staff can find: the page's title and its folder under the gitignored
+   Notion scrape (credentials/notion-scrape/output/<folder>/FULL.md). The path
+   prefix is left out of the string because these refs ride in API answers. */
+const legacy = (page, folder) => `Legacy Strong page "${page}" (folder ${folder})`;
 
 export const SOURCES = Object.freeze({
   inquiryRule: Object.freeze({
@@ -123,6 +125,10 @@ export const SOURCES = Object.freeze({
   applicationOrder: Object.freeze({
     label: "Fundhub application order: wait for the decision before you send the next one",
     ref: "src/underwrite/black-report-node.mjs · Application Order Warning"
+  }),
+  declineDefense: Object.freeze({
+    label: "Decline defense: a bank decline still being worked",
+    ref: "blueprint_declines.outcome = 'open' (db/migrations/470_blueprint_decline_defense.sql; src/blueprint/decline-defense.mjs)"
   }),
   staffDate: Object.freeze({
     label: "Next funding sequence date, set by staff",
@@ -621,16 +627,16 @@ export function blockersFor({
       source: SOURCES.applicationOrder
     });
   }
-  /* A reconsideration someone is still working. The decline-defense unit stores
-     these; when it lands, its reader passes { open: n, source } here. Until then
-     nothing is tracked, so nothing is open. */
+  /* A bank decline whose reconsideration is still open (decline defense,
+     blueprint_declines.outcome = 'open'). `reconsiderations` is null when the
+     table is not there, which is "not tracked", not "none open". */
   if (reconsiderations && Number(reconsiderations.open) > 0) {
     const n = Number(reconsiderations.open);
     out.push({
       id: "open_reconsiderations",
       count: n,
       text: `${n} ${plural(n, "bank decline is", "bank declines are")} still being worked. Finish ${plural(n, "it", "them")} before the next funding sequence.`,
-      source: reconsiderations.source || SOURCES.applications
+      source: reconsiderations.source || SOURCES.declineDefense
     });
   }
   return out;
@@ -653,7 +659,7 @@ export function blockersFor({
  *   file            { ran, score, negatives, util_pct, on }   (the engine's reading)
  *   linked          { num, den, as_of } | null                (linked cards)
  *   plan            { saved_on, crossing30: { on, already, earliest } } | null
- *   reconsiderations  { open, source } | null
+ *   reconsiderations  { open, source, notes[] } | null   (null: declines not tracked)
  *
  * → { ok, as_of, suggested_date, not_before, reasons, blockers, confidence, ready,
  *     staff_date, effective_date, effective_source, flags, after_funding }
@@ -664,6 +670,9 @@ export function blockersFor({
  *   blockers[]  things that are not a date and stop the alert: { id, text, source }
  *   confidence  "computed" when no factor is unknown, else "partial"
  *   ready       computed, no blockers, and the suggested date is today or earlier
+ *   effective_date / effective_source
+ *               the staff date when set ("staff"); else the suggested date, but only
+ *               when the answer is computed with no blockers ("suggested"); else null
  */
 export function planNextSequence(inputs = {}) {
   const asOf = isoDay(inputs.asOf);
@@ -703,6 +712,10 @@ export function planNextSequence(inputs = {}) {
   const unknown = reasons.some((r) => r.status === "unknown");
   const confidence = !unknown && suggested ? "computed" : "partial";
   const ready = confidence === "computed" && blockers.length === 0 && suggested <= asOf;
+  /* The suggested date becomes THE date only when it is computed and nothing blocks
+     it. A partial or blocked answer still ships (suggested_date, not_before, the
+     reasons, the blockers) but is not promoted. A staff date is the staff's call. */
+  const standing = confidence === "computed" && blockers.length === 0 ? suggested : null;
 
   const flags = [];
   if (staffDate && suggested && confidence === "computed" && staffDate < suggested) {
@@ -722,15 +735,30 @@ export function planNextSequence(inputs = {}) {
     confidence,
     ready,
     staff_date: staffDate,
-    effective_date: staffDate || suggested,
-    effective_source: staffDate ? "staff" : suggested ? "suggested" : null,
+    effective_date: staffDate || standing,
+    effective_source: staffDate ? "staff" : standing ? "suggested" : null,
     flags,
+    /* Bank declines (decline defense). `open` counts reconsiderations still being
+       worked: they block. `notes` are the declines that ended "still declined" or
+       "re-apply later": notes for the closer, never a date. Decline defense's own
+       rule is that a re-apply day does not set the next funding sequence date.
+       tracked false: the declines table is not there, so nothing is known. */
+    declines: inputs.reconsiderations
+      ? {
+        tracked: true,
+        open: Number(inputs.reconsiderations.open) || 0,
+        notes: Array.isArray(inputs.reconsiderations.notes) ? inputs.reconsiderations.notes : []
+      }
+      : { tracked: false, open: null, notes: [] },
     after_funding: {
       funded_rounds: funded.length,
       last_funded_round: lastFunded ? lastFunded.round_number : null,
       last_funded_on: maxDay(funded.map((r) => r.funded_on).filter(Boolean)),
       last_activity_on: lastActivityOn,
       credit_file_on: pullOn,
+      /* How old the file is, shown and never used as a rule: no document names a
+         number of days a file may be before it stops counting. */
+      credit_file_age_days: pullOn ? Math.max(0, Math.round((Date.parse(`${asOf}T12:00:00Z`) - Date.parse(`${pullOn}T12:00:00Z`)) / 86400000)) : null,
       credit_file_stale: fileStale,
       alert_key: lastFunded ? `r${lastFunded.round_number}` : null
     }

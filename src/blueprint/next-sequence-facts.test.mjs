@@ -189,12 +189,17 @@ describe("rows → inputs → answer", () => {
 });
 
 describe("the reads", () => {
-  function fakeDb() {
+  function fakeDb({ declines = "tracked", open = 1 } = {}) {
     const seen = [];
     return {
       seen,
       query: async (sql, params) => {
         seen.push({ sql, params });
+        if (/FROM blueprint_declines/.test(sql)) {
+          if (declines === "missing") throw Object.assign(new Error('relation "blueprint_declines" does not exist'), { code: "42P01" });
+          if (/outcome = 'open'/.test(sql)) return { rows: [{ n: open }] };
+          return { rows: [{ id: "d1", bank: "Chase", product: "Ink Cash", outcome: "reapply_later", reapply_on: "2027-01-10" }] };
+        }
         if (/FROM applications a/.test(sql)) {
           return { rows: [{ id: "a1", status: "Approved", lender_name: "Chase", lender_id: "L1", submitted_on: "2026-09-14",
             status_at: new Date("2026-09-20T09:00:00Z"), created_at: new Date("2026-09-10T00:00:00Z"), round_number: 1, book_bureaus: "EX", observed_bureau: null }] };
@@ -216,10 +221,10 @@ describe("the reads", () => {
     };
   }
 
-  test("four reads, all SELECT, every one pinned to the org and the client", async () => {
+  test("six reads, all SELECT, every one pinned to the org and the client", async () => {
     const db = fakeDb();
     const facts = await readSequenceFacts(db, { orgId: ORG, clientId: CLIENT });
-    assert.equal(db.seen.length, 4);
+    assert.equal(db.seen.length, 6, "rounds, applications, saved plan, linked cards, open declines, decline notes");
     for (const q of db.seen) {
       assert.match(q.sql.trim(), /^SELECT/i);
       assert.ok(q.params.includes(ORG) && q.params.includes(CLIENT), q.sql.slice(0, 60));
@@ -229,7 +234,33 @@ describe("the reads", () => {
     assert.deepEqual(facts.applications.map((a) => [a.status, a.applied_on, a.bureaus]), [["Approved", "2026-09-14", ["EX"]]]);
     assert.equal(facts.plan.crossing30.on, "2027-01-06");
     assert.deepEqual(facts.linked, { num: 250000, den: 1000000, as_of: "2026-10-05", cards: 1 });
-    assert.equal(facts.reconsiderations, null, "nothing on main tracks one yet, and that is not 'none open'");
+  });
+
+  test("declines: the count still open (a blocker) and decline defense's own notes (never a date)", async () => {
+    const facts = await readSequenceFacts(fakeDb({ open: 2 }), { orgId: ORG, clientId: CLIENT });
+    assert.equal(facts.reconsiderations.open, 2);
+    assert.match(facts.reconsiderations.source.ref, /blueprint_declines\.outcome = 'open'/);
+    assert.deepEqual(facts.reconsiderations.notes.map((n) => [n.bank, n.outcome, n.reapply_on, n.note]), [
+      ["Chase", "reapply_later", "2027-01-10", "Chase · Ink Cash: re-apply on or after Jan 10, 2027."]
+    ]);
+    const none = await readSequenceFacts(fakeDb({ open: 0 }), { orgId: ORG, clientId: CLIENT });
+    assert.equal(none.reconsiderations.open, 0, "tracked, and none are open");
+  });
+
+  test("the declines table is not there (migration 470 not applied): not tracked, which is null and not 'none open', and nothing breaks", async () => {
+    const facts = await readSequenceFacts(fakeDb({ declines: "missing" }), { orgId: ORG, clientId: CLIENT });
+    assert.equal(facts.reconsiderations, null);
+    assert.equal(facts.rounds.length, 1, "the other reads still came back");
+  });
+
+  test("any other failure in the declines read is not swallowed", async () => {
+    const db = fakeDb();
+    const real = db.query;
+    db.query = async (sql, params) => {
+      if (/FROM blueprint_declines/.test(sql)) throw new Error("connection reset");
+      return real(sql, params);
+    };
+    await assert.rejects(readSequenceFacts(db, { orgId: ORG, clientId: CLIENT }), /connection reset/);
   });
 
   test("demo rows are never read", async () => {

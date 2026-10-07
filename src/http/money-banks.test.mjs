@@ -107,6 +107,22 @@ describe("GET /api/money/banks", () => {
     assert.equal(put.res.headers.allow, "GET, POST");
   });
 
+  test("the file math's staff flags are for staff: a client's read carries none, a staff read keeps them", async () => {
+    const shared = () => {
+      const next = { date: null, suggestion: { flags: [{ id: "staff_date_before_suggestion", text: "x" }], confidence: "computed" } };
+      return { ok: true, client: { id: MINE }, next_sequence: next, next_round: next };
+    };
+    const asClient = await call({ method: "GET", query: {} }, clientP(), { s: spies({ bankStrategy: async () => shared() }) });
+    assert.deepEqual(asClient.res.body.next_sequence.suggestion.flags, []);
+    assert.deepEqual(asClient.res.body.next_round.suggestion.flags, [], "the alias is the same object");
+    assert.equal(asClient.res.body.next_sequence.suggestion.confidence, "computed", "the rest of the answer is untouched");
+    const asStaff = await call({ method: "GET", query: { client_id: MINE } }, staffP("admin"), { s: spies({ bankStrategy: async () => shared() }) });
+    assert.equal(asStaff.res.body.next_sequence.suggestion.flags.length, 1);
+    /* an answer with no suggestion (its reads failed) passes through as it is */
+    const none = await call({ method: "GET", query: {} }, clientP(), { s: spies({ bankStrategy: async () => ({ ok: true, next_sequence: { suggestion: null } }) }) });
+    assert.equal(none.res.statusCode, 200);
+  });
+
   test("a client the read cannot find is 404", async () => {
     const s = spies({ bankStrategy: async () => null });
     const { res } = await call({ method: "GET", query: {} }, clientP(), { s });

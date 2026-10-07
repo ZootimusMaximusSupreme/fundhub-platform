@@ -24,8 +24,9 @@ import { triMerge } from "../http/client-detail.mjs";
 import { parseBureaus } from "../lenders/match.mjs";
 import { readSavedPlan } from "../finance/payment-strategy.mjs";
 import { linesForEngine } from "../tradelines/index.mjs";
+import { declineNotesForNextSequence } from "./decline-defense.mjs";
 import {
-  BUREAU_CODES, SENT_STATUSES, isoDay, overallCardUse, planNextSequence
+  BUREAU_CODES, SENT_STATUSES, SOURCES, isoDay, overallCardUse, planNextSequence
 } from "./next-sequence-math.mjs";
 import { NEXT_SEQUENCE_READY_DATE_KEY } from "./next-funding-sequence.mjs";
 
@@ -143,6 +144,14 @@ const CARDS_SQL = `
     FROM bank_accounts
    WHERE client_id = $1::uuid AND org_id = $2::uuid AND account_type = 'credit'`;
 
+/* Declines whose reconsideration nobody has closed yet. Every blueprint_declines
+   row is a bank saying no (src/blueprint/decline-defense.mjs recordDecline), and
+   outcome stays 'open' until ops records approved / still declined / re-apply later. */
+const OPEN_DECLINES_SQL = `
+  SELECT count(*)::int AS n
+    FROM blueprint_declines
+   WHERE org_id = $1::uuid AND client_id = $2::uuid AND outcome = 'open'`;
+
 /** One application row → what the planner reads. The day it was sent: the day staff typed, else the day its status last changed, else the day the row was made. */
 export function normalizeApplication(r) {
   const status = r.status ? String(r.status).trim() : null;
@@ -208,15 +217,41 @@ export function normalizeLinked(rows = []) {
 }
 
 /**
+ * readDeclines(db, { orgId, clientId }) → { open, source, notes[] } or null.
+ *   open   how many declines still have an open reconsideration. Blocks.
+ *   notes  the declines that ended "still declined" or "re-apply later", through
+ *          decline defense's own seam (declineNotesForNextSequence). Notes only.
+ * null when the table is not there (migration 470 not applied): "not tracked",
+ * which is not "none open" and not a blocker.
+ */
+export async function readDeclines(db, { orgId, clientId }) {
+  try {
+    const [open, notes] = await Promise.all([
+      db.query(OPEN_DECLINES_SQL, [orgId, clientId]),
+      declineNotesForNextSequence(db, { orgId, clientId })
+    ]);
+    return {
+      open: Number(open.rows[0] && open.rows[0].n) || 0,
+      source: SOURCES.declineDefense,
+      notes: Array.isArray(notes) ? notes : []
+    };
+  } catch (e) {
+    if (e && e.code === "42P01") return null;
+    throw e;
+  }
+}
+
+/**
  * readSequenceFacts(db, { orgId, clientId }) → { rounds, applications, plan, linked, reconsiderations }.
  * Read only.
  */
 export async function readSequenceFacts(db, { orgId, clientId }) {
-  const [rounds, apps, saved, cards] = await Promise.all([
+  const [rounds, apps, saved, cards, declines] = await Promise.all([
     db.query(ROUNDS_SQL, [clientId, orgId]),
     db.query(APPS_SQL, [clientId, orgId]),
     readSavedPlan(db, { orgId, clientId }),
-    db.query(CARDS_SQL, [clientId, orgId])
+    db.query(CARDS_SQL, [clientId, orgId]),
+    readDeclines(db, { orgId, clientId })
   ]);
   const applications = apps.rows.map(normalizeApplication);
   return {
@@ -224,11 +259,7 @@ export async function readSequenceFacts(db, { orgId, clientId }) {
     applications,
     plan: normalizePlan(saved),
     linked: normalizeLinked(cards.rows),
-    /* Open decline reconsiderations. Nothing on main tracks one yet (the decline
-       defense unit adds that). null means "not tracked", which is not "none open"
-       and is not a blocker; when a tracker lands, its reader goes here as
-       { open: n, source }. */
-    reconsiderations: null
+    reconsiderations: declines
   };
 }
 
