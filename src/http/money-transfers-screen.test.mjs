@@ -61,6 +61,16 @@ test("tiles: what waits, what moves, and the limits — from the read", () => {
   assert.match(t, /Left to move today \$4,980\.00 of \$5,000\.00 a day · up to \$2,500\.00 a move/);
 });
 
+test("a move approved for a later day is 'set for later', not 'moving now'", () => {
+  const d = fixture();
+  d.history.unshift({ id: "x1", title: "Later", amount_cents: 200000, to_kind: "bank_account", proposed_by: "staff", proposal_status: "claimed",
+    transfer: { id: "t1", status: "approved", from_label: "Personal Checking ••1101", to_label: "Business Checking ••2202", date: "2026-10-20",
+      approved_by: "client", approved_at: "2026-10-07T14:00:00Z", can_cancel: true, events: [] } });
+  const t = text(T.render(d, { now: NOW }));
+  assert.match(t, /Moving now 0 1 move set for later · next Oct 20/);
+  assert.match(t, /Approved — goes on Oct 20/);
+});
+
 test("client: the waiting deposit shows amount, where, when, who set it up, and the account it comes from", () => {
   const html = T.render(fixture(), { now: NOW });
   const card = html.match(/<article class="card wt" data-id="7b0f0c52-31d6-4f0e-9d6e-2a51f1e0a001">[\s\S]*?<\/article>/)[0];
@@ -125,6 +135,11 @@ test("staff: no approve control anywhere; they can take a move off the list and 
   assert.match(html, /<form data-form="propose"/);
   assert.match(html, /<button class="btn-primary" type="submit">Set up this move<\/button>/);
   assert.equal(count(html, /class="btn-primary"/g), 1, "the staff view has one filled button");
+  assert.match(text(html), /Waiting for the client's OK 2/);
+  assert.match(text(html), /Every money move the client answered, newest first\./);
+  const form = html.match(/<form data-form="propose"[\s\S]*?<\/form>/)[0];
+  assert.match(form, /<select name="to"><option value="3d9afef8[^"]*">[^<]*<\/option><option value="c73daf51[^"]*" selected>/, "To opens on the other account");
+  assert.match(form, /<select name="from"><option value="3d9afef8[^"]*" selected>/);
 });
 
 test("history: the settled role-play, step by step, in words", () => {

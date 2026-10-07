@@ -218,23 +218,35 @@
     return '<section class="tx-banner live" role="note"><span class="tag">Live</span> <span>Real money moves. Each one waits for your yes.</span></section>';
   }
 
-  function moving(item) {
+  /* On its way now: sent to the bank, or approved for today. A move approved
+     for a later day is "set for" that day, not moving. */
+  function moving(item, today) {
     var t = item.transfer;
-    return !!(t && (t.status === "approved" || t.status === "authorized" || t.status === "submitted"));
+    if (!t) return false;
+    if (t.status === "authorized" || t.status === "submitted") return true;
+    return t.status === "approved" && !(t.date && today && t.date > today);
+  }
+  function scheduled(item, today) {
+    var t = item.transfer;
+    return !!(t && t.status === "approved" && t.date && today && t.date > today);
   }
 
-  function renderTiles(d) {
+  function renderTiles(d, staff) {
     var waiting = list(d && d.waiting);
     var history = list(d && d.history);
     var total = waiting.reduce(function (s, w) { return s + (isNum(w.amount_cents) ? w.amount_cents : 0); }, 0);
-    var live = history.filter(moving);
+    var today = d && d.today;
+    var live = history.filter(function (i) { return moving(i, today); });
+    var later = history.filter(function (i) { return scheduled(i, today); });
     var lim = (d && d.limits) || {};
-    var waitTile = '<section class="card tile" aria-labelledby="tx-t-wait"><h2 class="eyebrow" id="tx-t-wait">Waiting for your OK</h2>' +
+    var waitTile = '<section class="card tile" aria-labelledby="tx-t-wait"><h2 class="eyebrow" id="tx-t-wait">' + (staff ? "Waiting for the client's OK" : "Waiting for your OK") + "</h2>" +
       '<span class="big">' + esc(String(waiting.length)) + "</span>" +
       '<p class="caption">' + esc(waiting.length ? money(total) + " in all" : "Nothing to answer") + "</p></section>";
     var moveTile = '<section class="card tile" aria-labelledby="tx-t-move"><h2 class="eyebrow" id="tx-t-move">Moving now</h2>' +
       '<span class="big">' + esc(String(live.length)) + "</span>" +
-      '<p class="caption">' + esc(live.length ? statusWords(withToday(live[0], d)) : "Nothing on its way") + "</p></section>";
+      '<p class="caption">' + esc(live.length ? statusWords(withToday(live[0], d))
+        : later.length ? plural(later.length, "move", "moves") + " set for later · next " + day(later[later.length - 1].transfer.date, true)
+          : "Nothing on its way") + "</p></section>";
     var left = isNum(lim.left_today_cents) ? money(lim.left_today_cents) : "Not set";
     var capLine = isNum(lim.daily_cents)
       ? "of " + money(lim.daily_cents) + " a day · up to " + money(lim.per_transfer_cents) + " a move"
@@ -322,7 +334,7 @@
         "<p>" + esc(opts.staff
           ? "When the money helper or staff set up a move for this client, it waits here for the client's yes."
           : "When your plan or your advisor sets up a money move, it waits here for your yes. Nothing moves until you say so.") + "</p></section>";
-    return '<section class="block" aria-labelledby="tx-wait"><h2 id="tx-wait">Waiting for your OK</h2>' + body + "</section>";
+    return '<section class="block" aria-labelledby="tx-wait"><h2 id="tx-wait">' + (opts.staff ? "Waiting for the client's OK" : "Waiting for your OK") + "</h2>" + body + "</section>";
   }
 
   /* ── history ───────────────────────────────────────────────────────────── */
@@ -359,7 +371,8 @@
   function renderHistory(d, opts) {
     var items = list(d && d.history);
     var body = items.length
-      ? '<div class="card"><div class="scroll-x"><table><caption class="caption">Every money move you answered, newest first.</caption>' +
+      ? '<div class="card"><div class="scroll-x"><table><caption class="caption">' +
+        (opts.staff ? "Every money move the client answered, newest first." : "Every money move you answered, newest first.") + "</caption>" +
         '<thead><tr><th>Date</th><th>Move</th><th class="r">Amount</th><th>Status</th><th>Said yes</th></tr></thead><tbody>' +
         items.map(function (i) { return renderHistoryRow(d, i, opts); }).join("") + "</tbody></table></div></div>"
       : '<section class="card empty"><p class="empty-t">No money moves yet.</p>' +
@@ -377,12 +390,20 @@
       return '<section class="card staff" aria-labelledby="tx-prop"><h2 class="eyebrow" id="tx-prop">Staff only · Set up a move</h2>' +
         "<p>This client has no connected checking or savings account to move money between.</p></section>";
     }
-    var opts = accts.map(function (a) { return '<option value="' + esc(a.id) + '">' + esc(accountOption(a)) + "</option>"; }).join("");
+    function options(selected) {
+      return accts.map(function (a) {
+        return '<option value="' + esc(a.id) + '"' + (a.id === selected ? " selected" : "") + ">" + esc(accountOption(a)) + "</option>";
+      }).join("");
+    }
+    /* "Suggested from" starts on the first account and "To" on another one, so
+       the form never opens on a move from an account to itself. */
+    var fromPick = accts[0].id;
+    var toPick = accts.length > 1 ? accts[1].id : accts[0].id;
     return '<section class="card staff" aria-labelledby="tx-prop"><h2 class="eyebrow" id="tx-prop">Staff only · Set up a move</h2>' +
       '<p class="caption">It waits for the client\'s yes. Nothing moves until then.</p>' +
       '<form data-form="propose" class="tx-prop-form">' +
-      '<label class="field"><span class="caption">To</span><select name="to">' + opts + '<option value="fundhub">Fundhub (a payment)</option></select></label>' +
-      '<label class="field"><span class="caption">Suggested from</span><select name="from">' + opts + "</select></label>" +
+      '<label class="field"><span class="caption">To</span><select name="to">' + options(toPick) + '<option value="fundhub">Fundhub (a payment)</option></select></label>' +
+      '<label class="field"><span class="caption">Suggested from</span><select name="from">' + options(fromPick) + "</select></label>" +
       '<label class="field"><span class="caption">Amount ($)</span><input name="amount" inputmode="decimal" placeholder="2000.00" required></label>' +
       '<label class="field"><span class="caption">Date</span><input name="due_on" type="date" min="' + esc(d.today || "") + '" value="' + esc(d.today || "") + '" required></label>' +
       '<label class="field wide"><span class="caption">What it is for</span><input name="title" maxlength="200" placeholder="Deposit to build banking history" required></label>' +
@@ -396,7 +417,7 @@
     opts = opts || {};
     var staff = !!opts.staff;
     var o = { staff: staff, now: opts.now };
-    return renderHead(d, staff) + renderBanner(d) + renderTiles(d) + renderWaitingList(d, o) + renderHistory(d, o) +
+    return renderHead(d, staff) + renderBanner(d) + renderTiles(d, staff) + renderWaitingList(d, o) + renderHistory(d, o) +
       (staff ? renderPropose(d) : "");
   }
 

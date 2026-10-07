@@ -127,7 +127,7 @@
   .fh-transfers .confirm-row .btn-primary{width:100%}
   .fh-transfers .scroll-x{overflow-x:visible}
   .fh-transfers thead{display:none}
-  .fh-transfers table,.fh-transfers tbody,.fh-transfers tr,.fh-transfers td{display:block;width:100%}
+  .fh-transfers table,.fh-transfers caption,.fh-transfers tbody,.fh-transfers tr,.fh-transfers td{display:block;width:100%}
   .fh-transfers tr{padding:16px 0;border-bottom:1px solid var(--line)}
   .fh-transfers tr:last-child{border-bottom:0}
   .fh-transfers td{border-bottom:0;padding:4px 0}
