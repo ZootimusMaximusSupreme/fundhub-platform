@@ -44,6 +44,7 @@
     "lenders:audit": "node scripts/lenders-audit/run.mjs",
     "lenders:audit:apply": "node scripts/lenders-audit/apply-manifest.mjs",
     "flywheel:status": "node scripts/flywheel/status.mjs",
+    "marketing:run-queue": "node scripts/marketing-run-queue.mjs",
     "marketing:data:health": "node scripts/marketing-data-health.mjs",
     "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs"
   },

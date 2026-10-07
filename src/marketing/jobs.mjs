@@ -202,13 +202,25 @@ export async function failJob(db, id, error, { final = false } = {}) {
  * are left, else 'failed' with the reason. Never touches 'offer'. Refuses anything
  * under 16 minutes, because a live worker could still be running that job.
  */
-export async function reclaimStale(db, { olderThanMin = STALE_AFTER_MINUTES } = {}) {
+export async function reclaimStale(db, { olderThanMin = STALE_AFTER_MINUTES, kinds, excludeKinds } = /** @type {{ olderThanMin?: number, kinds?: string[] | null, excludeKinds?: string[] | null }} */ ({})) {
   const minutes = Number(olderThanMin);
   if (!Number.isFinite(minutes) || minutes < STALE_AFTER_MINUTES) {
     throw new RangeError(
       `reclaimStale: olderThanMin must be at least ${STALE_AFTER_MINUTES} — a worker can run 15 minutes, so a younger claim may still be running`
     );
   }
+  /* kinds / excludeKinds (added 2026-10-06, src/marketing/ai-runner.mjs): when the Mac
+     runs the AI jobs, the Netlify worker takes back only its own kinds and the Mac only
+     the AI kinds — neither takes a job the other may still be running. No list: every
+     kind, exactly as before. */
+  const only = kindList(kinds, "kinds");
+  const not = kindList(excludeKinds, "excludeKinds");
+  if (only && only.length === 0) return [];
+  /** @type {any[]} */
+  const params = [Math.floor(minutes)];
+  let scope = "";
+  if (only) { params.push(only); scope += ` AND kind = ANY($${params.length}::text[])`; }
+  if (not && not.length) { params.push(not); scope += ` AND NOT (kind = ANY($${params.length}::text[]))`; }
   const r = await db.query(
     `UPDATE marketing_jobs
         SET attempts = attempts + 1,
@@ -223,9 +235,9 @@ export async function reclaimStale(db, { olderThanMin = STALE_AFTER_MINUTES } = 
             run_after = CASE WHEN attempts + 1 >= ${MAX_ATTEMPTS} THEN run_after ELSE now() END
       WHERE status = 'running'
         AND kind <> '${OFFER_KIND}'
-        AND COALESCE(claimed_at, created_at) < now() - make_interval(mins => $1::int)
+        AND COALESCE(claimed_at, created_at) < now() - make_interval(mins => $1::int)${scope}
       RETURNING id, kind, status, attempts`,
-    [Math.floor(minutes)]
+    params
   );
   return r.rows;
 }

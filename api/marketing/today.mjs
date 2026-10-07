@@ -81,6 +81,7 @@ import {
   readScriptsWaiting, readStuckJobs, numbersFor
 } from "../../src/marketing/metrics-rollups.mjs";
 import { costOfCalls } from "../../src/marketing/model-prices.mjs";
+import { runnerIsLocal, readMacQueue } from "../../src/marketing/ai-runner.mjs";
 
 export const TIMEZONE = "America/Phoenix";
 /** daily: the last 30 Arizona days, oldest first (the sparklines). */
@@ -614,6 +615,12 @@ export default async function handler(req, res, deps = {}) {
       copy: copyCost.ok ? copyCost.value : null
     };
 
+    // 5b. MARKETING_AI_RUNNER=local only (src/marketing/ai-runner.mjs): the AI jobs
+    //     waiting for Chris's Mac. The key is left out entirely when Netlify runs them.
+    const macRead = runnerIsLocal(env)
+      ? await part("mac_queue", (tx) => readMacQueue(tx, { orgId, env }))
+      : null;
+
     // 6. The M5 numbers (U32). Four parts read side by side, each in its own
     //    short transaction. The counting rules are U20's (src/marketing/metrics.mjs);
     //    which funnel a number belongs to is src/marketing/metrics-rollups.mjs.
@@ -681,7 +688,8 @@ export default async function handler(req, res, deps = {}) {
       spend_by_funnel: funnelRead.ok ? spendByFunnelView(funnelRead.value.rollup) : [],
       flow,
       scripts_waiting: scriptsRead.ok ? scriptsRead.value : null,
-      stuck_jobs: jobsRead.ok ? jobsRead.value : []
+      stuck_jobs: jobsRead.ok ? jobsRead.value : [],
+      ...(macRead ? { mac_queue: macRead.ok ? macRead.value : null } : {})
     });
   } catch (err) {
     if (dbDown(res, err)) return;

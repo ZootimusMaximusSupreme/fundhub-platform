@@ -3,6 +3,7 @@
 
 import { db } from "../../src/db.mjs";
 import { runDue } from "../../src/creative/runner.mjs";
+import { runnerIsLocal, AI_ASSET_KINDS } from "../../src/marketing/ai-runner.mjs";
 
 export const SWEEP_CRON = "*/2 * * * *";
 
@@ -32,7 +33,8 @@ export async function sweepCreativeJobs(dbConn, options = {}) {
 // function style, which rejects a { statusCode, body } object and re-runs the
 // pass. See src/http/scheduled-functions-return.test.mjs.
 export async function handler() {
-  const result = await sweepCreativeJobs(db);
+  // MARKETING_AI_RUNNER=local: copy jobs (the model writes them) wait for the Mac.
+  const result = await sweepCreativeJobs(db, runnerIsLocal(process.env) ? { excludeAssetKinds: [...AI_ASSET_KINDS] } : {});
   if (!result.ok) {
     console.error(`[creative-job-runner] pass failed: ${result.error}`);
   } else if (result.ran > 0) {

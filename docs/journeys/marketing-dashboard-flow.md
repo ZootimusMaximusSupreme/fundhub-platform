@@ -1846,3 +1846,59 @@ flowchart TD
 - `GET marketing/health` does not show the nightly check's counts yet (the job's result holds them).
 - With `enabled` off, the clock queues no voice export, expiry or nightly check either (all scheduled chores).
 - The late-draft follow-up runs for every company, switch on or off: it only reacts to Chris's own Retry.
+
+## The run queue bridge: AI jobs run on Chris's Mac with Claude Code (`MARKETING_AI_RUNNER=local`)
+
+Drawn 2026-10-06 from the code on branch `mm-bridge-claude-code`:
+`src/marketing/ai-runner.mjs` (the switch, the AI kinds), `src/agents/claude-code.mjs`
+(model provider `claude-code`), `src/marketing/run-queue.mjs` +
+`scripts/marketing-run-queue.mjs` (`npm run marketing:run-queue`), and the gates in
+`src/marketing/worker.mjs`, `src/marketing/clock.mjs`, `netlify/functions/marketing-offer-background.mjs`,
+`api/marketing/offer/generate.mjs`, `src/marketing/funnel-worker.mjs`, `src/marketing/funnel-routes.mjs`,
+`src/creative/generate.mjs` + `src/creative/runner.mjs`, `api/creative/run.mjs`,
+`netlify/functions/creative-job-runner.mjs`, `api/marketing/today.mjs`.
+Why: owner call 2026-10-06 — no Anthropic API credit. Jobs are still started from the
+dashboard; the AI work runs under Chris's Claude subscription on the Mac.
+
+AI kinds: `write_slot`, `fix_script`, `funnel`, `avatar`, `flywheel_stage`, `deep_research`,
+the `offer` job, and Creative Factory jobs with `assetKind` `copy` (Write ad copy).
+Everything else (`funnel_push`, `meta_load`, the batch chores, the outbox drain, the buzzes)
+stays on Netlify. `ai-runner.test.mjs` fails if a new job kind is not sorted into one list.
+
+```mermaid
+flowchart TD
+  P["Chris presses a button on the dashboard"] --> Q["the route saves a queued job<br/>(marketing_jobs / generation_jobs) — unchanged"]
+  Q --> M{"MARKETING_AI_RUNNER = local?"}
+  M -->|"no (unset)"| NET["Netlify runs it, exactly as before<br/>(worker, offer and funnel background functions, creative cron)"]
+  M -->|yes| K{"AI kind?"}
+  K -->|no| NET
+  K -->|yes| WAIT["stays queued. Netlify never claims it:<br/>worker + clock use the registry without AI kinds;<br/>reclaimStale excludes them; offer press does not wake;<br/>offer background fn answers 'waiting_for mac';<br/>funnel press does not wake for 'funnel';<br/>creative claim excludes assetKind copy"]
+  WAIT --> SHOW["dashboard says it: Today row 'Waiting for your Mac to run it'<br/>(GET marketing/today mac_queue) · offer press message ·<br/>Write ad copy answer"]
+  WAIT --> MAC["npm run marketing:run-queue on the Mac<br/>(.env DATABASE_URL; claude command found)"]
+  MAC --> LOOP["one look: the worker's own runPass with the AI kinds only<br/>(same claim SKIP LOCKED + group caps, same handlers, finishJob/failJob;<br/>drain, buzzes, heartbeat, wake turned off) ·<br/>runOfferJob per queued offer · runDue for copy jobs"]
+  LOOP --> CC["every model call → callModel → Claude Code<br/>claude -p, one prompt on stdin, no tools<br/>(WebSearch/WebFetch only when web tools were asked),<br/>no ANTHROPIC_API_KEY in its env, run in the temp folder"]
+  CC --> RES["same result shape as the API: text, json (schema checked,<br/>one retry), web result blocks with source links,<br/>servedModel 'claude-code'"]
+  RES --> LEDGER["usage ledger: model 'claude-code', cost $0<br/>(no search fee); offer result model 'claude-code'"]
+  LEDGER --> DONE["job done / failed exactly as the worker writes it"]
+  DONE --> NEXT{"anything ran?"}
+  NEXT -->|yes| LOOP
+  NEXT -->|"no, --once"| EXIT["stop"]
+  NEXT -->|no| SLEEP["wait 60 s"] --> LOOP
+  MAC -->|Ctrl-C| STOPM["running job → requeueJob (no try counted);<br/>a running offer → queued; claude children ended; exit.<br/>A copy job's claim rolls back with its transaction.<br/>Ctrl-C twice: exit now; the Mac's reclaimStale (16 min) takes it back"]
+```
+
+### Gaps (findings, not reconciled)
+
+- The routes that start AI jobs still refuse with `no_model` when the site has no
+  `ANTHROPIC_API_KEY` (offer, flywheel run/tweak, research, avatar run/tweak). With the key
+  set but out of credit they start fine. Not changed here.
+- Only the Today page and the offer and Write ad copy answers say "Waiting for your Mac".
+  The other screens show such a job as queued, in their own words.
+- A queued offer older than 16 minutes is failed by the next Write offer press
+  (`expireStaleOfferJobs`), so a long-off Mac means pressing again.
+- Claude Code's WebFetch hands back its own reading of a page, not the raw page, so a quote
+  is proved word for word against that reading.
+- The Mac runs one research job at a time and up to 3 script writers at once (the worker's
+  caps), each as its own `claude -p`.
+- Write ad copy on the Mac still records its tokens in `partner_ai_usage` (model
+  `claude-code`), which counts toward Social Studio's monthly token cap.

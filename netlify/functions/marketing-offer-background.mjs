@@ -19,12 +19,13 @@ import { db } from "../../src/db.mjs";
 import { authenticate, AUTH_UNAVAILABLE } from "../../src/http/middleware/requireAuth.mjs";
 import { allowsRole, isUuid } from "../../src/http/read-api.mjs";
 import { runOfferJob, OFFER_ROLES } from "../../src/marketing/offer-run.mjs";
+import { runnerIsLocal, MAC_WAIT_LINE } from "../../src/marketing/ai-runner.mjs";
 
 const json = (status, body) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json" }
 });
 
-export function makeHandler({ database = db, run = runOfferJob, auth = authenticate } = {}) {
+export function makeHandler({ database = db, run = runOfferJob, auth = authenticate, env = process.env } = {}) {
   return async function handler(req) {
     const authorization = req?.headers?.get ? req.headers.get("authorization") : null;
     const who = await auth({ headers: { authorization } }, { db: database });
@@ -37,6 +38,13 @@ export function makeHandler({ database = db, run = runOfferJob, auth = authentic
     try { body = await req.json(); } catch { body = {}; }
     const jobId = body && typeof body.job_id === "string" ? body.job_id.trim() : "";
     if (!isUuid(jobId)) return json(400, { ok: false, error: "bad_job_id" });
+
+    // MARKETING_AI_RUNNER=local (src/marketing/ai-runner.mjs): the offer is AI work, so
+    // it stays queued for `npm run marketing:run-queue` on Chris's Mac. Nothing runs here.
+    if (runnerIsLocal(env)) {
+      console.log(`[marketing-offer] job ${jobId}: left queued for the Mac (MARKETING_AI_RUNNER=local)`);
+      return json(200, { ok: true, status: "queued", waiting_for: "mac", message: MAC_WAIT_LINE });
+    }
 
     console.log(`[marketing-offer] build ${String(process.env.COMMIT_REF || "unknown").slice(0, 8)} writing job ${jobId}`);
     const out = await run(database, { jobId, orgId: who.staff.org_id });
