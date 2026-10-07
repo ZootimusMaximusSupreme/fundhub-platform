@@ -475,16 +475,31 @@
   }
 
   /**
-   * One real camera ask. Both lenses stay at 1080p. The front never asks for 4K.
-   * Wide is 1920×1080. Tall is the same picture held upright (1080×1920).
-   * lockRate asks for that exact frame rate. 60 first, then 30.
+   * One real camera ask.
+   * Front 4K is 3840×2160. The frame rate is 60 with no ceiling, so the
+   * camera gives the highest rate it has at that size. It is not locked to 30.
+   * Settings 1080p is 1920×1080. lockRate asks for that exact frame rate.
+   * Tall is the 1080p picture held upright (1080×1920).
    * facing is "user" (front) or "environment" (back).
+   * mode "4k" is the front 4K ask. mode "1080p" stays at 1920×1080.
    */
-  function cameraAsk(facing, fps, shape, lockRate) {
+  function cameraAsk(facing, fps, shape, lockRate, mode) {
     var front = facing !== "environment";
     var rate = fps === 30 ? 30 : 60;
     var tall = shape === "tall";
-    var frame = lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate };
+    var four = mode === "4k" && front && !tall;
+    var frame = four
+      ? { ideal: rate }
+      : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
+    if (four) {
+      return {
+        facingMode: { ideal: "user" },
+        width: { ideal: 3840 },
+        height: { ideal: 2160 },
+        aspectRatio: { ideal: 16 / 9 },
+        frameRate: frame
+      };
+    }
     return {
       facingMode: { ideal: front ? "user" : "environment" },
       width: { ideal: tall ? 1080 : 1920, max: tall ? 1080 : 1920 },
@@ -496,32 +511,39 @@
 
   /**
    * Tries, in order. The first one the browser accepts is the one we keep.
-   * A reject moves to the next try. The last try still caps the long side at
-   * 1920 so a loose fallback cannot ask for 4K.
+   * A reject moves to the next try.
+   * Front 4K asks for 3840×2160 at 60 first (no ceiling), then 30.
+   * The 1080p tries stay under that, capped at 1920, for the Settings choice
+   * and for a camera that will not do 4K.
    * The back camera (the phone that sits and films him) adds a steady
    * autofocus ask first. If the browser rejects that, the plain 1080p tries follow.
    */
-  function cameraTries(facing) {
+  function cameraTries(facing, mode) {
     var back = facing === "environment";
     var list = [];
-    function push(fps, shape, lockRate, steady) {
-      var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate);
+    function push(fps, shape, lockRate, steady, askMode) {
+      var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate, askMode == null ? mode : askMode);
       if (steady) {
         video.focusMode = "continuous";
         video.exposureMode = "continuous";
       }
       list.push(video);
     }
-    if (back) {
-      push(60, "wide", true, true);
-      push(30, "wide", true, true);
+    if (!back && mode === "4k") {
+      push(60, "wide", false, false, "4k");
+      push(30, "wide", false, false, "4k");
     }
-    push(60, "wide", true, false);
-    push(60, "wide", false, false);
-    push(30, "wide", true, false);
-    push(30, "wide", false, false);
-    push(60, "tall", true, false);
-    push(30, "tall", true, false);
+    var hd = mode === "4k" ? "1080p" : mode;
+    if (back) {
+      push(60, "wide", true, true, hd);
+      push(30, "wide", true, true, hd);
+    }
+    push(60, "wide", true, false, hd);
+    push(60, "wide", false, false, hd);
+    push(30, "wide", true, false, hd);
+    push(30, "wide", false, false, hd);
+    push(60, "tall", true, false, hd);
+    push(30, "tall", true, false, hd);
     list.push({
       facingMode: { ideal: back ? "environment" : "user" },
       width: { max: 1920 },
@@ -2126,7 +2148,7 @@
     var box = $("cam");
     if (box) box.hidden = false;
     showFace();
-    var rep = cameraReport(got, "1080p");
+    var rep = cameraReport(got, mode === "1080p" ? "1080p" : "4k");
     var who = cam.facing === "environment" ? "Back camera" : "Front camera";
     var text = who + " · " + (rep.short || rep.line);
     if (!rep.short && activeMode() === "4k" && rep.line.indexOf("4K") !== 0) text += ". It is not 4K.";
@@ -2150,11 +2172,13 @@
       var gen = ++cam.gen;
       var mode = activeMode();
       cam.opening = mode;
-      camLine("Asking the front camera for 1080p at 60 frames a second.", false);
+      camLine(mode === "1080p"
+        ? "Asking the front camera for 1080p at 60 frames a second."
+        : "Asking the front camera for 4K at the highest frame rate.", false);
       paintPicks();
       var steps = [];
       ["user", "environment"].forEach(function (facing) {
-        cameraTries(facing).forEach(function (video) {
+        cameraTries(facing, mode).forEach(function (video) {
           steps.push({ video: video, audio: true, facing: facing });
           steps.push({ video: video, audio: false, facing: facing });
         });
@@ -2175,7 +2199,7 @@
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
         var facing = (track.getSettings && track.getSettings().facingMode) === "environment" ? "environment" : "user";
         function locked(fps) {
-          var ask = cameraAsk(facing, fps, "wide", true);
+          var ask = cameraAsk(facing, fps, "wide", true, mode);
           return { width: ask.width, height: ask.height, frameRate: ask.frameRate };
         }
         var apply = track.applyConstraints
@@ -2199,7 +2223,7 @@
           if (gen !== cam.gen) { stopTracks(stream); return; }
           var id = pickVideoDevice(devs, facing);
           if (!id || settings.deviceId === id) { finish(stream, noMic); return; }
-          var video = cameraAsk(facing, 60, "wide", true);
+          var video = cameraAsk(facing, 60, "wide", true, mode);
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
@@ -2228,7 +2252,10 @@
     S.cam = mode === "1080p" ? "1080p" : "4k";
     save();
     paintPicks();
-    if (cam.rec && cam.rec.state === "recording") { say("The next take films at 1080p."); return; }
+    if (cam.rec && cam.rec.state === "recording") {
+      say(S.cam === "1080p" ? "The next take films at 1080p." : "The next take films at 4K.");
+      return;
+    }
     cam.applied = "";
     cam.opening = "";
     ensureCamera();
