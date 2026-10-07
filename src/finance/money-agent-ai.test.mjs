@@ -25,6 +25,7 @@ const ctx = () => JSON.parse(JSON.stringify(CTX));
 const TODAY = CTX.today;
 const BIZ_CHECKING = "c73daf51-36a8-4c25-a365-3b2281ae9fc7";
 const AMEX = "d6ce2c94-3632-4c63-af98-802fef41ac62";
+const P_CHECKING = "3d9afef8-9644-4872-8049-087965036a2c";
 const LOAN = "6af70e59-db5c-4220-95b7-69f6a4a87ff8";
 const blank = { title: null, detail: null, date: null, pin_kind: null, amount_cents: null, from_account_id: null, to_account_id: null, task_id: null, reason: null };
 
@@ -52,10 +53,13 @@ function failing(error, status = null) {
 describe("the agent row is the migration's row", () => {
   const SQL = fs.readFileSync(path.join(ROOT, "db/migrations/465_money_helper_agent.sql"), "utf8");
 
-  test("the prompt seeded into agents FOS-01 is HELPER_PROMPT, word for word", () => {
-    const m = SQL.match(/\$prompt\$([\s\S]*?)\$prompt\$/);
-    assert.ok(m, "465 holds the prompt in $prompt$ quotes");
+  test("the prompt live on agents FOS-01 is HELPER_PROMPT, word for word (467 re-set it after 465)", () => {
+    const latest = fs.readFileSync(path.join(ROOT, "db/migrations/467_money_helper_cards_are_reminders.sql"), "utf8");
+    const m = latest.match(/\$prompt\$([\s\S]*?)\$prompt\$/);
+    assert.ok(m, "467 holds the prompt in $prompt$ quotes");
     assert.equal(m[1], HELPER_PROMPT);
+    assert.match(latest, /WHERE code = 'FOS-01'/);
+    assert.ok(/\$prompt\$/.test(SQL), "465 still seeds the first prompt");
   });
 
   test("the guardrails seeded are HELPER_GUARDRAILS, in the registry's shape", () => {
@@ -244,7 +248,9 @@ describe("validating the model's answer", () => {
       [{ ...blank, type: "create_reminder", date: "2026-10-14", title: "Pay", amount_cents: 99900 }, /amount_not_in_facts/],
       [{ ...blank, type: "schedule_pin", date: "2026-10-20", title: "Step", pin_kind: "buy_stock" }, /bad_pin_kind/],
       [{ ...blank, type: "mark_task_in_progress", task_id: "not-a-task" }, /not_an_open_task/],
-      [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: AMEX, amount_cents: 2000000 }, /amount_not_in_facts_or_message/],
+      [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: P_CHECKING, amount_cents: 2000000 }, /amount_not_in_facts_or_message/],
+      [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: AMEX, amount_cents: 540000 }, /cards_and_loans_are_paid_by_the_client/],
+      [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: LOAN, amount_cents: 540000 }, /cards_and_loans_are_paid_by_the_client/],
       [{ ...blank, type: "propose_transfer", from_account_id: AMEX, to_account_id: BIZ_CHECKING, amount_cents: 540000 }, /from_is_not_a_bank_account/],
       [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: "6af70e59-0000-4000-8000-000000000000", amount_cents: 540000 }, /to_not_their_account/]
     ];
@@ -258,17 +264,17 @@ describe("validating the model's answer", () => {
   test("a transfer the client asked for that is more than the account holds is refused", () => {
     const v = validateAnswer({
       reply: "I can set up a proposal for your approval.",
-      actions: [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: AMEX, amount_cents: 2000000 }]
-    }, vctx({ message: "Move $20,000 to my Amex" }));
+      actions: [{ ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: P_CHECKING, amount_cents: 2000000 }]
+    }, vctx({ message: "Move $20,000 to my personal checking" }));
     assert.ok(v.problems.includes("propose_transfer:more_than_the_account_has"), v.problems.join("; "));
   });
 
   test("a proposal in the facts' amounts passes only when the reply names the approval", () => {
-    const a = { ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: AMEX, amount_cents: 540000, reason: "Pay the Amex balance" };
-    const ok = validateAnswer({ reply: "I set up $5,400.00 to your Amex. It needs your approval before anything moves.", actions: [a] }, vctx());
+    const a = { ...blank, type: "propose_transfer", from_account_id: BIZ_CHECKING, to_account_id: P_CHECKING, amount_cents: 540000, reason: "Move cash to personal" };
+    const ok = validateAnswer({ reply: "I set up $5,400.00 to your Personal Checking. It needs your approval before anything moves.", actions: [a] }, vctx());
     assert.equal(ok.ok, true, ok.problems.join("; "));
-    assert.equal(ok.actions[0].to_type, "credit");
-    const no = validateAnswer({ reply: "I set up $5,400.00 to your Amex.", actions: [a] }, vctx());
+    assert.equal(ok.actions[0].to_type, "depository");
+    const no = validateAnswer({ reply: "I set up $5,400.00 to your Personal Checking.", actions: [a] }, vctx());
     assert.ok(no.problems.includes("transfer_without_approval_words"));
   });
 

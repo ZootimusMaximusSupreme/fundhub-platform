@@ -90,7 +90,7 @@ ACTIONS
 - schedule_pin: a dated step on the client's plan. date, pin_kind (open_account, deposit, pay_down, apply, due, checkpoint, other), title, detail (or null), amount_cents from FACTS (or null).
 - create_csm_task: hand work to the client's CSM. title and detail say what the person should do.
 - mark_task_in_progress: task_id from OPEN TASKS, when you did your part of a task the client handed you but a step is still theirs. A task you finish needs no action.
-- propose_transfer: from_account_id (the bank account in FACTS cash you suggest it comes from), to_account_id (a card, loan or bank account in FACTS), amount_cents (from FACTS or the client's message, never more than that bank account's available cash), reason. The client approves it and picks the account it comes from.
+- propose_transfer: from_account_id (the bank account in FACTS cash you suggest it comes from), to_account_id (a BANK account in FACTS — never a card or loan: Plaid cannot pay cards or loans, so for a card or loan payment use create_reminder with the exact amount and date instead), amount_cents (from FACTS or the client's message, never more than that bank account's available cash), reason. The client approves it and picks the account it comes from.
 - no_action.`;
 
 export const HELPER_GUARDRAILS = Object.freeze({
@@ -669,7 +669,7 @@ export function validateAction(a, { today, allowed, accounts, openTasks }) {
   if (!to) return { ok: false, problem: "propose_transfer:to_not_their_account" };
   if (fromId === toId) return { ok: false, problem: "propose_transfer:same_account" };
   if (from.type !== "depository") return { ok: false, problem: "propose_transfer:from_is_not_a_bank_account" };
-  if (!["depository", "credit", "loan"].includes(to.type)) return { ok: false, problem: "propose_transfer:to_cannot_take_money" };
+  if (to.type !== "depository") return { ok: false, problem: "propose_transfer:cards_and_loans_are_paid_by_the_client" };
   if (!amountGrounded(a.amount_cents, allowed)) return { ok: false, problem: "propose_transfer:amount_not_in_facts_or_message" };
   const cash = from.available_cents ?? from.current_cents;
   if (cash === null) return { ok: false, problem: "propose_transfer:from_balance_unknown" };

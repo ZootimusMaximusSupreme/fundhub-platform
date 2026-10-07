@@ -76,7 +76,11 @@ describe("the readers", () => {
     assert.equal(out[0].late_days, 5);
     assert.equal(out[0].why, "No payment is on file since your last statement.");
     assert.equal(out[1].title, "Pay $135.00 to Business Amex");
-    assert.deepEqual(out[1].transfer, { to_kind: "card", to_account_id: AMEX, amount_cents: 13500 });
+    // Plaid Transfer cannot pay a card: the step is the client's own, with the exact amount.
+    assert.equal(out[1].can_do, "self");
+    assert.equal(out[1].transfer, null);
+    assert.equal(out[1].moves_money, false);
+    assert.equal(out[1].amount_cents, 13500);
   });
 
   test("an unknown amount is never proposed: the step is the client's own", () => {
@@ -92,7 +96,10 @@ describe("the readers", () => {
     const out = loanTasks([{ account_id: LOAN, name: "SBA Loan", due_on: "2026-10-12", payment_cents: 105000 }], { today: TODAY });
     assert.equal(out[0].title, "Pay $1,050.00 to SBA Loan");
     assert.equal(out[0].from, "your loan");
-    assert.deepEqual(out[0].transfer, { to_kind: "loan", to_account_id: LOAN, amount_cents: 105000 });
+    // Plaid Transfer cannot pay a loan either: a reminder with the exact payment.
+    assert.equal(out[0].can_do, "self");
+    assert.equal(out[0].transfer, null);
+    assert.equal(out[0].amount_cents, 105000);
     assert.equal(loanTasks([{ account_id: LOAN, name: "SBA Loan", due_on: "2026-11-01", payment_cents: 105000 }], { today: TODAY }).length, 0);
   });
 
@@ -448,19 +455,20 @@ describe("doTask — the press", () => {
     let proposed = null;
     let reads = 0;
     const out = await doTask({}, {
-      orgId: ORG, clientId: CLIENT, taskId: T_MONEY.id, asOf: new Date(`${TODAY}T12:00:00Z`),
+      // The money task is the late Fundhub plan payment: cards and loans are the client's own
+      // (Plaid Transfer cannot pay them), so they are never proposed.
+      orgId: ORG, clientId: CLIENT, taskId: "clarity:824c8cf7-3885-4570-8e72-4858aca547d5", asOf: new Date(`${TODAY}T12:00:00Z`),
       // A caller cannot pass a title or an amount: doTask takes only the task id.
       amount_cents: 1, title: "forged",
       propose: async (_db, p) => { proposed = p; return { ok: true, created: true, proposalId: "m", status: "needs_approval" }; },
       log: async () => ({ created: true, id: "l" }),
       // Nothing handed over yet when the list is rebuilt; the proposal is there after the write.
-      deps: readers({ assignments: async () => (reads++ === 0 ? [] : [{ id: "m", task_key: T_MONEY.id, assignee: "agent", status: "needs_approval", moves_money: true, amount_cents: 13500 }]) })
+      deps: readers({ assignments: async () => (reads++ === 0 ? [] : [{ id: "m", task_key: "clarity:824c8cf7-3885-4570-8e72-4858aca547d5", assignee: "agent", status: "needs_approval", moves_money: true, amount_cents: 50000 }]) })
     });
     assert.equal(out.ok, true);
     assert.equal(out.task.assignment.status, "needs_approval");
-    assert.equal(proposed.amountCents, 13500, "the minimum moneyOverview printed for Business Amex");
-    assert.equal(proposed.title, "Pay $135.00 to Business Amex");
-    assert.equal(proposed.toAccountId, AMEX);
+    assert.equal(proposed.amountCents, 50000, "the amount left on the late payment, from the plan rows");
+    assert.equal(proposed.toKind, "fundhub");
   });
 });
 

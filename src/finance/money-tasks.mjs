@@ -75,9 +75,14 @@ export { OPEN_STATUSES };
 /** Who can do what, and why. The code below follows this table. */
 export const CAN_DO_RULES = Object.freeze([
   Object.freeze({
-    when: "A payment with a known amount and a known place to send it: a card or loan on file, a plan with Fundhub, or an account a plan pin names.",
+    when: "A payment with a known amount to Fundhub (a plan), or a deposit into one of the client's bank accounts that a plan pin names.",
     can_do: "agent",
     why: "The money agent can set the payment up. It is a proposal: nothing moves until the client approves that exact amount and the account it comes from."
+  }),
+  Object.freeze({
+    when: "A card or loan payment, or a plan pin of kind pay_down.",
+    can_do: "self",
+    why: "Plaid Transfer cannot pay a card or a loan (W7, plaid.com/docs/transfer). The client pays it in their bank or card app; FinanceOS reminds them."
   }),
   Object.freeze({
     when: "A payment whose amount is not on file.",
@@ -202,10 +207,12 @@ function paymentTask({ accountId, name, accountKind, dueOn, amount, lateDays = n
     why,
     due_on: dueOn,
     kind: "due",
-    can_do: known ? "agent" : "self",
+    /* Cards and loans are paid by the client: Plaid Transfer cannot send money to
+       them (see CAN_DO_RULES). The task is a reminder with the exact amount. */
+    can_do: "self",
     late_days: lateDays,
     amount_cents: amount,
-    transfer: known ? { to_kind: accountKind, to_account_id: String(accountId), amount_cents: amount } : null,
+    transfer: null,
     source: "dues",
     from: accountKind === "loan" ? "your loan" : "your card statement"
   });
@@ -337,9 +344,9 @@ export function pinTasks(pins = [], { today } = {}) {
     const source = typeof p.source === "string" && /^[a-z][a-z0-9_-]{0,40}$/.test(p.source) ? p.source : "plan";
     let canDo = "self";
     let transfer = null;
-    if ((p.kind === "deposit" || p.kind === "pay_down") && amount !== null && dest) {
+    if (p.kind === "deposit" && amount !== null && dest) {
       canDo = "agent";
-      transfer = { to_kind: p.kind === "deposit" ? "bank_account" : "card", to_account_id: dest, amount_cents: amount };
+      transfer = { to_kind: "bank_account", to_account_id: dest, amount_cents: amount };
     } else if (p.kind === "apply") {
       canDo = "person";
     }
