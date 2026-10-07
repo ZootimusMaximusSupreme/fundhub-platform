@@ -15,7 +15,7 @@ Cap is 5 agents at once. H5 + H6 (wave 4b) are still running, so W1–W3 start n
 | W4 | Payment strategy — live payoff math, goal date → monthly amount (`GET/POST /api/money/strategy`) | queued | 463 |
 | W5 | "Ready to get funded" → CSM, Blueprint upsell / FinanceOS side-sell, "Do task" buttons | queued | 464 |
 | W6 | REAL FinanceOS money agent on the existing agent framework (`src/agents/`): Agent Editor row, tools, shadow → live, Claude Code bridge brain, role-play simulation harness | queued | 465 |
-| W7 | REAL money movement in Plaid sandbox (Transfer): propose → client approves → transfer → events, ledger, limits | queued | 466 |
+| W7 | REAL money movement in Plaid sandbox (Transfer): propose → client approves → transfer → events, ledger, limits | done on branch `worktree-agent-a34b07153f7a265f4` (not merged) | 466 |
 
 ## Shared contract — plan pins
 
@@ -68,3 +68,16 @@ Each UI part is `window.FinanceOS.sections.<name> = { title, mount(el, ctx) }`, 
 - W1 plan, W2 banks, W3 fundability, W4 strategy, W5 next steps + ready-to-fund + seam (migration 464) — merged and wired as tabs: Overview · Next steps · Plan · Banks · Strategy · Fundability · Accounts · Credit · Connections · Payments · Setup.
 - S1 consistent sample person — merged. Test Test: bank v3 item `1b353a67-…` (v2 closed), credit file `crs_results b894f4be-…` (simulated, 702/709/706, FUNDING_PLUS_REPAIR, $19,799). Numbers agree across Overview / Trends / Credit / Plan / Strategy.
 - S1 could not reconcile: SBA loan payment not in business checking (would double-count as a bill); Chase Ink has no due/minimum; Clarity sample is "owed to Fundhub LLC" which is this person's own business; survey answers vs business info; two engine funding numbers ($19,799 tier vs $132,000 stacking) are both engine output.
+
+### W7 manifest (branch `worktree-agent-a34b07153f7a265f4`, not merged)
+- Proposals stay in W5's `money_agent_tasks` (464) via `proposeTransfer`. 466 adds `money_transfers` (one per APPROVED proposal, `agent_task_id` unique FK, opened in the same transaction as the client's yes; the trigger refuses one that does not match the approved row), `money_transfer_events` (append-only, written by trigger, UPDATE/DELETE/TRUNCATE revoked and blocked), `money_transfer_sync_cursors`, and a unique index `bank_accounts (id, client_id)` for the two ownership keys. No `money_agent_log` CHECK change (uses 464's words).
+- Code: `src/finance/money-transfers.mjs` (engine) + `money-transfers-store.mjs`, `src/banking/plaid-transfer.mjs` (provider), Plaid calls in `src/banking/providers/plaid-http.mjs` (production host refused unless `PLAID_ENV=production` AND `FINANCE_OS_TRANSFERS_LIVE=1`).
+- Route `money/transfers`: GET; POST `approve` (client's own login only, not an authorized rep), `cancel` (client or staff), `propose` (staff, through `proposeTransfer`). Pulse key added.
+- Workflow `finance-os-money-transfers` (`*/15 * * * *`) → REGISTERED 97, diagrams regenerated. Does nothing while the caps are unset.
+- Section `FinanceOS.sections.transfers` (`public/app/money-transfers.{js,css,html}`); in shell.js money lists, DESK_FILES, NO_SIDEBAR, staff-nav list.
+- To wire (orchestrator): `["transfers", "Transfers"]` in TABS and `"money-transfers.html": "transfers"` in PAGE_TAB (financeos.js), mount + css link in financeos.html, financeos-screen.test lists. W5's `money-next.js` still says "You can say yes here once money moving is turned on" for a `needs_approval` row — point it at the Transfers tab when wiring.
+- After ship (sandbox role-play): set `FINANCE_OS_TRANSFER_MAX_CENTS` and `FINANCE_OS_TRANSFER_DAILY_MAX_CENTS` on Netlify, then `node scripts/finance-os-sandbox-transfer.mjs` (dry run) → `--apply` for the test client's $20.00 Personal Checking ••1101 → Business Checking ••2202 (approval recorded as `sandbox_role_play`, never `client`).
+
+### Leftovers W7 saw (not touched, not verified)
+- 464: `money_agent_tasks.to_account_id` / `from_account_id` reference `bank_accounts` with no ON DELETE action, so a bank-login revoke or an erasure that deletes those accounts is refused while a task points at them.
+- 461: `bank_relationship_deposits` is called append-only with `GRANT SELECT, INSERT`, but 104's default privileges already gave fundhub_app UPDATE/DELETE and nothing revokes them.

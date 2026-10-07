@@ -1,13 +1,13 @@
 {
-  "_about": "GET /api/money/transfers for the FinanceOS test client (Test Test, f1cb9c27-…), one file: the accounts and balances are its Plaid sandbox item (Personal Checking ••1101 $4,210.55 available, Business Checking ••2202 $18,750.00, read 2026-10-06); the $135.00 card payment is Business Amex ••4404's sandbox minimum (src/banking/plaid-sandbox-user.mjs, due on the 10th); the settled $20.00 move is the sandbox role-play run of scripts/finance-os-sandbox-transfer.mjs (Plaid sandbox moves no balances, so the balances do not change). The limits are example env settings (FINANCE_OS_TRANSFER_MAX_CENTS=250000, FINANCE_OS_TRANSFER_DAILY_MAX_CENTS=500000), not a Fundhub rule.",
+  "_about": "GET /api/money/transfers for the FinanceOS test client (Test Test, f1cb9c27-…), one file: the accounts and balances are its Plaid sandbox item — sandbox bank v3 (S1): Personal Checking ••1101 $13,385.00 available, Business Checking ••2202 $21,406.00, read 2026-10-07; the $117.00 card payment is Business Amex ••4404's v3 statement minimum (account_statement_cycles, due on the 15th); the settled $20.00 move is the sandbox role-play run of scripts/finance-os-sandbox-transfer.mjs (Plaid sandbox moves no balances, so the balances do not change). The limits are example env settings (FINANCE_OS_TRANSFER_MAX_CENTS=250000, FINANCE_OS_TRANSFER_DAILY_MAX_CENTS=500000), not a Fundhub rule.",
   "ok": true,
   "client": { "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e", "name": "Test Test" },
   "today": "2026-10-07",
   "mode": { "enabled": true, "environment": "sandbox", "live": false, "reason": null },
   "limits": { "per_transfer_cents": 250000, "daily_cents": 500000, "used_today_cents": 2000, "left_today_cents": 498000 },
   "accounts": [
-    { "id": "3d9afef8-9644-4872-8049-087965036a2c", "label": "Personal Checking ••1101", "kind": "personal", "available_balance_cents": 421055 },
-    { "id": "c73daf51-36a8-4c25-a365-3b2281ae9fc7", "label": "Business Checking ••2202", "kind": "business", "available_balance_cents": 1875000 }
+    { "id": "1d1dee31-8a8a-43f4-bf24-f6168be17c38", "label": "Personal Checking ••1101", "kind": "personal", "available_balance_cents": 1338500 },
+    { "id": "77c8d9c7-4ef9-4c81-a484-edf7ddad3c5a", "label": "Business Checking ••2202", "kind": "business", "available_balance_cents": 2140600 }
   ],
   "waiting": [
     {
@@ -15,18 +15,18 @@
       "title": "Deposit to build banking history at your business account",
       "why": "Money that sits in your business account builds history with the bank before you apply.",
       "kind": "deposit", "source": "staff", "proposed_by": "staff", "to_kind": "bank_account",
-      "to": { "id": "c73daf51-36a8-4c25-a365-3b2281ae9fc7", "label": "Business Checking ••2202" },
+      "to": { "id": "77c8d9c7-4ef9-4c81-a484-edf7ddad3c5a", "label": "Business Checking ••2202" },
       "amount_cents": 200000, "date": "2026-10-20", "due_on": "2026-10-20",
-      "suggested_from_account_id": "3d9afef8-9644-4872-8049-087965036a2c",
+      "suggested_from_account_id": "1d1dee31-8a8a-43f4-bf24-f6168be17c38",
       "can_approve": true, "blocked": null, "created_at": "2026-10-07T13:30:00.000Z"
     },
     {
       "id": "7b0f0c52-31d6-4f0e-9d6e-2a51f1e0a002",
-      "title": "Pay $135.00 to Business Amex",
+      "title": "Pay $117.00 to Business Amex",
       "why": "The minimum on your latest statement.",
       "kind": "due", "source": "dues", "proposed_by": "rules", "to_kind": "card",
-      "to": { "id": "d6ce2c94-3632-4c63-af98-802fef41ac62", "label": "Business Amex ••4404" },
-      "amount_cents": 13500, "date": "2026-10-10", "due_on": "2026-10-10",
+      "to": { "id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e", "label": "Business Amex ••4404" },
+      "amount_cents": 11700, "date": "2026-10-15", "due_on": "2026-10-15",
       "suggested_from_account_id": null, "can_approve": false, "blocked": "card_payment",
       "created_at": "2026-10-07T13:00:00.000Z"
     }

@@ -191,12 +191,17 @@ async function databaseRun() {
   const pg = (await import("pg")).default;
   const { proposeTransfer } = await import("../src/finance/money-transfer-seam.mjs");
   const db = new pg.Pool({ connectionString: env.DATABASE_URL, max: 2 });
+  /* The dry run only reads, and does it inside BEGIN READ ONLY … ROLLBACK on one
+     connection, so it cannot write even by mistake. Never a bare SET. */
+  const reader = APPLY ? null : await db.connect();
   try {
+    if (reader) await reader.query("BEGIN READ ONLY");
+    const q = reader || db;
     const clientId = opt("client") || TEST_CLIENT;
-    const c = await db.query(`SELECT id, org_id FROM clients WHERE id = $1`, [clientId]);
+    const c = await q.query(`SELECT id, org_id FROM clients WHERE id = $1`, [clientId]);
     if (!c.rows[0]) throw new Error(`no client ${clientId}`);
     const orgId = c.rows[0].org_id;
-    const store = pgStore(db);
+    const store = pgStore(q);
     const sendable = await store.sendableAccounts(orgId, clientId);
     const pick = (id, name) => (id ? sendable.find((a) => a.id === id) : sendable.find((a) => a.name === name));
     const from = pick(opt("from"), "Personal Checking");
@@ -223,6 +228,10 @@ async function databaseRun() {
     say(`\nRESULT: ${t.status === "settled" ? "SETTLED" : "NOT SETTLED"} — ${line(t)}`);
     if (t.status !== "settled") process.exitCode = 1;
   } finally {
+    if (reader) {
+      await reader.query("ROLLBACK").catch(() => {});
+      reader.release();
+    }
     await db.end();
   }
 }

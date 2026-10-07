@@ -1,7 +1,7 @@
 // /app/money-transfers.html — runs money-transfers.js's own render functions
 // in Node against one sample file (src/http/fixtures/money-transfers.sample.json:
-// the FinanceOS test client's sandbox accounts, one waiting deposit, one card
-// payment FinanceOS cannot send, and the settled $20.00 sandbox role-play).
+// the FinanceOS test client's sandbox bank v3 accounts, one waiting deposit, one
+// card payment FinanceOS cannot send, and the settled $20.00 sandbox role-play).
 // Tests that need another state change a copy and say so.
 //
 // What this pins (UI-STANDARDS + the hard rule): the client says yes with a
@@ -56,7 +56,7 @@ test("sandbox: the banner says it, every time", () => {
 
 test("tiles: what waits, what moves, and the limits — from the read", () => {
   const t = text(T.render(fixture(), { now: NOW }));
-  assert.match(t, /Waiting for your OK 2 \$2,135\.00 in all/);
+  assert.match(t, /Waiting for your OK 2 \$2,117\.00 in all/);
   assert.match(t, /Moving now 0 Nothing on its way/);
   assert.match(t, /Left to move today \$4,980\.00 of \$5,000\.00 a day · up to \$2,500\.00 a move/);
 });
@@ -78,7 +78,7 @@ test("client: the waiting deposit shows amount, where, when, who set it up, and 
   assert.match(t, /\$2,000\.00 Set up by your Fundhub advisor/);
   assert.match(t, /Deposit to build banking history at your business account/);
   assert.match(t, /To Business Checking ••2202 On Oct 20, 2026/);
-  assert.match(t, /From Personal Checking ••1101 · \$4,210\.55 available/, "the only other account is shown, not a one-item picker");
+  assert.match(t, /From Personal Checking ••1101 · \$13,385\.00 available/, "the only other account is shown, not a one-item picker");
   assert.match(card, /<button class="btn-line" type="button" data-act="review">Review this move<\/button>/);
 });
 
@@ -86,7 +86,7 @@ test("client: the yes is a second press on the exact sentence, behind 'Review th
   const html = T.render(fixture(), { now: NOW });
   const form = html.match(/<form class="wt-act" data-form="approve"[\s\S]*?<\/form>/)[0];
   assert.match(form, /data-amount="200000"/);
-  assert.match(form, /data-to="c73daf51-36a8-4c25-a365-3b2281ae9fc7"/);
+  assert.match(form, /data-to="77c8d9c7-4ef9-4c81-a484-edf7ddad3c5a"/);
   assert.match(form, /data-date="2026-10-20"/);
   assert.match(form, /<div class="confirm" hidden>/, "the confirm step starts hidden");
   assert.match(form, /<button class="btn-primary" type="submit">Yes, move \$2,000\.00<\/button>/);
@@ -138,8 +138,8 @@ test("staff: no approve control anywhere; they can take a move off the list and 
   assert.match(text(html), /Waiting for the client's OK 2/);
   assert.match(text(html), /Every money move the client answered, newest first\./);
   const form = html.match(/<form data-form="propose"[\s\S]*?<\/form>/)[0];
-  assert.match(form, /<select name="to"><option value="3d9afef8[^"]*">[^<]*<\/option><option value="c73daf51[^"]*" selected>/, "To opens on the other account");
-  assert.match(form, /<select name="from"><option value="3d9afef8[^"]*" selected>/);
+  assert.match(form, /<select name="to"><option value="1d1dee31[^"]*">[^<]*<\/option><option value="77c8d9c7[^"]*" selected>/, "To opens on the other account");
+  assert.match(form, /<select name="from"><option value="1d1dee31[^"]*" selected>/);
 });
 
 test("history: the settled role-play, step by step, in words", () => {
