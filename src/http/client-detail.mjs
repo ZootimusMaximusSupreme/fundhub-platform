@@ -316,19 +316,79 @@ function listedBusinesses(businesses = []) {
   });
 }
 
-export function businessCredit({ client = {}, businesses = [] } = {}) {
+function companyKey(v) {
+  return String(v ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/* businessScoreFromPulls — the Experian Business score a CRS pull stored for
+   ONE saved company.
+
+   WHERE THE SCORE ACTUALLY LANDS. A live pull orders one Experian Business
+   report per saved company (src/finance/crs-pull.mjs orderSavedBusinessReports)
+   and stores each raw body on crs_results.result.businessReports[] as
+   { name, state, ageMonths, bin, report }. Nothing copies the score anywhere
+   else, so a reader that only looks at businesses.entity_data never sees it.
+
+   THE SAME TWO FIELDS THE ENGINE READS. deriveBusinessSignals()
+   (vendor/underwriteiq-full/api/lite/crs/derive-business-signals.js) takes
+   `report.data || report`, then scoreInformation.commercialScore.score as the
+   Intelliscore and scoreInformation.fsrScore.score as the FSR. Read the same
+   way here so the Credit tab and UnderwriteIQ agree on one number.
+
+   The newest pull with a report for this company wins, even when that report
+   has no score — an older number must not stand in for "no score yet".
+   Sandbox pulls are a vendor's canned file, never this person's, and are
+   skipped exactly as triMerge skips them. A sample report is flagged. */
+export function businessScoreFromPulls(crsResults = [], business = null) {
+  const empty = { found: false, intelliscore: null, fsr: null, asOf: null, sample: false };
+  const wantName = companyKey(business && business.name);
+  if (!wantName) return empty;
+  const entity = safeObject(business && business.entity_data) || {};
+  const wantState = companyKey(entity.state);
+  for (const r of [...(crsResults || [])].sort(byNewest)) {
+    const result = safeObject(r.result);
+    if (!result) continue;
+    if (String(result.environment || "").toLowerCase() === "sandbox") continue;
+    const rows = Array.isArray(result.businessReports) ? result.businessReports : [];
+    const row = rows.find((b) => {
+      if (!b || companyKey(b.name) !== wantName) return false;
+      const st = companyKey(b.state);
+      return !wantState || !st || st === wantState;
+    });
+    if (!row) continue;
+    const report = safeObject(row.report) || {};
+    const data = safeObject(report.data) || report;
+    const info = (data && data.scoreInformation) || {};
+    return {
+      found: true,
+      intelliscore: firstScore100([info.commercialScore && info.commercialScore.score]),
+      fsr: firstScore100([info.fsrScore && info.fsrScore.score]),
+      asOf: r.created_at || result.pulledAt || null,
+      sample: isSampleResult(result)
+    };
+  }
+  return empty;
+}
+
+/* `crsResults` is optional. Passed, and a pull stored a report for the first
+   business, that report is the answer — score or no score
+   (businessScoreFromPulls). Omitted, the answer is what it has always been. The keys below are read only by older shapes — no writer in
+   this repository fills them. */
+export function businessCredit({ client = {}, businesses = [], crsResults = null } = {}) {
   const cf = client.custom_fields || {};
   const biz = businesses[0] || null;
   const entity = safeObject(biz && biz.entity_data) || {};
   const scores = safeObject(entity.scores) || {};
   const commercial = safeObject(entity.commercialScore) || {};
+  const pulled = Array.isArray(crsResults) ? businessScoreFromPulls(crsResults, biz) : null;
+  const fromPull = !!(pulled && pulled.found);
   return {
     name: biz && biz.name ? String(biz.name) : null,
-    intelliscore: firstScore100([
+    intelliscore: fromPull ? pulled.intelliscore : firstScore100([
       scores.intelliscore, entity.intelliscore, commercial.score,
       cf.biz_intelliscore, cf.intelliscore
     ]),
-    fsr: firstScore100([scores.fsr, entity.fsr, cf.biz_fsr, cf.fsr]),
+    fsr: fromPull ? pulled.fsr : firstScore100([scores.fsr, entity.fsr, cf.biz_fsr, cf.fsr]),
     businesses: listedBusinesses(businesses)
   };
 }
