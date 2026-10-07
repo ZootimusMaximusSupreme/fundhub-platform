@@ -20,7 +20,7 @@ flowchart TD
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 6 routes]
     CAN --> A_banking[banking — 1 route]
-    CAN --> A_blueprint[blueprint — 1 route]
+    CAN --> A_blueprint[blueprint — 2 routes]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
@@ -45,7 +45,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 153 routes]
+    WHO -->|Yes| CANT[Blocked — 155 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -59,7 +59,7 @@ flowchart TD
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 43 blocked]
-    CANT --> B_money[money — 15 blocked]
+    CANT --> B_money[money — 17 blocked]
     CANT --> B_ops[ops — 1 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -77,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**167 of 320 routes.**
+**168 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -96,6 +96,7 @@ flowchart TD
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
@@ -258,7 +259,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**153 of 320 routes.**
+**155 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -354,6 +355,7 @@ flowchart TD
 | `/api/marketing/shoot/mark` | POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
 | `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
+| `/api/money/alerts` | GET, POST | owner, admin, sales_manager |
 | `/api/money/banks` | GET, POST | owner, admin, sales_manager |
 | `/api/money/connections` | GET, POST | owner, admin, sales_manager |
 | `/api/money/credit` | GET | owner, admin, sales_manager |
@@ -368,6 +370,7 @@ flowchart TD
 | `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
 | `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
 | `/api/money/trends` | GET | owner, admin, sales_manager |
+| `/api/money/vault` | GET, POST | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |

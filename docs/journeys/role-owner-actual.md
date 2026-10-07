@@ -20,7 +20,7 @@ flowchart TD
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 13 routes]
     CAN --> A_banking[banking — 7 routes]
-    CAN --> A_blueprint[blueprint — 1 route]
+    CAN --> A_blueprint[blueprint — 2 routes]
     CAN --> A_brand[brand — 1 route]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
@@ -39,7 +39,7 @@ flowchart TD
     CAN --> A_journeys[journeys — 2 routes]
     CAN --> A_marketing[marketing — 43 routes]
     CAN --> A_merchant[merchant — 1 route]
-    CAN --> A_money[money — 15 routes]
+    CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
@@ -66,7 +66,7 @@ flowchart TD
 
 ## What they can reach
 
-**312 of 320 routes.**
+**315 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -100,6 +100,7 @@ flowchart TD
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
 | `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager |
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager |
+| `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
@@ -235,6 +236,7 @@ flowchart TD
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
+| `/api/money/alerts` | GET, POST | owner, admin, sales_manager |
 | `/api/money/banks` | GET, POST | owner, admin, sales_manager |
 | `/api/money/connections` | GET, POST | owner, admin, sales_manager |
 | `/api/money/credit` | GET | owner, admin, sales_manager |
@@ -249,6 +251,7 @@ flowchart TD
 | `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
 | `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
 | `/api/money/trends` | GET | owner, admin, sales_manager |
+| `/api/money/vault` | GET, POST | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
@@ -392,7 +395,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**8 of 320 routes.**
+**8 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
