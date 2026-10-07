@@ -257,6 +257,7 @@ import merchantEvents from "../../api/merchant/events.mjs";
 import moneyPayments from "../../api/money/payments.mjs";
 import moneyPlan from "../../api/money/plan.mjs";
 import moneyBanks from "../../api/money/banks.mjs";
+import moneyStrategy from "../../api/money/strategy.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1125,6 +1126,10 @@ export const ROUTES = {
   // stacking order, next funding round, bank relationship tracker. Same gate as
   // money/overview; every POST (plan, open, deposit) is staff (FINANCE) only.
   "money/banks": moneyBanks,
+  // Strategy (/app/money-strategy.html): payoff plan by method, goal date →
+  // money a month, this month's payments checked against cash. Same gate as
+  // money/overview; POST save_plan by the client or FINANCE staff. Moves no money.
+  "money/strategy": moneyStrategy,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
