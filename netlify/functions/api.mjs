@@ -265,6 +265,7 @@ import moneyReadyToFund from "../../api/money/ready-to-fund.mjs";
 import moneyHelper from "../../api/money/helper.mjs";
 import moneyTransfers from "../../api/money/transfers.mjs";
 import moneyAlerts from "../../api/money/alerts.mjs";
+import moneyVault from "../../api/money/vault.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1169,6 +1170,12 @@ export const ROUTES = {
      cards and what went out; POST set_alert / set_promo / set_statement_close_day.
      Same two callers and gate as money/overview. Never texts from here. */
   "money/alerts": moneyAlerts,
+  /* Application document vault (Capital Blueprint B3): the papers a lender asks
+     for, what is on file against each, what is missing, "file complete". Same two
+     callers and gate as money/overview; a client reads and uploads through
+     documents-upload, POST (accept / reject / waive / add a line) is staff (FINANCE)
+     only. Moves no money and sends nothing. */
+  "money/vault": moneyVault,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,

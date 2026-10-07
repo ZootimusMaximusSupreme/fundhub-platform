@@ -44,7 +44,12 @@ export const TASK_ROLES = EMPLOYEE_ROLES;
 
    Required: orgId, clientId, title, sourceWorkflow, assigneeRole
    Optional: eventId (the dedupe key, and what lands in body), body, dueAt,
-             assigneeStaffId, dedupeOn ("event" | "title")
+             assigneeStaffId, dedupeOn ("event" | "title"), detail
+
+   detail — a readable note for whoever opens the task (tasks.detail, migration
+   472). body is the dedupe key, so it cannot carry sentences; this can. It is
+   written only when the row is created, never part of the dedupe, and a caller
+   that passes none runs exactly the INSERT it always did.
 
    created:false with a reason is a normal outcome, not an error — a replay
    hitting an existing task is the system working. */
@@ -59,6 +64,7 @@ export async function createTask(db, {
   body = undefined,
   dueAt = null,
   meetingUrl = null,
+  detail = null,
   dedupeOn = "event"
 } = {}) {
   if (!orgId) throw new Error("createTask: orgId is required");
@@ -102,15 +108,28 @@ export async function createTask(db, {
     if (dup.rows[0]) return { created: false, id: dup.rows[0].id, reason: "duplicate_event" };
   }
 
-  const ins = await db.query(
-    `INSERT INTO tasks
-       (org_id, client_id, assignee, title, body, due_at, source_workflow,
-        assignee_role, assignee_staff_id, meeting_url)
-     VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8,$9)
-     ON CONFLICT DO NOTHING
-     RETURNING id`,
-    [orgId, clientId, title, dedupeValue, dueAt, sourceWorkflow, role, assigneeStaffId, meetingUrl]
-  );
+  /* detail is written only when the caller gave one. A caller with none runs the
+     statement below unchanged, so a database that has not applied 472 yet (a deploy
+     preview) keeps creating every other task. */
+  const ins = detail === null || detail === undefined || String(detail).trim() === ""
+    ? await db.query(
+      `INSERT INTO tasks
+         (org_id, client_id, assignee, title, body, due_at, source_workflow,
+          assignee_role, assignee_staff_id, meeting_url)
+       VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [orgId, clientId, title, dedupeValue, dueAt, sourceWorkflow, role, assigneeStaffId, meetingUrl]
+    )
+    : await db.query(
+      `INSERT INTO tasks
+         (org_id, client_id, assignee, title, body, due_at, source_workflow,
+          assignee_role, assignee_staff_id, meeting_url, detail)
+       VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [orgId, clientId, title, dedupeValue, dueAt, sourceWorkflow, role, assigneeStaffId, meetingUrl, String(detail)]
+    );
 
   // No row back means the unique index absorbed a concurrent insert. That is a
   // successful dedupe, not a failure.

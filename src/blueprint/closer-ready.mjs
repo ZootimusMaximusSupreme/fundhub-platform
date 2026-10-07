@@ -10,6 +10,7 @@ import { computeUnderwrite } from "../underwrite/engine.mjs";
 import { applyStackedBusinessFunding } from "../underwrite/business-funding.mjs";
 import { latestCreditFile } from "../waypoints/seed.mjs";
 import { isCapitalBlueprintBuyer } from "./coach-exception.mjs";
+import { vaultComplete, vaultLine } from "../finance/document-vault.mjs";
 
 export const CSM_PREP_SOURCE = "blueprint-csm-prep";
 export const CLOSER_READY_SOURCE = "blueprint-closer-ready";
@@ -45,6 +46,45 @@ async function loadAssignedCsmStaffId(db, { orgId, clientId }) {
     [clientId, orgId]
   );
   return r.rows[0]?.assigned_csm_staff_id || null;
+}
+
+/* THE DOCUMENT VAULT, AS A LINE ON THE TASK (Capital Blueprint B3).
+   "The agent collects bank statements, tax returns and ID ahead of time, so the
+   file is complete when the closer calls." So when the CSM prep call and the closer
+   alert are opened, the person reading them is told, in one sentence, whether the
+   vault is complete or what is still open. It is a note (tasks.detail, migration
+   472), not part of the dedupe key: the key stays in `body`, so nothing here
+   changes when a task is created, only what the person reads on it.
+
+   A vault that cannot be read is "could not be checked", never "complete", and it
+   never stops the alert: the closer is told either way. */
+export async function vaultNote(db, { orgId, clientId, now = new Date(), env = process.env } = {}) {
+  try {
+    const result = await vaultComplete(db, { orgId, clientId, now, env });
+    if (!result) return { line: null, vault: null };
+    return {
+      line: vaultLine(result),
+      vault: { complete: result.complete, open: result.missing.length, summary: result.summary }
+    };
+  } catch (err) {
+    return {
+      line: vaultLine({ complete: null }),
+      vault: { complete: null, error: String((err && err.message) || err).slice(0, 200) }
+    };
+  }
+}
+
+/* createTask with a note — falling back to the plain task when the note cannot be
+   stored (a database that has not applied 472 has no tasks.detail). The alert
+   matters more than its footnote. */
+async function createTaskWithNote(db, spec, line) {
+  if (!line) return createTask(db, spec);
+  try {
+    return { ...(await createTask(db, { ...spec, detail: line })), detail: line };
+  } catch (err) {
+    if (err && err.code === "42703") return createTask(db, spec);
+    throw err;
+  }
 }
 
 /** Fundable from freshest crs_results + tradelines, same path as closer cockpit. */
@@ -107,7 +147,8 @@ export async function createBlueprintCsmPrepCallTask(db, {
 } = {}) {
   if (!orgId || !clientId) return { created: false, reason: "missing_ids" };
   const assigneeStaffId = await loadAssignedCsmStaffId(db, { orgId, clientId });
-  return createTask(db, {
+  const { line } = await vaultNote(db, { orgId, clientId });
+  return createTaskWithNote(db, {
     orgId,
     clientId,
     title: CSM_PREP_TITLE,
@@ -117,14 +158,15 @@ export async function createBlueprintCsmPrepCallTask(db, {
     eventId,
     body: eventId,
     dedupeOn: "event"
-  });
+  }, line);
 }
 
 export async function createBlueprintCloserReadyTask(db, {
   orgId, clientId, eventId = CLOSER_DEDUPE
 } = {}) {
   if (!orgId || !clientId) return { created: false, reason: "missing_ids" };
-  return createTask(db, {
+  const { line } = await vaultNote(db, { orgId, clientId });
+  return createTaskWithNote(db, {
     orgId,
     clientId,
     title: CLOSER_READY_TITLE,
@@ -133,7 +175,7 @@ export async function createBlueprintCloserReadyTask(db, {
     eventId,
     body: eventId,
     dedupeOn: "event"
-  });
+  }, line);
 }
 
 /**

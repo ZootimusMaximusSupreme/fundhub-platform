@@ -28,6 +28,7 @@ import { financeOsTrendSnapshots } from './finance-os-trend-snapshots.mjs';
 import { financeOsMoneyTransfers } from './finance-os-money-transfers.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
+import { documentVaultChase } from './document-vault-chase.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
 import { affiliatePayoutRun } from './affiliate-payout-run.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
@@ -251,6 +252,13 @@ export const functions = [
   financeOsMoneyTransfers,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
+  /* DOCUMENT VAULT CHASE (Capital Blueprint B3, 2026-10-06). Daily at 16:45 UTC:
+     for every paid Blueprint buyer whose application papers are not all accepted,
+     ask for the next missing one — a text, then an email, then a text, then a CSM
+     task — one ask per client per three days, and nothing once the vault is
+     complete. Each ask is one money_agent_tasks row (source doc-vault) and one
+     queued message; the dispatcher sends. Kill switch: DOCUMENT_VAULT_CHASE=off. */
+  documentVaultChase,
 
   /* THE END OF A CHECKOUT INVITATION. Registered 2026-09-06, and it is the
      other half of the sweeper above.

@@ -167,8 +167,13 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 96 -> 97 the same day (FinanceOS wave 5, unit W7) with
    finance-os-money-transfers, the 15-minute pass that sends client-approved
    money moves through Plaid Transfer and reads their events back. A cron with
-   no event trigger, so it sits in neverFired like every sweeper here. */
-const REGISTERED = 97;
+   no event trigger, so it sits in neverFired like every sweeper here.
+
+   Moved 97 -> 98 the same day (Capital Blueprint B3) with
+   document-vault-chase, the daily ask for the next missing application paper.
+   A cron with no event trigger, so it sits in neverFired like every sweeper
+   here. */
+const REGISTERED = 98;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

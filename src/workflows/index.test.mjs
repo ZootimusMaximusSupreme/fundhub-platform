@@ -110,6 +110,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "finance-os-trend-snapshots",
   "finance-os-money-transfers",
   "blueprint-finance-os-alerts",
+  "document-vault-chase",
   "blueprint-next-funding-sequence-sweeper",
   "hiring-bench-sweeper",
   "hiring-outreach-cadence",

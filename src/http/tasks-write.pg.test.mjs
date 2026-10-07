@@ -191,6 +191,20 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       assert.equal(r.code, 200, JSON.stringify(r.body));
       assert.ok(r.body.tasks.some((t) => t.id === taskId));
     });
+
+    // The document vault (Capital Blueprint B3) puts one readable sentence on the
+    // closing prep call and the closer alert: tasks.detail, migration 472.
+    test("GET returns each task's readable note (tasks.detail), null when there is none", async () => {
+      await resetTask();
+      let r = await call("GET", { token, query: { role: "setter", limit: "200" } });
+      const before = r.body.tasks.find((t) => t.id === taskId);
+      assert.ok(Object.hasOwn(before, "detail"), "detail is part of every task row");
+      assert.equal(before.detail, null);
+      await db.query(`UPDATE tasks SET detail = $2 WHERE id = $1`, [taskId, "Document vault: file complete — 3 of 3 items accepted."]);
+      r = await call("GET", { token, query: { role: "setter", limit: "200" } });
+      assert.equal(r.body.tasks.find((t) => t.id === taskId).detail, "Document vault: file complete — 3 of 3 items accepted.");
+      await db.query(`UPDATE tasks SET detail = NULL WHERE id = $1`, [taskId]);
+    });
   });
 
   // =========================================================================

@@ -254,3 +254,16 @@ The consumer is `src/finance/money-agent-tasks.mjs`; the money agent is `agents`
   `helper:<turn>`, which matches none of §1's task ids, so W5's "What to do next" list does not
   show it. W7's approve control must also list these rows (or the chat gets its own) before a
   client can say yes to one.
+
+## 10. Document vault asks — rows with `source = 'doc-vault'`
+
+Capital Blueprint unit B3 (`docs/finance/document-vault.md`) asks a client for the next missing
+application paper through this table. One row per ask: `kind 'other'`, `source 'doc-vault'`,
+`task_key 'vault:<line>:<scope>'`, `assignee 'agent'`, `moves_money false`, `requested_by_kind 'staff'`
+(a system ask, no staff id). The vault's own worker inserts the row **already `claimed`**
+(`claimed_by 'doc-vault-rules'`, one statement), sends the message (`sendTemplated` only queues it) and
+finishes the row `done` (message queued), `cancelled` (not sent: opted out, template not approved —
+`result.reason`) or `failed`. A row born `claimed` is never `queued`, so §9's `claimAgentTask`
+(`WHERE status = 'queued'`) can never take one and needs no change. A row a crash leaves `claimed` is closed
+`failed` by the vault's next pass after an hour. They do not appear in `GET /api/money/tasks` (that list is
+built from its sources, not from this table).

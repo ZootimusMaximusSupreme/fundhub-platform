@@ -194,6 +194,9 @@ const API_KEYS = [
      unsigned ping; the POSTs (set_alert, set_promo, set_statement_close_day) are
      never pinged. */
   "money/alerts",
+  /* Capital Blueprint B3: the GET answers 401 to an unsigned ping; the POST (staff
+     accept / reject / waive / add a line) is never pinged. */
+  "money/vault",
   "ops/hire-closer",
   "org-brand",
   "partner-brand/verify-domain",
