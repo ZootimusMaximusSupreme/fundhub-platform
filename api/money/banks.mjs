@@ -2,9 +2,13 @@
 // POST /api/money/banks  { action, client_id, ... }
 //
 // FinanceOS bank strategy (wave 5, unit W2): banks near you to open an account
-// at, the card stacking order, the next funding round, and the bank
+// at, the card stacking order, the next funding sequence, and the bank
 // relationship tracker. The rules and their sources live in
 // src/finance/bank-strategy.mjs; this file gates, reads and writes.
+//
+// RESPONSE: the next funding sequence is `next_sequence`. It was `next_round`.
+// The old name is still sent, the same object, as an alias kept for ONE RELEASE
+// so the current screen keeps working. New readers use `next_sequence`.
 //
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
 //   * a signed-in CLIENT reads their own file only. client_id comes off the
@@ -20,7 +24,8 @@
 //   open_account         { relationship_id | bank + account_kind, opened_on, container_id? }
 //   record_deposit       { relationship_id, amount_cents, deposited_on, note? }
 //   set_state            { relationship_id, state: skipped | open }
-//   set_next_round_date  { ready_date }   — Next Funding Sequence, Blueprint buyers only
+//   set_next_sequence_date  { ready_date }  — the next funding sequence date, Blueprint buyers only
+//   set_next_round_date     { ready_date }  — the old name for the same action, kept for one release
 //
 // Nothing here moves money. "Record a deposit" writes down one staff saw land.
 import { db } from "../../src/db.mjs";
@@ -28,13 +33,14 @@ import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import {
-  bankStrategy, planBank, openAccount, recordDeposit, setRelationshipState, setNextRoundDate,
+  bankStrategy, planBank, openAccount, recordDeposit, setRelationshipState, setNextSequenceDate,
   BankStrategyInputError
 } from "../../src/finance/bank-strategy.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 
-const ACTIONS = new Set(["plan_bank", "open_account", "record_deposit", "set_state", "set_next_round_date"]);
+/* set_next_round_date is the old name of set_next_sequence_date, kept for one release. */
+const ACTIONS = new Set(["plan_bank", "open_account", "record_deposit", "set_state", "set_next_sequence_date", "set_next_round_date"]);
 
 /** Who is asking, and for which file. Returns { orgId, clientId, kind, staffId }
  *  or writes the refusal and returns null. */
@@ -77,7 +83,7 @@ export default async function handler(req, res, deps = {}) {
     open: deps.openAccount || openAccount,
     deposit: deps.recordDeposit || recordDeposit,
     state: deps.setRelationshipState || setRelationshipState,
-    nextDate: deps.setNextRoundDate || setNextRoundDate
+    nextDate: deps.setNextSequenceDate || deps.setNextRoundDate || setNextSequenceDate
   };
 
   const method = req.method || "GET";
@@ -123,10 +129,10 @@ export default async function handler(req, res, deps = {}) {
       if (error === "not_found") return res.status(404).json({ ok: false, error, message: NOT_FOUND_WORDS });
       if (error === "not_blueprint_buyer") {
         return res.status(403).json({ ok: false, error,
-          message: "The next-round date is part of the Capital Blueprint. This client has not bought it." });
+          message: "The next funding sequence date is part of the Capital Blueprint. This client has not bought it." });
       }
       if (error === "invalid_ready_date") {
-        return res.status(400).json({ ok: false, error, message: "The next-round date must be a date like 2026-12-01." });
+        return res.status(400).json({ ok: false, error, message: "The next funding sequence date must be a date like 2026-12-01." });
       }
       return res.status(400).json({ ok: false, error });
     }

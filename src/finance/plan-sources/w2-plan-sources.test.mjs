@@ -141,4 +141,95 @@ describe("plan source: funding-rounds", () => {
     const [p] = await rounds.pins(db, { orgId: ORG, clientId: CLIENT, now: NOW });
     assert.equal(p.amount_cents, null);
   });
+
+  test("the staff date's pin says 'next funding sequence'", async () => {
+    const db = fakeDb({ client: { custom_fields: { blueprint_next_sequence_ready_date: "2026-12-01" } } });
+    const [p] = await rounds.pins(db, { orgId: ORG, clientId: CLIENT, now: NOW });
+    assert.equal(p.title, "Next funding sequence: your file is ready");
+    assert.doesNotMatch(`${p.title} ${p.detail}`, /round/i);
+  });
+});
+
+describe("plan source: funding-rounds, the date the file math suggests", () => {
+  /* A client who funded a first round on 2026-09-20. Fresh pull on 2026-10-05, three
+     applications, three new cards, card use 10%. The newest new credit is 2026-09-20,
+     so the file math says 2027-03-21. */
+  function sequenceDb({ buyer = true, staffDate = null, failApplications = false } = {}) {
+    const seen = [];
+    return {
+      seen,
+      query: async (sql, params) => {
+        seen.push({ sql, params });
+        const s = sql.replace(/\s+/g, " ");
+        if (/FROM transactions t JOIN products p/.test(s)) return { rows: buyer ? [{ x: 1 }] : [] };
+        if (/FROM clients/.test(s)) {
+          return { rows: [{ id: CLIENT, custom_fields: {
+            crs_negative_items_count: 0, crs_late_payments_count: 0, crs_inquiries_ex: 1, crs_inquiries_eq: 1, crs_inquiries_tu: 1,
+            ...(staffDate ? { blueprint_next_sequence_ready_date: staffDate } : {}) } }] };
+        }
+        if (/FROM crs_results/.test(s)) {
+          return { rows: [{ id: "crs-1", created_at: "2026-10-05T12:00:00Z", result: {
+            environment: "production", bureausPulled: ["EX", "EQ", "TU"], scores: { ex: 731, eq: 740, tu: 725 },
+            inquiries: [{ source: "EX", date: "2026-09-14" }, { source: "EQ", date: "2026-09-15" }, { source: "TU", date: "2026-09-16" }] } }] };
+        }
+        if (/FROM tradelines/.test(s)) {
+          return { rows: [
+            { id: "t0", lender: "OLD", kind: "revolving", credit_limit_cents: 1500000, balance_cents: 150000, apr: "0.1899", opened_on: "2019-05-28", closed_at: null },
+            { id: "t1", lender: "NEW", kind: "revolving", credit_limit_cents: 1000000, balance_cents: 100000, apr: "0.1899", opened_on: "2026-09-20", closed_at: null }
+          ] };
+        }
+        if (/FROM applications a/.test(s)) {
+          if (failApplications) throw new Error("applications read failed");
+          return { rows: [] };
+        }
+        if (/FROM funding_rounds/.test(s)) {
+          return { rows: [{ id: "r1", round_number: 1, status: "funded", funded_amount: "50000.00", approved_amount: "50000.00",
+            created_at: new Date("2026-09-10T00:00:00Z"), updated_at: new Date("2026-09-20T00:00:00Z") }] };
+        }
+        return { rows: [] };
+      }
+    };
+  }
+
+  test("no staff date, a Blueprint buyer, a finished sequence: one planned pin on the suggested date, and the rounds still pin", async () => {
+    const db = sequenceDb();
+    const pins = await rounds.pins(db, { orgId: ORG, clientId: CLIENT, now: NOW });
+    assertContract(pins, "funding-rounds");
+    assert.deepEqual(pins.map((p) => [p.id, p.date, p.status]), [
+      ["funding-rounds:round:r1", "2026-09-10", "done"],
+      [`funding-rounds:next-suggested:${CLIENT}`, "2027-03-21", "planned"]
+    ]);
+    assert.match(pins[1].title, /^Next funding sequence/);
+    assert.doesNotMatch(`${pins[1].title} ${pins[1].detail}`, /round/i);
+  });
+
+  test("a staff date wins and the file math is not even read", async () => {
+    const db = sequenceDb({ staffDate: "2026-12-01" });
+    const pins = await rounds.pins(db, { orgId: ORG, clientId: CLIENT, now: NOW });
+    assert.deepEqual(pins.map((p) => p.id), ["funding-rounds:round:r1", `funding-rounds:next:${CLIENT}:2026-12-01`]);
+    assert.ok(!db.seen.some((q) => /FROM tradelines/.test(q.sql)), "no tradelines read: the suggestion was not computed");
+  });
+
+  test("not a Blueprint buyer: no suggested pin (the closer task is part of the Blueprint)", async () => {
+    const pins = await rounds.pins(sequenceDb({ buyer: false }), { orgId: ORG, clientId: CLIENT, now: NOW });
+    assert.deepEqual(pins.map((p) => p.id), ["funding-rounds:round:r1"]);
+  });
+
+  test("the suggestion's reads fail: the rounds still answer, the suggested pin is simply missing", async () => {
+    const quiet = console.error;
+    console.error = () => {};
+    try {
+      const pins = await rounds.pins(sequenceDb({ failApplications: true }), { orgId: ORG, clientId: CLIENT, now: NOW });
+      assert.deepEqual(pins.map((p) => p.id), ["funding-rounds:round:r1"]);
+    } finally {
+      console.error = quiet;
+    }
+  });
+
+  test("every read is pinned to the org", async () => {
+    const db = sequenceDb();
+    await rounds.pins(db, { orgId: ORG, clientId: CLIENT, now: NOW });
+    assert.ok(db.seen.every((q) => q.params.includes(ORG)), "every read carries the org");
+    assert.ok(db.seen.every((q) => /^\s*SELECT/i.test(q.sql)), "all reads");
+  });
 });

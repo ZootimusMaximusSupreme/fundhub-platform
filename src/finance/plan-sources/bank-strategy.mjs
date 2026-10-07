@@ -9,11 +9,11 @@
 //                 once the day passes), or the day it was opened (done)
 //   deposit       each deposit staff recorded (done)
 //   checkpoint    the day the bank's own seasoning period ends (bank book)
-// When no open day is planned but a next-round date is set, the open pin sits on
-// the last day that still leaves the bank's seasoning period before that round.
-// No date is ever made up: a bank with no plan and no rule gets no pin.
+// When no open day is planned but a staff-set next funding sequence date exists,
+// the open pin sits on the last day that still leaves the bank's seasoning period
+// before it. No date is ever made up: a bank with no plan and no rule gets no pin.
 
-import { readRelationships, bankPins, nextRoundDate } from "../bank-strategy.mjs";
+import { readRelationships, bankPins, nextSequenceDate } from "../bank-strategy.mjs";
 
 export const name = "bank-strategy";
 
@@ -30,7 +30,7 @@ export async function pins(db, { orgId, clientId, from = null, to = null, now = 
   const c = await db.query(`SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2`, [clientId, orgId]);
   if (!c.rows[0]) return [];
   const relationships = await readRelationships(db, { orgId, clientId, today: day });
-  return bankPins(relationships, { today: day, nextDate: nextRoundDate(c.rows[0].custom_fields || {}), from, to });
+  return bankPins(relationships, { today: day, nextDate: nextSequenceDate(c.rows[0].custom_fields || {}), from, to });
 }
 
 export default { name, pins };
