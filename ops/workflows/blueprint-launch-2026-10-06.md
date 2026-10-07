@@ -37,6 +37,7 @@ Value: ★★★ = moves the client toward funding / the reason they pay $5–10
 | # | Unit | Status | Migration # |
 |---|---|---|---|
 | B1 | Decline defense: client pastes the decline into the agent → likely reasons → reconsideration steps as a tracked process (agent / ops / client), cited from the bank book; ops task + script | running | 470 |
+| B1b | Decline defense in the FinanceOS Money Helper chat: paste the decline → likely reasons → reconsideration steps in order; `record_decline` for paid Blueprint buyers | **back end done** (Sonnet) — screen next; manifest below | 468 |
 | B2 | File-protection alerts that actually send: payment timing, promo end 60/30/7 (promo-end field), cash reserve < 6× minimums, new card / new inquiry the day it shows (Plaid new account + pull diff) | **back end done** (Sonnet) — screen next (Opus); manifest below | 471 |
 | B3 | Document vault: required-docs checklist (statements, returns, ID, business docs), agent chases missing, closer sees "file complete" at ready time | queued | 472 |
 | B4 | Next funding sequence planner math: when the file is ready for the next sequence, from repo-documented windows (inquiry age, new-account age, utilization back under target), staff can override; rename "next round" labels to "next funding sequence" | queued | 473 |
@@ -80,6 +81,24 @@ Monthly member fee amount · Commas titles for member fee and per-letter mailing
 **Leftover card (not fixed — outside this hole):** nothing re-reads the Plaid account list or balances after link time (`accounts-sync.mjs` calls the Plaid seam with no token, and `plaid-liabilities.mjs` refuses to create accounts). So a new Plaid card appears only when something writes its row (a re-link), and the cash cushion uses balances as last written. Real banks are sandbox-only until Plaid production is granted.
 
 **Proof:** read-only dry run over test client `f1cb9c27-…` (not in the daily audience — no Finance OS subscription, no paid Blueprint transaction): `node --env-file=.env scripts/blueprint-file-alerts-dry-run.mjs`.
+
+## B1b manifest — decline defense in the Money Helper chat, back end (2026-10-07)
+
+**Done:** a client pastes a bank's decline into the FinanceOS Money Helper chat; it reads the letter (the B1 `analyze_decline` TOOL), says the likely reasons with the bank's own words, the reconsideration steps in order with who does each, what to fix first; a paid Blueprint buyer's decline is saved through B1's own paste path (`recordDecline`, one per letter, one ops task). A client who has not bought gets the reasons and the steps they can take themselves, plus one line that the Blueprint team can run the second look. Contract and diagram: `docs/journeys/money-helper-flow.md` ("A pasted bank decline").
+
+**Files:** `src/finance/money-decline.mjs` (new, pure: detection, FACTS.decline_analysis, the checks, the no-model answer, the score card's readers) · `src/finance/money-agent-ai.mjs` (prompt, closed action `record_decline`, validation, rules answer, paste-aware STOP/lawyer reading) · `src/finance/money-helper.mjs` (buyer flag in the context read, masked store, length gate, `executeActions` → `recordDecline`) · `src/finance/money-agent-sim.mjs` + `scripts/money-agent-roleplay.mjs` (persona g, four scorer checks, `--buyer`, `--prompt`) · `db/migrations/468_money_helper_declines.sql` + `db/expected-migrations.mjs` · tests `src/finance/money-decline.test.mjs`, `money-agent-ai.test.mjs`, `money-helper.test.mjs`, `money-agent-sim.test.mjs`.
+
+**Migration 468 (not on production until ship):** re-sets FOS-01's prompt word for word from `HELPER_PROMPT` (a test pins them), and widens `money_helper_turns.input`'s check from 2000 to 20000 (`MAX_PASTE_CHARS`, same cap as the decline reader; a test pins them). Additive; deletes nothing. The code still refuses a long message that is not a decline letter at 2000.
+
+**Choices made (named, changeable):** a message is a paste only when ≥ 250 characters, has application wording, and decline-analyze reads it as a decline with a reason-shaped signal (`MIN_PASTE_CHARS`, `money-decline.mjs`) · the bank is taken from the client's words ("declined by Chase") or the letter's own signature, else the helper asks for it and saves nothing · STOP / a lawyer / "a person" are read from the client's short first paragraph ahead of a letter, never from the letter (a bank email ends in "unsubscribe" and "opt out") · a decline answer may run 2400 characters · the buyer flag is `isCapitalBlueprintBuyer`; a failed read counts as "not a buyer".
+
+**Needs from the screen unit:** `public/app/money-helper.js` caps the box at 2000 (`MAX_CHARS`, and the textarea `maxlength`) — a real letter is longer, so raise it to 20000; `ACT_WORD` has no word for `record_decline` (the label is the server's: "Saved your Chase decline. Your Fundhub funding team has the second look"; status `skipped` = "Already done", `failed` = "Not done"). The test client is not a buyer on production, so a buyer's path is proved here by simulation (`--buyer=yes`).
+
+**Journeys impacted:** client (the Money Helper chat now reads a pasted decline). `-actual.md` journeys and the `docs/journeys/CHANGELOG.md` line were NOT written here (told not to run `npm run journeys`; a changelog line from every unit would collide at the top of the file) — left for the orchestrator's journeys pass. `docs/journeys/money-helper-flow.md` (hand-authored) is updated.
+
+**Leftover card (not fixed — outside this hole):** the helper's "claims money moved" check matches "I have sent this to your client success manager" (`MOVED_RES` in `money-agent-ai.mjs`), so a correct AI answer about a CSM task is blocked and the rules brain answers. Seen on role-play persona b, turn 2.
+
+**Proof:** `node --env-file=.env scripts/money-agent-roleplay.mjs --scripted --persona=g --prompt=code` through Claude Code (`claude -p`), read only: PASS, AI answered 2, blocked 0, for the file's own status (not a buyer) and for `--buyer=yes` (simulated; the save would run once, the follow-up did not save it again). All seven personas (a–g) pass through the same bridge with the new prompt.
 
 ## B2 manifest — file-protection alerts, the screen (2026-10-07)
 
