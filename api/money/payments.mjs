@@ -6,6 +6,11 @@
 // and late status, what is coming up (cards and bills, from the overview read),
 // and what the money helper did (money_agent_log).
 //
+// A Commas payment to Fundhub marks an installment paid on its own
+// (src/finance/clarity-autopay.mjs): its log row carries via: "commas" and the
+// page says "Paid via Commas". A Commas payment that could not be tied to a
+// plan is listed for STAFF only, under unmatched_payments.
+//
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
 //   * a signed-in CLIENT reads their own file only. client_id comes off the
 //     session; one in the query or body is never read on this branch.
@@ -26,7 +31,7 @@ import { moneyOverview, UPCOMING_DAYS } from "../../src/finance/money-overview.m
 import { daysBetween } from "../../src/banking/statement-cycles.mjs";
 import {
   listClarityPayments, addClarityPayment, recordClarityPayment, settleClarityPayment,
-  logMoneyAction, readMoneyLog, ClarityInputError
+  logMoneyAction, readMoneyLog, readUnmatchedPayments, ClarityInputError
 } from "../../src/finance/clarity-payments.mjs";
 import { askForPerson } from "../../src/finance/money-agent.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
@@ -65,12 +70,16 @@ async function scope(req, res, { database, gate, body }) {
 }
 
 /** GET payload builder — exported for tests and the fixture server. */
-export async function paymentsPayload(database, { orgId, clientId, asOf, env, overview = moneyOverview, list = listClarityPayments, readLog = readMoneyLog }) {
+export async function paymentsPayload(database, {
+  orgId, clientId, asOf, env, staff = false,
+  overview = moneyOverview, list = listClarityPayments, readLog = readMoneyLog, readUnmatched = readUnmatchedPayments
+}) {
   const today = asOf.toISOString().slice(0, 10);
-  const [plans, ov, log] = await Promise.all([
+  const [plans, ov, log, unmatched] = await Promise.all([
     list(database, { orgId, clientId, today }),
     overview(database, { orgId, clientId, env, asOf }),
-    readLog(database, { orgId, clientId, limit: 25 })
+    readLog(database, { orgId, clientId, limit: 25 }),
+    staff ? readUnmatched(database, { orgId, clientId, limit: 25 }) : Promise.resolve(null)
   ]);
   if (!ov) return null;
   const open = plans.filter((p) => p.status === "open");
@@ -95,6 +104,8 @@ export async function paymentsPayload(database, { orgId, clientId, asOf, env, ov
     plans,
     upcoming,
     agent_log: log,
+    // Staff only: Commas payments the matcher would not guess at.
+    ...(staff ? { unmatched_payments: unmatched || [] } : {}),
     agent: { brain: "rules" }
   };
 }
@@ -111,6 +122,7 @@ export default async function handler(req, res, deps = {}) {
     settle: deps.settleClarityPayment || settleClarityPayment,
     log: deps.logMoneyAction || logMoneyAction,
     readLog: deps.readMoneyLog || readMoneyLog,
+    readUnmatched: deps.readUnmatchedPayments || readUnmatchedPayments,
     ask: deps.askForPerson || askForPerson,
     overview: deps.moneyOverview || moneyOverview
   };
@@ -136,8 +148,8 @@ export default async function handler(req, res, deps = {}) {
   try {
     if (method === "GET") {
       const payload = await paymentsPayload(database, {
-        orgId, clientId, asOf: now, env,
-        overview: store.overview, list: store.list, readLog: store.readLog
+        orgId, clientId, asOf: now, env, staff: who.kind === "staff",
+        overview: store.overview, list: store.list, readLog: store.readLog, readUnmatched: store.readUnmatched
       });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
       return res.status(200).json(payload);

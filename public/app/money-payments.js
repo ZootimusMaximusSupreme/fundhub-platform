@@ -27,6 +27,14 @@
     escalation_on_file: "a person on our team is handling your file",
     a_person_has_this: "a person on our team already has this"
   };
+  /* Why a Commas payment was not matched to a plan (src/finance/clarity-autopay.mjs). */
+  var UNMATCHED_WORDS = {
+    amount_does_not_match: "The amount is not the next payment or the full balance.",
+    more_than_owed: "It is more than is owed.",
+    two_plans_fit: "It fits two plans due the same day.",
+    two_plans_share_the_invoice: "Two plans carry the same invoice.",
+    no_amount: "Commas sent no amount."
+  };
 
   /* ── small helpers ─────────────────────────────────────────────────────── */
 
@@ -216,7 +224,8 @@
       case "csm_task": return "Asked a person on our team to reach out about " + what + ".";
       case "held": return "Did not text you about " + what + ", because " + (HELD_WORDS[e.reason] || "texts are paused") + ".";
       case "plan_added": return "Fundhub added a payment plan" + (isNum(e.amount_cents) ? " of " + money(e.amount_cents) : "") + ".";
-      case "payment_recorded": return "Recorded your payment" + (isNum(e.amount_cents) ? " of " + money(e.amount_cents) : "") + ". Thank you.";
+      case "payment_recorded": return (e.via === "commas" ? "Paid via Commas: recorded your payment" : "Recorded your payment") +
+        (isNum(e.amount_cents) ? " of " + money(e.amount_cents) : "") + ". Thank you.";
       case "plan_settled": return "Marked a payment plan as paid off.";
       case "asked_for_person": return "You asked for a person. Our team will reach out.";
       default: return "Updated your payments.";
@@ -234,6 +243,19 @@
       '<p class="caption">Your money helper runs on simple rules. It reminds and checks in. It never moves money.</p></section>';
   }
 
+  /* Staff only, and only when there is something: Commas payments from this
+     client that could not be tied to a plan. Nothing was applied. */
+  function renderUnmatched(d) {
+    var items = list(d && d.unmatched_payments);
+    if (!items.length) return "";
+    return '<section class="card staff" aria-labelledby="b-unm"><h2 class="eyebrow" id="b-unm">Staff only · Commas payments not matched to a plan</h2>' +
+      '<ul class="rows">' + items.map(function (u) {
+        return '<li class="row"><span class="row-main"><span class="row-name">' + esc(UNMATCHED_WORDS[u.reason] || "It did not fit a plan.") + '</span>' +
+          '<span class="caption">Nothing was applied. Use Record payment if it belongs to a plan.</span></span>' +
+          '<span class="row-amt"><span class="num">' + esc(money(u.amount_cents)) + '</span><br><span class="caption">' + esc(day(u.decided_on, true)) + '</span></span></li>';
+      }).join("") + '</ul></section>';
+  }
+
   function renderHelp() {
     return '<section class="card help" aria-labelledby="b-help"><h2 class="eyebrow" id="b-help">Need help?</h2>' +
       '<p>Can\'t make a payment, or something looks wrong? A person on our team will reach out. The money helper stops texting while they do.</p>' +
@@ -245,7 +267,7 @@
 
   function render(d, opts) {
     var staff = !!(opts && opts.staff);
-    return renderHead(d) + (isEmpty(d) ? "" : renderTiles(d)) + renderOwed(d, staff) +
+    return renderHead(d) + (isEmpty(d) ? "" : renderTiles(d)) + renderOwed(d, staff) + (staff ? renderUnmatched(d) : "") +
       '<div class="grid two">' + renderUpcoming(d) + renderLog(d) + '</div>' + renderHelp();
   }
 
