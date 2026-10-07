@@ -2,12 +2,12 @@ import AVFoundation
 import Photos
 import UIKit
 
-/// The front camera. Highest quality the phone gives for what Chris picked:
-/// 4K (VSLs, testimonials — owner law: non-ad videos are 4K) or 1080p (ads),
-/// 30 or 60 frames a second, H.264 (what Meta's ad specs name) or HEVC, a
-/// fixed frame rate (Meta asks for one), mirrored or not, steady video, and
-/// an exposure lock. Each take is saved to Photos under its take name
-/// (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
+/// The front camera. Chris picks the size. Each size runs at the highest
+/// frame rate that size really has: 4K is 3840×2160 (VSLs, thank-you videos,
+/// testimonials) and 1080p is 1920×1080 (ads). A smaller picture is never
+/// called the bigger name. H.264 or HEVC, a fixed frame rate, mirrored,
+/// steady video, and an exposure lock. Each take is saved to Photos under
+/// its take name (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
 final class CameraController: NSObject, ObservableObject {
 
     enum State: Equatable {
@@ -20,7 +20,7 @@ final class CameraController: NSObject, ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
-    /// What the camera is really set to, in plain words: "4K · 30 fps · H.264".
+    /// What the camera is really set to, in plain words: "4K 3840×2160 · 60 fps · H.264".
     @Published private(set) var summary: String = ""
     /// When the camera could not give what Chris picked. Shown in red.
     @Published private(set) var shortfall: String?
@@ -124,8 +124,8 @@ final class CameraController: NSObject, ObservableObject {
                 videoRange: sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
                 hdr: f.isVideoHDRSupported && sub != kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange && sub != kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
         }
-        guard let pick = CaptureChoice.pick(infos, width: s.quality.width, height: s.quality.height,
-                                            fps: s.fps, wantStabilization: want != .off) else {
+        guard let pick = CaptureChoice.pickHighest(infos, width: s.quality.width, height: s.quality.height,
+                                                   wantStabilization: want != .off) else {
             DispatchQueue.main.async { self.shortfall = "This camera has no 16:9 video format." }
             return
         }
@@ -158,7 +158,10 @@ final class CameraController: NSObject, ObservableObject {
         }
         session.commitConfiguration()
         let codecWord = s.codec == .h264 ? "H.264" : "HEVC"
-        let size = pick.width >= 3840 ? "4K" : pick.width >= 1920 ? "1080p" : "\(pick.width)×\(pick.height)"
+        let size: String
+        if pick.width == 3840 && pick.height == 2160 { size = "4K \(pick.width)×\(pick.height)" }
+        else if pick.width == 1920 && pick.height == 1080 { size = "1080p \(pick.width)×\(pick.height)" }
+        else { size = "\(pick.width)×\(pick.height)" }
         DispatchQueue.main.async {
             self.summary = "\(size) · \(pick.fps) fps · \(codecWord)\(s.recordMirrored ? " · mirrored" : "")"
             self.shortfall = pick.shortfall

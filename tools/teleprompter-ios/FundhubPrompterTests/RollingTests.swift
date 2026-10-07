@@ -99,6 +99,32 @@ final class CaptureChoiceTests: XCTestCase {
         .init(index: i, width: w, height: h, maxFPS: fps, stabilization: stab, videoRange: video, hdr: hdr)
     }
 
+    func testHighest4KUsesTheFastestRealRate() {
+        let formats = [f(0, 3840, 2160, 30), f(1, 3840, 2160, 60), f(2, 1920, 1080, 120)]
+        let p = CaptureChoice.pickHighest(formats, width: 3840, height: 2160, wantStabilization: true)!
+        XCTAssertEqual(p.width, 3840)
+        XCTAssertEqual(p.height, 2160)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testHighest1080UsesTheFastestRealRate() {
+        let formats = [f(0, 1920, 1080, 30), f(1, 1920, 1080, 60), f(2, 1280, 720, 240), f(3, 3840, 2160, 30)]
+        let p = CaptureChoice.pickHighest(formats, width: 1920, height: 1080, wantStabilization: false)!
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testDoesNotCallASmallerPicture4K() {
+        let p = CaptureChoice.pickHighest([f(0, 1920, 1080, 60)], width: 3840, height: 2160, wantStabilization: true)!
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertEqual(p.shortfall, "This camera tops out at 1920×1080. It is not 4K.")
+    }
+
     func testPicks4K60WhenThePhoneHasIt() {
         let formats = [f(0, 1920, 1080, 60), f(1, 3840, 2160, 30), f(2, 3840, 2160, 60, video: false), f(3, 3840, 2160, 60)]
         let p = CaptureChoice.pick(formats, width: 3840, height: 2160, fps: 60, wantStabilization: true)!

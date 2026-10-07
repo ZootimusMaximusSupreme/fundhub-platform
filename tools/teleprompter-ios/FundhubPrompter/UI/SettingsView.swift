@@ -42,10 +42,8 @@ struct SettingsView: View {
                     Picker("Quality", selection: $model.settings.quality) {
                         ForEach(PrompterSettings.VideoQuality.allCases) { Text($0.label).tag($0) }
                     }
-                    Picker("Frames a second", selection: $model.settings.fps) {
-                        Text("30 — Meta's normal").tag(30)
-                        Text("60 — smoother").tag(60)
-                    }
+                    Text("Frame rate: the highest this phone really films at that size.")
+                        .foregroundStyle(.secondary)
                     Picker("Video format", selection: $model.settings.codec) {
                         ForEach(PrompterSettings.VideoCodecChoice.allCases) { Text($0.label).tag($0) }
                     }
@@ -61,7 +59,7 @@ struct SettingsView: View {
                     if !camera.summary.isEmpty { Text("Right now: \(camera.summary)").foregroundStyle(.secondary) }
                     if let s = camera.shortfall { Text(s).foregroundStyle(Brand.bad) }
                 } header: { Text("Camera") } footer: {
-                    Text("Pick 4K for VSLs, testimonials and portal videos (owner rule: they must be 4K). 1080p is fine for ads. Lock brightness after you light the room.")
+                    Text("4K for VSLs, thank-you videos and testimonials. 1080p for ads. Each one uses the fastest real frame rate at that size. It never stretches a smaller picture and calls it 4K. Lock brightness after you light the room.")
                 }
 
                 Section {

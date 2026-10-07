@@ -18,6 +18,8 @@ struct PrompterSettings: Codable, Equatable {
     // Camera
     var recordOnThisDevice: Bool = true
     var quality: VideoQuality = .uhd4K
+    /// Kept so an older save still opens. The camera ignores this and uses the
+    /// highest real frame rate at the chosen size.
     var fps: Int = 30
     var codec: VideoCodecChoice = .h264
     /// Record the picture mirrored, like the preview (owner default).
@@ -42,8 +44,8 @@ struct PrompterSettings: Codable, Equatable {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .uhd4K: return "4K — VSLs, testimonials, portal videos"
-            case .hd1080: return "1080p — ads"
+            case .uhd4K: return "4K (3840×2160) — VSLs, thank-you, testimonials"
+            case .hd1080: return "1080p (1920×1080) — ads"
             }
         }
         var short: String { self == .uhd4K ? "4K" : "1080p" }

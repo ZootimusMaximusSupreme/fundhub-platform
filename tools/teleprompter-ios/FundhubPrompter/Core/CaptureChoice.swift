@@ -28,6 +28,16 @@ enum CaptureChoice {
         var shortfall: String?
     }
 
+    /// The chosen size (3840×2160 or 1920×1080) at the highest frame rate that
+    /// size really has. Never a smaller picture under the bigger name.
+    static func pickHighest(_ formats: [FormatInfo], width: Int, height: Int, wantStabilization: Bool) -> Pick? {
+        let same = formats.filter { $0.width == width && $0.height == height }
+        if let top = same.map(\.maxFPS).max(), top >= 1 {
+            return pick(formats, width: width, height: height, fps: max(1, Int(top.rounded())), wantStabilization: wantStabilization)
+        }
+        return pick(formats, width: width, height: height, fps: 1000, wantStabilization: wantStabilization)
+    }
+
     /// The best format for the quality and frame rate Chris picked.
     /// Order: exact size and frame rate first; then stabilization support; then
     /// video range; then no HDR (Meta wants plain SDR H.264); then the lowest

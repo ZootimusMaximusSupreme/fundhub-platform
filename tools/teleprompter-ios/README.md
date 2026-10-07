@@ -46,8 +46,8 @@ The iPad works the same way: plug it in, pick it at the top, click **Run**.
 
 | Choice | What it does | Why |
 |---|---|---|
-| Quality: **4K** or **1080p** | Picks the camera format with that exact size. Default 4K. | Owner law: VSLs, testimonials and portal videos are 4K (`.claude/rules/video-4k-unless-ad.md`). Ads may be 1080p. If the camera cannot give 4K, the screen says so in red ("This camera tops out at …"). It never upscales. |
-| **30** or **60** frames a second | Locks a fixed frame rate (`activeVideoMinFrameDuration` = `activeVideoMaxFrameDuration`). | Meta's ad specs ask for a fixed frame rate. Reels accept 24 to 60. |
+| Quality: **4K** or **1080p** | Picks the camera format with that exact size. Default 4K. | Owner law: VSLs, thank-you videos and testimonials are 4K (`.claude/rules/video-4k-unless-ad.md`). Ads may be 1080p. Chris picks the mode. If the camera cannot give 4K, the screen says so in red ("This camera tops out at …"). It never upscales. |
+| Frame rate | Locks the highest real frame rate that chosen size has (`activeVideoMinFrameDuration` = `activeVideoMaxFrameDuration`). | A fixed frame rate, at the top the camera really offers for 3840×2160 or 1920×1080. It does not stay at 30 when the phone can go faster. |
 | Video format: **H.264** (default) or **HEVC** | Sets the codec on the recording. | Meta's ads guide names "H.264 compression". Reels also accept H.265 (HEVC). H.264 is the safe default for ads. |
 | Bitrate | 4K: 50 Mbit/s at 30 fps, 75 at 60. 1080p: 20 at 30, 30 at 60. HEVC uses two thirds of that. | Meta publishes no bitrate number and re-encodes every upload. This is our pick: well above Apple's default so Meta and the editor start from a clean master. Set only when the phone lists the key as allowed. |
 | **Record mirrored** (default on) | Saves the picture flipped like the preview. | Owner need. The pipeline's `flip_horizontal` setting flips it back (spec §8.1). |
@@ -130,7 +130,7 @@ demo-only arguments for screenshots: `-FundhubDemoOpen` (open script 1),
 
 The simulator has no camera. These need the iPhone 17 Pro Max:
 
-- The front camera really gives 4K at 30 and 60 fps (the app says so in red if not).
+- The front camera really gives 4K (3840×2160) and 1080p (1920×1080), each at that size's highest frame rate (the app says so in red if the size is missing).
 - The bitrate key is accepted (the summary line under the script name shows what the camera is set to).
 - Mirrored recording, steady video and the brightness lock look right in a take.
 - The take lands in Photos with its take name, as `.mp4`, with sound (AAC; Meta wants stereo 128 kbps+).
