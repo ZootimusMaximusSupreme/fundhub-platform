@@ -354,7 +354,7 @@ async function main() {
     const scored = withEngineResult(preview.payload, { submittedName: name, email: state.client.email });
     say(`credit file preview: ${preview.payload.tradelines.length} accounts · ${preview.payload.inquiries.length} inquiries · card use ${preview.counts.utilizationPct}% · engine tier ${scored.outcomeTier} · funding estimate ${scored.fundingEstimate ?? "none"}`);
     const report = await readOnly((conn) => consistency(conn, { now }));
-    say("\n(today's numbers, before v3 — the dry run changes nothing)");
+    say(`\n(today's numbers as stored${state.v3Items[0] ? ", v3 already in place" : ", before v3"} — the dry run changes nothing)`);
     printConsistency(report);
     say("\ndry run: nothing written, no Plaid call. Add --apply to write.");
     return;
