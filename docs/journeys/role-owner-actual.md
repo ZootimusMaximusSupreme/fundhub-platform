@@ -39,7 +39,7 @@ flowchart TD
     CAN --> A_journeys[journeys — 2 routes]
     CAN --> A_marketing[marketing — 43 routes]
     CAN --> A_merchant[merchant — 1 route]
-    CAN --> A_money[money — 6 routes]
+    CAN --> A_money[money — 15 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
@@ -66,7 +66,7 @@ flowchart TD
 
 ## What they can reach
 
-**303 of 311 routes.**
+**312 of 320 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -235,11 +235,20 @@ flowchart TD
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
+| `/api/money/banks` | GET, POST | owner, admin, sales_manager |
 | `/api/money/connections` | GET, POST | owner, admin, sales_manager |
 | `/api/money/credit` | GET | owner, admin, sales_manager |
+| `/api/money/fundability` | GET | owner, admin, sales_manager |
+| `/api/money/helper` | GET, POST | owner, admin, sales_manager |
 | `/api/money/overview` | GET | owner, admin, sales_manager |
 | `/api/money/payments` | GET, POST | owner, admin, sales_manager |
+| `/api/money/plan` | GET, POST | owner, admin, sales_manager |
+| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager |
 | `/api/money/setup` | GET, POST | owner, admin, sales_manager |
+| `/api/money/strategy` | GET, POST | owner, admin, sales_manager |
+| `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
+| `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
+| `/api/money/trends` | GET | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
@@ -383,7 +392,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**8 of 311 routes.**
+**8 of 320 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

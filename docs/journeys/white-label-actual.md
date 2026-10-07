@@ -35,7 +35,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 7 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 234 routes]
+    WHO -->|Yes| CANT[Blocked — 243 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
@@ -51,7 +51,7 @@ flowchart TD
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 43 blocked]
-    CANT --> B_money[money — 6 blocked]
+    CANT --> B_money[money — 15 blocked]
     CANT --> B_ops[ops — 2 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partners[partners — 1 blocked]
@@ -69,7 +69,7 @@ flowchart TD
 
 ## What they can reach
 
-**77 of 311 routes.**
+**77 of 320 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -158,7 +158,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**234 of 311 routes.**
+**243 of 320 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -295,11 +295,20 @@ flowchart TD
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
+| `/api/money/banks` | GET, POST | owner, admin, sales_manager |
 | `/api/money/connections` | GET, POST | owner, admin, sales_manager |
 | `/api/money/credit` | GET | owner, admin, sales_manager |
+| `/api/money/fundability` | GET | owner, admin, sales_manager |
+| `/api/money/helper` | GET, POST | owner, admin, sales_manager |
 | `/api/money/overview` | GET | owner, admin, sales_manager |
 | `/api/money/payments` | GET, POST | owner, admin, sales_manager |
+| `/api/money/plan` | GET, POST | owner, admin, sales_manager |
+| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager |
 | `/api/money/setup` | GET, POST | owner, admin, sales_manager |
+| `/api/money/strategy` | GET, POST | owner, admin, sales_manager |
+| `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
+| `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
+| `/api/money/trends` | GET | owner, admin, sales_manager |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/paid-services` | GET, POST | staff, client |

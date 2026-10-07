@@ -96,12 +96,12 @@ describe("GET /api/money/tasks", () => {
   });
 
   test("plan pins: W1's registry minus the three sources the list reads itself, passed to the read", async () => {
-    assert.deepEqual(PIN_SOURCES.map((x) => x.name), ["bank-strategy", "funding-rounds", "payoff"]);
+    assert.deepEqual(PIN_SOURCES.map((x) => x.name), ["bank-strategy", "funding-rounds", "payoff", "agent"]);
     const on = await call({ method: "GET", query: {} }, clientP());
     assert.equal(on.calls.read[0].pins, PINS_PROVIDER);
     // The provider runs allPins over those sources only. An empty database answers empty, not an error.
     const out = await PINS_PROVIDER({ query: async () => ({ rows: [] }) }, { orgId: ORG, clientId: MINE, from: "2026-08-08", to: "2026-10-21", today: "2026-10-07" });
-    assert.deepEqual(out.sources.map((x) => x.name), ["bank-strategy", "funding-rounds", "payoff"]);
+    assert.deepEqual(out.sources.map((x) => x.name), ["bank-strategy", "funding-rounds", "payoff", "agent"]);
     assert.deepEqual(out.pins, []);
     const fn = async () => ({ pins: [] });
     const swapped = await call({ method: "GET", query: {} }, clientP(), { extra: { pins: fn } });
