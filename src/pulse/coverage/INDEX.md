@@ -33,6 +33,8 @@ slice-28-funding-advisor.mjs
 slice-29-inquiry-remover.mjs
 slice-30-csm-owner.mjs
 slice-31-affiliate-wl.mjs
+slice-33-fulfillment.mjs
+slice-40-more.mjs
 
 ad-video-sweeper
 af-01-affiliate-drip
