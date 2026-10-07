@@ -125,7 +125,8 @@ body.rolling #top,body.rolling #status,body.rolling #tools{opacity:0;pointer-eve
 #status{display:flex;justify-content:space-between;gap:12px;font-family:var(--data-face);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:0}
 #status .note{white-space:normal;overflow:visible;min-width:0;font-family:var(--read-face);font-size:12px;line-height:1.35}
 #tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center}
-#controls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center}
+#controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:center}
+#controls .btn.word{font-size:17px;font-weight:700}
 .btn.word{font-size:14px}
 .btn.word span{white-space:nowrap}
 .btn{height:52px;border-radius:12px;border:1px solid var(--rule);background:var(--panel-2);display:grid;place-items:center;touch-action:manipulation;cursor:pointer;padding:0;min-width:0}
@@ -169,14 +170,16 @@ body.editing #flip{transform:none !important}
 body.editing #stage{touch-action:manipulation;user-select:text;-webkit-user-select:text}
 body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{visibility:hidden}
 .edit-box{display:block;width:100%;max-width:var(--measure);margin:0 auto .9em;padding:8px 12px;border:2px solid var(--cue);border-radius:12px;background:#111;color:var(--ink);font-family:var(--read-face);line-height:1.32;resize:none;overflow:hidden;-webkit-user-select:text;user-select:text}
-#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
+body.wording #flip{transform:none !important}
+.word-box{display:inline-block;min-width:2ch;max-width:100%;margin:0;padding:0 2px;border:2px solid var(--cue);border-radius:6px;background:#111;color:#fff;font:inherit;line-height:inherit;vertical-align:baseline}
+#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 96px 8px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
 #e-status{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 #e-done{background:#000;border-color:var(--ok);color:#fff;font-weight:700}
 
 /* a tablet (iPad, either way up): bigger taps, one row of controls, and the
    sheets open as a drawer from the right so the script stays in view */
 @media (min-width:700px) and (min-height:600px){
-  #rows{grid-template-columns:4fr 5fr;gap:24px}
+  #rows{grid-template-columns:1fr;gap:8px}
   .btn{height:60px}
   #p-file,#p-save{font-size:13px}
   .sheet{left:auto;top:0;bottom:0;width:min(440px,92vw);max-height:none;border-radius:18px 0 0 18px;border-top:0;border-left:1px solid var(--rule);align-content:start;padding-top:calc(16px + env(safe-area-inset-top,0px))}
@@ -185,7 +188,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 @media (max-height:520px) and (min-width:560px){
   #top .row3,#top .banner{display:none}
   #s-title{font-size:15px}
-  #rows{grid-template-columns:4fr 5fr;gap:16px}
+  #rows{grid-template-columns:1fr;gap:8px}
   .btn{height:44px}
 }
 
@@ -205,6 +208,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 #rec{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(0,0,0,.6);border-radius:999px;font-family:var(--data-face);font-size:12px;font-weight:600}
 #rec-dot{width:10px;height:10px;border-radius:50%;background:var(--tally);flex:none}
 #b-save{position:fixed;z-index:6;top:calc(40px + env(safe-area-inset-top,0px));left:8px}
+#b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
 <link rel="stylesheet" href="teleprompter.css">
@@ -247,6 +251,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 </script>
 </head>
 <body>
+<button type="button" class="mini" id="b-script-save">Save</button>
 <div id="app">
   <!-- Kept for the script name. teleprompter.css hides this whole bar. -->
   <header id="top">
@@ -304,24 +309,16 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 
   <div id="pulse">
     <span id="p-file"></span>
-    <button type="button" id="p-save" aria-label="Save status. Tap for the history.">No changes yet</button>
+    <span id="p-save">No changes yet</span>
   </div>
 
   <div id="bar">
-    <div id="status"><span class="note">Play rolls the words. Tap the words to pause. Tap again to play. Minus and plus change the speed while it rolls. A blank gap keeps that same speed, so you can breathe.</span><span id="s-time"></span></div>
+    <div id="status"><span class="note">Play rolls the words. Tap Play again and the words pause. The camera keeps recording. When the words are paused, double-tap a word to change it. A blank gap keeps that same speed, so you can breathe.</span><span id="s-time"></span></div>
     <div id="rows">
-      <div id="tools">
-        <button type="button" class="btn" id="b-lib" aria-label="Scripts on this shoot"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
-        <button type="button" class="btn word" id="b-edit" aria-label="Edit this line"><span>Edit</span></button>
-        <button type="button" class="btn word" id="b-hist" aria-label="History of this script"><span>History</span></button>
-        <button type="button" class="btn" id="b-set" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
-      </div>
       <div id="controls">
-        <button type="button" class="btn" id="b-slow" aria-label="Slower"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-        <button type="button" class="btn" id="b-restart" aria-label="Restart this take"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
-        <button type="button" class="btn" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-ico"><path d="M8 5l11 7-11 7z"/></svg></button>
-        <button type="button" class="btn" id="b-next" aria-label="Next script"><svg viewBox="0 0 24 24"><path d="M5 5l9 7-9 7z"/><path d="M18 5v14"/></svg></button>
-        <button type="button" class="btn" id="b-fast" aria-label="Faster"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button>
+        <button type="button" class="btn word" id="b-rec" aria-label="Record"><span>Record</span></button>
+        <button type="button" class="btn word" id="b-stop" aria-label="Stop"><span>Stop</span></button>
+        <button type="button" class="btn word" id="play" aria-label="Play" aria-pressed="false"><span>Play</span></button>
       </div>
     </div>
   </div>
@@ -342,7 +339,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 
 <section class="sheet" id="set" hidden aria-label="Settings">
   <div class="row"><h2>Settings</h2><button type="button" class="x" data-close>Close</button></div>
-  <p class="note" id="how">Play rolls the words. Tap the words to pause. Tap again to play. Minus and plus change the speed while it rolls. A blank gap keeps that same speed, so you can breathe.</p>
+  <p class="note" id="how">Play rolls the words. Tap Play again and the words pause. The camera keeps recording. When the words are paused, double-tap a word to change it. A blank gap keeps that same speed, so you can breathe.</p>
   <div class="field"><label for="r-wpm">Speed <span id="v-wpm"></span></label><input type="range" id="r-wpm" min="80" max="260" step="5"></div>
   <div class="field"><label for="r-font">Text size <span id="v-font"></span></label><input type="range" id="r-font" min="24" max="120" step="2"></div>
   <div class="field"><label for="r-measure">Line width <span id="v-measure"></span></label><input type="range" id="r-measure" min="12" max="60" step="1"></div>
@@ -362,7 +359,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
   <div class="list" id="learn"></div>
   <button type="button" class="pill" id="b-forget">Clear learned buttons</button>
   <h3>Touch</h3>
-  <p class="note">Tap: pause, and tap again to roll on. Double tap: scroll mode, so you can drag or flick the words. Tap to roll from there. Hold a line to change its words; it saves by itself.</p>
+  <p class="note">Play moves the words. Tap Play again and the words pause. The camera keeps going. When the words are paused, double-tap a word to change that word. Hold a line to change the whole line.</p>
   <p class="note keys">Keyboard: Space, Enter or Page Down plays and pauses. The arrows change the speed. Page Up restarts the take. At the end of a script, Space is Got it and Page Up is Another take.</p>
 </section>
 

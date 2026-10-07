@@ -102,7 +102,7 @@ test.describe("teleprompter at 390px", () => {
 
   test("mirror flips the reading area (text, line, progress, end card) and never the controls", async ({ page }) => {
     await open(page);
-    await page.locator("#b-set").click();
+    await page.evaluate(() => window.__fhtp.openSheet("set"));
     await page.getByLabel("Mirror left to right (beam-splitter glass)").check();
     const flip = () => page.locator("#flip").evaluate((el) => getComputedStyle(el).transform);
     expect(await flip()).toBe("matrix(-1, 0, 0, 1, 0, 0)");
@@ -131,10 +131,10 @@ test.describe("teleprompter at 390px", () => {
     await page.waitForTimeout(400);
     expect((await state(page)).t).toBeGreaterThan(0);
     const mid = await state(page);
-    await page.locator("#b-fast").click();
+    await page.keyboard.press("ArrowUp");
     await expect.poll(async () => (await state(page)).wpm).toBe(mid.wpm + 5);
     expect((await state(page)).playing).toBe(true);
-    await page.locator("#b-slow").click();
+    await page.keyboard.press("ArrowDown");
     await expect.poll(async () => (await state(page)).wpm).toBe(mid.wpm);
     expect((await state(page)).playing).toBe(true);
     await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
@@ -187,7 +187,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
   test("Learn remote: a remote's button learned for Got it marks the take at the end", async ({ page }) => {
     const posts = [];
     await open(page, { posts });
-    await page.locator("#b-set").click();
+    await page.evaluate(() => window.__fhtp.openSheet("set"));
     await page.locator('[data-slot="got_it"]').click();
     await expect(page.locator('[data-slot="got_it"]')).toContainText("Press the button now");
     await page.keyboard.press("b");

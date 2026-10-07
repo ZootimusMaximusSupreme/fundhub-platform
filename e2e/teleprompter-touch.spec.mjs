@@ -10,7 +10,7 @@
 // no token). No database, no session, nothing sent anywhere.
 //
 // It proves: a tap on the words plays and a tap again pauses; a drag up
-// rolls the words up and a drag down sends them down with the thumb; minus and plus still
+// rolls the words up and a drag down sends them down with the thumb; the arrow keys still
 // change the speed while the words roll; paused, a drag moves them by hand; hold
 // a line to change it in place; the change saves itself through the edit route
 // (a new version, the pulse says so, honestly, with the repo copy waiting); an
@@ -180,10 +180,10 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       await page.touchscreen.tap(m.x, m.y);
       await expect.poll(async () => (await state(page)).playing).toBe(true);
       const wpm = (await state(page)).wpm;
-      await page.locator("#b-fast").tap();
+      await page.keyboard.press("ArrowUp");
       await expect.poll(async () => (await state(page)).wpm).toBe(wpm + 5);
       expect((await state(page)).playing).toBe(true);
-      await page.locator("#b-slow").tap();
+      await page.keyboard.press("ArrowDown");
       await expect.poll(async () => (await state(page)).wpm).toBe(wpm);
       expect((await state(page)).playing).toBe(true);
       await page.waitForTimeout(350);
@@ -333,10 +333,9 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
     test("history: who changed what and when, and whether the repo has it", async ({ page }) => {
       const { server } = await open(page);
       await editHook(page, NEW_HOOK);
-      await page.locator("#e-done").tap();
+      await page.locator("#e-hist").tap();
       await expect.poll(() => server.posts.length).toBe(1);
       await expect(page.locator("#p-save")).toHaveText(SAVED_HELD);
-      await page.locator("#b-hist").tap();
       await expect(page.locator("#hist")).toBeVisible();
       const rows = page.locator("#hist-list .ver");
       await expect(rows).toHaveCount(2);
@@ -357,12 +356,13 @@ test.describe("teleprompter on an iPad: the rig", () => {
     await open(page, { settings: null });
     expect((await state(page)).script.root_script_id).toBe(THREE.root_script_id);
     expect(await page.locator("#content").evaluate((el) => getComputedStyle(el).fontSize)).toBe("64px");
-    const tools = await page.locator("#tools").boundingBox();
     const controls = await page.locator("#controls").boundingBox();
-    expect(Math.abs(tools.y - controls.y)).toBeLessThan(2);
+    expect(controls.width).toBeGreaterThan(600);
+    const labels = await page.locator("#controls .btn").allTextContents();
+    expect(labels.map((s) => s.trim())).toEqual(["Record", "Stop", "Play"]);
     const small = await page.locator("#bar .btn").evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 56).length);
     expect(small).toBe(0);
-    await page.locator("#b-set").tap();
+    await page.evaluate(() => window.__fhtp.openSheet("set"));
     const drawer = await page.locator("#set").boundingBox();
     expect(drawer.x + drawer.width).toBeGreaterThan(1020);
     expect(drawer.width).toBeLessThanOrEqual(440);
@@ -391,7 +391,7 @@ test.describe("teleprompter on an iPad: the rig", () => {
     expect(Number(await page.locator("#pulse").evaluate((el) => getComputedStyle(el).opacity))).toBeGreaterThan(0.5);
     await page.touchscreen.tap(512, 700);
     await expect.poll(async () => (await state(page)).playing).toBe(false);
-    await page.locator("#b-next").tap();
+    await page.evaluate(() => window.__fhtp.next());
     await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
     await expect(page.locator("#p-file")).toHaveText("File name unknown");
   });

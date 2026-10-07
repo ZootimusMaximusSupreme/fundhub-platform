@@ -21,13 +21,13 @@
  * counted once. And POST /api/marketing/scripts/edit — the shipped edit route,
  * the one store — for every change to the words (teleprompter-edits.js).
  *
- * TOUCH (owner, 2026-10-07, the film page). Tap the script: it plays. Tap
- * again: it pauses. Drag up: the words roll up (next lines come from below).
- * Drag down: the words go down with the thumb. Minus and plus still change
- * the speed while it rolls. A blank gap keeps that same speed. Hold a line
- * (or press Edit) to change its words in place; it saves itself and rolls on
- * from where you were. The touch rules are the pure gestureStep below.
- * scriptDelta turns an upward drag into words rolling up.
+ * TOUCH (owner, 2026-10-07, the film page). Play moves the words. Tap Play
+ * again and only the words pause. The camera keeps recording until Stop.
+ * Drag up: the words roll up (next lines come from below).
+ * Drag down: the words go down with the thumb. A blank gap keeps that same
+ * speed. When the words are paused, double-tap a word to change that word.
+ * Hold a line to change the whole line. The touch rules are the pure
+ * gestureStep below. scriptDelta turns an upward drag into words rolling up.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -173,6 +173,9 @@
 
   /** A finger that moves less than this is a tap. */
   var TAP_SLOP = 10;
+  /** A second tap this soon, and this close, edits the word under the finger. */
+  var DBL_MS = 320;
+  var DBL_SLOP = 48;
   /** A finger held this long without moving is a long press: edit that line. */
   var LONG_MS = 550;
   /** A flick at least this fast (px per ms) keeps the words moving in scroll mode. */
@@ -197,8 +200,11 @@
    *   {do:'edit', x, y} a long press: edit the line under the finger
    *   {do:'edit-focus'} the long-press finger lifted: open the keyboard now
    *                     (iPhone opens it only inside a touch)
-   * A tap acts at once. A second tap is the next play or pause. It does not
-   * open a layer over the words.
+   *   {do:'edit-word', x, y} two quick taps while the words are not rolling:
+   *                     change the word under the finger. The first tap still
+   *                     reports resume; the page waits, and drops it if this
+   *                     follows.
+   * A tap while the words are rolling pauses at once.
    */
   function gestureStep(g, ev, mode) {
     var out = { down: g && g.down ? Object.assign({}, g.down) : null, lastTap: g ? g.lastTap : null };
@@ -228,7 +234,11 @@
       } else if (d.moved) {
         if (mode === "scroll" && Math.abs(d.v) >= FLING_MIN && ev.t - d.lastT < 120) acts.push({ do: "fling", v: d.v });
       } else {
-        acts.push({ do: mode === "rolling" ? "pause" : "resume" });
+        var prev = out.lastTap;
+        var near = prev && (ev.t - prev.t) <= DBL_MS && Math.abs(ev.x - prev.x) <= DBL_SLOP && Math.abs(ev.y - prev.y) <= DBL_SLOP;
+        out.lastTap = { x: ev.x, y: ev.y, t: ev.t, mode: mode };
+        if (near && prev.mode !== "rolling") acts.push({ do: "edit-word", x: ev.x, y: ev.y });
+        else acts.push({ do: mode === "rolling" ? "pause" : "resume" });
       }
     } else if (ev.type === "timer" && d) {
       if (!d.moved && !d.long && ev.t - d.t >= LONG_MS) {
@@ -384,7 +394,7 @@
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
-    TAP_SLOP: TAP_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
+    TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime
   };
@@ -417,7 +427,7 @@
   var countTimer = null, dimTimer = null, wake = null, holding = -1, released = {};
   var data = null, scripts = [], cur = -1, atEnd = false, learning = null, pollTimer = null, signedOut = false;
   var scrollMode = false, flingRaf = 0, gest = gestureStart(), longTimer = null, tapSnap = null;
-  var editing = null, repoHeld = false, healthAt = 0, shownParas = "";
+  var editing = null, wordEdit = null, repoHeld = false, healthAt = 0, shownParas = "";
 
   /* ── talking to the server ──────────────────────────────────────────── */
 
@@ -775,7 +785,7 @@
     total = at;
   }
   function layout() {
-    if (editing) return;
+    if (editing || wordEdit) return;
     var keep = progress(); timeline();
     var lines = [], L = null;
     for (var i = 0; i < words.length; i++) {
@@ -847,9 +857,12 @@
   /* ── play, pause, restart, hold, the end of a script ────────────────── */
 
   function setPlayIcon() {
-    var on = playing || countTimer;
-    $("play-ico").innerHTML = on ? '<path d="M7 5h3v14H7zM14 5h3v14h-3z"/>' : '<path d="M8 5l11 7-11 7z"/>';
-    $("play").setAttribute("aria-label", playing ? "Pause" : "Play");
+    var btn = $("play");
+    if (!btn) return;
+    var label = btn.querySelector("span");
+    if (label) label.textContent = "Play";
+    btn.setAttribute("aria-label", "Play");
+    btn.setAttribute("aria-pressed", (playing || countTimer) ? "true" : "false");
   }
   function go() {
     setScroll(false);
@@ -858,12 +871,11 @@
     setPlayIcon(); rolling(true); lockScreen();
   }
   function start(withCount) {
-    if (!words.length || editing) return;
+    if (!words.length || editing || wordEdit) return;
     hideEnd();
     setScroll(false);
     if (seeked) { takeWord = Math.max(0, wordAt(t)); t = times[takeWord] || 0; seeked = false; released = {}; markStart(); apply(); }
     if (t >= total) { t = times[takeWord] || 0; released = {}; apply(); }
-    ensureRecording();
     fadeSoon();
     if (withCount && S.countdown) {
       var n = 3; countEl.textContent = n; countEl.hidden = false; setPlayIcon(); rolling(true);
@@ -879,7 +891,7 @@
   }
   function hold(i) { holding = i; released[i] = true; playing = false; setPlayIcon(); $("cuehold").hidden = false; }
   function toggle() {
-    if (editing) return;
+    if (editing || wordEdit) return;
     if (atEnd) return gotIt();
     if (holding >= 0) return go();
     if (playing || countTimer) { stop(); return; }
@@ -999,16 +1011,30 @@
     flingRaf = root.requestAnimationFrame(step);
   }
 
-  function act(a, e) {
-    if (a.do === "pause") {
-      tapSnap = snap();
-      stop();
-    } else if (a.do === "resume") {
-      tapSnap = snap();
+  var tapArm = null;
+  function cancelArm() { if (tapArm) { clearTimeout(tapArm); tapArm = null; } }
+  function armResume() {
+    cancelArm();
+    tapArm = setTimeout(function () {
+      tapArm = null;
+      if (editing || wordEdit || playing || countTimer) return;
       if (scrollMode) setScroll(false);
       if (holding >= 0) { go(); return; }
       var atTake = Math.abs(t - (times[takeWord] || 0)) < 0.01;
       start(atTake || seeked || t >= total);
+    }, DBL_MS + 40);
+  }
+  function act(a, e) {
+    if (a.do === "pause") {
+      cancelArm();
+      tapSnap = snap();
+      stop();
+    } else if (a.do === "resume") {
+      tapSnap = snap();
+      armResume();
+    } else if (a.do === "edit-word") {
+      cancelArm();
+      editWordAt(a.x, a.y);
     } else if (a.do === "scroll-on") {
       stop(); unsnap(tapSnap); hideEnd(); setScroll(true);
     } else if (a.do === "scroll-off") {
@@ -1025,7 +1051,7 @@
     } else if (a.do === "edit-focus") {
       if (editing && editing.box) { editing.box.focus(); }
     }
-    if (e && (a.do === "edit" || a.do === "edit-focus")) e.preventDefault();
+    if (e && (a.do === "edit" || a.do === "edit-focus" || a.do === "edit-word")) e.preventDefault();
   }
   function feed(type, e) {
     var ev = { type: type, x: e ? e.clientX : 0, y: e ? e.clientY : 0, t: root.performance.now() };
@@ -1035,7 +1061,8 @@
   }
 
   stage.addEventListener("pointerdown", function (e) {
-    if (e.button > 0 || editing || atEnd) return;
+    if (wordEdit && e.target !== wordEdit.input) finishWordEdit(true);
+    if (e.button > 0 || editing || wordEdit || atEnd) return;
     if (e.isPrimary === false) return;
     stopFling();
     feed("down", e);
@@ -1044,7 +1071,7 @@
     longTimer = setTimeout(function () { feed("timer", null); }, LONG_MS + 10);
   });
   stage.addEventListener("pointermove", function (e) {
-    if (!gest.down || editing) return;
+    if (!gest.down || editing || wordEdit) return;
     feed("move", e);
     if (gest.down && gest.down.moved) clearTimeout(longTimer);
   });
@@ -1056,7 +1083,7 @@
   stage.addEventListener("pointercancel", function () { clearTimeout(longTimer); feed("cancel", null); });
   stage.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   stage.addEventListener("wheel", function (e) {
-    if (editing) return;
+    if (editing || wordEdit) return;
     e.preventDefault(); stop(); hideEnd();
     moveBy(e.deltaY);
   }, { passive: false });
@@ -1588,22 +1615,124 @@
     });
   }
 
+  function editWordAt(x, y) {
+    if (playing || countTimer || editing || wordEdit) return;
+    var el = doc.elementFromPoint(x, y);
+    var sp = el && el.closest ? el.closest("#content .w") : null;
+    if (!sp || sp.dataset.i == null) return;
+    beginWordEdit(Number(sp.dataset.i));
+  }
+  function beginWordEdit(i) {
+    if (wordEdit || editing) return;
+    var w = words[i];
+    if (!w || !w.el) return;
+    stop();
+    hideEnd();
+    setScroll(false);
+    var orig = w.el.textContent;
+    var input = doc.createElement("input");
+    input.type = "text";
+    input.className = "word-box";
+    input.id = "word-box";
+    input.setAttribute("aria-label", "Change this word");
+    input.setAttribute("autocapitalize", "off");
+    input.setAttribute("autocorrect", "off");
+    input.setAttribute("spellcheck", "false");
+    input.value = orig;
+    input.size = Math.max(2, orig.length);
+    w.el.textContent = "";
+    w.el.appendChild(input);
+    wordEdit = { i: i, input: input, orig: orig };
+    doc.body.classList.add("wording");
+    input.addEventListener("input", function () { input.size = Math.max(2, input.value.length || 1); });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); finishWordEdit(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finishWordEdit(false); }
+    });
+    input.addEventListener("blur", function () { finishWordEdit(true); });
+    input.focus();
+    try { input.select(); } catch (e2) { /* some phones skip select */ }
+  }
+  function finishWordEdit(keep) {
+    if (!wordEdit) return;
+    var ed = wordEdit;
+    wordEdit = null;
+    doc.body.classList.remove("wording");
+    var next = keep ? String(ed.input.value || "").replace(/\s+/g, " ").trim() : ed.orig;
+    if (ed.input.parentNode) ed.input.remove();
+    if (!keep || next === ed.orig) {
+      if (words[ed.i] && words[ed.i].el) words[ed.i].el.textContent = ed.orig;
+      return;
+    }
+    applyWord(ed.i, next, ed.orig);
+  }
+  function applyWord(i, nextTok, orig) {
+    var s = scripts[cur];
+    var w = words[i];
+    if (!s || !w) return;
+    var paras = paragraphsFor(s);
+    var pi = w.para;
+    if (!paras[pi]) return;
+    var tokens = paras[pi].text.split(/\s+/).filter(function (tok) { return tok; });
+    var start = i;
+    while (start > 0 && words[start - 1].para === pi) start--;
+    var at = i - start;
+    var n = 0, replaced = false;
+    for (var ti = 0; ti < tokens.length; ti++) {
+      if (tokens[ti] === "↑") continue;
+      if (n === at) {
+        if (nextTok) tokens[ti] = nextTok;
+        else tokens.splice(ti, 1);
+        replaced = true;
+        break;
+      }
+      n++;
+    }
+    if (!replaced) return;
+    var text = tokens.join(" ");
+    var r = E.applyEdit(s, paras, pi, text, isBullets(s));
+    if (!r) return;
+    if (!E.clean(text) && !String(r.body || "").trim()) {
+      if (words[i] && words[i].el) words[i].el.textContent = orig;
+      say("A script cannot be empty. Put some words back.");
+      return;
+    }
+    scripts[cur] = withWords(s, r.body, r.parts);
+    if (r.changed || edits.item(s.root_script_id)) {
+      edits.edit(s.root_script_id, { id: s.id, version: s.version, body: s.body, parts: s.parts }, r.body, r.parts);
+    }
+    redraw(Math.min(i, Math.max(0, words.length - 1)));
+    pulse();
+  }
+  function recordClick() {
+    if (editing || wordEdit) return;
+    ensureCamera();
+    ensureRecording();
+  }
+  function stopRecClick() {
+    endRec();
+  }
+  function saveScript() {
+    if (wordEdit) finishWordEdit(true);
+    if (editing && editing.box) typed();
+    var list = edits.list();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].conflict || list[i].failed) { openPick(list[i].root); return; }
+    }
+    edits.commit();
+    pulse();
+  }
+
   /* ── buttons ─────────────────────────────────────────────────────────── */
 
   $("play").onclick = toggle;
+  $("b-rec").onclick = recordClick;
+  $("b-stop").onclick = stopRecClick;
+  $("b-script-save").onclick = saveScript;
   $("q-4k").onclick = function () { setCamMode("4k"); };
   $("q-1080").onclick = function () { setCamMode("1080p"); };
   $("cam-corner").onclick = function (e) { e.preventDefault(); e.stopPropagation(); showFace(); };
   $("b-save").onclick = saveClick;
-  $("b-restart").onclick = restart;
-  $("b-next").onclick = nextScript;
-  $("b-slow").onclick = function () { setWpm(S.wpm - 5); };
-  $("b-fast").onclick = function () { setWpm(S.wpm + 5); };
-  $("b-lib").onclick = function () { stop(); openSheet("lib"); };
-  $("b-set").onclick = function () { stop(); openSheet("set"); };
-  $("b-edit").onclick = function () { if (scripts[cur]) beginEdit(paraAtLine(), true); };
-  $("b-hist").onclick = function () { stop(); openHistory(); };
-  $("p-save").onclick = pulseTap;
   $("e-done").onclick = endEdit;
   $("e-back").onclick = putBack;
   $("e-hist").onclick = function () { openHistory(); };
@@ -1750,6 +1879,8 @@
         word: wordAt(t), edits: edits.status()
       };
     },
-    finish: function () { stop(); t = total; apply(); finish(); }
+    finish: function () { stop(); t = total; apply(); finish(); },
+    openSheet: function (id) { openSheet(id); },
+    next: function () { nextScript(); }
   };
 })(typeof window !== "undefined" ? window : globalThis);

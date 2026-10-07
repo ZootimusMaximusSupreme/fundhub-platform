@@ -226,7 +226,7 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("two quick taps while paused edit the word", () => {
+  test("two quick taps while paused edit the word; they do not play and then pause", () => {
     const T = load();
     let mode = "paused";
     const seen = [];
@@ -340,12 +340,29 @@ describe("teleprompter page", () => {
     assert.match(HTML, /Play rolls the words/);
     assert.match(HTML, /A blank gap keeps that same speed/);
     assert.match(HTML, /id="how"/);
-    assert.match(HTML, /id="b-slow"/);
-    assert.match(HTML, /id="b-fast"/);
+    assert.match(HTML, /id="b-rec"/);
+    assert.match(HTML, /id="b-stop"/);
+    assert.match(HTML, /id="b-script-save"/);
+    assert.match(HTML, />Record</);
+    assert.match(HTML, />Stop</);
+    assert.match(HTML, />Play</);
+    assert.match(HTML, />Save</);
+    assert.doesNotMatch(HTML, /id="b-slow"/);
+    assert.doesNotMatch(HTML, /id="b-fast"/);
+    assert.doesNotMatch(HTML, /id="b-hist"/);
+    assert.doesNotMatch(HTML, /id="b-restart"/);
+    assert.doesNotMatch(HTML, /id="play-ico"/);
     assert.doesNotMatch(HTML, /body\.rolling #bar,body\.rolling #top\{opacity:0/);
     assert.match(HTML, /body\.rolling #top,body\.rolling #status,body\.rolling #tools\{opacity:0;pointer-events:none\}/);
-    assert.match(SRC, /\$\("b-fast"\)\.onclick = function \(\) \{ setWpm\(S\.wpm \+ 5\); \}/);
-    assert.match(SRC, /\$\("b-slow"\)\.onclick = function \(\) \{ setWpm\(S\.wpm - 5\); \}/);
+    assert.match(SRC, /\$\("b-rec"\)\.onclick = recordClick/);
+    assert.match(SRC, /\$\("b-stop"\)\.onclick = stopRecClick/);
+    assert.match(SRC, /\$\("b-script-save"\)\.onclick = saveScript/);
+    assert.match(SRC, /aria-label", "Play"/);
+    assert.doesNotMatch(SRC, /aria-label", playing \? "Pause"/);
+    const startFn = SRC.slice(SRC.indexOf("function start("), SRC.indexOf("function cancelCount("));
+    assert.doesNotMatch(startFn, /ensureRecording/);
+    assert.match(SRC, /function recordClick\(\) \{[\s\S]*?ensureRecording\(\)/);
+    assert.match(SRC, /function stopRecClick\(\) \{\s*endRec\(\);/);
   });
 
   test("a word save uses the script edit route and does not stop the camera", () => {
