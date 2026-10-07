@@ -2,9 +2,10 @@
 // docs/finance/client-finance-os-build-spec-2026-09-19.md §6, and the owner
 // calls in docs/finance/finance-os-direction-2026-10-06.md.
 //
-// IT RUNS ON RULES. No outside AI call is made from here (owner 2026-10-06: no
-// AI spend yet). The decision is one pluggable function, `brain`. Today that is
-// rulesBrain below. An AI brain plugs in at the same seam later — see BRAIN SEAM.
+// IT RUNS ON RULES until the API is funded (owner 2026-10-06: no AI spend yet).
+// The decision is one pluggable function, `brain`: rulesBrain below, or the AI
+// brain from src/finance/money-agent-ai.mjs when MONEY_HELPER_RUNNER=server —
+// see BRAIN SEAM. This file never calls a model itself.
 //
 // WHAT IT LOOKS AT, once a day, for each client with Finance OS:
 //   * Clarity Payments — installments a client owes Fundhub (443).
@@ -41,6 +42,7 @@ import { providerCycles } from "../workflows/finance-os-card-due-reminders.mjs";
 import { parseIsoDate, daysBetween } from "../banking/statement-cycles.mjs";
 import { shortDate, dollars, cardLabel } from "../banking/card-due-reminders.mjs";
 import { isoDay, planWords, logMoneyAction } from "./clarity-payments.mjs";
+import { makeLadderBrain, runnerMode } from "./money-agent-ai.mjs";
 
 export const SOURCE_WORKFLOW = "money-agent";
 export const STAFF_TASK_ROLE = "csm";
@@ -91,10 +93,14 @@ export function rungFor(daysLate) {
    the task. So a brain can only ever pick from LADDER; it cannot send twice,
    text an opted-out client, or skip the CSM.
 
-   AI BRAIN PLUGS IN HERE: write `aiBrain(item, facts)` with this signature,
-   give it a `brainId` (e.g. "ai-v1") so money_agent_log.brain records who
-   decided, and return it from pickBrain() when it is switched on. Keep
-   rulesBrain as the fallback when the AI call fails. */
+   THE AI BRAIN (wave 5, W6): makeLadderBrain() in src/finance/money-agent-ai.mjs.
+   It keeps this signature, takes a third argument runForClient passes —
+   { conn, orgId, clientId, todayIso } — so it can read what the client told
+   the helper in the chat, and names itself per decision (decision.brain): its
+   own id when it decided, "rules" when it fell back to rulesBrain because no
+   model answered. pickBrain() returns it only when the API is funded
+   (MONEY_HELPER_RUNNER=server); the daily clock runs on Netlify, where the Mac
+   runner cannot reach it. */
 
 /** The rules brain. Pure: no database, no clock. */
 export function rulesBrain(item = {}, facts = {}) {
@@ -112,6 +118,7 @@ export function rulesBrain(item = {}, facts = {}) {
   if (step.texts) {
     if (facts.optedOut) return { action: "held", rung: step.rung, reason: "opted_out" };
     if (facts.escalated) return { action: "held", rung: step.rung, reason: "escalation_on_file" };
+    if (facts.helperStopped) return { action: "held", rung: step.rung, reason: "helper_stopped" };
     if (facts.handedToPerson) return { action: "held", rung: step.rung, reason: "a_person_has_this" };
   }
   const why = item.daysLate > 0 ? `${item.daysLate} days late` : item.daysLate === 0 ? "due today" : `due in ${-item.daysLate} days`;
@@ -119,9 +126,11 @@ export function rulesBrain(item = {}, facts = {}) {
 }
 rulesBrain.brainId = "rules";
 
-/** Which brain runs. Rules only, until Chris switches an AI brain on. */
-export function pickBrain(/* env */) {
-  return rulesBrain;
+/** Which brain runs: the AI brain when the API is funded
+ *  (MONEY_HELPER_RUNNER=server), else rules. Either way the runner below owns
+ *  the claim, the caps, the send and the task. */
+export function pickBrain(env = process.env) {
+  return runnerMode(env) === "server" ? makeLadderBrain({ rules: rulesBrain, env }) : rulesBrain;
 }
 
 /* ───────────────────────── items ───────────────────────── */
@@ -208,16 +217,21 @@ export function cardLateItem(row = {}, todayIso) {
 }
 
 async function clientFacts(conn, { orgId, clientId }) {
+  /* helper_stopped: the client said STOP or named a lawyer in the money
+     helper's chat (money_helper_threads, migration 465). The chat helper stops
+     there, and so do these texts. */
   const r = await conn.query(
     `SELECT
        EXISTS (SELECT 1 FROM opt_outs o WHERE o.client_id = $2 AND o.channel = 'sms' AND o.opted_in_at IS NULL) AS opted_out,
        EXISTS (SELECT 1 FROM client_escalations e WHERE e.client_id = $2) AS escalated,
+       EXISTS (SELECT 1 FROM money_helper_threads h WHERE h.org_id = $1 AND h.client_id = $2
+                AND h.halted_at IS NOT NULL) AS helper_stopped,
        EXISTS (SELECT 1 FROM tasks t WHERE t.org_id = $1 AND t.client_id = $2
                 AND t.source_workflow = $3 AND t.done = false) AS handed`,
     [orgId, clientId, SOURCE_WORKFLOW]
   );
   const row = r.rows[0] || {};
-  return { optedOut: !!row.opted_out, escalated: !!row.escalated, handedToPerson: !!row.handed };
+  return { optedOut: !!row.opted_out, escalated: !!row.escalated, helperStopped: !!row.helper_stopped, handedToPerson: !!row.handed };
 }
 
 async function loggedKeys(conn, { orgId, clientId }) {
@@ -253,7 +267,7 @@ export async function runForClient(conn, {
 
   for (const item of items) {
     item.doneRungs = done.get(item.key) || new Set();
-    const d = await brain(item, facts);
+    const d = await brain(item, facts, { conn, orgId, clientId, todayIso });
     if (!d || !d.action) continue;
     const step = LADDER.find((r) => r.rung === d.rung);
     if (!step || (d.action !== "held" && d.action !== step.action)) continue; // a brain may only pick a real rung
@@ -266,13 +280,14 @@ export async function runForClient(conn, {
       orgId, clientId,
       itemKind: item.kind, itemId: item.id, itemLabel: item.label,
       decidedOn: todayIso,
-      action: d.action, actor: "agent", brain: brainId,
+      // Which brain decided THIS step: a brain that fell back names "rules".
+      action: d.action, actor: "agent", brain: d.brain || brainId,
       reason: held ? d.reason : `${step.action}: ${d.reason}`,
       textsClient: texts,
       templateKey: texts ? TEMPLATES[step.action] : null,
       amountCents: item.amountCents ?? item.leftCents ?? null,
       idempotencyKey: key,
-      detail: { due_on: item.dueOn, days_late: item.daysLate, rung: step.rung }
+      detail: { due_on: item.dueOn, days_late: item.daysLate, rung: step.rung, ...(d.note ? { brain_note: String(d.note).slice(0, 200) } : {}) }
     });
     if (!claim.created) { out.waiting += 1; continue; }
     out.actions.push({ key, action: d.action });

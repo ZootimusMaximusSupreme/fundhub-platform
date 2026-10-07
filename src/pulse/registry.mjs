@@ -184,6 +184,9 @@ const API_KEYS = [
      (do_task, the ready press) are never pinged. */
   "money/tasks",
   "money/ready-to-fund",
+  /* W6 money helper: the GET answers 401 to an unsigned ping; the POST that
+     starts a turn is never pinged. */
+  "money/helper",
   "ops/hire-closer",
   "org-brand",
   "partner-brand/verify-domain",
@@ -467,6 +470,7 @@ const DESK_FILES = [
   "money-plan.html",
   "money-banks.html",
   "money-fundability.html",
+  "money-helper.html",
   "money.html",
   "money-setup.html",
   "money-connections.html",
