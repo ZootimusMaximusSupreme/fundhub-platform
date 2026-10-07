@@ -184,6 +184,9 @@ const API_KEYS = [
      (do_task, the ready press) are never pinged. */
   "money/tasks",
   "money/ready-to-fund",
+  /* FinanceOS wave 5 W7: the GET answers 401 to an unsigned ping; approve,
+     cancel and propose are POSTs and are never pinged. */
+  "money/transfers",
   "ops/hire-closer",
   "org-brand",
   "partner-brand/verify-domain",
@@ -472,6 +475,7 @@ const DESK_FILES = [
   "money-connections.html",
   "money-strategy.html",
   "money-next.html",
+  "money-transfers.html",
   "my-numbers.html",
   "ops-admin.html",
   "partner-galaxy.html",

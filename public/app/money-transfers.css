@@ -1,0 +1,136 @@
+/* Transfers section — FinanceOS.sections.transfers (money-transfers.js).
+   Every rule is under .fh-transfers, so the section can sit inside the
+   combined FinanceOS page without touching its neighbours, and it carries its
+   own base pieces (.card, .tile, .eyebrow, .caption, .big, buttons, table,
+   skeletons) so it looks the same on its standalone page and as a tab.
+   8px spacing scale; no px font sizes — sizes come from the brand classes
+   (UI-STANDARDS §12.7). Status is said in words; the step marker's shape and
+   fill are the second signal (UI-STANDARDS §12.6). Phone: one column and no
+   sideways page scroll (UI-STANDARDS §11). */
+
+.fh-transfers{--tx-surface:var(--surface,#fff);--tx-dim:var(--text-dim,var(--gray))}
+.fh-transfers *,.fh-transfers *::before,.fh-transfers *::after{box-sizing:border-box}
+.fh-transfers ol,.fh-transfers ul{list-style:none;margin:0;padding:0}
+.fh-transfers p,.fh-transfers h1,.fh-transfers h2,.fh-transfers h3,.fh-transfers dl,.fh-transfers dd{margin:0}
+.fh-transfers input,.fh-transfers select,.fh-transfers button{font:inherit;color:inherit}
+.fh-transfers button{cursor:pointer}
+.fh-transfers [hidden]{display:none !important}
+
+.fh-transfers .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-transfers .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+
+.fh-transfers .card{background:var(--tx-surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.fh-transfers .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-dim);margin-bottom:8px}
+.fh-transfers .caption{color:var(--tx-dim)}
+.fh-transfers .big,.fh-transfers .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-transfers .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.fh-transfers .num{font-weight:500;color:var(--ink)}
+.fh-transfers .tag{display:inline-block;border:1px solid var(--ink);border-radius:999px;padding:0 8px;color:var(--ink);font-weight:600;white-space:nowrap}
+
+.fh-transfers .block{margin-bottom:48px}
+.fh-transfers .block>h2{font-weight:600;color:var(--ink);margin-bottom:16px}
+
+.fh-transfers .btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+.fh-transfers .btn-primary:hover{background:var(--ink2)}
+.fh-transfers .btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600;text-decoration:none}
+.fh-transfers .btn-line[disabled],.fh-transfers .btn-primary[disabled]{opacity:.6;cursor:default}
+.fh-transfers .btn-text{min-height:40px;padding:8px 0;border:0;background:transparent;text-decoration:underline;text-underline-offset:3px;color:var(--tx-dim)}
+.fh-transfers .act-msg:empty{display:none}
+
+/* The banner. Sandbox is a plain note that says it in words. "Off" is literal
+   amber, not a brand variable, so it stays a warning on every tenant — the same
+   escape valve money-next.css and pipeline.html use (UI-STANDARDS §12.6). */
+.fh-transfers .tx-banner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin-bottom:24px;background:var(--tx-surface)}
+.fh-transfers .tx-banner.sandbox{border-style:dashed;border-color:var(--ink)}
+.fh-transfers .tx-banner.off{background:#FFFBEB;border-color:#FCD34D;color:#92400E}
+.fh-transfers .tx-banner.off .tag{border-color:#92400E;color:#92400E}
+
+/* Tiles: three across, span 4 of 12. */
+.fh-transfers .tx-tiles{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:48px}
+.fh-transfers .tx-tiles>*{grid-column:span 4}
+.fh-transfers .tile{display:flex;flex-direction:column;gap:8px}
+
+/* Waiting for your OK — two cards across, span 6. */
+.fh-transfers .wt-list{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.fh-transfers .wt-list>.wt{grid-column:span 6;display:flex;flex-direction:column;gap:16px}
+.fh-transfers .wt-top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.fh-transfers .wt-title{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-transfers .wt-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.fh-transfers .wt-facts dd{color:var(--ink);overflow-wrap:anywhere}
+.fh-transfers .wt-act{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding-top:16px;border-top:1px solid var(--line)}
+.fh-transfers .wt-blocked{color:var(--ink)}
+.fh-transfers .wt-not{display:flex;justify-content:flex-end}
+.fh-transfers .field{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%}
+.fh-transfers .field select,.fh-transfers .field input{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--tx-surface);max-width:100%}
+.fh-transfers .tx-from{max-width:100%;overflow-wrap:anywhere}
+
+/* The confirm step: the exact sentence, then the one filled button. */
+.fh-transfers .confirm{display:flex;flex-direction:column;gap:8px;width:100%;border:1px solid var(--ink);border-radius:8px;padding:16px}
+.fh-transfers .confirm-q{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-transfers .confirm-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px}
+
+/* History table. One line per move on a wide screen; numbers right-aligned. */
+.fh-transfers .scroll-x{overflow-x:auto}
+.fh-transfers table{width:100%;border-collapse:collapse}
+.fh-transfers caption{text-align:left;padding-bottom:8px}
+.fh-transfers th{text-align:left;font-weight:500;color:var(--tx-dim);padding:8px 16px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.fh-transfers td{padding:16px 16px 16px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.fh-transfers tr:last-child td{border-bottom:0}
+.fh-transfers .r{text-align:right}
+.fh-transfers .tx-move{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-transfers .tx-status{display:block;font-weight:600;color:var(--ink)}
+.fh-transfers .tx-row-act{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:8px}
+
+/* The three steps of a move. The word (done / now / next / stopped) is the
+   signal; the marker's fill and border are the second one. */
+.fh-transfers .tx-steps{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.fh-transfers .tx-steps li{display:flex;align-items:baseline;gap:8px}
+.fh-transfers .tx-steps li::before{content:"";flex:0 0 auto;width:12px;height:12px;border-radius:999px;border:2px solid var(--ink);transform:translateY(2px)}
+.fh-transfers .tx-steps .st-done::before{background:var(--ink)}
+.fh-transfers .tx-steps .st-next::before{border-style:dashed;border-color:var(--tx-dim)}
+.fh-transfers .tx-steps .st-stopped::before{border-color:var(--tx-dim);background:repeating-linear-gradient(45deg,var(--tx-dim) 0 2px,transparent 2px 4px)}
+.fh-transfers .st-word{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--tx-dim);min-width:64px}
+.fh-transfers .st-done .st-word,.fh-transfers .st-now .st-word{color:var(--ink)}
+.fh-transfers .tx-events summary{cursor:pointer;min-height:40px;display:inline-flex;align-items:center;text-decoration:underline;text-underline-offset:3px;color:var(--tx-dim)}
+.fh-transfers .tx-events ol{display:flex;flex-direction:column;gap:8px;padding:8px 0 0 16px;border-left:2px solid var(--line)}
+
+/* Staff: set up a move. */
+.fh-transfers .staff{display:flex;flex-direction:column;gap:16px;margin-bottom:48px}
+.fh-transfers .tx-prop-form{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:end}
+.fh-transfers .tx-prop-form>.field{grid-column:span 3}
+.fh-transfers .tx-prop-form>.field.wide{grid-column:span 9}
+.fh-transfers .tx-prop-form>button{grid-column:span 3}
+
+/* Empty and error. */
+.fh-transfers .empty,.fh-transfers .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.fh-transfers .empty-t{font-weight:600;color:var(--ink)}
+
+/* Loading skeletons in the real layout. */
+.fh-transfers .skel{display:flex;flex-direction:column;gap:8px}
+.fh-transfers .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fh-tx-sk 1.2s ease-in-out infinite}
+.fh-transfers .sk-s{height:12px;width:40%}
+.fh-transfers .sk-m{height:16px;width:70%}
+.fh-transfers .sk-l{height:32px;width:60%}
+@keyframes fh-tx-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.fh-transfers .sk{animation:none}}
+
+@media (max-width:1000px){
+  .fh-transfers .wt-list>.wt{grid-column:span 12}
+  .fh-transfers .tx-prop-form>.field,.fh-transfers .tx-prop-form>.field.wide,.fh-transfers .tx-prop-form>button{grid-column:span 6}
+}
+
+/* Phone: one column; the history table becomes one card per move. */
+@media (max-width:760px){
+  .fh-transfers .card{padding:16px}
+  .fh-transfers .tx-tiles>*{grid-column:span 12}
+  .fh-transfers .tx-prop-form>.field,.fh-transfers .tx-prop-form>.field.wide,.fh-transfers .tx-prop-form>button{grid-column:span 12}
+  .fh-transfers .confirm-row .btn-primary{width:100%}
+  .fh-transfers .scroll-x{overflow-x:visible}
+  .fh-transfers thead{display:none}
+  .fh-transfers table,.fh-transfers tbody,.fh-transfers tr,.fh-transfers td{display:block;width:100%}
+  .fh-transfers tr{padding:16px 0;border-bottom:1px solid var(--line)}
+  .fh-transfers tr:last-child{border-bottom:0}
+  .fh-transfers td{border-bottom:0;padding:4px 0}
+  .fh-transfers td.r{text-align:left}
+  .fh-transfers td::before{content:attr(data-label);display:block;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--tx-dim)}
+}

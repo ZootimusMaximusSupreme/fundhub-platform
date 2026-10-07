@@ -162,8 +162,13 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 95 -> 96 the same day (FinanceOS wave 4, unit H6) with
    finance-os-trend-snapshots, the daily balance history behind the Trends
    line charts. A cron with no event trigger, so it sits in neverFired like
-   every sweeper here. */
-const REGISTERED = 96;
+   every sweeper here.
+
+   Moved 96 -> 97 the same day (FinanceOS wave 5, unit W7) with
+   finance-os-money-transfers, the 15-minute pass that sends client-approved
+   money moves through Plaid Transfer and reads their events back. A cron with
+   no event trigger, so it sits in neverFired like every sweeper here. */
+const REGISTERED = 97;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

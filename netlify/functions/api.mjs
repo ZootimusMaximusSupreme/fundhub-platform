@@ -261,6 +261,7 @@ import moneyStrategy from "../../api/money/strategy.mjs";
 import moneyFundability from "../../api/money/fundability.mjs";
 import moneyTasks from "../../api/money/tasks.mjs";
 import moneyReadyToFund from "../../api/money/ready-to-fund.mjs";
+import moneyTransfers from "../../api/money/transfers.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1144,6 +1145,12 @@ export const ROUTES = {
      Capital Blueprint's own CSM closing prep call. Same gate as money/overview. */
   "money/tasks": moneyTasks,
   "money/ready-to-fund": moneyReadyToFund,
+  /* FinanceOS money moves (/app/money-transfers.html, wave 5 W7): proposals
+     waiting for the client's yes, moves sent by Plaid Transfer (sandbox unless
+     PLAID_ENV=production AND FINANCE_OS_TRANSFERS_LIVE=1), and their history.
+     Same gate as money/overview. POST approve is the client's own login only;
+     staff may propose and cancel. Off when the transfer caps are not set. */
+  "money/transfers": moneyTransfers,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,

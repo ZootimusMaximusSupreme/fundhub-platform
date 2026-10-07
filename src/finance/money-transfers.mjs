@@ -946,7 +946,7 @@ export async function moneyTransfersView(db, { orgId, clientId, env = process.en
         cancelled_by: t.cancelled_by_kind ?? null,
         can_cancel: t.status === "approved" || (t.status === "authorized" && !t.debit_transfer_id)
           || (t.status === "submitted" && t.debit_status === "pending" && !t.credit_transfer_id && !t.credit_authorization_id),
-        events: (eventsBy.get(t.id) || []).slice(-12)
+        events: (eventsBy.get(t.id) || []).slice(-24)
       } : null
     });
   }

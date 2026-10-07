@@ -25,6 +25,7 @@ import { financeOsMoneyAgent } from './finance-os-money-agent.mjs';
 import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
 import { merchantPullSweeper } from './merchant-pull-sweeper.mjs';
 import { financeOsTrendSnapshots } from './finance-os-trend-snapshots.mjs';
+import { financeOsMoneyTransfers } from './finance-os-money-transfers.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
@@ -242,6 +243,12 @@ export const functions = [
      estimated past days for checking/savings rebuilt from bank_transactions.
      Reads and records only. Feeds GET /api/money/trends. */
   financeOsTrendSnapshots,
+  /* MONEY MOVES (FinanceOS wave 5, W7, 2026-10-06). Every 15 minutes: expire
+     stale proposals, send each move the CLIENT approved once its date comes
+     (Plaid Transfer — sandbox unless PLAID_ENV=production AND
+     FINANCE_OS_TRANSFERS_LIVE=1), read Plaid's transfer events, start credit
+     legs. Returns at once, with no query, while the transfer caps are unset. */
+  financeOsMoneyTransfers,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
 
