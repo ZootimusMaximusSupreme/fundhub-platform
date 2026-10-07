@@ -2,13 +2,20 @@
 // Audit only on the read side; the text is the alert. Never auto-fixes product code.
 
 import { checkHealth, checkLogin, checkApplyDoor, defaultOrgId } from "./daily-pulse.mjs";
+import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
 import { readPipelineMotionCounts } from "./pipeline-motion.mjs";
 import { normalizeUsNumber } from "./notify.mjs";
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
 
 export const INSTANT_AGENT_CODE = "pulse-instant";
 export const INSTANT_COOLDOWN_MS = 60 * 60 * 1000;
-export const CRITICAL_CHECK_IDS = Object.freeze(["health", "login", "apply", "pipeline:outbound"]);
+export const CRITICAL_CHECK_IDS = Object.freeze([
+  "health",
+  "login",
+  "apply",
+  "funnel:roadmap-sales",
+  "pipeline:outbound"
+]);
 
 export function formatInstantSms(failures = []) {
   const lines = failures.map((f) => `${f.id}: ${String(f.detail || "").slice(0, 120)}`);
@@ -60,7 +67,11 @@ export async function runInstantWatch({
   const checks = [
     await checkHealth({ fetchImpl, baseUrl: origin }),
     await checkLogin({ fetchImpl, baseUrl: origin }),
-    await checkApplyDoor({ fetchImpl, baseUrl: origin })
+    await checkApplyDoor({ fetchImpl, baseUrl: origin }),
+    await checkFunnelRoadmapSales({
+      fetchImpl,
+      baseUrl: String(env.FUNNEL_URL || DEFAULT_FUNNEL_BASE_URL)
+    })
   ];
   const orgId = db ? await defaultOrgId(db) : null;
   if (db && orgId) {

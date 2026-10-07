@@ -23,6 +23,7 @@
     "guard:rls": "node --test src/security/rls-shape.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test -c playwright.live.config.mjs",
+    "pulse:live-playwright": "node scripts/live-playwright-sweep.mjs",
     "verify:e2e": "node scripts/run-e2e-verification.mjs",
     "sim:report": "node scripts/purge-sim-data.mjs report",
     "sim:hide": "node scripts/purge-sim-data.mjs flag",

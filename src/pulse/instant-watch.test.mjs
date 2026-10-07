@@ -19,7 +19,7 @@ test("runInstantWatch texts on health FAIL when dest is set", async () => {
       return { ok: true, status: "sent" };
     }
   });
-  assert.equal(result.failures.length, 3);
+  assert.equal(result.failures.length, 4);
   assert.equal(result.sms.sent, true);
   assert.ok(sent[0].includes("health:"));
 });

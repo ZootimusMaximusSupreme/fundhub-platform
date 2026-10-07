@@ -18,6 +18,8 @@ import { checkMachine } from "./machine.mjs";
 import { checkJobHeartbeats } from "./heartbeats.mjs";
 import { runCoverageSlices } from "./coverage/run-slices.mjs";
 import { checkPipelineMotion } from "./pipeline-motion.mjs";
+import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
+import { checkLivePlaywright } from "./live-playwright-check.mjs";
 import { buildScorecard, loadPreviousScorecard, phoenixDate, saveScorecard } from "./scorecard.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 
@@ -365,6 +367,12 @@ export async function runDailyPulse({
   checks.push(await checkHealth({ fetchImpl, baseUrl: origin }));
   checks.push(await checkLogin({ fetchImpl, baseUrl: origin }));
   checks.push(await checkApplyDoor({ fetchImpl, baseUrl: origin }));
+  checks.push(
+    await checkFunnelRoadmapSales({
+      fetchImpl,
+      baseUrl: String(env.FUNNEL_URL || DEFAULT_FUNNEL_BASE_URL)
+    })
+  );
   checks.push(await checkSuggestionsDoor({ fetchImpl, baseUrl: origin }));
   checks.push(checkGateRelay({ dirs: gateRelayDirs, nowMs: now.getTime() }));
   const resolvedOrg = orgId || await defaultOrgId(db);
@@ -372,6 +380,7 @@ export async function runDailyPulse({
   checks.push(await checkUnrecorded({ db, orgId: resolvedOrg, now }));
   if (resolvedOrg && db) {
     checks.push(...await checkPipelineMotion({ db, orgId: resolvedOrg, now }));
+    checks.push(await checkLivePlaywright({ db, now }));
   }
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
   checks.push(...await checkMachine({ db, scope: staffScope, now }));
