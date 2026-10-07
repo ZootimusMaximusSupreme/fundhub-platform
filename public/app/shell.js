@@ -216,6 +216,15 @@
      the row because they lost the data (owner decision 2026-08-17). */
   var ADVISOR_ONLY = ["lenders.html"];
 
+  /* The client's money pages (FinanceOS, 2026-10-06), for the staff who may
+     read a client's money: owner, admin, sales_manager — ROLE_SETS.FINANCE,
+     the gate on api/money/overview.mjs and api/money/setup.mjs. NOT in ALL on
+     purpose: no sidebar row opens them and they load no shell.js. This list
+     only stops gateLinks() hiding the portal's FinanceOS card from those three
+     when they open a client's portal. Navigation, not a gate. */
+  var STAFF_MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-credit.html",
+    "money-connections.html", "money-payments.html", "money-setup.html"];
+
   /* Consent desk — the credit-pull permission screen. api/consent/capture.mjs
      gates on CONSENT_ROLES = owner, admin, closer, funding_advisor, and that
      set has to stay identical to SOFT_PULL_ROLES in api/finance/soft-pull.mjs
@@ -499,13 +508,13 @@
   function allowedFor(role) {
     if (!role) return [];
     var m = ROLE_TABS[role];
-    if (m === "*") return ALL.slice();
+    if (m === "*") return ALL.concat(STAFF_MONEY);
     if (m === "admin") {
-      return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; });
+      return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; }).concat(STAFF_MONEY);
     }
     if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY);
     if (m === "funding_advisor") return staffTabs().concat(ADVISOR_ONLY).concat(CONSENT_DESK_ONLY);
-    if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY);
+    if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY);
     if (m === "csm") return staffTabs().concat(CONSENT_DESK_ONLY);
     if (m === "staff" || !m) return staffTabs();
     return m.slice();
