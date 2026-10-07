@@ -14,7 +14,8 @@ import test, { describe } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchBalances
+  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchBalances,
+  createLinkToken, sandboxResetLogin
 } from "./plaid-http.mjs";
 
 const CREDS = Object.freeze({
@@ -284,5 +285,127 @@ describe("fetchBalances", () => {
     for (const s of ["secret-value", "client-id-value", "access-sandbox-secret"]) {
       assert.ok(!dumped.includes(s), `${s} came back`);
     }
+  });
+});
+
+/* LINK TOKEN, UPDATE MODE (FinanceOS F2). https://plaid.com/docs/link/update-mode/ — the
+   token is made WITH the Item's access_token and WITHOUT products. These pin the shape of
+   the request that goes on the wire, and that the access token never comes back. */
+describe("createLinkToken — update mode", () => {
+  const LINK_OK = { link_token: "link-sandbox-update-1", expiration: "2026-10-07T00:00:00Z", request_id: "r" };
+
+  test("new link: products go, no access_token — unchanged from before update mode existed", async () => {
+    const capture = {};
+    const r = await createLinkToken({ clientUserId: "client-1" }, { ...CREDS, fetchImpl: stubFetch(200, LINK_OK, { capture }) });
+    const sent = JSON.parse(capture.init.body);
+    assert.strictEqual(capture.url, "https://sandbox.plaid.com/link/token/create");
+    assert.deepEqual(sent.products, ["transactions"]);
+    assert.strictEqual("access_token" in sent, false);
+    assert.strictEqual("update" in sent, false);
+    assert.strictEqual(r.linkToken, "link-sandbox-update-1");
+  });
+
+  test("update mode: access_token goes in the body and the products key is not there at all", async () => {
+    const capture = {};
+    const r = await createLinkToken({ clientUserId: "client-1", accessToken: "access-sandbox-the-secret" }, {
+      ...CREDS, fetchImpl: stubFetch(200, LINK_OK, { capture })
+    });
+    const sent = JSON.parse(capture.init.body);
+    assert.strictEqual(sent.access_token, "access-sandbox-the-secret");
+    assert.strictEqual("products" in sent, false, "Plaid: no products in an update-mode link token — absent, not empty");
+    assert.strictEqual(sent.user.client_user_id, "client-1", "every link token carries a client_user_id");
+    assert.strictEqual(sent.client_name, "Fundhub");
+    assert.deepEqual(sent.country_codes, ["US"]);
+    assert.strictEqual("update" in sent, false, "account selection is OFF unless asked for");
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.linkToken, "link-sandbox-update-1");
+    assert.strictEqual(r.expiration, "2026-10-07T00:00:00Z");
+  });
+
+  test("account selection is sent only when the caller says true, and only in update mode", async () => {
+    const asked = {};
+    await createLinkToken({ clientUserId: "c", accessToken: "tok", accountSelection: true }, {
+      ...CREDS, fetchImpl: stubFetch(200, LINK_OK, { capture: asked })
+    });
+    assert.deepEqual(JSON.parse(asked.init.body).update, { account_selection_enabled: true });
+
+    for (const value of [false, undefined, "true", 1, null]) {
+      const cap = {};
+      await createLinkToken({ clientUserId: "c", accessToken: "tok", accountSelection: value }, {
+        ...CREDS, fetchImpl: stubFetch(200, LINK_OK, { capture: cap })
+      });
+      assert.strictEqual("update" in JSON.parse(cap.init.body), false, `accountSelection ${String(value)} must not turn it on`);
+    }
+
+    const fresh = {};
+    await createLinkToken({ clientUserId: "c", accountSelection: true }, { ...CREDS, fetchImpl: stubFetch(200, LINK_OK, { capture: fresh }) });
+    assert.strictEqual("update" in JSON.parse(fresh.init.body), false, "no access token, so this is not update mode");
+  });
+
+  test("an empty access token is not update mode — it must not make a products-less NEW link", async () => {
+    for (const accessToken of ["", null, undefined, 0]) {
+      const cap = {};
+      await createLinkToken({ clientUserId: "c", accessToken }, { ...CREDS, fetchImpl: stubFetch(200, LINK_OK, { capture: cap }) });
+      const sent = JSON.parse(cap.init.body);
+      assert.deepEqual(sent.products, ["transactions"]);
+      assert.strictEqual("access_token" in sent, false);
+    }
+  });
+
+  test("the access token never comes back — not on success, not on a Plaid error", async () => {
+    const ok = await createLinkToken({ clientUserId: "c", accessToken: "access-sandbox-the-secret" }, {
+      ...CREDS, fetchImpl: stubFetch(200, LINK_OK)
+    });
+    const bad = await createLinkToken({ clientUserId: "c", accessToken: "access-sandbox-the-secret" }, {
+      ...CREDS,
+      fetchImpl: stubFetch(400, { error_type: "ITEM_ERROR", error_code: "ITEM_NOT_FOUND", error_message: "the item was removed" })
+    });
+    for (const r of [ok, bad]) {
+      const dumped = JSON.stringify(r);
+      for (const s of ["access-sandbox-the-secret", "secret-value", "client-id-value"]) {
+        assert.ok(!dumped.includes(s), `${s} came back`);
+      }
+    }
+    assert.strictEqual(bad.ok, false);
+    assert.strictEqual(bad.errorCode, "ITEM_NOT_FOUND");
+  });
+
+  test("a 200 without a link_token is a failure", async () => {
+    const r = await createLinkToken({ clientUserId: "c", accessToken: "tok" }, { ...CREDS, fetchImpl: stubFetch(200, {}) });
+    assert.strictEqual(r.ok, false);
+  });
+});
+
+describe("sandboxResetLogin", () => {
+  test("posts the access token to /sandbox/item/reset_login and reports it reset", async () => {
+    const capture = {};
+    const r = await sandboxResetLogin("access-sandbox-xyz", {
+      ...CREDS, fetchImpl: stubFetch(200, { reset_login: true, request_id: "r" }, { capture })
+    });
+    assert.strictEqual(capture.url, "https://sandbox.plaid.com/sandbox/item/reset_login");
+    assert.strictEqual(JSON.parse(capture.init.body).access_token, "access-sandbox-xyz");
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.resetLogin, true);
+    assert.ok(!JSON.stringify(r).includes("access-sandbox-xyz"));
+  });
+
+  test("refuses every host but sandbox before anything is sent", async () => {
+    for (const environment of ["production", "development", "staging"]) {
+      const r = await sandboxResetLogin("access-xyz", {
+        ...CREDS, environment, fetchImpl: () => assert.fail("must not transmit")
+      });
+      assert.strictEqual(r.ok, false);
+      assert.strictEqual(r.transmitted, false);
+      assert.match(r.error, /sandbox/);
+    }
+  });
+
+  test("a Plaid error, or a 200 that does not say reset_login: true, is a failure", async () => {
+    const err = await sandboxResetLogin("t", {
+      ...CREDS, fetchImpl: stubFetch(400, { error_type: "INVALID_INPUT", error_code: "INVALID_ACCESS_TOKEN", error_message: "no" })
+    });
+    assert.strictEqual(err.ok, false);
+    const odd = await sandboxResetLogin("t", { ...CREDS, fetchImpl: stubFetch(200, { reset_login: false }) });
+    assert.strictEqual(odd.ok, false);
   });
 });

@@ -8,6 +8,15 @@
 //   2. syncClientTransactions(): read new charges and deposits from Plaid into
 //      bank_transactions, then re-run the repeating-bill detector for that client.
 //      Unit A of ops/workflows/finance-os-build-2026-10-06.md.
+// Then, ONCE, after every client (FinanceOS F2):
+//   3. queueReconnectNotices(): a login either read above sent to 'error' (Plaid says
+//      the client must sign in again) — or any login an earlier day left there — gets
+//      ONE text: "your bank connection needs a quick reconnect in FinanceOS"
+//      (src/finance/bank-reconnect-notice.mjs). Finance OS clients and Blueprint
+//      buyers only; once per error episode. It runs after the loop, as its own step,
+//      because a broken login drops out of clientsWithPlaid() — the list the loop
+//      walks — so a client's only login going bad would never be seen by a per-client
+//      step on the NEXT pass.
 //
 // ACCOUNTS FIRST, AND WHY. Everything that runs after 07:00 UTC reads bank_accounts
 // as it stands: the trend snapshots and the file-protection alerts at 07:30, the card
@@ -21,9 +30,12 @@
 // with PLAID_CLIENT_ID / PLAID_SECRET / PLAID_TOKEN_ENC_KEY missing the pass
 // returns { skipped: "not_configured" } without reading a single row.
 //
-// READS ONLY. Plaid's /accounts/get and /transactions/sync are reads of the client's
-// own bank. They send nothing to the client and move no money. (The refresh WRITES
-// bank_accounts — balances and new accounts — and never deletes or closes one.)
+// THE PLAID READS SEND NOTHING. /accounts/get and /transactions/sync are reads of the
+// client's own bank and move no money. (The refresh WRITES bank_accounts — balances
+// and new accounts — and never deletes or closes one.) The one thing in this pass that
+// reaches a client is step 3's text, and it only QUEUES it: sendTemplated writes a
+// `messages` row at status='queued', and the dispatcher sends it behind the dry-run
+// fence, quiet hours and the opt-out read.
 //
 // ONE STEP PER CLIENT. An Inngest pass runs inside the /api/inngest request,
 // which Netlify cuts at 26 seconds. Each client gets its own step.run so one
@@ -42,6 +54,7 @@ import { db } from "../db.mjs";
 import { isPlaidEnabled } from "../banking/plaid.mjs";
 import { syncClientTransactions, clientsWithPlaid } from "../banking/plaid-transactions.mjs";
 import { refreshClientAccounts } from "../banking/plaid-refresh.mjs";
+import { queueReconnectNotices } from "../finance/bank-reconnect-notice.mjs";
 
 export const SWEEP_CRON = "0 7 * * *";
 export const SOURCE_WORKFLOW = "plaid-transactions-sweeper";
@@ -81,12 +94,34 @@ async function syncOne(conn, row, { env, now, sync, refresh }) {
   }
 }
 
+/** reconnectNotices — the one text for every login left in 'error', never throws.
+    Counts only: the rows it looked at are in the notice module's own result. */
+async function reconnectNotices(conn, { now, notify }) {
+  try {
+    const r = await notify(conn, { now });
+    return {
+      ok: true,
+      checked: r?.checked ?? 0,
+      queued: r?.queued ?? 0,
+      notEntitled: r?.notEntitled ?? 0,
+      notQueued: (r?.notQueued ?? []).length,
+      skipped: (r?.skipped ?? []).length,
+      errored: r?.errored ?? []
+    };
+  } catch (e) {
+    return {
+      ok: false, checked: 0, queued: 0, notEntitled: 0, notQueued: 0, skipped: 0,
+      errored: [{ error: String(e?.message || e).slice(0, 300) }]
+    };
+  }
+}
+
 /** sweep — one pass. `db`, env, clock and the two syncs are arguments so tests
     drive it without Inngest or Plaid. `step` is optional; with it, each client is
-    its own Inngest step. */
+    its own Inngest step, and the reconnect texts are one more at the end. */
 export async function sweep(conn = db, {
   now = new Date(), env = process.env, sync = syncClientTransactions, refresh = refreshClientAccounts,
-  list = clientsWithPlaid, step = null
+  list = clientsWithPlaid, notify = queueReconnectNotices, step = null
 } = {}) {
   const tally = {
     skipped: null, checked: 0, synced: 0, written: 0, failed: [],
@@ -94,7 +129,10 @@ export async function sweep(conn = db, {
        `created` = accounts that did not exist yesterday, `vanished` = accounts
        Plaid stopped listing (reported, never closed), `relink` = logins whose
        client must sign in at the bank again. */
-    accounts: { refreshed: 0, created: 0, vanished: 0, balancesChanged: 0, relink: 0, failed: [] }
+    accounts: { refreshed: 0, created: 0, vanished: 0, balancesChanged: 0, relink: 0, failed: [] },
+    /* the one "needs a quick reconnect" text per broken login (FinanceOS F2). null
+       until the step has run. `queued` = texts written to the outbox this pass. */
+    reconnect: null
   };
   if (!isPlaidEnabled(env)) {
     tally.skipped = "not_configured";
@@ -122,6 +160,8 @@ export async function sweep(conn = db, {
     tally.accounts.balancesChanged += a?.balancesChanged ?? 0;
     tally.accounts.relink += a?.relink ?? 0;
   }
+
+  tally.reconnect = await run("reconnect-notices", () => reconnectNotices(conn, { now, notify }));
   return tally;
 }
 

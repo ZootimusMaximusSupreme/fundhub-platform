@@ -10,7 +10,14 @@
 //     including the UPSERT on (plaid_item_id, plaid_account_id): an existing row keeps
 //     its id, created_at, entity_kind and closed_at and takes the new balances; a new
 //     account is inserted with entity_kind 'unknown' and created_at = the fake clock,
-//   * the login error-state write and the first-read baseline write.
+//   * the login error-state write and the first-read baseline write,
+//   * (FinanceOS F2) the repair path's statements — plaid-relink.mjs and
+//     src/finance/bank-reconnect-notice.mjs. Those are TAGGED with a leading
+//     comment (relink:read, relink:token, relink:claim, relink:revert,
+//     relink:episode-end, relink:status, reconnect:candidates, reconnect:stamp), and
+//     matched on the tag before anything else, because their SELECTs also read
+//     FROM plaid_items. Real Postgres answers the same statements in
+//     plaid-relink.pg.test.mjs; this file only has to be as honest as that.
 //
 // ANY OTHER SQL THROWS. A test that quietly got an empty answer for a statement it
 // never taught this file would prove nothing, so a statement nobody modelled is a
@@ -27,6 +34,7 @@ const UPDATABLE = [
 ];
 
 const asMs = (v) => (v instanceof Date ? v.getTime() : Date.parse(String(v)));
+const msOr = (v, fallback) => (v === null || v === undefined ? fallback : asMs(v));
 
 /**
  * fakeBankDb({ items, accounts, now })
@@ -39,7 +47,8 @@ const asMs = (v) => (v instanceof Date ? v.getTime() : Date.parse(String(v)));
 export function fakeBankDb({ items = [], accounts = [], now = () => new Date("2026-10-07T07:00:00.000Z") } = {}) {
   const state = {
     items: items.map((i) => ({
-      link_state: "active", last_error_code: null, last_error_at: null, ...i
+      link_state: "active", last_error_code: null, last_error_at: null,
+      reconnect_notified_at: null, transactions_synced_at: null, ...i
     })),
     accounts: accounts.map((a) => ({
       provider: "plaid", entity_kind: "unknown", closed_at: null,
@@ -62,6 +71,100 @@ export function fakeBankDb({ items = [], accounts = [], now = () => new Date("20
       calls.push({ sql, params });
 
       if (/\bDELETE\b/i.test(sql)) throw new Error(`fake db: a DELETE was issued: ${sql.slice(0, 80)}`);
+
+      /* ── FinanceOS F2: the tagged statements. See the header. ──────────────── */
+      const tag = /^\s*\/\*\s*((?:relink|reconnect):[a-z-]+)\s*\*\//.exec(sql)?.[1] || null;
+      if (tag) {
+        const mine = (id, orgId, clientId) => state.items.find((i) =>
+          i.id === id && i.org_id === orgId && (clientId === undefined || i.client_id === clientId));
+        const real = (i) => Boolean(i.encrypted_access_token) && Boolean(i.consent_granted_at)
+          && Boolean(i.plaid_item_id) && !String(i.plaid_item_id).startsWith("mock:");
+
+        if (tag === "relink:read") {
+          const [id, orgId, clientId] = params;
+          const i = mine(id, orgId, clientId);
+          return {
+            rows: i ? [{
+              id: i.id, client_id: i.client_id, plaid_item_id: i.plaid_item_id ?? null,
+              institution_name: i.institution_name ?? null, link_state: i.link_state,
+              consent_granted_at: i.consent_granted_at ?? null, last_error_code: i.last_error_code,
+              last_error_at: i.last_error_at, has_access_token: Boolean(i.encrypted_access_token)
+            }] : [],
+            rowCount: i ? 1 : 0
+          };
+        }
+        if (tag === "relink:token") {
+          const [id, orgId, clientId] = params;
+          const i = mine(id, orgId, clientId);
+          return i && i.plaid_item_id
+            ? { rows: [{ encrypted_access_token: i.encrypted_access_token ?? null }], rowCount: 1 }
+            : { rows: [], rowCount: 0 };
+        }
+        if (tag === "relink:claim") {
+          const [id, orgId, clientId] = params;
+          const i = mine(id, orgId, clientId);
+          if (!i || i.link_state !== "error" || !real(i)) return { rows: [], rowCount: 0 };
+          i.link_state = "active"; i.last_error_code = null; i.last_error_at = null; i.updated_at = now();
+          return { rows: [{ id }], rowCount: 1 };
+        }
+        if (tag === "relink:revert") {
+          const [id, orgId, prevCode, prevAt] = params;
+          const i = mine(id, orgId);
+          if (!i || i.link_state !== "active") return { rows: [], rowCount: 0 };
+          i.link_state = "error";
+          i.last_error_code = i.last_error_code ?? prevCode ?? "upstream_error";
+          i.last_error_at = i.last_error_at ?? prevAt ?? now();
+          i.updated_at = now();
+          return { rows: [], rowCount: 1 };
+        }
+        if (tag === "relink:episode-end") {
+          const [id, orgId] = params;
+          const i = mine(id, orgId);
+          if (!i || i.link_state !== "active" || i.reconnect_notified_at == null) return { rows: [], rowCount: 0 };
+          i.reconnect_notified_at = null;
+          return { rows: [], rowCount: 1 };
+        }
+        if (tag === "relink:status") {
+          const [orgId, clientId, itemRowId] = params;
+          const rows = state.items
+            .filter((i) => i.org_id === orgId && i.client_id === clientId && (itemRowId == null || i.id === itemRowId))
+            .sort((a, b) => msOr(a.created_at, 0) - msOr(b.created_at, 0) || String(a.id).localeCompare(String(b.id)))
+            .map((i) => {
+              const open = state.accounts.filter((a) => a.plaid_item_id === i.id && a.org_id === i.org_id && !a.closed_at);
+              const asOfs = open.map((a) => a.balance_as_of).filter((v) => v != null);
+              const latest = asOfs.length ? asOfs.reduce((m, v) => (asMs(v) > asMs(m) ? v : m)) : null;
+              return {
+                id: i.id, institution_name: i.institution_name ?? null, plaid_item_id: i.plaid_item_id ?? null,
+                link_state: i.link_state, last_error_code: i.last_error_code, last_error_at: i.last_error_at,
+                transactions_synced_at: i.transactions_synced_at ?? null, created_at: i.created_at ?? null,
+                account_count: open.length, balances_as_of: latest
+              };
+            });
+          return { rows, rowCount: rows.length };
+        }
+        if (tag === "reconnect:candidates") {
+          const [codes, limit] = params;
+          const rows = state.items
+            .filter((i) => i.link_state === "error" && i.reconnect_notified_at == null && real(i)
+              && codes.includes(i.last_error_code))
+            .sort((a, b) => msOr(a.last_error_at, Infinity) - msOr(b.last_error_at, Infinity)
+              || String(a.id).localeCompare(String(b.id)))
+            .slice(0, limit)
+            .map((i) => ({
+              id: i.id, org_id: i.org_id, client_id: i.client_id, institution_name: i.institution_name ?? null,
+              last_error_code: i.last_error_code, last_error_at: i.last_error_at, updated_at: i.updated_at ?? null
+            }));
+          return { rows, rowCount: rows.length };
+        }
+        if (tag === "reconnect:stamp") {
+          const [id, orgId, at] = params;
+          const i = mine(id, orgId);
+          if (!i || i.link_state !== "error" || i.reconnect_notified_at != null) return { rows: [], rowCount: 0 };
+          i.reconnect_notified_at = at;
+          return { rows: [], rowCount: 1 };
+        }
+        throw new Error(`fake db: nobody taught this tagged statement: ${tag}`);
+      }
 
       // plaid-refresh: which logins can be read
       if (/FROM plaid_items/.test(sql) && /SELECT/.test(sql)) {

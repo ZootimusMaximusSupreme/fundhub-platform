@@ -12,14 +12,20 @@ const ENV = {
 };
 const NOW = new Date("2026-10-06T07:00:00Z");
 
+/* Most tests below do not care about the reconnect texts (FinanceOS F2); they hand the
+   sweep this stand-in so the real one never runs against the empty `{}` database. */
+const quietNotify = async () => ({ checked: 0, queued: 0, notEntitled: 0, notQueued: [], skipped: [], errored: [] });
+
 test("does nothing at all when Plaid is not configured", async () => {
   const t = await sweep({}, {
     env: {}, now: NOW,
     list: async () => assert.fail("must not read clients"),
-    sync: async () => assert.fail("must not sync")
+    sync: async () => assert.fail("must not sync"),
+    notify: async () => assert.fail("must not queue a reconnect text")
   });
   assert.equal(t.skipped, "not_configured");
   assert.equal(t.checked, 0);
+  assert.equal(t.reconnect, null, "the reconnect step did not run");
 });
 
 test("syncs every listed client; one failure does not stop the rest", async () => {
@@ -42,15 +48,15 @@ test("syncs every listed client; one failure does not stop the rest", async () =
   assert.equal(seen[0].orgId, "o");
 });
 
-test("each client is its own Inngest step", async () => {
+test("each client is its own Inngest step, and the reconnect texts are one more at the end", async () => {
   const names = [];
   const step = { run: async (name, fn) => { names.push(name); return fn(); } };
   await sweep({}, {
-    env: ENV, now: NOW, step,
+    env: ENV, now: NOW, step, notify: quietNotify,
     list: async () => [{ org_id: "o", client_id: "c1" }],
     sync: async () => ({ ok: true, totals: { written: 0 } })
   });
-  assert.deepEqual(names, ["list-clients", "sync-c1"]);
+  assert.deepEqual(names, ["list-clients", "sync-c1", "reconnect-notices"]);
 });
 
 test("runs daily", () => {
@@ -139,14 +145,81 @@ test("not configured: nothing is refreshed either", async () => {
   assert.equal(t.accounts.refreshed, 0);
 });
 
-test("the refresh rides inside the client's one step — the step list is unchanged", async () => {
+test("the refresh rides inside the client's one step — the only step added is the reconnect one", async () => {
   const names = [];
   const step = { run: async (name, fn) => { names.push(name); return fn(); } };
   await sweep({}, {
-    env: ENV, now: NOW, step, list: async () => [ROWS[0]],
+    env: ENV, now: NOW, step, list: async () => [ROWS[0]], notify: quietNotify,
     refresh: async () => okRefresh(), sync: async () => ({ ok: true, totals: { written: 0 } })
   });
-  assert.deepEqual(names, ["list-clients", "sync-c1"]);
+  assert.deepEqual(names, ["list-clients", "sync-c1", "reconnect-notices"]);
+});
+
+/* ── the reconnect texts (FinanceOS F2) ─────────────────────────────────────── */
+
+test("the reconnect texts run ONCE, after every client has been read, on the pass's own database and clock", async () => {
+  const log = [];
+  const conn = { marker: "the pass's db" };
+  const t = await sweep(conn, {
+    env: ENV, now: NOW, list: async () => ROWS,
+    refresh: async (_db, a) => { log.push(`refresh:${a.clientId}`); return okRefresh(); },
+    sync: async (_db, a) => { log.push(`sync:${a.clientId}`); return { ok: true, totals: { written: 0 } }; },
+    notify: async (db, args) => {
+      log.push("notify");
+      assert.equal(db, conn);
+      assert.equal(args.now, NOW);
+      return { checked: 0, queued: 0, notEntitled: 0, notQueued: [], skipped: [], errored: [] };
+    }
+  });
+  assert.deepEqual(log, ["refresh:c1", "sync:c1", "refresh:c2", "sync:c2", "refresh:c3", "sync:c3", "notify"]);
+  assert.equal(t.reconnect.ok, true);
+});
+
+test("it runs even when nobody has an active login — a login that broke drops out of the list the loop walks", async () => {
+  let ran = 0;
+  const t = await sweep({}, {
+    env: ENV, now: NOW, list: async () => [],
+    refresh: async () => assert.fail("no client to refresh"), sync: async () => assert.fail("no client to sync"),
+    notify: async () => { ran += 1; return { checked: 1, queued: 1, notEntitled: 0, notQueued: [], skipped: [], errored: [] }; }
+  });
+  assert.equal(ran, 1);
+  assert.equal(t.checked, 0);
+  assert.equal(t.reconnect.queued, 1);
+});
+
+test("the tally keeps the counts: looked at, texted, not entitled, refused, skipped — and what went wrong", async () => {
+  const t = await sweep({}, {
+    env: ENV, now: NOW, list: async () => [],
+    notify: async () => ({
+      checked: 5, queued: 2, notEntitled: 1,
+      notQueued: [{ itemRowId: "i1", reason: "opted_out" }], skipped: [{ itemRowId: "i2" }, { itemRowId: "i3" }],
+      errored: [{ itemRowId: "i4", error: "template store down" }]
+    })
+  });
+  assert.deepEqual(t.reconnect, {
+    ok: true, checked: 5, queued: 2, notEntitled: 1, notQueued: 1, skipped: 2,
+    errored: [{ itemRowId: "i4", error: "template store down" }]
+  });
+});
+
+test("a reconnect step that throws is recorded and never takes the pass down — the Plaid numbers stand", async () => {
+  const t = await sweep({}, {
+    env: ENV, now: NOW, list: async () => [ROWS[0]],
+    refresh: async () => okRefresh({ created: 1 }), sync: async () => ({ ok: true, totals: { written: 4 } }),
+    notify: async () => { throw new Error("messages table down"); }
+  });
+  assert.equal(t.synced, 1);
+  assert.equal(t.written, 4);
+  assert.equal(t.accounts.created, 1);
+  assert.equal(t.reconnect.ok, false);
+  assert.deepEqual(t.reconnect.errored, [{ error: "messages table down" }]);
+  assert.equal(t.reconnect.queued, 0);
+});
+
+test("the default is the real notice job, and a database that cannot answer is recorded, not thrown", async () => {
+  const t = await sweep({}, { env: ENV, now: NOW, list: async () => [] });
+  assert.equal(t.reconnect.ok, false);
+  assert.equal(t.reconnect.errored.length, 1);
 });
 
 test("the default refresh is the real one, and a database that cannot answer is recorded, not thrown", async () => {

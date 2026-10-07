@@ -144,6 +144,7 @@ import marketingToday from "../../api/marketing/today.mjs";
 import bankingSyncAccounts from "../../api/banking/sync-accounts.mjs";
 import bankingLinkToken from "../../api/banking/link-token.mjs";
 import bankingLinkExchange from "../../api/banking/link-exchange.mjs";
+import bankingRelink from "../../api/banking/relink.mjs";
 import bankingSyncLiabilities from "../../api/banking/sync-liabilities.mjs";
 import bankingSyncTransactions from "../../api/banking/sync-transactions.mjs";
 import inquiries from "../../api/inquiries.mjs";
@@ -740,6 +741,10 @@ export const ROUTES = {
   /* Plaid Link: open, then finish. ROLE_SETS.FINANCE, same as sync-accounts. */
   "banking/link-token": bankingLinkToken,
   "banking/link-exchange": bankingLinkExchange,
+  /* Plaid update mode: a client fixes a bank login that stopped working. GET the
+     logins and their state; POST start (a Link token for the login) and finish
+     (read the bank again). Same two callers and gate as link-token. */
+  "banking/relink": bankingRelink,
   // Card bills (due date, minimum) from Plaid /liabilities/get → statement cycles.
   "banking/sync-liabilities": bankingSyncLiabilities,
   /* Plaid charges + deposits → bank_transactions, then repeating bills. Same gate. */

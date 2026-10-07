@@ -342,15 +342,47 @@ export async function fetchLiabilities(accessToken, opts = {}) {
  * The short-lived token the browser needs to open Plaid Link. `transactions` is
  * the product because it covers checking, savings AND credit cards; `auth` would
  * hide every card. Nothing here decides personal vs business — see fetchAccounts.
+ *
+ * UPDATE MODE (FinanceOS F2). Pass `accessToken` — the Item's own access token,
+ * already decrypted by the caller — and the same call makes a token that opens
+ * Link on an EXISTING login so the person can sign in again
+ * (https://plaid.com/docs/link/update-mode/). Plaid's rules for that call, and
+ * what this does about each:
+ *   * `access_token` goes in the request. It is the only thing that says "this
+ *     login", and it goes straight into the body plaidPost builds — it is never
+ *     logged, never put in an error and never returned (see below).
+ *   * NO `products`. Plaid says an update-mode link token carries none (the
+ *     exceptions are credit products and Auth/Identity validations, which this
+ *     product does not use), so the key is left out entirely, not sent empty.
+ *   * `user.client_user_id` stays; every link token carries one.
+ *   * `update.account_selection_enabled` is Plaid's switch for "let the person
+ *     pick NEW accounts at this bank" (US and Canada). It is sent ONLY when the
+ *     caller asks for it with `accountSelection: true`: fixing a broken login does
+ *     not need it, and turning it on for every repair would put an extra screen
+ *     in front of someone who only wants their old accounts back.
+ *   * No public_token exchange follows. Plaid: the access_token does not change in
+ *     update mode. So nothing here returns, or needs, an exchange.
+ *
+ * THE ACCESS TOKEN NEVER COMES BACK. The result carries the new link_token and its
+ * expiry, nothing else from the request.
  */
-export async function createLinkToken({ clientUserId, products = ["transactions"] } = {}, opts = {}) {
-  const r = await plaidPost("/link/token/create", {
+export async function createLinkToken({
+  clientUserId, products = ["transactions"], accessToken = null, accountSelection = false
+} = {}, opts = {}) {
+  const updateMode = typeof accessToken === "string" && accessToken.length > 0;
+  const payload = {
     client_name: "Fundhub",
     language: "en",
     country_codes: ["US"],
-    user: { client_user_id: String(clientUserId) },
-    products
-  }, opts);
+    user: { client_user_id: String(clientUserId) }
+  };
+  if (updateMode) {
+    payload.access_token = accessToken;
+    if (accountSelection === true) payload.update = { account_selection_enabled: true };
+  } else {
+    payload.products = products;
+  }
+  const r = await plaidPost("/link/token/create", payload, opts);
   if (!r.ok) return r;
   const linkToken = r.data?.link_token;
   if (!linkToken) {
@@ -383,6 +415,33 @@ export async function sandboxPublicToken({ institutionId, products = ["transacti
     return { ...r, ok: false, data: null, error: "plaid sandbox answered 200 without public_token" };
   }
   return { ...r, publicToken, data: null };
+}
+
+/**
+ * sandboxResetLogin — POST /sandbox/item/reset_login
+ * https://plaid.com/docs/api/sandbox/ (Plaid: "forces an Item into an
+ * ITEM_LOGIN_REQUIRED state in order to simulate an Item whose login is no longer
+ * valid"). SANDBOX HOST ONLY: refuses any other environment before anything is
+ * sent, same as sandboxPublicToken.
+ *
+ * It exists so the repair path (src/banking/plaid-relink.mjs) can be proved against
+ * Plaid without waiting for a real bank to expire a real login. Nothing in the
+ * product calls it.
+ */
+export async function sandboxResetLogin(accessToken, opts = {}) {
+  if ((opts.environment || "sandbox") !== "sandbox") {
+    return {
+      ok: false, blocked: false, transmitted: false, status: 0, data: null,
+      errorCode: null, errorType: null, retryable: false,
+      error: "sandboxResetLogin only runs against the sandbox host"
+    };
+  }
+  const r = await plaidPost("/sandbox/item/reset_login", { access_token: accessToken }, { ...opts, environment: "sandbox" });
+  if (!r.ok) return r;
+  if (r.data?.reset_login !== true) {
+    return { ...r, ok: false, data: null, error: "plaid /sandbox/item/reset_login answered 200 without reset_login: true" };
+  }
+  return { ...r, resetLogin: true, data: null };
 }
 
 /* How many pages one sync may walk before it stops and says so. 500 rows a page
@@ -740,7 +799,7 @@ export async function sandboxSimulateLedgerAvailable(opts = {}) {
 
 export default {
   PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchBalances, fetchLiabilities, createLinkToken,
-  sandboxPublicToken, syncTransactions,
+  sandboxPublicToken, sandboxResetLogin, syncTransactions,
   transferHostRefusal, authorizeTransfer, createTransfer, getTransfer, cancelTransfer, syncTransferEvents,
   getTransferLedger, sandboxSimulateTransfer, sandboxSimulateLedgerAvailable
 };
