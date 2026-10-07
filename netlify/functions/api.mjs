@@ -259,6 +259,8 @@ import moneyPlan from "../../api/money/plan.mjs";
 import moneyBanks from "../../api/money/banks.mjs";
 import moneyStrategy from "../../api/money/strategy.mjs";
 import moneyFundability from "../../api/money/fundability.mjs";
+import moneyTasks from "../../api/money/tasks.mjs";
+import moneyReadyToFund from "../../api/money/ready-to-fund.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1135,6 +1137,13 @@ export const ROUTES = {
   // score now, 3/6/12 months ahead on the client's own plan, and per business.
   // Same gate as money/overview. Read only; never runs a pull.
   "money/fundability": moneyFundability,
+  /* FinanceOS "What to do next" (/app/money-next.html, FinanceOS wave 5 W5).
+     money/tasks: the client's next steps; POST do_task hands one to the money
+     agent (a payment becomes a proposal the client must approve — nothing
+     moves) or to a CSM. money/ready-to-fund: "Ready to get funded" opens the
+     Capital Blueprint's own CSM closing prep call. Same gate as money/overview. */
+  "money/tasks": moneyTasks,
+  "money/ready-to-fund": moneyReadyToFund,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,

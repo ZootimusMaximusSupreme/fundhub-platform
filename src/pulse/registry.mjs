@@ -180,6 +180,10 @@ const API_KEYS = [
   "money/banks",
   "money/strategy",
   "money/fundability",
+  /* FinanceOS wave 5 W5: both GETs answer 401 to an unsigned ping; the POSTs
+     (do_task, the ready press) are never pinged. */
+  "money/tasks",
+  "money/ready-to-fund",
   "ops/hire-closer",
   "org-brand",
   "partner-brand/verify-domain",
@@ -467,6 +471,7 @@ const DESK_FILES = [
   "money-setup.html",
   "money-connections.html",
   "money-strategy.html",
+  "money-next.html",
   "my-numbers.html",
   "ops-admin.html",
   "partner-galaxy.html",

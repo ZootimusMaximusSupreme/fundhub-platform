@@ -1,0 +1,69 @@
+{
+  "_source": "Read-only build (BEGIN READ ONLY ... ROLLBACK) of GET /api/money/tasks and GET /api/money/ready-to-fund for the FinanceOS test client f1cb9c27-f858-4db1-b6bb-4eddc898bb8e (Test Test, org fb789b0b) on 2026-10-07. One file: its Fundhub payment plan (payment 2 of 3, $500.00, due Oct 3, unpaid) and its Business Amex statement (minimum $135.00, due Oct 15). No assignments yet: migration 464 is not applied.",
+  "tasks": {
+    "ok": true,
+    "client": { "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e", "name": "Test Test" },
+    "as_of": "2026-10-07T03:16:09.161Z",
+    "today": "2026-10-07",
+    "window_days": 14,
+    "tasks": [
+      {
+        "id": "clarity:824c8cf7-3885-4570-8e72-4858aca547d5",
+        "title": "Pay $500.00 to Fundhub LLC",
+        "why": "Payment 2 of 3 on your Fundhub payment plan.",
+        "due_on": "2026-10-03",
+        "kind": "due",
+        "can_do": "agent",
+        "late_days": 4,
+        "amount_cents": 50000,
+        "moves_money": true,
+        "transfer": { "to_kind": "fundhub", "to_account_id": null, "amount_cents": 50000 },
+        "source": "clarity",
+        "from": "your plan with Fundhub",
+        "link": null,
+        "assignment": null
+      },
+      {
+        "id": "due:d6ce2c94-3632-4c63-af98-802fef41ac62:2026-10-15",
+        "title": "Pay $135.00 to Business Amex",
+        "why": "The minimum on your latest statement.",
+        "due_on": "2026-10-15",
+        "kind": "due",
+        "can_do": "agent",
+        "late_days": null,
+        "amount_cents": 13500,
+        "moves_money": true,
+        "transfer": { "to_kind": "card", "to_account_id": "d6ce2c94-3632-4c63-af98-802fef41ac62", "amount_cents": 13500 },
+        "source": "dues",
+        "from": "your card statement",
+        "link": null,
+        "assignment": null
+      }
+    ],
+    "more": 0,
+    "sources": [
+      { "name": "clarity", "ok": true },
+      { "name": "dues", "ok": true },
+      { "name": "late_cards", "ok": true },
+      { "name": "waypoints", "ok": true },
+      { "name": "underwriteiq", "ok": true }
+    ]
+  },
+  "ready": {
+    "ok": true,
+    "status": "none",
+    "round": 0,
+    "task_id": null,
+    "requested_at": null,
+    "done_at": null,
+    "process": "blueprint-csm-prep",
+    "offers": {
+      "blueprint": {
+        "owned": false,
+        "name": "Capital Blueprint",
+        "sell": { "how": "call", "url": "https://apply.fundhub.ai/schedule/phonecall" }
+      },
+      "financeos": { "entitled": false, "setup_url": "/app/financeos.html#setup" }
+    }
+  }
+}

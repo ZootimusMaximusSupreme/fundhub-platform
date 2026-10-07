@@ -2636,6 +2636,38 @@ document.addEventListener("DOMContentLoaded", async function () {
     }, function () { return null; });
     return sessionPromise;
   }
+  /* ══ FINANCEOS SIDE-SELL (FinanceOS wave 5, unit W5) ════════════════════
+     Owner 2026-10-06: FinanceOS is a side sell to the Capital Blueprint. A
+     client who has the Blueprint but not FinanceOS sees the FinanceOS card
+     point at FinanceOS setup (/app/financeos.html#setup) instead. The answer
+     is `offers` on GET /api/money/ready-to-fund (src/finance/ready-to-fund.mjs:
+     a paid Capital Blueprint, and an active finance-os subscription). Any
+     other answer — no Blueprint, FinanceOS already on, a staff role outside
+     FINANCE (403), offline — leaves the card exactly as it ships. Not awaited:
+     nothing else on this screen waits on it. data-fh-href too, because
+     gateLinks() rebuilds every href from it. */
+  function paintFinanceOsSideSell(forClientId, asStaff) {
+    var card = document.getElementById("money-link");
+    if (!card) return;
+    var t = "";
+    try { t = localStorage.getItem("fh_token") || ""; } catch (e) {}
+    var q = asStaff && forClientId ? "?client_id=" + encodeURIComponent(forClientId) : "";
+    fetch("/api/money/ready-to-fund" + q, {
+      headers: t ? { accept: "application/json", authorization: "Bearer " + t } : { accept: "application/json" },
+      credentials: "same-origin"
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      var o = d && d.ok && d.offers;
+      if (!o || !o.blueprint || o.blueprint.owned !== true || !o.financeos || o.financeos.entitled !== false) return;
+      var href = "/app/financeos.html" + q + "#setup";
+      card.setAttribute("href", href);
+      card.setAttribute("data-fh-href", href);
+      var desc = card.querySelector(".fb-d");
+      if (desc) desc.textContent = "Add FinanceOS to your Capital Blueprint: your bank accounts, cards, bills, and business credit in one place.";
+      var go = card.querySelector(".fb-go");
+      if (go) go.textContent = "Set up FinanceOS";
+    }, function () {});
+  }
+
   function nameFromSession() {
     return session().then(function (d) {
       var s = d && d.staff;
@@ -2979,6 +3011,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       moneyA.setAttribute("data-fh-href", moneyHref);
     }
   }
+
+  /* FinanceOS side-sell for a Capital Blueprint client — see paintFinanceOsSideSell. */
+  paintFinanceOsSideSell(clientId, !!STAFF_ROLES[roleHint()]);
 
   setFundingVisible(false);
   /* Doors stay hidden via body.no-upload-doors until entitlements paint.

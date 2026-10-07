@@ -18,7 +18,9 @@ export const CSM_PREP_TITLE = "Blueprint closing prep call";
 export const CLOSER_READY_TITLE =
   "Blueprint client ready — close done-for-you funding";
 
-const PREP_CALL_DEDUPE = "blueprint-csm-prep-call";
+/* Exported for FinanceOS "Ready to get funded" (src/finance/ready-to-fund.mjs),
+   which opens this same prep call and reads it back by this key. */
+export const PREP_CALL_DEDUPE = "blueprint-csm-prep-call";
 const CLOSER_DEDUPE = "blueprint-closer-funding-ready";
 
 /** Client-owned prep steps closed — every row except no_new_credit is done. */
