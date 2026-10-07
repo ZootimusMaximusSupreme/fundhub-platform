@@ -21,13 +21,16 @@
  * counted once. And POST /api/marketing/scripts/edit — the shipped edit route,
  * the one store — for every change to the words (teleprompter-edits.js).
  *
- * TOUCH (owner, 2026-10-07, the film page). Play moves the words. Tap Play
- * again and only the words pause. The camera keeps recording until Stop.
- * Drag up: the words roll up (next lines come from below).
- * Drag down: the words go down with the thumb. A blank gap keeps that same
- * speed. When the words are paused, double-tap a word to change that word.
- * Hold a line to change the whole line. The touch rules are the pure
- * gestureStep below. scriptDelta turns an upward drag into words rolling up.
+ * TOUCH (owner, 2026-10-07, the film page). Tap the words: they pause if they
+ * are rolling, and they play if they are stopped. The camera keeps recording.
+ * The tap waits a short beat so a double tap is not also a play or a pause.
+ * Double tap: a text cursor lands in the words at that spot. The phone keyboard
+ * comes up. He edits the live script there. No extra edit box. Save still sends
+ * those words through the script edit route. Drag up: the words roll up (next
+ * lines come from below). Drag down: the words go down with the thumb. A blank
+ * gap keeps that same speed. Hold a line to change the whole line. The touch
+ * rules are the pure gestureStep below. scriptDelta turns an upward drag into
+ * words rolling up.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -173,7 +176,7 @@
 
   /** A finger that moves less than this is a tap. */
   var TAP_SLOP = 10;
-  /** A second tap this soon, and this close, edits the word under the finger. */
+  /** A second tap this soon, and this close, is a cursor — not play or pause. */
   var DBL_MS = 320;
   var DBL_SLOP = 48;
   /** A finger held this long without moving is a long press: edit that line. */
@@ -181,18 +184,21 @@
   /** A flick at least this fast (px per ms) keeps the words moving in scroll mode. */
   var FLING_MIN = 0.35;
 
-  function gestureStart() { return { down: null, lastTap: null }; }
+  function gestureStart() { return { down: null, lastTap: null, pending: null }; }
 
   /**
    * One touch event in, what the page must do out. Pure: the page owns the
    * clock and the words; this owns only what a finger means.
    *   g     the gesture state (gestureStart())
-   *   ev    {type:'down'|'move'|'up'|'timer'|'cancel', x, y, t}
-   *         'timer' is the page's long-press check, LONG_MS after a down
+   *   ev    {type:'down'|'move'|'up'|'timer'|'settle'|'cancel', x, y, t}
+   *         'timer' is the page's long-press check, LONG_MS after a down.
+   *         'settle' is the page's short wait after a tap (DBL_MS). One tap
+   *         becomes play or pause only then. Two taps never do.
    *   mode  'rolling' (rolling or counting down) | 'paused' | 'scroll'
    * Returns {g, acts}. acts, in order:
-   *   {do:'pause'}      a tap while rolling (stop the scroll)
-   *   {do:'resume'}     a tap while paused or in scroll mode (play from here)
+   *   {do:'pause'}      one tap while rolling, after the short wait
+   *   {do:'resume'}     one tap while paused or in scroll mode, after the wait
+   *   {do:'caret', x, y} two quick taps: put the cursor there. No play, no pause.
    *   {do:'grab'}       a finger started dragging: stop the auto-scroll
    *   {do:'drag', dy}   the finger moved dy pixels (down is positive). scriptDelta
    *                     rolls the words up when the thumb moves up.
@@ -200,22 +206,26 @@
    *   {do:'edit', x, y} a long press: edit the line under the finger
    *   {do:'edit-focus'} the long-press finger lifted: open the keyboard now
    *                     (iPhone opens it only inside a touch)
-   *   {do:'edit-word', x, y} two quick taps while the words are not rolling:
-   *                     change the word under the finger. The first tap still
-   *                     reports resume; the page waits, and drops it if this
-   *                     follows.
-   * A tap while the words are rolling pauses at once.
+   * A tap does not pause or play until 'settle'. A double tap drops that wait.
    */
   function gestureStep(g, ev, mode) {
-    var out = { down: g && g.down ? Object.assign({}, g.down) : null, lastTap: g ? g.lastTap : null };
+    var out = {
+      down: g && g.down ? Object.assign({}, g.down) : null,
+      lastTap: g ? g.lastTap : null,
+      pending: g && g.pending ? { do: g.pending.do, at: g.pending.at } : null
+    };
     var acts = [];
     var d = out.down;
     if (ev.type === "down") {
-      out.down = { x: ev.x, y: ev.y, t: ev.t, lastY: ev.y, lastT: ev.t, moved: false, long: false, v: 0 };
+      var prev = out.lastTap;
+      var dbl = !!(prev && (ev.t - prev.t) <= DBL_MS
+        && Math.abs(ev.x - prev.x) <= DBL_SLOP && Math.abs(ev.y - prev.y) <= DBL_SLOP);
+      out.down = { x: ev.x, y: ev.y, t: ev.t, lastY: ev.y, lastT: ev.t, moved: false, long: false, v: 0, dbl: dbl };
     } else if (ev.type === "move" && d) {
       if (!d.moved && !d.long && (Math.abs(ev.x - d.x) > TAP_SLOP || Math.abs(ev.y - d.y) > TAP_SLOP)) {
         d.moved = true;
         out.lastTap = null;
+        out.pending = null;
         acts.push({ do: "grab" });
         acts.push({ do: "drag", dy: ev.y - d.y });
       } else if (d.moved) {
@@ -234,16 +244,34 @@
       } else if (d.moved) {
         if (mode === "scroll" && Math.abs(d.v) >= FLING_MIN && ev.t - d.lastT < 120) acts.push({ do: "fling", v: d.v });
       } else {
-        var prev = out.lastTap;
-        var near = prev && (ev.t - prev.t) <= DBL_MS && Math.abs(ev.x - prev.x) <= DBL_SLOP && Math.abs(ev.y - prev.y) <= DBL_SLOP;
-        out.lastTap = { x: ev.x, y: ev.y, t: ev.t, mode: mode };
-        if (near && prev.mode !== "rolling") acts.push({ do: "edit-word", x: ev.x, y: ev.y });
-        else acts.push({ do: mode === "rolling" ? "pause" : "resume" });
+        var prevTap = out.lastTap;
+        var near = prevTap && (ev.t - prevTap.t) <= DBL_MS
+          && Math.abs(ev.x - prevTap.x) <= DBL_SLOP && Math.abs(ev.y - prevTap.y) <= DBL_SLOP;
+        if (near) {
+          out.lastTap = null;
+          out.pending = null;
+          acts.push({ do: "caret", x: ev.x, y: ev.y });
+        } else {
+          var nowMode = mode;
+          if (out.pending) {
+            acts.push({ do: out.pending.do });
+            nowMode = out.pending.do === "pause" ? "paused" : "rolling";
+          }
+          out.lastTap = { x: ev.x, y: ev.y, t: ev.t, mode: nowMode };
+          out.pending = { do: nowMode === "rolling" ? "pause" : "resume", at: ev.t };
+        }
+      }
+    } else if (ev.type === "settle") {
+      if (out.pending && ev.t - out.pending.at >= DBL_MS) {
+        acts.push({ do: out.pending.do });
+        out.pending = null;
+        out.lastTap = null;
       }
     } else if (ev.type === "timer" && d) {
       if (!d.moved && !d.long && ev.t - d.t >= LONG_MS) {
         d.long = true;
         out.lastTap = null;
+        out.pending = null;
         acts.push({ do: "edit", x: d.x, y: d.y });
       }
     } else if (ev.type === "cancel") {
@@ -485,7 +513,7 @@
   var countTimer = null, dimTimer = null, wake = null, holding = -1, released = {};
   var data = null, scripts = [], cur = -1, atEnd = false, learning = null, pollTimer = null, signedOut = false;
   var scrollMode = false, flingRaf = 0, gest = gestureStart(), longTimer = null, tapSnap = null;
-  var editing = null, wordEdit = null, repoHeld = false, healthAt = 0, shownParas = "";
+  var editing = null, textEdit = null, repoHeld = false, healthAt = 0, shownParas = "";
 
   /* ── talking to the server ──────────────────────────────────────────── */
 
@@ -570,7 +598,7 @@
 
   function take(d, first) {
     if (queue.length && !first) return; // presses still waiting: keep what this phone already shows
-    if (editing) return;                // never redraw under the edit box
+    if (editing || textEdit) return;   // never redraw under the cursor or the edit box
     data = d;
     var list = d.shoot && Array.isArray(d.shoot.scripts) ? d.shoot.scripts : [];
     var curRoot = cur >= 0 && scripts[cur] ? scripts[cur].root_script_id : null;
@@ -771,6 +799,7 @@
   }
 
   function open(i) {
+    if (textEdit) leaveCaret(false);
     endRec();
     stop();
     hideEnd();
@@ -843,7 +872,7 @@
     total = at;
   }
   function layout() {
-    if (editing || wordEdit) return;
+    if (editing || textEdit) return;
     var keep = progress(); timeline();
     var lines = [], L = null;
     for (var i = 0; i < words.length; i++) {
@@ -900,7 +929,7 @@
     return readingLineTop(safeTopPx(), h);
   }
   function apply() {
-    if (editing) return;
+    if (editing || textEdit) return;
     if (!kf.length) { content.style.transform = ""; return; }
     var off = yAt(t) - readPx();
     content.style.transform = "translate3d(0," + (-off).toFixed(1) + "px,0)";
@@ -941,7 +970,7 @@
     setPlayIcon(); rolling(true); lockScreen();
   }
   function start(withCount) {
-    if (!words.length || editing || wordEdit) return;
+    if (!words.length || editing || textEdit) return;
     hideEnd();
     setScroll(false);
     if (seeked) { takeWord = Math.max(0, wordAt(t)); t = times[takeWord] || 0; seeked = false; released = {}; markStart(); apply(); }
@@ -963,7 +992,8 @@
   }
   function hold(i) { holding = i; released[i] = true; playing = false; setPlayIcon(); $("cuehold").hidden = false; }
   function toggle() {
-    if (editing || wordEdit) return;
+    if (textEdit) leaveCaret(true);
+    if (editing) return;
     if (atEnd) return gotIt();
     if (holding >= 0) return go();
     if (playing || countTimer) { stop(); return; }
@@ -1083,30 +1113,63 @@
     flingRaf = root.requestAnimationFrame(step);
   }
 
-  var tapArm = null;
-  function cancelArm() { if (tapArm) { clearTimeout(tapArm); tapArm = null; } }
-  function armResume() {
-    cancelArm();
-    tapArm = setTimeout(function () {
-      tapArm = null;
-      if (editing || wordEdit || playing || countTimer) return;
+  var settleTimer = null;
+  function cancelSettle() { if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; } }
+  function armSettle() {
+    cancelSettle();
+    settleTimer = setTimeout(function () {
+      settleTimer = null;
+      feed("settle", null);
+    }, DBL_MS + 40);
+  }
+  function allowSelect(on) {
+    var v = on ? "text" : "";
+    var call = on ? "default" : "";
+    content.style.webkitUserSelect = v;
+    content.style.userSelect = v;
+    content.style.webkitTouchCallout = call;
+    stage.style.webkitUserSelect = v;
+    stage.style.userSelect = v;
+    stage.style.webkitTouchCallout = call;
+    stage.style.touchAction = on ? "manipulation" : "";
+    content.style.touchAction = on ? "manipulation" : "";
+  }
+  /* The words become editable on the first tap, before a second tap can land.
+     iPhone only shows the keyboard if the words were already editable when the
+     finger went down. A single tap turns this back off when the wait ends. */
+  function primeEdit() {
+    if (!content || textEdit) return;
+    content.setAttribute("contenteditable", "true");
+    content.setAttribute("inputmode", "text");
+    content.setAttribute("autocapitalize", "sentences");
+    allowSelect(true);
+  }
+  function disarmEdit() {
+    if (textEdit) return;
+    content.removeAttribute("contenteditable");
+    content.removeAttribute("inputmode");
+    content.removeAttribute("autocapitalize");
+    doc.body.classList.remove("wording");
+    allowSelect(false);
+  }
+  function act(a, e) {
+    if (a.do === "pause") {
+      if (textEdit) return;
+      disarmEdit();
+      tapSnap = snap();
+      stop();
+    } else if (a.do === "resume") {
+      if (textEdit) return;
+      disarmEdit();
+      tapSnap = snap();
       if (scrollMode) setScroll(false);
       if (holding >= 0) { go(); return; }
       var atTake = Math.abs(t - (times[takeWord] || 0)) < 0.01;
       start(atTake || seeked || t >= total);
-    }, DBL_MS + 40);
-  }
-  function act(a, e) {
-    if (a.do === "pause") {
-      cancelArm();
-      tapSnap = snap();
-      stop();
-    } else if (a.do === "resume") {
-      tapSnap = snap();
-      armResume();
-    } else if (a.do === "edit-word") {
-      cancelArm();
-      editWordAt(a.x, a.y);
+    } else if (a.do === "caret") {
+      cancelSettle();
+      placeCaret(a.x, a.y);
+      if (e && e.preventDefault) e.preventDefault();
     } else if (a.do === "scroll-on") {
       stop(); unsnap(tapSnap); hideEnd(); setScroll(true);
     } else if (a.do === "scroll-off") {
@@ -1118,12 +1181,13 @@
     } else if (a.do === "fling") {
       fling(a.v);
     } else if (a.do === "edit") {
+      if (textEdit) return;
       var el = doc.elementFromPoint(a.x, a.y), p = el && el.closest ? el.closest("#content p") : null;
       beginEdit(p ? Number(p.dataset.p) : paraAtLine(), false);
     } else if (a.do === "edit-focus") {
       if (editing && editing.box) { editing.box.focus(); }
     }
-    if (e && (a.do === "edit" || a.do === "edit-focus" || a.do === "edit-word")) e.preventDefault();
+    if (e && (a.do === "edit" || a.do === "edit-focus")) e.preventDefault();
   }
   function feed(type, e) {
     var ev = { type: type, x: e ? e.clientX : 0, y: e ? e.clientY : 0, t: root.performance.now() };
@@ -1133,32 +1197,68 @@
   }
 
   stage.addEventListener("pointerdown", function (e) {
-    if (wordEdit && e.target !== wordEdit.input) finishWordEdit(true);
-    if (e.button > 0 || editing || wordEdit || atEnd) return;
+    if (textEdit) return;
+    if (e.button > 0 || editing || atEnd) return;
     if (e.isPrimary === false) return;
     stopFling();
     feed("down", e);
+    if (gest.down && gest.down.dbl) {
+      cancelSettle();
+      clearTimeout(longTimer);
+      return;
+    }
+    if (e.cancelable) e.preventDefault();
     try { stage.setPointerCapture(e.pointerId); } catch (x) { /* old browser */ }
     clearTimeout(longTimer);
     longTimer = setTimeout(function () { feed("timer", null); }, LONG_MS + 10);
   });
   stage.addEventListener("pointermove", function (e) {
-    if (!gest.down || editing || wordEdit) return;
+    if (textEdit) return;
+    if (!gest.down || editing) return;
     feed("move", e);
     if (gest.down && gest.down.moved) clearTimeout(longTimer);
   });
   stage.addEventListener("pointerup", function (e) {
     clearTimeout(longTimer);
+    if (textEdit) return;
     if (!gest.down) return;
     feed("up", e);
+    if (gest.pending) { primeEdit(); armSettle(); }
+    else cancelSettle();
   });
-  stage.addEventListener("pointercancel", function () { clearTimeout(longTimer); feed("cancel", null); });
-  stage.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  stage.addEventListener("pointercancel", function () {
+    clearTimeout(longTimer);
+    if (textEdit) return;
+    feed("cancel", null);
+    if (gest.pending) armSettle();
+  });
+  stage.addEventListener("contextmenu", function (e) {
+    if (textEdit) return;
+    e.preventDefault();
+  });
   stage.addEventListener("wheel", function (e) {
-    if (editing || wordEdit) return;
+    if (editing || textEdit) return;
     e.preventDefault(); stop(); hideEnd();
     moveBy(e.deltaY);
   }, { passive: false });
+  content.addEventListener("input", function (e) {
+    if (!textEdit) return;
+    if (e.target && e.target.id === "edit-box") return;
+    syncCaretText();
+  });
+  content.addEventListener("blur", function () {
+    if (!textEdit) return;
+    var opened = textEdit.at;
+    setTimeout(function () {
+      if (!textEdit) return;
+      if (doc.activeElement === content) return;
+      if (root.performance.now() - opened < 500) {
+        try { content.focus({ preventScroll: true }); } catch (err) { /* keep the cursor */ }
+        return;
+      }
+      leaveCaret(true);
+    }, 120);
+  });
 
   /* ── edit on the fly ─────────────────────────────────────────────────── */
 
@@ -1687,97 +1787,143 @@
     });
   }
 
-  function editWordAt(x, y) {
-    if (playing || countTimer || editing || wordEdit) return;
-    var el = doc.elementFromPoint(x, y);
-    var sp = el && el.closest ? el.closest("#content .w") : null;
-    if (!sp || sp.dataset.i == null) return;
-    beginWordEdit(Number(sp.dataset.i));
+  function rangeAtPoint(x, y) {
+    var range = null;
+    try {
+      if (doc.caretRangeFromPoint) range = doc.caretRangeFromPoint(x, y);
+      else if (doc.caretPositionFromPoint) {
+        var pos = doc.caretPositionFromPoint(x, y);
+        if (pos && pos.offsetNode) {
+          range = doc.createRange();
+          var off = pos.offset || 0;
+          var max = pos.offsetNode.nodeType === 3 ? (pos.offsetNode.textContent || "").length : pos.offsetNode.childNodes.length;
+          range.setStart(pos.offsetNode, Math.max(0, Math.min(off, max)));
+          range.collapse(true);
+        }
+      }
+    } catch (err) { range = null; }
+    if (range && content.contains(range.startContainer)) return range;
+    var hit = doc.elementFromPoint(x, y);
+    var sp = hit && hit.closest ? hit.closest("#content .w, #content .up") : null;
+    if (!sp) {
+      var ps = content.querySelectorAll("p");
+      sp = ps.length ? ps[0] : null;
+    }
+    if (!sp) return null;
+    var node = sp.firstChild;
+    while (node && node.nodeType !== 3) node = node.firstChild;
+    if (!node) return null;
+    var len = node.textContent ? node.textContent.length : 0;
+    var rect = sp.getBoundingClientRect();
+    var at = rect && x > (rect.left + rect.right) / 2 ? len : 0;
+    var made = doc.createRange();
+    try { made.setStart(node, Math.max(0, Math.min(at, len))); made.collapse(true); } catch (err2) { return null; }
+    return made;
   }
-  function beginWordEdit(i) {
-    if (wordEdit || editing) return;
-    var w = words[i];
-    if (!w || !w.el) return;
-    stop();
+  function placeCaret(x, y) {
+    if (atEnd || editing || !scripts[cur]) return;
+    if (playing || countTimer) stop();
     hideEnd();
     setScroll(false);
-    var orig = w.el.textContent;
-    var input = doc.createElement("input");
-    input.type = "text";
-    input.className = "word-box";
-    input.id = "word-box";
-    input.setAttribute("aria-label", "Change this word");
-    input.setAttribute("autocapitalize", "off");
-    input.setAttribute("autocorrect", "off");
-    input.setAttribute("spellcheck", "false");
-    input.value = orig;
-    input.size = Math.max(2, orig.length);
-    w.el.textContent = "";
-    w.el.appendChild(input);
-    wordEdit = { i: i, input: input, orig: orig };
+    cancelSettle();
+    primeEdit();
+    var base = scripts[cur];
+    textEdit = {
+      root: base.root_script_id, id: base.id, version: base.version,
+      body: base.body, parts: base.parts, at: root.performance.now()
+    };
     doc.body.classList.add("wording");
-    input.addEventListener("input", function () { input.size = Math.max(2, input.value.length || 1); });
-    input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); finishWordEdit(true); }
-      else if (e.key === "Escape") { e.preventDefault(); finishWordEdit(false); }
-    });
-    input.addEventListener("blur", function () { finishWordEdit(true); });
-    input.focus();
-    try { input.select(); } catch (e2) { /* some phones skip select */ }
-  }
-  function finishWordEdit(keep) {
-    if (!wordEdit) return;
-    var ed = wordEdit;
-    wordEdit = null;
-    doc.body.classList.remove("wording");
-    var next = keep ? String(ed.input.value || "").replace(/\s+/g, " ").trim() : ed.orig;
-    if (ed.input.parentNode) ed.input.remove();
-    if (!keep || next === ed.orig) {
-      if (words[ed.i] && words[ed.i].el) words[ed.i].el.textContent = ed.orig;
-      return;
+    allowSelect(true);
+    var range = rangeAtPoint(x, y);
+    try { content.focus({ preventScroll: true }); }
+    catch (err) { try { content.focus(); } catch (err2) { /* the keyboard needs this tap */ } }
+    var sel = root.getSelection ? root.getSelection() : null;
+    if (sel) {
+      sel.removeAllRanges();
+      if (range) { try { sel.addRange(range); } catch (err3) { /* the keyboard is up */ } }
     }
-    applyWord(ed.i, next, ed.orig);
   }
-  function applyWord(i, nextTok, orig) {
+  function flatWords(text) {
+    return String(text || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  }
+  function blockText(el) {
+    var parts = [];
+    function walk(node) {
+      if (!node) return;
+      if (node.nodeType === 3) { parts.push(node.textContent); return; }
+      if (node.nodeName === "BR") { parts.push("\n"); return; }
+      var kids = node.childNodes;
+      for (var i = 0; i < kids.length; i++) walk(kids[i]);
+    }
+    walk(el);
+    return parts.join("").replace(/\u00a0/g, " ").replace(/[ \t]+\n/g, "\n").replace(/[ \t]{2,}/g, " ").trim();
+  }
+  function readCaretParas() {
+    var kids = content.children;
+    var out = [];
+    for (var i = 0; i < kids.length; i++) {
+      var node = kids[i];
+      if (!node || node.id === "edit-box") continue;
+      if (node.nodeName !== "P" && node.nodeName !== "DIV") continue;
+      out.push(blockText(node));
+    }
+    while (out.length && !out[out.length - 1]) out.pop();
+    return out;
+  }
+  function syncCaretText() {
+    if (!textEdit) return;
     var s = scripts[cur];
-    var w = words[i];
-    if (!s || !w) return;
-    var paras = paragraphsFor(s);
-    var pi = w.para;
-    if (!paras[pi]) return;
-    var tokens = paras[pi].text.split(/\s+/).filter(function (tok) { return tok; });
-    var start = i;
-    while (start > 0 && words[start - 1].para === pi) start--;
-    var at = i - start;
-    var n = 0, replaced = false;
-    for (var ti = 0; ti < tokens.length; ti++) {
-      if (tokens[ti] === "↑") continue;
-      if (n === at) {
-        if (nextTok) tokens[ti] = nextTok;
-        else tokens.splice(ti, 1);
-        replaced = true;
-        break;
+    if (!s || s.root_script_id !== textEdit.root) return;
+    var next = readCaretParas();
+    var old = paragraphsFor(s);
+    var bullets = isBullets(s);
+    var curS = s;
+    var changed = false;
+    if (next.length === old.length) {
+      for (var i = 0; i < next.length; i++) {
+        if (flatWords(next[i]) === flatWords(old[i].text)) continue;
+        var r = E.applyEdit(curS, paragraphsFor(curS), i, next[i], bullets);
+        if (!r) return;
+        if (!E.clean(next[i]) && !String(r.body || "").trim()) {
+          say("A script cannot be empty. Put some words back.");
+          return;
+        }
+        if (r.changed) changed = true;
+        curS = withWords(curS, r.body, r.parts);
       }
-      n++;
+    } else {
+      var body = next.filter(function (para) { return flatWords(para); }).join("\n\n");
+      if (!flatWords(body)) {
+        say("A script cannot be empty. Put some words back.");
+        return;
+      }
+      if (flatWords(body) !== flatWords(s.body)) {
+        curS = withWords(s, body, null);
+        changed = true;
+      }
     }
-    if (!replaced) return;
-    var text = tokens.join(" ");
-    var r = E.applyEdit(s, paras, pi, text, isBullets(s));
-    if (!r) return;
-    if (!E.clean(text) && !String(r.body || "").trim()) {
-      if (words[i] && words[i].el) words[i].el.textContent = orig;
-      say("A script cannot be empty. Put some words back.");
-      return;
+    scripts[cur] = curS;
+    if (changed || edits.item(textEdit.root)) {
+      edits.edit(textEdit.root, {
+        id: textEdit.id, version: textEdit.version, body: textEdit.body, parts: textEdit.parts
+      }, curS.body, curS.parts);
     }
-    scripts[cur] = withWords(s, r.body, r.parts);
-    if (r.changed || edits.item(s.root_script_id)) {
-      edits.edit(s.root_script_id, { id: s.id, version: s.version, body: s.body, parts: s.parts }, r.body, r.parts);
+    pulse();
+  }
+  function leaveCaret(redrawNow) {
+    if (!textEdit) return;
+    syncCaretText();
+    edits.commit();
+    textEdit = null;
+    disarmEdit();
+    if (redrawNow && scripts[cur]) {
+      var at = words.length ? Math.max(0, wordAt(t)) : 0;
+      redraw(at);
     }
-    redraw(Math.min(i, Math.max(0, words.length - 1)));
     pulse();
   }
   function recordClick() {
-    if (editing || wordEdit) return;
+    if (editing) return;
     ensureCamera();
     ensureRecording();
   }
@@ -1785,7 +1931,7 @@
     endRec();
   }
   function saveScript() {
-    if (wordEdit) finishWordEdit(true);
+    if (textEdit) syncCaretText();
     if (editing && editing.box) typed();
     var list = edits.list();
     for (var i = 0; i < list.length; i++) {
@@ -1807,6 +1953,7 @@
     var dir = volumeKeyDir(e.key, e.code);
     if (!dir) return;
     var tag = (e.target && e.target.tagName) || "";
+    if (textEdit || (e.target && e.target.isContentEditable)) return;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     e.preventDefault();
     setWpm(S.wpm + dir * 5);
@@ -1926,6 +2073,10 @@
       learning = null; drawKeys();
       return;
     }
+    if (textEdit || (e.target && e.target.isContentEditable)) {
+      if (e.key === "Escape") { e.preventDefault(); leaveCaret(true); }
+      return;
+    }
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (editing) return;
     if (e.key === "Escape") { closeSheets(); return; }
@@ -1981,7 +2132,7 @@
   function poll() {
     clearTimeout(pollTimer);
     pollTimer = setTimeout(function () {
-      if (doc.visibilityState === "visible" && !playing && !countTimer && holding < 0 && !editing) {
+      if (doc.visibilityState === "visible" && !playing && !countTimer && holding < 0 && !editing && !textEdit) {
         flush();
         if (!signedOut) load(false).then(poll, poll); else poll();
       } else poll();

@@ -185,8 +185,9 @@ describe("teleprompter, pure", () => {
   });
 });
 
-/* The touch rules: a tap plays, the next tap pauses, a drag reports the
-   finger's own movement, hold a line to edit. */
+/* The touch rules: one tap plays or pauses after a short wait. Two quick taps
+   put a cursor in the words and do not play or pause. A drag reports the
+   finger's own movement. Hold a line to edit. */
 describe("teleprompter touch rules (gestureStep)", () => {
   function run(T, events, mode) {
     let g = T.gestureStart();
@@ -200,17 +201,19 @@ describe("teleprompter touch rules (gestureStep)", () => {
     return { g, acts: all };
   }
   const tap = (t, x = 100, y = 300) => [{ type: "down", x, y, t }, { type: "up", x, y, t: t + 60 }];
+  const settle = (T, t) => ({ type: "settle", t: t + 60 + T.DBL_MS });
 
-  test("one tap while rolling pauses, at once (no waiting for a second tap)", () => {
+  test("one tap while rolling does not pause until the double-tap wait ends", () => {
     const T = load();
-    const r = run(T, tap(0), "rolling");
-    assert.deepEqual(r.acts, [{ do: "pause" }]);
+    assert.deepEqual(run(T, tap(0), "rolling").acts, []);
+    assert.deepEqual(run(T, [...tap(0), { type: "settle", t: 60 + T.DBL_MS - 1 }], "rolling").acts, []);
+    assert.deepEqual(run(T, [...tap(0), settle(T, 0)], "rolling").acts, [{ do: "pause" }]);
   });
 
   test("one tap while paused rolls on; one tap in scroll mode rolls on from there", () => {
     const T = load();
-    assert.deepEqual(run(T, tap(0), "paused").acts, [{ do: "resume" }]);
-    assert.deepEqual(run(T, tap(0), "scroll").acts, [{ do: "resume" }]);
+    assert.deepEqual(run(T, [...tap(0), settle(T, 0)], "paused").acts, [{ do: "resume" }]);
+    assert.deepEqual(run(T, [...tap(0), settle(T, 0)], "scroll").acts, [{ do: "resume" }]);
   });
 
   test("two taps far apart in time are two single taps: pause, then roll on", () => {
@@ -218,7 +221,7 @@ describe("teleprompter touch rules (gestureStep)", () => {
     let mode = "rolling";
     const seen = [];
     let g = T.gestureStart();
-    for (const ev of [...tap(0), ...tap(1000)]) {
+    for (const ev of [...tap(0), settle(T, 0), ...tap(1000), settle(T, 1000)]) {
       const r = T.gestureStep(g, ev, mode);
       g = r.g;
       for (const a of plain(r.acts)) { seen.push(a.do); if (a.do === "pause") mode = "paused"; if (a.do === "resume") mode = "rolling"; }
@@ -226,28 +229,29 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("two quick taps while paused edit the word; they do not play and then pause", () => {
+  test("two quick taps place a cursor and do not play or pause", () => {
     const T = load();
-    let mode = "paused";
-    const seen = [];
+    for (const mode of ["paused", "rolling", "scroll"]) {
+      const r = run(T, [...tap(0), ...tap(200), settle(T, 200)], mode);
+      assert.deepEqual(r.acts.map((a) => a.do), ["caret"], mode);
+      assert.equal(r.acts[0].x, 100);
+      assert.equal(r.acts[0].y, 300);
+    }
+  });
+
+  test("the second tap is marked so the page can skip play and pause", () => {
+    const T = load();
     let g = T.gestureStart();
-    const step = (ev) => {
-      const r = T.gestureStep(g, ev, mode);
-      g = r.g;
-      for (const a of plain(r.acts)) {
-        seen.push(a.do);
-        if (a.do === "pause") mode = "paused";
-        if (a.do === "resume") mode = "rolling";
-      }
-    };
-    [...tap(0), ...tap(200)].forEach(step);
-    assert.deepEqual(seen, ["resume", "edit-word"]);
+    for (const ev of tap(0)) g = T.gestureStep(g, ev, "rolling").g;
+    const down = T.gestureStep(g, { type: "down", x: 104, y: 304, t: 200 }, "rolling");
+    assert.equal(down.g.down.dbl, true);
+    assert.deepEqual(plain(down.acts), []);
   });
 
   test("a second tap too far away is not a double tap", () => {
     const T = load();
-    const r = run(T, [...tap(0, 100, 300), ...tap(150, 300, 600)], "paused");
-    assert.deepEqual(r.acts.map((a) => a.do), ["resume", "resume"]);
+    const r = run(T, [...tap(0, 100, 300), ...tap(150, 300, 600), settle(T, 150)], "paused");
+    assert.deepEqual(r.acts.map((a) => a.do), ["resume", "pause"]);
   });
 
   test("thumb up rolls the words up; thumb down moves them down with the hand", () => {
@@ -363,6 +367,16 @@ describe("teleprompter page", () => {
     assert.doesNotMatch(startFn, /ensureRecording/);
     assert.match(SRC, /function recordClick\(\) \{[\s\S]*?ensureRecording\(\)/);
     assert.match(SRC, /function stopRecClick\(\) \{\s*endRec\(\);/);
+  });
+
+  test("a double tap places a cursor in the words and does not stop the camera", () => {
+    assert.match(SRC, /setAttribute\("contenteditable", "true"\)/);
+    assert.match(SRC, /caretRangeFromPoint/);
+    assert.doesNotMatch(SRC, /word-box/);
+    const caret = SRC.slice(SRC.indexOf("function placeCaret"), SRC.indexOf("function flatWords"));
+    assert.doesNotMatch(caret, /endRec\(/);
+    assert.match(SRC, /function saveScript\(\) \{\s*if \(textEdit\) syncCaretText\(\)/);
+    assert.match(SRC, /send: function \(body\) \{ return api\("POST", "marketing\/scripts\/edit", body\); \}/);
   });
 
   test("a word save uses the script edit route and does not stop the camera", () => {
