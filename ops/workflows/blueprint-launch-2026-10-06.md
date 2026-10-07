@@ -92,3 +92,12 @@ Monthly member fee amount · Commas titles for member fee and per-letter mailing
 **Journeys impacted:** client. `-actual.md` not regenerated (told not to run `npm run journeys`).
 
 **Proof:** fixture server = the real `api/money/alerts.mjs` handler and the real payload builder over the sample rows, writes in memory, no database, no login. Its first read equals the pinned fixture. Marked shots at 1440 and 375 (full, empty, error, loading, promo editing and saved, a day saved, a switch off, STOP) are in the B2-front worktree under `ops/workflows/blueprint-launch-2026-10-06-evidence/b2/` (gitignored).
+
+### Orchestrator log (2026-10-07)
+- B1 decline defense (470) merged → FinanceOS tab "Applications". B1b (paste a decline into the money helper) running.
+- B2 alerts back end (471) + screen merged → tab "Alerts".
+- B3 vault back end (472) merged; screen running.
+- B4 next funding sequence math merged (no migration). Banks tab labels now say "next funding sequence"; reads `next_sequence`.
+- F1 daily Plaid refresh merged; key-rotation AAD bug fixed (would have broken real tokens).
+- F2 bank reconnect (update mode) back end running. Presentation offer stack (PS) running as a MARKED DRAFT — merge only when Chris says push.
+- Leftover (page-edit law, needs a marked draft): `public/app/client-portal.html` promo copy says "before the next round" — should say "next funding sequence".
