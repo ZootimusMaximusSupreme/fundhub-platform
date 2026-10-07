@@ -60,6 +60,7 @@ const APP = path.resolve(HERE, "../../public/app");
                           promo dates); same client-facing frame as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
+   teleprompter-remote.html — pocket remote for the same shoot; no shell.js, no sign-in
    *.fragment.html      — a fragment, not a screen */
 const NO_SIDEBAR = new Set([
   "index.html",
@@ -85,7 +86,8 @@ const NO_SIDEBAR = new Set([
   "money-next.html",
   "money-transfers.html",
   "money-alerts.html",
-  "teleprompter.html"
+  "teleprompter.html",
+  "teleprompter-remote.html"
 ]);
 
 function navHrefs(html) {

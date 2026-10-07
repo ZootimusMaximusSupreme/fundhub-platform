@@ -180,6 +180,42 @@ body.cam-side-right #script-fade {
   display: none;
 }
 
+#rows {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+#controls {
+  grid-column: 1 / -1;
+}
+/* Mirror and Turn sit beside the speed taps. They are not the Record / Play row. */
+#rig {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+#rig button,
+#b-remote {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(12, 14, 18, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #fff;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+#b-mirror[aria-pressed="true"] {
+  border-color: #ff3b30;
+}
 /* Dark glass over the mirrored front camera.
    The black is see-through, so the face stays under the words.
    It is not a flat empty black page. */

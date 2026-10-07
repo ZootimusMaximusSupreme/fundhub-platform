@@ -317,6 +317,11 @@ body.wording #flip{transform:none !important}
   <div id="bar">
     <div id="status"><span class="note">Play rolls the words. Tap Play again and the words pause. The camera keeps recording. When the words are paused, double-tap a word to change it. A blank gap keeps that same speed, so you can breathe.</span><span id="s-time"></span></div>
     <div id="rows">
+      <div id="rig" aria-label="Mirror rig">
+        <button type="button" id="b-mirror" aria-pressed="false">Mirror off</button>
+        <button type="button" id="b-turn">Turn 0</button>
+        <a id="b-remote" href="teleprompter-remote.html">Remote</a>
+      </div>
       <div id="wpm-tap" aria-label="Speed">
         <button type="button" id="wpm-down" aria-label="Slower">−</button>
         <button type="button" id="wpm-up" aria-label="Faster">+</button>

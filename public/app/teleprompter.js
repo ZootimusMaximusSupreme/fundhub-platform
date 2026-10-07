@@ -44,6 +44,9 @@
  * need it. The text, the countdown, the progress bar and the reading line flip
  * together. Each device keeps its own setting. Editing shows the words the
  * right way round while the box is open.
+ * The iPad link ?mirror=1 reverses the words so a mirror reads them the right
+ * way. ?rot=90, 180, or 270 turns them. Both stay off until that link, or the
+ * Mirror and Turn controls, say so. Record and Play are not inside the glass.
  *
  * NO SHELL. Like present.html this page has no sidebar, no shell.js, and no
  * sign-in. The Shoot tab link carries a film key (?k=). That key reads this
@@ -471,6 +474,73 @@
     return Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(n / 5) * 5));
   }
 
+  /**
+   * Read ?mirror= and ?rot= off a search string. Missing keys stay null
+   * so a saved look on this device is left alone.
+   */
+  /** One query value, or null when that name is not in the link. No URLSearchParams, so the unit check can run it. */
+  function queryValue(search, name) {
+    var found = null;
+    String(search || "").replace(/^\?/, "").split("&").forEach(function (bit) {
+      if (!bit) return;
+      var i = bit.indexOf("=");
+      var key = i < 0 ? bit : bit.slice(0, i);
+      var val = i < 0 ? "" : bit.slice(i + 1);
+      try { key = decodeURIComponent(key.replace(/\+/g, " ")); } catch (e) { /* keep the raw key */ }
+      if (key !== name) return;
+      try { val = decodeURIComponent(val.replace(/\+/g, " ")); } catch (e2) { /* keep the raw value */ }
+      found = val;
+    });
+    return found;
+  }
+
+  function rigQuery(search) {
+    return { mirror: queryValue(search, "mirror"), rot: queryValue(search, "rot") };
+  }
+
+  /**
+   * How the words sit for the glass. Mirror is off unless the link says
+   * ?mirror=1 (or true / on / yes) or this device already saved the switch.
+   * ?mirror=0 forces off. rot is 0, 90, 180, or 270. The link wins over
+   * the saved turn. Anything else is 0, which does not turn the phone page.
+   */
+  function rigLook(query, saved) {
+    var q = query || {};
+    var s = saved && typeof saved === "object" ? saved : {};
+    var raw = q.mirror == null ? null : String(q.mirror).trim().toLowerCase();
+    var mirror;
+    if (raw === "1" || raw === "true" || raw === "on" || raw === "yes") mirror = true;
+    else if (raw === "0" || raw === "false" || raw === "off" || raw === "no") mirror = false;
+    else mirror = !!s.mirror;
+    var rotGiven = !(q.rot == null || q.rot === "");
+    var rot = rotGiven ? Number(q.rot) : Number(s.rot);
+    if (!isFinite(rot)) rot = 0;
+    rot = ((Math.round(rot) % 360) + 360) % 360;
+    if (rot !== 0 && rot !== 90 && rot !== 180 && rot !== 270) rot = 0;
+    return { mirror: mirror, flipV: !!s.flipV, rot: rot };
+  }
+
+  /** The CSS transform for that look. Empty when nothing is on, so the phone page stays plain. */
+  function rigTransform(look) {
+    var mirror = !!(look && look.mirror);
+    var flipV = !!(look && look.flipV);
+    var rot = look && look.rot ? look.rot : 0;
+    var parts = [];
+    if (rot) parts.push("rotate(" + rot + "deg)");
+    if (mirror && flipV) parts.push("scale(-1, -1)");
+    else if (mirror) parts.push("scaleX(-1)");
+    else if (flipV) parts.push("scaleY(-1)");
+    return parts.join(" ");
+  }
+
+  /** The next quarter turn: 0, 90, 180, 270, then back to 0. */
+  function nextRot(rot) {
+    var order = [0, 90, 180, 270];
+    var n = Number(rot);
+    if (order.indexOf(n) < 0) n = 0;
+    return order[(order.indexOf(n) + 1) % order.length];
+  }
+
   /** Where time t on the old scroll lands after paceThroughBlanks. */
   function scrollTime(oldKeys, newKeys, t) {
     if (!oldKeys || !oldKeys.length || !newKeys || !newKeys.length) return t;
@@ -498,7 +568,7 @@
     paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
-    storedWpm: storedWpm
+    storedWpm: storedWpm, rigQuery: rigQuery, rigLook: rigLook, rigTransform: rigTransform, nextRot: nextRot
   };
 
   var doc = root.document;
@@ -523,9 +593,15 @@
   if (!savedSettings || typeof savedSettings !== "object") savedSettings = {};
   var rememberedWpm = LS.get("wpm", null);
   if (rememberedWpm == null && savedSettings.wpm != null) rememberedWpm = savedSettings.wpm;
-  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k" }, savedSettings);
+  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k", rot: 0 }, savedSettings);
   S.wpm = storedWpm(rememberedWpm, 150);
   LS.set("wpm", S.wpm);
+  var rigQ = rigQuery((function () { try { return new URL(root.location.href).search; } catch (e) { return ""; } })());
+  var look = rigLook(rigQ, S);
+  S.mirror = look.mirror;
+  S.flipV = look.flipV;
+  S.rot = look.rot;
+  if (rigQ.mirror != null || rigQ.rot != null) save();
   var learned = LS.get("keys", {});
   var queue = LS.get("queue", []);
 
@@ -2122,6 +2198,21 @@
     content.style.setProperty("--measure", S.measure + "ch");
     flip.classList.toggle("mirror-x", !!S.mirror);
     flip.classList.toggle("mirror-y", !!S.flipV);
+    // A quarter turn needs one transform. With no turn, the classes above
+    // stay in charge, so a plain phone page is not flipped.
+    flip.style.transform = S.rot ? rigTransform({ mirror: !!S.mirror, flipV: !!S.flipV, rot: S.rot }) : "";
+    var mb = $("b-mirror");
+    if (mb) {
+      mb.setAttribute("aria-pressed", S.mirror ? "true" : "false");
+      mb.textContent = S.mirror ? "Mirror on" : "Mirror off";
+    }
+    var tb = $("b-turn");
+    if (tb) tb.textContent = "Turn " + (S.rot || 0);
+    var remote = $("b-remote");
+    if (remote) {
+      var k = filmKey();
+      remote.href = "teleprompter-remote.html" + (k ? "?k=" + encodeURIComponent(k) : "");
+    }
   }
   function syncSettings() {
     $("r-wpm").value = S.wpm; $("v-wpm").textContent = S.wpm + " wpm";
@@ -2138,6 +2229,10 @@
   $("r-pause").oninput = function () { var p = progress(); S.pause = +this.value; save(); layout(); restore(p); apply(); syncSettings(); };
   $("t-mirror").onchange = function () { S.mirror = this.checked; save(); applyFont(); applyCameraSide(); };
   $("t-flipv").onchange = function () { S.flipV = this.checked; save(); applyFont(); };
+  var mirrorBtn = $("b-mirror");
+  if (mirrorBtn) mirrorBtn.onclick = function () { S.mirror = !S.mirror; save(); applyFont(); applyCameraSide(); };
+  var turnBtn = $("b-turn");
+  if (turnBtn) turnBtn.onclick = function () { S.rot = nextRot(S.rot); save(); applyFont(); };
   $("t-count").onchange = function () { S.countdown = this.checked; save(); };
 
   /* Learn remote: tap a slot, press the remote's button, it is saved on this device. */
@@ -2241,6 +2336,7 @@
   }
 
   syncSettings();
+  applyFont();
   paintPicks();
   pulse();
   root.addEventListener("pagehide", function () { endRec(); });

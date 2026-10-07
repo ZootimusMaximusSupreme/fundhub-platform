@@ -506,7 +506,8 @@ const DESK_FILES = [
   "social-studio.html",
   "soft-pull-approve.html",
   "staff-teams.html",
-  "teleprompter.html"
+  "teleprompter.html",
+  "teleprompter-remote.html"
 ];
 
 /** Static HTML under public/ (not public/app desks). */
