@@ -206,3 +206,106 @@ describe("creditOverview — the reads", () => {
     for (const q of seen) assert.doesNotMatch(q.sql, /\b(INSERT|UPDATE|DELETE)\b/i, "read only");
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * The business score a pull stored (wave 3, G4)
+ *
+ * A live pull orders one Experian Business report per saved company and
+ * stores it on crs_results.result.businessReports[] (src/finance/crs-pull.mjs).
+ * The Credit tab read only the businesses row, where nothing ever writes a
+ * score, so every client read "No business score on file yet".
+ * ------------------------------------------------------------------ */
+describe("business score from the stored pull", () => {
+  const COMPANY = {
+    name: "Fundhub LLC", age_months: 67, entity_data: { state: "AZ" },
+    created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z"
+  };
+  /* The shape deriveBusinessSignals() reads: report.data.scoreInformation. */
+  const bizReport = (score, fsr) => ({
+    data: { scoreInformation: { commercialScore: { score }, fsrScore: { score: fsr } } }
+  });
+  const withBiz = (at, reports, extra = {}) =>
+    pull(at, { ex: 771, eq: 778, tu: 766 }, { businessReports: reports, ...extra });
+
+  test("the Intelliscore and FSR the pull stored show on the Credit tab", () => {
+    const d = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [withBiz("2026-09-30T00:00:00Z",
+        [{ name: "Fundhub LLC", state: "AZ", ageMonths: 67, bin: "1", report: bizReport(76, 58) }])]
+    });
+    assert.equal(d.business.name, "Fundhub LLC");
+    assert.equal(d.business.intelliscore, 76);
+    assert.equal(d.business.fsr, 58);
+    assert.ok(!d.missing.includes("business_score"));
+    assert.equal(d.sample, false);
+  });
+
+  test("the same number UnderwriteIQ's own business reader takes off that report", async () => {
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const { deriveBusinessSignals } =
+      require("../../vendor/underwriteiq-full/api/lite/crs/derive-business-signals.js");
+    const report = bizReport(64, 41);
+    const engine = deriveBusinessSignals(report).scores;
+    const d = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [withBiz("2026-09-30T00:00:00Z", [{ name: "Fundhub LLC", state: "AZ", report }])]
+    });
+    assert.equal(d.business.intelliscore, engine.intelliscore);
+    assert.equal(d.business.fsr, engine.fsr);
+  });
+
+  test("the newest pull wins, and its 'no score yet' is not covered by an older number", () => {
+    const d = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [
+        withBiz("2026-08-01T00:00:00Z", [{ name: "Fundhub LLC", state: "AZ", report: bizReport(80, 60) }]),
+        withBiz("2026-09-30T00:00:00Z", [{ name: "Fundhub LLC", state: "AZ", report: bizReport(null, null) }])
+      ]
+    });
+    assert.equal(d.business.intelliscore, null);
+    assert.ok(d.missing.includes("business_score"));
+  });
+
+  test("another company's report, a sandbox pull, or an off-scale number never paints", () => {
+    const other = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [withBiz("2026-09-30T00:00:00Z", [{ name: "Other Co", state: "AZ", report: bizReport(90, 70) }])]
+    });
+    assert.equal(other.business.intelliscore, null, "a different company");
+    const wrongState = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [withBiz("2026-09-30T00:00:00Z", [{ name: "Fundhub LLC", state: "TX", report: bizReport(90, 70) }])]
+    });
+    assert.equal(wrongState.business.intelliscore, null, "same name, another state");
+    const sandbox = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [withBiz("2026-09-30T00:00:00Z",
+        [{ name: "Fundhub LLC", state: "AZ", report: bizReport(90, 70) }], { environment: "sandbox" })]
+    });
+    assert.equal(sandbox.business.intelliscore, null, "a sandbox pull is a vendor's canned file");
+    const offScale = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [withBiz("2026-09-30T00:00:00Z", [{ name: "Fundhub LLC", state: "AZ", report: bizReport(720, 0) }])]
+    });
+    assert.equal(offScale.business.intelliscore, null, "a FICO-sized number is not an Intelliscore");
+  });
+
+  test("a business score off a sample report flags the page as sample", () => {
+    const d = buildCreditOverview({
+      client: CLIENT, asOf: AS_OF, businesses: [COMPANY],
+      crsRows: [{ id: "s", created_at: "2026-09-30T00:00:00Z",
+        result: { simulated: true, environment: "simulated",
+          businessReports: [{ name: "fundhub  llc", state: "az", report: bizReport(70, 50) }] } }]
+    });
+    assert.equal(d.business.intelliscore, 70, "name and state compared loosely");
+    assert.equal(d.sample, true);
+  });
+
+  test("other callers that pass no pulls get the answer they always got", async () => {
+    const { businessCredit } = await import("../http/client-detail.mjs");
+    const b = businessCredit({ client: {}, businesses: [COMPANY] });
+    assert.deepEqual(Object.keys(b), ["name", "intelliscore", "fsr", "businesses"]);
+    assert.equal(b.intelliscore, null);
+  });
+});

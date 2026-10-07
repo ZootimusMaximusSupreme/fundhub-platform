@@ -12,6 +12,8 @@
 //                            (FICO range only, sandbox pulls never painted,
 //                            sample reports flagged)
 //   business score           businessCredit()     src/http/client-detail.mjs
+//                            (given the pulls: the Experian Business report a
+//                            CRS pull stored on result.businessReports[])
 //   accounts                 linesForEngine()     src/tradelines/index.mjs
 //   utilization              clientUtilizationPct src/underwrite/adapter.mjs,
 //                            then utilisation()   src/http/client-detail.mjs
@@ -28,7 +30,9 @@
 // unrecognised sentence, and the engine's fallback lines are left out, because
 // this read is client-facing. Every sentence that passes is the engine's string,
 // unchanged.
-import { triMerge, businessCredit, utilisation, UTILISATION_BANDS } from "../http/client-detail.mjs";
+import {
+  triMerge, businessCredit, businessScoreFromPulls, utilisation, UTILISATION_BANDS
+} from "../http/client-detail.mjs";
 import { linesForEngine } from "../tradelines/index.mjs";
 import { clientUtilizationPct, toBureaus } from "../underwrite/adapter.mjs";
 import { computeUnderwrite, buildSuggestions } from "../underwrite/engine.mjs";
@@ -290,7 +294,13 @@ export function buildCreditOverview({
 
   const bizOrder = [...businesses].sort((a, b) =>
     new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-  const biz = businessCredit({ client: { ...client, custom_fields: cf }, businesses: bizOrder });
+  /* The pulls go in too. A live pull stores the Experian Business report on
+     crs_results.result.businessReports[], not on the businesses row, so a
+     read of the businesses row alone never found a score (wave 3, G4). */
+  const biz = businessCredit({
+    client: { ...client, custom_fields: cf }, businesses: bizOrder, crsResults: newestFirst
+  });
+  const bizPull = businessScoreFromPulls(newestFirst, bizOrder[0] || null);
 
   const { tradelines: lines, source: lineSource } = linesForEngine(tradelineRows, newestFirst);
   const accounts = accountsSummary(lines, lineSource);
@@ -322,7 +332,8 @@ export function buildCreditOverview({
     as_of: iso(asOf),
     has_pull: hasPull,
     // True when any score on the page came off a sample report, never a bureau.
-    sample: BUREAUS.some((b) => personal[b].sample === true),
+    sample: BUREAUS.some((b) => personal[b].sample === true) ||
+      (bizPull.found && bizPull.sample === true && (bizPull.intelliscore !== null || bizPull.fsr !== null)),
     personal,
     business: {
       name: biz.name,
