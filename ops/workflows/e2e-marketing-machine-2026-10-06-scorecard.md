@@ -1,8 +1,40 @@
 # E2E scorecard — marketing machine + FinanceOS (2026-10-06)
 
-Part 1 (Command Center, bridge, teleprompter): see Part 1 agent / `ops/workflows/e2e-marketing-machine-run-output.json`. This file adds **Part 2 — FinanceOS** only.
+**Audit time (Arizona):** Oct 7, 2026, ~12:30 a.m.  
+**Live ship:** `ddcabb29` (ship log 2026-10-06 23:46) · `origin/main` `f0c0e597`  
+**Part 1 rules:** test only, no fixes; `MESSAGING_DRY_RUN=1` / `ADAPTERS_DRY_RUN=1` on drivers; owner routes via Way-A (`chris@fundhub.ai` staff row, no session mint); live UI login uses `owner@fundhub.ai` + `STAFF_E2E_PASSWORD` (not Chris’s personal password).
 
-**Audit time (Arizona):** Oct 7, 2026, ~12:07 a.m.  
+---
+
+## Part 1 — Marketing machine (Command Center, bridge, teleprompter)
+
+| # | Test | Result | Proof (Arizona time ~12:08–12:30 a.m.) |
+|---|------|--------|------------------------------------------|
+| 1 | Ship / health | **PASS** | `GET https://fundhub.ai/api/health` → `pending:0`, `migrations:372`. Ship log last commit `ddcabb29`; `origin/main` `f0c0e597` (`git merge-base --is-ancestor ddcabb29 origin/main`). Driver: `ops/workflows/e2e-marketing-machine-run.mjs`. |
+| 2 | CI on `main` | **PASS** | GitHub Actions run **37583359128** (`ship: ddcabb29 is live`). Only red: `climate page: no approval odds, no promised amount, no guarantee` (owner-known). No other `not ok` tests. |
+| 3 | Command Center (390 + 1280) | **PASS** | **Logged out:** `ops/workflows/e2e-marketing-machine-live-click.mjs` → both viewports land on `login.html?next=/app/marketing-command-center.html`, console clean (401 network noise ignored). **Logged in (owner):** all tabs `today, ideas, scripts, shoot, launch, numbers, settings` via hash — `bad:[]`, no sideways scroll, no “This tab did not open”. Safe controls clicked (spend/queue buttons skipped). **Handlers (real DB):** `GET marketing/today`, `scripts`, `shoot`, `settings`, `research` → 200. **Offline button proof:** `npx playwright test` → **137** CC/tab specs + **48** `teleprompter-touch` (iPhone + iPad viewports) green. |
+| 4 | Clock / worker | **PASS** | `marketing_heartbeats` (`name`/`last_at`): clock `2026-10-07T07:00:58Z`, worker `2026-10-07T07:01:01Z` (<20 min). Worker after last queued job (`marketing_jobs` last create `2026-10-06T16:28:43Z`). |
+| 5 | Bridge — one copy job | **NOT RUN** | Battery `5-bridge-copy-job` stopped on SQL (`marketing_model_usage.cost_cents` column mismatch in driver). No fresh enqueue + `npm run marketing:run-queue -- --once` proof in this pass. |
+| 6 | Bridge — flywheel avatar retry | **PASS** (done) / **FAIL** (retry tap) | Job `95c0a082-2d05-40a2-a884-1ecd70816619` is **`done`** (steps through `save` finished ~07:28 UTC). `POST marketing/flywheel/run` with `retry_job_id` → **404** (“not a stopped or failed avatar run”) — expected once finished. Research/offer not started. |
+| 7 | Scripts — write now + approve | **FAIL** | `ad_scripts` count **0** for org; no ad number ≥91 in `ads.fundhub_ad_number`. Battery driver hit wrong table name (`marketing_scripts`). Outbox heartbeat detail: `held_reason: no_token` (expected without GitHub token). |
+| 8 | Shoot + teleprompter | **PASS** (offline) / **FAIL** (live teleprompter) | **Offline:** `teleprompter.spec.mjs` + `teleprompter-touch.spec.mjs` — pause/resume, double-tap scroll, drag, hold-edit, offline sync, Saved line (mock API). **Live:** after owner login, `teleprompter.html` still shows **sign-in wall** (session not seen by teleprompter). **Shoot plan route:** **NOT RUN** (no scripts on file). |
+| 9 | Numbers — Meta spend | **FAIL** | `SELECT SUM(spend_cents) FROM ad_metrics_daily` → **0** rows / **0** cents (expect **156313** cents through Oct 4 baseline). Numbers tab live render OK; DB spine empty. |
+| 10 | Launch safety | **PASS** | `POST marketing/meta/load` without video ids → **400** `invalid` / `ad_video_id` (battery + run driver). Launch tab loads live with no tab fault. No Meta load sent. |
+| 11 | iPhone app (simulator) | **PASS** (iPhone) / **NOT RUN** (iPad sim) | `DEVELOPER_DIR=… xcodebuild test` · `tools/teleprompter-ios/FundhubPrompter.xcodeproj` · **iPhone 17 Pro Max** → **42** tests, **0** failures (~00:29 AZ). iPad simulator destination not re-run this pass. Real device only: 4K/60 camera, Photos save, BLE remote, production login. |
+| 12 | Funnel builder | **PASS** | Funnel `d6e3726c-d9ee-4dff-9721-268582ef1f9f` **`draft`**, path `/blueprint`. `GET https://apply.fundhub.ai/blueprint` → **404** (not live — owner choice). `/roadmap` → **200** (unchanged live page spot-check). |
+
+### Five-line summary — Part 1 (Chris)
+
+1. Live site is shipped and healthy; CI only failed the known climate test.
+2. Command Center works at phone and desktop sizes when you sign in; every tab opens with real API data.
+3. The clock and worker ran in the last few minutes; the Blueprint avatar job is **done**.
+4. **Red:** Meta spend rows are missing in the database, so Numbers cannot match Meta. **Red:** no scripts in `ad_scripts` yet (write-now not proved this pass). **Red:** live teleprompter still shows the sign-in wall after staff login.
+5. Offline Playwright clicked teleprompter controls; iPhone simulator tests passed. We did not push the funnel or send anything to Meta.
+
+---
+
+## Part 2 — FinanceOS
+
 **Sim client (14a/16 re-score):** Sim FinanceOS `39f748e1-9fce-4233-8642-1b09dff22d64` · `e2e+financeos-14a16-1791356831368@fundhub.ai` (new plus-tag; not Test Test)  
 **Sim client (13–15, 17–19):** Test Test `f1cb9c27-f858-4db1-b6bb-4eddc898bb8e` (S1 sample, board `finance-os-wave5-2026-10-06.md`)  
 **Rules:** test only, no fixes, no live money moves, Plaid sandbox (`PLAID_ENV=sandbox`), `MESSAGING_DRY_RUN=1` / `ADAPTERS_DRY_RUN=1` on sim pay path.
@@ -27,7 +59,7 @@ Part 1 (Command Center, bridge, teleprompter): see Part 1 agent / `ops/workflows
 | 18 | Money agent — Mac bridge / shadow roleplay | **PASS** (rules shadow) / **NOT RUN** (bridge this pass) | `npm run money:roleplay -- --scripted --brain=rules --persona=a` → PASS; report `ops/workflows/finance-os-wave5-2026-10-06-evidence/w6/roleplay-2026-10-07T07-02-22-414Z.md`. Agent **FOS-01** status **shadow** in DB. Mac bridge (`--brain=bridge`) not re-run here; ship log wave5 cites live bridge turn 2026-10-07. |
 | 19 | Plaid sandbox transfer: propose → approve → events / ledger / limits | **PASS** (historical proof) | SQL: `money_transfers` **settled** $20.00 (`2000`¢), **13** rows in `money_transfer_events`. Local `.env`: `FINANCE_OS_TRANSFER_MAX_CENTS` + `FINANCE_OS_TRANSFER_DAILY_MAX_CENTS` set; `PLAID_ENV=sandbox`; `FINANCE_OS_TRANSFERS_LIVE` unset. `node scripts/finance-os-sandbox-transfer.mjs` dry run OK. **Not re-applied** in this pass (would write + Plaid). |
 
-## Five-line summary (Chris)
+### Five-line summary — Part 2 (Chris)
 
 1. FinanceOS pages work on live for Test Test at phone and desktop sizes; cash on screen matches the database.
 2. Wave 5 reads work: Plan, Banks, Strategy, Fundability, Next steps, and tasks all return real rows.
@@ -35,4 +67,10 @@ Part 1 (Command Center, bridge, teleprompter): see Part 1 agent / `ops/workflows
 4. **Setup fee + Commas installment:** proved on a **new plus-tag** sim (`39f748e1-…`); Test Test still has no setup payment (S1 sample unchanged).
 5. Money helper role-play passed in safe shadow mode; we did not click “Do task” or “Ready to fund” because that would write live.
 
-**Next action:** Optional: prove merchant API pull on the same sim; or set `FINANCE_OS_SETUP_FEE_CENTS` on Netlify if production checkout should mint without a script override.
+---
+
+## Overall next action
+
+**Marketing:** Backfill or sync `ad_metrics_daily` so Numbers matches Meta; fix live teleprompter staff session; re-run write-now + bridge copy job with a corrected battery driver. **Finance:** Optional merchant API pull on the sim; optional Netlify `FINANCE_OS_SETUP_FEE_CENTS` for production checkout.
+
+**Part 1 pass/fail (scored rows):** PASS **7**, FAIL **4**, NOT RUN **2** (tests 5, 8 shoot plan partial). **Part 2:** committed separately (`02f14ba5`).
