@@ -486,11 +486,14 @@ describe("new credit — a new account on a linked login", () => {
     assert.equal(w.alerts.find((a) => a.kind === "new_credit").messageId, null);
   });
 
-  test("the first read of a login is the baseline: a client linking their cards is not told they opened them", async () => {
+  test("the first read of a login is the baseline: a client who linked their bank yesterday is not told they opened every card they have", async () => {
     const w = world({ blueprint: true });
-    const r = await w.run("2026-10-02T07:30:00.000Z");
+    // Linked on Oct 11 at 09:00; the first read brought in all four accounts within the minute.
+    w.meta = meta(w.accounts, { itemAt: "2026-10-11T09:00:00.000Z", createdAt: "2026-10-11T09:00:20.000Z" });
+    const r = await w.run("2026-10-12T07:30:00.000Z");
     assert.equal(r.sent.filter((s) => s.kind === "new_credit").length, 0);
     assert.equal(w.tasks.length, 0);
+    assert.equal(w.alerts.filter((a) => a.kind === "new_credit").length, 0);
   });
 
   test("switched off: nothing", async () => {

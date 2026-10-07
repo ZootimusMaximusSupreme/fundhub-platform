@@ -37,7 +37,7 @@ Value: ★★★ = moves the client toward funding / the reason they pay $5–10
 | # | Unit | Status | Migration # |
 |---|---|---|---|
 | B1 | Decline defense: client pastes the decline into the agent → likely reasons → reconsideration steps as a tracked process (agent / ops / client), cited from the bank book; ops task + script | running | 470 |
-| B2 | File-protection alerts that actually send: payment timing, promo end 60/30/7 (promo-end field), cash reserve < 6× minimums, new card / new inquiry the day it shows (Plaid new account + pull diff) | queued | 471 |
+| B2 | File-protection alerts that actually send: payment timing, promo end 60/30/7 (promo-end field), cash reserve < 6× minimums, new card / new inquiry the day it shows (Plaid new account + pull diff) | **back end done** (Sonnet) — screen next (Opus); manifest below | 471 |
 | B3 | Document vault: required-docs checklist (statements, returns, ID, business docs), agent chases missing, closer sees "file complete" at ready time | queued | 472 |
 | B4 | Next funding sequence planner math: when the file is ready for the next sequence, from repo-documented windows (inquiry age, new-account age, utilization back under target), staff can override; rename "next round" labels to "next funding sequence" | queued | 473 |
 | B5 | Offer stack in the presentation (`present.js`): every Blueprint + FinanceOS item with buttons and logic for the rep | tomorrow (owner) | — |
@@ -51,3 +51,32 @@ Rules: never invent a bank script, window, or amount — cite the repo source or
 
 ## Owner decisions still open (do not block the build)
 Monthly member fee amount · Commas titles for member fee and per-letter mailing · combined approval rule (sum?) · when to turn on live monthly pulls (cost per pull).
+
+## B2 manifest — file-protection alerts, back end (2026-10-07)
+
+**Done:** items 11–14 now send. Contract for the screen: `docs/finance/file-protection-alerts.md` + the fixture `src/finance/file-alerts/file-alerts.fixture.json` (a test pins the API to it).
+
+| Item | What goes out | Once per |
+|---|---|---|
+| 12 payment timing | text 3 days before each card's statement close ("pay … down before Oct 15 — that is the day it reports to the bureaus"), with balance and "pay about $X to get under 10%" | card per cycle |
+| 13 promo end | text at 60 / 30 / 7 days with the balance left and a computed payoff line | card per threshold |
+| 14 cash cushion | text when personal **or** business cash < 6 × that kind's minimums (cards + loans + Fundhub payment plans); re-arms when cash recovers; never summed | drop |
+| 11 new credit | text for a new Plaid card/loan on a linked login, or a new account/inquiry between two stored credit pulls; a CSM task for Blueprint buyers | account / pull |
+
+**Files:** `db/migrations/471_file_protection_alerts.sql` · `src/finance/file-alerts/*` (planners, store, snapshot, run, read, memory-store, sample-payload) · `api/money/alerts.mjs` · `src/workflows/blueprint-finance-os-alerts.mjs` (extended) · `scripts/blueprint-file-alerts-dry-run.mjs` · `netlify/functions/api.mjs` (route `money/alerts`) · `src/pulse/registry.mjs` (API_KEYS) · tests `src/finance/file-alerts/*.test.mjs`, `src/http/money-alerts.test.mjs`, `src/workflows/blueprint-finance-os-alerts.test.mjs`.
+
+**Route:** `GET/POST /api/money/alerts` (client session, or staff `owner/admin/sales_manager` + `client_id`). POST actions: `set_alert`, `set_promo`, `set_statement_close_day`.
+
+**Migration 471 (additive):** promo columns on `account_statement_cycles` (the old "client_cards" skip reason named the wrong table — that one is the payment instrument a client pays Fundhub with); `file_protection_settings`; `file_protection_alerts` (once-only key, one open cash alert per kind); four `SMS-FILE-PROTECT-*` templates. **Not on production until ship.**
+
+**Workflow count:** unchanged. The existing `blueprint-finance-os-alerts` cron was extended (same function id); `REGISTERED` stays at main's value.
+
+**Journeys impacted:** client (alerts the client now receives). `-actual.md` journeys and diagrams were NOT regenerated here (told not to run `npm run journeys`); `diagrams:check` is clean.
+
+**Choices made (named, changeable, in `src/finance/file-alerts/common.mjs`):** lead time 3 days (`FILE_ALERT_PAY_BEFORE_CLOSE_DAYS`, 1–10 — the repo had no rule) · Fundhub payment plans count against personal cash only · a cash balance dated over 30 days old is unknown · a login's first 60 minutes of accounts are the baseline · new credit looks back 3 days.
+
+**Needs from the screen unit:** hand-entered cards have no statement close day, so the pay-before-close text cannot go for them — ask the client for it (`set_statement_close_day`).
+
+**Leftover card (not fixed — outside this hole):** nothing re-reads the Plaid account list or balances after link time (`accounts-sync.mjs` calls the Plaid seam with no token, and `plaid-liabilities.mjs` refuses to create accounts). So a new Plaid card appears only when something writes its row (a re-link), and the cash cushion uses balances as last written. Real banks are sandbox-only until Plaid production is granted.
+
+**Proof:** read-only dry run over test client `f1cb9c27-…` (not in the daily audience — no Finance OS subscription, no paid Blueprint transaction): `node --env-file=.env scripts/blueprint-file-alerts-dry-run.mjs`.

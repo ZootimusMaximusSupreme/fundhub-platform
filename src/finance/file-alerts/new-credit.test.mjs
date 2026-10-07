@@ -41,13 +41,22 @@ describe("planNewAccounts — a card or loan that appeared after the login was f
     assert.match(alerts[0].body, /a new loan showed up on your linked accounts: SBA Express\./);
   });
 
-  test("the accounts the login's FIRST read brought in are the baseline, not new credit", () => {
+  test("the accounts the login's FIRST read brought in are the baseline, not new credit — even when they are brand new", () => {
     assert.equal(NEW_ACCOUNT_BASELINE_MINUTES, 60);
-    const first = acct({ created_at: "2026-10-01T10:00:30.000Z" });
-    const edge = acct({ id: "a2", mask: "1111", created_at: "2026-10-01T11:00:00.000Z" });
-    const after = acct({ id: "a3", mask: "2222", created_at: "2026-10-07T09:00:00.000Z" });
+    // The client linked their bank yesterday morning: every account is recent, and none is new credit.
+    const linked = "2026-10-07T09:00:00.000Z";
+    const first = acct({ id: "a1", mask: "3333", item_created_at: linked, created_at: "2026-10-07T09:00:30.000Z" });
+    const edge = acct({ id: "a2", mask: "1111", item_created_at: linked, created_at: "2026-10-07T10:00:00.000Z" }); // exactly 60 minutes
+    const after = acct({ id: "a3", mask: "2222", item_created_at: linked, created_at: "2026-10-07T10:00:01.000Z" }); // one second past
     const r = planNewAccounts([first, edge, after], { now: NOW });
     assert.deepEqual(r.alerts.map((x) => x.bankAccountId), ["a3"]);
+    assert.deepEqual(r.skipped.filter((s) => s.reason === "first_read_of_the_login").map((s) => s.accountId).sort(), ["a1", "a2"]);
+  });
+
+  test("an account on a login whose own date is unknown cannot be called new", () => {
+    const r = planNewAccounts([acct({ item_created_at: null })], { now: NOW });
+    assert.equal(r.alerts.length, 0);
+    assert.deepEqual(r.skipped, [{ accountId: "a1", reason: "created_date_unknown" }]);
   });
 
   test("only a recent arrival alerts: a backlog from before this shipped stays quiet", () => {
