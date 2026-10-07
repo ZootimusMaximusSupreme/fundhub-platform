@@ -14,6 +14,8 @@ Cap is 5 agents at once. H5 + H6 (wave 4b) are still running, so W1–W3 start n
 | W3 | Fundability — score now, projected, per business (`GET /api/money/fundability`) | claimed | 462 |
 | W4 | Payment strategy — live payoff math, goal date → monthly amount (`GET/POST /api/money/strategy`) | queued | 463 |
 | W5 | "Ready to get funded" → CSM, Blueprint upsell / FinanceOS side-sell, "Do task" buttons | queued | 464 |
+| W6 | REAL FinanceOS money agent on the existing agent framework (`src/agents/`): Agent Editor row, tools, shadow → live, Claude Code bridge brain, role-play simulation harness | queued | 465 |
+| W7 | REAL money movement in Plaid sandbox (Transfer): propose → client approves → transfer → events, ledger, limits | queued | 466 |
 
 ## Shared contract — plan pins
 
@@ -46,6 +48,11 @@ Each UI part is `window.FinanceOS.sections.<name> = { title, mount(el, ctx) }`, 
 ## Rules every unit follows
 - Never invent a rule, amount, bank, score, or step. Every recommendation cites the repo source (doc, CSV, engine) it came from. If the source does not exist, the value is staff-set or shown as "not set" — and the report says so.
 - Sample clients: one realistic file (`.claude/rules/sample-clients-consistent.md`). Never stitch two files.
+
+## Owner (2026-10-06, evening): build it real, now
+"Really build the code. Really build the ability to do it. Really set up the AI agent… so we can role-play and see how it works simulated." Not mock-ups. Sandbox + role-play are how we test; production switches on later (Plaid approval, AI brain funding).
+- AI brain today: no Anthropic API credit (memory: no-api-spend). The repo already routes model calls to `claude -p` on Chris's Mac (`src/agents/claude-code.mjs`, `scripts/marketing-run-queue.mjs`). The money agent uses the same shared client (`callModel` in `src/agents/model.mjs`), so it thinks via the Mac bridge now and via the API or Lithos later — no code change.
+- Money movement: every transfer needs the client's approval (the "Do task" press on that exact transfer) and stays inside set limits.
 
 ## Manifests
 (orchestrator fills in)
