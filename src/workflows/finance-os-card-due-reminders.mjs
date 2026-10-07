@@ -53,7 +53,10 @@ export const SWEEP_CRON = "0 16 * * *"; // 16:00 UTC = 9am Arizona, inside the S
 export const SOURCE_WORKFLOW = "finance-os-card-due-reminders";
 
 /** Plaid-sourced card cycles for one client, joined to the card's name. Closed
- *  cards are skipped — a closed card has no bill to remind about. */
+ *  cards are skipped — a closed card has no bill to remind about. Loans are
+ *  skipped too: since wave 4 (H2) Plaid writes loan cycles with
+ *  source='provider', and loanCycles already reminds them — without this line
+ *  a Plaid loan would get two texts, one filed as a card. */
 export async function providerCycles(conn, { orgId, clientId }) {
   const res = await conn.query(
     `SELECT c.id AS cycle_id, c.bank_account_id, c.minimum_payment_cents,
@@ -63,6 +66,7 @@ export async function providerCycles(conn, { orgId, clientId }) {
        JOIN bank_accounts a ON a.id = c.bank_account_id
       WHERE c.org_id = $1 AND c.client_id = $2
         AND c.source = 'provider'
+        AND a.account_type IS DISTINCT FROM 'loan'
         AND a.closed_at IS NULL`,
     [orgId, clientId]
   );

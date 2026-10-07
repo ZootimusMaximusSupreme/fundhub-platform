@@ -212,3 +212,16 @@ test("the portal card and the client's allowed list point at the one page", () =
   const shell = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
   assert.match(shell, /client: \["client-portal\.html", "affiliate\.html",\s*"financeos\.html"/);
 });
+
+test("the Overview tab's loan table renders and its CSS is copied in, scoped (wave 4, H2)", () => {
+  const css = HTML.match(/<style>([\s\S]*?)<\/style>/)[1];
+  assert.match(css, /#fos-overview \.debt-side\{display:flex;flex-direction:column;gap:16px;min-width:0\}/);
+  const sandbox = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(APP, "money.js"), "utf8"), sandbox);
+  const d = JSON.parse(JSON.stringify(OVERVIEW));
+  d.debt.loans = [{ account_id: "x", name: "Mortgage", mask: "7707", container_id: null, kind: "personal",
+    balance_cents: 31250000, due_on: "2026-11-15", payment_cents: 189900 }];
+  const t = text(sandbox.window.FHMoney.render(d));
+  assert.match(t, /By loan/);
+  assert.match(t, /Mortgage ••7707 Personal \$312,500\.00 \$1,899\.00 Nov 15, 2026/);
+});

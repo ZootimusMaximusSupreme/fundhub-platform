@@ -202,8 +202,15 @@ export async function fetchAccounts(accessToken, opts = {}) {
  * (https://plaid.com/docs/api/products/liabilities/), carried one-for-one so a
  * disputed reading can be checked against Plaid's docs without a mapping table.
  *
- * Only `liabilities.credit` is read. Mortgage and student loans come back in the
- * same response and are not this caller's job.
+ * `liabilities.credit` (cards) and, since wave 4 (H2), `liabilities.student` and
+ * `liabilities.mortgage` (loans) are read. Plaid names the loan payment
+ * differently per kind — `minimum_payment_amount` on a student loan,
+ * `next_monthly_payment` on a mortgage — so each loan row carries it once as
+ * `payment_amount`, with the Plaid field it came from in `payment_field`. Every
+ * other loan field keeps Plaid's own name. A loan's balance owed is NOT in the
+ * liabilities rows: it is the account's `balances.current` in the same
+ * response's `accounts[]`, carried as `current_balance`. The `liabilities.loan`
+ * array (auto loans and other closed-end loans) is not read here.
  *
  * DOLLARS STAY DOLLARS HERE. Plaid sends decimal dollars; the cents conversion
  * happens once, in src/banking/plaid-liabilities.mjs, next to the store. And
@@ -250,7 +257,36 @@ export async function fetchLiabilities(accessToken, opts = {}) {
       }))
       : []
   }));
-  return { ...r, credit, item: r.data?.item ?? null, data: null };
+
+  /* Loans. The balance owed comes from accounts[].balances.current — Plaid's
+     liabilities rows for a student loan or mortgage carry no current balance. */
+  const balanceById = new Map();
+  for (const a of Array.isArray(r.data?.accounts) ? r.data.accounts : []) {
+    if (a && a.account_id) balanceById.set(a.account_id, num(a.balances?.current));
+  }
+  const loanRow = (kind, l, paymentField, rate) => ({
+    kind,
+    account_id: l?.account_id ?? null,
+    next_payment_due_date: date(l?.next_payment_due_date),
+    payment_amount: num(l?.[paymentField]),
+    payment_field: paymentField,
+    current_balance: l?.account_id && balanceById.has(l.account_id) ? balanceById.get(l.account_id) : null,
+    last_statement_balance: num(l?.last_statement_balance),
+    last_statement_issue_date: date(l?.last_statement_issue_date),
+    last_payment_amount: num(l?.last_payment_amount),
+    last_payment_date: date(l?.last_payment_date),
+    is_overdue: typeof l?.is_overdue === "boolean" ? l.is_overdue : null,
+    past_due_amount: num(l?.past_due_amount),
+    interest_rate_percentage: num(rate),
+    loan_name: typeof l?.loan_name === "string" ? l.loan_name : null
+  });
+  const rawStudent = Array.isArray(liabilities.student) ? liabilities.student : [];
+  const rawMortgage = Array.isArray(liabilities.mortgage) ? liabilities.mortgage : [];
+  const loans = [
+    ...rawStudent.map((l) => loanRow("student", l, "minimum_payment_amount", l?.interest_rate_percentage)),
+    ...rawMortgage.map((l) => loanRow("mortgage", l, "next_monthly_payment", l?.interest_rate?.percentage))
+  ];
+  return { ...r, credit, loans, item: r.data?.item ?? null, data: null };
 }
 
 /**

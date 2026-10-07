@@ -5,7 +5,8 @@ import assert from "node:assert";
 import crypto from "node:crypto";
 
 import { fetchLiabilities } from "./providers/plaid-http.mjs";
-import { toCycleInput, syncClientLiabilities } from "./plaid-liabilities.mjs";
+import { toCycleInput, toLoanCycleInput, syncClientLiabilities } from "./plaid-liabilities.mjs";
+import { loanDueOn } from "./card-due-reminders.mjs";
 import { encryptPlaidToken } from "./plaid.mjs";
 
 const ENV = {
@@ -87,6 +88,131 @@ describe("fetchLiabilities (plaid-http)", () => {
     });
     assert.equal(r.credit[0].minimum_payment_amount, null);
     assert.equal(r.credit[0].next_payment_due_date, null);
+  });
+});
+
+/* Shaped like Plaid's sandbox answer at ins_109508 (user_good, products
+   ["liabilities"]), read live 2026-10-06. Field names are Plaid's own. */
+const PLAID_STUDENT = {
+  account_id: "plaid-acc-student",
+  disbursement_dates: ["2002-08-28"],
+  expected_payoff_date: "2032-07-28",
+  guarantor: "DEPT OF ED",
+  interest_rate_percentage: 5.25,
+  is_overdue: false,
+  last_payment_amount: 138.05,
+  last_payment_date: "2019-04-22",
+  last_statement_balance: 138.05,
+  last_statement_issue_date: "2019-04-28",
+  loan_name: "Consolidation",
+  loan_status: { end_date: "2032-07-28", type: "repayment" },
+  minimum_payment_amount: 25,
+  next_payment_due_date: "2019-05-28",
+  origination_principal_amount: 25000,
+  outstanding_interest_amount: 6227.36,
+  repayment_plan: { description: "Standard Repayment", type: "standard" }
+};
+const PLAID_MORTGAGE = {
+  account_id: "plaid-acc-mortgage",
+  current_late_fee: 25,
+  escrow_balance: 1200,
+  interest_rate: { percentage: 3.99, type: "fixed" },
+  last_payment_amount: 3141.54,
+  last_payment_date: "2019-08-01",
+  loan_term: "30 year",
+  maturity_date: "2045-07-31",
+  next_monthly_payment: 3141.54,
+  next_payment_due_date: "2019-11-15",
+  origination_principal_amount: 425000,
+  past_due_amount: 2304
+};
+const PLAID_LOAN_ACCOUNTS = [
+  { account_id: "plaid-acc-student", type: "loan", subtype: "student", balances: { current: 65262, available: null, limit: null } },
+  { account_id: "plaid-acc-mortgage", type: "loan", subtype: "mortgage", balances: { current: 56302.06, available: null, limit: null } }
+];
+
+describe("fetchLiabilities — student loans and mortgages (wave 4, H2)", () => {
+  const read = (body) => fetchLiabilities("t", {
+    environment: "sandbox", clientId: "c", secret: "s", env: ENV, fetchImpl: async () => json(body)
+  });
+
+  test("reads student + mortgage with Plaid's field names; payment from the right field per kind; balance from accounts[]", async () => {
+    const r = await read({
+      accounts: PLAID_LOAN_ACCOUNTS,
+      liabilities: { credit: [PLAID_CREDIT], student: [PLAID_STUDENT], mortgage: [PLAID_MORTGAGE] }
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.credit.length, 1, "cards still read");
+    assert.equal(r.loans.length, 2);
+    const [s, m] = r.loans;
+    assert.equal(s.kind, "student");
+    assert.equal(s.account_id, "plaid-acc-student");
+    assert.equal(s.next_payment_due_date, "2019-05-28");
+    assert.equal(s.payment_amount, 25);
+    assert.equal(s.payment_field, "minimum_payment_amount");
+    assert.equal(s.current_balance, 65262);
+    assert.equal(s.last_statement_balance, 138.05);
+    assert.equal(s.interest_rate_percentage, 5.25);
+    assert.equal(s.is_overdue, false);
+    assert.equal(s.loan_name, "Consolidation");
+    assert.equal(m.kind, "mortgage");
+    assert.equal(m.next_payment_due_date, "2019-11-15");
+    assert.equal(m.payment_amount, 3141.54);
+    assert.equal(m.payment_field, "next_monthly_payment");
+    assert.equal(m.current_balance, 56302.06);
+    assert.equal(m.past_due_amount, 2304);
+    assert.equal(m.interest_rate_percentage, 3.99);
+    assert.equal(m.last_statement_balance, null, "a mortgage row has no statement balance");
+    assert.equal(m.is_overdue, null);
+  });
+
+  test("student/mortgage null is no loans, not an error; unknown figures stay null", async () => {
+    const none = await read({ liabilities: { credit: null, student: null, mortgage: null } });
+    assert.equal(none.ok, true);
+    assert.deepEqual(none.loans, []);
+    const holes = await read({ accounts: [], liabilities: { student: [{ account_id: "x", minimum_payment_amount: null, next_payment_due_date: null }] } });
+    assert.equal(holes.loans[0].payment_amount, null);
+    assert.equal(holes.loans[0].next_payment_due_date, null);
+    assert.equal(holes.loans[0].current_balance, null, "no matching account → unknown balance, not $0");
+  });
+});
+
+describe("toLoanCycleInput (wave 4, H2)", () => {
+  test("student: dollars → cents, due date → due day, exact date and balance in raw, no APR", async () => {
+    const r = await fetchLiabilities("t", {
+      environment: "sandbox", clientId: "c", secret: "s", env: ENV,
+      fetchImpl: async () => json({ accounts: PLAID_LOAN_ACCOUNTS, liabilities: { student: [PLAID_STUDENT], mortgage: [PLAID_MORTGAGE] } })
+    });
+    const s = toLoanCycleInput(r.loans[0], { asOf: "2026-10-06T12:00:00.000Z" });
+    assert.equal(s.payment_due_day, 28);
+    assert.equal(s.statement_close_day, 28);
+    assert.equal(s.minimum_payment_cents, 2500);
+    assert.equal(s.last_statement_balance_cents, 13805);
+    assert.equal(s.last_statement_date, "2019-04-28");
+    assert.equal(s.apr, null, "an interest rate is not an APR");
+    assert.equal(s.source, "provider");
+    assert.equal(s.raw.loan_kind, "student");
+    assert.equal(s.raw.next_payment_due_date, "2019-05-28");
+    assert.equal(s.raw.current_balance_cents, 6526200);
+    assert.equal(s.raw.interest_rate_percentage, 5.25);
+
+    const m = toLoanCycleInput(r.loans[1], { asOf: "2026-10-06T12:00:00.000Z" });
+    assert.equal(m.payment_due_day, 15);
+    assert.equal(m.statement_close_day, null);
+    assert.equal(m.minimum_payment_cents, 314154);
+    assert.equal(m.last_statement_balance_cents, null);
+    assert.equal(m.raw.loan_kind, "mortgage");
+    assert.equal(m.raw.next_payment_due_date, "2019-11-15");
+    assert.equal(m.raw.current_balance_cents, 5630206);
+    assert.equal(m.raw.past_due_amount_cents, 230400);
+  });
+
+  test("no due date and no payment → nothing to write; a due date alone still writes with a null payment", () => {
+    assert.equal(toLoanCycleInput({ kind: "student", account_id: "a", next_payment_due_date: null, payment_amount: null }), null);
+    const row = toLoanCycleInput({ kind: "mortgage", account_id: "a", next_payment_due_date: "2026-11-01", payment_amount: null });
+    assert.equal(row.payment_due_day, 1);
+    assert.equal(row.minimum_payment_cents, null);
+    assert.equal(row.raw.current_balance_cents, null);
   });
 });
 
@@ -234,5 +360,62 @@ describe("syncClientLiabilities", () => {
     });
     assert.equal(r.written, 0);
     assert.match(r.items[0].skipped[0].reason, /credit account/);
+  });
+
+  test("student loan and mortgage are written onto their loan accounts' cycles (wave 4, H2)", async () => {
+    const enc = encryptPlaidToken("tok", { itemId: "p1", env: ENV });
+    const db = stubDb({
+      items: [{ id: "row-1", plaid_item_id: "p1", encrypted_access_token: enc }],
+      accounts: [
+        { id: "ba-card", plaid_account_id: "plaid-acc-card", account_type: "credit" },
+        { id: "ba-student", plaid_account_id: "plaid-acc-student", account_type: "loan" },
+        { id: "ba-mortgage", plaid_account_id: "plaid-acc-mortgage", account_type: "loan" }
+      ]
+    });
+    const parsed = await fetchLiabilities("t", {
+      environment: "sandbox", clientId: "c", secret: "s", env: ENV,
+      fetchImpl: async () => json({
+        accounts: PLAID_LOAN_ACCOUNTS,
+        liabilities: { credit: [PLAID_CREDIT], student: [PLAID_STUDENT], mortgage: [PLAID_MORTGAGE, { ...PLAID_MORTGAGE, account_id: "not-stored" }] }
+      })
+    });
+    const r = await syncClientLiabilities(db, {
+      orgId: ORG, clientId: CLIENT, asOf: "2026-10-06T00:00:00Z", env: ENV,
+      fetchLiabilities: async () => parsed
+    });
+    assert.equal(r.written, 3);
+    assert.equal(r.items[0].loansWritten, 2);
+    assert.deepEqual(r.items[0].skipped, [{ plaidAccountId: "not-stored", reason: "account_not_stored" }]);
+    const rows = db.writes.map(({ sql, params }) => {
+      const cols = sql.match(/\(([^)]+)\)\s*VALUES/)[1].split(",").map((s) => s.trim());
+      return Object.fromEntries(cols.map((c, i) => [c, params[i]]));
+    });
+    const mortgage = rows.find((v) => v.bank_account_id === "ba-mortgage");
+    assert.equal(mortgage.payment_due_day, 15);
+    assert.equal(mortgage.minimum_payment_cents, 314154);
+    assert.equal(mortgage.source, "provider");
+    const raw = JSON.parse(mortgage.raw);
+    assert.equal(raw.next_payment_due_date, "2019-11-15");
+    // The reminder job and the overview read the due date with loanDueOn — the
+    // stored row must give it the exact Plaid date while it has not passed.
+    assert.equal(loanDueOn({ payment_due_day: mortgage.payment_due_day, raw }, "2019-11-10"), "2019-11-15");
+    const student = rows.find((v) => v.bank_account_id === "ba-student");
+    assert.equal(student.minimum_payment_cents, 2500);
+    assert.equal(JSON.parse(student.raw).current_balance_cents, 6526200);
+  });
+
+  test("a Plaid loan on an account stored as depository is refused by the store, not written (wave 4, H2)", async () => {
+    const enc = encryptPlaidToken("tok", { itemId: "p1", env: ENV });
+    const db = stubDb({
+      items: [{ id: "row-1", plaid_item_id: "p1", encrypted_access_token: enc }],
+      accounts: [{ id: "ba-x", plaid_account_id: "plaid-acc-student", account_type: "depository" }]
+    });
+    const r = await syncClientLiabilities(db, {
+      orgId: ORG, clientId: CLIENT, asOf: "2026-10-06T00:00:00Z", env: ENV,
+      fetchLiabilities: async () => ({ ok: true, credit: [], loans: [{ kind: "student", account_id: "plaid-acc-student", next_payment_due_date: "2026-11-01", payment_amount: 25 }] })
+    });
+    assert.equal(r.written, 0);
+    assert.equal(db.writes.length, 0);
+    assert.match(r.items[0].skipped[0].reason, /credit account or a loan/);
   });
 });

@@ -166,3 +166,47 @@ test("a loan payment in upcoming reads 'Loan payment', not 'Bill' (wave 3, G2)",
   assert.match(t, /Loan payment/);
   assert.doesNotMatch(t, /SBA Loan[^·]*Bill/);
 });
+
+/* Wave 4, H2: debt.loans gets its own table next to "By card". */
+const LOANS = [
+  { account_id: "bbbbbbbb-0000-4000-8000-000000005505", name: "SBA Loan", mask: "5505",
+    container_id: "aaaaaaaa-0000-4000-8000-000000000002", kind: "business",
+    balance_cents: 4825000, due_on: "2026-11-01", payment_cents: 105000 },
+  { account_id: "bbbbbbbb-0000-4000-8000-000000006606", name: "Student Loan", mask: null,
+    container_id: null, kind: "unknown",
+    balance_cents: null, due_on: null, payment_cents: null }
+];
+
+test("loans show in their own table: name ••mask, container, owed, payment, due (wave 4, H2)", () => {
+  const d = fixture();
+  d.debt.loans = JSON.parse(JSON.stringify(LOANS));
+  const html = M.render(d);
+  assert.match(html, /<h3 class="eyebrow">By loan<\/h3>/);
+  const loanTable = html.match(/<table class="loans">[\s\S]*?<\/table>/);
+  assert.ok(loanTable, "no loan table");
+  const t = text(loanTable[0]);
+  assert.match(t, /Loan Container Owed Payment Due/);
+  assert.match(t, /SBA Loan ••5505 Fundhub LLC \$48,250\.00 \$1,050\.00 Nov 1, 2026/);
+  // Unknown balance, payment and due date are dashes, never $0.00; no container → "Not sorted yet".
+  assert.match(t, /Student Loan Not sorted yet — — —/);
+  assert.doesNotMatch(t, /\$0\.00/, "a missing loan figure was painted as $0.00");
+  // The card table is untouched and still sits in the same Debt block.
+  assert.match(html, /<h3 class="eyebrow">By card<\/h3>/);
+  assert.match(text(html.match(/<table class="cards">[\s\S]*?<\/table>/)[0]), /Business Amex ••4404/);
+});
+
+test("no loans: the loan card says so in words; cash still never adds up (wave 4, H2)", () => {
+  const d = fixture();
+  delete d.debt.loans;
+  const html = M.render(d);
+  assert.match(html, /<h3 class="eyebrow">By loan<\/h3>/);
+  assert.match(text(html), /No loans on file\./);
+  assert.doesNotMatch(html, /<table class="loans">/);
+  const withLoans = fixture();
+  withLoans.debt.loans = JSON.parse(JSON.stringify(LOANS));
+  assert.doesNotMatch(text(M.render(withLoans)), /22,960\.55/, "personal + business cash was added into one number");
+});
+
+test("money.html carries the CSS the loan card needs (wave 4, H2)", () => {
+  assert.match(HTML, /\.debt-side\{display:flex;flex-direction:column;gap:16px;min-width:0\}/);
+});

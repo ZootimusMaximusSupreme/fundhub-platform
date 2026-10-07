@@ -41,6 +41,8 @@ function stubDb({ entitled = [{ org_id: ORG, client_id: CLIENT }], cycles = [CAR
       }
       if (/FROM account_statement_cycles/.test(sql)) {
         assert.match(sql, /c\.source = 'provider'/);
+        // Wave 4 (H2): Plaid loans are source='provider' too; the card read must skip them.
+        assert.match(sql, /a\.account_type IS DISTINCT FROM 'loan'/);
         assert.deepEqual(params, [ORG, CLIENT]);
         return { rows: cycles };
       }

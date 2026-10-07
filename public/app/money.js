@@ -300,18 +300,47 @@
         '<td class="r num">' + esc(money(c.min_due_cents)) + '</td>' +
         '<td class="r num">' + esc(money(c.past_due_cents)) + '</td></tr>';
     }).join("");
+    /* Loans (wave 4, H2): debt.loans from the same read. Balance is what is
+       owed; payment and due date come from the loan's statement-cycle row.
+       A null is a dash, like every other figure here. */
+    var loans = list(debt.loans).map(function (l) {
+      return '<tr><td>' + esc(l.name || "Loan") + (l.mask ? ' <span class="mask">••' + esc(l.mask) + '</span>' : "") + '</td>' +
+        '<td>' + esc(containerName(d, l)) + '</td>' +
+        '<td class="r num">' + esc(money(l.balance_cents)) + '</td>' +
+        '<td class="r num">' + esc(money(l.payment_cents)) + '</td>' +
+        '<td class="r num">' + esc(day(l.due_on)) + '</td></tr>';
+    }).join("");
     return '<section class="block" aria-labelledby="h-debt"><h2 id="h-debt">Debt</h2>' +
       '<div class="grid debt">' +
       '<div class="card"><h3 class="eyebrow">By container</h3>' +
       (rows ? '<ul class="split">' + rows + '</ul>' : '<p class="caption">No debt on file.</p>') +
       '<p class="caption total-line">All debt: <span class="num">' + esc(money(debt.total_cents, debt.is_floor)) + '</span></p></div>' +
-      '<div class="card"><h3 class="eyebrow">By card</h3>' +
+      '<div class="debt-side"><div class="card"><h3 class="eyebrow">By card</h3>' +
       (cards
         ? '<div class="scroll-x"><table class="cards"><thead><tr><th>Card</th><th class="r">Owed</th><th class="r">Limit</th>' +
           '<th class="r">Room left</th><th class="r">Used</th><th class="r">Due</th><th class="r">Minimum</th><th class="r">Past due</th></tr></thead>' +
           '<tbody>' + cards + '</tbody></table></div>'
         : '<p class="caption">No cards connected.</p>') +
-      '</div></div></section>';
+      '</div>' +
+      '<div class="card"><h3 class="eyebrow">By loan</h3>' +
+      (loans
+        ? '<div class="scroll-x"><table class="loans"><thead><tr><th>Loan</th><th>Container</th><th class="r">Owed</th>' +
+          '<th class="r">Payment</th><th class="r">Due</th></tr></thead>' +
+          '<tbody>' + loans + '</tbody></table></div>'
+        : '<p class="caption">No loans on file.</p>') +
+      '</div></div></div></section>';
+  }
+
+  /* The container a debt row sits in, by name. No container → its kind's
+     "not sorted" label, the same words the Containers block uses. */
+  function containerName(d, row) {
+    var cs = list(d.containers);
+    for (var i = 0; i < cs.length; i++) {
+      if (row.container_id && cs[i].id === row.container_id) {
+        return cs[i].name || CONTAINER_LABEL[cs[i].kind] || "Not sorted yet";
+      }
+    }
+    return CONTAINER_LABEL[row.kind] || "Not sorted yet";
   }
 
   /* One cashflow chart per kind. Personal and business never share a bar. */
