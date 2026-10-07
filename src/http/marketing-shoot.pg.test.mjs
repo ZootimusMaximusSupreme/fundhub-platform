@@ -129,6 +129,8 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
   async function purge() {
     const orgs = (await db.query(`SELECT id FROM orgs WHERE slug = ANY($1)`, [[SLUG_A, SLUG_B]])).rows.map((r) => r.id);
     if (orgs.length) {
+      await db.query(`DELETE FROM voice_pairs WHERE org_id = ANY($1)`, [orgs]);
+      await db.query(`DELETE FROM repo_outbox WHERE org_id = ANY($1)`, [orgs]);
       await db.query(`DELETE FROM marketing_requests WHERE org_id = ANY($1)`, [orgs]);
       await staffTx(async (c) => {
         await c.query(`DELETE FROM marketing_shoots WHERE org_id = ANY($1)`, [orgs]);
@@ -427,6 +429,7 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     assert.equal(old.code, 404, "a key for a closed shoot does not open the new one");
 
     const script = page.body.shoot.scripts[0];
+    assert.match(script.body, /TWO/, "the fixture word this save changes");
     const marked = await call(markHandler, null, {
       method: "POST", headers,
       body: { request_id: rid("filmmark"), shoot_id: page.body.shoot.id, root_script_id: script.root_script_id, mark: "another_take" }
@@ -438,11 +441,28 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     });
     assert.equal(wrong.code, 404);
 
+    const editReq = rid("filmedit");
+    const nextBody = script.body.replace("TWO", "BOTH");
+    const nextParts = (script.parts || []).map((p) => (
+      p.kind === "hook" ? { ...p, text: String(p.text).replace("TWO", "BOTH") } : p
+    ));
     const edited = await call(editHandler, null, {
       method: "POST", headers,
-      body: { request_id: rid("filmedit"), id: script.id, version: script.version, body: script.body }
+      body: { request_id: editReq, id: script.id, version: script.version, body: nextBody, parts: nextParts }
     });
     assert.equal(edited.code, 200, JSON.stringify(edited.body));
+    assert.match(edited.body.script.body, /BOTH/);
+    assert.notEqual(edited.body.script.id, script.id, "a new version, the old words kept");
+    const file = (await db.query(
+      `SELECT path, mode, content, committed_sha FROM repo_outbox WHERE org_id = $1 AND op_id = $2`,
+      [orgA, `u25:edit-file:${editReq}`]
+    )).rows[0];
+    assert.ok(file, "the changed word is stored for the machine");
+    assert.equal(file.mode, "replace");
+    assert.equal(file.path, edited.body.script.repo_path);
+    assert.match(file.path, /^marketing\/ads\/scripts\/machine\//);
+    assert.match(file.content, /BOTH/);
+    assert.equal(file.committed_sha, null, "waiting in the outbox until the repo copy runs");
     const offRow = await scriptRow(s93.id);
     const off = await call(editHandler, null, {
       method: "POST", headers,
