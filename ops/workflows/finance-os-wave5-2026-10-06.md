@@ -81,3 +81,12 @@ Each UI part is `window.FinanceOS.sections.<name> = { title, mount(el, ctx) }`, 
 ### Leftovers W7 saw (not touched, not verified)
 - 464: `money_agent_tasks.to_account_id` / `from_account_id` reference `bank_accounts` with no ON DELETE action, so a bank-login revoke or an erasure that deletes those accounts is refused while a task points at them.
 - 461: `bank_relationship_deposits` is called append-only with `GRANT SELECT, INSERT`, but 104's default privileges already gave fundhub_app UPDATE/DELETE and nothing revokes them.
+
+### Live proof after ship 6234ead8 (2026-10-07 ~05:00 UTC)
+- Migrations 457–466 applied; `/api/health` pending 0.
+- Trends backfill `--apply` on Test Test: 174 estimated account-days + 88 rollups; personal $2,170 → $13,385, business $10,330 → $21,406, never below zero.
+- Money moves: `scripts/finance-os-sandbox-transfer.mjs --apply` — $20.00 Personal Checking ••1101 → Business Checking ••2202 through Plaid sandbox Transfer: authorized → submitted → debit settled → funds available → credit settled. **SETTLED.** 13 ledger events in `money_transfer_events`. Approval recorded as `sandbox_role_play`.
+- Money helper: live turn through the Mac bridge (`claude -p`), brain = ai, status answered. Grounded numbers ($500 late Clarity payment, Visa $94 due Oct 25, 38.7% used, UnderwriteIQ sentence verbatim), actions: reminder pin + a transfer PROPOSAL needing approval.
+
+### Fix in the final pass
+- Helper proposed a transfer INTO a credit card (Personal Visa minimum). Plaid Transfer can't pay cards (W7 hides the approve button for card/loan targets). The helper should only propose depository → depository moves, and turn card payments into a reminder.
