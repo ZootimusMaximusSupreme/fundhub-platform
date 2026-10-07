@@ -728,7 +728,11 @@
       return r;
     }).then(function (r) {
       if (k && r.status === 404) {
-        if (first) showEmpty("This film link did not open. Tap Open the teleprompter on the Shoot tab again.", false);
+        if (first) showEmpty(failLine(r), false);
+        return;
+      }
+      if (k && r.status === 200 && r.data && !r.data.shoot) {
+        if (first) showEmpty("This film link did not open the shoot.", false);
         return;
       }
       if (r.status === 200 && r.data) {
@@ -738,7 +742,9 @@
         return;
       }
       var cached = LS.get("cache", null);
-      if (cached && first) {
+      // A film link must not replay an old "no shoot" save. That card is a lie
+      // once this link's shoot exists, and a failed read has to say why it failed.
+      if (cached && first && (!k || cached.shoot)) {
         $("offline").hidden = false;
         $("offline").textContent = r.status === 0
           ? "No connection. Showing the shoot as it was last saved on this phone."
@@ -746,7 +752,7 @@
         take(cached, first);
         return;
       }
-      if (first) showEmpty(r.status === 0 ? "No connection, and no shoot is saved on this phone yet." : "The shoot did not load. Try again in a minute.", true);
+      if (first) showEmpty(k ? failLine(r) : (r.status === 0 ? "No connection, and no shoot is saved on this phone yet." : "The shoot did not load. Try again in a minute."), true);
     });
   }
 
@@ -766,15 +772,27 @@
   }
   function parasKey(s) { return s ? JSON.stringify(paragraphsFor(s)) : ""; }
 
+  function failLine(r) {
+    var m = r && r.data && typeof r.data.message === "string" ? r.data.message.replace(/\s+/g, " ").trim() : "";
+    if (m && m.length <= 140) return m;
+    if (!r || r.status === 0) return "No connection.";
+    return "The shoot did not load.";
+  }
+
   function take(d, first) {
-    if (queue.length && !first) return; // presses still waiting: keep what this phone already shows
+    // Presses still waiting: keep the script already on screen. An empty
+    // screen is not a script, so a shoot that just arrived still has to show.
+    if (queue.length && !first && scripts.length) return;
     if (editing || textEdit) return;   // never redraw under the cursor or the edit box
     data = d;
     var list = d.shoot && Array.isArray(d.shoot.scripts) ? d.shoot.scripts : [];
     var curRoot = cur >= 0 && scripts[cur] ? scripts[cur].root_script_id : null;
     var shown = cur >= 0 ? scripts[cur] : null;
     scripts = list.map(overlay);
-    if (!d.shoot) return showEmpty("No shoot is planned. Pick the scripts on the Shoot tab and save the plan.", false);
+    if (!d.shoot) {
+      if (filmKey()) return showEmpty("This film link did not open the shoot.", false);
+      return showEmpty("No shoot is planned. Pick the scripts on the Shoot tab and save the plan.", false);
+    }
     if (!scripts.length) return showEmpty("This shoot has no scripts left to film.", false);
     $("empty").hidden = true;
     if (first || curRoot == null) {
@@ -933,6 +951,8 @@
     $("empty").hidden = false;
     $("empty-msg").textContent = msg;
     $("empty-retry").hidden = !retry;
+    var plan = $("empty-plan");
+    if (plan) plan.hidden = !!filmKey();
     $("s-ad").textContent = "";
     $("s-title").textContent = "No script";
     $("s-file").textContent = "";

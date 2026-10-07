@@ -386,6 +386,9 @@ describe("teleprompter page", () => {
     assert.doesNotMatch(HTML + SRC, /sign in/i);
     assert.doesNotMatch(SRC, /showWall/);
     assert.match(SRC, /x-shoot-film/);
+    assert.match(SRC, /if \(filmKey\(\)\) return showEmpty\("This film link did not open the shoot\."/);
+    assert.match(SRC, /plan\.hidden = !!filmKey\(\)/);
+    assert.match(HTML, /id="empty-plan"/);
     assert.match(HTML, /id="t-mirror"/);
     assert.match(HTML, /id="t-flipv"/);
     assert.match(HTML, /#flip\.mirror-x\{transform:scaleX\(-1\)\}/);

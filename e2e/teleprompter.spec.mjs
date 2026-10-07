@@ -65,6 +65,8 @@ test.describe("teleprompter at 390px", () => {
     });
     await page.goto("/app/teleprompter.html?k=film-key-1");
     await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
+    await expect(page.locator("#empty")).toBeHidden();
+    await expect(page.locator("#empty-plan")).toBeHidden();
     expect(seen).toBe("film-key-1");
     expect(page.url()).not.toContain("login.html");
     await expect(page.getByText(/sign in/i)).toHaveCount(0);
