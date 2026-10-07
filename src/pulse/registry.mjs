@@ -443,8 +443,9 @@ const API_KEYS = [
      routes answer 405 to a GET before they read anything. A ping never
      writes, queues or spends. */
   "marketing/flywheel/spend-read",
-  /* X5 Shoot Day: the GET answers 401 to an unsigned ping; mark is POST-only
-     and answers 405 to a GET before it reads anything. A ping never writes. */
+  /* X5 Shoot Day: the GET is open (the teleprompter rolls with no sign-in) and
+     answers 200 to an unsigned ping; mark is POST-only and answers 405 to a
+     GET before it reads anything. A ping never writes. */
   "marketing/shoot",
   "marketing/shoot/mark"
 ];

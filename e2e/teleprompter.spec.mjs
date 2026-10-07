@@ -4,7 +4,7 @@
 // contract's own example (src/marketing/api-contract.mjs GET marketing/shoot).
 // No database, no session, nothing sent anywhere.
 //
-// It proves: the sign-in wall; the empty shoot; it opens on the first script
+// It proves: no sign-in wall; the empty shoot; it opens on the first script
 // with no Got it and shows its ad number, take and exact file name; mirror
 // (left-right and upside down) flips the reading area and not the controls;
 // v1's keys (Space plays, arrows change speed); at the end of a script Space
@@ -53,10 +53,11 @@ const state = (page) => page.evaluate(() => window.__fhtp.state());
 test.describe("teleprompter at 390px", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("no sign-in: the wall, with a sign-in link that comes back here", async ({ page }) => {
+  test("no sign-in: the shoot rolls and the sign-in wall stays hidden", async ({ page }) => {
     await open(page, { token: false });
-    await expect(page.getByText("Sign in to use the teleprompter.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login.html?next=/app/teleprompter.html");
+    await expect(page.locator("#wall")).toBeHidden();
+    await expect(page.getByText("Sign in to use the teleprompter.")).toBeHidden();
+    await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
   });
 
   test("no shoot planned: says so and links to the Shoot tab", async ({ page }) => {

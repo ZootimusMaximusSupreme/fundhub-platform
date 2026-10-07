@@ -201,8 +201,12 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     try { await purge(); } finally { await close(); }
   });
 
-  test("owner and admin only: unsigned 401, a closer 403, the wrong method 405", async () => {
-    assert.equal((await get(null)).code, 401);
+  test("the shoot read is open with no sign-in; a write stays owner and admin: unsigned POST 401, a closer 403, the wrong method 405", async () => {
+    const open = await get(null);
+    assert.equal(open.code, 200, JSON.stringify(open.body));
+    assertMatchesContract("GET marketing/shoot", open.body);
+    assert.equal(JSON.stringify(open.body).includes(s91.id), false, "the open read is the default company, not this fixture");
+    assert.equal((await save(null, { request_id: rid("open"), root_script_ids: [s91.id] })).code, 401);
     assert.equal((await get(closerA.token)).code, 403);
     assert.equal((await save(closerA.token, { request_id: rid("c"), root_script_ids: [s91.id] })).code, 403);
     const r = await call(markHandler, ownerA.token, { method: "GET" });

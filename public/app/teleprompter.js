@@ -37,8 +37,8 @@
  * together. Each device keeps its own setting. Editing shows the words the
  * right way round while the box is open.
  *
- * NO SHELL. Like present.html this page has no sidebar and no shell.js. It reads
- * the sign-in from localStorage fh_token and shows a sign-in wall without it.
+ * NO SHELL. Like present.html this page has no sidebar and no shell.js. The
+ * shoot loads with no sign-in. A saved token is sent when this phone has one.
  *
  * The pure helpers are on window.FundhubTeleprompter so
  * src/ui/teleprompter.test.mjs can prove them without a browser.
@@ -325,9 +325,19 @@
       }, function () { return { status: 0, data: null }; });
   }
 
+  function fetchShoot(bare) {
+    if (!bare) return api("GET", "marketing/shoot?wpm=" + S.wpm);
+    return root.fetch("/api/marketing/shoot?wpm=" + S.wpm, { method: "GET", headers: { accept: "application/json" } })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
+      }, function () { return { status: 0, data: null }; });
+  }
+
   function load(first) {
-    return api("GET", "marketing/shoot?wpm=" + S.wpm).then(function (r) {
-      if (r.status === 401) return showWall("Sign in to use the teleprompter.");
+    return fetchShoot(false).then(function (r) {
+      if (r.status === 401) return fetchShoot(true);
+      return r;
+    }).then(function (r) {
       if (r.status === 403) return showWall("The teleprompter is for the owner and admins.");
       if (r.status === 200 && r.data) {
         LS.set("cache", r.data);
@@ -1266,8 +1276,7 @@
   syncSettings();
   pulse();
   if (queue.length) { $("pending").hidden = false; }
-  if (!token()) showWall("Sign in to use the teleprompter.");
-  else { load(true).then(function () { flush(); poll(); checkHealth(true); }); }
+  load(true).then(function () { flush(); poll(); checkHealth(true); });
 
   root.__fhtp = {
     state: function () {
