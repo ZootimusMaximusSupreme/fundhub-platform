@@ -32,7 +32,13 @@ body {
 
 #content {
   top: 0;
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.85);
+}
+
+/* Line edits sit in the script. Same face as the words. */
+.edit-box {
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
 }
 
 /* Dark glass over the mirrored front camera.
