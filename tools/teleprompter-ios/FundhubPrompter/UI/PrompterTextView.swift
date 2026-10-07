@@ -55,7 +55,7 @@ struct PrompterView: UIViewRepresentable {
     }
 }
 
-/// The dark glass: black, white words, an amber reading line. Rolls on v1's
+/// The words on the dimmed camera: clear behind the type, white words, an amber reading line. Rolls on v1's
 /// clock (PromptClock), flips for a beam-splitter rig, takes taps, drags,
 /// a long press to edit, and Bluetooth remote / keyboard keys.
 /// Thumb down moves the words up. Thumb up moves them down. A pause stops
@@ -127,12 +127,15 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         self.controller = controller
         super.init(frame: .zero)
         overrideUserInterfaceStyle = .dark
-        backgroundColor = .black
-        flipBox.backgroundColor = .black
+        backgroundColor = .clear
+        isOpaque = false
+        flipBox.backgroundColor = .clear
+        flipBox.isOpaque = false
         addSubview(flipBox)
 
         textView.overrideUserInterfaceStyle = .dark
-        textView.backgroundColor = .black
+        textView.backgroundColor = .clear
+        textView.isOpaque = false
         textView.textColor = .white
         textView.isEditable = false
         textView.isSelectable = false

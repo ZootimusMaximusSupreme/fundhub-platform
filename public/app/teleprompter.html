@@ -15,9 +15,10 @@
 /* ══ TELEPROMPTER ═════════════════════════════════════════════════════════
    Spec docs/specs/marketing-machine-2026-10-04.md §8.1 (web version), §8.2.
    One full-screen reading stage with a red reading line, a thumb bar at the
-   bottom, sheets that slide up over it. One dark look on purpose: it is read
-   off a screen behind glass, and white text on black is what a beam-splitter
-   rig shows best. Ported from v1, tools/teleprompter/index.html.
+   bottom, sheets that slide up over it. Black glass is the front camera,
+   mirrored like a selfie, with a dark cover so the words stay bright. It is
+   not a solid black page and not a reflection in the phone glass. Ported
+   from v1, tools/teleprompter/index.html.
    No shell, no sidebar (like present.html): src/http/app-nav-matches-shell.test.mjs
    lists it in NO_SIDEBAR. The shoot read loads with no sign-in. Saves stay
    owner and admin.
@@ -26,7 +27,7 @@
    card — so a mirror flips all of it together. The bars Chris taps on the
    iPad itself are not flipped, and they hide while a script rolls.
    v2 (owner, 2026-10-06; docs/specs/teleprompter-requirements-2026-10-06.md):
-   dark glass (pure black, white words), a change pulse row that never hides,
+   dark glass (dimmed mirrored camera, white words), a change pulse row that never hides,
    an edit box in place of a line, a history sheet, a two-versions picker, a
    line-width setting, and on a tablet the sheets open as a side drawer.
    ═════════════════════════════════════════════════════════════════════════ */
@@ -56,11 +57,11 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 [hidden]{display:none !important}
 
 /* layout: header row, the stage, the change pulse, the thumb bar */
-#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto;background:#000}
+#app{position:fixed;inset:0;z-index:1;display:grid;grid-template-rows:auto 1fr auto auto;background:transparent}
 
 /* header: which ad, which take, the file name to give the clip */
 #top{padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;border-bottom:1px solid var(--rule);background:var(--panel);display:grid;gap:4px;transition:opacity .4s;min-width:0}
-#top .row1{display:flex;align-items:center;gap:8px;min-width:0;padding-right:84px}
+#top .row1{display:flex;align-items:center;gap:8px;min-width:0}
 #s-ad{font-family:var(--data-face);font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 #top a.home{font-size:13px;color:var(--ink-2);white-space:nowrap;padding:8px 0;min-height:40px;display:inline-flex;align-items:center}
 #s-title{font-size:18px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -70,11 +71,11 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 .mini{border:1px solid var(--rule);background:var(--panel-2);border-radius:10px;padding:8px 12px;min-height:40px;font-size:13px;cursor:pointer;white-space:nowrap}
 
 /* the stage */
-#flip{position:relative;overflow:visible;z-index:2;min-height:0;background:#000}
+#flip{position:relative;overflow:visible;z-index:2;min-height:0;background:transparent}
 #flip.mirror-x{transform:scaleX(-1)}
 #flip.mirror-y{transform:scaleY(-1)}
 #flip.mirror-x.mirror-y{transform:scale(-1,-1)}
-#stage{position:absolute;inset:0;overflow:hidden;background:#000;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#stage{position:absolute;inset:0;overflow:hidden;background:transparent;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform;--measure:30ch;color:#fff;background:transparent}
 #content p{margin:0 auto .9em;line-height:1.32;max-width:var(--measure)}
 #content p.cue{color:var(--cue);border-left:4px solid var(--cue);padding-left:.4em}
@@ -189,18 +190,18 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 .banner{font-size:13px;color:var(--cue);margin:0}
 .pill.on{border-color:var(--tally)}
 #cam-line{font-size:13px;color:var(--cue);margin:0}
-/* Small face box, same job as the iPhone app: line up, then fade to dark glass.
-   It sits outside #flip, so the beam-splitter switch only flips the words. */
-#cam{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));right:8px;width:72px;height:40px;border-radius:12px;overflow:hidden;background:#000;border:1px solid #2a2a2a}
+/* Full-screen front camera under the words. Mirrored like a selfie. The shade
+   dims the picture so the words pop. It never goes solid black. The beam-splitter
+   switch still flips only the words, because this layer sits outside #flip. */
+#cam{position:fixed;z-index:0;inset:0;width:auto;height:auto;border:0;border-radius:0;overflow:hidden;background:#000;pointer-events:none}
 #cam-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#000}
-#cam-shade{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.2s ease-out;pointer-events:none}
-#cam.glass #cam-shade{opacity:1}
-#cam-corner{position:absolute;inset:0;margin:0;border:0;padding:0;background:transparent;cursor:pointer}
+#cam-shade{position:absolute;inset:0;background:#000;opacity:.55;pointer-events:none}
+#cam.glass #cam-shade{opacity:.55}
+#cam-corner{position:absolute;inset:0;margin:0;border:0;padding:0;background:transparent;pointer-events:none}
 #rec{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(0,0,0,.6);border-radius:999px;font-family:var(--data-face);font-size:12px;font-weight:600}
 #rec-dot{width:10px;height:10px;border-radius:50%;background:var(--tally);flex:none}
 #b-save{position:fixed;z-index:6;top:calc(40px + env(safe-area-inset-top,0px));left:8px}
-@media (orientation:landscape){#cam{width:120px;height:40px}#top .row1{padding-right:132px}}
-@media (prefers-reduced-motion:reduce){#content .w,#bar,#top,#cam-shade{transition:none}}
+@media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
 </head>
 <body>

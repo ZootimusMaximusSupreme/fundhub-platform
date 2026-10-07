@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The shoot screen: dark glass with the words, a small camera box that fades
-/// away, the buttons (hidden while rolling), and the pulse line.
+/// The shoot screen: the front camera, mirrored, under the words, with a dark
+/// cover so the words stay bright. Not a solid black page. The buttons hide
+/// while the words roll. A pause stops the words only. The camera keeps going.
 struct PrompterScreen: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var camera: CameraController
@@ -10,8 +11,6 @@ struct PrompterScreen: View {
 
     let startRoot: String
     @State private var root: String = ""
-    @State private var previewOn = true
-    @State private var hideTask: Task<Void, Never>?
     @State private var editing: EditTarget?
     @State private var showSettings = false
     /// A take was filmed and has no Got it / Another take yet.
@@ -26,9 +25,17 @@ struct PrompterScreen: View {
     private var cameraOn: Bool { model.settings.recordOnThisDevice && !model.isDemo }
 
     var body: some View {
-        GeometryReader { geo in
+        GeometryReader { _ in
             ZStack {
-                Brand.glass.ignoresSafeArea()
+                if cameraOn && camera.state != .idle {
+                    CameraPreview(session: camera.session)
+                        .ignoresSafeArea()
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                } else {
+                    Brand.glass.ignoresSafeArea()
+                }
                 PrompterView(paragraphs: paragraphs, scriptKey: root.isEmpty ? startRoot : root,
                              settings: model.settings, controller: prompter)
                     .ignoresSafeArea()
@@ -45,7 +52,7 @@ struct PrompterScreen: View {
                     .allowsHitTesting(false)
                 }
 
-                cornerCamera(geo.size)
+                cornerCamera
 
                 VStack(spacing: 0) {
                     if !rolling { topBar.transition(.opacity) }
@@ -78,9 +85,6 @@ struct PrompterScreen: View {
             } else {
                 camera.apply(s)
             }
-        }
-        .onChange(of: prompter.mode) { _, m in
-            if m == .rolling || m == .countdown { fadePreview(after: 0.6) }
         }
         .sheet(item: $editing, onDismiss: { prompter.focusKeys() }) { t in
             EditSheet(target: t) { text in model.edit(root: t.root, index: t.index, newText: text) }
@@ -192,39 +196,17 @@ struct PrompterScreen: View {
     }
 
     @ViewBuilder
-    private func cornerCamera(_ size: CGSize) -> some View {
-        let tall = size.height >= size.width
-        let w: CGFloat = tall ? 96 : 170
-        let h: CGFloat = tall ? 170 : 96
+    private var cornerCamera: some View {
         VStack {
             HStack {
                 if camera.isRecording { RecDot() }
                 Spacer()
-                ZStack(alignment: .topTrailing) {
-                    if cameraOn && previewOn && camera.state != .idle {
-                        CameraPreview(session: camera.session)
-                            .frame(width: w, height: h)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.3)))
-                            .transition(.opacity)
-                    }
-                    // Tap the corner to bring the camera box back.
-                    Button { showPreview() } label: {
-                        Image(systemName: "camera.viewfinder")
-                            .font(.title3)
-                            .foregroundStyle(.white.opacity(previewOn ? 0 : 0.35))
-                            .frame(width: 56, height: 56)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Show the camera")
-                    .accessibilityIdentifier("corner")
-                }
             }
             Spacer()
         }
         .padding(.top, 6)
         .padding(.horizontal, 8)
-        .animation(.easeOut(duration: 1.2), value: previewOn)
+        .allowsHitTesting(false)
     }
 
     private var takeName: String {
@@ -250,7 +232,6 @@ struct PrompterScreen: View {
             model.settings.learnedKeys = RemoteKeys.learn(key, for: slot, into: model.settings.learnedKeys)
         }
         if cameraOn { camera.start(with: model.settings) }
-        showPreview()
         // Screenshot demo only (launch arguments, never on Chris's phone).
         if model.isDemo {
             Task { @MainActor in
@@ -266,23 +247,9 @@ struct PrompterScreen: View {
     }
 
     private func disappear() {
-        hideTask?.cancel()
         if camera.isRecording { camera.stopRecording() }
         camera.stop()
         UIApplication.shared.isIdleTimerDisabled = false
-    }
-
-    private func showPreview() {
-        previewOn = true
-        fadePreview(after: model.settings.previewSeconds)
-    }
-
-    private func fadePreview(after seconds: Double) {
-        hideTask?.cancel()
-        hideTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: UInt64(max(0.2, seconds) * 1_000_000_000))
-            if !Task.isCancelled { previewOn = false }
-        }
     }
 
     private func changeSpeed(_ d: Int) {
@@ -350,7 +317,6 @@ struct PrompterScreen: View {
         takeWaiting = false
         lastRecordedHere = false
         root = next
-        showPreview()
     }
 }
 

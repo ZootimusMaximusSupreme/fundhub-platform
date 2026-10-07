@@ -1341,6 +1341,45 @@
     if (el) el.textContent = clock((Date.now() - cam.started) / 1000);
     cam.tick = setTimeout(tickRec, 500);
   }
+  function stopMirrorPump() {
+    cam.pumping = false;
+    if (cam.pumpRaf) { root.cancelAnimationFrame(cam.pumpRaf); cam.pumpRaf = 0; }
+  }
+  /* The preview is flipped with CSS. The file is not, so the saved take is
+     drawn onto a canvas the same way a mirror looks, then recorded from that. */
+  function mirroredRecordStream(stream) {
+    var video = $("cam-video");
+    if (!video || !stream) return stream;
+    var canvas = cam.canvas || doc.createElement("canvas");
+    cam.canvas = canvas;
+    if (!canvas.captureStream) return stream;
+    var track = stream.getVideoTracks()[0];
+    var st = track && track.getSettings ? track.getSettings() : {};
+    var w = video.videoWidth || st.width || 1280;
+    var h = video.videoHeight || st.height || 720;
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return stream;
+    function draw() {
+      if (!cam.pumping) return;
+      ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
+      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { /* frame not ready */ }
+      cam.pumpRaf = root.requestAnimationFrame(draw);
+    }
+    stopMirrorPump();
+    cam.pumping = true;
+    draw();
+    var fps = Math.round(st.frameRate || 30) || 30;
+    var out;
+    try { out = canvas.captureStream(Math.max(1, fps)); }
+    catch (e) { stopMirrorPump(); return stream; }
+    var audios = stream.getAudioTracks();
+    for (var i = 0; i < audios.length; i++) {
+      try { out.addTrack(audios[i]); } catch (err) { /* keep the picture if the sound track will not join */ }
+    }
+    return out;
+  }
   function beginRec() {
     if (!wantRec || !cam.stream) return;
     if (cam.rec && cam.rec.state === "recording") return;
@@ -1354,11 +1393,13 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
+    var recStream = mirroredRecordStream(cam.stream);
     var rec;
-    try { rec = new root.MediaRecorder(cam.stream, opts); }
+    try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
+      if (recStream !== cam.stream) stopMirrorPump();
       try { rec = new root.MediaRecorder(cam.stream); }
-      catch (e2) { camLine("This phone cannot save a video file. The words still roll.", true); return; }
+      catch (e2) { stopMirrorPump(); camLine("This phone cannot save a video file. The words still roll.", true); return; }
     }
     cam.rec = rec;
     var s = scripts[cur];
@@ -1376,6 +1417,7 @@
     cam.tick = setTimeout(tickRec, 500);
   }
   function onRecStop() {
+    stopMirrorPump();
     cam.stopping = false;
     var dot = $("rec");
     if (dot) dot.hidden = true;
