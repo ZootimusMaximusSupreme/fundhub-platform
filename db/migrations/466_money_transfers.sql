@@ -1,6 +1,6 @@
--- 466_money_transfers.sql — FinanceOS money moves: someone proposes, the
--- client says yes to that exact move, Plaid Transfer moves it, and every step
--- lands in an append-only ledger.
+-- 466_money_transfers.sql — FinanceOS money moves: the client says yes to a
+-- proposal, Plaid Transfer moves the money, and every step lands in an
+-- append-only ledger.
 --
 -- FinanceOS wave 5, unit W7 (ops/workflows/finance-os-wave5-2026-10-06.md).
 -- Owner, 2026-10-06: "Really build the code, really build the ability to do
@@ -8,51 +8,62 @@
 -- open an account and deposit $20,000 to build banking history."
 --
 -- ═══════════════════════════════════════════════════════════════════════════
+-- ONE PROPOSAL TABLE: 464's money_agent_tasks
+--
+-- A proposal is a money_agent_tasks row (migration 464, unit W5) at
+-- 'needs_approval', written by proposeTransfer (src/finance/money-transfer-seam.mjs)
+-- — from "Do task", a plan pin, the money agent, or staff. This file adds no
+-- second proposal table. money_transfers is the TRANSFER INTENT: it is opened in
+-- the same transaction as the client's yes, one per approved proposal
+-- (agent_task_id, unique), and it carries the move from there — Plaid's two legs,
+-- the status, the end. The engine is src/finance/money-transfers.mjs.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
 -- THE HARD RULE THIS SCHEMA CARRIES
 --
--- Nothing moves without the CLIENT approving that exact transfer: the account
--- it comes from, where it goes, the amount and the date. The AI money agent,
--- the rules helper and staff can only PROPOSE. The database refuses:
+-- Nothing moves without the CLIENT approving that exact transfer: the account it
+-- comes from, where it goes, the amount and the date. The AI money agent, the
+-- rules helper and staff can only propose. The database refuses:
 --
---   * a row born past 'proposed' (money_transfers_guard, on INSERT). Approval
---     is a separate act on an existing row.
---   * a row past 'proposed' with no approval on it (money_transfers_approval_ck).
---     The approver is the transfer's own client (approved_by_client_id must
---     equal client_id, with the login that pressed it). The one other approver
---     is 'sandbox_role_play', and only on a sandbox row — a production row can
---     never carry one.
---   * a jump in the state machine — proposed straight to submitted, a settled
+--   * a transfer intent with no approval on it (money_transfers_approval_ck).
+--     The approver is the transfer's own client, with the login that pressed it.
+--     The one other approver is 'sandbox_role_play', and only on a sandbox row —
+--     a production row can never carry one.
+--   * a transfer intent that does not match its proposal (money_transfers_guard,
+--     on INSERT): the 464 row must belong to the same client, move money, be at
+--     'approved' in this very transaction, and name the same amount, the same
+--     from account, the same destination and the same approver login.
+--   * a jump in the state machine — approved straight to settled, a settled
 --     move back to approved (money_transfers_guard, on UPDATE).
---   * any change to the amount, the date, the destination or the approval once
---     the client has said yes. The one change allowed is an account going away
---     (a revoked bank login, 081's cascade, or an erasure deletes the
---     bank_accounts row): the reference goes NULL through the foreign key, the
---     row keeps its two account labels, and the ledger says so.
+--   * any change to the amount, the date, the destination or the approval. The
+--     one change allowed is an account going away (a revoked bank login, 081's
+--     cascade, or an erasure deletes the bank_accounts row): the reference goes
+--     NULL through the foreign key, the row keeps both account labels, and the
+--     ledger says so.
 --   * a from account equal to the to account (money_transfers_from_ne_to), or
 --     either one belonging to anybody but this client (the composite foreign
 --     keys onto bank_accounts (id, client_id)).
 --   * an amount of zero or less. The per-transfer and per-day caps are env
 --     settings — FINANCE_OS_TRANSFER_MAX_CENTS and
 --     FINANCE_OS_TRANSFER_DAILY_MAX_CENTS — checked in
---     src/finance/money-transfers.mjs. Unset means nothing can be proposed,
---     approved or sent.
+--     src/finance/money-transfers.mjs. Unset means nothing can be approved or sent.
 --
 -- ═══════════════════════════════════════════════════════════════════════════
 -- THE APPEND-ONLY LEDGER
 --
 -- money_transfer_events gets one row for every state change, and THE DATABASE
 -- writes it (money_transfers_ledger, an AFTER trigger) in the same statement as
--- the change. No code path can move a status, a leg, or an account without
--- leaving a row. Who did it and why ride on the row being changed
--- (last_actor_kind, last_actor_id, last_event_type, last_event_detail,
+-- the change. No code path can open a transfer, move its status or a leg, or lose
+-- an account without leaving a row. Who did it and why ride on the row being
+-- changed (last_actor_kind, last_actor_id, last_event_type, last_event_detail,
 -- last_provider_event_id) and the trigger copies them across.
 --
--- Ledger rows are never changed or removed: a trigger refuses UPDATE, DELETE
--- and TRUNCATE for every role, owner included, and fundhub_app's UPDATE /
--- DELETE / TRUNCATE grants are revoked. 104_app_role.sql's default privileges
--- hand every new table to fundhub_app with all four rights, so the REVOKE is
--- the load-bearing half (363 learned that the hard way). money_transfers rows
--- are never deleted either.
+-- Ledger rows are never changed or removed: a trigger refuses UPDATE, DELETE and
+-- TRUNCATE for every role, owner included, and fundhub_app's UPDATE / DELETE /
+-- TRUNCATE grants are revoked. 104_app_role.sql's default privileges hand every
+-- new table to fundhub_app with all four rights, so the REVOKE is the
+-- load-bearing half (363 learned that the hard way). money_transfers rows are
+-- never deleted either.
 --
 -- ═══════════════════════════════════════════════════════════════════════════
 -- WHY TWO LEGS
@@ -60,16 +71,22 @@
 -- Plaid Transfer moves money between ONE linked account and Fundhub's Plaid
 -- Ledger balance: a debit pulls money in, a credit pays money out
 -- (https://plaid.com/docs/transfer/flow-of-funds/). So "from A to B" is a debit
--- from A into the Ledger and — once those funds are available — a credit from
--- the Ledger out to B. Each leg keeps its own Plaid ids and Plaid status
--- (debit_* / credit_*); `status` is the move as a whole. A move to Fundhub
--- itself (to_kind 'fundhub', e.g. a Clarity Payment) is the debit alone.
+-- from A into the Ledger and — once those funds are available — a credit from the
+-- Ledger out to B. Each leg keeps its own Plaid ids and Plaid status
+-- (debit_* / credit_*); `status` is the move as a whole. A move to Fundhub itself
+-- (to_kind 'fundhub', e.g. a Clarity Payment) is the debit alone. Card and loan
+-- payments (464 allows them as proposals) cannot be sent this way: Plaid Transfer
+-- reaches only debitable checking, savings and cash management accounts
+-- (https://plaid.com/docs/transfer/creating-transfers/#account-linking).
 --
 -- PLAID'S OWN LIMIT ON THIS USE (read before turning production on):
 -- https://plaid.com/docs/transfer/creating-transfers/#peer-to-peer-transfers —
 -- "Plaid Transfer does not support peer to peer transfers or transfers between
 -- two accounts held by the same person." Sandbox runs it; production needs
 -- Plaid's say-so or another rail.
+--
+-- money_agent_log is NOT touched here. The engine logs with 464's words
+-- (task_done / task_failed / task_cancelled, item kind money_task).
 
 -- ---------------------------------------------------------------------------
 -- 1. A pair key on bank_accounts, so a transfer can prove BOTH of its accounts
@@ -80,7 +97,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS bank_accounts_id_client_uq
   ON public.bank_accounts (id, client_id);
 
 -- ---------------------------------------------------------------------------
--- 2. money_transfers — one row per move the client is asked to approve
+-- 2. money_transfers — one transfer intent per approved proposal
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.money_transfers (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -88,72 +105,58 @@ CREATE TABLE IF NOT EXISTS public.money_transfers (
   -- NO cascade: a money record outlives a client delete (erasure de-identifies,
   -- it does not delete — src/privacy/erasure.mjs).
   client_id              uuid NOT NULL REFERENCES clients(id),
+  -- The proposal this move carries out (464). One move per proposal, ever.
+  agent_task_id          uuid NOT NULL REFERENCES public.money_agent_tasks(id),
 
-  -- Where the proposal came from. task_key is the "Do task" id from
-  -- GET /api/money/tasks (docs/finance/money-agent-tasks.md, unit W5).
-  -- agent_task_id is that unit's money_agent_tasks row (migration 464); there is
-  -- no foreign key here because 464 is a sibling unit's file — the orchestrator
-  -- adds one when both are on main.
-  task_key               text CHECK (task_key IS NULL OR char_length(task_key) BETWEEN 1 AND 200),
-  agent_task_id          uuid,
-  kind                   text NOT NULL DEFAULT 'other'
-                         CHECK (kind IN ('due', 'pay_down', 'deposit', 'open_account', 'apply', 'checkpoint', 'other')),
-  purpose                text NOT NULL CHECK (char_length(btrim(purpose)) BETWEEN 1 AND 200),
-  why                    text CHECK (why IS NULL OR char_length(why) <= 500),
-  source                 text CHECK (source IS NULL OR char_length(source) <= 80),
-
-  -- The move. to_kind 'fundhub' has no to account (the money stops in Fundhub's
-  -- Plaid Ledger). Card and loan payments are not here: Plaid Transfer reaches
-  -- only debitable checking, savings and cash management accounts
-  -- (https://plaid.com/docs/transfer/creating-transfers/#account-linking).
   to_kind                text NOT NULL CHECK (to_kind IN ('bank_account', 'fundhub')),
   from_bank_account_id   uuid,
   to_bank_account_id     uuid,
-  -- What the client read, kept even if the account is later removed.
-  from_account_label     text CHECK (from_account_label IS NULL OR char_length(from_account_label) BETWEEN 1 AND 160),
+  -- What the client read when they said yes, kept even if an account goes away.
+  from_account_label     text NOT NULL CHECK (char_length(from_account_label) BETWEEN 1 AND 160),
   to_account_label       text NOT NULL CHECK (char_length(to_account_label) BETWEEN 1 AND 160),
   amount_cents           bigint NOT NULL CONSTRAINT money_transfers_amount_ck CHECK (amount_cents > 0),
   scheduled_for          date NOT NULL,
 
-  -- Which Plaid host this row may ever reach. Fixed at proposal. A sandbox row
+  -- Which Plaid host this row may ever reach, fixed at approval. A sandbox row
   -- never runs against production and the other way round.
   environment            text NOT NULL CHECK (environment IN ('sandbox', 'production')),
   provider               text NOT NULL DEFAULT 'plaid_transfer' CHECK (provider IN ('plaid_transfer')),
   network                text NOT NULL DEFAULT 'ach' CHECK (network IN ('ach', 'same-day-ach')),
 
-  status                 text NOT NULL DEFAULT 'proposed'
-                         CHECK (status IN ('proposed', 'approved', 'authorized', 'submitted',
-                                           'settled', 'failed', 'cancelled', 'declined')),
+  status                 text NOT NULL DEFAULT 'approved'
+                         CHECK (status IN ('approved', 'authorized', 'submitted', 'settled',
+                                           'failed', 'cancelled', 'declined')),
   status_reason          text CHECK (status_reason IS NULL OR char_length(status_reason) <= 300),
 
+  -- Who asked for it (from the proposal): the AI money agent, the rules helper
+  -- ("Do task" / a plan pin), staff, or the client.
   proposed_by_kind       text NOT NULL CHECK (proposed_by_kind IN ('agent', 'rules', 'staff', 'client')),
-  proposed_by_id         text CHECK (proposed_by_id IS NULL OR char_length(proposed_by_id) <= 120),
 
   -- The approval. approval_terms is the exact move the client said yes to
   -- (accounts, labels, amount, date, and the sentence on the button).
-  approved_by_kind       text CHECK (approved_by_kind IS NULL OR approved_by_kind IN ('client', 'sandbox_role_play')),
+  approved_by_kind       text NOT NULL CHECK (approved_by_kind IN ('client', 'sandbox_role_play')),
   approved_by_account_id uuid,
   approved_by_client_id  uuid,
-  approved_at            timestamptz,
-  approval_terms         jsonb,
+  approved_at            timestamptz NOT NULL,
+  approval_terms         jsonb NOT NULL,
 
   -- When the debit was started. Counts the move against the per-day cap.
   started_at             timestamptz,
 
   -- The two Plaid legs. Status words are Plaid's TransferStatus
   -- (https://plaid.com/docs/api/products/transfer/reading-transfers/#transferget).
-  debit_authorization_id    text,
-  debit_authorization_decision text CHECK (debit_authorization_decision IS NULL OR
-                            debit_authorization_decision IN ('approved', 'declined', 'user_action_required')),
-  debit_transfer_id      text,
-  debit_status           text CHECK (debit_status IS NULL OR debit_status IN
-                            ('pending', 'posted', 'settled', 'funds_available', 'cancelled', 'failed', 'returned')),
-  credit_authorization_id   text,
+  debit_authorization_id        text,
+  debit_authorization_decision  text CHECK (debit_authorization_decision IS NULL OR
+                                  debit_authorization_decision IN ('approved', 'declined', 'user_action_required')),
+  debit_transfer_id             text,
+  debit_status                  text CHECK (debit_status IS NULL OR debit_status IN
+                                  ('pending', 'posted', 'settled', 'funds_available', 'cancelled', 'failed', 'returned')),
+  credit_authorization_id       text,
   credit_authorization_decision text CHECK (credit_authorization_decision IS NULL OR
-                            credit_authorization_decision IN ('approved', 'declined', 'user_action_required')),
-  credit_transfer_id     text,
-  credit_status          text CHECK (credit_status IS NULL OR credit_status IN
-                            ('pending', 'posted', 'settled', 'funds_available', 'cancelled', 'failed', 'returned')),
+                                  credit_authorization_decision IN ('approved', 'declined', 'user_action_required')),
+  credit_transfer_id            text,
+  credit_status                 text CHECK (credit_status IS NULL OR credit_status IN
+                                  ('pending', 'posted', 'settled', 'funds_available', 'cancelled', 'failed', 'returned')),
 
   cancelled_by_kind      text CHECK (cancelled_by_kind IS NULL OR cancelled_by_kind IN ('client', 'staff', 'system')),
   cancelled_by_id        text,
@@ -166,23 +169,22 @@ CREATE TABLE IF NOT EXISTS public.money_transfers (
   last_actor_kind        text NOT NULL DEFAULT 'system'
                          CHECK (last_actor_kind IN ('client', 'staff', 'agent', 'rules', 'system', 'provider', 'sandbox_role_play')),
   last_actor_id          text,
-  last_event_type        text NOT NULL DEFAULT 'proposed' CHECK (char_length(last_event_type) BETWEEN 1 AND 60),
+  last_event_type        text NOT NULL DEFAULT 'approved' CHECK (char_length(last_event_type) BETWEEN 1 AND 60),
   last_event_detail      jsonb NOT NULL DEFAULT '{}'::jsonb,
   last_provider_event_id bigint,
 
   created_at             timestamptz NOT NULL DEFAULT now(),
   updated_at             timestamptz NOT NULL DEFAULT now(),
 
+  CONSTRAINT money_transfers_agent_task_uq UNIQUE (agent_task_id),
   CONSTRAINT money_transfers_idempotency_key_uq UNIQUE (idempotency_key),
   CONSTRAINT money_transfers_from_ne_to CHECK (from_bank_account_id <> to_bank_account_id),
   CONSTRAINT money_transfers_fundhub_no_account_ck CHECK (to_kind <> 'fundhub' OR to_bank_account_id IS NULL),
   CONSTRAINT money_transfers_approver_is_client_ck CHECK (approved_by_client_id IS NULL OR approved_by_client_id = client_id),
   CONSTRAINT money_transfers_approval_ck CHECK (
-    status IN ('proposed', 'cancelled')
-    OR (approved_at IS NOT NULL AND approval_terms IS NOT NULL AND (
-          (approved_by_kind = 'client' AND approved_by_account_id IS NOT NULL AND approved_by_client_id = client_id)
-       OR (approved_by_kind = 'sandbox_role_play' AND environment = 'sandbox')
-    ))
+       (approved_by_kind = 'client' AND approved_by_account_id IS NOT NULL AND approved_by_client_id = client_id)
+    OR (approved_by_kind = 'sandbox_role_play' AND environment = 'sandbox'
+        AND approved_by_account_id IS NULL AND approved_by_client_id IS NULL)
   ),
   CONSTRAINT money_transfers_authorized_ck CHECK (status <> 'authorized' OR debit_authorization_id IS NOT NULL),
   CONSTRAINT money_transfers_submitted_ck CHECK (status <> 'submitted' OR debit_transfer_id IS NOT NULL),
@@ -203,22 +205,18 @@ CREATE TABLE IF NOT EXISTS public.money_transfers (
 CREATE INDEX IF NOT EXISTS money_transfers_client_idx
   ON public.money_transfers (org_id, client_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS money_transfers_due_idx
-  ON public.money_transfers (scheduled_for) WHERE status = 'approved';
+  ON public.money_transfers (environment, scheduled_for) WHERE status = 'approved';
 CREATE INDEX IF NOT EXISTS money_transfers_open_idx
   ON public.money_transfers (environment, status) WHERE status IN ('authorized', 'submitted');
 CREATE UNIQUE INDEX IF NOT EXISTS money_transfers_debit_transfer_uq
   ON public.money_transfers (debit_transfer_id) WHERE debit_transfer_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS money_transfers_credit_transfer_uq
   ON public.money_transfers (credit_transfer_id) WHERE credit_transfer_id IS NOT NULL;
--- One open move per "Do task" per client. A second press answers with the open one.
-CREATE UNIQUE INDEX IF NOT EXISTS money_transfers_one_open_task_uq
-  ON public.money_transfers (client_id, task_key)
-  WHERE task_key IS NOT NULL AND status IN ('proposed', 'approved', 'authorized', 'submitted');
 
 COMMENT ON TABLE public.money_transfers IS
-  'FinanceOS money moves (466). Proposed by agent/rules/staff, approved only by the client (or sandbox role-play on a sandbox row), sent by Plaid Transfer as a debit leg and a credit leg. Never deleted.';
+  'FinanceOS money moves (466). One per approved 464 proposal; approved only by the client (or sandbox role-play on a sandbox row); sent by Plaid Transfer as a debit leg and, for bank-to-bank, a credit leg. Never deleted.';
 COMMENT ON COLUMN public.money_transfers.approval_terms IS
-  'The exact move the client said yes to: accounts, labels, amount_cents, scheduled_for and the sentence on the button. Immutable once set.';
+  'The exact move the client said yes to: accounts, labels, amount_cents, scheduled_for and the sentence on the button. Immutable.';
 
 -- ---------------------------------------------------------------------------
 -- 3. money_transfer_events — the append-only ledger
@@ -252,13 +250,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS money_transfer_events_provider_uq
   ON public.money_transfer_events (transfer_id, provider_event_id) WHERE provider_event_id IS NOT NULL;
 
 COMMENT ON TABLE public.money_transfer_events IS
-  'Append-only ledger of every FinanceOS money move state change (466). Written by the money_transfers_ledger trigger and by sync for Plaid events that change no status. Never updated, never deleted.';
+  'Append-only ledger of every FinanceOS money move state change (466). Written by the money_transfers_ledger trigger, and by sync for Plaid events that change no status. Never updated, never deleted.';
 
 -- ---------------------------------------------------------------------------
--- 4. money_transfer_sync_cursors — where /transfer/event/sync left off
+-- 4. money_transfer_sync_cursors — where /transfer/event/sync left off.
 --    Plaid's event ids are account-wide and per environment, so one cursor per
---    environment. The cursor moves in the same transaction as the events it
---    covers, so a crash re-reads rather than skips.
+--    environment.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.money_transfer_sync_cursors (
   environment  text PRIMARY KEY CHECK (environment IN ('sandbox', 'production')),
@@ -267,66 +264,84 @@ CREATE TABLE IF NOT EXISTS public.money_transfer_sync_cursors (
 );
 
 -- ---------------------------------------------------------------------------
--- 5. The guard: what may be inserted, which status may follow which, and what
---    may never change once the client has said yes.
+-- 5. The guard: a transfer intent must match its approved proposal; which
+--    status may follow which; what may never change.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.money_transfers_guard() RETURNS trigger
 LANGUAGE plpgsql AS $$
+DECLARE
+  t public.money_agent_tasks%ROWTYPE;
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    IF NEW.status <> 'proposed' THEN
-      RAISE EXCEPTION 'money_transfers: a move starts as proposed; approval is a separate step (got %)', NEW.status
+    IF NEW.status <> 'approved' THEN
+      RAISE EXCEPTION 'money_transfers: a move opens at approved, on the client''s yes (got %)', NEW.status
         USING ERRCODE = 'check_violation';
     END IF;
-    IF NEW.approved_at IS NOT NULL OR NEW.approved_by_kind IS NOT NULL OR NEW.approval_terms IS NOT NULL
-       OR NEW.started_at IS NOT NULL
+    IF NEW.started_at IS NOT NULL
        OR NEW.debit_authorization_id IS NOT NULL OR NEW.debit_transfer_id IS NOT NULL OR NEW.debit_status IS NOT NULL
-       OR NEW.credit_authorization_id IS NOT NULL OR NEW.credit_transfer_id IS NOT NULL OR NEW.credit_status IS NOT NULL THEN
-      RAISE EXCEPTION 'money_transfers: a new proposal carries no approval and no Plaid legs'
+       OR NEW.credit_authorization_id IS NOT NULL OR NEW.credit_transfer_id IS NOT NULL OR NEW.credit_status IS NOT NULL
+       OR NEW.cancelled_at IS NOT NULL OR NEW.settled_at IS NOT NULL THEN
+      RAISE EXCEPTION 'money_transfers: a new move carries no Plaid legs yet'
         USING ERRCODE = 'check_violation';
     END IF;
     IF NEW.to_kind = 'bank_account' AND NEW.to_bank_account_id IS NULL THEN
       RAISE EXCEPTION 'money_transfers: a move to a bank account names that account'
         USING ERRCODE = 'check_violation';
     END IF;
+    IF NEW.from_bank_account_id IS NULL THEN
+      RAISE EXCEPTION 'money_transfers: a move names the account the money comes from'
+        USING ERRCODE = 'check_violation';
+    END IF;
+
+    -- The proposal it carries out, approved in this same transaction.
+    SELECT * INTO t FROM public.money_agent_tasks WHERE id = NEW.agent_task_id;
+    IF NOT FOUND
+       OR t.org_id <> NEW.org_id OR t.client_id <> NEW.client_id
+       OR NOT t.moves_money OR t.status <> 'approved' OR t.approved_at IS NULL
+       OR t.amount_cents IS DISTINCT FROM NEW.amount_cents
+       OR t.to_kind IS DISTINCT FROM NEW.to_kind
+       OR t.to_account_id IS DISTINCT FROM NEW.to_bank_account_id
+       OR t.from_account_id IS DISTINCT FROM NEW.from_bank_account_id
+       OR (NEW.approved_by_kind = 'client' AND t.approved_by_account_id IS DISTINCT FROM NEW.approved_by_account_id) THEN
+      RAISE EXCEPTION 'money_transfers: the move must match the proposal the client approved (money_agent_tasks %)', NEW.agent_task_id
+        USING ERRCODE = 'check_violation';
+    END IF;
+
     NEW.last_provider_event_id := NULL;
     RETURN NEW;
   END IF;
 
   -- UPDATE ------------------------------------------------------------------
   IF NEW.id <> OLD.id OR NEW.org_id <> OLD.org_id OR NEW.client_id <> OLD.client_id
-     OR NEW.environment <> OLD.environment OR NEW.provider <> OLD.provider
+     OR NEW.agent_task_id <> OLD.agent_task_id
+     OR NEW.environment <> OLD.environment OR NEW.provider <> OLD.provider OR NEW.network <> OLD.network
      OR NEW.idempotency_key <> OLD.idempotency_key OR NEW.created_at <> OLD.created_at
-     OR NEW.proposed_by_kind <> OLD.proposed_by_kind OR NEW.proposed_by_id IS DISTINCT FROM OLD.proposed_by_id
-     OR NEW.amount_cents <> OLD.amount_cents OR NEW.scheduled_for <> OLD.scheduled_for
-     OR NEW.to_kind <> OLD.to_kind OR NEW.network <> OLD.network THEN
-    RAISE EXCEPTION 'money_transfers %: who, how much, when and where never change — cancel it and propose a new one', OLD.id
+     OR NEW.proposed_by_kind <> OLD.proposed_by_kind
+     OR NEW.amount_cents <> OLD.amount_cents OR NEW.scheduled_for <> OLD.scheduled_for OR NEW.to_kind <> OLD.to_kind
+     OR NEW.from_account_label <> OLD.from_account_label OR NEW.to_account_label <> OLD.to_account_label THEN
+    RAISE EXCEPTION 'money_transfers %: who, how much, when and where never change — cancel it and ask again', OLD.id
       USING ERRCODE = 'check_violation';
   END IF;
-
-  -- An account may go away (NULL through the foreign key); it may never be
-  -- swapped for another one. Before approval the from account may be picked.
-  IF NEW.to_bank_account_id IS DISTINCT FROM OLD.to_bank_account_id AND NEW.to_bank_account_id IS NOT NULL THEN
-    RAISE EXCEPTION 'money_transfers %: the to account never changes', OLD.id USING ERRCODE = 'check_violation';
+  IF NEW.approved_at IS DISTINCT FROM OLD.approved_at OR NEW.approved_by_kind IS DISTINCT FROM OLD.approved_by_kind
+     OR NEW.approved_by_account_id IS DISTINCT FROM OLD.approved_by_account_id
+     OR NEW.approved_by_client_id IS DISTINCT FROM OLD.approved_by_client_id
+     OR NEW.approval_terms IS DISTINCT FROM OLD.approval_terms THEN
+    RAISE EXCEPTION 'money_transfers %: an approval is never changed or removed', OLD.id USING ERRCODE = 'check_violation';
   END IF;
-  IF OLD.approved_at IS NOT NULL THEN
-    IF NEW.from_bank_account_id IS DISTINCT FROM OLD.from_bank_account_id AND NEW.from_bank_account_id IS NOT NULL THEN
-      RAISE EXCEPTION 'money_transfers %: the from account was approved and never changes', OLD.id USING ERRCODE = 'check_violation';
-    END IF;
-    IF NEW.approved_at IS DISTINCT FROM OLD.approved_at OR NEW.approved_by_kind IS DISTINCT FROM OLD.approved_by_kind
-       OR NEW.approved_by_account_id IS DISTINCT FROM OLD.approved_by_account_id
-       OR NEW.approved_by_client_id IS DISTINCT FROM OLD.approved_by_client_id
-       OR NEW.approval_terms IS DISTINCT FROM OLD.approval_terms THEN
-      RAISE EXCEPTION 'money_transfers %: an approval is never changed or removed', OLD.id USING ERRCODE = 'check_violation';
-    END IF;
+  -- An account may go away (NULL through the foreign key); it is never swapped.
+  IF (NEW.from_bank_account_id IS DISTINCT FROM OLD.from_bank_account_id AND NEW.from_bank_account_id IS NOT NULL)
+     OR (NEW.to_bank_account_id IS DISTINCT FROM OLD.to_bank_account_id AND NEW.to_bank_account_id IS NOT NULL) THEN
+    RAISE EXCEPTION 'money_transfers %: the accounts never change', OLD.id USING ERRCODE = 'check_violation';
   END IF;
 
   -- Plaid ids, once known, are fixed. A finished leg stays finished.
   IF (OLD.debit_authorization_id IS NOT NULL AND NEW.debit_authorization_id IS DISTINCT FROM OLD.debit_authorization_id)
      OR (OLD.debit_transfer_id IS NOT NULL AND NEW.debit_transfer_id IS DISTINCT FROM OLD.debit_transfer_id)
      OR (OLD.credit_authorization_id IS NOT NULL AND NEW.credit_authorization_id IS DISTINCT FROM OLD.credit_authorization_id)
-     OR (OLD.credit_transfer_id IS NOT NULL AND NEW.credit_transfer_id IS DISTINCT FROM OLD.credit_transfer_id) THEN
-    RAISE EXCEPTION 'money_transfers %: a Plaid id never changes once recorded', OLD.id USING ERRCODE = 'check_violation';
+     OR (OLD.credit_transfer_id IS NOT NULL AND NEW.credit_transfer_id IS DISTINCT FROM OLD.credit_transfer_id)
+     OR (OLD.started_at IS NOT NULL AND NEW.started_at IS DISTINCT FROM OLD.started_at) THEN
+    RAISE EXCEPTION 'money_transfers %: a Plaid id or a start time never changes once recorded', OLD.id
+      USING ERRCODE = 'check_violation';
   END IF;
   IF (OLD.debit_status IN ('failed', 'cancelled', 'returned') AND NEW.debit_status IS DISTINCT FROM OLD.debit_status)
      OR (OLD.credit_status IN ('failed', 'cancelled', 'returned') AND NEW.credit_status IS DISTINCT FROM OLD.credit_status) THEN
@@ -336,17 +351,12 @@ BEGIN
   -- The state machine.
   IF NEW.status <> OLD.status THEN
     IF NOT (
-         (OLD.status = 'proposed'   AND NEW.status IN ('approved', 'cancelled'))
-      OR (OLD.status = 'approved'   AND NEW.status IN ('authorized', 'declined', 'failed', 'cancelled'))
+         (OLD.status = 'approved'   AND NEW.status IN ('authorized', 'declined', 'failed', 'cancelled'))
       OR (OLD.status = 'authorized' AND NEW.status IN ('submitted', 'failed', 'cancelled'))
       OR (OLD.status = 'submitted'  AND NEW.status IN ('settled', 'failed', 'cancelled'))
       OR (OLD.status = 'settled'    AND NEW.status = 'failed')
     ) THEN
       RAISE EXCEPTION 'money_transfers %: % cannot become %', OLD.id, OLD.status, NEW.status
-        USING ERRCODE = 'check_violation';
-    END IF;
-    IF OLD.status = 'proposed' AND NEW.status = 'approved' AND NEW.from_bank_account_id IS NULL THEN
-      RAISE EXCEPTION 'money_transfers %: an approval names the account the money comes from', OLD.id
         USING ERRCODE = 'check_violation';
     END IF;
   END IF;
