@@ -206,7 +206,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     await open(page, { posts, markFails: () => down });
     await page.evaluate(() => window.__fhtp.finish());
     await page.keyboard.press(" ");
-    await expect(page.locator("#pending")).toBeVisible();
+    await expect(page.locator("#pending")).toBeHidden();
     await expect(page.locator("#pending")).toContainText("saved on this phone");
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("fhtp.queue")).length)).toBe(1);
     // The next script still loads; the shoot keeps going without a connection.

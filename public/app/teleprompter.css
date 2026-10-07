@@ -1,0 +1,47 @@
+/* Layout and darkness only. Scroll math and the play / record buttons stay in teleprompter.js. */
+
+/* The ad line, the script title, the orange notes, and the Shoot tab
+   live in this bar. Take the whole bar off the screen so the words
+   start at the top. */
+#top {
+  display: none !important;
+}
+
+/* Three rows left: the words, the thin save line, the buttons. */
+#app {
+  grid-template-rows: minmax(0, 1fr) auto auto !important;
+  background: transparent;
+}
+
+html,
+body {
+  background: #000;
+}
+
+/* The how-to paragraph sits above the buttons. It is not the script.
+   The same words stay in Settings. */
+#status .note {
+  display: none !important;
+}
+
+/* A pop-up must not sit on the first lines. */
+#toast {
+  top: auto !important;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+#content {
+  top: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.85);
+}
+
+/* Dark glass over the mirrored front camera.
+   The black is see-through, so the face stays under the words.
+   It is not a flat empty black page. */
+#cam-shade,
+#cam.glass #cam-shade {
+  background: rgba(0, 0, 0, 0.8) !important;
+  opacity: 1 !important;
+  -webkit-backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
+  backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
+}
