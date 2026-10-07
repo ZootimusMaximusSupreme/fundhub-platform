@@ -1,0 +1,1040 @@
+{
+  "ok": true,
+  "client": {
+    "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+    "name": "Test Test"
+  },
+  "as_of": "2026-10-07T03:13:29.878Z",
+  "location": {
+    "states": [
+      "AZ"
+    ],
+    "home_state": null,
+    "business_state": "AZ",
+    "businesses": [
+      {
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "name": "Fundhub LLC",
+        "city": "Phoenix",
+        "state": "AZ"
+      }
+    ],
+    "text": "Phoenix, AZ",
+    "source": {
+      "label": "Business info for Fundhub LLC",
+      "ref": "businesses.entity_data.state (src/finance/business-info.mjs)"
+    },
+    "match_source": {
+      "label": "Fundhub bank match",
+      "ref": "src/lenders/match.mjs"
+    }
+  },
+  "containers": [
+    {
+      "id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "kind": "business",
+      "name": "Fundhub LLC"
+    },
+    {
+      "id": "36b90655-f93d-4444-90a8-ccf713426e56",
+      "kind": "personal",
+      "name": "Chris (personal)"
+    }
+  ],
+  "recommended_banks": [
+    {
+      "lender_id": "d9bd0743-5439-4041-bd11-18925ac8ecf3",
+      "name": "Bank of America",
+      "products": [
+        "Business credit card (apply online)"
+      ],
+      "lender_table": "OnlineBizCC",
+      "serves_state": "AZ",
+      "lane": "business",
+      "tier": 1,
+      "minimum_deposit_cents": 500000,
+      "seasoning_days": 30,
+      "why": [
+        {
+          "text": "Serves AZ — your business state.",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        },
+        {
+          "text": "Tier 1 in the bank book.",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        },
+        {
+          "text": "Checking account is required with liquidity seasoned 30+ days",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        },
+        {
+          "text": "Business checking account required",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        }
+      ],
+      "relationship_steps": [
+        {
+          "step": "open_account",
+          "text": "Open a business checking account at Bank of America.",
+          "how": {
+            "text": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+            "source": {
+              "label": "Fundhub checklist · Open a business checking account",
+              "ref": "waypoint_definitions.business_checking (db/migrations/362_waypoint_definitions_seed.sql)"
+            }
+          },
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.requires_account_opening · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        },
+        {
+          "step": "deposit",
+          "text": "Deposit $5,000.",
+          "amount_cents": 500000,
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.minimum_deposit · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        },
+        {
+          "step": "season",
+          "text": "Leave it there 30+ days before you apply.",
+          "days": 30,
+          "quote": "Checking account is required with liquidity seasoned 30+ days",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        }
+      ],
+      "source": {
+        "label": "Bank book · Bank of America",
+        "ref": "lenders.external_row_id · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+      },
+      "states_matched": [
+        "AZ"
+      ]
+    },
+    {
+      "lender_id": "9f4d147d-d1c9-4603-b9e3-60cd2ad7c66c",
+      "name": "Chase",
+      "products": [
+        "Business credit card (apply in a branch): Business Ink Cash / Ink Unlimited / Ink Preferred"
+      ],
+      "lender_table": "InBranchBizCC",
+      "serves_state": "AZ",
+      "lane": "business",
+      "tier": 1,
+      "minimum_deposit_cents": 1000000,
+      "seasoning_days": 30,
+      "why": [
+        {
+          "text": "Serves AZ — your business state.",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.eligible_states · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        {
+          "text": "Tier 1 in the bank book.",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.priority_tier · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        {
+          "text": "Business checking account is required",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.stated_requirements · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        {
+          "text": "30+ days of liquidity seasoning strongly improves odds",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.stated_requirements · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        }
+      ],
+      "relationship_steps": [
+        {
+          "step": "open_account",
+          "text": "Open a business checking account at Chase.",
+          "how": {
+            "text": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+            "source": {
+              "label": "Fundhub checklist · Open a business checking account",
+              "ref": "waypoint_definitions.business_checking (db/migrations/362_waypoint_definitions_seed.sql)"
+            }
+          },
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.requires_account_opening · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        {
+          "step": "deposit",
+          "text": "Deposit $10,000.",
+          "amount_cents": 1000000,
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.minimum_deposit · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        {
+          "step": "season",
+          "text": "Leave it there 30+ days before you apply.",
+          "days": 30,
+          "quote": "30+ days of liquidity seasoning strongly improves odds",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.stated_requirements · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        }
+      ],
+      "source": {
+        "label": "Bank book · Chase",
+        "ref": "lenders.external_row_id · LEGACY-INBRANCHBIZCC-CHASE"
+      },
+      "states_matched": [
+        "AZ"
+      ]
+    },
+    {
+      "lender_id": "44625fe4-ac53-4ce4-8209-d82ca751b06b",
+      "name": "US Bank",
+      "products": [
+        "Business credit card (apply online): Business Platinum / Business Leverage"
+      ],
+      "lender_table": "OnlineBizCC",
+      "serves_state": "AZ",
+      "lane": "business",
+      "tier": 2,
+      "minimum_deposit_cents": 500000,
+      "seasoning_days": 30,
+      "why": [
+        {
+          "text": "Serves AZ — your business state.",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        {
+          "text": "Tier 2 in the bank book.",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        {
+          "text": "Checking account required",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        {
+          "text": "Business checking required",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        }
+      ],
+      "relationship_steps": [
+        {
+          "step": "open_account",
+          "text": "Open a business checking account at US Bank.",
+          "how": {
+            "text": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+            "source": {
+              "label": "Fundhub checklist · Open a business checking account",
+              "ref": "waypoint_definitions.business_checking (db/migrations/362_waypoint_definitions_seed.sql)"
+            }
+          },
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.requires_account_opening · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        {
+          "step": "deposit",
+          "text": "Deposit $5,000.",
+          "amount_cents": 500000,
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.minimum_deposit · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        {
+          "step": "season",
+          "text": "Leave it there 30+ days before you apply.",
+          "days": 30,
+          "quote": "30+ day seasoning helps",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        }
+      ],
+      "source": {
+        "label": "Bank book · US Bank",
+        "ref": "lenders.external_row_id · LEGACY-ONLINEBIZCC-US-BANK"
+      },
+      "states_matched": [
+        "AZ"
+      ]
+    },
+    {
+      "lender_id": "764d53ed-d4c8-4cc0-9224-3060d5852acf",
+      "name": "Wells Fargo",
+      "products": [
+        "Business credit card (apply online)"
+      ],
+      "lender_table": "OnlineBizCC",
+      "serves_state": "AZ",
+      "lane": "business",
+      "tier": 2,
+      "minimum_deposit_cents": null,
+      "seasoning_days": null,
+      "why": [
+        {
+          "text": "Serves AZ — your business state.",
+          "source": {
+            "label": "Bank book · Wells Fargo",
+            "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-WELLS-FARGO"
+          }
+        },
+        {
+          "text": "Tier 2 in the bank book.",
+          "source": {
+            "label": "Bank book · Wells Fargo",
+            "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-WELLS-FARGO"
+          }
+        }
+      ],
+      "relationship_steps": [
+        {
+          "step": "open_account",
+          "text": "Open a business checking account at Wells Fargo.",
+          "how": {
+            "text": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+            "source": {
+              "label": "Fundhub checklist · Open a business checking account",
+              "ref": "waypoint_definitions.business_checking (db/migrations/362_waypoint_definitions_seed.sql)"
+            }
+          },
+          "source": {
+            "label": "Bank book · Wells Fargo",
+            "ref": "lenders.requires_account_opening · LEGACY-ONLINEBIZCC-WELLS-FARGO"
+          }
+        },
+        {
+          "step": "deposit",
+          "text": "Deposit amount: not set. Staff set it with the plan.",
+          "amount_cents": null,
+          "source": {
+            "label": "Set by staff",
+            "ref": "blueprint_bank_relationship_todos (461)"
+          },
+          "not_set": true
+        }
+      ],
+      "source": {
+        "label": "Bank book · Wells Fargo",
+        "ref": "lenders.external_row_id · LEGACY-ONLINEBIZCC-WELLS-FARGO"
+      },
+      "states_matched": [
+        "AZ"
+      ]
+    }
+  ],
+  "banks_left_out": [
+    {
+      "name": "American Express",
+      "reason": "book_says_no_account_needed",
+      "quote": "Checking account not required",
+      "source": {
+        "label": "Bank book · American Express",
+        "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-AMERICAN-EXPRESS"
+      }
+    },
+    {
+      "name": "Elan Financial",
+      "reason": "book_says_no_account_needed",
+      "quote": "No business checking required",
+      "source": {
+        "label": "Bank book · Elan Financial",
+        "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-ELAN-FINANCIAL"
+      }
+    },
+    {
+      "name": "First Citizens Bank",
+      "reason": "book_says_no_account_needed",
+      "quote": "No business checking required",
+      "source": {
+        "label": "Bank book · First Citizens Bank",
+        "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-FIRST-CITIZENS-BANK"
+      }
+    },
+    {
+      "name": "Native American Bank",
+      "reason": "book_says_no_account_needed",
+      "quote": "No business checking needed",
+      "source": {
+        "label": "Bank book · Native American Bank",
+        "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-NATIVE-AMERICAN-BANK"
+      }
+    },
+    {
+      "name": "Pacific Premier Bank (0% - FNBO)",
+      "reason": "book_says_no_account_needed",
+      "quote": "No checking account needed",
+      "source": {
+        "label": "Bank book · Pacific Premier Bank (0% - FNBO)",
+        "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-PACIFIC-PREMIER-BANK-0-FNBO"
+      }
+    }
+  ],
+  "card_stacking": {
+    "order_rule": {
+      "text": "Personal cards first, then business cards. Inside each: bank book tier, then spread the pulls across the three bureaus.",
+      "sources": [
+        {
+          "label": "Fundhub application order (UnderwriteIQ report)",
+          "ref": "src/underwrite/black-report-node.mjs · Application Order Warning; src/deliverables/lender-list.mjs"
+        },
+        {
+          "label": "Fundhub funding order (owner law 2026-09-26)",
+          "ref": "src/underwrite/funding-sequence.mjs"
+        },
+        {
+          "label": "Fundhub bank match",
+          "ref": "src/lenders/match.mjs"
+        }
+      ]
+    },
+    "spacing": {
+      "text": "One at a time: wait for the decision before you send the next one. Never shotgun applications.",
+      "source": {
+        "label": "Fundhub application order (UnderwriteIQ report)",
+        "ref": "src/underwrite/black-report-node.mjs · Application Order Warning; src/deliverables/lender-list.mjs"
+      },
+      "days_between": null,
+      "days_text": "Days between two banks: not set. No Fundhub rule names a number; staff decide it."
+    },
+    "items": [
+      {
+        "order": 1,
+        "card": "American Express Delta Gold",
+        "other_cards": [
+          "American Express Hilton Honors",
+          "American Express Blue Cash",
+          "American Express Marriott Bonvoy"
+        ],
+        "issuer": "American Express",
+        "lender_id": "25fec8c4-3242-4fb8-977e-9fba6eb8c7ce",
+        "kind": "personal",
+        "intro_offer": null,
+        "why": [
+          {
+            "text": "Personal card. Personal comes before business.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EX"
+          ],
+          "text": "One hard pull on Experian per card.",
+          "source": {
+            "label": "Bank book · American Express",
+            "ref": "lenders.bureaus_pulled · PERSONAL-PERSONALCC-AMERICAN-EXPRESS-DELTA-GOLD"
+          }
+        }
+      },
+      {
+        "order": 2,
+        "card": "Personal credit card",
+        "other_cards": [],
+        "issuer": "Arrow Bank National Association",
+        "lender_id": "1e83272c-35b2-486d-be99-85313fb61766",
+        "kind": "personal",
+        "intro_offer": null,
+        "why": [
+          {
+            "text": "Personal card. Personal comes before business.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EX"
+          ],
+          "text": "One hard pull on Experian per card.",
+          "source": {
+            "label": "Bank book · Arrow Bank National Association",
+            "ref": "lenders.bureaus_pulled · CARL-ONLINEBIZCC-ARROW-BANK-NATIONAL-ASSOCIATION"
+          }
+        }
+      },
+      {
+        "order": 3,
+        "card": "Citi Simplicity Card",
+        "other_cards": [],
+        "issuer": "Citi",
+        "lender_id": "005bc3a5-a4be-42bb-9f54-bf299bc4996a",
+        "kind": "personal",
+        "intro_offer": "0% APR for 21 months on balance transfers.",
+        "why": [
+          {
+            "text": "Personal card. Personal comes before business.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          },
+          {
+            "text": "0% APR for 21 months on balance transfers.",
+            "source": {
+              "label": "Bank book · Citi",
+              "ref": "lenders.intro_offers · PERSONAL-PERSONALCC-CITI-SIMPLICITY-CARD"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EQ"
+          ],
+          "text": "One hard pull on Equifax per card.",
+          "source": {
+            "label": "Bank book · Citi",
+            "ref": "lenders.bureaus_pulled · PERSONAL-PERSONALCC-CITI-SIMPLICITY-CARD"
+          }
+        }
+      },
+      {
+        "order": 4,
+        "card": "Chase Sapphire Reserve",
+        "other_cards": [
+          "Chase Sapphire Preferred",
+          "Chase Freedom"
+        ],
+        "issuer": "Chase",
+        "lender_id": "2ad3f706-b12e-4e14-bc8e-43b394f447ac",
+        "kind": "personal",
+        "intro_offer": "0% intro APR — 12 months",
+        "why": [
+          {
+            "text": "Personal card. Personal comes before business.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          },
+          {
+            "text": "0% intro APR — 12 months",
+            "source": {
+              "label": "Bank book · Chase",
+              "ref": "lenders.intro_offers · PERSONAL-PERSONALCC-CHASE-SAPPHIRE-RESERVE"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EX"
+          ],
+          "text": "One hard pull on Experian per card.",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.bureaus_pulled · PERSONAL-PERSONALCC-CHASE-SAPPHIRE-RESERVE"
+          }
+        }
+      },
+      {
+        "order": 5,
+        "card": "Bank of America Customized Cash Rewards",
+        "other_cards": [],
+        "issuer": "Bank of America",
+        "lender_id": "e1b3d656-dc46-4f06-beba-8e12b6f97205",
+        "kind": "personal",
+        "intro_offer": "0% intro APR — 6 months",
+        "why": [
+          {
+            "text": "Personal card. Personal comes before business.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          },
+          {
+            "text": "0% intro APR — 6 months",
+            "source": {
+              "label": "Bank book · Bank of America",
+              "ref": "lenders.intro_offers · PERSONAL-PERSONALCC-BANK-OF-AMERICA-CUSTOMIZED-CASH-REWARDS"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EX",
+            "TU"
+          ],
+          "text": "One hard pull on Experian and TransUnion per card.",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.bureaus_pulled · PERSONAL-PERSONALCC-BANK-OF-AMERICA-CUSTOMIZED-CASH-REWARDS"
+          }
+        }
+      },
+      {
+        "order": 6,
+        "card": "Discover it Balance Transfer Card",
+        "other_cards": [
+          "Discover It"
+        ],
+        "issuer": "Discover",
+        "lender_id": "5f768d48-e37f-430a-bc2c-d1b6989dc5bd",
+        "kind": "personal",
+        "intro_offer": "0% APR for 21 months on balance transfers.",
+        "why": [
+          {
+            "text": "Personal card. Personal comes before business.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          },
+          {
+            "text": "0% APR for 21 months on balance transfers.",
+            "source": {
+              "label": "Bank book · Discover",
+              "ref": "lenders.intro_offers · PERSONAL-PERSONALCC-DISCOVER-IT-BALANCE-TRANSFER-CARD"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EX"
+          ],
+          "text": "One hard pull on Experian per card.",
+          "source": {
+            "label": "Bank book · Discover",
+            "ref": "lenders.bureaus_pulled · PERSONAL-PERSONALCC-DISCOVER-IT-BALANCE-TRANSFER-CARD"
+          }
+        }
+      },
+      {
+        "order": 7,
+        "card": "Business Gold / Blue Business Cash / Blue Business Plus",
+        "other_cards": [],
+        "issuer": "American Express",
+        "lender_id": "97f2ce2d-d996-46ca-80eb-ea2432604aec",
+        "kind": "business",
+        "intro_offer": null,
+        "why": [
+          {
+            "text": "Tier 1 in the bank book.",
+            "source": {
+              "label": "Bank book · American Express",
+              "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-AMERICAN-EXPRESS"
+            }
+          }
+        ],
+        "spacing_rule": {
+          "text": "Ideal approach: Start with Biz Gold or Biz Platinum → 1–3 months of use → then apply for Biz Blue Cash and Biz Blue Plus",
+          "source": {
+            "label": "Bank book · American Express",
+            "ref": "lenders.insider_tips · LEGACY-ONLINEBIZCC-AMERICAN-EXPRESS"
+          }
+        },
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EX"
+          ],
+          "text": "One hard pull on Experian per card.",
+          "source": {
+            "label": "Bank book · American Express",
+            "ref": "lenders.bureaus_pulled · LEGACY-ONLINEBIZCC-AMERICAN-EXPRESS"
+          }
+        }
+      },
+      {
+        "order": 8,
+        "card": "Business credit card (apply online)",
+        "other_cards": [],
+        "issuer": "Bank of America",
+        "lender_id": "d9bd0743-5439-4041-bd11-18925ac8ecf3",
+        "kind": "business",
+        "intro_offer": "0% intro APR — 6 months",
+        "why": [
+          {
+            "text": "Tier 1 in the bank book.",
+            "source": {
+              "label": "Bank book · Bank of America",
+              "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+            }
+          },
+          {
+            "text": "0% intro APR — 6 months",
+            "source": {
+              "label": "Bank book · Bank of America",
+              "ref": "lenders.intro_offers · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+            }
+          },
+          {
+            "text": "Serves your business state.",
+            "source": {
+              "label": "Bank book · Bank of America",
+              "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": {
+          "text": "Open your Bank of America account first and wait 30+ days.",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        },
+        "inquiry_impact": {
+          "bureaus": [
+            "EX",
+            "EQ",
+            "TU"
+          ],
+          "text": "One hard pull on Experian, Equifax and TransUnion per card.",
+          "source": {
+            "label": "Bank book · Bank of America",
+            "ref": "lenders.bureaus_pulled · LEGACY-ONLINEBIZCC-BANK-OF-AMERICA"
+          }
+        }
+      },
+      {
+        "order": 9,
+        "card": "0% for 20 Months — No Business Checking Required",
+        "other_cards": [],
+        "issuer": "Elan Financial",
+        "lender_id": "add28c99-6f94-4559-af91-58b99e62f535",
+        "kind": "business",
+        "intro_offer": null,
+        "why": [
+          {
+            "text": "Tier 1 in the bank book.",
+            "source": {
+              "label": "Bank book · Elan Financial",
+              "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-ELAN-FINANCIAL"
+            }
+          },
+          {
+            "text": "Serves your business state.",
+            "source": {
+              "label": "Bank book · Elan Financial",
+              "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-ELAN-FINANCIAL"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "TU"
+          ],
+          "text": "One hard pull on TransUnion per card.",
+          "source": {
+            "label": "Bank book · Elan Financial",
+            "ref": "lenders.bureaus_pulled · LEGACY-ONLINEBIZCC-ELAN-FINANCIAL"
+          }
+        }
+      },
+      {
+        "order": 10,
+        "card": "Business credit card (apply online)",
+        "other_cards": [],
+        "issuer": "First Citizens Bank",
+        "lender_id": "555a682b-614c-46b7-b509-c3c8ec78589e",
+        "kind": "business",
+        "intro_offer": "0% intro APR — 12 months",
+        "why": [
+          {
+            "text": "Tier 1 in the bank book.",
+            "source": {
+              "label": "Bank book · First Citizens Bank",
+              "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-FIRST-CITIZENS-BANK"
+            }
+          },
+          {
+            "text": "0% intro APR — 12 months",
+            "source": {
+              "label": "Bank book · First Citizens Bank",
+              "ref": "lenders.intro_offers · LEGACY-ONLINEBIZCC-FIRST-CITIZENS-BANK"
+            }
+          },
+          {
+            "text": "Serves your business state.",
+            "source": {
+              "label": "Bank book · First Citizens Bank",
+              "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-FIRST-CITIZENS-BANK"
+            }
+          }
+        ],
+        "spacing_rule": null,
+        "relationship_gate": null,
+        "inquiry_impact": {
+          "bureaus": [
+            "EQ"
+          ],
+          "text": "One hard pull on Equifax per card.",
+          "source": {
+            "label": "Bank book · First Citizens Bank",
+            "ref": "lenders.bureaus_pulled · LEGACY-ONLINEBIZCC-FIRST-CITIZENS-BANK"
+          }
+        }
+      },
+      {
+        "order": 11,
+        "card": "Business Ink Cash / Ink Unlimited / Ink Preferred",
+        "other_cards": [],
+        "issuer": "Chase",
+        "lender_id": "9f4d147d-d1c9-4603-b9e3-60cd2ad7c66c",
+        "kind": "business",
+        "intro_offer": "0% intro APR — 12 months",
+        "why": [
+          {
+            "text": "Tier 1 in the bank book.",
+            "source": {
+              "label": "Bank book · Chase",
+              "ref": "lenders.priority_tier · LEGACY-INBRANCHBIZCC-CHASE"
+            }
+          },
+          {
+            "text": "0% intro APR — 12 months",
+            "source": {
+              "label": "Bank book · Chase",
+              "ref": "lenders.intro_offers · LEGACY-INBRANCHBIZCC-CHASE"
+            }
+          },
+          {
+            "text": "Serves your business state.",
+            "source": {
+              "label": "Bank book · Chase",
+              "ref": "lenders.eligible_states · LEGACY-INBRANCHBIZCC-CHASE"
+            }
+          }
+        ],
+        "spacing_rule": {
+          "text": "Apply for one card → wait for decision → then submit second card to increase odds",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.insider_tips · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        "relationship_gate": {
+          "text": "Open your Chase account first and wait 30+ days.",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.stated_requirements · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        },
+        "inquiry_impact": {
+          "bureaus": [
+            "EX",
+            "EQ",
+            "TU"
+          ],
+          "text": "One hard pull on Experian, Equifax and TransUnion per card.",
+          "source": {
+            "label": "Bank book · Chase",
+            "ref": "lenders.bureaus_pulled · LEGACY-INBRANCHBIZCC-CHASE"
+          }
+        }
+      },
+      {
+        "order": 12,
+        "card": "Business Platinum / Business Leverage",
+        "other_cards": [],
+        "issuer": "US Bank",
+        "lender_id": "44625fe4-ac53-4ce4-8209-d82ca751b06b",
+        "kind": "business",
+        "intro_offer": null,
+        "why": [
+          {
+            "text": "Tier 2 in the bank book.",
+            "source": {
+              "label": "Bank book · US Bank",
+              "ref": "lenders.priority_tier · LEGACY-ONLINEBIZCC-US-BANK"
+            }
+          },
+          {
+            "text": "Serves your business state.",
+            "source": {
+              "label": "Bank book · US Bank",
+              "ref": "lenders.eligible_states · LEGACY-ONLINEBIZCC-US-BANK"
+            }
+          }
+        ],
+        "spacing_rule": {
+          "text": "Best order: Biz Leverage first → spend for 3+ months → apply Biz Platinum",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.insider_tips · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        "relationship_gate": {
+          "text": "Open your US Bank account first and wait 30+ days.",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.stated_requirements · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        },
+        "inquiry_impact": {
+          "bureaus": [
+            "EQ",
+            "TU"
+          ],
+          "text": "One hard pull on Equifax and TransUnion per card.",
+          "source": {
+            "label": "Bank book · US Bank",
+            "ref": "lenders.bureaus_pulled · LEGACY-ONLINEBIZCC-US-BANK"
+          }
+        }
+      }
+    ],
+    "shown": 12,
+    "personal_banks": 12,
+    "business_banks": 233,
+    "total_cards": 252,
+    "held": {
+      "for_bureau_protection": {
+        "count": 0,
+        "bureaus": [],
+        "bureau_names": [],
+        "by_bureau": {},
+        "message": null
+      },
+      "for_no_business": {
+        "business_on_file": true,
+        "count": 0,
+        "message": null
+      }
+    },
+    "engine": {
+      "can_card_stack": null,
+      "card_funding_cents": null,
+      "rule": "No credit pull on file yet, so UnderwriteIQ cannot say if you can card stack.",
+      "source": {
+        "label": "UnderwriteIQ",
+        "ref": "src/underwrite/vendor/underwriter.cjs (canCardStack, cardFunding)"
+      }
+    },
+    "inquiries": {
+      "total": null,
+      "by_bureau": {
+        "experian": null,
+        "equifax": null,
+        "transunion": null
+      },
+      "text": "Your inquiry count: not on file yet.",
+      "source": {
+        "label": "Your credit file",
+        "ref": "inquiriesSummary (src/finance/credit-overview.mjs)"
+      },
+      "rule": {
+        "text": "Inquiries cost fundability. Any more than zero should come off.",
+        "source": {
+          "label": "Owner rule, 2026-09-29",
+          "ref": "marketing/landing-pages/slo/preview/reorg-draft-build.mjs · OWNER-SET 2026-09-29: inquiries cost fundability"
+        }
+      },
+      "needs_cleanup": null,
+      "needs_cleanup_source": {
+        "label": "UnderwriteIQ",
+        "ref": "src/underwrite/vendor/underwriter.cjs · optimization.needs_inquiry_cleanup (any inquiry)"
+      }
+    }
+  },
+  "next_round": {
+    "date": null,
+    "date_source": null,
+    "can_set_date": false,
+    "estimated_amount_cents": null,
+    "amount_source": null,
+    "step": {
+      "id": "prime_personal",
+      "title": "Prime the personal credit file",
+      "source": {
+        "label": "Fundhub funding order (owner law 2026-09-26)",
+        "ref": "src/underwrite/funding-sequence.mjs"
+      }
+    },
+    "readiness_gaps": [
+      {
+        "id": "no_credit_file",
+        "text": "No credit pull on file yet. UnderwriteIQ needs one to say your file is ready.",
+        "source": {
+          "label": "UnderwriteIQ",
+          "ref": "src/underwrite/engine.mjs (fundable)"
+        }
+      },
+      {
+        "id": "company_naics_missing",
+        "text": "Fundhub LLC has no NAICS code (industry code) on file.",
+        "source": {
+          "label": "Fundhub funding order (owner law 2026-09-26)",
+          "ref": "src/underwrite/funding-sequence.mjs"
+        }
+      }
+    ],
+    "ready": false
+  },
+  "relationships": [],
+  "not_set": [
+    {
+      "key": "next_round_date",
+      "text": "Next round date"
+    },
+    {
+      "key": "funding_estimate",
+      "text": "Funding estimate (needs a credit pull)"
+    },
+    {
+      "key": "stacking_days_between",
+      "text": "Days between card applications at two banks"
+    }
+  ]
+}

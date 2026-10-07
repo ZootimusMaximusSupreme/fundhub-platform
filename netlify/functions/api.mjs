@@ -256,6 +256,7 @@ import moneyConnections from "../../api/money/connections.mjs";
 import merchantEvents from "../../api/merchant/events.mjs";
 import moneyPayments from "../../api/money/payments.mjs";
 import moneyPlan from "../../api/money/plan.mjs";
+import moneyBanks from "../../api/money/banks.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1120,6 +1121,10 @@ export const ROUTES = {
   // from every plan source (src/finance/plan-sources/). Same gate as
   // money/overview; POST marks a pin and is staff (FINANCE) only.
   "money/plan": moneyPlan,
+  // Bank strategy (FinanceOS wave 5, W2): banks to open by location, card
+  // stacking order, next funding round, bank relationship tracker. Same gate as
+  // money/overview; every POST (plan, open, deposit) is staff (FINANCE) only.
+  "money/banks": moneyBanks,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
