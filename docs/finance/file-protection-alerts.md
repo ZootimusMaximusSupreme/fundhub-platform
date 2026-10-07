@@ -60,8 +60,8 @@ Nothing in the repo or the offer fixed these, so each is a named, changeable val
 | Promo windows | 60 / 30 / 7, firing on the day and the two days after a missed run, never earlier | A promo typed in with 45 days left skips the 60-day text — it is already past. |
 | Cash cushion size | **6 months** of minimums | Owner-set offer. |
 | Fundhub payment plans (Clarity) in the cushion | the next unpaid payment of each open plan, counted against **personal** cash only | The plans carry no personal / business tag. `CLARITY_CASH_KIND`. |
-| Old cash balances | a balance dated more than **30 days** ago is treated as unknown | The Plaid balance feed does not refresh daily yet; this stops an alert on a year-old number. A balance with no stated date (hand-entered) is allowed. |
-| First read of a login | accounts created within **60 minutes** of the login are the baseline, not new credit | Linking your cards is not opening them. |
+| Old cash balances | a balance dated more than **30 days** ago is treated as unknown | Plaid balances refresh every morning now (see §7), so this is the guard for a login that stopped answering — one that needs the client to sign in again stops refreshing. It stops an alert on a year-old number. A balance with no stated date (hand-entered) is allowed. |
+| First read of a login | accounts created within **60 minutes** of the login are the baseline, not new credit | Linking your cards is not opening them. The daily Plaid refresh keeps this: a login with no stored accounts yet (the link died before its accounts were saved) is read once, and everything that read brings in is given the login's own created date, so it is the baseline however late that read happens. |
 | Look-back for new credit | an account or pull seen in the last **3 days** | A backlog from before launch stays quiet. |
 
 **Cash is never added across personal and business.** `reserve` has one verdict for each, judged against
@@ -196,10 +196,18 @@ Errors: `400 { ok:false, error:"invalid_input", field, message }` (`field` names
 
 ## 7. Known limits
 
-* The alerts read `bank_accounts` as it is. Those rows (and the balances on them) are written when a login
-  is linked; nothing re-reads the Plaid account list or balances every day yet. So a new Plaid card shows up
-  as soon as something writes its row (a re-link), and the cash cushion uses the balance as last written.
-  The 30-day stale rule above is the only guard.
+* The alerts read `bank_accounts` as it is. The daily Plaid job (`plaid-transactions-sweeper`, 07:00 UTC) now
+  re-reads every linked login's account list and balances **first** (`src/banking/plaid-refresh.mjs`; flow in
+  `docs/journeys/plaid-refresh-flow.md`), so this 07:30 run sees today's balances and a card opened since
+  yesterday. A new credit or loan account is created with `created_at` = that morning, which is what the
+  new-credit alert above reads. It never closes or deletes: an account Plaid stops listing is only reported.
+  * The default read is Plaid's `/accounts/get`: cached, about a day old at worst, free. Real-time balances
+    (`/accounts/balance/get`) are a billed Plaid call that takes seconds, so they stay off unless
+    `PLAID_REALTIME_BALANCES` is exactly `1`. Each row records which one it came from in `raw.balance_source`.
+  * A login Plaid says needs the client to sign in again gets `link_state = 'error'` and `last_error_code`,
+    and stops being read. No screen asks the client to reconnect yet.
+  * Staff can run the same refresh for one client now: `POST /api/banking/sync-accounts`
+    `{ client_id, provider: "plaid" }` (add `item_id` for one login).
 * Real Plaid banks are not live yet (sandbox only), so for launch the data is hand-entered accounts and the
   sandbox test client.
 
