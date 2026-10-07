@@ -34,6 +34,10 @@
  * go down with the thumb. A blank gap keeps that same speed. Hold a line to
  * change the whole line. The touch rules are the pure gestureStep below.
  * scriptDelta turns an upward drag into words rolling up.
+ * The very top of the phone changes scripts. Tap it, then scroll up for the
+ * next one still to film, or down for the previous one. A second tap there
+ * marks this one Got it and it leaves that list. Record and Play stay the
+ * only big buttons. Changing scripts does not stop the camera.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -114,6 +118,111 @@
     return -1;
   }
 
+  /** Indexes still to film, in shoot order. A Got it mark has already left this list. */
+  function filmQueue(list) {
+    var out = [];
+    var rows = list || [];
+    for (var i = 0; i < rows.length; i++) if (rows[i] && !rows[i].got_it) out.push(i);
+    return out;
+  }
+
+  /**
+   * The next or previous script still to film. dir 1 is next, -1 is previous.
+   * -1 at either end (it does not wrap). If `cur` is already filmed, dir 1
+   * is the first one still to film and dir -1 is the last.
+   */
+  function queueStep(indexes, cur, dir) {
+    if (!indexes || !indexes.length) return -1;
+    var step = dir < 0 ? -1 : 1;
+    var at = indexes.indexOf(cur);
+    if (at < 0) return step < 0 ? indexes[indexes.length - 1] : indexes[0];
+    var n = at + step;
+    if (n < 0 || n >= indexes.length) return -1;
+    return indexes[n];
+  }
+
+  /** The next script still to film after `cur`, or the first one if none is after it. -1 when the list is empty. */
+  function nextUnfilmed(list, cur) {
+    var q = filmQueue(list);
+    for (var i = 0; i < q.length; i++) if (q[i] > cur) return q[i];
+    return q.length ? q[0] : -1;
+  }
+
+  function topEdgeStart() { return { down: null, armedUntil: 0, lastTap: null, swapped: false, hot: false }; }
+
+  /**
+   * A finger on the very top of the phone. `top` is the y that still counts
+   * as that edge. One scroll changes the script. Two taps mark it Got it.
+   *   {do:'arm'}   a tap: the next scroll changes scripts
+   *   {do:'next'}  scroll up: the next script still to film
+   *   {do:'prev'}  scroll down: the previous one
+   *   {do:'done'}  a second tap: this script is filmed
+   * claim is false when this finger is a normal word touch.
+   */
+  function topEdgeStep(g, ev, top) {
+    var band = top > 0 ? top : 36;
+    var src = g || topEdgeStart();
+    var out = {
+      down: src.down ? { x: src.down.x, y: src.down.y, t: src.down.t, inBand: !!src.down.inBand, dbl: !!src.down.dbl } : null,
+      armedUntil: src.armedUntil || 0,
+      lastTap: src.lastTap || null,
+      swapped: !!src.swapped,
+      hot: !!src.hot
+    };
+    var acts = [];
+    var claim = false;
+    if (ev.type === "down") {
+      var inBand = ev.y <= band;
+      var armed = ev.t < out.armedUntil;
+      if (!inBand && !armed) return { g: out, acts: acts, claim: false };
+      claim = true;
+      var prev = out.lastTap;
+      var dbl = !!(inBand && prev && (ev.t - prev.t) <= DBL_MS
+        && Math.abs(ev.x - prev.x) <= DBL_SLOP && Math.abs(ev.y - prev.y) <= DBL_SLOP);
+      out.hot = true;
+      out.swapped = false;
+      out.down = { x: ev.x, y: ev.y, t: ev.t, inBand: inBand, dbl: dbl };
+    } else if (!out.hot || !out.down) {
+      return { g: out, acts: acts, claim: false };
+    } else if (ev.type === "move") {
+      claim = true;
+      var dy = ev.y - out.down.y;
+      if (!out.swapped && Math.abs(dy) >= SWAP_PX && Math.abs(dy) >= Math.abs(ev.x - out.down.x)) {
+        out.swapped = true;
+        out.armedUntil = 0;
+        out.lastTap = null;
+        acts.push({ do: dy < 0 ? "next" : "prev" });
+      }
+    } else if (ev.type === "up") {
+      claim = true;
+      var d = out.down;
+      var moved = Math.abs(ev.y - d.y) > TAP_SLOP || Math.abs(ev.x - d.x) > TAP_SLOP;
+      out.down = null;
+      out.hot = false;
+      if (!out.swapped && !moved && d.inBand) {
+        if (d.dbl) {
+          out.armedUntil = 0;
+          out.lastTap = null;
+          acts.push({ do: "done" });
+        } else {
+          out.lastTap = { x: ev.x, y: ev.y, t: ev.t };
+          out.armedUntil = ev.t + ARM_MS;
+          acts.push({ do: "arm" });
+        }
+      } else if (!out.swapped) {
+        out.armedUntil = 0;
+        out.lastTap = null;
+      }
+      out.swapped = false;
+    } else if (ev.type === "cancel") {
+      out.down = null;
+      out.hot = false;
+      out.swapped = false;
+      claim = true;
+    }
+    return { g: out, acts: acts, claim: claim };
+  }
+
   /** The Next button: the next script with no Got it, else simply the next one in film order; -1 at the end. */
   function nextInOrder(scripts, from) {
     var n = nextToRoll(scripts, from);
@@ -189,6 +298,10 @@
   var LONG_MS = 550;
   /** A flick at least this fast (px per ms) keeps the words moving in scroll mode. */
   var FLING_MIN = 0.35;
+  /** How far a finger must travel from the top edge before the script changes. */
+  var SWAP_PX = 44;
+  /** After a tap on the top edge, the next scroll still changes scripts. */
+  var ARM_MS = 1400;
 
   function gestureStart() { return { down: null, lastTap: null, pending: null }; }
 
@@ -634,6 +747,8 @@
     fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
+    filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
+    topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, stays4K: stays4K, cameraReport: cameraReport,
@@ -789,6 +904,7 @@
     var curRoot = cur >= 0 && scripts[cur] ? scripts[cur].root_script_id : null;
     var shown = cur >= 0 ? scripts[cur] : null;
     scripts = list.map(overlay);
+    for (var warm = 0; warm < scripts.length; warm++) paragraphsFor(scripts[warm]);
     if (!d.shoot) {
       if (filmKey()) return showEmpty("This film link did not open the shoot.", false);
       return showEmpty("No shoot is planned. Pick the scripts on the Shoot tab and save the plan.", false);
@@ -988,9 +1104,9 @@
     $("end-head").textContent = "That was take " + take + " of Ad " + (s.ad_id || "?") + ".";
   }
 
-  function open(i) {
+  function open(i, keepCamera) {
     if (textEdit) leaveCaret(false);
-    endRec();
+    if (!keepCamera) endRec();
     stop();
     hideEnd();
     setScroll(false);
@@ -1250,6 +1366,47 @@
     header();
     restart();
   }
+  /* Top-edge swap. The camera keeps recording. Got it on the end card still
+     stops it, the way a finished take always has. */
+  function swapQueued(dir) {
+    if (editing || textEdit) return;
+    var n = queueStep(filmQueue(scripts), cur, dir);
+    if (n < 0) {
+      say(dir < 0 ? "That is the first script still to film." : "That is the last script still to film.");
+      return;
+    }
+    open(n, true);
+  }
+  function completeFromTop() {
+    if (editing || textEdit) return;
+    var s = scripts[cur];
+    if (s && !s.got_it) {
+      markThis("got_it");
+      say("Got it.");
+    }
+    var n = nextUnfilmed(scripts, cur);
+    if (n < 0) {
+      stop();
+      header();
+      $("done").hidden = false;
+      return;
+    }
+    open(n, true);
+  }
+  function applyTop(a) {
+    if (a.do === "next") swapQueued(1);
+    else if (a.do === "prev") swapQueued(-1);
+    else if (a.do === "done") completeFromTop();
+    else if (a.do === "arm") say("Scroll up or down to change script.");
+  }
+  function topLimit() { return Math.max(36, safeTopPx() + 28); }
+  function feedTop(type, e) {
+    var ev = { type: type, x: e ? e.clientX : 0, y: e ? e.clientY : 0, t: root.performance.now() };
+    var r = topEdgeStep(topGest, ev, topLimit());
+    topGest = r.g;
+    r.acts.forEach(applyTop);
+    return r.claim;
+  }
   /* Next script, in film order, with no mark (Got it is the button that marks). */
   function nextScript() {
     if (editing || !scripts.length) return;
@@ -1306,6 +1463,7 @@
     flingRaf = root.requestAnimationFrame(step);
   }
 
+  var topGest = topEdgeStart();
   var settleTimer = null;
   function cancelSettle() { if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; } }
   function armSettle() {
@@ -1396,8 +1554,15 @@
       editDrag = { x: e.clientX, y: e.clientY, lastY: e.clientY, moved: false, id: e.pointerId };
       return;
     }
-    if (e.button > 0 || editing || atEnd) return;
+    if (e.button > 0 || editing) return;
     if (e.isPrimary === false) return;
+    if (feedTop("down", e)) {
+      stopFling();
+      if (e.cancelable) e.preventDefault();
+      try { stage.setPointerCapture(e.pointerId); } catch (x) { /* old browser */ }
+      return;
+    }
+    if (atEnd) return;
     stopFling();
     feed("down", e);
     if (gest.down && gest.down.dbl) {
@@ -1427,6 +1592,7 @@
       if (e.cancelable) e.preventDefault();
       return;
     }
+    if (topGest.hot) { feedTop("move", e); return; }
     if (!gest.down || editing) return;
     feed("move", e);
     if (gest.down && gest.down.moved) clearTimeout(longTimer);
@@ -1438,6 +1604,7 @@
       editDrag = null;
       return;
     }
+    if (topGest.hot) { feedTop("up", e); return; }
     if (!gest.down) return;
     feed("up", e);
     if (gest.pending) { primeEdit(); armSettle(); }
@@ -1446,6 +1613,7 @@
   stage.addEventListener("pointercancel", function () {
     clearTimeout(longTimer);
     if (textEdit) { editDrag = null; return; }
+    if (topGest.hot) { feedTop("cancel", null); return; }
     feed("cancel", null);
     if (gest.pending) armSettle();
   });
@@ -1455,6 +1623,13 @@
   });
   stage.addEventListener("wheel", function (e) {
     if (editing) return;
+    if (topGest.armedUntil && root.performance.now() < topGest.armedUntil && Math.abs(e.deltaY) >= SWAP_PX) {
+      e.preventDefault();
+      if (e.deltaY < 0) swapQueued(1);
+      else swapQueued(-1);
+      topGest.armedUntil = 0;
+      return;
+    }
     if (textEdit) {
       e.preventDefault();
       editMovedAt = root.performance.now();

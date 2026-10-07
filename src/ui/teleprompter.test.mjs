@@ -379,6 +379,81 @@ describe("teleprompter touch rules (gestureStep)", () => {
   });
 });
 
+describe("top edge changes the script", () => {
+  function run(T, events, top = 36) {
+    let g = T.topEdgeStart();
+    const acts = [];
+    let claim = false;
+    for (const ev of events) {
+      const r = T.topEdgeStep(g, ev, top);
+      g = r.g;
+      claim = r.claim;
+      for (const a of r.acts) acts.push(a.do);
+    }
+    return { g, acts, claim };
+  }
+
+  test("only scripts still to film stay in the queue", () => {
+    const T = load();
+    const list = [{ got_it: false }, { got_it: true }, { got_it: false }];
+    assert.deepEqual(plain(T.filmQueue(list)), [0, 2]);
+    assert.equal(T.queueStep([0, 2], 0, 1), 2);
+    assert.equal(T.queueStep([0, 2], 2, 1), -1);
+    assert.equal(T.queueStep([0, 2], 2, -1), 0);
+    assert.equal(T.queueStep([0, 2], 1, 1), 0);
+    assert.equal(T.nextUnfilmed(list, 0), 2);
+    assert.equal(T.nextUnfilmed([{ got_it: true }], 0), -1);
+  });
+
+  test("scroll up from the top is the next script, scroll down is the previous, two taps mark it filmed", () => {
+    const T = load();
+    const up = run(T, [
+      { type: "down", x: 100, y: 10, t: 0 },
+      { type: "move", x: 100, y: 10 - T.SWAP_PX, t: 40 },
+      { type: "up", x: 100, y: 10 - T.SWAP_PX, t: 50 }
+    ]);
+    assert.deepEqual(plain(up.acts), ["next"]);
+    const down = run(T, [
+      { type: "down", x: 100, y: 8, t: 0 },
+      { type: "move", x: 102, y: 8 + T.SWAP_PX, t: 40 },
+      { type: "up", x: 102, y: 8 + T.SWAP_PX, t: 50 }
+    ]);
+    assert.deepEqual(plain(down.acts), ["prev"]);
+    const tap = run(T, [
+      { type: "down", x: 80, y: 12, t: 0 },
+      { type: "up", x: 80, y: 14, t: 40 }
+    ]);
+    assert.deepEqual(plain(tap.acts), ["arm"]);
+    let g = T.topEdgeStart();
+    g = T.topEdgeStep(g, { type: "down", x: 80, y: 12, t: 0 }, 36).g;
+    g = T.topEdgeStep(g, { type: "up", x: 80, y: 12, t: 30 }, 36).g;
+    const later = T.topEdgeStep(g, { type: "down", x: 90, y: 400, t: 200 }, 36);
+    assert.equal(later.claim, true);
+    const moved = T.topEdgeStep(later.g, { type: "move", x: 90, y: 400 + T.SWAP_PX, t: 240 }, 36);
+    assert.deepEqual(plain(moved.acts.map((a) => a.do)), ["prev"]);
+    const miss = T.topEdgeStep(T.topEdgeStart(), { type: "down", x: 90, y: 400, t: 0 }, 36);
+    assert.equal(miss.claim, false);
+    assert.deepEqual(plain(miss.acts), []);
+    const done = run(T, [
+      { type: "down", x: 40, y: 10, t: 0 },
+      { type: "up", x: 40, y: 10, t: 40 },
+      { type: "down", x: 44, y: 12, t: 180 },
+      { type: "up", x: 44, y: 12, t: 220 }
+    ]);
+    assert.deepEqual(plain(done.acts), ["arm", "done"]);
+  });
+
+  test("a swap from the top does not stop the camera", () => {
+    const openFn = SRC.slice(SRC.indexOf("function open(i, keepCamera)"), SRC.indexOf("function redraw("));
+    assert.match(openFn, /if \(!keepCamera\) endRec\(\)/);
+    assert.match(SRC, /open\(n, true\)/);
+    const swapFn = SRC.slice(SRC.indexOf("function swapQueued"), SRC.indexOf("function completeFromTop"));
+    const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
+    assert.doesNotMatch(swapFn, /endRec\(/);
+    assert.doesNotMatch(doneFn, /endRec\(/);
+  });
+});
+
 describe("teleprompter page", () => {
   test("the page: no shell, no sign-in, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
