@@ -28,63 +28,52 @@ enum CaptureChoice {
         var shortfall: String?
     }
 
-    /// The chosen size (3840×2160 or 1920×1080) at the highest frame rate that
-    /// size really has. Never a smaller picture under the bigger name.
+    /// Front-camera filming rate. Apple's iPhone 17 Pro Max front camera films
+    /// normal video at 60 fps (4K and 1080p). 120 fps is slow motion, not this mode.
+    /// https://support.apple.com/en-us/125091
+    static let filmingFPS = 60
+
+    /// The chosen size (3840×2160 or 1920×1080) at 60 fps. Never a smaller
+    /// picture under the bigger name, and never the slow-motion rate.
     static func pickHighest(_ formats: [FormatInfo], width: Int, height: Int, wantStabilization: Bool) -> Pick? {
-        let same = formats.filter { $0.width == width && $0.height == height }
-        if let top = same.map(\.maxFPS).max(), top >= 1 {
-            return pick(formats, width: width, height: height, fps: max(1, Int(top.rounded())), wantStabilization: wantStabilization)
-        }
-        return pick(formats, width: width, height: height, fps: 1000, wantStabilization: wantStabilization)
+        pick(formats, width: width, height: height, fps: filmingFPS, wantStabilization: wantStabilization)
     }
 
     /// The best format for the quality and frame rate Chris picked.
-    /// Order: exact size and frame rate first; then stabilization support; then
-    /// video range; then no HDR (Meta wants plain SDR H.264); then the lowest
-    /// index (Apple lists the plainest format first).
+    /// Order: a normal-speed format (not slow motion); then stabilization;
+    /// then Dolby Vision (HDR) when the camera has it; then video range;
+    /// then the lowest index (Apple lists the plainest format first).
     static func pick(_ formats: [FormatInfo], width: Int, height: Int, fps: Int, wantStabilization: Bool) -> Pick? {
         guard !formats.isEmpty else { return nil }
+        let asked = min(fps, filmingFPS)
         func score(_ f: FormatInfo) -> [Int] {
-            [f.stabilization || !wantStabilization ? 1 : 0, f.videoRange ? 1 : 0, f.hdr ? 0 : 1, -f.index]
+            let normalSpeed = f.maxFPS <= Double(asked) + 0.5 ? 1 : 0
+            return [normalSpeed, f.stabilization || !wantStabilization ? 1 : 0, f.hdr ? 1 : 0, f.videoRange ? 1 : 0, -f.index]
         }
         func best(_ list: [FormatInfo]) -> FormatInfo? {
             list.max { score($0).lexicographicallyPrecedes(score($1)) }
         }
-        let exact = formats.filter { $0.width == width && $0.height == height && $0.maxFPS + 0.01 >= Double(fps) }
+        let exact = formats.filter { $0.width == width && $0.height == height && $0.maxFPS + 0.01 >= Double(asked) }
         if let f = best(exact) {
-            return Pick(index: f.index, width: f.width, height: f.height, fps: fps, shortfall: nil)
+            return Pick(index: f.index, width: f.width, height: f.height, fps: asked, shortfall: nil)
         }
         // Right size, slower frame rate.
         let sameSize = formats.filter { $0.width == width && $0.height == height }
         if let top = sameSize.map({ $0.maxFPS }).max(), let f = best(sameSize.filter { $0.maxFPS == top }) {
             let got = Int(top.rounded(.down))
             return Pick(index: f.index, width: f.width, height: f.height, fps: got,
-                        shortfall: "This camera films \(width == 3840 ? "4K" : "1080p") at \(got) frames a second, not \(fps).")
+                        shortfall: "This camera films \(width == 3840 ? "4K" : "1080p") at \(got) frames a second, not \(asked).")
         }
         // Smaller 16:9 size: the biggest one that reaches the frame rate.
         let wide = formats.filter { abs(Double($0.width) / Double(max(1, $0.height)) - 16.0 / 9.0) < 0.01 && $0.width < width }
-        let fast = wide.filter { $0.maxFPS + 0.01 >= Double(fps) }
+        let fast = wide.filter { $0.maxFPS + 0.01 >= Double(asked) }
         let pool = fast.isEmpty ? wide : fast
         if let topW = pool.map({ $0.width }).max(), let f = best(pool.filter { $0.width == topW }) {
-            let gotFPS = min(fps, Int(f.maxFPS.rounded(.down)))
+            let gotFPS = min(asked, Int(f.maxFPS.rounded(.down)))
             return Pick(index: f.index, width: f.width, height: f.height, fps: gotFPS,
                         shortfall: "This camera tops out at \(f.width)×\(f.height). It is not 4K.")
         }
         return nil
-    }
-
-    /// Our bitrate pick, in bits a second. Meta does not publish a bitrate; it
-    /// re-encodes every upload. So we record well above Apple's default and give
-    /// Meta (and the editor) a clean master to start from.
-    static func bitrate(width: Int, fps: Int, hevc: Bool) -> Int {
-        let base: Int
-        switch width {
-        case 3840...: base = fps > 30 ? 75_000_000 : 50_000_000
-        case 1920...: base = fps > 30 ? 30_000_000 : 20_000_000
-        default: base = fps > 30 ? 16_000_000 : 10_000_000
-        }
-        // HEVC holds the same picture in about two thirds of the bits.
-        return hevc ? base * 2 / 3 : base
     }
 
     /// The safe file name for a take ("/" and ":" are not allowed in file names).

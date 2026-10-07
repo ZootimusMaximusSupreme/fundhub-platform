@@ -2,12 +2,12 @@ import AVFoundation
 import Photos
 import UIKit
 
-/// The front camera. Chris picks the size. Each size runs at the highest
-/// frame rate that size really has: 4K is 3840×2160 (VSLs, thank-you videos,
-/// testimonials) and 1080p is 1920×1080 (ads). A smaller picture is never
-/// called the bigger name. H.264 or HEVC, a fixed frame rate, mirrored,
-/// steady video, and an exposure lock. Each take is saved to Photos under
-/// its take name (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
+/// The front camera only. Chris picks the size. 4K is 3840×2160 at 60 fps
+/// (VSLs and thank-you). 1080p is 1920×1080 at 60 fps (ads). Never a smaller
+/// picture under the bigger name, and never slow motion. HEVC, no bitrate cap,
+/// Dolby Vision when the camera has it. The preview is a mirror and the saved
+/// file stays that way. Each take is saved to Photos under its take name
+/// (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
 final class CameraController: NSObject, ObservableObject {
 
     enum State: Equatable {
@@ -137,6 +137,10 @@ final class CameraController: NSObject, ObservableObject {
             let frame = CMTime(value: 1, timescale: CMTimeScale(pick.fps))
             cam.activeVideoMinFrameDuration = frame
             cam.activeVideoMaxFrameDuration = frame
+            if format.isVideoHDRSupported {
+                cam.automaticallyAdjustsVideoHDREnabled = false
+                cam.isVideoHDREnabled = true
+            }
             if s.lockExposure {
                 if cam.isExposureModeSupported(.locked) { cam.exposureMode = .locked }
             } else if cam.isExposureModeSupported(.continuousAutoExposure) {
@@ -147,14 +151,11 @@ final class CameraController: NSObject, ObservableObject {
             DispatchQueue.main.async { self.lastError = "The camera would not change: \(error.localizedDescription)" }
         }
         if let conn = movieOutput.connection(with: .video) {
-            if conn.isVideoMirroringSupported {
-                conn.automaticallyAdjustsVideoMirroring = false
-                conn.isVideoMirrored = s.recordMirrored
-            }
+            mirror(conn)
             if conn.isVideoStabilizationSupported {
                 conn.preferredVideoStabilizationMode = want
             }
-            applyOutputSettings(conn, width: pick.width, fps: pick.fps)
+            applyOutputSettings(conn)
         }
         session.commitConfiguration()
         let codecWord = s.codec == .h264 ? "H.264" : "HEVC"
@@ -163,7 +164,7 @@ final class CameraController: NSObject, ObservableObject {
         else if pick.width == 1920 && pick.height == 1080 { size = "1080p \(pick.width)×\(pick.height)" }
         else { size = "\(pick.width)×\(pick.height)" }
         DispatchQueue.main.async {
-            self.summary = "\(size) · \(pick.fps) fps · \(codecWord)\(s.recordMirrored ? " · mirrored" : "")"
+            self.summary = "\(size) · \(pick.fps) fps · \(codecWord) · mirrored"
             self.shortfall = pick.shortfall
         }
     }
@@ -176,21 +177,22 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
-    /// Codec and bitrate. On iOS only keys the output lists may be set, or it
-    /// throws (Apple: AVCaptureMovieFileOutput.setOutputSettings(_:for:)), so
-    /// every key is checked first.
-    private func applyOutputSettings(_ conn: AVCaptureConnection, width: Int, fps: Int) {
+    /// The saved picture matches the mirror. Nothing flips the file after record.
+    private func mirror(_ conn: AVCaptureConnection) {
+        guard conn.isVideoMirroringSupported else { return }
+        conn.automaticallyAdjustsVideoMirroring = false
+        conn.isVideoMirrored = true
+    }
+
+    /// Codec only. Apple publishes no bitrate, so this sets none. A cap would
+    /// squeeze the file. On iOS only keys the output lists may be set, or it
+    /// throws (Apple: AVCaptureMovieFileOutput.setOutputSettings(_:for:)).
+    private func applyOutputSettings(_ conn: AVCaptureConnection) {
         let codec: AVVideoCodecType = settings.codec == .h264 ? .h264 : .hevc
         guard movieOutput.availableVideoCodecTypes.contains(codec) else { return }
         let keys = Set(movieOutput.supportedOutputSettingsKeys(for: conn))
         guard keys.contains(AVVideoCodecKey) else { return }
-        var out: [String: Any] = [AVVideoCodecKey: codec]
-        if keys.contains(AVVideoCompressionPropertiesKey) {
-            out[AVVideoCompressionPropertiesKey] = [
-                AVVideoAverageBitRateKey: CaptureChoice.bitrate(width: width, fps: fps, hevc: codec == .hevc)
-            ]
-        }
-        movieOutput.setOutputSettings(out, for: conn)
+        movieOutput.setOutputSettings([AVVideoCodecKey: codec], for: conn)
     }
 
     // MARK: - Recording
@@ -205,10 +207,7 @@ final class CameraController: NSObject, ObservableObject {
         queue.async {
             guard let conn = self.movieOutput.connection(with: .video) else { return }
             if conn.isVideoRotationAngleSupported(angle) { conn.videoRotationAngle = angle }
-            if conn.isVideoMirroringSupported {
-                conn.automaticallyAdjustsVideoMirroring = false
-                conn.isVideoMirrored = self.settings.recordMirrored
-            }
+            self.mirror(conn)
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension("mov")

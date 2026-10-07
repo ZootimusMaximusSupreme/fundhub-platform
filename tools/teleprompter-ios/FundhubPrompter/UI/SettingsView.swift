@@ -42,12 +42,11 @@ struct SettingsView: View {
                     Picker("Quality", selection: $model.settings.quality) {
                         ForEach(PrompterSettings.VideoQuality.allCases) { Text($0.label).tag($0) }
                     }
-                    Text("Frame rate: the highest this phone really films at that size.")
+                    Text("Frame rate: 60. Slow motion is not used. The saved video stays mirrored.")
                         .foregroundStyle(.secondary)
                     Picker("Video format", selection: $model.settings.codec) {
                         ForEach(PrompterSettings.VideoCodecChoice.allCases) { Text($0.label).tag($0) }
                     }
-                    Toggle("Record mirrored (like the preview)", isOn: $model.settings.recordMirrored)
                     Picker("Steady video", selection: $model.settings.stabilization) {
                         ForEach(PrompterSettings.Steady.allCases) { Text($0.label).tag($0) }
                     }
@@ -59,7 +58,7 @@ struct SettingsView: View {
                     if !camera.summary.isEmpty { Text("Right now: \(camera.summary)").foregroundStyle(.secondary) }
                     if let s = camera.shortfall { Text(s).foregroundStyle(Brand.bad) }
                 } header: { Text("Camera") } footer: {
-                    Text("4K for VSLs, thank-you videos and testimonials. 1080p for ads. Each one uses the fastest real frame rate at that size. It never stretches a smaller picture and calls it 4K. Lock brightness after you light the room.")
+                    Text("4K 60 fps for VSLs and thank-you videos. 1080p 60 fps for ads. It never stretches a smaller picture and calls it 4K. The preview is a mirror, and the saved video matches it. Lock brightness after you light the room.")
                 }
 
                 Section {

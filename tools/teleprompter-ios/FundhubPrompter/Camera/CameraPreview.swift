@@ -19,12 +19,21 @@ struct CameraPreview: UIViewRepresentable {
                     .first(where: { $0.device.hasMediaType(.video) }) else { return }
             let c = AVCaptureDevice.RotationCoordinator(device: input.device, previewLayer: previewLayer)
             coordinator = c
-            previewLayer.connection?.videoRotationAngle = c.videoRotationAngleForHorizonLevelPreview
+            applyMirror(angle: c.videoRotationAngleForHorizonLevelPreview)
             watch = c.observe(\.videoRotationAngleForHorizonLevelPreview, options: [.new]) { [weak self] c, _ in
                 DispatchQueue.main.async {
-                    self?.previewLayer.connection?.videoRotationAngle = c.videoRotationAngleForHorizonLevelPreview
+                    self?.applyMirror(angle: c.videoRotationAngleForHorizonLevelPreview)
                 }
             }
+        }
+
+        /// Front camera, like a mirror. The saved file uses the same look.
+        private func applyMirror(angle: CGFloat) {
+            guard let conn = previewLayer.connection else { return }
+            conn.videoRotationAngle = angle
+            guard conn.isVideoMirroringSupported else { return }
+            conn.automaticallyAdjustsVideoMirroring = false
+            conn.isVideoMirrored = true
         }
 
         override func layoutSubviews() {

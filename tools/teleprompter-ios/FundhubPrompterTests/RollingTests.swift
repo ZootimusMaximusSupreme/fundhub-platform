@@ -147,15 +147,23 @@ final class CaptureChoiceTests: XCTestCase {
         XCTAssertNotNil(p.shortfall)
     }
 
-    func testPrefersStabilizationAndNoHDR() {
-        let formats = [f(0, 1920, 1080, 30, stab: false), f(1, 1920, 1080, 30, hdr: true), f(2, 1920, 1080, 30)]
-        XCTAssertEqual(CaptureChoice.pick(formats, width: 1920, height: 1080, fps: 30, wantStabilization: true)?.index, 2)
+    func testPrefersStabilizationAndDolbyVision() {
+        let formats = [f(0, 1920, 1080, 60, stab: false), f(1, 1920, 1080, 60, hdr: true), f(2, 1920, 1080, 60)]
+        XCTAssertEqual(CaptureChoice.pick(formats, width: 1920, height: 1080, fps: 60, wantStabilization: true)?.index, 1)
     }
 
-    func testBitrate() {
-        XCTAssertEqual(CaptureChoice.bitrate(width: 3840, fps: 30, hevc: false), 50_000_000)
-        XCTAssertEqual(CaptureChoice.bitrate(width: 1920, fps: 60, hevc: false), 30_000_000)
-        XCTAssertEqual(CaptureChoice.bitrate(width: 1920, fps: 30, hevc: true), 20_000_000 * 2 / 3)
+    func testSlowMotionIsNotTheFilmingRate() {
+        let formats = [f(0, 1920, 1080, 120), f(1, 1920, 1080, 60), f(2, 1920, 1080, 30)]
+        let p = CaptureChoice.pickHighest(formats, width: 1920, height: 1080, wantStabilization: true)!
+        XCTAssertEqual(p.index, 1)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testASlowMotionOnlyFormatStillFilmsAt60() {
+        let p = CaptureChoice.pickHighest([f(0, 1920, 1080, 120)], width: 1920, height: 1080, wantStabilization: false)!
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
     }
 
     func testTakeNameFallbacks() {

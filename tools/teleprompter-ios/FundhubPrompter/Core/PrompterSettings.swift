@@ -18,11 +18,10 @@ struct PrompterSettings: Codable, Equatable {
     // Camera
     var recordOnThisDevice: Bool = true
     var quality: VideoQuality = .uhd4K
-    /// Kept so an older save still opens. The camera ignores this and uses the
-    /// highest real frame rate at the chosen size.
-    var fps: Int = 30
-    var codec: VideoCodecChoice = .h264
-    /// Record the picture mirrored, like the preview (owner default).
+    /// Kept so an older save still opens. The camera films at 60 fps.
+    var fps: Int = 60
+    var codec: VideoCodecChoice = .hevc
+    /// Kept so an older save still opens. The camera always saves a mirror.
     var recordMirrored: Bool = true
     var stabilization: Steady = .standard
     var lockExposure: Bool = false
@@ -44,8 +43,8 @@ struct PrompterSettings: Codable, Equatable {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .uhd4K: return "4K (3840×2160) — VSLs, thank-you, testimonials"
-            case .hd1080: return "1080p (1920×1080) — ads"
+            case .uhd4K: return "4K 60 fps (3840×2160) — VSLs and thank-you"
+            case .hd1080: return "1080p 60 fps (1920×1080) — ads"
             }
         }
         var short: String { self == .uhd4K ? "4K" : "1080p" }
@@ -59,8 +58,8 @@ struct PrompterSettings: Codable, Equatable {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .h264: return "H.264 — Meta likes this best"
-            case .hevc: return "HEVC — smaller files"
+            case .h264: return "H.264"
+            case .hevc: return "HEVC — high quality"
             }
         }
     }
