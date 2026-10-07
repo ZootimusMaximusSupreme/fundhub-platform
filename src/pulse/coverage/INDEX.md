@@ -182,6 +182,7 @@ partner-marketing/generate-logo
 partner-marketing/usage
 partner-pages
 partner-production-floor
+pulse-instant-watch
 partner-training.html
 partners/approve
 payment-links

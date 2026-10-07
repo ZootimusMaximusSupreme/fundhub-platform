@@ -65,10 +65,6 @@ export const SKIPPED_RULES = Object.freeze([
     rule: "offer_holds_20_sales",
     why: "There is no record of offer or price versions, so sales cannot be counted against the current version."
   },
-  {
-    rule: "fix_broken_same_day (red pulse checks)",
-    why: "Only the dead-letter list (failed_events) feeds this rule today. The daily systems scorecard is being built by MB2; red checks join this rule once it lands."
-  }
 ]);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -153,6 +149,27 @@ export function fixBrokenCandidate(n) {
     // What a broken step costs is not measured anywhere. Unknown, not 0.
     dollar_impact_cents: null
   };
+}
+
+/** Red rows from this morning's systems scorecard (MB2 pulse_scorecards). */
+export function scorecardRedCandidates(scorecard) {
+  const checks = scorecard?.checks;
+  if (!Array.isArray(checks)) return [];
+  const reds = checks.filter((c) => c && c.status === "red");
+  return reds.map((c) => {
+    const id = String(c.id || "unknown");
+    const proof = String(c.proof || c.reason || "").trim();
+    const dayCount = Number(c.day_count || 1);
+    return {
+      rule: "fix_broken_same_day",
+      subject_key: `scorecard:${id}`,
+      headline:
+        `Systems check red (${id}${dayCount > 1 ? `, day ${dayCount}` : ""}): ${proof || "read the proof on the pulse board."} ` +
+        "Fix today; the cadence wait does not apply.",
+      numbers: { score: dayCount, check_id: id, source: "pulse_scorecards", proof },
+      dollar_impact_cents: null
+    };
+  });
 }
 
 /* ── Rule 6: pages, VSL and copy change weekly — the dying-ad opening ─────── */
@@ -422,7 +439,7 @@ export async function setSuggestionStatus({ db, orgId, id, status, date }) {
  * morning updates, it never adds a second row and never changes status).
  */
 export async function buildSuggestions({
-  db, date, orgId, env = process.env, fetchImpl, staffScope = asStaff
+  db, date, orgId, env = process.env, fetchImpl, staffScope = asStaff, scorecard = null
 } = {}) {
   if (!db) throw new TypeError("buildSuggestions: db required");
   if (!orgId) return { ok: false, reason: "org_id_required" };
@@ -456,6 +473,7 @@ export async function buildSuggestions({
 
   const candidates = [
     fixBrokenCandidate(failed),
+    ...scorecardRedCandidates(scorecard),
     ...pageChangeCandidates(dying),
     spendRampCandidate(ramp)
   ].filter(Boolean);

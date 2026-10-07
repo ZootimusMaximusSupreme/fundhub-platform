@@ -31,6 +31,7 @@ import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-se
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { documentVaultChase } from './document-vault-chase.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
+import { pulseInstantWatch } from './pulse-instant-watch.mjs';
 import { affiliatePayoutRun } from './affiliate-payout-run.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
 import { metaCampaignSyncSweeper } from './meta-campaign-sync-sweeper.mjs';
@@ -288,6 +289,7 @@ export const functions = [
 
      COMPLIANCE REVIEW REQUIRED: payment rails and fee timing. */
   paidCheckoutExpirySweeper,
+  pulseInstantWatch,
 
   /* THE AFFILIATE PAYOUT RUN. Registered 2026-09-21, and it closes the second
      half of a feature that has been sold as whole since August.

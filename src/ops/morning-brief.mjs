@@ -436,10 +436,10 @@ export const MAX_SUGGESTIONS_IN_TEXT = 1;
  * runs its partner-RLS reads inside a staff scope itself. A failure here never
  * stops the brief: it is logged and the brief says "Suggestions: none today."
  */
-export async function loadSuggestions(db, { orgId, briefDate, env = process.env, suggest = buildSuggestions }) {
+export async function loadSuggestions(db, { orgId, briefDate, env = process.env, suggest = buildSuggestions, scorecard = null }) {
   const none = (status, reason) => ({ status, reason: reason || null, items: [], line: LINES.suggestionsNone });
   try {
-    const r = await suggest({ db, date: briefDate, orgId, env });
+    const r = await suggest({ db, date: briefDate, orgId, env, scorecard });
     if (!r || r.ok === false) {
       console.error("[morning-brief] suggestions not built:", String(r?.reason || "no result").slice(0, 200));
       return none("error", r?.reason || "no result");
@@ -527,7 +527,7 @@ export async function buildMorningBrief(db, { orgId, kind = "morning", env = pro
       : loadMarketing(db, { orgId, window, briefDate, nums }),
     loadMoney(db, { orgId, briefDate, env, day: window.day, dayLabel: window.day_label }),
     loadTeam(db, { orgId, now, window, closerRows: nums ? nums.closers : null }),
-    loadSuggestions(db, { orgId, briefDate, env, suggest })
+    loadSuggestions(db, { orgId, briefDate, env, suggest, scorecard: card })
   ]);
   const url = reportUrl(briefDate, env, kind);
   const text = formatMorningText({ kind, now, systems, marketing, money: moneySection, team, suggestions, reportUrl: url });

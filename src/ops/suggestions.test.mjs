@@ -5,7 +5,7 @@ import assert from "node:assert";
 import {
   CADENCE_DEFAULTS, RULES, SKIPPED_RULES,
   validDate, addDays, phoenixToday,
-  fixBrokenCandidate, pageChangeCandidates, spendRampCandidate,
+  fixBrokenCandidate, scorecardRedCandidates, pageChangeCandidates, spendRampCandidate,
   rank, applyQuiet, applyPageChangeWindow, writeUp, buildSuggestions
 } from "./suggestions.mjs";
 
@@ -43,6 +43,17 @@ describe("dates", () => {
 });
 
 describe("rule 2: broken things", () => {
+  test("scorecard reds become same-day fix suggestions", () => {
+    const rows = scorecardRedCandidates({
+      checks: [
+        { id: "health", status: "red", proof: "strict health answered 503", day_count: 2 },
+        { id: "login", status: "green", proof: "ok" }
+      ]
+    });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].subject_key, "scorecard:health");
+    assert.match(rows[0].headline, /day 2/);
+  });
   test("nothing open, no suggestion", () => {
     assert.strictEqual(fixBrokenCandidate({ open_count: 0 }), null);
   });

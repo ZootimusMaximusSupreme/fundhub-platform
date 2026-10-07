@@ -40,6 +40,7 @@ export const INNGEST_JOBS = Object.freeze([
   ["meta-campaign-sync-sweeper", "0 7 * * *"],
   ["next-action-catch-up", "*/5 * * * *"],
   ["paid-checkout-expiry-sweeper", "0 * * * *"],
+  ["pulse-instant-watch", "*/5 * * * *"],
   ["partner-production-floor", "0 14 1 * *"],
   ["plaid-transactions-sweeper", "0 7 * * *"],
   ["slo-infinite-drip", "0 15 * * *"],

@@ -16,6 +16,7 @@ import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
 import { checkMachine } from "./machine.mjs";
 import { checkJobHeartbeats } from "./heartbeats.mjs";
+import { checkPipelineMotion } from "./pipeline-motion.mjs";
 import { buildScorecard, loadPreviousScorecard, phoenixDate, saveScorecard } from "./scorecard.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 
@@ -351,6 +352,9 @@ export async function runDailyPulse({
   const resolvedOrg = orgId || await defaultOrgId(db);
   checks.push(await checkRecon({ db, orgId: resolvedOrg }));
   checks.push(await checkUnrecorded({ db, orgId: resolvedOrg, now }));
+  if (resolvedOrg && db) {
+    checks.push(...await checkPipelineMotion({ db, orgId: resolvedOrg, now }));
+  }
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
   checks.push(...await checkMachine({ db, scope: staffScope, now }));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));

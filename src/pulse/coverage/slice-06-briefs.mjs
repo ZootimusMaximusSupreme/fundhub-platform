@@ -109,15 +109,15 @@ function briefRow({
 export const CHECKS = [
   briefRow({
     id: MORNING_BRIEF_ID,
-    pulseFile: "src/pulse/morning-brief.mjs",
-    workflowFile: "src/workflows/morning-brief.mjs",
+    pulseFile: "src/ops/morning-brief.mjs",
+    workflowFile: "src/workflows/daily-pulse.mjs",
     cron: MORNING_BRIEF_CRON,
-    inngestExport: "morningBrief",
+    inngestExport: "dailyPulse",
     after: "daily-pulse"
   }),
   briefRow({
     id: EVENING_BRIEF_ID,
-    pulseFile: "src/pulse/evening-brief.mjs",
+    pulseFile: "src/ops/morning-brief.mjs",
     workflowFile: "src/workflows/evening-brief.mjs",
     cron: EVENING_BRIEF_CRON,
     inngestExport: "eveningBrief"

@@ -42,20 +42,14 @@ test("slice 06-briefs: Arizona crons are 6:00 a.m. and 9:00 p.m.", () => {
   assert.equal(evening.after, null);
 });
 
-test("slice 06-briefs: not watched in pulse yet; brief jobs not wired yet", () => {
+test("slice 06-briefs: morning and evening briefs are wired end-to-end", () => {
   const byId = Object.fromEntries(CHECKS.map((row) => [row.id, row]));
-  assert.equal(byId[MORNING_BRIEF_ID].alreadyInRegistry, false);
-  assert.equal(byId[EVENING_BRIEF_ID].alreadyInRegistry, false);
-  assert.match(byId[MORNING_BRIEF_ID].proof, /Wire src\/pulse\/morning-brief/);
-  assert.match(byId[EVENING_BRIEF_ID].proof, /Wire src\/pulse\/evening-brief/);
-
-  assert.deepEqual(
-    gaps().map((r) => r.id).sort(),
-    [EVENING_BRIEF_ID, MORNING_BRIEF_ID]
-  );
-
-  assert.deepEqual(wired(), [
-    { id: MORNING_BRIEF_ID, wired: false },
-    { id: EVENING_BRIEF_ID, wired: false }
-  ]);
+  assert.equal(byId[MORNING_BRIEF_ID].alreadyInRegistry, true);
+  assert.equal(byId[EVENING_BRIEF_ID].alreadyInRegistry, true);
+  assert.match(byId[MORNING_BRIEF_ID].proof, /PASS/);
+  assert.match(byId[EVENING_BRIEF_ID].proof, /PASS/);
+  assert.deepEqual(gaps().map((r) => r.id), []);
+  const w = Object.fromEntries(wired().map((r) => [r.id, r.wired]));
+  assert.equal(w[MORNING_BRIEF_ID], true);
+  assert.equal(w[EVENING_BRIEF_ID], true);
 });
