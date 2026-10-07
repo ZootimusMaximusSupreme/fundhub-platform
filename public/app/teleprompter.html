@@ -24,16 +24,22 @@
    countdown, the progress bar, the reading line, the cue hold and the end
    card — so a mirror flips all of it together. The bars Chris taps on the
    iPad itself are not flipped, and they hide while a script rolls.
+   v2 (owner, 2026-10-06; docs/specs/teleprompter-requirements-2026-10-06.md):
+   dark glass (pure black, white words), a change pulse row that never hides,
+   an edit box in place of a line, a history sheet, a two-versions picker, a
+   line-width setting, and on a tablet the sheets open as a side drawer.
    ═════════════════════════════════════════════════════════════════════════ */
 :root{
   color-scheme:dark;
-  --bg:#0b0c0e;
-  --panel:#15171b;
-  --panel-2:#1d2026;
+  --bg:#000;
+  --panel:#0d0e10;
+  --panel-2:#17191d;
   --rule:#2b2f36;
-  --ink:#f2f1ec;
+  --ink:#fff;
   --ink-2:#a9abb0;
-  --read:rgba(242,241,236,.34);
+  --read:rgba(255,255,255,.32);
+  --add:#7ee2a0;
+  --del:#ff8a80;
   --tally:#ff3b30;
   --cue:#ffb020;
   --ok:#34c759;
@@ -42,14 +48,14 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--read-face);overflow:hidden;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--read-face);overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit}
 a{color:inherit}
-button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--cue);outline-offset:2px}
+button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--cue);outline-offset:2px}
 [hidden]{display:none !important}
 
-/* layout: header row, the stage, the thumb bar */
-#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto}
+/* layout: header row, the stage, the change pulse, the thumb bar */
+#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto}
 
 /* header: which ad, which take, the file name to give the clip */
 #top{padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;border-bottom:1px solid var(--rule);background:var(--panel);display:grid;gap:4px;transition:opacity .4s;min-width:0}
@@ -67,9 +73,9 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 #flip.mirror-x{transform:scaleX(-1)}
 #flip.mirror-y{transform:scaleY(-1)}
 #flip.mirror-x.mirror-y{transform:scale(-1,-1)}
-#stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none}
-#content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform}
-#content p{margin:0 auto .9em;line-height:1.32;max-width:30ch}
+#stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform;--measure:30ch}
+#content p{margin:0 auto .9em;line-height:1.32;max-width:var(--measure)}
 #content p.cue{color:var(--cue);border-left:4px solid var(--cue);padding-left:.4em}
 #content .w{transition:color .25s}
 #content .w.read{color:var(--read)}
@@ -83,6 +89,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 #line::after{right:0;border-right-color:var(--tally)}
 #progress{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--rule);pointer-events:none}
 #progress-fill{height:100%;width:0;background:var(--tally)}
+#scrollchip{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--cue);color:#000;border-radius:999px;padding:4px 16px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
 #count{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-family:var(--data-face);font-size:min(38vw,240px);color:var(--tally);text-shadow:0 0 40px rgba(0,0,0,.8)}
 #cuehold{position:absolute;left:16px;right:16px;bottom:16px;text-align:center;font-size:15px;color:var(--bg);background:var(--cue);border-radius:12px;padding:8px 16px;pointer-events:none}
 .card{position:absolute;left:16px;right:16px;bottom:24px;margin:0 auto;max-width:560px;background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:16px;display:grid;gap:12px;box-shadow:0 -20px 60px rgba(0,0,0,.6)}
@@ -98,23 +105,44 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 #empty .box,#wall .box{display:grid;gap:16px;max-width:420px;justify-items:center}
 #empty p,#wall p{margin:0;color:var(--ink-2);font-size:17px;line-height:1.45}
 
+/* the change pulse: the take name and the save status. It never hides. */
+#pulse{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px;min-height:28px;background:var(--bg);border-top:1px solid var(--rule);min-width:0}
+#p-file{font-family:var(--data-face);font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#p-save{border:0;background:none;color:var(--ok);font-size:12px;padding:8px 0;min-height:28px;cursor:pointer;white-space:nowrap;flex:none;text-align:right}
+#p-save.busy{color:var(--ink-2)}
+#p-save.warn{color:var(--cue);font-weight:700}
+body.rolling #pulse{opacity:.7}
+
 /* the thumb bar */
 #bar{background:var(--panel);border-top:1px solid var(--rule);padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;transition:opacity .4s}
 body.rolling #bar,body.rolling #top{opacity:0;pointer-events:none}
+#rows{display:grid;gap:8px}
 #status{display:flex;justify-content:space-between;gap:12px;font-family:var(--data-face);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:0}
 #status .note{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--read-face);font-size:12px}
-#controls{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:center}
+#tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center}
+#controls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center}
+.btn.word{font-size:14px}
+.btn.word span{white-space:nowrap}
 .btn{height:52px;border-radius:12px;border:1px solid var(--rule);background:var(--panel-2);display:grid;place-items:center;touch-action:manipulation;cursor:pointer;padding:0;min-width:0}
 .btn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #play{background:var(--tally);border-color:var(--tally);color:#fff}
 #play svg{fill:#fff;stroke:#fff}
 
 /* sheets */
-.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88%;background:var(--panel);border-top:1px solid var(--rule);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));overflow:auto;display:grid;gap:12px;box-shadow:0 -20px 60px rgba(0,0,0,.6);z-index:5}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88%;background:var(--panel);border-top:1px solid var(--rule);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));overflow:auto;display:grid;gap:12px;box-shadow:0 -20px 60px rgba(0,0,0,.6);z-index:7}
 .sheet h2{margin:0;font-size:20px}
 .sheet h3{margin:8px 0 0;font-size:15px;color:var(--ink-2);font-weight:700}
 .sheet .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .sheet .x{background:none;border:0;color:var(--ink-2);font-size:15px;cursor:pointer;padding:8px;min-height:44px}
+.sheet .words{white-space:pre-wrap;font-size:16px;line-height:1.45;margin:0;padding:12px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--panel-2);overflow-wrap:anywhere}
+.sheet .acts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ver{display:grid;gap:8px;padding:12px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--panel-2)}
+.ver.here{border-color:var(--cue)}
+.ver .vh{font-size:15px;font-weight:700}
+.ver .vm{font-size:13px;color:var(--ink-2)}
+.diff{margin:0;font-size:15px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.diff del{color:var(--del);text-decoration:line-through}
+.diff ins{color:var(--add);text-decoration:none;border-bottom:2px solid var(--add)}
 .list{display:grid;gap:8px}
 .item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;text-align:left;padding:12px 16px;border-radius:12px;border:1px solid var(--rule);background:var(--panel-2);cursor:pointer;min-width:0;min-height:48px}
 .item.on{border-color:var(--tally)}
@@ -129,6 +157,32 @@ input[type=range]{width:100%;accent-color:var(--tally);min-height:32px}
 .toggle input{width:22px;height:22px;accent-color:var(--tally)}
 .note{color:var(--ink-2);font-size:13px;line-height:1.45;margin:0}
 .pill{border:1px solid var(--rule);background:var(--panel-2);border-radius:999px;padding:8px 16px;cursor:pointer;font-size:15px;min-height:44px;justify-self:start}
+
+/* edit on the fly: the box sits where the line was; the glass flip is off
+   while it is open, so the words read the right way round. */
+body.editing #flip{transform:none !important}
+body.editing #stage{touch-action:manipulation;user-select:text;-webkit-user-select:text}
+body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{visibility:hidden}
+.edit-box{display:block;width:100%;max-width:var(--measure);margin:0 auto .9em;padding:8px 12px;border:2px solid var(--cue);border-radius:12px;background:#111;color:var(--ink);font-family:var(--read-face);line-height:1.32;resize:none;overflow:hidden;-webkit-user-select:text;user-select:text}
+#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
+#e-status{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#e-done{background:var(--ok);border-color:var(--ok);color:#06210d;font-weight:700}
+
+/* a tablet (iPad, either way up): bigger taps, one row of controls, and the
+   sheets open as a drawer from the right so the script stays in view */
+@media (min-width:700px) and (min-height:600px){
+  #rows{grid-template-columns:4fr 5fr;gap:24px}
+  .btn{height:60px}
+  #p-file,#p-save{font-size:13px}
+  .sheet{left:auto;top:0;bottom:0;width:min(440px,92vw);max-height:none;border-radius:18px 0 0 18px;border-top:0;border-left:1px solid var(--rule);align-content:start;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+}
+/* a phone on its side: little height, so one slim row */
+@media (max-height:520px) and (min-width:560px){
+  #top .row3,#top .banner{display:none}
+  #s-title{font-size:15px}
+  #rows{grid-template-columns:4fr 5fr;gap:16px}
+  .btn{height:44px}
+}
 
 /* messages */
 #toast{position:fixed;left:16px;right:16px;top:calc(16px + env(safe-area-inset-top,0px));margin:0 auto;max-width:560px;background:var(--panel-2);border:1px solid var(--rule);border-radius:12px;padding:12px 16px;font-size:15px;z-index:9;overflow-wrap:anywhere}
@@ -158,6 +212,7 @@ input[type=range]{width:100%;accent-color:var(--tally);min-height:32px}
       <div id="line"></div>
     </div>
     <div id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+    <div id="scrollchip" hidden>Scroll mode · drag to move · tap to roll</div>
     <div id="count" hidden></div>
     <div id="cuehold" hidden>Cue. Talk it through, then press to go on.</div>
 
@@ -189,17 +244,36 @@ input[type=range]{width:100%;accent-color:var(--tally);min-height:32px}
     </div>
   </div>
 
+  <div id="pulse">
+    <span id="p-file"></span>
+    <button type="button" id="p-save" aria-label="Save status. Tap for the history.">No changes yet</button>
+  </div>
+
   <div id="bar">
-    <div id="status"><span class="note">Tap a word to start there. Drag to move.</span><span id="s-time"></span></div>
-    <div id="controls">
-      <button type="button" class="btn" id="b-lib" aria-label="Scripts on this shoot"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
-      <button type="button" class="btn" id="b-slow" aria-label="Slower"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-      <button type="button" class="btn" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-ico"><path d="M8 5l11 7-11 7z"/></svg></button>
-      <button type="button" class="btn" id="b-fast" aria-label="Faster"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button>
-      <button type="button" class="btn" id="b-restart" aria-label="Restart this take"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
-      <button type="button" class="btn" id="b-set" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+    <div id="status"><span class="note">Tap to pause. Double tap to scroll. Hold a line to change it.</span><span id="s-time"></span></div>
+    <div id="rows">
+      <div id="tools">
+        <button type="button" class="btn" id="b-lib" aria-label="Scripts on this shoot"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+        <button type="button" class="btn word" id="b-edit" aria-label="Edit this line"><span>Edit</span></button>
+        <button type="button" class="btn word" id="b-hist" aria-label="History of this script"><span>History</span></button>
+        <button type="button" class="btn" id="b-set" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+      </div>
+      <div id="controls">
+        <button type="button" class="btn" id="b-slow" aria-label="Slower"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+        <button type="button" class="btn" id="b-restart" aria-label="Restart this take"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+        <button type="button" class="btn" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-ico"><path d="M8 5l11 7-11 7z"/></svg></button>
+        <button type="button" class="btn" id="b-next" aria-label="Next script"><svg viewBox="0 0 24 24"><path d="M5 5l9 7-9 7z"/><path d="M18 5v14"/></svg></button>
+        <button type="button" class="btn" id="b-fast" aria-label="Faster"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button>
+      </div>
     </div>
   </div>
+</div>
+
+<div id="editbar" hidden>
+  <span id="e-status" role="status" aria-live="polite"></span>
+  <button type="button" class="mini" id="e-back">Put back</button>
+  <button type="button" class="mini" id="e-hist">History</button>
+  <button type="button" class="mini" id="e-done">Done</button>
 </div>
 
 <section class="sheet" id="lib" hidden aria-label="Scripts on this shoot">
@@ -212,6 +286,7 @@ input[type=range]{width:100%;accent-color:var(--tally);min-height:32px}
   <div class="row"><h2>Settings</h2><button type="button" class="x" data-close>Close</button></div>
   <div class="field"><label for="r-wpm">Speed <span id="v-wpm"></span></label><input type="range" id="r-wpm" min="80" max="260" step="5"></div>
   <div class="field"><label for="r-font">Text size <span id="v-font"></span></label><input type="range" id="r-font" min="24" max="120" step="2"></div>
+  <div class="field"><label for="r-measure">Line width <span id="v-measure"></span></label><input type="range" id="r-measure" min="12" max="60" step="1"></div>
   <div class="field"><label for="r-line">Reading line <span id="v-line"></span></label><input type="range" id="r-line" min="8" max="60" step="1"></div>
   <div class="field"><label for="r-pause">Pause at each blank line <span id="v-pause"></span></label><input type="range" id="r-pause" min="0" max="2.5" step="0.1"></div>
   <label class="toggle" for="t-mirror">Mirror left to right (beam-splitter glass) <input type="checkbox" id="t-mirror"></label>
@@ -221,7 +296,21 @@ input[type=range]{width:100%;accent-color:var(--tally);min-height:32px}
   <p class="note">Tap a slot, then press the button on your remote or foot pedal. It is saved on this device.</p>
   <div class="list" id="learn"></div>
   <button type="button" class="pill" id="b-forget">Clear learned buttons</button>
+  <h3>Touch</h3>
+  <p class="note">Tap: pause, and tap again to roll on. Double tap: scroll mode, so you can drag or flick the words. Tap to roll from there. Hold a line to change its words; it saves by itself.</p>
   <p class="note keys">Keyboard: Space, Enter or Page Down plays and pauses. The arrows change the speed. Page Up restarts the take. At the end of a script, Space is Got it and Page Up is Another take.</p>
+</section>
+
+<section class="sheet" id="hist" hidden aria-label="History of this script">
+  <div class="row"><h2 id="hist-title">History</h2><button type="button" class="x" data-close>Close</button></div>
+  <p class="note">Every saved version, newest first. Red words came out. Green words went in. Nothing is ever thrown away.</p>
+  <div class="list" id="hist-list"></div>
+</section>
+
+<section class="sheet" id="pick" hidden aria-label="Pick the words to keep">
+  <div class="row"><h2 id="pick-title">Two versions of this script</h2><button type="button" class="x" data-close>Close</button></div>
+  <div class="list" id="pick-body"></div>
+  <div class="acts" id="pick-acts"></div>
 </section>
 
 <div id="wall" hidden>
@@ -233,6 +322,7 @@ input[type=range]{width:100%;accent-color:var(--tally);min-height:32px}
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="teleprompter-edits.js"></script>
 <script src="teleprompter.js"></script>
 </body>
 </html>

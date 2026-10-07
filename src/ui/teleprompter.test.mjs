@@ -108,6 +108,152 @@ describe("teleprompter, pure", () => {
     assert.equal(T.clock(65), "1:05");
   });
 
+  test("Next goes on in film order: the next with no Got it, else simply the next; -1 at the end", () => {
+    const T = load();
+    assert.equal(T.nextInOrder([{ got_it: false }, { got_it: true }, { got_it: false }], 0), 2);
+    assert.equal(T.nextInOrder([{ got_it: false }, { got_it: true }, { got_it: true }], 0), 1, "only this one is left: just the next");
+    assert.equal(T.nextInOrder([{ got_it: true }, { got_it: true }], 1), -1);
+  });
+
+  test("after an edit it rolls on from the same word, or from the start of the line that changed", () => {
+    const T = load();
+    // paragraphs of 4, 5, 3 words; paragraph 1 grew to 7
+    assert.equal(T.wordAfterEdit(2, 1, [4, 5, 3], [4, 7, 3]), 2, "before the change: same word");
+    assert.equal(T.wordAfterEdit(6, 1, [4, 5, 3], [4, 7, 3]), 4, "inside the change: the start of that line");
+    assert.equal(T.wordAfterEdit(10, 1, [4, 5, 3], [4, 7, 3]), 12, "after the change: moved by the words added");
+    assert.equal(T.wordAfterEdit(11, 1, [4, 5, 3], [4, 2, 3]), 8, "after the change: moved back by the words taken out");
+    assert.equal(T.wordAfterEdit(50, 0, [4], [2]), 1, "never past the last word");
+  });
+});
+
+/* The touch rules (owner, 2026-10-06): one tap pauses, a tap again rolls on,
+   a double tap is scroll mode, drag moves the words, hold a line to edit. */
+describe("teleprompter touch rules (gestureStep)", () => {
+  function run(T, events, mode) {
+    let g = T.gestureStart();
+    const all = [];
+    let m = mode;
+    for (const ev of events) {
+      const r = T.gestureStep(g, ev, typeof m === "function" ? m() : m);
+      g = r.g;
+      for (const a of plain(r.acts)) all.push(a);
+    }
+    return { g, acts: all };
+  }
+  const tap = (t, x = 100, y = 300) => [{ type: "down", x, y, t }, { type: "up", x, y, t: t + 60 }];
+
+  test("one tap while rolling pauses, at once (no waiting for a second tap)", () => {
+    const T = load();
+    const r = run(T, tap(0), "rolling");
+    assert.deepEqual(r.acts, [{ do: "pause" }]);
+  });
+
+  test("one tap while paused rolls on; one tap in scroll mode rolls on from there", () => {
+    const T = load();
+    assert.deepEqual(run(T, tap(0), "paused").acts, [{ do: "resume" }]);
+    assert.deepEqual(run(T, tap(0), "scroll").acts, [{ do: "resume" }]);
+  });
+
+  test("two taps far apart in time are two single taps: pause, then roll on", () => {
+    const T = load();
+    let mode = "rolling";
+    const seen = [];
+    let g = T.gestureStart();
+    for (const ev of [...tap(0), ...tap(1000)]) {
+      const r = T.gestureStep(g, ev, mode);
+      g = r.g;
+      for (const a of plain(r.acts)) { seen.push(a.do); if (a.do === "pause") mode = "paused"; if (a.do === "resume") mode = "rolling"; }
+    }
+    assert.deepEqual(seen, ["pause", "resume"]);
+  });
+
+  test("a double tap turns scroll mode on (undoing the first tap), and a double tap in scroll mode turns it off", () => {
+    const T = load();
+    let mode = "rolling";
+    const seen = [];
+    let g = T.gestureStart();
+    const step = (ev) => {
+      const r = T.gestureStep(g, ev, mode);
+      g = r.g;
+      for (const a of plain(r.acts)) {
+        seen.push(a.do);
+        if (a.do === "pause") mode = "paused";
+        if (a.do === "resume") mode = "rolling";
+        if (a.do === "scroll-on") mode = "scroll";
+        if (a.do === "scroll-off") mode = "paused";
+      }
+    };
+    [...tap(0), ...tap(200)].forEach(step);
+    assert.deepEqual(seen, ["pause", "scroll-on"]);
+    assert.equal(mode, "scroll");
+    [...tap(2000), ...tap(2200)].forEach(step);
+    assert.deepEqual(seen, ["pause", "scroll-on", "resume", "scroll-off"]);
+    assert.equal(mode, "paused");
+  });
+
+  test("a second tap too far away is not a double tap", () => {
+    const T = load();
+    const r = run(T, [...tap(0, 100, 300), ...tap(150, 300, 600)], "paused");
+    assert.deepEqual(r.acts.map((a) => a.do), ["resume", "resume"]);
+  });
+
+  test("a drag grabs the words, then moves them by the finger's distance; a tap is not a drag", () => {
+    const T = load();
+    const r = run(T, [
+      { type: "down", x: 100, y: 400, t: 0 },
+      { type: "move", x: 101, y: 395, t: 10 },  // inside the slop: still a tap
+      { type: "move", x: 101, y: 380, t: 20 },  // now a drag: 20 px from the start
+      { type: "move", x: 101, y: 350, t: 40 },
+      { type: "up", x: 101, y: 350, t: 300 }
+    ], "rolling");
+    assert.deepEqual(r.acts, [{ do: "grab" }, { do: "drag", dy: -20 }, { do: "drag", dy: -30 }]);
+  });
+
+  test("a flick in scroll mode keeps the words moving; the same flick while paused does not", () => {
+    const T = load();
+    const flick = [
+      { type: "down", x: 100, y: 500, t: 0 },
+      { type: "move", x: 100, y: 450, t: 16 },
+      { type: "move", x: 100, y: 380, t: 32 },
+      { type: "up", x: 100, y: 380, t: 40 }
+    ];
+    const s = run(T, flick, "scroll").acts;
+    const f = s.find((a) => a.do === "fling");
+    assert.ok(f, "a fling in scroll mode");
+    assert.ok(f.v < -T.FLING_MIN, "upward, faster than the floor");
+    assert.equal(run(T, flick, "paused").acts.some((a) => a.do === "fling"), false);
+  });
+
+  test("hold still for the long-press time: edit that line; lifting the finger opens the keyboard; no tap fires", () => {
+    const T = load();
+    const r = run(T, [
+      { type: "down", x: 120, y: 260, t: 0 },
+      { type: "timer", t: T.LONG_MS - 50 },
+      { type: "timer", t: T.LONG_MS + 5 },
+      { type: "up", x: 120, y: 260, t: T.LONG_MS + 200 }
+    ], "rolling");
+    assert.deepEqual(r.acts, [{ do: "edit", x: 120, y: 260 }, { do: "edit-focus" }]);
+  });
+
+  test("a finger that moved is never a long press", () => {
+    const T = load();
+    const r = run(T, [
+      { type: "down", x: 120, y: 260, t: 0 },
+      { type: "move", x: 120, y: 300, t: 100 },
+      { type: "timer", t: T.LONG_MS + 5 },
+      { type: "up", x: 120, y: 300, t: T.LONG_MS + 50 }
+    ], "paused");
+    assert.equal(r.acts.some((a) => a.do === "edit"), false);
+  });
+
+  test("a cancelled touch does nothing; an up with no down does nothing", () => {
+    const T = load();
+    assert.deepEqual(run(T, [{ type: "down", x: 1, y: 1, t: 0 }, { type: "cancel", t: 5 }, { type: "up", x: 1, y: 1, t: 10 }], "rolling").acts, []);
+    assert.deepEqual(run(T, [{ type: "up", x: 1, y: 1, t: 10 }], "rolling").acts, []);
+  });
+});
+
+describe("teleprompter page", () => {
   test("the page: no shell, a sign-in wall, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
     assert.match(HTML, /href="\/login\.html\?next=\/app\/teleprompter\.html"/);
@@ -118,7 +264,14 @@ describe("teleprompter, pure", () => {
     assert.match(HTML, /13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ/);
     assert.doesNotMatch(HTML + SRC, /FundHub/);
     // Everything read through the glass flips together.
-    const flip = HTML.slice(HTML.indexOf('<div id="flip">'), HTML.indexOf('<div id="bar">'));
-    for (const id of ["stage", "line", "progress", "count", "cuehold", "end"]) assert.ok(flip.includes(`id="${id}"`), id);
+    const flip = HTML.slice(HTML.indexOf('<div id="flip">'), HTML.indexOf('<div id="pulse">'));
+    assert.ok(HTML.indexOf('<div id="flip">') < HTML.indexOf('<div id="pulse">'), "the pulse row sits after the glass");
+    for (const id of ["stage", "line", "progress", "count", "cuehold", "end", "scrollchip"]) assert.ok(flip.includes(`id="${id}"`), id);
+    // The change pulse, the edit bar and the controls are NOT read through the glass.
+    for (const id of ["pulse", "p-save", "editbar", "b-edit", "b-hist", "b-next"]) assert.ok(!flip.includes(`id="${id}"`), id);
+    // The edit file loads first: teleprompter.js reads window.FundhubTeleprompterEdits.
+    assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js"'));
+    // Editing turns the glass flip off so the words read the right way round.
+    assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
   });
 });
