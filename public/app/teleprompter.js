@@ -37,8 +37,9 @@
  * together. Each device keeps its own setting. Editing shows the words the
  * right way round while the box is open.
  *
- * NO SHELL. Like present.html this page has no sidebar and no shell.js. The
- * shoot loads with no sign-in. A saved token is sent when this phone has one.
+ * NO SHELL. Like present.html this page has no sidebar, no shell.js, and no
+ * sign-in. The Shoot tab link carries a film key (?k=). That key reads this
+ * shoot, marks takes, and saves edits. This page never sends you to a login page.
  *
  * The pure helpers are on window.FundhubTeleprompter so
  * src/ui/teleprompter.test.mjs can prove them without a browser.
@@ -338,6 +339,9 @@
     set: function (k, v) { try { root.localStorage.setItem("fhtp." + k, JSON.stringify(v)); } catch (e) { /* private mode */ } }
   };
   function token() { try { return root.localStorage.getItem("fh_token") || ""; } catch (e) { return ""; } }
+  function filmKey() {
+    try { return new URL(root.location.href).searchParams.get("k") || ""; } catch (e) { return ""; }
+  }
 
   /* A tablet gets bigger words by default (read from the camera distance). */
   var bigScreen = false;
@@ -358,10 +362,21 @@
 
   function api(method, path, body) {
     var h = { accept: "application/json" };
-    var tk = token();
-    if (tk) h.authorization = "Bearer " + tk;
-    if (body) h["content-type"] = "application/json";
-    return root.fetch("/api/" + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined })
+    var k = filmKey();
+    var opts = { method: method, headers: h };
+    if (k) {
+      h["x-shoot-film"] = k;
+      opts.credentials = "omit";
+    } else {
+      var tk = token();
+      if (tk) h.authorization = "Bearer " + tk;
+      opts.credentials = "same-origin";
+    }
+    if (body) {
+      h["content-type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+    return root.fetch("/api/" + path, opts)
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
       }, function () { return { status: 0, data: null }; });
@@ -380,10 +395,15 @@
   }
 
   function load(first) {
+    var k = filmKey();
     return fetchShoot(false).then(function (r) {
-      if (r.status === 401 || r.status === 403) return fetchShoot(true);
+      if (!k && (r.status === 401 || r.status === 403)) return fetchShoot(true);
       return r;
     }).then(function (r) {
+      if (k && r.status === 404) {
+        if (first) showEmpty("This film link did not open. Tap Open the teleprompter on the Shoot tab again.", false);
+        return;
+      }
       if (r.status === 200 && r.data) {
         LS.set("cache", r.data);
         $("offline").hidden = true;
@@ -485,7 +505,7 @@
       }
       $("pending").hidden = false;
       $("pending").textContent = r.status === 401
-        ? "Signed out. Your marks are saved on this phone and send after you sign in."
+        ? "That press is saved on this phone. It sends when this film link can reach the shoot."
         : "No connection. Your marks are saved on this phone and send when you are back online.";
       if (r.status === 401) signedOut = true;
     });

@@ -53,6 +53,26 @@ const state = (page) => page.evaluate(() => window.__fhtp.state());
 test.describe("teleprompter at 390px", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test("a film link sends the key, rolls the script, and never opens login", async ({ page }) => {
+    let seen = "";
+    await page.route("**/api/**", async (route) => {
+      const req = route.request();
+      if (new URL(req.url()).pathname.endsWith("/marketing/shoot")) seen = req.headers()["x-shoot-film"] || "";
+      if (req.method() === "GET" && new URL(req.url()).pathname.endsWith("/marketing/shoot")) {
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(SHOOT) });
+      }
+      return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+    });
+    await page.goto("/app/teleprompter.html?k=film-key-1");
+    await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
+    expect(seen).toBe("film-key-1");
+    expect(page.url()).not.toContain("login.html");
+    await expect(page.getByText(/sign in/i)).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
+    expect(page.url()).not.toContain("login.html");
+  });
+
   test("no sign-in: the shoot rolls and the sign-in wall stays hidden", async ({ page }) => {
     await open(page, { token: false });
     await expect(page.locator("#wall")).toHaveCount(0);

@@ -103,6 +103,12 @@ flowchart TD
 - Dark glass: black, white words, a red reading line. The pulse row (take file name, save status) never hides, even while it rolls.
 - Next script (in film order, no mark) sits beside Play.
 
+## 5. The film link (no login on the teleprompter)
+
+The Shoot tab, while a staff owner or admin is signed in, gets `film.path` on `GET marketing/shoot`. That path is `/app/teleprompter.html?k=<token>`. Open the teleprompter and Roll it use it. The phone sends the key as the `x-shoot-film` header and does not send the staff session.
+
+The key is an HMAC (`f1|org|shoot|exp`) over `DOCUMENT_URL_SECRET` (or `FILM_URL_SECRET`). It lasts 7 days. It dies sooner when that shoot is closed, because the read only returns the shoot the key names. It can `GET marketing/shoot`, `POST marketing/shoot/mark` for that shoot, and `POST marketing/scripts/edit` for a script on that shoot. It cannot save the plan, close the shoot, or open any other route. A bad key is a not-found, not a login page.
+
 ## Gaps against the intended flow (findings, not fixed here)
 
 1. **Offer word for Book a call.** `marketing/ads/NAMING.md` names only `SLO`. Scripts for the `funding_dfy` offer (the `book_call` funnel) show "file name unknown" until Chris names a word. Safe default: no word is made up.

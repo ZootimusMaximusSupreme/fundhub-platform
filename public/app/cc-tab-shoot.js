@@ -137,6 +137,18 @@
     return { rows: order.map(function (id) { return byId[id]; }), extra: [] };
   }
 
+  /**
+   * The teleprompter link. The Shoot tab's film.path already has the key.
+   * A path that is not this page is ignored, so the button cannot leave the site.
+   */
+  function filmHref(page, scriptId) {
+    var path = TELEPROMPTER;
+    var given = page && page.film && page.film.path;
+    if (typeof given === "string" && given.indexOf("/app/teleprompter.html?k=") === 0 && given.indexOf(" ") < 0) path = given;
+    if (!scriptId) return path;
+    return path + (path.indexOf("?") >= 0 ? "&" : "?") + "script=" + encodeURIComponent(scriptId);
+  }
+
   /** A fresh request id for one tap. */
   function requestId() {
     try { if (root.crypto && root.crypto.randomUUID) return root.crypto.randomUUID(); } catch (e) { /* fall through */ }
@@ -144,7 +156,7 @@
   }
 
   var api = {
-    headline: headline, moveId: moveId, filmFirst: filmFirst, chipsFor: chipsFor, rowName: rowName,
+    headline: headline, moveId: moveId, filmFirst: filmFirst, filmHref: filmHref, chipsFor: chipsFor, rowName: rowName,
     fileLine: fileLine, stepClass: stepClass, statusWord: statusWord, planView: planView, readClock: readClock,
     requestId: requestId, CHECKS: CHECKS, DRIVE_SLO_ADS: DRIVE_SLO_ADS
   };
@@ -362,7 +374,7 @@
       var actions = h("div", { cls: "lead" });
       if (shoot) {
         var got = (shoot.scripts || []).filter(function (s) { return s.got_it; }).length;
-        actions.appendChild(h("a", { cls: "btn primary", href: TELEPROMPTER, text: "Open the teleprompter" }));
+        actions.appendChild(h("a", { cls: "btn primary", href: filmHref(page), text: "Open the teleprompter" }));
         actions.appendChild(h("p", { cls: "caption muted", text: got + " of " + (shoot.scripts || []).length + " marked Got it." }));
       } else {
         var n = included.length;
@@ -435,7 +447,7 @@
         onclick: function () { move(filmFirst(ids, s.root_script_id), "Ad " + s.ad_id + " is filmed first."); } }));
       if (shoot) {
         if (!s.got_it) {
-          acts.push(h("a", { cls: "btn", href: TELEPROMPTER + "?script=" + encodeURIComponent(s.root_script_id), text: "Roll it" }));
+          acts.push(h("a", { cls: "btn", href: filmHref(st.page, s.root_script_id), text: "Roll it" }));
           acts.push(h("button", { type: "button", cls: "btn", disabled: st.busy, text: "Got it", onclick: function () { markRow(s, "got_it"); } }));
           acts.push(h("button", { type: "button", cls: "btn", disabled: st.busy, text: "Another take", onclick: function () { markRow(s, "another_take"); } }));
           if (ids.length > 1) {

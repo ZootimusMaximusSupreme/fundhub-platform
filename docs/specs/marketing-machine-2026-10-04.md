@@ -877,7 +877,7 @@ All of these routes start with `marketing/`, use `ROLE_SETS.MARKETING`, and run 
 
 **Sign-in and setup**
 - **No shell.js.** Use the `present.html` + `present.js` pattern, and load `data.js`, which reads `fh_token`.
-- **On the web,** a visitor who isn't signed in sees a wall linking to `/login.html?next=/app/teleprompter.html`.
+- **On the web,** there is no sign-in wall and no redirect to login. The Shoot tab's Open the teleprompter link is `/app/teleprompter.html?k=<film key>`. That key reads the shoot, marks takes, and saves a script edit for that shoot only.
 - **In the app,** the page shows its own sign-in form, which calls `/api/auth/login`.
 - **The app needs one hook in `data.js`.** It fetches relative paths (L101, L418, L495) and reads the token only from localStorage `fh_token` (L54), so under `capacitor://localhost` its calls would never reach the server.
   - Add `window.FH_API_BASE` in front of the path at those three `fetch` calls. It's blank on the web and the CRM's own origin in the app.

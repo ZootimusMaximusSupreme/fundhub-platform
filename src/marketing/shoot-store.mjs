@@ -420,6 +420,22 @@ export async function writeShoot(tx, { orgId, move, wpm = DEFAULT_WPM }) {
   return updateShoot(tx, { orgId, id: move.id, ids: move.ids, status: move.status, shootDate: move.shootDate, wpm });
 }
 
+/** True when this script version is on that open shoot. A film link cannot edit any other script. */
+export async function scriptOnFilmShoot(tx, { orgId, shootId, scriptId }) {
+  const r = await tx.query(
+    `SELECT 1
+       FROM ad_scripts s
+       JOIN marketing_shoots sh
+         ON sh.org_id = s.org_id AND sh.id = $2
+      WHERE s.org_id = $1
+        AND s.id = $3
+        AND sh.status <> 'done'
+        AND s.root_script_id = ANY(sh.root_script_ids)`,
+    [orgId, shootId, scriptId]
+  );
+  return r.rowCount > 0;
+}
+
 /**
  * POST marketing/shoot/mark: one take rolled. Got it keeps it; Another take
  * rolls the script again. The first mark moves a planned shoot to filming.

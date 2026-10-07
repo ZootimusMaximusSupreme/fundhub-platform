@@ -17,8 +17,11 @@ import { assertMatchesContract } from "../marketing/api-contract.mjs";
 import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 import shootHandler from "../../api/marketing/shoot.mjs";
 import markHandler from "../../api/marketing/shoot/mark.mjs";
+import editHandler from "../../api/marketing/scripts/edit.mjs";
+import { mintFilmKey } from "../marketing/shoot-film-key.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
+const FILM_SECRET = "x".repeat(48);
 const SLUG_A = "zz-x5-shoot-a";
 const SLUG_B = "zz-x5-shoot-b";
 const EMAIL_TAG = "x5_shoot_pg";
@@ -43,12 +46,14 @@ const res = () => {
   return r;
 };
 
-async function call(handler, token, { method = "GET", query = {}, body } = {}) {
+async function call(handler, token, { method = "GET", query = {}, body, headers = {} } = {}) {
   const r = res();
+  const h = { ...headers };
+  if (token) h.authorization = "Bearer " + token;
   await handler(
-    { method, headers: token ? { authorization: "Bearer " + token } : {}, query, body },
+    { method, headers: h, query, body },
     r,
-    { db }
+    { db, filmSecret: FILM_SECRET, wake: async () => {} }
   );
   if (r.body !== null) r.body = JSON.parse(JSON.stringify(r.body));
   return r;
@@ -392,6 +397,58 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     const onNext = Object.fromEntries(next.body.shoot.scripts.map((s) => [s.root_script_id, s]));
     assert.equal(onNext[s92.id].take_no, 3, "the next shoot carries on from the closed shoot's takes");
     assert.equal(onNext[s91.id].take_no, 2);
+  });
+
+  test("a film link reads and marks that shoot, edits a script on it, and is not a staff login", async () => {
+    const page = await get(ownerA.token);
+    assert.equal(page.code, 200);
+    assert.ok(page.body.shoot, "a shoot is open");
+    assert.match(page.body.film.path, /^\/app\/teleprompter\.html\?k=/);
+    const key = page.body.film.path.slice("/app/teleprompter.html?k=".length);
+    const headers = { "x-shoot-film": key };
+
+    const open = await call(shootHandler, null, { headers });
+    assert.equal(open.code, 200, JSON.stringify(open.body));
+    assert.equal(open.body.shoot.id, page.body.shoot.id);
+    assert.equal(open.body.film, undefined, "the phone does not get a new key");
+
+    const junk = await call(shootHandler, null, { headers: { "x-shoot-film": key + "no" } });
+    assert.equal(junk.code, 404);
+    const asBearer = await call(shootHandler, key);
+    assert.equal(asBearer.code, 401, "the film key is not a staff session");
+    const plan = await call(shootHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmplan"), root_script_ids: [s91.id] }
+    });
+    assert.equal(plan.code, 401, "the film key cannot change the plan");
+
+    const closed = mintFilmKey({ orgId: orgA, shootId, secret: FILM_SECRET });
+    const old = await call(shootHandler, null, { headers: { "x-shoot-film": closed.token } });
+    assert.equal(old.code, 404, "a key for a closed shoot does not open the new one");
+
+    const script = page.body.shoot.scripts[0];
+    const marked = await call(markHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmmark"), shoot_id: page.body.shoot.id, root_script_id: script.root_script_id, mark: "another_take" }
+    });
+    assert.equal(marked.code, 200, JSON.stringify(marked.body));
+    const wrong = await call(markHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("wrongshoot"), shoot_id: shootId, root_script_id: script.root_script_id, mark: "got_it" }
+    });
+    assert.equal(wrong.code, 404);
+
+    const edited = await call(editHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmedit"), id: script.id, version: script.version, body: script.body }
+    });
+    assert.equal(edited.code, 200, JSON.stringify(edited.body));
+    const offRow = await scriptRow(s93.id);
+    const off = await call(editHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmoff"), id: offRow.id, version: offRow.version, body: offRow.body }
+    });
+    assert.equal(off.code, 404, "a script that is not on this shoot cannot be edited");
   });
 
   test("another company sees none of it", async () => {

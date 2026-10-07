@@ -257,8 +257,9 @@ describe("teleprompter page", () => {
   test("the page: no shell, no sign-in, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
     assert.doesNotMatch(HTML, /login\.html/);
-    assert.doesNotMatch(HTML + SRC, /Sign in/);
+    assert.doesNotMatch(HTML + SRC, /sign in/i);
     assert.doesNotMatch(SRC, /showWall/);
+    assert.match(SRC, /x-shoot-film/);
     assert.match(HTML, /id="t-mirror"/);
     assert.match(HTML, /id="t-flipv"/);
     assert.match(HTML, /#flip\.mirror-x\{transform:scaleX\(-1\)\}/);
