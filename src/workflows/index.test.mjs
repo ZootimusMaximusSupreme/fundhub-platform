@@ -85,6 +85,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "commas-inbox-drain",
   "contract-chaser",
   "daily-pulse",
+  "evening-brief",
   "doc-check",
   "doc-check-retry-sweeper",
   "dpc-01-analyzer-lock",

@@ -1,4 +1,7 @@
-// Live-path registry for the 7:00 a.m. pulse.
+// Live-path registry for the 6:00 a.m. Arizona pulse.
+// Page and route pings live here. Scheduled-job lateness lives in
+// src/pulse/heartbeats.mjs: a job is red when its newest run is older than
+// 3 times its schedule. That check reports only. It never restarts a job.
 // Add a row in the same change as the feature. See .cursor/rules/pulse-registry.mdc.
 // Completeness is enforced by registry.test.mjs (routes.test.mjs allow-list pattern).
 // Audit only. GET pings. Never auto-fix. Never live CRS. Never charge a card.

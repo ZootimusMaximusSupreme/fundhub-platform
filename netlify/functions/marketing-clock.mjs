@@ -17,6 +17,7 @@
 // (src/http/scheduled-functions-return.test.mjs).
 
 import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { tick } from "../../src/marketing/clock.mjs";
 
 /** Every 15 minutes, UTC. Same as netlify.toml and CLOCK_CRON in src/marketing/clock.mjs. */
@@ -28,10 +29,13 @@ const json = (body) => new Response(JSON.stringify(body), {
 
 export default async function marketingClock() {
   try {
-    return json(await tick({ db, env: process.env }));
+    const result = await tick({ db, env: process.env });
+    await noteScheduledRun(db, "marketing-clock", result);
+    return json(result);
   } catch (err) {
     const error = String((err && err.message) || err).replace(/\s+/g, " ").slice(0, 300);
     console.error(`[marketing-clock] tick failed: ${error}`);
+    await noteScheduledRun(db, "marketing-clock", { ok: false, error });
     return json({ ok: false, error });
   }
 }

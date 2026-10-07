@@ -5,8 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { PULSE_CRON, handle } from "./daily-pulse.mjs";
 
-test("Inngest cron is 7:00 a.m. on Denver's own clock, so the fall-back needs no flip", () => {
-  assert.equal(PULSE_CRON, "TZ=America/Denver 0 7 * * *");
+test("Inngest cron is 6:00 a.m. Arizona all year", () => {
+  assert.equal(PULSE_CRON, "TZ=America/Phoenix 0 6 * * *");
 });
 
 test("handle is audit-only — dry-run writes findings and does not send", async () => {
@@ -49,4 +49,34 @@ test("handle is audit-only — dry-run writes findings and does not send", async
   assert.equal(sends.length, 0);
   assert.ok(Array.isArray(out.findings));
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("when the brief is live, the pulse does not text and the morning brief does", async () => {
+  const sends = [];
+  const briefs = [];
+  const step = { run: async (_name, fn) => fn() };
+  const db = { query: async () => ({ rows: [] }) };
+  await handle({
+    db,
+    step,
+    env: {},
+    dryRun: true,
+    boardDir: fs.mkdtempSync(path.join(os.tmpdir(), "pulse-brief-")),
+    fetchImpl: async () => ({ status: 200, text: async () => "Sign in password Generate Apps Apply door" }),
+    sendSms: async (msg) => {
+      sends.push(msg);
+      return { status: "sent" };
+    },
+    briefLive: true,
+    morningBrief: async (args) => {
+      briefs.push(args);
+      return { ok: true };
+    }
+  });
+  assert.equal(sends.length, 0);
+  assert.equal(briefs.length, 1);
+  assert.equal(briefs[0].kind, "morning");
+  assert.equal(briefs[0].live, true);
+  assert.ok(briefs[0].pulse);
+  assert.equal(briefs[0].pulse.sms.reason, "replaced_by_morning_brief");
 });

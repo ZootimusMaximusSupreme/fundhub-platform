@@ -123,3 +123,40 @@ export async function ticketDarwin({
   );
   return { ticket, sent: result?.status === "sent", reason: result?.error || null, to, result };
 }
+
+/* THE MORNING AND EVENING BRIEF TEXT. Same number as the pulse
+   (PULSE_SMS_TO, or CHRIS_PULSE_SMS). Same Twilio send. Only the last 4
+   digits of the number ever leave this function. The stored Netlify value
+   is used as-is. This function never invents a number. */
+export function last4(number) {
+  const digits = String(number || "").replace(/\D+/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+export async function textMorningBrief({
+  body,
+  env = process.env,
+  dryRun = true,
+  sendImpl = sendSms
+} = {}) {
+  const to = chrisPulseSmsTo(env);
+  if (!to) {
+    return {
+      delivery_status: "no_number",
+      sent_to_last4: null,
+      error: `${PULSE_SMS_TO_ENV} unset`,
+      provider_message_id: null
+    };
+  }
+  if (dryRun) {
+    return { delivery_status: "dry_run", sent_to_last4: last4(to), error: null, provider_message_id: null };
+  }
+  const result = await sendImpl({ to, body, channel: "sms" }, { env });
+  const sent = result?.status === "sent";
+  return {
+    delivery_status: sent ? "sent" : "failed",
+    sent_to_last4: last4(to),
+    error: sent ? null : String(result?.error || "send failed").slice(0, 300),
+    provider_message_id: sent ? (result?.providerMessageId || null) : null
+  };
+}

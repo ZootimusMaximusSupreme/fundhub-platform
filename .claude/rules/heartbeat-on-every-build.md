@@ -1,0 +1,26 @@
+# Heartbeat on every build
+
+**Owner law (2026-10-07):** Every new live page, routed api handler, Inngest job, or outbound send path gets a heartbeat row in the SAME change. The morning pulse checks it. A job is red if it has not run in 3 times its schedule. The pulse only reports. It never auto-fixes. Chris fixes reds. Missing heartbeat on a new build is a failed change.
+
+The heartbeat row lives in `src/pulse/registry.mjs`. The check is `src/pulse/registry.test.mjs`. Do not weaken that test.
+
+## Always
+
+- Add the heartbeat row in `src/pulse/registry.mjs` in the same change as the build.
+- A job is red if it has not run in 3 times its schedule.
+- The morning pulse only reports. Chris fixes reds.
+
+## Never
+
+- Ship a new live page, routed api handler, Inngest job, or outbound send path with no heartbeat row.
+- Let the pulse auto-fix.
+- Weaken `src/pulse/registry.test.mjs`.
+
+## Example
+
+```text
+Ask: "Add a live Monday brief job."
+
+❌ Add the job. Say the heartbeat comes later.
+✅ Add the job and a heartbeat row in src/pulse/registry.mjs in the same change.
+```

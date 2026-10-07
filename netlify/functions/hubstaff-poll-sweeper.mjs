@@ -1,4 +1,5 @@
 import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { pollAndMergeHubstaff } from "../../src/shifts/hubstaff-ingest.mjs";
 
 export const SWEEP_CRON = "*/10 * * * *";
@@ -22,6 +23,7 @@ export async function handler() {
   else if (result.merged > 0 || (result.fetch_errors && result.fetch_errors.length)) {
     console.log(`[hubstaff-poll-sweeper] merged=${result.merged} candidates=${result.candidates ?? 0}`);
   }
+  await noteScheduledRun(db, "hubstaff-poll-sweeper", result);
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { "content-type": "application/json" }

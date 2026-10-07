@@ -1,9 +1,7 @@
 // Daily pulse — audit only. Suggested fixes + proof. Never auto-fixes.
 //
-// 7:00 a.m. America/Denver, all year. The cron carries Inngest's TZ= prefix,
-// so it fires on Denver's own clock: 13:00 UTC in daylight time, 14:00 UTC
-// after the fall-back (2026-11-01). Nobody has to flip it twice a year.
-// (It was a bare 0 13 * * *, which would have fired at 6:00 a.m. all winter.)
+// 6:00 a.m. America/Phoenix, all year. Arizona does not change clocks.
+// The morning brief texts right after this check.
 //
 // Do not stretch the Ops Admin money pulse into this.
 // Tripwire is existing Recon (AG-07) + scripts/gate-relay. No second watchdog.
@@ -17,10 +15,12 @@ import { gmailConfigFromEnv, createGmailClientFromConfig } from "../gmail/index.
 import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
 import { checkMachine } from "./machine.mjs";
+import { checkJobHeartbeats } from "./heartbeats.mjs";
+import { buildScorecard, loadPreviousScorecard, phoenixDate, saveScorecard } from "./scorecard.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 
-export const PULSE_CRON = "TZ=America/Denver 0 7 * * *";
-export const PULSE_TZ = "America/Denver";
+export const PULSE_CRON = "TZ=America/Phoenix 0 6 * * *";
+export const PULSE_TZ = "America/Phoenix";
 export const AGENT_CODE = "AG-07";
 export const SOURCE_WORKFLOW = "daily-pulse";
 export const DEFAULT_BASE_URL = "https://fundhub.ai";
@@ -247,7 +247,7 @@ export function formatScorecard({ date, dryRun, checks = [], sms, darwin } = {})
   const lines = [
     `# Pulse ${date}`,
     "",
-    `Timezone: ${PULSE_TZ}. Cron: \`${PULSE_CRON}\` (7:00 a.m. Denver, summer and winter).`,
+    `Timezone: ${PULSE_TZ}. Cron: \`${PULSE_CRON}\` (6:00 a.m. Arizona, all year).`,
     `Dry-run: ${dryRun ? "yes" : "no"}. **This run does not auto-fix.**`,
     "",
     score,
@@ -333,12 +333,13 @@ export async function runDailyPulse({
   gmailClient = null,
   sendSms = undefined,
   sendWhatsApp = undefined,
+  sendPulseText = true,
   recordRun = true,
   // Staff-visibility runner for the marketing-machine rows (asStaff on live).
   // Those tables are FORCE row security and read empty on the plain app role.
   staffScope = null
 } = {}) {
-  const date = denverDateStamp(now);
+  const date = phoenixDate(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
   const checks = [];
 
@@ -353,6 +354,15 @@ export async function runDailyPulse({
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
   checks.push(...await checkMachine({ db, scope: staffScope, now }));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
+  try {
+    checks.push(...await checkJobHeartbeats({ db, now }));
+  } catch (err) {
+    checks.push(check(
+      "jobs",
+      "skip",
+      `job heartbeats not read: ${String((err && err.message) || err).slice(0, 160)}`
+    ));
+  }
 
   const failRows = checks.filter((c) => c.status === "FAIL" || c.status === "down");
   const findings = failRows.map((c) => `${c.id}: ${c.detail}`);
@@ -361,16 +371,29 @@ export async function runDailyPulse({
   const fail = failRows.length;
   const skip = checks.filter((c) => c.status === "skip").length;
 
-  const sms = await textChris({
-    date,
-    pass,
-    fail,
-    skip,
-    topFails: findings,
-    env,
-    dryRun,
-    sendImpl: sendSms
-  });
+  const sms = sendPulseText
+    ? await textChris({
+      date,
+      pass,
+      fail,
+      skip,
+      topFails: findings,
+      env,
+      dryRun,
+      sendImpl: sendSms
+    })
+    : { sent: false, reason: "replaced_by_morning_brief", body: null, to: null };
+
+  let scorecard = null;
+  try {
+    const previous = resolvedOrg ? await loadPreviousScorecard(db, resolvedOrg, date) : null;
+    scorecard = buildScorecard({ checks, now, previous });
+    if (resolvedOrg && db) await saveScorecard(db, resolvedOrg, scorecard);
+  } catch (err) {
+    if (!scorecard) {
+      try { scorecard = buildScorecard({ checks, now }); } catch { scorecard = null; }
+    }
+  }
   const darwin = await ticketDarwin({
     date,
     findings,
@@ -411,6 +434,7 @@ export async function runDailyPulse({
     findings,
     suggestedFixes,
     sms,
+    scorecard,
     darwin,
     wrote,
     agentRun,

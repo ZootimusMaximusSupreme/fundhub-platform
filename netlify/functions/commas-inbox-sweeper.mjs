@@ -32,6 +32,7 @@
    money chain. */
 import "@pdf-lib/fontkit";
 import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { drain } from "../../src/payments/commas-inbox.mjs";
 import { processCommasInboxRow } from "../../src/adapters/commas.mjs";
 import { ensureRegistered } from "../../src/register-all.mjs";
@@ -116,6 +117,7 @@ export async function handler() {
       JSON.stringify(result.counts)
     );
   }
+  await noteScheduledRun(db, "commas-inbox-sweeper", result);
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { "content-type": "application/json" }

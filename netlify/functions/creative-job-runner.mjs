@@ -2,6 +2,7 @@
 // POST /api/creative/generate only enqueues; without this, jobs sit forever.
 
 import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { runDue } from "../../src/creative/runner.mjs";
 import { runnerIsLocal, AI_ASSET_KINDS } from "../../src/marketing/ai-runner.mjs";
 
@@ -43,6 +44,7 @@ export async function handler() {
         `ok=${result.succeeded} fail=${result.failed} requeue=${result.requeued}`
     );
   }
+  await noteScheduledRun(db, "creative-job-runner", result);
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { "content-type": "application/json" }

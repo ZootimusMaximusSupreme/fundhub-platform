@@ -231,6 +231,10 @@ When Chris asks to change a page, he sees a marked draft before anything goes li
 
 Clarity Data Export: one pull per time Chris asks. Go through `src/adapters/clarity-export.mjs` only. Do not curl or fetch `https://www.clarity.ms/export-data` yourself. Do not retry. If that one pull fails, say the error and stop. Also never exceed Microsoft's 10 requests per project per day; the helper blocks call 11 before any HTTP request. Same law: `.cursor/rules/clarity-export-rate-limit.mdc` and `.claude/rules/clarity-export-rate-limit.md`.
 
+### Heartbeat on every build (owner-set 2026-10-07)
+
+Every new live page, routed api handler, Inngest job, or outbound send path gets a heartbeat row in the same change. The morning pulse checks it. A job is red if it has not run in 3 times its schedule. The pulse only reports. It never auto-fixes. Chris fixes reds. Missing heartbeat on a new build is a failed change. Same law: `.cursor/rules/heartbeat-on-every-build.mdc` and `.claude/rules/heartbeat-on-every-build.md`.
+
 ## 3. Before writing any code
 
 1. Read the relevant code. Symbol lookup before file reads (Grep patterns, not full file reads).
