@@ -228,6 +228,14 @@
         (isNum(e.amount_cents) ? " of " + money(e.amount_cents) : "") + ". Thank you.";
       case "plan_settled": return "Marked a payment plan as paid off.";
       case "asked_for_person": return "You asked for a person. Our team will reach out.";
+      /* FinanceOS wave 5 (migration 464): "Do task" and "Ready to get funded". */
+      case "task_assigned": return isNum(e.amount_cents)
+        ? "Set up for your OK: " + what + ". Nothing moves until you say yes."
+        : "Handed over: " + what + ".";
+      case "task_done": return "Finished: " + what + ".";
+      case "task_failed": return "Could not finish: " + what + ".";
+      case "task_cancelled": return "Stopped: " + what + ".";
+      case "ready_to_fund": return "You said you are ready to get funded. A person on our team will reach out.";
       default: return "Updated your payments.";
     }
   }
