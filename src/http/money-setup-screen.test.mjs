@@ -47,9 +47,9 @@ test("the page loads money-setup.js, keeps out of the staff shell, and carries t
   const nav = HTML.match(/<nav class="mnav"[\s\S]*?<\/nav>/);
   assert.ok(nav);
   const hrefs = [...nav[0].matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(hrefs, ["money.html", "money-accounts.html", "money-credit.html",
-    "money-connections.html", "money-payments.html", "money-setup.html"]);
-  assert.match(nav[0], /<a href="money-setup\.html" aria-current="page">Setup<\/a>/);
+  assert.deepEqual(hrefs, ["/app/financeos.html#overview", "/app/financeos.html#accounts", "/app/financeos.html#credit",
+    "/app/financeos.html#connections", "/app/financeos.html#payments", "/app/financeos.html#setup"]);
+  assert.match(nav[0], /<a href="\/app\/financeos\.html#setup" aria-current="page">Setup<\/a>/);
 });
 
 test("no price set: $X everywhere, no pay button, soft pull is the one primary action", () => {

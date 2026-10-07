@@ -32,9 +32,9 @@ test("the page loads its script, reads /api/money/payments, and keeps out of the
 
 test("the shared money nav, in the board's order, with Payments marked as the current page", () => {
   const hrefs = [...HTML.matchAll(/<nav class="mnav"[\s\S]*?<\/nav>/g)][0][0].match(/href="([^"]+)"/g).map((h) => h.slice(6, -1));
-  assert.deepEqual(hrefs, ["/app/money.html", "/app/money-accounts.html", "/app/money-credit.html",
-    "/app/money-connections.html", "/app/money-payments.html", "/app/money-setup.html"]);
-  assert.match(HTML, /href="\/app\/money-payments\.html" aria-current="page"/);
+  assert.deepEqual(hrefs, ["/app/financeos.html#overview", "/app/financeos.html#accounts", "/app/financeos.html#credit",
+    "/app/financeos.html#connections", "/app/financeos.html#payments", "/app/financeos.html#setup"]);
+  assert.match(HTML, /href="\/app\/financeos\.html#payments" aria-current="page"/);
 });
 
 test("full: what is owed, late said in words, the schedule, coming up, the helper's log, and a person", () => {

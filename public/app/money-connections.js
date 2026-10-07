@@ -452,8 +452,11 @@
     var cid = param("client_id");
     if (cid) {
       var links = root.document.querySelectorAll(".mnav a");
+      /* The query goes before the #tab: /app/financeos.html?client_id=…#credit. */
       for (var i = 0; i < links.length; i++) {
-        links[i].setAttribute("href", links[i].getAttribute("href") + "?client_id=" + encodeURIComponent(cid));
+        var parts = links[i].getAttribute("href").split("#");
+        var href = parts[0] + "?client_id=" + encodeURIComponent(cid);
+        links[i].setAttribute("href", parts.length > 1 ? href + "#" + parts.slice(1).join("#") : href);
       }
       var back = root.document.getElementById("money-back");
       if (back) {

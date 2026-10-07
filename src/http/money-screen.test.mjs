@@ -148,12 +148,12 @@ test("the money nav: six links in the board's order, Money marked as the current
   assert.ok(nav, "money.html lost the shared money nav");
   const links = [...nav[0].matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(links, [
-    ["money.html", "Money"],
-    ["money-accounts.html", "Accounts"],
-    ["money-credit.html", "Credit"],
-    ["money-connections.html", "Connections"],
-    ["money-payments.html", "Payments"],
-    ["money-setup.html", "Setup"]
+    ["/app/financeos.html#overview", "Money"],
+    ["/app/financeos.html#accounts", "Accounts"],
+    ["/app/financeos.html#credit", "Credit"],
+    ["/app/financeos.html#connections", "Connections"],
+    ["/app/financeos.html#payments", "Payments"],
+    ["/app/financeos.html#setup", "Setup"]
   ]);
-  assert.match(nav[0], /<a href="money\.html" aria-current="page">Money<\/a>/);
+  assert.match(nav[0], /<a href="\/app\/financeos\.html#overview" aria-current="page">Money<\/a>/);
 });

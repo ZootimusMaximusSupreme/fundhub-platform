@@ -441,8 +441,11 @@
     /* Staff carry the client across the money pages. */
     var nav = root.document.getElementById("money-nav");
     if (nav && cid) {
+      /* The query goes before the #tab: /app/financeos.html?client_id=…#credit. */
       Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
-        a.setAttribute("href", a.getAttribute("href") + "?client_id=" + encodeURIComponent(cid));
+        var parts = a.getAttribute("href").split("#");
+        var href = parts[0] + "?client_id=" + encodeURIComponent(cid);
+        a.setAttribute("href", parts.length > 1 ? href + "#" + parts.slice(1).join("#") : href);
       });
     }
     mount(el, { clientId: cid });

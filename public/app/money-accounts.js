@@ -635,8 +635,11 @@
     }
     if (param("client_id")) {
       var links = root.document.querySelectorAll(".mnav a");
+      /* The query goes before the #tab: /app/financeos.html?client_id=…#credit. */
       for (var i = 0; i < links.length; i++) {
-        links[i].setAttribute("href", links[i].getAttribute("href") + "?client_id=" + encodeURIComponent(param("client_id")));
+        var parts = links[i].getAttribute("href").split("#");
+        var href = parts[0] + "?client_id=" + encodeURIComponent(param("client_id"));
+        links[i].setAttribute("href", parts.length > 1 ? href + "#" + parts.slice(1).join("#") : href);
       }
     }
     mount(el, { clientId: param("client_id") });

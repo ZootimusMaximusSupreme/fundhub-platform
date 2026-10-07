@@ -443,6 +443,7 @@ const DESK_FILES = [
   "csm-queue.html",
   "documents.html",
   "finance-os.html",
+  "financeos.html",
   "galaxy.html",
   "hiring.html",
   "index.html",

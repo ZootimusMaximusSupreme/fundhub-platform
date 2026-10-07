@@ -11,7 +11,9 @@
  *
  * Every render function returns an HTML string and touches no DOM, so
  * src/http/money-credit-screen.test.mjs can run them in Node against a fixture.
- * init() is the only part that needs a browser.
+ * mount() and init() are the only parts that need a browser. This file is the
+ * Credit section of the one-page /app/financeos.html
+ * (window.FinanceOS.sections.credit); money-credit.html is a thin shell.
  */
 (function (root) {
   "use strict";
@@ -411,35 +413,53 @@
       : "/portal-login.html";
   }
 
-  /* Staff open this page with ?client_id=; every money link keeps it. */
-  function withClient(href) {
-    var cid = param("client_id");
-    return cid ? href + (href.indexOf("?") < 0 ? "?" : "&") + "client_id=" + encodeURIComponent(cid) : href;
+  /* Staff open this page with ?client_id=; every money link keeps it. The
+     query goes before any #tab, so /app/financeos.html#setup keeps its tab. */
+  function withClient(href, cidIn) {
+    var cid = cidIn === undefined ? param("client_id") : cidIn;
+    if (!cid) return href;
+    var parts = String(href).split("#");
+    var base = parts[0] + (parts[0].indexOf("?") < 0 ? "?" : "&") + "client_id=" + encodeURIComponent(cid);
+    return parts.length > 1 ? base + "#" + parts.slice(1).join("#") : base;
   }
 
-  function paint(html) {
-    var el = root.document.getElementById("credit-root");
-    if (el) el.innerHTML = html;
-  }
+  /* ── the section ───────────────────────────────────────────────────────────
+     window.FinanceOS.sections.credit.mount(el, ctx) — the one-page FinanceOS
+     (/app/financeos.html) mounts this into its Credit tab. No header, no nav:
+     only the section. ctx = { clientId, apiGet(path), apiPost(path, body) };
+     apiGet resolves to { status, body }. Any of them may be left out, and the
+     section then uses its own fetch and ?client_id= from the URL.
+     Returns { reload } so the host can refresh it. */
+  function mount(el, ctx) {
+    ctx = ctx || {};
+    var get = typeof ctx.apiGet === "function" ? ctx.apiGet : function (p) { return call(p); };
+    var cid = ctx.clientId || param("client_id") || "";
 
-  function load() {
-    var cid = param("client_id");
-    paint(renderLoading());
-    return call(READ_PATH + (cid ? "?client_id=" + encodeURIComponent(cid) : "")).then(function (res) {
-      var kind = classify(res);
-      if (kind === "signin") { root.location.href = signInUrl(); return; }
-      if (kind !== "ok") { paint(renderError(kind)); return; }
-      paint(render(res.body, withClient(SETUP_PATH)));
+    function paint(html) { el.innerHTML = html; }
+
+    function load() {
+      paint(renderLoading());
+      return Promise.resolve(get(READ_PATH + (cid ? "?client_id=" + encodeURIComponent(cid) : ""))).then(function (res) {
+        var kind = classify(res);
+        if (kind === "signin") { root.location.href = signInUrl(); return; }
+        if (kind !== "ok") { paint(renderError(kind)); return; }
+        paint(render(res.body, withClient(SETUP_PATH, cid)));
+      });
+    }
+
+    el.addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
+      if (t && (!el.contains || el.contains(t)) && t.getAttribute("data-act") === "retry") load();
     });
+
+    load();
+    return { reload: load };
   }
 
+  /* ── the standalone page (/app/money-credit.html) — a thin shell ───────── */
   function init() {
     var el = root.document.getElementById("credit-root");
     if (!el) return;
-    el.addEventListener("click", function (e) {
-      var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
-      if (t && t.getAttribute("data-act") === "retry") load();
-    });
     var links = root.document.querySelectorAll(".mnav a");
     for (var i = 0; i < links.length; i++) links[i].setAttribute("href", withClient(links[i].getAttribute("href")));
     var back = root.document.getElementById("money-back");
@@ -447,13 +467,17 @@
       back.setAttribute("href", "finance-os.html?client_id=" + encodeURIComponent(param("client_id")));
       back.textContent = "Back to Finance OS";
     }
-    load();
+    mount(el, { clientId: param("client_id") });
   }
+
+  root.FinanceOS = root.FinanceOS || {};
+  root.FinanceOS.sections = root.FinanceOS.sections || {};
+  root.FinanceOS.sections.credit = { title: "Credit", mount: mount };
 
   root.FHMoneyCredit = {
     money: money, day: day, pct: pct, ficoBand: ficoBand, bizBand: bizBand, isEmpty: isEmpty,
     render: render, renderFull: renderFull, renderEmpty: renderEmpty, renderError: renderError,
-    renderLoading: renderLoading, classify: classify
+    renderLoading: renderLoading, classify: classify, mount: mount
   };
 
   if (root.document && root.document.getElementById) {

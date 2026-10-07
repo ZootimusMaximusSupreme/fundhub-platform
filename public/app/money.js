@@ -14,7 +14,11 @@
  *
  * Every render function returns an HTML string and touches no DOM, so
  * src/http/money-screen.test.mjs can run them in Node against a fixture.
- * init() is the only part that needs a browser.
+ * mount() and init() are the only parts that need a browser.
+ *
+ * ONE PAGE (owner change 2026-10-06): this file is the Overview section of
+ * /app/financeos.html — window.FinanceOS.sections.overview.mount(el, ctx).
+ * money.html is now a thin shell that mounts the same section.
  */
 (function (root) {
   "use strict";
@@ -509,27 +513,6 @@
       : "/portal-login.html";
   }
 
-  var state = { data: null, clientId: "" };
-
-  function paint(html) {
-    var el = root.document.getElementById("money-root");
-    if (el) el.innerHTML = html;
-  }
-
-  function load() {
-    var cid = param("client_id");
-    state.clientId = cid;
-    paint(renderLoading());
-    return call("GET", READ_PATH + (cid ? "?client_id=" + encodeURIComponent(cid) : "")).then(function (res) {
-      var kind = classify(res);
-      if (kind === "signin") { root.location.href = signInUrl(); return; }
-      if (kind !== "ok") { paint(renderError(kind)); return; }
-      state.data = res.body;
-      if (!cid && res.body.client && res.body.client.id) state.clientId = res.body.client.id;
-      paint(render(res.body));
-    });
-  }
-
   function loadPlaid() {
     if (root.Plaid) return Promise.resolve();
     return new Promise(function (resolve, reject) {
@@ -560,61 +543,102 @@
     return LINK_WORDS[classify(res)] || LINK_WORDS.server;
   }
 
-  function connect(btn) {
-    var msg = btn.parentNode.querySelector(".act-msg");
-    function say(t) { if (msg) msg.textContent = t; }
-    function done(label) { btn.disabled = false; btn.textContent = label || "Connect a bank"; }
-    btn.disabled = true;
-    btn.textContent = "Opening your bank…";
-    say("");
-    var body = state.clientId ? { client_id: state.clientId } : {};
-    call("POST", "/api/banking/link-token", body).then(function (res) {
-      if (classify(res) !== "ok" || !res.body.link_token) { done(); say(linkWords(res)); return; }
-      return loadPlaid().then(function () {
-        var handler = root.Plaid.create({
-          token: res.body.link_token,
-          onSuccess: function (publicToken, metadata) {
-            btn.textContent = "Saving your bank…";
-            var inst = metadata && metadata.institution
-              ? { institution_id: metadata.institution.institution_id || null, name: metadata.institution.name || null }
-              : null;
-            var ex = { public_token: publicToken, institution: inst };
-            if (state.clientId) ex.client_id = state.clientId;
-            call("POST", "/api/banking/link-exchange", ex).then(function (r2) {
-              if (classify(r2) !== "ok") { done(); say(linkWords(r2)); return; }
-              say("Bank connected. Loading your accounts…");
-              load();
-            });
-          },
-          onExit: function (err) {
-            done();
-            if (err) say("The bank window closed before it finished. Nothing was saved.");
-          }
-        });
-        handler.open();
-      }, function () {
-        done();
-        say("The bank sign-in window did not load. Check your connection and try again.");
-      });
-    });
-  }
+  /* ── the section ───────────────────────────────────────────────────────────
+     window.FinanceOS.sections.overview.mount(el, ctx) — the one-page FinanceOS
+     (/app/financeos.html) mounts this into its Overview tab. No header, no
+     nav: only the section. ctx = { clientId, apiGet(path), apiPost(path, body) };
+     apiGet/apiPost resolve to { status, body }. Any of them may be left out,
+     and the section then uses its own fetch and ?client_id= from the URL.
+     Returns { reload } so the host can refresh it. */
+  function mount(el, ctx) {
+    ctx = ctx || {};
+    var get = typeof ctx.apiGet === "function" ? ctx.apiGet : function (p) { return call("GET", p); };
+    var post = typeof ctx.apiPost === "function" ? ctx.apiPost : function (p, b) { return call("POST", p, b); };
+    var asked = ctx.clientId || param("client_id") || "";
+    var state = { data: null, clientId: asked };
 
-  function init() {
-    var el = root.document.getElementById("money-root");
-    if (!el) return;
+    function paint(html) { el.innerHTML = html; }
+
+    function load() {
+      state.clientId = asked;
+      paint(renderLoading());
+      return Promise.resolve(get(READ_PATH + (asked ? "?client_id=" + encodeURIComponent(asked) : ""))).then(function (res) {
+        var kind = classify(res);
+        if (kind === "signin") { root.location.href = signInUrl(); return; }
+        if (kind !== "ok") { paint(renderError(kind)); return; }
+        state.data = res.body;
+        if (!asked && res.body.client && res.body.client.id) state.clientId = res.body.client.id;
+        paint(render(res.body));
+      });
+    }
+
+    function connect(btn) {
+      var msg = btn.parentNode.querySelector(".act-msg");
+      function say(t) { if (msg) msg.textContent = t; }
+      function done(label) { btn.disabled = false; btn.textContent = label || "Connect a bank"; }
+      btn.disabled = true;
+      btn.textContent = "Opening your bank…";
+      say("");
+      var body = state.clientId ? { client_id: state.clientId } : {};
+      Promise.resolve(post("/api/banking/link-token", body)).then(function (res) {
+        if (classify(res) !== "ok" || !res.body.link_token) { done(); say(linkWords(res)); return; }
+        return loadPlaid().then(function () {
+          var handler = root.Plaid.create({
+            token: res.body.link_token,
+            onSuccess: function (publicToken, metadata) {
+              btn.textContent = "Saving your bank…";
+              var inst = metadata && metadata.institution
+                ? { institution_id: metadata.institution.institution_id || null, name: metadata.institution.name || null }
+                : null;
+              var ex = { public_token: publicToken, institution: inst };
+              if (state.clientId) ex.client_id = state.clientId;
+              Promise.resolve(post("/api/banking/link-exchange", ex)).then(function (r2) {
+                if (classify(r2) !== "ok") { done(); say(linkWords(r2)); return; }
+                say("Bank connected. Loading your accounts…");
+                load();
+              });
+            },
+            onExit: function (err) {
+              done();
+              if (err) say("The bank window closed before it finished. Nothing was saved.");
+            }
+          });
+          handler.open();
+        }, function () {
+          done();
+          say("The bank sign-in window did not load. Check your connection and try again.");
+        });
+      });
+    }
+
     el.addEventListener("click", function (e) {
       var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
-      if (!t) return;
+      if (!t || (el.contains && !el.contains(t))) return;
       if (t.getAttribute("data-act") === "connect") connect(t);
       if (t.getAttribute("data-act") === "retry") load();
     });
+
+    load();
+    return { reload: load };
+  }
+
+  /* Staff carry ?client_id= on a nav link. The query goes before any #tab. */
+  function withClientHref(href, cid) {
+    var parts = String(href).split("#");
+    var base = parts[0].split("?")[0] + "?client_id=" + encodeURIComponent(cid);
+    return parts.length > 1 ? base + "#" + parts.slice(1).join("#") : base;
+  }
+
+  /* ── the standalone page (/app/money.html) — a thin shell ──────────────── */
+  function init() {
+    var el = root.document.getElementById("money-root");
+    if (!el) return;
     /* Staff open this page with ?client_id=. Carry it on the money nav so the
        next money page opens on the same file instead of asking whose it is. */
     if (param("client_id")) {
       var navLinks = root.document.querySelectorAll(".mnav a[href]");
       for (var i = 0; i < navLinks.length; i++) {
-        navLinks[i].setAttribute("href", navLinks[i].getAttribute("href").split("?")[0] +
-          "?client_id=" + encodeURIComponent(param("client_id")));
+        navLinks[i].setAttribute("href", withClientHref(navLinks[i].getAttribute("href"), param("client_id")));
       }
     }
     var back = root.document.getElementById("money-back");
@@ -622,13 +646,17 @@
       back.setAttribute("href", "finance-os.html?client_id=" + encodeURIComponent(param("client_id")));
       back.textContent = "Back to Finance OS";
     }
-    load();
+    mount(el, { clientId: param("client_id") });
   }
+
+  root.FinanceOS = root.FinanceOS || {};
+  root.FinanceOS.sections = root.FinanceOS.sections || {};
+  root.FinanceOS.sections.overview = { title: "Overview", mount: mount };
 
   root.FHMoney = {
     money: money, day: day, pct: pct, isEmpty: isEmpty, render: render,
     renderFull: renderFull, renderEmpty: renderEmpty, renderError: renderError,
-    renderLoading: renderLoading, classify: classify
+    renderLoading: renderLoading, classify: classify, mount: mount
   };
 
   if (root.document && root.document.getElementById) {

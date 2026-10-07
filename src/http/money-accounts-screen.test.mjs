@@ -54,9 +54,9 @@ test("the page loads money-accounts.js, carries the shared Money nav, and keeps 
   assert.match(HTML, /<script defer src="money-accounts\.js"><\/script>/);
   assert.doesNotMatch(HTML, /src="shell\.js"/);
   const hrefs = [...HTML.matchAll(/<nav class="mnav"[\s\S]*?<\/nav>/g)][0][0].match(/href="([^"]+)"/g).map((h) => h.slice(6, -1));
-  assert.deepEqual(hrefs, ["/app/money.html", "/app/money-accounts.html", "/app/money-credit.html",
-    "/app/money-connections.html", "/app/money-payments.html", "/app/money-setup.html"]);
-  assert.match(HTML, /href="\/app\/money-accounts\.html" aria-current="page"/);
+  assert.deepEqual(hrefs, ["/app/financeos.html#overview", "/app/financeos.html#accounts", "/app/financeos.html#credit",
+    "/app/financeos.html#connections", "/app/financeos.html#payments", "/app/financeos.html#setup"]);
+  assert.match(HTML, /href="\/app\/financeos\.html#accounts" aria-current="page"/);
   assert.match(JS, /"\/api\/money\/accounts"/);
   assert.match(JS, /\/api\/banking\/link-token/);
   assert.match(JS, /\/api\/banking\/link-exchange/);

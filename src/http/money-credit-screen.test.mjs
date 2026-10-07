@@ -38,10 +38,10 @@ test("the shared money nav, in the board's order, with Credit as the current pag
   const nav = HTML.match(/<nav class="mnav"[\s\S]*?<\/nav>/)[0];
   const hrefs = nav.match(/href="([^"]+)"/g).map((h) => h.slice(6, -1));
   assert.deepEqual(hrefs, [
-    "/app/money.html", "/app/money-accounts.html", "/app/money-credit.html",
-    "/app/money-connections.html", "/app/money-payments.html", "/app/money-setup.html"
+    "/app/financeos.html#overview", "/app/financeos.html#accounts", "/app/financeos.html#credit",
+    "/app/financeos.html#connections", "/app/financeos.html#payments", "/app/financeos.html#setup"
   ]);
-  assert.match(nav, /href="\/app\/money-credit\.html" aria-current="page">Credit</);
+  assert.match(nav, /href="\/app\/financeos\.html#credit" aria-current="page">Credit</);
   assert.equal((nav.match(/aria-current="page"/g) || []).length, 1);
 });
 

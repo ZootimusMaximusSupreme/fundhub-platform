@@ -15,6 +15,10 @@
  *
  * Every render function returns an HTML string and touches no DOM, so
  * src/http/money-setup-screen.test.mjs runs them in Node against fixtures.
+ *
+ * ONE PAGE (owner change 2026-10-06): this file is the Setup section of
+ * /app/financeos.html — window.FinanceOS.sections.setup.mount(el, ctx).
+ * money-setup.html is a thin shell that mounts the same section.
  */
 (function (root) {
   "use strict";
@@ -269,63 +273,77 @@
       : "/portal-login.html";
   }
 
-  function qs() {
-    var cid = param("client_id");
-    return cid ? "?client_id=" + encodeURIComponent(cid) : "";
-  }
+  /* ── the section ───────────────────────────────────────────────────────────
+     window.FinanceOS.sections.setup.mount(el, ctx) — the one-page FinanceOS
+     (/app/financeos.html) mounts this into its Setup tab. No header, no nav:
+     only the section. ctx = { clientId, apiGet(path), apiPost(path, body) };
+     apiGet/apiPost resolve to { status, body }. Any of them may be left out,
+     and the section then uses its own fetch and ?client_id= from the URL.
+     Returns { reload } so the host can refresh it. */
+  function mount(el, ctx) {
+    ctx = ctx || {};
+    var get = typeof ctx.apiGet === "function" ? ctx.apiGet : function (p) { return call("GET", p); };
+    var post = typeof ctx.apiPost === "function" ? ctx.apiPost : function (p, b) { return call("POST", p, b); };
+    var cid = ctx.clientId || param("client_id") || "";
+    var qs = cid ? "?client_id=" + encodeURIComponent(cid) : "";
 
-  function paint(html) {
-    var el = root.document.getElementById("setup-root");
-    if (el) el.innerHTML = html;
-  }
+    function paint(html) { el.innerHTML = html; }
 
-  function load() {
-    paint(renderLoading());
-    return call("GET", PATH + qs()).then(function (res) {
-      var kind = classify(res);
-      if (kind === "signin") { root.location.href = signInUrl(); return; }
-      if (kind !== "ok") { paint(renderError(kind)); return; }
-      paint(render(res.body));
-    });
-  }
+    function load() {
+      paint(renderLoading());
+      return Promise.resolve(get(PATH + qs)).then(function (res) {
+        var kind = classify(res);
+        if (kind === "signin") { root.location.href = signInUrl(); return; }
+        if (kind !== "ok") { paint(renderError(kind)); return; }
+        paint(render(res.body));
+      });
+    }
 
-  function act(btn, action, busyLabel) {
-    var box = btn.parentNode;
-    var m = box && box.querySelector(".act-msg");
-    var label = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = busyLabel;
-    if (m) m.textContent = "";
-    var body = { action: action };
-    if (param("client_id")) body.client_id = param("client_id");
-    call("POST", PATH + qs(), body).then(function (res) {
-      var url = res.body && (res.body.checkout_url || res.body.approve_url);
-      if (res.status === 200 && res.body && res.body.ok === true && res.body.already_paid) { load(); return; }
-      if (res.status === 200 && url) { root.location.href = url; return; }
-      btn.disabled = false;
-      btn.textContent = label;
-      if (m) m.textContent = actWords(res, action === "start_checkout" ? "checkout" : "soft-pull");
-    });
-  }
+    function act(btn, action, busyLabel) {
+      var box = btn.parentNode;
+      var m = box && box.querySelector(".act-msg");
+      var label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = busyLabel;
+      if (m) m.textContent = "";
+      var body = { action: action };
+      if (cid) body.client_id = cid;
+      Promise.resolve(post(PATH + qs, body)).then(function (res) {
+        var url = res.body && (res.body.checkout_url || res.body.approve_url);
+        if (res.status === 200 && res.body && res.body.ok === true && res.body.already_paid) { load(); return; }
+        if (res.status === 200 && url) { root.location.href = url; return; }
+        btn.disabled = false;
+        btn.textContent = label;
+        if (m) m.textContent = actWords(res, action === "start_checkout" ? "checkout" : "soft-pull");
+      });
+    }
 
-  function init() {
-    var el = root.document.getElementById("setup-root");
-    if (!el) return;
     el.addEventListener("click", function (e) {
       var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
-      if (!t) return;
+      if (!t || (el.contains && !el.contains(t))) return;
       var a = t.getAttribute("data-act");
       if (a === "retry") load();
       if (a === "checkout") act(t, "start_checkout", "Opening checkout…");
       if (a === "soft-pull") act(t, "request_soft_pull", "Opening the form…");
     });
-    /* Staff carry ?client_id= on the money nav, and go back to Finance OS. */
+
+    load();
+    return { reload: load };
+  }
+
+  /* ── the standalone page (/app/money-setup.html) — a thin shell ────────── */
+  function init() {
+    var el = root.document.getElementById("setup-root");
+    if (!el) return;
+    /* Staff carry ?client_id= on the money nav, and go back to Finance OS.
+       The query goes before any #tab, so /app/financeos.html#setup keeps it. */
     var cid = param("client_id");
     if (cid) {
       var navLinks = root.document.querySelectorAll(".mnav a[href]");
       for (var i = 0; i < navLinks.length; i++) {
-        navLinks[i].setAttribute("href", navLinks[i].getAttribute("href").split("?")[0] +
-          "?client_id=" + encodeURIComponent(cid));
+        var parts = navLinks[i].getAttribute("href").split("#");
+        var href = parts[0].split("?")[0] + "?client_id=" + encodeURIComponent(cid);
+        navLinks[i].setAttribute("href", parts.length > 1 ? href + "#" + parts.slice(1).join("#") : href);
       }
       var back = root.document.getElementById("money-back");
       if (back) {
@@ -333,12 +351,16 @@
         back.textContent = "Back to Finance OS";
       }
     }
-    load();
+    mount(el, { clientId: cid });
   }
+
+  root.FinanceOS = root.FinanceOS || {};
+  root.FinanceOS.sections = root.FinanceOS.sections || {};
+  root.FinanceOS.sections.setup = { title: "Setup", mount: mount };
 
   root.FHMoneySetup = {
     price: price, render: render, renderLoading: renderLoading, renderError: renderError,
-    primaryKey: primaryKey, classify: classify, actWords: actWords
+    primaryKey: primaryKey, classify: classify, actWords: actWords, mount: mount
   };
 
   if (root.document && root.document.getElementById) {
