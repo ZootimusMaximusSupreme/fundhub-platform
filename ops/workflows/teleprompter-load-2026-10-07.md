@@ -4,7 +4,7 @@ Board for one job: get Chris's scripts into the live teleprompter.
 
 | Unit | Owner | Status |
 |---|---|---|
-| Load the scripts sent to Paul + the /watch VSL + thank-you video, and open a shoot | Cursor | pending |
+| Load the 11 ads sent to Paul (penthouse included) + the /watch VSL + thank-you video, and open a shoot | Cursor | pending |
 
 ## What was measured (Claude, 2026-10-07)
 
@@ -28,7 +28,7 @@ Board: ops/workflows/teleprompter-load-2026-10-07.md. Mark the unit claimed befo
 GOAL
 The live teleprompter (https://fundhub.ai/app/teleprompter.html) shows nothing. It plays only the scripts on the open shoot, and there is no shoot. The scripts Chris needs to film are not in the database. Fix that.
 
-THE SCRIPTS — 12, in this film order. Copy the words exactly. Do not change a word.
+THE SCRIPTS — 13, in this film order. Copy the words exactly. Do not change a word.
 From marketing/ads/scripts/book-a-call-final-2026-10-03.md:
   1. Script 4 — Tool analogy, the hammer on the flat tire
   2. Ad 19 — Over and over (broad, film first)
@@ -40,25 +40,25 @@ From marketing/ads/scripts/book-a-call-final-2026-10-03.md:
   8. Script 2 — Notes green screen
   9. Ad 9 — The bank
  10. Scale without your own cash
+ 11. The penthouse (Chris wants it again, 2026-10-07, even though it was filmed 2026-10-04)
 From marketing/ads/reference/vsl-scripts-latest.md:
- 11. /watch VSL (book-a-call)
- 12. /watch thank-you video
-Skip section 11 of the book-a-call file (The penthouse). It was filmed 2026-10-04.
+ 12. /watch VSL (book-a-call)
+ 13. /watch thank-you video
 
 STEPS
 1. Copy the pattern of scripts/ad-scripts-load-locked.mjs into a new script, scripts/ad-scripts-load-book-a-call.mjs. Same shape: dry-run by default, --apply to write, runs through asStaff, safe to re-run (skip any title that already has a live script).
-2. Each script is one ad_scripts row: status 'locked', source 'import', offer_key 'funding_dfy', title = the section name above, body = only the spoken words. Strip "Shoot:" and "Marks:" lines, tables and film notes. Keep CAPS, blank-line pauses and ↑ marks — the teleprompter reads those. hook_text = the first spoken paragraph. For 11 and 12 use the script_type the table allows for a VSL (read the check constraint; do not add a new value).
+2. Each script is one ad_scripts row: status 'locked', source 'import', offer_key 'funding_dfy', title = the section name above, body = only the spoken words. Strip "Shoot:" and "Marks:" lines, tables and film notes. Keep CAPS, blank-line pauses and ↑ marks — the teleprompter reads those. hook_text = the first spoken paragraph. For 12 and 13 use the script_type the table allows for a VSL (read the check constraint; do not add a new value).
 3. Scripts 7 and 8 (Notes green screen) are bullets. Set style 'bullets' and put the talking points in parts as cues, the way public/app/teleprompter.js isBullets() and paragraphsFor() read them. Everything else rolls as plain text.
-4. Ad numbers: the next free numbers above the highest in BOTH ad_scripts and marketing/ads/registry.json (today that is 92 to 103). Never reuse a low number like 9, 14, 16 or 19 — registry.json already uses 16 and 26, and low numbers collide with old utm_content clicks. Keep Chris's label in the title so he still sees "Ad 19 — Over and over".
-5. Dry-run. Check all 12 rows. Then --apply against production DATABASE_URL from .env.
+4. Ad numbers: the next free numbers above the highest in BOTH ad_scripts and marketing/ads/registry.json (today that is 92 to 104). Never reuse a low number like 9, 14, 16 or 19 — registry.json already uses 16 and 26, and low numbers collide with old utm_content clicks. Keep Chris's label in the title so he still sees "Ad 19 — Over and over".
+5. Dry-run. Check all 13 rows. Then --apply against production DATABASE_URL from .env.
 6. Open the shoot through the store, not raw SQL: writeShoot() in src/marketing/shoot-store.mjs inside an asStaff transaction, create move, root_script_ids in the order above. That also sets film_order.
-7. Prove it: GET /api/marketing/shoot returns the shoot with all 12 in order. Then open https://fundhub.ai/app/teleprompter.html signed in as staff (Playwright) and confirm the first script rolls: "Where your file is right now determines the tool you need..." Take one marked screenshot (red box on the first line).
+7. Prove it: GET /api/marketing/shoot returns the shoot with all 13 in order. Then open https://fundhub.ai/app/teleprompter.html signed in as staff (Playwright) and confirm the first script rolls: "Where your file is right now determines the tool you need..." Take one marked screenshot (red box on the first line).
 8. Commit the new script locally. Push with node scripts/github-push-whole-repo.mjs. Mark the board unit done and list every row written (ad_id + title) under "Manifest".
 
 DO NOT
 - Do not change any script's words.
 - Do not touch ads 84–91 or the shoot rules.
-- Do not load Ads 21–26, the penthouse, or anything not listed above.
+- Do not load Ads 21–26 or anything not listed above.
 - Do not delete anything.
 
 REPORT (4th grade English, short)
