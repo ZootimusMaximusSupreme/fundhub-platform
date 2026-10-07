@@ -227,3 +227,30 @@ round done). Status: `none` / `requested` / `csm_assigned` / `done`. One
 `money_agent_log` row per round (`ready_to_fund`, key `ready-to-fund:<client>:r<n>`).
 For a Blueprint buyer the sweeper reads that same row, so after the CSM's call it
 alerts the closer exactly as before. A FinanceOS-only client stops at the CSM.
+
+## 9. What W6 built against §4 (wave 5, unit W6)
+
+The consumer is `src/finance/money-agent-tasks.mjs`; the money agent is `agents` FOS-01
+(migration 465, shadow — it never texts). Flow: `docs/journeys/money-helper-flow.md`.
+
+- **Claim** — `claimAgentTask(db, { includeApproved })` is §4.1's statement, `claimed_by =
+  'money-helper'`. The Mac runner (`npm run money:run-queue`) works one row per look
+  (`sweepAgentTasks`, max 1) between chat turns. There is no cron: the Mac is where the AI runs
+  today (no API credit).
+- **No-money agent rows** (`queued`) — `runAgentTask` opens a `task` turn on the helper thread
+  (`money_helper_turns.task_id`), so the client sees what the helper did and which brain did
+  it. The helper may: set a reminder or a plan step (plan source `agent`), open a CSM task,
+  propose a transfer through `proposeTransfer` (task key `helper:<turn id>`, source
+  `money-helper`, the account it would come from kept in `detail` as a suggestion only), or
+  mark the row in progress. Finish: `done` (+ `task_done`), `failed` with
+  `result.client_message` in plain words (+ `task_failed`), or **left `claimed`** with
+  `result.in_progress: true` when the helper did its part and a step is still the client's —
+  "in progress" in §3's words is `claimed`; there is no other state for it.
+- **Approved money rows** — only W7's engine sends them, unchanged. `runAgentTask(db, row, {
+  engine })` takes it as a function; with no engine wired in (today), `claimAgentTask` does not
+  take approved rows at all, so W7 can run them itself. W6 never moves money.
+- **`needs_approval` rows** — never touched.
+- **Gap to know about**: a proposal the helper makes from the chat uses task key
+  `helper:<turn>`, which matches none of §1's task ids, so W5's "What to do next" list does not
+  show it. W7's approve control must also list these rows (or the chat gets its own) before a
+  client can say yes to one.

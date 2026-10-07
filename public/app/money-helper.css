@@ -59,10 +59,11 @@
 
 /* what the helper did — one card each, under its answer */
 .fh-helper .acts{display:flex;flex-direction:column;gap:8px;width:100%}
-.fh-helper .act{display:flex;align-items:flex-start;gap:8px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink)}
+.fh-helper .act{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink)}
 .fh-helper .ic{display:inline-flex;flex:0 0 auto;width:16px;height:24px;align-items:center}
 .fh-helper .ic svg{display:block;width:16px;height:16px}
-.fh-helper .act-main{display:flex;flex-direction:column;flex:1 1 auto;min-width:0}
+/* The words get room first: on a narrow card the status pill drops to its own line. */
+.fh-helper .act-main{display:flex;flex-direction:column;flex:1 1 200px;min-width:0}
 .fh-helper .act-t{font-weight:600}
 .fh-helper .pill{flex:0 0 auto;display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;white-space:nowrap;color:var(--text-dim);background:var(--surface)}
 /* A proposal that waits on the client: literal amber so it stays a "look

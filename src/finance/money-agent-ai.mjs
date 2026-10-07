@@ -72,7 +72,7 @@ export const HELPER_PROMPT = `You are the FinanceOS Money Helper at Fundhub. You
 WHAT YOU DO
 - Say what is due soon, which card is carrying the most, what is late, and what to pay first. Use only the numbers in FACTS.
 - Help the client keep their plan: set a reminder, put a dated step on their plan, or mark a task they handed you as in progress.
-- If they ask you to move money, you can only PROPOSE a transfer between two of their own accounts. Nothing moves until the client approves that exact transfer with its "Do task" button. Say that every time you propose one.
+- If they ask you to move money, you can only PROPOSE a transfer between two of their own accounts. Nothing moves until the client approves that exact transfer. Say that every time you propose one.
 - If the client is struggling, stop advising and hand the work to their client success manager (CSM) with create_csm_task. Struggling means: they say they cannot pay, a payment is late and they have no way to pay it, or they ask for a person.
 
 HARD RULES
@@ -89,13 +89,13 @@ ACTIONS
 - create_reminder: date (YYYY-MM-DD, today or later), title, detail (or null), amount_cents from FACTS (or null).
 - schedule_pin: a dated step on the client's plan. date, pin_kind (open_account, deposit, pay_down, apply, due, checkpoint, other), title, detail (or null), amount_cents from FACTS (or null).
 - create_csm_task: hand work to the client's CSM. title and detail say what the person should do.
-- mark_task_in_progress: task_id from OPEN TASKS, once you have done your part of a task the client handed you.
-- propose_transfer: from_account_id (a bank account in FACTS cash), to_account_id (a card, loan or bank account in FACTS), amount_cents (from FACTS or the client's message, never more than the from account's available cash), reason.
+- mark_task_in_progress: task_id from OPEN TASKS, when you did your part of a task the client handed you but a step is still theirs. A task you finish needs no action.
+- propose_transfer: from_account_id (the bank account in FACTS cash you suggest it comes from), to_account_id (a card, loan or bank account in FACTS), amount_cents (from FACTS or the client's message, never more than that bank account's available cash), reason. The client approves it and picks the account it comes from.
 - no_action.`;
 
 export const HELPER_GUARDRAILS = Object.freeze({
   block: "Never move money: only propose a transfer the client approves with Do task. Never invent a number: every number comes from the client's own records or the client's message. Quote UnderwriteIQ word for word. Promise no approval, funding amount or score change. Struggling (cannot pay, late with no way to pay, asks for a person) goes to the CSM. STOP on: stop, unsubscribe, lawyer, attorney, lawsuit, legal action.",
-  stop_words: ["stop", "stopall", "unsubscribe", "cancel", "end", "quit", "stop texting", "stop texting me", "do not text me", "don't text me", "no more texts", "opt out"],
+  stop_words: ["stop", "stopall", "unsubscribe", "cancel", "end", "quit", "stop texting", "quit texting", "stop messaging me", "stop sending me", "stop contacting me", "do not text me", "don't text me", "do not message me", "don't message me", "no more texts", "no more messages", "opt out", "opt-out", "remove me from"],
   triggers: [],
   escalation: { path: "halt", after: "1", when: "lawyer, attorney, lawsuit, sue, legal action" },
   authority: { disc: 0, msgcap: 3, pay: false, contract: false, book: false, pull: false },
@@ -203,9 +203,12 @@ function daysUntil(today, iso) {
    ═════════════════════════════════════════════════════════════════════════
    STOP is matched the way the SMS inbound path matches it
    (src/handlers/comms.mjs STOP_KEYWORDS): the WHOLE message is the word, after
-   trimming — "stop" is a STOP, "how do I stop overspending" is a question. A
-   stop PHRASE ("stop texting me", "opt out") counts anywhere in the message.
-   A lawyer is matched anywhere, as a word. */
+   trimming — "stop" is a STOP, "how do I stop overspending" is a question.
+   Two more ways count, because people do not text like a keyword list (the
+   role-play's own client wrote "STOP. pls quit texting me", 2026-10-07): a
+   message that OPENS with a stop word followed by a stop mark ("STOP." / "Stop!"
+   / "quit -"), and a stop PHRASE anywhere ("quit texting", "opt out",
+   "unsubscribe"). A lawyer is matched anywhere, as a word. */
 
 /** The SMS opt-out words — the same set src/handlers/comms.mjs honours. */
 export const SMS_STOP_KEYWORDS = Object.freeze(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"]);
@@ -220,11 +223,15 @@ const PERSON_RE = new RegExp([
   String.raw`\b(please|can you|could you|can someone|somebody|someone)\s+call\s+me\b`
 ].join("|"), "i");
 const CANT_PAY_RE = /\b(can'?t|cannot|can not|unable to|won'?t be able to|not able to|couldn'?t)\s+(pay|afford|cover|make\s+(the|my|this|that|a)\s+payment)\b|\bno money\b|\bi'?m broke\b/i;
-const MOVE_MONEY_RE = /\b(move|transfer|send|wire|deposit)\b[^.?!]*(\$\s?\d|\bmoney\b|\bfunds\b|\bcash\b|\bit\b)|\b(can|could|will|would)\s+you\s+(please\s+)?(pay|move|transfer|send|wire)\b|\b(pay|pay off)\b[^.?!]*\bfor me\b/i;
+const MOVE_MONEY_RE = /\b(move|transfer|send|wire|deposit)\b[^.?!]*(\$\s?\d|\bmoney\b|\bfunds\b|\bcash\b|\bit\b)|\b(can|could|will|would)\s+you\s+(please\s+)?(pay|move|transfer|send|wire)\b|\b(pay|pay off)\b[^.?!]*\bfor me\b|\b(i approve|you have my (ok|okay|approval)|just do it|go ahead and (move|pay|send|transfer))\b/i;
+const REMIND_RE = /\bremind(er)?\b/i;
+const THANKS_RE = /^\s*(thanks|thank you|thank u|thx|ty|ok|okay|cool|great|got it|sounds good)[\s.!]*$/i;
 
 /**
- * classifyInbound(text, guardrails) → 'stop' | 'legal' | 'person' | 'cant_pay' | 'move_money' | 'question'
- * In that order: a STOP wins over everything.
+ * classifyInbound(text, guardrails) →
+ *   'stop' | 'legal' | 'person' | 'cant_pay' | 'move_money' | 'remind' | 'thanks' | 'question'
+ * In that order: a STOP wins over everything. Only the first three skip the
+ * model; the rest only shape what the rules brain says when it answers.
  */
 export function classifyInbound(input, guardrails = HELPER_GUARDRAILS) {
   const raw = String(input || "");
@@ -235,11 +242,16 @@ export function classifyInbound(input, guardrails = HELPER_GUARDRAILS) {
   const singles = words.filter((w) => !/\s/.test(w));
   const phrases = words.filter((w) => /\s/.test(w));
   if (SMS_STOP_KEYWORDS.includes(whole.toUpperCase()) || singles.includes(whole)) return "stop";
+  const opener = /^\s*["'“]?([a-z]+)\s*[.!,;:\-–—]/.exec(lower);
+  if (opener && (SMS_STOP_KEYWORDS.includes(opener[1].toUpperCase()) || singles.includes(opener[1]))) return "stop";
+  if (/\bunsubscribe\b/.test(lower)) return "stop";
   if (phrases.some((p) => lower.includes(p))) return "stop";
   if (LEGAL_RE.test(raw)) return "legal";
   if (PERSON_RE.test(raw)) return "person";
   if (CANT_PAY_RE.test(raw)) return "cant_pay";
   if (MOVE_MONEY_RE.test(raw)) return "move_money";
+  if (REMIND_RE.test(raw)) return "remind";
+  if (THANKS_RE.test(raw)) return "thanks";
   return "question";
 }
 
@@ -383,6 +395,7 @@ const TOKEN_RE = new RegExp([
   String.raw`(?<md>\b(?<mon>jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(?<mday>\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(?<myear>\d{4})\b)?)`,
   String.raw`(?<slash>\b(?<sm>\d{1,2})\/(?<sd>\d{1,2})(?:\/(?<sy>\d{2,4}))?\b)`,
   String.raw`(?<money>\$\s?(?<mval>\d[\d,]*(?:\.\d+)?)(?:\s?(?<msuf>k|m)\b)?)`,
+  String.raw`(?<kmoney>\b(?<kval>\d+(?:\.\d+)?)\s?(?<ksuf>k|K)\b)`,
   String.raw`(?<pct>(?<pval>\b\d+(?:\.\d+)?)\s?%)`,
   String.raw`(?<ord>\b(?<oval>\d{1,2})(?:st|nd|rd|th)\b)`,
   String.raw`(?<num>\b\d[\d,]*(?:\.\d+)?\b)`
@@ -432,6 +445,9 @@ export function tokenize(input, today) {
       else out.push({ token: g.slash, kind: "num", value: g.slash });
     } else if (g.money) {
       out.push({ token: g.money.trim(), kind: "money", value: centsOf(g.mval, g.msuf), whole: !String(g.mval).includes(".") && !g.msuf, suffixed: !!g.msuf });
+    } else if (g.kmoney) {
+      // "20k" with no "$" — how people write money in a text.
+      out.push({ token: g.kmoney.trim(), kind: "money", value: centsOf(g.kval, g.ksuf), whole: false, suffixed: true });
     } else if (g.pct) {
       out.push({ token: g.pct, kind: "pct", value: Number(g.pval) });
     } else if (g.ord) {
@@ -552,17 +568,35 @@ const AUTHORITY_RES = [
 ];
 const LEGAL_WORDS_RE = /\b(attorney|lawyer|sue|lawsuit|legal action)\b/i;
 
-/** replyProblems(reply, { tip }) → plain problem codes ([] when clean). */
-export function replyProblems(reply, { tip = null } = {}) {
+/* A hedge is not a promise. "They are not a guarantee" and "I can't tell you
+   if you will get approved" are the helper REFUSING to promise — the
+   role-play's client pushed for one and the first version of this check
+   blocked both answers (2026-10-07). Only these exact shapes are taken out;
+   "I can't promise, but you will get approved" still reads as a promise. */
+function withoutHedges(s) {
+  return String(s)
+    .replace(/\b(can'?t|cannot|can not|won'?t|don'?t|do not|never|no one can|nobody can)\s+(promise|guarantee|tell you|say|know|predict)(\s+(you\s+)?that|\s+if|\s+whether)?\s+(or not\s+)?you('ll|’ll| will| are going to|'re going to|’re going to)\s+(definitely\s+)?(get|be)\s+(approved|funded|pre-?approved|accepted)\b/gi, " ")
+    .replace(/\b(if|whether)\s+(or not\s+)?you('ll|’ll| will| are going to|'re going to|’re going to)\s+(definitely\s+)?(get|be)\s+(approved|funded|pre-?approved|accepted)\b/gi, " ")
+    .replace(/\b(not|no|never|isn'?t|aren'?t|wasn'?t|without)\s+(a\s+|any\s+)?guarantee(s|d)?\b/gi, " ")
+    .replace(/\b(can'?t|cannot|can not|won'?t|don'?t|do not|never)\s+guarantee(s|d)?\b/gi, " ");
+}
+
+/**
+ * replyProblems(reply, { tip, tipQuotedBefore }) → plain problem codes ([] when clean).
+ * tipQuotedBefore: the helper already quoted the tip word for word earlier in
+ * this chat, so naming "the UnderwriteIQ tip" again is a reference, not a
+ * rewording.
+ */
+export function replyProblems(reply, { tip = null, tipQuotedBefore = false } = {}) {
   const out = [];
   const s = String(reply || "");
-  if (PROMISE_RES.some((re) => re.test(s))) out.push("promise_words");
+  if (PROMISE_RES.some((re) => re.test(withoutHedges(s)))) out.push("promise_words");
   if (MOVED_RES.some((re) => re.test(s))) out.push("claims_money_moved");
   if (AUTHORITY_RES.some((re) => re.test(s))) out.push("no_authority");
   if (LEGAL_WORDS_RE.test(s)) out.push("legal_topic");
   if (/underwrite\s?iq/i.test(s)) {
     if (!tip) out.push("underwriteiq_with_no_tip");
-    else if (!s.includes(tip)) out.push("underwriteiq_not_word_for_word");
+    else if (!s.includes(tip) && !tipQuotedBefore) out.push("underwriteiq_not_word_for_word");
   }
   return out;
 }
@@ -644,7 +678,7 @@ export function validateAction(a, { today, allowed, accounts, openTasks }) {
     ok: true,
     action: {
       type, from_account_id: fromId, to_account_id: toId, amount_cents: a.amount_cents,
-      from_name: from.name, to_name: to.name, reason: reason || detail || null
+      from_name: from.name, to_name: to.name, to_type: to.type, reason: reason || detail || null
     }
   };
 }
@@ -697,9 +731,12 @@ export function validateAnswer(raw, ctx) {
     const badInAction = groundingProblems(words, allowed, { today: ctx.today });
     if (badInAction.length) { problems.push(`number_not_in_facts_in_${a.type}: ${badInAction.map((t) => t.token).slice(0, 3).join(", ")}`); break; }
   }
-  for (const p of replyProblems(reply, { tip: ctx.tip })) problems.push(p);
+  for (const p of replyProblems(reply, { tip: ctx.tip, tipQuotedBefore: !!ctx.tipQuotedBefore })) problems.push(p);
   if (actions.some((a) => a.type === "propose_transfer") && !/approv/i.test(reply)) problems.push("transfer_without_approval_words");
-  if (ctx.intent === "cant_pay" && !actions.some((a) => a.type === "create_csm_task")) problems.push("struggling_without_csm_task");
+  /* A struggling client gets a person — once. When this chat already opened a
+     CSM task, saying "I can't pay" again needs no second one (the role-play
+     caught the duplicate, 2026-10-07). */
+  if (ctx.intent === "cant_pay" && !ctx.csmAlready && !actions.some((a) => a.type === "create_csm_task")) problems.push("struggling_without_csm_task");
 
   return { ok: problems.length === 0, reply, actions, problems };
 }
@@ -714,7 +751,19 @@ export const STOP_REPLY = "Got it. I will not text you again, and I will stop he
 export const LEGAL_REPLY = "I will stop here. A person from Fundhub will reach out to you.";
 export const PERSON_REPLY = "I asked your client success manager to reach out to you. A person has it now.";
 export const CANT_PAY_REPLY = "Thank you for telling me. I asked your client success manager to help you make a plan. A person will reach out.";
-export const MOVE_MONEY_REPLY = "I can't move money. You stay in charge of every payment.";
+export const MOVE_MONEY_REPLY = "I can't move money, and an OK in this chat does not move it either. You stay in charge of every payment.";
+export const THANKS_REPLY = "You're welcome. I'm here when you need me.";
+
+/** The next payment (not a bill) at least a day away, for a reminder. */
+function nextPayment(facts, today) {
+  return list(facts.coming_up_30_days).find((u) => u.type !== "bill" && u.on && daysUntil(today, u.on) >= 1) || null;
+}
+
+/** "$135.00" (a facts string) → 13500, or null. */
+function centsFromWords(s) {
+  const t = tokenize(String(s || ""), null).find((x) => x.kind === "money");
+  return t && Number.isSafeInteger(t.value) && t.value > 0 ? t.value : null;
+}
 
 function upcomingSentence(facts) {
   const items = list(facts.coming_up_30_days).filter((u) => u.type !== "bill").slice(0, 2);
@@ -748,12 +797,19 @@ function csm(title, detail) {
   return { type: "create_csm_task", title, detail };
 }
 
+export const CSM_ALREADY_REPLY = "Thank you for telling me. Your client success manager already has this, and a person will reach out.";
+
+/** True when an earlier turn of this chat already opened a CSM task. */
+export function csmAlreadyIn(thread = []) {
+  return list(thread).some((t) => list(t && t.actions).some((a) => a && a.type === "create_csm_task" && a.status !== "failed"));
+}
+
 /**
- * rulesAnswer({ intent, kind, input, task, facts, openTasks, today }) →
+ * rulesAnswer({ intent, kind, input, task, facts, openTasks, today, csmAlready }) →
  *   { reply, actions, halt: null | 'stop' | 'legal' }
  * actions here are already in the validated shape.
  */
-export function rulesAnswer({ intent, kind = "message", input = "", task = null, facts = {}, openTasks = [], today } = {}) {
+export function rulesAnswer({ intent, kind = "message", input = "", task = null, facts = {}, openTasks = [], today, csmAlready = false } = {}) {
   if (intent === "stop") return { reply: STOP_REPLY, actions: [], halt: "stop" };
   if (intent === "legal") {
     return { reply: LEGAL_REPLY, actions: [csm("Client mentioned a lawyer to the money helper", `The money helper stopped. Their words: ${clip(input, 300)}`)], halt: "legal" };
@@ -762,17 +818,31 @@ export function rulesAnswer({ intent, kind = "message", input = "", task = null,
     return { reply: PERSON_REPLY, actions: [{ ...csm("Client asked for a person (money helper)", clip(input, 500)), ask_for_person: true }], halt: null };
   }
   if (intent === "cant_pay") {
+    if (csmAlready) return { reply: CSM_ALREADY_REPLY, actions: [], halt: null };
     return { reply: CANT_PAY_REPLY, actions: [csm("Client says they cannot pay (money helper)", `Help them make a plan. Their words: ${clip(input, 300)}`)], halt: null };
   }
   if (kind === "task" && task) return rulesTaskAnswer({ task, facts, openTasks, today });
   if (intent === "move_money") {
     return { reply: `${MOVE_MONEY_REPLY} ${upcomingSentence(facts) || ""} If you want a person to help you plan it, ask me for a person.`.replace(/\s+/g, " ").trim(), actions: [], halt: null };
   }
+  if (intent === "thanks") return { reply: THANKS_REPLY, actions: [], halt: null };
+  if (intent === "remind") {
+    const next = nextPayment(facts, today);
+    if (next) {
+      const on = addDaysIso(next.on, -1);
+      return {
+        reply: `I set a reminder for ${shortDate(on)}, the day before ${next.what} is due on ${shortDate(next.on)}${next.amount ? ` (${next.amount})` : ""}. You still make the payment yourself.`,
+        actions: [{ type: "create_reminder", date: on, pin_kind: "due", title: `Pay ${clip(next.what, 140)}`, detail: null, amount_cents: centsFromWords(next.amount) }],
+        halt: null
+      };
+    }
+  }
   return { reply: summaryReply(facts), actions: [], halt: null };
 }
 
-/** A Do-task press the rules brain answers: a reminder the day before a dated
- *  task, else a person. Either way the task is marked in progress. */
+/** A Do-task row the rules brain answers: a reminder the day before a dated
+ *  task (marked in progress — paying is still the client's step), else a
+ *  person (the helper's part is then done). */
 function rulesTaskAnswer({ task, facts, openTasks, today }) {
   const open = list(openTasks).find((t) => t.task_id === String(task.id));
   const mark = open ? [{ type: "mark_task_in_progress", task_id: open.task_id, title: open.title }] : [];
@@ -790,8 +860,8 @@ function rulesTaskAnswer({ task, facts, openTasks, today }) {
     };
   }
   return {
-    reply: `I can't do "${title}" on my own, so I gave it to your client success manager. I marked this task in progress.`,
-    actions: [csm(`Do task: ${title}`, clip(task.detail, 500)), ...mark],
+    reply: `I can't do "${title}" on my own, so I gave it to your client success manager.`,
+    actions: [csm(`Do task: ${title}`, clip(task.detail, 500))],
     halt: null
   };
 }
@@ -924,10 +994,13 @@ export async function decideTurn({
   const { facts, accounts, openTasks, tip } = buildFacts(context);
   const today = facts.today;
   const intent = turn.kind === "task" ? "task" : classifyInbound(turn.input, agent.guardrails || HELPER_GUARDRAILS);
-  /* The allow-list: the facts, plus the client's own words — a typed message,
-     or the task they pressed (its title, detail and amount are theirs to ask
-     about). Anything else the model writes is a number it made up. */
+  /* The allow-list: the facts, plus the client's own words — this message and
+     the ones before it in the chat, or the task they pressed (its title,
+     detail and amount are theirs to ask about). Anything else the model writes
+     is a number it made up. (The role-play found the gap this closes: a client
+     who said "$20k" a message earlier had the helper's "$20,000" blocked.) */
   const allowed = collectAllowed(facts, today);
+  collectAllowed(list(thread).map((t) => t && t.input), today, allowed);
   if (turn.kind === "task" && turn.task) {
     collectAllowed([turn.task.title, turn.task.detail, turn.task.due_on], today, allowed);
     if (isCents(turn.task.amount_cents)) allowed.cents.add(turn.task.amount_cents);
@@ -936,8 +1009,9 @@ export async function decideTurn({
   }
   const ai = { attempted: false, ok: false, error: null, raw: null, problems: [], request: null };
 
+  const csmAlready = csmAlreadyIn(thread);
   const rules = (reason) => {
-    const r = rulesAnswer({ intent, kind: turn.kind, input: turn.input, task: turn.task, facts, openTasks, today });
+    const r = rulesAnswer({ intent, kind: turn.kind, input: turn.input, task: turn.task, facts, openTasks, today, csmAlready });
     return { brain: BRAIN_RULES, model: null, reply: r.reply, actions: r.actions, halt: r.halt, intent, reason, facts, allowed, ai };
   };
 
@@ -953,7 +1027,8 @@ export async function decideTurn({
     return rules(`ai_unavailable: ${res.error}`);
   }
   ai.raw = res.json;
-  const v = validateAnswer(res.json, { today, allowed, accounts, openTasks, intent, tip });
+  const tipQuotedBefore = !!tip && list(thread).some((t) => t && typeof t.reply === "string" && t.reply.includes(tip));
+  const v = validateAnswer(res.json, { today, allowed, accounts, openTasks, intent, tip, csmAlready, tipQuotedBefore });
   if (!v.ok) {
     ai.problems = v.problems;
     return rules(`ai_blocked: ${v.problems.slice(0, 4).join("; ")}`);

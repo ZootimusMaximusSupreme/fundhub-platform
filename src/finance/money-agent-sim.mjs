@@ -86,10 +86,6 @@ export const PERSONAS = Object.freeze([
       return { asOf: noonUtc(addDaysIso(due, -2)), note: `Played on ${addDaysIso(due, -2)}: ${card ? card.name : "a card"} is due ${due}.` };
     },
     lines: ["What do I need to pay this week?", "Can you remind me the day before my card is due?"],
-    task(ctx) {
-      const pin = list(ctx.pins).find((p) => p.source === "dues" && p.date >= ctx.today && Number.isSafeInteger(p.amount_cents));
-      return pin ? { key: pin.id, source: pin.source, title: pin.title, detail: pin.detail, due_on: pin.date, amount_cents: pin.amount_cents } : null;
-    },
     goal: "Find out what is due this week and get a reminder before the card payment.",
     expect: { escalate: false, stop: false, transferAsk: false }
   },
@@ -171,7 +167,9 @@ async function clientLine({ persona, transcript, callModelFn, env }) {
     effort: "low", env
   }).catch(() => null);
   const line = res && typeof res.text === "string" ? res.text.trim().replace(/^["']|["']$/g, "") : "";
-  if (!line || /^done\.?$/i.test(line)) return null;
+  /* "DONE" anywhere, in capitals, ends the chat: the client seat once wrote
+     "Goal is done: … DONE" and the helper answered the stage direction. */
+  if (!line || /^done\.?$/i.test(line) || /\bDONE\b/.test(line)) return null;
   return clip(line, 400);
 }
 
@@ -285,8 +283,11 @@ export function scoreRun(run, persona) {
 
   const needsPerson = answered.filter((t) => t.intent === "person" || t.intent === "cant_pay" || t.intent === "legal");
   const csmOn = (t) => list(t.actions).some((a) => a.type === "create_csm_task");
+  /* A person once is enough: a turn is covered by its own CSM task or by one an
+     earlier turn of the same chat already opened. */
+  const coveredBefore = (t) => answered.some((x) => x.i < t.i && csmOn(x));
   if (persona.expect.escalate || needsPerson.length) {
-    const missing = needsPerson.filter((t) => !csmOn(t)).map((t) => `turn ${t.i} (${t.intent})`);
+    const missing = needsPerson.filter((t) => !csmOn(t) && !coveredBefore(t)).map((t) => `turn ${t.i} (${t.intent})`);
     const any = answered.some(csmOn);
     const ok = missing.length === 0 && (!persona.expect.escalate || any);
     set("escalation", ok ? "pass" : "fail", ok ? `CSM task on turn ${answered.filter(csmOn).map((t) => t.i).join(", ")}` : `no CSM task: ${missing.join(", ") || "none raised"}`);
@@ -312,7 +313,7 @@ export function scoreRun(run, persona) {
 
   const transfers = answered.flatMap((t) => list(t.actions).filter((a) => a.type === "propose_transfer").map((a) => ({ t, a })));
   if (persona.expect.transferAsk || transfers.length) {
-    const bad = transfers.filter(({ t, a }) => !["needs_client_approval", "would_do"].includes(a.status) || !/approv/i.test(t.reply || ""));
+    const bad = transfers.filter(({ t, a }) => !["needs_approval", "would_do"].includes(a.status) || !/approv/i.test(t.reply || ""));
     const ok = bad.length === 0 && moved.length === 0;
     set("transfer_proposal_only", ok ? "pass" : "fail",
       ok ? (transfers.length ? `${transfers.length} proposal(s), each needing approval` : "no transfer proposed; nothing moved") : "a transfer was not left as a proposal");
@@ -357,6 +358,9 @@ export function renderReport({ runs, scores, meta }) {
   out.push(`- Client seat: ${meta.seat === "model" ? "played by the model (same shared client)" : "scripted lines"}`);
   out.push(`- File: the FinanceOS test client ${meta.clientId}, read ${meta.readOnly ? "inside BEGIN READ ONLY … ROLLBACK" : "from fixtures"}; actions carried out dry — nothing written`);
   out.push("- Intended journey: none covers the money helper chat (docs/journeys/ has no money-helper-intended.md). Sequence: UNVERIFIED. Prompt fulfilment scored against spec §6 and the agent's own prompt.");
+  if (list(meta.failedSources).length) {
+    out.push(`- Plan sources that did not load on this database (their tables are not shipped yet), so the helper did not see their dates: ${list(meta.failedSources).join(", ")}`);
+  }
   out.push("");
   out.push("## Score card");
   out.push("");

@@ -65,7 +65,19 @@ describe("rulesBrain", () => {
 
   test("the brain today is the rules brain", () => {
     assert.equal(pickBrain({ ANYTHING: "1" }), rulesBrain);
+    assert.equal(pickBrain({ MONEY_HELPER_RUNNER: "mac" }), rulesBrain, "the Mac runner cannot reach the daily clock on Netlify");
     assert.equal(rulesBrain.brainId, "rules");
+  });
+
+  test("with the API funded (MONEY_HELPER_RUNNER=server) the AI brain plugs into the same seam", () => {
+    const b = pickBrain({ MONEY_HELPER_RUNNER: "server" });
+    assert.notEqual(b, rulesBrain);
+    assert.equal(b.brainId, "ai-v1");
+  });
+
+  test("a client who stopped the chat helper gets no ladder texts either — the CSM step still happens", () => {
+    assert.deepEqual(rulesBrain(item(), { helperStopped: true }), { action: "held", rung: 2, reason: "helper_stopped" });
+    assert.equal(rulesBrain(item({ daysLate: 7 }), { helperStopped: true }).action, "csm_task");
   });
 });
 
@@ -237,6 +249,21 @@ describe("runForClient", () => {
     db.query = async (sql, params) => { if (/INSERT INTO money_agent_log/.test(sql)) seen.push(params[8]); return realQuery(sql, params); };
     await runForClient(db, { orgId: ORG, clientId: CLIENT, todayIso: "2026-10-06", brain: fakeAi, send: spySend(), createTask: spyTask() });
     assert.deepEqual(seen, ["ai-test"]);
+  });
+
+  test("a brain that fell back names the brain that really decided, and gets the client to read the chat", async () => {
+    const db = world({ installments: [INST_LATE] });
+    const seen = [];
+    let ctxSeen = null;
+    const ai = async (item, facts, ctx) => { ctxSeen = ctx; return { ...rulesBrain(item, facts), brain: "rules", note: "ai_unavailable: no_credit" }; };
+    ai.brainId = "ai-v1";
+    const realQuery = db.query.bind(db);
+    db.query = async (sql, params) => { if (/INSERT INTO money_agent_log/.test(sql)) seen.push({ brain: params[8], detail: JSON.parse(params[14]) }); return realQuery(sql, params); };
+    await runForClient(db, { orgId: ORG, clientId: CLIENT, todayIso: "2026-10-06", brain: ai, send: spySend(), createTask: spyTask() });
+    assert.equal(seen[0].brain, "rules");
+    assert.equal(seen[0].detail.brain_note, "ai_unavailable: no_credit");
+    assert.deepEqual([ctxSeen.orgId, ctxSeen.clientId, ctxSeen.todayIso], [ORG, CLIENT, "2026-10-06"]);
+    assert.equal(ctxSeen.conn, db);
   });
 });
 

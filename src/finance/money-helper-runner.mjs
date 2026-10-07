@@ -13,7 +13,11 @@
 //     processTurn — the same function the server path runs — with every model
 //     call routed to Claude Code (routeModelCallsToClaudeCode). The child never
 //     sees ANTHROPIC_API_KEY, so nothing is billed to the API;
-//   * looks again at once after a turn, every 3 seconds when nothing waits.
+//   * works the "Do task" rows W5's queue holds for the agent
+//     (src/finance/money-agent-tasks.mjs sweepAgentTasks, contract
+//     docs/finance/money-agent-tasks.md §4): no-money rows only — an approved
+//     money row is W7's engine's to send, and none is wired in here;
+//   * looks again at once after work, every 3 seconds when nothing waits.
 //
 // STOPPING (Ctrl-C): every turn this process holds goes back in the queue, the
 // `claude` children are ended, and the heartbeat is marked stale so the app
@@ -21,6 +25,7 @@
 
 import os from "node:os";
 import { claimNextTurn, requeueTurn, reclaimStale, processTurn, beat, bridgeOff, loadAgent } from "./money-helper.mjs";
+import { sweepAgentTasks } from "./money-agent-tasks.mjs";
 import { routeModelCallsToClaudeCode, stopClaudeCodeCalls } from "../agents/claude-code.mjs";
 
 /** How long to wait between looks when nothing was waiting. Short: a person is waiting on "Thinking…". */
@@ -44,7 +49,7 @@ function realSleep(ms, signal) {
 /**
  * makeHelperRunner({ db, env, log, deps }) → { run({ once }), stop(), running }
  * deps (tests): claimNextTurn, requeueTurn, reclaimStale, processTurn, beat, bridgeOff,
- * loadAgent, sleep, now, stopCalls, route, setInterval, clearInterval.
+ * loadAgent, sweepAgentTasks, sleep, now, stopCalls, route, setInterval, clearInterval.
  * @param {{ db: any, env?: Record<string, any>, log?: (line: string) => void, deps?: any }} opts
  */
 export function makeHelperRunner({ db, env = process.env, log = (l) => console.log(l), deps = {} }) {
@@ -55,6 +60,7 @@ export function makeHelperRunner({ db, env = process.env, log = (l) => console.l
   const beatFn = deps.beat || beat;
   const offFn = deps.bridgeOff || bridgeOff;
   const agentOf = deps.loadAgent || loadAgent;
+  const sweepTasks = deps.sweepAgentTasks || sweepAgentTasks;
   const sleep = deps.sleep || realSleep;
   const now = deps.now || (() => new Date());
   const stopCalls = deps.stopCalls || stopClaudeCodeCalls;
@@ -109,9 +115,15 @@ export function makeHelperRunner({ db, env = process.env, log = (l) => console.l
     }
     if (stopping) return ran;
     const turn = await claim(db);
-    if (!turn) return ran;
-    await answer(turn, { useAi: true });
-    return ran + 1;
+    if (turn) {
+      await answer(turn, { useAi: true });
+      ran += 1;
+    }
+    if (stopping) return ran;
+    // "Do task" rows: one per look, so a waiting chat turn is never stuck
+    // behind a pile of tasks. No engine: approved money rows are not ours.
+    const t = await sweepTasks(db, { max: 1, env, now: now(), useAi: true, logLine: log });
+    return ran + ((t && t.ran) || 0);
   }
 
   return {

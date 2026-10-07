@@ -1,16 +1,16 @@
 // GET  /api/money/helper[?client_id=<uuid>]
 // POST /api/money/helper  { action: "send", message, client_id? }
-//                         { action: "do_task", task: { key, source, title, detail?, due_on?, amount_cents? }, client_id? }
 //
 // The FinanceOS Money Helper's chat (FinanceOS.sections.helper, /app/money-helper.html):
 // the thread — every message, every answer, what the helper did, and which
 // brain answered (the AI through the shared model client, or the rules) — and
-// the two ways to start a turn: type a message, or press "Do task" on an item
-// (the consumer contract: docs/finance/money-agent-tasks.md).
+// sending a message. "Do task" is pressed on W5's list (POST /api/money/tasks);
+// a row the helper works there shows up in this thread as a 'task' turn
+// (src/finance/money-agent-tasks.mjs, docs/finance/money-agent-tasks.md §4).
 //
 // The work lives in src/finance/money-helper.mjs (routing, the queue, the
-// writes), src/finance/money-agent-ai.mjs (the brain and its checks) and
-// src/finance/money-agent-tasks.mjs (Do task). This file gates and fetches.
+// writes) and src/finance/money-agent-ai.mjs (the brain and its checks). This
+// file gates and fetches.
 //
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
 //   * a signed-in CLIENT reads and writes their own thread only. client_id
@@ -32,10 +32,9 @@ import { dbDown } from "../../src/http/db-down.mjs";
 import {
   loadAgent, helperIsOn, threadState, readThread, viewTurn, bridgeStatus, answerOrphans, submitMessage
 } from "../../src/finance/money-helper.mjs";
-import { runAgentTask } from "../../src/finance/money-agent-tasks.mjs";
 import { runnerMode } from "../../src/finance/money-agent-ai.mjs";
 
-const ACTIONS = new Set(["send", "do_task"]);
+const ACTIONS = new Set(["send"]);
 
 /** Who is asking, and for which file. Same block as api/money/payments.mjs. */
 async function scope(req, res, { database, gate, body }) {
@@ -102,7 +101,7 @@ export async function helperPayload(database, { orgId, clientId, staff = false, 
 }
 
 const ERROR_STATUS = {
-  message_required: 400, message_too_long: 400, invalid_task: 400, invalid_requester: 400,
+  message_required: 400, message_too_long: 400,
   helper_off: 409, helper_stopped: 409, too_many: 429
 };
 
@@ -113,7 +112,6 @@ export default async function handler(req, res, deps = {}) {
   const env = deps.env || process.env;
   const build = deps.helperPayload || helperPayload;
   const send = deps.submitMessage || submitMessage;
-  const doTask = deps.runAgentTask || runAgentTask;
 
   const method = req.method || "GET";
   if (method !== "GET" && method !== "POST") {
@@ -143,23 +141,15 @@ export default async function handler(req, res, deps = {}) {
     const action = String(body.action || "");
     if (!ACTIONS.has(action)) return res.status(400).json({ ok: false, error: "unknown_action" });
 
-    const r = action === "send"
-      ? await send(database, {
-        orgId, clientId, input: body.message, actor: who.kind, staffId: who.staffId, env, now, deps: deps.helperDeps || {}
-      })
-      : await doTask(database, {
-        orgId, clientId, task: body.task, requestedBy: who.kind, staffId: who.staffId, env, now, deps: deps.helperDeps || {}
-      });
-
+    const r = await send(database, {
+      orgId, clientId, input: body.message, actor: who.kind, staffId: who.staffId, env, now, deps: deps.helperDeps || {}
+    });
     if (!r || !r.ok) {
       const error = (r && r.error) || "not_done";
       return res.status(ERROR_STATUS[error] || 409).json({ ok: false, error, message: (r && r.message) || null });
     }
-    // submitMessage hands back the stored row; runAgentTask an already-shaped turn.
-    const turn = r.turn ? ("org_id" in r.turn ? viewTurn(r.turn, { staff }) : r.turn) : null;
-    const out = { ok: true, action, queued: !!r.queued, turn };
-    if (action === "do_task") { out.created = !!r.created; out.task = r.task || null; }
-    return res.status(r.queued ? 202 : 200).json(out);
+    const turn = r.turn ? viewTurn(r.turn, { staff }) : null;
+    return res.status(r.queued ? 202 : 200).json({ ok: true, action, queued: !!r.queued, turn });
   } catch (e) {
     if (CLIENT_DATA_ERRORS.has(e && e.code)) return res.status(400).json({ ok: false, error: "invalid_parameter" });
     if (dbDown(res, e)) return;

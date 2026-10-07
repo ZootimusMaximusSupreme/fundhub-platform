@@ -65,12 +65,36 @@ if (brain === "bridge") {
 /* ── 1. every read, up front, read only ─────────────────────────────────── */
 const conn = new pg.Client({ connectionString: process.env.DATABASE_URL, statement_timeout: 20000 });
 await conn.connect();
-const db = { query: (sql, params) => conn.query(sql, params) };
+/* ONE STATEMENT AT A TIME, EACH IN ITS OWN SAVEPOINT. A plan source whose table
+   is not on this database yet (a unit merged but not shipped) fails its query;
+   in one transaction that would abort every read after it. A savepoint per
+   statement keeps the failure to that source — the same as the pooled
+   connection the app reads through, where one query cannot sink the next. The
+   reads are queued so two statements never share a savepoint. */
+let chain = Promise.resolve();
+const db = {
+  query(sql, params) {
+    const run = chain.then(async () => {
+      await conn.query("SAVEPOINT rp_read");
+      try {
+        const r = await conn.query(sql, params);
+        await conn.query("RELEASE SAVEPOINT rp_read");
+        return r;
+      } catch (err) {
+        await conn.query("ROLLBACK TO SAVEPOINT rp_read").catch(() => {});
+        throw err;
+      }
+    });
+    chain = run.catch(() => {});
+    return run;
+  }
+};
 let agent = { prompt: HELPER_PROMPT, guardrails: HELPER_GUARDRAILS, status: "shadow" };
 let promptSource = "migration 465 text (HELPER_PROMPT in src/finance/money-agent-ai.mjs) — agents FOS-01 is not on production until 465 ships";
 const personas = PERSONAS.filter((p) => !only.length || only.includes(p.id));
 const plans = [];
 const skipped = [];
+let failedSources = [];
 try {
   await conn.query("BEGIN READ ONLY");
   const c = await conn.query(`SELECT id, org_id FROM clients WHERE id = $1`, [clientId]);
@@ -83,6 +107,7 @@ try {
   }
   const base = await readContext(db, { orgId, clientId, asOf: new Date(), env: {}, helperTables: false });
   if (!base) throw new Error("the overview read came back empty");
+  failedSources = (base.pinSources || []).filter((s) => s && s.ok === false).map((s) => s.name);
   for (const p of personas) {
     const day = p.day(base);
     if (day.skip) { skipped.push({ id: p.id, title: p.title, reason: day.skip }); continue; }
@@ -115,7 +140,7 @@ const when = new Date().toISOString();
 const brainPath = brain === "bridge"
   ? "AI — callModel routed to Claude Code (claude -p) on this Mac; the rules brain answers any turn the AI could not or was blocked on"
   : brain === "stub" ? "stub model (no Claude) through callModel's place — plumbing only" : "rules brain only (no model)";
-const md = renderReport({ runs, scores, meta: { when, brainPath, seat: scripted ? "scripted" : "model", promptSource, clientId, readOnly: true, skipped } });
+const md = renderReport({ runs, scores, meta: { when, brainPath, seat: scripted ? "scripted" : "model", promptSource, clientId, readOnly: true, skipped, failedSources } });
 fs.mkdirSync(outDir, { recursive: true });
 const stamp = when.replace(/[:.]/g, "-");
 const mdPath = path.join(outDir, `roleplay-${stamp}.md`);

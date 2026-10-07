@@ -28,8 +28,10 @@
 //   reminders and plan steps   money_agent_pins (shows on the Plan, source 'agent')
 //   CSM tasks                  tasks via createTask, source_workflow 'money-agent'
 //                              (so the daily ladder holds its texts while a person has it)
-//   task progress              money_agent_tasks.status
-//   transfer PROPOSALS         money_transfer_proposals, needs_client_approval only
+//   task progress              money_agent_tasks.status → 'claimed' (W5's table, 464),
+//                              a no-money agent row only
+//   transfer PROPOSALS         W5's proposeTransfer (src/finance/money-transfer-seam.mjs):
+//                              a money_agent_tasks row at needs_approval, nothing else
 //   a STOP                     opt_outs (the same recordOptOut the SMS inbound path
 //                              uses) + money_helper_threads
 // It never moves money and never sends a text.
@@ -42,6 +44,7 @@ import { listClarityPayments } from "./clarity-payments.mjs";
 import { askForPerson as defaultAskForPerson } from "./money-agent.mjs";
 import { createTask as defaultCreateTask } from "../lib/create-task.mjs";
 import { recordOptOut as defaultRecordOptOut } from "../lib/opt-out.mjs";
+import { proposeTransfer as defaultProposeTransfer } from "./money-transfer-seam.mjs";
 import { recordShadow as defaultRecordShadow, recordRun as defaultRecordRun } from "../agents/shadow-log.mjs";
 import { byCode } from "../agents/registry.mjs";
 import { callModel as defaultCallModel } from "../agents/model.mjs";
@@ -67,6 +70,8 @@ export const MAX_INPUT_CHARS = 2000;
 export const INLINE_AI_TIMEOUT_MS = 18_000;
 /** Same source as src/finance/money-agent.mjs, so its ladder sees a person has it. */
 export const TASK_SOURCE = "money-agent";
+/** money_agent_tasks.claimed_by when the helper takes a "Do task" row. */
+export const TASK_CLAIMER = "money-helper";
 
 const isObj = (v) => v != null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -113,12 +118,20 @@ export async function readAgentPins(db, { orgId, clientId, from, to }) {
   return r.rows.map((p) => ({ ...p, amount_cents: centsOrNull(p.amount_cents) }));
 }
 
-const TASK_COLS = `id, task_key, source, title, detail, due_on::text AS due_on, amount_cents, status, requested_by, created_at`;
+/* "Do task" rows — money_agent_tasks, owned by W5 (migration 464,
+   docs/finance/money-agent-tasks.md). The helper sees only the rows it may
+   work: assignee 'agent', no money (a money row is a proposal waiting on the
+   client's own approval, never the helper's to touch), queued or already
+   claimed. `why` is the row's own reason, read as the task's detail. */
+const TASK_COLS = `id, task_key, kind, source, title, why AS detail, due_on::text AS due_on, amount_cents,
+                   status, assignee, moves_money, to_kind, to_account_id, requested_by_kind,
+                   requested_by_staff_id, claimed_by, created_at`;
 
 export async function listOpenTasks(db, { orgId, clientId }) {
   const r = await db.query(
     `SELECT ${TASK_COLS} FROM money_agent_tasks
-      WHERE org_id = $1 AND client_id = $2 AND status IN ('queued', 'in_progress')
+      WHERE org_id = $1 AND client_id = $2 AND assignee = 'agent' AND moves_money = false
+        AND status IN ('queued', 'claimed')
       ORDER BY created_at, id`,
     [orgId, clientId]
   );
@@ -318,19 +331,26 @@ export function actionLabel(a) {
     case "schedule_pin": return `On your plan for ${shortDate(a.date) || a.date}: ${a.title}${amt}`;
     case "create_csm_task": return "Your client success manager has a task to reach out";
     case "mark_task_in_progress": return `Marked in progress: ${a.title || "your task"}`;
-    case "propose_transfer": return `Transfer proposal: ${dollars(a.amount_cents)} from ${a.from_name} to ${a.to_name} — needs your approval`;
+    case "propose_transfer": return `Transfer proposal: ${dollars(a.amount_cents)} to ${a.to_name}, from ${a.from_name} — needs your approval`;
     case "halt": return a.reason === "stop" ? "Texts stopped. The helper will not text you." : "The helper stopped. A person will follow up.";
     default: return KIND_WORDS[a.pin_kind] || "Done";
   }
 }
 
+/** The account type the overview read gave → W5's TransferDestination. */
+const TO_KIND = { depository: "bank_account", credit: "card", loan: "loan" };
+
 /**
- * executeActions(db, { orgId, clientId, turnId, todayIso, actions, dry, deps }) → results
+ * executeActions(db, { orgId, clientId, turnId, todayIso, actor, staffId, actions, dry, deps }) → results
  * dry:true (the role-play) writes nothing and returns status 'would_do'.
+ * deps: { createTask, askForPerson, proposeTransfer }.
  */
-export async function executeActions(db, { orgId, clientId, turnId, todayIso, actions = [], dry = false, deps = {} } = {}) {
+export async function executeActions(db, {
+  orgId, clientId, turnId, todayIso, actor = "client", staffId = null, actions = [], dry = false, deps = {}
+} = {}) {
   const createTask = deps.createTask || defaultCreateTask;
   const ask = deps.askForPerson || defaultAskForPerson;
+  const propose = deps.proposeTransfer || defaultProposeTransfer;
   const out = [];
   let n = 0;
   for (const a of list(actions)) {
@@ -365,25 +385,43 @@ export async function executeActions(db, { orgId, clientId, turnId, todayIso, ac
           out.push({ ...base, status: "done", ref_id: (r && r.id) || null });
         }
       } else if (a.type === "mark_task_in_progress") {
+        /* In progress, in W5's words, is 'claimed': the helper holds the row.
+           Only a no-money agent row — a money row is a proposal that waits on
+           the client's own approval (464 refuses a money row claimed without it). */
         const r = await db.query(
-          `UPDATE money_agent_tasks SET status = 'in_progress'
-            WHERE id = $1 AND org_id = $2 AND client_id = $3 AND status = 'queued'
+          `UPDATE money_agent_tasks
+              SET status = 'claimed', claimed_by = COALESCE(claimed_by, $4), claimed_at = COALESCE(claimed_at, now())
+            WHERE id = $1 AND org_id = $2 AND client_id = $3
+              AND assignee = 'agent' AND moves_money = false AND status IN ('queued', 'claimed')
             RETURNING id`,
-          [a.task_id, orgId, clientId]
+          [a.task_id, orgId, clientId, TASK_CLAIMER]
         );
         out.push({ ...base, status: r.rows[0] ? "done" : "skipped", ref_id: a.task_id });
       } else if (a.type === "propose_transfer") {
-        /* A PROPOSAL. Nothing here moves money; the money-movement unit (W7)
-           owns approval and the transfer, behind the client's own Do task press
-           on this exact proposal. */
-        const r = await db.query(
-          `INSERT INTO money_transfer_proposals (org_id, client_id, turn_id, from_account_id, to_account_id, amount_cents, reason, idempotency_key)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (idempotency_key) DO NOTHING
-           RETURNING id, status`,
-          [orgId, clientId, turnId, a.from_account_id, a.to_account_id, a.amount_cents, clip(a.reason, 500), key]
-        );
-        out.push({ ...base, status: "needs_client_approval", ref_id: (r.rows[0] && r.rows[0].id) || null });
+        /* A PROPOSAL, through W5's one seam (src/finance/money-transfer-seam.mjs):
+           one money_agent_tasks row at needs_approval with the exact amount and
+           where the money goes. Nothing moves; the client picks the account it
+           comes from when they approve (W7). The account the helper named is
+           kept in the row's detail as a suggestion only. */
+        const toKind = TO_KIND[a.to_type] || null;
+        const r = toKind ? await propose(db, {
+          orgId, clientId,
+          taskKey: `helper:${turnId}`,
+          kind: toKind === "bank_account" ? "deposit" : "pay_down",
+          title: `Move ${dollars(a.amount_cents)} to ${a.to_name}`,
+          why: clip(a.reason, 300),
+          dueOn: null,
+          source: "money-helper",
+          amountCents: a.amount_cents,
+          toKind,
+          toAccountId: a.to_account_id,
+          requestedByKind: actor === "staff" ? "staff" : "client",
+          requestedByStaffId: actor === "staff" ? staffId : null,
+          detail: { by: "money-helper", turn_id: turnId, suggested_from_account_id: a.from_account_id, suggested_from_name: a.from_name }
+        }) : { ok: false, reason: "bad_destination" };
+        out.push(r && r.ok
+          ? { ...base, status: r.status || "needs_approval", ref_id: r.proposalId || null }
+          : { ...base, status: "failed", error: (r && r.reason) || "not_saved" });
       } else {
         out.push({ ...base, status: "skipped" });
       }
@@ -411,7 +449,7 @@ async function markFailed(db, turn, reason) {
 /**
  * processTurn(db, turn, opts) → the turn row as written.
  * opts: { env, now, useAi, fallbackReason, agent, timeoutMs, callModelFn, deps }
- * deps: { createTask, askForPerson, recordOptOut, recordShadow, recordRun }.
+ * deps: { createTask, askForPerson, proposeTransfer, recordOptOut, recordShadow, recordRun, readContext }.
  * The turn must be one this caller holds (status running).
  */
 export async function processTurn(db, turn, {
@@ -421,13 +459,14 @@ export async function processTurn(db, turn, {
   const recordShadow = deps.recordShadow || defaultRecordShadow;
   const recordRun = deps.recordRun || defaultRecordRun;
   const optOut = deps.recordOptOut || defaultRecordOptOut;
+  const read = deps.readContext || readContext;
   const orgId = turn.org_id;
   const clientId = turn.client_id;
   const who = agent || await loadAgent(db, { orgId });
 
   let context;
   try {
-    context = await readContext(db, { orgId, clientId, asOf: now, env });
+    context = await read(db, { orgId, clientId, asOf: now, env });
   } catch (err) {
     return markFailed(db, turn, `context_failed: ${clip(err && err.message ? err.message : err, 200)}`);
   }
@@ -442,7 +481,8 @@ export async function processTurn(db, turn, {
   });
 
   const results = await executeActions(db, {
-    orgId, clientId, turnId: turn.id, todayIso: context.today, actions: decision.actions, deps
+    orgId, clientId, turnId: turn.id, todayIso: context.today, actor: turn.actor, staffId: turn.staff_id || null,
+    actions: decision.actions, deps
   });
   if (decision.halt) {
     await haltThread(db, { orgId, clientId, reason: decision.halt });
@@ -450,13 +490,6 @@ export async function processTurn(db, turn, {
        through the one sanctioned writer (src/lib/opt-out.mjs). */
     if (decision.halt === "stop") await optOut(db, clientId, orgId, "sms", "money_helper");
     results.push({ type: "halt", by: "system", reason: decision.halt, status: "done", label: actionLabel({ type: "halt", reason: decision.halt }) });
-  }
-  if (task && results.some((r) => r.type === "create_csm_task" && r.status === "done")) {
-    await db.query(
-      `UPDATE money_agent_tasks SET status = 'handed_to_csm'
-        WHERE id = $1 AND org_id = $2 AND client_id = $3 AND status IN ('queued', 'in_progress')`,
-      [task.id, orgId, clientId]
-    );
   }
 
   const status = decision.halt ? "halted" : "answered";

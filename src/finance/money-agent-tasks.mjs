@@ -1,144 +1,202 @@
-// "Do task" — the client hands one item from "What to do next" to the money
-// helper. This is the consumer; the contract is docs/finance/money-agent-tasks.md.
+// "Do task" — the money agent's side of W5's queue. The press, the queue table
+// and the transfer seam are W5's (migration 464, src/finance/money-tasks.mjs,
+// src/finance/money-transfer-seam.mjs); the contract is
+// docs/finance/money-agent-tasks.md §4. This file is what the agent does with a
+// row, and nothing else.
 //
 // Owner (2026-10-06): "AI tells you exactly what to do; press Do task to assign
-// actions to AI agents." W5 builds the buttons; this file is what a press does:
+// actions to AI agents." Money moves only with the client's approval of that
+// exact transfer.
 //
-//   runAgentTask(db, { orgId, clientId, task, requestedBy, staffId, env, now })
-//     1. checks the item (validateTask) and that the helper is on and not stopped;
-//     2. writes one money_agent_tasks row — or, when that item is already open
-//        (queued or in progress), hands back the open one and starts nothing
-//        new, so a double press is one task;
-//     3. starts a 'task' turn on the helper thread through the same routing a
-//        typed message takes (src/finance/money-helper.mjs routeTurn): the Mac
-//        runner's AI, the server's AI, or the rules brain.
+//   claimAgentTask(db, { includeApproved })   one row, oldest first, FOR UPDATE
+//                                             SKIP LOCKED → status 'claimed'
+//   runAgentTask(db, row, opts)               work one claimed row
+//   sweepAgentTasks(db, opts)                 claim and work up to N rows (the
+//                                             Mac runner calls it every cycle)
 //
-// What the helper can do with a task is its closed action set and nothing else:
-// a reminder, a plan step, a CSM task, a transfer PROPOSAL that needs the
-// client's own approval, and "marked in progress". It never moves money.
+// WHAT A ROW BECOMES
+//   no money (queued → claimed)   a 'task' turn on the helper thread: the AI
+//                                 (or the rules brain) works it with the closed
+//                                 action set — a reminder, a plan step, a CSM
+//                                 task, a transfer PROPOSAL through W5's seam.
+//                                 Finished 'done' with the helper's words in
+//                                 result.client_message, or left 'claimed' when
+//                                 the helper marked it in progress (a step is
+//                                 still the client's), or 'failed' with plain
+//                                 words when the helper could not work it.
+//   money (approved → claimed)    only W7's engine sends money, with the row's
+//                                 own amount and accounts. W6 never moves money:
+//                                 without an engine wired in, approved rows are
+//                                 not claimed at all, so W7 can run them itself.
+//   needs_approval                never touched — it waits on the client.
+//
+// Every finish writes one money_agent_log row (464's words): task_done or
+// task_failed, item_kind money_task, actor agent with the brain that answered,
+// key money-task:<row id>:<action>.
 
+import { logMoneyAction as defaultLog } from "./clarity-payments.mjs";
 import {
-  loadAgent, helperIsOn, threadState, routeTurn, viewTurn
+  loadAgent, helperIsOn, threadState, insertTurn, processTurn, TASK_CLAIMER
 } from "./money-helper.mjs";
-import { parseIsoDate } from "../banking/statement-cycles.mjs";
 
-export const SOURCE_RE = /^[a-z0-9-]{2,40}$/;
+/** The longest client_message W5's page shows. */
+export const CLIENT_MESSAGE_MAX = 200;
 
-export class TaskInputError extends Error {
-  constructor(message, code = "invalid_task") {
-    super(message);
-    this.code = code;
-  }
-}
+const clip = (s, n) => (s == null ? null : String(s).replace(/\s+/g, " ").trim().slice(0, n));
+const list = (v) => (Array.isArray(v) ? v : []);
 
-const text = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+const FAIL_WORDS = {
+  helper_off: "The money helper is not switched on right now. A person from Fundhub can help with this.",
+  helper_stopped: "The money helper stopped for this account, so a person from Fundhub will follow up.",
+  turn_failed: "The money helper could not work on this. Press Do task again later, or ask for a person.",
+  engine_failed: "This payment could not be sent. Nothing moved. A person from Fundhub will look at it."
+};
 
 /**
- * validateTask(raw) → { key, source, title, detail, due_on, amount_cents }
- * Throws TaskInputError with words a person can fix.
+ * claimAgentTask(db, { includeApproved, claimedBy }) → the claimed row, or null.
+ * The contract's own claim (§4.1). includeApproved is true only when a money
+ * engine (W7) is wired in.
  */
-export function validateTask(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new TaskInputError("task must be an object");
-  const key = text(raw.key);
-  if (!key || key.length > 200) throw new TaskInputError("task.key is required (the item's own id, 200 characters or fewer)");
-  const source = text(raw.source);
-  if (!source || !SOURCE_RE.test(source)) throw new TaskInputError("task.source is required (lower-case words and dashes, like dues or next-steps)");
-  const title = text(raw.title);
-  if (!title || title.length > 200) throw new TaskInputError("task.title is required (200 characters or fewer)");
-  const detail = text(raw.detail);
-  if (detail && detail.length > 1000) throw new TaskInputError("task.detail is too long");
-  let dueOn = null;
-  if (raw.due_on !== undefined && raw.due_on !== null && raw.due_on !== "") {
-    if (!parseIsoDate(String(raw.due_on))) throw new TaskInputError("task.due_on must be a date like 2026-10-15");
-    dueOn = String(raw.due_on);
-  }
-  let amount = null;
-  if (raw.amount_cents !== undefined && raw.amount_cents !== null && raw.amount_cents !== "") {
-    const n = Number(raw.amount_cents);
-    if (!Number.isSafeInteger(n) || n <= 0) throw new TaskInputError("task.amount_cents must be whole cents above 0");
-    amount = n;
-  }
-  return { key, source, title, detail, due_on: dueOn, amount_cents: amount };
-}
-
-/** The open row for this item, if there is one. */
-async function openTaskByKey(db, { orgId, clientId, key }) {
+export async function claimAgentTask(db, { includeApproved = false, claimedBy = TASK_CLAIMER } = {}) {
   const r = await db.query(
-    `SELECT id, status FROM money_agent_tasks
-      WHERE org_id = $1 AND client_id = $2 AND task_key = $3 AND status IN ('queued', 'in_progress')
-      LIMIT 1`,
-    [orgId, clientId, key]
-  );
-  return r.rows[0] || null;
-}
-
-async function latestTurnFor(db, { orgId, clientId, taskId }) {
-  const r = await db.query(
-    `SELECT id, org_id, client_id, kind, actor, staff_id, input, task_id, status, reply, actions,
-            brain, model, reason, attempts, claimed_at, answered_at, created_at
-       FROM money_helper_turns
-      WHERE org_id = $1 AND client_id = $2 AND task_id = $3
-      ORDER BY created_at DESC LIMIT 1`,
-    [orgId, clientId, taskId]
+    `UPDATE money_agent_tasks SET status = 'claimed', claimed_by = $1, claimed_at = now()
+      WHERE id = (SELECT id FROM money_agent_tasks
+                   WHERE assignee = 'agent'
+                     AND (status = 'queued' OR ($2::boolean AND status = 'approved'))
+                   ORDER BY created_at, id
+                   FOR UPDATE SKIP LOCKED
+                   LIMIT 1)
+      RETURNING id, org_id, client_id, task_key, kind, title, why, due_on::text AS due_on, source,
+                assignee, status, moves_money, amount_cents, to_kind, to_account_id, from_account_id,
+                approved_at, requested_by_kind, requested_by_staff_id, claimed_by, claimed_at, detail, created_at`,
+    [claimedBy, includeApproved === true]
   );
   return r.rows[0] || null;
 }
 
 /**
- * runAgentTask(db, { orgId, clientId, task, requestedBy, staffId, env, now, deps, callModelFn })
- * → { ok: true, created, task: { id, status }, turn, queued }
- *   | { ok: false, error, message }
+ * finishTask(db, row, { status: 'done'|'failed', result, brain, todayIso, log })
+ * → { finished } — only a row this agent still holds ('claimed') is finished.
  */
-export async function runAgentTask(db, {
-  orgId, clientId, task, requestedBy = "client", staffId = null,
-  env = process.env, now = new Date(), deps = {}, callModelFn
-} = {}) {
-  let t;
-  try {
-    t = validateTask(task);
-  } catch (e) {
-    if (e instanceof TaskInputError) return { ok: false, error: e.code, message: e.message };
-    throw e;
-  }
-  if (requestedBy !== "client" && requestedBy !== "staff") return { ok: false, error: "invalid_requester", message: "requestedBy must be client or staff" };
-
-  const agent = await loadAgent(db, { orgId });
-  if (!helperIsOn(agent)) return { ok: false, error: "helper_off", message: "The money helper is not switched on." };
-  const state = await threadState(db, { orgId, clientId });
-  if (state.halted_at) return { ok: false, error: "helper_stopped", message: "The money helper stopped here. A person from Fundhub will follow up." };
-
-  const open = await openTaskByKey(db, { orgId, clientId, key: t.key });
-  if (open) {
-    const turn = await latestTurnFor(db, { orgId, clientId, taskId: open.id });
-    return { ok: true, created: false, task: { id: open.id, status: open.status }, turn: viewTurn(turn), queued: !!turn && turn.status === "queued" };
-  }
-
-  const ins = await db.query(
-    `INSERT INTO money_agent_tasks (org_id, client_id, task_key, source, title, detail, due_on, amount_cents, requested_by, staff_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10)
-     ON CONFLICT DO NOTHING
-     RETURNING id, status`,
-    [orgId, clientId, t.key, t.source, t.title, t.detail, t.due_on, t.amount_cents, requestedBy, staffId]
+export async function finishTask(db, row, { status, result = {}, brain = "rules", todayIso, log = defaultLog } = {}) {
+  if (status !== "done" && status !== "failed") throw new Error("finishTask: status must be done or failed");
+  const message = clip(result.client_message, CLIENT_MESSAGE_MAX);
+  const body = { ...result, client_message: message };
+  const upd = await db.query(
+    `UPDATE money_agent_tasks
+        SET status = $4, done_at = CASE WHEN $4 = 'done' THEN now() ELSE done_at END, result = $5::jsonb
+      WHERE id = $1 AND org_id = $2 AND client_id = $3 AND status = 'claimed'
+      RETURNING id`,
+    [row.id, row.org_id, row.client_id, status, JSON.stringify(body)]
   );
-  const row = ins.rows[0];
-  if (!row) {
-    /* Two presses raced: the other one won the open slot. Same answer as a
-       double press. */
-    const winner = await openTaskByKey(db, { orgId, clientId, key: t.key });
-    const turn = winner ? await latestTurnFor(db, { orgId, clientId, taskId: winner.id }) : null;
-    return { ok: true, created: false, task: winner ? { id: winner.id, status: winner.status } : null, turn: viewTurn(turn), queued: !!turn && turn.status === "queued" };
-  }
-
-  const r = await routeTurn(db, {
-    orgId, clientId, kind: "task", actor: requestedBy, staffId, input: `Do task: ${t.title}`,
-    taskId: row.id, intent: "task", agent, env, now, deps, callModelFn
+  if (!upd.rows[0]) return { finished: false };
+  const action = status === "done" ? "task_done" : "task_failed";
+  await log(db, {
+    orgId: row.org_id, clientId: row.client_id,
+    itemKind: "money_task", itemId: row.id, itemLabel: clip(row.title, 200),
+    decidedOn: todayIso || new Date().toISOString().slice(0, 10),
+    action, actor: "agent", brain: brain || "rules",
+    reason: message || action,
+    amountCents: row.amount_cents === null || row.amount_cents === undefined ? null : Number(row.amount_cents),
+    idempotencyKey: `money-task:${row.id}:${action}`,
+    detail: { task_key: row.task_key, turn_id: result.turn_id || null }
   });
-  const after = await db.query(`SELECT status FROM money_agent_tasks WHERE id = $1`, [row.id]);
-  return {
-    ok: true, created: true,
-    task: { id: row.id, status: (after.rows[0] && after.rows[0].status) || row.status },
-    turn: viewTurn(r.turn), queued: r.queued
+  return { finished: true };
+}
+
+/** Keep a row claimed (in progress) and say where it stands. */
+async function holdTask(db, row, result) {
+  await db.query(
+    `UPDATE money_agent_tasks SET result = $4::jsonb
+      WHERE id = $1 AND org_id = $2 AND client_id = $3 AND status = 'claimed'`,
+    [row.id, row.org_id, row.client_id, JSON.stringify({ ...result, client_message: clip(result.client_message, CLIENT_MESSAGE_MAX) })]
+  );
+}
+
+/**
+ * runAgentTask(db, row, opts) → { outcome: 'done'|'in_progress'|'failed'|'skipped', turn? }
+ * row: a money_agent_tasks row this agent claimed (claimAgentTask).
+ * opts: { env, now, useAi, fallbackReason, agent, callModelFn, deps, engine, log, processTurnFn }
+ * engine(db, row) → { ok, message? } — W7's sender for an APPROVED money row.
+ */
+export async function runAgentTask(db, row, {
+  env = process.env, now = new Date(), useAi = true, fallbackReason = null, agent = null,
+  callModelFn, deps = {}, engine = null, log = defaultLog, processTurnFn = processTurn
+} = {}) {
+  const todayIso = new Date(now).toISOString().slice(0, 10);
+  if (!row || row.status !== "claimed") return { outcome: "skipped" };
+
+  if (row.moves_money) {
+    /* Money: only the engine moves it, with the row's own amount and accounts.
+       W6 adds nothing and changes nothing. No engine → this row was never ours
+       to claim (claimAgentTask leaves approved rows alone without one). */
+    if (typeof engine !== "function") return { outcome: "skipped" };
+    let r;
+    try { r = await engine(db, row); } catch (err) { r = { ok: false, message: null, error: clip(err && err.message, 200) }; }
+    const ok = !!(r && r.ok);
+    await finishTask(db, row, {
+      status: ok ? "done" : "failed",
+      result: { client_message: ok ? (r.message || "Sent.") : (r && r.message) || FAIL_WORDS.engine_failed, engine_error: (r && r.error) || null },
+      brain: "rules", todayIso, log
+    });
+    return { outcome: ok ? "done" : "failed" };
+  }
+
+  const who = agent || await loadAgent(db, { orgId: row.org_id });
+  if (!helperIsOn(who)) {
+    await finishTask(db, row, { status: "failed", result: { client_message: FAIL_WORDS.helper_off }, brain: "rules", todayIso, log });
+    return { outcome: "failed" };
+  }
+  const state = await threadState(db, { orgId: row.org_id, clientId: row.client_id });
+  if (state.halted_at) {
+    await finishTask(db, row, { status: "failed", result: { client_message: FAIL_WORDS.helper_stopped }, brain: "rules", todayIso, log });
+    return { outcome: "failed" };
+  }
+
+  // A turn on the helper thread, so the client sees what was done and by which brain.
+  const turn = await insertTurn(db, {
+    orgId: row.org_id, clientId: row.client_id, kind: "task",
+    actor: row.requested_by_kind === "staff" ? "staff" : "client",
+    staffId: row.requested_by_staff_id || null,
+    input: `Do task: ${clip(row.title, 300)}`, taskId: row.id, status: "running"
+  });
+  const done = await processTurnFn(db, turn, { env, now, useAi, fallbackReason, agent: who, callModelFn, deps });
+
+  if (!done || done.status === "failed") {
+    await finishTask(db, row, { status: "failed", result: { client_message: FAIL_WORDS.turn_failed, turn_id: turn.id }, brain: "rules", todayIso, log });
+    return { outcome: "failed", turn: done };
+  }
+  const acts = list(done.actions);
+  const result = {
+    client_message: done.reply,
+    turn_id: turn.id,
+    brain: done.brain,
+    actions: acts.map((a) => ({ type: a.type, status: a.status }))
   };
+  const kept = acts.some((a) => a.type === "mark_task_in_progress" && String(a.task_id) === String(row.id) && a.status === "done");
+  if (kept) {
+    await holdTask(db, row, { ...result, in_progress: true });
+    return { outcome: "in_progress", turn: done };
+  }
+  await finishTask(db, row, { status: "done", result, brain: done.brain, todayIso, log });
+  return { outcome: "done", turn: done };
+}
+
+/**
+ * sweepAgentTasks(db, opts) → { ran, outcomes } — claim and work up to `max`
+ * rows. opts as runAgentTask, plus max and an optional logLine for the runner.
+ */
+export async function sweepAgentTasks(db, { max = 5, engine = null, logLine = () => {}, ...opts } = {}) {
+  const outcomes = [];
+  for (let i = 0; i < max; i++) {
+    const row = await claimAgentTask(db, { includeApproved: typeof engine === "function" });
+    if (!row) break;
+    logLine(`task ${String(row.id).slice(0, 8)} (${row.moves_money ? "money" : "no money"}) claimed`);
+    const r = await runAgentTask(db, row, { ...opts, engine });
+    outcomes.push({ id: row.id, outcome: r.outcome });
+    logLine(`task ${String(row.id).slice(0, 8)} ${r.outcome}`);
+  }
+  return { ran: outcomes.length, outcomes };
 }
 
 export default runAgentTask;
