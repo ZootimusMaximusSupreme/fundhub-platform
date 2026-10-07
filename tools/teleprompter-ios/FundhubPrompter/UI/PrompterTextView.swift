@@ -58,6 +58,8 @@ struct PrompterView: UIViewRepresentable {
 /// The dark glass: black, white words, an amber reading line. Rolls on v1's
 /// clock (PromptClock), flips for a beam-splitter rig, takes taps, drags,
 /// a long press to edit, and Bluetooth remote / keyboard keys.
+/// Thumb down moves the words up. Thumb up moves them down. A pause stops
+/// the words only. This view never stops the camera.
 final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDelegate {
     private let flipBox = UIView()
     private let textView = UITextView(usingTextLayoutManager: false)
@@ -87,6 +89,10 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
     private var countdownLeft: Double = 0
     private var userScrolling = false
     private var settingOffset = false
+    /// Reading-clock time where this thumb drag started, and how far the
+    /// thumb had already moved when the drag was recognized.
+    private var dragStartT: Double = 0
+    private var dragStartY: CGFloat = 0
 
     private var mode: RollMode = .paused {
         didSet {
@@ -96,7 +102,12 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
                 guard let self else { return }
                 if self.controller.mode != self.mode { self.controller.mode = self.mode }
             }
-            UIApplication.shared.isIdleTimerDisabled = (mode == .rolling || mode == .countdown || mode == .holding)
+            // Stay awake after a pause too. A pause is only the words. If the
+            // screen slept during an edit, the camera take would be cut.
+            // Leaving the script turns the wake lock off.
+            if mode == .rolling || mode == .countdown || mode == .holding || mode == .paused || mode == .scroll {
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
             countLabel.isHidden = mode != .countdown
             if !isRollingMode, let w = pendingWords {
                 pendingWords = nil
@@ -115,13 +126,17 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
     init(controller: PrompterController) {
         self.controller = controller
         super.init(frame: .zero)
+        overrideUserInterfaceStyle = .dark
         backgroundColor = .black
         flipBox.backgroundColor = .black
         addSubview(flipBox)
 
+        textView.overrideUserInterfaceStyle = .dark
         textView.backgroundColor = .black
+        textView.textColor = .white
         textView.isEditable = false
         textView.isSelectable = false
+        textView.isScrollEnabled = false
         textView.showsVerticalScrollIndicator = false
         textView.contentInsetAdjustmentBehavior = .never
         textView.textContainer.lineFragmentPadding = 0
@@ -158,9 +173,13 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         let long = UILongPressGestureRecognizer(target: self, action: #selector(longPress(_:)))
         long.minimumPressDuration = 0.55
         long.delegate = self
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
+        pan.delegate = self
+        pan.maximumNumberOfTouches = 1
         textView.addGestureRecognizer(single)
         textView.addGestureRecognizer(double)
         textView.addGestureRecognizer(long)
+        textView.addGestureRecognizer(pan)
 
         link = CADisplayLink(target: self, selector: #selector(tick(_:)))
         link?.add(to: .main, forMode: .common)
@@ -310,7 +329,7 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         settingOffset = false
         let f = clock.total > 0 ? min(1, t / clock.total) : 0
         progressFill.frame = CGRect(x: 0, y: 0, width: progressTrack.bounds.width * CGFloat(f), height: 4)
-        let left = Int((clock.total - t).rounded(.up))
+        let left = Int(track.wallRemaining(from: t).rounded(.up))
         if left != controller.secondsLeft {
             DispatchQueue.main.async { [weak self] in self?.controller.secondsLeft = max(0, left) }
         }
@@ -334,7 +353,7 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
             if countdownLeft <= 0 { mode = .rolling }
         case .rolling:
             let before = t
-            t += dt
+            t += track.advance(from: before, wall: dt)
             if let hold = nextHold(after: before, upTo: t) {
                 t = hold.end
                 mode = .holding
@@ -382,6 +401,7 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         applyOffset()
     }
 
+    /// Stops the words. Does not stop the camera. The take keeps recording.
     func pause() {
         if mode == .rolling || mode == .countdown || mode == .holding { mode = .paused }
     }
@@ -451,6 +471,31 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         let idx = lm.characterIndex(for: point, in: textView.textContainer, fractionOfDistanceBetweenInsertionPoints: nil)
         let para = paraRanges.firstIndex { NSLocationInRange(idx, $0) || idx == $0.location + $0.length } ?? currentParagraph
         controller.onEditRequest?(para)
+    }
+
+    /// Thumb down: the words move up. Thumb up: the words move down.
+    /// The words pause. The camera is not stopped.
+    @objc private func panned(_ g: UIPanGestureRecognizer) {
+        switch g.state {
+        case .began:
+            controller.onActivity?()
+            userScrolling = true
+            dragStartT = t
+            dragStartY = g.translation(in: self).y
+            if mode == .rolling || mode == .countdown || mode == .holding { mode = .paused }
+        case .changed:
+            let dy = g.translation(in: self).y - dragStartY
+            let delta = PrompterDrag.offsetDelta(screenFingerDy: Double(dy), flippedVertically: settings.flipVertical)
+            let y = track.y(at: dragStartT) + delta
+            t = max(0, min(clock.total, track.t(at: y)))
+            if mode == .ended { mode = .paused }
+            applyOffset()
+            released = released.filter { (clock.endOf(paragraph: $0) ?? 0) < t }
+        case .ended, .cancelled, .failed:
+            userScrolling = false
+        default:
+            break
+        }
     }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {

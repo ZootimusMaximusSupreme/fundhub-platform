@@ -34,6 +34,36 @@ final class PromptClockTests: XCTestCase {
         XCTAssertEqual(track.y(at: 99), 50)
         XCTAssertEqual(track.t(at: 30), line2 / 2, accuracy: 1e-9)
     }
+
+    func testAFastParagraphGapDoesNotRace() {
+        // 120 words a minute is half a second a word. The first line moves
+        // 20px in 1s (20 px/s). The next step is 40px in 1.4s, which would race.
+        let paras = [Paragraph(text: "one two three four", cue: false), Paragraph(text: "five", cue: false)]
+        let c = PromptClock(paragraphs: paras, wpm: 120, pauseSeconds: 0.4)
+        let track = ScrollTrack(clock: c, wordY: [0, 0, 20, 20, 60])
+        XCTAssertEqual(c.words[4].start, 2.4, accuracy: 1e-9)
+        XCTAssertEqual(track.pace, 20, accuracy: 1e-9, "the words move 20px in 1s")
+        let wall = track.wallRemaining(from: 1) - track.wallRemaining(from: 2.4)
+        XCTAssertEqual(wall, 2, accuracy: 1e-6, "the 40px gap takes 2s, same speed as the words")
+        let moved = track.advance(from: 1, wall: 1)
+        let pixels = track.y(at: 1 + moved) - track.y(at: 1)
+        XCTAssertEqual(pixels, 20, accuracy: 1e-6, "one real second in the gap moves 20px")
+    }
+
+    func testASlowGapIsNotSpedUp() {
+        let paras = [Paragraph(text: "one two three four", cue: false), Paragraph(text: "five", cue: false)]
+        let c = PromptClock(paragraphs: paras, wpm: 120, pauseSeconds: 8)
+        let track = ScrollTrack(clock: c, wordY: [0, 0, 20, 20, 40])
+        // The gap already takes 9s of clock time for 20px. Do not speed it up.
+        XCTAssertEqual(c.words[4].start, 10, accuracy: 1e-9)
+        XCTAssertEqual(track.advance(from: 1, wall: 9), 9, accuracy: 1e-6)
+    }
+
+    func testThumbDownMovesTheWordsUp() {
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: false), 80)
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: -30, flippedVertically: false), -30)
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: true), -80)
+    }
 }
 
 final class TapRulesTests: XCTestCase {

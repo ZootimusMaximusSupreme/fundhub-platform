@@ -52,14 +52,18 @@ struct PrompterScreen: View {
                     Spacer()
                     VStack(spacing: 0) {
                         if (prompter.mode == .ended || takeWaiting) && !camera.isRecording { endBar.padding(.top, 10).transition(.opacity) }
-                        if !rolling { controls.transition(.opacity) }
+                        if rolling {
+                            speedRow.padding(.top, 8).transition(.opacity)
+                        } else {
+                            controls.transition(.opacity)
+                        }
                         PulseBar(root: root, compact: rolling)
                             .padding(.horizontal, 12)
                             .padding(.bottom, 4)
                             .opacity(rolling ? 0.6 : 1)
                     }
-                    // Paused: a dark panel so the buttons read over the words.
-                    .background(Color.black.opacity(rolling ? 0 : 0.9).ignoresSafeArea(edges: .bottom))
+                    // Black under the buttons so the glass never flashes white.
+                    .background(Color.black.opacity(0.92).ignoresSafeArea(edges: .bottom))
                 }
                 .animation(.easeInOut(duration: 0.25), value: rolling)
             }
@@ -286,6 +290,7 @@ struct PrompterScreen: View {
     }
 
     private func openEdit(_ i: Int) {
+        // Pause the words only. The camera keeps recording this one take.
         prompter.pause()
         guard let s = script, i >= 0, i < paragraphs.count else { return }
         editing = EditTarget(root: s.rootScriptId, index: i, text: paragraphs[i].text, title: s.displayName)
