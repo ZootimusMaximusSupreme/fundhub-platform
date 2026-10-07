@@ -16,3 +16,9 @@ Workflow count pin is 94 on main. Bump only if you add a workflow.
 
 ## Manifests
 (orchestrator fills in)
+
+### Result — 2026-10-06
+- H1 auto-match: merged (migration 455). Live sample: $150 payment marked BNPL installment 2 paid; repeat did nothing.
+- H2 loans: merged. Overview "By loan" table; Plaid student + mortgage dues; card reminder query skips loans (no double text).
+- H3 staff link: merged. "Open FinanceOS" in Quick launch on `client-control-panel.html` for owner/admin/sales_manager.
+- H4 Plaid Production: products step needs Chris's yes; plan (billing) and verify business (EIN) are Chris-only.
