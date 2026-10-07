@@ -7,6 +7,8 @@
 - [ ] Blueprint gets its own payment webhook instead of Commas.
 - [ ] Set up Whop for multiple items (Chris said "WOP"; earlier in the same chat he used "WAP" for Whop).
 - [ ] Add tests and quizzes to Blueprint (owner idea 2026-10-06 — funding courses use them).
+- [ ] Offer stack for sales calls: every Blueprint + FinanceOS item goes into the offer stack, so it shows up in the client presentation. When a client hops on a call with a rep, the presentation has a whole section with buttons and logic for these items. (Owner 2026-10-06: strip it down, do it tomorrow.)
+- [ ] Welcome kit (mailed package) — not now. Owner 2026-10-06: it's a whole project; later.
 
 ## Now — 2026-10-04 (Sunday)
 
