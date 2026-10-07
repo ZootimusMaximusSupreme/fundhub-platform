@@ -18,7 +18,7 @@ Value: ★★★ = moves the client toward funding / the reason they pay $5–10
 | 7 | Credit partner file (second applicant) | ★★★ | **Built** | `402_credit_partner_link.sql`, `src/blueprint/credit-partner.mjs`, combined approval = sum (owner to confirm rule) |
 | 8 | Bank relationship tracker | ★★★ | **Built** | `src/blueprint/bank-relationship.mjs` + FinanceOS Banks tab (W2) |
 | 9 | Decline defense (read reason → reconsideration) | ★★★ | **Not built** | nothing in repo |
-| 10 | Round-two planner | ★★ | **Half** — date is staff-entered | `src/blueprint/next-funding-sequence.mjs`; no recovery math |
+| 10 | Next funding sequence planner (owner: not "round two" — a sequence has ~6 rounds) | ★★ | **Half** — date is staff-entered | `src/blueprint/next-funding-sequence.mjs`; no recovery math |
 | 11 | New-credit alert (new card / inquiry same day) | ★★ | **Not built** | nothing in repo |
 | 12 | Payment timing (pay before statement date) | ★★ | **Half** — math exists, no message goes out | `src/workflows/blueprint-finance-os-alerts.mjs` ("no outbound yet") |
 | 13 | Promo tracking (0% ends: 60/30/7 days) | ★★ | **Not built** — no promo-end field | same file: `PROMO_TRACKING_SKIP_REASON` |
@@ -36,11 +36,16 @@ Value: ★★★ = moves the client toward funding / the reason they pay $5–10
 
 | # | Unit | Status | Migration # |
 |---|---|---|---|
-| B1 | Decline defense: capture the decline (reason, letter upload), match reconsideration steps from the bank book notes, ops task + script, client status | queued | 470 |
+| B1 | Decline defense: client pastes the decline into the agent → likely reasons → reconsideration steps as a tracked process (agent / ops / client), cited from the bank book; ops task + script | running | 470 |
 | B2 | File-protection alerts that actually send: payment timing, promo end 60/30/7 (promo-end field), cash reserve < 6× minimums, new card / new inquiry the day it shows (Plaid new account + pull diff) | queued | 471 |
 | B3 | Document vault: required-docs checklist (statements, returns, ID, business docs), agent chases missing, closer sees "file complete" at ready time | queued | 472 |
-| B4 | Round-two planner math: recovery date from repo-documented windows (inquiry age, new-account age, utilization back under target), staff can override | queued | 473 |
+| B4 | Next funding sequence planner math: when the file is ready for the next sequence, from repo-documented windows (inquiry age, new-account age, utilization back under target), staff can override; rename "next round" labels to "next funding sequence" | queued | 473 |
 | B5 | Offer stack in the presentation (`present.js`): every Blueprint + FinanceOS item with buttons and logic for the rep | tomorrow (owner) | — |
+
+## Owner calls (2026-10-06, late)
+- Decline defense = paste the decline into the agent; it finds the reason and the reconsideration process.
+- **Naming:** never "round two". Fundhub runs about six rounds inside one funding sequence. The next one is "the next funding sequence" (Funding Sequence 2).
+- **Models:** back end on Sonnet (save tokens), then front end on Opus (make it good). Each unit B2–B4 = Sonnet back-end agent, then an Opus front-end agent.
 
 Rules: never invent a bank script, window, or amount — cite the repo source or make it staff-set. Sample clients stay one consistent file.
 
