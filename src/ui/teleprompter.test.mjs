@@ -553,11 +553,14 @@ describe("teleprompter page", () => {
     assert.match(SRC, /if \(cam\.rec && cam\.rec\.state === "recording"\) return;/);
   });
 
-  test("Save the video sends the original file to this Mac", () => {
-    assert.match(SRC, /http:\/\/127\.0\.0\.1:8787/);
-    assert.match(SRC, /http:\/\/CHRISs-Mac-mini\.local:8787/);
+  test("Save the video sends the original file to the live site", () => {
+    assert.match(SRC, /\/api\/marketing\/shoot\/take/);
     assert.match(SRC, /method:\s*"PUT"/);
+    assert.match(SRC, /file\.slice\(at, end\)/);
+    assert.match(SRC, /x-shoot-film/);
     assert.match(SRC, /\$\("b-save"\)\.onclick = saveClick/);
+    assert.match(SRC, /setTransform\(-1/);
+    assert.doesNotMatch(SRC, /8787/);
     assert.doesNotMatch(SRC, /ffmpeg/);
   });
 });

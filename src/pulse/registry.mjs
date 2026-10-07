@@ -451,7 +451,11 @@ const API_KEYS = [
      answers 200 to an unsigned ping; mark is POST-only and answers 405 to a
      GET before it reads anything. A ping never writes. */
   "marketing/shoot",
-  "marketing/shoot/mark"
+  "marketing/shoot/mark",
+  /* Save the video. POST starts the Drive upload and PUT sends the original
+     bytes. A GET answers 405 before it reads anything (isUp counts 405 as up).
+     A ping never uploads a file. */
+  "marketing/shoot/take"
 ];
 
 const DESK_FILES = [

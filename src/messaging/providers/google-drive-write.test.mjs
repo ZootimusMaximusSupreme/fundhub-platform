@@ -20,7 +20,7 @@ import {
   DRIVE_WRITE_SCOPE, MAX_TEXT_UPLOAD_BYTES, MAX_VIDEO_BYTES,
   grantsWrite, resetTokenCache,
   listNewVideos, getFileMeta, renameFile, ensureFolder, uploadTextFile,
-  downloadFile, uploadVideo
+  downloadFile, uploadVideo, openVideoSession, putVideoChunk
 } from "./google-drive-write.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -404,6 +404,103 @@ describe("putting the finished ad in Paul's folder", () => {
   test("the video cap is a memory ceiling, and it is a real number", () => {
     assert.equal(MAX_VIDEO_BYTES, 512 * 1024 * 1024);
     assert.ok(MAX_VIDEO_BYTES > MAX_TEXT_UPLOAD_BYTES * 50, "a take is not a brief");
+  });
+});
+
+describe("a filmed take, one original piece at a time", () => {
+  const session = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=abc";
+  const folder = "13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ";
+  const clip = new Uint8Array([0, 1, 2, 255, 10, 20, 30, 40]);
+
+  test("the session is opened in the SLO Ads folder and no video bytes move yet", async () => {
+    const impl = binaryFetch({ responses: [
+      { status: 200, body: {}, headers: { location: session } }
+    ] });
+    const res = await openVideoSession({
+      parentId: folder,
+      name: "SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4",
+      totalBytes: 800,
+      contentType: "video/mp4",
+      env: envWith(),
+      fetchImpl: impl
+    });
+    assert.equal(res.ok, true);
+    assert.equal(res.sessionUrl, session);
+    const call = impl.drive()[0];
+    assert.match(call.url, /uploadType=resumable/);
+    const meta = JSON.parse(call.init.body);
+    assert.deepEqual(meta.parents, [folder]);
+    assert.equal(meta.name, "SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4");
+    assert.equal(call.init.headers["X-Upload-Content-Length"], "800");
+    assert.equal(impl.drive().length, 1);
+  });
+
+  test("the piece that leaves is the piece that was handed in", async () => {
+    const impl = binaryFetch({ responses: [
+      { status: 200, body: { id: "drv-take", name: "Take.mp4" } }
+    ] });
+    const res = await putVideoChunk({
+      sessionUrl: session,
+      bytes: clip,
+      start: 0,
+      end: clip.byteLength - 1,
+      total: clip.byteLength,
+      contentType: "video/mp4",
+      env: envWith(),
+      fetchImpl: impl
+    });
+    assert.equal(res.ok, true);
+    assert.equal(res.done, true);
+    assert.equal(res.fileId, "drv-take");
+    const call = impl.drive()[0];
+    assert.equal(call.init.method, "PUT");
+    assert.equal(call.init.redirect, "manual");
+    assert.equal(call.url, session);
+    assert.deepEqual([...call.init.body], [...clip]);
+    assert.equal(call.init.headers["content-range"], `bytes 0-${clip.byteLength - 1}/${clip.byteLength}`);
+  });
+
+  test("308 means Drive has that piece and the file is not finished", async () => {
+    const impl = binaryFetch({ responses: [
+      { status: 308, body: "", headers: { range: "bytes=0-7" } }
+    ] });
+    const res = await putVideoChunk({
+      sessionUrl: session,
+      bytes: clip,
+      start: 0,
+      end: 7,
+      total: 16,
+      env: envWith(),
+      fetchImpl: impl
+    });
+    assert.equal(res.ok, true);
+    assert.equal(res.done, false);
+    assert.equal(res.received, 8);
+  });
+
+  test("a session URL that is not Drive is refused before any call", async () => {
+    const impl = binaryFetch({});
+    const res = await putVideoChunk({
+      sessionUrl: "https://evil.example/upload",
+      bytes: clip,
+      start: 0,
+      end: 7,
+      total: 8,
+      env: envWith(),
+      fetchImpl: impl
+    });
+    assert.equal(res.ok, false);
+    assert.equal(impl.calls.length, 0);
+  });
+
+  test("the fence holds the session open", async () => {
+    const impl = binaryFetch({ responses: [{ status: 200, body: {}, headers: { location: session } }] });
+    const res = await openVideoSession({
+      parentId: folder, name: "Take.mp4", totalBytes: 8,
+      env: { GOOGLE_DRIVE_OAUTH_TOKEN_JSON: tokenJson }, fetchImpl: impl
+    });
+    assert.equal(res.ok, false);
+    assert.equal(impl.drive().length, 0);
   });
 });
 

@@ -2191,10 +2191,6 @@
     cam.opening = "";
     ensureCamera();
   }
-  var MAC_DROPS = [
-    { url: "http://127.0.0.1:8787", space: "loopback" },
-    { url: "http://CHRISs-Mac-mini.local:8787", space: "local" }
-  ];
   function shareOrDownload(file) {
     var nav = root.navigator;
     try {
@@ -2205,34 +2201,99 @@
     } catch (e) { /* fall through to a download */ }
     downloadFile(file);
   }
-  function sendOriginal(file) {
-    var name = file.name || "Take.mp4";
-    function once(i) {
-      if (i >= MAC_DROPS.length) return Promise.reject(new Error("drop"));
-      var drop = MAC_DROPS[i];
-      var ctl = root.AbortController ? new root.AbortController() : null;
-      var timer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) { /* already done */ } }, 4000) : null;
-      var opts = { method: "PUT", body: file };
-      if (ctl) opts.signal = ctl.signal;
-      try { opts.targetAddressSpace = drop.space; } catch (e) { /* older browser */ }
-      return root.fetch(drop.url + "/takes/" + encodeURIComponent(name), opts).then(function (r) {
-        if (timer) clearTimeout(timer);
-        if (!r.ok) throw new Error("refused");
-      }).catch(function () {
-        if (timer) clearTimeout(timer);
-        return once(i + 1);
-      });
+  function uploadModeHeaders(mode) {
+    var h = { accept: "application/json" };
+    if (mode === "film") h["x-shoot-film"] = filmKey();
+    else if (mode === "session") {
+      var tk = token();
+      if (tk) h.authorization = "Bearer " + tk;
     }
-    return once(0);
+    return h;
+  }
+  function uploadCreds(mode) {
+    return mode === "session" ? "same-origin" : "omit";
+  }
+  function startTake(file, mode) {
+    var h = uploadModeHeaders(mode);
+    h["content-type"] = "application/json";
+    return root.fetch("/api/marketing/shoot/take", {
+      method: "POST",
+      credentials: uploadCreds(mode),
+      headers: h,
+      body: JSON.stringify({
+        name: file.name || "Take.mp4",
+        bytes: file.size,
+        content_type: file.type || "video/mp4"
+      })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        return { status: r.status, ok: !!(r.ok && d && d.ok && d.token), token: d && d.token, chunk: d && d.chunk_bytes };
+      });
+    }, function () { return { status: 0, ok: false }; });
+  }
+  function putChunks(file, tokenValue, chunk, mode) {
+    var size = chunk > 0 ? chunk : 1024 * 1024;
+    function step(at) {
+      if (at >= file.size) return Promise.resolve();
+      var end = Math.min(file.size, at + size);
+      var h = uploadModeHeaders(mode);
+      h["content-type"] = "application/octet-stream";
+      h["x-take-token"] = tokenValue;
+      h["content-range"] = "bytes " + at + "-" + (end - 1) + "/" + file.size;
+      function once(attempt) {
+        return root.fetch("/api/marketing/shoot/take", {
+          method: "PUT",
+          credentials: uploadCreds(mode),
+          headers: h,
+          body: file.slice(at, end)
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (d) {
+            if (!(r.ok && d && d.ok)) {
+              if (attempt < 1) return once(attempt + 1);
+              throw new Error("chunk");
+            }
+            if (d.done) return;
+            var next = typeof d.received === "number" && d.received > at ? d.received : end;
+            if (next <= at || next > file.size) throw new Error("stuck");
+            say("Saving the video… " + Math.min(99, Math.round(next / file.size * 100)) + "%");
+            return step(next);
+          });
+        }, function () {
+          if (attempt < 1) return once(attempt + 1);
+          throw new Error("chunk");
+        });
+      }
+      return once(0);
+    }
+    return step(0);
+  }
+  function sendOriginal(file) {
+    var mode = filmKey() ? "film" : "session";
+    return startTake(file, mode).then(function (started) {
+      if (!started.ok && mode === "session" && (started.status === 401 || started.status === 403)) {
+        return startTake(file, "open").then(function (again) {
+          if (!again.ok) throw new Error("start");
+          return putChunks(file, again.token, again.chunk, "open");
+        });
+      }
+      if (!started.ok) throw new Error("start");
+      return putChunks(file, started.token, started.chunk, mode);
+    });
   }
   function saveClick() {
     var file = cam.file;
-    if (!file) return;
+    if (!file || cam.saving) return;
+    cam.saving = true;
+    say("Saving the video…");
     sendOriginal(file).then(function () {
+      cam.saving = false;
       say("Saved " + (file.name || "the video"));
     }, function () {
+      cam.saving = false;
       shareOrDownload(file);
-      say("Saved " + (file.name || "the video"));
+      var btn = $("b-save");
+      if (btn) btn.hidden = false;
+      say("The video is on this phone. Drive did not get it.");
     });
   }
 

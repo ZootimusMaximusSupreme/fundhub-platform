@@ -107,7 +107,7 @@ flowchart TD
 
 The Shoot tab, while a staff owner or admin is signed in, gets `film.path` on `GET marketing/shoot`. That path is `/app/teleprompter.html?k=<token>`. Open the teleprompter and Roll it use it. The phone sends the key as the `x-shoot-film` header and does not send the staff session.
 
-The key is an HMAC (`f1|org|shoot|exp`) over `DOCUMENT_URL_SECRET` (or `FILM_URL_SECRET`). It lasts 7 days. It dies sooner when that shoot is closed, because the read only returns the shoot the key names. It can `GET marketing/shoot`, `POST marketing/shoot/mark` for that shoot, and `POST marketing/scripts/edit` for a script on that shoot. It cannot save the plan, close the shoot, or open any other route. A bad key is a not-found, not a login page.
+The key is an HMAC (`f1|org|shoot|exp`) over `DOCUMENT_URL_SECRET` (or `FILM_URL_SECRET`). It lasts 7 days. It dies sooner when that shoot is closed, because the read only returns the shoot the key names. It can `GET marketing/shoot`, `POST marketing/shoot/mark` for that shoot, `POST marketing/scripts/edit` for a script on that shoot, and save a video through `POST` and `PUT marketing/shoot/take`. That save puts the original file in the SLO Ads Drive folder. It cannot save the plan, close the shoot, or open any other route. A bad key is a not-found, not a login page.
 
 ## Gaps against the intended flow (findings, not fixed here)
 

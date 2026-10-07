@@ -358,6 +358,7 @@ import marketingResearchBrain from "../../api/marketing/research/brain.mjs";
 import marketingFlywheelSpendRead from "../../api/marketing/flywheel/spend-read.mjs";
 import marketingShoot from "../../api/marketing/shoot.mjs";
 import marketingShootMark from "../../api/marketing/shoot/mark.mjs";
+import marketingShootTake from "../../api/marketing/shoot/take.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -1389,7 +1390,8 @@ export const ROUTES = {
   // X3: the Ideas tab's flywheel (design §3.2 row 6)
   "marketing/flywheel/spend-read": marketingFlywheelSpendRead,
   "marketing/shoot": marketingShoot,
-  "marketing/shoot/mark": marketingShootMark
+  "marketing/shoot/mark": marketingShootMark,
+  "marketing/shoot/take": marketingShootTake
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is
@@ -1498,7 +1500,14 @@ export default async function handler(request, context) {
      handler here reads a plain req.body. */
   let rawBody = "";
   let body = "";
-  if (!noBody && ctype.includes("multipart/form-data")) {
+  /* marketing/shoot/take sends the original video bytes. request.text() would
+     decode them as UTF-8 and change the file. This path keeps the bytes. */
+  const takeBytes = path === "marketing/shoot/take"
+    && !noBody
+    && ctype.includes("application/octet-stream");
+  if (takeBytes) {
+    body = Buffer.from(await request.arrayBuffer());
+  } else if (!noBody && ctype.includes("multipart/form-data")) {
     const form = await request.formData();
     const fields = {};
     const files = [];

@@ -64,7 +64,7 @@ flowchart TD
 | `awaiting_approval` | **Chris taps Approve or Reject** | `approved` / `rejected` | a person. Nothing else moves it. |
 | `approved` | folder `043`, the brief, the video | `delivered` | `pipeline.mjs` `deliverToPaul()` |
 
-The phone can also push the original take onto this Mac. Save the video on the teleprompter sends the file with a PUT. `npm run marketing:run-queue` listens on port 8787 and copies those bytes into `marketing/ads/filmed/` (the same folder as `scripts/receive-filmed-take.mjs`) with no re-encode and no Drive upload. A name already in that folder is left as it is. A row still starts only when the file is in the Drive Raw folder.
+Save the video on the teleprompter sends the original file to `POST` then `PUT /api/marketing/shoot/take`. The server puts those same bytes in the SLO Ads Drive folder (`13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ`). No re-encode. The Mac listener on port 8787 is unchanged and is not what the page uses. A row still starts only when the file is in that Drive folder.
 
 ---
 
