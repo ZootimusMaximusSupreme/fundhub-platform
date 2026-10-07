@@ -4,7 +4,7 @@ Board for one job: get Chris's scripts into the live teleprompter.
 
 | Unit | Owner | Status |
 |---|---|---|
-| Load the 11 ads sent to Paul (penthouse included) + the /watch VSL + thank-you video, and open a shoot | Cursor | pending |
+| Load the 13 scripts (penthouse included) and open a shoot | Cursor | done |
 
 ## What was measured (Claude, 2026-10-07)
 
@@ -67,4 +67,24 @@ What changed, what was proved, the URL, anything left.
 
 ## Manifest
 
-(Cursor writes here when done.)
+Loaded 2026-10-07. Status locked. Offer funding_dfy. Source chris (import rows stay off the teleprompter). Ads 92–104. Shoot is open, film order 1–13.
+
+| ad_id | title |
+|---|---|
+| 92 | Script 4 — Tool analogy, the hammer on the flat tire |
+| 93 | Ad 19 — Over and over (broad, film first) |
+| 94 | Ad 14 — It's a skill |
+| 95 | Ad 15 — High earners |
+| 96 | Ad 17 — Paying for speed |
+| 97 | Ad 16 — The hidden tax |
+| 98 | Script 1 — Notes green screen, seven steps (double loop) |
+| 99 | Script 2 — Notes green screen |
+| 100 | Ad 9 — The bank |
+| 101 | Scale without your own cash |
+| 102 | The penthouse (Chris wants it again, 2026-10-07, even though it was filmed 2026-10-04) |
+| 103 | /watch VSL (book-a-call) |
+| 104 | /watch thank-you video |
+
+Proof: GET https://fundhub.ai/api/marketing/shoot returned these 13 in this order. Teleprompter opens on the first line. Screenshot: ops/workflows/teleprompter-load-2026-10-07-proof.png
+
+Ads 84–91 were not changed.
