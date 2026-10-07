@@ -1,5 +1,23 @@
 /* Layout and darkness only. Scroll math and the play / record buttons stay in teleprompter.js. */
 
+/* The old file-name line is a tiny button under the words.
+   Double-tap it to go to the next script. It does not sit on the script. */
+#p-file {
+  flex: none;
+  max-width: 9rem;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(12, 14, 18, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  touch-action: manipulation;
+}
+
 /* The ad line, the script title, the orange notes, and the Shoot tab
    live in this bar. Take the whole bar off the screen so the words
    start at the top. */

@@ -443,6 +443,39 @@ describe("top edge changes the script", () => {
     assert.deepEqual(plain(done.acts), ["arm", "done"]);
   });
 
+  test("the tiny name button takes two taps and does not stop the camera", () => {
+    const T = load();
+    assert.equal(T.chipLabel({ take_file_name: "SLO Ad 7 — Haynes Take 1.mp4", title: "Haynes" }), "SLO Ad 7 — Haynes Take 1.mp4");
+    assert.equal(T.chipLabel({
+      take_file_name: null,
+      angle_name: "Inquiries off first",
+      take_name_problem: "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown."
+    }), "Inquiries off first");
+    assert.equal(T.chipLabel({ title: "  Ad 14 — It's a skill  " }), "Ad 14 — It's a skill");
+    assert.equal(T.chipLabel({}), "Next");
+    assert.equal(T.chipLabel(null), "Next");
+    assert.doesNotMatch(T.chipLabel({ take_name_problem: "The Funding, done-for-you offer has no file-name word yet" }), /unknown|file-name word/i);
+    const one = T.chipStep(T.chipStart(), { type: "up", x: 10, y: 10, t: 0 });
+    assert.equal(one.go, false);
+    const two = T.chipStep(one.g, { type: "up", x: 12, y: 14, t: 100 });
+    assert.equal(two.go, true);
+    const late = T.chipStep(one.g, { type: "up", x: 12, y: 14, t: T.DBL_MS + 50 });
+    assert.equal(late.go, false);
+    const far = T.chipStep(one.g, { type: "up", x: 10 + T.DBL_SLOP + 5, y: 10, t: 80 });
+    assert.equal(far.go, false);
+    assert.match(HTML, /<button type="button" id="p-file"/);
+    assert.doesNotMatch(SRC, /File name unknown/);
+    const up = SRC.slice(SRC.indexOf('chipBtn.addEventListener("pointerup"'), SRC.indexOf('chipBtn.addEventListener("click"'));
+    assert.match(up, /if \(r\.go\) completeFromTop\(\)/);
+    assert.doesNotMatch(up, /endRec\(/);
+    assert.doesNotMatch(up, /nextScript\(/);
+    const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
+    assert.match(doneFn, /markThis\("got_it"\)/);
+    assert.match(doneFn, /nextUnfilmed/);
+    assert.match(doneFn, /open\(n, true\)/);
+    assert.doesNotMatch(doneFn, /endRec\(/);
+  });
+
   test("a swap from the top does not stop the camera", () => {
     const openFn = SRC.slice(SRC.indexOf("function open(i, keepCamera)"), SRC.indexOf("function redraw("));
     assert.match(openFn, /if \(!keepCamera\) endRec\(\)/);

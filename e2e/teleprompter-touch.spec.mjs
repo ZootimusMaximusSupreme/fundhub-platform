@@ -393,7 +393,8 @@ test.describe("teleprompter on an iPad: the rig", () => {
     await expect.poll(async () => (await state(page)).playing).toBe(false);
     await page.evaluate(() => window.__fhtp.next());
     await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
-    await expect(page.locator("#p-file")).toHaveText("File name unknown");
+    await expect(page.locator("#p-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("body")).not.toContainText("file-name word");
   });
 });
 

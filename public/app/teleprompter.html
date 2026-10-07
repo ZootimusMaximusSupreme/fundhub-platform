@@ -112,7 +112,7 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 
 /* the change pulse: the take name and the save status. It never hides. */
 #pulse{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px;min-height:28px;background:transparent;border-top:1px solid var(--rule);min-width:0}
-#p-file{position:relative;z-index:1;background:#000;font-family:var(--data-face);font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#p-file{position:relative;z-index:1;flex:none;max-width:9rem;height:22px;min-height:22px;margin:0;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(12,14,18,.55);color:#fff;font-family:var(--data-face);font-size:11px;font-weight:700;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;touch-action:manipulation}
 #p-save{position:relative;z-index:1;border:0;background:#000;color:var(--ok);font-size:12px;padding:8px 0;min-height:28px;cursor:pointer;white-space:nowrap;flex:none;text-align:right}
 #p-save.busy{color:var(--ink-2)}
 #p-save.warn{color:var(--cue);font-weight:700}
@@ -310,7 +310,7 @@ body.wording #flip{transform:none !important}
   </div>
 
   <div id="pulse">
-    <span id="p-file"></span>
+    <button type="button" id="p-file" hidden></button>
     <span id="p-save">No changes yet</span>
   </div>
 

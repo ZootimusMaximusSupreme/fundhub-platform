@@ -179,6 +179,29 @@ test.describe("teleprompter at 390px", () => {
 test.describe("teleprompter, the end of a script and the remote", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
+  test("double-tap the tiny name button finishes this script and shows the next; one tap does nothing", async ({ page }) => {
+    const posts = [];
+    await open(page, { posts });
+    const chip = page.locator("#p-file");
+    await expect(chip).toHaveText("SLO Ad 93 — Your file is worth more Take 1.mp4");
+    await expect(chip).toBeVisible();
+    const flip = await page.locator("#flip").boundingBox();
+    const box = await chip.boundingBox();
+    expect(box.height).toBeLessThanOrEqual(28);
+    expect(box.width).toBeLessThanOrEqual(160);
+    expect(box.y).toBeGreaterThanOrEqual(flip.y + flip.height - 1);
+    await chip.click();
+    await page.waitForTimeout(400);
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    expect(posts).toHaveLength(0);
+    await chip.dblclick();
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0]).toMatchObject({ shoot_id: PAGE.shoot.id, root_script_id: THREE.root_script_id, mark: "got_it" });
+    await expect(page.locator("#s-title")).toHaveText("Inquiries off first");
+    await expect(chip).toHaveText("Inquiries off first");
+    await expect(page.locator("body")).not.toContainText("file-name word");
+  });
+
   test("Space at the end is Got it: one mark, then the next script with no Got it loads", async ({ page }) => {
     const posts = [];
     await open(page, { posts });
@@ -191,7 +214,9 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     expect(posts[0].request_id).toMatch(/^[A-Za-z0-9._:-]{8,200}$/);
     await expect(page.locator("#toast")).toHaveText("Got it. Keep SLO Ad 93 — Your file is worth more Take 1.mp4.");
     await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
-    await expect(page.locator("#s-file")).toContainText("File name unknown");
+    await expect(page.locator("#s-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("#p-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("body")).not.toContainText("file-name word");
   });
 
   test("Page Up at the end is Another take: the take number moves on and it rolls again", async ({ page }) => {

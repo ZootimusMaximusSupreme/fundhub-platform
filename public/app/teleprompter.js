@@ -148,6 +148,39 @@
     return q.length ? q[0] : -1;
   }
 
+  /**
+   * Words on the tiny next button. A real file name when this script has one.
+   * Otherwise the script title. "Next" when there is no title.
+   * Never the long "file name unknown" sentence.
+   */
+  function chipLabel(s) {
+    if (s && s.take_file_name) return s.take_file_name;
+    var title = s && (s.angle_name || s.title) ? String(s.angle_name || s.title).replace(/\s+/g, " ").trim() : "";
+    return title || "Next";
+  }
+
+  function chipStart() { return { last: null }; }
+
+  /**
+   * Taps on the tiny button. One tap does nothing. Two taps close together
+   * mean go on. `go` is true only on that second tap.
+   */
+  function chipStep(g, ev) {
+    var src = g || chipStart();
+    var out = { last: src.last || null };
+    if (!ev || ev.type !== "up") return { g: out, go: false };
+    var prev = out.last;
+    var dbl = !!(prev && (ev.t - prev.t) <= DBL_MS
+      && Math.abs((ev.x || 0) - prev.x) <= DBL_SLOP
+      && Math.abs((ev.y || 0) - prev.y) <= DBL_SLOP);
+    if (dbl) {
+      out.last = null;
+      return { g: out, go: true };
+    }
+    out.last = { x: ev.x || 0, y: ev.y || 0, t: ev.t };
+    return { g: out, go: false };
+  }
+
   function topEdgeStart() { return { down: null, armedUntil: 0, lastTap: null, swapped: false, hot: false }; }
 
   /**
@@ -748,6 +781,7 @@
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
+    chipLabel: chipLabel, chipStart: chipStart, chipStep: chipStep,
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
@@ -1073,6 +1107,7 @@
     $("s-title").textContent = "No script";
     $("s-file").textContent = "";
     $("p-file").textContent = "";
+    $("p-file").hidden = true;
     $("b-copy").hidden = true;
   }
   var sayTimer = null;
@@ -1093,14 +1128,21 @@
     $("s-ad").textContent = "Ad " + (s.ad_id || "?") + " · Take " + take + " · " + (cur + 1) + " of " + scripts.length +
       (s.first_line_only ? " · first line only" : s.needs_retake ? " · retake" : "");
     $("s-title").textContent = s.angle_name || s.title || "Untitled script";
-    var unknown = "File name unknown: " + (s.take_name_problem || "a part of the name is missing.");
-    $("s-file").textContent = s.take_file_name ? s.take_file_name : unknown;
-    $("s-file").classList.toggle("unknown", !s.take_file_name);
-    $("p-file").textContent = s.take_file_name || "File name unknown";
+    var label = chipLabel(s);
+    $("s-file").textContent = label;
+    $("s-file").classList.remove("unknown");
+    var chip = $("p-file");
+    chip.hidden = false;
+    chip.textContent = label;
     $("b-copy").hidden = !s.take_file_name;
-    $("end-take").textContent = s.take_file_name
-      ? "Name this clip: " + s.take_file_name
-      : unknown;
+    var endTake = $("end-take");
+    if (s.take_file_name) {
+      endTake.hidden = false;
+      endTake.textContent = "Name this clip: " + s.take_file_name;
+    } else {
+      endTake.textContent = "";
+      endTake.hidden = true;
+    }
     $("end-head").textContent = "That was take " + take + " of Ad " + (s.ad_id || "?") + ".";
   }
 
@@ -2528,6 +2570,31 @@
   $("b-got").onclick = gotIt;
   $("b-again").onclick = anotherTake;
   $("empty-retry").onclick = function () { load(true); };
+  var chipGest = chipStart();
+  var chipDown = null;
+  var chipBtn = $("p-file");
+  if (chipBtn) {
+    chipBtn.addEventListener("pointerdown", function (e) {
+      if (e.button > 0) return;
+      e.stopPropagation();
+      chipDown = { x: e.clientX, y: e.clientY };
+    });
+    chipBtn.addEventListener("pointerup", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var down = chipDown;
+      chipDown = null;
+      if (!down) return;
+      if (Math.abs(e.clientX - down.x) > TAP_SLOP || Math.abs(e.clientY - down.y) > TAP_SLOP) return;
+      var r = chipStep(chipGest, { type: "up", x: e.clientX, y: e.clientY, t: root.performance.now() });
+      chipGest = r.g;
+      if (r.go) completeFromTop();
+    });
+    chipBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  }
   $("b-copy").onclick = function () {
     var s = scripts[cur];
     if (!s || !s.take_file_name) return;
@@ -2554,7 +2621,7 @@
       b.innerHTML = '<span class="t"></span><span class="m"></span><span class="p"></span>';
       b.querySelector(".t").textContent = "Ad " + (s.ad_id || "?") + " · " + (s.angle_name || s.title || "Untitled");
       b.querySelector(".m").textContent = s.got_it ? "Got it" : (s.takes > 0 ? s.takes + (s.takes === 1 ? " take" : " takes") : "Not rolled");
-      b.querySelector(".p").textContent = s.take_file_name || s.take_name_problem || "";
+      b.querySelector(".p").textContent = s.take_file_name || "";
       b.onclick = function () { $("done").hidden = true; open(i); closeSheets(); };
       list.appendChild(b);
     });
