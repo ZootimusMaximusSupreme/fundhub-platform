@@ -254,9 +254,11 @@ describe("teleprompter touch rules (gestureStep)", () => {
 });
 
 describe("teleprompter page", () => {
-  test("the page: no shell, a sign-in wall, the mirror switches, the remote words, Fundhub spelled right", () => {
+  test("the page: no shell, no sign-in, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
-    assert.match(HTML, /href="\/login\.html\?next=\/app\/teleprompter\.html"/);
+    assert.doesNotMatch(HTML, /login\.html/);
+    assert.doesNotMatch(HTML + SRC, /Sign in/);
+    assert.doesNotMatch(SRC, /showWall/);
     assert.match(HTML, /id="t-mirror"/);
     assert.match(HTML, /id="t-flipv"/);
     assert.match(HTML, /#flip\.mirror-x\{transform:scaleX\(-1\)\}/);

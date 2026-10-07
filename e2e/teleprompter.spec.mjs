@@ -55,8 +55,8 @@ test.describe("teleprompter at 390px", () => {
 
   test("no sign-in: the shoot rolls and the sign-in wall stays hidden", async ({ page }) => {
     await open(page, { token: false });
-    await expect(page.locator("#wall")).toBeHidden();
-    await expect(page.getByText("Sign in to use the teleprompter.")).toBeHidden();
+    await expect(page.locator("#wall")).toHaveCount(0);
+    await expect(page.getByText(/sign in/i)).toHaveCount(0);
     await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
   });
 

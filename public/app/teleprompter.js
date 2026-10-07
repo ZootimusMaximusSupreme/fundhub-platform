@@ -369,7 +369,11 @@
 
   function fetchShoot(bare) {
     if (!bare) return api("GET", "marketing/shoot?wpm=" + S.wpm);
-    return root.fetch("/api/marketing/shoot?wpm=" + S.wpm, { method: "GET", headers: { accept: "application/json" } })
+    // No token and no cookie. The server already serves this read with no
+    // sign-in, so this page never asks the phone to log in on its own.
+    return root.fetch("/api/marketing/shoot?wpm=" + S.wpm, {
+      method: "GET", credentials: "omit", headers: { accept: "application/json" }
+    })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
       }, function () { return { status: 0, data: null }; });
@@ -377,10 +381,9 @@
 
   function load(first) {
     return fetchShoot(false).then(function (r) {
-      if (r.status === 401) return fetchShoot(true);
+      if (r.status === 401 || r.status === 403) return fetchShoot(true);
       return r;
     }).then(function (r) {
-      if (r.status === 403) return showWall("The teleprompter is for the owner and admins.");
       if (r.status === 200 && r.data) {
         LS.set("cache", r.data);
         $("offline").hidden = true;
@@ -573,13 +576,8 @@
     if (editing) $("e-status").textContent = el.textContent;
   }
 
-  /* ── the wall, the empty page, a short message ──────────────────────── */
+  /* ── the empty page, a short message ───────────────────────────────── */
 
-  function showWall(msg) {
-    stop();
-    $("wall").hidden = false;
-    $("wall-msg").textContent = msg;
-  }
   function showEmpty(msg, retry) {
     stop();
     scripts = []; cur = -1;
@@ -1580,7 +1578,6 @@
     if (e.key === "Escape") { closeSheets(); return; }
     if (tag === "BUTTON" && (e.key === " " || e.key === "Enter")) return;
     for (var i = 0; i < SHEETS.length; i++) if (!$(SHEETS[i]).hidden) return;
-    if (!$("wall").hidden) return;
     var a = actionFor(id, learned, atEnd);
     if (!a) return;
     e.preventDefault();
@@ -1602,7 +1599,7 @@
   function poll() {
     clearTimeout(pollTimer);
     pollTimer = setTimeout(function () {
-      if (doc.visibilityState === "visible" && !playing && !countTimer && holding < 0 && !editing && $("wall").hidden) {
+      if (doc.visibilityState === "visible" && !playing && !countTimer && holding < 0 && !editing) {
         flush();
         if (!signedOut) load(false).then(poll, poll); else poll();
       } else poll();
