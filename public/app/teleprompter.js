@@ -296,12 +296,12 @@
     return false;
   }
 
-  /** The real size the camera gave. Never calls a smaller picture 4K. */
+  /** The real size the camera gave. 3840×2160 and 2160×3840 are both 4K. A smaller picture is not. */
   function cameraReport(got, want) {
     var w = got && got.width ? got.width : 0;
     var h = got && got.height ? got.height : 0;
     var fps = got && got.frameRate ? Math.round(got.frameRate) : 0;
-    var four = w >= 3840 && h >= 2160;
+    var four = (w >= 3840 && h >= 2160) || (w >= 2160 && h >= 3840);
     var hd = w >= 1920 && h >= 1080;
     var label = four ? "4K" : hd ? "1080p" : (w && h ? (w + "×" + h) : "no picture");
     var line = label + (fps ? " · " + fps + " fps" : "");

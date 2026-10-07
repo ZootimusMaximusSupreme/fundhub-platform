@@ -27,6 +27,19 @@ const PAGE = plain(CONTRACT["GET marketing/shoot"].example.response);
 const [ONE, TWO] = PAGE.shoot.scripts;
 
 describe("teleprompter, pure", () => {
+  test("2160×3840 and 3840×2160 are 4K; 1920×1080 is not", () => {
+    const T = load();
+    const tall = T.cameraReport({ width: 2160, height: 3840, frameRate: 30 }, "4k");
+    const wide = T.cameraReport({ width: 3840, height: 2160, frameRate: 30 }, "4k");
+    const hd = T.cameraReport({ width: 1920, height: 1080, frameRate: 30 }, "4k");
+    assert.match(tall.line, /^4K/);
+    assert.equal(tall.short, "");
+    assert.match(wide.line, /^4K/);
+    assert.equal(wide.short, "");
+    assert.doesNotMatch(hd.line, /4K/);
+    assert.match(hd.short, /not 4K/);
+  });
+
   test("the file name is the server's NAMING.md name, letter for letter", () => {
     const T = load();
     for (const n of [1, 2, 3, 12]) {
