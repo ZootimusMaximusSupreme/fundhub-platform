@@ -255,6 +255,7 @@ import moneyAccounts from "../../api/money/accounts.mjs";
 import moneyConnections from "../../api/money/connections.mjs";
 import merchantEvents from "../../api/merchant/events.mjs";
 import moneyPayments from "../../api/money/payments.mjs";
+import moneyPlan from "../../api/money/plan.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1115,6 +1116,10 @@ export const ROUTES = {
   // what is coming up, what the money helper did. Same gate as money/overview;
   // POST plan changes are staff (FINANCE) only, "talk to a person" is either.
   "money/payments": moneyPayments,
+  // FinanceOS Plan (/app/money-plan.html, wave 5 W1): a month of dated pins
+  // from every plan source (src/finance/plan-sources/). Same gate as
+  // money/overview; POST marks a pin and is staff (FINANCE) only.
+  "money/plan": moneyPlan,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,

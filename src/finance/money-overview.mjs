@@ -479,8 +479,11 @@ export function readPricePerContainer(env = {}) {
 }
 
 /* SELECTED COLUMNS. plaid_items.encrypted_access_token is one join away and a
-   read has no business being one typo from it. */
-const ACCOUNT_SQL = `
+   read has no business being one typo from it.
+   ACCOUNT_SQL, CYCLE_SQL and LIABILITY_SQL are exported for the plan's due
+   dates (src/finance/plan-sources/dues.mjs), so the plan and this overview
+   read the same rows. Each takes [clientId, orgId]. */
+export const ACCOUNT_SQL = `
   SELECT a.id, a.name, a.official_name, a.mask, a.provider,
          a.account_type, a.account_subtype,
          a.available_balance_cents, a.current_balance_cents, a.credit_limit_cents,
@@ -522,10 +525,10 @@ const BILL_SQL = `
 /* to_jsonb(row): dates come back as 'YYYY-MM-DD' strings, and any column a
    parallel build adds (a provider due date, a bank_account_id on a liability)
    arrives without this query having to name it first. */
-const CYCLE_SQL = `
+export const CYCLE_SQL = `
   SELECT to_jsonb(s) AS row FROM account_statement_cycles s
    WHERE s.client_id = $1 AND s.org_id = $2`;
-const LIABILITY_SQL = `
+export const LIABILITY_SQL = `
   SELECT to_jsonb(l) AS row FROM card_liabilities l
    WHERE l.client_id = $1 AND l.org_id = $2
    ORDER BY l.as_of DESC, l.created_at DESC`;

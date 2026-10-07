@@ -223,7 +223,7 @@
      only stops gateLinks() hiding the portal's FinanceOS card from those three
      when they open a client's portal. Navigation, not a gate. */
   var STAFF_MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-credit.html",
-    "money-connections.html", "money-payments.html", "money-setup.html"];
+    "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html"];
 
   /* Consent desk — the credit-pull permission screen. api/consent/capture.mjs
      gates on CONSENT_ROLES = owner, admin, closer, funding_advisor, and that
@@ -416,7 +416,7 @@
        its own file (api/money/overview.mjs, api/money/setup.mjs). */
     client: ["client-portal.html", "affiliate.html",
       "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
-      "money-connections.html", "money-payments.html", "money-setup.html"],
+      "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html"],
     affiliate: ["affiliate.html"],
     /* NO CAMPAIGNS ROW YET, AND THAT IS AN OPEN QUESTION, NOT AN OVERSIGHT.
        A partner cannot reach campaign-manager.html from any screen (proven live
