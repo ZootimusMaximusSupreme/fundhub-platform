@@ -23,13 +23,13 @@
   "use strict";
 
   var TABS = [
-    ["overview", "Overview"], ["next", "Next steps"], ["helper", "Money helper"], ["transfers", "Money moves"], ["plan", "Plan"], ["banks", "Banks"], ["strategy", "Strategy"], ["fundability", "Fundability"], ["accounts", "Accounts"], ["credit", "Credit"],
+    ["overview", "Overview"], ["next", "Next steps"], ["helper", "Money helper"], ["transfers", "Money moves"], ["plan", "Plan"], ["banks", "Banks"], ["strategy", "Strategy"], ["fundability", "Fundability"], ["declines", "Applications"], ["accounts", "Accounts"], ["credit", "Credit"],
     ["connections", "Connections"], ["payments", "Payments"], ["setup", "Setup"]
   ];
   /* The old standalone pages, and the tab each one is now. A link inside a
      section to one of these switches tabs instead of leaving the page. */
   var PAGE_TAB = {
-    "money.html": "overview", "money-next.html": "next", "money-helper.html": "helper", "money-transfers.html": "transfers", "money-plan.html": "plan", "money-banks.html": "banks", "money-strategy.html": "strategy", "money-fundability.html": "fundability", "money-accounts.html": "accounts", "money-credit.html": "credit",
+    "money.html": "overview", "money-next.html": "next", "money-helper.html": "helper", "money-transfers.html": "transfers", "money-plan.html": "plan", "money-banks.html": "banks", "money-strategy.html": "strategy", "money-fundability.html": "fundability", "money-declines.html": "declines", "money-accounts.html": "accounts", "money-credit.html": "credit",
     "money-connections.html": "connections", "money-payments.html": "payments", "money-setup.html": "setup"
   };
   var OVERVIEW = "/api/money/overview";
