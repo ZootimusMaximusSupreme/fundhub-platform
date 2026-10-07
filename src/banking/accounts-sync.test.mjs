@@ -11,9 +11,12 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert";
+import crypto from "node:crypto";
 
 import { syncBankAccounts, PROVIDERS, SYNC_REASONS } from "./accounts-sync.mjs";
 import { getAccounts as mockGetAccounts, isMockEnabled, MOCK_REASONS } from "./providers/mock.mjs";
+import { encryptPlaidToken } from "./plaid.mjs";
+import { fakeBankDb, plaidAccount, stubPlaid } from "./plaid-fake-db.mjs";
 
 const ON = { BANKING_MOCK_PROVIDER: "1" };
 const AS_OF = "2026-07-31T00:00:00.000Z";
@@ -229,5 +232,112 @@ describe("a successful mock sync", () => {
     const db = makeDb();
     const out = await syncBankAccounts(db, { ...base, orgId: "org-9", providerName: "mock", env: ON });
     for (const a of out.accounts) assert.equal(a.org_id, "org-9");
+  });
+});
+
+/* THE PLAID PATH, CLOSED (2026-10-07). It used to call the Plaid seam with an item id
+   and no stored token — so it could never succeed — and, had it succeeded, it would
+   have handed the store Plaid's own account shape instead of the store's, which writes
+   a row with no plaid_account_id (and a new copy of it on every sync). It now reads the
+   login's stored token, asks Plaid, and writes through the same code the daily sweep
+   runs (src/banking/plaid-refresh.mjs). */
+describe("the plaid path reads the stored login and writes real accounts", () => {
+  const ORG = "org-plaid";
+  const CLIENT = "client-plaid";
+  const LOGIN = "00000000-0000-0000-0000-0000000000a1";   // plaid_items.id
+  const PLAID_ITEM = "item-sandbox-1";                    // Plaid's own item id
+  const TOKEN = "access-sandbox-secret-1";
+  const PLAID_ENV_VARS = Object.freeze({
+    PLAID_CLIENT_ID: "cid", PLAID_SECRET: "sec", PLAID_ENV: "sandbox", ADAPTERS_DRY_RUN: "0",
+    PLAID_TOKEN_ENC_KEY: crypto.randomBytes(32).toString("base64")
+  });
+  const login = (over = {}) => ({
+    id: LOGIN, org_id: ORG, client_id: CLIENT, plaid_item_id: PLAID_ITEM, institution_name: "First Platypus Bank",
+    encrypted_access_token: encryptPlaidToken(TOKEN, { itemId: PLAID_ITEM, env: PLAID_ENV_VARS }),
+    consent_granted_at: "2026-09-20T10:00:00.000Z", created_at: "2026-09-20T10:00:00.000Z", ...over
+  });
+  const plaidOpts = { orgId: ORG, clientId: CLIENT, asOf: AS_OF, providerName: "plaid", env: PLAID_ENV_VARS };
+  const CHECKING = plaidAccount({ id: "p-chk", name: "Business Checking", mask: "2202", current: 20000.5, available: 19000 });
+
+  test("a named login is read with its own token and written in the store's shape, keyed by Plaid's account id", async () => {
+    const db = fakeBankDb({ items: [login()] });
+    const plaid = stubPlaid({ [TOKEN]: [CHECKING] });
+
+    const out = await syncBankAccounts(db, { ...plaidOpts, itemId: LOGIN, fetchImpl: plaid.fetch });
+
+    assert.equal(out.ok, true, JSON.stringify(out.missing));
+    assert.equal(out.provider, "plaid");
+    assert.equal(out.real, true);
+    assert.equal(out.written, 1);
+    assert.equal(plaid.requests[0].body.access_token, TOKEN, "the stored token was decrypted and used");
+    const [a] = out.accounts;
+    assert.equal(a.provider, "plaid");
+    assert.equal(a.plaid_item_id, LOGIN, "hung off the login's row id, not Plaid's item id");
+    assert.equal(a.plaid_account_id, "p-chk", "without this key every sync adds the account again");
+    assert.equal(a.current_balance_cents, 2000050);
+    assert.equal(a.entity_kind, "unknown");
+    assert.equal(out.created.length, 1);
+    assert.deepEqual(out.vanished, []);
+  });
+
+  test("syncing again updates the same row — it does not add a second one", async () => {
+    const db = fakeBankDb({ items: [login()] });
+    const plaid = stubPlaid({ [TOKEN]: [CHECKING] });
+    await syncBankAccounts(db, { ...plaidOpts, itemId: LOGIN, fetchImpl: plaid.fetch });
+    const again = await syncBankAccounts(db, { ...plaidOpts, itemId: LOGIN, fetchImpl: plaid.fetch });
+    assert.equal(db.state.accounts.length, 1);
+    assert.equal(again.created.length, 0);
+  });
+
+  test("with no item named, every readable login of the client is refreshed", async () => {
+    const second = login({ id: "00000000-0000-0000-0000-0000000000b1", plaid_item_id: "item-sandbox-2" });
+    second.encrypted_access_token = encryptPlaidToken("access-sandbox-secret-2", { itemId: "item-sandbox-2", env: PLAID_ENV_VARS });
+    const db = fakeBankDb({ items: [login(), second] });
+    const plaid = stubPlaid({
+      [TOKEN]: [CHECKING],
+      "access-sandbox-secret-2": [plaidAccount({ id: "p-sav", name: "Savings", mask: "9009", subtype: "savings" })]
+    });
+    const out = await syncBankAccounts(db, { ...plaidOpts, fetchImpl: plaid.fetch });
+    assert.equal(out.ok, true);
+    assert.equal(out.written, 2);
+    assert.equal(out.items.length, 2);
+    assert.equal(plaid.requests.length, 2);
+  });
+
+  test("a client with no linked bank is ok with nothing written — nobody was asked", async () => {
+    const db = fakeBankDb({ items: [] });
+    const out = await syncBankAccounts(db, { ...plaidOpts, fetchImpl: () => assert.fail("must not transmit") });
+    assert.equal(out.ok, true);
+    assert.equal(out.ran, false);
+    assert.equal(out.reason, "no_linked_bank");
+    assert.equal(out.written, 0);
+  });
+
+  test("a login that is not readable is refused with its own reason, and nothing is written", async () => {
+    const db = fakeBankDb({ items: [login({ link_state: "error" })] });
+    const out = await syncBankAccounts(db, { ...plaidOpts, itemId: LOGIN, fetchImpl: () => assert.fail("must not transmit") });
+    assert.equal(out.ok, false);
+    assert.equal(out.reason, "no_readable_item");
+    assert.equal(out.written, 0);
+    assert.equal(db.state.accounts.length, 0);
+  });
+
+  test("Plaid saying the client must log in again is a refusal that carries the per-login report", async () => {
+    const db = fakeBankDb({ items: [login()] });
+    const plaid = stubPlaid({ [TOKEN]: { error_type: "ITEM_ERROR", error_code: "ITEM_LOGIN_REQUIRED", error_message: "log in" } });
+    const out = await syncBankAccounts(db, { ...plaidOpts, itemId: LOGIN, fetchImpl: plaid.fetch });
+    assert.equal(out.ok, false);
+    assert.equal(out.reason, "upstream_error");
+    assert.equal(out.written, 0);
+    assert.equal(out.items[0].relinkNeeded, true);
+    assert.equal(out.items[0].errorCode, "ITEM_LOGIN_REQUIRED");
+    assert.equal(db.state.items[0].link_state, "error");
+    assert.equal(JSON.stringify(out).includes(TOKEN), false);
+  });
+
+  test("the plaid entry no longer has the old token-less getAccounts; it has a sync", () => {
+    assert.equal(typeof PROVIDERS.plaid.sync, "function");
+    assert.equal(PROVIDERS.plaid.getAccounts, undefined);
+    assert.equal(typeof PROVIDERS.mock.getAccounts, "function", "the mock path is untouched");
   });
 });

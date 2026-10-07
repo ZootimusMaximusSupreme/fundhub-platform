@@ -173,11 +173,20 @@ export async function exchangePublicToken(publicToken, opts = {}) {
 export async function fetchAccounts(accessToken, opts = {}) {
   const r = await plaidPost("/accounts/get", { access_token: accessToken }, opts);
   if (!r.ok) return r;
-  const raw = Array.isArray(r.data?.accounts) ? r.data.accounts : null;
-  if (!raw) {
+  const accounts = mapAccounts(r.data?.accounts);
+  if (!accounts) {
     return { ...r, ok: false, data: null, error: "plaid /accounts/get answered 200 without an accounts array" };
   }
-  const accounts = raw.map((a) => ({
+  return { ...r, accounts, item: r.data?.item ?? null, data: null };
+}
+
+/* One Plaid account row → the shape this layer hands up. Shared by /accounts/get
+   and /accounts/balance/get, which answer with the same body. null when Plaid
+   sent no accounts array at all — that is a failure, never an empty list. */
+function mapAccounts(rawAccounts) {
+  const raw = Array.isArray(rawAccounts) ? rawAccounts : null;
+  if (!raw) return null;
+  return raw.map((a) => ({
     plaidAccountId: a.account_id ?? null,
     name: a.name ?? null,
     officialName: a.official_name ?? null,
@@ -195,6 +204,40 @@ export async function fetchAccounts(accessToken, opts = {}) {
        written to entity_kind — 082 says a human or a document decides that. */
     holderCategory: a.holder_category ?? null
   }));
+}
+
+/**
+ * fetchBalances — POST /accounts/balance/get
+ *
+ * REAL-TIME balances. /accounts/get above answers from Plaid's cache, which a
+ * transactions Item refreshes about once a day; this asks the bank now. Same body
+ * back, same shape out (https://plaid.com/docs/api/accounts/).
+ *
+ * IT COSTS MONEY AND IT IS SLOW. Plaid bills a flat fee per successful call, and
+ * its own figures put the latency at about 3 seconds median, 11 at the 95th
+ * percentile (https://plaid.com/docs/balance/). /accounts/get is not billed. So
+ * nothing calls this by default: src/banking/plaid-refresh.mjs reads it only when
+ * PLAID_REALTIME_BALANCES=1.
+ *
+ * `minLastUpdatedDatetime` (an ISO instant) is Plaid's `options.min_last_updated_
+ * datetime`. Plaid requires it for credit cards at Capital One, which cannot give
+ * a live balance on a non-depository account; every other bank ignores it. Plaid
+ * wants whole seconds (YYYY-MM-DDTHH:mm:ssZ), so the milliseconds are cut.
+ */
+export async function fetchBalances(accessToken, opts = {}) {
+  const payload = { access_token: accessToken };
+  if (opts.minLastUpdatedDatetime) {
+    const t = new Date(opts.minLastUpdatedDatetime);
+    if (!Number.isNaN(t.getTime())) {
+      payload.options = { min_last_updated_datetime: t.toISOString().replace(/\.\d{3}Z$/, "Z") };
+    }
+  }
+  const r = await plaidPost("/accounts/balance/get", payload, opts);
+  if (!r.ok) return r;
+  const accounts = mapAccounts(r.data?.accounts);
+  if (!accounts) {
+    return { ...r, ok: false, data: null, error: "plaid /accounts/balance/get answered 200 without an accounts array" };
+  }
   return { ...r, accounts, item: r.data?.item ?? null, data: null };
 }
 
@@ -696,7 +739,7 @@ export async function sandboxSimulateLedgerAvailable(opts = {}) {
 }
 
 export default {
-  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchLiabilities, createLinkToken,
+  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchBalances, fetchLiabilities, createLinkToken,
   sandboxPublicToken, syncTransactions,
   transferHostRefusal, authorizeTransfer, createTransfer, getTransfer, cancelTransfer, syncTransferEvents,
   getTransferLedger, sandboxSimulateTransfer, sandboxSimulateLedgerAvailable

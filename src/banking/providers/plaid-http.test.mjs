@@ -14,7 +14,7 @@ import test, { describe } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts
+  PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchBalances
 } from "./plaid-http.mjs";
 
 const CREDS = Object.freeze({
@@ -216,5 +216,73 @@ describe("fetchAccounts", () => {
     const r = await fetchAccounts("access-sandbox-xyz", { ...CREDS, fetchImpl: stubFetch(200, { item: {} }) });
     assert.strictEqual(r.ok, false, "a malformed answer must not read as 'this person has no accounts'");
     assert.strictEqual(r.data, null);
+  });
+});
+
+/* /accounts/balance/get is the REAL-TIME read: billed per call and slow, so only
+   src/banking/plaid-refresh.mjs reaches it, and only on PLAID_REALTIME_BALANCES=1. */
+describe("fetchBalances", () => {
+  const BODY = {
+    accounts: [
+      { account_id: "a1", name: "Everyday Checking", official_name: null, mask: "4419",
+        type: "depository", subtype: "checking",
+        balances: { current: 10787.16, available: 10500, limit: null, iso_currency_code: "USD" } },
+      { account_id: "a2", name: "Platinum Card", official_name: null, mask: "2007",
+        type: "credit", subtype: "credit card",
+        balances: { current: 5200, available: null, limit: 20000, iso_currency_code: "USD" } }
+    ],
+    item: { item_id: "item-1" }
+  };
+
+  test("posts the access token to /accounts/balance/get and maps accounts exactly as fetchAccounts does", async () => {
+    const capture = {};
+    const bal = await fetchBalances("access-sandbox-xyz", { ...CREDS, fetchImpl: stubFetch(200, BODY, { capture }) });
+    assert.strictEqual(capture.url, "https://sandbox.plaid.com/accounts/balance/get");
+    const sent = JSON.parse(capture.init.body);
+    assert.strictEqual(sent.access_token, "access-sandbox-xyz");
+    assert.strictEqual(sent.options, undefined, "no options unless the caller gives a floor");
+
+    const cached = await fetchAccounts("access-sandbox-xyz", { ...CREDS, fetchImpl: stubFetch(200, BODY) });
+    assert.strictEqual(bal.ok, true);
+    assert.deepEqual(bal.accounts, cached.accounts, "one body, one mapping — the two reads cannot drift apart");
+    assert.strictEqual(bal.accounts[1].availableBalance, null, "an unknown balance stays null here too");
+  });
+
+  /* Plaid wants YYYY-MM-DDTHH:mm:ssZ. A JavaScript ISO string carries milliseconds. */
+  test("a floor goes out as options.min_last_updated_datetime in whole seconds", async () => {
+    const capture = {};
+    await fetchBalances("t", {
+      ...CREDS, minLastUpdatedDatetime: "2026-10-06T07:00:00.123Z", fetchImpl: stubFetch(200, BODY, { capture })
+    });
+    assert.deepEqual(JSON.parse(capture.init.body).options, { min_last_updated_datetime: "2026-10-06T07:00:00Z" });
+
+    const none = {};
+    await fetchBalances("t", { ...CREDS, minLastUpdatedDatetime: "not a date", fetchImpl: stubFetch(200, BODY, { capture: none }) });
+    assert.strictEqual(JSON.parse(none.init.body).options, undefined, "an unreadable floor is dropped, not sent");
+  });
+
+  test("a Plaid error comes back as the flat failure, with its type so the caller can tell a broken login", async () => {
+    const r = await fetchBalances("t", {
+      ...CREDS,
+      fetchImpl: stubFetch(400, { error_type: "ITEM_ERROR", error_code: "ITEM_LOGIN_REQUIRED", error_message: "log in again" })
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.errorType, "ITEM_ERROR");
+    assert.strictEqual(r.errorCode, "ITEM_LOGIN_REQUIRED");
+    assert.strictEqual(r.accounts, undefined);
+  });
+
+  test("a 200 with no accounts array is a failure, not an empty list", async () => {
+    const r = await fetchBalances("t", { ...CREDS, fetchImpl: stubFetch(200, { item: {} }) });
+    assert.strictEqual(r.ok, false);
+    assert.match(r.error, /balance\/get/);
+  });
+
+  test("no credential appears in what comes back", async () => {
+    const r = await fetchBalances("access-sandbox-secret", { ...CREDS, fetchImpl: stubFetch(200, BODY) });
+    const dumped = JSON.stringify(r);
+    for (const s of ["secret-value", "client-id-value", "access-sandbox-secret"]) {
+      assert.ok(!dumped.includes(s), `${s} came back`);
+    }
   });
 });

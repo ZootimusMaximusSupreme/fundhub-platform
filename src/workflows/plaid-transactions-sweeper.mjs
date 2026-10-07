@@ -1,16 +1,29 @@
 // Plaid transactions sweeper — the daily clock behind "charges and deposits".
 //
 // WHAT ONE PASS DOES. For every client holding an active, consented Plaid login
-// (clientsWithPlaid()), run syncClientTransactions(): read new charges and
-// deposits from Plaid into bank_transactions, then re-run the repeating-bill
-// detector for that client. Unit A of ops/workflows/finance-os-build-2026-10-06.md.
+// (clientsWithPlaid()), in this order:
+//   1. refreshClientAccounts(): re-read each login's account list and balances into
+//      bank_accounts, so balances are today's and a card opened since yesterday
+//      exists (src/banking/plaid-refresh.mjs). Unit F1 of FinanceOS.
+//   2. syncClientTransactions(): read new charges and deposits from Plaid into
+//      bank_transactions, then re-run the repeating-bill detector for that client.
+//      Unit A of ops/workflows/finance-os-build-2026-10-06.md.
+//
+// ACCOUNTS FIRST, AND WHY. Everything that runs after 07:00 UTC reads bank_accounts
+// as it stands: the trend snapshots and the file-protection alerts at 07:30, the card
+// reminders at 16:00. And a transaction is only stored for an account that is already
+// in bank_accounts, so a card that opened yesterday would have had its charges dropped
+// ("account_not_saved") until something wrote the card. A refresh that fails (or
+// throws) is recorded under tally.accounts and NEVER stops the transactions sync — the
+// two reads are separate asks of Plaid and one being down says nothing about the other.
 //
 // DOES NOTHING WHEN PLAID IS NOT CONFIGURED. isPlaidEnabled() is checked first;
 // with PLAID_CLIENT_ID / PLAID_SECRET / PLAID_TOKEN_ENC_KEY missing the pass
 // returns { skipped: "not_configured" } without reading a single row.
 //
-// READS ONLY. Plaid's /transactions/sync is a read of the client's own bank. It
-// sends nothing to the client and moves no money.
+// READS ONLY. Plaid's /accounts/get and /transactions/sync are reads of the client's
+// own bank. They send nothing to the client and move no money. (The refresh WRITES
+// bank_accounts — balances and new accounts — and never deletes or closes one.)
 //
 // ONE STEP PER CLIENT. An Inngest pass runs inside the /api/inngest request,
 // which Netlify cuts at 26 seconds. Each client gets its own step.run so one
@@ -28,12 +41,31 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { isPlaidEnabled } from "../banking/plaid.mjs";
 import { syncClientTransactions, clientsWithPlaid } from "../banking/plaid-transactions.mjs";
+import { refreshClientAccounts } from "../banking/plaid-refresh.mjs";
 
 export const SWEEP_CRON = "0 7 * * *";
 export const SOURCE_WORKFLOW = "plaid-transactions-sweeper";
 
-/** syncOne — one client, never throws. */
-async function syncOne(conn, row, { env, now, sync }) {
+/** refreshOne — one client's accounts and balances, never throws. */
+async function refreshOne(conn, row, { env, now, refresh }) {
+  try {
+    const r = await refresh(conn, { orgId: row.org_id, clientId: row.client_id, env, asOf: now.toISOString() });
+    return {
+      ok: !!r.ok,
+      reason: r.reason ?? null,
+      created: r.totals?.created ?? 0,
+      vanished: r.totals?.vanished ?? 0,
+      balancesChanged: r.totals?.balancesChanged ?? 0,
+      relink: r.totals?.relink ?? 0
+    };
+  } catch (e) {
+    return { ok: false, reason: "errored", error: String(e?.message || e).slice(0, 300) };
+  }
+}
+
+/** syncOne — one client, never throws. Accounts first, then transactions. */
+async function syncOne(conn, row, { env, now, sync, refresh }) {
+  const accounts = await refreshOne(conn, row, { env, now, refresh });
   try {
     const r = await sync(conn, { orgId: row.org_id, clientId: row.client_id, env, asOf: now.toISOString() });
     return {
@@ -41,20 +73,29 @@ async function syncOne(conn, row, { env, now, sync }) {
       ok: !!r.ok,
       reason: r.reason ?? null,
       written: r.totals?.written ?? 0,
-      bills: r.bills?.bills ?? 0
+      bills: r.bills?.bills ?? 0,
+      accounts
     };
   } catch (e) {
-    return { clientId: row.client_id, ok: false, reason: "errored", error: String(e?.message || e).slice(0, 300) };
+    return { clientId: row.client_id, ok: false, reason: "errored", error: String(e?.message || e).slice(0, 300), accounts };
   }
 }
 
-/** sweep — one pass. `db`, env, clock and the sync are arguments so tests drive
-    it without Inngest or Plaid. `step` is optional; with it, each client is its
-    own Inngest step. */
+/** sweep — one pass. `db`, env, clock and the two syncs are arguments so tests
+    drive it without Inngest or Plaid. `step` is optional; with it, each client is
+    its own Inngest step. */
 export async function sweep(conn = db, {
-  now = new Date(), env = process.env, sync = syncClientTransactions, list = clientsWithPlaid, step = null
+  now = new Date(), env = process.env, sync = syncClientTransactions, refresh = refreshClientAccounts,
+  list = clientsWithPlaid, step = null
 } = {}) {
-  const tally = { skipped: null, checked: 0, synced: 0, written: 0, failed: [] };
+  const tally = {
+    skipped: null, checked: 0, synced: 0, written: 0, failed: [],
+    /* the account refresh, kept apart from the transactions numbers above:
+       `created` = accounts that did not exist yesterday, `vanished` = accounts
+       Plaid stopped listing (reported, never closed), `relink` = logins whose
+       client must sign in at the bank again. */
+    accounts: { refreshed: 0, created: 0, vanished: 0, balancesChanged: 0, relink: 0, failed: [] }
+  };
   if (!isPlaidEnabled(env)) {
     tally.skipped = "not_configured";
     return tally;
@@ -66,13 +107,20 @@ export async function sweep(conn = db, {
   tally.checked = rows.length;
 
   for (const row of rows) {
-    const one = await run(`sync-${row.client_id}`, () => syncOne(conn, row, { env, now, sync }));
+    const one = await run(`sync-${row.client_id}`, () => syncOne(conn, row, { env, now, sync, refresh }));
     if (one.ok) {
       tally.synced += 1;
       tally.written += one.written;
     } else {
       tally.failed.push({ clientId: one.clientId, reason: one.reason, error: one.error ?? null });
     }
+    const a = one.accounts;
+    if (a?.ok) tally.accounts.refreshed += 1;
+    else tally.accounts.failed.push({ clientId: one.clientId, reason: a?.reason ?? null, error: a?.error ?? null });
+    tally.accounts.created += a?.created ?? 0;
+    tally.accounts.vanished += a?.vanished ?? 0;
+    tally.accounts.balancesChanged += a?.balancesChanged ?? 0;
+    tally.accounts.relink += a?.relink ?? 0;
   }
   return tally;
 }

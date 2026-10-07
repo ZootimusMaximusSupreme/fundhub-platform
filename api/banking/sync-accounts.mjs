@@ -50,9 +50,13 @@
 // a warning. A made-up balance says so everywhere it appears.
 //
 // NOTHING TRANSMITS ON THE 'mock' PATH. It reads a fixture in this repository.
-// The 'plaid' path does not transmit either — its seam is deliberately unclosed
-// and returns an honest refusal, which this endpoint passes straight through
-// rather than dressing up as a failure.
+// The 'plaid' path DOES transmit: it re-reads the client's linked bank logins from
+// Plaid and writes what comes back — src/banking/plaid-refresh.mjs, the same code
+// the daily sweep runs. `item_id` (a plaid_items uuid) narrows it to one login;
+// without it every readable login is refreshed. A login Plaid says needs the
+// client to sign in again is marked link_state='error' and reported per item
+// (`relink_needed`), not hidden. Not configured, or Plaid refused: a refusal with
+// the reason, passed straight through rather than dressed up as a failure.
 //
 //
 // NOTHING IS DELETED, EVER. An account that has stopped appearing in a
@@ -166,15 +170,17 @@ export default async function handler(req, res, deps = {}) {
       /* A provider that will not answer is not a server error. 409 says "the
          thing you asked for is not in a state where it can happen" and keeps a
          genuine 500 meaning something broke. The provider's own reason is passed
-         through unchanged: "not_configured" and "not_implemented" send somebody
-         to two different places. */
-      return res.status(409).json({
+         through unchanged: "not_configured" and "bad_request" send somebody to
+         two different places. A named login this client does not have (or that is
+         not readable) is the one 404. */
+      return res.status(result.reason === "no_readable_item" ? 404 : 409).json({
         ok: false,
         error: result.reason,
         provider: result.provider ?? providerName,
         missing: result.missing ?? [],
         known: result.known,
         detail: result.detail,
+        items: (result.items ?? []).map(itemView),
         written: 0
       });
     }
@@ -188,6 +194,9 @@ export default async function handler(req, res, deps = {}) {
         ? null
         : "These accounts are NOT REAL. They came from a stand-in provider and every screen showing them says so.",
       as_of: asOf,
+      /* false only when nobody was asked: a plaid client with no linked bank. */
+      ran: result.ran ?? true,
+      reason: result.reason ?? null,
       written: result.written,
       accounts: result.accounts.map((a) => ({
         id: a.id,
@@ -197,6 +206,9 @@ export default async function handler(req, res, deps = {}) {
            and somebody has to place it before it counts as the client's money. */
         entity_kind: a.entity_kind
       })),
+      /* New since the last read, per login — plaid only. */
+      created: result.created ?? [],
+      items: (result.items ?? []).map(itemView),
       vanished: result.vanished,
       next: "Open the Money Map for this client to see them: /app/money-map.html?client_id=" + String(clientId).trim()
     });
@@ -206,4 +218,29 @@ export default async function handler(req, res, deps = {}) {
     }
     throw e;
   }
+}
+
+/* One bank login's report, hand-picked field by field — the way sync-transactions
+   does it. Nothing from plaid_items' token or cursor columns, and no raw payload. */
+function itemView(x) {
+  return {
+    item_id: x.itemRowId,
+    institution: x.institution ?? null,
+    ok: x.ok,
+    error: x.reason ?? null,
+    error_code: x.errorCode ?? null,
+    detail: x.error ?? null,
+    /* true = Plaid says the client must sign in at the bank again. link_state is
+       now 'error' and last_error_code holds why; no screen shows that yet. */
+    relink_needed: x.relinkNeeded ?? false,
+    balance_source: x.balanceSource ?? null,
+    realtime_error: x.realtimeError ?? null,
+    /* the login had no stored accounts, so everything on it counted as the baseline */
+    first_read: x.firstRead ?? false,
+    accounts_read: x.read ?? 0,
+    written: x.written ?? 0,
+    created: x.created ?? [],
+    vanished: x.vanished ?? [],
+    balances_changed: x.balancesChanged ?? []
+  };
 }
