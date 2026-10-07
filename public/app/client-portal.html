@@ -2968,6 +2968,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (progA) {
       progA.setAttribute("href", "/progress.html?client_id=" + encodeURIComponent(clientId));
     }
+    /* Same reason for the FinanceOS card: api/money/* needs ?client_id= from
+       staff. shell.js STAFF_MONEY keeps the card on for owner, admin and
+       sales_manager; gateLinks() hides it for everyone else. data-fh-href too:
+       gateLinks() rebuilds every href from it on each pass. */
+    var moneyA = document.getElementById("money-link");
+    if (moneyA && clientId) {
+      var moneyHref = "/app/financeos.html?client_id=" + encodeURIComponent(clientId);
+      moneyA.setAttribute("href", moneyHref);
+      moneyA.setAttribute("data-fh-href", moneyHref);
+    }
   }
 
   setFundingVisible(false);

@@ -5,8 +5,10 @@
 // payment to activate. Price per container and the setup fee are both "not set"
 // today, so both come back as null and the page paints "$X".
 //
-// THIS FILE READS. The two writes the setup page can cause live elsewhere and
-// are reused, not rebuilt:
+// THIS FILE MOSTLY READS. The one write it owns is
+// ensureFinanceOsForSetupPayment (bottom): when the setup link is paid, open the
+// finance-os subscription the entitlement gate reads. The two writes the setup
+// page can cause live elsewhere and are reused, not rebuilt:
 //   * the setup checkout is a payment_links row minted by
 //     src/payment-links/index.mjs createPaymentLink (Commas checkout session).
 //     No new Commas product is created — the title is an existing one.
@@ -19,7 +21,8 @@
 // MONEY IS INTEGER CENTS. Unknown is null, never 0 (CLAUDE.md §12).
 
 import { readPricePerContainer, containerBilling } from "./containers.mjs";
-import { financeOsEntitlement } from "./finance-os-entitlement.mjs";
+import { financeOsEntitlement, FINANCE_OS_TIER } from "./finance-os-entitlement.mjs";
+import { startSubscription, SubscriptionConflictError } from "../subscriptions/store.mjs";
 import { SOFT_PULL_BUSINESS_ADDON_CENTS, softPullBaseCents } from "./soft-pull-pricing.mjs";
 
 export const SETUP_FEE_ENV = "FINANCE_OS_SETUP_FEE_CENTS";
@@ -169,4 +172,103 @@ export async function readSetupStatus(db, { orgId, clientId, env = {}, asOf = ne
     steps,
     current_step: current
   };
+}
+
+// ---------------------------------------------------------------------------
+// SETUP PAID → FINANCE OS ON
+//
+// Called by src/handlers/payment-links.mjs after Commas says a link is paid.
+// A setup link is the payment_links row with purpose 'custom' and description
+// 'Finance OS setup' — the same pair readSetupLinks reads. Any other link is
+// refused here and touches nothing.
+//
+// ONCE PER LINK. The subscription carries provider_ref 'payment_link:<id>', so
+// a replayed webhook finds the row it already opened and stops. Two replays at
+// the same instant are settled by the database, not by this read: 075's
+// subscriptions_no_overlap (one live row per client) and
+// subscriptions_provider_ref_uq both refuse the second insert.
+//
+// OPEN-ENDED. No end date and no period: the monthly price is not set
+// (owner-set 2026-10-06, "$X"), so there is nothing to bill and no next_charge_at
+// — the charger never picks this row up. price_cents NULL means "not priced",
+// never 0 (CLAUDE.md §12).
+//
+// A client already entitled (for example the 12 months a Capital Blueprint
+// purchase opens) gets no second row: one live subscription per client is
+// 075's rule, and they already have Finance OS.
+// ---------------------------------------------------------------------------
+
+export const SETUP_PROVIDER_REF_PREFIX = "payment_link:";
+
+/** isFinanceOsSetupLink(link) → true only for the setup-fee payment_links row. */
+export function isFinanceOsSetupLink(link) {
+  return !!link && link.purpose === SETUP_PURPOSE && link.description === SETUP_DESCRIPTION;
+}
+
+async function subscriptionForLink(db, { orgId, clientId, providerRef }) {
+  const r = await db.query(
+    `SELECT id
+       FROM subscriptions
+      WHERE org_id = $1 AND client_id = $2 AND tier = $3 AND provider_ref = $4
+      ORDER BY effective_from DESC
+      LIMIT 1`,
+    [orgId, clientId, FINANCE_OS_TIER, providerRef]
+  );
+  return (r.rows || [])[0] || null;
+}
+
+/**
+ * ensureFinanceOsForSetupPayment(db, link, { now }) →
+ *   { created, subscriptionId, reason }
+ *
+ * `link` is the payment_links row as markPaid returns it. Never throws for a
+ * refusal (wrong link, already granted, another plan in the way) — those come
+ * back as a reason. A real database fault throws, so the event bus dead-letters
+ * it and a replay can finish the job.
+ */
+export async function ensureFinanceOsForSetupPayment(db, link, { now = new Date() } = {}) {
+  if (!isFinanceOsSetupLink(link)) {
+    return { created: false, subscriptionId: null, reason: "not_setup_link" };
+  }
+  if (link.status !== "paid") {
+    return { created: false, subscriptionId: null, reason: "not_paid" };
+  }
+  const orgId = link.org_id || null;
+  const clientId = link.client_id || null;
+  if (!link.id || !orgId || !clientId) {
+    return { created: false, subscriptionId: null, reason: "link has no id, org or client" };
+  }
+
+  const providerRef = `${SETUP_PROVIDER_REF_PREFIX}${link.id}`;
+  const prior = await subscriptionForLink(db, { orgId, clientId, providerRef });
+  if (prior) return { created: false, subscriptionId: prior.id, reason: "already_granted" };
+
+  const paidAt = link.paid_at ? new Date(link.paid_at) : now;
+  const at = Number.isFinite(paidAt.getTime()) ? paidAt : now;
+
+  const ent = await financeOsEntitlement(db, { orgId, clientId, asOf: at });
+  if (ent.entitled) return { created: false, subscriptionId: ent.subscriptionId, reason: "already_entitled" };
+
+  try {
+    const row = await startSubscription(db, {
+      orgId,
+      clientId,
+      tier: FINANCE_OS_TIER,
+      priceCents: null,
+      providerRef,
+      at,
+      notes: `Finance OS setup paid — payment link ${link.id}`
+    });
+    return { created: true, subscriptionId: row.id, reason: null };
+  } catch (e) {
+    const raced = e instanceof SubscriptionConflictError
+      || (e && e.code === "23505" && e.constraint === "subscriptions_provider_ref_uq");
+    if (!raced) throw e;
+    const again = await subscriptionForLink(db, { orgId, clientId, providerRef });
+    if (again) return { created: false, subscriptionId: again.id, reason: "already_granted" };
+    const ent2 = await financeOsEntitlement(db, { orgId, clientId, asOf: at });
+    if (ent2.entitled) return { created: false, subscriptionId: ent2.subscriptionId, reason: "already_entitled" };
+    /* Another plan is live for this client (075 allows one). Not ours to close. */
+    return { created: false, subscriptionId: null, reason: String(e.message || e) };
+  }
 }
