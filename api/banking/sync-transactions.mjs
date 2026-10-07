@@ -3,7 +3,7 @@
 //
 // Pulls one client's charges and deposits from every linked Plaid bank into
 // bank_transactions, then re-runs the repeating-bill detector. Same gate as
-// banking/link-token: ROLE_SETS.FINANCE, as its own requireRole() call because
+// banking/link-token: ROLE_SETS.FINANCE_OS, as its own requireRole() call because
 // requireAuth drops a `roles` key, then the client must be in the caller's org.
 // The access token never appears in a response.
 import { db } from "../../src/db.mjs";
@@ -27,7 +27,7 @@ export default async function handler(req, res, deps = {}) {
 
   const staff = await auth(req, res, { db: database });
   if (!staff) return;
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return;
 
   const body = readBody(req.body);
   if (body === null) return res.status(400).json({ ok: false, error: "body must be JSON" });

@@ -97,11 +97,11 @@ flowchart TD
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/banking/link-exchange` | POST | owner, admin, sales_manager |
-| `/api/banking/link-token` | POST | owner, admin, sales_manager |
+| `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
-| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager |
-| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
@@ -172,23 +172,23 @@ flowchart TD
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
-| `/api/money/alerts` | GET, POST | owner, admin, sales_manager |
-| `/api/money/banks` | GET, POST | owner, admin, sales_manager |
-| `/api/money/connections` | GET, POST | owner, admin, sales_manager |
-| `/api/money/credit` | GET | owner, admin, sales_manager |
-| `/api/money/fundability` | GET | owner, admin, sales_manager |
-| `/api/money/helper` | GET, POST | owner, admin, sales_manager |
-| `/api/money/overview` | GET | owner, admin, sales_manager |
-| `/api/money/payments` | GET, POST | owner, admin, sales_manager |
-| `/api/money/plan` | GET, POST | owner, admin, sales_manager |
-| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager |
-| `/api/money/setup` | GET, POST | owner, admin, sales_manager |
-| `/api/money/strategy` | GET, POST | owner, admin, sales_manager |
-| `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
-| `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
-| `/api/money/trends` | GET | owner, admin, sales_manager |
-| `/api/money/vault` | GET, POST | owner, admin, sales_manager |
+| `/api/money/accounts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/alerts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/banks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/connections` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/credit` | GET | owner, admin, sales_manager, closer |
+| `/api/money/fundability` | GET | owner, admin, sales_manager, closer |
+| `/api/money/helper` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/overview` | GET | owner, admin, sales_manager, closer |
+| `/api/money/payments` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/plan` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/setup` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/strategy` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/tasks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/transfers` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/trends` | GET | owner, admin, sales_manager, closer |
+| `/api/money/vault` | GET, POST | owner, admin, sales_manager, closer |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | staff, client |

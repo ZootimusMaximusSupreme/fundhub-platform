@@ -270,12 +270,12 @@ flowchart TD
 | `/api/auth/staff-role` | POST | owner, admin |
 | `/api/auth/staff-update` | POST | owner, admin |
 | `/api/auth/suspend` | POST | owner, admin |
-| `/api/banking/link-exchange` | POST | owner, admin, sales_manager |
-| `/api/banking/link-token` | POST | owner, admin, sales_manager |
+| `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
-| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager |
-| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
 | `/api/chat/portal-message` | GET, POST | client |
@@ -354,23 +354,23 @@ flowchart TD
 | `/api/marketing/shoot` | GET, POST | owner, admin |
 | `/api/marketing/shoot/mark` | POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
-| `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
-| `/api/money/alerts` | GET, POST | owner, admin, sales_manager |
-| `/api/money/banks` | GET, POST | owner, admin, sales_manager |
-| `/api/money/connections` | GET, POST | owner, admin, sales_manager |
-| `/api/money/credit` | GET | owner, admin, sales_manager |
-| `/api/money/fundability` | GET | owner, admin, sales_manager |
-| `/api/money/helper` | GET, POST | owner, admin, sales_manager |
-| `/api/money/overview` | GET | owner, admin, sales_manager |
-| `/api/money/payments` | GET, POST | owner, admin, sales_manager |
-| `/api/money/plan` | GET, POST | owner, admin, sales_manager |
-| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager |
-| `/api/money/setup` | GET, POST | owner, admin, sales_manager |
-| `/api/money/strategy` | GET, POST | owner, admin, sales_manager |
-| `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
-| `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
-| `/api/money/trends` | GET | owner, admin, sales_manager |
-| `/api/money/vault` | GET, POST | owner, admin, sales_manager |
+| `/api/money/accounts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/alerts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/banks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/connections` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/credit` | GET | owner, admin, sales_manager, closer |
+| `/api/money/fundability` | GET | owner, admin, sales_manager, closer |
+| `/api/money/helper` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/overview` | GET | owner, admin, sales_manager, closer |
+| `/api/money/payments` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/plan` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/setup` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/strategy` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/tasks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/transfers` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/trends` | GET | owner, admin, sales_manager, closer |
+| `/api/money/vault` | GET, POST | owner, admin, sales_manager, closer |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |

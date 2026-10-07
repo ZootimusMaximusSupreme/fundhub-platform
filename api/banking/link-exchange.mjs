@@ -103,7 +103,7 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
 
   const staff = await auth(req, res, { db: database });
   if (!staff) return null;
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
 
   const body = readBody(req.body);
   if (body === null) {

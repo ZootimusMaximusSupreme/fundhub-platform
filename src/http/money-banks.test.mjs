@@ -93,7 +93,7 @@ describe("GET /api/money/banks", () => {
   });
 
   test("a staff role outside FINANCE is refused", async () => {
-    for (const role of ["closer", "funding_advisor", "csm", "setter"]) {
+    for (const role of ["setter", "funding_advisor", "csm", "setter"]) {
       const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.read, undefined);

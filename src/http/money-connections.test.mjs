@@ -67,7 +67,7 @@ describe("/api/money/connections — gate", () => {
   });
 
   test("staff: FINANCE only, client_id required, other org is 404", async () => {
-    assert.equal((await call(seed(), staffP("closer"), { query: { client_id: MINE } })).statusCode, 403);
+    assert.equal((await call(seed(), staffP("setter"), { query: { client_id: MINE } })).statusCode, 403);
     assert.equal((await call(seed(), staffP("owner"), { query: {} })).statusCode, 400);
     assert.equal((await call(seed(), staffP("owner"), { query: { client_id: OTHER } })).statusCode, 404);
     assert.equal((await call(seed(), staffP("owner"), { query: { client_id: MINE } })).statusCode, 200);
@@ -266,7 +266,7 @@ describe("pull mode — paste your API key, Sync now (migration 457)", () => {
     assert.equal(s.statusCode, 400);
     assert.equal((await post(db, { action: "sync", connection_id: "nope" })).statusCode, 400);
     assert.equal((await post(db, { action: "sync", connection_id: OTHER })).statusCode, 404);
-    assert.equal((await post(db, { action: "sync", connection_id: push.body.connection.id, client_id: MINE }, undefined, staffP("closer"))).statusCode, 403);
+    assert.equal((await post(db, { action: "sync", connection_id: push.body.connection.id, client_id: MINE }, undefined, staffP("setter"))).statusCode, 403);
   });
 
   test("a turned-off pull connection will not sync", async () => {

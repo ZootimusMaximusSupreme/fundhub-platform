@@ -58,19 +58,20 @@ const MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-cre
   "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
   "money-strategy.html", "money-fundability.html", "money-next.html", "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"];
 
-test("owner, admin and sales_manager may follow the FinanceOS card", () => {
-  for (const role of ["owner", "admin", "sales_manager"]) {
+test("owner, admin, sales_manager and closer may follow the FinanceOS card", () => {
+  for (const role of ["owner", "admin", "sales_manager", "closer"]) {
     const ok = allowedFor(role);
     for (const page of MONEY) assert.ok(ok.includes(page), `${role} is missing ${page}`);
   }
 });
 
-test("those three roles are exactly ROLE_SETS.FINANCE, the api/money/* gate", () => {
-  assert.deepEqual([...ROLE_SETS.FINANCE].sort(), ["admin", "owner", "sales_manager"]);
+test("those roles are exactly ROLE_SETS.FINANCE_OS, the api/money/* gate (closer added 2026-10-07, owner)", () => {
+  assert.deepEqual([...ROLE_SETS.FINANCE_OS].sort(), ["admin", "closer", "owner", "sales_manager"]);
+  assert.ok(!ROLE_SETS.FINANCE.has("closer"), "FINANCE (invoices, staff records, payouts) stays closed to closers");
 });
 
 test("no other staff role gets the money pages, and the client keeps them", () => {
-  for (const role of ["closer", "funding_advisor", "setter", "inquiry_specialist", "csm", "affiliate", "partner"]) {
+  for (const role of ["funding_advisor", "setter", "inquiry_specialist", "csm", "affiliate", "partner"]) {
     assert.ok(!allowedFor(role).includes("financeos.html"), `${role} should not see FinanceOS`);
   }
   for (const page of MONEY) assert.ok(allowedFor("client").includes(page), `client lost ${page}`);

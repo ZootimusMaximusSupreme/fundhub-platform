@@ -88,7 +88,7 @@ describe("GET /api/money/alerts", () => {
   });
 
   test("staff outside FINANCE (a closer, a CSM, an advisor) are refused", async () => {
-    for (const role of ["closer", "csm", "funding_advisor"]) {
+    for (const role of ["setter", "csm", "funding_advisor"]) {
       const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.read, undefined, role);
@@ -220,7 +220,7 @@ describe("POST — shape", () => {
   test("a body that is not JSON is a 400; staff outside FINANCE cannot write", async () => {
     const bad = await call({ method: "POST", body: "{not json" }, clientP());
     assert.equal(bad.res.statusCode, 400);
-    const closer = await call({ method: "POST", body: { action: "set_alert", kind: "new_credit", enabled: false, client_id: MINE } }, staffP("closer"));
+    const closer = await call({ method: "POST", body: { action: "set_alert", kind: "new_credit", enabled: false, client_id: MINE } }, staffP("setter"));
     assert.equal(closer.res.statusCode, 403);
     assert.equal(closer.calls.alert, undefined);
   });

@@ -21,7 +21,7 @@
 // SAME TWO CALLERS AND SAME GATE AS api/money/overview.mjs:
 //   * a signed-in CLIENT reads and changes their own file only. client_id comes off
 //     the session; one in the query or body is never read on this branch.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) + requireClientInOrg on client_id. A
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) + requireClientInOrg on client_id. A
 //     client in another org is 404, not 403. Staff changes are stamped 'staff'.
 //
 // Nothing here texts anyone and nothing moves money.
@@ -56,7 +56,7 @@ async function scope(req, res, { database, gate, body }) {
   }
 
   const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
   const qid = body ? body.client_id : req.query && req.query.client_id;
   if (!isUuid(qid)) {
     res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

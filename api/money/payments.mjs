@@ -14,7 +14,7 @@
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
 //   * a signed-in CLIENT reads their own file only. client_id comes off the
 //     session; one in the query or body is never read on this branch.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) + requireClientInOrg on client_id.
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) + requireClientInOrg on client_id.
 //
 // POST actions:
 //   ask_for_person    client OR staff — opens a CSM task; the helper stops texting
@@ -58,7 +58,7 @@ async function scope(req, res, { database, gate, body }) {
   }
 
   const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
   const qid = body ? body.client_id : req.query && req.query.client_id;
   if (!isUuid(qid)) {
     res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

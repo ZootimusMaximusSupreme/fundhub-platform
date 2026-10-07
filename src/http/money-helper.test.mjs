@@ -88,7 +88,7 @@ describe("GET — the thread", () => {
     const ok = await call({ method: "GET", query: { client_id: MINE } }, staffP("owner"));
     assert.equal(ok.res.statusCode, 200);
     assert.equal(ok.calls.build[0].staff, true);
-    assert.equal((await call({ method: "GET", query: { client_id: MINE } }, staffP("closer"))).res.statusCode, 403);
+    assert.equal((await call({ method: "GET", query: { client_id: MINE } }, staffP("setter"))).res.statusCode, 403);
     assert.equal((await call({ method: "GET", query: {} }, staffP("owner"))).res.statusCode, 400);
     assert.equal((await call({ method: "GET", query: { client_id: OTHER } }, staffP("admin"))).res.statusCode, 404);
   });

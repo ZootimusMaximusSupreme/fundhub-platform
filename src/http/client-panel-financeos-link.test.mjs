@@ -72,7 +72,7 @@ describe("client control panel — Open FinanceOS row", () => {
       "wireFinanceOsLink(id) is no longer called with the panel's client");
   });
 
-  for (const role of ["owner", "admin", "sales_manager"]) {
+  for (const role of ["owner", "admin", "sales_manager", "closer"]) {
     test(role + " sees it, opening financeos.html on this client", () => {
       const r = run(role, "11111111-2222-4333-8444-555555555555");
       assert.strictEqual(r.hidden, false);
@@ -89,7 +89,7 @@ describe("client control panel — Open FinanceOS row", () => {
     assert.strictEqual(run(" Sales_Manager ", "c-1").hidden, false);
   });
 
-  for (const role of ROLES_ALL.filter((r) => !["owner", "admin", "sales_manager"].includes(r))) {
+  for (const role of ROLES_ALL.filter((r) => !["owner", "admin", "sales_manager", "closer"].includes(r))) {
     test("role '" + (role || "(none)") + "' never sees it", () => {
       const r = run(role, "c-1");
       assert.strictEqual(r.hidden, true);
@@ -102,20 +102,21 @@ describe("client control panel — Open FinanceOS row", () => {
     assert.strictEqual(run("owner", null).hidden, true);
   });
 
-  test("the page's roles are exactly ROLE_SETS.FINANCE, the /api/money gate", () => {
+  test("the page's roles are exactly ROLE_SETS.FINANCE_OS, the /api/money gate", () => {
     const shown = ROLES_ALL.filter((r) => run(r, "c-1").hidden === false).sort();
-    assert.deepStrictEqual(shown, [...ROLE_SETS.FINANCE].sort());
+    assert.deepStrictEqual(shown, [...ROLE_SETS.FINANCE_OS].sort());
   });
 
-  test("shell.js hands STAFF_MONEY (which names financeos.html) to the same three roles", () => {
+  test("shell.js hands STAFF_MONEY (which names financeos.html) to the same roles", () => {
     const list = SHELL_JS.match(/var STAFF_MONEY = \[([\s\S]*?)\];/);
     assert.ok(list && /"financeos\.html"/.test(list[1]), "STAFF_MONEY no longer names financeos.html");
     const fn = SHELL_JS.match(/function allowedFor\(role\) \{([\s\S]*?)\n  \}/);
     assert.ok(fn, "allowedFor() moved");
     const lines = fn[1].split("\n").filter((l) => l.includes("STAFF_MONEY"));
-    assert.strictEqual(lines.length, 3, "STAFF_MONEY should reach exactly three branches: '*', admin, sales_manager");
+    assert.strictEqual(lines.length, 4, "STAFF_MONEY should reach exactly four branches: '*', admin, sales_manager, closer");
     assert.ok(lines.some((l) => /m === "\*"/.test(l)));
     assert.ok(lines.some((l) => /m === "admin"/.test(l)) || /m === "admin"\) \{\s*\n\s*return[^\n]*STAFF_MONEY/.test(fn[1]));
     assert.ok(lines.some((l) => /m === "sales_manager"/.test(l)));
+    assert.ok(lines.some((l) => /m === "closer"/.test(l)));
   });
 });

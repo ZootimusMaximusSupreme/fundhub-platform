@@ -475,14 +475,14 @@ describe("FinanceOS demo links: the live tabs, on the sample client", () => {
     }
   });
 
-  test("the demo roles are exactly the /api/money gate (ROLE_SETS.FINANCE)", () => {
+  test("the demo roles are exactly the /api/money gate (ROLE_SETS.FINANCE_OS)", () => {
     const m = /var FOS_DEMO_ROLES = \[([^\]]*)\];/.exec(SECTION);
     assert.ok(m, "FOS_DEMO_ROLES is gone");
     const roles = [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]).sort();
-    assert.deepEqual(roles, [...ROLE_SETS.FINANCE].sort());
+    assert.deepEqual(roles, [...ROLE_SETS.FINANCE_OS].sort());
   });
 
-  for (const role of ["owner", "admin", "sales_manager"]) {
+  for (const role of ["owner", "admin", "sales_manager", "closer"]) {
     test(role + ": every tab opens the sample client in a new tab", async () => {
       const deck = await openDeck(payload(), { role });
       deck.click("phase:06").key("ArrowRight", 2);
@@ -496,7 +496,7 @@ describe("FinanceOS demo links: the live tabs, on the sample client", () => {
     });
   }
 
-  for (const role of ["closer", null]) {
+  for (const role of ["setter", null]) {
     test((role || "no cached role") + ": no link that would open an error page", async () => {
       const deck = await openDeck(payload(), { role });
       deck.click("phase:06").key("ArrowRight", 2);

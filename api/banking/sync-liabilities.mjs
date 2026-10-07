@@ -4,7 +4,7 @@
 // Reads card bills (next due date, minimum, last statement, last payment) from
 // Plaid for every linked bank login this client has, and writes them onto each
 // card's statement cycle (account_statement_cycles). Never moves money. Same gate
-// as banking/link-token: staff, ROLE_SETS.FINANCE, its own requireRole() call
+// as banking/link-token: staff, ROLE_SETS.FINANCE_OS, its own requireRole() call
 // (requireAuth drops a `roles` key). No token appears in the response.
 import { db } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
@@ -27,7 +27,7 @@ export default async function handler(req, res, deps = {}) {
 
   const staff = await auth(req, res, { db: database });
   if (!staff) return;
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return;
 
   const body = readBody(req.body);
   if (body === null) return res.status(400).json({ ok: false, error: "body must be JSON" });

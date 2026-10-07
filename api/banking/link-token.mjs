@@ -1,7 +1,7 @@
 // POST /api/banking/link-token { client_id } → { ok, link_token, expiration, environment }
 //
 // Opens Plaid Link for one client. Two callers:
-//   * STAFF, ROLE_SETS.FINANCE — the same gate as banking/sync-accounts, because
+//   * STAFF, ROLE_SETS.FINANCE_OS — the same gate as banking/sync-accounts, because
 //     finishing the link writes bank rows. The role check is its own
 //     requireRole() call: requireAuth drops a `roles` key.
 //   * A signed-in CLIENT (account session), for their OWN file only. The
@@ -71,7 +71,7 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
 
   const staff = await auth(req, res, { db: database });
   if (!staff) return null;
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
 
   const body = readBody(req.body);
   if (body === null) {

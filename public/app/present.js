@@ -771,7 +771,7 @@
      demo link would open an error page on a live call. The test pins this list
      to that set. The role read is the same cached hint shell.js keeps and
      financeos.js reads; the server still decides. */
-  var FOS_DEMO_ROLES = ["owner", "admin", "sales_manager"];
+  var FOS_DEMO_ROLES = ["owner", "admin", "sales_manager", "closer"];
 
   var STACK_TALK = {
     "B-01": {
