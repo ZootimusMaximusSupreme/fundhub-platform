@@ -27,13 +27,15 @@ struct CameraPreview: UIViewRepresentable {
             }
         }
 
-        /// Front camera, like a mirror. The saved file uses the same look.
+        /// Front camera stays a mirror. The back camera is not flipped.
         private func applyMirror(angle: CGFloat) {
             guard let conn = previewLayer.connection else { return }
             conn.videoRotationAngle = angle
             guard conn.isVideoMirroringSupported else { return }
             conn.automaticallyAdjustsVideoMirroring = false
-            conn.isVideoMirrored = true
+            let input = previewLayer.session?.inputs.compactMap { $0 as? AVCaptureDeviceInput }
+                .first { $0.device.hasMediaType(.video) }
+            conn.isVideoMirrored = input?.device.position != .back
         }
 
         override func layoutSubviews() {

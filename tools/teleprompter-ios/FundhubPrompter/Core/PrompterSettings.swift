@@ -17,7 +17,7 @@ struct PrompterSettings: Codable, Equatable {
 
     // Camera
     var recordOnThisDevice: Bool = true
-    var quality: VideoQuality = .uhd4K
+    var quality: VideoQuality = .hd1080
     /// Kept so an older save still opens. The camera films at 60 fps.
     var fps: Int = 60
     var codec: VideoCodecChoice = .hevc

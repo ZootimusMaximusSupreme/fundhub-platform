@@ -42,7 +42,7 @@ struct SettingsView: View {
                     Picker("Quality", selection: $model.settings.quality) {
                         ForEach(PrompterSettings.VideoQuality.allCases) { Text($0.label).tag($0) }
                     }
-                    Text("Frame rate: 60. Slow motion is not used. The saved video stays mirrored.")
+                    Text("Frame rate: 60, or 30 if that is all the camera can do. The front camera stays a mirror. The back camera does not.")
                         .foregroundStyle(.secondary)
                     Picker("Video format", selection: $model.settings.codec) {
                         ForEach(PrompterSettings.VideoCodecChoice.allCases) { Text($0.label).tag($0) }
@@ -58,7 +58,7 @@ struct SettingsView: View {
                     if !camera.summary.isEmpty { Text("Right now: \(camera.summary)").foregroundStyle(.secondary) }
                     if let s = camera.shortfall { Text(s).foregroundStyle(Brand.bad) }
                 } header: { Text("Camera") } footer: {
-                    Text("4K 60 fps for VSLs and thank-you videos. 1080p 60 fps for ads. It never stretches a smaller picture and calls it 4K. The preview is a mirror, and the saved video matches it. Lock brightness after you light the room.")
+                    Text("The front camera and the back camera film at 1080p. A 1080p picture is not called 4K. The front preview stays a mirror. Lock brightness after you light the room.")
                 }
 
                 Section {

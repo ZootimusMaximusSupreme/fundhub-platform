@@ -329,19 +329,91 @@
   }
 
   /**
-   * What we ask the front camera for. 4K is 3840×2160. 1080p is 1920×1080.
-   * frameRate ideal is the highest the camera listed (or 60 before we know).
-   * ideal, not a stretched picture: the phone may give less, and we keep that.
+   * One real camera ask. Both lenses stay at 1080p. The front never asks for 4K.
+   * Wide is 1920×1080. Tall is the same picture held upright (1080×1920).
+   * lockRate asks for that exact frame rate. 60 first, then 30.
+   * facing is "user" (front) or "environment" (back).
    */
-  function cameraAsk(mode, maxFps) {
-    var uhd = mode !== "1080p";
-    var fps = maxFps > 0 ? maxFps : 60;
+  function cameraAsk(facing, fps, shape, lockRate) {
+    var front = facing !== "environment";
+    var rate = fps === 30 ? 30 : 60;
+    var tall = shape === "tall";
+    var frame = lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate };
     return {
-      facingMode: "user",
-      width: { ideal: uhd ? 3840 : 1920 },
-      height: { ideal: uhd ? 2160 : 1080 },
-      frameRate: { ideal: fps }
+      facingMode: { ideal: front ? "user" : "environment" },
+      width: { ideal: tall ? 1080 : 1920, max: tall ? 1080 : 1920 },
+      height: { ideal: tall ? 1920 : 1080, max: tall ? 1920 : 1080 },
+      aspectRatio: { ideal: tall ? (9 / 16) : (16 / 9) },
+      frameRate: frame
     };
+  }
+
+  /**
+   * Tries, in order. The first one the browser accepts is the one we keep.
+   * A reject moves to the next try. The last try still caps the long side at
+   * 1920 so a loose fallback cannot ask for 4K.
+   * The back camera (the phone that sits and films him) adds a steady
+   * autofocus ask first. If the browser rejects that, the plain 1080p tries follow.
+   */
+  function cameraTries(facing) {
+    var back = facing === "environment";
+    var list = [];
+    function push(fps, shape, lockRate, steady) {
+      var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate);
+      if (steady) {
+        video.focusMode = "continuous";
+        video.exposureMode = "continuous";
+      }
+      list.push(video);
+    }
+    if (back) {
+      push(60, "wide", true, true);
+      push(30, "wide", true, true);
+    }
+    push(60, "wide", true, false);
+    push(60, "wide", false, false);
+    push(30, "wide", true, false);
+    push(30, "wide", false, false);
+    push(60, "tall", true, false);
+    push(30, "tall", true, false);
+    list.push({
+      facingMode: { ideal: back ? "environment" : "user" },
+      width: { max: 1920 },
+      height: { max: 1920 }
+    });
+    return list;
+  }
+
+  /**
+   * The main lens, once the browser has named the cameras.
+   * Back prefers "Back Camera" (the wide one), not ultra-wide and not telephoto.
+   * Empty names return "" so we keep facingMode instead of guessing a camera.
+   */
+  function pickVideoDevice(devices, facing) {
+    var vids = [];
+    var list = devices || [];
+    var i, d, s;
+    for (i = 0; i < list.length; i++) {
+      d = list[i];
+      if (d && d.kind === "videoinput" && d.deviceId) vids.push(d);
+    }
+    function name(item) { return String(item.label || ""); }
+    if (facing === "environment") {
+      for (i = 0; i < vids.length; i++) if (/^back camera$/i.test(name(vids[i]))) return vids[i].deviceId;
+      for (i = 0; i < vids.length; i++) {
+        s = name(vids[i]).toLowerCase();
+        if (!s) continue;
+        if (!/back|rear|environment/.test(s)) continue;
+        if (/ultra|tele|depth/.test(s)) continue;
+        return vids[i].deviceId;
+      }
+      return "";
+    }
+    for (i = 0; i < vids.length; i++) {
+      s = name(vids[i]).toLowerCase();
+      if (/front|facetime|truedepth/.test(s) && !/back/.test(s)) return vids[i].deviceId;
+    }
+    return "";
   }
 
   /** VSLs and thank-you videos stay 4K. Ads may use the 1080p choice. */
@@ -564,7 +636,7 @@
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, stays4K: stays4K, cameraReport: cameraReport,
+    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
@@ -1742,7 +1814,7 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
-    var recStream = mirroredRecordStream(cam.stream);
+    var recStream = cam.facing === "environment" ? cam.stream : mirroredRecordStream(cam.stream);
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
@@ -1804,19 +1876,23 @@
     cam.stream = stream;
     cam.applied = mode;
     var video = $("cam-video");
+    var track = stream.getVideoTracks()[0];
+    var got = track && track.getSettings ? track.getSettings() : {};
+    cam.facing = got.facingMode === "environment" ? "environment" : "user";
     if (video) {
       video.srcObject = stream;
       video.muted = true;
+      video.style.transform = cam.facing === "environment" ? "none" : "scaleX(-1)";
       var p = video.play();
       if (p && p.catch) p.catch(function () { /* a tap may be required before the picture shows */ });
     }
     var box = $("cam");
     if (box) box.hidden = false;
     showFace();
-    var track = stream.getVideoTracks()[0];
-    var got = track && track.getSettings ? track.getSettings() : {};
-    var rep = cameraReport(got, mode);
-    var text = rep.short || ("Front camera · " + rep.line);
+    var rep = cameraReport(got, "1080p");
+    var who = cam.facing === "environment" ? "Back camera" : "Front camera";
+    var text = who + " · " + (rep.short || rep.line);
+    if (!rep.short && activeMode() === "4k" && rep.line.indexOf("4K") !== 0) text += ". It is not 4K.";
     if (noMic) text += " · no sound";
     camLine(text, !!rep.short);
     paintPicks();
@@ -1837,48 +1913,85 @@
       var gen = ++cam.gen;
       var mode = activeMode();
       cam.opening = mode;
-      camLine(mode === "1080p" ? "Asking the front camera for 1080p at its highest frame rate." : "Asking the front camera for 4K (3840×2160) at its highest frame rate.", false);
+      camLine("Asking the front camera for 1080p at 60 frames a second.", false);
       paintPicks();
-      function takeStream(stream, noMic, triedExact) {
-        if (gen !== cam.gen) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+      var steps = [];
+      ["user", "environment"].forEach(function (facing) {
+        cameraTries(facing).forEach(function (video) {
+          steps.push({ video: video, audio: true, facing: facing });
+          steps.push({ video: video, audio: false, facing: facing });
+        });
+      });
+      var step = 0;
+      function stopTracks(stream) {
+        if (!stream) return;
+        stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* already stopped */ } });
+      }
+      function fail() {
+        if (gen !== cam.gen) return;
+        cam.opening = "";
+        camLine("The camera did not start. Allow the camera, then reload. The words still roll.", true);
+      }
+      function finish(stream, noMic) {
+        if (gen !== cam.gen) { stopTracks(stream); return; }
         var track = stream.getVideoTracks()[0];
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
-        var caps = track.getCapabilities ? track.getCapabilities() : {};
-        var maxFps = caps.frameRate && caps.frameRate.max ? caps.frameRate.max : 60;
-        var ask = cameraAsk(mode, maxFps);
-        var apply = track.applyConstraints ? track.applyConstraints({ width: ask.width, height: ask.height, frameRate: ask.frameRate }).catch(function () { /* keep the real size */ }) : Promise.resolve();
+        var facing = (track.getSettings && track.getSettings().facingMode) === "environment" ? "environment" : "user";
+        function locked(fps) {
+          var ask = cameraAsk(facing, fps, "wide", true);
+          return { width: ask.width, height: ask.height, frameRate: ask.frameRate };
+        }
+        var apply = track.applyConstraints
+          ? track.applyConstraints(locked(60)).catch(function () {
+            return track.applyConstraints(locked(30)).catch(function () { /* keep the preview */ });
+          })
+          : Promise.resolve();
         apply.then(function () {
-          if (gen !== cam.gen) return;
-          var facing = track.getSettings && track.getSettings().facingMode;
-          if (facing && facing !== "user" && !triedExact) {
-            stream.getTracks().forEach(function (t) { t.stop(); });
-            var exact = cameraAsk(mode, maxFps);
-            exact.facingMode = { exact: "user" };
-            md.getUserMedia({ audio: !noMic, video: exact }).then(function (s2) { takeStream(s2, noMic, true); }, function () {
-              if (gen === cam.gen) { cam.opening = ""; camLine("The front camera did not start. The words still roll.", true); }
-            });
-            return;
-          }
+          if (gen !== cam.gen) { stopTracks(stream); return; }
           cam.opening = "";
           attachStream(stream, mode, noMic);
         });
       }
-      md.getUserMedia({ audio: true, video: cameraAsk(mode, 60) }).then(function (s) { takeStream(s, false, false); }, function () {
-        md.getUserMedia({ audio: false, video: cameraAsk(mode, 60) }).then(function (s) { takeStream(s, true, false); }, function () {
-          if (gen === cam.gen) { cam.opening = ""; camLine("The camera did not start. Allow the camera, then reload. The words still roll.", true); }
-        });
-      });
+      function afterOpen(stream, noMic) {
+        if (gen !== cam.gen) { stopTracks(stream); return; }
+        var track = stream.getVideoTracks()[0];
+        var settings = track && track.getSettings ? track.getSettings() : {};
+        var facing = settings.facingMode === "environment" ? "environment" : "user";
+        if (!md.enumerateDevices) { finish(stream, noMic); return; }
+        md.enumerateDevices().then(function (devs) {
+          if (gen !== cam.gen) { stopTracks(stream); return; }
+          var id = pickVideoDevice(devs, facing);
+          if (!id || settings.deviceId === id) { finish(stream, noMic); return; }
+          var video = cameraAsk(facing, 60, "wide", true);
+          video.deviceId = { exact: id };
+          delete video.facingMode;
+          md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
+            stopTracks(stream);
+            finish(s2, noMic);
+          }, function () { finish(stream, noMic); });
+        }, function () { finish(stream, noMic); });
+      }
+      function run() {
+        if (gen !== cam.gen) return;
+        if (step >= steps.length) { fail(); return; }
+        var cur = steps[step++];
+        if (cur.facing === "environment" && cur.audio) camLine("Asking the back camera for 1080p.", false);
+        md.getUserMedia({ audio: cur.audio, video: cur.video }).then(function (s) {
+          afterOpen(s, !cur.audio);
+        }, function () { run(); });
+      }
+      run();
     } catch (e) {
       cam.opening = "";
       camLine("The camera did not start. The words still roll.", true);
     }
   }
   function setCamMode(mode) {
-    if (mode === "1080p" && stays4K(scripts[cur])) { say("This one stays 4K."); paintPicks(); return; }
+    if (mode === "1080p" && stays4K(scripts[cur])) { say("This one films at 1080p. It is not 4K."); paintPicks(); return; }
     S.cam = mode === "1080p" ? "1080p" : "4k";
     save();
     paintPicks();
-    if (cam.rec && cam.rec.state === "recording") { say("The next take uses " + (S.cam === "1080p" ? "1080p" : "4K") + "."); return; }
+    if (cam.rec && cam.rec.state === "recording") { say("The next take films at 1080p."); return; }
     cam.applied = "";
     cam.opening = "";
     ensureCamera();

@@ -220,7 +220,7 @@ final class ModelsAndAPITests: XCTestCase {
         XCTAssertEqual(s.wpm, 180)
         XCTAssertTrue(s.mirror)
         XCTAssertTrue(s.recordMirrored, "mirrored recording is the owner default")
-        XCTAssertEqual(s.quality, .uhd4K)
+        XCTAssertEqual(s.quality, .hd1080)
         XCTAssertEqual(s.codec, .hevc)
     }
 }

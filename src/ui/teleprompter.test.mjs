@@ -38,6 +38,65 @@ describe("teleprompter, pure", () => {
     assert.equal(wide.short, "");
     assert.doesNotMatch(hd.line, /4K/);
     assert.match(hd.short, /not 4K/);
+    const asked = T.cameraReport({ width: 1920, height: 1080, frameRate: 60 }, "1080p");
+    assert.match(asked.line, /^1080p/);
+    assert.equal(asked.short, "");
+    assert.doesNotMatch(asked.line, /4K/);
+  });
+
+  test("front camera asks stay at 1080p and try 60 then 30", () => {
+    const T = load();
+    const tries = T.cameraTries("user");
+    assert.equal(tries[0].facingMode.ideal, "user");
+    assert.equal(tries[0].width.ideal, 1920);
+    assert.equal(tries[0].width.max, 1920);
+    assert.equal(tries[0].height.ideal, 1080);
+    assert.equal(tries[0].height.max, 1080);
+    assert.equal(tries[0].frameRate.ideal, 60);
+    assert.equal(tries[0].frameRate.max, 60);
+    assert.equal(tries[0].focusMode, undefined);
+    const rates = tries.map((c) => c.frameRate && c.frameRate.ideal).filter((n) => n);
+    assert.ok(rates.indexOf(60) < rates.indexOf(30));
+    for (const c of tries) {
+      const blob = JSON.stringify(c);
+      assert.equal(blob.includes("3840"), false);
+      assert.equal(blob.includes("2160"), false);
+      if (c.width && c.width.max) assert.ok(c.width.max <= 1920);
+      if (c.height && c.height.max) assert.ok(c.height.max <= 1920);
+      assert.notEqual(c.facingMode.ideal || c.facingMode, "environment");
+    }
+  });
+
+  test("back camera asks are steady 1080p and never 4K", () => {
+    const T = load();
+    const tries = T.cameraTries("environment");
+    assert.equal(tries[0].facingMode.ideal, "environment");
+    assert.equal(tries[0].width.ideal, 1920);
+    assert.equal(tries[0].height.ideal, 1080);
+    assert.equal(tries[0].frameRate.min, 60);
+    assert.equal(tries[0].focusMode, "continuous");
+    const rates = tries.map((c) => c.frameRate && c.frameRate.ideal).filter((n) => n);
+    assert.ok(rates.indexOf(60) < rates.indexOf(30));
+    for (const c of tries) {
+      const blob = JSON.stringify(c);
+      assert.equal(blob.includes("3840"), false);
+      assert.equal(blob.includes("2160"), false);
+      if (c.width && c.width.max) assert.ok(c.width.max <= 1920);
+      if (c.height && c.height.max) assert.ok(c.height.max <= 1920);
+    }
+  });
+
+  test("the wide back camera is chosen, not the ultra-wide", () => {
+    const T = load();
+    const devices = [
+      { kind: "videoinput", deviceId: "front", label: "Front Camera" },
+      { kind: "videoinput", deviceId: "ultra", label: "Back Ultra Wide Camera" },
+      { kind: "videoinput", deviceId: "wide", label: "Back Camera" },
+      { kind: "videoinput", deviceId: "tele", label: "Back Telephoto Camera" }
+    ];
+    assert.equal(T.pickVideoDevice(devices, "environment"), "wide");
+    assert.equal(T.pickVideoDevice(devices, "user"), "front");
+    assert.equal(T.pickVideoDevice([{ kind: "videoinput", deviceId: "x", label: "" }], "environment"), "");
   });
 
   test("the file name is the server's NAMING.md name, letter for letter", () => {

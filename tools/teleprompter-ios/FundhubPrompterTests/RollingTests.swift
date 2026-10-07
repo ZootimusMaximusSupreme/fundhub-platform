@@ -205,6 +205,47 @@ final class CaptureChoiceTests: XCTestCase {
         XCTAssertNil(p.shortfall)
     }
 
+    func testFront1080Ignores4KAndFallsBackTo30() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 30)]
+        let p = CaptureChoice.pickFront1080(formats, wantStabilization: true)!
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 30)
+        XCTAssertNil(p.shortfall)
+        XCTAssertNotEqual(p.width, 3840)
+    }
+
+    func testFront1080Uses60WhenTheCameraHasIt() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60), f(2, 1920, 1080, 30)]
+        let p = CaptureChoice.pickForLens(formats, lens: "front", wantStabilization: true)!
+        XCTAssertEqual(p.index, 1)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testBackCameraPrefersSteady1080Over4K() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60, stab: false), f(2, 1920, 1080, 30), f(3, 1920, 1080, 120)]
+        let p = CaptureChoice.pickStable1080(formats, wantStabilization: true)!
+        XCTAssertEqual(p.index, 2, "a steady 30 beats an unsteady 60 and slow motion")
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 30)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testBackCameraUsesSteady60WhenItCanHoldIt() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60), f(2, 1920, 1080, 30, stab: false)]
+        let p = CaptureChoice.pickForLens(formats, lens: "back", wantStabilization: true)!
+        XCTAssertEqual(p.index, 1)
+        XCTAssertEqual(p.fps, 60)
+    }
+
+    func testASmallerPictureIsNotCalled1080() {
+        let p = CaptureChoice.pickFront1080([f(0, 1280, 720, 30)], wantStabilization: false)!
+        XCTAssertEqual(p.width, 1280)
+        XCTAssertEqual(p.shortfall, "This camera tops out at 1280×720. It is not 1080p.")
+    }
+
     func testTakeNameFallbacks() {
         var s = Script(id: "a", rootScriptId: "a", version: 1, adId: "92", title: "Inquiries off first", body: "x")
         s.takeFileName = nil
