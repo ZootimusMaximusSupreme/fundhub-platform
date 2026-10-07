@@ -398,7 +398,7 @@ export async function rotatePlaidTokens(db, { orgId, toKeyId, env = process.env,
   const bounded = Math.max(1, Math.min(Number(limit) || 500, 5000));
 
   const rows = (await db.query(
-    `SELECT id, encrypted_access_token
+    `SELECT id, plaid_item_id, encrypted_access_token
        FROM plaid_items
       WHERE org_id = $1 AND encrypted_access_token IS NOT NULL
       ORDER BY created_at
@@ -413,9 +413,27 @@ export async function rotatePlaidTokens(db, { orgId, toKeyId, env = process.env,
     if (current === toKeyId) { summary.alreadyCurrent += 1; continue; }
 
     try {
-      const next = rotatePlaidTokenCiphertext(row.encrypted_access_token, {
-        itemId: row.id, toKeyId, env
-      });
+      /* WHICH AAD. A token stored by Plaid Link (linkAccount → completeLink) is
+         sealed with Plaid's item id — the row does not exist yet when it is
+         encrypted — and every reader (getAccounts, the refresh, transactions,
+         liabilities, transfers) decrypts with plaid_items.plaid_item_id. Rows
+         sealed with the row id (the original design, still used by the
+         rotation's own pg test) keep working. Try the live convention first,
+         fall back to the row id, and re-seal with the SAME AAD that opened it,
+         so a rotation never moves a token to a binding its readers do not use. */
+      const aads = [row.plaid_item_id, row.id].filter((v) => v !== null && v !== undefined && String(v) !== "");
+      let next = null;
+      let lastErr = null;
+      for (const aad of aads) {
+        try {
+          next = rotatePlaidTokenCiphertext(row.encrypted_access_token, { itemId: String(aad), toKeyId, env });
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (!err || err.code !== "TOKEN_AUTH_FAILED") break;
+        }
+      }
+      if (next === null) throw lastErr || new Error("no usable item id");
 
       const updated = await db.query(
         `UPDATE plaid_items
