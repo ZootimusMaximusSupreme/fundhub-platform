@@ -135,3 +135,4 @@ Other breaks: one leftover card on the board, then stop. Do not fix them.
 ## Leftover cards
 
 - **climate page test fails** — `src/http/climate-match.test.mjs` "climate page: no approval odds…" matches /approval odds/ inside the built `public/climate/_next` bundle. Not touched by W1. Not fixed.
+- **Real-Postgres CI fails other tests** (run 37554112768, commit 04397c8e) — `src/compliance/invariants.pg.test.mjs` before-hooks error `must be owner of table action_log` (module invariants, creative generation, creative read endpoints, social/onboarding/metering). Not touched by W1. Not fixed. W1's own pg test passed in that run ("an enrolled client reads their own portal").
