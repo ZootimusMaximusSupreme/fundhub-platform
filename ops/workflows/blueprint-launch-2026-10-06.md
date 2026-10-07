@@ -120,3 +120,4 @@ Monthly member fee amount · Commas titles for member fee and per-letter mailing
 - F1 daily Plaid refresh merged; key-rotation AAD bug fixed (would have broken real tokens).
 - F2 bank reconnect (update mode) back end running. Presentation offer stack (PS) running as a MARKED DRAFT — merge only when Chris says push.
 - Leftover (page-edit law, needs a marked draft): `public/app/client-portal.html` promo copy says "before the next round" — should say "next funding sequence".
+- PS offer stack: built on branch `worktree-agent-a1006bcf9965d16ba` @ f407c404 (section 06, slides B-01…B-06). NOT merged. Marked draft for Chris: https://claude.ai/artifact/X64XnM8129X7TLiDcWmvNx — merge + ship only when he says "push it". Open calls: closers' FinanceOS access, S-24 "Nobody is working the file for you" wording, Blueprint agreement text (288) out of date.
