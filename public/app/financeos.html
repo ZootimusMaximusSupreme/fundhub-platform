@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="money-connections.css">
 <link rel="stylesheet" href="money-payments.css">
+<link rel="stylesheet" href="money-plan.css">
 <!-- ══ FINANCEOS — THE CLIENT'S ONE-PAGE CRM FOR MONEY ══════════════════════
      Owner call 2026-10-06: "it all should be on 1 page — a one-page CRM for
      finances, called FinanceOS." Direction: docs/finance/finance-os-direction-2026-10-06.md.
@@ -504,6 +505,7 @@ main{padding:24px 24px 64px}
   </header>
   <nav class="fos-tabs" role="tablist" aria-label="FinanceOS">
     <a role="tab" id="tab-overview" href="#overview" aria-controls="fos-overview" aria-selected="true">Overview</a>
+    <a role="tab" id="tab-plan" href="#plan" aria-controls="fos-plan" aria-selected="false" tabindex="-1">Plan</a>
     <a role="tab" id="tab-accounts" href="#accounts" aria-controls="fos-accounts" aria-selected="false" tabindex="-1">Accounts</a>
     <a role="tab" id="tab-credit" href="#credit" aria-controls="fos-credit" aria-selected="false" tabindex="-1">Credit</a>
     <a role="tab" id="tab-connections" href="#connections" aria-controls="fos-connections" aria-selected="false" tabindex="-1">Connections</a>
@@ -513,6 +515,7 @@ main{padding:24px 24px 64px}
   <main>
     <div class="fos-sandbox" id="fos-sandbox" role="note" hidden><strong>Test data — Plaid sandbox</strong><span>These accounts are fake test accounts, not a real bank.</span></div>
     <section class="fos-panel" id="fos-overview" role="tabpanel" aria-labelledby="tab-overview" aria-live="polite"></section>
+    <section class="fos-panel" id="fos-plan" role="tabpanel" aria-labelledby="tab-plan" aria-live="polite" hidden></section>
     <section class="fos-panel" id="fos-accounts" role="tabpanel" aria-labelledby="tab-accounts" aria-live="polite" hidden></section>
     <section class="fos-panel" id="fos-credit" role="tabpanel" aria-labelledby="tab-credit" aria-live="polite" hidden></section>
     <section class="fos-panel" id="fos-connections" role="tabpanel" aria-labelledby="tab-connections" aria-live="polite" hidden></section>
@@ -522,6 +525,7 @@ main{padding:24px 24px 64px}
 </div>
 <script defer src="money.js"></script>
 <script defer src="money-trends.js"></script>
+<script defer src="money-plan.js"></script>
 <script defer src="money-accounts.js"></script>
 <script defer src="money-credit.js"></script>
 <script defer src="money-connections.js"></script>
