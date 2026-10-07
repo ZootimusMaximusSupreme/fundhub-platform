@@ -95,6 +95,11 @@ test("dry-run writes a board and does not send or fix", async () => {
   assert.match(body, /\/app\/pipeline\.html/);
   assert.equal(sends.length, 0);
   assert.equal(result.sms.sent, false);
+  const coverage = result.checks.filter((c) => c.kind === "coverage");
+  assert.ok(coverage.length > 0);
+  assert.ok(coverage.every((c) => c.status === "not checked"));
+  assert.match(body, /## Coverage/);
+  assert.match(body, /not checked/);
   assert.match(result.sms.reason, /PULSE_SMS_TO unset/);
   assert.match(result.darwin.reason, /DARWIN_WHATSAPP unset/);
   assert.ok(result.checks.every((c) => c.id !== "fix"));

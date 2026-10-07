@@ -16,6 +16,7 @@ import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
 import { checkMachine } from "./machine.mjs";
 import { checkJobHeartbeats } from "./heartbeats.mjs";
+import { runCoverageSlices } from "./coverage/run-slices.mjs";
 import { checkPipelineMotion } from "./pipeline-motion.mjs";
 import { buildScorecard, loadPreviousScorecard, phoenixDate, saveScorecard } from "./scorecard.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
@@ -235,16 +236,19 @@ export async function checkGmail({ env = process.env, fetchImpl, gmailClient } =
 }
 
 export function formatScorecard({ date, dryRun, checks = [], sms, darwin } = {}) {
-  const named = checks.filter((c) => c.kind !== "registry");
+  const coverage = checks.filter((c) => c.kind === "coverage");
   const uptime = checks.filter((c) => c.kind === "registry");
-  const pass = named.filter((c) => c.status === "PASS").length;
-  const fail = named.filter((c) => c.status === "FAIL").length;
-  const skip = named.filter((c) => c.status === "skip").length;
+  const named = checks.filter((c) => c.kind !== "registry" && c.kind !== "coverage");
+  const scored = [...named, ...coverage];
+  const pass = scored.filter((c) => c.status === "PASS").length;
+  const fail = scored.filter((c) => c.status === "FAIL").length;
+  const skip = scored.filter((c) => c.status === "skip").length;
+  const unchecked = scored.filter((c) => c.status === "not checked").length;
   const up = uptime.filter((c) => c.status === "up").length;
   const down = uptime.filter((c) => c.status === "down").length;
   const score = uptime.length
-    ? `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip. Uptime: ${up} up / ${down} down`
-    : `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip`;
+    ? `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip / ${unchecked} not checked. Uptime: ${up} up / ${down} down`
+    : `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip / ${unchecked} not checked`;
   const lines = [
     `# Pulse ${date}`,
     "",
@@ -259,6 +263,20 @@ export function formatScorecard({ date, dryRun, checks = [], sms, darwin } = {})
   for (const c of named) {
     const fix = c.suggestedFix ? String(c.suggestedFix).replace(/\|/g, "/") : "—";
     lines.push(`| ${c.id} | ${c.status} | ${String(c.detail || "").replace(/\|/g, "/")} | ${fix} |`);
+  }
+  if (coverage.length) {
+    lines.push("");
+    lines.push("## Coverage");
+    lines.push("");
+    lines.push("Slice checks. A cron is red when its last success is older than 3 times its schedule. A row with no last-success time says not checked. This pulse does not fix them.");
+    lines.push("");
+    lines.push("| Check | Status | Proof | Suggested fix |");
+    lines.push("|---|---|---|---|");
+    for (const c of coverage) {
+      const fix = c.suggestedFix ? String(c.suggestedFix).replace(/\|/g, "/") : "—";
+      const proof = String(c.detail || "").replace(/\|/g, "/").replace(/\s+/g, " ").trim();
+      lines.push(`| ${c.id} | ${c.status} | ${proof} | ${fix} |`);
+    }
   }
   if (uptime.length) {
     lines.push("");
@@ -365,6 +383,15 @@ export async function runDailyPulse({
       "jobs",
       "skip",
       `job heartbeats not read: ${String((err && err.message) || err).slice(0, 160)}`
+    ));
+  }
+  try {
+    checks.push(...await runCoverageSlices({ db, scope: staffScope, now }));
+  } catch (err) {
+    checks.push(check(
+      "coverage",
+      "skip",
+      `coverage slices not read: ${String((err && err.message) || err).slice(0, 160)}`
     ));
   }
 

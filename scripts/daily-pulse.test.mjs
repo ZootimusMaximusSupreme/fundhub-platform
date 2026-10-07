@@ -53,8 +53,9 @@ test("--db hands the pulse a db and a staff scope, sends nothing, and always clo
   assert.equal(out.dryRun, true);
   assert.equal(sends.length, 0);
   assert.equal(out.sms.reason, "dry_run");
-  // Four marketing-machine rows went through the staff scope, then one close.
-  assert.deepEqual(log, ["staff", "staff", "staff", "staff", "close"]);
+  // Four marketing-machine rows, then one coverage read of the marketing
+  // heartbeats, then one close. The coverage runner does not send.
+  assert.deepEqual(log, ["staff", "staff", "staff", "staff", "staff", "close"]);
   assert.ok(out.checks.some((c) => c.id === "meta-sync" && c.status !== "skip"));
   fs.rmSync(board, { recursive: true, force: true });
 });
