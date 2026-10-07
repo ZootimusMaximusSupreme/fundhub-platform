@@ -16,9 +16,9 @@
 | 4 | Clock / worker | **PASS** | `marketing_heartbeats` (`name`/`last_at`): clock `2026-10-07T07:00:58Z`, worker `2026-10-07T07:01:01Z` (<20 min). Worker after last queued job (`marketing_jobs` last create `2026-10-06T16:28:43Z`). |
 | 5 | Bridge — one copy job | **NOT RUN** | Battery `5-bridge-copy-job` stopped on SQL (`marketing_model_usage.cost_cents` column mismatch in driver). No fresh enqueue + `npm run marketing:run-queue -- --once` proof in this pass. |
 | 6 | Bridge — flywheel avatar retry | **PASS** (done) / **FAIL** (retry tap) | Job `95c0a082-2d05-40a2-a884-1ecd70816619` is **`done`** (steps through `save` finished ~07:28 UTC). `POST marketing/flywheel/run` with `retry_job_id` → **404** (“not a stopped or failed avatar run”) — expected once finished. Research/offer not started. |
-| 7 | Scripts — write now + approve | **FAIL** | `ad_scripts` count **0** for org; no ad number ≥91 in `ads.fundhub_ad_number`. Battery driver hit wrong table name (`marketing_scripts`). Outbox heartbeat detail: `held_reason: no_token` (expected without GitHub token). |
-| 8 | Shoot + teleprompter | **PASS** (offline) / **FAIL** (live teleprompter) | **Offline:** `teleprompter.spec.mjs` + `teleprompter-touch.spec.mjs` — pause/resume, double-tap scroll, drag, hold-edit, offline sync, Saved line (mock API). **Live:** after owner login, `teleprompter.html` still shows **sign-in wall** (session not seen by teleprompter). **Shoot plan route:** **NOT RUN** (no scripts on file). |
-| 9 | Numbers — Meta spend | **FAIL** | `SELECT SUM(spend_cents) FROM ad_metrics_daily` → **0** rows / **0** cents (expect **156313** cents through Oct 4 baseline). Numbers tab live render OK; DB spine empty. |
+| 7 | Scripts — write now + approve | **PASS** (re-proved 2026-10-07 ~4:57 a.m. Arizona) | The Oct 6 count of 0 was a query with no staff scope, plus the battery reading `marketing_scripts` (that table does not exist). Real table is `ad_scripts`. A write-now from that pass had left `write_slot` `1b51e657` queued. `npm run marketing:run-queue -- --once` finished it in 53s (checker passed, ledger model `claude-code`, cost **$0**). Live Scripts tab: Approve → `POST marketing/scripts/approve` **200**, ad number **91**, status **locked**. Second open of Approved shows **Ad 91 · The Conveyor Belt**. `repo_outbox` rows for the script file and `registry.json` are uncommitted; `outbox_drain` heartbeat `held_reason: no_token`. `finish_batch` **done**. |
+| 8 | Shoot + teleprompter | **PASS** (offline and live sign-in) | **Offline:** unchanged from the Oct 6 pass. **Live, twice, after `owner@fundhub.ai` login:** phone **390** and iPad **768**. `fh_token` is set, `#wall` stays hidden, `GET marketing/shoot` **200**. The page says no shoot is planned. The Oct 6 “sign-in wall” was the hidden line that is always in the page; the battery counted it even when it was hidden. |
+| 9 | Numbers — Meta spend | **PASS** (re-proved 2026-10-07 ~4:52 a.m. Arizona) | A query as `fundhub_app` with no staff flag sees **0** rows (row security). The same sum as staff is **70** rows, **156313** cents through Oct 4 (**$1,563.13**), plus Oct 6 at **$0**. Oct 5 has no row. Meta connection `last_synced_at` `2026-10-07T11:30:05Z`, `last_error` empty. Live Numbers tab, same login: last 30 days (Sep 8–Oct 7) **91549** cents and last 7 days (Oct 1–Oct 7) **44557** cents, ads 90 / 86 / 89 / 84. Those cents match a staff `SELECT` on the same Arizona days. Screen says numbers were pulled Oct 7, 4:30 a.m. Arizona. |
 | 10 | Launch safety | **PASS** | `POST marketing/meta/load` without video ids → **400** `invalid` / `ad_video_id` (battery + run driver). Launch tab loads live with no tab fault. No Meta load sent. |
 | 11 | iPhone app (simulator) | **PASS** (iPhone) / **NOT RUN** (iPad sim) | `DEVELOPER_DIR=… xcodebuild test` · `tools/teleprompter-ios/FundhubPrompter.xcodeproj` · **iPhone 17 Pro Max** → **42** tests, **0** failures (~00:29 AZ). iPad simulator destination not re-run this pass. Real device only: 4K/60 camera, Photos save, BLE remote, production login. |
 | 12 | Funnel builder | **PASS** | Funnel `d6e3726c-d9ee-4dff-9721-268582ef1f9f` **`draft`**, path `/blueprint`. `GET https://apply.fundhub.ai/blueprint` → **404** (not live — owner choice). `/roadmap` → **200** (unchanged live page spot-check). |
@@ -28,7 +28,7 @@
 1. Live site is shipped and healthy; CI only failed the known climate test.
 2. Command Center works at phone and desktop sizes when you sign in; every tab opens with real API data.
 3. The clock and worker ran in the last few minutes; the Blueprint avatar job is **done**.
-4. **Red:** Meta spend rows are missing in the database, so Numbers cannot match Meta. **Red:** no scripts in `ad_scripts` yet (write-now not proved this pass). **Red:** live teleprompter still shows the sign-in wall after staff login.
+4. **Update 2026-10-07:** Those three reds are closed. Spend was already saved; the audit query could not see it. The teleprompter was already signed in. Write-now finished on the Mac and Ad 91 is approved.
 5. Offline Playwright clicked teleprompter controls; iPhone simulator tests passed. We did not push the funnel or send anything to Meta.
 
 ---
@@ -71,6 +71,6 @@
 
 ## Overall next action
 
-**Marketing:** Backfill or sync `ad_metrics_daily` so Numbers matches Meta; fix live teleprompter staff session; re-run write-now + bridge copy job with a corrected battery driver. **Finance:** Optional merchant API pull on the sim; optional Netlify `FINANCE_OS_SETUP_FEE_CENTS` for production checkout.
+**Marketing (2026-10-07):** Rows 7, 8, and 9 are PASS. No product code change. Row 5 (copy job) was not re-run. **Finance:** unchanged from this pass.
 
-**Part 1 pass/fail (scored rows):** PASS **7**, FAIL **4**, NOT RUN **2** (tests 5, 8 shoot plan partial). **Part 2:** committed separately (`02f14ba5`).
+**Part 1 pass/fail after the 2026-10-07 re-prove:** PASS **10** (rows 1–4, 7–12), FAIL **1** (row 6 retry tap only), NOT RUN **1** (row 5). **Part 2:** committed separately (`02f14ba5`).
