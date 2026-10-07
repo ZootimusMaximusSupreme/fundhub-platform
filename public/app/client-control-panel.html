@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
+<link rel="stylesheet" href="ccp-declines.css">
 <style>
   /* Local aliases onto fundhub-brand.css — no brand token is redeclared here.
      Two tiers per hue, because the real status colors are pastels: the pastel
@@ -1467,6 +1468,16 @@
             <div class="bp-sec-end"><button type="button" class="link-btn" id="bp-unoffer" hidden>Take the offer back</button></div>
           </div>
 
+          <!-- DECLINES (decline defense, Blueprint launch unit B1). Record a
+               bank's decline, read the likely reasons and the source of each,
+               work the reconsideration plan, record the outcome. Painted by
+               ccp-declines.js from GET /api/blueprint/declines; posts to
+               POST /api/blueprint/declines. -->
+          <div class="bp-sec" id="bp-declines">
+            <div class="cp-sec-title card-title">Declines</div>
+            <div id="bp-declines-root" aria-live="polite"><p class="fact-note">Loading declines…</p></div>
+          </div>
+
         </div>
       </div>
 
@@ -1523,6 +1534,7 @@ document.querySelectorAll('.group-title.tog').forEach(function(t){
 <script defer src="data.js"></script>
 <script src="proxy-apply.js"></script>
 <script src="money-input.js"></script>
+<script defer src="ccp-declines.js"></script>
 <script>
 /* FH-CCP-BEGIN
    THE TWO DECISIONS ON THIS SCREEN THAT CAN QUIETLY BECOME A LIE, kept pure

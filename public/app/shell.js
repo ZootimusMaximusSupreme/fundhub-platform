@@ -225,7 +225,7 @@
   var STAFF_MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-credit.html",
     "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
     "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
-    "money-transfers.html"];
+    "money-transfers.html", "money-declines.html"];
 
   /* Consent desk — the credit-pull permission screen. api/consent/capture.mjs
      gates on CONSENT_ROLES = owner, admin, closer, funding_advisor, and that
@@ -420,7 +420,7 @@
       "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
       "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
       "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
-      "money-transfers.html"],
+      "money-transfers.html", "money-declines.html"],
     affiliate: ["affiliate.html"],
     /* NO CAMPAIGNS ROW YET, AND THAT IS AN OPEN QUESTION, NOT AN OVERSIGHT.
        A partner cannot reach campaign-manager.html from any screen (proven live

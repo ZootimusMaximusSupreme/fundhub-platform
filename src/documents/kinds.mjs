@@ -64,6 +64,8 @@ export const SUBTYPES = Object.freeze({
     "tax_return",
     "additional_fraud_docs",
     "dispute_mail_receipt",
+    // A bank's decline letter, for decline defense (src/blueprint/decline-defense.mjs).
+    "decline_letter",
     "other"
   ]),
   bureau_response: Object.freeze([
@@ -112,6 +114,7 @@ export const SUBTYPE_TITLES = Object.freeze({
   tax_return: "Tax Return",
   additional_fraud_docs: "Additional documentation — fraud / identity theft cases",
   dispute_mail_receipt: "Dispute Mailing Proof",
+  decline_letter: "Bank Decline Letter",
   bureau_letter: "Bureau Response Letter",
   ftc_report: "FTC Identity Theft Report",
   other: "Uploaded Document"

@@ -1,0 +1,110 @@
+/* Your applications — FinanceOS.sections.declines (money-declines.js).
+   Every rule is under .fh-declines so the section can sit inside the combined
+   FinanceOS page (/app/financeos.html) with this one <link> and touch nothing
+   around it. It carries its own base pieces (card, eyebrow, caption, buttons,
+   fields, skeletons) so it needs no rules copied from another page.
+
+   UI-STANDARDS: 8px spacing scale; no px font sizes (§12.7 — sizes come from
+   the brand whitelist: h1/h2, .eyebrow, .caption); no hand-rolled resting
+   shadow (§12.2 — .card takes --panel-shadow from fundhub-brand.css); status
+   is a word and a shape, never colour alone (§12.6); one column and no
+   sideways page scroll on a phone (§11). */
+
+.fh-declines{display:block}
+.fh-declines p{max-width:72ch}
+
+/* head */
+.fh-declines .dc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-declines .dc-head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+
+/* the resting container (§12.1). The shadow comes from the brand file. */
+.fh-declines .card{background:var(--surface,#FFFFFF);border:1px solid var(--line);border-radius:10px;padding:16px 24px;min-width:0}
+.fh-declines .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim,var(--gray));margin:16px 0 8px}
+.fh-declines .caption{color:var(--text-dim,var(--gray))}
+
+/* blocks */
+.fh-declines .dc-block{margin-bottom:32px}
+.fh-declines .dc-block>h2{font-weight:600;color:var(--ink);margin-bottom:16px}
+.fh-declines .dc-list{display:flex;flex-direction:column;gap:16px}
+
+/* one decline */
+.fh-declines .dc-decline{display:flex;flex-direction:column}
+.fh-declines .dc-dhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.fh-declines .dc-dname{display:flex;flex-direction:column;min-width:0}
+.fh-declines .dc-dname h3{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+/* The status is a mark and the words. A solid ink fill marks a yes, so it
+   reads the same on a one-hue tenant. */
+.fh-declines .dc-status{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border:1px solid var(--line);border-radius:999px;font-weight:600;color:var(--ink)}
+.fh-declines .dc-status.is-yes{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.fh-declines .dc-status.is-no{border-style:dashed}
+
+.fh-declines .dc-reasons,.fh-declines .dc-steps,.fh-declines .dc-when,.fh-declines .dc-parts,.fh-declines .dc-apps{list-style:none;margin:0;padding:0}
+.fh-declines .dc-reason{display:flex;flex-direction:column;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.fh-declines .dc-reason:first-child{border-top:0}
+.fh-declines .dc-reason-label{font-weight:600;color:var(--ink)}
+.fh-declines .dc-quote{border-left:2px solid var(--ink);padding-left:16px;color:var(--text-dim,var(--gray));overflow-wrap:anywhere}
+
+/* the part nobody could match — a dashed edge and the words say so */
+.fh-declines .dc-person{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding:16px;border:1px dashed var(--ink);border-radius:8px}
+.fh-declines .dc-parts li{padding:8px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.fh-declines .dc-parts li:first-child{border-top:0}
+
+/* steps — a mark, the words, and the status word */
+.fh-declines .dc-step{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.fh-declines .dc-step:first-child{border-top:0}
+.fh-declines .dc-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;border:1px solid var(--line);font-weight:600;color:var(--ink);flex-shrink:0}
+.fh-declines .is-done .dc-mark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.fh-declines .is-skip .dc-mark{border-style:dashed}
+.fh-declines .dc-status .dc-mark{border:0;width:auto;height:auto}
+.fh-declines .dc-step-text{overflow-wrap:anywhere}
+.fh-declines .dc-word{font-weight:600;white-space:nowrap;color:var(--ink)}
+.fh-declines .is-open .dc-word{color:var(--text-dim,var(--gray))}
+.fh-declines .dc-ours{margin-top:16px}
+/* The native disclosure triangle stays (display:list-item), so "there is more
+   here" is a shape, not a guess. */
+.fh-declines .dc-ours>summary{display:list-item;min-height:44px;padding-top:8px;cursor:pointer;font-weight:600;color:var(--ink)}
+.fh-declines .dc-when li{padding:8px 0;border-top:1px solid var(--line)}
+.fh-declines .dc-when li:first-child{border-top:0}
+
+/* the paste box — the one primary action */
+.fh-declines .dc-paste{display:flex;flex-direction:column;align-items:stretch;margin-bottom:32px}
+.fh-declines .dc-paste h2{font-weight:600;color:var(--ink);margin-bottom:8px}
+.fh-declines .dc-label{display:block;font-weight:600;color:var(--ink);margin:16px 0 8px}
+.fh-declines .dc-field{display:block;width:100%;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#FFFFFF);color:var(--ink)}
+.fh-declines .dc-field:focus-visible{outline:2px solid var(--ink);outline-offset:0}
+.fh-declines .dc-text{min-height:200px;resize:vertical;font-family:var(--sans);line-height:1.5}
+.fh-declines .dc-other[hidden]{display:none}
+.fh-declines .dc-paste .caption{margin:8px 0 16px}
+.fh-declines .dc-btn-primary{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;cursor:pointer}
+.fh-declines .dc-btn-primary:hover{background:var(--ink2)}
+.fh-declines .dc-btn-primary[disabled]{opacity:.6;cursor:progress}
+.fh-declines .dc-flash{font-weight:600;color:var(--ink);padding:8px 16px;border-left:2px solid var(--ink);margin-bottom:8px}
+.fh-declines .dc-problem{font-weight:600;color:var(--ink);margin-top:16px}
+.fh-declines .dc-locked{gap:8px}
+
+/* applications */
+.fh-declines .dc-app{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.fh-declines .dc-app:first-child{border-top:0}
+.fh-declines .dc-app-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-declines .dc-app-status{color:var(--text-dim,var(--gray))}
+
+/* error */
+.fh-declines .dc-error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+
+/* loading skeletons, in the real layout */
+.fh-declines .dc-skel{display:flex;flex-direction:column;gap:8px}
+.fh-declines .dc-sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:dc-sk 1.2s ease-in-out infinite}
+.fh-declines .dc-sk-s{height:12px;width:40%}
+.fh-declines .dc-sk-m{height:16px;width:70%}
+.fh-declines .dc-sk-l{height:32px;width:60%}
+@keyframes dc-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){
+  .fh-declines .dc-sk{animation:none}
+}
+
+@media (max-width:760px){
+  .fh-declines .card{padding:16px}
+  .fh-declines .dc-step{grid-template-columns:24px minmax(0,1fr)}
+  .fh-declines .dc-word{grid-column:2}
+  .fh-declines .dc-btn-primary{align-self:stretch}
+}

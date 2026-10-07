@@ -282,6 +282,9 @@ const API_KEYS = [
   "read/banking-surface",
   "read/blueprint-combined-approval",
   "blueprint/staff-actions",
+  /* Decline defense. A plain GET answers 401 to an unsigned ping; the POST
+     actions are never pinged. */
+  "blueprint/declines",
   "read/call-outcomes",
   /* The only read behind the client progress page. An outage here is a client
      who paid up to $10,000 seeing no scores, no checklist and no next step. */
@@ -478,6 +481,7 @@ const DESK_FILES = [
   "money-banks.html",
   "money-fundability.html",
   "money-helper.html",
+  "money-declines.html",
   "money.html",
   "money-setup.html",
   "money-connections.html",

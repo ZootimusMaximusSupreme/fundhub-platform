@@ -1,0 +1,37 @@
+/* Declines block — client control panel, Capital Blueprint group
+   (ccp-declines.js). Every rule is under #bp-declines so nothing else on the
+   panel moves. Layout only: text sizes come from the classes the panel and the
+   brand file already size (.fact-note, .fact-row, .kv-label, .rep-label,
+   .chip), so there is no px font size here (UI-STANDARDS §12.7) and no
+   hand-rolled shadow (§12.2). 8px spacing scale. Status is a mark and a word,
+   never colour alone (§12.6). */
+
+#bp-declines .dec-list{list-style:none;margin:0 0 8px;padding:0}
+#bp-declines .dec-list>li{padding:8px 0;border-top:1px solid var(--line)}
+#bp-declines .dec-list>li:first-child{border-top:0}
+#bp-declines .dec-src{margin:0}
+#bp-declines .dec-item{margin-top:8px}
+#bp-declines .dec-item>summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;min-height:44px;align-items:center;cursor:pointer}
+#bp-declines .dec-sum-name{font-weight:600;overflow-wrap:anywhere}
+#bp-declines .dec-person{margin:8px 0;padding:8px 16px;border:1px dashed var(--ink);border-radius:8px}
+#bp-declines .dec-steps{list-style:none;margin:0 0 8px;padding:0}
+#bp-declines .dec-step{padding:8px 0;border-top:1px solid var(--line)}
+#bp-declines .dec-step:first-child{border-top:0}
+#bp-declines .dec-step-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#bp-declines .dec-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;border:1px solid var(--line);font-weight:600;flex-shrink:0}
+#bp-declines .is-done .dec-mark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+#bp-declines .is-skip .dec-mark{border-style:dashed}
+#bp-declines .dec-step-word{font-weight:600}
+#bp-declines .dec-step-text{margin:8px 0 0;overflow-wrap:anywhere}
+/* A blank is drawn with a dashed edge AND says "Blank" in words. */
+#bp-declines .dec-blank-label{padding:8px 16px;border:1px dashed var(--ink);border-radius:8px}
+#bp-declines .dec-filled{margin:8px 0 0}
+#bp-declines .dec-acts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}
+#bp-declines .dec-acts .link-btn{flex:1 1 0;justify-content:center}
+#bp-declines .dec-fill{min-height:64px}
+#bp-declines .dec-letter{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+#bp-declines .dec-bureaus{border:0;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px 16px}
+#bp-declines .dec-bureaus legend{padding:0}
+#bp-declines .dec-check{display:inline-flex;align-items:center;gap:8px;min-height:40px}
+#bp-declines .dec-new{margin-top:16px}
+#bp-declines .kv-label{margin-top:16px}

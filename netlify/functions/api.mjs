@@ -69,6 +69,7 @@ import readDocuments from "../../api/read/documents.mjs";
 import readBankInbox from "../../api/read/bank-inbox.mjs";
 import readBlueprintCombinedApproval from "../../api/read/blueprint-combined-approval.mjs";
 import blueprintStaffActions from "../../api/blueprint/staff-actions.mjs";
+import blueprintDeclines from "../../api/blueprint/declines.mjs";
 import readFundingRounds from "../../api/read/funding-rounds.mjs";
 import readAffiliates from "../../api/read/affiliates.mjs";
 import readAffiliatePortal from "../../api/read/affiliate-portal.mjs";
@@ -582,6 +583,11 @@ export const ROUTES = {
   // Capital Blueprint — primary + credit partner combined prequal (lane 6).
   "read/blueprint-combined-approval": readBlueprintCombinedApproval,
   "blueprint/staff-actions": blueprintStaffActions,
+  // Decline defense (unit B1): a bank's decline read into likely reasons and a
+  // reconsideration plan with a source on every line; ops task once; outcome.
+  // Client session = own file (read, paste, link a letter); staff = STAFF role
+  // + client in org. Lender-book lines only for ROLE_SETS.LENDERS.
+  "blueprint/declines": blueprintDeclines,
 
   // read/underwrite runs the vendored UnderwriteIQ Lite engine over the same
   // tradeline rows read/tradelines and read/finance-os already serve to
