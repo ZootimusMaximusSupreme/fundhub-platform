@@ -63,3 +63,8 @@ Each UI part is `window.FinanceOS.sections.<name> = { title, mount(el, ctx) }`, 
 
 ### Fix in the final pass (sample-data law)
 - Test client's sandbox bank v2: stored transactions don't add up to its balances, so rebuilt history dips below zero (~−$17,929 personal Jul 13, ~−$10,920 business Jul 11). One sample file must agree with itself → make a consistent sandbox bank (balances = sum of activity) before showing trends.
+
+### Merged (wave 5)
+- W1 plan, W2 banks, W3 fundability, W4 strategy, W5 next steps + ready-to-fund + seam (migration 464) — merged and wired as tabs: Overview · Next steps · Plan · Banks · Strategy · Fundability · Accounts · Credit · Connections · Payments · Setup.
+- S1 consistent sample person — merged. Test Test: bank v3 item `1b353a67-…` (v2 closed), credit file `crs_results b894f4be-…` (simulated, 702/709/706, FUNDING_PLUS_REPAIR, $19,799). Numbers agree across Overview / Trends / Credit / Plan / Strategy.
+- S1 could not reconcile: SBA loan payment not in business checking (would double-count as a bill); Chase Ink has no due/minimum; Clarity sample is "owed to Fundhub LLC" which is this person's own business; survey answers vs business info; two engine funding numbers ($19,799 tier vs $132,000 stacking) are both engine output.
