@@ -80,3 +80,15 @@ Monthly member fee amount · Commas titles for member fee and per-letter mailing
 **Leftover card (not fixed — outside this hole):** nothing re-reads the Plaid account list or balances after link time (`accounts-sync.mjs` calls the Plaid seam with no token, and `plaid-liabilities.mjs` refuses to create accounts). So a new Plaid card appears only when something writes its row (a re-link), and the cash cushion uses balances as last written. Real banks are sandbox-only until Plaid production is granted.
 
 **Proof:** read-only dry run over test client `f1cb9c27-…` (not in the daily audience — no Finance OS subscription, no paid Blueprint transaction): `node --env-file=.env scripts/blueprint-file-alerts-dry-run.mjs`.
+
+## B2 manifest — file-protection alerts, the screen (2026-10-07)
+
+**Done (on the B2-front worktree branch, not merged):** the client can now see and run the four texts. Each one is a card with its own on/off switch, what it watches, the next text and what it is about, and the texts already sent (the day, the card, the words). Promo: set the end date and rate per card; it shows what is left and the payoff line from the API, plus the 60 / 30 / 7 schedule. Remove asks first. A card with no statement close day is asked for it right in its card, with one sentence why. That is the screen's one filled button. Cash: personal and business are two checks, each against 6 times its own minimums. No added number anywhere; a test checks the three sums never show.
+
+**Files:** `public/app/money-alerts.js` (`window.FinanceOS.sections.alerts`), `public/app/money-alerts.css` (all under `.fh-alerts`), `public/app/money-alerts.html` (thin shell) · lists: `src/pulse/registry.mjs` (DESK_FILES), `public/app/shell.js` (STAFF_MONEY + client), `src/http/app-nav-matches-shell.test.mjs` (NO_SIDEBAR), `src/http/financeos-staff-nav.test.mjs` (MONEY) · test `src/http/money-alerts-screen.test.mjs` (42 tests).
+
+**For the orchestrator (financeos.html / financeos.js not touched):** link `money-alerts.css` and `money-alerts.js`, add the tab `["alerts", "Alerts"]` with panel `#fos-alerts`, and `"money-alerts.html": "alerts"` in PAGE_TAB. Section title "Alerts"; its heading is "File protection alerts".
+
+**Journeys impacted:** client. `-actual.md` not regenerated (told not to run `npm run journeys`).
+
+**Proof:** fixture server = the real `api/money/alerts.mjs` handler and the real payload builder over the sample rows, writes in memory, no database, no login. Its first read equals the pinned fixture. Marked shots at 1440 and 375 (full, empty, error, loading, promo editing and saved, a day saved, a switch off, STOP) are in the B2-front worktree under `ops/workflows/blueprint-launch-2026-10-06-evidence/b2/` (gitignored).
