@@ -14,9 +14,9 @@ const HTML = fs.readFileSync(path.join(APP, "financeos.html"), "utf8");
 const JS = fs.readFileSync(path.join(APP, "financeos.js"), "utf8");
 const OVERVIEW = JSON.parse(fs.readFileSync(path.join(HERE, "fixtures/money-overview.sandbox.json"), "utf8"));
 
-const TABS = ["overview", "next", "plan", "banks", "strategy", "fundability", "accounts", "credit", "connections", "payments", "setup"];
-const LABELS = ["Overview", "Next steps", "Plan", "Banks", "Strategy", "Fundability", "Accounts", "Credit", "Connections", "Payments", "Setup"];
-const SCRIPTS = ["money.js", "money-next.js", "money-plan.js", "money-banks.js", "money-strategy.js", "money-fundability.js", "money-accounts.js", "money-credit.js", "money-connections.js", "money-payments.js", "money-setup.js"];
+const TABS = ["overview", "next", "helper", "plan", "banks", "strategy", "fundability", "accounts", "credit", "connections", "payments", "setup"];
+const LABELS = ["Overview", "Next steps", "Money helper", "Plan", "Banks", "Strategy", "Fundability", "Accounts", "Credit", "Connections", "Payments", "Setup"];
+const SCRIPTS = ["money.js", "money-next.js", "money-helper.js", "money-plan.js", "money-banks.js", "money-strategy.js", "money-fundability.js", "money-accounts.js", "money-credit.js", "money-connections.js", "money-payments.js", "money-setup.js"];
 const text = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
 test("the page has every tab, in order, each opening its own panel", () => {
@@ -45,12 +45,13 @@ test("the page loads every section script, then financeos.js last, and both sect
   assert.match(HTML, /<link rel="stylesheet" href="money-connections\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-payments\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-next\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="money-helper\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-plan\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-banks\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-strategy\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-fundability\.css">/);
   // Each section script says which tab it fills.
-  const keys = { "money.js": "overview", "money-next.js": "next", "money-plan.js": "plan", "money-banks.js": "banks", "money-strategy.js": "strategy", "money-fundability.js": "fundability", "money-accounts.js": "accounts", "money-credit.js": "credit",
+  const keys = { "money.js": "overview", "money-next.js": "next", "money-helper.js": "helper", "money-plan.js": "plan", "money-banks.js": "banks", "money-strategy.js": "strategy", "money-fundability.js": "fundability", "money-accounts.js": "accounts", "money-credit.js": "credit",
     "money-connections.js": "connections", "money-payments.js": "payments", "money-setup.js": "setup" };
   for (const s of SCRIPTS) {
     const sandbox = { window: {} };
