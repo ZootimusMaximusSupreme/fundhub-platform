@@ -59,3 +59,22 @@ Owner-set by Chris, 2026-10-06. Adds to `client-finance-os-build-spec-2026-09-19
 - Past due: a **Clarity Payment** is debt a client owes to Fundhub LLC — or any other debt owed to Fundhub or its subsidiaries, including buy now, pay later (BNPL) plans. Track each one; when it is late, check in (agent first, then a person).
 - AI agent: build it in-house. (No outside AI spend yet — the agent runs on rules until an AI brain is switched on.)
 - **One page.** Chris (2026-10-06): it is all one page — a one-page CRM for finances, called **FinanceOS**. Sections on that page: Overview · Accounts · Credit · Connections · Payments · Setup. Page: `/app/financeos.html`. (The staff desk `/app/finance-os.html` stays as it is.)
+
+## FinanceOS platform — owner vision (owner-set 2026-10-06, evening)
+
+- Optimize the whole money life: banking, credit, real-time feedback on payment strategy, math showing how to lower payments and reach goals sooner.
+- AI tells you exactly what to do. A "Do task" button hands the task to an agent. Owner wants automated money movement and task execution.
+- **Waypoints timeline:** a month view (e.g. October 2026) with pins on dates (e.g. Oct 20): open this account, deposit $20,000 / $10,000 / $2,000 — to build banking history and relationships.
+- **Banking relationship strategy:** which accounts to open based on location, pre-plan funding rounds, credit card stacking opportunities.
+- **Fundability:** score now, future projection, and per business when more businesses are added.
+- **Blueprint synergy:** same method, two doors. Blueprint can be an upsell from FinanceOS; FinanceOS a side sell to Blueprint. Journey: prep in FinanceOS → "ready to get funded" button in the portal → CSM reaches out (same as Blueprint).
+
+| Need | In the repo (measured 2026-10-06) |
+|---|---|
+| Payment strategy math | `api/finance/paydown-simulator.mjs` |
+| Waypoints | `api/waypoint-tick.mjs`, migrations 361/362 waypoint definitions |
+| Bank relationships | `src/blueprint/bank-relationship.mjs`; 313 banks in `docs/legacy-strong/lenders-legacy-strong.csv` |
+| Funding rounds | `src/blueprint/next-funding-sequence.mjs`, migration 403 |
+| Fundability | UnderwriteIQ engine (`src/underwrite/`) |
+| AI "Do task" | Waits on AI spend; agent runs on rules today |
+| Automated money movement | Not in the repo — needs a money-moving provider (e.g. Plaid Transfer, custom plan) |
