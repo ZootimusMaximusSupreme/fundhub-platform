@@ -120,9 +120,13 @@ export async function plaidPost(path, payload = {}, {
       data: null, errorCode: null, errorType: null,
       /* A 0 here is a timeout or a dropped socket, and the header of
          outbound-fetch.mjs is explicit that the vendor may have done the work
-         anyway. Treating it as retryable is correct for the two calls this file
-         makes — both are idempotent reads or an exchange Plaid de-duplicates —
-         and would NOT be correct for anything that charges or mails. */
+         anyway. Treating it as retryable is correct for the calls this file
+         makes: reads, an exchange Plaid de-duplicates, and the Transfer calls
+         below — an authorization carries an idempotency_key and /transfer/create
+         is idempotent on its authorization_id, so a retry returns the same
+         authorization or the same transfer instead of moving money twice
+         (https://plaid.com/docs/api/products/transfer/initiating-transfers/).
+         It would NOT be correct for a call that charges or mails with no key. */
       retryable: res.status === 0 || res.status >= 500,
       error: (res.error || `plaid ${path} answered ${res.status}`).slice(0, 300)
     };
@@ -426,7 +430,274 @@ export async function syncTransactions(accessToken, { cursor = null } = {}, opts
   };
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   PLAID TRANSFER — money movement (FinanceOS wave 5, unit W7).
+
+   THESE CALLS MOVE MONEY, SO THE HOST IS GATED HERE, AT THE WIRE. The sandbox
+   host is always allowed (fake banks, no real funds). The production host is
+   reachable only when BOTH PLAID_ENV=production AND FINANCE_OS_TRANSFERS_LIVE=1
+   are set. Anything else — production without the switch, 'development', a
+   typo — is refused before a byte is sent. src/finance/money-transfers.mjs
+   checks the same thing first; this is the second lock, in the one file that
+   can reach the network.
+
+   Field names are Plaid's own, one for one, from the API reference:
+     https://plaid.com/docs/api/products/transfer/initiating-transfers/
+     https://plaid.com/docs/api/products/transfer/reading-transfers/
+     https://plaid.com/docs/api/products/transfer/ledger/
+     https://plaid.com/docs/api/sandbox/#sandboxtransfersimulate
+   Amounts go to Plaid as a decimal string with two digits ("20.00"); this file
+   takes the string already made (src/banking/plaid-transfer.mjs makes it from
+   integer cents with no float maths).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+const refused = (error) => ({
+  ok: false, blocked: false, transmitted: false, status: 0, data: null,
+  errorCode: null, errorType: null, retryable: false, error
+});
+
+/** null when this environment may carry a Transfer call, else why not. */
+export function transferHostRefusal(environment, env = process.env) {
+  if (environment === "sandbox") return null;
+  if (environment === "production") {
+    const plaidEnv = env && env.PLAID_ENV ? String(env.PLAID_ENV).trim() : "";
+    const live = env && env.FINANCE_OS_TRANSFERS_LIVE !== undefined ? String(env.FINANCE_OS_TRANSFERS_LIVE).trim() : "";
+    if (plaidEnv === "production" && live === "1") return null;
+    return "real-money transfers need PLAID_ENV=production and FINANCE_OS_TRANSFERS_LIVE=1";
+  }
+  return `Plaid Transfer runs only on sandbox or production, not ${environment}`;
+}
+
+function transferOpts(opts) {
+  const environment = opts.environment || "sandbox";
+  return { environment, refusal: transferHostRefusal(environment, opts.env || process.env) };
+}
+
+/* The parts of a Plaid transfer object this product reads. */
+function transferShape(t) {
+  if (!t || typeof t !== "object") return null;
+  return {
+    id: t.id ?? null,
+    authorizationId: t.authorization_id ?? null,
+    type: t.type ?? null,
+    amount: t.amount ?? null,
+    status: t.status ?? null,
+    network: t.network ?? null,
+    cancellable: typeof t.cancellable === "boolean" ? t.cancellable : null,
+    failureReason: t.failure_reason
+      ? {
+        failureCode: t.failure_reason.failure_code ?? null,
+        achReturnCode: t.failure_reason.ach_return_code ?? null,
+        description: t.failure_reason.description ?? null
+      }
+      : null,
+    created: t.created ?? null,
+    expectedFundsAvailableDate: t.expected_funds_available_date ?? null,
+    ledgerId: t.ledger_id ?? null
+  };
+}
+
+/**
+ * authorizeTransfer — POST /transfer/authorization/create
+ * https://plaid.com/docs/api/products/transfer/initiating-transfers/#transferauthorizationcreate
+ *
+ * Plaid's risk check on one leg. `type` 'debit' pulls money from the account
+ * into Fundhub's Plaid Ledger; 'credit' pays money out of the Ledger to it.
+ * The idempotency_key (max 50 characters) makes a retry return the same
+ * authorization instead of a second one.
+ *
+ * Returns { ok, authorization: { id, decision, rationaleCode,
+ * rationaleDescription, created } } or the flat failure shape.
+ */
+export async function authorizeTransfer(accessToken, {
+  accountId, type, network = "ach", amount, achClass, legalName, idempotencyKey, userPresent = null
+} = {}, opts = {}) {
+  const { environment, refusal } = transferOpts(opts);
+  if (refusal) return refused(refusal);
+  if (typeof idempotencyKey !== "string" || idempotencyKey.length < 1 || idempotencyKey.length > 50) {
+    return refused("idempotency_key is required and at most 50 characters");
+  }
+  const payload = {
+    access_token: accessToken,
+    account_id: accountId,
+    type,
+    network,
+    amount,
+    ach_class: achClass,
+    user: { legal_name: legalName },
+    idempotency_key: idempotencyKey
+  };
+  if (typeof userPresent === "boolean") payload.user_present = userPresent;
+  const r = await plaidPost("/transfer/authorization/create", payload, { ...opts, environment });
+  if (!r.ok) return r;
+  const a = r.data?.authorization;
+  if (!a || !a.id || !a.decision) {
+    return { ...r, ok: false, data: null, error: "plaid /transfer/authorization/create answered 200 without an authorization" };
+  }
+  return {
+    ...r, data: null,
+    authorization: {
+      id: a.id,
+      decision: a.decision,
+      rationaleCode: a.decision_rationale?.code ?? null,
+      rationaleDescription: a.decision_rationale?.description ?? null,
+      created: a.created ?? null
+    }
+  };
+}
+
+/**
+ * createTransfer — POST /transfer/create
+ * https://plaid.com/docs/api/products/transfer/initiating-transfers/#transfercreate
+ *
+ * Sends an authorized leg. Plaid uses authorization_id as the idempotency key:
+ * calling this twice for one authorization returns the one transfer. A 500 can
+ * still mean the transfer was made — the events (syncTransferEvents) are the
+ * source of truth, never this answer alone. `description` is what the bank
+ * prints: at most 10 characters on ACH.
+ */
+export async function createTransfer(accessToken, {
+  accountId, authorizationId, amount = undefined, description, metadata = undefined
+} = {}, opts = {}) {
+  const { environment, refusal } = transferOpts(opts);
+  if (refusal) return refused(refusal);
+  const payload = {
+    access_token: accessToken,
+    account_id: accountId,
+    authorization_id: authorizationId,
+    description
+  };
+  if (amount !== undefined) payload.amount = amount;
+  if (metadata) payload.metadata = metadata;
+  const r = await plaidPost("/transfer/create", payload, { ...opts, environment });
+  if (!r.ok) return r;
+  const transfer = transferShape(r.data?.transfer);
+  if (!transfer || !transfer.id) {
+    return { ...r, ok: false, data: null, error: "plaid /transfer/create answered 200 without a transfer" };
+  }
+  return { ...r, data: null, transfer };
+}
+
+/**
+ * getTransfer — POST /transfer/get
+ * https://plaid.com/docs/api/products/transfer/reading-transfers/#transferget
+ */
+export async function getTransfer({ transferId } = {}, opts = {}) {
+  const { environment, refusal } = transferOpts(opts);
+  if (refusal) return refused(refusal);
+  const r = await plaidPost("/transfer/get", { transfer_id: transferId }, { ...opts, environment });
+  if (!r.ok) return r;
+  const transfer = transferShape(r.data?.transfer);
+  if (!transfer || !transfer.id) {
+    return { ...r, ok: false, data: null, error: "plaid /transfer/get answered 200 without a transfer" };
+  }
+  return { ...r, data: null, transfer };
+}
+
+/**
+ * cancelTransfer — POST /transfer/cancel
+ * https://plaid.com/docs/api/products/transfer/initiating-transfers/#transfercancel
+ *
+ * Only works while /transfer/get says `cancellable: true` — once Plaid has sent
+ * the leg to the payment network it cannot be stopped.
+ */
+export async function cancelTransfer(transferId, opts = {}) {
+  const { environment, refusal } = transferOpts(opts);
+  if (refusal) return refused(refusal);
+  const r = await plaidPost("/transfer/cancel", { transfer_id: transferId }, { ...opts, environment });
+  if (!r.ok) return r;
+  return { ...r, data: null, cancelled: true };
+}
+
+/**
+ * syncTransferEvents — POST /transfer/event/sync, ONE page.
+ * https://plaid.com/docs/api/products/transfer/reading-transfers/#transfereventsync
+ *
+ * Up to `count` events after `afterId` (0 the first time). Events are for the
+ * whole Plaid account — every transfer, sweeps too — so the caller matches them
+ * to its own transfers by transfer_id. Returns { events[], hasMore, lastId }.
+ */
+export async function syncTransferEvents({ afterId = 0, count = 500 } = {}, opts = {}) {
+  const { environment, refusal } = transferOpts(opts);
+  if (refusal) return refused(refusal);
+  const r = await plaidPost("/transfer/event/sync", { after_id: Number(afterId) || 0, count }, { ...opts, environment });
+  if (!r.ok) return r;
+  const raw = Array.isArray(r.data?.transfer_events) ? r.data.transfer_events : null;
+  if (!raw) {
+    return { ...r, ok: false, data: null, error: "plaid /transfer/event/sync answered 200 without transfer_events" };
+  }
+  const events = raw.map((e) => ({
+    eventId: typeof e.event_id === "number" ? e.event_id : Number(e.event_id),
+    timestamp: e.timestamp ?? null,
+    eventType: e.event_type ?? null,
+    transferId: e.transfer_id || null,
+    transferType: e.transfer_type ?? null,
+    transferAmount: e.transfer_amount ?? null,
+    failureReason: e.failure_reason
+      ? {
+        failureCode: e.failure_reason.failure_code ?? null,
+        achReturnCode: e.failure_reason.ach_return_code ?? null,
+        description: e.failure_reason.description ?? null
+      }
+      : null,
+    sweepId: e.sweep_id ?? null
+  })).filter((e) => Number.isFinite(e.eventId));
+  const lastId = events.reduce((m, e) => Math.max(m, e.eventId), Number(afterId) || 0);
+  return { ...r, data: null, events, hasMore: r.data?.has_more === true, lastId };
+}
+
+/**
+ * getTransferLedger — POST /transfer/ledger/get
+ * https://plaid.com/docs/api/products/transfer/ledger/#transferledgerget
+ *
+ * Fundhub's own Plaid Ledger balance: { available, pending } as decimal strings.
+ */
+export async function getTransferLedger(opts = {}) {
+  const { environment, refusal } = transferOpts(opts);
+  if (refusal) return refused(refusal);
+  const r = await plaidPost("/transfer/ledger/get", {}, { ...opts, environment });
+  if (!r.ok) return r;
+  const b = r.data?.balance;
+  if (!b) return { ...r, ok: false, data: null, error: "plaid /transfer/ledger/get answered 200 without a balance" };
+  return {
+    ...r, data: null,
+    ledger: { ledgerId: r.data.ledger_id ?? null, available: b.available ?? null, pending: b.pending ?? null }
+  };
+}
+
+/**
+ * sandboxSimulateTransfer — POST /sandbox/transfer/simulate. SANDBOX HOST ONLY.
+ * https://plaid.com/docs/api/sandbox/#sandboxtransfersimulate
+ *
+ * In Sandbox nothing moves on its own: every transfer stays 'pending' until an
+ * event is simulated. Plaid's allowed steps: pending → posted | failed,
+ * posted → settled | returned, settled → funds_available (ACH debits only).
+ */
+export async function sandboxSimulateTransfer(transferId, eventType, { failureReason = null } = {}, opts = {}) {
+  if ((opts.environment || "sandbox") !== "sandbox") return refused("sandbox simulation only runs against the sandbox host");
+  const payload = { transfer_id: transferId, event_type: eventType };
+  if (failureReason) payload.failure_reason = failureReason;
+  const r = await plaidPost("/sandbox/transfer/simulate", payload, { ...opts, environment: "sandbox" });
+  if (!r.ok) return r;
+  return { ...r, data: null, simulated: eventType };
+}
+
+/**
+ * sandboxSimulateLedgerAvailable — POST /sandbox/transfer/ledger/simulate_available.
+ * SANDBOX HOST ONLY. https://plaid.com/docs/api/sandbox/#sandboxtransferledgersimulate_available
+ *
+ * Stands in for the hold period: pending Ledger money becomes available.
+ */
+export async function sandboxSimulateLedgerAvailable(opts = {}) {
+  if ((opts.environment || "sandbox") !== "sandbox") return refused("sandbox simulation only runs against the sandbox host");
+  const r = await plaidPost("/sandbox/transfer/ledger/simulate_available", {}, { ...opts, environment: "sandbox" });
+  if (!r.ok) return r;
+  return { ...r, data: null, simulated: "ledger_available" };
+}
+
 export default {
   PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchLiabilities, createLinkToken,
-  sandboxPublicToken, syncTransactions
+  sandboxPublicToken, syncTransactions,
+  transferHostRefusal, authorizeTransfer, createTransfer, getTransfer, cancelTransfer, syncTransferEvents,
+  getTransferLedger, sandboxSimulateTransfer, sandboxSimulateLedgerAvailable
 };

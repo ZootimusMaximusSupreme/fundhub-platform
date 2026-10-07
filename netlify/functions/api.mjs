@@ -262,6 +262,7 @@ import moneyFundability from "../../api/money/fundability.mjs";
 import moneyTasks from "../../api/money/tasks.mjs";
 import moneyReadyToFund from "../../api/money/ready-to-fund.mjs";
 import moneyHelper from "../../api/money/helper.mjs";
+import moneyTransfers from "../../api/money/transfers.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1150,6 +1151,12 @@ export const ROUTES = {
   // answers in the app and never texts; a transfer is only ever a proposal for
   // the client to approve (src/finance/money-transfer-seam.mjs).
   "money/helper": moneyHelper,
+  /* FinanceOS money moves (/app/money-transfers.html, wave 5 W7): proposals
+     waiting for the client's yes, moves sent by Plaid Transfer (sandbox unless
+     PLAID_ENV=production AND FINANCE_OS_TRANSFERS_LIVE=1), and their history.
+     Same gate as money/overview. POST approve is the client's own login only;
+     staff may propose and cancel. Off when the transfer caps are not set. */
+  "money/transfers": moneyTransfers,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
