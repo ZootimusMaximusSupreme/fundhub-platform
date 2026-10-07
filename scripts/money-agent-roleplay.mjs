@@ -6,6 +6,12 @@
 //   node scripts/money-agent-roleplay.mjs --scripted --brain=rules   no model at all (the rules brain)
 //   node scripts/money-agent-roleplay.mjs --scripted --brain=stub    a stub model (no Claude needed)
 //   --persona=a,b,f   only these personas      --out=<dir>   where the report goes
+//   --prompt=code     use HELPER_PROMPT from the code instead of the agents row. The row is the
+//                     live copy; a migration not yet shipped (468 adds the decline instructions)
+//                     is not on it, so this is how the new prompt is role-played before it ships.
+//   --buyer=yes|no    SIMULATE the client's Capital Blueprint status for every persona (persona g,
+//                     the pasted decline, behaves differently for a buyer). Left out, the file's own
+//                     status is read from the database, read only. The report says which it was.
 //
 // READ ONLY. Every read of the test client happens up front inside one
 // BEGIN READ ONLY … ROLLBACK on one connection (no SET), then the connection is
@@ -42,12 +48,23 @@ const brain = arg("brain") || "bridge";
 const only = (arg("persona") || "").split(",").map((s) => s.trim()).filter(Boolean);
 const outDir = path.resolve(arg("out") || path.join(ROOT, "ops/workflows/finance-os-wave5-2026-10-06-evidence/w6"));
 const clientId = arg("client") || TEST_CLIENT_ID;
+const promptFrom = arg("prompt") || "row";
+const buyerArg = arg("buyer");
 const log = (line) => console.log(line);
 
 if (!["bridge", "stub", "rules"].includes(brain)) {
   log(`Unknown --brain=${brain}. Use bridge, stub or rules.`);
   process.exit(1);
 }
+if (!["row", "code"].includes(promptFrom)) {
+  log(`Unknown --prompt=${promptFrom}. Use code or row.`);
+  process.exit(1);
+}
+if (buyerArg !== null && !["yes", "no"].includes(buyerArg)) {
+  log(`Unknown --buyer=${buyerArg}. Use yes or no.`);
+  process.exit(1);
+}
+const buyerOverride = buyerArg === "yes" ? true : buyerArg === "no" ? false : undefined;
 if (!process.env.DATABASE_URL) {
   log("Stopped: DATABASE_URL is not in .env, so the test client cannot be read.");
   process.exit(1);
@@ -101,7 +118,11 @@ try {
   if (!c.rows[0]) throw new Error(`client ${clientId} not found`);
   const orgId = c.rows[0].org_id;
   const row = await conn.query(`SELECT prompt, guardrails, status FROM agents WHERE org_id = $1 AND code = $2`, [orgId, AGENT_CODE]);
-  if (row.rows[0] && row.rows[0].prompt) {
+  if (promptFrom === "code") {
+    /* The live row's guardrails and status are still used; only the prompt is the code's. */
+    if (row.rows[0]) agent = { prompt: HELPER_PROMPT, guardrails: row.rows[0].guardrails || HELPER_GUARDRAILS, status: row.rows[0].status };
+    promptSource = "HELPER_PROMPT in src/finance/money-agent-ai.mjs (migration 468's text, which is not on the agents row until it ships)";
+  } else if (row.rows[0] && row.rows[0].prompt) {
     agent = { prompt: row.rows[0].prompt, guardrails: row.rows[0].guardrails || HELPER_GUARDRAILS, status: row.rows[0].status };
     promptSource = `agents ${AGENT_CODE} row (status ${row.rows[0].status})`;
   }
@@ -128,7 +149,7 @@ for (const { persona, context, note } of plans) {
   log(`Persona ${persona.id}: ${persona.title} …`);
   const run = await runPersona({
     persona, context, agent, useAi: brain !== "rules", callModelFn, env: process.env,
-    seat: scripted ? "scripted" : "model", note
+    seat: scripted ? "scripted" : "model", note, blueprintBuyer: buyerOverride
   });
   runs.push(run);
   log(`  ${run.turns.length} turn(s), ${Math.round((Date.now() - t0) / 1000)}s; brains: ${run.turns.map((t) => t.brain || "-").join(", ")}`);

@@ -325,6 +325,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/465_money_helper_agent.sql",
   "migrations/466_money_transfers.sql",
   "migrations/467_money_helper_cards_are_reminders.sql",
+  "migrations/468_money_helper_declines.sql",
   "migrations/470_blueprint_decline_defense.sql",
   "migrations/471_file_protection_alerts.sql",
   "migrations/472_document_vault.sql",
