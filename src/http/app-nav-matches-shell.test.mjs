@@ -55,6 +55,8 @@ const APP = path.resolve(HERE, "../../public/app");
                           same client-facing frame as money.html
    money-transfers.html — FinanceOS money moves (approve, history); same client-facing
                           frame as money.html
+   money-alerts.html    — FinanceOS file-protection alerts (the four texts, switches,
+                          promo dates); same client-facing frame as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
    *.fragment.html      — a fragment, not a screen */
@@ -80,6 +82,7 @@ const NO_SIDEBAR = new Set([
   "financeos.html",
   "money-next.html",
   "money-transfers.html",
+  "money-alerts.html",
   "teleprompter.html"
 ]);
 

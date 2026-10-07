@@ -1,0 +1,198 @@
+/* File protection alerts — FinanceOS.sections.alerts (money-alerts.js).
+   Every rule is under .fh-alerts, and the file carries every rule the section
+   needs (card, grid, type roles, buttons, the switch, forms, skeleton), so it can
+   sit inside the combined FinanceOS page — or any page with .app on a wrapper —
+   without borrowing from its neighbours or reaching them.
+   8px spacing scale. No px font sizes (UI-STANDARDS §12.7): sizes come from the
+   brand whitelist — h1/h2 20px, .big 32px, body 16px, and 13px for .caption,
+   .eyebrow, .tag, .badge and label. Phone: one column, and the page never
+   scrolls sideways (UI-STANDARDS §11). */
+
+.fh-alerts{position:relative}
+.fh-alerts h1,.fh-alerts h2,.fh-alerts h3,.fh-alerts p,.fh-alerts ul,.fh-alerts ol,.fh-alerts dl,.fh-alerts dd{margin:0;padding:0}
+.fh-alerts ul,.fh-alerts ol{list-style:none}
+.fh-alerts input,.fh-alerts select,.fh-alerts button{font:inherit;color:inherit}
+.fh-alerts strong{font-weight:600;color:var(--ink)}
+.fh-alerts .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-alerts .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.fh-alerts .head .caption{max-width:72ch}
+
+/* The resting container (UI-STANDARDS §12.1) — the shadow is the token. */
+.fh-alerts .card{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.fh-alerts .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.fh-alerts .tiles>*{grid-column:span 4}
+/* Each protection card is as tall as what it holds. Stretched to its row, the
+   short New credit card next to Cash cushion was mostly an empty box. */
+.fh-alerts .prots{align-items:start}
+.fh-alerts .prots>*{grid-column:span 6}
+
+/* Type roles. */
+.fh-alerts .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim,var(--gray));margin-bottom:8px}
+.fh-alerts .caption{color:var(--text-dim,var(--gray))}
+.fh-alerts .big,.fh-alerts .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-alerts .big{display:block;font-weight:500;color:var(--ink);line-height:1.2;overflow-wrap:anywhere}
+.fh-alerts .num{font-weight:500;color:var(--ink)}
+.fh-alerts .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim,var(--gray));font-weight:400;white-space:nowrap;vertical-align:middle}
+.fh-alerts label{color:var(--text-dim,var(--gray))}
+
+/* Status is a word in a pill, never colour alone (UI-STANDARDS §12.6).
+   .badge is on the brand's caption list, so it is 13px for free. */
+.fh-alerts .badge{display:inline-block;border-radius:999px;padding:0 8px;font-weight:600;white-space:nowrap;vertical-align:middle}
+.fh-alerts .word-ok{border:1px solid var(--ink);color:var(--ink)}
+.fh-alerts .word-muted{border:1px dashed var(--gray2,#A1A1AA);color:var(--text-dim,var(--gray))}
+/* WARNING WORDS — literal amber, not a brand variable, so "Short", "Needs a day"
+   and "Still open" stay a warning on a one-hue white-label tenant, and each says
+   what it is in words (UI-STANDARDS §12.6, the escape valve pipeline.html's
+   .c-needs-amount uses; money-strategy.css .warn-word does the same). */
+.fh-alerts .word-warn{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D}
+
+/* Buttons. One filled button per state (UI-STANDARDS §1); the rest are outline
+   or text. 40px floor, 44px for the filled one (§5). */
+.fh-alerts .btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none;cursor:pointer}
+.fh-alerts .btn-primary:hover{background:var(--ink2)}
+.fh-alerts .btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600;text-decoration:none;white-space:nowrap;cursor:pointer}
+.fh-alerts .btn-text{display:inline-flex;align-items:center;min-height:40px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+/* Destructive — said in words ("Yes, remove it"), set apart under a rule, and a
+   literal dark red outline so it reads as a warning on every tenant. */
+.fh-alerts .btn-danger{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid #991B1B;background:transparent;color:#991B1B;font-weight:600;cursor:pointer}
+.fh-alerts [aria-disabled="true"]{opacity:.6;cursor:progress}
+.fh-alerts button:focus-visible,.fh-alerts a:focus-visible,.fh-alerts select:focus-visible,.fh-alerts input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fh-alerts .msg:focus,.fh-alerts .cash-box:focus{outline:2px solid var(--ink);outline-offset:4px}
+
+/* ── the three tiles ── */
+.fh-alerts .tile{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.fh-alerts .tile .eyebrow{margin-bottom:0}
+.fh-alerts .need-list{display:flex;flex-direction:column;gap:8px;width:100%}
+.fh-alerts .need-list li{padding-top:8px;border-top:1px solid var(--line)}
+.fh-alerts .need-list li:first-child{border-top:0;padding-top:0}
+.fh-alerts .need-list .btn-text{padding:0;vertical-align:middle}
+
+/* ── notices ── */
+.fh-alerts .notice{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-bottom:24px}
+.fh-alerts .notice h2{font-weight:600;color:var(--ink)}
+.fh-alerts .notice p{max-width:72ch}
+.fh-alerts .notice.is-warn{background:#FEF3C7;border-color:#FCD34D;color:#92400E}
+.fh-alerts .notice.is-warn h2{color:#92400E}
+
+/* ── one protection card ── */
+.fh-alerts .prot{display:flex;flex-direction:column;gap:16px}
+.fh-alerts .prot-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.fh-alerts .prot-head h2{font-weight:600;color:var(--ink);min-width:0;padding-top:8px;overflow-wrap:anywhere}
+.fh-alerts .sw-wrap{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 auto;max-width:50%}
+.fh-alerts .sw-wrap .msg{text-align:right}
+/* The switch: a track and a thumb that moves, AND the word On / Off beside it —
+   position and a word, never colour alone (UI-STANDARDS §12.6). */
+.fh-alerts .switch{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 8px;border:0;border-radius:999px;background:transparent;cursor:pointer}
+.fh-alerts .track{position:relative;display:block;width:48px;height:28px;border-radius:999px;border:2px solid var(--ink);background:var(--surface,#fff);flex:0 0 auto;transition:background-color .15s ease}
+.fh-alerts .thumb{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--ink);transition:transform .15s ease}
+.fh-alerts .switch[aria-checked="true"] .track{background:var(--ink)}
+.fh-alerts .switch[aria-checked="true"] .thumb{transform:translateX(20px);background:var(--paper)}
+.fh-alerts .sw-word{font-weight:600;color:var(--ink);min-width:4ch;text-align:right;white-space:nowrap}
+.fh-alerts .watch{max-width:72ch}
+/* Next text — a flat tint, not a shadow: it sits inside a card (§12.5). */
+.fh-alerts .next-line{display:flex;flex-direction:column;padding:8px 16px;border-radius:8px;background:var(--soft)}
+.fh-alerts .next-line .eyebrow{margin-bottom:0}
+.fh-alerts .next-line.is-blocked{background:transparent;border:1px dashed var(--gray2,#A1A1AA)}
+.fh-alerts .msg{font-weight:600;color:var(--ink)}
+.fh-alerts .msg.is-bad{color:#92400E}
+.fh-alerts .empty-line{color:var(--text-dim,var(--gray))}
+
+/* Rows — one card each. */
+.fh-alerts .rows{display:flex;flex-direction:column}
+.fh-alerts .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 24px;padding:16px 0;border-top:1px solid var(--line)}
+.fh-alerts .rows .row:first-child{border-top:0;padding-top:0}
+.fh-alerts .row-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-alerts .row-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-alerts .row-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right;min-width:0}
+.fh-alerts .row>.edit,.fh-alerts .row>.msg{grid-column:1 / -1}
+.fh-alerts .row-side .btn-text{padding:0}
+
+/* The ask for a statement day — amber, because a text cannot go without it. */
+.fh-alerts .needs-day{display:flex;flex-direction:column;gap:16px;padding:16px;border:1px solid #FCD34D;border-radius:8px;background:#FFFBEB}
+.fh-alerts .nd-card{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.fh-alerts .nd-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+
+/* The promo schedule: 60 / 30 / 7 days before. The next one is a thick ink
+   border AND says "next"; a passed day is dashed AND says so. */
+.fh-alerts .steps{display:flex;flex-wrap:wrap;gap:8px}
+.fh-alerts .step{display:flex;flex-direction:column;min-width:128px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff)}
+.fh-alerts .step-w{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fh-alerts .step.is-next{border-color:var(--ink);outline:1px solid var(--ink);outline-offset:-2px}
+.fh-alerts .step.is-past{border-style:dashed}
+.fh-alerts .step.is-past .step-w{font-weight:400;color:var(--text-dim,var(--gray))}
+
+/* Forms. */
+.fh-alerts select,.fh-alerts input[type="date"],.fh-alerts input[type="text"]{min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);color:var(--ink);max-width:100%}
+.fh-alerts select{min-width:160px}
+.fh-alerts [aria-invalid="true"]{border:2px solid #92400E}
+.fh-alerts .edit{display:flex;flex-direction:column;gap:16px;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--paper-dim,var(--soft))}
+.fh-alerts .edit-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px 24px}
+.fh-alerts .edit-grid>.field{grid-column:span 6}
+.fh-alerts .field{display:flex;flex-direction:column;gap:8px;min-width:0;align-items:flex-start}
+.fh-alerts .pct-box{display:inline-flex;align-items:center;gap:8px}
+.fh-alerts .pct-box input{width:10ch;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-alerts .pct-sign{font-family:var(--mono);color:var(--text-dim,var(--gray))}
+.fh-alerts .field-msg{font-weight:600;color:#92400E}
+.fh-alerts .field-msg:empty{display:none}
+.fh-alerts .edit-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.fh-alerts .danger{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)}
+.fh-alerts .danger .btn-text{padding:0}
+
+/* Cash — personal and business side by side, each its own check. A box inside
+   the card is a flat tint and a hairline, not a second shadow (§12.5). */
+.fh-alerts .cash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.fh-alerts .cash-box{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--soft);min-width:0}
+.fh-alerts .cash-box .eyebrow{margin-bottom:0}
+.fh-alerts .facts{display:flex;flex-direction:column}
+.fh-alerts .fact{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+.fh-alerts .fact dd{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink);text-align:right;white-space:nowrap}
+.fh-alerts .cash-next{color:var(--ink)}
+.fh-alerts .nc-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+
+/* Texts sent — the words of each text, the way it looked on the phone. */
+.fh-alerts .sent{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line)}
+.fh-alerts .sent .eyebrow{margin-bottom:0}
+.fh-alerts .sent-list{display:flex;flex-direction:column;gap:16px}
+.fh-alerts .sent-item{display:flex;flex-direction:column;gap:8px}
+.fh-alerts .sent-meta{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px}
+.fh-alerts .sent-meta time{font-weight:600;color:var(--ink)}
+.fh-alerts .sent-body{max-width:72ch;padding:8px 16px;border:1px solid var(--line);border-radius:16px 16px 16px 0;background:var(--soft);overflow-wrap:anywhere}
+.fh-alerts .sent .btn-text{align-self:flex-start;padding:0}
+
+/* ── four states ── */
+.fh-alerts .empty,.fh-alerts .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px;margin-bottom:24px}
+.fh-alerts .empty p,.fh-alerts .error p{max-width:60ch}
+.fh-alerts .empty h2,.fh-alerts .error h2{font-weight:600;color:var(--ink)}
+.fh-alerts .skel{display:flex;flex-direction:column;gap:8px}
+.fh-alerts .prot.skel{gap:16px;min-height:320px}
+.fh-alerts .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fh-alerts-sk 1.2s ease-in-out infinite}
+.fh-alerts .sk-s{height:12px;width:40%}
+.fh-alerts .sk-m{height:16px;width:70%}
+.fh-alerts .sk-l{height:32px;width:60%}
+@keyframes fh-alerts-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* Said aloud, never shown: the outcome of a save, read by a screen reader. */
+.fh-alerts .fa-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (prefers-reduced-motion:reduce){
+  .fh-alerts .sk{animation:none}
+  .fh-alerts .track,.fh-alerts .thumb{transition:none}
+}
+@media (max-width:1200px){
+  .fh-alerts .prots>*{grid-column:span 12}
+}
+@media (max-width:900px){
+  .fh-alerts .tiles>*{grid-column:span 12}
+}
+@media (max-width:760px){
+  .fh-alerts .card{padding:16px}
+  .fh-alerts .row{grid-template-columns:minmax(0,1fr)}
+  .fh-alerts .row-side{align-items:flex-start;text-align:left}
+  .fh-alerts .cash-grid{grid-template-columns:minmax(0,1fr)}
+  .fh-alerts .edit-grid>.field{grid-column:span 12}
+  .fh-alerts .steps{flex-direction:column}
+  .fh-alerts .step{flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:16px;min-width:0}
+  .fh-alerts .step-t{flex:1 1 auto}
+  .fh-alerts .nd-act .btn-primary,.fh-alerts .empty .btn-primary,.fh-alerts .error .btn-primary{width:100%}
+  .fh-alerts .nd-card select{width:100%}
+}

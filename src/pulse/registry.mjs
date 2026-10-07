@@ -491,6 +491,7 @@ const DESK_FILES = [
   "money-strategy.html",
   "money-next.html",
   "money-transfers.html",
+  "money-alerts.html",
   "my-numbers.html",
   "ops-admin.html",
   "partner-galaxy.html",
