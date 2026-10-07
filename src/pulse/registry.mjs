@@ -190,6 +190,10 @@ const API_KEYS = [
   /* FinanceOS wave 5 W7: the GET answers 401 to an unsigned ping; approve,
      cancel and propose are POSTs and are never pinged. */
   "money/transfers",
+  /* File-protection alerts (Capital Blueprint launch B2): the GET answers 401 to an
+     unsigned ping; the POSTs (set_alert, set_promo, set_statement_close_day) are
+     never pinged. */
+  "money/alerts",
   "ops/hire-closer",
   "org-brand",
   "partner-brand/verify-domain",

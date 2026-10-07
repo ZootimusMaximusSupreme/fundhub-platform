@@ -1,0 +1,192 @@
+{
+  "ok": true,
+  "as_of": "2026-10-12T12:00:00.000Z",
+  "client": {
+    "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+    "name": "Sample Client"
+  },
+  "enrolled": {
+    "blueprint": true,
+    "finance_os": true,
+    "any": true
+  },
+  "settings": {
+    "kinds": {
+      "payment_timing": {
+        "enabled": true,
+        "label": "Pay before the statement closes"
+      },
+      "promo_end": {
+        "enabled": true,
+        "label": "Promo rate ending"
+      },
+      "cash_reserve": {
+        "enabled": true,
+        "label": "Cash cushion"
+      },
+      "new_credit": {
+        "enabled": true,
+        "label": "New credit"
+      }
+    },
+    "saved": false,
+    "pay_before_close_days": 3,
+    "promo_thresholds_days": [
+      60,
+      30,
+      7
+    ],
+    "reserve_months": 6,
+    "texts_blocked": false
+  },
+  "cards": [
+    {
+      "account_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+      "name": "Business Amex",
+      "mask": "4404",
+      "kind": "business",
+      "balance_cents": 540000,
+      "limit_cents": 2500000,
+      "used_pct": 21.6,
+      "statement_close_day": 15,
+      "close_day_source": "provider",
+      "pay_before": {
+        "next_close_on": "2026-10-15",
+        "days_to_close": 3,
+        "unknown_reason": null,
+        "text_on": "2026-10-12",
+        "texted": true,
+        "texted_at": "2026-10-12T07:30:00.000Z"
+      },
+      "promo": {
+        "ends_on": "2026-12-06",
+        "days_left": 55,
+        "ended": false,
+        "apr_pct": 0,
+        "source": "staff",
+        "set_at": "2026-10-01T15:00:00.000Z",
+        "balance_cents": 540000,
+        "payoff": {
+          "payments": 2,
+          "monthly_cents": 270000,
+          "total_cents": 540000
+        },
+        "next_alert": {
+          "threshold": 30,
+          "on": "2026-11-06"
+        },
+        "alerted_thresholds": [
+          60
+        ]
+      }
+    },
+    {
+      "account_id": "ef4e1149-3fc5-4e2c-9fa2-331c16da9a17",
+      "name": "Personal Visa",
+      "mask": "3303",
+      "kind": "personal",
+      "balance_cents": 132040,
+      "limit_cents": 800000,
+      "used_pct": 16.5,
+      "statement_close_day": null,
+      "close_day_source": "manual",
+      "pay_before": {
+        "next_close_on": null,
+        "days_to_close": null,
+        "unknown_reason": "no_statement_close_day",
+        "text_on": null,
+        "texted": false,
+        "texted_at": null
+      },
+      "promo": null
+    }
+  ],
+  "reserve": {
+    "months": 6,
+    "personal": {
+      "state": "below",
+      "reason": "below_need",
+      "months": 6,
+      "cash_cents": 421055,
+      "cash_is_floor": false,
+      "cash_accounts": 1,
+      "minimums_cents": 71602,
+      "minimums_is_floor": false,
+      "clarity_cents": 65000,
+      "need_cents": 429612,
+      "short_cents": 8557,
+      "open_alert_id": "7a1f0e22-5c0d-4e57-8f3a-0c6f1f2a3b01"
+    },
+    "business": {
+      "state": "ok",
+      "reason": "covered",
+      "months": 6,
+      "cash_cents": 1875000,
+      "cash_is_floor": false,
+      "cash_accounts": 1,
+      "minimums_cents": 132000,
+      "minimums_is_floor": false,
+      "clarity_cents": null,
+      "need_cents": 792000,
+      "short_cents": null,
+      "open_alert_id": null
+    },
+    "not_counted": {
+      "debts": 0,
+      "minimums_cents": null
+    }
+  },
+  "alerts": [
+    {
+      "id": "7a1f0e22-5c0d-4e57-8f3a-0c6f1f2a3b01",
+      "kind": "cash_reserve",
+      "kind_label": "Cash cushion",
+      "account_id": null,
+      "label": "personal cash",
+      "threshold": 6,
+      "due_on": null,
+      "cash_kind": "personal",
+      "body": "Fundhub alert: your personal cash is $4,210.55. 6 months of your personal minimum payments is $4,296.12. A missed payment can hurt your file before your next funding sequence.",
+      "delivery": "text",
+      "message_id": "0b3c6d2e-9a41-4f7b-8c15-2d8e4a6b7c02",
+      "task_id": null,
+      "sent_at": "2026-10-12T07:30:00.000Z",
+      "cleared_at": null,
+      "open": true
+    },
+    {
+      "id": "7a1f0e22-5c0d-4e57-8f3a-0c6f1f2a3b00",
+      "kind": "payment_timing",
+      "kind_label": "Pay before the statement closes",
+      "account_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+      "label": "Business Amex ending 4404",
+      "threshold": 3,
+      "due_on": "2026-10-15",
+      "cash_kind": null,
+      "body": "Fundhub reminder: pay your Business Amex ending 4404 down before Oct 15. That is the day it reports to the bureaus. Balance now $5,400.00 (22% of your limit). Pay about $2,900 to get under 10%.",
+      "delivery": "text",
+      "message_id": "0b3c6d2e-9a41-4f7b-8c15-2d8e4a6b7c01",
+      "task_id": null,
+      "sent_at": "2026-10-12T07:30:00.000Z",
+      "cleared_at": null,
+      "open": false
+    },
+    {
+      "id": "7a1f0e22-5c0d-4e57-8f3a-0c6f1f2a3aff",
+      "kind": "promo_end",
+      "kind_label": "Promo rate ending",
+      "account_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+      "label": "Business Amex ending 4404",
+      "threshold": 60,
+      "due_on": "2026-12-06",
+      "cash_kind": null,
+      "body": "Fundhub reminder: the promo rate on your Business Amex ending 4404 ends Dec 6 (in 60 days). You still owe $5,400.00. Pay about $2,700 a month for the next 2 months to clear it in time.",
+      "delivery": "text",
+      "message_id": "0b3c6d2e-9a41-4f7b-8c15-2d8e4a6b7c00",
+      "task_id": null,
+      "sent_at": "2026-10-07T07:30:00.000Z",
+      "cleared_at": null,
+      "open": false
+    }
+  ]
+}

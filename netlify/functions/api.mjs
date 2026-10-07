@@ -263,6 +263,7 @@ import moneyTasks from "../../api/money/tasks.mjs";
 import moneyReadyToFund from "../../api/money/ready-to-fund.mjs";
 import moneyHelper from "../../api/money/helper.mjs";
 import moneyTransfers from "../../api/money/transfers.mjs";
+import moneyAlerts from "../../api/money/alerts.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1157,6 +1158,11 @@ export const ROUTES = {
      Same gate as money/overview. POST approve is the client's own login only;
      staff may propose and cancel. Off when the transfer caps are not set. */
   "money/transfers": moneyTransfers,
+  /* File-protection alerts (Capital Blueprint launch, unit B2): pay before the
+     statement closes, promo ending, cash cushion, new credit. GET the settings,
+     cards and what went out; POST set_alert / set_promo / set_statement_close_day.
+     Same two callers and gate as money/overview. Never texts from here. */
+  "money/alerts": moneyAlerts,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
