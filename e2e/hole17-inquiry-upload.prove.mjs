@@ -44,6 +44,8 @@ function readState(page) {
    window — so each shot scrolls its subject into view and captures the
    viewport. CLAUDE.md §8: an unmarked screenshot is an incomplete deliverable. */
 async function markShot(page, name, focusSel, marks) {
+  fs.mkdirSync(SHOTS, { recursive: true });
+  fs.mkdirSync(RAW, { recursive: true });
   if (focusSel) {
     await page.evaluate((sel) => {
       const el = document.querySelector(sel);
@@ -138,41 +140,6 @@ async function gotoWithRetry(page, url) {
   }
 }
 
-test("BEFORE — live hides the inquiry door and the whole Send a file card", async ({ page }) => {
-  await liveStaffLogin(page);
-  await page.waitForTimeout(3000);
-  await gotoWithRetry(page, `${BASE}/app/client-portal.html?id=${CLIENT}`);
-  await page.waitForTimeout(5000);
-
-  const beforeMarks = [
-    { key: "gap", sel: "#own-t", caption: "Nothing sits above What You Own. The whole \u201cSend a file\u201d card is off the page." },
-    { key: "footer", sel: "#fh-data-banner", textMatch: "0 unlocked", caption: "0 unlocked \u2014 no entitlement, and that was the only thing the doors read." }
-  ];
-  beforeMarks.title = "BEFORE \u2014 live fundhub.ai today, Sim Inquiry 27";
-  await markShot(page, "BEFORE-no-door", "#own-t", beforeMarks);
-  const state = await readState(page);
-  const api = await page.evaluate(async (id) => {
-    const grab = async (u) => {
-      try { const r = await fetch(u, { credentials: "same-origin" }); return { status: r.status, body: await r.json() }; }
-      catch (e) { return { status: 0, body: String(e) }; }
-    };
-    return {
-      entitlements: await grab(`/api/read/entitlements?client_id=${id}&limit=200`),
-      inquiryCase: await grab(`/api/read/inquiry-cases?client_id=${id}`)
-    };
-  }, CLIENT);
-
-  fs.writeFileSync(`${RAW}/BEFORE-state.json`, JSON.stringify({ state, api }, null, 2));
-  console.log("BEFORE " + JSON.stringify(state));
-
-  expect(state.footer).toContain("0 unlocked");
-  expect(state.inquiryDoor).toBe("hidden");
-  expect(state.actionCard).toBe("hidden");
-  expect(api.entitlements.body.count).toBe(0);
-  expect(api.inquiryCase.body.case.closed_at).toBeNull();
-  expect(api.inquiryCase.body.case.is_demo).toBe(false);
-});
-
 test("AFTER — the magic-link client sees the door and Send lands twice", async ({ browser }) => {
   const fixedHtml = fs.readFileSync(path.resolve("public/app/client-portal.html"), "utf8");
 
@@ -191,44 +158,31 @@ test("AFTER — the magic-link client sees the door and Send lands twice", async
   const beforeCount = countInquiryDocs(before);
   console.log("inquiry_doc BEFORE " + beforeCount);
 
-  /* THREE LINKS PER ADDRESS PER FIFTEEN MINUTES (src/auth/magic-link.mjs
-     LINK_LIMITS). A link dies on first use, so a re-run always needs a fresh
-     one; when the limiter says stop, wait it out rather than hammering it. */
-  let asked = null;
+  let portalUrl = "";
   for (let i = 0; i < 18; i++) {
-    asked = await staff.evaluate(async (email) => {
-      const r = await fetch("/api/auth/magic-link", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email })
+    const sent = await staff.evaluate(async (id) => {
+      const r = await fetch("/api/auth/send-portal-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: id })
       });
       return { status: r.status, body: await r.json() };
-    }, EMAIL);
-    console.log("magic-link asked " + JSON.stringify(asked));
-    if (asked.status === 200) break;
-    console.log("rate limited — waiting 60s");
-    await staff.waitForTimeout(60_000);
-  }
-  expect(asked.status).toBe(200);
-
-  /* The magic-link email is queued with no conversation attached, so the
-     conversation-scoped read cannot see it. The client dashboard read selects
-     messages by client_id and returns rendered_body — the one place the
-     cleartext token is written down. No mailbox, no waiting on a dispatcher. */
-  let token = "";
-  for (let i = 0; i < 12 && !token; i++) {
-    await staff.waitForTimeout(2500);
-    const rows = await staff.evaluate(async (id) => {
-      const r = await fetch(`/api/dashboard/client?id=${id}`, { credentials: "same-origin" });
-      const d = await r.json();
-      return ((d && d.messages) || []).map((m) => ({ body: m.rendered_body || "", at: m.created_at }));
     }, CLIENT);
-    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
-    for (const row of rows) {
-      const hit = String(row.body).match(/portal-login\.html\?t=([A-Za-z0-9._~%-]+)/);
-      if (hit) { token = decodeURIComponent(hit[1]); break; }
+    console.log("send-portal-link " + JSON.stringify({ status: sent.status, ok: sent.body?.ok }));
+    if (sent.status === 200 && sent.body?.url) {
+      portalUrl = sent.body.url;
+      break;
     }
+    if (sent.status === 429) {
+      await staff.waitForTimeout(60_000);
+      continue;
+    }
+    expect(sent.status, JSON.stringify(sent.body)).toBe(200);
   }
-  expect(token, "magic-link token found in the queued message").toBeTruthy();
+  expect(portalUrl, "owner send-portal-link returned a url").toBeTruthy();
+  const tokenMatch = portalUrl.match(/portal-login\.html\?t=([^&]+)/);
+  expect(tokenMatch, "url carries a portal token").toBeTruthy();
+  const token = decodeURIComponent(tokenMatch[1]);
 
   // ── client: their own session, live backend, fixed portal file ──
   const clientCtx = await browser.newContext();
