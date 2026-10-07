@@ -73,6 +73,12 @@ describe("refer a friend", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
 
     // A pre-existing, unrelated affiliate. Nothing a client does may ever
     // return this one's rows.
+    for (const [key, status] of [[`${MARK}_live`, "live"], [`${MARK}_draft`, "draft"]]) {
+      await db.query(
+        `INSERT INTO marketing_funnels (org_id, key, name, landing_url, lane, status, active)
+         VALUES ($1,$2,$3,$4,'uwiq',$5,$6) ON CONFLICT (org_id, key) DO NOTHING`,
+        [org, key, key, `https://apply.fundhub.ai/${key}`, status, status === "live"]);
+    }
     otherAffiliate = (await db.query(
       `INSERT INTO affiliates (org_id, name, status) VALUES ($1,$2,'active') RETURNING id`,
       [org, `${MARK} other`])).rows[0].id;
@@ -81,6 +87,7 @@ describe("refer a friend", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
   });
 
   async function purge() {
+    await db.query(`DELETE FROM marketing_funnels WHERE org_id = $1 AND key LIKE $2`, [org, `${MARK}%`]);
     await db.query(`DELETE FROM account_sessions WHERE account_id IN
       (SELECT id FROM accounts WHERE email LIKE $1)`, [`${MARK}%`]);
     await db.query(`DELETE FROM accounts WHERE email LIKE $1`, [`${MARK}%`]);
@@ -192,8 +199,11 @@ describe("refer a friend", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     assert.equal(b.ok, true);
     assert.equal(b.enrolled, true);
     assert.ok(b.affiliate && b.affiliate.code, "no affiliate came back for an enrolled client");
-    // One row per offer (owner call 2026-10-06): same code on every page.
-    assert.deepEqual(b.affiliate.offerLinks.map((l) => l.key), ["funding_dfy", "slo_roadmap"]);
+    // One row per LIVE funnel (owner call 2026-10-06): same code on every page.
+    // The live one made in before() shows; the draft one does not.
+    const keys = b.affiliate.offerLinks.map((l) => l.key);
+    assert.ok(keys.includes(`${MARK}_live`), "a live funnel did not appear on the affiliate page");
+    assert.ok(!keys.includes(`${MARK}_draft`), "a draft funnel appeared on the affiliate page");
     for (const l of b.affiliate.offerLinks) {
       const u = new URL(l.url);
       assert.equal(u.searchParams.get("a1"), b.affiliate.code, `${l.name} link lost the a1 code`);
