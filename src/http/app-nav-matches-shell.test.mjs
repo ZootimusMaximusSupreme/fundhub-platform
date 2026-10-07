@@ -44,6 +44,7 @@ const APP = path.resolve(HERE, "../../public/app");
    money-payments.html  — the client's Finance OS Payments page; same reason as money.html
    money-plan.html      — the FinanceOS Plan (the month of dated pins); same frame as money.html
    money-banks.html     — the client's FinanceOS bank strategy page; same reason as money.html
+   money-fundability.html — the client's Finance OS Fundability page; same reason as money.html
    financeos.html       — the client's one-page FinanceOS (tabs over the money sections);
    money-strategy.html  — the client's FinanceOS payment strategy page; same reason as money.html
    financeos.html      — the client's one-page FinanceOS (tabs over the money sections);
@@ -67,6 +68,7 @@ const NO_SIDEBAR = new Set([
   "money-plan.html",
   "money-banks.html",
   "money-strategy.html",
+  "money-fundability.html",
   "financeos.html",
   "teleprompter.html"
 ]);

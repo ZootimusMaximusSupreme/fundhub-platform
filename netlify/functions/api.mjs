@@ -258,6 +258,7 @@ import moneyPayments from "../../api/money/payments.mjs";
 import moneyPlan from "../../api/money/plan.mjs";
 import moneyBanks from "../../api/money/banks.mjs";
 import moneyStrategy from "../../api/money/strategy.mjs";
+import moneyFundability from "../../api/money/fundability.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1130,6 +1131,10 @@ export const ROUTES = {
   // money a month, this month's payments checked against cash. Same gate as
   // money/overview; POST save_plan by the client or FINANCE staff. Moves no money.
   "money/strategy": moneyStrategy,
+  // Fundability (/app/money-fundability.html): the UnderwriteIQ fundability
+  // score now, 3/6/12 months ahead on the client's own plan, and per business.
+  // Same gate as money/overview. Read only; never runs a pull.
+  "money/fundability": moneyFundability,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
