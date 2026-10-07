@@ -42,7 +42,8 @@ const APP = path.resolve(HERE, "../../public/app");
    money-accounts.html  — the client's Finance OS Accounts page; same as money.html
    money-connections.html — Finance OS merchant connections; same client-facing frame as money.html
    money-payments.html  — the client's Finance OS Payments page; same reason as money.html
-   financeos.html       — the client's one-page FinanceOS (tabs over the money sections);
+   money-strategy.html  — the client's FinanceOS payment strategy page; same reason as money.html
+   financeos.html      — the client's one-page FinanceOS (tabs over the money sections);
                           same client-facing frame as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
@@ -60,6 +61,7 @@ const NO_SIDEBAR = new Set([
   "money-accounts.html",
   "money-connections.html",
   "money-payments.html",
+  "money-strategy.html",
   "financeos.html",
   "teleprompter.html"
 ]);

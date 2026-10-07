@@ -254,6 +254,7 @@ import moneyAccounts from "../../api/money/accounts.mjs";
 import moneyConnections from "../../api/money/connections.mjs";
 import merchantEvents from "../../api/merchant/events.mjs";
 import moneyPayments from "../../api/money/payments.mjs";
+import moneyStrategy from "../../api/money/strategy.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -1111,6 +1112,10 @@ export const ROUTES = {
   // what is coming up, what the money helper did. Same gate as money/overview;
   // POST plan changes are staff (FINANCE) only, "talk to a person" is either.
   "money/payments": moneyPayments,
+  // Strategy (/app/money-strategy.html): payoff plan by method, goal date →
+  // money a month, this month's payments checked against cash. Same gate as
+  // money/overview; POST save_plan by the client or FINANCE staff. Moves no money.
+  "money/strategy": moneyStrategy,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
