@@ -32,9 +32,11 @@
   var READ_PATH = "/api/money/helper";
   var POLL_MS = 3000;
   var MAX_POLLS = 100;
-  var MAX_CHARS = 2000;
+  /* Matches money_helper_turns.input (migration 468): a pasted bank decline letter
+     runs well past 2,000 characters. */
+  var MAX_CHARS = 20000;
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  var SUGGESTIONS = ["What is due this week?", "Which card should I pay first?", "Set a reminder for my next payment"];
+  var SUGGESTIONS = ["What is due this week?", "Which card should I pay first?", "Got declined? Paste the letter here"];
 
   var ACT_WORD = {
     create_reminder: "Reminder set",
@@ -42,6 +44,7 @@
     create_csm_task: "A person will reach out",
     mark_task_in_progress: "Marked in progress",
     propose_transfer: "Transfer proposal",
+    record_decline: "Decline saved for your team",
     halt: "Helper stopped"
   };
   var ICON = {
