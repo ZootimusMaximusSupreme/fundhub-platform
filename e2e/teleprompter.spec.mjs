@@ -179,7 +179,7 @@ test.describe("teleprompter at 390px", () => {
 test.describe("teleprompter, the end of a script and the remote", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
-  test("double-tap the tiny name button finishes this script and shows the next; one tap does nothing", async ({ page }) => {
+  test("double-tap the tiny name button opens the queue; one tap does nothing; a tap loads that script", async ({ page }) => {
     const posts = [];
     await open(page, { posts });
     const chip = page.locator("#p-file");
@@ -193,12 +193,25 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     await chip.click();
     await page.waitForTimeout(400);
     await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    await expect(page.locator("#qmenu")).toBeHidden();
     expect(posts).toHaveLength(0);
     await chip.dblclick();
-    await expect.poll(() => posts.length).toBe(1);
-    expect(posts[0]).toMatchObject({ shoot_id: PAGE.shoot.id, root_script_id: THREE.root_script_id, mark: "got_it" });
+    await expect(page.locator("#qmenu")).toBeVisible();
+    await expect(page.locator("#qmenu")).toContainText("Inquiries off first");
+    await expect(page.locator("#qmenu")).toContainText("Your file is worth more");
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    expect(posts).toHaveLength(0);
+    const list = page.locator("#qmenu-list");
+    const overflow = await list.evaluate((el) => getComputedStyle(el).overflowY);
+    expect(["auto", "scroll"]).toContain(overflow);
+    await page.locator("#qmenu").getByRole("button", { name: /Inquiries off first/ }).click();
+    await expect(page.locator("#qmenu")).toBeHidden();
     await expect(page.locator("#s-title")).toHaveText("Inquiries off first");
+    await expect(page.locator("#content")).toContainText("Every hard pull");
     await expect(chip).toHaveText("Inquiries off first");
+    expect(posts).toHaveLength(0);
+    await chip.dblclick();
+    await expect(page.locator("#qmenu")).toContainText("Your file is worth more");
     await expect(page.locator("body")).not.toContainText("file-name word");
   });
 

@@ -1,7 +1,8 @@
 /* Layout and darkness only. Scroll math and the play / record buttons stay in teleprompter.js. */
 
-/* The old file-name line is a tiny button under the words.
-   Double-tap it to go to the next script. It does not sit on the script. */
+/* The old file-name line is a tiny button under the words, on the left.
+   One tap does nothing. Double-tap opens the list of scripts still to film.
+   It does not sit on the script. */
 #p-file {
   flex: none;
   max-width: 9rem;
@@ -237,6 +238,70 @@ body.cam-side-right #script-fade {
 /* Dark glass over the mirrored front camera.
    The black is see-through, so the face stays under the words.
    It is not a flat empty black page. */
+/* The queue list. It opens above the thin line so a thumb can scroll it.
+   Glass, same as the buttons. A tap loads that script. */
+#qmenu {
+  position: fixed;
+  z-index: 8;
+  left: 8px;
+  right: auto;
+  top: auto;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100vw - 16px));
+  max-height: min(62vh, 520px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 12px 12px 16px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: rgba(12, 14, 18, 0.72);
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+#qmenu .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+#qmenu h2 {
+  margin: 0;
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 20px;
+}
+#qmenu .x {
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 8px;
+  min-height: 44px;
+}
+#qmenu-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  display: grid;
+  gap: 8px;
+  max-height: min(52vh, 440px);
+}
+#qmenu .item {
+  min-height: 56px;
+  background: rgba(12, 14, 18, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+}
+#qmenu .item .t {
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  white-space: normal;
+}
+
 #cam-shade,
 #cam.glass #cam-shade {
   background: rgba(0, 0, 0, 0.72) !important;

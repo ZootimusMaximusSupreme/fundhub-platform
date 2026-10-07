@@ -103,6 +103,10 @@ flowchart TD
 - Dark glass: black, white words, a red reading line. The pulse row (take file name, save status) never hides, even while it rolls.
 - Next script (in film order, no mark) sits beside Play.
 
+### 4d. The tiny script button
+
+The button on the thin line under the words (`#p-file`, left side). One tap does nothing. Two taps open `#qmenu`: the scripts still to film (`filmQueue`, no Got it). The list scrolls. A tap on a title loads that script with the camera still recording (`open(i, true)`). Opening the list does not call `markThis`. The script he left stays in the queue. Got it still happens only from the end card, Space at the end, or a second tap on the top edge.
+
 ## 5. The film link (no login on the teleprompter)
 
 The Shoot tab, while a staff owner or admin is signed in, gets `film.path` on `GET marketing/shoot`. That path is `/app/teleprompter.html?k=<token>`. Open the teleprompter and Roll it use it. The phone sends the key as the `x-shoot-film` header and does not send the staff session.

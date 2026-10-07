@@ -481,14 +481,26 @@ describe("top edge changes the script", () => {
     assert.match(HTML, /<button type="button" id="p-file"/);
     assert.doesNotMatch(SRC, /File name unknown/);
     const up = SRC.slice(SRC.indexOf('chipBtn.addEventListener("pointerup"'), SRC.indexOf('chipBtn.addEventListener("click"'));
-    assert.match(up, /if \(r\.go\) completeFromTop\(\)/);
+    assert.match(up, /if \(r\.go\) openQueueMenu\(\)/);
+    assert.doesNotMatch(up, /completeFromTop\(/);
+    assert.doesNotMatch(up, /markThis\(/);
     assert.doesNotMatch(up, /endRec\(/);
     assert.doesNotMatch(up, /nextScript\(/);
-    const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
-    assert.match(doneFn, /markThis\("got_it"\)/);
-    assert.match(doneFn, /nextUnfilmed/);
-    assert.match(doneFn, /open\(n, true\)/);
-    assert.doesNotMatch(doneFn, /endRec\(/);
+    const menuFn = SRC.slice(SRC.indexOf("function drawQueue"), SRC.indexOf("function pickQueued"));
+    assert.match(menuFn, /filmQueue\(scripts\)/);
+    assert.doesNotMatch(menuFn, /markThis\(/);
+    assert.doesNotMatch(menuFn, /endRec\(/);
+    const pickFn = SRC.slice(SRC.indexOf("function pickQueued"), SRC.indexOf("function openQueueMenu"));
+    assert.match(pickFn, /open\(i, true\)/);
+    assert.doesNotMatch(pickFn, /markThis\(/);
+    assert.doesNotMatch(pickFn, /endRec\(/);
+    const openMenu = SRC.slice(SRC.indexOf("function openQueueMenu"), SRC.indexOf("function topLimit"));
+    assert.match(openMenu, /drawQueue\(\)/);
+    assert.match(openMenu, /openSheet\("qmenu"\)/);
+    assert.doesNotMatch(openMenu, /markThis\(/);
+    assert.doesNotMatch(openMenu, /completeFromTop\(/);
+    assert.match(HTML, /id="qmenu"/);
+    assert.match(HTML, /id="qmenu-list"/);
   });
 
   test("a swap from the top does not stop the camera", () => {

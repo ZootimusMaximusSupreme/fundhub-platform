@@ -38,6 +38,10 @@
  * next one still to film, or down for the previous one. A second tap there
  * marks this one Got it and it leaves that list. Record and Play stay the
  * only big buttons. Changing scripts does not stop the camera.
+ * The tiny button on the thin line under the words (left side): one tap does
+ * nothing, so a recording is not wrecked. Two taps open the list of scripts
+ * still to film. He scrolls that list and taps one. That script loads. The
+ * one he left stays in the list. The camera keeps recording.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -163,7 +167,8 @@
 
   /**
    * Taps on the tiny button. One tap does nothing. Two taps close together
-   * mean go on. `go` is true only on that second tap.
+   * open the list of scripts still to film. `go` is true only on that second
+   * tap. Opening the list does not mark the script done.
    */
   function chipStep(g, ev) {
     var src = g || chipStart();
@@ -1463,6 +1468,47 @@
     else if (a.do === "done") completeFromTop();
     else if (a.do === "arm") say("Scroll up or down to change script.");
   }
+  /* The tiny button's list. Only scripts still to film. A tap loads one.
+     It does not mark the one he left, and the camera keeps recording. */
+  function drawQueue() {
+    var list = $("qmenu-list");
+    if (!list) return;
+    list.innerHTML = "";
+    var q = filmQueue(scripts);
+    q.forEach(function (i) {
+      var s = scripts[i];
+      if (!s) return;
+      var title = (s.angle_name || s.title) ? String(s.angle_name || s.title).replace(/\s+/g, " ").trim() : "";
+      if (!title) title = "Untitled script";
+      var b = doc.createElement("button");
+      b.type = "button";
+      b.className = "item" + (i === cur ? " on" : "");
+      b.innerHTML = '<span class="t"></span><span class="m"></span>';
+      b.querySelector(".t").textContent = title;
+      b.querySelector(".m").textContent = "Ad " + (s.ad_id || "?");
+      b.onclick = function () { pickQueued(i); };
+      list.appendChild(b);
+    });
+    if (!q.length) {
+      var p = doc.createElement("p");
+      p.className = "note";
+      p.textContent = "No scripts left in the queue.";
+      list.appendChild(p);
+    }
+  }
+  function pickQueued(i) {
+    if (editing || textEdit) return;
+    var s = scripts[i];
+    if (!s || s.got_it) { closeSheets(); return; }
+    $("done").hidden = true;
+    if (i !== cur) open(i, true);
+    closeSheets();
+  }
+  function openQueueMenu() {
+    if (editing || textEdit) return;
+    drawQueue();
+    openSheet("qmenu");
+  }
   function topLimit() { return Math.max(36, safeTopPx() + 28); }
   function feedTop(type, e) {
     var ev = { type: type, x: e ? e.clientX : 0, y: e ? e.clientY : 0, t: root.performance.now() };
@@ -2615,7 +2661,7 @@
       if (Math.abs(e.clientX - down.x) > TAP_SLOP || Math.abs(e.clientY - down.y) > TAP_SLOP) return;
       var r = chipStep(chipGest, { type: "up", x: e.clientX, y: e.clientY, t: root.performance.now() });
       chipGest = r.g;
-      if (r.go) completeFromTop();
+      if (r.go) openQueueMenu();
     });
     chipBtn.addEventListener("click", function (e) {
       e.preventDefault();
@@ -2631,7 +2677,7 @@
     } catch (e) { say(s.take_file_name); }
   };
   Array.prototype.forEach.call(doc.querySelectorAll("[data-close]"), function (b) { b.onclick = function () { closeSheets(); }; });
-  var SHEETS = ["lib", "set", "hist", "pick"];
+  var SHEETS = ["lib", "set", "hist", "pick", "qmenu"];
   function openSheet(id) { closeSheets(); if (id === "lib") drawList(); if (id === "set") drawKeys(); $(id).hidden = false; }
   function closeSheets(keepEdit) {
     learning = null;
