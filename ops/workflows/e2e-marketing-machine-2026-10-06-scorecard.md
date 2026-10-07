@@ -2,9 +2,10 @@
 
 Part 1 (Command Center, bridge, teleprompter): see Part 1 agent / `ops/workflows/e2e-marketing-machine-run-output.json`. This file adds **Part 2 — FinanceOS** only.
 
-**Audit time (Arizona):** Oct 7, 2026, ~12:04 a.m.  
-**Sim client:** Test Test `f1cb9c27-f858-4db1-b6bb-4eddc898bb8e` (S1 sample, board `finance-os-wave5-2026-10-06.md`)  
-**Rules:** test only, no fixes, no live money moves, Plaid sandbox, no outbound SMS/email fired in this pass.
+**Audit time (Arizona):** Oct 7, 2026, ~12:07 a.m.  
+**Sim client (14a/16 re-score):** Sim FinanceOS `39f748e1-9fce-4233-8642-1b09dff22d64` · `e2e+financeos-14a16-1791356831368@fundhub.ai` (new plus-tag; not Test Test)  
+**Sim client (13–15, 17–19):** Test Test `f1cb9c27-f858-4db1-b6bb-4eddc898bb8e` (S1 sample, board `finance-os-wave5-2026-10-06.md`)  
+**Rules:** test only, no fixes, no live money moves, Plaid sandbox (`PLAID_ENV=sandbox`), `MESSAGING_DRY_RUN=1` / `ADAPTERS_DRY_RUN=1` on sim pay path.
 
 **Wave 5 gate:** Board merged W1–W5 + W7 (live proof on ship `6234ead8`). Table still lists W6 `queued`; live DB has agent **FOS-01** (shadow). W6 code is live; full live flip not scored here.
 
@@ -13,10 +14,10 @@ Part 1 (Command Center, bridge, teleprompter): see Part 1 agent / `ops/workflows
 | 13a | `/app/financeos.html` — all 16 tabs at **390×844**, real data, no core “coming soon” | **PASS** | `npm run test:e2e:live -- e2e/live-financeos-part2.spec.mjs` (390 run green). API `GET /api/money/overview` staff Way-A: personal cash **1,338,500**¢, business **2,140,600**¢ = `moneyOverview()` SQL same numbers. Overview UI at 1280 shows **$13,385** personal cash. |
 | 13b | Same page at **1280×900** | **PASS** | Headless Playwright staff login: all wave5 tabs `overview,next,plan,banks,strategy,fundability` — `tabFailures:[]`. (First live config retry hit `net::ERR_ABORTED`; rerun passed.) |
 | 13c | `/app/finance-os.html` staff desk loads (390 + 1280) | **PASS** | Live Playwright: body visible, no console errors (390 + 1280). |
-| 14a | Paid setup fee turns FinanceOS **on** for sim client | **FAIL** | SQL: `subscriptions` tier `finance-os` for Test Test = **0 rows**. `payment_links` description `Finance OS setup` = **0 rows**. `GET /api/money/setup`: `entitled: false`, step `pay: false`, `live: false`. No client in DB has both paid setup + active finance-os sub. |
+| 14a | Paid setup fee turns FinanceOS **on** for sim client | **PASS** | Minted setup link `pl_72213674437d988a71670847` ($497, `Finance OS setup`) for plus-tag sim. `scripts/sim/push-payment.mjs` → live `POST /api/webhooks/commas` (simulated receipt, no card). Inbox drained with `ensureRegistered()` so `payment.received` handlers ran. SQL: link **paid**; `subscriptions` tier **finance-os** `provider_ref=payment_link:6fb69b2d-9207-408d-b1cc-586fa9618cde`; `readSetupStatus`: `entitled: true`, `paid: true`. Driver: `ops/workflows/e2e-marketing-machine-financeos-14a-16.mjs`. |
 | 14b | Staff see FinanceOS card / open from client panel | **PASS** | Playwright: `https://fundhub.ai/app/client-control-panel.html?client_id=f1cb9c27-…` — `#ccp-link-financeos` visible, not hidden. Opens `financeos.html?client_id=…`. |
 | 15 | Loans: due date, payment, reminders; loan on Overview; Plaid sandbox loan dates | **PASS** | SQL: SBA Loan `account_statement_cycles.payment_due_day=1`, `minimum_payment_cents=105000`. `moneyOverview()` upcoming: `loan_due` SBA Loan **2026-11-01**, **105000**¢. Plan pins include `dues` source (6 pins total from `GET /api/money/plan`). |
-| 16 | Commas payment marks Clarity/BNPL installment; merchant API pull (Commas/Whop) | **FAIL** | Clarity installments show `paid_cents>0` (seed/history), but `payment_links` paid = **0**, `merchant_payments` for client = **0**. `merchant_connections`: provider `api`, status `active` (pull wired). **Not proved:** a Commas webhook marking an installment in this pass. |
+| 16 | Commas payment marks Clarity/BNPL installment; merchant API pull (Commas/Whop) | **PASS** (Commas mark) / **NOT RUN** (merchant pull) | Same plus-tag sim: open Clarity plan `a4b38fd8-39ed-43d4-94ef-5472e856187b`, one $333 installment. Mint custom link `pl_a00d1b70496a67f7da284928`; `push-payment.mjs` + inbox drain. Installment `paid_cents` **0 → 33300**; link **paid**; `money_agent_log` `payment_recorded` / `via: commas` / `rule: next_installment` / `payment_id=sim-pay-1791356836126`. Merchant API pull not re-run this pass (still wired on `merchant_connections`). |
 | 17a | `GET /api/money/plan` — dated pins from plan sources | **PASS** | HTTP 200; **6 pins**; sources include `dues`, `clarity`, `agent`. |
 | 17b | `GET /api/money/banks` — bank strategy | **PASS** | HTTP 200; body has `recommended_banks`, `card_stacking`, `next_round`, `relationships`. |
 | 17c | `GET /api/money/fundability` — now / projected / per business | **PASS** | HTTP 200; `now`, `projections`, `businesses`, `has_pull: true` (sim CRS on file). |
@@ -31,7 +32,7 @@ Part 1 (Command Center, bridge, teleprompter): see Part 1 agent / `ops/workflows
 1. FinanceOS pages work on live for Test Test at phone and desktop sizes; cash on screen matches the database.
 2. Wave 5 reads work: Plan, Banks, Strategy, Fundability, Next steps, and tasks all return real rows.
 3. Sample loan due dates and the $20 sandbox transfer from yesterday are still in the database.
-4. **Broken for the sample person:** nobody paid the setup fee, so FinanceOS is not “on,” and we did not prove Commas paying a Clarity bill live.
+4. **Setup fee + Commas installment:** proved on a **new plus-tag** sim (`39f748e1-…`); Test Test still has no setup payment (S1 sample unchanged).
 5. Money helper role-play passed in safe shadow mode; we did not click “Do task” or “Ready to fund” because that would write live.
 
-**Next action:** Run one sim setup-fee pay + Commas installment on a **plus-tag** sim (not Chris’s inbox), then re-score rows 14 and 16.
+**Next action:** Optional: prove merchant API pull on the same sim; or set `FINANCE_OS_SETUP_FEE_CENTS` on Netlify if production checkout should mint without a script override.
