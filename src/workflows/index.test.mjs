@@ -107,6 +107,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "finance-os-pull-sweeper",
   "finance-os-card-due-reminders",
   "finance-os-money-agent",
+  "finance-os-trend-snapshots",
   "blueprint-finance-os-alerts",
   "blueprint-next-funding-sequence-sweeper",
   "hiring-bench-sweeper",

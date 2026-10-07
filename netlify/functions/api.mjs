@@ -248,6 +248,7 @@ import financeEntities from "../../api/finance/entities.mjs";
 import financeBills from "../../api/finance/bills.mjs";
 import financeCashflow from "../../api/finance/cashflow.mjs";
 import moneyOverview from "../../api/money/overview.mjs";
+import moneyTrends from "../../api/money/trends.mjs";
 import moneyCredit from "../../api/money/credit.mjs";
 import moneySetup from "../../api/money/setup.mjs";
 import moneyAccounts from "../../api/money/accounts.mjs";
@@ -1090,6 +1091,9 @@ export const ROUTES = {
   // Finance OS client dashboard (/app/money.html). Client session = own file
   // only; staff = ROLE_SETS.FINANCE + ?client_id= in their org.
   "money/overview": moneyOverview,
+  // FinanceOS tracking over time (wave 4, H6): the Trends line charts. Same
+  // two callers and gate as money/overview. Read only.
+  "money/trends": moneyTrends,
   // Finance OS credit page (/app/money-credit.html). Same two callers and
   // gate as money/overview. Read only; never runs a pull.
   "money/credit": moneyCredit,

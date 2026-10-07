@@ -172,6 +172,7 @@ const API_KEYS = [
   "money/credit",
   "money/accounts",
   "money/overview",
+  "money/trends",
   "money/setup",
   "money/connections",
   "money/payments",

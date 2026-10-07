@@ -157,8 +157,13 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 94 -> 95 the same day (Finance OS wave 4b, unit H5) with
    merchant-pull-sweeper, the daily read of each client's Commas / Whop
    account with their own API key. A cron with no event trigger, so it sits
-   in neverFired like every sweeper here. */
-const REGISTERED = 95;
+   in neverFired like every sweeper here.
+
+   Moved 95 -> 96 the same day (FinanceOS wave 4, unit H6) with
+   finance-os-trend-snapshots, the daily balance history behind the Trends
+   line charts. A cron with no event trigger, so it sits in neverFired like
+   every sweeper here. */
+const REGISTERED = 96;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

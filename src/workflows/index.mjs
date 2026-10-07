@@ -24,6 +24,7 @@ import { financeOsCardDueReminders } from './finance-os-card-due-reminders.mjs';
 import { financeOsMoneyAgent } from './finance-os-money-agent.mjs';
 import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
 import { merchantPullSweeper } from './merchant-pull-sweeper.mjs';
+import { financeOsTrendSnapshots } from './finance-os-trend-snapshots.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
@@ -235,6 +236,12 @@ export const functions = [
      with the client's own key into merchant_events. GET only, behind the
      ADAPTERS fence; moves no money and sends nothing to anyone. */
   merchantPullSweeper,
+  /* TREND SNAPSHOTS (FinanceOS wave 4, H6, 2026-10-06). Daily at 07:30 UTC,
+     after the Plaid pull: one row per account per day and one rollup per
+     client per day (cash per kind, never added; debt; cards used %), plus
+     estimated past days for checking/savings rebuilt from bank_transactions.
+     Reads and records only. Feeds GET /api/money/trends. */
+  financeOsTrendSnapshots,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
 
