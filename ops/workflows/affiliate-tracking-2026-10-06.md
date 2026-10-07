@@ -126,6 +126,12 @@ Other breaks: one leftover card on the board, then stop. Do not fix them.
 - Left out on purpose: API key boxes on `app/campaign-manager.html` and `app/creative-factory.html` (keys, not passwords).
 - Test: `src/http/pw-toggle.test.mjs` — fails if a page gains a password box without the button; checks Show, Hide, and hide-on-send.
 
+### W1b — offers come from live funnels
+- `src/affiliates/share-link.mjs` — the hardcoded offer list is gone. `liveOffers(db, orgId)` reads `marketing_funnels` where `status='live' AND active`; `offerLinksFor(code, offers)` adds `a1` + `ref` to each `landing_url`.
+- `api/read/affiliate-portal.mjs` — reads live funnels with the other four queries.
+- The funnel builder (`src/marketing/funnel-store.mjs`) flips a funnel to live + active once its pages are proven, so new funnels appear by themselves. Blueprint is `draft` today, so it stays off.
+- Tests: `src/affiliates/share-link.test.mjs` (5), `src/http/affiliate-referral.pg.test.mjs` (a live funnel shows, a draft does not — runs in CI).
+
 ## Leftover cards
 
 - **climate page test fails** — `src/http/climate-match.test.mjs` "climate page: no approval odds…" matches /approval odds/ inside the built `public/climate/_next` bundle. Not touched by W1. Not fixed.
