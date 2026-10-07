@@ -23,13 +23,13 @@
   "use strict";
 
   var TABS = [
-    ["overview", "Overview"], ["plan", "Plan"], ["accounts", "Accounts"], ["credit", "Credit"],
+    ["overview", "Overview"], ["plan", "Plan"], ["banks", "Banks"], ["accounts", "Accounts"], ["credit", "Credit"],
     ["connections", "Connections"], ["payments", "Payments"], ["setup", "Setup"]
   ];
   /* The old standalone pages, and the tab each one is now. A link inside a
      section to one of these switches tabs instead of leaving the page. */
   var PAGE_TAB = {
-    "money.html": "overview", "money-plan.html": "plan", "money-accounts.html": "accounts", "money-credit.html": "credit",
+    "money.html": "overview", "money-plan.html": "plan", "money-banks.html": "banks", "money-accounts.html": "accounts", "money-credit.html": "credit",
     "money-connections.html": "connections", "money-payments.html": "payments", "money-setup.html": "setup"
   };
   var OVERVIEW = "/api/money/overview";
