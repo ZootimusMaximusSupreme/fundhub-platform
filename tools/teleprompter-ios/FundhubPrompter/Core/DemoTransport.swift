@@ -260,3 +260,8 @@ final class DemoTransport: Transport {
 }
 """#
 }
+
+/// Launch arguments the screenshot demo reads. Only used when -FundhubDemo is on.
+enum DemoArgs {
+    static func has(_ arg: String) -> Bool { ProcessInfo.processInfo.arguments.contains(arg) }
+}

@@ -35,7 +35,8 @@ final class AppModel: ObservableObject {
         let args = ProcessInfo.processInfo.arguments
         isDemo = args.contains("-FundhubDemo")
         let big = UIDevice.current.userInterfaceIdiom == .pad
-        let s = PrompterSettings.load(bigScreen: big)
+        var s = PrompterSettings.load(bigScreen: big)
+        if isDemo && args.contains("-FundhubDemoMirror") { s.mirror = true }
         settings = s
         let saved = isDemo ? SignIn(token: "demo", expiresAt: nil, name: "Sample", email: nil, role: "owner") : Keychain.load()
         signIn = saved

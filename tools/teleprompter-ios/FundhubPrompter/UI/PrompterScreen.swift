@@ -50,12 +50,16 @@ struct PrompterScreen: View {
                 VStack(spacing: 0) {
                     if !rolling { topBar.transition(.opacity) }
                     Spacer()
-                    if (prompter.mode == .ended || takeWaiting) && !camera.isRecording { endBar.transition(.opacity) }
-                    if !rolling { controls.transition(.opacity) }
-                    PulseBar(root: root, compact: rolling)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 4)
-                        .opacity(rolling ? 0.6 : 1)
+                    VStack(spacing: 0) {
+                        if (prompter.mode == .ended || takeWaiting) && !camera.isRecording { endBar.padding(.top, 10).transition(.opacity) }
+                        if !rolling { controls.transition(.opacity) }
+                        PulseBar(root: root, compact: rolling)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 4)
+                            .opacity(rolling ? 0.6 : 1)
+                    }
+                    // Paused: a dark panel so the buttons read over the words.
+                    .background(Color.black.opacity(rolling ? 0 : 0.9).ignoresSafeArea(edges: .bottom))
                 }
                 .animation(.easeInOut(duration: 0.25), value: rolling)
             }
@@ -106,19 +110,38 @@ struct PrompterScreen: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.trailing, 110)
-        .background(LinearGradient(colors: [.black.opacity(0.85), .clear], startPoint: .top, endPoint: .bottom))
+        .background(Color.black.opacity(0.9).ignoresSafeArea(edges: .top))
     }
 
     private var controls: some View {
+        // One row on an iPad or a phone held sideways; two rows on a phone held up.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) { speedRow; actionRow }
+            VStack(spacing: 8) { speedRow; actionRow }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+
+    }
+
+    private var speedRow: some View {
         HStack(spacing: 10) {
             RoundButton(icon: "backward.end.fill", label: "Start over") { prompter.restart() }
             RoundButton(icon: "minus", label: "Slower") { changeSpeed(-10) }
             VStack(spacing: 0) {
                 Text("\(model.settings.wpm)").font(.title3.monospacedDigit().bold())
                 Text("words/min").font(.caption2).foregroundStyle(.secondary)
+                Text("\(PromptClock.clock(Double(prompter.secondsLeft))) left").font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
             }
             .frame(minWidth: 64)
             RoundButton(icon: "plus", label: "Faster") { changeSpeed(10) }
+        }
+        .fixedSize()
+    }
+
+    private var actionRow: some View {
+        HStack(spacing: 10) {
             RoundButton(icon: prompter.mode == .holding ? "forward.fill" : "play.fill", label: "Play", big: true) {
                 prompter.togglePlay()
             }
@@ -133,10 +156,7 @@ struct PrompterScreen: View {
             }
             RoundButton(icon: "gearshape", label: "Settings") { showSettings = true }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .background(LinearGradient(colors: [.clear, .black.opacity(0.9)], startPoint: .top, endPoint: .bottom))
+        .fixedSize()
     }
 
     private var endBar: some View {
@@ -227,6 +247,18 @@ struct PrompterScreen: View {
         }
         if cameraOn { camera.start(with: model.settings) }
         showPreview()
+        // Screenshot demo only (launch arguments, never on Chris's phone).
+        if model.isDemo {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                if DemoArgs.has("-FundhubDemoRoll") { prompter.togglePlay() }
+                if DemoArgs.has("-FundhubDemoEdit") { openEdit(1) }
+                if DemoArgs.has("-FundhubDemoSettings") { showSettings = true }
+                if DemoArgs.has("-FundhubDemoSave"), let s = script, paragraphs.count > 1 {
+                    model.edit(root: s.rootScriptId, index: 1, newText: paragraphs[1].text + " Ever.")
+                }
+            }
+        }
     }
 
     private func disappear() {

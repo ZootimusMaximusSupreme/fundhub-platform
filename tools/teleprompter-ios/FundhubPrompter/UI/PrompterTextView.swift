@@ -6,7 +6,6 @@ import UIKit
 final class PrompterController: ObservableObject {
     @Published fileprivate(set) var mode: RollMode = .paused
     @Published fileprivate(set) var secondsLeft: Int = 0
-    @Published fileprivate(set) var countdownNumber: Int?
 
     fileprivate weak var view: PrompterTextView?
 
@@ -92,7 +91,11 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
     private var mode: RollMode = .paused {
         didSet {
             guard mode != oldValue else { return }
-            controller.mode = mode
+            // Published on the next turn: this can run inside a SwiftUI view update.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if self.controller.mode != self.mode { self.controller.mode = self.mode }
+            }
             UIApplication.shared.isIdleTimerDisabled = (mode == .rolling || mode == .countdown || mode == .holding)
             countLabel.isHidden = mode != .countdown
             if !isRollingMode, let w = pendingWords {
@@ -308,7 +311,9 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         let f = clock.total > 0 ? min(1, t / clock.total) : 0
         progressFill.frame = CGRect(x: 0, y: 0, width: progressTrack.bounds.width * CGFloat(f), height: 4)
         let left = Int((clock.total - t).rounded(.up))
-        if left != controller.secondsLeft { controller.secondsLeft = max(0, left) }
+        if left != controller.secondsLeft {
+            DispatchQueue.main.async { [weak self] in self?.controller.secondsLeft = max(0, left) }
+        }
     }
 
     var currentParagraph: Int {
@@ -325,7 +330,6 @@ final class PrompterTextView: UIView, UITextViewDelegate, UIGestureRecognizerDel
         case .countdown:
             countdownLeft -= dt
             let n = Int(ceil(countdownLeft))
-            if n != controller.countdownNumber { controller.countdownNumber = n > 0 ? n : nil }
             countLabel.text = n > 0 ? "\(n)" : ""
             if countdownLeft <= 0 { mode = .rolling }
         case .rolling:

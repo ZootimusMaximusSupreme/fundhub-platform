@@ -34,6 +34,13 @@ struct ScriptListView: View {
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .task(id: model.scripts.count) {
+                // Screenshot demo only: open the first script by itself.
+                if model.isDemo, !model.scripts.isEmpty, open == nil, DemoArgs.has("-FundhubDemoOpen") {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    open = model.scripts[0].rootScriptId
+                }
+            }
             .fullScreenCover(item: Binding(get: { open.map { OpenScript(root: $0) } }, set: { open = $0?.root })) { o in
                 PrompterScreen(startRoot: o.root)
             }
@@ -54,9 +61,9 @@ struct ScriptRow: View {
                 .frame(width: 28, height: 28)
                 .background(Color.white.opacity(0.1), in: Circle())
             VStack(alignment: .leading, spacing: 4) {
-                Text(script.displayName).font(.headline).foregroundStyle(.primary)
+                Text(script.displayName).font(.headline).foregroundStyle(Color.white)
                 if let name = script.takeFileName {
-                    Text(name).font(.footnote).foregroundStyle(.secondary)
+                    Text(name).font(.footnote).foregroundStyle(Color.gray)
                 } else if let why = script.takeNameProblem {
                     Text(why).font(.footnote).foregroundStyle(Brand.warn)
                 }

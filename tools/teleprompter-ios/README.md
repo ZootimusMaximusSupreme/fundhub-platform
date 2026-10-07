@@ -120,7 +120,11 @@ refused saves, take marks) and the request shape.
 
 **Screenshot demo.** Launch with the argument `-FundhubDemo` to skip sign-in
 and show the made-up example shoot from `docs/specs/marketing-machine-api.md`
-§7.1. It never talks to a server. It is not used on Chris's phone.
+§7.1. It never talks to a server. It is not used on Chris's phone. Extra
+demo-only arguments for screenshots: `-FundhubDemoOpen` (open script 1),
+`-FundhubDemoRoll` (roll), `-FundhubDemoMirror` (flip), `-FundhubDemoEdit`
+(open the edit box), `-FundhubDemoSave` (change one line and save it),
+`-FundhubDemoSettings`.
 
 ## What only a real phone can prove
 

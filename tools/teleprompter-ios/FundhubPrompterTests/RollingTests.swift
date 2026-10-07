@@ -24,14 +24,15 @@ final class PromptClockTests: XCTestCase {
 
     func testScrollTrackIsSmoothAndInverts() {
         let paras = [Paragraph(text: "a b c d", cue: false)]
-        let c = PromptClock(paragraphs: paras, wpm: 60, pauseSeconds: 0)
+        let c = PromptClock(paragraphs: paras, wpm: 80, pauseSeconds: 0)
+        let line2 = c.words[2].start
         // Two words per line: line 1 at y=10, line 2 at y=50.
         let track = ScrollTrack(clock: c, wordY: [10, 10, 50, 50])
         XCTAssertEqual(track.keys.count, 3)
         XCTAssertEqual(track.y(at: 0), 10)
-        XCTAssertEqual(track.y(at: 1), 30, accuracy: 1e-9, "half way through line 1, half way to line 2")
+        XCTAssertEqual(track.y(at: line2 / 2), 30, accuracy: 1e-9, "half way through line 1, half way to line 2")
         XCTAssertEqual(track.y(at: 99), 50)
-        XCTAssertEqual(track.t(at: 30), 1, accuracy: 1e-9)
+        XCTAssertEqual(track.t(at: 30), line2 / 2, accuracy: 1e-9)
     }
 }
 
