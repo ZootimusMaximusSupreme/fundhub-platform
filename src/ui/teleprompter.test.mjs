@@ -44,19 +44,34 @@ describe("teleprompter, pure", () => {
     assert.doesNotMatch(asked.line, /4K/);
   });
 
-  test("front camera asks stay at 1080p and try 60 then 30", () => {
+  test("front camera asks for real 4K at the highest frame rate", () => {
     const T = load();
-    const tries = T.cameraTries("user");
+    const tries = T.cameraTries("user", "4k");
+    assert.equal(tries[0].facingMode.ideal, "user");
+    assert.equal(tries[0].width.ideal, 3840);
+    assert.equal(tries[0].height.ideal, 2160);
+    assert.equal(tries[0].width.max, undefined);
+    assert.equal(tries[0].height.max, undefined);
+    assert.equal(tries[0].frameRate.ideal, 60);
+    assert.equal(tries[0].frameRate.max, undefined);
+    assert.equal(tries[0].focusMode, undefined);
+    const four = tries.filter((c) => c.width && c.width.ideal === 3840);
+    const rates = four.map((c) => c.frameRate && c.frameRate.ideal);
+    assert.ok(rates.indexOf(60) < rates.indexOf(30));
+    assert.notEqual(tries[0].facingMode.ideal, "environment");
+  });
+
+  test("settings 1080p asks for 1920x1080 at 60 fps", () => {
+    const T = load();
+    const tries = T.cameraTries("user", "1080p");
     assert.equal(tries[0].facingMode.ideal, "user");
     assert.equal(tries[0].width.ideal, 1920);
     assert.equal(tries[0].width.max, 1920);
     assert.equal(tries[0].height.ideal, 1080);
     assert.equal(tries[0].height.max, 1080);
+    assert.equal(tries[0].frameRate.min, 60);
     assert.equal(tries[0].frameRate.ideal, 60);
     assert.equal(tries[0].frameRate.max, 60);
-    assert.equal(tries[0].focusMode, undefined);
-    const rates = tries.map((c) => c.frameRate && c.frameRate.ideal).filter((n) => n);
-    assert.ok(rates.indexOf(60) < rates.indexOf(30));
     for (const c of tries) {
       const blob = JSON.stringify(c);
       assert.equal(blob.includes("3840"), false);
