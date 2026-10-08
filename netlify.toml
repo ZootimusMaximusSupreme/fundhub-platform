@@ -100,6 +100,11 @@
   included_files = [
     # Never ship local secrets or the huge local work trees inside credentials/.
     "!credentials/**",
+    # Gap lanes import the router and the route table. That trace was pulling
+    # filmed videos and the ffmpeg binary into the api function (359MB) and the
+    # upload died. Those files are not needed inside a function.
+    "!**/*.mp4",
+    "!node_modules/ffmpeg-static/**",
     "assets/ebooks/fundhub-ebook-placeholder.pdf",
     "assets/gifts/message-blaster.dmg",
     "scripts/black-reports/**",
