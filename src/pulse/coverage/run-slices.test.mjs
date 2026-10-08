@@ -9,7 +9,9 @@ import { JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
 import { runDailyPulse } from "../daily-pulse.mjs";
 import {
   NOT_CHECKED,
+  loadGapModules,
   loadSliceModules,
+  namespaceGapId,
   runCoverageSlices,
   tally
 } from "./run-slices.mjs";
@@ -43,6 +45,7 @@ function fakeDb(matchers) {
 test("runner source has one job_heartbeats read and does not text", () => {
   const src = fs.readFileSync(RUNNER, "utf8");
   assert.equal(src.split("FROM job_heartbeats").length - 1, 1);
+  assert.match(src, /loadGapModules/);
   assert.doesNotMatch(src, /textChris|twilio|sendSms|sendWhatsApp/);
 });
 
@@ -243,4 +246,92 @@ test("a stale slice cron shows up as a FAIL finding and a dry run sends nothing"
   assert.equal(result.sms.reason, "dry_run");
   assert.ok(result.findings.some((line) => line.includes(job.job) && /3 times its schedule/.test(line)));
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+function gapFiles() {
+  return fs.readdirSync(HERE)
+    .filter((name) => /^gap-.+\.mjs$/.test(name) && !name.endsWith(".test.mjs"))
+    .sort();
+}
+
+test("gap ids keep a lane prefix, and a throw is one skip", async () => {
+  assert.equal(namespaceGapId("payments:invoice-stuck", "gap-payments"), "payments:invoice-stuck");
+  assert.equal(namespaceGapId("ads-meta-sync-stale", "gap-ads"), "ads-meta-sync-stale");
+  assert.equal(namespaceGapId("gap:auth-staff-login", "gap-auth"), "gap:auth-staff-login");
+  assert.equal(namespaceGapId("same", "gap-a"), "gap-a:same");
+
+  let seen = null;
+  const rows = await runCoverageSlices({
+    modules: [],
+    now: NOW,
+    db: { async query() { return { rows: [] }; } },
+    scope: async (fn) => fn({ async query() { return { rows: [] }; } }),
+    orgId: "11111111-1111-4111-8111-111111111111",
+    fetchImpl: async () => ({ status: 204, text: async () => "" }),
+    gaps: [
+      {
+        sliceId: "gap-a",
+        file: "gap-a.mjs",
+        gapChecks: async (ctx) => {
+          seen = ctx;
+          return [{ id: "same", status: "skip", detail: "a" }];
+        }
+      },
+      {
+        sliceId: "gap-b",
+        file: "gap-b.mjs",
+        gapChecks: async () => {
+          throw new Error("boom");
+        }
+      },
+      {
+        sliceId: "gap-c",
+        file: "gap-c.mjs",
+        gapChecks: async () => [{ id: "same", status: "FAIL", detail: "c", suggestedFix: "Read it." }]
+      }
+    ]
+  });
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0].id, "gap-a:same");
+  assert.equal(rows[0].status, "skip");
+  assert.equal(rows[1].status, "skip");
+  assert.equal(rows[1].sliceId, "gap-b");
+  assert.match(rows[1].detail, /boom/);
+  assert.equal(rows[2].id, "gap-c:same");
+  assert.equal(rows[2].status, "FAIL");
+  assert.equal(typeof seen.db.query, "function");
+  assert.equal(typeof seen.scope, "function");
+  assert.equal(seen.orgId, "11111111-1111-4111-8111-111111111111");
+  assert.equal(typeof seen.fetchImpl, "function");
+});
+
+test("the morning pass runs every gap file and still does not pass a slice without a database", async () => {
+  const files = gapFiles();
+  assert.ok(files.length > 0, "expected gap files on disk");
+  const loaded = await loadGapModules();
+  assert.deepEqual(loaded.map((item) => item.file), files);
+  const broken = loaded.filter((item) => typeof item.gapChecks !== "function");
+  assert.deepEqual(
+    broken.map((item) => `${item.file}: ${item.loadError || "no gapChecks"}`),
+    []
+  );
+  const stubFetch = async () => ({
+    status: 204,
+    text: async () => "",
+    json: async () => ({}),
+    headers: { get: () => "" }
+  });
+  const rows = await runCoverageSlices({
+    now: NOW,
+    fetchImpl: stubFetch,
+    baseUrl: "https://fundhub.ai"
+  });
+  const gapRows = rows.filter((row) => String(row.sliceId || "").startsWith("gap-"));
+  const sliceRows = rows.filter((row) => !String(row.sliceId || "").startsWith("gap-"));
+  const stems = new Set(gapRows.map((row) => row.sliceId));
+  assert.equal(stems.size, files.length);
+  const sliceExpected = (await loadSliceModules()).reduce((n, item) => n + item.CHECKS.length, 0);
+  assert.equal(sliceRows.length, sliceExpected);
+  assert.ok(sliceRows.every((row) => row.status === NOT_CHECKED));
+  assert.ok(gapRows.every((row) => row.status === "PASS" || row.status === "FAIL" || row.status === "skip"));
 });

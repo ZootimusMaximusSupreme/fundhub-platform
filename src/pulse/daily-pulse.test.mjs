@@ -96,8 +96,11 @@ test("dry-run writes a board and does not send or fix", async () => {
   assert.equal(sends.length, 0);
   assert.equal(result.sms.sent, false);
   const coverage = result.checks.filter((c) => c.kind === "coverage");
-  assert.ok(coverage.length > 0);
-  assert.ok(coverage.every((c) => c.status === "not checked"));
+  const sliceRows = coverage.filter((c) => !String(c.sliceId || "").startsWith("gap-"));
+  const gapRows = coverage.filter((c) => String(c.sliceId || "").startsWith("gap-"));
+  assert.ok(sliceRows.length > 0);
+  assert.ok(sliceRows.every((c) => c.status === "not checked"));
+  assert.ok(gapRows.length > 0);
   assert.match(body, /## Coverage/);
   assert.match(body, /not checked/);
   assert.match(result.sms.reason, /PULSE_SMS_TO unset/);

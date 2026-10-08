@@ -1,7 +1,9 @@
-// One runner for every coverage slice. Audit only. Never fixes. Never texts.
+// One runner for every coverage slice and every gap read. Audit only.
+// Never fixes. Never texts. Never charges. Never pulls credit.
 //
-// Each slice-*.mjs file exports CHECKS. This file loads all of them and turns
-// each row into a morning-pulse check.
+// Each slice-*.mjs file exports CHECKS. Each gap-*.mjs file exports gapChecks.
+// This file loads all of them and turns each row into a morning-pulse check.
+// One gap that throws becomes one skip row. It does not stop the pulse.
 //
 // A cron is red only when we can read a real last-success time and that time
 // is older than 3 times its schedule. The last-success read is one SELECT on
@@ -437,16 +439,188 @@ function evaluateRow(row, sliceId, ctx) {
   return fromUnchecked(row, sliceId, "Not checked. No last-success time in the database.");
 }
 
+const GAP_STATUSES = new Set(["PASS", "FAIL", "skip"]);
+
+function laneTokens(sliceId) {
+  const stem = String(sliceId || "gap");
+  const short = stem.replace(/^gap-/, "") || stem;
+  return { stem, short };
+}
+
 /**
- * Evaluate every slice CHECKS row.
- * `modules` is for tests. Live calls load every slice-*.mjs file.
- * Does not send. Does not fix.
+ * Keep an id that already carries its lane name. Otherwise prefix the file name
+ * so two lanes cannot share one id.
+ */
+export function namespaceGapId(id, sliceId) {
+  const raw = String(id == null || id === "" ? "unnamed" : id);
+  const { stem, short } = laneTokens(sliceId);
+  if (
+    raw === stem || raw.startsWith(`${stem}:`) || raw.startsWith(`${stem}-`) ||
+    raw === short || raw.startsWith(`${short}:`) || raw.startsWith(`${short}-`) ||
+    (raw.startsWith("gap:") && (
+      raw.slice(4) === short ||
+      raw.slice(4).startsWith(`${short}-`) ||
+      raw.slice(4).startsWith(`${short}:`)
+    ))
+  ) {
+    return raw;
+  }
+  return `${stem}:${raw}`;
+}
+
+function gapContext({ db, scope, now, orgId, fetchImpl, baseUrl, env }) {
+  const ctx = {
+    db: db || null,
+    scope: scope || null,
+    now,
+    orgId: orgId || null
+  };
+  if (typeof fetchImpl === "function") {
+    ctx.fetchImpl = fetchImpl;
+    ctx.fetch = fetchImpl;
+  }
+  if (baseUrl) ctx.baseUrl = String(baseUrl);
+  if (env && typeof env === "object") ctx.env = env;
+  return ctx;
+}
+
+function gapSkip(sliceId, detail, checkId = "threw") {
+  return {
+    id: `${sliceId}:${checkId}`,
+    checkId,
+    sliceId,
+    kind: "coverage",
+    group: "backend",
+    status: "skip",
+    detail: clip(detail, 500),
+    suggestedFix: null,
+    customerSees: null,
+    schedule: null
+  };
+}
+
+function gapResult(sliceId, row) {
+  if (!row || typeof row !== "object") {
+    return gapSkip(sliceId, `${sliceId} returned an empty row.`, "bad-row");
+  }
+  const checkId = row.id == null || row.id === "" ? "unnamed" : String(row.id);
+  const status = GAP_STATUSES.has(row.status) ? row.status : "skip";
+  const detail = status === row.status
+    ? clip(row.detail, 500)
+    : clip(`${row.detail || "Gap check returned a status this pulse does not use."}`, 500);
+  return {
+    id: namespaceGapId(checkId, sliceId),
+    checkId,
+    sliceId,
+    kind: "coverage",
+    group: typeof row.group === "string" && row.group ? row.group : "backend",
+    status,
+    detail,
+    suggestedFix: row.suggestedFix || null,
+    customerSees: row.customerSees || (status === "FAIL" ? clip(row.detail, 240) : null),
+    schedule: null
+  };
+}
+
+/** Every gap-*.mjs file. A file that will not import becomes a later skip row. */
+export async function loadGapModules(dir = HERE) {
+  const names = fs.readdirSync(dir)
+    .filter((name) => /^gap-.+\.mjs$/.test(name) && !name.endsWith(".test.mjs"))
+    .sort();
+  const out = [];
+  for (const name of names) {
+    const sliceId = name.replace(/\.mjs$/, "");
+    try {
+      const mod = await import(pathToFileURL(path.join(dir, name)).href);
+      out.push({
+        sliceId,
+        file: name,
+        gapChecks: typeof mod.gapChecks === "function" ? mod.gapChecks : null,
+        mod
+      });
+    } catch (err) {
+      out.push({
+        sliceId,
+        file: name,
+        gapChecks: null,
+        loadError: clip(err && err.message, 160),
+        mod: {}
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Run every gapChecks(ctx). Same db and staff scope as the slice pass.
+ * A throw, a missing export, or a non-list is one skip row.
+ */
+export async function runGapChecks({
+  db = null,
+  scope = null,
+  now = new Date(),
+  orgId = null,
+  fetchImpl = undefined,
+  baseUrl = undefined,
+  env = undefined,
+  modules = null
+} = {}) {
+  const loaded = modules || await loadGapModules();
+  const ctx = gapContext({ db, scope, now, orgId, fetchImpl, baseUrl, env });
+  const out = [];
+  const seen = new Map();
+  for (const item of loaded) {
+    const sliceId = item.sliceId || (item.file || "gap").replace(/\.mjs$/, "");
+    if (item.loadError || typeof item.gapChecks !== "function") {
+      const why = item.loadError
+        ? `Could not load ${item.file || sliceId}: ${item.loadError}`
+        : `${item.file || sliceId} has no gapChecks export.`;
+      out.push(gapSkip(sliceId, why));
+      continue;
+    }
+    let rows;
+    try {
+      rows = await item.gapChecks(ctx);
+    } catch (err) {
+      out.push(gapSkip(sliceId, `${sliceId} threw: ${clip(err && err.message, 160)}`));
+      continue;
+    }
+    if (!Array.isArray(rows)) {
+      out.push(gapSkip(sliceId, `${sliceId} did not return a list.`));
+      continue;
+    }
+    if (rows.length === 0) {
+      out.push(gapSkip(sliceId, `${sliceId} returned no rows.`));
+      continue;
+    }
+    for (const row of rows) {
+      const built = gapResult(sliceId, row);
+      const n = seen.get(built.id) || 0;
+      seen.set(built.id, n + 1);
+      if (n > 0) built.id = `${built.id}#${n + 1}`;
+      out.push(built);
+    }
+  }
+  return out;
+}
+
+/**
+ * Evaluate every slice CHECKS row, then every gapChecks row.
+ * `modules` is for slice tests. Live calls load every slice-*.mjs file and
+ * every gap-*.mjs file. Passing `modules` does not load gap files unless
+ * `gaps` is a list, so a slice test still sees one heartbeat read.
+ * Does not send. Does not fix. Does not charge. Does not pull credit.
  */
 export async function runCoverageSlices({
   db = null,
   scope = null,
   now = new Date(),
-  modules = null
+  modules = null,
+  gaps = undefined,
+  orgId = null,
+  fetchImpl = undefined,
+  baseUrl = undefined,
+  env = undefined
 } = {}) {
   const loaded = modules || await loadSliceModules();
   const signals = collectSignals(loaded);
@@ -485,6 +659,20 @@ export async function runCoverageSlices({
     const sliceId = item.sliceId || "slice";
     const checks = Array.isArray(item.CHECKS) ? item.CHECKS : [];
     for (const row of checks) out.push(evaluateRow(row, sliceId, ctx));
+  }
+  const runGaps = Array.isArray(gaps) || (gaps !== false && modules == null);
+  if (runGaps) {
+    const gapModules = Array.isArray(gaps) ? gaps : await loadGapModules();
+    out.push(...await runGapChecks({
+      db,
+      scope,
+      now,
+      orgId,
+      fetchImpl,
+      baseUrl,
+      env,
+      modules: gapModules
+    }));
   }
   return out;
 }

@@ -395,7 +395,15 @@ export async function runDailyPulse({
     ));
   }
   try {
-    checks.push(...await runCoverageSlices({ db, scope: staffScope, now }));
+    checks.push(...await runCoverageSlices({
+      db,
+      scope: staffScope,
+      now,
+      orgId: resolvedOrg,
+      fetchImpl,
+      baseUrl: origin,
+      env
+    }));
   } catch (err) {
     checks.push(check(
       "coverage",
