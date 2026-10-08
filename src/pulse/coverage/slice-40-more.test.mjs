@@ -24,13 +24,7 @@ const EXPECTED_IDS = [
   "slo-genuine-reply",
   "sys-01-client-value-calculator",
   "sys-01-ltv-calculator",
-  "u-02-analyzer-complete-delivery",
-  "consulting/index.html",
-  "consulting/privacy/index.html",
-  "consulting/refund/index.html",
-  "consulting/terms/index.html",
-  "optimize.html",
-  "roadmap/pull.html"
+  "u-02-analyzer-complete-delivery"
 ];
 
 const EVENT_FILES = {
@@ -110,10 +104,11 @@ test("slice 40-more: event jobs are registered and the schedule is a real trigge
 });
 
 test("slice 40-more: doors are real pages named by a journey", () => {
+  const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
   assert.equal(SLO_PULL_PATH, "/roadmap/pull.html");
   for (const [id, rel] of Object.entries(DOOR_FILES)) {
     assert.ok(fs.existsSync(path.join(ROOT, rel)), rel);
-    assert.equal(CHECKS.find((row) => row.id === id).schedule, "daily");
+    assert.equal(listed.has(id), true, `${id} must be on the morning ping list`);
   }
   const slo = fs.readFileSync(path.join(ROOT, "docs/journeys/slo-offer-intended.md"), "utf8");
   const consulting = fs.readFileSync(path.join(ROOT, "docs/journeys/fh-consulting-intended.md"), "utf8");

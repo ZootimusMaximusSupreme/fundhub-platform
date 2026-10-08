@@ -1,10 +1,8 @@
-// Leftover live jobs and doors for the 7:00 a.m. pulse.
+// Leftover event jobs for the 7:00 a.m. pulse.
 // Report only. Never auto-fix. Never text.
-// A cron is red after 3 times its schedule with no run.
-// A door is red when the morning pulse does not ping it.
-// Event jobs here have no cron, so they leave no heartbeat.
-// Skips anything already named in another slice CHECKS id or in PULSE_REGISTRY.
-// Scheduled jobs already on the morning heartbeat list are not repeated here.
+// These have no cron, so they leave no heartbeat.
+// A missed event is not red just because no GET ran.
+// Journey pages that used to sit here are on PULSE_REGISTRY. The morning ping GETs them.
 
 export const SLICE_ID = "40-more";
 
@@ -25,15 +23,6 @@ function eventJob(id, schedule, note) {
     `Event ${schedule}. No cron, so a missed run leaves no heartbeat. ` +
       `Not in PULSE_REGISTRY, so the morning pulse does not ping it. ${note} ` +
       "Do not auto-fix. Never text."
-  );
-}
-
-function door(id, note) {
-  return row(
-    id,
-    "daily",
-    `Live page ${id}. Not in PULSE_REGISTRY, so the morning pulse does not ping it. ` +
-      `${note} A door is red when that ping is missing. Do not auto-fix. Never text.`
   );
 }
 
@@ -87,30 +76,6 @@ export const CHECKS = [
     "u-02-analyzer-complete-delivery",
     "analysis.completed",
     "Tags the file funding or repair when the credit read finishes."
-  ),
-  door(
-    "consulting/index.html",
-    "Journey door /consulting/ (docs/journeys/fh-consulting-intended.md)."
-  ),
-  door(
-    "consulting/privacy/index.html",
-    "Privacy page on the consulting site."
-  ),
-  door(
-    "consulting/refund/index.html",
-    "Refund page on the consulting site."
-  ),
-  door(
-    "consulting/terms/index.html",
-    "Terms page on the consulting site."
-  ),
-  door(
-    "optimize.html",
-    "Journey page https://fundhub.ai/optimize (docs/journeys/optimize-intended.md). The pay API is a different door."
-  ),
-  door(
-    "roadmap/pull.html",
-    "Form after the $297 pay. Journey name /slo/pull.html. Live path /roadmap/pull.html."
   )
 ];
 

@@ -38,7 +38,36 @@ export const ALLOWED_UNMONITORED = {
   "marketing/research/approve": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would stamp Chris's approval on a research report nobody read. Its read sibling marketing/research answers GET and is the monitored door for the research card.",
   "marketing/research/tweak": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would start a paid research run (model calls and web searches) that nobody asked for. The monitored door is marketing/research.",
   "marketing/research/brain": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would write a report into Company Brain and pay for embedding it. The monitored door is marketing/research.",
-  "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting."
+  "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting.",
+  "404.html": "This is the missing-page file. Opening it is what a bad link does. A morning ping of the not-found page does not watch a product door.",
+  "climate/404.html": "Climate site missing-page file. A morning ping of the not-found page does not watch the climate door. climate/index.html is the page the pulse pings.",
+  "climate/404/index.html": "Same missing-page file as climate/404.html, at the folder URL. The pulse watches climate/index.html instead of this file.",
+  "aniso-face/logo-6k/index.html": "Brand logo render for the face file. Not a customer door and not a staff desk. A morning ping would not say whether the product is up.",
+  "aniso-face/logo-6k/preview.html": "Brand logo preview for the face file. Not a customer door and not a staff desk. A morning ping would not say whether the product is up.",
+  "partner/autopsy/index.html": "Shelved by the owner on 2026-08-31. netlify.toml sends /partner/autopsy/* to the price menu. A ping follows that redirect and would score the menu, not this page.",
+  "roadmap/index.html": "fundhub.ai/roadmap and this file 301 to apply.fundhub.ai/roadmap. That sales page is already checkFunnelRoadmapSales. A ping here would follow the redirect and score the other site."
+};
+
+/* Modules outside src/messaging/providers that call a provider send() for
+   SMS, email, paper mail, web push, or the phone buzz. watch is a registry
+   key or a JOBS id the morning pulse already checks. reason is 40+ characters
+   when a ping would send or would look down. registry.test.mjs fails when a
+   new file imports send and is not listed here. */
+export const SEND_PATHS = {
+  "netlify/functions/teleprompter-live-text.mjs": {
+    reason: "One-shot POST. The nonce is the whole credential. A GET answers 404 on purpose, so a morning ping would look down every day, and a body would text a real phone. Not a scheduled job."
+  },
+  "src/ad-videos/notify-fanout.mjs": { watch: "ad-video-sweeper" },
+  "src/auth/staff-mail.mjs": { watch: "auth/invite" },
+  "src/metro2/delivery/send.mjs": { watch: "repair/send" },
+  "src/pulse/instant-watch.mjs": { watch: "pulse-instant-watch" },
+  "src/pulse/notify.mjs": { watch: "daily-pulse" },
+  "src/push/send.mjs": { watch: "push/subscribe" },
+  "src/staff/blake-lead-watch.mjs": { watch: "blake-lead-watch" },
+  "src/staff/comp-alerts.mjs": {
+    reason: "Fires on commission.paid, sale.closed, and deposit.paid. There is no schedule and no GET door. A morning ping cannot send a payout email. The commissions desk is the page a person opens for this."
+  },
+  "src/workflows/ad-video-sweeper.mjs": { watch: "ad-video-sweeper" }
 };
 
 const API_KEYS = [
@@ -518,8 +547,57 @@ const DESK_FILES = [
   "teleprompter-remote.html"
 ];
 
-/** Static HTML under public/ (not public/app desks). */
-const PUBLIC_STATIC_FILES = ["climate/index.html"];
+/** Static HTML under public/ (not public/app desks) that the morning ping GETs.
+    A file on disk that is not in this list must be in ALLOWED_UNMONITORED. */
+const PUBLIC_STATIC_FILES = [
+  "affiliates/index.html",
+  "careers.html",
+  "climate/index.html",
+  "climate/lender-climate/index.html",
+  "consulting/index.html",
+  "consulting/privacy/index.html",
+  "consulting/refund/index.html",
+  "consulting/terms/index.html",
+  "contract.html",
+  "crm.html",
+  "education/enroll/index.html",
+  "education/index.html",
+  "education/learn/index.html",
+  "education/privacy/index.html",
+  "education/refund/index.html",
+  "education/terms/index.html",
+  "index.html",
+  "leads/c01cb7592c8bb994130158e897e99bf1/index.html",
+  "login.html",
+  "optimize-plan.html",
+  "optimize.html",
+  "partner/board/index.html",
+  "partner/board/live/index.html",
+  "partner/index.html",
+  "partner/menu/index.html",
+  "partner/trial/index.html",
+  "partner/trial/live/index.html",
+  "portal-login.html",
+  "privacy/index.html",
+  "progress.html",
+  "reset-password.html",
+  "roadmap/pay.html",
+  "roadmap/pull.html",
+  "start.html",
+  "terms/index.html",
+  "unsubscribe.html"
+];
+
+function publicStaticPath(file) {
+  if (file === "index.html") return "/";
+  if (file.endsWith("/index.html")) return `/${file.slice(0, -"index.html".length)}`;
+  return `/${file}`;
+}
+
+function publicStaticId(file) {
+  if (file === "index.html") return "home";
+  return file.replace(/\.html$/, "").replace(/\//g, "-");
+}
 
 export const PULSE_REGISTRY = [
   ...API_KEYS.map((key) => ({
@@ -533,10 +611,10 @@ export const PULSE_REGISTRY = [
     path: `/app/${file}`
   })),
   ...PUBLIC_STATIC_FILES.map((file) => ({
-    id: file.replace(/\.html$/, "").replace(/\//g, "-"),
+    id: publicStaticId(file),
     kind: "public_static",
     file,
-    path: file === "climate/index.html" ? "/climate/" : `/${file}`
+    path: publicStaticPath(file)
   }))
 ];
 
@@ -550,6 +628,7 @@ export function coverageKey(row) {
 export function missingFromRegistry({
   handlerKeys = [],
   deskFiles = [],
+  publicFiles = [],
   registry = PULSE_REGISTRY,
   allow = ALLOWED_UNMONITORED
 } = {}) {
@@ -562,6 +641,9 @@ export function missingFromRegistry({
     if (!covered.has(key)) missing.push(key);
   }
   for (const file of deskFiles) {
+    if (!covered.has(file)) missing.push(file);
+  }
+  for (const file of publicFiles) {
     if (!covered.has(file)) missing.push(file);
   }
   return missing.sort();

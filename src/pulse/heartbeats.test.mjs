@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { cronIntervalMs, checkJobHeartbeats, STALE_MULTIPLE, INNGEST_JOBS, NETLIFY_JOBS } from "./heartbeats.mjs";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 test("a job is red when its newest run is older than 3 times its schedule", async () => {
   assert.equal(STALE_MULTIPLE, 3);
@@ -46,5 +51,43 @@ test("the heartbeat list matches the scheduled jobs, and it never fixes them", a
   const listed = new Map(INNGEST_JOBS);
   assert.equal(listed.size, live.length);
   for (const [id, cron] of live) assert.equal(listed.get(id), cron, id);
-  assert.equal(NETLIFY_JOBS.length, 7);
+
+  const scheduled = netlifySchedules(fs.readFileSync(path.resolve(HERE, "../../netlify.toml"), "utf8"));
+  const netlify = new Map(NETLIFY_JOBS);
+  assert.deepEqual(
+    [...netlify.keys()].sort(),
+    scheduled.map(([name]) => name).sort(),
+    "NETLIFY_JOBS must name every scheduled function in netlify.toml, and no extra"
+  );
+  for (const [name, cron] of scheduled) {
+    assert.equal(netlify.get(name), cron, name);
+    const src = fs.readFileSync(path.resolve(HERE, `../../netlify/functions/${name}.mjs`), "utf8");
+    assert.ok(
+      src.includes(`noteScheduledRun(db, "${name}"`),
+      `${name} is on the Netlify clock but does not write a heartbeat`
+    );
+  }
 });
+
+function netlifySchedules(toml) {
+  const jobs = [];
+  let name = null;
+  for (const line of toml.split("\n")) {
+    const header = line.match(/^\[functions\."([^"]+)"\]/);
+    if (header) {
+      name = header[1];
+      continue;
+    }
+    if (name && line.startsWith("[")) {
+      name = null;
+      continue;
+    }
+    if (!name) continue;
+    const sched = line.match(/^\s*schedule\s*=\s*"([^"]+)"/);
+    if (sched) {
+      jobs.push([name, sched[1]]);
+      name = null;
+    }
+  }
+  return jobs;
+}
