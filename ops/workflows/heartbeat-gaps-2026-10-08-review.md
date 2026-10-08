@@ -47,6 +47,20 @@ If Cursor has not hooked the checks in when the review ends, this review hooks t
 
 Each group: review and fix → an independent checker re-runs tests and the live tool and tries to prove the review wrong → one repair pass if the checker finds a problem. Then stop (stuck rule).
 
+## Pieces Cursor missed — found 16:05–16:20
+
+1. **No coverage check has ever run live.** The slice runner shipped 10-07. This morning's scorecard (6:01, 420 rows) had 0 coverage rows and no error. The runner finds files by a folder scan. The server bundle carries only `run-slices.mjs`. Cursor's 16:07 ship has 0 of 33 slice files and 0 of 37 gap files. So Cursor's line "tomorrow's heartbeat reports those reads" was not true.
+2. **If they did load, the 6 a.m. text would die.** Netlify cuts each Inngest step at 26 s. Measured read-only on live data: pulse without coverage ≈ 6 s; slices + gaps ≈ 55 s; all in one step ≈ 61 s.
+3. **15 checks are false alarms on the server only.** They read repo files at run time (route source, `netlify.toml`) or load a handler by a joined path. Laptop: PASS. Built bundle: FAIL (ENOENT / cannot find module). Lanes: finance-os (7), closer, csm, marketing-queue, training (2), payments (commas route), sales-manager.
+
+## Fix (Claude, Opus) — owns these files
+
+- `src/pulse/coverage/modules.mjs` — every slice and gap file by a literal import. `modules.test.mjs` fails when disk and list differ.
+- `src/pulse/coverage/run-slices.mjs` — loaders use the list; `runGapLane` runs one lane.
+- `src/pulse/daily-pulse.mjs` — takes `coverageRows` already run.
+- `src/workflows/daily-pulse.mjs` — `coverage-org`, `coverage-slices`, then one `coverage-gap-<lane>` step per lane, then `run-pulse`. A dead step is one skip row.
+- Proof: Netlify's own bundler (zip-it-and-ship-it) now packs 72 coverage files (was 1). Tests: runner + list 16/16, pulse + job 15/15.
+
 ## Results
 
 (filled in when the review ends)

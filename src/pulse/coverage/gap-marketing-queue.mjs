@@ -1,30 +1,39 @@
 // Marketing machine job queue for the morning pulse. Read only. Report only.
 //
-// Lane: ad scripts, research, and write jobs on marketing_jobs.
-// Slice 3 already watches the marketing clock, worker, page_seen, and outbox drain.
-// Slice 4 already watches Meta spend sync. This file does not repeat either.
+// Lane: every marketing_jobs row except meta_load (script writing, research, the
+// weekly batch chores, funnel pushes). Slice 3 already watches the marketing
+// clock, worker, page_seen, and outbox drain. Slice 4 and the ads lane already
+// watch Meta spend sync and the meta_load rows. This file does not repeat any.
+//
+// A kind list is not used on purpose. A new job kind is watched the day it lands,
+// and a renamed kind cannot make the query match nothing.
 //
 // Tripwire is existing Recon (AG-07). The marketing clock (every 15 minutes,
 // red after 3 times that) is the existing wait. Do not add another watcher.
 // Do not start a paid model run. Do not claim a job. Do not wake the worker.
+//
+// The read-API check runs the same SELECT readers GET /api/marketing/health runs,
+// in this process, and one GET of the live route to see that it is routed. It
+// never calls the handler: the handler writes a settings row and a page_seen beat.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AI_JOB_KINDS } from "../../marketing/ai-runner.mjs";
-import { OFFER_KIND } from "../../marketing/jobs.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
-/** Script, research, and write kinds. Meta load is left out on purpose. */
-export const QUEUE_KINDS = Object.freeze([...AI_JOB_KINDS, OFFER_KIND]);
+/** Left to the ads lane. */
+export const SKIPPED_KINDS = Object.freeze(["meta_load"]);
 
 /** Same red line as the marketing clock: 15 minutes, then 3 times that. Not a new schedule. */
 export const CLOCK_EVERY_MS = 15 * 60 * 1000;
 export const RED_MULTIPLIER = 3;
 export const QUEUE_WAIT_MS = CLOCK_EVERY_MS * RED_MULTIPLIER;
 
-/** A failed row whose saved note is blank or only the placeholder. */
+/** A failed row older than this is history, not this morning's news. */
+export const FAILED_LOOKBACK_DAYS = 7;
+
+/** A saved note that says nothing. jobs.mjs reasonOf() writes the first one. Matched anywhere in the note. */
 export const EMPTY_FAIL_NOTES = Object.freeze([
   "failed, no reason recorded",
   "no reason recorded",
@@ -32,6 +41,7 @@ export const EMPTY_FAIL_NOTES = Object.freeze([
 ]);
 
 export const JOB_READ_PATH = "/api/marketing/health";
+const FETCH_TIMEOUT_MS = 10000;
 
 export const CHECK_IDS = Object.freeze([
   "marketing-queue:stuck-queued",
@@ -43,7 +53,7 @@ const TRIP =
   "Recon (AG-07) is the one tripwire. Do not start a paid model run. Do not auto-fix.";
 
 const FIX_STUCK =
-  `Read marketing_jobs for script, research, and write rows still queued past the clock wait. ` +
+  `Read marketing_jobs for rows still queued past the clock wait. ` +
   `Use the existing marketing clock or the existing Mac queue runner. ${TRIP}`;
 
 const FIX_NOTE =
@@ -54,39 +64,39 @@ const FIX_READ =
 
 const STUCK_SQL = `
   /* gap:stuck-queued */
-  SELECT count(*)::int AS n
+  SELECT count(*)::int AS n,
+         string_agg(DISTINCT kind, ', ' ORDER BY kind) AS kinds
     FROM marketing_jobs
    WHERE org_id = $1::uuid
      AND status = 'queued'
-     AND kind = ANY($2::text[])
-     AND kind <> 'meta_load'
+     AND kind <> ALL($2::text[])
      AND run_after < $3::timestamptz
 `;
 
 const FAILED_SQL = `
   /* gap:failed-no-note */
-  SELECT count(*)::int AS n
+  SELECT count(*)::int AS n,
+         string_agg(DISTINCT kind, ', ' ORDER BY kind) AS kinds
     FROM marketing_jobs
    WHERE org_id = $1::uuid
      AND status = 'failed'
-     AND kind = ANY($2::text[])
-     AND kind <> 'meta_load'
+     AND kind <> ALL($2::text[])
+     AND COALESCE(finished_at, updated_at) > $4::timestamptz
      AND (
        error IS NULL
        OR btrim(COALESCE(error, '')) = ''
-       OR btrim(error) = ANY($3::text[])
+       OR error ILIKE ANY($3::text[])
      )
 `;
 
-const READ_SQL = `
-  /* gap:job-read */
-  SELECT count(*) FILTER (WHERE status = 'queued')::int AS queued,
-         count(*) FILTER (WHERE status = 'running')::int AS running
-    FROM marketing_jobs
+const SETTINGS_SQL = `
+  /* gap:job-read-settings */
+  SELECT enabled, max_batch_cost_usd, max_month_cost_usd
+    FROM marketing_settings
    WHERE org_id = $1::uuid
-     AND kind = ANY($2::text[])
-     AND kind <> 'meta_load'
 `;
+
+const DEFAULT_ORG_SQL = `SELECT id FROM orgs WHERE is_default LIMIT 1`;
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -101,8 +111,9 @@ function countOf(result) {
   return Number.isFinite(n) ? n : null;
 }
 
-function kinds() {
-  return [...QUEUE_KINDS];
+function kindsOf(result) {
+  const k = String(result?.rows?.[0]?.kinds || "").trim();
+  return k ? ` (${k.slice(0, 80)})` : "";
 }
 
 function waitMinutes() {
@@ -139,7 +150,11 @@ function apiAlive(status) {
   );
 }
 
-/** True when GET marketing/health is still the job-count door and does not start a model. */
+/**
+ * Repo-level proof that GET marketing/health is still wired and is still the
+ * job-count door that starts no model. It reads source files, which a deployed
+ * function does not carry, so the morning pulse does not call it. The test does.
+ */
 export function jobReadRouteAlive(readText = defaultReadText) {
   const api = readText("netlify/functions/api.mjs");
   const health = readText("api/marketing/health.mjs");
@@ -152,26 +167,44 @@ export function jobReadRouteAlive(readText = defaultReadText) {
   return imported && routed && door && !startsModel;
 }
 
-async function checkStuck({ db, orgId, now }) {
-  const id = "marketing-queue:stuck-queued";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — queued jobs not read");
+/** Staff scope when the pulse has one (marketing tables are row-secured), else the db. */
+function runnerOf(ctx) {
+  if (typeof ctx.scope === "function") return (fn) => ctx.scope(fn);
+  if (ctx.db && typeof ctx.db.query === "function") return (fn) => fn(ctx.db);
+  return null;
+}
+
+async function companyOf(ctx, run) {
+  if (ctx.orgId) return String(ctx.orgId);
+  if (!run) return null;
+  try {
+    const out = await run((tx) => tx.query(DEFAULT_ORG_SQL));
+    return out?.rows?.[0]?.id ? String(out.rows[0].id) : null;
+  } catch {
+    return null;
   }
+}
+
+async function checkStuck({ run, orgId, now }) {
+  const id = "marketing-queue:stuck-queued";
+  if (!run) return row(id, "skip", "no database in this run — queued jobs not read");
+  if (!orgId) return row(id, "skip", "no company in this run — queued jobs not read");
   const cutoff = new Date(now.getTime() - QUEUE_WAIT_MS).toISOString();
   try {
     assertSelect(STUCK_SQL);
-    const n = countOf(await db.query(STUCK_SQL, [orgId, kinds(), cutoff]));
+    const out = await run((tx) => tx.query(STUCK_SQL, [orgId, [...SKIPPED_KINDS], cutoff]));
+    const n = countOf(out);
     if (n == null) {
       return row(id, "FAIL", "queued job count was not a number", FIX_STUCK);
     }
     if (n === 0) {
-      return row(id, "PASS", `no script, research, or write job is queued past the ${waitMinutes()} minute wait`);
+      return row(id, "PASS", `no marketing job is queued past the ${waitMinutes()} minute wait`);
     }
     const noun = n === 1 ? "job is" : "jobs are";
     return row(
       id,
       "FAIL",
-      `${n} ${noun} still queued past the ${waitMinutes()} minute wait`,
+      `${n} ${noun} still queued past the ${waitMinutes()} minute wait${kindsOf(out)}`,
       FIX_STUCK
     );
   } catch (err) {
@@ -182,22 +215,24 @@ async function checkStuck({ db, orgId, now }) {
   }
 }
 
-async function checkFailedNote({ db, orgId }) {
+async function checkFailedNote({ run, orgId, now }) {
   const id = "marketing-queue:failed-no-note";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — failed jobs not read");
-  }
+  if (!run) return row(id, "skip", "no database in this run — failed jobs not read");
+  if (!orgId) return row(id, "skip", "no company in this run — failed jobs not read");
+  const since = new Date(now.getTime() - FAILED_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
   try {
     assertSelect(FAILED_SQL);
-    const n = countOf(await db.query(FAILED_SQL, [orgId, kinds(), [...EMPTY_FAIL_NOTES]]));
+    const notes = EMPTY_FAIL_NOTES.map((n) => `%${n}%`);
+    const out = await run((tx) => tx.query(FAILED_SQL, [orgId, [...SKIPPED_KINDS], notes, since]));
+    const n = countOf(out);
     if (n == null) {
       return row(id, "FAIL", "failed-job count was not a number", FIX_NOTE);
     }
     if (n === 0) {
-      return row(id, "PASS", "every failed script, research, and write job has a note");
+      return row(id, "PASS", `every marketing job that failed in the last ${FAILED_LOOKBACK_DAYS} days has a note`);
     }
     const noun = n === 1 ? "failed job has" : "failed jobs have";
-    return row(id, "FAIL", `${n} ${noun} no note`, FIX_NOTE);
+    return row(id, "FAIL", `${n} ${noun} no note${kindsOf(out)}`, FIX_NOTE);
   } catch (err) {
     if (tableNotLive(err)) {
       return row(id, "skip", "marketing_jobs is not live yet — failed notes not read");
@@ -206,48 +241,80 @@ async function checkFailedNote({ db, orgId }) {
   }
 }
 
+/**
+ * The reads GET /api/marketing/health makes, in the order it makes them, minus its
+ * two writes (the settings row it creates and the page_seen beat). If any of them
+ * throws, the owner's health card answers 500. Throws what the reader threw.
+ */
+export async function readHealthParts(tx, { orgId, now }) {
+  const [health, clock, today, usage] = await Promise.all([
+    import("../../../api/marketing/health.mjs"),
+    import("../../marketing/clock.mjs"),
+    import("../../../api/marketing/today.mjs"),
+    import("../../marketing/model-usage.mjs")
+  ]);
+  assertSelect(SETTINGS_SQL);
+  const s = (await tx.query(SETTINGS_SQL, [orgId])).rows[0] || {};
+  const settings = {
+    enabled: s.enabled === true,
+    max_batch_cost_usd: s.max_batch_cost_usd ?? null,
+    max_month_cost_usd: s.max_month_cost_usd ?? null
+  };
+  const beats = await clock.readHeartbeats(tx, orgId);
+  const jobs = await health.readJobCounts(tx, { orgId });
+  const outbox = await health.readOutbox(tx, { orgId });
+  const sync = await today.readLastSync(tx, { orgId });
+  const lastBatchId = await health.readLastBatchId(tx, { orgId });
+  const cost = await usage.costStatus(tx, {
+    orgId,
+    batchId: lastBatchId,
+    maxBatchUsd: settings.max_batch_cost_usd,
+    maxMonthUsd: settings.max_month_cost_usd,
+    now
+  });
+  return health.healthView({
+    settings, beats, jobs, outbox, sync, cost, lastBatchId, tokenPresent: false, now
+  });
+}
+
 async function readGet(fetchImpl, url) {
-  const res = await fetchImpl(url, { method: "GET", headers: { accept: "application/json" } });
+  const init = { method: "GET", headers: { accept: "application/json" } };
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    init.signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+  }
+  const res = await fetchImpl(url, init);
   return Number(res && res.status);
 }
 
-async function checkReadApi({ db, orgId, readText, fetchImpl, baseUrl }) {
+async function checkReadApi({ run, orgId, now, fetchImpl, baseUrl }) {
   const id = "marketing-queue:read-api";
-  let alive = false;
-  try {
-    alive = jobReadRouteAlive(readText);
-  } catch (err) {
-    return row(id, "FAIL", `marketing job read route is dead: ${clip(err)}`, FIX_READ);
-  }
-  if (!alive) {
-    return row(
-      id,
-      "FAIL",
-      "marketing job read route is dead (GET /api/marketing/health is not wired).",
-      FIX_READ
-    );
-  }
+  const bits = [];
+  // 1. Is the route there? A signed-out GET answers 401 before it reads or writes anything.
   if (fetchImpl) {
+    const url = `${originOf(baseUrl)}${JOB_READ_PATH}`;
+    let status;
     try {
-      const status = await readGet(fetchImpl, `${originOf(baseUrl)}${JOB_READ_PATH}`);
-      if (status === 503) {
-        return row(id, "skip", "marketing job read answered not ready (503), not a 500");
-      }
-      if (status >= 500) {
-        const label = status === 500 ? "marketing job read API 500" : `marketing job read API ${status}`;
-        return row(id, "FAIL", `${label}: GET ${JOB_READ_PATH}`, FIX_READ);
-      }
-      if (!apiAlive(status)) {
-        return row(id, "FAIL", `marketing job read API down: GET ${JOB_READ_PATH} ${status}`, FIX_READ);
-      }
+      status = await readGet(fetchImpl, url);
     } catch (err) {
-      return row(id, "FAIL", `marketing job read API 500: ${clip(err)}`, FIX_READ);
+      return row(id, "FAIL", `marketing job read API unreachable: GET ${JOB_READ_PATH} ${clip(err)}`, FIX_READ);
     }
+    if (status === 503) {
+      return row(id, "skip", "marketing job read answered not ready (503), not a 500");
+    }
+    if (status >= 500) {
+      const label = status === 500 ? "marketing job read API 500" : `marketing job read API ${status}`;
+      return row(id, "FAIL", `${label}: GET ${JOB_READ_PATH}`, FIX_READ);
+    }
+    if (!apiAlive(status)) {
+      return row(id, "FAIL", `marketing job read API down: GET ${JOB_READ_PATH} ${status}`, FIX_READ);
+    }
+    bits.push(`GET ${JOB_READ_PATH} answered ${status}`);
   }
-  if (db && orgId) {
+  // 2. Does what it reads still read? The same SELECTs, as the staff the route runs as.
+  if (run && orgId) {
     try {
-      assertSelect(READ_SQL);
-      await db.query(READ_SQL, [orgId, kinds()]);
+      await run((tx) => readHealthParts(tx, { orgId, now }));
+      bits.push("the health card's reads ran");
     } catch (err) {
       if (tableNotLive(err)) {
         return row(id, "skip", "marketing_jobs is not live yet — the job read answers not ready, not a 500");
@@ -255,32 +322,25 @@ async function checkReadApi({ db, orgId, readText, fetchImpl, baseUrl }) {
       return row(id, "FAIL", `marketing job read API 500: ${clip(err)}`, FIX_READ);
     }
   }
-  if (!db || !orgId) {
-    return row(
-      id,
-      "PASS",
-      fetchImpl
-        ? "GET /api/marketing/health answered and it was not a 500"
-        : "marketing job read route is wired (GET /api/marketing/health)"
-    );
+  if (!bits.length) {
+    return row(id, "skip", "no fetch and no database in this run — the job read was not tried");
   }
-  return row(id, "PASS", "marketing job read query ran and the door is wired");
+  return row(id, "PASS", `marketing job read is up: ${bits.join("; ")}`);
 }
 
 /**
- * Three read-only checks. ctx: { db, orgId, now, readText, fetchImpl, baseUrl }.
+ * Three read-only checks. ctx: { db, scope, orgId, now, fetchImpl | fetch, baseUrl }.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
-  const db = ctx.db || null;
-  const orgId = ctx.orgId || null;
+  const run = runnerOf(ctx);
   const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const readText = typeof ctx.readText === "function" ? ctx.readText : defaultReadText;
-  const fetchImpl = ctx.fetchImpl || null;
+  const orgId = await companyOf(ctx, run);
+  const fetchImpl = ctx.fetchImpl || ctx.fetch || null;
   const baseUrl = ctx.baseUrl;
   return [
-    await checkStuck({ db, orgId, now }),
-    await checkFailedNote({ db, orgId }),
-    await checkReadApi({ db, orgId, readText, fetchImpl, baseUrl })
+    await checkStuck({ run, orgId, now }),
+    await checkFailedNote({ run, orgId, now }),
+    await checkReadApi({ run, orgId, now, fetchImpl, baseUrl })
   ];
 }

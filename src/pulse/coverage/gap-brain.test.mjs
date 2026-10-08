@@ -4,59 +4,74 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { EMBEDDING_DIMS } from "../../company-brain/embed.mjs";
 import {
   CHECK_IDS,
-  DRIVE_SYNC_CRON,
-  DRIVE_SYNC_STALE_MS,
-  SEARCH_READ_PATHS,
-  gapChecks,
-  searchReadStatusUp
+  ID_AFFILIATE,
+  ID_STAFF,
+  PROBE_QUESTION,
+  gapChecks
 } from "./gap-brain.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, "../../..");
 const SRC = fs.readFileSync(path.join(HERE, "gap-brain.mjs"), "utf8");
 const ORG = "11111111-1111-4111-8111-111111111111";
-const NOW = new Date("2026-10-08T15:00:00.000Z");
 
-function isoMinutesAgo(min) {
-  return new Date(NOW.getTime() - min * 60 * 1000).toISOString();
+function chunkRow(tier) {
+  return {
+    chunk_id: "c1",
+    content: "x",
+    access_tier: tier,
+    chunk_index: 0,
+    file_id: "f1",
+    drive_file_id: "d1",
+    file_name: "n",
+    web_view_link: null,
+    client_id: null,
+    mime_type: "text/plain",
+    distance: 0.5
+  };
 }
 
-function fakeDb({ errors = 0, errorText = "token rejected", syncRows = 1, lastSyncAt = isoMinutesAgo(5) } = {}) {
+/** Records every query. The search SQL is the only thing it answers. */
+function fakeDb({ staffRows = [], affiliateRows = [], fail = null } = {}) {
+  const seen = [];
+  const writes = [];
   return {
-    async query(sql) {
-      if (/gap:drive-last-error/.test(sql)) {
-        return { rows: [{ n: errors, errors: errors ? errorText : null }] };
+    seen,
+    writes,
+    async query(sql, params) {
+      const text = String(sql);
+      seen.push({ sql: text, params });
+      if (!/^\s*select\b/i.test(text)) {
+        writes.push(text.slice(0, 60));          // a door that swallows the error still shows up here
+        throw new Error(`not a read: ${text.slice(0, 40)}`);
       }
-      if (/gap:drive-sync-stale/.test(sql)) {
-        return { rows: [{ n: syncRows, last_sync_at: syncRows ? lastSyncAt : null }] };
+      if (/brain_affiliate_allowlist/.test(text)) {
+        if (fail) throw new Error(fail);
+        return { rows: affiliateRows };
       }
-      throw new Error(`unexpected sql: ${sql}`);
+      if (/FROM brain_chunks/.test(text)) {
+        if (fail) throw new Error(fail);
+        return { rows: staffRows };
+      }
+      throw new Error(`unexpected sql: ${text.slice(0, 80)}`);
     }
   };
 }
 
-function fakeFetch(statusFor) {
-  const calls = [];
-  const fetchImpl = async (url, opts) => {
-    calls.push({ url, opts });
-    const pathName = String(url).replace(/^https?:\/\/[^/]+/, "");
-    const status = typeof statusFor === "function" ? statusFor(pathName) : statusFor;
-    return { status };
-  };
-  return { fetchImpl, calls };
+function byId(rows, id) {
+  const row = rows.find((r) => r.id === id);
+  assert.ok(row, `missing ${id}`);
+  return row;
 }
 
 function shape(row) {
-  assert.equal(typeof row.id, "string");
+  assert.deepEqual(Object.keys(row), ["id", "status", "detail", "suggestedFix"]);
   assert.ok(CHECK_IDS.includes(row.id));
   assert.ok(["PASS", "FAIL", "skip"].includes(row.status));
-  assert.equal(typeof row.detail, "string");
   assert.ok(row.detail.length > 0);
-  assert.ok("suggestedFix" in row);
   if (row.status === "FAIL") {
-    assert.equal(typeof row.suggestedFix, "string");
     assert.match(row.suggestedFix, /Recon \(AG-07\) is the one tripwire/);
     assert.match(row.suggestedFix, /Do not run a new Drive sync/);
     assert.match(row.suggestedFix, /Do not upload/);
@@ -66,150 +81,142 @@ function shape(row) {
   }
 }
 
-test("gap brain: source stays read-only", () => {
+/** No test may reach the network. Any fetch while a check runs is a failure. */
+async function withNoNetwork(fn) {
+  const real = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    throw new Error("network is off in this test");
+  };
+  try {
+    const out = await fn();
+    assert.equal(calls, 0, "the check reached the network");
+    return out;
+  } finally {
+    globalThis.fetch = real;
+  }
+}
+
+test("gap brain: does not repeat the Drive sync read or the door ping, and never writes", () => {
   assert.doesNotMatch(SRC, /\b(INSERT|UPDATE|DELETE|DROP)\b/);
+  // The Drive reads belong to machine.mjs (meet-transcript-sweeper). Not copied here.
+  assert.doesNotMatch(SRC, /FROM\s+brain_drive_sync/i);
+  assert.doesNotMatch(SRC, /\blast_sync_at\b[^\n]*\bSELECT\b|SELECT[^\n]*\blast_sync_at\b/i);
+  assert.doesNotMatch(SRC, /FROM agents/);
   assert.doesNotMatch(SRC, /syncDriveIncremental/);
-  assert.doesNotMatch(SRC, /company-brain\/upload/);
-  assert.doesNotMatch(SRC, /company-brain\/sync/);
+  assert.doesNotMatch(SRC, /company-brain\/(upload|sync)/);
   assert.doesNotMatch(SRC, /\bfetch\s*\(/);
-  assert.doesNotMatch(SRC, /method:\s*["']POST["']/);
+  assert.doesNotMatch(SRC, /method:\s*["']POST["']\s*,\s*headers[^}]*accept/);
   assert.doesNotMatch(SRC, /second watchdog|new watchdog|second tripwire/i);
-  assert.equal(DRIVE_SYNC_CRON, "*/10 * * * *");
-  assert.equal(DRIVE_SYNC_STALE_MS, 30 * 60 * 1000);
-  assert.deepEqual([...SEARCH_READ_PATHS], [
-    "/api/read/company-brain",
-    "/api/read/company-brain-affiliate"
-  ]);
-  assert.deepEqual([...CHECK_IDS], [
-    "brain:drive-last-error",
-    "brain:drive-sync-stale",
-    "brain:search-read-route"
-  ]);
-  assert.equal(searchReadStatusUp(500), false);
-  assert.equal(searchReadStatusUp(401), true);
-  assert.equal(searchReadStatusUp(405), true);
+  assert.deepEqual([...CHECK_IDS], ["brain:search-staff", "brain:search-affiliate"]);
 });
 
-test("gap brain: no database and no fetch skips all three", async () => {
-  const rows = await gapChecks({});
-  assert.equal(rows.length, 3);
+test("gap brain: no database skips both rows and calls nothing", async () => {
+  const rows = await withNoNetwork(() => gapChecks({}));
+  assert.equal(rows.length, 2);
   rows.forEach(shape);
-  assert.deepEqual(rows.map((r) => r.status), ["skip", "skip", "skip"]);
+  assert.deepEqual(rows.map((r) => r.status), ["skip", "skip"]);
+  const noOrg = await gapChecks({ db: fakeDb() });
+  assert.deepEqual(noOrg.map((r) => r.status), ["skip", "skip"]);
 });
 
-test("gap brain: a fresh scan with an empty error and a live door is three PASS rows", async () => {
-  const seen = [];
-  const db = {
-    async query(sql, params) {
-      seen.push({ sql, params });
-      if (/gap:drive-last-error/.test(sql)) return { rows: [{ n: 0, errors: null }] };
-      if (/gap:drive-sync-stale/.test(sql)) {
-        return { rows: [{ n: 1, last_sync_at: isoMinutesAgo(5) }] };
-      }
-      throw new Error(`unexpected sql: ${sql}`);
-    }
-  };
-  const { fetchImpl, calls } = fakeFetch(401);
-  const rows = await gapChecks({
-    db,
+test("gap brain: the real doors run on the database, with no AI call and no write", async () => {
+  const db = fakeDb({ staffRows: [chunkRow("staff")], affiliateRows: [chunkRow("affiliate")] });
+  const rows = await withNoNetwork(() => gapChecks({ db, orgId: ORG }));
+  assert.equal(rows.length, 2);
+  rows.forEach(shape);
+  assert.equal(byId(rows, ID_STAFF).status, "PASS");
+  assert.equal(byId(rows, ID_AFFILIATE).status, "PASS");
+  assert.match(byId(rows, ID_STAFF).detail, /no AI call, nothing saved/);
+
+  // Exactly the two search reads ran, both plain SELECTs. Not one write was even tried.
+  assert.deepEqual(db.writes, []);
+  assert.equal(db.seen.length, 2);
+  const staff = db.seen.find((q) => !/brain_affiliate_allowlist/.test(q.sql));
+  const affiliate = db.seen.find((q) => /brain_affiliate_allowlist/.test(q.sql));
+  assert.equal(staff.params[0], ORG);
+  assert.ok(staff.params[1].includes("owner"));          // the owner role reads every internal tier
+  assert.equal(staff.params[1].includes("affiliate"), false);
+  assert.equal(staff.params[3], 1);                       // limit 1
+  assert.match(staff.params[2], new RegExp(`^\\[1(,0){${EMBEDDING_DIMS - 1}}\\]$`)); // the fixed stub vector
+  assert.equal(affiliate.params[0], ORG);
+  assert.deepEqual(affiliate.params[1], ["affiliate"]);
+  assert.equal(PROBE_QUESTION.length > 0, true);
+});
+
+test("gap brain: a crashed search read is a FAIL for each door and names the cause", async () => {
+  const db = fakeDb({ fail: 'relation "brain_chunks" does not exist' });
+  const rows = await gapChecks({ db, orgId: ORG });
+  rows.forEach(shape);
+  for (const id of [ID_STAFF, ID_AFFILIATE]) {
+    const row = byId(rows, id);
+    assert.equal(row.status, "FAIL");
+    assert.match(row.detail, /crashed/);
+    assert.match(row.detail, /brain_chunks/);
+  }
+});
+
+test("gap brain: a 500 or an error body from a door is a FAIL, a 200 is not", async () => {
+  const ok = { staff: async (req, res) => res.status(200).json({ ok: true }), affiliate: async (req, res) => res.status(200).json({ ok: true }) };
+  const clear = await gapChecks({ db: fakeDb(), orgId: ORG, brainDoors: ok });
+  assert.deepEqual(clear.map((r) => r.status), ["PASS", "PASS"]);
+
+  const five = await gapChecks({
+    db: fakeDb(),
     orgId: ORG,
-    now: NOW,
-    fetchImpl,
-    baseUrl: "https://fundhub.ai/"
-  });
-  assert.equal(rows.length, 3);
-  rows.forEach(shape);
-  assert.ok(rows.every((r) => r.status === "PASS"));
-  assert.equal(seen.length, 2);
-  for (const call of seen) {
-    assert.match(call.sql, /^\s*\/\* gap:/);
-    assert.doesNotMatch(call.sql, /\b(INSERT|UPDATE|DELETE)\b/i);
-    assert.equal(call.params[0], ORG);
-  }
-  assert.equal(calls.length, 2);
-  for (const call of calls) {
-    assert.equal(call.opts.method, "GET");
-    assert.match(call.url, /^https:\/\/fundhub\.ai\/api\/read\/company-brain/);
-    assert.doesNotMatch(call.url, /company-brain\/sync|company-brain\/upload/);
-  }
-});
-
-test("gap brain: each named break is a FAIL and the others stay PASS", async () => {
-  const cases = [
-    {
-      db: fakeDb({ errors: 1, errorText: "token rejected" }),
-      id: "brain:drive-last-error",
-      detail: /1 Drive sync row has last_error set: token rejected/
-    },
-    {
-      db: fakeDb({ lastSyncAt: isoMinutesAgo(31) }),
-      id: "brain:drive-sync-stale",
-      detail: /31 min ago, red after 30 min/
-    },
-    {
-      db: fakeDb({}),
-      fetchStatus: (pathName) => (pathName === "/api/read/company-brain" ? 500 : 401),
-      id: "brain:search-read-route",
-      detail: /\/api\/read\/company-brain answered 500/
+    brainDoors: {
+      staff: async (req, res) => res.status(500).json({ ok: false, error: "boom" }),
+      affiliate: ok.affiliate
     }
-  ];
-  for (const c of cases) {
-    const { fetchImpl, calls } = fakeFetch(c.fetchStatus || 405);
-    const rows = await gapChecks({
-      db: c.db,
-      orgId: ORG,
-      now: NOW,
-      fetchImpl,
-      baseUrl: "https://fundhub.ai"
-    });
-    rows.forEach(shape);
-    const hit = rows.find((r) => r.id === c.id);
-    assert.equal(hit.status, "FAIL");
-    assert.match(hit.detail, c.detail);
-    const rest = rows.filter((r) => r.id !== c.id);
-    assert.ok(rest.every((r) => r.status === "PASS"));
-    assert.ok(calls.every((call) => call.opts.method === "GET"));
-  }
-});
+  });
+  five.forEach(shape);
+  assert.equal(byId(five, ID_STAFF).status, "FAIL");
+  assert.match(byId(five, ID_STAFF).detail, /answered 500/);
+  assert.match(byId(five, ID_STAFF).detail, /boom/);
+  assert.equal(byId(five, ID_AFFILIATE).status, "PASS");
 
-test("gap brain: a Drive sync that never ran is FAIL and does not scan Drive", async () => {
-  const { fetchImpl, calls } = fakeFetch(403);
-  const rows = await gapChecks({
-    db: fakeDb({ syncRows: 0, errors: 0 }),
+  const gate = await gapChecks({
+    db: fakeDb(),
     orgId: ORG,
-    now: NOW,
-    fetchImpl
-  });
-  rows.forEach(shape);
-  const stale = rows.find((r) => r.id === "brain:drive-sync-stale");
-  assert.equal(stale.status, "FAIL");
-  assert.match(stale.detail, /never been scanned/);
-  assert.equal(rows.find((r) => r.id === "brain:drive-last-error").status, "PASS");
-  assert.equal(rows.find((r) => r.id === "brain:search-read-route").status, "PASS");
-  assert.ok(calls.every((call) => call.opts.method === "GET"));
-  assert.ok(calls.every((call) => !/sync|upload/.test(call.url)));
-});
-
-test("gap brain: a read error is FAIL, not a throw", async () => {
-  const db = {
-    async query() {
-      throw new Error("relation brain_drive_sync does not exist");
+    brainDoors: {
+      staff: ok.staff,
+      affiliate: async (req, res) => res.status(200).json({ ok: false, error: "weird" })
     }
-  };
-  const { fetchImpl } = fakeFetch(401);
-  const rows = await gapChecks({ db, orgId: ORG, now: NOW, fetchImpl });
-  rows.forEach(shape);
-  assert.equal(rows[0].status, "FAIL");
-  assert.match(rows[0].detail, /brain_drive_sync/);
-  assert.equal(rows[1].status, "FAIL");
-  assert.match(rows[1].detail, /brain_drive_sync/);
-  assert.equal(rows[2].status, "PASS");
+  });
+  assert.equal(byId(gate, ID_AFFILIATE).status, "FAIL");
+
+  const thrown = await gapChecks({
+    db: fakeDb(),
+    orgId: ORG,
+    brainDoors: {
+      staff: async () => { throw new Error("handler blew up"); },
+      affiliate: ok.affiliate
+    }
+  });
+  assert.equal(byId(thrown, ID_STAFF).status, "FAIL");
+  assert.match(byId(thrown, ID_STAFF).detail, /handler blew up/);
 });
 
-test("gap brain: the live search and read routes are wired to the 10 minute sweeper", () => {
-  const api = fs.readFileSync(path.join(ROOT, "netlify/functions/api.mjs"), "utf8");
-  const sweeper = fs.readFileSync(path.join(ROOT, "src/workflows/meet-transcript-sweeper.mjs"), "utf8");
-  assert.match(api, /"read\/company-brain":\s*readCompanyBrain/);
-  assert.match(api, /"read\/company-brain-affiliate":\s*readCompanyBrainAffiliate/);
-  assert.match(sweeper, /export const SWEEP_CRON = "\*\/10 \* \* \* \*"/);
+test("gap brain: the real affiliate door fails when a non-affiliate chunk comes back", async () => {
+  const db = fakeDb({ affiliateRows: [chunkRow("staff")] });
+  const rows = await gapChecks({ db, orgId: ORG });
+  const row = byId(rows, ID_AFFILIATE);
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /answered 500/);
+  assert.match(row.detail, /affiliate_tier_violation/);
+  assert.equal(byId(rows, ID_STAFF).status, "PASS");
+});
+
+test("gap brain: the search doors still take the injected parts this check swaps out", () => {
+  // If a door stops taking one of these, the real-door test above fails first.
+  // This pins the names so the reason is obvious.
+  const staffDoor = fs.readFileSync(path.join(HERE, "../../../api/read/company-brain.mjs"), "utf8");
+  const affiliateDoor = fs.readFileSync(path.join(HERE, "../../../api/read/company-brain-affiliate.mjs"), "utf8");
+  for (const name of ["deps.requireAuth", "deps.retrieveChunks", "deps.synthesizeAnswer", "deps.createThread", "deps.appendMessage", "deps.getThread"]) {
+    assert.ok(staffDoor.includes(name), name);
+  }
+  for (const name of ["deps.requirePrincipal", "deps.retrieveAffiliateChunks", "deps.synthesizeAnswer"]) {
+    assert.ok(affiliateDoor.includes(name), name);
+  }
 });

@@ -100,10 +100,12 @@ function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
 
+/** A count the database did not hand back is not zero. Zero must be read, never assumed. */
 function countOf(value) {
+  if (value == null || value === "") return null;
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return 0;
-  return Math.floor(n);
+  if (!Number.isFinite(n)) return null;
+  return n <= 0 ? 0 : Math.floor(n);
 }
 
 function textWord(n) {
@@ -126,7 +128,13 @@ function assertStep(s) {
   assertToken(s.refSuffix, /^$|^:[a-z0-9-]+$/, "suffix");
 }
 
-/** SELECT only. Template keys are code constants, checked before they are inlined. */
+/**
+ * SELECT only. Template keys are code constants, checked before they are inlined.
+ * Booking and round events carry only payload.email and a NULL client_id
+ * (measured 2026-10-08: every booking.created, deposit.paid and round.* row).
+ * The workflow finds the person by that email (resolveClient), so this does
+ * too. Without the email lookup five of the six steps were never looked at.
+ */
 export function buildJourneyZeroSql(steps = SMS_JOURNEY_STEPS) {
   const values = steps.map((s) => {
     assertStep(s);
@@ -152,13 +160,22 @@ SELECT count(*)::int AS n,
    AND t.compliance_passed = true
    AND COALESCE(t.body, '') NOT ILIKE '%[DRAFT%'
    AND COALESCE(t.subject, '') NOT ILIKE '%[DRAFT%'
+  CROSS JOIN LATERAL (
+    SELECT COALESCE(
+      e.client_id,
+      (SELECT c.id FROM clients c
+        WHERE c.org_id = e.org_id
+          AND lower(c.email) = lower(btrim(COALESCE(e.payload->>'email', '')))
+        LIMIT 1)
+    ) AS id
+  ) rc
  WHERE e.org_id = $1::uuid
-   AND e.client_id IS NOT NULL
+   AND (rc.id IS NOT NULL OR btrim(COALESCE(e.payload->>'email', '')) <> '')
    AND e.created_at < $2::timestamptz
    AND e.created_at >= $3::timestamptz
    AND NOT EXISTS (
      SELECT 1 FROM opt_outs o
-      WHERE o.client_id = e.client_id
+      WHERE o.client_id = rc.id
         AND o.channel = 'sms'
         AND o.opted_in_at IS NULL
    )
@@ -174,7 +191,7 @@ SELECT count(*)::int AS n,
      OR NOT EXISTS (
        SELECT 1 FROM messages p
         WHERE p.org_id = e.org_id
-          AND p.client_id = e.client_id
+          AND p.client_id = rc.id
           AND p.channel = 'sms'
           AND p.direction = 'outbound'
           AND p.template_key = s.template_key
@@ -250,16 +267,26 @@ export async function gapChecks(ctx = {}) {
   const journeyBefore = new Date(now.getTime() - JOURNEY_GRACE_MINUTES * 60 * 1000);
   const journeySince = new Date(now.getTime() - JOURNEY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
+  // One failed read skips that one check, with the reason. It never turns into a PASS,
+  // and it does not take the other two checks down with it.
+  const read = async (id, sql, params) => {
+    try {
+      const got = await db.query(sql, params);
+      return { row: got && got.rows ? got.rows[0] : undefined };
+    } catch (err) {
+      return { error: row(id, "skip", `SMS read failed: ${String((err && err.message) || err).slice(0, 160)}`) };
+    }
+  };
   const [sending, failed, journey] = await Promise.all([
-    db.query(SENDING_SQL, [orgId, sendingBefore.toISOString()]),
-    db.query(FAILED_SQL, [orgId, failedSince.toISOString()]),
-    db.query(buildJourneyZeroSql(), [orgId, journeyBefore.toISOString(), journeySince.toISOString()])
+    read("gap:sms-sending-stuck", SENDING_SQL, [orgId, sendingBefore.toISOString()]),
+    read("gap:sms-provider-failed", FAILED_SQL, [orgId, failedSince.toISOString()]),
+    read("gap:sms-journey-zero", buildJourneyZeroSql(), [orgId, journeyBefore.toISOString(), journeySince.toISOString()])
   ]);
 
   return [
-    sendingRow(sending.rows && sending.rows[0]),
-    failedRow(failed.rows && failed.rows[0]),
-    journeyRow(journey.rows && journey.rows[0])
+    sending.error || sendingRow(sending.row),
+    failed.error || failedRow(failed.row),
+    journey.error || journeyRow(journey.row)
   ];
 }
 
@@ -267,6 +294,9 @@ function sendingRow(got) {
   if (!got) return row("gap:sms-sending-stuck", "skip", "SMS sending count did not come back.");
   const customer = countOf(got.customer_n);
   const staff = countOf(got.staff_n);
+  if (customer === null || staff === null) {
+    return row("gap:sms-sending-stuck", "skip", "SMS sending count came back unreadable.");
+  }
   if (customer + staff === 0) {
     return row(
       "gap:sms-sending-stuck",
@@ -286,6 +316,9 @@ function failedRow(got) {
   if (!got) return row("gap:sms-provider-failed", "skip", "SMS failure count did not come back.");
   const customer = countOf(got.customer_n);
   const staff = countOf(got.staff_n);
+  if (customer === null || staff === null) {
+    return row("gap:sms-provider-failed", "skip", "SMS failure count came back unreadable.");
+  }
   if (customer + staff === 0) {
     return row(
       "gap:sms-provider-failed",
@@ -304,6 +337,7 @@ function failedRow(got) {
 function journeyRow(got) {
   if (!got) return row("gap:sms-journey-zero", "skip", "SMS journey count did not come back.");
   const n = countOf(got.n);
+  if (n === null) return row("gap:sms-journey-zero", "skip", "SMS journey count came back unreadable.");
   if (n === 0) {
     return row(
       "gap:sms-journey-zero",

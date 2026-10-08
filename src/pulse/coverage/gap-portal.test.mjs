@@ -12,17 +12,26 @@ import {
   gapChecks,
   checklistProductCodes,
   PORTAL_SHELL_PATH,
-  PORTAL_SUMMARY_PATH,
-  RECON_CODE
+  PAID_ENTITLEMENT_SQL,
+  NEXT_STEP_SQL,
+  SUMMARY_CLIENT_SQL,
+  SUMMARY_READS,
+  READ_ONLY_SQL,
+  TEST_CLIENT_EMAIL_RE,
+  GRACE
 } from "./gap-portal.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(HERE, "../../..");
 const ORG = "11111111-1111-4111-8111-111111111111";
+const CLIENT = "22222222-2222-4222-8222-222222222222";
 const SHAPE = ["id", "status", "detail", "suggestedFix"];
 const STATUSES = new Set(["PASS", "FAIL", "skip"]);
+const IDS = ["portal:page", "portal:summary", "portal:paid-entitlement", "portal:next-step"];
 
 function assertShape(rows) {
-  assert.equal(rows.length, 5);
+  assert.equal(rows.length, 4);
+  assert.deepEqual(rows.map((r) => r.id), IDS);
   for (const row of rows) {
     assert.deepEqual(Object.keys(row), SHAPE);
     assert.equal(typeof row.id, "string");
@@ -52,34 +61,40 @@ function fetchImpl(routes, calls) {
   };
 }
 
-function liveRecon() {
-  return {
-    rows: [{ code: "AG-07", status: "live", runtime: "inngest", runtime_ref: "daily-pulse" }]
-  };
-}
+const norm = (s) => String(s).replace(/\s+/g, " ").trim();
 
-function fakeDb({ entitlement = [], steps = [], recon = liveRecon(), fail } = {}) {
+/* The fake answers by the SQL it is given, and it records the params, so a test
+   can see which org, status and email pattern were sent. Anything it does not
+   know throws, which turns a changed query into a FAIL row, not a quiet pass. */
+function fakeDb({ entitlement = [], steps = [], client = CLIENT, failOn = null, failAll = null } = {}) {
   const calls = [];
   return {
     calls,
     async query(sql, params) {
-      calls.push({ sql, params });
-      if (fail) throw new Error(fail);
-      if (/product_entitlements/i.test(sql)) return { rows: entitlement };
-      if (/client_waypoints/i.test(sql)) return { rows: steps };
-      if (/FROM agents/i.test(sql)) return recon;
-      if (/FROM orgs/i.test(sql)) return { rows: [{ id: ORG }] };
-      throw new Error(`unexpected sql: ${sql.slice(0, 80)}`);
+      const text = String(sql);
+      calls.push({ sql: text, params });
+      if (failAll) throw new Error(failAll);
+      if (failOn && failOn.test(text)) throw new Error(`boom ${failOn.source}`);
+      if (/FROM orgs/i.test(text)) return { rows: [{ id: ORG }] };
+      if (/gap:portal-paid-entitlement/.test(text)) return { rows: entitlement };
+      if (/gap:portal-next-step/.test(text)) return { rows: steps };
+      if (/gap:portal-summary-client/.test(text)) return { rows: client ? [{ id: client }] : [] };
+      if (/FROM documents d/i.test(text)) return { rows: [] };
+      for (const read of SUMMARY_READS) {
+        if (norm(text) === norm(read.sql)) return { rows: [] };
+      }
+      throw new Error(`unexpected sql: ${text.slice(0, 80)}`);
     }
   };
 }
 
 function healthyRoutes() {
   return {
-    [PORTAL_SHELL_PATH]: { status: 200, text: portalHtml() },
-    [PORTAL_SUMMARY_PATH]: { status: 401, text: '{"ok":false,"error":"unauthorized"}' }
+    [PORTAL_SHELL_PATH]: { status: 200, text: portalHtml() }
   };
 }
+
+const paidRow = (client, isTest, has) => ({ client_id: client, is_test: isTest, has_entitlement: has });
 
 test("gap checks use the blueprint product that opens the checklist", () => {
   assert.equal(productCreatesChecklist(BLUEPRINT_PRODUCT_CODE), true);
@@ -88,7 +103,7 @@ test("gap checks use the blueprint product that opens the checklist", () => {
 
 test("a healthy signed-out portal is all PASS", async () => {
   const calls = [];
-  const db = fakeDb();
+  const db = fakeDb({ entitlement: [paidRow("c1", false, true)] });
   const rows = await gapChecks({
     db,
     orgId: ORG,
@@ -96,24 +111,38 @@ test("a healthy signed-out portal is all PASS", async () => {
     fetchImpl: fetchImpl(healthyRoutes(), calls)
   });
   assertShape(rows);
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS", "PASS"]);
-  assert.equal(calls.length, 2);
-  for (const call of calls) {
-    assert.equal(call.init.method, "GET");
-    assert.equal(call.init.credentials, "omit");
-    assert.equal(call.init.headers.authorization, undefined);
-    assert.equal(call.init.headers.cookie, undefined);
-  }
-  assert.equal(new URL(calls[0].url).pathname, PORTAL_SHELL_PATH);
-  assert.equal(new URL(calls[1].url).pathname, PORTAL_SUMMARY_PATH);
-  assert.equal(new URL(calls[1].url).search, "");
-  const step = db.calls.find((c) => /client_waypoints/i.test(c.sql));
-  assert.deepEqual(step.params[2], checklistProductCodes());
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS"]);
+  // One page fetch. The summary is read from the database, never pinged here.
+  assert.equal(calls.length, 1);
+  const call = calls[0];
+  assert.equal(call.init.method, "GET");
+  assert.equal(call.init.credentials, "omit");
+  assert.equal(call.init.headers.authorization, undefined);
+  assert.equal(call.init.headers.cookie, undefined);
+  assert.ok(call.init.signal, "the page fetch must carry a timeout so one hang cannot hold up the pulse");
+  assert.equal(new URL(call.url).pathname, PORTAL_SHELL_PATH);
+  const step = db.calls.find((c) => /gap:portal-next-step/.test(c.sql));
+  assert.equal(step.params[0], ORG);
   assert.equal(step.params[1], "succeeded");
-  for (const call of db.calls) {
-    assert.match(call.sql, /^\s*SELECT/i);
-    assert.doesNotMatch(call.sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE)\b/i);
+  assert.deepEqual(step.params[2], checklistProductCodes());
+  assert.equal(step.params[3], TEST_CLIENT_EMAIL_RE);
+  const paid = db.calls.find((c) => /gap:portal-paid-entitlement/.test(c.sql));
+  assert.deepEqual(paid.params, [ORG, "succeeded", TEST_CLIENT_EMAIL_RE]);
+  for (const c of db.calls) {
+    assert.match(c.sql.replace(/\/\*[\s\S]*?\*\//g, "").trim(), /^(SELECT|WITH)\b/i);
+    assert.doesNotMatch(c.sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE|BEGIN|COMMIT|ROLLBACK)\b/i);
   }
+});
+
+test("the fetch alias still works when only ctx.fetch is given", async () => {
+  const calls = [];
+  const rows = await gapChecks({
+    db: fakeDb({ entitlement: [paidRow("c1", false, true)] }),
+    orgId: ORG,
+    fetch: fetchImpl(healthyRoutes(), calls)
+  });
+  assert.equal(rows.find((r) => r.id === "portal:page").status, "PASS");
+  assert.equal(calls.length, 1);
 });
 
 test("portal page 404 fails and does not log in", async () => {
@@ -134,28 +163,96 @@ test("portal page 404 fails and does not log in", async () => {
   assert.ok(calls.every((c) => !/login|magic-link/i.test(c.url)));
 });
 
-test("portal summary 500 fails without a client session", async () => {
-  const calls = [];
+test("a 200 that is not the portal fails", async () => {
   const routes = healthyRoutes();
-  routes[PORTAL_SUMMARY_PATH] = { status: 500, text: "boom" };
-  const rows = await gapChecks({
+  routes[PORTAL_SHELL_PATH] = { status: 200, text: "<html>Please sign in</html>" };
+  const rows = await gapChecks({ db: fakeDb(), orgId: ORG, fetchImpl: fetchImpl(routes, []) });
+  const page = rows.find((r) => r.id === "portal:page");
+  assert.equal(page.status, "FAIL");
+  assert.match(page.detail, /tiles missing=true/);
+});
+
+test("a 500 and an unreachable page both fail", async () => {
+  const routes = healthyRoutes();
+  routes[PORTAL_SHELL_PATH] = { status: 500, text: "<html data-tile=x></html>" };
+  const five = await gapChecks({ db: fakeDb(), orgId: ORG, fetchImpl: fetchImpl(routes, []) });
+  assert.equal(five.find((r) => r.id === "portal:page").status, "FAIL");
+  const down = await gapChecks({
     db: fakeDb(),
     orgId: ORG,
-    fetchImpl: fetchImpl(routes, calls)
+    fetchImpl: async () => { throw new Error("socket hang up"); }
   });
-  assertShape(rows);
-  const summary = rows.find((r) => r.id === "portal:summary");
-  assert.equal(summary.status, "FAIL");
-  assert.match(summary.detail, /500/);
-  assert.match(summary.suggestedFix, /Do not sign in as a real client/);
-  assert.equal(calls[1].init.credentials, "omit");
+  const page = down.find((r) => r.id === "portal:page");
+  assert.equal(page.status, "FAIL");
+  assert.match(page.detail, /socket hang up/);
+});
+
+test("the portal summary reads run for one real client and pass", async () => {
+  const db = fakeDb();
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: fetchImpl(healthyRoutes(), []) });
+  const row = rows.find((r) => r.id === "portal:summary");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /5 reads/);
+  const pick = db.calls.find((c) => /gap:portal-summary-client/.test(c.sql));
+  assert.deepEqual(pick.params, [ORG]);
+  for (const read of SUMMARY_READS) {
+    const hit = db.calls.find((c) => norm(c.sql) === norm(read.sql));
+    assert.ok(hit, `the ${read.label} read was not run`);
+    assert.deepEqual(hit.params, [CLIENT, ORG]);
+  }
+  const docs = db.calls.find((c) => /FROM documents d/i.test(c.sql));
+  assert.ok(docs, "the documents read was not run");
+  assert.deepEqual(docs.params.slice(0, 2), [ORG, CLIENT]);
+});
+
+test("a summary read that throws is a fail that names the read", async () => {
+  for (const read of SUMMARY_READS) {
+    const db = fakeDb();
+    const real = db.query;
+    db.query = async (sql, params) => {
+      if (norm(sql).startsWith(norm(read.sql).slice(0, 40))) throw new Error(`column nope does not exist (${read.label})`);
+      return real(sql, params);
+    };
+    const rows = await gapChecks({ db, orgId: ORG, fetchImpl: fetchImpl(healthyRoutes(), []) });
+    const row = rows.find((r) => r.id === "portal:summary");
+    assert.equal(row.status, "FAIL", read.label);
+    assert.match(row.detail, new RegExp(`read "${read.label}" failed`));
+    assert.match(row.detail, /does not exist/);
+    assert.match(row.suggestedFix, /Do not sign in as a real client/);
+  }
+});
+
+test("the documents read that can 500 the summary is run too", async () => {
+  const db = fakeDb({ failOn: /FROM documents d/i });
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: fetchImpl(healthyRoutes(), []) });
+  const row = rows.find((r) => r.id === "portal:summary");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /"documents" failed/);
+});
+
+test("no real client on file skips the summary reads, it does not pass them", async () => {
+  const db = fakeDb({ client: null });
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: fetchImpl(healthyRoutes(), []) });
+  const row = rows.find((r) => r.id === "portal:summary");
+  assert.equal(row.status, "skip");
+  assert.match(row.detail, /no real client/);
+});
+
+test("the copied summary reads still match the handler word for word", () => {
+  // If api/read/portal-summary.mjs changes one of these selects, this fails until
+  // gap-portal.mjs follows. That is what keeps the mirror honest.
+  const handler = norm(fs.readFileSync(path.join(REPO, "api/read/portal-summary.mjs"), "utf8"));
+  for (const read of SUMMARY_READS) {
+    assert.ok(
+      handler.includes(norm(read.sql)),
+      `portal-summary.mjs no longer contains the ${read.label} select`
+    );
+  }
 });
 
 test("a paid client with no entitlement fails", async () => {
   const rows = await gapChecks({
-    db: fakeDb({
-      entitlement: [{ client_id: "c1", product_code: "consulting-package", entitlement_code: "credit-optimization-roadmap" }]
-    }),
+    db: fakeDb({ entitlement: [paidRow("c1", false, false), paidRow("c2", false, true)] }),
     orgId: ORG,
     fetchImpl: fetchImpl(healthyRoutes(), [])
   });
@@ -165,6 +262,68 @@ test("a paid client with no entitlement fails", async () => {
   assert.match(row.detail, /1 paid client has no entitlement/);
   assert.match(row.suggestedFix, /Do not create a new catalog product/);
   assert.doesNotMatch(row.detail, /c1/);
+});
+
+test("two clients missing an entitlement are counted once each", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({
+      entitlement: [
+        paidRow("c1", false, false),
+        paidRow("c1", false, false),
+        paidRow("c2", false, false)
+      ]
+    }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  assert.match(rows.find((r) => r.id === "portal:paid-entitlement").detail, /2 paid clients have no entitlement/);
+});
+
+test("test clients with no entitlement are left out and named in the pass", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({
+      entitlement: [paidRow("t1", true, false), paidRow("t2", true, false), paidRow("c1", false, true)]
+    }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /1 real purchases read/);
+  assert.match(row.detail, /2 test clients have none and are left out/);
+});
+
+test("a real client missing an entitlement still fails beside test clients", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({ entitlement: [paidRow("t1", true, false), paidRow("c1", false, false)] }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /1 paid client has no entitlement/);
+});
+
+test("the test-client pattern catches the sim tags and test domains, not real people", () => {
+  const re = new RegExp(TEST_CLIENT_EMAIL_RE, "i");
+  for (const mail of [
+    "stanbridgejchris+walk-01@gmail.com",
+    "stanbridgejchris+sim-12@gmail.com",
+    "someone@example.com",
+    "adv-blk5a-1.1@example.test",
+    "x@thing.invalid"
+  ]) {
+    assert.ok(re.test(mail), mail);
+  }
+  for (const mail of [
+    "jane.walker@gmail.com",
+    "bob+simple@gmail.com",
+    "carol@examples.com",
+    "dave@test-company.com",
+    "erin@mytest.io"
+  ]) {
+    assert.ok(!re.test(mail), mail);
+  }
 });
 
 test("a checklist that never opened fails", async () => {
@@ -186,18 +345,31 @@ test("a checklist that never opened fails", async () => {
   assert.match(row.suggestedFix, /Do not invent new steps/);
 });
 
-test("missing Recon fails and does not ask for a second watchdog", async () => {
-  const rows = await gapChecks({
-    db: fakeDb({ recon: { rows: [] } }),
-    orgId: ORG,
-    fetchImpl: fetchImpl(healthyRoutes(), [])
-  });
+test("the sql ignores fresh payments, failed payments, demo rows and test clients", () => {
+  assert.match(GRACE, /hour/);
+  for (const sql of [PAID_ENTITLEMENT_SQL, NEXT_STEP_SQL]) {
+    assert.match(sql, new RegExp(`created_at < now\\(\\) - interval '${GRACE}'`));
+    assert.match(sql, /c\.is_demo IS TRUE/);
+    assert.match(sql, /custom_fields ->> 'synthetic'/);
+    assert.match(sql, /~\* \$\d/);
+  }
+  assert.match(PAID_ENTITLEMENT_SQL, /t\.is_demo IS NOT TRUE/);
+  assert.match(PAID_ENTITLEMENT_SQL, /lower\(btrim\(COALESCE\(t\.status, ''\)\)\) = \$2/);
+  assert.match(NEXT_STEP_SQL, /rp\.status <> 'cancelled'/);
+  assert.match(SUMMARY_CLIENT_SQL, /c\.is_demo IS NOT TRUE/);
+  assert.equal(READ_ONLY_SQL.length, 3 + SUMMARY_READS.length);
+  for (const sql of READ_ONLY_SQL) {
+    assert.doesNotMatch(sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER)\b/i);
+  }
+});
+
+test("Recon is not read here, the daily pulse already does", async () => {
+  const rows = await gapChecks({ db: fakeDb(), orgId: ORG, fetchImpl: fetchImpl(healthyRoutes(), []) });
   assertShape(rows);
-  const row = rows.find((r) => r.id === "portal:recon");
-  assert.equal(row.status, "FAIL");
-  assert.match(row.detail, new RegExp(RECON_CODE));
-  assert.match(row.suggestedFix, /Do not invent a second watchdog/);
-  assert.doesNotMatch(row.suggestedFix, /new watchdog|second tripwire/i);
+  assert.ok(!rows.some((r) => /recon/i.test(r.id)));
+  const db = fakeDb();
+  await gapChecks({ db, orgId: ORG, fetchImpl: fetchImpl(healthyRoutes(), []) });
+  assert.ok(!db.calls.some((c) => /FROM agents/i.test(c.sql)));
 });
 
 test("no database skips the SQL reads and still checks the page", async () => {
@@ -207,24 +379,42 @@ test("no database skips the SQL reads and still checks the page", async () => {
   });
   assertShape(rows);
   assert.equal(rows.find((r) => r.id === "portal:page").status, "PASS");
-  assert.equal(rows.find((r) => r.id === "portal:summary").status, "PASS");
+  assert.equal(rows.find((r) => r.id === "portal:summary").status, "skip");
   assert.equal(rows.find((r) => r.id === "portal:paid-entitlement").status, "skip");
   assert.equal(rows.find((r) => r.id === "portal:next-step").status, "skip");
-  assert.equal(rows.find((r) => r.id === "portal:recon").status, "skip");
 });
 
 test("a database error is a FAIL, not a quiet pass", async () => {
   const rows = await gapChecks({
-    db: fakeDb({ fail: "connection refused" }),
+    db: fakeDb({ failAll: "connection refused" }),
     orgId: ORG,
     fetchImpl: fetchImpl(healthyRoutes(), [])
   });
   assertShape(rows);
-  for (const id of ["portal:paid-entitlement", "portal:next-step", "portal:recon"]) {
+  for (const id of ["portal:summary", "portal:paid-entitlement", "portal:next-step"]) {
     const row = rows.find((r) => r.id === id);
-    assert.equal(row.status, "FAIL");
+    assert.equal(row.status, "FAIL", id);
     assert.match(row.detail, /connection refused/);
   }
+});
+
+test("an org that cannot be read fails the three database rows", async () => {
+  const db = fakeDb({ failAll: "no orgs table" });
+  const rows = await gapChecks({ db, fetchImpl: fetchImpl(healthyRoutes(), []) });
+  assertShape(rows);
+  for (const id of ["portal:summary", "portal:paid-entitlement", "portal:next-step"]) {
+    const row = rows.find((r) => r.id === id);
+    assert.equal(row.status, "FAIL", id);
+    assert.match(row.detail, /default org/);
+  }
+});
+
+test("the org is read once when the run does not pass one", async () => {
+  const db = fakeDb();
+  const rows = await gapChecks({ db, fetchImpl: fetchImpl(healthyRoutes(), []) });
+  assertShape(rows);
+  assert.equal(db.calls.filter((c) => /FROM orgs/i.test(c.sql)).length, 1);
+  assert.equal(db.calls.find((c) => /gap:portal-next-step/.test(c.sql)).params[0], ORG);
 });
 
 test("the module does not write, log in, or add a second watchdog", () => {

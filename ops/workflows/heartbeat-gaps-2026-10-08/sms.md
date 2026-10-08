@@ -22,7 +22,7 @@ These stay as they are. This lane does not add a second copy.
 | Id | Where | What it already sees |
 |---|---|---|
 | pipeline:outbound | src/pulse/pipeline-motion.mjs | Queued outbound, texts included, older than 30 minutes |
-| instant-watch:pipeline:outbound | src/pulse/instant-watch.mjs | The same queued count. It already texts. Do not text again. |
+| pipeline:outbound (sent by instant-watch) | src/pulse/instant-watch.mjs line 81 | The same queued count, same id. It already texts. Do not text again. |
 | job:message-dispatch-sweeper | src/pulse/heartbeats.mjs | The customer dispatch clock ran |
 | job:staff-message-sweeper | src/pulse/heartbeats.mjs | The staff dispatch clock ran |
 
@@ -56,3 +56,26 @@ Reminders, no-answer cadences, and the staff booked-call alert (that switch defa
 ## Prove
 
 `node --test src/pulse/coverage/gap-sms.test.mjs`
+
+## Review — Claude, 2026-10-08
+
+What was wrong:
+
+- The "no text row" check could not fail for five of its six steps. It only looked at events that had a client id. Booking, deposit and round events never have one. They only carry an email. In the live data that was every one of them. So a missing booking text would have shown PASS forever.
+- A read that threw took all three SMS checks down with it, and a count that came back blank read as zero (PASS).
+- Nothing tested that the six steps still match the workflows that send them.
+- The board named an id (`instant-watch:pipeline:outbound`) that does not exist. The real id is `pipeline:outbound`.
+
+What changed (only the three SMS files):
+
+- The journey check now finds the person by `client_id`, or by the email on the event (the same way the workflow does).
+- One failed read is one skip row with the reason. A blank count is a skip, never a PASS.
+- New tests: the email lookup, the six steps against the real workflow files, one failed read, a blank count, and the time cutoffs. 12 tests now.
+- The old SQL fails the new email test. The new SQL passes it.
+
+Live result after (read-only, production): prod 2 PASS / 1 FAIL / 0 skip. staff access gives the same numbers, so the check is not blind. 0 SQL errors, 0 writes.
+
+The one FAIL is real, not a false alarm. A real lead (not a test record, no phone number) was captured on 2026-10-02 at 22:45 UTC. Two `entry.captured` events were written. No welcome text row and no welcome email row were ever written for that person. The welcome lock is empty, so the welcome workflow never ran for him. That day 48 capture events were written. 46 belong to people who got the welcome email. The other 2 are this lead. The check stays FAIL for 7 days.
+
+Tests: `node --test src/pulse/coverage/gap-sms.test.mjs` = 12 pass, 0 fail, 0 skipped.
+

@@ -1,18 +1,23 @@
 // Client success queue gaps for the morning pulse. Read only. Report only.
 //
 // Slice 30 already lists owner desks, sales-manager desks, and whether the
-// client success doors are on the morning list. This file does not repeat
-// that list. It looks for three breaks: the queue API is dead, a client
-// success task is overdue with nobody assigned, and a paid client never got
-// the halfway accountability call.
+// client success doors are on the morning list. The registry rows
+// reg:read/csm-queue and reg:csm-queue already go red when the queue door or the
+// queue page stops answering. This file does not repeat those. It looks for three
+// breaks: the queue read fails, a client success task is overdue with nobody
+// assigned, and a client who paid or was funded never got their accountability call.
 //
 // Tripwire is existing Recon (AG-07). No second watchdog. Never text a client.
+//
+// Nothing here reads a repo file. The shipped function holds no source tree, so a
+// file read there fails every morning whether or not the product is fine.
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+import readCsmQueue from "../../../api/read/csm-queue.mjs";
+import {
+  ASSIGNEE_ROLE,
+  MID_SOURCE_WORKFLOW as MID_WORKFLOW,
+  SOURCE_WORKFLOW as POST_WORKFLOW
+} from "../../handlers/customer-insights.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "csm:queue-api",
@@ -29,21 +34,19 @@ export const MONEY_IN_EVENTS = Object.freeze([
   "payment.received"
 ]);
 
-export const MID_SOURCE_WORKFLOW = "customer-insights-mid";
+export const MID_SOURCE_WORKFLOW = MID_WORKFLOW;
 
-export const QUEUE_PROBE_SQL = `
-  /* gap:csm-queue-api */
-  SELECT t.id
-    FROM tasks t
-    JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
-    LEFT JOIN staff s ON s.id = c.assigned_csm_staff_id AND s.org_id = c.org_id
-    LEFT JOIN v_invoice_aging o ON o.client_id = t.client_id AND o.org_id = t.org_id
-    LEFT JOIN v_client_entitlements w ON w.client_id = t.client_id AND w.org_id = t.org_id
-   WHERE t.org_id = $1::uuid
-     AND t.assignee_role = 'csm'
-     AND t.done = false
-   LIMIT 1
-`;
+/** Each client success step: what happens to the client, and the task that must follow. */
+export const STEPS = Object.freeze([
+  Object.freeze({ label: "halfway accountability call", workflow: MID_WORKFLOW, events: MONEY_IN_EVENTS }),
+  Object.freeze({ label: "results accountability call", workflow: POST_WORKFLOW, events: Object.freeze(["round.funded"]) })
+]);
+
+/** A task due this long ago with nobody on it is a miss. Due this morning is not. */
+export const OVERDUE_GRACE_MS = 24 * 60 * 60 * 1000;
+/** The event handler runs within minutes. Younger events are not judged. */
+export const STEP_GRACE_MS = 10 * 60 * 1000;
+export const STEP_LOOKBACK_MS = 60 * 24 * 60 * 60 * 1000;
 
 export const OVERDUE_UNASSIGNED_SQL = `
   /* gap:csm-overdue-unassigned */
@@ -51,7 +54,7 @@ export const OVERDUE_UNASSIGNED_SQL = `
     FROM tasks t
     JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
    WHERE t.org_id = $1::uuid
-     AND t.assignee_role = 'csm'
+     AND t.assignee_role = '${ASSIGNEE_ROLE}'
      AND t.done = false
      AND COALESCE(t.is_demo, false) = false
      AND COALESCE(c.is_demo, false) = false
@@ -61,24 +64,31 @@ export const OVERDUE_UNASSIGNED_SQL = `
      AND t.assignee_staff_id IS NULL
 `;
 
+/** Per step: how many clients got the event and have no task from that step's workflow. */
 export const MISSING_STEP_SQL = `
   /* gap:csm-missing-step */
-  SELECT count(DISTINCT e.client_id)::int AS n
+  SELECT m.source_workflow AS workflow,
+         count(DISTINCT e.client_id)::int AS n
     FROM events e
+    JOIN (
+      SELECT * FROM unnest($2::text[], $3::text[]) AS u(event_name, source_workflow)
+    ) m ON m.event_name = e.name
     JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
    WHERE e.org_id = $1::uuid
-     AND e.name = ANY($2::text[])
      AND e.client_id IS NOT NULL
      AND COALESCE(e.is_demo, false) = false
      AND COALESCE(c.is_demo, false) = false
      AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+     AND e.created_at >= $4::timestamptz
+     AND e.created_at <= $5::timestamptz
      AND NOT EXISTS (
        SELECT 1
          FROM tasks t
         WHERE t.org_id = e.org_id
           AND t.client_id = e.client_id
-          AND t.source_workflow = $3
+          AND t.source_workflow = m.source_workflow
      )
+   GROUP BY m.source_workflow
 `;
 
 const TRIPWIRE =
@@ -90,7 +100,7 @@ function row(id, status, detail, suggestedFix = null) {
 }
 
 function clip(err) {
-  return String(err?.message || err).slice(0, 180);
+  return String(err?.message || err).replace(/\s+/g, " ").slice(0, 180);
 }
 
 function countOf(result) {
@@ -102,90 +112,56 @@ function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-function defaultReadText(rel) {
-  return fs.readFileSync(path.join(ROOT, rel), "utf8");
+function mockRes() {
+  return {
+    statusCode: 0,
+    body: null,
+    headers: {},
+    setHeader(name, value) { this.headers[String(name).toLowerCase()] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; }
+  };
 }
 
-function apiAlive(status) {
-  return (
-    (status >= 200 && status < 300) ||
-    status === 400 ||
-    status === 401 ||
-    status === 403 ||
-    status === 405
-  );
-}
-
-/** True when GET /api/read/csm-queue is still wired. No HTTP call. */
-export function csmQueueRouteWired(readText = defaultReadText) {
-  const api = readText("netlify/functions/api.mjs");
-  const handler = readText("api/read/csm-queue.mjs");
-  const imported = /import readCsmQueue from ["'][^"']*csm-queue\.mjs["']/.test(api);
-  const routed = /["']read\/csm-queue["']\s*:\s*readCsmQueue/.test(api);
-  const get =
-    /req\.method !== ["']GET["']/.test(handler) &&
-    /export default async function handler/.test(handler);
-  return imported && routed && get;
-}
-
-/** True when a paid client still gets the halfway accountability call. No HTTP call. */
-export function halfwayStepWired(readText = defaultReadText) {
-  const insights = readText("src/handlers/customer-insights.mjs");
-  const boot = readText("src/register-all.mjs");
-  const events = MONEY_IN_EVENTS.every((name) =>
-    new RegExp(`on\\(\\s*["']${name}["']\\s*,\\s*onPaidMidCheckin\\s*\\)`).test(insights)
-  );
-  const bootOk = /registerCustomerInsights\(\)/.test(boot);
-  return events && bootOk;
-}
-
-async function readGet(fetchImpl, url) {
-  const res = await fetchImpl(url, {
-    method: "GET",
-    headers: { accept: "application/json" }
-  });
-  return { status: Number(res && res.status) };
-}
-
-async function checkQueueApi({ db, orgId, fetchImpl, baseUrl, readText }) {
-  const id = "csm:queue-api";
-  const parts = [];
-  let wired = false;
+/**
+ * Run the queue's own GET handler in this process, as a read-only staff caller,
+ * against ctx.db. This runs the queue's real SQL and its real row mapping, so a
+ * dropped view, a missing column, or a row the mapper cannot read all fail here.
+ * One row is asked for. Nothing is written.
+ */
+export async function openCsmQueue({ db, orgId, handler = readCsmQueue } = {}) {
+  const res = mockRes();
+  const req = { method: "GET", headers: {}, query: { limit: "1" } };
+  const deps = {
+    db,
+    requireAuth: async () => ({ id: null, role: "owner", org_id: orgId, name: "Morning pulse" })
+  };
   try {
-    wired = csmQueueRouteWired(readText);
+    await handler(req, res, deps);
+    return { status: res.statusCode, body: res.body, thrown: null };
   } catch (err) {
-    parts.push(`route file could not be read (${clip(err)})`);
+    return { status: res.statusCode, body: res.body, thrown: err };
   }
-  if (!wired && parts.length === 0) parts.push("route is not wired");
+}
 
-  let called = false;
-  if (fetchImpl) {
-    called = true;
-    const origin = String(baseUrl || "https://fundhub.ai").trim().replace(/\/+$/, "") || "https://fundhub.ai";
-    try {
-      const { status } = await readGet(fetchImpl, `${origin}${QUEUE_PATH}`);
-      if (!apiAlive(status)) parts.push(`${QUEUE_PATH} answered ${status}`);
-    } catch (err) {
-      parts.push(`unreachable (${clip(err)})`);
-    }
+async function checkQueueApi({ db, orgId, handler }) {
+  const id = "csm:queue-api";
+  if (!db || !orgId) return row(id, "skip", "no database in this run — CSM queue read not run");
+  const out = await openCsmQueue({ db, orgId, handler });
+  if (out.thrown) {
+    return row(id, "FAIL", `CSM queue read threw: ${clip(out.thrown)}`, `${TRIPWIRE} Restore GET ${QUEUE_PATH}.`);
   }
-
-  if (db && orgId) {
-    called = true;
-    try {
-      await db.query(QUEUE_PROBE_SQL, [orgId]);
-    } catch (err) {
-      parts.push(`queue read failed (${clip(err)})`);
-    }
+  const body = out.body;
+  if (out.status === 200 && body && body.ok === true && Array.isArray(body.items)) {
+    return row(id, "PASS", `CSM queue read answered 200 (${plural(body.count ?? body.items.length, "row")} asked for, the real queue query ran)`);
   }
-
-  if (parts.length > 0) {
-    return row(id, "FAIL", `CSM queue API is dead: ${parts.join("; ")}.`, `${TRIPWIRE} Restore GET ${QUEUE_PATH}.`);
-  }
-  if (!called) {
-    return row(id, "skip", "CSM queue API not called this run");
-  }
-  return row(id, "PASS", "CSM queue API answered");
+  const why = body && (body.error || body.message) ? ` (${clip(body.error || body.message)})` : "";
+  return row(
+    id,
+    "FAIL",
+    `CSM queue read answered ${out.status || "no status"}${why}.`,
+    `${TRIPWIRE} Restore GET ${QUEUE_PATH}.`
+  );
 }
 
 async function checkOverdue({ db, orgId, now }) {
@@ -194,18 +170,18 @@ async function checkOverdue({ db, orgId, now }) {
     return row(id, "skip", "no database in this run — overdue client success tasks not read");
   }
   try {
-    const result = await db.query(OVERDUE_UNASSIGNED_SQL, [orgId, now.toISOString()]);
+    const result = await db.query(OVERDUE_UNASSIGNED_SQL, [orgId, new Date(now.getTime() - OVERDUE_GRACE_MS).toISOString()]);
     const n = countOf(result);
     if (n == null) {
       return row(id, "FAIL", "overdue client success task count was not a number", `${TRIPWIRE} Read tasks for the client success role.`);
     }
     if (n === 0) {
-      return row(id, "PASS", "no overdue client success task is sitting with nobody assigned");
+      return row(id, "PASS", "no client success task is more than a day overdue with nobody assigned");
     }
     return row(
       id,
       "FAIL",
-      `${plural(n, "client success task")} overdue and nobody is assigned.`,
+      `${plural(n, "client success task")} more than a day overdue and nobody is assigned.`,
       `${TRIPWIRE} Open the client success queue and assign the overdue call.`
     );
   } catch (err) {
@@ -218,75 +194,71 @@ async function checkOverdue({ db, orgId, now }) {
   }
 }
 
-async function checkMissingStep({ db, orgId, readText }) {
+async function checkMissingStep({ db, orgId, now }) {
   const id = "csm:missing-step";
-  let wired = false;
-  let wireError = null;
-  try {
-    wired = halfwayStepWired(readText);
-  } catch (err) {
-    wireError = clip(err);
-  }
-
-  const parts = [];
-  if (wireError) parts.push(`halfway step file could not be read (${wireError})`);
-  else if (!wired) parts.push("the halfway accountability call is not wired to deposit paid, sale closed, and payment received");
-
   if (!db || !orgId) {
-    if (parts.length > 0) {
-      return row(
-        id,
-        "FAIL",
-        `client success step does not exist: ${parts.join("; ")}.`,
-        `${TRIPWIRE} Wire onPaidMidCheckin back onto the three money-in events.`
-      );
-    }
-    return row(id, "skip", "no database in this run — paid clients not read for the halfway call");
+    return row(id, "skip", "no database in this run — client success steps not read");
   }
-
+  const eventNames = [];
+  const workflows = [];
+  for (const step of STEPS) {
+    for (const name of step.events) {
+      eventNames.push(name);
+      workflows.push(step.workflow);
+    }
+  }
   try {
-    const result = await db.query(MISSING_STEP_SQL, [orgId, [...MONEY_IN_EVENTS], MID_SOURCE_WORKFLOW]);
-    const n = countOf(result);
-    if (n == null) parts.push("halfway call count was not a number");
-    else if (n > 0) {
-      const who = n === 1 ? "1 client paid and has" : `${n} clients paid and have`;
-      parts.push(`${who} no halfway accountability call`);
+    const result = await db.query(MISSING_STEP_SQL, [
+      orgId,
+      eventNames,
+      workflows,
+      new Date(now.getTime() - STEP_LOOKBACK_MS).toISOString(),
+      new Date(now.getTime() - STEP_GRACE_MS).toISOString()
+    ]);
+    const byWorkflow = new Map();
+    for (const r of Array.isArray(result?.rows) ? result.rows : []) {
+      const n = Number(r && r.n);
+      if (r && r.workflow && Number.isFinite(n) && n > 0) byWorkflow.set(String(r.workflow), n);
     }
+    const parts = [];
+    for (const step of STEPS) {
+      const n = byWorkflow.get(step.workflow);
+      if (!n) continue;
+      const who = n === 1 ? "1 client has" : `${n} clients have`;
+      parts.push(`${who} no ${step.label}`);
+    }
+    if (parts.length === 0) {
+      return row(id, "PASS", "every client who paid or was funded in the last 60 days has their accountability call");
+    }
+    return row(
+      id,
+      "FAIL",
+      `client success step does not exist: ${parts.join("; ")}.`,
+      `${TRIPWIRE} Open the accountability call for the client who paid or was funded and has none.`
+    );
   } catch (err) {
-    parts.push(`could not read the halfway call (${clip(err)})`);
+    return row(
+      id,
+      "FAIL",
+      `could not read the client success steps: ${clip(err)}`,
+      `${TRIPWIRE} Read tasks for the accountability call steps.`
+    );
   }
-
-  if (parts.length === 0) {
-    return row(id, "PASS", "every paid client has the halfway accountability call");
-  }
-  return row(
-    id,
-    "FAIL",
-    `client success step does not exist: ${parts.join("; ")}.`,
-    `${TRIPWIRE} Open the halfway accountability call for the client who paid and has none.`
-  );
 }
 
 /**
- * Three read-only checks. ctx: { db, orgId, now, fetchImpl, baseUrl, readText }.
+ * Three read-only checks. ctx: { db, orgId, now, queueHandler? }.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
-  const db = ctx.db || null;
-  const orgId = ctx.orgId || null;
-  const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const fetchImpl = ctx.fetchImpl || null;
-  const readText = typeof ctx.readText === "function" ? ctx.readText : defaultReadText;
-  const hasDb = Boolean(db && orgId);
+  const c = ctx || {};
+  const db = c.db && typeof c.db.query === "function" ? c.db : null;
+  const orgId = c.orgId || null;
+  const now = c.now instanceof Date ? c.now : new Date();
+  const handler = typeof c.queueHandler === "function" ? c.queueHandler : readCsmQueue;
   return [
-    await checkQueueApi({
-      db: hasDb ? db : null,
-      orgId,
-      fetchImpl,
-      baseUrl: ctx.baseUrl,
-      readText
-    }),
-    await checkOverdue({ db: hasDb ? db : null, orgId, now }),
-    await checkMissingStep({ db: hasDb ? db : null, orgId, readText })
+    await checkQueueApi({ db, orgId, handler }),
+    await checkOverdue({ db, orgId, now }),
+    await checkMissingStep({ db, orgId, now })
   ];
 }

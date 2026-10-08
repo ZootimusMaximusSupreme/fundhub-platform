@@ -1,40 +1,49 @@
 // Meet tape → transcript → closer context. Read only.
 // Tripwire is existing Recon (AG-07) plus meet-transcript-sweeper.
-// Do not add another watcher. Do not transcribe a file. Do not call an AI.
+// Do not add another watcher. Do not transcribe a file. Do not call a model.
 //
-// A recording with no words is red only after the wait the sweeper already
-// allows (3 times its schedule, same multiple as job heartbeats).
-// Job lateness stays on checkJobHeartbeats. This file only reads a failed run.
+// Already on the morning list, so not repeated here:
+//   * machine row "meet-transcript-sweeper" (src/pulse/machine.mjs) goes red when a
+//     Meet file in Company Brain still has no words 30 minutes after it was indexed,
+//     and when Drive has not been scanned for 3 times the sweeper schedule.
+//   * job row "job:meet-transcript-sweeper" (checkJobHeartbeats) goes red when the
+//     sweeper is late OR when its last run ended in an error.
+// This file reads the two things those rows cannot see:
+//   1. a sales call that carries a recording link and still has no words;
+//   2. words that exist for a client but do not reach fetchContext, the closer's
+//      context read. Asked by running fetchContext itself, not by copying its query.
+//
+// The repo files are not on disk in the shipped function, so nothing here reads
+// one. The wait comes from the sweeper's own schedule constant, imported.
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { cronIntervalMs, STALE_MULTIPLE } from "../heartbeats.mjs";
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+import { SWEEP_CRON } from "../../workflows/meet-transcript-sweeper.mjs";
+import { fetchContext as realFetchContext } from "../../agents/context.mjs";
 
 export const MEET_JOB = "meet-transcript-sweeper";
 
 export const CHECK_IDS = Object.freeze([
   "meet:recording-no-transcript",
-  "meet:transcript-unreadable",
-  "meet:transcriber-failed"
+  "meet:transcript-unreadable"
 ]);
+
+/** Three times the sweeper schedule: the wait the job heartbeat already allows. */
+export const TRANSCRIPT_WAIT_MS = STALE_MULTIPLE * (cronIntervalMs(SWEEP_CRON) || 10 * 60 * 1000);
+export const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+/** Clients asked per morning. fetchContext is about ten reads each. */
+export const CLIENT_CAP = 15;
 
 const RECON =
   "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. " +
-  "Do not auto-fix. Do not transcribe a new file. Do not call an AI. Do not add another watcher.";
+  "Do not auto-fix. Do not transcribe a new file. Do not call a model. Do not add another watcher.";
 
 const RECORDING_FIX =
-  `${RECON} Read Meet files still waiting on words and sales calls that have a recording link and an empty transcript. ` +
+  `${RECON} Open the sales call that has a recording link and no words. ` +
   `The existing ${MEET_JOB} is the only job.`;
 
 const UNREADABLE_FIX =
-  `${RECON} Read call_outcomes.transcript against the calls fetchContext loads in src/agents/context.mjs. ` +
-  `The existing ${MEET_JOB} is the only job.`;
-
-const JOB_FIX =
-  `${RECON} Read the last job_heartbeats row for ${MEET_JOB}. Do not re-run it from this pulse.`;
+  `${RECON} Words exist for this client but the last 3 calls fetchContext loads carry none. ` +
+  `Read call_outcomes.transcript for the client. The existing ${MEET_JOB} is the only job.`;
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -48,13 +57,12 @@ function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-function countOf(result) {
-  const n = Number(result?.rows?.[0]?.n ?? 0);
-  return Number.isFinite(n) ? n : 0;
+function nonempty(v) {
+  return String(v == null ? "" : v).trim() !== "";
 }
 
-function defaultReadText(rel) {
-  return fs.readFileSync(path.join(ROOT, rel), "utf8");
+function minutesOf(ms) {
+  return Math.round(ms / 60000);
 }
 
 function meetNameSql(alias) {
@@ -75,314 +83,188 @@ function transcriptNameSql(alias) {
     )`;
 }
 
-/** Milliseconds the sweeper is allowed before a stored recording with no words is late. */
-export function transcriptWaitMs(readText = defaultReadText) {
-  const src = readText("src/workflows/meet-transcript-sweeper.mjs");
-  const match = String(src || "").match(/export const SWEEP_CRON = "([^"]+)"/);
-  const interval = match ? cronIntervalMs(match[1]) : null;
-  if (!interval) return null;
-  return STALE_MULTIPLE * interval;
-}
-
-/** How many newest calls fetchContext reads. Null when that query cannot be read. */
-export function fetchContextCallLimit(readText = defaultReadText) {
-  const src = readText("src/agents/context.mjs");
-  const match = String(src || "").match(/FROM call_outcomes[\s\S]{0,400}?LIMIT\s+(\d+)/);
-  if (!match) return null;
-  const n = Number(match[1]);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-function recordingSql() {
-  return `
+/**
+ * Logged sales calls with a recording link, no words on the call, and no words
+ * in Company Brain for that link or that client's Meet file either. Demo calls
+ * are left out. Calls older than 14 days age out. $2 is the end of the wait,
+ * $3 is the start of the window.
+ */
+export const RECORDING_SQL = `
   /* gap:meet-recording-no-transcript */
-  WITH pending_files AS (
-    SELECT COALESCE(NULLIF(btrim(bf.web_view_link), ''), 'file:' || bf.id::text) AS key
-      FROM brain_files bf
-     WHERE bf.org_id = $1::uuid
-       AND bf.needs_transcription = true
-       AND ${meetNameSql("bf")}
-       AND COALESCE(bf.indexed_at, bf.created_at) < $2::timestamptz
-       AND NOT EXISTS (
-         SELECT 1
-           FROM brain_chunks bc
-          WHERE bc.file_id = bf.id
-            AND bc.org_id = bf.org_id
-            AND btrim(bc.content) <> ''
-       )
-       AND NOT EXISTS (
-         SELECT 1
-           FROM clients c
-          WHERE c.id = bf.client_id
-            AND c.org_id = bf.org_id
-            AND c.is_demo = true
-       )
-  ),
-  pending_calls AS (
-    SELECT btrim(co.recording_url) AS key
-      FROM call_outcomes co
-     WHERE co.org_id = $1::uuid
-       AND COALESCE(co.is_demo, false) = false
-       AND co.recording_url IS NOT NULL
-       AND btrim(co.recording_url) <> ''
-       AND (co.transcript IS NULL OR btrim(co.transcript) = '')
-       AND co.logged_at < $2::timestamptz
-       AND NOT EXISTS (
-         SELECT 1
-           FROM brain_files bf
-           JOIN brain_chunks bc ON bc.file_id = bf.id AND bc.org_id = bf.org_id
-          WHERE bf.org_id = co.org_id
-            AND btrim(bc.content) <> ''
-            AND (
-              bf.web_view_link = co.recording_url
-              OR (
-                bf.client_id = co.client_id
-                AND ${meetNameSql("bf")}
-              )
+  SELECT co.id::text AS key
+    FROM call_outcomes co
+    LEFT JOIN clients c ON c.id = co.client_id AND c.org_id = co.org_id
+   WHERE co.org_id = $1::uuid
+     AND COALESCE(co.is_demo, false) = false
+     AND COALESCE(c.is_demo, false) = false
+     AND co.recording_url IS NOT NULL
+     AND btrim(co.recording_url) <> ''
+     AND (co.transcript IS NULL OR btrim(co.transcript) = '')
+     AND co.logged_at < $2::timestamptz
+     AND co.logged_at >= $3::timestamptz
+     AND NOT EXISTS (
+       SELECT 1
+         FROM brain_files bf
+         JOIN brain_chunks bc ON bc.file_id = bf.id AND bc.org_id = bf.org_id
+        WHERE bf.org_id = co.org_id
+          AND btrim(bc.content) <> ''
+          AND (
+            bf.web_view_link = co.recording_url
+            OR (
+              bf.client_id = co.client_id
+              AND ${meetNameSql("bf")}
             )
-       )
-  )
-  SELECT count(*)::int AS n
-    FROM (
-      SELECT key FROM pending_files
-      UNION
-      SELECT key FROM pending_calls
-    ) tapes
+          )
+     )
+   ORDER BY co.logged_at DESC
+   LIMIT 50
 `;
-}
 
-function unreadableSql() {
-  return `
+/**
+ * Clients with Meet words in the last 14 days: a transcript on a call, or a
+ * Meet recording or transcript file with text in Company Brain that is past the
+ * wait and has a call to hold it. $2 window start, $3 end of the wait, $4 cap.
+ */
+export const CANDIDATE_SQL = `
   /* gap:meet-transcript-unreadable */
-  WITH recent AS (
-    SELECT co.org_id,
-           co.client_id,
-           co.transcript,
-           row_number() OVER (
-             PARTITION BY co.org_id, co.client_id
-             ORDER BY co.logged_at DESC, co.id DESC
-           ) AS rn
-      FROM call_outcomes co
-     WHERE co.org_id = $1::uuid
-       AND COALESCE(co.is_demo, false) = false
-  ),
-  windowed AS (
-    SELECT org_id, client_id
-      FROM recent
-     WHERE rn <= $2::int
-     GROUP BY org_id, client_id
-    HAVING bool_or(transcript IS NOT NULL AND btrim(transcript) <> '')
-  ),
-  words_on_file AS (
-    SELECT COALESCE(bf.client_id::text, 'file:' || bf.id::text) AS key
-      FROM brain_files bf
-     WHERE bf.org_id = $1::uuid
-       AND (
-         ${meetNameSql("bf")}
-         OR (
-           ${transcriptNameSql("bf")}
-           AND bf.client_id IS NOT NULL
-           AND EXISTS (
-             SELECT 1
-               FROM call_outcomes co
-              WHERE co.org_id = bf.org_id
-                AND co.client_id = bf.client_id
-                AND COALESCE(co.is_demo, false) = false
-                AND co.recording_url IS NOT NULL
-                AND btrim(co.recording_url) <> ''
-           )
-         )
-       )
-       AND EXISTS (
-         SELECT 1
-           FROM brain_chunks bc
-          WHERE bc.file_id = bf.id
-            AND bc.org_id = bf.org_id
-            AND btrim(bc.content) <> ''
-       )
-       AND (
-         bf.client_id IS NULL
-         OR NOT EXISTS (
-           SELECT 1
-             FROM windowed w
-            WHERE w.org_id = bf.org_id
-              AND w.client_id = bf.client_id
-         )
-       )
-       AND NOT EXISTS (
-         SELECT 1
-           FROM clients c
-          WHERE c.id = bf.client_id
-            AND c.org_id = bf.org_id
-            AND c.is_demo = true
-       )
-  ),
-  words_hidden AS (
-    SELECT co.client_id::text AS key
-      FROM call_outcomes co
-     WHERE co.org_id = $1::uuid
-       AND COALESCE(co.is_demo, false) = false
-       AND co.transcript IS NOT NULL
-       AND btrim(co.transcript) <> ''
-       AND NOT EXISTS (
-         SELECT 1
-           FROM windowed w
-          WHERE w.org_id = co.org_id
-            AND w.client_id = co.client_id
-       )
-  )
-  SELECT count(*)::int AS n
+  SELECT u.client_id::text AS client_id
     FROM (
-      SELECT key FROM words_on_file
-      UNION
-      SELECT key FROM words_hidden
-    ) missed
+      SELECT co.client_id, max(co.logged_at) AS at
+        FROM call_outcomes co
+       WHERE co.org_id = $1::uuid
+         AND COALESCE(co.is_demo, false) = false
+         AND co.client_id IS NOT NULL
+         AND co.transcript IS NOT NULL
+         AND btrim(co.transcript) <> ''
+         AND co.logged_at >= $2::timestamptz
+       GROUP BY co.client_id
+      UNION ALL
+      SELECT bf.client_id, max(COALESCE(bf.indexed_at, bf.created_at)) AS at
+        FROM brain_files bf
+       WHERE bf.org_id = $1::uuid
+         AND bf.client_id IS NOT NULL
+         AND (
+           (${meetNameSql("bf")})
+           OR ${transcriptNameSql("bf")}
+         )
+         AND COALESCE(bf.indexed_at, bf.created_at) >= $2::timestamptz
+         AND COALESCE(bf.indexed_at, bf.created_at) < $3::timestamptz
+         AND EXISTS (
+           SELECT 1
+             FROM brain_chunks bc
+            WHERE bc.file_id = bf.id
+              AND bc.org_id = bf.org_id
+              AND btrim(bc.content) <> ''
+         )
+         AND EXISTS (
+           SELECT 1
+             FROM call_outcomes co2
+            WHERE co2.org_id = bf.org_id
+              AND co2.client_id = bf.client_id
+              AND COALESCE(co2.is_demo, false) = false
+         )
+       GROUP BY bf.client_id
+    ) u
+    JOIN clients c ON c.id = u.client_id AND c.org_id = $1::uuid
+   WHERE COALESCE(c.is_demo, false) = false
+   GROUP BY u.client_id
+   ORDER BY max(u.at) DESC
+   LIMIT $4::int
 `;
-}
 
-const JOB_SQL = `
-  /* gap:meet-transcriber-failed */
-  SELECT outcome, left(error, 160) AS error, finished_at
-    FROM job_heartbeats
-   WHERE job = $1
-   ORDER BY finished_at DESC
-   LIMIT 1
-`;
-
-async function checkRecording({ db, orgId, now, readText }) {
-  const id = "meet:recording-no-transcript";
+async function checkRecording({ db, orgId, now }) {
+  const id = CHECK_IDS[0];
   if (!db) return row(id, "skip", "no database in this run — Meet recordings not read");
   if (!orgId) return row(id, "skip", "no company in this run — Meet recordings not read");
-  let waitMs;
+  const minutes = minutesOf(TRANSCRIPT_WAIT_MS);
   try {
-    waitMs = transcriptWaitMs(readText);
-  } catch (err) {
-    return row(id, "FAIL", `could not read the sweeper wait: ${clip(err)}`, RECORDING_FIX);
-  }
-  if (!waitMs) {
-    return row(
-      id,
-      "FAIL",
-      "could not read the sweeper schedule, so the wait is unknown.",
-      RECORDING_FIX
-    );
-  }
-  const minutes = Math.round(waitMs / 60000);
-  const cutoff = new Date(now.getTime() - waitMs).toISOString();
-  try {
-    const result = await db.query(recordingSql(), [orgId, cutoff]);
-    const n = countOf(result);
+    const result = await db.query(RECORDING_SQL, [
+      orgId,
+      new Date(now.getTime() - TRANSCRIPT_WAIT_MS).toISOString(),
+      new Date(now.getTime() - LOOKBACK_MS).toISOString()
+    ]);
+    const n = Array.isArray(result?.rows) ? result.rows.length : 0;
     if (n === 0) {
-      return row(id, "PASS", `no Meet recording is still without a transcript after the ${minutes}-minute wait`);
+      return row(id, "PASS", `no logged call has a recording link and still no words after the ${minutes}-minute wait`);
     }
     return row(
       id,
       "FAIL",
-      `${plural(n, "Meet recording")} stored with no transcript after the ${minutes}-minute wait.`,
+      `${plural(n, "logged call")} with a recording link and no transcript after the ${minutes}-minute wait.`,
       RECORDING_FIX
     );
   } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `could not read Meet recordings: ${clip(err)}`,
-      RECORDING_FIX
-    );
+    return row(id, "FAIL", `could not read Meet recordings: ${clip(err)}`, RECORDING_FIX);
   }
 }
 
-async function checkUnreadable({ db, orgId, readText }) {
-  const id = "meet:transcript-unreadable";
+/** The closer reads the last 3 calls. Words count when one of them carries some. */
+export function contextHasWords(context) {
+  const calls = Array.isArray(context?.recent_calls) ? context.recent_calls : [];
+  return calls.some((call) => nonempty(call && call.transcript));
+}
+
+async function checkUnreadable({ db, orgId, now, fetchContext }) {
+  const id = CHECK_IDS[1];
   if (!db) return row(id, "skip", "no database in this run — Meet transcripts not read");
   if (!orgId) return row(id, "skip", "no company in this run — Meet transcripts not read");
-  let limit;
   try {
-    limit = fetchContextCallLimit(readText);
-  } catch (err) {
-    return row(id, "FAIL", `could not read the fetchContext call limit: ${clip(err)}`, UNREADABLE_FIX);
-  }
-  if (!limit) {
-    return row(
-      id,
-      "FAIL",
-      "could not read how many calls fetchContext loads, so a stored transcript cannot be checked.",
-      UNREADABLE_FIX
-    );
-  }
-  try {
-    const result = await db.query(unreadableSql(), [orgId, limit]);
-    const n = countOf(result);
-    if (n === 0) {
-      return row(
-        id,
-        "PASS",
-        `every stored Meet transcript is in the ${limit} calls fetchContext reads`
-      );
+    const found = await db.query(CANDIDATE_SQL, [
+      orgId,
+      new Date(now.getTime() - LOOKBACK_MS).toISOString(),
+      new Date(now.getTime() - TRANSCRIPT_WAIT_MS).toISOString(),
+      CLIENT_CAP
+    ]);
+    const clientIds = (Array.isArray(found?.rows) ? found.rows : [])
+      .map((r) => (r && r.client_id ? String(r.client_id) : null))
+      .filter(Boolean);
+    if (clientIds.length === 0) {
+      return row(id, "PASS", "no client has Meet words from the last 14 days to check against fetchContext");
     }
-    return row(
-      id,
-      "FAIL",
-      `${plural(n, "Meet transcript")} stored where fetchContext cannot read ${n === 1 ? "it" : "them"}.`,
-      UNREADABLE_FIX
-    );
-  } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `could not read Meet transcripts: ${clip(err)}`,
-      UNREADABLE_FIX
-    );
-  }
-}
-
-function stamp(value) {
-  if (!value) return "unknown time";
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return "unknown time";
-  return d.toISOString();
-}
-
-async function checkTranscriber({ db }) {
-  const id = "meet:transcriber-failed";
-  if (!db) return row(id, "skip", "no database in this run — transcriber job not read");
-  try {
-    const result = await db.query(JOB_SQL, [MEET_JOB]);
-    const hit = result?.rows?.[0];
-    if (!hit) {
-      return row(id, "skip", `no ${MEET_JOB} heartbeat yet — job failure not read`);
+    let hidden = 0;
+    const errors = [];
+    for (const clientId of clientIds) {
+      try {
+        const context = await fetchContext(db, { orgId, clientId });
+        if (!contextHasWords(context)) hidden += 1;
+      } catch (err) {
+        errors.push(clip(err));
+      }
     }
-    if (hit.outcome === "error") {
-      const why = clip(hit.error || "no message");
+    if (errors.length > 0) {
       return row(
         id,
         "FAIL",
-        `${MEET_JOB} last run failed at ${stamp(hit.finished_at)}: ${why}.`,
-        JOB_FIX
+        `fetchContext failed for ${plural(errors.length, "client")} with Meet words: ${errors[0]}`,
+        UNREADABLE_FIX
       );
     }
-    return row(id, "PASS", `${MEET_JOB} last run finished ok at ${stamp(hit.finished_at)}`);
+    if (hidden > 0) {
+      return row(
+        id,
+        "FAIL",
+        `${plural(hidden, "client")} with Meet words where fetchContext shows no transcript in the last 3 calls.`,
+        UNREADABLE_FIX
+      );
+    }
+    return row(id, "PASS", `fetchContext shows the Meet words for all ${plural(clientIds.length, "client")} checked`);
   } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `could not read the transcriber job: ${clip(err)}`,
-      JOB_FIX
-    );
+    return row(id, "FAIL", `could not read Meet transcripts: ${clip(err)}`, UNREADABLE_FIX);
   }
 }
 
 /**
- * Three read-only checks. ctx: { db, orgId, now, readText }.
+ * Two read-only checks. ctx: { db, orgId, now, fetchContext? }.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
-  const db = ctx.db && typeof ctx.db.query === "function" ? ctx.db : null;
-  const orgId = ctx.orgId ? String(ctx.orgId) : null;
-  const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const readText = typeof ctx.readText === "function" ? ctx.readText : defaultReadText;
+  const c = ctx || {};
+  const db = c.db && typeof c.db.query === "function" ? c.db : null;
+  const orgId = c.orgId ? String(c.orgId) : null;
+  const now = c.now instanceof Date ? c.now : new Date();
+  const fetchContext = typeof c.fetchContext === "function" ? c.fetchContext : realFetchContext;
   return [
-    await checkRecording({ db, orgId, now, readText }),
-    await checkUnreadable({ db, orgId, readText }),
-    await checkTranscriber({ db })
+    await checkRecording({ db, orgId, now }),
+    await checkUnreadable({ db, orgId, now, fetchContext })
   ];
 }

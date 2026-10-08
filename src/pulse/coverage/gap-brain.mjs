@@ -1,35 +1,35 @@
-// Company Brain and Drive sync breakage for the morning pulse. Read only.
-// Tripwire is existing Recon (AG-07). Do not add another watcher.
-// Do not run a new Drive sync. Do not upload.
+// Company Brain search gaps for the morning pulse. Read only. Report only.
 //
-// meet-transcript-sweeper already runs every 10 minutes and writes
-// brain_drive_sync. This file only reads what that job left behind,
-// plus whether the search and read doors answer 500.
+// DRIVE SYNC IS NOT HERE ON PURPOSE. src/pulse/machine.mjs checkMeetTranscripts
+// (id: meet-transcript-sweeper) already reads brain_drive_sync every morning:
+// last_error set, and no scan in 30 minutes (3 times the 10 minute sweeper).
+// The door pings reg:read/company-brain and reg:read/company-brain-affiliate
+// already ask whether those two doors answer. Copying either one here would
+// add another watcher for the same fault. Recon (AG-07) is the one tripwire.
+//
+// WHAT NONE OF THOSE CAN SEE. Both search doors are POST only. A GET answers
+// 405 whether search works or not, so a ping stays green while every search
+// crashes. This file runs the REAL door code in this process, with the same
+// database, and reads the real result:
+//   * the door's own code runs (auth gate and the model call are swapped out)
+//   * the search SQL runs against brain_chunks, read only, limit 1
+//   * the query vector is a fixed stub, so no AI call is made and nothing is
+//     spent
+//   * the chat history writes are switched off, so nothing is saved
+// A 500, a throw, or an error body is a fail.
+//
+// Never runs a Drive sync. Never uploads. Never POSTs over the network.
 
-import { cronIntervalMs, STALE_MULTIPLE } from "../heartbeats.mjs";
+import { EMBEDDING_DIMS } from "../../company-brain/embed.mjs";
+import { retrieveChunks, retrieveAffiliateChunks } from "../../company-brain/retrieve.mjs";
 
-/** Same cron as meet-transcript-sweeper. Red after 3 times that gap. */
-export const DRIVE_SYNC_CRON = "*/10 * * * *";
+export const ID_STAFF = "brain:search-staff";
+export const ID_AFFILIATE = "brain:search-affiliate";
 
-const DRIVE_SYNC_INTERVAL_MS = cronIntervalMs(DRIVE_SYNC_CRON);
-if (!DRIVE_SYNC_INTERVAL_MS) {
-  throw new Error(`schedule "${DRIVE_SYNC_CRON}" is a shape this check does not read`);
-}
+export const CHECK_IDS = Object.freeze([ID_STAFF, ID_AFFILIATE]);
 
-/** 30 minutes. A scan older than this has missed 3 sweeper runs. */
-export const DRIVE_SYNC_STALE_MS = STALE_MULTIPLE * DRIVE_SYNC_INTERVAL_MS;
-
-/** GET only. These doors answer a question. They do not scan Drive or take a file. */
-export const SEARCH_READ_PATHS = Object.freeze([
-  "/api/read/company-brain",
-  "/api/read/company-brain-affiliate"
-]);
-
-export const CHECK_IDS = Object.freeze([
-  "brain:drive-last-error",
-  "brain:drive-sync-stale",
-  "brain:search-read-route"
-]);
+/** The question the door is asked. It is never sent to a model. */
+export const PROBE_QUESTION = "morning pulse read check";
 
 const RECON =
   "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. " +
@@ -41,180 +41,154 @@ function row(id, status, detail, suggestedFix = null) {
 }
 
 function clip(text, n = 160) {
-  const s = String(text || "").replace(/\s+/g, " ").trim();
+  const s = String((text && text.message) || text || "").replace(/\s+/g, " ").trim();
   return s.length > n ? `${s.slice(0, n)}…` : s;
 }
 
-function plural(n, word) {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
+function mockRes() {
+  return {
+    statusCode: 0,
+    body: null,
+    headers: {},
+    setHeader(name, value) { this.headers[String(name).toLowerCase()] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; }
+  };
 }
 
-function countOf(result) {
-  const n = Number(result?.rows?.[0]?.n ?? 0);
-  return Number.isFinite(n) ? n : 0;
+/** A fixed unit vector the size of the real embeddings. No model is asked. */
+function stubEmbed() {
+  const vec = new Array(EMBEDDING_DIMS).fill(0);
+  vec[0] = 1;
+  return async () => ({ ok: true, embeddings: [vec] });
 }
 
-/** Same "up" rule as the morning registry ping for an API door. */
-export function searchReadStatusUp(status) {
-  const code = Number(status);
-  return (
-    (code >= 200 && code < 300) ||
-    code === 400 ||
-    code === 401 ||
-    code === 403 ||
-    code === 405
-  );
+/** Never reaches a model. The door still builds and returns its own answer shape. */
+async function stubAnswer() {
+  return { text: "", citations: [], thin: true, source: "pulse-read-check" };
 }
 
-const LAST_ERROR_SQL = `
-  /* gap:drive-last-error */
-  SELECT count(*)::int AS n,
-         string_agg(left(last_error, 160), ' / ') AS errors
-    FROM brain_drive_sync
-   WHERE org_id = $1::uuid
-     AND last_error IS NOT NULL
-     AND btrim(last_error) <> ''
-`;
+// History is best effort in the door. These return "not saved", so no row is written.
+const noHistory = {
+  getThread: async () => ({ ok: false }),
+  createThread: async () => ({ ok: false }),
+  appendMessage: async () => ({ ok: false })
+};
 
-const STALE_SQL = `
-  /* gap:drive-sync-stale */
-  SELECT count(*)::int AS n,
-         max(last_sync_at) AS last_sync_at
-    FROM brain_drive_sync
-   WHERE org_id = $1::uuid
-`;
+// Literal import paths on purpose: the function bundle can only ship a file it can see.
+async function loadStaffDoor() {
+  return (await import("../../../api/read/company-brain.mjs")).default;
+}
+async function loadAffiliateDoor() {
+  return (await import("../../../api/read/company-brain-affiliate.mjs")).default;
+}
 
-async function checkDriveLastError({ db, orgId }) {
-  const id = "brain:drive-last-error";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — Drive sync last_error not read");
-  }
+function staffDeps(db, orgId) {
+  const embed = stubEmbed();
+  return {
+    db,
+    env: {},
+    requireAuth: async () => ({
+      id: null,
+      org_id: orgId,
+      role: "owner",
+      name: "Morning pulse",
+      email: "pulse@fundhub.ai"
+    }),
+    retrieveChunks: (database, args) => retrieveChunks(database, { ...args, embed }),
+    synthesizeAnswer: stubAnswer,
+    ...noHistory
+  };
+}
+
+function affiliateDeps(db, orgId) {
+  const embed = stubEmbed();
+  return {
+    db,
+    env: {},
+    requirePrincipal: async () => ({ kind: "affiliate", role: "affiliate", org_id: orgId }),
+    retrieveAffiliateChunks: (database, args) => retrieveAffiliateChunks(database, { ...args, embed }),
+    synthesizeAnswer: stubAnswer
+  };
+}
+
+async function openDoor(handler, deps) {
+  const res = mockRes();
+  const req = {
+    method: "POST",
+    headers: {},
+    query: {},
+    body: { question: PROBE_QUESTION, limit: 1 }
+  };
   try {
-    const result = await db.query(LAST_ERROR_SQL, [orgId]);
-    const n = countOf(result);
-    if (n === 0) {
-      return row(id, "PASS", "Drive sync last_error is empty");
-    }
-    const errors = clip(result?.rows?.[0]?.errors);
-    const verb = n === 1 ? "has" : "have";
-    return row(
-      id,
-      "FAIL",
-      `${plural(n, "Drive sync row")} ${verb} last_error set${errors ? `: ${errors}` : ""}.`,
-      `${RECON} Read brain_drive_sync.last_error for this company.`
-    );
+    await handler(req, res, deps);
+    return { status: res.statusCode, body: res.body, thrown: null };
   } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `could not read Drive sync last_error: ${clip(err?.message || err, 180)}`,
-      `${RECON} Read brain_drive_sync.last_error. Do not write that row from this pulse.`
-    );
+    return { status: res.statusCode, body: res.body, thrown: err };
   }
 }
 
-function ageMinutes(last, now) {
-  return Math.round(((now.getTime() - last.getTime()) / 60000) * 10) / 10;
-}
-
-async function checkDriveSyncStale({ db, orgId, now }) {
-  const id = "brain:drive-sync-stale";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — Drive sync time not read");
-  }
-  const limitMin = DRIVE_SYNC_STALE_MS / 60000;
-  try {
-    const result = await db.query(STALE_SQL, [orgId]);
-    const head = result?.rows?.[0] || {};
-    const n = countOf(result);
-    const last = head.last_sync_at ? new Date(head.last_sync_at) : null;
-    if (!n || !last || Number.isNaN(last.getTime())) {
-      return row(
-        id,
-        "FAIL",
-        `Drive has never been scanned for this company. The sweeper is meet-transcript-sweeper, every 10 min, red after ${limitMin} min.`,
-        `${RECON} Read brain_drive_sync.last_sync_at. The job is meet-transcript-sweeper (${DRIVE_SYNC_CRON}).`
-      );
-    }
-    const ageMin = ageMinutes(last, now);
-    if (now.getTime() - last.getTime() > DRIVE_SYNC_STALE_MS) {
-      return row(
-        id,
-        "FAIL",
-        `Drive last scanned ${last.toISOString()} (${ageMin} min ago, red after ${limitMin} min / 3 times ${DRIVE_SYNC_CRON}).`,
-        `${RECON} Read brain_drive_sync.last_sync_at against meet-transcript-sweeper (${DRIVE_SYNC_CRON}).`
-      );
-    }
-    return row(id, "PASS", `Drive last scanned ${last.toISOString()} (${ageMin} min ago).`);
-  } catch (err) {
+function score(id, label, path, outcome) {
+  if (outcome.thrown) {
     return row(
       id,
       "FAIL",
-      `could not read Drive sync time: ${clip(err?.message || err, 180)}`,
-      `${RECON} Read brain_drive_sync.last_sync_at. Do not write that row from this pulse.`
+      `${label} search crashed: ${clip(outcome.thrown)}`,
+      `${RECON} Read POST ${path} and the brain_chunks search. The check calls it with no AI and saves nothing.`
     );
   }
-}
-
-async function checkSearchReadRoute({ fetchImpl, baseUrl }) {
-  const id = "brain:search-read-route";
-  if (typeof fetchImpl !== "function") {
-    return row(id, "skip", "no fetch in this run — brain search and read routes not probed");
+  const status = Number(outcome.status) || 0;
+  const body = outcome.body;
+  const errorText = body && (body.error || body.message) ? clip(body.error || body.message, 80) : "";
+  if (status === 200 && body && body.ok === true) {
+    return row(id, "PASS", `${label} search ran on the real database and answered 200 (no AI call, nothing saved)`);
   }
-  const origin = String(baseUrl || "https://fundhub.ai").replace(/\/+$/, "");
-  const bad = [];
-  try {
-    for (const path of SEARCH_READ_PATHS) {
-      const url = `${origin}${path}`;
-      try {
-        const res = await fetchImpl(url, {
-          method: "GET",
-          headers: { accept: "application/json" }
-        });
-        const status = Number(res?.status);
-        if (!searchReadStatusUp(status)) {
-          bad.push(`${path} answered ${status}`);
-        }
-      } catch (err) {
-        bad.push(`${path} unreachable: ${clip(err?.message || err, 120)}`);
-      }
-    }
-  } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `brain search and read routes could not be probed: ${clip(err?.message || err, 180)}`,
-      `${RECON} Read GET /api/read/company-brain and GET /api/read/company-brain-affiliate. Do not POST.`
-    );
-  }
-  if (bad.length) {
-    return row(
-      id,
-      "FAIL",
-      bad.join("; "),
-      `${RECON} Read GET /api/read/company-brain and GET /api/read/company-brain-affiliate. A 500 means the route crashed. Do not POST.`
-    );
-  }
+  const why = errorText ? ` (${errorText})` : "";
   return row(
     id,
-    "PASS",
-    "brain search and read doors answered without a 500 (GET only)"
+    "FAIL",
+    status ? `${label} search answered ${status}${why}` : `${label} search gave no answer${why}`,
+    `${RECON} Read POST ${path} and the brain_chunks search. The check calls it with no AI and saves nothing.`
   );
+}
+
+async function checkStaff(ctx, db, orgId) {
+  try {
+    const handler = ctx.brainDoors && ctx.brainDoors.staff
+      ? ctx.brainDoors.staff
+      : await loadStaffDoor();
+    const outcome = await openDoor(handler, staffDeps(db, orgId));
+    return score(ID_STAFF, "Company Brain staff", "/api/read/company-brain", outcome);
+  } catch (err) {
+    return score(ID_STAFF, "Company Brain staff", "/api/read/company-brain", { thrown: err });
+  }
+}
+
+async function checkAffiliate(ctx, db, orgId) {
+  try {
+    const handler = ctx.brainDoors && ctx.brainDoors.affiliate
+      ? ctx.brainDoors.affiliate
+      : await loadAffiliateDoor();
+    const outcome = await openDoor(handler, affiliateDeps(db, orgId));
+    return score(ID_AFFILIATE, "Company Brain affiliate", "/api/read/company-brain-affiliate", outcome);
+  } catch (err) {
+    return score(ID_AFFILIATE, "Company Brain affiliate", "/api/read/company-brain-affiliate", { thrown: err });
+  }
 }
 
 /**
- * Three read-only checks. ctx: { db, orgId, now, fetchImpl, baseUrl }.
+ * Two read-only checks. ctx: { db, orgId }. `ctx.brainDoors` is for tests only.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
   const db = ctx.db || null;
   const orgId = ctx.orgId || null;
-  const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const fetchImpl = ctx.fetchImpl;
-  const baseUrl = ctx.baseUrl;
+  if (!db || typeof db.query !== "function" || !orgId) {
+    return CHECK_IDS.map((id) =>
+      row(id, "skip", "no database in this run — Company Brain search not run"));
+  }
   return [
-    await checkDriveLastError({ db, orgId }),
-    await checkDriveSyncStale({ db, orgId, now }),
-    await checkSearchReadRoute({ fetchImpl, baseUrl })
+    await checkStaff(ctx, db, orgId),
+    await checkAffiliate(ctx, db, orgId)
   ];
 }

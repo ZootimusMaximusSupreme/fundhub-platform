@@ -6,22 +6,60 @@ import { fileURLToPath } from "node:url";
 
 import {
   gapChecks,
-  INVITE_SQL,
-  ROLE_DESKS,
+  parseHomeMap,
+  STUCK_INVITE_SQL,
+  STAFF_ROLES,
+  SHELL_PATH,
   ROLE_GATE_PATH,
-  HIRING_APPLY_PATH
+  HIRING_APPLY_PATH,
+  INVITE_MAIL_ENV
 } from "./gap-staff.mjs";
 import { CHECKS as HIRING_SLICE } from "./slice-11-hiring.mjs";
 import { CHECKS as CSM_SLICE } from "./slice-30-csm-owner.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ORG = "11111111-1111-4111-8111-111111111111";
+const NOW = new Date("2026-10-08T12:00:00Z");
 
-function fakeDb(row, calls) {
+/* The HOME block as public/app/shell.js writes it, comments and all. */
+const SHELL_JS = `
+  var HOME = {
+    owner: "pipeline.html",
+    admin: "pipeline.html",
+    funding_advisor: "client-control-panel.html",
+    closer: "closer-dashboard.html",
+    inquiry_specialist: "inquiry-remover.html",
+    setter: "pipeline.html",
+    // The Sales pipeline is the thing they own, so it is where they land.
+    sales_manager: "sales-floor.html",
+    /* The call list, not the client chooser. A CSM opening the app used to land
+       on client-control-panel.html and be asked to pick: "somebody" // here. */
+    csm: "csm-queue.html",
+    client: "client-portal.html",
+    affiliate: "affiliate.html",
+    partner: "partner-galaxy.html"
+  };
+  function isKnownRole(role) { return true; }
+`;
+
+/* A db that answers only the exact staff-invite SQL, from a small model of
+   staff and password_resets, so a changed query or changed params break it. */
+function modelDb(model, calls) {
   return {
     async query(sql, params) {
       if (calls) calls.push({ sql, params });
-      if (row && row.throw) throw new Error(row.throw);
-      return { rows: [row || {}] };
+      if (model && model.throw) throw new Error(model.throw);
+      assert.equal(sql, STUCK_INVITE_SQL);
+      const [org, now] = params;
+      assert.ok(org === null || typeof org === "string");
+      assert.ok(now instanceof Date);
+      const invited = model.staff.filter(
+        (s) => s.status === "invited" && (org === null || s.org_id === org)
+      );
+      const noLink = invited.filter((s) => !model.resets.some(
+        (r) => r.staff_id === s.id && r.kind === "invite" && r.used_at == null && r.expires_at > now
+      ));
+      return { rows: [{ invited: invited.length, no_link: noLink.length }] };
     }
   };
 }
@@ -60,11 +98,26 @@ function shape(row) {
   }
 }
 
-test("gap staff: empty run skips all four and does not throw", async () => {
+const byId = (rows, id) => rows.find((row) => row.id === id);
+
+/* A whole healthy site. Override one path to break it. */
+function site(overrides = {}) {
+  return (url) => {
+    for (const [tail, hit] of Object.entries(overrides)) {
+      if (url.endsWith(tail)) return hit;
+    }
+    if (url.endsWith(SHELL_PATH)) return { status: 200, body: SHELL_JS };
+    if (url.endsWith(ROLE_GATE_PATH)) return { status: 401, body: { ok: false } };
+    if (url.endsWith(HIRING_APPLY_PATH)) return { status: 200, body: { ok: true, roles: [{ key: "closer" }] } };
+    return { status: 200, body: "<html>desk</html>" };
+  };
+}
+
+test("gap staff: an empty run skips all five rows and does not throw", async () => {
   const rows = await gapChecks({});
-  assert.equal(rows.length, 4);
   assert.deepEqual(rows.map((row) => row.id), [
     "staff-invite-send",
+    "staff-invite-link",
     "role-gate",
     "hiring-apply",
     "role-desk"
@@ -75,134 +128,241 @@ test("gap staff: empty run skips all four and does not throw", async () => {
   }
 });
 
-test("gap staff: open invites with no mail row fail, and the query is read-only", async () => {
+test("gap staff: invite email keys missing fail by name, and set keys pass without showing a value", async () => {
+  const secret = "re_VERY_SECRET_VALUE_123";
+  const pass = byId(await gapChecks({ env: { RESEND_API_KEY: secret, RESEND_FROM: "Fundhub <noreply@fundhub.ai>" } }), "staff-invite-send");
+  shape(pass);
+  assert.equal(pass.status, "PASS");
+  assert.doesNotMatch(JSON.stringify(pass), /VERY_SECRET|noreply/);
+
+  const noKey = byId(await gapChecks({ env: { RESEND_FROM: "x" } }), "staff-invite-send");
+  shape(noKey);
+  assert.equal(noKey.status, "FAIL");
+  assert.match(noKey.detail, /RESEND_API_KEY/);
+  assert.doesNotMatch(noKey.detail, /RESEND_FROM/);
+  assert.match(noKey.detail, /Did not invite a person/);
+
+  const blank = byId(await gapChecks({ env: { RESEND_API_KEY: "   ", RESEND_FROM: "" } }), "staff-invite-send");
+  assert.equal(blank.status, "FAIL");
+  for (const name of INVITE_MAIL_ENV) assert.match(blank.detail, new RegExp(name));
+});
+
+test("gap staff: the invite link query is read-only and asks about invited people, kind invite, unused, not expired", () => {
+  assert.match(STUCK_INVITE_SQL, /^\s*SELECT/);
+  assert.doesNotMatch(STUCK_INVITE_SQL, /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b/i);
+  assert.match(STUCK_INVITE_SQL, /s\.status = 'invited'/);
+  assert.match(STUCK_INVITE_SQL, /pr\.kind = 'invite'/);
+  assert.match(STUCK_INVITE_SQL, /pr\.used_at IS NULL/);
+  assert.match(STUCK_INVITE_SQL, /pr\.expires_at > \$2/);
+  assert.match(STUCK_INVITE_SQL, /\$1::uuid IS NULL OR s\.org_id = \$1::uuid/);
+});
+
+test("gap staff: an invited person with no live link fails, a live link passes, nobody invited passes", async () => {
+  const live = { id: "s1", org_id: ORG, status: "invited" };
+  const expired = { id: "s2", org_id: ORG, status: "invited" };
+  const used = { id: "s3", org_id: ORG, status: "invited" };
+  const resetOnly = { id: "s4", org_id: ORG, status: "invited" };
+  const active = { id: "s5", org_id: ORG, status: "active" };
+  const other = { id: "s6", org_id: "22222222-2222-4222-8222-222222222222", status: "invited" };
+  const future = new Date("2026-10-12T00:00:00Z");
+  const past = new Date("2026-10-01T00:00:00Z");
+  const resets = [
+    { staff_id: "s1", kind: "invite", used_at: null, expires_at: future },
+    { staff_id: "s2", kind: "invite", used_at: null, expires_at: past },
+    { staff_id: "s3", kind: "invite", used_at: new Date("2026-10-02T00:00:00Z"), expires_at: future },
+    { staff_id: "s4", kind: "reset", used_at: null, expires_at: future }
+  ];
+
   const calls = [];
-  const rows = await gapChecks({
-    db: fakeDb({ open_invites: 2, mailed: 0 }, calls),
-    orgId: "11111111-1111-4111-8111-111111111111"
-  });
-  const invite = rows[0];
-  shape(invite);
-  assert.equal(invite.status, "FAIL");
-  assert.match(invite.detail, /2 of 2 open staff invites have no outbound email/);
-  assert.match(invite.detail, /Did not invite a person/);
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].sql, /SELECT/);
-  assert.doesNotMatch(calls[0].sql, /\b(INSERT|UPDATE|DELETE|DROP|ALTER)\b/i);
-  assert.deepEqual(calls[0].params, ["11111111-1111-4111-8111-111111111111"]);
-  assert.equal(rows[1].status, "skip");
+  const fail = byId(await gapChecks({
+    db: modelDb({ staff: [live, expired, used, resetOnly, active, other], resets }, calls),
+    orgId: ORG,
+    now: NOW
+  }), "staff-invite-link");
+  shape(fail);
+  assert.equal(fail.status, "FAIL");
+  assert.match(fail.detail, /3 of 4 invited people have no working set-password link/);
+  assert.match(fail.detail, /Did not invite a person/);
+  assert.deepEqual(calls[0].params, [ORG, NOW]);
+
+  const pass = byId(await gapChecks({ db: modelDb({ staff: [live, active], resets }, null), orgId: ORG, now: NOW }), "staff-invite-link");
+  shape(pass);
+  assert.equal(pass.status, "PASS");
+  assert.match(pass.detail, /1 invited person has a working set-password link/);
+
+  const none = byId(await gapChecks({ db: modelDb({ staff: [active], resets: [] }, null), orgId: ORG, now: NOW }), "staff-invite-link");
+  assert.equal(none.status, "PASS");
+  assert.match(none.detail, /nobody is waiting/);
+
+  // A run with no org id reads every company, so the stranger org's invite counts.
+  const all = byId(await gapChecks({ db: modelDb({ staff: [other], resets: [] }, null), now: NOW }), "staff-invite-link");
+  assert.equal(all.status, "FAIL");
+  assert.match(all.detail, /1 of 1 invited person has no working set-password link/);
 });
 
-test("gap staff: a mailed invite passes, and zero invites skip", async () => {
-  const pass = await gapChecks({ db: fakeDb({ open_invites: 1, mailed: 1 }) });
-  assert.equal(pass[0].status, "PASS");
-  shape(pass[0]);
-  const none = await gapChecks({ db: fakeDb({ open_invites: 0, mailed: 0 }) });
-  assert.equal(none[0].status, "skip");
-  assert.match(none[0].detail, /Did not invite a person/);
+test("gap staff: a database error on the invite read is a fail, not a pass", async () => {
+  const rows = await gapChecks({ db: modelDb({ throw: "connection refused postgres://u:p@h/db" }), now: NOW });
+  const row = byId(rows, "staff-invite-link");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /connection refused/);
+  assert.doesNotMatch(row.detail, /u:p@h/);
+  shape(row);
 });
 
-test("gap staff: a database error is a fail and does not invite anyone", async () => {
-  const rows = await gapChecks({ db: fakeDb({ throw: "connection refused" }) });
-  assert.equal(rows[0].status, "FAIL");
-  assert.match(rows[0].detail, /connection refused/);
-  assert.match(rows[0].detail, /Did not invite a person/);
-  shape(rows[0]);
-});
-
-test("gap staff: role gate 500 fails, 401 passes, and the call is GET with no role write", async () => {
-  const bad = fakeFetch(() => ({ status: 500, body: { ok: false } }));
-  const fail = await gapChecks({ fetchImpl: bad.fetchImpl, baseUrl: "https://fundhub.ai/" });
-  assert.equal(fail[1].status, "FAIL");
-  assert.match(fail[1].detail, /500/);
-  assert.match(fail[1].detail, /Did not change a role/);
-  shape(fail[1]);
-  assert.equal(bad.calls.length >= 1, true);
+test("gap staff: role gate 500 fails, 401 and 403 pass, the call is a GET with a bad cookie and no role write", async () => {
+  const bad = fakeFetch(site({ [ROLE_GATE_PATH]: { status: 500, body: { ok: false } } }));
+  const fail = byId(await gapChecks({ fetchImpl: bad.fetchImpl, baseUrl: "https://fundhub.ai/" }), "role-gate");
+  assert.equal(fail.status, "FAIL");
+  assert.match(fail.detail, /500/);
+  assert.match(fail.detail, /Did not change a role/);
+  shape(fail);
   const gate = bad.calls.find((call) => call.url.endsWith(ROLE_GATE_PATH));
   assert.ok(gate);
+  assert.equal(gate.url, `https://fundhub.ai${ROLE_GATE_PATH}`);
   assert.equal(gate.method, "GET");
-  assert.match(gate.init.headers.cookie, /%zz/);
+  assert.match(gate.init.headers.cookie, /fundhub_session=%zz/);
   assert.equal(bad.calls.some((call) => /auth\/invite|auth\/staff-role/.test(call.url)), false);
   assert.equal(bad.calls.every((call) => call.method === "GET"), true);
 
-  const ok = fakeFetch(() => ({ status: 401, body: { ok: false, error: "unauthorized" } }));
-  const pass = await gapChecks({ fetchImpl: ok.fetchImpl });
-  assert.equal(pass[1].status, "PASS");
-  shape(pass[1]);
+  for (const status of [401, 403]) {
+    const ok = fakeFetch(site({ [ROLE_GATE_PATH]: { status, body: {} } }));
+    const pass = byId(await gapChecks({ fetchImpl: ok.fetchImpl }), "role-gate");
+    assert.equal(pass.status, "PASS");
+    shape(pass);
+  }
+
+  // A gate that lets a stranger through, or has gone missing, is not a pass.
+  for (const status of [200, 404]) {
+    const wide = fakeFetch(site({ [ROLE_GATE_PATH]: { status, body: {} } }));
+    assert.equal(byId(await gapChecks({ fetchImpl: wide.fetchImpl }), "role-gate").status, "FAIL");
+  }
+  const busy = fakeFetch(site({ [ROLE_GATE_PATH]: { status: 503, body: {} } }));
+  assert.equal(byId(await gapChecks({ fetchImpl: busy.fetchImpl }), "role-gate").status, "skip");
+  const down = fakeFetch(site({ [ROLE_GATE_PATH]: { throw: "socket hang up" } }));
+  const thrown = byId(await gapChecks({ fetchImpl: down.fetchImpl }), "role-gate");
+  assert.equal(thrown.status, "FAIL");
+  assert.match(thrown.detail, /socket hang up/);
 });
 
-test("gap staff: hiring apply 200 with roles passes, and 404 or a bad body is dead", async () => {
-  const live = fakeFetch((url) => {
-    if (url.endsWith(HIRING_APPLY_PATH)) {
-      return { status: 200, body: { ok: true, roles: [{ key: "closer" }] } };
-    }
-    if (url.endsWith(ROLE_GATE_PATH)) return { status: 401, body: {} };
-    return { status: 200, body: "<html>desk</html>" };
-  });
-  const pass = await gapChecks({ fetchImpl: live.fetchImpl, db: fakeDb({ open_invites: 0, mailed: 0 }) });
-  assert.equal(pass[2].status, "PASS");
-  assert.match(pass[2].detail, /1 open role/);
-  shape(pass[2]);
+test("gap staff: the run uses ctx.fetch when ctx.fetchImpl is not given", async () => {
+  const live = fakeFetch(site());
+  const rows = await gapChecks({ fetch: live.fetchImpl });
+  assert.equal(byId(rows, "role-gate").status, "PASS");
+  assert.equal(byId(rows, "hiring-apply").status, "PASS");
+  assert.equal(byId(rows, "role-desk").status, "PASS");
+});
+
+test("gap staff: hiring apply 200 with roles passes, and 404, a bad body, or no roles list is dead", async () => {
+  const live = fakeFetch(site());
+  const pass = byId(await gapChecks({ fetchImpl: live.fetchImpl }), "hiring-apply");
+  assert.equal(pass.status, "PASS");
+  assert.match(pass.detail, /1 open role\b/);
+  shape(pass);
   const apply = live.calls.find((call) => call.url.endsWith(HIRING_APPLY_PATH));
   assert.equal(apply.method, "GET");
 
-  const dead = fakeFetch(() => ({ status: 404, body: { ok: false, error: "not_found" } }));
-  const fail = await gapChecks({ fetchImpl: dead.fetchImpl });
-  assert.equal(fail[2].status, "FAIL");
-  assert.match(fail[2].detail, /dead/);
-  assert.match(fail[2].detail, /404/);
-  shape(fail[2]);
+  const none = fakeFetch(site({ [HIRING_APPLY_PATH]: { status: 200, body: { ok: true, roles: [] } } }));
+  assert.match(byId(await gapChecks({ fetchImpl: none.fetchImpl }), "hiring-apply").detail, /0 open roles/);
 
-  const empty = fakeFetch(() => ({ status: 200, body: { ok: true } }));
-  const badBody = await gapChecks({ fetchImpl: empty.fetchImpl });
-  assert.equal(badBody[2].status, "FAIL");
+  const dead = fakeFetch(site({ [HIRING_APPLY_PATH]: { status: 404, body: { ok: false, error: "not_found" } } }));
+  const fail = byId(await gapChecks({ fetchImpl: dead.fetchImpl }), "hiring-apply");
+  assert.equal(fail.status, "FAIL");
+  assert.match(fail.detail, /dead/);
+  assert.match(fail.detail, /404/);
+  shape(fail);
+
+  for (const body of [{ ok: true }, { ok: false, roles: [] }, "<html>not json</html>"]) {
+    const bad = fakeFetch(site({ [HIRING_APPLY_PATH]: { status: 200, body } }));
+    assert.equal(byId(await gapChecks({ fetchImpl: bad.fetchImpl }), "hiring-apply").status, "FAIL");
+  }
 });
 
-test("gap staff: a role desk 404 fails and names the role, a full set passes", async () => {
-  const missing = fakeFetch((url) => {
-    if (url.endsWith("/app/inquiry-remover.html")) return { status: 404, body: "missing" };
-    if (url.endsWith(ROLE_GATE_PATH)) return { status: 403, body: {} };
-    if (url.endsWith(HIRING_APPLY_PATH)) return { status: 200, body: { ok: true, roles: [] } };
-    return { status: 200, body: "<html>ok</html>" };
-  });
-  const fail = await gapChecks({ fetchImpl: missing.fetchImpl });
-  assert.equal(fail[3].status, "FAIL");
-  assert.match(fail[3].detail, /404/);
-  assert.match(fail[3].detail, /inquiry_specialist/);
-  assert.match(fail[3].detail, /Did not edit a page/);
-  shape(fail[3]);
-  assert.equal(missing.calls.filter((call) => call.url.includes("/app/")).every((call) => call.method === "GET"), true);
-
-  const ok = fakeFetch((url) => {
-    if (url.endsWith(ROLE_GATE_PATH)) return { status: 401, body: {} };
-    if (url.endsWith(HIRING_APPLY_PATH)) return { status: 200, body: { ok: true, roles: [] } };
-    return { status: 200, body: "<html>ok</html>" };
-  });
-  const pass = await gapChecks({ fetchImpl: ok.fetchImpl });
-  assert.equal(pass[3].status, "PASS");
-  assert.equal(pass[3].detail.includes("3 role desks"), true);
-  shape(pass[3]);
+test("gap staff: parseHomeMap reads the real HOME block and ignores comments", () => {
+  const home = parseHomeMap(SHELL_JS);
+  assert.equal(home.closer, "closer-dashboard.html");
+  assert.equal(home.sales_manager, "sales-floor.html");
+  assert.equal(home.csm, "csm-queue.html");
+  assert.equal(home.partner, "partner-galaxy.html");
+  assert.equal(Object.keys(home).length, 11);
+  assert.equal(parseHomeMap("var ROLE_TABS = {};"), null);
+  assert.equal(parseHomeMap(""), null);
 });
 
-test("gap staff: these ids are not slice 11 sweepers or slice 30 doors", async () => {
+test("gap staff: the home desk each staff job lands on must load; a 404 names the job, a full set passes", async () => {
+  const ok = fakeFetch(site());
+  const pass = byId(await gapChecks({ fetchImpl: ok.fetchImpl, baseUrl: "https://fundhub.ai" }), "role-desk");
+  assert.equal(pass.status, "PASS");
+  assert.match(pass.detail, /8 staff jobs each land on a desk that loads \(6 desks\)/);
+  shape(pass);
+  // Read from the app frame, one GET per desk, never a client/affiliate/partner desk.
+  const urls = ok.calls.map((call) => call.url);
+  assert.equal(urls.filter((u) => u.endsWith("/app/pipeline.html")).length, 1);
+  for (const file of ["closer-dashboard", "client-control-panel", "inquiry-remover", "sales-floor", "csm-queue"]) {
+    assert.ok(urls.some((u) => u.endsWith(`/app/${file}.html`)), file);
+  }
+  for (const file of ["client-portal", "affiliate", "partner-galaxy"]) {
+    assert.equal(urls.some((u) => u.endsWith(`/app/${file}.html`)), false, file);
+  }
+  assert.equal(ok.calls.every((call) => call.method === "GET"), true);
+
+  const missing = fakeFetch(site({ "/app/inquiry-remover.html": { status: 404, body: "missing" } }));
+  const fail = byId(await gapChecks({ fetchImpl: missing.fetchImpl }), "role-desk");
+  assert.equal(fail.status, "FAIL");
+  assert.match(fail.detail, /inquiry_specialist -> inquiry-remover\.html \(404\)/);
+  assert.match(fail.detail, /Did not edit a page/);
+  shape(fail);
+
+  // The pipeline desk is the home of three jobs; all three are named when it breaks.
+  const pipe = fakeFetch(site({ "/app/pipeline.html": { status: 500, body: "boom" } }));
+  const pipeFail = byId(await gapChecks({ fetchImpl: pipe.fetchImpl }), "role-desk");
+  assert.equal(pipeFail.status, "FAIL");
+  assert.match(pipeFail.detail, /owner\/admin\/setter -> pipeline\.html \(500\)/);
+});
+
+test("gap staff: a missing app frame fails, an unreadable HOME map skips, an unsafe file name is never fetched", async () => {
+  const noShell = fakeFetch(site({ [SHELL_PATH]: { status: 404, body: "" } }));
+  const fail = byId(await gapChecks({ fetchImpl: noShell.fetchImpl }), "role-desk");
+  assert.equal(fail.status, "FAIL");
+  assert.match(fail.detail, /404/);
+  shape(fail);
+
+  const odd = fakeFetch(site({ [SHELL_PATH]: { status: 200, body: "var HOMEPAGE = 1;" } }));
+  const skip = byId(await gapChecks({ fetchImpl: odd.fetchImpl }), "role-desk");
+  assert.equal(skip.status, "skip");
+  assert.match(skip.detail, /HOME map/);
+
+  const evil = fakeFetch(site({
+    [SHELL_PATH]: {
+      status: 200,
+      body: 'var HOME = {\n owner: "../../etc/passwd",\n closer: "closer-dashboard.html"\n };'
+    }
+  }));
+  const rows = await gapChecks({ fetchImpl: evil.fetchImpl });
+  assert.equal(byId(rows, "role-desk").status, "PASS");
+  assert.equal(evil.calls.some((call) => call.url.includes("passwd")), false);
+
+  const down = fakeFetch(site({ [SHELL_PATH]: { throw: "ENOTFOUND" } }));
+  const thrown = byId(await gapChecks({ fetchImpl: down.fetchImpl }), "role-desk");
+  assert.equal(thrown.status, "FAIL");
+  assert.match(thrown.detail, /ENOTFOUND/);
+});
+
+test("gap staff: these ids are not slice 11 sweepers or slice 30 doors, and every staff job in the HOME map is known", async () => {
   const rows = await gapChecks({});
   const mine = new Set(rows.map((row) => row.id));
   for (const row of HIRING_SLICE) assert.equal(mine.has(row.id), false);
   for (const row of CSM_SLICE) assert.equal(mine.has(row.id), false);
-  const deskFiles = ROLE_DESKS.map((desk) => desk.path.split("/").pop());
-  for (const file of deskFiles) {
-    assert.equal(CSM_SLICE.some((row) => row.id === file), false);
-  }
   assert.equal(HIRING_SLICE.some((row) => row.id === "hiring/apply"), false);
+  const home = parseHomeMap(SHELL_JS);
+  for (const role of STAFF_ROLES) assert.ok(home[role], `${role} has a home desk`);
 });
 
-test("gap staff: source does not invite, change a role, edit HTML, or start a watchdog", () => {
+test("gap staff: source does not invite, change a role, edit HTML, read the repo, or start a watchdog", () => {
   const src = fs.readFileSync(path.join(HERE, "gap-staff.mjs"), "utf8");
   assert.match(src, /export async function gapChecks/);
-  assert.match(INVITE_SQL, /SELECT/);
-  assert.doesNotMatch(INVITE_SQL, /\b(INSERT|UPDATE|DELETE|DROP|ALTER)\b/i);
-  assert.doesNotMatch(src, /inviteStaff|setStaffRole|writeFile|createFunction/);
+  assert.doesNotMatch(src, /inviteStaff|setStaffRole|writeFile|readFileSync|createFunction/);
   assert.doesNotMatch(src, /method:\s*"POST"/);
+  assert.doesNotMatch(src, /BEGIN|COMMIT|ROLLBACK/);
   assert.equal(src.includes(HIRING_APPLY_PATH), true);
   assert.doesNotMatch(src, /second tripwire|new watchdog/i);
 });

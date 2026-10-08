@@ -1,4 +1,6 @@
 // Consent gap — fakes only. No live database. No consent is recorded.
+// The SQL itself was run read-only against the live database with the real
+// tables replaced by made-up rows (see ops/workflows/heartbeat-gaps-2026-10-08/consent.md).
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -12,9 +14,16 @@ import {
   CHECK_IDS,
   CONSENT_API_PATH,
   CONSENT_PAGE_PATH,
+  PAID_GRACE_HOURS,
+  READ_ONLY_SQL,
   REQUIRED_SQL,
+  SLO_LOOKBACK_DAYS,
+  SLO_STORE_SQL,
   SOFT_PULL_KIND,
+  STORE_GRACE_HOURS,
   STORE_SQL,
+  TEST_CLIENT_EMAIL_RE,
+  assertSelect,
   consentDoorsListed,
   doorUp,
   gapChecks
@@ -24,14 +33,23 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ORG = "11111111-1111-4111-8111-111111111111";
 const SHAPE = ["detail", "id", "status", "suggestedFix"];
 
-function db(counts = { required: 0, store: 0 }, calls = []) {
+function db(counts = { required: 0, store: 0, slo: 0 }, calls = []) {
   return {
     query: async (sql, params) => {
       calls.push({ sql, params });
-      if (String(sql).includes("FROM clients c")) return { rows: [{ n: counts.required }] };
-      if (String(sql).includes("FROM contracts ct")) return { rows: [{ n: counts.store }] };
+      const text = String(sql);
+      if (text.includes("FROM payment_links pl")) return { rows: [{ n: counts.slo ?? 0 }] };
+      if (text.includes("FROM contracts ct")) return { rows: [{ n: counts.store }] };
+      if (text.includes("FROM clients c")) return { rows: [{ n: counts.required }] };
       throw new Error(`unexpected sql: ${sql}`);
     }
+  };
+}
+
+function page(status = 200, text = `<script>fetch("${CONSENT_API_PATH}?client_id=")</script>`, calls = []) {
+  return async (url, opts) => {
+    calls.push({ url, opts });
+    return { status, text: async () => text };
   };
 }
 
@@ -60,8 +78,16 @@ test("consent doors are on the morning pulse list", () => {
   assert.ok(REQUIRED_SQL.includes(CONSENT_VALID_SQL.trim()));
   assert.match(STORE_SQL, /revoked_at >= ct\.signed_at/);
   assert.match(STORE_SQL, /signed_document_id IS NULL/);
-  assert.doesNotMatch(REQUIRED_SQL, /\b(insert|update|delete|email|ssn)\b/i);
-  assert.doesNotMatch(STORE_SQL, /\b(insert|update|delete|email|signer_name|ssn)\b/i);
+  assert.doesNotMatch(REQUIRED_SQL, /\b(insert|update|delete|ssn)\b/i);
+  assert.doesNotMatch(STORE_SQL, /\b(insert|update|delete|signer_name|ssn)\b/i);
+  assert.doesNotMatch(SLO_STORE_SQL, /\b(insert|update|delete|signer_name|ssn)\b/i);
+  // An address may be matched against the test pattern. It is never returned:
+  // every statement answers with one count and nothing else.
+  for (const sql of READ_ONLY_SQL) {
+    assert.match(sql.trim(), /^SELECT count\(\*\)::int AS n\b/);
+    assert.equal((sql.match(/\bemail\b/gi) || []).length, 1, "the address appears once, inside the test-client match");
+    assert.match(sql, /COALESCE\(c\.email, ''\) ~\* \$\d/);
+  }
 });
 
 test("doorUp: page needs 2xx, API may refuse a bare GET", () => {
@@ -76,7 +102,7 @@ test("doorUp: page needs 2xx, API may refuse a bare GET", () => {
   assert.equal(doorUp("api", 500), false);
 });
 
-test("no database and no ping → three skips, and the site is not called", async () => {
+test("no database and no fetch → four skips, and the site is not called", async () => {
   const orig = globalThis.fetch;
   let called = false;
   globalThis.fetch = () => {
@@ -93,125 +119,140 @@ test("no database and no ping → three skips, and the site is not called", asyn
   }
 });
 
-test("live doors up and zero rows → three PASS", async () => {
+test("a live page and zero rows → four PASS", async () => {
   const calls = [];
   const rows = await gapChecks({
     orgId: ORG,
-    db: db({ required: 0, store: 0 }, calls),
-    doors: { page: 200, api: 401 }
+    db: db({ required: 0, store: 0, slo: 0 }, calls),
+    fetchImpl: page()
   });
   assertShape(rows);
   assert.ok(rows.every((row) => row.status === "PASS"));
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   for (const call of calls) {
     assert.match(String(call.sql).trim(), /^select\b/i);
     assert.equal(call.params[0], ORG);
     assert.equal(call.params[1], false);
+    assert.equal(call.params[call.params.length - 1], TEST_CLIENT_EMAIL_RE);
   }
-  assert.equal(calls.find((c) => String(c.sql).includes("FROM clients c")).params[2], SOFT_PULL_KIND);
+  assert.equal(calls.find((c) => String(c.sql).includes("FROM clients c\n")).params[2], SOFT_PULL_KIND);
 });
 
-test("a dead page fails the door reading and does not write", async () => {
+test("a dead page fails the page row and the database rows still run", async () => {
   const rows = await gapChecks({
     orgId: ORG,
-    db: db({ required: 0, store: 0 }),
-    doors: { page: 500, api: 401 }
+    db: db({ required: 0, store: 0, slo: 0 }),
+    fetchImpl: page(500)
   });
   assertShape(rows);
-  const doors = rows.find((row) => row.id === "consent:doors");
-  assert.equal(doors.status, "FAIL");
-  assert.match(doors.detail, /500/);
-  assert.equal(rows.find((row) => row.id === "consent:required").status, "PASS");
-  assert.equal(rows.find((row) => row.id === "consent:store").status, "PASS");
+  const row = rows.find((r) => r.id === "consent:page");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /500/);
+  assert.equal(rows.find((r) => r.id === "consent:required").status, "PASS");
+  assert.equal(rows.find((r) => r.id === "consent:store").status, "PASS");
+  assert.equal(rows.find((r) => r.id === "consent:slo-store").status, "PASS");
 });
 
-test("API 404 is a dead door", async () => {
-  const rows = await gapChecks({
-    doors: { page: 200, api: 404 }
+test("a page that loads but does not call the capture API is a dead page", async () => {
+  const rows = await gapChecks({ fetchImpl: page(200, "<html>Please sign in</html>") });
+  const row = rows.find((r) => r.id === "consent:page");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /does not call \/api\/consent\/capture/);
+});
+
+test("a 404 page and an unreachable page both fail", async () => {
+  const four = await gapChecks({ fetchImpl: page(404, "missing") });
+  assert.equal(four.find((r) => r.id === "consent:page").status, "FAIL");
+  assert.match(four.find((r) => r.id === "consent:page").detail, /404/);
+  const down = await gapChecks({
+    fetchImpl: async () => { throw new Error("socket hang up"); }
   });
-  assertShape(rows);
-  assert.equal(rows[0].status, "FAIL");
-  assert.match(rows[0].detail, /404/);
+  const row = down.find((r) => r.id === "consent:page");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /socket hang up/);
 });
 
-test("morning pulse rows are reused and fetch is not called again", async () => {
-  let called = false;
-  const rows = await gapChecks({
-    fetchImpl: () => {
-      called = true;
-      return { status: 500 };
-    },
-    registryChecks: [
-      { id: "reg:consent-capture", path: CONSENT_PAGE_PATH, status: "up", detail: "/app/consent-capture.html 200" },
-      { id: "reg:consent/capture", path: CONSENT_API_PATH, status: "down", detail: "/api/consent/capture answered 500" }
-    ]
-  });
-  assert.equal(called, false);
-  assert.equal(rows[0].status, "FAIL");
-  assert.match(rows[0].detail, /500/);
+test("the fetch alias still works when only ctx.fetch is given", async () => {
+  const rows = await gapChecks({ fetch: page() });
+  assert.equal(rows.find((r) => r.id === "consent:page").status, "PASS");
 });
 
-test("fetch, when asked, is GET only and carries no client", async () => {
+test("fetch is one GET of the page, carries no client, and has a timeout", async () => {
   const calls = [];
   const rows = await gapChecks({
     orgId: ORG,
     db: db(),
-    fetchImpl: async (url, opts) => {
-      calls.push({ url, opts });
-      if (String(url).endsWith(CONSENT_API_PATH)) return { status: 401 };
-      return { status: 200 };
-    }
+    baseUrl: "https://fundhub.ai/",
+    fetchImpl: page(200, `x ${CONSENT_API_PATH} y`, calls)
   });
-  assert.equal(calls.length, 2);
-  assert.deepEqual(calls.map((c) => c.url).sort(), [
-    `https://fundhub.ai${CONSENT_API_PATH}`,
-    `https://fundhub.ai${CONSENT_PAGE_PATH}`
-  ]);
-  for (const call of calls) {
-    assert.equal(call.opts.method, "GET");
-    assert.equal(call.opts.body, undefined);
-    assert.equal(String(call.url).includes("client"), false);
-  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, `https://fundhub.ai${CONSENT_PAGE_PATH}`);
+  assert.equal(calls[0].opts.method, "GET");
+  assert.equal(calls[0].opts.body, undefined);
+  assert.ok(calls[0].opts.signal, "the page fetch must carry a timeout");
+  assert.equal(String(calls[0].url).includes("client"), false);
   assert.equal(rows[0].status, "PASS");
+});
+
+test("the API door is not pinged here, the registry already does", async () => {
+  const calls = [];
+  await gapChecks({ orgId: ORG, db: db(), fetchImpl: page(200, undefined, calls) });
+  assert.ok(calls.every((c) => !String(c.url).includes("/api/")));
 });
 
 test("a client who must have consent and has none is a FAIL", async () => {
   const rows = await gapChecks({
     orgId: ORG,
-    db: db({ required: 2, store: 0 }),
-    doors: { page: 200, api: 401 }
+    db: db({ required: 2, store: 0, slo: 0 }),
+    fetchImpl: page()
   });
   assertShape(rows);
   const row = rows.find((r) => r.id === "consent:required");
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /2 clients/);
+  assert.match(row.detail, new RegExp(`over ${PAID_GRACE_HOURS} hours ago`));
   assert.equal(rows.find((r) => r.id === "consent:store").status, "PASS");
 });
 
 test("a signed paper with no consent row is a FAIL", async () => {
   const rows = await gapChecks({
     orgId: ORG,
-    db: db({ required: 0, store: 1 }),
-    doors: { page: 200, api: 400 }
+    db: db({ required: 0, store: 1, slo: 0 }),
+    fetchImpl: page()
   });
   const row = rows.find((r) => r.id === "consent:store");
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /1 signed soft-pull paper/);
 });
 
+test("an identity saved with no consent row is a FAIL", async () => {
+  const rows = await gapChecks({
+    orgId: ORG,
+    db: db({ required: 0, store: 0, slo: 2 }),
+    fetchImpl: page()
+  });
+  assertShape(rows);
+  const row = rows.find((r) => r.id === "consent:slo-store");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /2 roadmap orders saved an identity and no consent row/);
+  assert.match(row.suggestedFix, /roadmap pull form/);
+  const one = await gapChecks({ orgId: ORG, db: db({ required: 0, store: 0, slo: 1 }), fetchImpl: page() });
+  assert.match(one.find((r) => r.id === "consent:slo-store").detail, /1 roadmap order saved an identity/);
+});
+
 test("one client missing consent uses the singular", async () => {
   const rows = await gapChecks({
     orgId: ORG,
-    db: db({ required: 1, store: 0 }),
-    doors: { page: 200, api: 401 }
+    db: db({ required: 1, store: 0, slo: 0 }),
+    fetchImpl: page()
   });
   assert.match(rows.find((r) => r.id === "consent:required").detail, /1 client paid/);
 });
 
-test("a read error fails that reading and still returns all three", async () => {
+test("a read error fails that reading and still returns all four", async () => {
   const rows = await gapChecks({
     orgId: ORG,
-    doors: { page: 200, api: 401 },
+    fetchImpl: page(),
     db: {
       query: async (sql) => {
         if (String(sql).includes("FROM contracts ct")) throw new Error("db down");
@@ -219,33 +260,57 @@ test("a read error fails that reading and still returns all three", async () => 
       }
     }
   });
-  assert.equal(rows.length, 3);
+  assert.equal(rows.length, 4);
   assert.equal(rows.find((r) => r.id === "consent:required").status, "PASS");
   const store = rows.find((r) => r.id === "consent:store");
   assert.equal(store.status, "FAIL");
   assert.match(store.detail, /db down/);
+  assert.equal(rows.find((r) => r.id === "consent:slo-store").status, "PASS");
 });
 
-test("missing page file fails without calling the site", async () => {
-  let called = false;
-  const rows = await gapChecks({
-    build: { page: false, api: true, registry: true },
-    fetchImpl: () => {
-      called = true;
-      return { status: 200 };
+test("a count that does not come back is a FAIL, never a pass", async () => {
+  for (const bad of [null, "", undefined, "abc"]) {
+    const rows = await gapChecks({
+      orgId: ORG,
+      fetchImpl: page(),
+      db: { query: async () => ({ rows: [{ n: bad }] }) }
+    });
+    for (const id of ["consent:required", "consent:store", "consent:slo-store"]) {
+      const row = rows.find((r) => r.id === id);
+      assert.equal(row.status, "FAIL", `${id} with n=${String(bad)}`);
+      assert.match(row.detail, /did not return a count/);
     }
-  });
-  assert.equal(called, false);
-  assert.equal(rows[0].status, "FAIL");
-  assert.match(rows[0].detail, /consent-capture\.html is missing/);
+  }
+  const empty = await gapChecks({ orgId: ORG, fetchImpl: page(), db: { query: async () => ({ rows: [] }) } });
+  assert.ok(["consent:required", "consent:store", "consent:slo-store"].every((id) => empty.find((r) => r.id === id).status === "FAIL"));
 });
 
-test("missing route fails the door reading", async () => {
+test("every database read going wrong fails all three, none passes", async () => {
   const rows = await gapChecks({
-    build: { page: true, api: false, registry: true }
+    orgId: ORG,
+    fetchImpl: page(),
+    db: { query: async () => { throw new Error("connection terminated"); } }
   });
-  assert.equal(rows[0].status, "FAIL");
-  assert.match(rows[0].detail, /route consent\/capture is missing/);
+  assertShape(rows);
+  for (const id of ["consent:required", "consent:store", "consent:slo-store"]) {
+    const row = rows.find((r) => r.id === id);
+    assert.equal(row.status, "FAIL", id);
+    assert.match(row.detail, /connection terminated/);
+  }
+});
+
+test("reads go through the staff scope when one is passed, not the plain db", async () => {
+  const viaScope = [];
+  const viaDb = [];
+  const rows = await gapChecks({
+    orgId: ORG,
+    fetchImpl: page(),
+    db: db({ required: 0, store: 0, slo: 0 }, viaDb),
+    scope: (fn) => fn(db({ required: 0, store: 0, slo: 0 }, viaScope))
+  });
+  assert.ok(rows.every((r) => r.status === "PASS"));
+  assert.equal(viaScope.length, 3);
+  assert.equal(viaDb.length, 0);
 });
 
 test("demoOn is passed through and a bad org does not query", async () => {
@@ -253,21 +318,81 @@ test("demoOn is passed through and a bad org does not query", async () => {
   const rows = await gapChecks({
     orgId: "not-a-uuid",
     demoOn: true,
-    db: db({ required: 0, store: 0 }, calls),
-    doors: { page: 200, api: 401 }
+    db: db({ required: 0, store: 0, slo: 0 }, calls),
+    fetchImpl: page()
   });
   assert.equal(calls.length, 0);
   assert.equal(rows[1].status, "skip");
   assert.equal(rows[2].status, "skip");
+  assert.equal(rows[3].status, "skip");
 
   const again = [];
   await gapChecks({
     orgId: ORG,
     demoOn: true,
-    db: db({ required: 0, store: 0 }, again),
-    doors: { page: 200, api: 401 }
+    db: db({ required: 0, store: 0, slo: 0 }, again),
+    fetchImpl: page()
   });
   assert.ok(again.every((call) => call.params[1] === true));
+});
+
+test("the sql waits for fresh payments and leaves test clients out", () => {
+  assert.equal(PAID_GRACE_HOURS, 24);
+  assert.equal(STORE_GRACE_HOURS, 1);
+  assert.equal(SLO_LOOKBACK_DAYS, 7);
+  // required: a diagnostic.paid event in the last 24 hours means "still filling the form in".
+  assert.match(REQUIRED_SQL, /ev\.name = 'diagnostic\.paid'/);
+  assert.match(REQUIRED_SQL, new RegExp(`ev\\.created_at > now\\(\\) - interval '${PAID_GRACE_HOURS} hours'`));
+  // store: a paper signed a moment ago may still be mid-handler.
+  assert.match(STORE_SQL, new RegExp(`ct\\.signed_at < now\\(\\) - interval '${STORE_GRACE_HOURS} hour'`));
+  // slo-store: window is one hour to seven days, roadmap orders only, any consent row counts.
+  assert.match(SLO_STORE_SQL, new RegExp(`identity_stored_at < now\\(\\) - interval '${STORE_GRACE_HOURS} hour'`));
+  assert.match(SLO_STORE_SQL, new RegExp(`identity_stored_at > now\\(\\) - interval '${SLO_LOOKBACK_DAYS} days'`));
+  assert.match(SLO_STORE_SQL, /left\(pl\.link_ref, 4\) = 'slo_'/);
+  assert.match(SLO_STORE_SQL, /cc\.kind = 'soft_pull_consent'/);
+  assert.doesNotMatch(SLO_STORE_SQL, /revoked_at/, "a withdrawn consent still proves a row was stored");
+  for (const sql of READ_ONLY_SQL) {
+    assert.match(sql, /custom_fields ->> 'synthetic'/);
+    assert.match(sql, /is_demo/);
+    assert.match(sql, /\$2::boolean OR NOT/);
+  }
+});
+
+test("the test-client pattern catches sim tags and test domains, not real people", () => {
+  const re = new RegExp(TEST_CLIENT_EMAIL_RE, "i");
+  for (const mail of [
+    "stanbridgejchris+walk-01@gmail.com",
+    "stanbridgejchris+sim-12@gmail.com",
+    "someone@example.org",
+    "adv-blk5a-1.1@example.test",
+    "x@thing.invalid"
+  ]) {
+    assert.ok(re.test(mail), mail);
+  }
+  for (const mail of [
+    "bramselleslach@gmail.com",
+    "jane.walker@gmail.com",
+    "bob+simple@gmail.com",
+    "dave@test-company.com"
+  ]) {
+    assert.ok(!re.test(mail), mail);
+  }
+});
+
+test("the read guard accepts SELECT and WITH and refuses every write word", () => {
+  for (const sql of READ_ONLY_SQL) assert.doesNotThrow(() => assertSelect(sql));
+  assert.doesNotThrow(() => assertSelect("WITH a AS (SELECT 1) SELECT * FROM a"));
+  for (const sql of [
+    "INSERT INTO client_consents DEFAULT VALUES",
+    "UPDATE client_consents SET revoked_at = now()",
+    "DELETE FROM client_consents",
+    "SELECT 1; DROP TABLE client_consents",
+    "WITH x AS (DELETE FROM client_consents RETURNING 1) SELECT * FROM x",
+    "TRUNCATE client_consents",
+    "BEGIN"
+  ]) {
+    assert.throws(() => assertSelect(sql), /refused a write/, sql);
+  }
 });
 
 test("the module does not record consent or start another monitor", () => {
@@ -279,4 +404,6 @@ test("the module does not record consent or start another monitor", () => {
   assert.doesNotMatch(src, /method:\s*["']POST["']/);
   assert.doesNotMatch(src, /setInterval|setTimeout|inngest|checkRegistry/);
   assert.doesNotMatch(src, /<html/);
+  // The pulse runs inside the deployed function, where public/ and api/ are not on disk.
+  assert.doesNotMatch(src, /node:fs|existsSync|readFileSync/);
 });

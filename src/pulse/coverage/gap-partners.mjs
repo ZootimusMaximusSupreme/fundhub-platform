@@ -8,6 +8,21 @@
 // run left in processing.
 //
 // Tripwire is existing Recon (AG-07). No second watchdog.
+//
+// Review notes (Claude, 2026-10-08):
+//   * The referral link check called any click with an unknown code "dead".
+//     api/public/affiliate-click.mjs records unknown codes on purpose (a typo,
+//     a probe, a test), so two test clicks (AFF-TEST-..., TESTCODE) turned the
+//     morning red for nothing. It now counts clicks that carried a code an
+//     affiliate held at the time and were still credited to nobody. Unknown
+//     codes are counted in the PASS line, not failed.
+//   * The start page and the login handler were read from disk. The morning
+//     check runs in the bundled Netlify function, which has neither file, so
+//     both doors would have read "dead" every morning. The start page is now
+//     read from the live site (GET /start.html) for its content; the login
+//     door is routed here and its uptime is already pinged by the pulse
+//     registry (auth/login). The disk reads are only a fallback.
+//   * Demo affiliates are left out of the commission check.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -32,13 +47,30 @@ export const PAYOUT_STUCK_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 const TRIPWIRE =
   "Tell Recon (AG-07). Do not build a second watchdog. Do not pay anyone. Do not create a partner.";
 
+/* unresolved: a click with no affiliate whose code an affiliate ALREADY held
+   when it landed (same upper() match the click door uses). The lookup should
+   have credited it. unknown_codes: clicks with a code nobody holds. The door
+   records those on purpose, so they are shown and never failed. */
 export const REFERRAL_LINK_SQL = `
   SELECT
+    (SELECT count(DISTINCT c.id)::int
+       FROM affiliate_link_clicks c
+       JOIN affiliates a
+         ON a.org_id = c.org_id
+        AND upper(a.tracking_id) = upper(c.tracking_id_used)
+        AND a.created_at <= c.occurred_at
+      WHERE c.org_id = $1
+        AND c.affiliate_id IS NULL
+        AND c.occurred_at >= $2) AS unresolved,
     (SELECT count(*)::int
-       FROM affiliate_link_clicks
-      WHERE org_id = $1
-        AND affiliate_id IS NULL
-        AND occurred_at >= $2) AS unresolved,
+       FROM affiliate_link_clicks c
+      WHERE c.org_id = $1
+        AND c.affiliate_id IS NULL
+        AND c.occurred_at >= $2
+        AND NOT EXISTS (
+              SELECT 1 FROM affiliates a
+               WHERE a.org_id = c.org_id
+                 AND upper(a.tracking_id) = upper(c.tracking_id_used))) AS unknown_codes,
     (SELECT count(*)::int
        FROM affiliates
       WHERE org_id = $1
@@ -53,6 +85,7 @@ export const COMMISSION_PAYABLE_SQL = `
         FROM affiliate_referrals r
         JOIN affiliates a ON a.id = r.affiliate_id AND a.org_id = r.org_id
        WHERE r.org_id = $1
+         AND COALESCE(a.is_demo, false) = false
          AND r.status = 'converted'
          AND r.commission_due IS NOT NULL
          AND r.commission_due > 0
@@ -126,24 +159,57 @@ async function readRow(db, sql, params) {
   return (r && r.rows && r.rows[0]) || {};
 }
 
-function clickDoorWired(ctx, routes) {
+function fetcher(ctx) {
+  const f = typeof ctx.fetchImpl === "function" ? ctx.fetchImpl : (typeof ctx.fetch === "function" ? ctx.fetch : null);
+  const base = ctx.baseUrl ? String(ctx.baseUrl).replace(/\/+$/, "") : "";
+  return f && base ? { f, base } : null;
+}
+
+function why(err) {
+  return String((err && err.message) || err).slice(0, 160);
+}
+
+/* The start page text. Order: a text handed in (tests), the live site, then the
+   file on disk (a local run). "unknown" means nothing could be read. It is not
+   a fail: the bundled server has no public/ folder. */
+async function startPage(ctx) {
+  if (ctx.startHtml != null) return { state: "known", html: String(ctx.startHtml) };
+  const live = fetcher(ctx);
+  if (live) {
+    try {
+      const res = await live.f(`${live.base}/start.html`, { method: "GET" });
+      const status = Number(res && res.status);
+      if (status !== 200) return { state: "dead", why: `the referral start page answered ${Number.isFinite(status) ? status : "nothing"}` };
+      return { state: "known", html: String(await res.text()) };
+    } catch (err) {
+      return { state: "unknown", why: `the referral start page was not reached (${why(err)})` };
+    }
+  }
+  try {
+    return { state: "known", html: fs.readFileSync(START_HTML, "utf8") };
+  } catch {
+    return { state: "unknown", why: "the referral start page could not be read in this run" };
+  }
+}
+
+async function clickDoorWired(ctx, routes) {
   if (!routes || !Object.prototype.hasOwnProperty.call(routes, REFERRAL_CLICK_ROUTE)) {
     return { ok: false, why: "the referral click door is not routed" };
   }
-  let html = ctx.startHtml;
-  if (html == null) {
-    try {
-      html = fs.readFileSync(START_HTML, "utf8");
-    } catch {
-      return { ok: false, why: "the referral start page is missing" };
-    }
-  }
-  if (!String(html).includes("/api/public/affiliate-click")) {
+  const page = await startPage(ctx);
+  if (page.state === "dead") return { ok: false, why: page.why };
+  if (page.state === "unknown") return { ok: true, unknown: page.why };
+  if (!page.html.includes("/api/public/affiliate-click")) {
     return { ok: false, why: "the referral start page no longer records the click" };
   }
   return { ok: true };
 }
 
+/* The login door. Routed in this bundle, and (when the handler source can be
+   read) still handing non-staff accounts to loginAccount. The source read is
+   best effort; the bundled server has no api/ folder, so a missing file is not
+   a fail. Whether /api/auth/login answers on the site is already pinged by the
+   pulse registry (auth/login), so it is not asked a second time here. */
 function partnerLoginWired(ctx, routes) {
   if (!routes || !Object.prototype.hasOwnProperty.call(routes, PARTNER_LOGIN_ROUTE)) {
     return { ok: false, why: "auth/login is not routed" };
@@ -151,22 +217,22 @@ function partnerLoginWired(ctx, routes) {
   if (ctx.loginHandlesPartners === false) {
     return { ok: false, why: "login no longer accepts a partner account" };
   }
-  if (ctx.loginHandlesPartners === true) return { ok: true };
-  let src = "";
-  try {
-    src = fs.readFileSync(LOGIN_SRC, "utf8");
-  } catch {
-    return { ok: false, why: "the login handler is missing" };
-  }
-  if (!src.includes("loginAccount(")) {
-    return { ok: false, why: "login no longer accepts a partner account" };
+  if (ctx.loginHandlesPartners !== true) {
+    try {
+      const src = fs.readFileSync(LOGIN_SRC, "utf8");
+      if (!src.includes("loginAccount(")) {
+        return { ok: false, why: "login no longer accepts a partner account" };
+      }
+    } catch {
+      // The bundled server has no api/ folder. The database read below decides.
+    }
   }
   return { ok: true };
 }
 
 async function referralLink(ctx, routes, db, orgId, now) {
   const id = "partners:referral-link";
-  const door = clickDoorWired(ctx, routes);
+  const door = await clickDoorWired(ctx, routes);
   if (!door.ok) {
     return check(
       id,
@@ -176,20 +242,27 @@ async function referralLink(ctx, routes, db, orgId, now) {
     );
   }
   if (!db || !orgId) {
-    return check(id, "skip", "no database in this run — referral clicks not read");
+    return check(id, "skip", `${db ? "no org id" : "no database"} in this run — referral clicks not read`);
   }
   try {
     const since = new Date(now.getTime() - DEAD_LINK_WINDOW_MS);
     const row = await readRow(db, REFERRAL_LINK_SQL, [orgId, since]);
     const unresolved = num(row.unresolved);
     const blank = num(row.blank_codes);
+    const unknown = num(row.unknown_codes);
     if (unresolved === 0 && blank === 0) {
-      return check(id, "PASS", "referral clicks match an affiliate, and active affiliates have a code");
+      if (door.unknown) {
+        return check(id, "skip", `${door.unknown}, so the link was not fully read. The click rows are clean.`);
+      }
+      const note = unknown > 0
+        ? ` (${unknown} click${unknown === 1 ? "" : "s"} used a code nobody holds; the click door records those on purpose)`
+        : "";
+      return check(id, "PASS", `every referral click with a live affiliate code was credited, and active affiliates have a code${note}`);
     }
     const parts = [];
     if (unresolved > 0) {
       parts.push(
-        `${unresolved} referral click${unresolved === 1 ? "" : "s"} in the last 30 days matched no affiliate`
+        `${unresolved} referral click${unresolved === 1 ? "" : "s"} in the last 30 days used a live affiliate code and matched no affiliate`
       );
     }
     if (blank > 0) {
@@ -216,7 +289,7 @@ async function referralLink(ctx, routes, db, orgId, now) {
 async function commissionPayable(ctx, db, orgId, now) {
   const id = "partners:commission-payable";
   if (!db || !orgId) {
-    return check(id, "skip", "no database in this run — commission payable state not read");
+    return check(id, "skip", `${db ? "no org id" : "no database"} in this run — commission payable state not read`);
   }
   const { periodEnd } = previousMonth(now);
   const minimum = PAYOUT_DEFAULTS.minimumUsd;
@@ -258,22 +331,22 @@ async function partnerLogin(ctx, routes, db, orgId) {
     );
   }
   if (!db || !orgId) {
-    return check(id, "skip", "no database in this run — partner accounts not read");
+    return check(id, "skip", `${db ? "no org id" : "no database"} in this run — partner accounts not read`);
   }
   try {
     const row = await readRow(db, PARTNER_LOGIN_SQL, [orgId]);
     const active = num(row.active_partners);
     const can = num(row.can_sign_in);
-    if (active === 0) {
-      return check(id, "PASS", "partner login door is wired; no active partner is waiting to sign in");
-    }
-    if (can === 0) {
+    if (active > 0 && can === 0) {
       return check(
         id,
         "FAIL",
         `Partner login door is dead: ${active} active partner${active === 1 ? "" : "s"} and none can sign in.`,
         fix("Open the existing partner account on auth/login. Do not mint a new partner.")
       );
+    }
+    if (active === 0) {
+      return check(id, "PASS", "partner login door is wired; no active partner is waiting to sign in");
     }
     return check(
       id,
@@ -293,7 +366,7 @@ async function partnerLogin(ctx, routes, db, orgId) {
 async function payoutStuck(db, orgId, now) {
   const id = "partners:payout-stuck";
   if (!db || !orgId) {
-    return check(id, "skip", "no database in this run — payout runs not read");
+    return check(id, "skip", `${db ? "no org id" : "no database"} in this run — payout runs not read`);
   }
   const cutoff = new Date(now.getTime() - PAYOUT_STUCK_AFTER_MS);
   try {
@@ -323,7 +396,7 @@ async function payoutStuck(db, orgId, now) {
 }
 
 /**
- * Four gap checks. ctx: { db, orgId, now, routes, startHtml, loginHandlesPartners }.
+ * Four gap checks. ctx: { db, orgId, now, fetchImpl (or fetch), baseUrl, routes, startHtml, loginHandlesPartners }.
  * status is PASS, FAIL, or skip. Never writes.
  */
 export async function gapChecks(ctx = {}) {

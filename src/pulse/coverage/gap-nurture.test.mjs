@@ -10,9 +10,12 @@ import {
   QUEUE_GRACE_MS,
   RENEWAL_WAIT_MS,
   STEP_STUCK_SQL,
+  NURTURE_WORKFLOW_FILES,
+  SEND_PAIRS,
   findSequences,
   gapChecks,
   listLiveSequences,
+  listLiveSequencesFromModules,
   liveTemplateKeys,
   nurtureCutoffs
 } from "./gap-nurture.mjs";
@@ -258,3 +261,125 @@ test("gap nurture: this file does not import a sender", () => {
   assert.doesNotMatch(src, /outbound_enabled\s*=/);
   assert.equal(fs.existsSync(path.join(ROOT, "src/workflows/n-05-repair-complete-nurture.mjs")), false);
 });
+
+test("gap nurture: the never-queued read finds the person by email, because closeout and funded events have no client id", () => {
+  // Measured 2026-10-08: 0 of 5 round.closeout and 0 of 4 round.funded events carry a client_id.
+  // A join on e.client_id could never match one, so this check could never fail.
+  assert.doesNotMatch(NEVER_QUEUED_SQL, /JOIN clients c ON c\.id = e\.client_id/);
+  assert.equal((NEVER_QUEUED_SQL.match(/COALESCE\(\s*e\.client_id,/g) || []).length, 2);
+  assert.equal((NEVER_QUEUED_SQL.match(/lower\(c0\.email\) = lower\(btrim\(COALESCE\(e\.payload->>'email'/g) || []).length, 2);
+  assert.match(NEVER_QUEUED_SQL, /fr\.client_id = rc\.id/);
+  assert.doesNotMatch(NEVER_QUEUED_SQL, /fr\.client_id = e\.client_id/);
+  // The message is matched by the event id it was written for, not by who the client is.
+  assert.doesNotMatch(NEVER_QUEUED_SQL, /m\.client_id = e\.client_id/);
+  assert.match(NEVER_QUEUED_SQL, /'workflow:EMAIL-N04-POST-FUNDING:' \|\| e\.id::text/);
+  assert.match(NEVER_QUEUED_SQL, /'workflow:SMS-N06-RENEWAL:' \|\| e\.id::text/);
+  // One old event cannot shout forever.
+  assert.equal((NEVER_QUEUED_SQL.match(/interval '7 days'/g) || []).length, 2);
+  assert.match(NEVER_QUEUED_SQL, /e\.created_at >= \$2::timestamptz - interval '7 days'/);
+  assert.match(NEVER_QUEUED_SQL, /e\.created_at >= \$3::timestamptz - interval '7 days'/);
+});
+
+test("gap nurture: a half pair is not a miss when the person opted out of texts", () => {
+  assert.equal((STEP_STUCK_SQL.match(/o\.channel = 'sms' AND o\.opted_in_at IS NULL/g) || []).length, 2);
+  assert.match(STEP_STUCK_SQL, /m\.template_key = 'EMAIL-N04-POST-FUNDING'\s+AND EXISTS/);
+  assert.match(STEP_STUCK_SQL, /m\.template_key = 'EMAIL-N06-RENEWAL'\s+AND EXISTS/);
+  assert.equal((STEP_STUCK_SQL.match(/interval '7 days'/g) || []).length, 2);
+});
+
+test("gap nurture: the live list comes from the loaded workflow modules, and matches the source files", async () => {
+  const fromModules = await listLiveSequencesFromModules();
+  const fromFiles = listLiveSequences();
+  assert.deepEqual(fromModules, fromFiles);
+  assert.deepEqual(fromModules.map((seq) => seq.id), [
+    "n-04-post-funding-nurture",
+    "n-06-renewal-second-wave"
+  ]);
+});
+
+test("gap nurture: module reading honors enabled false, an empty trigger, and a handler that never sends", async () => {
+  const fn = (opts) => ({ opts });
+  const loaders = Object.fromEntries(NURTURE_WORKFLOW_FILES.map((file) => [file, async () => ({})]));
+  loaders["src/workflows/n-03-hot-nurture.mjs"] = async () => ({
+    handle: async () => 1,
+    n03: fn({ id: "n-03-hot-nurture", enabled: false, triggers: [{ event: "x" }] })
+  });
+  loaders["src/workflows/n-01-cold-nurture.mjs"] = async () => ({
+    handle: async () => 1,
+    n01: fn({ id: "n-01-cold-nurture", triggers: [] })
+  });
+  loaders["src/workflows/n-04-post-funding-nurture.mjs"] = async () => ({
+    handle: async () => 1,
+    n04: fn({ id: "n-04-post-funding-nurture", triggers: [{ event: "round.closeout" }] })
+  });
+  loaders["src/workflows/n-06-renewal-second-wave.mjs"] = async () => ({
+    handle: async ({ db }) => { await sendTemplated2(db, {}); },
+    n06: fn({ id: "n-06-renewal-second-wave", triggers: [{ event: "round.funded" }] })
+  });
+  const live = await listLiveSequencesFromModules(loaders);
+  assert.deepEqual(live.map((seq) => [seq.id, seq.sends]), [
+    ["n-04-post-funding-nurture", false],
+    ["n-06-renewal-second-wave", true]
+  ]);
+});
+
+test("gap nurture: with no readText the sequences come from the modules, not from a file read", async () => {
+  const db = fakeDb();
+  const rows = await gapChecks({ db, orgId: ORG, now: NOW });
+  assertShape(rows);
+  assert.ok(rows.every((r) => r.status === "PASS"));
+  assert.equal(db.calls.length, 2);
+  assert.deepEqual(db.calls[0].params.slice(3), [true, true]);
+});
+
+test("gap nurture: the template keys and triggers still match the n-04 and n-06 workflows", async () => {
+  const n04 = await import("../../workflows/n-04-post-funding-nurture.mjs");
+  const n06 = await import("../../workflows/n-06-renewal-second-wave.mjs");
+  const pair04 = SEND_PAIRS.find((p) => p.id === "n-04-post-funding-nurture");
+  const pair06 = SEND_PAIRS.find((p) => p.id === "n-06-renewal-second-wave");
+  assert.equal(n04.EMAIL_TEMPLATE_KEY, pair04.email);
+  assert.equal(n04.SMS_TEMPLATE_KEY, pair04.sms);
+  assert.equal(n06.EMAIL_TEMPLATE_KEY, pair06.email);
+  assert.equal(n06.SMS_TEMPLATE_KEY, pair06.sms);
+  assert.deepEqual(n04.n04PostFundingNurture.opts.triggers, [{ event: pair04.event }]);
+  assert.deepEqual(n06.n06RenewalSecondWave.opts.triggers, [{ event: pair06.event }]);
+  const src04 = fs.readFileSync(path.join(ROOT, "src/workflows/n-04-post-funding-nurture.mjs"), "utf8");
+  const src06 = fs.readFileSync(path.join(ROOT, "src/workflows/n-06-renewal-second-wave.mjs"), "utf8");
+  // The ref the SQL looks for is workflow:<template>:<event id>. sendTemplated builds it from eventId.
+  assert.match(src04, /payload\.stage === "closed" \|\| payload\.engagementComplete === true/);
+  assert.match(src04, /const eventId = event\.id;/);
+  assert.match(src06, /const eventId = event\.id;/);
+  assert.match(src06, /step\.sleep\("wait-6-months", "180d"\)/);
+  assert.match(src06, /funded_amount > 0/);
+  const messaging = fs.readFileSync(path.join(ROOT, "src/workflows/messaging.mjs"), "utf8");
+  assert.match(messaging, /const providerRef = `workflow:\$\{templateKey\}:\$\{eventId\}`;/);
+});
+
+test("gap nurture: a blank count is a skip, and a failed step read is a fail", async () => {
+  const blank = {
+    async query(sql) {
+      if (sql.includes("gap:nurture-never-queued")) return { rows: [{}] };
+      return { rows: [] };
+    }
+  };
+  const rows = await gapChecks({ db: blank, orgId: ORG, now: NOW });
+  assert.equal(rows[0].status, "skip");
+  assert.match(rows[0].detail, /unreadable/);
+  assert.equal(rows[1].status, "skip");
+  assert.equal(rows[2].status, "PASS");
+
+  const rows2 = await gapChecks({ db: fakeDb({ throwOn: "gap:nurture-step-stuck" }), orgId: ORG, now: NOW });
+  assert.equal(rows2[0].status, "PASS");
+  assert.equal(rows2[1].status, "FAIL");
+  assert.match(rows2[1].detail, /could not read nurture steps/);
+});
+
+test("gap nurture: a database with no company skips and says so", async () => {
+  const db = fakeDb();
+  const rows = await gapChecks({ db, now: NOW });
+  assertShape(rows);
+  assert.equal(rows[0].status, "skip");
+  assert.match(rows[0].detail, /no company/);
+  assert.equal(db.calls.length, 0);
+});
+

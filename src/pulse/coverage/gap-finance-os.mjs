@@ -7,6 +7,16 @@
 // Plaid items and empty accounts belong to another lane. This file does not
 // call Plaid and does not move money.
 // Recon (AG-07) is the one tripwire. Do not add another watcher.
+//
+// Review notes (Claude, 2026-10-08):
+//   * Each door used to be opened by importing its file from a path built at run
+//     time. The morning check runs inside the bundled Netlify function, which
+//     carries only files the code names, so those imports would have failed and
+//     every door would have read FAIL "cannot find module" every morning. Each
+//     door now names its handler with a literal import so the bundler packs it.
+//   * The seven doors ran one after another (about 12 to 20 seconds). The step
+//     is cut at 26 seconds, so they now run side by side.
+//   * The skip line said "no database" even when the org id was the missing part.
 
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -14,13 +24,13 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 export const DOORS = Object.freeze([
-  { id: "finance-os:credit", route: "money/credit", page: "/app/money-credit.html", label: "credit page", file: "api/money/credit.mjs" },
-  { id: "finance-os:plan", route: "money/plan", page: "/app/money-plan.html", label: "plan", file: "api/money/plan.mjs" },
-  { id: "finance-os:declines", route: "blueprint/declines", page: "/app/money-declines.html", label: "declines", file: "api/blueprint/declines.mjs" },
-  { id: "finance-os:vault", route: "money/vault", page: "/app/money-vault.html", label: "vault", file: "api/money/vault.mjs" },
-  { id: "finance-os:transfers", route: "money/transfers", page: "/app/money-transfers.html", label: "transfers", file: "api/money/transfers.mjs" },
-  { id: "finance-os:payments", route: "money/payments", page: "/app/money-payments.html", label: "payments schedule", file: "api/money/payments.mjs" },
-  { id: "finance-os:helper", route: "money/helper", page: "/app/money-helper.html", label: "money helper", file: "api/money/helper.mjs" }
+  { id: "finance-os:credit", route: "money/credit", page: "/app/money-credit.html", label: "credit page", file: "api/money/credit.mjs", load: () => import("../../../api/money/credit.mjs") },
+  { id: "finance-os:plan", route: "money/plan", page: "/app/money-plan.html", label: "plan", file: "api/money/plan.mjs", load: () => import("../../../api/money/plan.mjs") },
+  { id: "finance-os:declines", route: "blueprint/declines", page: "/app/money-declines.html", label: "declines", file: "api/blueprint/declines.mjs", load: () => import("../../../api/blueprint/declines.mjs") },
+  { id: "finance-os:vault", route: "money/vault", page: "/app/money-vault.html", label: "vault", file: "api/money/vault.mjs", load: () => import("../../../api/money/vault.mjs") },
+  { id: "finance-os:transfers", route: "money/transfers", page: "/app/money-transfers.html", label: "transfers", file: "api/money/transfers.mjs", load: () => import("../../../api/money/transfers.mjs") },
+  { id: "finance-os:payments", route: "money/payments", page: "/app/money-payments.html", label: "payments schedule", file: "api/money/payments.mjs", load: () => import("../../../api/money/payments.mjs") },
+  { id: "finance-os:helper", route: "money/helper", page: "/app/money-helper.html", label: "money helper", file: "api/money/helper.mjs", load: () => import("../../../api/money/helper.mjs") }
 ]);
 
 export const CHECK_IDS = Object.freeze(DOORS.map((door) => door.id));
@@ -129,7 +139,11 @@ export async function readOnlyHelperPayload(database, {
 
 async function loadHandler(door) {
   if (handlers.has(door.file)) return handlers.get(door.file);
-  const mod = await import(pathToFileURL(path.join(ROOT, door.file)).href);
+  // door.load is a literal import, so the server bundle packs the handler. The
+  // path import is only a fallback for a door that has no loader.
+  const mod = typeof door.load === "function"
+    ? await door.load()
+    : await import(pathToFileURL(path.join(ROOT, door.file)).href);
   const handler = mod.default;
   handlers.set(door.file, handler);
   return handler;
@@ -205,7 +219,9 @@ export async function gapChecks(ctx = {}) {
     return DOORS.map((door) => row(
       door.id,
       "skip",
-      "no database in this run — finance read doors not opened"
+      !db
+        ? "no database in this run — finance read doors not opened"
+        : "no org id in this run — finance read doors not opened"
     ));
   }
 
@@ -229,19 +245,18 @@ export async function gapChecks(ctx = {}) {
   }
 
   const args = { db, orgId, clientId, now };
-  const out = [];
-  for (const door of DOORS) {
+  // Side by side. Rows keep the order of DOORS.
+  return Promise.all(DOORS.map(async (door) => {
     try {
       const outcome = await runDoor(door, args, ctx);
-      out.push(scoreDoor(door, clientId, outcome));
+      return scoreDoor(door, clientId, outcome);
     } catch (err) {
-      out.push(row(
+      return row(
         door.id,
         "FAIL",
         `${door.label} (GET /api/${door.route}) threw for linked client ${clientId}: ${clip(err)}`,
         fix(door)
-      ));
+      );
     }
-  }
-  return out;
+  }));
 }

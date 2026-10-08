@@ -145,3 +145,82 @@ test("gap sms: a missing count row skips that check only", async () => {
   assert.equal(rows[1].status, "PASS");
   assert.equal(rows[2].status, "PASS");
 });
+
+test("gap sms: journey sql finds the person by email when the event has no client id", () => {
+  const sql = buildJourneyZeroSql();
+  // Measured 2026-10-08: booking, deposit and round events all have client_id NULL.
+  // A filter on e.client_id IS NOT NULL made five of six steps impossible to FAIL.
+  assert.doesNotMatch(sql, /e\.client_id\s+IS NOT NULL/i);
+  assert.match(sql, /COALESCE\(\s*e\.client_id,/);
+  assert.match(sql, /lower\(c\.email\)\s*=\s*lower\(btrim\(COALESCE\(e\.payload->>'email'/);
+  assert.match(sql, /o\.client_id = rc\.id/);
+  assert.match(sql, /p\.client_id = rc\.id/);
+  assert.doesNotMatch(sql, /\be\.client_id\s*=/);
+});
+
+// Each watched step must still be what the workflow really does. If a workflow renames its
+// template, moves its trigger, or changes the ref it writes, the check would go quiet or
+// shout for no reason. This reads the workflow files and fails when they drift.
+const STEP_SOURCES = {
+  "entry.captured": ["s-00-welcome.mjs", ["event: \"entry.captured\"", "SMS-S00-WELCOME", "eventId }"]],
+  "booking.created": ["s-04b-booking-reminders.mjs", ["{ event: \"booking.created\" }", "SMS-S04-01-CONFIRM", "eventId: `${eventId}:confirm`"]],
+  "booking.rescheduled": ["s-04b-booking-reminders.mjs", ["{ event: \"booking.rescheduled\" }", "SMS-S04-01-CONFIRM", "eventId: `${eventId}:confirm`"]],
+  "round.started": ["round-started-client-notify.mjs", ["event: \"round.started\"", "SMS-ROUND-STARTED-NOTIFY", "eventId: event.id"]],
+  "round.approved": ["f-04-round-approvals.mjs", ["event: \"round.approved\"", "SMS-F04-ROUND-APPROVALS", "approvedAmount"]],
+  "round.submitted": ["f-03-round-submitted.mjs", ["event: \"round.submitted\"", "SMS-F03-ROUND-SUBMITTED", "roundNumber"]],
+  "deposit.paid": ["s-doc-collection.mjs", ["event: \"deposit.paid\"", "SMS-DOC-01-REQUEST", "claimCustomFieldLock"]]
+};
+
+test("gap sms: every watched step still matches the workflow that sends it", () => {
+  assert.deepEqual(
+    SMS_JOURNEY_STEPS.map((s) => s.eventName).sort(),
+    Object.keys(STEP_SOURCES).sort()
+  );
+  for (const s of SMS_JOURNEY_STEPS) {
+    const [file, needles] = STEP_SOURCES[s.eventName];
+    const src = fs.readFileSync(path.join(HERE, "..", "..", "workflows", file), "utf8");
+    for (const needle of needles) {
+      assert.ok(src.includes(needle), `${file} no longer has ${needle} (step ${s.eventName})`);
+    }
+    assert.ok(src.includes(s.templateKey), `${file} no longer sends ${s.templateKey}`);
+    if (s.refSuffix) assert.equal(s.refSuffix, ":confirm");
+    if (s.oncePerClient) assert.match(src, /claimCustomFieldLock|LOCK_FIELD/);
+  }
+});
+
+test("gap sms: one failed read skips that check only and is never a PASS", async () => {
+  const db = fakeDb((sql) => {
+    if (sql.includes("status = 'sending'")) throw new Error("permission denied for table messages");
+    if (sql.includes("status = 'failed'")) return { rows: [{ customer_n: 0, staff_n: 0 }] };
+    return { rows: [{ n: 3, names: ["booking.created", "deposit.paid"] }] };
+  });
+  const rows = await gapChecks({ db, orgId: ORG });
+  shape(rows);
+  assert.equal(rows[0].status, "skip");
+  assert.match(rows[0].detail, /permission denied/);
+  assert.equal(rows[1].status, "PASS");
+  assert.equal(rows[2].status, "FAIL");
+  assert.match(rows[2].detail, /3 steps/);
+  assert.match(rows[2].detail, /booking\.created, deposit\.paid/);
+});
+
+test("gap sms: a row with no readable count is a skip, not a PASS", async () => {
+  const db = fakeDb((sql) => {
+    if (sql.includes("status = 'sending'")) return { rows: [{}] };
+    if (sql.includes("status = 'failed'")) return { rows: [{ customer_n: null, staff_n: 0 }] };
+    return { rows: [{ n: "not a number", names: [] }] };
+  });
+  const rows = await gapChecks({ db, orgId: ORG });
+  shape(rows);
+  assert.ok(rows.every((r) => r.status === "skip"));
+});
+
+test("gap sms: the cutoffs come from now, so a text sent a minute ago is not late", async () => {
+  const db = fakeDb(() => ({ rows: [{ customer_n: 0, staff_n: 0, n: 0, names: [] }] }));
+  const now = new Date("2026-10-08T12:00:00.000Z");
+  await gapChecks({ db, orgId: ORG, now });
+  assert.equal(db.seen[0].params[1], "2026-10-08T11:45:00.000Z");
+  assert.equal(db.seen[1].params[1], "2026-10-01T12:00:00.000Z");
+  assert.equal(db.seen[2].params[1], "2026-10-08T11:45:00.000Z");
+  assert.equal(db.seen[2].params[2], "2026-10-01T12:00:00.000Z");
+});

@@ -1,13 +1,32 @@
 // YouTube and social stats for the morning pulse. Read only. Report only.
 //
 // Slice coverage already lists read/video-stats and the Social Studio page.
-// This file does not repeat that list. It looks for three breaks:
-// a YouTube connection with last_error set, a video stats sync older than
-// 3 times its daily snapshot, and a Social Studio read that answers 500.
+// The registry already pings /api/social/posts, /channels and /settings.
+// This file does not repeat those pings. It looks for three breaks:
+// a YouTube connection that is broken, a video stats sync that has gone
+// quiet, and a Social Studio read that would answer 500.
 //
-// The sync writes one snapshot per day. There is no sweeper.
-// Red after 3 days, same 3x rule as job heartbeats.
 // Recon (AG-07) is the one tripwire. Do not call YouTube. Do not refresh OAuth.
+//
+// Review notes (Claude, 2026-10-08):
+//   * analytics_connections, social_channels, partner_module_settings and
+//     marketing_content_queue are staff-only under row security. The first draft
+//     read them on the plain database role, which sees ZERO rows there. A broken
+//     YouTube connection would still have read PASS. Every read now goes through
+//     ctx.scope (the staff scope); ctx.db is only the fallback when no scope is
+//     passed (tests, a laptop).
+//   * The Social Studio probe sent GET to three API routes and called a 401
+//     "up". The registry already does exactly that every morning, and a 401 never
+//     reaches the read. It now runs the same SELECTs the screen runs, on the
+//     staff scope. A missing column or table makes them throw, and that throw is
+//     the 500 the screen would show.
+//   * The sync is not on a clock. api/analytics/youtube-sync.mjs only runs when
+//     someone presses "Sync now" on Creative Factory. It writes one snapshot per
+//     day it is run. Red after 3 days still means "the trend line has a hole".
+//   * A connection that has never synced was judged against "never ran". It is now
+//     judged against the day it was connected, so a fresh connection is not red.
+//   * A connection left in state error or expired with no last_error text was
+//     missed. It now counts.
 
 /** One day. The sync stores one stat_date per run. */
 export const VIDEO_STATS_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -15,14 +34,15 @@ export const VIDEO_STATS_INTERVAL_MS = 24 * 60 * 60 * 1000;
 /** Red after 3 times the daily snapshot. Same multiple as job heartbeats. */
 export const VIDEO_STATS_STALE_MS = 3 * VIDEO_STATS_INTERVAL_MS;
 
-/** A pending or revoked row is not on the daily snapshot. */
-export const WATCHED_STATES = Object.freeze(["active", "error", "expired"]);
+/**
+ * Only an active connection is judged for a quiet sync. An error or expired
+ * connection is already red on social:youtube-last-error. A pending or revoked
+ * one is not on the snapshot at all.
+ */
+export const WATCHED_STATES = Object.freeze(["active"]);
 
-export const SOCIAL_STUDIO_GETS = Object.freeze([
-  "/api/social/posts",
-  "/api/social/channels",
-  "/api/social/settings"
-]);
+/** A connection in one of these states is broken even if last_error is empty. */
+export const BROKEN_STATES = Object.freeze(["error", "expired"]);
 
 export const CHECK_IDS = Object.freeze([
   "social:youtube-last-error",
@@ -33,22 +53,48 @@ export const CHECK_IDS = Object.freeze([
 export const YOUTUBE_ERROR_SQL = `
   /* gap:youtube-last-error */
   SELECT count(*)::int AS n,
-         string_agg(left(btrim(last_error), 160), ' / ') AS errors
+         string_agg(
+           left(COALESCE(NULLIF(btrim(last_error), ''), 'state ' || connection_state), 160),
+           ' / '
+         ) AS errors
     FROM analytics_connections
-   WHERE org_id = $1::uuid
+   WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
      AND platform = 'youtube'
-     AND last_error IS NOT NULL
-     AND btrim(last_error) <> ''
+     AND (
+       (last_error IS NOT NULL AND btrim(last_error) <> '')
+       OR connection_state = ANY($2::text[])
+     )
 `;
 
 export const VIDEO_STATS_SQL = `
   /* gap:video-stats-stale */
   SELECT count(*)::int AS watched,
-         max(last_synced_at) AS last_synced_at
+         max(last_synced_at) AS last_synced_at,
+         max(created_at) AS connected_at
     FROM analytics_connections
-   WHERE org_id = $1::uuid
+   WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
      AND platform = 'youtube'
      AND connection_state = ANY($2::text[])
+`;
+
+/** The same SELECT list api/social/posts.mjs runs on GET. One row is enough. */
+export const STUDIO_POSTS_SQL = `
+  /* gap:studio-posts */
+  SELECT id, caption, offer_type, scheduled_for, status, social_post_id,
+         blocked_reasons, created_at, updated_at
+    FROM marketing_content_queue
+   WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
+   ORDER BY created_at DESC
+   LIMIT 1
+`;
+
+export const STUDIO_PARTNER_SQL = `
+  /* gap:studio-partner */
+  SELECT id::text AS id
+    FROM partners
+   WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
+   ORDER BY created_at ASC
+   LIMIT 1
 `;
 
 const RECON =
@@ -58,8 +104,8 @@ function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
 
-function clip(err) {
-  return String((err && err.message) || err).replace(/\s+/g, " ").trim().slice(0, 160);
+function clip(err, n = 160) {
+  return String((err && err.message) || err).replace(/\s+/g, " ").trim().slice(0, n);
 }
 
 function toDate(v) {
@@ -75,166 +121,154 @@ function ago(ms) {
   return `${Math.round(abs / (24 * 60 * 60 * 1000))} days`;
 }
 
-function originOf(baseUrl) {
-  const raw = String(baseUrl || "https://fundhub.ai").trim() || "https://fundhub.ai";
-  return raw.replace(/\/+$/, "");
+/** The staff scope when the pulse passes one, else the plain handle (tests, a laptop). */
+function bind(ctx) {
+  if (ctx && typeof ctx.scope === "function") return (fn) => ctx.scope(fn);
+  if (ctx && ctx.db && typeof ctx.db.query === "function") return (fn) => fn(ctx.db);
+  return null;
 }
 
-function apiAlive(status) {
-  return (
-    (status >= 200 && status < 300) ||
-    status === 400 ||
-    status === 401 ||
-    status === 403 ||
-    status === 405
-  );
+async function one(run, sql, params) {
+  const out = await run((tx) => tx.query(sql, params));
+  return (out && out.rows && out.rows[0]) || {};
 }
 
-async function readGet(fetchImpl, url) {
-  const res = await fetchImpl(url, {
-    method: "GET",
-    headers: { accept: "application/json" }
-  });
-  return { status: Number(res && res.status) };
-}
-
-async function checkYoutubeLastError({ db, orgId }) {
+async function checkYoutubeLastError({ run, orgId }) {
   const id = "social:youtube-last-error";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — YouTube connection not read");
-  }
+  if (!run) return row(id, "skip", "no database in this run — YouTube connection not read");
+  const fix = `${RECON} Read analytics_connections.last_error for platform youtube.`;
   try {
-    const { rows } = await db.query(YOUTUBE_ERROR_SQL, [orgId]);
-    const hit = rows && rows[0] ? rows[0] : {};
+    const hit = await one(run, YOUTUBE_ERROR_SQL, [orgId, [...BROKEN_STATES]]);
     const n = Number(hit.n);
     if (!Number.isFinite(n)) {
-      return row(
-        id,
-        "FAIL",
-        "YouTube last_error count was not a number",
-        `${RECON} Read analytics_connections.last_error for platform youtube.`
-      );
+      return row(id, "FAIL", "YouTube last_error count was not a number", fix);
     }
     if (n === 0) {
-      return row(id, "PASS", "YouTube connection has no last_error");
+      return row(id, "PASS", "YouTube connection has no last_error and is not in error or expired");
     }
     const errors = String(hit.errors || "set").slice(0, 160);
     const noun = n === 1 ? "connection" : "connections";
-    return row(
-      id,
-      "FAIL",
-      `YouTube ${noun} last_error is set: ${errors}`,
-      `${RECON} Read analytics_connections.last_error for platform youtube.`
-    );
+    return row(id, "FAIL", `YouTube ${noun} is broken: ${errors}`, fix);
   } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `could not read YouTube last_error: ${clip(err)}`,
-      `${RECON} Read analytics_connections.last_error for platform youtube.`
-    );
+    return row(id, "FAIL", `could not read YouTube last_error: ${clip(err)}`, fix);
   }
 }
 
-async function checkVideoStatsStale({ db, orgId, now }) {
+async function checkVideoStatsStale({ run, orgId, now }) {
   const id = "social:video-stats-stale";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — video stats sync not read");
-  }
+  if (!run) return row(id, "skip", "no database in this run — video stats sync not read");
+  const fix =
+    `${RECON} Read analytics_connections.last_synced_at for platform youtube. ` +
+    "Nothing runs this sync on a clock; it moves when someone presses Sync now on Creative Factory.";
   try {
-    const { rows } = await db.query(VIDEO_STATS_SQL, [orgId, [...WATCHED_STATES]]);
-    const hit = rows && rows[0] ? rows[0] : {};
+    const hit = await one(run, VIDEO_STATS_SQL, [orgId, [...WATCHED_STATES]]);
     const watched = Number(hit.watched);
     if (!Number.isFinite(watched)) {
-      return row(
-        id,
-        "FAIL",
-        "video stats sync count was not a number",
-        `${RECON} Read analytics_connections.last_synced_at for platform youtube.`
-      );
+      return row(id, "FAIL", "video stats sync count was not a number", fix);
     }
     if (watched === 0) {
       return row(
         id,
         "skip",
-        "no YouTube connection in active, error, or expired — video stats sync is not on a schedule"
+        "no active YouTube connection — there is no video stats sync to be late"
       );
     }
     const last = toDate(hit.last_synced_at);
-    const dueBy = now.getTime() - VIDEO_STATS_STALE_MS;
-    if (!last || last.getTime() < dueBy) {
-      const when = last
-        ? `last ran ${last.toISOString()} (${ago(now.getTime() - last.getTime())} ago)`
-        : "has never run";
-      return row(
-        id,
-        "FAIL",
-        `video stats sync ${when}, past the daily schedule (red after 3 days)`,
-        `${RECON} Read analytics_connections.last_synced_at for platform youtube. The snapshot is daily.`
-      );
+    const connected = toDate(hit.connected_at);
+    const since = last || connected;
+    if (!since) {
+      return row(id, "FAIL", "video stats sync has no sync time and no connect time", fix);
     }
+    const age = now.getTime() - since.getTime();
+    if (age > VIDEO_STATS_STALE_MS) {
+      const when = last
+        ? `last ran ${last.toISOString()} (${ago(age)} ago)`
+        : `has never run since it was connected ${ago(age)} ago`;
+      return row(id, "FAIL", `video stats sync ${when}, past the daily snapshot (red after 3 days)`, fix);
+    }
+    const when = last
+      ? `last ran ${last.toISOString()} (${ago(age)} ago)`
+      : `was connected ${ago(age)} ago and has not run yet`;
+    return row(id, "PASS", `video stats sync ${when}; red after 3 days`);
+  } catch (err) {
+    return row(id, "FAIL", `could not read video stats sync: ${clip(err)}`, fix);
+  }
+}
+
+/** The two Social Studio readers that api/social exports. Literal imports so the server bundle packs them. */
+async function loadReaders(ctx) {
+  if (ctx && ctx.socialReaders) return ctx.socialReaders;
+  const [channels, settings] = await Promise.all([
+    import("../../../api/social/channels.mjs"),
+    import("../../../api/social/settings.mjs")
+  ]);
+  return { fetchChannelRows: channels.fetchRows, readSettings: settings.readSettings };
+}
+
+async function checkStudioRead({ run, orgId, readers }) {
+  const id = "social:studio-read";
+  if (!run) return row(id, "skip", "no database in this run — Social Studio reads not run");
+  const fix =
+    `${RECON} Fix the failing read named above: posts is marketing_content_queue, ` +
+    "channels is social_channels, settings is partner_module_settings.";
+  const bad = [];
+  const steps = [
+    ["posts", () => run((tx) => tx.query(STUDIO_POSTS_SQL, [orgId]))],
+    ["channels", () => run((tx) => readers.fetchChannelRows(tx, { limit: 1, offset: 0, query: {} }))]
+  ];
+  for (const [name, go] of steps) {
+    try {
+      await go();
+    } catch (err) {
+      bad.push(`${name}: ${clip(err, 100)}`);
+    }
+  }
+  try {
+    const partner = await one(run, STUDIO_PARTNER_SQL, [orgId]);
+    if (partner.id) {
+      await run((tx) => readers.readSettings(tx, partner.id, orgId));
+    }
+  } catch (err) {
+    bad.push(`settings: ${clip(err, 100)}`);
+  }
+  if (bad.length === 0) {
     return row(
       id,
       "PASS",
-      `video stats sync last ran ${last.toISOString()} (${ago(now.getTime() - last.getTime())} ago); red after 3 days`
-    );
-  } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `could not read video stats sync: ${clip(err)}`,
-      `${RECON} Read analytics_connections.last_synced_at for platform youtube.`
+      "Social Studio reads ran on the staff scope (posts, channels, settings); none would answer 500"
     );
   }
-}
-
-async function checkStudioRead({ fetchImpl, baseUrl }) {
-  const id = "social:studio-read";
-  if (!fetchImpl) {
-    return row(id, "skip", "no fetch — Social Studio read API not checked");
-  }
-  const origin = originOf(baseUrl);
-  const bad = [];
-  try {
-    for (const path of SOCIAL_STUDIO_GETS) {
-      const { status } = await readGet(fetchImpl, `${origin}${path}`);
-      if (!apiAlive(status)) bad.push(`${path} ${status}`);
-    }
-  } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `Social Studio read API unreachable: ${clip(err)}`,
-      `${RECON} Restore GET /api/social/posts, /api/social/channels, and /api/social/settings.`
-    );
-  }
-  if (bad.length === 0) {
-    return row(id, "PASS", "Social Studio read API answered (GET only)");
-  }
-  const fiveHundred = bad.some((line) => /\s5\d\d$/.test(line));
-  return row(
-    id,
-    "FAIL",
-    fiveHundred
-      ? `social studio read API 500: ${bad.join("; ")}`
-      : `Social Studio read API down: ${bad.join("; ")}`,
-    `${RECON} Restore GET /api/social/posts, /api/social/channels, and /api/social/settings.`
-  );
+  return row(id, "FAIL", `Social Studio read would answer 500 — ${bad.join("; ")}`, fix);
 }
 
 /**
- * Three read-only checks. ctx: { db, orgId, now, fetchImpl, baseUrl }.
- * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
+ * Three read-only checks. ctx: { scope, db, orgId, now, socialReaders }.
+ * scope is the staff scope the pulse passes. Each row is
+ * { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
-  const db = ctx.db || null;
+  const run = bind(ctx);
   const orgId = ctx.orgId || null;
   const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const fetchImpl = ctx.fetchImpl || null;
-  const baseUrl = ctx.baseUrl;
+  let readers = null;
+  let readersError = null;
+  if (run) {
+    try {
+      readers = await loadReaders(ctx);
+    } catch (err) {
+      readersError = err;
+    }
+  }
   return [
-    await checkYoutubeLastError({ db, orgId }),
-    await checkVideoStatsStale({ db, orgId, now }),
-    await checkStudioRead({ fetchImpl, baseUrl })
+    await checkYoutubeLastError({ run, orgId }),
+    await checkVideoStatsStale({ run, orgId, now }),
+    readersError
+      ? row(
+          "social:studio-read",
+          "FAIL",
+          `Social Studio read code would not load: ${clip(readersError)}`,
+          `${RECON} Restore api/social/channels.mjs and api/social/settings.mjs.`
+        )
+      : await checkStudioRead({ run, orgId, readers })
   ];
 }

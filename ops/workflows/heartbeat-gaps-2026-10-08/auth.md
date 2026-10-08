@@ -8,10 +8,10 @@ A slice row in `slice-01-auth.mjs` is a note. It is not a live pass. The live do
 
 ## Counts
 
-- Breaks: 17
+- Breaks: 18
 - Already watched: 11
-- Missing: 6
-- New checks: 4
+- Missing: 7
+- New checks: 5
 
 ## Already watched
 
@@ -35,12 +35,15 @@ A plain GET on the login API does not try a password. A plain GET on session doe
 
 | Break | New check id |
 |---|---|
-| People cannot sign in. No active staff password, or many emails failed and none succeeded in 24 hours. | `gap:auth-staff-login` |
+| People cannot sign in. No active staff password, or many staff emails failed and none succeeded in 24 hours. | `gap:auth-staff-login` |
 | A short magic link was issued and no email was queued. The sign-in template is missing or cannot send. | `gap:auth-magic-link-dead` |
 | A portal link was issued and no email was queued. Same mail path as the magic link. | `gap:auth-magic-link-dead` |
-| Session tables cannot be read, so a real session check would 500. | `gap:auth-session-read` |
+| Session tables cannot be read the way the real session check reads them, so it would 500. | `gap:auth-session-read` |
 | Logout cannot see the staff or client session row it must revoke. | `gap:auth-session-read` |
-| A password reset was saved and no email was queued. | `gap:auth-reset-queue` |
+| A staff sign-in said yes and no session was made. A magic link was spent and no session was made. | `gap:auth-signin-no-session` |
+| Password reset mail cannot go out (Resend is not set up). | `gap:auth-reset-mail` |
+
+Reset and invite mail do not use the message queue. They go straight to Resend, so the database never sees them. `gap:auth-reset-mail` can only prove the setup, not each send.
 
 Booking confirm links last about a year and do not use this email. The dead-link check ignores those.
 

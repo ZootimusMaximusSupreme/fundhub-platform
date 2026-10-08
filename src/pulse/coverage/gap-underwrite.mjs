@@ -8,6 +8,15 @@
 // answers 500.
 //
 // Tripwire is Recon (AG-07) on the morning pulse. Do not invent a second watchdog.
+//
+// Claude review 2026-10-08:
+//  - uw-read-door used to GET the door with no login. That always answers 401,
+//    and daily-pulse already pings the door the same way (its "suggestions"
+//    check), so it could not see a 500 behind the login. It now runs the real
+//    handler in this process on one real stored credit file.
+//  - uw-paid-roadmap-no-pack used to fail every paid buyer 2 hours after paying,
+//    but the pack is built after the buyer fills the pull form and the pull
+//    finishes. It now fails only when the pull finished and no pack exists.
 
 export const GRACE_MS = 2 * 60 * 60 * 1000;
 
@@ -26,6 +35,13 @@ export const SLO_PACK_FAILED = "Delivery Failed — Retry";
 export const PACK_HANDLERS = Object.freeze([
   "onAnalysisCompletedDeliverables",
   "onAnalysisCompletedSloPack"
+]);
+
+export const CHECK_IDS = Object.freeze([
+  "uw-paid-roadmap-no-pack",
+  "uw-letters-missing",
+  "uw-offer-fulfillment-failed",
+  "uw-read-door"
 ]);
 
 const RECON =
@@ -62,20 +78,35 @@ function sample(row) {
   return id ? ` Example client ${id}.` : "";
 }
 
+// A buyer who paid the roadmap ($297, link_ref slo_*), whose credit pull then
+// finished (analysis.completed from the pull, after the payment, older than the
+// grace), and who has none of the four pack files. "Paid" is the same test
+// src/workflows/slo-genuine-followup.mjs uses: status paid OR a paid_at stamp.
+// A buyer who has not filled the pull form yet has no pull, and is not here.
 export const PAID_ROADMAP_SQL = `
-SELECT count(*)::int AS n,
+SELECT count(DISTINCT c.id)::int AS n,
        min(c.id::text) AS sample_id
   FROM clients c
   JOIN payment_links pl
     ON pl.client_id = c.id
    AND pl.org_id = c.org_id
- WHERE c.is_demo = false
-   AND pl.is_demo = false
-   AND pl.status = 'paid'
+ WHERE COALESCE(c.is_demo, false) = false
+   AND COALESCE(pl.is_demo, false) = false
+   AND (pl.status = 'paid' OR pl.paid_at IS NOT NULL)
    AND pl.purpose = 'diagnostic'
    AND pl.link_ref LIKE 'slo_%'
-   AND COALESCE(pl.paid_at, pl.updated_at) <= $1::timestamptz
    AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
+   AND EXISTS (
+     SELECT 1
+       FROM events e
+      WHERE e.client_id = c.id
+        AND e.org_id = c.org_id
+        AND e.name = 'analysis.completed'
+        AND e.payload->>'source' = 'crs'
+        AND COALESCE(e.is_demo, false) = false
+        AND e.created_at <= $1::timestamptz
+        AND e.created_at >= COALESCE(pl.paid_at, pl.updated_at)
+   )
    AND NOT EXISTS (
      SELECT 1
        FROM documents d
@@ -157,6 +188,19 @@ SELECT count(*)::int AS n,
    AND custom_fields->>'slo_pack_status' = $1
    AND ($2::uuid IS NULL OR org_id = $2::uuid)`;
 
+// The newest real stored credit file. The read door is run on this one.
+export const READ_DOOR_CLIENT_SQL = `
+SELECT c.id::text AS id
+  FROM clients c
+  JOIN crs_results r
+    ON r.client_id = c.id
+   AND r.org_id = c.org_id
+ WHERE c.org_id = $1::uuid
+   AND COALESCE(c.is_demo, false) = false
+   AND COALESCE(r.is_demo, false) = false
+ ORDER BY r.created_at DESC
+ LIMIT 1`;
+
 async function checkPaidRoadmap(db, { orgId = null, now = new Date() } = {}) {
   const id = "uw-paid-roadmap-no-pack";
   if (!hasDb(db)) {
@@ -167,13 +211,13 @@ async function checkPaidRoadmap(db, { orgId = null, now = new Date() } = {}) {
     const row = rows[0] || {};
     const n = num(row);
     if (n === 0) {
-      return check(id, "PASS", "no paid roadmap client is missing the UnderwriteIQ pack");
+      return check(id, "PASS", "no paid roadmap client with a finished pull is missing the UnderwriteIQ pack");
     }
     const word = n === 1 ? "client has" : "clients have";
     return check(
       id,
       "FAIL",
-      `${n} paid roadmap ${word} no UnderwriteIQ pack.${sample(row)}`,
+      `${n} paid roadmap ${word} a finished pull and no UnderwriteIQ pack.${sample(row)}`,
       "Open the paid roadmap client and see why the pack files were not saved. " + RECON
     );
   } catch (err) {
@@ -240,42 +284,116 @@ async function checkOfferFulfillment(db, { orgId = null } = {}) {
   }
 }
 
-export async function checkReadDoor({ fetchImpl, baseUrl = "https://fundhub.ai" } = {}) {
-  const id = "uw-read-door";
-  if (typeof fetchImpl !== "function") {
-    return check(id, "skip", "no fetch in this run — underwrite read door not opened");
-  }
-  const root = String(baseUrl || "https://fundhub.ai").replace(/\/$/, "");
-  const url = `${root}/api/read/underwrite`;
-  try {
-    const res = await fetchImpl(url, { method: "GET", headers: { accept: "application/json" } });
-    const status = Number(res && res.status);
-    if (status >= 500) {
-      let text = "";
-      try {
-        text = typeof res.text === "function" ? await res.text() : "";
-      } catch {
-        text = "";
+function mockRes() {
+  return {
+    statusCode: 0,
+    body: null,
+    headers: {},
+    setHeader(name, value) { this.headers[String(name).toLowerCase()] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; }
+  };
+}
+
+// The only fake in the door run: the staff session lookup. verifySession checks
+// the token with one UPDATE-and-SELECT on sessions. That statement is answered
+// here with a staff row, so nothing is written and no login is minted. Every
+// other statement goes to the real database, so the door runs its real reads
+// and its real engine.
+const SESSION_STATEMENT = /UPDATE\s+sessions[\s\S]*RETURNING\s+id,\s*staff_id,\s*org_id/i;
+
+export function doorDatabase(db, orgId, now = new Date()) {
+  return {
+    async query(sql, params) {
+      if (SESSION_STATEMENT.test(String(sql))) {
+        return {
+          rows: [{
+            session_id: "00000000-0000-4000-8000-0000000000a1",
+            expires_at: new Date(now.getTime() + 60 * 60 * 1000),
+            staff_id: "00000000-0000-4000-8000-0000000000a2",
+            org_id: orgId,
+            role: "owner",
+            email: "pulse@fundhub.ai",
+            name: "Morning pulse",
+            status: "active",
+            avatar_key: null,
+            active_flag: null
+          }]
+        };
       }
-      const extra = text ? `: ${clip(text)}` : "";
-      return check(id, "FAIL", `underwrite read door answered ${status}${extra}`, DOOR_FIX);
+      return db.query(sql, params);
     }
-    if (status === 401 || status === 403 || (status >= 200 && status < 300)) {
-      return check(id, "PASS", `underwrite read door answered ${status}`);
-    }
-    return check(id, "FAIL", `underwrite read door answered ${status}`, DOOR_FIX);
+  };
+}
+
+/** GET /api/read/underwrite in this process for one client. Reads only. */
+export async function openReadDoor({ db, orgId, clientId, now = new Date(), handler = null }) {
+  const run = handler || (await import("../../../api/read/underwrite.mjs")).default;
+  const res = mockRes();
+  const req = {
+    method: "GET",
+    headers: { authorization: "Bearer morning-pulse-in-process" },
+    query: { client_id: clientId }
+  };
+  try {
+    await run(req, res, { db: doorDatabase(db, orgId, now) });
+    return { status: res.statusCode, body: res.body, thrown: null };
   } catch (err) {
-    return check(
-      id,
-      "FAIL",
-      `underwrite read door unreachable: ${clip(err && err.message)}`,
-      DOOR_FIX
-    );
+    return { status: res.statusCode, body: res.body, thrown: err };
   }
 }
 
+export async function checkReadDoor(db, { orgId = null, now = new Date(), ctx = {} } = {}) {
+  const id = "uw-read-door";
+  if (!hasDb(db) || !orgId) {
+    return check(id, "skip", "no database in this run — underwrite read door not opened");
+  }
+  let clientId;
+  try {
+    const { rows } = await db.query(READ_DOOR_CLIENT_SQL, [orgId]);
+    clientId = rows && rows[0] && rows[0].id;
+  } catch (err) {
+    return check(id, "FAIL", `could not pick a stored credit file for the read door: ${clip(err && err.message)}`, DOOR_FIX);
+  }
+  if (!clientId) {
+    return check(id, "skip", "no real client has a stored credit file — underwrite read door not opened");
+  }
+  const open = typeof ctx.openReadDoor === "function" ? ctx.openReadDoor : openReadDoor;
+  let out;
+  try {
+    out = await open({ db, orgId, clientId, now, handler: ctx.underwriteHandler || null });
+  } catch (err) {
+    // The handler file would not even load.
+    return check(id, "FAIL", `underwrite read door would not load for client ${clientId}: ${clip(err && err.message)}`, DOOR_FIX);
+  }
+  const status = Number(out && out.status) || 0;
+  const body = (out && out.body) || null;
+  if (out && out.thrown) {
+    return check(
+      id,
+      "FAIL",
+      `underwrite read door would answer 500 for client ${clientId}: ${clip(out.thrown && out.thrown.message)}`,
+      DOOR_FIX
+    );
+  }
+  if (status === 200 && body && body.ok === true) {
+    return check(id, "PASS", `underwrite read door answered 200 for client ${clientId}`);
+  }
+  const why = body && (body.error || body.message) ? ` (${clip(body.error || body.message, 80)})` : "";
+  if (status >= 500 && !(body && body.error === "auth_unavailable")) {
+    return check(id, "FAIL", `underwrite read door answered ${status} for client ${clientId}${why}`, DOOR_FIX);
+  }
+  // 401, 403, 404, 400, or the session lookup itself: this run could not open the
+  // door. That is not proof it works. It is not a PASS.
+  return check(
+    id,
+    "skip",
+    `underwrite read door could not be opened in this run: answered ${status || "nothing"}${why}`
+  );
+}
+
 /**
- * @param {{ db?: { query: Function }, orgId?: string|null, now?: Date|string|number, fetchImpl?: Function, baseUrl?: string }} [ctx]
+ * @param {{ db?: { query: Function }, orgId?: string|null, now?: Date|string|number, openReadDoor?: Function, underwriteHandler?: Function }} [ctx]
  * @returns {Promise<Array<{ id: string, status: string, detail: string, suggestedFix: string|null }>>}
  */
 export async function gapChecks(ctx = {}) {
@@ -287,6 +405,6 @@ export async function gapChecks(ctx = {}) {
     await checkPaidRoadmap(db, scope),
     await checkLetters(db, scope),
     await checkOfferFulfillment(db, scope),
-    await checkReadDoor({ fetchImpl: ctx.fetchImpl, baseUrl: ctx.baseUrl })
+    await checkReadDoor(db, { orgId, now, ctx })
   ];
 }

@@ -5,14 +5,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  DRIP_SQL,
   MAGIC_LINK_SQL,
   MAGIC_LINK_TEMPLATE_KEY,
   MORNING_EMAIL_PATHS,
   PROVIDER_FAIL_DAYS,
   PROVIDER_FAIL_SQL,
   REPO_ROOT,
-  STUCK_MINUTES,
-  STUCK_SQL,
+  SENDING_STUCK_MINUTES,
+  SENDING_STUCK_SQL,
   gapChecks,
   morningEmailPathMissesFailureCheck,
   unreadMorningEmailPaths
@@ -35,16 +36,25 @@ function liveSources() {
   return out;
 }
 
-function fakeDb(counts = {}, { throwOn = null } = {}) {
+// Routes by which of the four statements arrived. Each statement has one
+// phrase no other has, so a swapped query would hand back the wrong counts.
+function fakeDb(counts = {}, { throwOn = null, blank = null } = {}) {
   const calls = [];
   const db = {
     calls,
     async query(sql, params) {
-      calls.push({ sql: String(sql), params });
-      if (throwOn && String(sql).includes(throwOn)) throw new Error("read failed");
-      if (String(sql).includes("account_magic_links")) return { rows: [{ n: counts.magic || 0 }] };
-      if (String(sql).includes("status = 'failed'")) return { rows: [{ n: counts.failed || 0 }] };
-      if (String(sql).includes("status = 'queued'")) return { rows: [{ n: counts.stuck || 0 }] };
+      const text = String(sql);
+      calls.push({ sql: text, params });
+      if (throwOn && text.includes(throwOn)) throw new Error("read failed");
+      if (blank && text.includes(blank)) return { rows: [{}] };
+      if (text.includes("account_magic_links")) return { rows: [{ n: counts.magic || 0 }] };
+      if (text.includes("slo_drip_step")) {
+        return { rows: [{ n: counts.drip || 0, missing: counts.dripMissing || 0 }] };
+      }
+      if (text.includes("bounced_n")) {
+        return { rows: [{ failed_n: counts.failed || 0, bounced_n: counts.bounced || 0 }] };
+      }
+      if (text.includes("status = 'sending'")) return { rows: [{ n: counts.sending || 0 }] };
       return { rows: [] };
     }
   };
@@ -57,12 +67,19 @@ function byId(rows) {
 
 test("gap email: each row has id, status, detail, suggestedFix", async () => {
   const rows = await gapChecks({
-    db: fakeDb({ stuck: 2, failed: 1, magic: 3 }),
+    db: fakeDb({ sending: 2, failed: 1, bounced: 1, magic: 3, drip: 1, dripMissing: 3 }),
     orgId: ORG,
     now: NOW,
     sources: okSources()
   });
-  assert.equal(rows.length, 4);
+  assert.equal(rows.length, 5);
+  assert.deepEqual(rows.map((r) => r.id), [
+    "email:sending-stuck",
+    "email:provider-fail",
+    "email:magic-link-unqueued",
+    "email:drip-step-no-email",
+    "email:morning-no-failure-check"
+  ]);
   for (const row of rows) {
     assert.equal(typeof row.id, "string");
     assert.ok(row.id.length > 0);
@@ -86,60 +103,72 @@ test("gap email: each row has id, status, detail, suggestedFix", async () => {
 test("gap email: a clean queue passes and does not write", async () => {
   const db = fakeDb();
   const rows = byId(await gapChecks({ db, orgId: ORG, now: NOW, sources: okSources() }));
-  assert.equal(rows["email:queued-stuck"].status, "PASS");
+  assert.equal(rows["email:sending-stuck"].status, "PASS");
   assert.equal(rows["email:provider-fail"].status, "PASS");
   assert.equal(rows["email:magic-link-unqueued"].status, "PASS");
+  assert.equal(rows["email:drip-step-no-email"].status, "PASS");
   assert.equal(rows["email:morning-no-failure-check"].status, "PASS");
-  assert.equal(db.calls.length, 3);
+  assert.equal(db.calls.length, 4);
   for (const call of db.calls) {
     assert.match(call.sql, /^SELECT\b/i);
     assert.doesNotMatch(call.sql, /\b(INSERT|UPDATE|DELETE|ALTER)\b/i);
+    assert.doesNotMatch(call.sql, /^\s*(BEGIN|COMMIT|ROLLBACK|SET)\b/i);
   }
 });
 
-test("gap email: stuck, provider fail, and unqueued magic link are separate", async () => {
-  const db = fakeDb({ stuck: 2, failed: 1, magic: 4 });
+test("gap email: sending, provider fail, magic link and drip are separate", async () => {
+  const db = fakeDb({ sending: 2, failed: 1, bounced: 2, magic: 4, drip: 2, dripMissing: 5 });
   const rows = byId(await gapChecks({ db, orgId: ORG, now: NOW, sources: okSources() }));
-  assert.equal(rows["email:queued-stuck"].status, "FAIL");
-  assert.match(rows["email:queued-stuck"].detail, /2 outbound emails are still queued past 30 minutes/);
-  assert.match(rows["email:queued-stuck"].suggestedFix, /message dispatch sweeper/);
+  assert.equal(rows["email:sending-stuck"].status, "FAIL");
+  assert.match(rows["email:sending-stuck"].detail, /2 outbound emails have been on sending for more than 15 minutes/);
+  assert.match(rows["email:sending-stuck"].suggestedFix, /nothing puts it back/);
   assert.equal(rows["email:provider-fail"].status, "FAIL");
-  assert.match(rows["email:provider-fail"].detail, /1 outbound email failed at the provider in the last 3 days/);
+  assert.match(rows["email:provider-fail"].detail, /3 outbound emails did not arrive in the last 3 days \(1 failed at the provider, 2 bounced\)/);
   assert.equal(rows["email:magic-link-unqueued"].status, "FAIL");
   assert.match(rows["email:magic-link-unqueued"].detail, /4 magic-link sign-ins were issued and no email was queued/);
   assert.match(rows["email:magic-link-unqueued"].suggestedFix, /EMAIL-PORTAL-MAGIC-LINK/);
+  assert.equal(rows["email:drip-step-no-email"].status, "FAIL");
+  assert.match(rows["email:drip-step-no-email"].detail, /2 people are on the roadmap drip with 5 steps that never queued an email/);
 
-  const stuck = db.calls.find((call) => call.sql === STUCK_SQL);
+  const sending = db.calls.find((call) => call.sql === SENDING_STUCK_SQL);
   const failed = db.calls.find((call) => call.sql === PROVIDER_FAIL_SQL);
   const magic = db.calls.find((call) => call.sql === MAGIC_LINK_SQL);
-  assert.equal(stuck.params[0], ORG);
-  assert.equal(stuck.params[1].toISOString(), new Date(NOW.getTime() - STUCK_MINUTES * 60 * 1000).toISOString());
+  const drip = db.calls.find((call) => call.sql === DRIP_SQL);
+  assert.equal(sending.params[0], ORG);
+  assert.equal(sending.params[1].toISOString(), new Date(NOW.getTime() - SENDING_STUCK_MINUTES * 60 * 1000).toISOString());
   assert.equal(failed.params[1].toISOString(), new Date(NOW.getTime() - PROVIDER_FAIL_DAYS * 24 * 60 * 60 * 1000).toISOString());
   assert.equal(magic.params[2], MAGIC_LINK_TEMPLATE_KEY);
   assert.equal(magic.params[1].toISOString(), new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString());
-  assert.match(STUCK_SQL, /channel = 'email'/);
-  assert.match(PROVIDER_FAIL_SQL, /status = 'failed'/);
-  assert.match(PROVIDER_FAIL_SQL, /test address/);
-  assert.doesNotMatch(STUCK_SQL, /sms/);
+  assert.deepEqual(drip.params, [ORG]);
 });
 
-test("gap email: one stuck email uses the singular line", async () => {
-  const rows = byId(await gapChecks({
-    db: fakeDb({ stuck: 1 }),
-    orgId: ORG,
-    now: NOW,
-    sources: okSources()
-  }));
-  assert.match(rows["email:queued-stuck"].detail, /^1 outbound email is still queued/);
+test("gap email: one email uses the singular line, and each count alone is enough to FAIL", async () => {
+  const one = byId(await gapChecks({ db: fakeDb({ sending: 1 }), orgId: ORG, now: NOW, sources: okSources() }));
+  assert.match(one["email:sending-stuck"].detail, /^1 outbound email has been on sending/);
+  assert.equal(one["email:provider-fail"].status, "PASS");
+
+  const failedOnly = byId(await gapChecks({ db: fakeDb({ failed: 1 }), orgId: ORG, now: NOW, sources: okSources() }));
+  assert.equal(failedOnly["email:provider-fail"].status, "FAIL");
+  assert.match(failedOnly["email:provider-fail"].detail, /1 outbound email did not arrive.*\(1 failed at the provider\)/);
+
+  const bouncedOnly = byId(await gapChecks({ db: fakeDb({ bounced: 1 }), orgId: ORG, now: NOW, sources: okSources() }));
+  assert.equal(bouncedOnly["email:provider-fail"].status, "FAIL");
+  assert.match(bouncedOnly["email:provider-fail"].detail, /\(1 bounced\)/);
+
+  const dripOnly = byId(await gapChecks({ db: fakeDb({ drip: 1, dripMissing: 1 }), orgId: ORG, now: NOW, sources: okSources() }));
+  assert.equal(dripOnly["email:drip-step-no-email"].status, "FAIL");
+  assert.match(dripOnly["email:drip-step-no-email"].detail, /^1 person is on the roadmap drip with 1 step that/);
+  assert.equal(dripOnly["email:sending-stuck"].status, "PASS");
 });
 
 test("gap email: no database and no org skip the reads", async () => {
   const quiet = fakeDb();
   const noDb = byId(await gapChecks({ sources: okSources() }));
-  assert.equal(noDb["email:queued-stuck"].status, "skip");
+  assert.equal(noDb["email:sending-stuck"].status, "skip");
   assert.equal(noDb["email:provider-fail"].status, "skip");
   assert.equal(noDb["email:magic-link-unqueued"].status, "skip");
-  assert.match(noDb["email:queued-stuck"].detail, /no database/);
+  assert.equal(noDb["email:drip-step-no-email"].status, "skip");
+  assert.match(noDb["email:sending-stuck"].detail, /no database/);
   assert.equal(quiet.calls.length, 0);
 
   const noOrg = fakeDb();
@@ -149,16 +178,43 @@ test("gap email: no database and no org skip the reads", async () => {
   assert.equal(noOrg.calls.length, 0);
 });
 
-test("gap email: a read error is a fail and does not throw", async () => {
+test("gap email: a read error is a fail that names the cause, and the other reads still run", async () => {
   const rows = byId(await gapChecks({
     db: fakeDb({}, { throwOn: "account_magic_links" }),
     orgId: ORG,
     now: NOW,
     sources: okSources()
   }));
-  assert.equal(rows["email:queued-stuck"].status, "PASS");
+  assert.equal(rows["email:sending-stuck"].status, "PASS");
+  assert.equal(rows["email:drip-step-no-email"].status, "PASS");
   assert.equal(rows["email:magic-link-unqueued"].status, "FAIL");
   assert.match(rows["email:magic-link-unqueued"].detail, /could not read: read failed/);
+});
+
+test("gap email: a count that comes back blank is a skip, never a PASS", async () => {
+  for (const [phrase, id] of [
+    ["status = 'sending'", "email:sending-stuck"],
+    ["bounced_n", "email:provider-fail"],
+    ["account_magic_links", "email:magic-link-unqueued"],
+    ["slo_drip_step", "email:drip-step-no-email"]
+  ]) {
+    const rows = byId(await gapChecks({
+      db: fakeDb({}, { blank: phrase }),
+      orgId: ORG,
+      now: NOW,
+      sources: okSources()
+    }));
+    assert.equal(rows[id].status, "skip", `${id} must skip on a blank count`);
+    assert.match(rows[id].detail, /could not read/);
+  }
+  const empty = byId(await gapChecks({
+    db: { async query() { return { rows: [] }; } },
+    orgId: ORG,
+    now: NOW,
+    sources: okSources()
+  }));
+  assert.ok(["email:sending-stuck", "email:provider-fail", "email:magic-link-unqueued", "email:drip-step-no-email"]
+    .every((id) => empty[id].status === "skip"));
 });
 
 test("gap email: morning source with no send-result read fails", async () => {
@@ -170,6 +226,28 @@ test("gap email: morning source with no send-result read fails", async () => {
   assert.match(morning.detail, /src\/workflows\/slo-infinite-drip\.mjs/);
   assert.match(morning.detail, /8:00 a\.m\. Arizona/);
   assert.doesNotMatch(morning.detail, /notify\.mjs/);
+});
+
+test("gap email: a morning file that is not on disk is a skip, not a FAIL and not a PASS", async () => {
+  const none = Object.fromEntries(MORNING_EMAIL_PATHS.map((row) => [row.file, null]));
+  const rows = byId(await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, sources: none }));
+  assert.equal(rows["email:morning-no-failure-check"].status, "skip");
+  assert.match(rows["email:morning-no-failure-check"].detail, /not on disk/);
+  assert.match(rows["email:morning-no-failure-check"].detail, /slo-infinite-drip\.mjs/);
+
+  // One file missing and one that really misses the result read: the real miss still shouts.
+  const mixed = okSources();
+  mixed["src/contracts/notify.mjs"] = null;
+  mixed["src/workflows/slo-infinite-drip.mjs"] = "channel: \"email\"\nreturn { sent: true };\n";
+  const mixedRows = byId(await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, sources: mixed }));
+  assert.equal(mixedRows["email:morning-no-failure-check"].status, "FAIL");
+  assert.doesNotMatch(mixedRows["email:morning-no-failure-check"].detail, /notify\.mjs/);
+
+  // One file missing and the rest fine: not a PASS, because a file went unread.
+  const oneMissing = okSources();
+  oneMissing["src/finance/document-vault-chase.mjs"] = null;
+  const oneRows = byId(await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, sources: oneMissing }));
+  assert.equal(oneRows["email:morning-no-failure-check"].status, "skip");
 });
 
 test("gap email: a file that does not send email is not a miss", () => {
@@ -192,13 +270,71 @@ test("gap email: magic-link template key matches the auth module", () => {
   assert.match(src, /provider_ref sendTemplated synthesises unique per/);
 });
 
+test("gap email: booking confirm links are the only long-lived links that queue no email", () => {
+  // The magic-link check reads only links that live an hour or less. If a second caller
+  // starts issuing long links without queueing the email, or the booking link gets
+  // shorter, this stops being true and the check must change with it.
+  const auth = fs.readFileSync(path.join(REPO_ROOT, "src/auth/magic-link.mjs"), "utf8");
+  const booking = fs.readFileSync(path.join(REPO_ROOT, "src/workflows/s-04b-booking-reminders.mjs"), "utf8");
+  assert.match(auth, /BOOKING_CONFIRM_LINK_TTL_MINUTES = 365 \* 24 \* 60/);
+  assert.match(auth, /LINK_TTL_MINUTES = 15/);
+  assert.match(booking, /ttlMinutes: BOOKING_CONFIRM_LINK_TTL_MINUTES,\s*queueEmail: false/);
+  assert.match(MAGIC_LINK_SQL, /l\.expires_at - l\.created_at <= interval '1 hour'/);
+  for (const rel of ["api/auth/magic-link.mjs", "api/auth/send-portal-link.mjs", "api/auth/authorized-rep.mjs", "api/soft-pull-approve.mjs", "src/slo/buyer.mjs"]) {
+    const src = fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+    assert.doesNotMatch(src, /queueEmail:\s*false/, `${rel} now issues links without queueing the email`);
+    assert.doesNotMatch(src, /BOOKING_CONFIRM_LINK_TTL_MINUTES/, `${rel} now issues booking-length links`);
+  }
+});
+
+test("gap email: provider SQL counts bounces, keeps a failed row with no error text, drops test and missing-address holds", () => {
+  assert.match(PROVIDER_FAIL_SQL, /status IN \('failed', 'bounced'\)/);
+  assert.match(PROVIDER_FAIL_SQL, /count\(\*\) FILTER \(WHERE status = 'bounced'\)/);
+  assert.match(PROVIDER_FAIL_SQL, /coalesce\(last_error, ''\) NOT ILIKE '%test address%'/);
+  assert.match(PROVIDER_FAIL_SQL, /coalesce\(last_error, ''\) NOT ILIKE '%to send to%'/);
+  assert.match(PROVIDER_FAIL_SQL, /channel = 'email'/);
+  assert.doesNotMatch(PROVIDER_FAIL_SQL, /last_error IS NOT NULL/);
+  // A real Resend sandbox refusal says "testing email address". It must still count.
+  assert.equal(/test address/i.test("Please use our testing email address instead of domains like gmail.com"), false);
+});
+
+test("gap email: queued email is left to pipeline:outbound, not counted twice", async () => {
+  const motion = fs.readFileSync(path.join(REPO_ROOT, "src/pulse/pipeline-motion.mjs"), "utf8");
+  assert.match(motion, /"pipeline:outbound"/);
+  assert.match(motion, /status = 'queued'/);
+  assert.doesNotMatch(motion, /channel\s*=\s*'email'/, "pipeline:outbound is every channel, so email queued rows are covered");
+  assert.match(SENDING_STUCK_SQL, /status = 'sending'/);
+  assert.doesNotMatch(SENDING_STUCK_SQL, /'queued'/);
+  const rows = await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, sources: okSources() });
+  assert.ok(!rows.some((r) => /queued-stuck/.test(r.id)));
+});
+
+test("gap email: the drip read uses the drip's own field names and template prefix", () => {
+  const plan = fs.readFileSync(path.join(REPO_ROOT, "src/slo/drip-plan.mjs"), "utf8");
+  const drip = fs.readFileSync(path.join(REPO_ROOT, "src/workflows/slo-infinite-drip.mjs"), "utf8");
+  assert.match(plan, /DRIP_ON = "slo_drip_on"/);
+  assert.match(plan, /DRIP_STEP = "slo_drip_step"/);
+  assert.match(plan, /`EMAIL-SLO-DRIP-COLD-\$\{n\}`/);
+  assert.match(plan, /`EMAIL-SLO-DRIP-HOT-\$\{n\}`/);
+  // The drip steps up whether or not an email was queued. That is why a step with no row is a break.
+  assert.match(drip, /DRIP_STEP\]: String\(step \+ 1\)/);
+  assert.match(drip, /eventId: null/);
+  assert.match(DRIP_SQL, /custom_fields->>'slo_drip_on' = '1'/);
+  assert.match(DRIP_SQL, /custom_fields->>'slo_drip_step'/);
+  assert.match(DRIP_SQL, /template_key LIKE 'EMAIL-SLO-DRIP-%'/);
+  assert.match(DRIP_SQL, /COALESCE\(c\.is_demo, false\) = false/);
+  assert.match(DRIP_SQL, /WHERE s\.step > s\.sent/);
+  assert.doesNotMatch(DRIP_SQL, /\b(INSERT|UPDATE|DELETE|ALTER)\b/i);
+});
+
 test("gap email: this module does not send and does not touch the outbound switch", () => {
   const src = fs.readFileSync(path.join(HERE, "gap-email.mjs"), "utf8");
   assert.doesNotMatch(src, /^import\s+.*providers\/(resend|mailgun)/m);
   assert.doesNotMatch(src, /^import\s+.*\bsendTemplated\b/m);
   assert.doesNotMatch(src, /^import\s+.*\b(drainAll|dispatchOne)\b/m);
   assert.doesNotMatch(src, /outbound_enabled/);
-  const queries = `${STUCK_SQL}\n${PROVIDER_FAIL_SQL}\n${MAGIC_LINK_SQL}`;
+  assert.doesNotMatch(src, /\b(BEGIN|COMMIT|ROLLBACK)\b/);
+  const queries = `${SENDING_STUCK_SQL}\n${PROVIDER_FAIL_SQL}\n${MAGIC_LINK_SQL}\n${DRIP_SQL}`;
   assert.match(queries, /^SELECT\b/m);
   assert.doesNotMatch(queries, /\b(INSERT|UPDATE|DELETE|ALTER)\b/i);
 });

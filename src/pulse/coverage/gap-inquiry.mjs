@@ -1,25 +1,28 @@
 // Inquiry removal gaps for the morning pulse. Read only. Report only.
 //
 // Slice 29 already checks that the specialist doors and jobs are on the
-// registry list. This file does not repeat that list. It looks for four
-// breaks: a case that stopped moving, a funding round that should have a
-// letter draft and does not, the specialist desk API answering 500, and the
-// inquiry upload door dead.
-//
-// Tripwire is existing Recon (AG-07) on daily-pulse. This file reads that
-// one row. It does not start a second watchdog.
+// registry list. The registry already pings GET /api/inquiry and
+// GET /api/read/inquiry-cases (a 401 is a live door). Recon (AG-07) is read by
+// the daily pulse itself. This file repeats none of that. It looks for four
+// breaks that those cannot see: a case that stopped moving, a funding round
+// that should have a letter draft and does not, the specialist desk reads
+// failing behind the login, and the inquiry upload door gone from the portal.
 //
 // Never POST. Never mail a bureau. Never upload an ID. Never auto-fix.
 
+import { listCases } from "../../inquiry-ops/cases.mjs";
+import { loadDocPackets } from "../../inquiry-ops/doc-gate.mjs";
+import { cronIntervalMs, STALE_MULTIPLE } from "../heartbeats.mjs";
+
+/** No update for this long on a case a person should be moving. */
 export const STUCK_AFTER_MS = 72 * 60 * 60 * 1000;
 
-/** Open cases the desk or the 15-minute sweeper should still be moving. */
-export const OPEN_MOVE_STATUSES = Object.freeze([
-  "Queued",
-  "Scheduled",
-  "In Progress",
-  "Escalated"
-]);
+/**
+ * The call sweeper runs every 15 minutes (see JOBS in heartbeats.mjs). A call that
+ * came due and is still not fired after 3 runs of that sweeper is stuck.
+ */
+export const CALL_SWEEPER_CRON = "*/15 * * * *";
+export const CALL_GRACE_MS = STALE_MULTIPLE * (cronIntervalMs(CALL_SWEEPER_CRON) || 15 * 60 * 1000);
 
 /** Same three the call sweeper is allowed to move. Escalated is not one of them. */
 export const CALL_DUE_STATUSES = Object.freeze(["Queued", "Scheduled", "In Progress"]);
@@ -33,36 +36,48 @@ export const LETTER_STATUSES = Object.freeze([
   "Blocked"
 ]);
 
-export const AGENT_CODE = "AG-07";
-export const SOURCE_WORKFLOW = "daily-pulse";
-
-export const SPECIALIST_GETS = Object.freeze([
-  "/api/read/inquiry-cases",
-  "/api/inquiry?action=cases"
-]);
+/** Only the inquiry gate writes a draft letter. Cases from the IRA webhook never get one. */
+export const GATE_SOURCE = "inquiry_gate";
 
 export const UPLOAD_DOOR_PATH = "/app/client-portal.html";
 export const UPLOAD_DOOR_MARKER = /data-kind\s*=\s*["']inquiry_doc["']/;
 
+/**
+ * A case is stuck when no person or job is going to move it on its own:
+ *   1. Escalated (needs a person) and untouched for 72 hours.
+ *   2. Queued, Scheduled or In Progress, with no call scheduled and none fired
+ *      (so nothing is waiting on a clock), untouched for 72 hours.
+ *   3. A call came due, the sweeper had 3 runs to fire it, and it did not.
+ * A case with a call still to come, or a call already fired, is waiting on the
+ * bureau, not stuck. Blocked cases wait on client documents (documents lane).
+ */
 export const STUCK_SQL = `
 SELECT count(*)::int AS n
   FROM inquiry_removal_cases irc
  WHERE irc.org_id = $1::uuid
    AND irc.is_demo IS NOT TRUE
    AND irc.closed_at IS NULL
-   AND irc.case_status::text = ANY($2::text[])
    AND NOT EXISTS (
      SELECT 1 FROM clients c
       WHERE c.id = irc.client_id
         AND (c.is_demo IS TRUE OR c.custom_fields->>'synthetic' = 'true')
    )
    AND (
-     irc.updated_at < $3::timestamptz
+     (
+       irc.case_status::text = 'Escalated'
+       AND irc.updated_at < $2::timestamptz
+     )
      OR (
-       irc.call_due_at IS NOT NULL
+       irc.case_status::text = ANY($3::text[])
+       AND irc.call_due_at IS NULL
+       AND irc.call_fired_at IS NULL
+       AND irc.updated_at < $2::timestamptz
+     )
+     OR (
+       irc.case_status::text = ANY($3::text[])
+       AND irc.call_due_at IS NOT NULL
        AND irc.call_due_at <= $4::timestamptz
        AND irc.call_fired_at IS NULL
-       AND irc.case_status::text = ANY($5::text[])
      )
    )`;
 
@@ -71,6 +86,7 @@ SELECT count(DISTINCT irc.funding_round_id)::int AS n
   FROM inquiry_removal_cases irc
  WHERE irc.org_id = $1::uuid
    AND irc.funding_round_id IS NOT NULL
+   AND irc.request_source = $3::text
    AND irc.open_inquiry_count > 0
    AND irc.is_demo IS NOT TRUE
    AND irc.case_status::text = ANY($2::text[])
@@ -83,14 +99,21 @@ SELECT count(DISTINCT irc.funding_round_id)::int AS n
         AND (c.is_demo IS TRUE OR c.custom_fields->>'synthetic' = 'true')
    )`;
 
-export const RECON_SQL = `SELECT code, status, runtime, runtime_ref
-       FROM agents
-      WHERE org_id = $1 AND code = $2
-      LIMIT 1`;
+/**
+ * The exact read behind GET /api/inquiry?action=cases (api/inquiry.mjs), one row.
+ * The test pins the select list to that file so the two cannot drift apart.
+ */
+export const DESK_CASES_SQL = `
+        SELECT id, case_id, client_id, case_status, selected_bureaus_raw,
+               call_fired_at, ai_call_status, open_inquiry_count, created_at
+          FROM inquiry_removal_cases
+         WHERE org_id = $1::uuid ORDER BY created_at DESC LIMIT 1`;
+
+/** Never a real client. This id matches nothing, so the packet read only proves the SQL runs. */
+export const NIL_CLIENT_ID = "00000000-0000-0000-0000-000000000000";
 
 const NO_MAIL = "Do not mail a bureau from this pulse.";
 const NO_FIX = "Do not auto-fix from this pulse.";
-const NO_SECOND = "Do not invent a second watchdog.";
 
 function check(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -110,16 +133,6 @@ function originOf(baseUrl) {
   return raw.replace(/\/+$/, "");
 }
 
-function apiAlive(status) {
-  return (
-    (status >= 200 && status < 300) ||
-    status === 400 ||
-    status === 401 ||
-    status === 403 ||
-    status === 405
-  );
-}
-
 async function readGet(fetchImpl, url) {
   const res = await fetchImpl(url, {
     method: "GET",
@@ -134,14 +147,14 @@ async function checkStuck({ db, orgId, now }) {
   if (!db || !orgId) {
     return check("inquiry:case-stuck", "skip", "no database — stuck inquiry cases not read");
   }
-  const stuckBefore = new Date(now.getTime() - STUCK_AFTER_MS);
+  const staleBefore = new Date(now.getTime() - STUCK_AFTER_MS);
+  const callOverdueBefore = new Date(now.getTime() - CALL_GRACE_MS);
   try {
     const { rows } = await db.query(STUCK_SQL, [
       orgId,
-      [...OPEN_MOVE_STATUSES],
-      stuckBefore.toISOString(),
-      now.toISOString(),
-      [...CALL_DUE_STATUSES]
+      staleBefore.toISOString(),
+      [...CALL_DUE_STATUSES],
+      callOverdueBefore.toISOString()
     ]);
     const n = countOf(rows);
     if (n == null) {
@@ -156,14 +169,14 @@ async function checkStuck({ db, orgId, now }) {
       return check(
         "inquiry:case-stuck",
         "PASS",
-        "no open inquiry case is stale for 72 hours or past a due call that never started"
+        "no inquiry case is stale for 72 hours with nothing moving it, and no call is due and unfired"
       );
     }
     const noun = n === 1 ? "inquiry case is stuck" : "inquiry cases are stuck";
     return check(
       "inquiry:case-stuck",
       "FAIL",
-      `${n} ${noun} (no update in 72 hours, or a call was due and never started)`,
+      `${n} ${noun} (no update in 72 hours with nothing scheduled, or a call was due and never started)`,
       `Open the Specialist desk and move the stuck inquiry cases. ${NO_MAIL} ${NO_FIX}`
     );
   } catch (err) {
@@ -181,7 +194,7 @@ async function checkLetters({ db, orgId }) {
     return check("inquiry:letter-round", "skip", "no database — letter drafts not read");
   }
   try {
-    const { rows } = await db.query(LETTER_SQL, [orgId, [...LETTER_STATUSES]]);
+    const { rows } = await db.query(LETTER_SQL, [orgId, [...LETTER_STATUSES], GATE_SOURCE]);
     const n = countOf(rows);
     if (n == null) {
       return check(
@@ -203,7 +216,7 @@ async function checkLetters({ db, orgId }) {
       "inquiry:letter-round",
       "FAIL",
       `${n} ${noun} open inquiries and no letter draft`,
-      `Generate the missing letter draft on the Specialist desk. ${NO_MAIL} ${NO_FIX}`
+      `Generate the missing letter draft on the Specialist desk. A client with no real name on file gets no draft. ${NO_MAIL} ${NO_FIX}`
     );
   } catch (err) {
     return check(
@@ -215,40 +228,45 @@ async function checkLetters({ db, orgId }) {
   }
 }
 
-async function checkSpecialist({ fetchImpl, baseUrl }) {
-  if (!fetchImpl) {
-    return check("inquiry:specialist-api", "skip", "no fetch — specialist desk API not read");
+/**
+ * The desk reads behind the login. A GET with no session only ever reaches the
+ * 401 gate, so it cannot see a crash. These run the same reads in this process:
+ *   - GET /api/read/inquiry-cases: listCases (throws on a bad query) and the
+ *     document packet read (answers null when it cannot read)
+ *   - GET /api/inquiry?action=cases: the select in DESK_CASES_SQL
+ */
+async function checkSpecialist({ db, orgId, readers }) {
+  const id = "inquiry:specialist-api";
+  if (!db || !orgId) {
+    return check(id, "skip", "no database — specialist desk reads not run");
   }
-  const origin = originOf(baseUrl);
+  const cases = readers.listCases || listCases;
+  const packets = readers.loadDocPackets || loadDocPackets;
   const bad = [];
   try {
-    for (const path of SPECIALIST_GETS) {
-      const { status } = await readGet(fetchImpl, `${origin}${path}`);
-      if (!apiAlive(status)) bad.push(`${path} ${status}`);
-    }
+    await cases(db, { orgId, activeOnly: true, limit: 1 });
   } catch (err) {
-    return check(
-      "inquiry:specialist-api",
-      "FAIL",
-      `specialist desk API unreachable: ${clip(err)}`,
-      `Restore GET /api/read/inquiry-cases and GET /api/inquiry?action=cases. Do not place a bureau call. ${NO_FIX}`
-    );
+    bad.push(`/api/read/inquiry-cases case list failed: ${clip(err)}`);
+  }
+  try {
+    const packet = await packets(db, { orgId, clientIds: [NIL_CLIENT_ID] });
+    if (packet == null) bad.push("/api/read/inquiry-cases document packet read failed (the desk shows not checked)");
+  } catch (err) {
+    bad.push(`/api/read/inquiry-cases document packet read failed: ${clip(err)}`);
+  }
+  try {
+    await db.query(DESK_CASES_SQL, [orgId]);
+  } catch (err) {
+    bad.push(`/api/inquiry?action=cases failed: ${clip(err)}`);
   }
   if (bad.length === 0) {
-    return check(
-      "inquiry:specialist-api",
-      "PASS",
-      "specialist desk API answered on the case list (GET only)"
-    );
+    return check(id, "PASS", "specialist desk reads ran on the real database (case list, document packets, desk cases)");
   }
-  const fiveHundred = bad.some((line) => /\s5\d\d$/.test(line));
   return check(
-    "inquiry:specialist-api",
+    id,
     "FAIL",
-    fiveHundred
-      ? `specialist desk API 500: ${bad.join("; ")}`
-      : `specialist desk API down: ${bad.join("; ")}`,
-    `Fix the specialist desk API. Do not place a bureau call. ${NO_FIX}`
+    `specialist desk API would fail: ${bad.join("; ")}`,
+    `Fix the specialist desk read. Do not place a bureau call. ${NO_FIX}`
   );
 }
 
@@ -283,47 +301,22 @@ async function checkUploadDoor({ fetchImpl, baseUrl }) {
   }
 }
 
-async function checkRecon({ db, orgId }) {
-  if (!db || !orgId) {
-    return check("recon", "skip", "no database in this run — Recon status not read");
-  }
-  try {
-    const { rows } = await db.query(RECON_SQL, [orgId, AGENT_CODE]);
-    const row = rows && rows[0];
-    if (!row) {
-      return check("recon", "FAIL", "AG-07 is missing", `Re-seed Recon (AG-07). ${NO_SECOND}`);
-    }
-    if (row.status !== "live" || row.runtime !== "inngest" || row.runtime_ref !== SOURCE_WORKFLOW) {
-      return check(
-        "recon",
-        "FAIL",
-        `AG-07 status=${row.status} runtime=${row.runtime} ref=${row.runtime_ref}`,
-        `Turn AG-07 live on inngest / daily-pulse. ${NO_SECOND}`
-      );
-    }
-    return check("recon", "PASS", "AG-07 Recon is live on daily-pulse");
-  } catch (err) {
-    return check(
-      "recon",
-      "FAIL",
-      `could not read Recon: ${clip(err)}`,
-      `Read agents where code is AG-07. ${NO_SECOND}`
-    );
-  }
-}
-
-/** Five rows. Shape is { id, status, detail, suggestedFix }. Status is PASS, FAIL, or skip. */
+/**
+ * Four rows. Shape is { id, status, detail, suggestedFix }. Status is PASS, FAIL, or skip.
+ * ctx: { db, orgId, fetchImpl (or fetch), baseUrl, now }. `ctx.readers` is for tests only.
+ */
 export async function gapChecks(ctx = {}) {
   const now = ctx.now instanceof Date ? ctx.now : new Date();
   const db = ctx.db || null;
   const orgId = ctx.orgId || null;
-  const fetchImpl = ctx.fetchImpl || null;
+  const fetchImpl = typeof ctx.fetchImpl === "function"
+    ? ctx.fetchImpl
+    : (typeof ctx.fetch === "function" ? ctx.fetch : null);
   const baseUrl = ctx.baseUrl;
   return [
     await checkStuck({ db, orgId, now }),
     await checkLetters({ db, orgId }),
-    await checkSpecialist({ fetchImpl, baseUrl }),
-    await checkUploadDoor({ fetchImpl, baseUrl }),
-    await checkRecon({ db, orgId })
+    await checkSpecialist({ db, orgId, readers: ctx.readers || {} }),
+    await checkUploadDoor({ fetchImpl, baseUrl })
   ];
 }

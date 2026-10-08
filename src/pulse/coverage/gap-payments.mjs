@@ -5,6 +5,17 @@
 // slice-18-billing.mjs already names the billing and checkout-expiry sweepers.
 // slice-10-contracts.mjs already names the contract chaser and the sign door.
 // This file does not repeat those. It only reads the four breaks below.
+//
+// Review notes (Claude, 2026-10-08):
+//   * The pay link check used to require commas_session_id IS NULL. Every link
+//     we mint through Commas gets that id at mint, so on production the check
+//     could never fail. It is gone. Grace now sits on the payment, not the link.
+//   * The route check read source files. The pulse runs inside the bundled
+//     Netlify function, where those files do not exist, so it would have read
+//     "dead" every morning. It now calls the real webhook router in process,
+//     with an unsigned empty post and a database that refuses every read.
+//   * Simulated receipts (provider_ref sim-pay-...) are test money. They are
+//     counted, named in the PASS line, and kept out of the FAIL.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +25,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.
 
 /** commas-inbox-sweeper runs every minute. Red after 3 times that schedule. */
 export const LINK_WEBHOOK_GRACE_MS = 3 * 60 * 1000;
+
+/** The id scripts/sim/push-payment.mjs gives every simulated receipt. No card was charged. */
+export const SIM_RECEIPT_PREFIX = "sim-pay-";
 
 export const CHECK_IDS = Object.freeze([
   "payments:invoice-stuck",
@@ -66,6 +80,11 @@ const INVOICE_STUCK_SQL = `
   ) AS n
 `;
 
+/* An open link, money that landed for the same client after it was minted, and
+   the payment did not come through this link or any other link of ours (its ref
+   is not a payment_links.link_ref) and no inbox row carries this link's ref.
+   Grace sits on the payment: a receipt the sweeper has not finished yet is not
+   a break. A client who paid through a different link of ours is not this break. */
 const PAY_LINK_WEBHOOK_SQL = `
   /* gap:pay-link-webhook */
   SELECT count(*)::int AS n
@@ -75,16 +94,22 @@ const PAY_LINK_WEBHOOK_SQL = `
      AND pl.checkout_url IS NOT NULL
      AND btrim(pl.checkout_url) <> ''
      AND pl.link_ref IS NOT NULL
-     AND pl.commas_session_id IS NULL
      AND pl.status IN ('created', 'sent')
-     AND pl.created_at < $2::timestamptz
      AND EXISTS (
        SELECT 1
          FROM transactions t
         WHERE t.org_id = pl.org_id
           AND t.client_id = pl.client_id
           AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+          AND COALESCE(t.is_demo, false) = false
           AND t.created_at >= pl.created_at
+          AND t.created_at < $2::timestamptz
+          AND NOT EXISTS (
+            SELECT 1
+              FROM payment_links other
+             WHERE other.org_id = t.org_id
+               AND other.link_ref = t.raw_payload ->> 'ref'
+          )
      )
      AND NOT EXISTS (
        SELECT 1
@@ -94,9 +119,13 @@ const PAY_LINK_WEBHOOK_SQL = `
      )
 `;
 
+/* Same resolver reconcileFromTransactions uses (resolve_product_id on the
+   product name), so this names exactly the payments that reconcile would grant.
+   Simulated receipts are counted apart (sim_n): test money is not a customer. */
 const PAID_NO_ENTITLEMENT_SQL = `
   /* gap:paid-no-entitlement */
-  SELECT count(DISTINCT t.id)::int AS n
+  SELECT count(DISTINCT t.id) FILTER (WHERE COALESCE(t.provider_ref, '') NOT LIKE $3::text)::int AS n,
+         count(DISTINCT t.id) FILTER (WHERE COALESCE(t.provider_ref, '') LIKE $3::text)::int AS sim_n
     FROM transactions t
     JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
     JOIN product_entitlements pe
@@ -104,7 +133,9 @@ const PAID_NO_ENTITLEMENT_SQL = `
      AND lower(btrim(pe.product_code)) = lower(btrim(p.code))
    WHERE t.org_id = $1::uuid
      AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+     AND COALESCE(t.is_demo, false) = false
      AND t.client_id IS NOT NULL
+     AND t.created_at < $2::timestamptz
      AND NOT EXISTS (
        SELECT 1
          FROM entitlements e
@@ -115,11 +146,16 @@ const PAID_NO_ENTITLEMENT_SQL = `
      )
 `;
 
+function skipWhy({ db, orgId }, what) {
+  if (!db) return `no database in this run — ${what} not read`;
+  if (!orgId) return `no org id in this run — ${what} not read`;
+  return null;
+}
+
 async function checkInvoiceStuck({ db, orgId }) {
   const id = "payments:invoice-stuck";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — stuck invoices not read");
-  }
+  const why = skipWhy({ db, orgId }, "stuck invoices");
+  if (why) return row(id, "skip", why);
   try {
     const n = await readCount(db, INVOICE_STUCK_SQL, [orgId]);
     if (n === 0) {
@@ -143,20 +179,19 @@ async function checkInvoiceStuck({ db, orgId }) {
 
 async function checkPayLinkWebhook({ db, orgId, now }) {
   const id = "payments:pay-link-webhook";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — pay link webhooks not read");
-  }
+  const why = skipWhy({ db, orgId }, "pay link webhooks");
+  if (why) return row(id, "skip", why);
   const cutoff = new Date(now.getTime() - LINK_WEBHOOK_GRACE_MS).toISOString();
   try {
     const n = await readCount(db, PAY_LINK_WEBHOOK_SQL, [orgId, cutoff]);
     if (n === 0) {
-      return row(id, "PASS", "no minted pay link has a succeeded payment and a missing Commas inbox row");
+      return row(id, "PASS", "no open pay link has money that landed for its client outside every link, with no Commas inbox row for the link ref");
     }
     return row(
       id,
       "FAIL",
-      `${plural(n, "pay link")} minted, a payment succeeded, and no Commas inbox row recorded the link ref.`,
-      `${RECON} Read payment_links and commas_inbox for that link ref. Do not mint another link.`
+      `${plural(n, "pay link")} minted and still open while a payment succeeded for the same client, and no Commas inbox row carries the link ref.`,
+      `${RECON} Read payment_links and commas_inbox for that link ref, and the transaction raw_payload ref. Do not mint another link.`
     );
   } catch (err) {
     return row(
@@ -168,20 +203,24 @@ async function checkPayLinkWebhook({ db, orgId, now }) {
   }
 }
 
-async function checkPaidNoEntitlement({ db, orgId }) {
+async function checkPaidNoEntitlement({ db, orgId, now }) {
   const id = "payments:paid-no-entitlement";
-  if (!db || !orgId) {
-    return row(id, "skip", "no database in this run — entitlements not read");
-  }
+  const why = skipWhy({ db, orgId }, "entitlements");
+  if (why) return row(id, "skip", why);
+  const cutoff = new Date(now.getTime() - LINK_WEBHOOK_GRACE_MS).toISOString();
   try {
-    const n = await readCount(db, PAID_NO_ENTITLEMENT_SQL, [orgId]);
+    const result = await db.query(PAID_NO_ENTITLEMENT_SQL, [orgId, cutoff, `${SIM_RECEIPT_PREFIX}%`]);
+    const n = countOf(result);
+    const simRaw = Number(result?.rows?.[0]?.sim_n ?? 0);
+    const simN = Number.isFinite(simRaw) ? simRaw : 0;
+    const simNote = simN > 0 ? ` (${plural(simN, "simulated receipt")} left out: no card was charged)` : "";
     if (n === 0) {
-      return row(id, "PASS", "every succeeded payment that has a product mapping also has its entitlement row");
+      return row(id, "PASS", `every succeeded payment that has a product mapping also has its entitlement row${simNote}`);
     }
     return row(
       id,
       "FAIL",
-      `${plural(n, "succeeded payment")} mapped to a product entitlement and missing that grant.`,
+      `${plural(n, "succeeded payment")} mapped to a product entitlement and missing that grant${simNote}.`,
       `${RECON} Read transactions, product_entitlements, and entitlements for that payment. Do not take the payment again.`
     );
   } catch (err) {
@@ -198,11 +237,22 @@ function defaultReadText(rel) {
   return fs.readFileSync(path.join(ROOT, rel), "utf8");
 }
 
-/** True when the live Commas webhook door is still wired. No HTTP call. */
-export function commasWebhookRouteAlive(readText = defaultReadText) {
-  const api = readText("netlify/functions/api.mjs");
-  const router = readText("src/http/router.mjs");
-  const handler = readText("api/webhooks/[provider].mjs");
+/**
+ * What the source files say about the Commas door: "alive", "dead", or
+ * "unreadable". A file we cannot open is not proof of a dead route (the
+ * bundled Netlify function ships no source tree), so it is its own answer.
+ */
+export function commasWebhookFilesState(readText = defaultReadText) {
+  let api;
+  let router;
+  let handler;
+  try {
+    api = readText("netlify/functions/api.mjs");
+    router = readText("src/http/router.mjs");
+    handler = readText("api/webhooks/[provider].mjs");
+  } catch {
+    return "unreadable";
+  }
   const prefix =
     /path\.startsWith\("webhooks\/"\)/.test(api) &&
     /route\s*=\s*webhooks/.test(api);
@@ -210,33 +260,103 @@ export function commasWebhookRouteAlive(readText = defaultReadText) {
     /handleCommasWebhook/.test(router) &&
     /commas:\s*\{[^}]*fn:\s*handleCommasWebhook/s.test(router);
   const door = /handleWebhook/.test(handler) && /export default async function handler/.test(handler);
-  return prefix && commas && door;
+  return prefix && commas && door ? "alive" : "dead";
 }
 
-function checkCommasWebhookRoute(readText) {
+/**
+ * True when the source files say the Commas webhook door is still wired. No HTTP call.
+ * False means dead or unreadable; commasWebhookFilesState tells the two apart.
+ */
+export function commasWebhookRouteAlive(readText = defaultReadText) {
+  return commasWebhookFilesState(readText) === "alive";
+}
+
+/** A database that refuses every read. The probe below must never touch data. */
+const REFUSING_DB = Object.freeze({
+  async query() {
+    throw new Error("gap-payments probe: this database is closed to the probe");
+  }
+});
+
+/**
+ * Post an unsigned, empty body to the real Commas branch of the webhook router,
+ * in process. A wired door answers 401 bad_signature before it reads anything.
+ * A missing provider answers 404. Nothing leaves the machine, nothing is saved,
+ * and the env handed in holds a throwaway string, not a real key.
+ */
+export async function probeCommasDoor(handleWebhookImpl = null) {
+  const handleWebhook = handleWebhookImpl || (await import("../../http/router.mjs")).handleWebhook;
+  const out = await handleWebhook({
+    db: REFUSING_DB,
+    provider: "commas",
+    rawBody: "{}",
+    headers: {},
+    env: { COMMAS_WEBHOOK_SECRET: "gap-probe-not-a-key", WEBHOOK_CAPTURE: "0" }
+  });
+  return out && typeof out === "object" ? Number(out.status) : NaN;
+}
+
+const WEBHOOK_URL_PATH = "/api/webhooks/commas";
+
+/**
+ * GET the door on the site. The webhook route answers 405 to any GET once the
+ * webhooks/ prefix is mounted; an unmounted prefix answers 404. A GET is not
+ * uptime and does not touch a payment.
+ */
+async function pingDoor(fetchImpl, baseUrl) {
+  const url = `${String(baseUrl).replace(/\/+$/, "")}${WEBHOOK_URL_PATH}`;
+  const res = await fetchImpl(url, { method: "GET", headers: { accept: "application/json" } });
+  return { status: Number(res && res.status), url };
+}
+
+async function checkCommasWebhookRoute({ readText, handleWebhookImpl, fetchImpl, baseUrl }) {
   const id = "payments:commas-webhook-route";
+  const fix = `${RECON} Wire POST /api/webhooks/commas back through the existing webhook handler. Do not add another door.`;
+
+  const files = commasWebhookFilesState(readText);
+  if (files === "dead") {
+    return row(id, "FAIL", "Commas webhook route is dead (missing webhooks prefix, commas handler, or webhook entry).", fix);
+  }
+
+  let status;
   try {
-    if (commasWebhookRouteAlive(readText)) {
-      return row(id, "PASS", "Commas webhook door is wired (webhooks/ prefix and handleCommasWebhook)");
+    status = await probeCommasDoor(handleWebhookImpl);
+  } catch (err) {
+    return row(id, "FAIL", `Commas webhook route is dead: the router would not answer (${String(err?.message || err).slice(0, 160)}).`, fix);
+  }
+  if (status !== 401) {
+    return row(
+      id,
+      "FAIL",
+      status === 404
+        ? "Commas webhook route is dead: the router does not know the commas provider (404)."
+        : `Commas webhook route is wrong: an unsigned post should answer 401 and answered ${Number.isFinite(status) ? status : "nothing"}.`,
+      fix
+    );
+  }
+
+  const proof = files === "alive" ? "source files and router" : "router in process";
+  if (typeof fetchImpl !== "function" || !baseUrl) {
+    return row(id, "PASS", `Commas webhook door is wired (${proof}: unsigned post refused 401; site not pinged in this run)`);
+  }
+  try {
+    const ping = await pingDoor(fetchImpl, baseUrl);
+    if (ping.status === 405) {
+      return row(id, "PASS", `Commas webhook door is wired (${proof}: unsigned post refused 401; ${WEBHOOK_URL_PATH} answers 405 to a GET on the site)`);
     }
     return row(
       id,
       "FAIL",
-      "Commas webhook route is dead (missing webhooks prefix, commas handler, or webhook entry).",
-      `${RECON} Wire POST /api/webhooks/commas back through the existing webhook handler. Do not add another door.`
+      `Commas webhook route is dead on the site: GET ${WEBHOOK_URL_PATH} answered ${Number.isFinite(ping.status) ? ping.status : "nothing"}, not 405.`,
+      fix
     );
   } catch (err) {
-    return row(
-      id,
-      "FAIL",
-      `Commas webhook route is dead: ${String(err?.message || err).slice(0, 180)}`,
-      `${RECON} Wire POST /api/webhooks/commas back through the existing webhook handler. Do not add another door.`
-    );
+    return row(id, "skip", `site not reached, so the live webhook door was not read: ${String(err?.message || err).slice(0, 160)}`);
   }
 }
 
 /**
- * Four read-only checks. ctx: { db, orgId, now, readText }.
+ * Four read-only checks. ctx: { db, orgId, now, fetchImpl (or fetch), baseUrl, readText, handleWebhook }.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
@@ -244,10 +364,12 @@ export async function gapChecks(ctx = {}) {
   const orgId = ctx.orgId || null;
   const now = ctx.now instanceof Date ? ctx.now : new Date();
   const readText = typeof ctx.readText === "function" ? ctx.readText : defaultReadText;
+  const fetchImpl = typeof ctx.fetchImpl === "function" ? ctx.fetchImpl : (typeof ctx.fetch === "function" ? ctx.fetch : null);
+  const handleWebhookImpl = typeof ctx.handleWebhook === "function" ? ctx.handleWebhook : null;
   return [
     await checkInvoiceStuck({ db, orgId }),
     await checkPayLinkWebhook({ db, orgId, now }),
-    await checkPaidNoEntitlement({ db, orgId }),
-    checkCommasWebhookRoute(readText)
+    await checkPaidNoEntitlement({ db, orgId, now }),
+    await checkCommasWebhookRoute({ readText, handleWebhookImpl, fetchImpl, baseUrl: ctx.baseUrl || null })
   ];
 }

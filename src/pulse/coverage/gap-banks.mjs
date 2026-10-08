@@ -11,6 +11,15 @@
 //
 // No Plaid call. No token exchange. The access token column is never selected.
 // Recon (AG-07) is the one tripwire. Do not add another watcher.
+//
+// Review notes (Claude, 2026-10-08): the "sync stale" check used to read the
+// plaid-transactions-sweeper job receipt. That job is already watched twice,
+// by job:plaid-transactions-sweeper (src/pulse/heartbeats.mjs) and by the
+// slice 08 sweeper row, both red after 3 times the daily schedule. A third
+// copy added noise and nothing else. It now reads each live LOGIN instead.
+// The sweeper never throws for the whole pass and skips quietly when Plaid is
+// not configured, so its receipt can say "ok" while one login has not synced
+// for days. That is the gap this check closes.
 
 import { cronIntervalMs, STALE_MULTIPLE } from "../heartbeats.mjs";
 import {
@@ -50,22 +59,40 @@ export const HIDDEN_SQL = `
        OR a.org_id IS DISTINCT FROM p.org_id
      )`;
 
+/* Per live login: when did it last read? The sweeper writes two stamps (the
+   transactions read and the balance read). The OLDER of the two is used, so a
+   login whose transactions read fine but whose balances did not (or the other
+   way round) still shows up. Closed
+   accounts and accounts with no balance time are ignored. Mock logins are
+   skipped the way plaid-refresh skips them. */
 export const STALE_SQL = `
-  SELECT
-    (SELECT count(*)::int
-       FROM plaid_items p
-      WHERE p.link_state = 'active'
-        AND p.consent_granted_at IS NOT NULL
-        AND p.encrypted_access_token IS NOT NULL
-        AND p.plaid_item_id IS NOT NULL
-        AND ($1::uuid IS NULL OR p.org_id = $1::uuid)) AS active_links,
-    (SELECT max(finished_at) FROM job_heartbeats WHERE job = $2) AS last_at,
-    (SELECT (array_agg(outcome ORDER BY finished_at DESC))[1]
-       FROM job_heartbeats WHERE job = $2) AS last_outcome,
-    (SELECT min(finished_at) FROM job_heartbeats) AS first_ever`;
+  SELECT count(*)::int AS active_links,
+         count(*) FILTER (WHERE live.last_read < $2::timestamptz)::int AS stale_links,
+         min(live.last_read) FILTER (WHERE live.last_read < $2::timestamptz) AS oldest,
+         (array_agg(live.last_error_code ORDER BY live.last_read)
+            FILTER (WHERE live.last_read < $2::timestamptz AND live.last_error_code IS NOT NULL))[1] AS last_code
+    FROM (
+      SELECT p.last_error_code,
+             LEAST(
+               COALESCE(p.transactions_synced_at, p.created_at),
+               (SELECT max(a.balance_as_of)
+                  FROM bank_accounts a
+                 WHERE a.plaid_item_id = p.id AND a.closed_at IS NULL)
+             ) AS last_read
+        FROM plaid_items p
+       WHERE p.link_state = 'active'
+         AND p.consent_granted_at IS NOT NULL
+         AND p.encrypted_access_token IS NOT NULL
+         AND p.plaid_item_id IS NOT NULL
+         AND p.plaid_item_id NOT LIKE 'mock:%'
+         AND ($1::uuid IS NULL OR p.org_id = $1::uuid)
+    ) live`;
 
-/* A live login with no account row under it. The money screen reads
-   bank_accounts, so that client sees no bank for the login. */
+/* A live login with no account row under it, or a client with a live login and
+   not one OPEN account anywhere. The money screen reads bank_accounts and drops
+   closed rows, so either one leaves that client looking at no bank. A client who
+   re-linked (an older login with only closed accounts, a newer one with open
+   accounts) is fine and is not counted. */
 export const EMPTY_SQL = `
   SELECT count(*)::int AS items,
          count(DISTINCT p.client_id)::int AS clients
@@ -75,11 +102,19 @@ export const EMPTY_SQL = `
      AND p.encrypted_access_token IS NOT NULL
      AND p.plaid_item_id IS NOT NULL
      AND ($1::uuid IS NULL OR p.org_id = $1::uuid)
-     AND NOT EXISTS (
-       SELECT 1 FROM bank_accounts a
-        WHERE a.plaid_item_id = p.id
-          AND a.org_id = p.org_id
-          AND a.client_id = p.client_id
+     AND (
+       NOT EXISTS (
+         SELECT 1 FROM bank_accounts a
+          WHERE a.plaid_item_id = p.id
+            AND a.org_id = p.org_id
+            AND a.client_id = p.client_id
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM bank_accounts a
+          WHERE a.client_id = p.client_id
+            AND a.org_id = p.org_id
+            AND a.closed_at IS NULL
+       )
      )`;
 
 export const SQL = Object.freeze([ERROR_SQL, HIDDEN_SQL, STALE_SQL, EMPTY_SQL]);
@@ -163,45 +198,22 @@ function judgeStale(row, now) {
   if (RED_AFTER_MS == null) {
     return check(id, "skip", `Schedule "${PLAID_SYNC_CRON}" is a shape this check does not read.`);
   }
-  const last = toDate(row && row.last_at);
-  const first = toDate(row && row.first_ever);
-  const nowMs = now.getTime();
-  const dueBy = nowMs - RED_AFTER_MS;
-  const lateFix = fix(
-    `Read the ${PLAID_SYNC_JOB_ID} receipt. It runs daily (${PLAID_SYNC_CRON}) and is late after 3 days.`
+  const stale = num(row && row.stale_links);
+  if (stale === 0) {
+    return check(id, "PASS", `${noun(active, "live bank login has", "live bank logins have")} synced inside 3 days.`);
+  }
+  const oldest = toDate(row && row.oldest);
+  const age = oldest ? ` The oldest read was ${ageWords(now.getTime() - oldest.getTime())} ago.` : "";
+  const code = row && row.last_code ? ` Last error code: ${clip(row.last_code, 80)}.` : "";
+  return check(
+    id,
+    "FAIL",
+    `${noun(stale, "live bank login has", "live bank logins have")} not synced in 3 days (the daily sync is late after 3 days), so banks on the money screen can be old or missing.${age}${code}`,
+    fix(
+      `Read plaid_items.last_error_code for that login and the ${PLAID_SYNC_JOB_ID} pass tally (${PLAID_SYNC_CRON}). ` +
+      "The job receipt can look fine while one login is stuck."
+    )
   );
-  if (!last) {
-    if (!first) {
-      return check(id, "skip", "No job receipt yet, so the bank sync has not been timed.");
-    }
-    if (first.getTime() > dueBy) {
-      return check(id, "skip", "Job receipts just started. Too soon to call the bank sync late.");
-    }
-    return check(
-      id,
-      "FAIL",
-      `A live bank login is on file, and the bank sync has no receipt since receipts started ${ageWords(nowMs - first.getTime())} ago.`,
-      lateFix
-    );
-  }
-  const age = nowMs - last.getTime();
-  if (age > RED_AFTER_MS) {
-    return check(
-      id,
-      "FAIL",
-      `The bank sync last finished ${ageWords(age)} ago. It runs every day and is late after 3 days, so banks on the money screen can be missing or old.`,
-      lateFix
-    );
-  }
-  if (row && row.last_outcome === "error") {
-    return check(
-      id,
-      "FAIL",
-      `The bank sync ran ${ageWords(age)} ago and the last pass failed, so banks on the money screen can be missing.`,
-      lateFix
-    );
-  }
-  return check(id, "PASS", `The bank sync last finished ${ageWords(age)} ago. That is inside 3 days.`);
 }
 
 function judgeEmpty(row) {
@@ -209,19 +221,19 @@ function judgeEmpty(row) {
   const clients = num(row && row.clients);
   const items = num(row && row.items);
   if (clients === 0 && items === 0) {
-    return check(id, "PASS", "Every live bank login has at least one account saved.");
+    return check(id, "PASS", "Every live bank login has an account saved, and every client with a live login has at least one open account on the money screen.");
   }
   const who = clients > 0
     ? noun(clients, "client has", "clients have")
     : noun(items, "bank login has", "bank logins have");
   const extra = clients > 0 && items > clients
-    ? ` That is ${noun(items, "login", "logins")} with no account under them.`
+    ? ` That is ${noun(items, "login", "logins")} with no open account under them.`
     : "";
   return check(
     id,
     "FAIL",
-    `${who} a live bank login and no account saved, so the money screen shows no bank for that login.${extra}`,
-    fix("The login is active and no account row was saved under it.")
+    `${who} a live bank login and no account saved, so the money screen shows no bank for that login.${extra} Closed accounts are not shown.`,
+    fix("The login is active and no open account row sits under it (none saved, or every one closed).")
   );
 }
 
@@ -258,10 +270,11 @@ export async function gapChecks(ctx = {}) {
   }
   const now = toDate(ctx.now) || new Date();
   const orgId = ctx.orgId || null;
+  const staleBefore = new Date(now.getTime() - (RED_AFTER_MS ?? 0));
   const [errorRow, hiddenRow, staleRow, emptyRow] = await Promise.all([
     one(run, "banks-plaid-item-error", ERROR_SQL, [orgId], judgeError),
     one(run, "banks-linked-not-on-screen", HIDDEN_SQL, [orgId], judgeHidden),
-    one(run, "banks-sync-stale", STALE_SQL, [orgId, PLAID_SYNC_JOB_ID], (row) => judgeStale(row, now)),
+    one(run, "banks-sync-stale", STALE_SQL, [orgId, staleBefore.toISOString()], (row) => judgeStale(row, now)),
     one(run, "banks-active-link-no-accounts", EMPTY_SQL, [orgId], judgeEmpty)
   ]);
   return [errorRow, hiddenRow, staleRow, emptyRow];

@@ -210,3 +210,82 @@ test("gap finance os: the default opener is GET and the helper read does not wri
   assert.equal(direct.ok, true);
   assert.equal(direct.helper.brain, "rules");
 });
+
+// ---- Review — Claude, 2026-10-08 ------------------------------------------
+
+test("gap finance os: every door names its handler with a literal import so the server bundle packs it", async () => {
+  // Measured 2026-10-08 in a bundle with no source tree beside it: a path built
+  // at run time found nothing and all seven doors read FAIL "cannot find module".
+  for (const door of DOORS) {
+    assert.equal(typeof door.load, "function", `${door.id} has no loader`);
+    const literal = `import("../../../${door.file}")`;
+    assert.ok(SRC.includes(literal), `${door.id} must be loaded with ${literal}`);
+    const mod = await door.load();
+    assert.equal(typeof mod.default, "function", `${door.id} loader did not return a handler`);
+  }
+});
+
+test("gap finance os: no org id is a skip that says so", async () => {
+  const rows = await gapChecks({ db: linkedDb(CLIENT) });
+  rows.forEach(shape);
+  assert.ok(rows.every((row) => row.status === "skip"));
+  assert.match(rows[0].detail, /no org id/);
+  assert.doesNotMatch(rows[0].detail, /no database/);
+});
+
+test("gap finance os: the seven doors are opened side by side, in DOORS order", async () => {
+  // A serial loop would wait on the first door forever here and never start the
+  // second. The step that runs this lane is cut at 26 seconds.
+  let started = 0;
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const order = [];
+  const run = gapChecks({
+    db: linkedDb(CLIENT),
+    orgId: ORG,
+    async callDoor(door) {
+      order.push(door.id);
+      started += 1;
+      if (started === DOORS.length) release();
+      await gate;
+      return okDoor();
+    }
+  });
+  const rows = await Promise.race([
+    run,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("doors were opened one at a time")), 2000))
+  ]);
+  assert.deepEqual(order, [...CHECK_IDS]);
+  assert.deepEqual(rows.map((row) => row.id), [...CHECK_IDS]);
+  assert.ok(rows.every((row) => row.status === "PASS"));
+});
+
+test("gap finance os: the real handlers answer 200 for a client with nothing yet, and a broken table fails its door", async () => {
+  // No callDoor stub: this goes through the real loader and the real handler for
+  // every door, with a database that holds one client and nothing else.
+  const mk = (broken = null) => ({
+    async query(sql) {
+      if (/\b(INSERT|UPDATE|DELETE)\b/i.test(sql)) throw new Error(`write: ${sql.slice(0, 60)}`);
+      if (broken && broken.test(sql)) throw new Error("relation is gone");
+      if (/gap:finance-os-linked-client/.test(sql)) return { rows: [{ id: CLIENT }] };
+      if (/FROM clients/i.test(sql)) {
+        return { rows: [{ id: CLIENT, org_id: ORG, first_name: "Pat", last_name: "Lee", custom_fields: {}, "?column?": 1 }] };
+      }
+      // A SUM over nothing still answers one row in Postgres.
+      if (/COALESCE\(SUM\(amount_cents\)/i.test(sql)) return { rows: [{ used: "0" }] };
+      if (/count\(\*\)::int AS n/i.test(sql)) return { rows: [{ n: 0 }] };
+      return { rows: [] };
+    }
+  });
+  const env = { MONEY_HELPER_RUNNER: "rules" };
+  const now = new Date("2026-10-08T22:00:00Z");
+  const clean = await gapChecks({ db: mk(), orgId: ORG, now, env });
+  clean.forEach(shape);
+  assert.deepEqual(clean.map((row) => row.status), Array(7).fill("PASS"), clean.map((r) => `${r.id}: ${r.detail}`).join("\n"));
+
+  const broken = await gapChecks({ db: mk(/FROM crs_results/i), orgId: ORG, now, env });
+  broken.forEach(shape);
+  const credit = broken.find((row) => row.id === "finance-os:credit");
+  assert.equal(credit.status, "FAIL");
+  assert.match(credit.suggestedFix, /GET \/api\/money\/credit/);
+});

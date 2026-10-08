@@ -6,21 +6,24 @@ Calendar bookings come in on the ClickFunnels webhook. There is no second bookin
 
 ## What this check does
 
-It sends a GET. It does not send a webhook. It does not replay a payment.
+Two probes per door. It does not send a webhook. It does not replay a payment.
 
-401 or 405 means the door is there and it said no. That is a pass. 404 means the door is missing. That is a fail. Any other answer is a fail too. A webhook door must not look open on a GET.
+1. A GET to the live site. 401 or 405 means the webhook function is up. 404 means the whole `/api/webhooks/` prefix is gone. Anything else is a fail.
+2. The webhook router, called inside the pulse. Empty body, no signature, no secrets, and a database that refuses every query. A mounted provider answers 401. A provider the router does not know answers 404. That 404 is the "door is missing" signal.
 
-Then it reads the database. It counts Commas inbox rows that are still failed after the sweeper has used all 10 tries. Those rows sit there. The sweeper will not pick them up again. Twilio status and ClickFunnels do not keep a failed queue. They answer inside the request.
+Why two: the live handler answers 405 to a GET before it reads the provider name. `GET /api/webhooks/does-not-exist-xyz` is 405 too. So the GET alone can never say a door is missing.
+
+Then it reads the database. It counts Commas inbox rows the sweeper will never pick up again: status failed at all 10 tries, or status processing at 10 tries and older than 15 minutes. Twilio status and ClickFunnels do not keep a failed queue. They answer inside the request.
 
 ## Checks
 
 | id | what |
 | --- | --- |
-| webhooks:twilio-status | GET /api/webhooks/twilio-status |
-| webhooks:commas | GET /api/webhooks/commas |
-| webhooks:clickfunnels | GET /api/webhooks/clickfunnels |
-| webhooks:calendar-booking | same ClickFunnels GET (booking posts land there) |
-| webhooks:stuck-failed | commas_inbox status failed, attempts at the sweeper limit |
+| webhooks:twilio-status | live GET + router, provider `twilio-status` |
+| webhooks:commas | live GET + router, provider `commas` |
+| webhooks:clickfunnels | live GET + router, provider `clickfunnels` |
+| webhooks:calendar-booking | same ClickFunnels door (booking posts land there) |
+| webhooks:stuck-failed | commas_inbox failed, or processing and old, at the sweeper limit |
 
 No fetch in the run skips the four doors. No database skips the stuck-row read. A skip is not a pass.
 
@@ -32,3 +35,22 @@ Recon (AG-07) is the one tripwire. This check does not add a watcher. It does no
 
 - src/pulse/coverage/gap-webhooks.mjs
 - src/pulse/coverage/gap-webhooks.test.mjs
+
+## Review — Claude, 2026-10-08
+
+What was wrong:
+
+- The four door checks could never FAIL. I sent the same GET to `/api/webhooks/does-not-exist-xyz` on the live site. It answered 405, the same as the real doors. A missing door and a real door looked the same. Add the router probe above and a missing provider comes back 404.
+- The stuck-row read missed a row left on `processing` at the 10 try limit. The sweeper never claims it again, and it was not counted because its status is not `failed`.
+- A test banned the router from this file outright. That kept the check blind. I replaced the blanket ban with a narrow one: the router is named once, and the only call uses an empty body, no headers, no secrets, and a database that throws. The other bans (the Commas handler, the inbox worker, drain) stay.
+
+Live result after (read-only, production): prod 5 PASS / 0 FAIL / 0 skip. Staff access gives the same. 0 SQL errors, 0 writes, only GET left the machine.
+
+Proof the door check can fail: the real router answers 401 for all three providers and 404 for a provider that is not there. A test pins both. The stuck SQL was also run on a copy that pretends `done` is failed. It counted 36, so the columns and tests match real rows. There are no stuck rows today.
+
+Not done, left for the owner to name (hard lock): other doors the router serves (Twilio inbound, Resend, Lendflow, Mailgun, PostGrid, Bland, Submagic) get no door check. Lendflow is the only source of the `round.*` events and was once unmounted without anyone knowing. The same one-line router probe would cover each of them.
+
+One more fix: each live GET now has an 8 second abort. The lane runs as one pulse step with a 26 second ceiling, and a door that hangs would have killed the step instead of showing as a FAIL.
+
+Tests: `node --test src/pulse/coverage/gap-webhooks.test.mjs` = 21 pass, 0 fail, 0 skipped.
+

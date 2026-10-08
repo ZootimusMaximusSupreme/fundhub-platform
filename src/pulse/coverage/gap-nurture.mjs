@@ -54,27 +54,45 @@ const RECON =
   "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. " +
   "Do not auto-fix. Do not send a text or email. Do not flip outbound.";
 
+/* Closeout and funded events carry only payload.email and a NULL client_id
+   (measured 2026-10-08: 0 of 5 closeouts and 0 of 4 funded events had one). The
+   workflow finds the person by that email (resolveClient), so this does too. A
+   join on e.client_id made this check impossible to fail. Each branch looks back
+   7 days from its own cutoff, so one old event cannot shout forever. An event with
+   no client and no email is one the workflow also skips (no_client). */
 export const NEVER_QUEUED_SQL = `
   /* gap:nurture-never-queued */
   SELECT count(*)::int AS n
     FROM (
       SELECT e.id
         FROM events e
-        JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+        CROSS JOIN LATERAL (
+          SELECT COALESCE(
+            e.client_id,
+            (SELECT c0.id FROM clients c0
+              WHERE c0.org_id = e.org_id
+                AND lower(c0.email) = lower(btrim(COALESCE(e.payload->>'email', '')))
+              LIMIT 1)
+          ) AS id
+        ) rc
        WHERE $4::boolean IS TRUE
          AND e.org_id = $1::uuid
-         AND COALESCE(c.is_demo, false) = false
+         AND COALESCE(e.is_demo, false) = false
+         AND (rc.id IS NOT NULL OR btrim(COALESCE(e.payload->>'email', '')) <> '')
+         AND NOT EXISTS (
+           SELECT 1 FROM clients d WHERE d.id = rc.id AND COALESCE(d.is_demo, false) = true
+         )
          AND e.name = 'round.closeout'
          AND (
            e.payload->>'stage' = 'closed'
            OR lower(COALESCE(e.payload->>'engagementComplete', '')) = 'true'
          )
          AND e.created_at < $2::timestamptz
+         AND e.created_at >= $2::timestamptz - interval '7 days'
          AND NOT EXISTS (
            SELECT 1
              FROM messages m
             WHERE m.org_id = e.org_id
-              AND m.client_id = e.client_id
               AND m.direction = 'outbound'
               AND m.channel IN ('email', 'sms')
               AND m.provider_ref IN (
@@ -85,23 +103,34 @@ export const NEVER_QUEUED_SQL = `
       UNION ALL
       SELECT e.id
         FROM events e
-        JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+        CROSS JOIN LATERAL (
+          SELECT COALESCE(
+            e.client_id,
+            (SELECT c0.id FROM clients c0
+              WHERE c0.org_id = e.org_id
+                AND lower(c0.email) = lower(btrim(COALESCE(e.payload->>'email', '')))
+              LIMIT 1)
+          ) AS id
+        ) rc
        WHERE $5::boolean IS TRUE
          AND e.org_id = $1::uuid
-         AND COALESCE(c.is_demo, false) = false
+         AND COALESCE(e.is_demo, false) = false
+         AND NOT EXISTS (
+           SELECT 1 FROM clients d WHERE d.id = rc.id AND COALESCE(d.is_demo, false) = true
+         )
          AND e.name = 'round.funded'
          AND e.created_at < $3::timestamptz
+         AND e.created_at >= $3::timestamptz - interval '7 days'
          AND EXISTS (
            SELECT 1
              FROM funding_rounds fr
-            WHERE fr.client_id = e.client_id
+            WHERE fr.client_id = rc.id
               AND COALESCE(fr.funded_amount, 0) > 0
          )
          AND NOT EXISTS (
            SELECT 1
              FROM messages m
             WHERE m.org_id = e.org_id
-              AND m.client_id = e.client_id
               AND m.direction = 'outbound'
               AND m.channel IN ('email', 'sms')
               AND m.provider_ref IN (
@@ -151,7 +180,15 @@ export const STEP_STUCK_SQL = `
          AND m.direction = 'outbound'
          AND m.template_key IN ('EMAIL-N04-POST-FUNDING', 'SMS-N04-POST-FUNDING')
          AND m.created_at < $2::timestamptz
+         AND m.created_at >= $2::timestamptz - interval '7 days'
          AND split_part(COALESCE(m.provider_ref, ''), ':', 3) <> ''
+         AND NOT (
+           m.template_key = 'EMAIL-N04-POST-FUNDING'
+           AND EXISTS (
+             SELECT 1 FROM opt_outs o
+              WHERE o.client_id = m.client_id AND o.channel = 'sms' AND o.opted_in_at IS NULL
+           )
+         )
          AND NOT EXISTS (
            SELECT 1
              FROM messages other
@@ -176,7 +213,15 @@ export const STEP_STUCK_SQL = `
          AND m.direction = 'outbound'
          AND m.template_key IN ('EMAIL-N06-RENEWAL', 'SMS-N06-RENEWAL')
          AND m.created_at < $2::timestamptz
+         AND m.created_at >= $2::timestamptz - interval '7 days'
          AND split_part(COALESCE(m.provider_ref, ''), ':', 3) <> ''
+         AND NOT (
+           m.template_key = 'EMAIL-N06-RENEWAL'
+           AND EXISTS (
+             SELECT 1 FROM opt_outs o
+              WHERE o.client_id = m.client_id AND o.channel = 'sms' AND o.opted_in_at IS NULL
+           )
+         )
          AND NOT EXISTS (
            SELECT 1
              FROM messages other
@@ -198,9 +243,12 @@ function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
 
+/** A count that did not come back is null, never zero. */
 function countOf(result) {
-  const n = Number(result?.rows?.[0]?.n ?? 0);
-  return Number.isFinite(n) ? n : 0;
+  const raw = result?.rows?.[0]?.n;
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? (n > 0 ? Math.floor(n) : 0) : null;
 }
 
 function plural(n, word) {
@@ -316,6 +364,37 @@ export function listLiveSequences(readText = defaultReadText) {
   return live;
 }
 
+/* Literal import paths on purpose: a bundler can follow them, so this works in the
+   deployed function where the .mjs source files are not on disk. */
+const MODULE_LOADERS = Object.freeze({
+  "src/workflows/n-01-cold-nurture.mjs": () => import("../../workflows/n-01-cold-nurture.mjs"),
+  "src/workflows/n-02-warm-nurture.mjs": () => import("../../workflows/n-02-warm-nurture.mjs"),
+  "src/workflows/n-03-hot-nurture.mjs": () => import("../../workflows/n-03-hot-nurture.mjs"),
+  "src/workflows/n-04-post-funding-nurture.mjs": () => import("../../workflows/n-04-post-funding-nurture.mjs"),
+  "src/workflows/n-06-renewal-second-wave.mjs": () => import("../../workflows/n-06-renewal-second-wave.mjs")
+});
+
+/**
+ * Same answer as listLiveSequences, read from the Inngest function objects the
+ * workflow files export (opts.id, opts.enabled, opts.triggers) and from the
+ * handler's own code. It needs no file on disk. A sequence is on when it is not
+ * enabled: false and has at least one trigger.
+ */
+export async function listLiveSequencesFromModules(loaders = MODULE_LOADERS) {
+  const live = [];
+  for (const file of NURTURE_WORKFLOW_FILES) {
+    const mod = await loaders[file]();
+    const sends = typeof mod.handle === "function" && /sendTemplated\w*\s*\(/.test(String(mod.handle));
+    for (const fn of Object.values(mod)) {
+      const opts = fn && typeof fn === "object" ? fn.opts : null;
+      if (!opts || typeof opts.id !== "string") continue;
+      const triggers = Array.isArray(opts.triggers) ? opts.triggers : [];
+      if (opts.enabled !== false && triggers.length > 0) live.push({ id: opts.id, file, on: true, sends });
+    }
+  }
+  return live;
+}
+
 export function liveFlags(live) {
   const ids = new Set(live.map((seq) => seq.id));
   return {
@@ -371,6 +450,7 @@ async function checkNeverQueued({ db, orgId, now, flags }) {
       flags.n06
     ]);
     const n = countOf(result);
+    if (n === null) return row(id, "skip", "the nurture queue count came back unreadable");
     if (n === 0) {
       return row(id, "PASS", "no lead or client is missing a nurture text or email the live sequence should have queued");
     }
@@ -405,6 +485,7 @@ async function checkStepStuck({ db, orgId, now, flags, keys }) {
       flags.n06
     ]);
     const n = countOf(result);
+    if (n === null) return row(id, "skip", "the nurture step count came back unreadable");
     if (n === 0) {
       return row(id, "PASS", "no live nurture step is stuck");
     }
@@ -425,19 +506,21 @@ async function checkStepStuck({ db, orgId, now, flags, keys }) {
 }
 
 /**
- * Three read-only checks. ctx: { db, orgId, now, readText }.
+ * Three read-only checks. ctx: { db, orgId, now, readText }. readText is for tests only.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
   const db = ctx.db || null;
   const orgId = ctx.orgId || null;
   const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const readText = typeof ctx.readText === "function" ? ctx.readText : defaultReadText;
-
+  // A test hands in readText. Everywhere else the sequences are read from the loaded
+  // workflow modules, because a deployed function has no src/ folder to read.
   let live = null;
   let readError = null;
   try {
-    live = listLiveSequences(readText);
+    live = typeof ctx.readText === "function"
+      ? listLiveSequences(ctx.readText)
+      : await listLiveSequencesFromModules();
   } catch (err) {
     readError = err;
   }
@@ -451,10 +534,11 @@ export async function gapChecks(ctx = {}) {
     )
     : onWithoutSendRow(live);
 
-  if (!db || !orgId) {
+  if (!db || typeof db.query !== "function" || !orgId) {
+    const why = !db || typeof db.query !== "function" ? "no database in this run" : "no company in this run";
     return [
-      row("nurture:never-queued", "skip", "no database in this run — nurture queue not read"),
-      row("nurture:step-stuck", "skip", "no database in this run — nurture steps not read"),
+      row("nurture:never-queued", "skip", `${why} — nurture queue not read`),
+      row("nurture:step-stuck", "skip", `${why} — nurture steps not read`),
       codeRow
     ];
   }

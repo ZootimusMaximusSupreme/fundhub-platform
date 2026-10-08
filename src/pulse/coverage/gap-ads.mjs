@@ -4,25 +4,40 @@
 //   ads-meta-sync-stale      hourly Meta pull is late (red after 3 h).
 //                            machine.mjs meta-sync still owns the 36 h nightly save.
 //   ads-spend-day-missing    a closed Arizona day in the hourly window has no
-//                            spend row, and an older spend row says that day
-//                            was already in the pull.
-//   ads-number-unmapped      an ad that has a spend row has no fundhub_ad_number.
-//   ads-running-no-metrics   a running ad old enough to have synced has no
-//                            ad_metrics_daily row. The dying-ad scan joins
-//                            metrics, so it cannot see this ad.
+//                            spend row, an older spend row says that day was
+//                            already in the pull, and an ad is running. With
+//                            every ad paused Meta sends no row, so an empty day
+//                            is normal and is a skip, not a FAIL.
+//   ads-number-unmapped      an ad that spent in the last 28 days has no
+//                            fundhub_ad_number. Old paused test ads are not
+//                            looked at, so they cannot keep the pulse red.
+//   ads-running-no-metrics   a running ad (ad, ad set and campaign all ACTIVE)
+//                            old enough to have synced has no ad_metrics_daily
+//                            row. The dying-ad scan joins metrics, so it cannot
+//                            see this ad.
+//
+// Reads go through ctx.scope (staff). ads, ad_sets, campaigns, ad_metrics_daily
+// and ad_platform_connections are row-security tables: the plain app role reads
+// them as empty.
 //
 // Not here: marketing clock (slice 03), dying-ad buzz, ClickFunnels, server
 // events, Meet (machine.mjs). No budget change, no pause, no video upload.
 // One tripwire: Recon (AG-07). No second watchdog. SELECT only.
 
 import { FRESH_HOURS } from "../machine.mjs";
-import { adAccountDay } from "../../lib/ad-account-day.mjs";
+import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
 
 /** Same window as api/campaigns/sync.mjs HOURLY_WINDOW_DAYS. Today is still open. */
 export const HOURLY_WINDOW_DAYS = 3;
 
 /** 3x the hourly cron (30 * * * *). A run older than this is red. */
 export const HOURLY_RED_HOURS = 3;
+
+/** Same window as the nightly pass (INSIGHT_WINDOW_DAYS). Older spend is history. */
+export const SPEND_WINDOW_DAYS = 28;
+
+/** Meta can hold a new ad in review for a day. No delivery then is not a sync break. */
+export const NEW_AD_GRACE_HOURS = 24;
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -117,32 +132,57 @@ export const SYNC_DUE_SQL = `
      AND external_ad_account_id IS NOT NULL
      AND external_ad_account_id NOT ILIKE 'pending:%'`;
 
-// $1 is the older closed day, $2 is yesterday, both Arizona dates.
+// An ad is running only when the ad, its ad set and its campaign are all ACTIVE.
+// Pausing a campaign leaves its ads ACTIVE on the ad itself, and Meta sends no row.
+const RUNNING_WHERE = `
+         upper(coalesce(a.status, '')) = 'ACTIVE'
+     AND upper(coalesce(s.status, '')) = 'ACTIVE'
+     AND upper(coalesce(c.status, '')) = 'ACTIVE'`;
+
+// $1 is the older closed day, $2 is yesterday, both Arizona dates. `running` counts
+// ads that were already here when the older closed day began.
 export const SPEND_DAYS_SQL = `
   SELECT (SELECT max(synced_at) FROM ad_metrics_daily) AS last_saved,
          (SELECT min(date)::text FROM ad_metrics_daily) AS first_day,
          (SELECT count(*)::int FROM ad_metrics_daily WHERE date = $1::date) AS rows_0,
-         (SELECT count(*)::int FROM ad_metrics_daily WHERE date = $2::date) AS rows_1`;
+         (SELECT count(*)::int FROM ad_metrics_daily WHERE date = $2::date) AS rows_1,
+         (SELECT count(*)::int
+            FROM ads a
+            JOIN ad_sets s ON s.id = a.ad_set_id
+            JOIN campaigns c ON c.id = a.campaign_id
+           WHERE ${RUNNING_WHERE}
+             AND a.created_at < ($1::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}') AS running`;
 
-export const UNMAPPED_SQL = `
-  SELECT (SELECT count(DISTINCT a.id)::int
+// $1 is the first Arizona day of the 28-day window. Only an ad that spent money in
+// it counts. A zero-spend row, or an ad that stopped spending long ago, does not.
+const SPENT_FROM = `
             FROM ads a
             JOIN ad_metrics_daily m ON m.ad_id = a.id
-           WHERE a.fundhub_ad_number IS NULL) AS unmapped,
-         (SELECT count(DISTINCT a.id)::int
-            FROM ads a
-            JOIN ad_metrics_daily m ON m.ad_id = a.id) AS with_metrics,
+           WHERE m.spend_cents > 0
+             AND m.date >= $1::date`;
+const UNNUMBERED = `(a.fundhub_ad_number IS NULL OR btrim(a.fundhub_ad_number) = '')`;
+
+export const UNMAPPED_SQL = `
+  SELECT (SELECT count(DISTINCT a.id)::int ${SPENT_FROM}) AS with_spend,
+         (SELECT count(DISTINCT a.id)::int ${SPENT_FROM}
+             AND ${UNNUMBERED}) AS unmapped,
          (SELECT string_agg(n, ', ' ORDER BY n)
             FROM (
-              SELECT DISTINCT left(a.name, 60) AS n
-                FROM ads a
-                JOIN ad_metrics_daily m ON m.ad_id = a.id
-               WHERE a.fundhub_ad_number IS NULL
+              SELECT DISTINCT left(a.name, 60) AS n ${SPENT_FROM}
+                 AND ${UNNUMBERED}
                ORDER BY n
                LIMIT 3
             ) s) AS names`;
 
-// $1 is the cutoff. Ads newer than that have not had an hourly pass yet.
+// $1 is the cutoff. Ads newer than that have not had time to deliver yet.
+const RUNNING_FROM = `
+            FROM ads a
+            JOIN ad_sets s ON s.id = a.ad_set_id
+            JOIN campaigns c ON c.id = a.campaign_id
+           WHERE ${RUNNING_WHERE}
+             AND a.created_at <= $1`;
+const NO_METRICS = `AND NOT EXISTS (SELECT 1 FROM ad_metrics_daily m WHERE m.ad_id = a.id)`;
+
 export const RUNNING_BARE_SQL = `
   SELECT (SELECT max(last_synced_at)
             FROM ad_platform_connections
@@ -151,26 +191,13 @@ export const RUNNING_BARE_SQL = `
              AND encrypted_access_token IS NOT NULL
              AND external_ad_account_id IS NOT NULL
              AND external_ad_account_id NOT ILIKE 'pending:%') AS last_synced_at,
-         (SELECT count(*)::int
-            FROM ads a
-           WHERE upper(coalesce(a.status, '')) = 'ACTIVE'
-             AND a.created_at <= $1) AS running,
-         (SELECT count(*)::int
-            FROM ads a
-           WHERE upper(coalesce(a.status, '')) = 'ACTIVE'
-             AND a.created_at <= $1
-             AND NOT EXISTS (
-               SELECT 1 FROM ad_metrics_daily m WHERE m.ad_id = a.id
-             )) AS bare,
+         (SELECT count(*)::int ${RUNNING_FROM}) AS running,
+         (SELECT count(*)::int ${RUNNING_FROM}
+             ${NO_METRICS}) AS bare,
          (SELECT string_agg(n, ', ' ORDER BY n)
             FROM (
-              SELECT DISTINCT left(a.name, 60) AS n
-                FROM ads a
-               WHERE upper(coalesce(a.status, '')) = 'ACTIVE'
-                 AND a.created_at <= $1
-                 AND NOT EXISTS (
-                   SELECT 1 FROM ad_metrics_daily m WHERE m.ad_id = a.id
-                 )
+              SELECT DISTINCT left(a.name, 60) AS n ${RUNNING_FROM}
+                 ${NO_METRICS}
                ORDER BY n
                LIMIT 3
             ) s) AS names`;
@@ -189,7 +216,8 @@ const NUMBER_FIX = fix(
 );
 
 const RUNNING_FIX = fix(
-  "The Meta sync saved other rows and skipped this running ad. Read ads.status and ad_metrics_daily."
+  "The ad, its ad set and its campaign are all ACTIVE, and Meta has sent no row for it. " +
+  "Read ads.status, ad_sets.status and ad_metrics_daily, and the ad's delivery in Meta."
 );
 
 export async function checkMetaSyncStale({ run, now }) {
@@ -240,13 +268,24 @@ export async function checkSpendDayMissing({ run, now }) {
     if (counts[i] > 0) continue;
     if (first < days[i]) missing.push(days[i]);
   }
+  const running = num(r.running);
+  if (missing.length && !running) {
+    // Meta sends a row only for an ad that delivered. With every ad paused an empty
+    // day is the normal answer, not a sync that skipped it.
+    return row(
+      id,
+      "skip",
+      `No spend row for ${missing.join(" and ")}, and no ad is running, so Meta had nothing to send.`
+    );
+  }
   if (missing.length) {
     const list = missing.join(" and ");
     const word = missing.length === 1 ? "That day should" : "Those days should";
+    const ads = running === 1 ? "1 ad is running" : `${running} ads are running`;
     return row(
       id,
       "FAIL",
-      `Spend rows are missing for ${list}. ${word} have synced. Older spend starts ${first}.`,
+      `Spend rows are missing for ${list}. ${ads}, so ${word.toLowerCase()} have synced. Older spend starts ${first}.`,
       SPEND_FIX
     );
   }
@@ -261,31 +300,36 @@ export async function checkSpendDayMissing({ run, now }) {
   return row(id, "PASS", `Spend rows are on file for ${days.join(" and ")}.`);
 }
 
-export async function checkAdNumberUnmapped({ run }) {
+export async function checkAdNumberUnmapped({ run, now }) {
   const id = "ads-number-unmapped";
-  const r = await one(run, UNMAPPED_SQL);
-  const withMetrics = num(r.with_metrics);
+  const since = shiftDay(adAccountDay(now), -SPEND_WINDOW_DAYS);
+  const r = await one(run, UNMAPPED_SQL, [since]);
+  const withSpend = num(r.with_spend);
   const unmapped = num(r.unmapped);
-  if (!withMetrics) {
-    return row(id, "skip", "No ad has a spend row yet, so there is no number to map.");
+  if (!withSpend) {
+    return row(id, "skip", `No ad spent money in the last ${SPEND_WINDOW_DAYS} days, so there is no number to map.`);
   }
   if (!unmapped) {
-    const noun = withMetrics === 1 ? "ad" : "ads";
-    return row(id, "PASS", `Every ad with a spend row has a Fundhub ad number (${withMetrics} ${noun}).`);
+    const noun = withSpend === 1 ? "ad" : "ads";
+    return row(
+      id,
+      "PASS",
+      `Every ad that spent in the last ${SPEND_WINDOW_DAYS} days has a Fundhub ad number (${withSpend} ${noun}).`
+    );
   }
   const names = nameList(r.names, unmapped > 3);
   const noun = unmapped === 1 ? "ad has" : "ads have";
   return row(
     id,
     "FAIL",
-    `${unmapped} ${noun} spend and no Fundhub ad number${names ? `: ${names}` : ""}.`,
+    `${unmapped} ${noun} spend in the last ${SPEND_WINDOW_DAYS} days and no Fundhub ad number${names ? `: ${names}` : ""}.`,
     NUMBER_FIX
   );
 }
 
 export async function checkRunningNoMetrics({ run, now }) {
   const id = "ads-running-no-metrics";
-  const cutoff = new Date(now.getTime() - HOURLY_RED_HOURS * HOUR_MS);
+  const cutoff = new Date(now.getTime() - NEW_AD_GRACE_HOURS * HOUR_MS);
   const r = await one(run, RUNNING_BARE_SQL, [cutoff]);
   const last = toDate(r.last_synced_at);
   if (!last) {
@@ -302,7 +346,7 @@ export async function checkRunningNoMetrics({ run, now }) {
   const running = num(r.running);
   const bare = num(r.bare);
   if (!running) {
-    return row(id, "skip", "No running ad is old enough to need a metrics row.");
+    return row(id, "skip", `No running ad is older than ${NEW_AD_GRACE_HOURS} h, so none needs a metrics row yet.`);
   }
   if (!bare) {
     const noun = running === 1 ? "ad has" : "ads have";
