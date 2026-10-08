@@ -358,7 +358,11 @@ export async function runDailyPulse({
   recordRun = true,
   // Staff-visibility runner for the marketing-machine rows (asStaff on live).
   // Those tables are FORCE row security and read empty on the plain app role.
-  staffScope = null
+  staffScope = null,
+  // Slice and gap rows already run in their own Inngest steps. The 6 a.m. job
+  // passes these so this step stays under Netlify's 26-second cut. Left null,
+  // the coverage pass runs here (CLI and tests).
+  coverageRows = null
 } = {}) {
   const date = phoenixDate(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -394,22 +398,26 @@ export async function runDailyPulse({
       `job heartbeats not read: ${String((err && err.message) || err).slice(0, 160)}`
     ));
   }
-  try {
-    checks.push(...await runCoverageSlices({
-      db,
-      scope: staffScope,
-      now,
-      orgId: resolvedOrg,
-      fetchImpl,
-      baseUrl: origin,
-      env
-    }));
-  } catch (err) {
-    checks.push(check(
-      "coverage",
-      "skip",
-      `coverage slices not read: ${String((err && err.message) || err).slice(0, 160)}`
-    ));
+  if (Array.isArray(coverageRows)) {
+    checks.push(...coverageRows);
+  } else {
+    try {
+      checks.push(...await runCoverageSlices({
+        db,
+        scope: staffScope,
+        now,
+        orgId: resolvedOrg,
+        fetchImpl,
+        baseUrl: origin,
+        env
+      }));
+    } catch (err) {
+      checks.push(check(
+        "coverage",
+        "skip",
+        `coverage slices not read: ${String((err && err.message) || err).slice(0, 160)}`
+      ));
+    }
   }
 
   const failRows = checks.filter((c) => c.status === "FAIL" || c.status === "down");

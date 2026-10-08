@@ -1,0 +1,87 @@
+// Every coverage file, named one by one.
+//
+// The live server bundle only carries files the code names. A folder scan
+// finds nothing there. Measured 2026-10-08: the shipped api bundle held
+// run-slices.mjs and none of the slice or gap files, so the 6 a.m. pulse had
+// 0 coverage rows and no error. Each line below is a literal import, so the
+// bundler packs the file. modules.test.mjs fails when a slice-*.mjs or
+// gap-*.mjs file is on disk and not on this list.
+//
+// Each entry is [file, load]. load() is a dynamic import so one file that
+// will not load becomes one skip row, not a dead pulse.
+
+export const SLICE_FILES = Object.freeze([
+  ["slice-01-auth.mjs", () => import("./slice-01-auth.mjs")],
+  ["slice-02-daily-pulse.mjs", () => import("./slice-02-daily-pulse.mjs")],
+  ["slice-03-marketing.mjs", () => import("./slice-03-marketing.mjs")],
+  ["slice-04-ads.mjs", () => import("./slice-04-ads.mjs")],
+  ["slice-05-funnels.mjs", () => import("./slice-05-funnels.mjs")],
+  ["slice-06-briefs.mjs", () => import("./slice-06-briefs.mjs")],
+  ["slice-07-finance.mjs", () => import("./slice-07-finance.mjs")],
+  ["slice-08-banks.mjs", () => import("./slice-08-banks.mjs")],
+  ["slice-09-documents.mjs", () => import("./slice-09-documents.mjs")],
+  ["slice-10-contracts.mjs", () => import("./slice-10-contracts.mjs")],
+  ["slice-11-hiring.mjs", () => import("./slice-11-hiring.mjs")],
+  ["slice-12-messaging.mjs", () => import("./slice-12-messaging.mjs")],
+  ["slice-13-calls.mjs", () => import("./slice-13-calls.mjs")],
+  ["slice-14-funding.mjs", () => import("./slice-14-funding.mjs")],
+  ["slice-15-repair.mjs", () => import("./slice-15-repair.mjs")],
+  ["slice-16-nurture.mjs", () => import("./slice-16-nurture.mjs")],
+  ["slice-17-affiliates.mjs", () => import("./slice-17-affiliates.mjs")],
+  ["slice-18-billing.mjs", () => import("./slice-18-billing.mjs")],
+  ["slice-19-slo.mjs", () => import("./slice-19-slo.mjs")],
+  ["slice-20-sales.mjs", () => import("./slice-20-sales.mjs")],
+  ["slice-21-underwrite.mjs", () => import("./slice-21-underwrite.mjs")],
+  ["slice-22-partners.mjs", () => import("./slice-22-partners.mjs")],
+  ["slice-23-pages.mjs", () => import("./slice-23-pages.mjs")],
+  ["slice-24-agents.mjs", () => import("./slice-24-agents.mjs")],
+  ["slice-25-rest.mjs", () => import("./slice-25-rest.mjs")],
+  ["slice-26-client-journey.mjs", () => import("./slice-26-client-journey.mjs")],
+  ["slice-27-closer.mjs", () => import("./slice-27-closer.mjs")],
+  ["slice-28-funding-advisor.mjs", () => import("./slice-28-funding-advisor.mjs")],
+  ["slice-29-inquiry-remover.mjs", () => import("./slice-29-inquiry-remover.mjs")],
+  ["slice-30-csm-owner.mjs", () => import("./slice-30-csm-owner.mjs")],
+  ["slice-31-affiliate-wl.mjs", () => import("./slice-31-affiliate-wl.mjs")],
+  ["slice-33-fulfillment.mjs", () => import("./slice-33-fulfillment.mjs")],
+  ["slice-40-more.mjs", () => import("./slice-40-more.mjs")]
+]);
+
+export const GAP_FILES = Object.freeze([
+  ["gap-ads.mjs", () => import("./gap-ads.mjs")],
+  ["gap-ai-agents.mjs", () => import("./gap-ai-agents.mjs")],
+  ["gap-auth.mjs", () => import("./gap-auth.mjs")],
+  ["gap-banks.mjs", () => import("./gap-banks.mjs")],
+  ["gap-brain.mjs", () => import("./gap-brain.mjs")],
+  ["gap-calls.mjs", () => import("./gap-calls.mjs")],
+  ["gap-closer.mjs", () => import("./gap-closer.mjs")],
+  ["gap-consent.mjs", () => import("./gap-consent.mjs")],
+  ["gap-contracts.mjs", () => import("./gap-contracts.mjs")],
+  ["gap-crm-links.mjs", () => import("./gap-crm-links.mjs")],
+  ["gap-csm.mjs", () => import("./gap-csm.mjs")],
+  ["gap-documents.mjs", () => import("./gap-documents.mjs")],
+  ["gap-email.mjs", () => import("./gap-email.mjs")],
+  ["gap-finance-os.mjs", () => import("./gap-finance-os.mjs")],
+  ["gap-fulfillment.mjs", () => import("./gap-fulfillment.mjs")],
+  ["gap-funding.mjs", () => import("./gap-funding.mjs")],
+  ["gap-funnels.mjs", () => import("./gap-funnels.mjs")],
+  ["gap-inquiry.mjs", () => import("./gap-inquiry.mjs")],
+  ["gap-jobs.mjs", () => import("./gap-jobs.mjs")],
+  ["gap-marketing-queue.mjs", () => import("./gap-marketing-queue.mjs")],
+  ["gap-meet.mjs", () => import("./gap-meet.mjs")],
+  ["gap-nurture.mjs", () => import("./gap-nurture.mjs")],
+  ["gap-opt-out.mjs", () => import("./gap-opt-out.mjs")],
+  ["gap-owner-tools.mjs", () => import("./gap-owner-tools.mjs")],
+  ["gap-partners.mjs", () => import("./gap-partners.mjs")],
+  ["gap-payments.mjs", () => import("./gap-payments.mjs")],
+  ["gap-pixels.mjs", () => import("./gap-pixels.mjs")],
+  ["gap-portal.mjs", () => import("./gap-portal.mjs")],
+  ["gap-repair.mjs", () => import("./gap-repair.mjs")],
+  ["gap-sales-manager.mjs", () => import("./gap-sales-manager.mjs")],
+  ["gap-sms.mjs", () => import("./gap-sms.mjs")],
+  ["gap-social.mjs", () => import("./gap-social.mjs")],
+  ["gap-soft-pull.mjs", () => import("./gap-soft-pull.mjs")],
+  ["gap-staff.mjs", () => import("./gap-staff.mjs")],
+  ["gap-training.mjs", () => import("./gap-training.mjs")],
+  ["gap-underwrite.mjs", () => import("./gap-underwrite.mjs")],
+  ["gap-webhooks.mjs", () => import("./gap-webhooks.mjs")]
+]);

@@ -17,11 +17,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import { JOBS, STALE_MULTIPLE, cronIntervalMs, lastMonthlyFire } from "../heartbeats.mjs";
+import { GAP_FILES, SLICE_FILES } from "./modules.mjs";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 export const NOT_CHECKED = "not checked";
 
@@ -135,14 +135,24 @@ export function tally(rows = []) {
   return n;
 }
 
-export async function loadSliceModules(dir = HERE) {
-  const names = fs.readdirSync(dir)
-    .filter((name) => /^slice-.+\.mjs$/.test(name) && !name.endsWith(".test.mjs"))
-    .sort();
+/** [file, load] pairs from one folder. Tests point this at a temp folder. */
+function folderEntries(dir, pattern) {
+  return fs.readdirSync(dir)
+    .filter((name) => pattern.test(name) && !name.endsWith(".test.mjs"))
+    .sort()
+    .map((name) => [name, () => import(pathToFileURL(path.join(dir, name)).href)]);
+}
+
+/**
+ * Every slice file. With no dir, the named list in modules.mjs, which is what
+ * the live bundle carries. A folder scan there finds no slice files.
+ */
+export async function loadSliceModules(dir = null) {
+  const entries = dir ? folderEntries(dir, /^slice-.+\.mjs$/) : SLICE_FILES;
   const out = [];
-  for (const name of names) {
+  for (const [name, load] of entries) {
     try {
-      const mod = await import(pathToFileURL(path.join(dir, name)).href);
+      const mod = await load();
       out.push({
         sliceId: mod.SLICE_ID || name.replace(/\.mjs$/, ""),
         file: name,
@@ -522,16 +532,21 @@ function gapResult(sliceId, row) {
   };
 }
 
-/** Every gap-*.mjs file. A file that will not import becomes a later skip row. */
-export async function loadGapModules(dir = HERE) {
-  const names = fs.readdirSync(dir)
-    .filter((name) => /^gap-.+\.mjs$/.test(name) && !name.endsWith(".test.mjs"))
-    .sort();
+/**
+ * Every gap-*.mjs file. With no dir, the named list in modules.mjs. With
+ * `only`, just those lanes. A file that will not import becomes a later skip row.
+ */
+export async function loadGapModules(dir = null, { only = null } = {}) {
+  let entries = dir ? folderEntries(dir, /^gap-.+\.mjs$/) : GAP_FILES;
+  if (Array.isArray(only)) {
+    const want = new Set(only.map((id) => `${String(id).replace(/\.mjs$/, "")}.mjs`));
+    entries = entries.filter(([name]) => want.has(name));
+  }
   const out = [];
-  for (const name of names) {
+  for (const [name, load] of entries) {
     const sliceId = name.replace(/\.mjs$/, "");
     try {
-      const mod = await import(pathToFileURL(path.join(dir, name)).href);
+      const mod = await load();
       out.push({
         sliceId,
         file: name,
@@ -602,6 +617,22 @@ export async function runGapChecks({
     }
   }
   return out;
+}
+
+/** Every gap lane id, in the order the pulse runs them (one Inngest step each). */
+export const GAP_LANES = Object.freeze(GAP_FILES.map(([name]) => name.replace(/\.mjs$/, "")));
+
+/**
+ * Run one gap lane. The 6 a.m. job runs each lane in its own step so no step
+ * passes Netlify's 26-second cut. A lane not on the list is one skip row.
+ */
+export async function runGapLane(sliceId, args = {}) {
+  const id = String(sliceId || "").replace(/\.mjs$/, "");
+  const modules = await loadGapModules(null, { only: [id] });
+  if (!modules.length) {
+    return [gapSkip(id || "gap", `${id || "gap"} is not on the list in src/pulse/coverage/modules.mjs.`, "not-listed")];
+  }
+  return runGapChecks({ ...args, modules });
 }
 
 /**

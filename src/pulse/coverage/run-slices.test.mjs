@@ -8,11 +8,13 @@ import { fileURLToPath } from "node:url";
 import { JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
 import { runDailyPulse } from "../daily-pulse.mjs";
 import {
+  GAP_LANES,
   NOT_CHECKED,
   loadGapModules,
   loadSliceModules,
   namespaceGapId,
   runCoverageSlices,
+  runGapLane,
   tally
 } from "./run-slices.mjs";
 import * as pulseSlice from "./slice-02-daily-pulse.mjs";
@@ -334,4 +336,28 @@ test("the morning pass runs every gap file and still does not pass a slice witho
   assert.equal(sliceRows.length, sliceExpected);
   assert.ok(sliceRows.every((row) => row.status === NOT_CHECKED));
   assert.ok(gapRows.every((row) => row.status === "PASS" || row.status === "FAIL" || row.status === "skip"));
+});
+
+test("one gap lane runs alone, so the 6 a.m. job can give each lane its own step", async () => {
+  assert.ok(GAP_LANES.includes("gap-auth"));
+  assert.equal(new Set(GAP_LANES).size, GAP_LANES.length);
+  const only = await loadGapModules(null, { only: ["gap-auth"] });
+  assert.deepEqual(only.map((item) => item.file), ["gap-auth.mjs"]);
+  const rows = await runGapLane("gap-auth", { now: NOW });
+  assert.ok(rows.length > 0);
+  assert.ok(rows.every((row) => row.sliceId === "gap-auth"));
+});
+
+test("a lane that is not on the named list is one skip row, not a silent nothing", async () => {
+  const rows = await runGapLane("gap-not-a-lane", { now: NOW });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].status, "skip");
+  assert.match(rows[0].detail, /not on the list/);
+});
+
+test("the default loaders use the named list, not a folder scan the live bundle cannot see", () => {
+  const src = fs.readFileSync(RUNNER, "utf8");
+  assert.match(src, /dir \? folderEntries\(dir, \/\^slice-/);
+  assert.match(src, /dir \? folderEntries\(dir, \/\^gap-/);
+  assert.match(src, /from "\.\/modules\.mjs"/);
 });
