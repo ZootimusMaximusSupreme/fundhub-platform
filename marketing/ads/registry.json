@@ -3,48 +3,398 @@
   "updated": "2026-09-03",
   "source": "Owner brief 2026-09-03. Intended seed source marketing/ads/scripts/2026-09-02-ad-scripts.md was NOT in the repository or any branch when this file was written, so only the ad ids and lane rules the owner named directly are seeded. Titles are the slug from the owner's examples where given, otherwise null. Any ad id not listed here resolves to the sorting default (gate none, entry sorting, primary none, secondary all) and is logged by src/ads/registry.mjs.",
   "vocabulary": {
-    "lane": ["funding600", "premium", "sorting", "uwiq", "wl"],
-    "gate": ["600", "720", "780", "none"],
-    "entry": ["direct", "sorting"],
-    "offer": ["funding_dfy", "credit_optimization", "capital_blueprint", "capital_academy", "white_label", "none"],
-    "variant": ["sun", "nosun", "sedona"]
+    "lane": [
+      "funding600",
+      "premium",
+      "sorting",
+      "uwiq",
+      "wl"
+    ],
+    "gate": [
+      "600",
+      "720",
+      "780",
+      "none"
+    ],
+    "entry": [
+      "direct",
+      "sorting"
+    ],
+    "offer": [
+      "funding_dfy",
+      "credit_optimization",
+      "capital_blueprint",
+      "capital_academy",
+      "white_label",
+      "none"
+    ],
+    "variant": [
+      "sun",
+      "nosun",
+      "sedona"
+    ]
   },
   "rules": {
-    "funding600": { "gate": "600", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [] },
-    "premium": { "gate": "720", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [] },
-    "sorting": { "gate": "none", "entry": "sorting", "primary_offer": "none", "secondary_offers": "all" },
-    "uwiq": { "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all" },
-    "wl": { "gate": "none", "entry": "direct", "primary_offer": "white_label", "secondary_offers": [] }
+    "funding600": {
+      "gate": "600",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": []
+    },
+    "premium": {
+      "gate": "720",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": []
+    },
+    "sorting": {
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "none",
+      "secondary_offers": "all"
+    },
+    "uwiq": {
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all"
+    },
+    "wl": {
+      "gate": "none",
+      "entry": "direct",
+      "primary_offer": "white_label",
+      "secondary_offers": []
+    }
   },
   "ads": [
-    { "id": "16", "title": "phase", "lane": "funding600", "gate": "600", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sun", "nosun"] },
-
-    { "id": "26", "title": "underwriter", "lane": "uwiq", "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all", "variants": ["sun", "nosun"] },
-    { "id": "27", "title": null, "lane": "uwiq", "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all", "variants": ["sun", "nosun"] },
-    { "id": "28", "title": null, "lane": "uwiq", "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all", "variants": ["sun", "nosun"] },
-    { "id": "29", "title": null, "lane": "uwiq", "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all", "variants": ["sun", "nosun"] },
-    { "id": "30", "title": null, "lane": "uwiq", "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all", "variants": ["sun", "nosun"] },
-    { "id": "31", "title": null, "lane": "uwiq", "gate": "none", "entry": "sorting", "primary_offer": "capital_blueprint", "secondary_offers": "all", "variants": ["sun", "nosun"] },
-
-    { "id": "42", "title": "ringlights", "lane": "funding600", "gate": "600", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sun", "nosun"], "group": "slam" },
-    { "id": "43", "title": null, "lane": "sorting", "gate": "none", "entry": "sorting", "primary_offer": "funding_dfy", "secondary_offers": "all", "variants": ["sun", "nosun"], "group": "slam" },
-    { "id": "44", "title": null, "lane": "funding600", "gate": "600", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sun", "nosun"], "group": "slam" },
-    { "id": "45", "title": null, "lane": "sorting", "gate": "none", "entry": "sorting", "primary_offer": "funding_dfy", "secondary_offers": "all", "variants": ["sun", "nosun"], "group": "slam" },
-    { "id": "46", "title": null, "lane": "sorting", "gate": "none", "entry": "sorting", "primary_offer": "funding_dfy", "secondary_offers": "all", "variants": ["sun", "nosun"], "group": "slam" },
-
-    { "id": "72", "title": null, "lane": "wl", "gate": "none", "entry": "direct", "primary_offer": "white_label", "secondary_offers": [], "variants": ["sun", "nosun"] },
-    { "id": "73", "title": null, "lane": "wl", "gate": "none", "entry": "direct", "primary_offer": "white_label", "secondary_offers": [], "variants": ["sun", "nosun"] },
-    { "id": "74", "title": null, "lane": "wl", "gate": "none", "entry": "direct", "primary_offer": "white_label", "secondary_offers": [], "variants": ["sun", "nosun"] },
-    { "id": "75", "title": null, "lane": "wl", "gate": "none", "entry": "direct", "primary_offer": "white_label", "secondary_offers": [], "variants": ["sun", "nosun"] },
-    { "id": "76", "title": null, "lane": "wl", "gate": "none", "entry": "direct", "primary_offer": "white_label", "secondary_offers": [], "variants": ["sun", "nosun"] },
-
-    { "id": "77", "title": null, "lane": "funding600", "gate": "600", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sedona"], "group": "sedona" },
-    { "id": "78", "title": null, "lane": "sorting", "gate": "none", "entry": "sorting", "primary_offer": "none", "secondary_offers": "all", "variants": ["sedona"], "group": "sedona" },
-    { "id": "79", "title": null, "lane": "sorting", "gate": "none", "entry": "sorting", "primary_offer": "none", "secondary_offers": "all", "variants": ["sedona"], "group": "sedona" },
-    { "id": "80", "title": null, "lane": "premium", "gate": "720", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sedona"], "group": "sedona" },
-    { "id": "81", "title": null, "lane": "funding600", "gate": "600", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sedona"], "group": "sedona" },
-
-    { "id": "82", "title": null, "lane": "premium", "gate": "720", "entry": "direct", "primary_offer": "funding_dfy", "secondary_offers": [], "variants": ["sun", "nosun"], "group": "objection" },
-    { "id": "83", "title": null, "lane": "sorting", "gate": "none", "entry": "sorting", "primary_offer": "none", "secondary_offers": "all", "variants": ["sun", "nosun"], "group": "objection" }
+    {
+      "id": "16",
+      "title": "phase",
+      "lane": "funding600",
+      "gate": "600",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "26",
+      "title": "underwriter",
+      "lane": "uwiq",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "27",
+      "title": null,
+      "lane": "uwiq",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "28",
+      "title": null,
+      "lane": "uwiq",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "29",
+      "title": null,
+      "lane": "uwiq",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "30",
+      "title": null,
+      "lane": "uwiq",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "31",
+      "title": null,
+      "lane": "uwiq",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "capital_blueprint",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "42",
+      "title": "ringlights",
+      "lane": "funding600",
+      "gate": "600",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "slam"
+    },
+    {
+      "id": "43",
+      "title": null,
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "slam"
+    },
+    {
+      "id": "44",
+      "title": null,
+      "lane": "funding600",
+      "gate": "600",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "slam"
+    },
+    {
+      "id": "45",
+      "title": null,
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "slam"
+    },
+    {
+      "id": "46",
+      "title": null,
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "slam"
+    },
+    {
+      "id": "72",
+      "title": null,
+      "lane": "wl",
+      "gate": "none",
+      "entry": "direct",
+      "primary_offer": "white_label",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "73",
+      "title": null,
+      "lane": "wl",
+      "gate": "none",
+      "entry": "direct",
+      "primary_offer": "white_label",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "74",
+      "title": null,
+      "lane": "wl",
+      "gate": "none",
+      "entry": "direct",
+      "primary_offer": "white_label",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "75",
+      "title": null,
+      "lane": "wl",
+      "gate": "none",
+      "entry": "direct",
+      "primary_offer": "white_label",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "76",
+      "title": null,
+      "lane": "wl",
+      "gate": "none",
+      "entry": "direct",
+      "primary_offer": "white_label",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ]
+    },
+    {
+      "id": "77",
+      "title": null,
+      "lane": "funding600",
+      "gate": "600",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sedona"
+      ],
+      "group": "sedona"
+    },
+    {
+      "id": "78",
+      "title": null,
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "none",
+      "secondary_offers": "all",
+      "variants": [
+        "sedona"
+      ],
+      "group": "sedona"
+    },
+    {
+      "id": "79",
+      "title": null,
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "none",
+      "secondary_offers": "all",
+      "variants": [
+        "sedona"
+      ],
+      "group": "sedona"
+    },
+    {
+      "id": "80",
+      "title": null,
+      "lane": "premium",
+      "gate": "720",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sedona"
+      ],
+      "group": "sedona"
+    },
+    {
+      "id": "81",
+      "title": null,
+      "lane": "funding600",
+      "gate": "600",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sedona"
+      ],
+      "group": "sedona"
+    },
+    {
+      "id": "82",
+      "title": null,
+      "lane": "premium",
+      "gate": "720",
+      "entry": "direct",
+      "primary_offer": "funding_dfy",
+      "secondary_offers": [],
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "objection"
+    },
+    {
+      "id": "83",
+      "title": null,
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "none",
+      "secondary_offers": "all",
+      "variants": [
+        "sun",
+        "nosun"
+      ],
+      "group": "objection"
+    },
+    {
+      "id": "91",
+      "title": "The Conveyor Belt",
+      "lane": "sorting",
+      "gate": "none",
+      "entry": "sorting",
+      "primary_offer": "none",
+      "secondary_offers": "all",
+      "variants": []
+    }
   ]
 }
