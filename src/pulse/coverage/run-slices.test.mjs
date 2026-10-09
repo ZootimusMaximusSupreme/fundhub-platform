@@ -578,3 +578,76 @@ test("the runner never reads a repo file to find a fold target", () => {
   assert.equal(src.split("fs.readdirSync").length - 1, 1);
   assert.doesNotMatch(fs.readFileSync(path.join(HERE, "link.mjs"), "utf8"), /node:fs|readFileSync|readdirSync/);
 });
+
+// ---- the workflow list did not load: say so on the rows that needed it ------------------------
+
+test("a workflow list that fails to load is named on the rows that needed it, and on no others", async () => {
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "evt-flow", schedule: "a.b", proof: "Event a.b." },
+      { id: "auth/login", schedule: "daily", proof: "PASS", alreadyInRegistry: true },
+      { id: "message-dispatch-sweeper", schedule: "5m", proof: "catalog" },
+      { id: "no-such-door", schedule: "daily", proof: "PASS", alreadyInRegistry: true },
+      { id: "a-plain-gap", schedule: "daily", proof: "Add route key a-plain-gap.", alreadyInRegistry: false }
+    ],
+    mod: {}
+  }];
+  const broke = await runCoverageSlices({
+    modules,
+    now: NOW,
+    loadFunctions: async () => { throw new Error("Cannot find module './nope.mjs'"); }
+  });
+  const [evt, door, job, claim, gap] = broke;
+  // Rows that could have been a workflow row start with the cause.
+  assert.match(evt.detail, /^Could not load the workflow list \(Cannot find module '\.\/nope\.mjs'\)\. /);
+  assert.equal(evt.status, NOT_CHECKED);
+  assert.equal(evt.foldInto, undefined);
+  assert.match(claim.detail, /^Could not load the workflow list \(.*\)\. Claims covered, but no check ran for no-such-door\./);
+  assert.match(gap.detail, /^Could not load the workflow list \(/);
+  // Rows that never needed the list keep their words and their fold.
+  assert.equal(door.foldInto, "reg:auth/login");
+  assert.doesNotMatch(door.detail, /workflow list/);
+  assert.equal(job.foldInto, "job:message-dispatch-sweeper");
+  assert.doesNotMatch(job.detail, /workflow list/);
+
+  // The list loads: no cause on any row, and the event row folds.
+  const fine = await runCoverageSlices({
+    modules,
+    now: NOW,
+    loadFunctions: async () => ({ functions: [fakeFn("evt-flow", [{ event: "a.b" }])] })
+  });
+  assert.equal(fine[0].foldInto, "wf:evt-flow");
+  assert.ok(fine.every((row) => !/workflow list/.test(row.detail)));
+
+  // Turned off on purpose (null): not an error, so nothing is said.
+  const off = await runCoverageSlices({ modules, now: NOW, functions: null });
+  assert.ok(off.every((row) => !/workflow list/.test(row.detail)));
+
+  // An index that exports no list is also named.
+  const empty = await runCoverageSlices({ modules, now: NOW, loadFunctions: async () => ({}) });
+  assert.match(empty[0].detail, /^Could not load the workflow list \(src\/workflows\/index\.mjs does not export a functions list\)\./);
+});
+
+test("a row that says it is not covered is not folded into a registry ping that shares its name", async () => {
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "contracts", schedule: "daily", proof: "Add contracts.html to DESK_FILES.", alreadyInRegistry: false },
+      { id: "lenders", schedule: "daily", proof: "PASS" }
+    ],
+    mod: {}
+  }];
+  const rows = await runCoverageSlices({ modules, now: NOW, functions: [] });
+  for (const row of rows) {
+    assert.equal(row.foldInto, undefined, row.id);
+    assert.equal(row.status, NOT_CHECKED, row.id);
+  }
+  // The same id, saying it is covered, folds.
+  const claimed = await runCoverageSlices({
+    modules: [{ sliceId: "t", CHECKS: [{ id: "contracts", schedule: "daily", proof: "PASS", alreadyInRegistry: true }], mod: {} }],
+    now: NOW,
+    functions: []
+  });
+  assert.equal(claimed[0].foldInto, "reg:contracts");
+});

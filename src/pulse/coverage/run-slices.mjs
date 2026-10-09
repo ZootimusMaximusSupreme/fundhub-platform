@@ -463,9 +463,22 @@ function evaluateOwn(row, sliceId, ctx) {
 }
 
 /**
+ * The words for a row that could have folded into a workflow row but could not,
+ * because the bundled function list did not load. The cause goes first so it is not
+ * lost behind the old words.
+ */
+function withListError(out, ctx) {
+  const why = ctx.fold && ctx.fold.functionsError;
+  if (!why) return out;
+  return { ...out, detail: `Could not load the workflow list (${why}). ${out.detail}` };
+}
+
+/**
  * One slice row. A claim of "covered" gets `foldInto` (see link.mjs). Who answers,
  * first hit wins: the row's own real evaluation; a real red (never folded away);
- * the fold target; and last, a claim that points at nothing.
+ * the fold target; and last, a claim that points at nothing. A row that says it is
+ * NOT covered (alreadyInRegistry false) is never folded into a registry ping: see
+ * foldTargetFor.
  */
 function evaluateRow(row, sliceId, ctx) {
   if (!row || typeof row !== "object") {
@@ -480,10 +493,12 @@ function evaluateRow(row, sliceId, ctx) {
   if (keep || out.status === "FAIL") return out;
   const target = foldTargetFor(row, ctx.fold, sliceId);
   if (target) return { ...out, foldInto: target };
-  if (plain && row.alreadyInRegistry === true) {
-    return fromUnchecked(row, sliceId, `Claims covered, but no check ran for ${row.id}.`);
-  }
-  return out;
+  // A plain row or an event row could have been a workflow row if the function list had loaded.
+  const couldBeWorkflow = plain || looksLikeEvent(row);
+  const answer = plain && row.alreadyInRegistry === true
+    ? fromUnchecked(row, sliceId, `Claims covered, but no check ran for ${row.id}.`)
+    : out;
+  return couldBeWorkflow ? withListError(answer, ctx) : answer;
 }
 
 const GAP_STATUSES = new Set(["PASS", "FAIL", "skip", "na"]);
@@ -700,16 +715,19 @@ export async function runGapLane(sliceId, args = {}) {
  * The bundled Inngest functions, the list a workflow claim folds against. A list
  * passed in wins. With none, import src/workflows/index.mjs on the first call (a
  * lazy import: that file reaches the pulse, so a static import would be a loop).
- * `null` or `false` turns the workflow step off. A failed import is a null list.
+ * `null` or `false` turns the workflow step off on purpose. Returns `{ list, error }`.
+ * A failed import is a null list WITH the reason, so the rows that needed the list
+ * can say why they are not checked. `load` is for a test that makes the import fail.
  */
-async function bundledFunctions(given) {
-  if (Array.isArray(given)) return given;
-  if (given === null || given === false) return null;
+async function bundledFunctions(given, load = () => import("../../workflows/index.mjs")) {
+  if (Array.isArray(given)) return { list: given, error: null };
+  if (given === null || given === false) return { list: null, error: null };
   try {
-    const mod = await import("../../workflows/index.mjs");
-    return Array.isArray(mod.functions) ? mod.functions : null;
-  } catch {
-    return null;
+    const mod = await load();
+    if (Array.isArray(mod.functions)) return { list: mod.functions, error: null };
+    return { list: null, error: "src/workflows/index.mjs does not export a functions list" };
+  } catch (err) {
+    return { list: null, error: clip((err && err.message) || err, 160) || "import failed" };
   }
 }
 
@@ -718,7 +736,8 @@ async function bundledFunctions(given) {
  * `modules` is for slice tests. Live calls load every slice-*.mjs file and
  * every gap-*.mjs file. Passing `modules` does not load gap files unless
  * `gaps` is a list, so a slice test still sees one heartbeat read.
- * `functions` is the bundled Inngest function list (see bundledFunctions).
+ * `functions` is the bundled Inngest function list (see bundledFunctions);
+ * `loadFunctions` replaces the lazy import when `functions` is not given (tests).
  * A claim row comes back with `foldInto`; foldCoverage (link.mjs) folds it.
  * Does not send. Does not fix. Does not charge. Does not pull credit.
  */
@@ -732,10 +751,11 @@ export async function runCoverageSlices({
   fetchImpl = undefined,
   baseUrl = undefined,
   env = undefined,
-  functions = undefined
+  functions = undefined,
+  loadFunctions = undefined
 } = {}) {
   const loaded = modules || await loadSliceModules();
-  const fnList = await bundledFunctions(functions);
+  const fnList = await bundledFunctions(functions, loadFunctions);
   const signals = collectSignals(loaded);
   const checkIds = new Set();
   const cronIds = [];
@@ -766,7 +786,7 @@ export async function runCoverageSlices({
           : []
       )).filter(Boolean)
     ),
-    fold: buildFoldIndex({ functions: fnList })
+    fold: buildFoldIndex({ functions: fnList.list, functionsError: fnList.error })
   };
   const out = [];
   for (const item of loaded) {

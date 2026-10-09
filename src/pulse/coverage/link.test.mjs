@@ -8,6 +8,7 @@ import { functions } from "../../workflows/index.mjs";
 import { ALLOWED_UNMONITORED, PULSE_REGISTRY, coverageKey } from "../registry.mjs";
 import { TRIPWIRES } from "../tripwires.mjs";
 import { CHECK_IDS as CONTRACT_CHECK_IDS } from "./gap-contracts.mjs";
+import { buildChecks as buildDeskChecks } from "./slice-23-pages.mjs";
 import { SLICE_FILES } from "./modules.mjs";
 import { loadSliceModules, runCoverageSlices } from "./run-slices.mjs";
 import {
@@ -20,8 +21,7 @@ import {
   foldCoverage,
   foldTargetFor,
   isNotLive,
-  notRegisteredFor,
-  pointAuditClaims
+  notRegisteredFor
 } from "./link.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -64,41 +64,30 @@ test("aliases: only contracts/sign today, and morning-brief is not aliased", () 
 
 test("morning-brief is left to the audit: the registry desk of the same name does not take it", () => {
   const real = buildFoldIndex({ functions });
-  assert.equal(foldTargetFor({ id: "morning-brief" }, real, "06-briefs"), null);
+  // The real slice row says alreadyInRegistry true (a machine row watches it), so only the hold stops the fold.
+  assert.equal(foldTargetFor({ id: "morning-brief", alreadyInRegistry: true }, real, "06-briefs"), null);
   // Why the list is needed: another slice's row with that id WOULD fold into the page ping.
-  assert.equal(foldTargetFor({ id: "morning-brief" }, real, "some-other-slice"), "reg:morning-brief");
+  assert.equal(foldTargetFor({ id: "morning-brief", alreadyInRegistry: true }, real, "some-other-slice"), "reg:morning-brief");
   assert.ok(Object.keys(LEFT_TO_AUDIT).every((key) => /^\d\d-[a-z-]+:[^:]+$/.test(key)));
 });
 
-test("audit-owned claims: pointed at their audit row, a second fold takes them in; with no audit row they stay red", () => {
+test("audit-owned claims: the fold leaves them as they are, with or without an audit row; the self-audit folds them", () => {
   assert.equal(LEFT_TO_AUDIT["06-briefs:morning-brief"].target, "audit:briefs-sent");
   const morning = claim("06-briefs", "morning-brief", undefined);
   delete morning.foldInto;
-  const other = claim("06-briefs", "evening-brief", undefined);
-  delete other.foldInto;
+  const before = JSON.stringify(morning);
 
-  const pointed = pointAuditClaims([morning, other]);
-  assert.equal(pointed[0].foldInto, "audit:briefs-sent");
-  assert.equal(pointed[1].foldInto, undefined, "only the audit-owned claim is pointed");
-  assert.equal(morning.foldInto, undefined, "the input row is not changed");
+  // No audit row in the list: the claim stays exactly as the runner made it. Not a skip, not folded.
+  const alone = foldCoverage([morning, target("job:daily-pulse", "PASS")]);
+  assert.equal(alone.folded, 0);
+  assert.deepEqual(alone.dangling, []);
+  assert.equal(JSON.stringify(alone.checks[0]), before);
 
-  // The first fold leaves the claim alone, because it has no foldInto yet.
-  const first = foldCoverage([morning, target("job:daily-pulse", "PASS")]);
-  assert.equal(first.folded, 0);
-  assert.deepEqual(first.dangling, []);
-
-  // Audit row ran: the claim folds into it.
-  const withAudit = foldCoverage(pointAuditClaims([morning, target("audit:briefs-sent", "PASS")]));
-  assert.equal(withAudit.folded, 1);
-  assert.deepEqual(withAudit.checks.map((c) => c.id), ["audit:briefs-sent"]);
-  assert.deepEqual(withAudit.checks[0].also, ["06-briefs:morning-brief"]);
-
-  // Audit row did not run: the claim stays, as a skip with the reason.
-  const without = foldCoverage(pointAuditClaims([morning]));
-  assert.equal(without.folded, 0);
-  assert.deepEqual(without.dangling, ["06-briefs:morning-brief"]);
-  assert.equal(without.checks[0].status, "skip");
-  assert.match(without.checks[0].detail, /audit:briefs-sent did not run today/);
+  // An audit row in the list does not take it either: this file never points a claim at an audit row.
+  const withAudit = foldCoverage([morning, target("audit:briefs-sent", "PASS")]);
+  assert.equal(withAudit.folded, 0);
+  assert.equal(JSON.stringify(withAudit.checks[0]), before);
+  assert.equal(withAudit.checks[1].also, undefined);
 });
 
 // ---- the fold order ------------------------------------------------------------
@@ -128,7 +117,8 @@ test("fold order: alias, then registry, then allow-list tripwire, then job, then
     ],
     aliases: { "old-name": "new:check", "auth/login": "aliased:login" }
   });
-  const to = (id) => foldTargetFor({ id }, index);
+  // A registry fold is for a row that says it is already in the registry (alreadyInRegistry true).
+  const to = (id) => foldTargetFor({ id, alreadyInRegistry: true }, index);
   assert.equal(to("old-name"), "new:check");
   assert.equal(to("auth/login"), "aliased:login", "an alias beats the registry");
   assert.equal(to("pipeline.html"), "reg:pipeline", "registry by coverage key");
@@ -152,10 +142,82 @@ test("fold order: with no function list a workflow claim finds no target", () =>
   assert.equal(index.hasFunctions, false);
 });
 
+test("fold order: a row that does not claim the registry never folds into a registry ping", () => {
+  const make = (extra = {}) => buildFoldIndex({
+    registry: [
+      { id: "contracts", kind: "api", path: "/api/contracts" },
+      { id: "pipeline", kind: "desk", path: "/app/pipeline.html" }
+    ],
+    allowed: {},
+    tripwires: {},
+    jobs: [],
+    functions: [],
+    aliases: {},
+    ...extra
+  });
+  const plain = make();
+  // A claim folds into the ping. The same id, with no claim, does not.
+  assert.equal(foldTargetFor({ id: "contracts", alreadyInRegistry: true }, plain), "reg:contracts");
+  assert.equal(foldTargetFor({ id: "contracts", alreadyInRegistry: false }, plain), null, "not covered: the ping is not its ping");
+  assert.equal(foldTargetFor({ id: "contracts" }, plain), null, "a row that says nothing is not a claim");
+  assert.equal(foldTargetFor({ id: "pipeline.html", alreadyInRegistry: false }, plain), null, "by coverage key too");
+
+  // The other steps still apply to a row that is not a claim: a job, a workflow, an alias.
+  const rich = make({
+    jobs: [{ job: "contracts", cron: "0 * * * *", runner: "inngest" }],
+    functions: [fakeFn("pipeline.html", [{ event: "a.b" }])],
+    aliases: { pipeline: "alias:pipeline-deep" }
+  });
+  assert.equal(foldTargetFor({ id: "contracts", alreadyInRegistry: false }, rich), "job:contracts");
+  assert.equal(foldTargetFor({ id: "pipeline.html", alreadyInRegistry: false }, rich), "wf:pipeline.html");
+  assert.equal(foldTargetFor({ id: "pipeline", alreadyInRegistry: false }, rich), "alias:pipeline-deep");
+});
+
+test("a desk that is taken out of the registry is not swallowed by an API ping with the same name", async () => {
+  const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
+  listed.delete("contracts.html");
+  listed.delete("lenders.html");
+  const gapRows = buildDeskChecks(listed);
+  assert.deepEqual(gapRows.map((row) => row.id).sort(), ["contracts", "lenders"]);
+  assert.ok(gapRows.every((row) => row.alreadyInRegistry === false));
+  // The registry really has an API door with each of these names, so the old name match WOULD fold.
+  const apiPings = PULSE_REGISTRY.filter((row) => row.id === "contracts" || row.id === "lenders");
+  assert.ok(apiPings.length >= 2, "an API row named contracts and one named lenders exist");
+
+  const rows = await runCoverageSlices({
+    modules: [{ sliceId: "23-pages", CHECKS: gapRows, mod: {} }],
+    now: NOW,
+    functions
+  });
+  assert.equal(rows.length, 2);
+  for (const row of rows) {
+    assert.equal(row.foldInto, undefined, `${row.id} is a missing door, not a claim`);
+    assert.equal(row.status, "not checked");
+    assert.match(row.detail, /Add (contracts|lenders)\.html to DESK_FILES/);
+  }
+  // Through the fold: the registry pings ran, and the missing-door rows are still on the scorecard.
+  const pings = PULSE_REGISTRY.map((row) => target(`reg:${row.id}`));
+  const out = foldCoverage([...pings, ...rows]);
+  assert.equal(out.folded, 0);
+  assert.deepEqual(out.dangling, []);
+  assert.deepEqual(out.checks.filter((row) => row.sliceId === "23-pages").map((row) => row.id).sort(),
+    ["23-pages:contracts", "23-pages:lenders"]);
+  assert.ok(out.checks.every((row) => !row.also), "no ping took a missing-door row on its list");
+
+  // The same two rows, if they said they were covered, would fold: the test is not vacuous.
+  const claimed = gapRows.map((row) => ({ ...row, alreadyInRegistry: true }));
+  const claimedRows = await runCoverageSlices({
+    modules: [{ sliceId: "23-pages", CHECKS: claimed, mod: {} }],
+    now: NOW,
+    functions
+  });
+  assert.deepEqual(claimedRows.map((row) => row.foldInto).sort(), ["reg:contracts", "reg:lenders"]);
+});
+
 test("fold order on the real tree: contracts/sign goes to its deep check, a door goes to its ping", () => {
   const index = buildFoldIndex({ functions });
   assert.equal(foldTargetFor({ id: "contracts/sign" }, index), "contracts:sign-route");
-  assert.equal(foldTargetFor({ id: "auth/login" }, index), "reg:auth/login");
+  assert.equal(foldTargetFor({ id: "auth/login", alreadyInRegistry: true }, index), "reg:auth/login");
   assert.equal(foldTargetFor({ id: "message-dispatch-sweeper" }, index), "job:message-dispatch-sweeper");
   assert.equal(foldTargetFor({ id: "f-01-funding-intake" }, index), "wf:f-01-funding-intake");
   // The no-trigger workflows are real wf: rows (the workflow-runs piece gives them "nothing to judge").
@@ -266,6 +328,59 @@ test("foldCoverage: a switched-off workflow becomes a nothing-to-judge row the a
   // Any other row is left exactly as it was.
   assert.equal(out.checks[1].status, "not checked");
   assert.equal(out.checks[1].na, undefined);
+});
+
+test("foldCoverage: a second fold changes nothing, and does not undo the audit's verdict on a nothing-to-judge row", () => {
+  const clarity = claim("05-funnels", "clarity-insights-sweeper", undefined);
+  delete clarity.foldInto;
+  const gone = claim("02-daily-pulse", "pulse-never-fixes", undefined);
+  delete gone.foldInto;
+  const checks = [
+    target("reg:a"),
+    claim("a", "x", "reg:a"),
+    claim("a", "y", "reg:missing"),
+    clarity,
+    gone
+  ];
+  const once = foldCoverage(checks);
+  assert.equal(once.folded, 1);
+  assert.deepEqual(once.dangling, ["a:y"]);
+  assert.deepEqual(once.notRegistered, ["05-funnels:clarity-insights-sweeper"]);
+
+  // Same list, folded again: the same rows, nothing counted a second time.
+  const twice = foldCoverage(once.checks);
+  assert.deepEqual(twice.checks, once.checks);
+  assert.deepEqual([twice.folded, twice.dangling, twice.notLive, twice.notRegistered], [0, [], [], []]);
+
+  // The self-audit finds the nothing-to-judge reason false and swaps the row for a skip row. It keeps
+  // sliceId and checkId. A fold after that must leave the skip row alone.
+  const swapped = once.checks.map((row) => {
+    if (row.checkId !== "clarity-insights-sweeper") return row;
+    const { na: _na, ...rest } = row;
+    return { ...rest, status: "skip", detail: "Said nothing to judge, but it is not true." };
+  });
+  const after = foldCoverage(swapped);
+  assert.deepEqual(after.notRegistered, []);
+  const row = after.checks.find((r) => r.checkId === "clarity-insights-sweeper");
+  assert.equal(row.status, "skip");
+  assert.equal(row.na, undefined);
+  assert.equal(row.detail, "Said nothing to judge, but it is not true.");
+  assert.deepEqual(after.checks, swapped);
+
+  // Any other verdict on that row is also kept: a pass, a fail, a nothing-to-judge row.
+  for (const status of ["PASS", "FAIL", "na", "skip"]) {
+    const kept = foldCoverage([{ ...clarity, status }]);
+    assert.equal(kept.checks[0].status, status, status);
+    assert.deepEqual(kept.notRegistered, []);
+  }
+});
+
+test("buildFoldIndex: remembers why the workflow list is missing", () => {
+  assert.equal(buildFoldIndex({ functions: [] }).functionsError, null);
+  assert.equal(buildFoldIndex({ functions: null }).functionsError, null);
+  const bad = buildFoldIndex({ functions: null, functionsError: "Cannot find module" });
+  assert.equal(bad.functionsError, "Cannot find module");
+  assert.equal(bad.hasFunctions, false);
 });
 
 test("foldCoverage: is pure and survives bad input", () => {

@@ -16,6 +16,9 @@ import { ALLOWED_UNMONITORED, PULSE_REGISTRY, coverageKey } from "../registry.mj
 import { TRIPWIRES, isPingId } from "../tripwires.mjs";
 import { JOBS } from "../heartbeats.mjs";
 
+/** The runner's status for a row nobody judged. Same words as NOT_CHECKED in run-slices.mjs. */
+const UNCHECKED = "not checked";
+
 /**
  * A claim id that maps to a check with a different name. First stop in the fold
  * order. Nothing else today. `morning-brief` is NOT here on purpose: the
@@ -29,8 +32,9 @@ export const ALIASES = Object.freeze({
 /**
  * Claims that must not fold by name even when a registry row happens to share the
  * id. Key is `<sliceId>:<checkId>`. `target` is the self-audit row that owns the
- * claim instead. The audit rows do not exist when the first fold runs, so the claim
- * stays as it is; pointAuditClaims (below) points it at its audit row for a second fold.
+ * claim instead. foldTargetFor gives the claim no target, so it stays as the runner
+ * made it. The self-audit (auditPulse, AUDIT_COVERS in self-audit.mjs) folds it into
+ * its audit row itself, so this file never points a claim at an audit row.
  */
 export const LEFT_TO_AUDIT = Object.freeze({
   "06-briefs:morning-brief": Object.freeze({
@@ -50,7 +54,7 @@ export const NOT_LIVE_ROWS = Object.freeze({
   "02-daily-pulse:pulse-never-fixes":
     "This is a rule about the code, not a thing that runs. The pulse never fixes anything. A test in daily-pulse.test.mjs proves it.",
   "02-daily-pulse:proof-does-not-text":
-    "This is a rule about the proof script, not a thing that runs. It never sends a text. A test in slice-02-daily-pulse.test.mjs proves it.",
+    "This is a rule about this slice file, not a thing that runs. It never sends a text. A test in slice-02-daily-pulse.test.mjs proves it.",
   "16-nurture:n-05-repair-complete-nurture":
     "This workflow does not exist. There is no file for it and it is not in the workflow list. There is nothing to judge until someone builds it.",
   "03-marketing:page_seen":
@@ -111,7 +115,9 @@ function functionId(fn) {
 /**
  * Everything the fold order needs, built once. Pass `functions` (the bundled
  * Inngest functions, from src/workflows/index.mjs) to turn on the last step. With
- * no list, a workflow claim finds no target and stays not checked.
+ * no list, a workflow claim finds no target and stays not checked. `functionsError`
+ * is why the list is missing (a failed import), kept on the index as `functionsError`
+ * so the runner can say so on the rows that needed it.
  */
 export function buildFoldIndex({
   registry = PULSE_REGISTRY,
@@ -119,7 +125,8 @@ export function buildFoldIndex({
   tripwires = TRIPWIRES,
   jobs = JOBS,
   functions = null,
-  aliases = ALIASES
+  aliases = ALIASES,
+  functionsError = null
 } = {}) {
   const regByKey = new Map();
   const regById = new Map();
@@ -142,7 +149,16 @@ export function buildFoldIndex({
       if (id && !hasCronTrigger(fn)) eventWorkflows.add(id);
     }
   }
-  return { regByKey, regById, allowedTripwire, jobIds, eventWorkflows, aliases: aliases || {}, hasFunctions: listed };
+  return {
+    regByKey,
+    regById,
+    allowedTripwire,
+    jobIds,
+    eventWorkflows,
+    aliases: aliases || {},
+    hasFunctions: listed,
+    functionsError: functionsError ? String(functionsError) : null
+  };
 }
 
 /**
@@ -152,6 +168,10 @@ export function buildFoldIndex({
  *   3. an ALLOWED_UNMONITORED key whose route is in TRIPWIRES -> its first deep check
  *   4. an id on the job list -> job:<id>
  *   5. a bundled Inngest function with no cron -> wf:<id>
+ * Step 2 is for a row that says it is already in the registry (`alreadyInRegistry`
+ * is true). A row that says it is NOT covered ("this door is not pinged") must never
+ * vanish into some other row's ping that shares its name, so it skips step 2. It may
+ * still take an alias, a job or a workflow row.
  * Returns the target id, or null. `sliceId` is for the LEFT_TO_AUDIT list only.
  */
 export function foldTargetFor(row, index, sliceId = "") {
@@ -159,26 +179,14 @@ export function foldTargetFor(row, index, sliceId = "") {
   const id = String(row.id);
   if (Object.prototype.hasOwnProperty.call(LEFT_TO_AUDIT, `${sliceId}:${id}`)) return null;
   if (Object.prototype.hasOwnProperty.call(index.aliases, id)) return String(index.aliases[id]);
-  if (index.regByKey.has(id)) return `reg:${index.regByKey.get(id)}`;
-  if (index.regById.has(id)) return `reg:${index.regById.get(id)}`;
+  if (row.alreadyInRegistry === true) {
+    if (index.regByKey.has(id)) return `reg:${index.regByKey.get(id)}`;
+    if (index.regById.has(id)) return `reg:${index.regById.get(id)}`;
+  }
   if (index.allowedTripwire.has(id)) return index.allowedTripwire.get(id);
   if (index.jobIds.has(id)) return `job:${id}`;
   if (index.eventWorkflows.has(id)) return `wf:${id}`;
   return null;
-}
-
-/**
- * Point each audit-owned claim (LEFT_TO_AUDIT) at its audit row. Pure. Call it on the
- * list that already holds the audit rows, then fold a second time: a claim whose audit
- * row ran folds in; one whose audit row did not run stays, as a skip with the reason.
- */
-export function pointAuditClaims(checks) {
-  const list = Array.isArray(checks) ? checks : [];
-  return list.map((row) => {
-    if (!row || row.foldInto || row.sliceId == null || row.checkId == null) return row;
-    const owner = LEFT_TO_AUDIT[`${row.sliceId}:${row.checkId}`];
-    return owner ? { ...row, foldInto: owner.target } : row;
-  });
 }
 
 function kindOf(target) {
@@ -206,8 +214,9 @@ function uniq(list) {
  * Fold every claim into its target. Pure: the input list and its rows are not changed.
  *
  *  - a row in NOT_LIVE_ROWS is dropped and its id goes in `notLive`
- *  - a row in NOT_REGISTERED_ROWS becomes a "nothing to judge" row (status `na`, code
- *    `not-registered`) and its id goes in `notRegistered`
+ *  - a row in NOT_REGISTERED_ROWS that is still "not checked" becomes a "nothing to judge"
+ *    row (status `na`, code `not-registered`) and its id goes in `notRegistered`. A row
+ *    with any other status is left alone, so running the fold twice is safe
  *  - a row with `foldInto` whose target is in `checks` (and is not itself a claim) is
  *    removed, and its id is pushed on the target's `also` list; counted in `folded`
  *  - a claim whose target is missing stays, as a `skip` row (it lands not checked),
@@ -228,7 +237,10 @@ export function foldCoverage(checks) {
         notLive.push(String(row.id));
         continue;
       }
-      const off = notRegisteredFor(row.sliceId, row.checkId);
+      // Only a row the runner left "not checked". A row that already carries a verdict (the
+      // self-audit turns a failed nothing-to-judge row into a skip) must not be turned back
+      // into "na", so a second fold gives the same answer as the first.
+      const off = row.status === UNCHECKED ? notRegisteredFor(row.sliceId, row.checkId) : null;
       if (off) {
         const { foldInto: _drop, ...rest } = row;
         notRegistered.push(String(row.id));
