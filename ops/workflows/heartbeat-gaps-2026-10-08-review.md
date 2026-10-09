@@ -93,7 +93,7 @@ Real breaks the new checks catch today (not fixed — product, owner hard lock):
 2. The roadmap drip steps people forward even when no email queued. Everyone shares the key `workflow:<template>:null`, so the second person at a step gets nothing. `email:drip-step-no-email`, `email:morning-no-failure-check`.
 3. Paying repair client FH-000507 stuck in analysis since 2026-10-05 (1 hour clock), no letters, no next step on the screen. `fulfillment:next-action`, `repair-letter-round`.
 4. Company Brain has not embedded anything since about 2026-09-18. `brain:embed-key`.
-5. Email unsubscribe links cannot be signed. `UNSUBSCRIBE_TOKEN_SECRET` on Netlify production is a 20-character mask that starts with `*`, so email goes out with no unsubscribe link. `opt-out:unsubscribe-link`. Not overwritten (never remove or replace a key); Chris's call.
+5. ~~Email unsubscribe links cannot be signed.~~ **Wrong — corrected 18:58.** `UNSUBSCRIBE_TOKEN_SECRET` is stored on Netlify as a secret (`is_secret: true`), so the CLI and API show a mask, the same as the working Twilio keys. Only the laptop `.env` copy is a mask, which is why `opt-out:unsubscribe-link` reads red on a laptop run. The live pulse reads the real value; tomorrow's 6 a.m. row is the proof. Key not touched.
 
 ## Shipped
 
@@ -110,3 +110,5 @@ Real breaks the new checks catch today (not fixed — product, owner hard lock):
 - Cursor's stashes `stash@{0..6}` are still in the stash list. Nothing in them is newer than the files on disk.
 - The laptop has no working Twilio send keys (see Shipped). No agent on this Mac can text Chris until the real SID and token are back in `.env`.
 - `claude/creator-incentive-program-6s4371` is rejected on every full push (GitHub has a newer tip). Left alone.
+- Owner 2026-10-08 ~18:55: every text to Chris goes to 480. `PULSE_SMS_TO` and `AD_VIDEO_SMS_TO` set to the 480 number in `.env`, `credentials/env.full.snapshot` and Netlify (all three contexts). Old numbers (…0865, …2498) kept as comments in `.env` and the snapshot.
+- The laptop `.env` holds masks for Netlify secret keys (Twilio send SID and token, the unsubscribe key, and others). Agents on this Mac cannot text or sign links until real copies are there.
