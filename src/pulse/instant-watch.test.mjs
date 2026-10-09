@@ -12,6 +12,7 @@ test("runInstantWatch texts on health FAIL when dest is set", async () => {
   const sent = [];
   const result = await runInstantWatch({
     db: null,
+    now: new Date("2026-10-09T19:00:00Z"), // noon Arizona: inside texting hours
     env: { PULSE_SMS_TO: "+16025551234" },
     fetchImpl: async () => ({ status: 503, text: "down" }),
     sendImpl: async (msg) => {
@@ -76,4 +77,54 @@ test("with the database down it texts at most twice an hour (first 5 minutes of 
   assert.equal(await runAt("2026-10-09T13:10:00Z"), 0);
   assert.equal(await runAt("2026-10-09T13:31:00Z"), 1);
   assert.equal(await runAt("2026-10-09T13:45:00Z"), 0);
+});
+
+/* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). The 5-minute watch texts Chris's own
+   number, so from 10 p.m. to 6 a.m. Arizona time it sends nothing AND writes no alert row: the cooldown reads
+   those rows, and a row written at night would keep the first 6 a.m. run quiet. */
+function watchDb() {
+  const ORG_ID = "11111111-1111-4111-8111-111111111111";
+  const rows = [];
+  return {
+    rows,
+    query: async (sql, params) => {
+      if (/FROM orgs/.test(sql)) return { rows: [{ id: ORG_ID }] };
+      if (/INSERT INTO agent_runs/.test(sql)) { rows.push({ created_at: Date.now(), detail: params[3], outcome: params[2] }); return { rows: [] }; }
+      if (/FROM agent_runs/.test(sql)) {
+        const like = String(params[3]).replace(/%/g, "");
+        return { rows: rows.filter((r) => r.detail.includes(like)).map(() => ({ x: 1 })) };
+      }
+      return { rows: [{ n: 0 }] };
+    }
+  };
+}
+const downFetch = async () => ({ status: 503, text: "down" });
+const watchAt = (db, iso, sent) => runInstantWatch({
+  db, now: new Date(iso), env: { PULSE_SMS_TO: "+16025551234" }, fetchImpl: downFetch,
+  sendImpl: async (msg) => { sent.push(msg.body); return { ok: true, status: "sent" }; }
+});
+
+test("texting hours: a door down at 2:07 a.m. sends nothing and records no alert; at 6:00 a.m. it texts at once", async () => {
+  const db = watchDb();
+  const sent = [];
+  const night = await watchAt(db, "2026-10-10T09:07:00Z", sent);
+  assert.equal(night.failures.length > 0, true);
+  assert.equal(night.sms.sent, false);
+  assert.equal(night.sms.reason, "held_quiet_hours");
+  assert.equal(sent.length, 0, "no text at night");
+  assert.equal(db.rows.length, 0, "no alert row at night, so the cooldown cannot swallow the 6 a.m. text");
+
+  const six = await watchAt(db, "2026-10-10T13:00:00Z", sent);
+  assert.equal(six.sms.sent, true, "the first run inside the window texts the still-down door");
+  assert.equal(sent.length, 1);
+  assert.equal(db.rows.length, 1);
+});
+
+test("texting hours: 9:59:59 p.m. texts, 10:00:00 p.m. is held, 5:59:59 a.m. is held", async () => {
+  for (const [iso, want] of [["2026-10-10T04:59:59Z", true], ["2026-10-10T05:00:00Z", false], ["2026-10-10T12:59:59Z", false]]) {
+    const sent = [];
+    const out = await watchAt(null, iso, sent);
+    assert.equal(out.sms.sent, want, iso);
+    assert.equal(sent.length, want ? 1 : 0, iso);
+  }
 });

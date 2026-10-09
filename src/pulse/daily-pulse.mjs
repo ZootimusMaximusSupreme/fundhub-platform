@@ -460,7 +460,8 @@ export async function runDailyPulse({
       topFails: findings,
       env,
       dryRun,
-      sendImpl: sendSms
+      sendImpl: sendSms,
+      now
     })
     : { sent: false, reason: "replaced_by_morning_brief", body: null, to: null };
 

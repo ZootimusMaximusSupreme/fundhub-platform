@@ -628,10 +628,15 @@ export async function runMorningBrief({
     return { ok: true, brief, delivery: { delivery_status: "sent" }, saved: { saved: false, reason: "already_sent", row: existing } };
   }
 
+  /* Texting hours (owner law 2026-10-09, .claude/rules/texting-hours.md): the 6:00 a.m. and 9:00 p.m.
+     briefs are inside 6 a.m. to 10 p.m. Arizona time. A retry that lands outside it is held by
+     textMorningBrief: nothing is sent, and the row is still saved, with delivery_status
+     'held_quiet_hours' (migration 476), so the brief and its report link are never lost. */
   const delivery = await textMorningBrief({
     body: brief.text_body,
     env,
     dryRun: !live,
+    now,
     ...(sendImpl ? { sendImpl } : {})
   });
   // The text has gone (or not) by here. A failed save must not throw, or the

@@ -31,11 +31,12 @@ function stepSkip(id, detail) {
   };
 }
 
-/** One plain text to the pulse number. Never throws, so a failed fallback cannot hide the first failure. */
-async function fallbackText(step, name, { body, env, dryRun, sendSms }) {
+/** One plain text to the pulse number. Never throws, so a failed fallback cannot hide the first failure.
+ *  textMorningBrief holds it outside 6 a.m. to 10 p.m. Arizona time (texting hours); `now` is that clock (tests). */
+async function fallbackText(step, name, { body, env, dryRun, sendSms, now }) {
   try {
     return await step.run(name, () => textMorningBrief({
-      body, env, dryRun: !!dryRun, ...(sendSms ? { sendImpl: sendSms } : {})
+      body, env, dryRun: !!dryRun, ...(sendSms ? { sendImpl: sendSms } : {}), ...(now ? { now } : {})
     }));
   } catch (err) {
     console.error(`[daily-pulse] ${name} failed:`, String((err && err.message) || err).slice(0, 200));
@@ -104,7 +105,8 @@ export async function handle({
   staffScope = null,
   morningBrief = runMorningBrief,
   briefLive = MORNING_BRIEF_LIVE,
-  coverage = runCoverageSteps
+  coverage = runCoverageSteps,
+  now
 } = {}) {
   // When the brief is live it replaces the old morning-check text. One text.
   const replacePulseText = !!(briefLive && db);
@@ -133,7 +135,7 @@ export async function handle({
     const why = String((err && err.message) || err).slice(0, 200);
     await fallbackText(step, "pulse-failed-text", {
       body: `Fundhub morning check did not finish: ${why}. Check https://fundhub.ai/api/health first.`,
-      env, dryRun, sendSms
+      env, dryRun, sendSms, now
     });
     throw err;
   }
@@ -162,7 +164,7 @@ export async function handle({
       });
       await fallbackText(step, "brief-failed-text", {
         body: `${line} The full morning brief could not be built: ${why || (brief && brief.reason) || "unknown"}.`,
-        env, dryRun, sendSms
+        env, dryRun, sendSms, now
       });
     }
   }

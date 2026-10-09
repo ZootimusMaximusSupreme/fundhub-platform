@@ -152,7 +152,7 @@ export const DYING_ADS_SQL = `
  * After a Meta sync: find running ads that die before 25% and buzz Chris once
  * per ad per day. Read-only on campaigns/budgets. Never pauses anything.
  */
-export async function notifyDyingBefore25(db, { partnerId, send = sendBuzz, env = process.env } = {}) {
+export async function notifyDyingBefore25(db, { partnerId, send = sendBuzz, env = process.env, now } = {}) {
   if (!partnerId) return { checked: 0, alerted: 0, skipped: 0, failed: 0 };
   const rows = await db.query(DYING_ADS_SQL, [partnerId]).then((r) => r.rows);
   let alerted = 0;
@@ -180,7 +180,7 @@ export async function notifyDyingBefore25(db, { partnerId, send = sendBuzz, env 
         priority: 4,
         tags: ["warning", "ad"]
       }
-    }, { env });
+    }, { env, ...(now ? { now } : {}) }); // now: the texting-hours clock (tests); notify-fanout holds 10 p.m. to 6 a.m.
     if (res?.ok === true || res?.status === "sent") {
       await db.query(
         `INSERT INTO ad_watch_curve_alerts (ad_id, org_id, partner_id, dies_before_25_alerted_on, updated_at)

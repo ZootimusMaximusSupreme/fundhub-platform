@@ -138,6 +138,11 @@ test("a lane step that keeps failing is one skip row and the pulse still runs", 
   assert.ok(rows.some((r) => r.sliceId === "gap-repair"), "the next lane still ran");
 });
 
+/* Texting hours (src/pulse/quiet-hours.mjs): the fallback texts go to Chris's number, so they are held outside
+   6 a.m. to 10 p.m. Arizona time. The 6 a.m. job is inside it; these tests hand in that clock so they pass at
+   any hour. */
+const SIX_AM_AZ = new Date("2026-10-09T13:00:00Z");
+
 test("when the morning brief cannot be built, the plain pulse text still goes out, once", async () => {
   const sends = [];
   const step = { run: async (_name, fn) => fn() };
@@ -152,7 +157,8 @@ test("when the morning brief cannot be built, the plain pulse text still goes ou
     sendSms: async (msg) => { sends.push(msg); return { status: "sent", providerMessageId: "SM1" }; },
     briefLive: true,
     coverage: async () => [],
-    morningBrief: async () => { throw new Error("database went away"); }
+    morningBrief: async () => { throw new Error("database went away"); },
+    now: SIX_AM_AZ
   });
   assert.equal(sends.length, 1, "exactly one fallback text");
   assert.match(sends[0].body, /Fundhub morning check/);
@@ -192,8 +198,30 @@ test("when the pulse step itself dies, one text says so and the run still fails"
     dryRun: false,
     sendSms: async (msg) => { sends.push(msg); return { status: "sent" }; },
     briefLive: true,
-    coverage: async () => []
+    coverage: async () => [],
+    now: SIX_AM_AZ
   }), /26 s/);
   assert.equal(sends.length, 1);
   assert.match(sends[0].body, /did not finish: Netlify cut the request at 26 s/);
+});
+
+test("texting hours: a fallback text that would land at 2:07 a.m. Arizona is held, not sent", async () => {
+  const sends = [];
+  const step = {
+    run: async (name, fn) => {
+      if (name === "run-pulse") throw new Error("Netlify cut the request at 26 s");
+      return fn();
+    }
+  };
+  await assert.rejects(handle({
+    db: { query: async () => ({ rows: [] }) },
+    step,
+    env: { PULSE_SMS_TO: "+16025551234" },
+    dryRun: false,
+    sendSms: async (msg) => { sends.push(msg); return { status: "sent" }; },
+    briefLive: true,
+    coverage: async () => [],
+    now: new Date("2026-10-10T09:07:00Z")
+  }), /26 s/, "the run still fails, so its heartbeat still goes red");
+  assert.equal(sends.length, 0, "no text at night");
 });
