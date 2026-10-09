@@ -11,14 +11,17 @@ Traced from code on 2026-10-09: `src/workflows/daily-pulse.mjs`, `src/pulse/dail
 - Most checks only run at 6 a.m. A break at noon shows up in the next morning's text, unless it is one of the 5.
 - The pulse **only reports**. It never fixes anything. Chris, or an agent he asks, fixes reds.
 
-## Two kinds of check
+## Kinds of check
 
 | Kind | What it proves | Where it lives | Example |
 |---|---|---|---|
 | Ping | The door answers. Blind to wrong data. | `src/pulse/registry.mjs`, `src/pulse/heartbeats.mjs` | `reg:portal-login.html` answers 200 |
 | Deep (the tripwire) | The customer's result is right. | `src/pulse/coverage/gap-*.mjs` | `payments:paid-no-entitlement`: a paid client has no portal access |
+| Reminder lane (not a tripwire) | A person's setup step is late. No buyer is hurt. | `src/pulse/coverage/gap-closer-setup.mjs` | `closer-setup:calendar-late`: a closer was asked on Oct 7, the 3 days are over, and the booking page still lists no such host |
 
 Anything that touches money or a paying customer needs a deep check. A ping alone is not enough.
+
+A person's setup step (for example "connect your calendar so booked calls land on it") is a **reminder lane**, not a tripwire. It has no entry in the tripwire map and no hourly beat, because nobody gets the step done faster by the hour. The ask is one owner task per person (`scripts/closer-setup-ask.mjs`), with a due day. The 6 a.m. lane reads the open asks and the live booking page: green while waiting ("day 2 of 3"), red after the due day, green again once the person is a host on the page. A **skip** there (the page could not be read, or ClickFunnels changed its page code) is not a pass: it lands inside the red `audit:not-checked` line, so it is never hidden. ClickFunnels has no API call to invite a team member, connect a calendar or add a host, so a person clicks those steps and the pulse only watches that they happened.
 
 The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and send is sorted: money or customer names its deep check, the rest says why it is not customer-facing. A new one fails the tests until it is sorted. That is what sews the tripwires into every build.
 

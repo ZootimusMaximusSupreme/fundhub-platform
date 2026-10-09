@@ -260,6 +260,7 @@ const ALLOWED_RAW_FETCH = {
     "creates or changes a vendor record, never reaches a client. Read 2026-10-09 before it was listed.",
   "src/pulse/coverage/gap-calls.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-closer-setup.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-consent.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-contracts.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-crm-links.mjs": PULSE_GAP_READS,
