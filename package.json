@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Fundhub custom platform — Postgres + event bus replacing the old CRM and spreadsheet. Master Rebuild Spec v1.",
+  "description": "Fundhub custom platform \u2014 Postgres + event bus replacing the old CRM and spreadsheet. Master Rebuild Spec v1.",
   "engines": {
     "node": "22.x"
   },
@@ -49,7 +49,8 @@
     "money:run-queue": "node scripts/money-agent-run-queue.mjs",
     "money:roleplay": "node scripts/money-agent-roleplay.mjs",
     "marketing:data:health": "node scripts/marketing-data-health.mjs",
-    "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs"
+    "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs",
+    "pulse:prove": "node scripts/pulse/prove.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.11",
