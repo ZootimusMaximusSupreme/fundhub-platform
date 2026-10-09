@@ -58,6 +58,38 @@ flowchart TD
     CRIT -->|No| NOW["Text Chris now<br/>at most once an hour per break"]
 ```
 
+## The hourly pulse (added 2026-10-09)
+
+Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. Tonight's pulse is the **read-only half**: each beat reads data through a box where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+
+```mermaid
+flowchart TD
+    CLOCK["Every hour at minute 7<br/>pulse-hourly (Netlify scheduled function)"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
+    PRE --> BOX["Open ONE read box<br/>BEGIN READ ONLY, staff scope, always rolled back"]
+    BOX --> BEATS["Run all 7 beats at once (13 s)"]
+    BEATS --> B1["apply-links<br/>40 bank Apply pages an hour"]
+    BEATS --> B2["pay-webhook<br/>door, sweeper, stuck inbox"]
+    BEATS --> B3["vendor-keys<br/>Twilio, Resend, Commas accept the keys"]
+    BEATS --> B4["text-path and email-path<br/>queue moving, templates ready, dispatcher alive"]
+    BEATS --> B5["doors-live<br/>10 money doors and pages answer right"]
+    BEATS --> B6["db-health<br/>pool writable, grants, connections"]
+    B1 --> DECIDE["Decide: new break, still broken, fixed"]
+    B2 --> DECIDE
+    B3 --> DECIDE
+    B4 --> DECIDE
+    B5 --> DECIDE
+    B6 --> DECIDE
+    DECIDE --> TEXT["TEXT FIRST (6 s): Chris, and ntfy if the text fails"]
+    TEXT --> REC["Then save (2.5 s): pulse_beats, pulse_incidents, pulse_bank_links"]
+    REC --> BEAT["job heartbeat pulse-hourly<br/>red at the 6 a.m. check if it stops for 3 hours"]
+    DECIDE -.->|database down| FALL["No state: text every hour while red"]
+```
+
+- A beat with `damp 2` (vendor keys, doors, bank links) must be red twice in a row before it texts, so one vendor blip does not wake Chris.
+- A break texts at once, texts again every hour ("still broken, hour N") and texts once when fixed.
+- When the fix is done, the four learning fields on the incident and an entry in `docs/lessons/pulse-lessons.md` record what broke and what now guards it.
+- **Not built yet (on purpose):** the write-through half, where a signed test signal travels through the doors that save data inside a rolled-back box. It needs locks inside the Node process that have never run on a real Postgres. It waits until proven on a scratch database and watched once. Also not built: GitHub issues and the Claude "pulse fixer" session (they wait on an owner decision about a private repo).
+
 ## The states of one check
 
 ```mermaid
