@@ -61,6 +61,44 @@ Each group: review and fix → an independent checker re-runs tests and the live
 - `src/workflows/daily-pulse.mjs` — `coverage-org`, `coverage-slices`, then one `coverage-gap-<lane>` step per lane, then `run-pulse`. A dead step is one skip row.
 - Proof: Netlify's own bundler (zip-it-and-ship-it) now packs 72 coverage files (was 1). Tests: runner + list 16/16, pulse + job 15/15.
 
-## Results
+## Results — 2026-10-08 17:55
 
-(filled in when the review ends)
+All 37 lanes reviewed by Sonnet (30 agents, 0 died). Each group got an independent checker, and a repair pass where the checker found a problem.
+
+| Group | Lanes | Status |
+|---|---|---|
+| 1 messaging | sms, email, nurture, webhooks | done |
+| 2 login and portal | auth, portal, consent, soft-pull | done (reviewer came back empty; checker + repair did the work, auth edits restored from stash@{0}) |
+| 3 money | payments, banks, finance-os, partners | done |
+| 4 funding | funding, underwrite, fulfillment, repair | done |
+| 5 sales | calls, closer, meet, csm | done |
+| 6 marketing | ads, pixels, funnels, marketing-queue | done |
+| 7 files | documents, contracts, inquiry, brain | done |
+| 8 ops | staff, training, owner-tools, jobs | done |
+| 9 crm and ai | crm-links, ai-agents, social | done |
+| 10 late lanes | opt-out, sales-manager | done |
+
+What the review fixed, in short: checks that could never fail, a failed read counted as a pass, a pool transaction leak (ai-agents), staff reads that only ever skipped (crm-links: 9 of 11), copies of checks the registry already runs, and server-only false alarms (source-file reads). Every lane now has PASS and FAIL tests.
+
+Proof, from a Netlify bundle built with the real `netlify.toml` settings and unzipped, read-only on the live database:
+
+- 37 lanes, 0 SQL errors, 0 write attempts, 0 refused POSTs.
+- 39 coverage steps. Slowest 11.4 s (finance-os). None over 20 s. Netlify cuts at 26 s.
+- Full morning brief built read-only: 970 checks, 662 green, 9 red, 299 not checked (was 420 checks).
+- Tests: pulse + coverage + job 990 run, 986 pass, 0 fail, 4 skip (need a local Postgres).
+
+Real breaks the new checks catch today (not fixed — product, owner hard lock):
+
+1. A real lead captured 2026-10-02 never got the welcome text or email (client 0dd6d7f4…). `gap:sms-journey-zero`.
+2. The roadmap drip steps people forward even when no email queued. Everyone shares the key `workflow:<template>:null`, so the second person at a step gets nothing. `email:drip-step-no-email`, `email:morning-no-failure-check`.
+3. Paying repair client FH-000507 stuck in analysis since 2026-10-05 (1 hour clock), no letters, no next step on the screen. `fulfillment:next-action`, `repair-letter-round`.
+4. Company Brain has not embedded anything since about 2026-09-18. `brain:embed-key`.
+
+## Leftovers (not this hole — not fixed)
+
+- Every function zip carries the laptop `.env` at its root (14 of 14, older than today). Likely `scripts/load-env.mjs` (`path.join(ROOT, ".env")`) is reachable from function code, and nft packs the file. `"!credentials/**"` does not cover it.
+- `src/lib/no-unfenced-transmit.test.mjs` still fails on `src/pulse/funnel-doors.mjs` and `src/pulse/instant-watch.mjs` (failing before today). Today's 19 lanes and 2 conduits were read and listed.
+- `scripts/daily-pulse.test.mjs` pins an exact count of staff-scope calls; it failed before today and fails by more now.
+- Failing before today, unrelated: diagrams and journeys generators stale, climate page copy, read-endpoint org scope, journeys runner registry, repo edit-ops, workflow index pin. `npx tsc` error in `src/marketing/filmed-receive.mjs`.
+- The morning text layout Chris called bad at 3:14 pm is unchanged, and its "Full report" link (`/app/morning-brief.html`) still answers 404.
+- Cursor's stashes `stash@{0..6}` are still in the stash list. Nothing in them is newer than the files on disk.

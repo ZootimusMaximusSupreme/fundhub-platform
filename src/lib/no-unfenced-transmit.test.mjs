@@ -56,6 +56,14 @@ const NETWORK_TOKENS = [
    None of these can reach a client or change a client's record at a vendor.
    That is the bar. If a new entry can do either, it does not belong here — it
    belongs behind a fence. */
+/* The morning pulse's gap lanes (src/pulse/coverage/gap-*.mjs): GET or HEAD of
+   our own pages and read doors on fundhub.ai and apply.fundhub.ai, to see that a
+   door answers. Report only. Never POSTs, never sends, never reaches a client or
+   changes a vendor record. */
+const PULSE_GAP_READS =
+  "Read-only GET/HEAD probes of our own pages and read doors for the 6 a.m. " +
+  "pulse. Never POSTs. Never sends SMS or email. No client, no vendor record.";
+
 const ALLOWED_RAW_FETCH = {
   "netlify/functions/ad-video-sweeper.mjs":
     "The clock for the ad-video pipeline. Its ONE call is a POST to our own deploy " +
@@ -236,7 +244,33 @@ const ALLOWED_RAW_FETCH = {
     "transmit() behind the ADAPTERS fence. Never calls fetch itself.",
   "src/pulse/registry.mjs":
     "Read-only GET uptime pings for the 7am pulse. Never POSTs. Never sends SMS " +
-    "or email. Unrecorded is a local count only."
+    "or email. Unrecorded is a local count only.",
+  // ── Added 2026-10-08 (heartbeat gap lanes). Each was read before it was
+  // listed, and each lane was run against the live site with a fetch that
+  // refuses anything but GET and HEAD: 0 refused calls in every lane. ──────
+  "src/pulse/coverage/run-slices.mjs":
+    "Conduit: puts the pulse's fetchImpl on ctx.fetchImpl and ctx.fetch for the " +
+    "gap lanes. Never calls it itself.",
+  "src/workflows/daily-pulse.mjs":
+    "Conduit: hands globalThis.fetch to the gap lane steps (the same default " +
+    "runDailyPulse uses). Never calls it itself.",
+  "src/pulse/coverage/gap-calls.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-closer.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-consent.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-contracts.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-crm-links.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-funnels.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-inquiry.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-marketing-queue.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-owner-tools.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-partners.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-payments.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-pixels.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-portal.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-soft-pull.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-staff.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-training.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-webhooks.mjs": PULSE_GAP_READS,
 };
 
 /* Modules permitted to declare fence: INTERNAL. Pinned to an exact set, so a
