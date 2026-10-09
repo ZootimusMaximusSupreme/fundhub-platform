@@ -1,5 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   addressFromBusinessEntity,
   analyzeAndGenerate,
@@ -862,7 +863,7 @@ describe("the verified identity is read from the module that actually exists", (
       }),
       { orgId: ORG, clientId: CLIENT }
     );
-    assert.ok(got, "null here means no identity module was found — check IDENTITY_MODULES");
+    assert.ok(got, "null here means no identity module was found — check the verifiedIdentity import at the top of analyze.mjs");
     assert.equal(got.legalName, "Sim Repair");
     assert.equal(verifiedAddressLabel(got.address), "412 Pecan St, Austin, TX, 78701");
   });
@@ -874,5 +875,91 @@ describe("the verified identity is read from the module that actually exists", (
        the floor reads as "no name and no address are known". Unknown, not
        empty, and certainly not clients.first_name. */
     assert.equal(got, null);
+  });
+});
+
+/* THE SERVER CANNOT FOLLOW A PATH THAT IS ONLY A STRING (ZU-P round 2, 2026-10-09).
+ *
+ * The test above passes from the source tree and it passed while the bug was
+ * live. Until 2026-10-09 analyze.mjs found the identity module with
+ * `import(path)` over a list of relative strings. The Netlify bundler folds
+ * netlify/functions/api.mjs into one file, so a relative string is resolved
+ * against netlify/, where there is no identity folder. All four paths threw,
+ * the resolver answered null, and on the server the writer answered
+ * `identity_not_verified` for the one paying repair client after he signed.
+ *
+ * Proved from a built bundle (esbuild, the layout of the shipped zip): the old
+ * file gave `identity_not_verified`; the file with a plain static import gave
+ * 3 letters. A unit test cannot build a bundle in the suite, so this guard holds
+ * the rule shut at the source: the files that run on the server may import()
+ * only a literal string, which the bundler can see and inline.
+ *
+ * Reading source here is a TEST-TIME read. The rule against reading repo files
+ * is for code that runs on the server. */
+
+/** Every `import(` whose argument is NOT a quoted string. Comments are removed first. */
+function nonLiteralDynamicImports(source) {
+  const noBlock = String(source).replace(/\/\*[\s\S]*?\*\//g, " ");
+  const noLine = noBlock.replace(/(^|\s)\/\/[^\n]*/g, "$1");
+  const hits = [];
+  const re = /\bimport\s*\(\s*([^)]{0,60})/g;
+  let m;
+  while ((m = re.exec(noLine))) {
+    if (!/^["']/.test(m[1])) hits.push(m[0].replace(/\s+/g, " "));
+  }
+  return hits;
+}
+
+describe("files that run on the server import only literal paths", () => {
+  const SERVER_FILES = [
+    "./analyze.mjs",
+    "./start-letters.mjs",
+    "./handlers.mjs",
+    "./read-repair-signals.mjs",
+    "../../api/consent/capture.mjs"
+  ];
+
+  for (const rel of SERVER_FILES) {
+    test(`${rel.replace("../../", "")} has no import() of a variable or template path`, () => {
+      const src = fs.readFileSync(new URL(rel, import.meta.url), "utf8");
+      assert.deepEqual(nonLiteralDynamicImports(src), []);
+    });
+  }
+
+  test("analyze.mjs gets the verified identity from a plain static import", () => {
+    const src = fs.readFileSync(new URL("./analyze.mjs", import.meta.url), "utf8");
+    assert.match(
+      src,
+      /^import \{ verifiedIdentity as readVerifiedIdentity \} from "\.\.\/identity\/verified\.mjs";$/m
+    );
+  });
+
+  /* The twins. The guard must go red on the shape that broke the server, and
+     stay quiet on the shapes that are fine. */
+  test("twin: the guard flags the shape that broke the server", () => {
+    const old = [
+      'const IDENTITY_MODULES = ["../identity/verified.mjs"];',
+      "for (const path of IDENTITY_MODULES) {",
+      "  const mod = await import(path);",
+      "}"
+    ].join("\n");
+    assert.equal(nonLiteralDynamicImports(old).length, 1);
+    assert.equal(nonLiteralDynamicImports("const m = await import(`./x-${n}.mjs`);").length, 1);
+    assert.equal(nonLiteralDynamicImports("const m = await import(pathToFileURL(p).href);").length, 1);
+  });
+
+  test("twin: the guard stays quiet on literal imports and on comments", () => {
+    const fine = [
+      'const a = (await import("./analyze.mjs")).analyzeAndGenerate;',
+      "const b = () => import('../documents/store.mjs');",
+      "// find it with import(path) over a list",
+      "/* never import(path) here */"
+    ].join("\n");
+    assert.deepEqual(nonLiteralDynamicImports(fine), []);
+  });
+
+  test("a throw inside the identity read is null, never a crash", async () => {
+    const angry = { query: async () => { throw new Error("pii_identity read timed out"); } };
+    assert.equal(await loadVerifiedIdentity(angry, { orgId: ORG, clientId: CLIENT }), null);
   });
 });

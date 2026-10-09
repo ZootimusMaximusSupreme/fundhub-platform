@@ -204,18 +204,28 @@ export async function gatherRepairSignals(db, { orgId, clientIds, files = [] } =
       }
     }
 
-    if (authRows !== null) {
-      const row = (authBy.get(id) || [])[0];
-      signals.authorization_ok = Boolean(row && row.is_valid === true);
-    }
     /* AUTHORIZED MEANS A SIGNED PAPER, NOTHING ELSE. A live dispute_authorization
        consent (the portal's signing box) or a signed repair agreement. An
        enrolled program is NOT a signature. It used to count as one here, which
        hid the "Needs agreement" chip on a paid client who had signed nothing,
-       while the letter writer (src/repair/analyze.mjs) refused him with
-       `no_authorization`. Desk and writer now read the same two papers. */
-    if (signals.authorization_ok !== true && signedRows !== null) {
-      signals.authorization_ok = (signedBy.get(id) || []).length > 0;
+       while the letter writer (src/repair/analyze.mjs) refuses him with
+       `no_authorization`. Desk and writer now read the same two papers.
+
+       UNKNOWN STAYS UNKNOWN. Each paper is read on its own. A read that failed
+       is null, not "no". A signed paper found by the other read still says true.
+       "False" needs BOTH reads to have worked and found nothing. If one read
+       failed and the other found nothing, the key is left off, so the desk shows
+       no "Needs agreement" chip on a guess. */
+    const consentSigned = authRows === null
+      ? null
+      : Boolean((authBy.get(id) || [])[0]?.is_valid === true);
+    const contractSigned = signedRows === null
+      ? null
+      : (signedBy.get(id) || []).length > 0;
+    if (consentSigned === true || contractSigned === true) {
+      signals.authorization_ok = true;
+    } else if (consentSigned === false && contractSigned === false) {
+      signals.authorization_ok = false;
     }
 
     if (addressRows !== null || companyAddrRows !== null) {

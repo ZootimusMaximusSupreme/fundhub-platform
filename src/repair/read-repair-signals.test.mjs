@@ -169,6 +169,65 @@ describe("gatherRepairSignals", () => {
     assert.equal(s.authorization_ok, true);
   });
 
+  /* UNKNOWN STAYS UNKNOWN (ZU-P round 2). A failed read is not a "no". The desk
+     must not say "Needs agreement" because one of the two reads timed out. */
+  const boom = () => { throw new Error("read timed out"); };
+  const warnQuiet = (fn) => async () => {
+    const orig = console.warn;
+    console.warn = () => {};
+    try { await fn(); } finally { console.warn = orig; }
+  };
+
+  test("consent read fails, no signed contract found: authorization stays UNKNOWN, no chip", warnQuiet(async () => {
+    const db = fakeDb({
+      "FROM client_consents": boom,
+      "FROM contracts": [],
+      "FROM repair_programs": [{ client_id: CLIENT, program: "full", rounds_cap: 6, status: "active" }]
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal("authorization_ok" in s, false, "not false: the consent read failed, so we do not know");
+    assert.notEqual(deriveChip({ ...s, stage_key: "analysis" }).key, "needs_agreement");
+  }));
+
+  test("consent read fails, signed contract found: still authorized", warnQuiet(async () => {
+    const db = fakeDb({
+      "FROM client_consents": boom,
+      "FROM contracts": [{ client_id: CLIENT }]
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal(s.authorization_ok, true);
+  }));
+
+  test("contract read fails, no live consent found: authorization stays UNKNOWN", warnQuiet(async () => {
+    const db = fakeDb({
+      "FROM client_consents": [],
+      "FROM contracts": boom
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal("authorization_ok" in s, false);
+  }));
+
+  test("contract read fails, live consent found: still authorized", warnQuiet(async () => {
+    const db = fakeDb({
+      "FROM client_consents": [{ client_id: CLIENT, is_valid: true }],
+      "FROM contracts": boom
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal(s.authorization_ok, true);
+  }));
+
+  test("both reads fail: authorization stays UNKNOWN", warnQuiet(async () => {
+    const db = fakeDb({ "FROM client_consents": boom, "FROM contracts": boom });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal("authorization_ok" in s, false);
+  }));
+
+  test("both reads work and find nothing: authorization is false (twin of the unknown cases)", async () => {
+    const db = fakeDb({ "FROM client_consents": [], "FROM contracts": [] });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal(s.authorization_ok, false);
+  });
+
   test("company street is address_ok when pii has none", async () => {
     const db = fakeDb({
       "FROM pii_identity": [],

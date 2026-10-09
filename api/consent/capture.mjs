@@ -14,9 +14,17 @@
 //        → { ok, consent }
 //
 // *** THIS ENDPOINT DOES NOT PULL ANYBODY'S CREDIT AND SENDS NOTHING. ***
-// It writes rows to `client_consents` and returns. The pull path is
+// It writes rows to `client_consents`. The pull path is
 // api/finance/soft-pull.mjs, which now refuses unless a row written here says
 // the consumer agreed.
+//
+// ONE SIDE EFFECT BEYOND CONSENTS (2026-10-09). Storing a `dispute_authorization`
+// grant also starts the Repair letter writer, if that client's repair card is
+// waiting on 'analysis' (src/repair/start-letters.mjs). That writes dispute
+// cases, dispute items and dispute letters, saves each letter as a client
+// file, and moves the repair card. It still pulls no credit, mails no
+// letter and emails the client nothing. The signature is saved first, and the
+// answer to the caller is the same `{ ok, consent }` whatever the writer does.
 //
 // A POST, NOT A GET, for grant AND for revoke. Same reasoning as the SSN reveal
 // in api/pii.mjs and the soft-pull request next door: both are actions with a

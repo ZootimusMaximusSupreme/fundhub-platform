@@ -1,6 +1,85 @@
 # Manifest P — the signing box starts the repair letters (2026-10-09)
 
-Branch `build/ZU-P-2026-10-09`, cut from `main` at `e8e8e086`. One commit.
+Round 1: branch `build/ZU-P-2026-10-09`, cut from `main` at `e8e8e086`, commit `ed4987da`.
+Round 2 (repair after the checker): branch `build/ZU-P-r2-2026-10-09`, cut from `ed4987da`. One commit on top.
+The round 1 text below is kept. Where round 2 changed a fact, the round 2 section says so and wins.
+
+
+## ROUND 2 — what the checker found and what I did
+
+| # | severity | finding | result |
+|---|---|---|---|
+| 1 | blocker | On the server the writer cannot find the verified ID name, so it refuses the paying client AFTER he signs (`identity_not_verified`). | **Fixed and proved from a built bundle.** See below. |
+| 2 | low | Two writer runs at the same moment can make two letter sets. | **NOT fixed. Reason below.** The journey doc now says it is known and open. |
+| 3 | low | Desk says "Needs agreement" as fact when the consent read failed. | **Fixed**, plus its mirror (contract read failed). 6 tests. |
+| 4 | low | `api/consent/capture.mjs` header said the endpoint only writes consents. | **Fixed.** The header now names the letter start. |
+| 5 | low | Journey doc: "Three things" with four bullets; PATH drawn after the name gate; ID read not marked. | **Fixed.** |
+| 6 | low | CHANGELOG line was a run-on with code words. | **Fixed.** Short sentences. |
+| 7 | low | pg suites could not run. | **Still could not run here.** Reason below. |
+
+### 1. The blocker, in plain words
+
+`src/repair/analyze.mjs` found the verified ID name with `import(path)` over four relative strings. The server folds `netlify/functions/api.mjs` into one file, and a relative string is then read from `netlify/`, where there is no `identity` folder. All four tries threw, the answer was "no verified name", and for a client on the repair path the writer says `identity_not_verified`. Round 1 put FH-000507 on the repair path (A3), so A3 made the hole bite him. The checker was right.
+
+**Fix.** `analyze.mjs` now has a plain static import at the top: `import { verifiedIdentity as readVerifiedIdentity } from "../identity/verified.mjs"`. The bundler sees it and puts the code in the bundle. The old path list, the cache and the resolver are gone. `loadVerifiedIdentity(db, ids, override)` has the same arguments and the same answers. `resetVerifiedIdentityCache()` is still exported (older tests call it) and now does nothing, because nothing is cached. `src/identity/verified.mjs` has no imports, so there is no import loop.
+
+**Proof from a bundle, not from the source tree.** Scratchpad `zup-r2/` (not in the repo). `build.mjs` bundles a one-line entry that re-exports `analyzeAndGenerate`, with the same esbuild that zip-it-and-ship-it uses. It writes the layout of the shipped zip: the one bundled file in `netlify/functions/`, with the raw `src/` tree and `vendor/` beside it. `run.mjs` imports that bundle and runs the REAL writer on FH-000507's live data. Read only: the connection is `BEGIN READ ONLY` and rolls back. Every non-SELECT is answered by a fake and never reaches the database. fetch is off. The consent row is faked (the one thing he has not given). Counts only are printed.
+
+| bundle | consent | result |
+|---|---|---|
+| round 1 file (old import) | faked signed | `ok:false`, `identity_not_verified`, 0 letters. **The blocker, reproduced.** |
+| round 2 file (static import) | faked signed | `ok:true`, 3 letters (TU 13, EX 5, EQ 14 items), `verified_identity:true`. 40 writes faked, 0 reached the database. |
+| round 2 file | faked signed, program row hidden (= before A3) | 3 letters (TU 9, EX 1, EQ 10). Matches the checker and round 1. |
+| round 2 file | none | `ok:false`, `no_authorization`. The stop still holds. |
+
+I also bundled the REAL `netlify/functions/api.mjs` with the same esbuild into the scratchpad and searched it: the string `IDENTITY_MODULES` is gone and `verifiedIdentity` is inlined.
+
+I could not run `npm run pulse:prove` or zip-it-and-ship-it itself on this worktree: zip-it-and-ship-it fails with `EISDIR` here because `node_modules` is a symlink to the main checkout. The esbuild bundle above is the same bundler and the same file layout. It is not the zip itself.
+
+**New guard test** (`src/repair/analyze.test.mjs`, 9 tests): the five server files here (`analyze.mjs`, `start-letters.mjs`, `handlers.mjs`, `read-repair-signals.mjs`, `api/consent/capture.mjs`) may `import()` only a quoted string, and `analyze.mjs` must carry the static identity import. Twins: the guard flags the old shape, a template path and a computed path, and stays quiet on quoted paths and comments. Mutation: with the round 1 `analyze.mjs` put back, 2 of these fail; with the fix, all pass. A unit test cannot build a bundle inside the suite, so the guard holds the rule at the source.
+
+**Who else this turns on.** On the server, the verified-name read now works for everyone, not only him. I counted, read only: exactly **1** client in the whole database has a verified name (`pii_identity.verified_legal_name`), and it is FH-000507. There have been 0 dispute cases ever. For every other client the read still answers "none", as it did before, so nothing changes for them. The Capital Blueprint letters do not change. The rule itself is old and intended (the comments in `analyze.mjs` dated 2026-09-06 say letters take their name and address from the ID read). The checker asked the orchestrator or Chris to confirm this is wanted in this piece. It is the behaviour the code has always had from the source tree. It was just never true on the server.
+
+### 2. The race: not fixed, and why
+
+Two writer runs at the same moment can each pass the "letters already on file" check before either saves. Both would write a full set. I did not fix it. The checker rated it low, and the safe fixes are not trivial:
+
+* **A lock on one connection** (the checker's first option). `db.query` is the shared pool, so the writer's queries run on different connections. A lock has to be held on a dedicated connection for the whole run. The repo's safe form is a transaction-scoped advisory lock (`pg_advisory_xact_lock`), taken on one pool client that stays in `BEGIN` while the writer runs on the pool, then `COMMIT`. A second run waits, then sees the first run's letters and answers `already_generated`. It should fail open (if the lock cannot be taken, run anyway and log). It needs a real Postgres to prove the wait and the release. There is no Postgres here and I will not test it on the live database.
+* **A unique rule** on `dispute_cases` is a migration and needs Chris's OK.
+
+The journey doc now says plainly that this is known and open. Staff mailing is still a human click, so a double set needs a person to mail both. If it should be closed, the advisory lock is about 25 lines in `startRepairLetters` (`src/repair/start-letters.mjs`) and needs the real-Postgres run in item 7.
+
+### 3. The desk chip
+
+`src/repair/read-repair-signals.mjs`: each paper is read on its own. `authorization_ok` is `true` if either found a paper, `false` only if BOTH reads worked and found nothing, and left OFF (unknown) if one read failed and the other found nothing. The checker named the consent-read case. The contract-read case is the same defect, so I fixed both. Tests added (6): consent read fails and no contract (unknown, no chip); consent read fails and a signed contract (true); contract read fails and no consent (unknown); contract read fails and a live consent (true); both fail (unknown); both work and find nothing (false). The round 1 tests for the same function pass unchanged.
+
+### 7. Tests that could not run here
+
+`src/http/repair-generate.pg.test.mjs`, `src/repair/analyze-restage-claim.pg.test.mjs` and `src/consent/consent.pg.test.mjs` need a real Postgres. There is no `DATABASE_URL` for a scratch database, no local Postgres, no Docker. They register 0 tests here, so the count shows no skips, but **a skipped pg test is not green**. They have NOT been run against this change. By reading: the first two call the writer with no program row and no identity override, so the static import behaves as the old dynamic one did from the source tree (the module is found either way), and the new program rule is not touched by them. They must run in CI (`.github/workflows/tests.yml`) before ship. I did not point them at the live database and never will: they write.
+
+### Round 2 test results (this worktree, `DATABASE_URL` unset)
+
+| run | result |
+|---|---|
+| `src/repair/analyze.test.mjs` | 51 pass (was 42) |
+| `src/repair/read-repair-signals.test.mjs` | 18 pass (was 12) |
+| neighbours (`src/repair/*.test.mjs`, `src/http/consent-capture.test.mjs`, `src/http/repair-cases-read.test.mjs`, the two pg files, `metro2/letters/*`, `ws-b-engine`, `pulse/coverage/{slice-33-fulfillment,gap-consent,gap-repair}`) | 393 pass, 0 fail |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` | the same one error as `main`: `src/marketing/filmed-receive.mjs(159,75)`. Not mine. |
+| full `npm test` | 19628 tests, 19590 pass, **15 fail**, 23 skipped. The failing names are the same set as the untouched `main` run (diffed). Round 1 had 19613 tests and 15 fail. This round adds 15 tests and none fail. |
+
+### Round 2 files
+
+`src/repair/analyze.mjs`, `src/repair/analyze.test.mjs`, `src/repair/read-repair-signals.mjs`, `src/repair/read-repair-signals.test.mjs`, `api/consent/capture.mjs` (header comment only), `docs/journeys/repair-documents-actual.md`, `docs/journeys/CHANGELOG.md`, this manifest. `netlify/functions/api.mjs` not touched.
+
+### Round 2 requests for others (files I do not own)
+
+* `docs/journeys/dispute-rounds-actual.md` line 53 still says `loadVerifiedIdentity()` "loads `src/identity/` dynamically". It is now a static import. Words only.
+* Left over, not mine and not touched: other server files import a computed path (`src/pulse/coverage/gap-finance-os.mjs`, `slice-21-underwrite.mjs`, `run-slices.mjs`, `src/journeys/runner/registry.mjs`). The heartbeat law already says to prove those from the bundle. I did not check whether any of them fail on the server.
+
+---
+
+## ROUND 1 (kept as written; the counts in its Tests section are round 1's)
 
 ## What this does, in plain words
 
