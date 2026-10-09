@@ -190,12 +190,14 @@ Business only. Every item was checked against the repo and the live site on 10/4
 - [ ] White label: set the build clock and the guarantee terms (9/4)
 - [ ] Contracts: finish your additions to the 3 agreements (Business Funding Consultation, Credit Optimization Services, Credit Optimization Starter) (9/4)
 - [ ] Whop KYB ticket for FH Consulting LLC, only if you still use Whop once ClarityPay is direct (9/29)
-- [ ] Amoeba + Lithos to run a lot of agents across the businesses (10/9). Amoeba is free and Mac only, and it lets you watch several Claude Code or Codex sessions in one window. It pays off most once a second person codes in this repo.
-  - [ ] Confirm which Lithos you meant. The one found online is Lithos AI's Motus, a kit for building agents.
-  - [ ] List the first agents Fundhub needs. Start with the two already on this list: background marketing agents and doc-collection agents.
-  - [ ] Install Amoeba and open this repo in it.
-  - [ ] Run 2 Claude Code sessions side by side in it and see if that beats switching terminal tabs.
-  - [ ] Keep it or drop it.
+- [ ] Amoeba + Lithos to run a lot of agents across the businesses. Owner-set 10/9: go. Run Lithos with Amoeba, then move to the Claude API for use cases. Amoeba is free and Mac only, and it shows several Claude Code or Codex sessions in one window. Lithos here means Lithos AI's Motus, a kit for building agents (swap it if you meant a different Lithos).
+  - [ ] Install Amoeba on the Mac and open this repo in it.
+  - [ ] Add Motus to the repo.
+  - [ ] Pick the first agent to build. Start with one already on this list: background marketing agents or doc-collection agents.
+  - [ ] Build that agent with Motus in a Claude Code session inside Amoeba.
+  - [ ] Open a second session side by side for the next agent.
+  - [ ] List the Claude API use cases across the businesses.
+  - [ ] Pick the first use case and move it to the Claude API.
 
 ### Next 30 days (launch by about 2026-11-03)
 - [ ] Alt finance offer: SBA, hard money and real estate lending
