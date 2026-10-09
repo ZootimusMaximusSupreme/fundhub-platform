@@ -1127,3 +1127,161 @@ describe("the dispute-authorization gate on the POST", () => {
       `the refusal talks about the database instead of the customer: ${msg}`);
   });
 });
+
+// ── ZU-P · THE SIGNATURE STARTS THE LETTERS ────────────────────────────────
+
+describe("a signed dispute authorization starts the Repair letters", () => {
+  /* The letter writer refuses with `no_authorization` when a repair client's
+     documents land before they sign, saves nothing, and used to never try
+     again. The signing box now retries it, but only for a card waiting on
+     'analysis' (src/repair/start-letters.mjs). The signature is saved FIRST and
+     nothing the writer does may change the answer the client gets.
+
+     The writer here is the REAL one, run against the stub. Its first questions
+     are a signed contract (`FROM contracts`) and then the consent; once it is
+     authorized it looks for letters already on file (`FROM dispute_letters dl`).
+     Seeing that last query after the INSERT is the proof the writer was asked. */
+
+  const STAGE = /SELECT ps\.key AS stage_key/i;
+  const CONTRACTS = /FROM contracts/i;
+  const EXISTING_LETTERS = /FROM dispute_letters dl/i;
+  const ENT = /v_client_entitlements/i;
+
+  const disputeBody = () => ({
+    client_id: CLIENT, kind: "dispute_authorization", action: "grant",
+    capture_method: "typed", granted_name: "Dana Client"
+  });
+
+  const postDispute = async (body = disputeBody()) => {
+    const res = mkRes();
+    await handler(mkReq({ method: "POST", body }), res);
+    return res;
+  };
+
+  const idx = (re) => calls.findIndex((c) => re.test(c.text));
+
+  /* A staff caller. `stage` is what the repair card read answers (a string, or
+     null for no card). `agreement` makes a signed repair contract exist. */
+  const staffSigns = ({ stage = "analysis", agreement = false, lettersThrow = false, stageThrows = false } = {}) => {
+    const disputeRow = consentRow({ kind: "dispute_authorization" });
+    stubDb({
+      session: { role: "closer" },
+      answers: [
+        [INSERT, { rows: [disputeRow] }],
+        [STAGE, () => {
+          if (stageThrows) throw new Error("card read failed");
+          return { rows: stage ? [{ stage_key: stage }] : [] };
+        }],
+        [CONTRACTS, { rows: agreement ? [{ "?column?": 1 }] : [] }],
+        [EXISTING_LETTERS, () => {
+          if (lettersThrow) throw new Error("letter table is down");
+          return { rows: [{ id: "l-1", bureau: "EX", case_id: "c-1", body_text: "x", rule_ids: [] }] };
+        }],
+        [SELECT, { rows: [disputeRow] }]
+      ]
+    });
+  };
+
+  test("PASS: a card on analysis runs the writer after the signature is stored", async () => {
+    staffSigns({ stage: "analysis" });
+    const res = await postDispute();
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(res.body.consent.kind, "dispute_authorization");
+    const stored = idx(INSERT);
+    assert.ok(stored >= 0, "the consent was not stored");
+    assert.ok(idx(STAGE) > stored, "the card was read before the signature was stored");
+    assert.ok(idx(EXISTING_LETTERS) > idx(STAGE),
+      "the letter writer was not asked, though the card is waiting on analysis");
+  });
+
+  test("PASS: the client's own signature in the portal starts them too", async () => {
+    const disputeRow = consentRow({ kind: "dispute_authorization", granted_by_kind: "client" });
+    calls = [];
+    db.query = async (text, params) => {
+      calls.push({ text, params });
+      if (/UPDATE account_sessions/i.test(text)) {
+        return { rows: [{ id: "as-1", account_id: "acct-1", org_id: ORG, expires_at: new Date(Date.now() + 3_600_000) }] };
+      }
+      if (/FROM accounts WHERE id/i.test(text)) {
+        return { rows: [{
+          id: "acct-1", org_id: ORG, kind: "client", email: "c@example.com", name: "Dana Client",
+          status: "active", client_id: CLIENT, affiliate_id: null, partner_id: null
+        }] };
+      }
+      if (ENT.test(text)) return { rows: params[2] === "metro2-letter-pack" ? [{ "?column?": 1 }] : [] };
+      if (INSERT.test(text)) return { rows: [disputeRow] };
+      if (STAGE.test(text)) return { rows: [{ stage_key: "analysis" }] };
+      if (CONTRACTS.test(text)) return { rows: [] };
+      if (EXISTING_LETTERS.test(text)) return { rows: [{ id: "l-1", bureau: "EX", case_id: "c-1", body_text: "x", rule_ids: [] }] };
+      if (SELECT.test(text)) return { rows: [disputeRow] };
+      return { rows: [] };
+    };
+    const res = await postDispute();
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.ok(idx(EXISTING_LETTERS) > idx(INSERT), "the portal signature did not start the writer");
+  });
+
+  test("FAIL twin: a card that is not on analysis runs no writer", async () => {
+    for (const stage of ["intake", "awaiting_documents", "letters_generated", "ready_to_send"]) {
+      staffSigns({ stage });
+      const res = await postDispute();
+      assert.equal(res.statusCode, 200, `${stage}: ${JSON.stringify(res.body)}`);
+      assert.ok(idx(STAGE) >= 0, `${stage}: the card was not read`);
+      assert.equal(idx(CONTRACTS), -1, `${stage}: the writer ran on a card that is not waiting for letters`);
+      assert.equal(idx(EXISTING_LETTERS), -1);
+    }
+  });
+
+  test("FAIL twin: a client with no repair card runs no writer", async () => {
+    staffSigns({ stage: null });
+    const res = await postDispute();
+    assert.equal(res.statusCode, 200);
+    assert.equal(idx(CONTRACTS), -1);
+    assert.equal(idx(EXISTING_LETTERS), -1);
+  });
+
+  test("FAIL twin: a different consent kind never reads the card", async () => {
+    staffSigns({ stage: "analysis" });
+    const res = await postDispute({
+      client_id: CLIENT, kind: "soft_pull_consent", action: "grant",
+      capture_method: "typed", granted_name: "Dana Client"
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(idx(STAGE), -1, "a soft-pull consent looked at the repair card");
+    assert.equal(idx(CONTRACTS), -1);
+  });
+
+  test("FAIL twin: revoking a dispute authorization starts nothing", async () => {
+    staffSigns({ stage: "analysis" });
+    const res = await postDispute({
+      client_id: CLIENT, kind: "dispute_authorization", action: "revoke",
+      consent_id: CONSENT_ID, reason: "client asked"
+    });
+    // The revoke itself is answered by the consent module; what matters is the writer.
+    assert.equal(idx(STAGE), -1, `a revoke read the repair card (status ${res.statusCode})`);
+    assert.equal(idx(CONTRACTS), -1);
+  });
+
+  test("a writer that throws does NOT fail the signature", async () => {
+    staffSigns({ stage: "analysis", agreement: true, lettersThrow: true });
+    const res = await postDispute();
+    assert.equal(res.statusCode, 200, `the signature was lost to a writer failure: ${JSON.stringify(res.body)}`);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.consent.kind, "dispute_authorization");
+    assert.ok(idx(INSERT) >= 0, "the consent was not stored");
+    assert.ok(idx(EXISTING_LETTERS) > idx(INSERT), "the writer never ran, so the throw was never exercised");
+  });
+
+  test("a card read that throws does NOT fail the signature", async () => {
+    staffSigns({ stage: "analysis", stageThrows: true });
+    const res = await postDispute();
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(res.body.consent.kind, "dispute_authorization");
+  });
+
+  test("the response carries nothing about the letters", async () => {
+    staffSigns({ stage: "analysis" });
+    const res = await postDispute();
+    assert.deepEqual(Object.keys(res.body).sort(), ["consent", "ok"]);
+  });
+});

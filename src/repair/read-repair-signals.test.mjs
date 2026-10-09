@@ -9,6 +9,7 @@ import {
   gatherRepairDetailSignals,
   DISPUTE_AUTH_KIND
 } from "./read-repair-signals.mjs";
+import { deriveChip } from "./lens.mjs";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const CLIENT = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -81,18 +82,68 @@ describe("gatherRepairSignals", () => {
     assert.equal(s.authorization_ok, false);
   });
 
-  test("enrolled repair program is authorization_ok without consent", async () => {
+  /* CHANGED 2026-10-09 (ZU-P). This test used to be "enrolled repair program is
+     authorization_ok without consent" and it asserted the shortcut that is now
+     gone. An enrolled program is not a signature. The letter writer refuses a
+     paid client who has signed nothing, so the desk has to say so too. */
+  test("an enrolled repair program with nothing signed is NOT authorized", async () => {
     const db = fakeDb({
       "FROM client_consents": [],
       "FROM repair_programs": [{
         client_id: CLIENT,
-        program: "trial",
-        rounds_cap: 2,
+        program: "full",
+        rounds_cap: 6,
+        status: "active"
+      }]
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal(s.authorization_ok, false);
+    assert.equal(s.program, "full", "the program is still shown; only the authorization changed");
+    assert.equal(deriveChip({ ...s, stage_key: "analysis" }).key, "needs_agreement");
+  });
+
+  test("an enrolled program PLUS a live dispute authorization is authorized (twin)", async () => {
+    const db = fakeDb({
+      "FROM client_consents": [{ client_id: CLIENT, is_valid: true }],
+      "FROM repair_programs": [{
+        client_id: CLIENT,
+        program: "full",
+        rounds_cap: 6,
         status: "active"
       }]
     });
     const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
     assert.equal(s.authorization_ok, true);
+    assert.notEqual(deriveChip({ ...s, stage_key: "analysis" }).key, "needs_agreement");
+  });
+
+  test("an enrolled program PLUS a signed repair agreement is authorized (twin)", async () => {
+    const db = fakeDb({
+      "FROM client_consents": [],
+      "FROM contracts": [{ client_id: CLIENT }],
+      "FROM repair_programs": [{
+        client_id: CLIENT,
+        program: "full",
+        rounds_cap: 6,
+        status: "active"
+      }]
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal(s.authorization_ok, true);
+  });
+
+  test("a revoked consent does not authorize an enrolled program", async () => {
+    const db = fakeDb({
+      "FROM client_consents": [{ client_id: CLIENT, is_valid: false }],
+      "FROM repair_programs": [{
+        client_id: CLIENT,
+        program: "full",
+        rounds_cap: 6,
+        status: "active"
+      }]
+    });
+    const s = (await gatherRepairSignals(db, { orgId: ORG, clientIds: [CLIENT] })).get(CLIENT);
+    assert.equal(s.authorization_ok, false);
   });
 
   test("cancelled program alone is not agreement", async () => {

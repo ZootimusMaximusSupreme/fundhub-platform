@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   addressFromBusinessEntity,
   analyzeAndGenerate,
+  hasActiveRepairProgram,
   loadVerifiedIdentity,
   resetVerifiedIdentityCache,
   verifiedAddressLabel
@@ -185,8 +186,12 @@ describe("derogatory items and the offer path", () => {
     }
   };
 
-  function dbFor(tier, { agreement = false, personalAddress = true } = {}) {
+  function dbFor(tier, { agreement = false, personalAddress = true, program = null, entitlement = false } = {}) {
     return fakeDb({
+      /* The writer never reads entitlements. This row is here so a test can
+         prove that: a client holding metro2-letter-pack (every Capital
+         Blueprint buyer does) must not become a repair-path client by it. */
+      "v_client_entitlements": entitlement ? [{ "?column?": 1 }] : [],
       // Order matters: the outcome_tier read must be matched before the
       // first_name/last_name read, and both are "FROM clients".
       "outcome_tier FROM clients": [{ outcome_tier: tier }],
@@ -200,7 +205,7 @@ describe("derogatory items and the offer path", () => {
       "FROM contracts": agreement ? [{ "?column?": 1 }] : [],
       "FROM client_consents": [{ is_valid: true }],
       "FROM dispute_letters dl": [],
-      "FROM repair_programs": [],
+      "FROM repair_programs": program ? [program] : [],
       "FROM crs_results": [{ result: DAMAGED_FILE }],
       "FROM dispute_cases dc": [],
       "INSERT INTO dispute_cases": [{
@@ -248,6 +253,81 @@ describe("derogatory items and the offer path", () => {
     const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
     assert.equal(r.ok, true, JSON.stringify(r));
     assert.equal(r.letters.length, 1);
+  });
+
+  /* ADDED 2026-10-09 (ZU-P). A repair buyer's file is not graded REPAIR_ONLY the
+     moment they pay, and they may not have signed the (placeholder) repair
+     agreement either. What they do have is an ACTIVE repair_programs row. The
+     measured case is the one paying repair client: with the row ignored his file
+     made 9 / 1 / 10 claims (TransUnion / Experian / Equifax); counted as the
+     repair path it makes 13 / 5 / 14. */
+  describe("an active repair program is a repair path", () => {
+    const ACTIVE = { program: "full", rounds_cap: 6, status: "active" };
+
+    test("PASS: an active program with no tier and no agreement gets the full repair letters", async () => {
+      const db = dbFor(null, { program: ACTIVE });
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, true, JSON.stringify(r));
+      assert.equal(r.letters.length, 1);
+      assert.deepEqual(
+        r.letters[0].ruleIds,
+        ["DEROG-COLLECTION", "PI-NAME-CONFIRM", "PI-ADDRESS-CONFIRM"]
+      );
+    });
+
+    test("PASS: an active trial program counts too", async () => {
+      const db = dbFor("FULL_FUNDING", { program: { program: "trial", rounds_cap: 2, status: "active" } });
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, true, JSON.stringify(r));
+      assert.equal(r.letters.length, 1);
+    });
+
+    test("FAIL twin: the same file with NO program row gets nothing", async () => {
+      const db = dbFor(null);
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "no_violations");
+    });
+
+    for (const status of ["cancelled", "complete", "upsell_pending"]) {
+      test(`FAIL twin: a ${status} program is not a repair path`, async () => {
+        const db = dbFor(null, { program: { program: "full", rounds_cap: 6, status } });
+        const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+        assert.equal(r.ok, false);
+        assert.equal(r.reason, "no_violations");
+      });
+    }
+
+    test("a Capital Blueprint buyer (entitlement, no program) is unchanged", async () => {
+      const db = dbFor("FULL_FUNDING", { entitlement: true });
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "no_violations");
+      assert.ok(
+        !db.seen.some((c) => /v_client_entitlements|entitlement/i.test(c.sql)),
+        "the writer read entitlements; the repair path must be keyed to the program row"
+      );
+    });
+
+    test("the active program does not skip the identity wall", async () => {
+      // On the repair path with no verified name the writer still refuses.
+      const db = dbFor(null, { program: ACTIVE });
+      const r = await analyzeAndGenerate(db, {
+        orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity: () => null
+      });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "identity_not_verified");
+    });
+
+    test("hasActiveRepairProgram reads the status and nothing else", () => {
+      assert.equal(hasActiveRepairProgram({ status: "active" }), true);
+      for (const status of ["cancelled", "complete", "upsell_pending", "", null, undefined]) {
+        assert.equal(hasActiveRepairProgram({ status }), false, String(status));
+      }
+      assert.equal(hasActiveRepairProgram(null), false);
+      assert.equal(hasActiveRepairProgram(undefined), false);
+      assert.equal(hasActiveRepairProgram({ program: "full" }), false);
+    });
   });
 });
 

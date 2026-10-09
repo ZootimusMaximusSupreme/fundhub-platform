@@ -10,6 +10,7 @@ import { requestFreshReassessment } from "../crs/snapshot-negatives.mjs";
 import { emit } from "../events/bus.mjs";
 import { checkDocPacket, loadClientDocuments, PACKET_SUBTYPES } from "../inquiry-ops/doc-gate.mjs";
 import { onRepairPath } from "./on-repair-path.mjs";
+import { startRepairLetters } from "./start-letters.mjs";
 
 /* ── THE "WE NEED YOUR DOCUMENTS" STAGE ──────────────────────────────────────
  *
@@ -224,22 +225,19 @@ export async function onRepairEvent(db, event) {
      on analysis and wait for a human Stage click that nobody pressed, so a
      paid repair file could sit forever with zero letters. The same writer
      Specialist Stage already uses (analyzeAndGenerate) runs here. It mails
-     nothing. A refusal (no credit file, ID unread) leaves the card on analysis. */
+     nothing. A refusal (no credit file, ID unread, nothing signed yet) leaves
+     the card on analysis. The refusal `no_authorization` is retried by the
+     portal signing box once the client signs: api/consent/capture.mjs. */
   let letters = null;
   if (name === "repair.docs.complete") {
-    try {
-      const { analyzeAndGenerate } = await import("./analyze.mjs");
-      const { storeFromEnv } = await import("../documents/store.mjs");
-      letters = await analyzeAndGenerate(db, {
-        orgId,
-        clientId,
-        round: "R1",
-        staffId: event.payload?.staffId || null,
-        documentStore: storeFromEnv()
-      });
-    } catch (err) {
-      letters = { ok: false, reason: String(err?.message || err).slice(0, 240) };
-    }
+    /* ONE SHARED CALL. The portal's signing box starts the same writer through
+       the same function (api/consent/capture.mjs), so the two doors cannot
+       drift. See ./start-letters.mjs. */
+    letters = await startRepairLetters(db, {
+      orgId,
+      clientId,
+      staffId: event.payload?.staffId || null
+    });
   }
 
   let reassess = null;

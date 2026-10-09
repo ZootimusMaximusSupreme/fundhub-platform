@@ -58,6 +58,19 @@ const PRIOR_WINDOW = 5;
    repair path whatever the analyzer last stamped on their record. */
 const REPAIR_PATH_TIERS = new Set(["REPAIR_ONLY", "FUNDING_PLUS_REPAIR"]);
 
+/** An ACTIVE repair_programs row puts a client on the repair path. The row is
+ *  written when someone buys repair (src/repair/enroll.mjs). It is the only
+ *  signal here that is neither a credit-pull result nor a signature, so a repair
+ *  buyer whose file has not been graded REPAIR_ONLY yet still gets the full
+ *  repair letters. It is keyed to the program row and NOT to the
+ *  metro2-letter-pack entitlement: every Capital Blueprint buyer holds that
+ *  entitlement, and their letters must not change. A cancelled, complete or
+ *  upsell_pending program does not count.
+ *  @param {{ status?: string|null }|null|undefined} program loadRepairProgram()'s row */
+export function hasActiveRepairProgram(program) {
+  return String(program?.status || "") === "active";
+}
+
 /**
  * Group collection / debt-buyer claims by creditor name_norm for furnisher letters.
  * Pure — unit-tested without a DB.
@@ -592,7 +605,7 @@ export async function analyzeAndGenerate(db, {
      claims — see ../metro2/diy/derogatory.mjs for what they assert and why they
      are not Metro 2 rules — and ONLY for a client on the repair path. A client
      off that path gets exactly what they got before: engine findings or nothing. */
-  const onRepairPath = hasAgreement || REPAIR_PATH_TIERS.has(
+  const onRepairPath = hasAgreement || hasActiveRepairProgram(program) || REPAIR_PATH_TIERS.has(
     String(await clientOutcomeTier(db, clientId) || "")
   );
 

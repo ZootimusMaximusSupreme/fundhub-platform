@@ -208,12 +208,12 @@ export async function gatherRepairSignals(db, { orgId, clientIds, files = [] } =
       const row = (authBy.get(id) || [])[0];
       signals.authorization_ok = Boolean(row && row.is_valid === true);
     }
-    if (signals.authorization_ok !== true && programRows !== null) {
-      const p = (programBy.get(id) || [])[0];
-      if (p && String(p.status || "") !== "cancelled") {
-        signals.authorization_ok = true;
-      }
-    }
+    /* AUTHORIZED MEANS A SIGNED PAPER, NOTHING ELSE. A live dispute_authorization
+       consent (the portal's signing box) or a signed repair agreement. An
+       enrolled program is NOT a signature. It used to count as one here, which
+       hid the "Needs agreement" chip on a paid client who had signed nothing,
+       while the letter writer (src/repair/analyze.mjs) refused him with
+       `no_authorization`. Desk and writer now read the same two papers. */
     if (signals.authorization_ok !== true && signedRows !== null) {
       signals.authorization_ok = (signedBy.get(id) || []).length > 0;
     }
