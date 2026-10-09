@@ -19,7 +19,7 @@ const BASELINE = JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8"));
 /* The baseline only shrinks. When you sort entries out of it, lower this number to the new
    length in the same change. Never raise it: a new surface goes in TRIPWIRES or
    NOT_CUSTOMER_FACING, not in the baseline. */
-const BASELINE_MAX = 533;
+const BASELINE_MAX = 496;
 
 function htmlFiles(dir) {
   return fs.readdirSync(dir, { recursive: true })

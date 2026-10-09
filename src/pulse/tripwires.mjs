@@ -32,7 +32,47 @@ export function isPingId(id) {
   return /^(reg|job):/.test(String(id)) || ["health", "login", "apply"].includes(String(id));
 }
 
-export const TRIPWIRES = Object.freeze({});
+export const TRIPWIRES = Object.freeze({
+  // Launch day, 2026-10-09: the path a new customer walks, each with the deep checks that go red
+  // when it breaks. Proven read-only on live data and from a built bundle before they were listed.
+  "route:public/slo-checkout": { impact: "money", checks: ["payments:checkout-started-no-link", "keys:checkout-key-read"] },
+  "page:roadmap/pay.html": { impact: "money", checks: ["payments:checkout-started-no-link", "funnel:order-price-matches-till"] },
+  "page:roadmap/index.html": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "funnel:card-box-script-loads"] },
+  "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
+  "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
+  "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link"] },
+  "job:commas-inbox-drain": { impact: "money", checks: ["payments:commas-inbox-waiting", "payments:paid-no-entitlement"] },
+  "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
+  "job:s-02-incomplete-survey-nudge": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
+  "job:slo-genuine-followup": { impact: "money", checks: ["handoff:contact-no-followup"] },
+  "job:slo-no-reply-197": { impact: "money", checks: ["handoff:contact-no-followup"] },
+  "job:slo-genuine-checkout-sms": { impact: "money", checks: ["handoff:contact-no-followup"] },
+  "job:slo-infinite-drip": { impact: "money", checks: ["email:drip-step-no-email"] },
+  "page:roadmap/pull.html": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h", "consent:slo-store"] },
+  "route:public/slo-pull": { impact: "customer", checks: ["softpull:request-failed-or-stuck", "consent:slo-store"] },
+  "route:soft-pull-approve": { impact: "customer", checks: ["softpull:approve-click-no-pull", "soft-pull:approve-read"] },
+  "desk:soft-pull-approve.html": { impact: "customer", checks: ["softpull:approve-click-no-pull", "soft-pull:approve-page"] },
+  "job:c-00-crs-soft-pull-request": { impact: "customer", checks: ["softpull:request-failed-or-stuck", "keys:credit-pull-live-allowed"] },
+  "job:slo-paid-form-nudge": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h"] },
+  "job:slo-pack-delivery": { impact: "customer", checks: ["uw-paid-roadmap-no-pack", "uw-pack-files-incomplete", "uw-pack-email-not-queued"] },
+  "job:message-dispatch-sweeper": { impact: "customer", checks: ["gap:sms-sending-stuck", "email:sending-stuck", "gap:msg-sent-no-receipt"] },
+  "job:s-00-welcome": { impact: "customer", checks: ["handoff:lead-first-touches-missing", "gap:sms-journey-zero"] },
+  "job:s-04-call-booked": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-join-link"] },
+  "job:s-04b-booking-reminders": { impact: "customer", checks: ["handoff:reminder-missing"] },
+  "route:bookings": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-outcome"] },
+  "route:auth/magic-link": { impact: "customer", checks: ["gap:auth-magic-link-dead"] },
+  "route:auth/magic-link-verify": { impact: "customer", checks: ["gap:auth-magic-link-dead", "gap:auth-signin-no-session"] },
+  "route:auth/send-portal-link": { impact: "customer", checks: ["gap:auth-magic-link-dead"] },
+  "page:portal-login.html": { impact: "customer", checks: ["gap:auth-magic-link-dead", "portal:paid-client-never-signed-in"] },
+  "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step"] },
+  "route:read/portal-summary": { impact: "customer", checks: ["portal:summary"] },
+  "route:read/client-progress": { impact: "customer", checks: ["portal:progress-read-real-client"] },
+  "page:progress.html": { impact: "customer", checks: ["portal:progress-read-real-client"] },
+  "route:read/entitlements": { impact: "customer", checks: ["payments:paid-no-entitlement", "portal:paid-entitlement"] },
+  "route:contracts/sign": { impact: "customer", checks: ["contracts:sent-unsignable", "contracts:signed-not-stored"] },
+  "route:documents-upload": { impact: "customer", checks: ["documents:upload-store", "documents:stuck-processing"] },
+  "route:consent/capture": { impact: "customer", checks: ["consent:store", "consent:required"] }
+});
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
   "route:ops/notify-owner":

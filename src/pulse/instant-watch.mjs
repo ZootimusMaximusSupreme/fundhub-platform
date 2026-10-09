@@ -73,15 +73,36 @@ export async function runInstantWatch({
       baseUrl: String(env.FUNNEL_URL || DEFAULT_FUNNEL_BASE_URL)
     })
   ];
-  const orgId = db ? await defaultOrgId(db) : null;
-  if (db && orgId) {
-    const motion = await readPipelineMotionCounts(db, { orgId, now });
-    if (motion.outbound_stuck > 0) {
+  /* A DEAD DATABASE STILL TEXTS. This alarm matters most when the database is
+     down, and it used to crash right there, reading the database before it
+     texted (proved 2026-10-09 by gap-outside-inngest). Now an unreadable
+     database is one red row. With no database there is no cooldown record, so
+     it texts only on the runs in the first 5 minutes of each half hour: at most
+     2 texts an hour, the first within 30 minutes. */
+  let orgId = null;
+  let dbDown = false;
+  if (db) {
+    try {
+      orgId = await defaultOrgId(db);
+      if (orgId) {
+        const motion = await readPipelineMotionCounts(db, { orgId, now });
+        if (motion.outbound_stuck > 0) {
+          checks.push({
+            id: "pipeline:outbound",
+            status: "FAIL",
+            detail: `${motion.outbound_stuck} outbound message(s) queued over 30 minutes`,
+            suggestedFix: "Check message dispatch."
+          });
+        }
+      }
+    } catch (err) {
+      dbDown = true;
+      orgId = null;
       checks.push({
-        id: "pipeline:outbound",
+        id: "db",
         status: "FAIL",
-        detail: `${motion.outbound_stuck} outbound message(s) queued over 30 minutes`,
-        suggestedFix: "Check message dispatch."
+        detail: `The database could not be read: ${String((err && err.message) || err).slice(0, 120)}`,
+        suggestedFix: "Check https://fundhub.ai/api/health and the Supabase project."
       });
     }
   }
@@ -91,7 +112,18 @@ export async function runInstantWatch({
   }
   const fingerprint = failures.map((f) => f.id).sort().join(",");
   const sinceMs = now.getTime() - cooldownMs;
-  if (db && orgId && await recentInstantAlert(db, { orgId, fingerprint, sinceMs })) {
+  if (dbDown && now.getUTCMinutes() % 30 >= 5) {
+    return { ok: true, failures, sms: { sent: false, reason: "db_down_wait" } };
+  }
+  let inCooldown = false;
+  if (db && orgId) {
+    try {
+      inCooldown = await recentInstantAlert(db, { orgId, fingerprint, sinceMs });
+    } catch {
+      inCooldown = false;
+    }
+  }
+  if (inCooldown) {
     return { ok: true, failures, sms: { sent: false, reason: "cooldown" } };
   }
   const to = normalizeUsNumber(String(env.PULSE_SMS_TO || env.CHRIS_PULSE_SMS || "").trim());
@@ -106,7 +138,11 @@ export async function runInstantWatch({
     }
   }
   if (db && orgId) {
-    await recordInstantAlert(db, { orgId, fingerprint, detail: body, sent: sms.sent });
+    try {
+      await recordInstantAlert(db, { orgId, fingerprint, detail: body, sent: sms.sent });
+    } catch {
+      // The text already went. A failed record only means the next run may text again.
+    }
   }
   return { ok: true, failures, sms };
 }

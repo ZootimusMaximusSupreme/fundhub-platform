@@ -234,3 +234,25 @@ test("this module does not import the Ops Admin money pulse", () => {
   assert.doesNotMatch(src, /^import .*from ["'].*ops\/pulse/m);
   assert.doesNotMatch(src, /^import .*ops-pulse/m);
 });
+
+test("a dead database does not stop the pulse: one red db row, the rest still run", async () => {
+  const deadDb = { query: async () => { throw new Error("connection terminated unexpectedly"); } };
+  const boardDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulse-deaddb-"));
+  const result = await runDailyPulse({
+    dryRun: true,
+    db: deadDb,
+    env: {},
+    boardDir,
+    sendPulseText: false,
+    recordRun: false,
+    coverageRows: [],
+    fetchImpl: async () => ({ status: 200, text: async () => "Sign in password Generate Apps Apply door" })
+  });
+  const db = result.checks.filter((c) => c.id === "db");
+  assert.equal(db.length, 1, "exactly one database row");
+  assert.equal(db[0].status, "FAIL");
+  assert.match(db[0].detail, /could not be read/);
+  assert.ok(result.checks.some((c) => c.id === "health"), "the web checks still ran");
+  assert.ok(result.scorecard, "a scorecard is still built");
+  fs.rmSync(boardDir, { recursive: true, force: true });
+});

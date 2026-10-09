@@ -33,6 +33,9 @@ function dbWith(bag = {}) {
       if (/gap-calls:booked-no-outcome/.test(text)) return { rows: bag.booked || [] };
       if (/gap-calls:booking-webhook:events/.test(text)) return { rows: bag.events || [] };
       if (/gap-calls:booking-webhook:captures/.test(text)) return { rows: bag.captures || [] };
+      if (/gap-calls:no-join-link:events/.test(text)) return { rows: bag.joinEvents || [] };
+      if (/gap-calls:no-join-link:bookings/.test(text)) return { rows: bag.joinBookings || [] };
+      if (/gap-calls:no-join-link:tasks/.test(text)) return { rows: bag.joinTasks || [] };
       if (/gap-calls:ai-dial-agent/.test(text)) return { rows: bag.agent === undefined ? [liveJosh()] : bag.agent };
       if (/gap-calls:ai-dial/.test(text)) return { rows: bag.ai || [] };
       return { rows: [] };
@@ -45,7 +48,7 @@ function liveJosh(extra = {}) {
 }
 
 function index(rows) {
-  assert.equal(rows.length, 4);
+  assert.equal(rows.length, 5);
   assert.deepEqual(rows.map((r) => r.id), CHECK_IDS);
   for (const row of rows) {
     assert.equal(typeof row.id, "string");
@@ -91,9 +94,9 @@ function aiRow(extra = {}) {
   };
 }
 
-test("four checks, fixed ids, PASS FAIL or skip; no ctx means every row skips", async () => {
+test("five checks, fixed ids, PASS FAIL or skip; no ctx means every row skips", async () => {
   const rows = await gapChecks({});
-  assert.equal(rows.length, 4);
+  assert.equal(rows.length, 5);
   assert.deepEqual(rows.map((r) => r.id), CHECK_IDS);
   assert.ok(rows.every((r) => r.status === "skip"), JSON.stringify(rows));
   const none = await gapChecks();
@@ -318,6 +321,230 @@ test("a database error is a FAIL on that check, never a PASS, and does not throw
   }
 });
 
+/* ------------------------------------------------------------------------
+   calls:booked-no-join-link — does a booked customer have a way to join?
+   The fake db answers by query tag. Each case flips the answer in one way.
+   ------------------------------------------------------------------------ */
+const JOIN = "calls:booked-no-join-link";
+const LINK = "https://meet.google.com/abc-defg-hij";
+const fromNow = (h) => new Date(NOW.getTime() + h * 3600e3).toISOString();
+let joinSeq = 0;
+/* A booking.created event, three hours old, for a call 24 hours ahead, no link. */
+function jev(o = {}) {
+  const { payload, ...rest } = o;
+  return {
+    id: `jev-${++joinSeq}`,
+    name: "booking.created",
+    created_at: fromNow(-3),
+    payload: { bookingUid: "u1", email: "lead@acme.com", startTime: fromNow(24), meetingUrl: null, ...payload },
+    ...rest
+  };
+}
+/* A different real customer: own uid, own email, own start. */
+function other(n, o = {}) {
+  const { payload, ...rest } = o;
+  return jev({ created_at: fromNow(-3 - n), payload: { bookingUid: `u${n + 10}`, email: `cust${n}@acme.com`, startTime: fromNow(-48 - n), ...payload }, ...rest });
+}
+async function joinRow(bag, ctx = {}) {
+  const out = await run({ rows: bag, ...ctx });
+  return { row: out.by[JOIN], db: out.db, rows: out.rows };
+}
+
+test("join link: a real booked call still ahead with no link anywhere fails, names the next call masked", async () => {
+  const { row, db } = await joinRow({ joinEvents: [jev()] });
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /^1 booked call still ahead has no join link anywhere in our data/);
+  assert.match(row.detail, /l\*\*\*@acme\.com/);
+  assert.doesNotMatch(row.detail, /lead@acme/);
+  assert.match(row.detail, /portal sign-in page/);
+  assert.match(row.suggestedFix, /Recon \(AG-07\)/);
+  // The bookings row and the closer's task are asked about that one uid, in this company.
+  const asked = db.calls.filter((c) => /no-join-link:(bookings|tasks)/.test(c.text));
+  assert.equal(asked.length, 2);
+  for (const c of asked) assert.deepEqual(c.params, [ORG, ["u1"]]);
+  // Everything else on the lane is untouched by this row.
+  const others = (await joinRow({ joinEvents: [jev()] })).rows.filter((r) => r.id !== JOIN);
+  assert.ok(others.every((r) => r.status === "PASS"));
+});
+
+test("join link: a link on the event, the bookings row, or the closer's task passes; junk text is not a link", async () => {
+  for (const key of ["meetingUrl", "meeting_url", "meeting_location"]) {
+    const { row } = await joinRow({ joinEvents: [jev({ payload: { [key]: LINK } })] });
+    assert.equal(row.status, "PASS", key);
+    assert.match(row.detail, /all 1 booked call ahead have a join link/);
+  }
+  assert.equal((await joinRow({ joinEvents: [jev()], joinBookings: [{ uid: "u1", meeting_url: LINK }] })).row.status, "PASS");
+  assert.equal((await joinRow({ joinEvents: [jev()], joinTasks: [{ uid: "u1", meeting_url: LINK }] })).row.status, "PASS");
+  for (const junk of ["n/a", "tbd", "   ", "zoom.us/j/1", "mailto:a@b.co"]) {
+    assert.equal((await joinRow({ joinEvents: [jev({ payload: { meetingUrl: junk } })] })).row.status, "FAIL", junk);
+    assert.equal((await joinRow({ joinEvents: [jev()], joinBookings: [{ uid: "u1", meeting_url: junk }] })).row.status, "FAIL", junk);
+    assert.equal((await joinRow({ joinEvents: [jev()], joinTasks: [{ uid: "u1", meeting_url: junk }] })).row.status, "FAIL", junk);
+  }
+  // A link saved for some other call does not rescue this one.
+  assert.equal((await joinRow({ joinEvents: [jev()], joinBookings: [{ uid: "u2", meeting_url: LINK }] })).row.status, "FAIL");
+});
+
+test("join link: cancelled, moved away, started over 2 hours ago, or more than 45 days out are not misses", async () => {
+  const cancel = (o = {}) => jev({ name: "booking.cancelled", created_at: fromNow(-1), ...o });
+  // Cancelled under the same call id.
+  assert.equal((await joinRow({ joinEvents: [jev(), cancel()] })).row.status, "PASS");
+  // Cancelled with no call id we hold and no start: matched by email.
+  assert.equal((await joinRow({ joinEvents: [jev(), cancel({ payload: { bookingUid: "zz", startTime: null } })] })).row.status, "PASS");
+  // A cancel for a different time on the same email does not cancel this call.
+  assert.equal((await joinRow({ joinEvents: [jev(), cancel({ payload: { bookingUid: "zz", startTime: fromNow(48) } })] })).row.status, "FAIL");
+  // A cancel for the customer's OTHER call (a call id we hold) leaves this one standing.
+  const two = [jev(), jev({ payload: { bookingUid: "u2", startTime: fromNow(48) } }), cancel({ payload: { bookingUid: "u2", startTime: fromNow(48) } })];
+  const left = await joinRow({ joinEvents: two });
+  assert.equal(left.row.status, "FAIL");
+  assert.match(left.row.detail, /^1 booked call still ahead has/);
+  // A cancel that came BEFORE a re-book does not hide the re-book.
+  assert.equal((await joinRow({ joinEvents: [jev({ created_at: fromNow(-5), name: "booking.cancelled" }), jev({ created_at: fromNow(-2) })] })).row.status, "FAIL");
+  // Moved to a new call id: the old one is gone, only the new one is judged.
+  const moved = jev({ name: "booking.rescheduled", created_at: fromNow(-1), payload: { bookingUid: "u2", rescheduleUid: "u1", startTime: fromNow(30) } });
+  const m1 = await joinRow({ joinEvents: [jev(), moved] });
+  assert.equal(m1.row.status, "FAIL");
+  assert.match(m1.row.detail, /^1 booked call still ahead has/);
+  assert.equal((await joinRow({ joinEvents: [jev(), { ...moved, payload: { ...moved.payload, meetingUrl: LINK } }] })).row.status, "PASS");
+  // Same call id moved to the past: judged at the new time.
+  assert.equal((await joinRow({ joinEvents: [jev(), jev({ name: "booking.rescheduled", created_at: fromNow(-1), payload: { startTime: fromNow(-5) } })] })).row.status, "PASS");
+  // In progress for under 2 hours still counts; over 2 hours is over.
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { startTime: fromNow(-1) } })] })).row.status, "FAIL");
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { startTime: fromNow(-3) } })] })).row.status, "PASS");
+  // 44 days out counts; 46 days out is too far to judge.
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { startTime: fromNow(44 * 24) } })] })).row.status, "FAIL");
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { startTime: fromNow(46 * 24) } })] })).row.status, "PASS");
+  // No email, or a start nobody can read: not a call we can place.
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { email: "" } })] })).row.status, "PASS");
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { startTime: "tomorrow at 3" } })] })).row.status, "PASS");
+});
+
+test("join link: test addresses and interviews are not customers", async () => {
+  for (const email of ["x@fundhub.ai", "e2e+x@gmail.com", "a+sim-01@gmail.com", "joe+fhtest@gmail.com", "qa@example.com", "a.test@gmail.com", "someone+anything@gmail.com"]) {
+    assert.equal((await joinRow({ joinEvents: [jev({ payload: { email } })] })).row.status, "PASS", email);
+  }
+  // A plain address is a customer.
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { email: "Lead@Acme.com" } })] })).row.status, "FAIL");
+  assert.equal((await joinRow({ joinEvents: [jev({ payload: { eventTypeSlug: "post-funding-interview" } })] })).row.status, "PASS");
+});
+
+test("join link: one call that ClickFunnels reported under two ids is counted once, and a link on either id counts", async () => {
+  const dup = [jev({ payload: { bookingUid: "form-1" } }), jev({ payload: { bookingUid: "72964" } })];
+  const miss = await joinRow({ joinEvents: dup });
+  assert.equal(miss.row.status, "FAIL");
+  assert.match(miss.row.detail, /^1 booked call still ahead has/);
+  assert.equal((await joinRow({ joinEvents: dup, joinTasks: [{ uid: "72964", meeting_url: LINK }] })).row.status, "PASS");
+  assert.equal((await joinRow({ joinEvents: [dup[0], { ...dup[1], payload: { ...dup[1].payload, meetingUrl: LINK } }] })).row.status, "PASS");
+});
+
+test("join link: calls are counted and the next one is the soonest", async () => {
+  const evs = [jev({ payload: { bookingUid: "a", email: "late@acme.com", startTime: fromNow(72) } }), jev({ payload: { bookingUid: "b", email: "soon@acme.com", startTime: fromNow(5) } })];
+  const { row } = await joinRow({ joinEvents: evs });
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /^2 booked calls still ahead have no join link/);
+  assert.match(row.detail, /s\*\*\*@acme\.com on 2026-10-09 01:00 UTC/);
+});
+
+test("join link feed: none of the newest 5 real bookings carries a link, so the next one will not either", async () => {
+  const past = [1, 2, 3, 4, 5].map((n) => other(n));
+  const bad = await joinRow({ joinEvents: past });
+  assert.equal(bad.row.status, "FAIL");
+  assert.match(bad.row.detail, /^0 of the newest 5 real bookings carried a join link, so a new booking will not have one either/);
+  assert.doesNotMatch(bad.row.detail, /still ahead/);
+  assert.match(bad.row.suggestedFix, /Recon \(AG-07\)/);
+  // One of the newest 5 carries a link: the feed works.
+  const good = await joinRow({ joinEvents: [other(1, { payload: { meetingUrl: LINK } }), ...past.slice(1)] });
+  assert.equal(good.row.status, "PASS");
+  assert.match(good.row.detail, /no real booked call is ahead; 1 of the newest 5 real bookings carry a link/);
+  // A link only on an older booking does not count: the sample is the newest 5.
+  const six = [...past, other(6, { payload: { meetingUrl: LINK } })];
+  assert.equal((await joinRow({ joinEvents: six })).row.status, "FAIL");
+  // A link kept on the bookings row, or on the closer's task, counts for the feed too.
+  assert.equal((await joinRow({ joinEvents: past, joinBookings: [{ uid: "u11", meeting_url: LINK }] })).row.status, "PASS");
+  assert.equal((await joinRow({ joinEvents: past, joinTasks: [{ uid: "u12", meeting_url: LINK }] })).row.status, "PASS");
+  // The same bad feed also lists the calls still ahead, in one row.
+  const both = await joinRow({ joinEvents: [jev(), ...past] });
+  assert.equal(both.row.status, "FAIL");
+  assert.match(both.row.detail, /^1 booked call still ahead has no join link anywhere in our data \(next: l\*\*\*@acme\.com on [^)]+\); 0 of the newest 5 real bookings carried/);
+});
+
+test("join link feed: under 3 real bookings is not enough to judge; testers and cancelled-only rows do not count toward it", async () => {
+  const two = await joinRow({ joinEvents: [other(1), other(2)] });
+  assert.equal(two.row.status, "PASS");
+  assert.match(two.row.detail, /fewer than 3 real bookings so far/);
+  const testers = [1, 2, 3, 4, 5].map((n) => other(n, { payload: { email: `qa${n}+sim-${n}@gmail.com` } }));
+  assert.equal((await joinRow({ joinEvents: [...testers, other(6), other(7)] })).row.status, "PASS");
+  // Only a cancel, or only a move: no booking was made in this feed.
+  const cancels = [1, 2, 3, 4].map((n) => other(n, { name: "booking.cancelled" }));
+  assert.equal((await joinRow({ joinEvents: cancels })).row.status, "PASS");
+  const moves = [1, 2, 3, 4].map((n) => other(n, { name: "booking.rescheduled" }));
+  assert.equal((await joinRow({ joinEvents: moves })).row.status, "PASS");
+  // No bookings at all.
+  const none = await joinRow({ joinEvents: [] });
+  assert.equal(none.row.status, "PASS");
+  assert.equal(none.db.calls.some((c) => /no-join-link:(bookings|tasks)/.test(c.text)), false);
+});
+
+test("join link feed: the verdict does not fade as the bookings age, and the red says how old the newest booking is", async () => {
+  const days = (d, n) => new Date(NOW.getTime() - (d * 24 + n) * 3600e3).toISOString();
+  const aged = (d) => [1, 2, 3, 4, 5].map((n) => other(n, { created_at: days(d, n) }));
+  // Bookings from today, 1 day ago, 48 days ago, 150 days ago and 900 days ago: all the same red.
+  for (const [d, words] of [[0, "today"], [1, "1 day ago"], [48, "48 days ago"], [150, "150 days ago"], [900, "900 days ago"]]) {
+    const { row } = await joinRow({ joinEvents: aged(d) });
+    assert.equal(row.status, "FAIL", `${d} days`);
+    assert.match(row.detail, new RegExp(`^0 of the newest 5 real bookings carried a join link, so a new booking will not have one either \\(the newest real booking was made ${words}\\)`), `${d} days`);
+  }
+  // A link on one of the newest 5, however old, is still a working feed.
+  const old = aged(150);
+  old[2] = other(3, { created_at: days(150, 3), payload: { meetingUrl: LINK } });
+  const good = await joinRow({ joinEvents: old });
+  assert.equal(good.row.status, "PASS");
+  assert.match(good.row.detail, /1 of the newest 5 real bookings carry a link/);
+  // Under 3 old bookings is still "not judged", not red.
+  assert.equal((await joinRow({ joinEvents: aged(150).slice(0, 2) })).row.status, "PASS");
+  // The age is the NEWEST booking's, not the oldest one in the sample.
+  const mixed = [other(1, { created_at: days(10, 0) }), ...aged(300).slice(1)];
+  assert.match((await joinRow({ joinEvents: mixed })).row.detail, /the newest real booking was made 10 days ago\)/);
+});
+
+test("join link: a failed read is a skip with the reason, never a PASS; no database or company means skip", async () => {
+  for (const tag of ["events", "bookings", "tasks"]) {
+    const db = {
+      async query(sql) {
+        const t = String(sql);
+        if (new RegExp(`gap-calls:no-join-link:${tag}`).test(t)) throw new Error("table down");
+        if (/no-join-link:events/.test(t)) return { rows: [jev()] };
+        return { rows: [] };
+      }
+    };
+    const { row } = await joinRow({}, { db });
+    assert.equal(row.status, "skip", tag);
+    assert.match(row.detail, /table down/, tag);
+    assert.match(row.detail, /unchecked|not read/, tag);
+    assert.equal(row.suggestedFix, null);
+  }
+  assert.equal((await joinRow({}, { orgId: null })).row.status, "skip");
+  const noDb = await gapChecks({ orgId: ORG, now: NOW });
+  assert.equal(noDb.find((r) => r.id === JOIN).status, "skip");
+});
+
+test("join link SQL: this company only, no demo rows, created/moved/cancelled only, newest first up to now with NO look-back window, read only, never the staff table", async () => {
+  const { db } = await joinRow({ joinEvents: [jev()] });
+  const q = db.calls.find((c) => /no-join-link:events/.test(c.text));
+  // Only the company and "now". A second date here would be a look-back window, and the red would fade by itself.
+  assert.deepEqual(q.params, [ORG, NOW.toISOString()]);
+  assert.match(q.text, /e\.created_at <= \$2::timestamptz/);
+  assert.doesNotMatch(q.text, /created_at\s*>=/);
+  assert.match(q.text, /ORDER BY e\.created_at DESC/);
+  assert.match(q.text, /e\.org_id = \$1::uuid/);
+  assert.match(q.text, /COALESCE\(e\.is_demo, false\) = false/);
+  assert.match(q.text, /'booking\.created', 'booking\.rescheduled', 'booking\.cancelled'/);
+  assert.match(q.text, /LIMIT 1500/);
+  for (const c of db.calls.filter((x) => /no-join-link/.test(x.text))) {
+    assert.doesNotMatch(c.text, /\bFROM\s+staff\b|staff\.meeting_url|\bJOIN\s+staff\b/i);
+    assert.match(c.text, /org_id = \$1::uuid/);
+  }
+});
+
 test("source does not dial, read files, write rows, or add a watchdog", () => {
   assert.match(SRC, /from ["']\.\.\/\.\.\/insights\/meet\.mjs["']/);
   assert.doesNotMatch(SRC, /placeCall|placeConfiguredCall|bland-voice|messaging\/dispatch|createFunction/);
@@ -334,7 +561,8 @@ test("source does not dial, read files, write rows, or add a watchdog", () => {
    ------------------------------------------------------------------------ */
 const HAVE_DB = !!process.env.DATABASE_URL;
 const COLS = {
-  bookings: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["provider_uid", "text"], ["starts_at", "timestamptz"], ["ends_at", "timestamptz"], ["status", "text"], ["raw", "jsonb"], ["attendee_email", "text"]],
+  bookings: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["provider_uid", "text"], ["starts_at", "timestamptz"], ["ends_at", "timestamptz"], ["status", "text"], ["raw", "jsonb"], ["attendee_email", "text"], ["meeting_url", "text"]],
+  tasks: [["org_id", "uuid"], ["body", "text"], ["meeting_url", "text"]],
   clients: [["id", "uuid"], ["org_id", "uuid"], ["is_demo", "boolean"], ["custom_fields", "jsonb"], ["phone", "text"], ["email", "text"]],
   call_outcomes: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["booking_ref", "text"], ["is_demo", "boolean"], ["logged_at", "timestamptz"]],
   events: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["name", "text"], ["is_demo", "boolean"], ["created_at", "timestamptz"], ["payload", "jsonb"]],
@@ -447,5 +675,61 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     assert.equal(await status(id, { ...base, events: [event({ created_at: ago(0.08) })] }), "PASS");
     // The phone can be on the booking itself.
     assert.equal(await status(id, { ...base, clients: [client({ phone: null })], events: [event({ created_at: ago(1), payload: { email: "lead@example.com", phone: "+16025550123" } })] }), "FAIL");
+  });
+
+  /* calls:booked-no-join-link — the file's own three queries, run for real. */
+  const JOINID = "calls:booked-no-join-link";
+  const jev = (o = {}) => ({ id: uid(), org_id: org, client_id: null, name: "booking.created", is_demo: false, created_at: ago(3), payload: { bookingUid: "72964", email: "lead@acme.com", startTime: ago(-24), meetingUrl: null }, ...o });
+  const jpay = (o = {}) => ({ bookingUid: "72964", email: "lead@acme.com", startTime: ago(-24), meetingUrl: null, ...o });
+  const pastFive = () => [1, 2, 3, 4, 5].map((n) => jev({ created_at: ago(3 + n), payload: jpay({ bookingUid: `p${n}`, email: `c${n}@acme.com`, startTime: ago(48 + n) }) }));
+
+  test("no-join-link: FAIL with a call ahead and no link; PASS with a link on the event, the bookings row, or the closer's task", async () => {
+    assert.equal(await status(JOINID, { events: [jev()] }), "FAIL");
+    assert.equal(await status(JOINID, { events: [jev({ payload: jpay({ meetingUrl: "https://meet.google.com/abc" }) })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "72964", meeting_url: "https://zoom.us/j/1" })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev()], tasks: [{ org_id: org, body: "72964", meeting_url: "https://zoom.us/j/1" }] }), "PASS");
+    // Junk text, an empty string, and a link kept for another call or another company do not count.
+    assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "72964", meeting_url: "n/a" })] }), "FAIL");
+    assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "72964", meeting_url: "" })] }), "FAIL");
+    assert.equal(await status(JOINID, { events: [jev()], tasks: [{ org_id: org, body: "other", meeting_url: "https://zoom.us/j/1" }] }), "FAIL");
+    assert.equal(await status(JOINID, { events: [jev()], tasks: [{ org_id: uid(), body: "72964", meeting_url: "https://zoom.us/j/1" }] }), "FAIL");
+  });
+
+  test("no-join-link: cancelled, demo, another company, a tester address, an interview, and a call already over are not misses", async () => {
+    assert.equal(await status(JOINID, { events: [jev(), jev({ name: "booking.cancelled", created_at: ago(1) })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev({ is_demo: true })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev({ org_id: uid() })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev({ payload: jpay({ email: "qa+sim-01@gmail.com" }) })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev({ payload: jpay({ eventTypeSlug: "post-funding-interview" }) })] }), "PASS");
+    // A booking made 130 days ago for a call that is long over is not a miss.
+    assert.equal(await status(JOINID, { events: [jev({ created_at: ago(24 * 130), payload: jpay({ startTime: ago(24 * 100) }) })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev({ payload: jpay({ startTime: ago(3) }) })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev({ payload: jpay({ startTime: ago(0.5) }) })] }), "FAIL");
+  });
+
+  test("no-join-link feed: five real bookings and no link fails; a link on the newest passes; fewer than three is not judged", async () => {
+    assert.equal(await status(JOINID, { events: pastFive() }), "FAIL");
+    const withLink = pastFive();
+    withLink[0].payload.meetingUrl = "https://meet.google.com/abc";
+    assert.equal(await status(JOINID, { events: withLink }), "PASS");
+    assert.equal(await status(JOINID, { events: pastFive().slice(0, 2) }), "PASS");
+    assert.equal(await status(JOINID, { events: pastFive(), tasks: [{ org_id: org, body: "p1", meeting_url: "https://zoom.us/j/1" }] }), "PASS");
+  });
+
+  test("no-join-link: no look-back window. Old bookings are still judged, so the red does not fade; a call ahead booked long ago is a miss", async () => {
+    const oldFive = (d = 200) => [1, 2, 3, 4, 5].map((n) => jev({ created_at: ago(24 * d + n), payload: jpay({ bookingUid: `o${n}`, email: `o${n}@acme.com`, startTime: ago(24 * (d - 10) + n) }) }));
+    // Five real bookings made 200 days ago and no link: red, with no newer booking to rescue it.
+    assert.equal(await status(JOINID, { events: oldFive() }), "FAIL");
+    assert.equal(await status(JOINID, { events: oldFive(900) }), "FAIL");
+    const out = await gapChecks({ db: fixtureDb({ events: oldFive() }), orgId: org, now: NOW, env: OPEN_ENV, fetchImpl: null });
+    assert.match(out.find((r) => r.id === JOINID).detail, /the newest real booking was made 200 days ago\)/);
+    // A link on the newest of them: the feed worked when it last ran.
+    const withLink = oldFive();
+    withLink[0].payload.meetingUrl = "https://meet.google.com/abc";
+    assert.equal(await status(JOINID, { events: withLink }), "PASS");
+    // Fewer than three old bookings is still not judged.
+    assert.equal(await status(JOINID, { events: oldFive().slice(0, 2) }), "PASS");
+    // A booking made 130 days ago for a call 24 hours from now is still a call ahead with no link.
+    assert.equal(await status(JOINID, { events: [jev({ created_at: ago(24 * 130) })] }), "FAIL");
   });
 });

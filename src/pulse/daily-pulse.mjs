@@ -379,15 +379,39 @@ export async function runDailyPulse({
   );
   checks.push(await checkSuggestionsDoor({ fetchImpl, baseUrl: origin }));
   checks.push(checkGateRelay({ dirs: gateRelayDirs, nowMs: now.getTime() }));
-  const resolvedOrg = orgId || await defaultOrgId(db);
-  checks.push(await checkRecon({ db, orgId: resolvedOrg }));
-  checks.push(await checkUnrecorded({ db, orgId: resolvedOrg, now }));
-  if (resolvedOrg && db) {
-    checks.push(...await checkPipelineMotion({ db, orgId: resolvedOrg, now }));
-    checks.push(await checkLivePlaywright({ db, now }));
+  /* A DEAD DATABASE MUST NOT STOP THE PULSE. Each database read that can throw
+     becomes one row, so the scorecard and the text still go out. The first
+     failure is the one red row; the reads after it are skips (proved
+     2026-10-09 by gap-outside-inngest: the old code threw here and no text left). */
+  let dbDown = false;
+  const guard = async (id, fn) => {
+    try {
+      const out = await fn();
+      return Array.isArray(out) ? out : [out];
+    } catch (err) {
+      const why = String((err && err.message) || err).slice(0, 160);
+      if (dbDown) return [check(id, "skip", `not read — the database is down (${why})`)];
+      dbDown = true;
+      return [check("db", "FAIL", `The database could not be read: ${why}`,
+        "Check https://fundhub.ai/api/health and the Supabase project first.")];
+    }
+  };
+  let resolvedOrg = orgId || null;
+  if (!resolvedOrg) {
+    const [row] = await guard("db", async () => {
+      resolvedOrg = await defaultOrgId(db);
+      return [];
+    });
+    if (row) checks.push(row);
+  }
+  checks.push(...await guard("recon", () => checkRecon({ db: dbDown ? null : db, orgId: resolvedOrg })));
+  checks.push(...await guard("unrecorded", () => checkUnrecorded({ db: dbDown ? null : db, orgId: resolvedOrg, now })));
+  if (resolvedOrg && db && !dbDown) {
+    checks.push(...await guard("pipeline", () => checkPipelineMotion({ db, orgId: resolvedOrg, now })));
+    checks.push(...await guard("live-playwright", () => checkLivePlaywright({ db, now })));
   }
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
-  checks.push(...await checkMachine({ db, scope: staffScope, now }));
+  checks.push(...await guard("machine", () => checkMachine({ db: dbDown ? null : db, scope: dbDown ? null : staffScope, now })));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
   try {
     checks.push(...await checkJobHeartbeats({ db, now }));

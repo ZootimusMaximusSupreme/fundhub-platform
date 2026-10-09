@@ -27,10 +27,19 @@
 //   * A webhook that never arrived leaves no row anywhere (src/payments/commas-api.mjs
 //     says so). No read-only check can see that. It is written on the board, not faked.
 //   * The site GET has a timeout, so a hung site cannot eat the whole lane's step.
+//
+// Tier 1 tripwires (Claude, 2026-10-09). Four more reads, after the first four.
+// Each asks one yes-or-no question a paying customer would feel:
+//   payments:paid-product-unmapped     did a customer pay and we cannot tell who or what?
+//   payments:commas-inbox-waiting      is a paid receipt sitting in the inbox, unclaimed?
+//   payments:checkout-started-no-link  did someone press Pay and we never made their link?
+//   payments:card-declined-no-followup did a card fail and nobody reached out?
+// A failed read on these four is a skip with the reason, never a PASS.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { MAX_ATTEMPTS, STALE_CLAIM_MINUTES } from "../../payments/commas-inbox.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -44,8 +53,34 @@ export const CHECK_IDS = Object.freeze([
   "payments:invoice-stuck",
   "payments:pay-link-webhook",
   "payments:paid-no-entitlement",
-  "payments:commas-webhook-route"
+  "payments:commas-webhook-route",
+  "payments:paid-product-unmapped",
+  "payments:commas-inbox-waiting",
+  "payments:checkout-started-no-link",
+  "payments:card-declined-no-followup"
 ]);
+
+/** How far back a paid order is read. Older than this is history, not a morning break. */
+export const PAID_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+/** The inbox sweeper runs every minute. A receipt this old and still unclaimed means no clock is working. */
+export const INBOX_WAIT_MS = 10 * 60 * 1000;
+/** A claimed row is taken back after STALE_CLAIM_MINUTES. Still claimed 5 minutes after that means no clock took it back. */
+export const INBOX_PROCESSING_WAIT_MS = (STALE_CLAIM_MINUTES + 5) * 60 * 1000;
+/** The Pay press writes its event first and the link a moment later. This long and still no link is a break. */
+export const CHECKOUT_LINK_WAIT_MS = 10 * 60 * 1000;
+/** A Pay press older than this is old news. The morning job runs daily, so 3 days covers a long weekend gap. */
+export const CHECKOUT_LOOKBACK_MS = 3 * 24 * 60 * 60 * 1000;
+/** A card that failed less than this long ago may still be getting its reach-out. */
+export const DECLINE_WAIT_MS = 60 * 60 * 1000;
+/** A decline older than this is old news. */
+export const DECLINE_LOOKBACK_MS = 3 * 24 * 60 * 60 * 1000;
+
+/* A test client is one nobody is selling to. The first three parts are the same
+   pattern gap-consent.mjs and gap-portal.mjs use (a drift test holds them equal).
+   The last part adds the e2e+ and demo+ addresses the test runners mint: they
+   are not on a reserved domain, so the shared pattern alone lets them through. */
+export const TEST_CLIENT_EMAIL_RE =
+  String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost|local)$|^(e2e|demo)\+`;
 
 const RECON =
   "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. " +
@@ -417,9 +452,425 @@ async function checkCommasWebhookRoute({ readText, handleWebhookImpl, fetchImpl,
   }
 }
 
+// ---- Tier 1 tripwires — Claude, 2026-10-09 ----------------------------------
+//
+// All four read one row of counts and turn it into a sentence a buyer's day
+// would feel. A failed read is a skip with the reason (never a PASS), and a
+// skip row carries no suggestedFix. Test money is kept out of every FAIL:
+// the demo flag, the sim-pay- receipts, and test clients (TEST_CLIENT_EMAIL_RE).
+
+/* The test-client test, written once and pasted into each statement. `emails`
+   is the SQL for the address to test; `param` is the placeholder holding the
+   pattern. The clients row must be joined as `c`. */
+function testClientSql(emails, param) {
+  return `(COALESCE(c.is_demo, false)
+          OR COALESCE(c.custom_fields ->> 'synthetic', '') = 'true'
+          OR COALESCE(${emails}, '') ~* ${param}::text)`;
+}
+
+/* A paid order that nobody can match, read from the money table.
+   Two ways to be unmatched:
+     no person   the payment row has no client, so nobody can be given access.
+                 A partner who pays through a partner link is not a client; that
+                 is told apart by the partner link the payment came through.
+     no product  the name on the order is in no product and no alias, so
+                 reconcileFromTransactions leaves it alone. This alone is NOT a
+                 break: a normal Commas payment carries a product id or code in
+                 its payload and gets its grant that way (the $1 prove payment
+                 has a name that matches nothing and still holds its grant, tied
+                 to its own payment row). So an unknown name only counts when the
+                 client holds no grant made for that payment or after it. That
+                 is the customer's real state: paid, and still locked out.
+   Grace sits on the payment (3 minutes), same as the other money reads here. */
+export const PAID_PRODUCT_UNMAPPED_SQL = `
+  /* gap:paid-product-unmapped */
+  SELECT count(*) FILTER (WHERE NOT p.is_test)::int AS paid_n,
+         count(*) FILTER (WHERE p.is_test)::int AS test_n,
+         count(*) FILTER (WHERE NOT p.is_test AND p.no_client AND NOT p.partner_pays)::int AS no_client_n,
+         count(*) FILTER (WHERE NOT p.is_test AND p.no_client AND p.partner_pays)::int AS partner_n,
+         count(*) FILTER (WHERE NOT p.is_test AND NOT p.no_client AND p.unmapped AND NOT p.granted)::int AS unmapped_n,
+         count(*) FILTER (WHERE NOT p.is_test AND NOT p.no_client AND p.unmapped AND p.granted)::int AS handled_n,
+         left(
+           string_agg(
+             COALESCE(NULLIF(left(p.product_name, 40), ''), 'no product name')
+               || ' $' || COALESCE(p.amount_paid::text, '?')
+               || ' (order ' || COALESCE(p.provider_ref, 'none')
+               || COALESCE(', client ' || p.client_code, ', no client') || ')',
+             '; ' ORDER BY p.created_at DESC
+           ) FILTER (WHERE NOT p.is_test
+                       AND ((p.no_client AND NOT p.partner_pays)
+                            OR (NOT p.no_client AND p.unmapped AND NOT p.granted))),
+           400
+         ) AS sample
+    FROM (
+      SELECT t.created_at, t.product_name, t.amount_paid, t.provider_ref, c.client_code,
+             (t.client_id IS NULL) AS no_client,
+             (resolve_product_id(t.org_id, t.product_name) IS NULL) AS unmapped,
+             ${testClientSql("c.email", "$5")} AS is_test,
+             EXISTS (
+               SELECT 1
+                 FROM entitlements e
+                WHERE e.org_id = t.org_id
+                  AND e.client_id = t.client_id
+                  AND (e.source_transaction_id = t.id OR e.granted_at >= t.created_at)
+             ) AS granted,
+             EXISTS (
+               SELECT 1
+                 FROM payment_links pl
+                WHERE pl.org_id = t.org_id
+                  AND pl.partner_id IS NOT NULL
+                  AND (pl.link_ref = t.raw_payload ->> 'ref' OR pl.id::text = t.raw_payload ->> 'paymentLinkId')
+             ) AS partner_pays
+        FROM transactions t
+        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+       WHERE t.org_id = $1::uuid
+         AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+         AND COALESCE(t.is_demo, false) = false
+         AND COALESCE(t.provider_ref, '') NOT LIKE $3::text
+         AND t.created_at >= $4::timestamptz
+         AND t.created_at < $2::timestamptz
+    ) p
+`;
+
+/* A receipt in the Commas inbox that no clock is picking up. Commas sends each
+   notice once and never again, so a receipt stuck here is a paid buyer whose
+   payment is not yet recorded. Three shapes, all older than the wait:
+     pending     never claimed. Whatever attempts it has, the sweeper is not
+                 taking it. (webhooks:stuck-failed cannot see a pending row.)
+     failed      has tries left, and its last try was over the wait ago. A live
+                 sweeper retries it every minute; nobody has.
+     processing  claimed, and still claimed long after the sweeper takes a stale
+                 claim back, with tries left.
+   Rows at the attempt limit are webhooks:stuck-failed's. Not repeated here.
+   Simulated receipts (sim-pay-) are counted apart. */
+export const COMMAS_INBOX_WAITING_SQL = `
+  /* gap:commas-inbox-waiting */
+  SELECT count(*) FILTER (WHERE NOT w.sim)::int AS n,
+         count(*) FILTER (WHERE NOT w.sim AND w.event_type = 'payment.succeeded')::int AS paid_n,
+         count(*) FILTER (WHERE NOT w.sim AND w.status = 'pending')::int AS pending_n,
+         count(*) FILTER (WHERE NOT w.sim AND w.status = 'failed')::int AS failed_n,
+         count(*) FILTER (WHERE NOT w.sim AND w.status = 'processing')::int AS processing_n,
+         count(*) FILTER (WHERE w.sim)::int AS sim_n,
+         min(w.received_at) FILTER (WHERE NOT w.sim) AS oldest
+    FROM (
+      SELECT ci.status, ci.event_type, ci.received_at,
+             (COALESCE(ci.payment_id, '') LIKE $3::text) AS sim
+        FROM commas_inbox ci
+       WHERE ci.org_id = $1::uuid
+         AND ci.received_at < $2::timestamptz
+         AND (
+           ci.status = 'pending'
+           OR (ci.status = 'failed'
+               AND ci.attempts < $4::int
+               AND COALESCE(ci.claimed_at, ci.received_at) < $2::timestamptz)
+           OR (ci.status = 'processing'
+               AND ci.attempts < $4::int
+               AND ci.claimed_at < $5::timestamptz)
+         )
+    ) w
+`;
+
+/* Someone pressed Pay and we never made their checkout link. api/public/slo-checkout.mjs
+   writes the slo.checkout_started event first (it carries the order ref and the
+   client) and the payment_links row after the card session is made. A card
+   session that fails leaves the event and no link: the buyer saw an error.
+   A press is fine when its own ref has a link, or when the same client got a
+   later slo_ link (they pressed again and it worked). Demo presses, agent
+   presses and test clients are left out. Presses older than 3 days are old news.
+   The repair-plan press (slo-repair-checkout) writes its event after the link,
+   so a failed repair press leaves nothing to read. That one is not watched. */
+export const CHECKOUT_STARTED_NO_LINK_SQL = `
+  /* gap:checkout-started-no-link */
+  SELECT count(*)::int AS presses_n,
+         count(*) FILTER (WHERE NOT p.has_link)::int AS n,
+         min(p.created_at) FILTER (WHERE NOT p.has_link) AS oldest,
+         left(
+           string_agg(COALESCE(p.ref, 'no ref'), ', ' ORDER BY p.created_at DESC) FILTER (WHERE NOT p.has_link),
+           240
+         ) AS refs
+    FROM (
+      SELECT e.created_at, e.payload ->> 'ref' AS ref,
+             EXISTS (
+               SELECT 1
+                 FROM payment_links pl
+                WHERE pl.org_id = e.org_id
+                  AND (
+                    (e.payload ->> 'ref' IS NOT NULL AND pl.link_ref = e.payload ->> 'ref')
+                    OR (pl.client_id = e.client_id
+                        AND left(pl.link_ref, 4) = 'slo_'
+                        AND pl.created_at >= e.created_at - interval '1 minute')
+                  )
+             ) AS has_link
+        FROM events e
+        LEFT JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+       WHERE e.org_id = $1::uuid
+         AND e.name = 'slo.checkout_started'
+         AND COALESCE(e.is_demo, false) = false
+         AND COALESCE(e.payload ->> 'demo', '') <> 'true'
+         AND COALESCE(e.payload ->> 'actor', 'person') <> 'agent'
+         AND e.created_at < $2::timestamptz
+         AND e.created_at >= $3::timestamptz
+         AND NOT ${testClientSql("c.email, e.payload ->> 'email'", "$4")}
+    ) p
+`;
+
+/* A card failed and nobody reached out. payment.failed is the Commas notice.
+   Reached out means, after the failure and for that same client: an outbound
+   message from a person on staff or from an agent (messages.sender_kind is
+   'staff' or 'agent') that was not failed or blocked, or any task, or a later
+   paid payment (they paid on a second try). A decline with no client attached
+   has nobody to reach: it is counted apart, not a FAIL. Old declines (over 3
+   days) and ones under an hour old are left alone.
+   An automated message (sender_kind 'system': a drip, a welcome, a coupon) is
+   NOT a reach-out. It goes out to every client whatever happened to their card,
+   so counting it turned the check green the morning after the next drip. The
+   count of declines that got only automated messages is returned as auto_only_n
+   so the red line can say why it is red. If a card-decline notice template is
+   ever built, this check must be told its key, or it stays red after the system
+   has reached out. None exists today. */
+export const CARD_DECLINED_NO_FOLLOWUP_SQL = `
+  /* gap:card-declined-no-followup */
+  SELECT count(*) FILTER (WHERE NOT p.no_client)::int AS declines_n,
+         count(*) FILTER (WHERE NOT p.no_client AND NOT p.followed)::int AS n,
+         count(*) FILTER (WHERE NOT p.no_client AND NOT p.followed AND p.auto_msg)::int AS auto_only_n,
+         count(*) FILTER (WHERE p.no_client)::int AS no_client_n,
+         min(p.created_at) FILTER (WHERE NOT p.no_client AND NOT p.followed) AS oldest,
+         left(
+           string_agg(
+             COALESCE(p.client_code, 'no code') || ' (order ' || COALESCE(p.ref, 'none') || ')',
+             ', ' ORDER BY p.created_at DESC
+           ) FILTER (WHERE NOT p.no_client AND NOT p.followed),
+           300
+         ) AS sample
+    FROM (
+      SELECT e.created_at, e.payload ->> 'providerRef' AS ref, c.client_code,
+             (e.client_id IS NULL) AS no_client,
+             (
+               EXISTS (
+                 SELECT 1
+                   FROM messages m
+                  WHERE m.org_id = e.org_id
+                    AND m.client_id = e.client_id
+                    AND m.direction = 'outbound'
+                    AND m.sender_kind IN ('staff', 'agent')
+                    AND m.created_at > e.created_at
+                    AND lower(COALESCE(m.status, '')) NOT IN ('failed', 'blocked', 'bounced', 'cancelled')
+               )
+               OR EXISTS (
+                 SELECT 1
+                   FROM tasks k
+                  WHERE k.org_id = e.org_id
+                    AND k.client_id = e.client_id
+                    AND k.created_at > e.created_at
+               )
+               OR EXISTS (
+                 SELECT 1
+                   FROM transactions tx
+                  WHERE tx.org_id = e.org_id
+                    AND tx.client_id = e.client_id
+                    AND lower(btrim(COALESCE(tx.status, ''))) = 'succeeded'
+                    AND COALESCE(tx.is_demo, false) = false
+                    AND tx.created_at > e.created_at
+               )
+             ) AS followed,
+             EXISTS (
+               SELECT 1
+                 FROM messages m
+                WHERE m.org_id = e.org_id
+                  AND m.client_id = e.client_id
+                  AND m.direction = 'outbound'
+                  AND COALESCE(m.sender_kind, 'system') = 'system'
+                  AND m.created_at > e.created_at
+                  AND lower(COALESCE(m.status, '')) NOT IN ('failed', 'blocked', 'bounced', 'cancelled')
+             ) AS auto_msg
+        FROM events e
+        LEFT JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+       WHERE e.org_id = $1::uuid
+         AND e.name = 'payment.failed'
+         AND COALESCE(e.is_demo, false) = false
+         AND e.created_at < $2::timestamptz
+         AND e.created_at >= $3::timestamptz
+         AND COALESCE(e.payload ->> 'providerRef', '') NOT LIKE $4::text
+         AND NOT ${testClientSql("c.email, e.payload ->> 'email'", "$5")}
+    ) p
+`;
+
+function oneRow(result) {
+  const r = result?.rows?.[0];
+  return r && typeof r === "object" ? r : null;
+}
+
+function ageOf(then, now) {
+  const t = then instanceof Date ? then : new Date(then);
+  const ms = now.getTime() - t.getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "a short time";
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 120) return plural(Math.max(minutes, 1), "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return plural(hours, "hour");
+  return plural(Math.floor(hours / 24), "day");
+}
+
+async function readTripwire(db, id, what, sql, params) {
+  try {
+    const r = oneRow(await db.query(sql, params));
+    if (!r) return { skip: row(id, "skip", `could not read ${what}: the read came back with no row`) };
+    return { r };
+  } catch (err) {
+    return { skip: row(id, "skip", `could not read ${what}: ${String(err?.message || err).slice(0, 180)}`) };
+  }
+}
+
+async function checkPaidProductUnmapped({ db, orgId, now }) {
+  const id = "payments:paid-product-unmapped";
+  const why = skipWhy({ db, orgId }, "paid orders");
+  if (why) return row(id, "skip", why);
+  const cutoff = new Date(now.getTime() - LINK_WEBHOOK_GRACE_MS).toISOString();
+  const since = new Date(now.getTime() - PAID_LOOKBACK_MS).toISOString();
+  const got = await readTripwire(db, id, "paid orders", PAID_PRODUCT_UNMAPPED_SQL, [
+    orgId, cutoff, `${SIM_RECEIPT_PREFIX}%`, since, TEST_CLIENT_EMAIL_RE
+  ]);
+  if (got.skip) return got.skip;
+  const r = got.r;
+  const paidN = intOf(r.paid_n);
+  const noClientN = intOf(r.no_client_n);
+  const unmappedN = intOf(r.unmapped_n);
+  const handledN = intOf(r.handled_n);
+  const partnerN = intOf(r.partner_n);
+  const testN = intOf(r.test_n);
+  const left = [];
+  if (handledN > 0) left.push(`${plural(handledN, "order")} with an unknown product name already ${handledN === 1 ? "has" : "have"} access`);
+  if (partnerN > 0) left.push(`${plural(partnerN, "partner payment")}`);
+  if (testN > 0) left.push(`${plural(testN, "test-client payment")}`);
+  const leftNote = left.length ? ` Left out: ${left.join(", ")}.` : "";
+  const n = noClientN + unmappedN;
+  if (n === 0) {
+    return row(
+      id,
+      "PASS",
+      paidN === 0
+        ? `no real paid order in the last 30 days to check.${leftNote}`
+        : `${plural(paidN, "real paid order")} in the last 30 days, and each has a person plus a known product or access.${leftNote}`
+    );
+  }
+  const parts = [];
+  if (noClientN > 0) parts.push(`${plural(noClientN, "order")} with no person attached`);
+  if (unmappedN > 0) parts.push(`${plural(unmappedN, "order")} for a product name we do not know, with no access given since`);
+  const sample = typeof r.sample === "string" && r.sample ? ` ${r.sample}.` : "";
+  return row(
+    id,
+    "FAIL",
+    `${plural(n, "paid order")} in the last 30 days that we cannot match: ${parts.join("; ")}.${sample}${leftNote}`,
+    `${RECON} Match each order to its person and product by hand: add the vendor title to the product's aliases through the existing product flow, then give the access in the existing grant flow. Do not take the payment again.`
+  );
+}
+
+async function checkCommasInboxWaiting({ db, orgId, now }) {
+  const id = "payments:commas-inbox-waiting";
+  const why = skipWhy({ db, orgId }, "the Commas inbox");
+  if (why) return row(id, "skip", why);
+  const cutoff = new Date(now.getTime() - INBOX_WAIT_MS).toISOString();
+  const processingCutoff = new Date(now.getTime() - INBOX_PROCESSING_WAIT_MS).toISOString();
+  const got = await readTripwire(db, id, "the Commas inbox", COMMAS_INBOX_WAITING_SQL, [
+    orgId, cutoff, `${SIM_RECEIPT_PREFIX}%`, MAX_ATTEMPTS, processingCutoff
+  ]);
+  if (got.skip) return got.skip;
+  const r = got.r;
+  const n = intOf(r.n);
+  const simN = intOf(r.sim_n);
+  const simNote = simN > 0 ? ` (${plural(simN, "simulated receipt")} left out: no card was charged)` : "";
+  if (n === 0) {
+    return row(id, "PASS", `no Commas receipt is waiting for a clock to pick it up${simNote}`);
+  }
+  const paidN = intOf(r.paid_n);
+  const oldest = r.oldest ? ` The oldest came in ${ageOf(r.oldest, now)} ago.` : "";
+  return row(
+    id,
+    "FAIL",
+    `${plural(n, "Commas receipt")} waiting in the inbox that no clock is picking up: ` +
+      `${intOf(r.pending_n)} never tried, ${intOf(r.failed_n)} failed with tries left, ${intOf(r.processing_n)} stuck mid-pass. ` +
+      `${n === 1 ? (paidN === 1 ? "It is a paid receipt." : "It is not a paid receipt.") : `${paidN} of them ${paidN === 1 ? "is a paid receipt" : "are paid receipts"}.`}${oldest}${simNote}`,
+    `${RECON} Read commas_inbox for those rows. The two inbox clocks (commas-inbox-sweeper and commas-inbox-drain) should have taken them. Commas never sends a notice twice, so keep the row bytes as they are.`
+  );
+}
+
+async function checkCheckoutStartedNoLink({ db, orgId, now }) {
+  const id = "payments:checkout-started-no-link";
+  const why = skipWhy({ db, orgId }, "Pay presses");
+  if (why) return row(id, "skip", why);
+  const cutoff = new Date(now.getTime() - CHECKOUT_LINK_WAIT_MS).toISOString();
+  const since = new Date(now.getTime() - CHECKOUT_LOOKBACK_MS).toISOString();
+  const got = await readTripwire(db, id, "Pay presses", CHECKOUT_STARTED_NO_LINK_SQL, [
+    orgId, cutoff, since, TEST_CLIENT_EMAIL_RE
+  ]);
+  if (got.skip) return got.skip;
+  const r = got.r;
+  const pressesN = intOf(r.presses_n);
+  const n = intOf(r.n);
+  if (n === 0) {
+    return row(
+      id,
+      "PASS",
+      pressesN === 0
+        ? "no real Pay press in the last 3 days is old enough to check"
+        : `${pressesN} real Pay ${pressesN === 1 ? "press" : "presses"} in the last 3 days, and each has its checkout link`
+    );
+  }
+  const oldest = r.oldest ? ` The oldest was ${ageOf(r.oldest, now)} ago.` : "";
+  const refs = typeof r.refs === "string" && r.refs ? ` Order refs: ${r.refs}.` : "";
+  return row(
+    id,
+    "FAIL",
+    `${n} Pay ${n === 1 ? "press" : "presses"} in the last 3 days with no checkout link made, out of ${pressesN} real ${pressesN === 1 ? "press" : "presses"}. ` +
+      `The buyer pressed Pay and the link was never made.${oldest}${refs}`,
+    `${RECON} Read the slo.checkout_started event for each ref and the card session call in api/public/slo-checkout. Reach the buyer with a fresh link from the existing pay link flow. Do not mint a Commas catalog product.`
+  );
+}
+
+async function checkCardDeclinedNoFollowup({ db, orgId, now }) {
+  const id = "payments:card-declined-no-followup";
+  const why = skipWhy({ db, orgId }, "card declines");
+  if (why) return row(id, "skip", why);
+  const cutoff = new Date(now.getTime() - DECLINE_WAIT_MS).toISOString();
+  const since = new Date(now.getTime() - DECLINE_LOOKBACK_MS).toISOString();
+  const got = await readTripwire(db, id, "card declines", CARD_DECLINED_NO_FOLLOWUP_SQL, [
+    orgId, cutoff, since, `${SIM_RECEIPT_PREFIX}%`, TEST_CLIENT_EMAIL_RE
+  ]);
+  if (got.skip) return got.skip;
+  const r = got.r;
+  const declinesN = intOf(r.declines_n);
+  const noClientN = intOf(r.no_client_n);
+  const n = intOf(r.n);
+  const noClientNote = noClientN > 0 ? ` (${plural(noClientN, "decline")} with no client attached left out: nobody to reach)` : "";
+  if (n === 0) {
+    return row(
+      id,
+      "PASS",
+      declinesN === 0
+        ? `no real card decline in the last 3 days is old enough to check${noClientNote}`
+        : `${plural(declinesN, "real card decline")} in the last 3 days, and each client has a later staff or agent message, task or payment${noClientNote}`
+    );
+  }
+  const oldest = r.oldest ? ` The oldest was ${ageOf(r.oldest, now)} ago.` : "";
+  const sample = typeof r.sample === "string" && r.sample ? ` Clients: ${r.sample}.` : "";
+  const autoOnlyN = intOf(r.auto_only_n);
+  const autoNote = autoOnlyN === 0
+    ? ""
+    : n === 1
+      ? " That client has only had automated drip messages since, and those do not count."
+      : ` For ${autoOnlyN} of them the client has only had automated drip messages since, and those do not count.`;
+  return row(
+    id,
+    "FAIL",
+    `${plural(n, "card decline")} over an hour old with no staff or agent message, no task and no later payment for that client.${autoNote}${oldest}${sample}${noClientNote}`,
+    `${RECON} Reach those clients by hand with a fresh pay link from the existing flow. The payment.failed handler only saves a failed payment row today; it makes no text and no task. Automated drip messages do not count as reaching out. Do not take the card again.`
+  );
+}
+
 /**
- * Four read-only checks. ctx: { db, orgId, now, fetchImpl (or fetch), baseUrl, readText, handleWebhook }.
+ * Eight read-only checks. ctx: { db, orgId, now, fetchImpl (or fetch), baseUrl, readText, handleWebhook }.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
+ * The first four are the original lane. The last four are the 2026-10-09 tripwires.
  */
 export async function gapChecks(ctx = {}) {
   const db = ctx.db || null;
@@ -432,6 +883,10 @@ export async function gapChecks(ctx = {}) {
     await checkInvoiceStuck({ db, orgId }),
     await checkPayLinkWebhook({ db, orgId, now }),
     await checkPaidNoEntitlement({ db, orgId, now }),
-    await checkCommasWebhookRoute({ readText, handleWebhookImpl, fetchImpl, baseUrl: ctx.baseUrl || null })
+    await checkCommasWebhookRoute({ readText, handleWebhookImpl, fetchImpl, baseUrl: ctx.baseUrl || null }),
+    await checkPaidProductUnmapped({ db, orgId, now }),
+    await checkCommasInboxWaiting({ db, orgId, now }),
+    await checkCheckoutStartedNoLink({ db, orgId, now }),
+    await checkCardDeclinedNoFollowup({ db, orgId, now })
   ];
 }

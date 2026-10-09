@@ -627,7 +627,14 @@ export async function runMorningBrief({
     dryRun: !live,
     ...(sendImpl ? { sendImpl } : {})
   });
-  const saved = await saveMorningBrief(db, brief, delivery, { dryRun: !live });
+  // The text has gone (or not) by here. A failed save must not throw, or the
+  // pulse job would think no text left and send its fallback a second time.
+  let saved;
+  try {
+    saved = await saveMorningBrief(db, brief, delivery, { dryRun: !live });
+  } catch (err) {
+    saved = { saved: false, reason: "save_failed", error: String((err && err.message) || err).slice(0, 200) };
+  }
   return { ok: true, brief, delivery, saved };
 }
 

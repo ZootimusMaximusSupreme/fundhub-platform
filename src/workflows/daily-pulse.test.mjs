@@ -137,3 +137,63 @@ test("a lane step that keeps failing is one skip row and the pulse still runs", 
   assert.match(skip.detail, /26 s/);
   assert.ok(rows.some((r) => r.sliceId === "gap-repair"), "the next lane still ran");
 });
+
+test("when the morning brief cannot be built, the plain pulse text still goes out, once", async () => {
+  const sends = [];
+  const step = { run: async (_name, fn) => fn() };
+  const db = { query: async () => ({ rows: [] }) };
+  await handle({
+    db,
+    step,
+    env: { PULSE_SMS_TO: "+16025551234" },
+    dryRun: false,
+    boardDir: fs.mkdtempSync(path.join(os.tmpdir(), "pulse-brieffail-")),
+    fetchImpl: async () => ({ status: 200, text: async () => "Sign in password Generate Apps Apply door" }),
+    sendSms: async (msg) => { sends.push(msg); return { status: "sent", providerMessageId: "SM1" }; },
+    briefLive: true,
+    coverage: async () => [],
+    morningBrief: async () => { throw new Error("database went away"); }
+  });
+  assert.equal(sends.length, 1, "exactly one fallback text");
+  assert.match(sends[0].body, /Fundhub morning check/);
+  assert.match(sends[0].body, /could not be built: database went away/);
+});
+
+test("a brief that builds and texts gets no second text", async () => {
+  const sends = [];
+  const step = { run: async (_name, fn) => fn() };
+  await handle({
+    db: { query: async () => ({ rows: [] }) },
+    step,
+    env: { PULSE_SMS_TO: "+16025551234" },
+    dryRun: false,
+    boardDir: fs.mkdtempSync(path.join(os.tmpdir(), "pulse-briefok-")),
+    fetchImpl: async () => ({ status: 200, text: async () => "Sign in password Generate Apps Apply door" }),
+    sendSms: async (msg) => { sends.push(msg); return { status: "sent" }; },
+    briefLive: true,
+    coverage: async () => [],
+    morningBrief: async () => ({ ok: true, delivery: { delivery_status: "sent" } })
+  });
+  assert.equal(sends.length, 0);
+});
+
+test("when the pulse step itself dies, one text says so and the run still fails", async () => {
+  const sends = [];
+  const step = {
+    run: async (name, fn) => {
+      if (name === "run-pulse") throw new Error("Netlify cut the request at 26 s");
+      return fn();
+    }
+  };
+  await assert.rejects(handle({
+    db: { query: async () => ({ rows: [] }) },
+    step,
+    env: { PULSE_SMS_TO: "+16025551234" },
+    dryRun: false,
+    sendSms: async (msg) => { sends.push(msg); return { status: "sent" }; },
+    briefLive: true,
+    coverage: async () => []
+  }), /26 s/);
+  assert.equal(sends.length, 1);
+  assert.match(sends[0].body, /did not finish: Netlify cut the request at 26 s/);
+});

@@ -12,6 +12,7 @@ import { asStaff } from "../partners/rls.mjs";
 import { DEFAULT_BASE_URL, PULSE_CRON, defaultOrgId, runDailyPulse } from "../pulse/daily-pulse.mjs";
 import { GAP_LANES, runCoverageSlices, runGapLane } from "../pulse/coverage/run-slices.mjs";
 import { MORNING_BRIEF_LIVE, runMorningBrief } from "../ops/morning-brief.mjs";
+import { formatChrisSms, textMorningBrief } from "../pulse/notify.mjs";
 
 export { PULSE_CRON };
 
@@ -28,6 +29,18 @@ function stepSkip(id, detail) {
     customerSees: null,
     schedule: null
   };
+}
+
+/** One plain text to the pulse number. Never throws, so a failed fallback cannot hide the first failure. */
+async function fallbackText(step, name, { body, env, dryRun, sendSms }) {
+  try {
+    return await step.run(name, () => textMorningBrief({
+      body, env, dryRun: !!dryRun, ...(sendSms ? { sendImpl: sendSms } : {})
+    }));
+  } catch (err) {
+    console.error(`[daily-pulse] ${name} failed:`, String((err && err.message) || err).slice(0, 200));
+    return null;
+  }
 }
 
 /**
@@ -99,7 +112,9 @@ export async function handle({
   const coverageRows = db
     ? await coverage({ step, db, env, fetchImpl, staffScope })
     : null;
-  const pulse = await step.run("run-pulse", () => runDailyPulse({
+  let pulse;
+  try {
+    pulse = await step.run("run-pulse", () => runDailyPulse({
     db,
     env,
     dryRun,
@@ -113,13 +128,42 @@ export async function handle({
     sendPulseText: !replacePulseText,
     coverageRows
   }));
+  } catch (err) {
+    // The pulse itself died. A red morning is never silent: one plain text, then fail the run.
+    const why = String((err && err.message) || err).slice(0, 200);
+    await fallbackText(step, "pulse-failed-text", {
+      body: `Fundhub morning check did not finish: ${why}. Check https://fundhub.ai/api/health first.`,
+      env, dryRun, sendSms
+    });
+    throw err;
+  }
   if (db) {
+    let brief = null;
+    let why = "";
     try {
-      await step.run("morning-brief", () => morningBrief({
+      brief = await step.run("morning-brief", () => morningBrief({
         db, env, pulse, kind: "morning", live: briefLive, staffScope
       }));
     } catch (err) {
-      console.error("[daily-pulse] morning brief failed:", String((err && err.message) || err).slice(0, 200));
+      why = String((err && err.message) || err).slice(0, 200);
+      console.error("[daily-pulse] morning brief failed:", why);
+    }
+    // The brief replaces the pulse text. If it threw, or could not even start,
+    // no text went out — send the plain pulse line so Chris still hears.
+    if (replacePulseText && (!brief || brief.ok === false)) {
+      const checks = (pulse && pulse.checks) || [];
+      const red = checks.filter((c) => c.status === "FAIL" || c.status === "down");
+      const line = formatChrisSms({
+        date: pulse && pulse.date,
+        pass: checks.filter((c) => c.status === "PASS" || c.status === "up").length,
+        fail: red.length,
+        skip: checks.filter((c) => c.status === "skip").length,
+        topFails: red.map((c) => `${c.id}: ${c.detail}`)
+      });
+      await fallbackText(step, "brief-failed-text", {
+        body: `${line} The full morning brief could not be built: ${why || (brief && brief.reason) || "unknown"}.`,
+        env, dryRun, sendSms
+      });
     }
   }
   return pulse;
