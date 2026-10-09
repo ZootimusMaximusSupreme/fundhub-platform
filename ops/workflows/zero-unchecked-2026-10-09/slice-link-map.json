@@ -1,0 +1,1410 @@
+[
+ {
+  "sliceRow": "01-auth:auth/login",
+  "sliceCheckId": "auth/login",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/login",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/login 200"
+ },
+ {
+  "sliceRow": "01-auth:auth/logout",
+  "sliceCheckId": "auth/logout",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/logout",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/logout 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/session",
+  "sliceCheckId": "auth/session",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/session",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/session 401"
+ },
+ {
+  "sliceRow": "01-auth:auth/magic-link",
+  "sliceCheckId": "auth/magic-link",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/magic-link",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/magic-link 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/magic-link-verify",
+  "sliceCheckId": "auth/magic-link-verify",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/magic-link-verify",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/magic-link-verify 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/invite",
+  "sliceCheckId": "auth/invite",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/invite",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/invite 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/reset",
+  "sliceCheckId": "auth/reset",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/reset",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/reset 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/admin-reset",
+  "sliceCheckId": "auth/admin-reset",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/admin-reset",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/admin-reset 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/staff-role",
+  "sliceCheckId": "auth/staff-role",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/staff-role",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/staff-role 405"
+ },
+ {
+  "sliceRow": "01-auth:auth/suspend",
+  "sliceCheckId": "auth/suspend",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/suspend",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/suspend 405"
+ },
+ {
+  "sliceRow": "08-banks:banking/sync-accounts",
+  "sliceCheckId": "banking/sync-accounts",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:banking/sync-accounts",
+  "linkedStatus": "green",
+  "linkedProof": "/api/banking/sync-accounts 405"
+ },
+ {
+  "sliceRow": "08-banks:banking/sync-liabilities",
+  "sliceCheckId": "banking/sync-liabilities",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:banking/sync-liabilities",
+  "linkedStatus": "green",
+  "linkedProof": "/api/banking/sync-liabilities 405"
+ },
+ {
+  "sliceRow": "08-banks:banking/sync-transactions",
+  "sliceCheckId": "banking/sync-transactions",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:banking/sync-transactions",
+  "linkedStatus": "green",
+  "linkedProof": "/api/banking/sync-transactions 405"
+ },
+ {
+  "sliceRow": "13-calls:bookings",
+  "sliceCheckId": "bookings",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:bookings",
+  "linkedStatus": "green",
+  "linkedProof": "/api/bookings 401"
+ },
+ {
+  "sliceRow": "21-underwrite:read/underwrite",
+  "sliceCheckId": "read/underwrite",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/underwrite",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/underwrite 401"
+ },
+ {
+  "sliceRow": "22-partners:public/partner-page",
+  "sliceCheckId": "public/partner-page",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/partner-page",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/partner-page 400"
+ },
+ {
+  "sliceRow": "22-partners:public/partner-apply",
+  "sliceCheckId": "public/partner-apply",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/partner-apply",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/partner-apply 405"
+ },
+ {
+  "sliceRow": "22-partners:public/funnel-checkout",
+  "sliceCheckId": "public/funnel-checkout",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/funnel-checkout",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/funnel-checkout 200"
+ },
+ {
+  "sliceRow": "22-partners:partner-addons",
+  "sliceCheckId": "partner-addons",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-addons",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-addons 401"
+ },
+ {
+  "sliceRow": "22-partners:partner-brand",
+  "sliceCheckId": "partner-brand",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-brand",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-brand 401"
+ },
+ {
+  "sliceRow": "22-partners:partner-brand/verify-domain",
+  "sliceCheckId": "partner-brand/verify-domain",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-brand/verify-domain",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-brand/verify-domain 405"
+ },
+ {
+  "sliceRow": "22-partners:partner-marketing/copy-history",
+  "sliceCheckId": "partner-marketing/copy-history",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/copy-history",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/copy-history 401"
+ },
+ {
+  "sliceRow": "22-partners:partner-marketing/enable",
+  "sliceCheckId": "partner-marketing/enable",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/enable",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/enable 401"
+ },
+ {
+  "sliceRow": "22-partners:partner-marketing/generate-copy",
+  "sliceCheckId": "partner-marketing/generate-copy",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/generate-copy",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/generate-copy 405"
+ },
+ {
+  "sliceRow": "22-partners:partner-marketing/generate-logo",
+  "sliceCheckId": "partner-marketing/generate-logo",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/generate-logo",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/generate-logo 405"
+ },
+ {
+  "sliceRow": "22-partners:partner-marketing/usage",
+  "sliceCheckId": "partner-marketing/usage",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/usage",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/usage 401"
+ },
+ {
+  "sliceRow": "22-partners:partner-pages",
+  "sliceCheckId": "partner-pages",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-pages",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-pages 401"
+ },
+ {
+  "sliceRow": "22-partners:partners/approve",
+  "sliceCheckId": "partners/approve",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partners/approve",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partners/approve 405"
+ },
+ {
+  "sliceRow": "22-partners:read/partner-home-tiles",
+  "sliceCheckId": "read/partner-home-tiles",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partner-home-tiles",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partner-home-tiles 401"
+ },
+ {
+  "sliceRow": "22-partners:read/partner-production",
+  "sliceCheckId": "read/partner-production",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partner-production",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partner-production 401"
+ },
+ {
+  "sliceRow": "22-partners:read/partner-training",
+  "sliceCheckId": "read/partner-training",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partner-training",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partner-training 401"
+ },
+ {
+  "sliceRow": "22-partners:read/partners",
+  "sliceCheckId": "read/partners",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partners",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partners 401"
+ },
+ {
+  "sliceRow": "22-partners:partner-galaxy.html",
+  "sliceCheckId": "partner-galaxy.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:partner-galaxy",
+  "linkedStatus": "green",
+  "linkedProof": "/app/partner-galaxy.html 200"
+ },
+ {
+  "sliceRow": "22-partners:partner-training.html",
+  "sliceCheckId": "partner-training.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:partner-training",
+  "linkedStatus": "green",
+  "linkedProof": "/app/partner-training.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:public/survey-submit",
+  "sliceCheckId": "public/survey-submit",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/survey-submit",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/survey-submit 405"
+ },
+ {
+  "sliceRow": "26-client-journey:public/slo-interest",
+  "sliceCheckId": "public/slo-interest",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/slo-interest",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/slo-interest 200"
+ },
+ {
+  "sliceRow": "26-client-journey:public/slo-checkout",
+  "sliceCheckId": "public/slo-checkout",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/slo-checkout",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/slo-checkout 200"
+ },
+ {
+  "sliceRow": "26-client-journey:public/slo-status",
+  "sliceCheckId": "public/slo-status",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/slo-status",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/slo-status 400"
+ },
+ {
+  "sliceRow": "26-client-journey:public/funnel-checkout",
+  "sliceCheckId": "public/funnel-checkout",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/funnel-checkout",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/funnel-checkout 200"
+ },
+ {
+  "sliceRow": "26-client-journey:payment-success.html",
+  "sliceCheckId": "payment-success.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:payment-success",
+  "linkedStatus": "green",
+  "linkedProof": "/app/payment-success.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:auth/magic-link",
+  "sliceCheckId": "auth/magic-link",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/magic-link",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/magic-link 405"
+ },
+ {
+  "sliceRow": "26-client-journey:auth/magic-link-verify",
+  "sliceCheckId": "auth/magic-link-verify",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:auth/magic-link-verify",
+  "linkedStatus": "green",
+  "linkedProof": "/api/auth/magic-link-verify 405"
+ },
+ {
+  "sliceRow": "26-client-journey:portal-login.html",
+  "sliceCheckId": "portal-login.html",
+  "registryKind": "public_static",
+  "linkedScorecardId": "reg:portal-login",
+  "linkedStatus": "green",
+  "linkedProof": "/portal-login.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:client-portal.html",
+  "sliceCheckId": "client-portal.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:client-portal",
+  "linkedStatus": "green",
+  "linkedProof": "/app/client-portal.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:progress.html",
+  "sliceCheckId": "progress.html",
+  "registryKind": "public_static",
+  "linkedScorecardId": "reg:progress",
+  "linkedStatus": "green",
+  "linkedProof": "/progress.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:read/portal-summary",
+  "sliceCheckId": "read/portal-summary",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/portal-summary",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/portal-summary 401"
+ },
+ {
+  "sliceRow": "26-client-journey:read/client-progress",
+  "sliceCheckId": "read/client-progress",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/client-progress",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/client-progress 401"
+ },
+ {
+  "sliceRow": "26-client-journey:read/portal-contracts",
+  "sliceCheckId": "read/portal-contracts",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/portal-contracts",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/portal-contracts 401"
+ },
+ {
+  "sliceRow": "26-client-journey:read/entitlements",
+  "sliceCheckId": "read/entitlements",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/entitlements",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/entitlements 401"
+ },
+ {
+  "sliceRow": "26-client-journey:chat/portal-message",
+  "sliceCheckId": "chat/portal-message",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:chat/portal-message",
+  "linkedStatus": "green",
+  "linkedProof": "/api/chat/portal-message 401"
+ },
+ {
+  "sliceRow": "26-client-journey:content/welcome-video",
+  "sliceCheckId": "content/welcome-video",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:content/welcome-video",
+  "linkedStatus": "green",
+  "linkedProof": "/api/content/welcome-video 401"
+ },
+ {
+  "sliceRow": "26-client-journey:push/subscribe",
+  "sliceCheckId": "push/subscribe",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:push/subscribe",
+  "linkedStatus": "green",
+  "linkedProof": "/api/push/subscribe 401"
+ },
+ {
+  "sliceRow": "26-client-journey:documents-upload",
+  "sliceCheckId": "documents-upload",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:documents-upload",
+  "linkedStatus": "green",
+  "linkedProof": "/api/documents-upload 405"
+ },
+ {
+  "sliceRow": "26-client-journey:documents-download",
+  "sliceCheckId": "documents-download",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:documents-download",
+  "linkedStatus": "green",
+  "linkedProof": "/api/documents-download 401"
+ },
+ {
+  "sliceRow": "26-client-journey:documents.html",
+  "sliceCheckId": "documents.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:documents",
+  "linkedStatus": "green",
+  "linkedProof": "/app/documents.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:finance/soft-pull",
+  "sliceCheckId": "finance/soft-pull",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:finance/soft-pull",
+  "linkedStatus": "green",
+  "linkedProof": "/api/finance/soft-pull 401"
+ },
+ {
+  "sliceRow": "26-client-journey:soft-pull-approve",
+  "sliceCheckId": "soft-pull-approve",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:soft-pull-approve",
+  "linkedStatus": "green",
+  "linkedProof": "/app/soft-pull-approve.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:soft-pull-approve.html",
+  "sliceCheckId": "soft-pull-approve.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:soft-pull-approve",
+  "linkedStatus": "green",
+  "linkedProof": "/app/soft-pull-approve.html 200"
+ },
+ {
+  "sliceRow": "26-client-journey:consent/capture",
+  "sliceCheckId": "consent/capture",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:consent/capture",
+  "linkedStatus": "green",
+  "linkedProof": "/api/consent/capture 401"
+ },
+ {
+  "sliceRow": "26-client-journey:paid-services",
+  "sliceCheckId": "paid-services",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:paid-services",
+  "linkedStatus": "green",
+  "linkedProof": "/api/paid-services 401"
+ },
+ {
+  "sliceRow": "26-client-journey:waypoint-tick",
+  "sliceCheckId": "waypoint-tick",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:waypoint-tick",
+  "linkedStatus": "green",
+  "linkedProof": "/api/waypoint-tick 405"
+ },
+ {
+  "sliceRow": "27-closer:bookings",
+  "sliceCheckId": "bookings",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:bookings",
+  "linkedStatus": "green",
+  "linkedProof": "/api/bookings 401"
+ },
+ {
+  "sliceRow": "27-closer:read/closer-call",
+  "sliceCheckId": "read/closer-call",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/closer-call",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/closer-call 401"
+ },
+ {
+  "sliceRow": "27-closer:closer-call.html",
+  "sliceCheckId": "closer-call.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:closer-call",
+  "linkedStatus": "green",
+  "linkedProof": "/app/closer-call.html 200"
+ },
+ {
+  "sliceRow": "27-closer:read/closer-now",
+  "sliceCheckId": "read/closer-now",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/closer-now",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/closer-now 401"
+ },
+ {
+  "sliceRow": "27-closer:present.html",
+  "sliceCheckId": "present.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:present",
+  "linkedStatus": "green",
+  "linkedProof": "/app/present.html 200"
+ },
+ {
+  "sliceRow": "27-closer:closer-deck",
+  "sliceCheckId": "closer-deck",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:closer-deck",
+  "linkedStatus": "green",
+  "linkedProof": "/api/closer-deck 405"
+ },
+ {
+  "sliceRow": "27-closer:read/closer-deck",
+  "sliceCheckId": "read/closer-deck",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/closer-deck",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/closer-deck 401"
+ },
+ {
+  "sliceRow": "27-closer:closer-dashboard.html",
+  "sliceCheckId": "closer-dashboard.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:closer-dashboard",
+  "linkedStatus": "green",
+  "linkedProof": "/app/closer-dashboard.html 200"
+ },
+ {
+  "sliceRow": "27-closer:call-outcomes",
+  "sliceCheckId": "call-outcomes",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:call-outcomes",
+  "linkedStatus": "green",
+  "linkedProof": "/api/call-outcomes 405"
+ },
+ {
+  "sliceRow": "27-closer:read/call-outcomes",
+  "sliceCheckId": "read/call-outcomes",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/call-outcomes",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/call-outcomes 401"
+ },
+ {
+  "sliceRow": "27-closer:contracts",
+  "sliceCheckId": "contracts",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:contracts",
+  "linkedStatus": "green",
+  "linkedProof": "/app/contracts.html 200"
+ },
+ {
+  "sliceRow": "27-closer:contracts.html",
+  "sliceCheckId": "contracts.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:contracts",
+  "linkedStatus": "green",
+  "linkedProof": "/app/contracts.html 200"
+ },
+ {
+  "sliceRow": "27-closer:payment-links",
+  "sliceCheckId": "payment-links",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:payment-links",
+  "linkedStatus": "green",
+  "linkedProof": "/api/payment-links 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:dashboard/clients",
+  "sliceCheckId": "dashboard/clients",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/clients",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/clients 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:pipeline.html",
+  "sliceCheckId": "pipeline.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:pipeline",
+  "linkedStatus": "green",
+  "linkedProof": "/app/pipeline.html 200"
+ },
+ {
+  "sliceRow": "28-funding-advisor:read/funding-rounds",
+  "sliceCheckId": "read/funding-rounds",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/funding-rounds",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/funding-rounds 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:dashboard/client",
+  "sliceCheckId": "dashboard/client",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/client",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/client 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:client-control-panel.html",
+  "sliceCheckId": "client-control-panel.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:client-control-panel",
+  "linkedStatus": "green",
+  "linkedProof": "/app/client-control-panel.html 200"
+ },
+ {
+  "sliceRow": "28-funding-advisor:read/documents",
+  "sliceCheckId": "read/documents",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/documents",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/documents 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:documents-upload",
+  "sliceCheckId": "documents-upload",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:documents-upload",
+  "linkedStatus": "green",
+  "linkedProof": "/api/documents-upload 405"
+ },
+ {
+  "sliceRow": "28-funding-advisor:documents.html",
+  "sliceCheckId": "documents.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:documents",
+  "linkedStatus": "green",
+  "linkedProof": "/app/documents.html 200"
+ },
+ {
+  "sliceRow": "28-funding-advisor:read/lender-matches",
+  "sliceCheckId": "read/lender-matches",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/lender-matches",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/lender-matches 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:applications",
+  "sliceCheckId": "applications",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:applications",
+  "linkedStatus": "green",
+  "linkedProof": "/api/applications 401"
+ },
+ {
+  "sliceRow": "28-funding-advisor:proxy/launch",
+  "sliceCheckId": "proxy/launch",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:proxy/launch",
+  "linkedStatus": "green",
+  "linkedProof": "/api/proxy/launch 405"
+ },
+ {
+  "sliceRow": "28-funding-advisor:pipeline-cards",
+  "sliceCheckId": "pipeline-cards",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:pipeline-cards",
+  "linkedStatus": "green",
+  "linkedProof": "/api/pipeline-cards 405"
+ },
+ {
+  "sliceRow": "29-inquiry-remover:inquiry-remover.html",
+  "sliceCheckId": "inquiry-remover.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:inquiry-remover",
+  "linkedStatus": "green",
+  "linkedProof": "/app/inquiry-remover.html 200"
+ },
+ {
+  "sliceRow": "29-inquiry-remover:read/inquiry-cases",
+  "sliceCheckId": "read/inquiry-cases",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/inquiry-cases",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/inquiry-cases 401"
+ },
+ {
+  "sliceRow": "29-inquiry-remover:inquiry-cases",
+  "sliceCheckId": "inquiry-cases",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:inquiry-cases",
+  "linkedStatus": "green",
+  "linkedProof": "/api/inquiry-cases 405"
+ },
+ {
+  "sliceRow": "29-inquiry-remover:inquiry",
+  "sliceCheckId": "inquiry",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:inquiry",
+  "linkedStatus": "green",
+  "linkedProof": "/api/inquiry 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:pipeline.html",
+  "sliceCheckId": "pipeline.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:pipeline",
+  "linkedStatus": "green",
+  "linkedProof": "/app/pipeline.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:dashboard/kpis",
+  "sliceCheckId": "dashboard/kpis",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/kpis",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/kpis 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:dashboard/pipeline",
+  "sliceCheckId": "dashboard/pipeline",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/pipeline",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/pipeline 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:dashboard/pipeline-counts",
+  "sliceCheckId": "dashboard/pipeline-counts",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/pipeline-counts",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/pipeline-counts 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:dashboard/clients",
+  "sliceCheckId": "dashboard/clients",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/clients",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/clients 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:dashboard/client",
+  "sliceCheckId": "dashboard/client",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/client",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/client 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/ops-pulse",
+  "sliceCheckId": "read/ops-pulse",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/ops-pulse",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/ops-pulse 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:ops-admin.html",
+  "sliceCheckId": "ops-admin.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:ops-admin",
+  "linkedStatus": "green",
+  "linkedProof": "/app/ops-admin.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:marketing-command-center.html",
+  "sliceCheckId": "marketing-command-center.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:marketing-command-center",
+  "linkedStatus": "green",
+  "linkedProof": "/app/marketing-command-center.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:marketing/today",
+  "sliceCheckId": "marketing/today",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:marketing/today",
+  "linkedStatus": "green",
+  "linkedProof": "/api/marketing/today 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:company-brain/reviews",
+  "sliceCheckId": "company-brain/reviews",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:company-brain/reviews",
+  "linkedStatus": "green",
+  "linkedProof": "/api/company-brain/reviews 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:partners/approve",
+  "sliceCheckId": "partners/approve",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partners/approve",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partners/approve 405"
+ },
+ {
+  "sliceRow": "30-csm-owner:marketing/scripts/approve",
+  "sliceCheckId": "marketing/scripts/approve",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:marketing/scripts/approve",
+  "linkedStatus": "green",
+  "linkedProof": "/api/marketing/scripts/approve 405"
+ },
+ {
+  "sliceRow": "30-csm-owner:marketing/flywheel/approve",
+  "sliceCheckId": "marketing/flywheel/approve",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:marketing/flywheel/approve",
+  "linkedStatus": "green",
+  "linkedProof": "/api/marketing/flywheel/approve 405"
+ },
+ {
+  "sliceRow": "30-csm-owner:hiring/decide",
+  "sliceCheckId": "hiring/decide",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:hiring/decide",
+  "linkedStatus": "green",
+  "linkedProof": "/api/hiring/decide 405"
+ },
+ {
+  "sliceRow": "30-csm-owner:hiring.html",
+  "sliceCheckId": "hiring.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:hiring",
+  "linkedStatus": "green",
+  "linkedProof": "/app/hiring.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:creative/approvals",
+  "sliceCheckId": "creative/approvals",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:creative/approvals",
+  "linkedStatus": "green",
+  "linkedProof": "/api/creative/approvals 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/blueprint-combined-approval",
+  "sliceCheckId": "read/blueprint-combined-approval",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/blueprint-combined-approval",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/blueprint-combined-approval 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:sales-floor.html",
+  "sliceCheckId": "sales-floor.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:sales-floor",
+  "linkedStatus": "green",
+  "linkedProof": "/app/sales-floor.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/sales-floor",
+  "sliceCheckId": "read/sales-floor",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/sales-floor",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/sales-floor 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:products-commissions.html",
+  "sliceCheckId": "products-commissions.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:products-commissions",
+  "linkedStatus": "green",
+  "linkedProof": "/app/products-commissions.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:staff-teams.html",
+  "sliceCheckId": "staff-teams.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:staff-teams",
+  "linkedStatus": "green",
+  "linkedProof": "/app/staff-teams.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/staff",
+  "sliceCheckId": "read/staff",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/staff",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/staff 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/commissions",
+  "sliceCheckId": "read/commissions",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/commissions",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/commissions 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:staff/telemetry",
+  "sliceCheckId": "staff/telemetry",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:staff/telemetry",
+  "linkedStatus": "green",
+  "linkedProof": "/api/staff/telemetry 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:commissions",
+  "sliceCheckId": "commissions",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:commissions",
+  "linkedStatus": "green",
+  "linkedProof": "/api/commissions 405"
+ },
+ {
+  "sliceRow": "30-csm-owner:commission-rules",
+  "sliceCheckId": "commission-rules",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:commission-rules",
+  "linkedStatus": "green",
+  "linkedProof": "/api/commission-rules 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:company-brain/sync",
+  "sliceCheckId": "company-brain/sync",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:company-brain/sync",
+  "linkedStatus": "green",
+  "linkedProof": "/api/company-brain/sync 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:tasks",
+  "sliceCheckId": "tasks",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:tasks",
+  "linkedStatus": "green",
+  "linkedProof": "/api/tasks 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:shifts",
+  "sliceCheckId": "shifts",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:shifts",
+  "linkedStatus": "green",
+  "linkedProof": "/api/shifts 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:calendar.html",
+  "sliceCheckId": "calendar.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:calendar",
+  "linkedStatus": "green",
+  "linkedProof": "/app/calendar.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:csm-queue.html",
+  "sliceCheckId": "csm-queue.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:csm-queue",
+  "linkedStatus": "green",
+  "linkedProof": "/app/csm-queue.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/csm-queue",
+  "sliceCheckId": "read/csm-queue",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/csm-queue",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/csm-queue 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:consent-capture.html",
+  "sliceCheckId": "consent-capture.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:consent-capture",
+  "linkedStatus": "green",
+  "linkedProof": "/app/consent-capture.html 200"
+ },
+ {
+  "sliceRow": "30-csm-owner:consent/capture",
+  "sliceCheckId": "consent/capture",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:consent/capture",
+  "linkedStatus": "green",
+  "linkedProof": "/api/consent/capture 401"
+ },
+ {
+  "sliceRow": "30-csm-owner:customer-insights",
+  "sliceCheckId": "customer-insights",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:customer-insights",
+  "linkedStatus": "green",
+  "linkedProof": "/api/customer-insights 405"
+ },
+ {
+  "sliceRow": "30-csm-owner:read/customer-insights",
+  "sliceCheckId": "read/customer-insights",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/customer-insights",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/customer-insights 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:public/affiliate-click",
+  "sliceCheckId": "public/affiliate-click",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/affiliate-click",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/affiliate-click 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:affiliates/refer",
+  "sliceCheckId": "affiliates/refer",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:affiliates/refer",
+  "linkedStatus": "green",
+  "linkedProof": "/api/affiliates/refer 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:read/affiliate-portal",
+  "sliceCheckId": "read/affiliate-portal",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/affiliate-portal",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/affiliate-portal 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:read/affiliates",
+  "sliceCheckId": "read/affiliates",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/affiliates",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/affiliates 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:affiliate.html",
+  "sliceCheckId": "affiliate.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:affiliate",
+  "linkedStatus": "green",
+  "linkedProof": "/app/affiliate.html 200"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:public/funnel-checkout",
+  "sliceCheckId": "public/funnel-checkout",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/funnel-checkout",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/funnel-checkout 200"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:public/partner-page",
+  "sliceCheckId": "public/partner-page",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/partner-page",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/partner-page 400"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:public/partner-apply",
+  "sliceCheckId": "public/partner-apply",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:public/partner-apply",
+  "linkedStatus": "green",
+  "linkedProof": "/api/public/partner-apply 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-addons",
+  "sliceCheckId": "partner-addons",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-addons",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-addons 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-brand",
+  "sliceCheckId": "partner-brand",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-brand",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-brand 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-brand/verify-domain",
+  "sliceCheckId": "partner-brand/verify-domain",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-brand/verify-domain",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-brand/verify-domain 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-marketing/copy-history",
+  "sliceCheckId": "partner-marketing/copy-history",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/copy-history",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/copy-history 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-marketing/enable",
+  "sliceCheckId": "partner-marketing/enable",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/enable",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/enable 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-marketing/generate-copy",
+  "sliceCheckId": "partner-marketing/generate-copy",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/generate-copy",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/generate-copy 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-marketing/generate-logo",
+  "sliceCheckId": "partner-marketing/generate-logo",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/generate-logo",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/generate-logo 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-marketing/usage",
+  "sliceCheckId": "partner-marketing/usage",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-marketing/usage",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-marketing/usage 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-pages",
+  "sliceCheckId": "partner-pages",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partner-pages",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partner-pages 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partners/approve",
+  "sliceCheckId": "partners/approve",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:partners/approve",
+  "linkedStatus": "green",
+  "linkedProof": "/api/partners/approve 405"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:read/partners",
+  "sliceCheckId": "read/partners",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partners",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partners 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:read/partner-home-tiles",
+  "sliceCheckId": "read/partner-home-tiles",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partner-home-tiles",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partner-home-tiles 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:read/partner-production",
+  "sliceCheckId": "read/partner-production",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partner-production",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partner-production 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:read/partner-training",
+  "sliceCheckId": "read/partner-training",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/partner-training",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/partner-training 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-galaxy.html",
+  "sliceCheckId": "partner-galaxy.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:partner-galaxy",
+  "linkedStatus": "green",
+  "linkedProof": "/app/partner-galaxy.html 200"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:partner-training.html",
+  "sliceCheckId": "partner-training.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:partner-training",
+  "linkedStatus": "green",
+  "linkedProof": "/app/partner-training.html 200"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:campaigns/list",
+  "sliceCheckId": "campaigns/list",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:campaigns/list",
+  "linkedStatus": "green",
+  "linkedProof": "/api/campaigns/list 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:campaigns/connections",
+  "sliceCheckId": "campaigns/connections",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:campaigns/connections",
+  "linkedStatus": "green",
+  "linkedProof": "/api/campaigns/connections 401"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:creative-factory.html",
+  "sliceCheckId": "creative-factory.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:creative-factory",
+  "linkedStatus": "green",
+  "linkedProof": "/app/creative-factory.html 200"
+ },
+ {
+  "sliceRow": "31-affiliate-wl:creative/generate",
+  "sliceCheckId": "creative/generate",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:creative/generate",
+  "linkedStatus": "green",
+  "linkedProof": "/api/creative/generate 405"
+ },
+ {
+  "sliceRow": "33-fulfillment:pipeline.html",
+  "sliceCheckId": "pipeline.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:pipeline",
+  "linkedStatus": "green",
+  "linkedProof": "/app/pipeline.html 200"
+ },
+ {
+  "sliceRow": "33-fulfillment:dashboard/clients",
+  "sliceCheckId": "dashboard/clients",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/clients",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/clients 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:dashboard/pipeline",
+  "sliceCheckId": "dashboard/pipeline",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/pipeline",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/pipeline 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:pipeline-cards",
+  "sliceCheckId": "pipeline-cards",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:pipeline-cards",
+  "linkedStatus": "green",
+  "linkedProof": "/api/pipeline-cards 405"
+ },
+ {
+  "sliceRow": "33-fulfillment:read/funding-rounds",
+  "sliceCheckId": "read/funding-rounds",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/funding-rounds",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/funding-rounds 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:client-control-panel.html",
+  "sliceCheckId": "client-control-panel.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:client-control-panel",
+  "linkedStatus": "green",
+  "linkedProof": "/app/client-control-panel.html 200"
+ },
+ {
+  "sliceRow": "33-fulfillment:dashboard/client",
+  "sliceCheckId": "dashboard/client",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:dashboard/client",
+  "linkedStatus": "green",
+  "linkedProof": "/api/dashboard/client 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:documents.html",
+  "sliceCheckId": "documents.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:documents",
+  "linkedStatus": "green",
+  "linkedProof": "/app/documents.html 200"
+ },
+ {
+  "sliceRow": "33-fulfillment:read/documents",
+  "sliceCheckId": "read/documents",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/documents",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/documents 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:documents-upload",
+  "sliceCheckId": "documents-upload",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:documents-upload",
+  "linkedStatus": "green",
+  "linkedProof": "/api/documents-upload 405"
+ },
+ {
+  "sliceRow": "33-fulfillment:documents-download",
+  "sliceCheckId": "documents-download",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:documents-download",
+  "linkedStatus": "green",
+  "linkedProof": "/api/documents-download 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:read/lender-matches",
+  "sliceCheckId": "read/lender-matches",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/lender-matches",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/lender-matches 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:applications",
+  "sliceCheckId": "applications",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:applications",
+  "linkedStatus": "green",
+  "linkedProof": "/api/applications 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:proxy/launch",
+  "sliceCheckId": "proxy/launch",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:proxy/launch",
+  "linkedStatus": "green",
+  "linkedProof": "/api/proxy/launch 405"
+ },
+ {
+  "sliceRow": "33-fulfillment:inquiry-remover.html",
+  "sliceCheckId": "inquiry-remover.html",
+  "registryKind": "desk",
+  "linkedScorecardId": "reg:inquiry-remover",
+  "linkedStatus": "green",
+  "linkedProof": "/app/inquiry-remover.html 200"
+ },
+ {
+  "sliceRow": "33-fulfillment:read/repair-cases",
+  "sliceCheckId": "read/repair-cases",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/repair-cases",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/repair-cases 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:repair/exceptions",
+  "sliceCheckId": "repair/exceptions",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:repair/exceptions",
+  "linkedStatus": "green",
+  "linkedProof": "/api/repair/exceptions 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:repair/generate",
+  "sliceCheckId": "repair/generate",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:repair/generate",
+  "linkedStatus": "green",
+  "linkedProof": "/api/repair/generate 405"
+ },
+ {
+  "sliceRow": "33-fulfillment:repair/send",
+  "sliceCheckId": "repair/send",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:repair/send",
+  "linkedStatus": "green",
+  "linkedProof": "/api/repair/send 405"
+ },
+ {
+  "sliceRow": "33-fulfillment:read/inquiry-cases",
+  "sliceCheckId": "read/inquiry-cases",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:read/inquiry-cases",
+  "linkedStatus": "green",
+  "linkedProof": "/api/read/inquiry-cases 401"
+ },
+ {
+  "sliceRow": "33-fulfillment:inquiry-cases",
+  "sliceCheckId": "inquiry-cases",
+  "registryKind": "api",
+  "linkedScorecardId": "reg:inquiry-cases",
+  "linkedStatus": "green",
+  "linkedProof": "/api/inquiry-cases 405"
+ }
+]
