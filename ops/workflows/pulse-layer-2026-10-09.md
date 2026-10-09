@@ -82,15 +82,30 @@ Both: row security on, staff only, same as `job_heartbeats`.
 
 Model: Sonnet for 1 and 2 (back end), Opus for 0 and 3 (contract, routine, rule). Current: Opus. Match.
 
-## Status — 2026-10-09 05:35 Arizona
+## Status — 2026-10-09 06:15 Arizona: SHIPPED and ran once, live
+
+Shipped `4283de2b` at about 06:05 (migration 475 applied: 388 applied, 0 pending; `pulse-hourly.mjs` deployed; Inngest re-registered). The morning text had already gone out at 06:02.
+
+**First live hourly run, 06:07:13 (from the Netlify server): 7 of 7 beats green, 7 rows saved, heartbeat `pulse-hourly` ok, no incidents.** Proven for the first time on the live server: Twilio, Resend and Commas accept our keys; all 10 money doors and pages answer right from AWS (no Cloudflare wall); the unsubscribe secret is real; the payment sweeper ran in the last 3 minutes; the pool is writable (12 of 60 connections); the saved list of bank links filled.
+
+Also proven on the live database, read-only or rolled back: `records.mjs` (19 behaviours incl. one open incident per beat, no double text in 50 minutes, a close needs all four learning fields, the app role is refused a DELETE) in one rolled-back transaction; `node scripts/pulse/run-beat.mjs --probe` (Postgres refused INSERT, UPDATE, DELETE, CREATE TABLE and a switch to read-write). The function cannot be called from the web: `GET /.netlify/functions/pulse-hourly` answers 403.
 
 | # | Status |
 |---|---|
-| 0 contract | done — ops/workflows/pulse-layer-2026-10-09-contract.md (Opus), attacked by an Opus critic (16 issues, go-with-changes) |
-| Tonight's cut | the READ-ONLY half only: ops/workflows/pulse-layer-2026-10-09-v1.md. The critic found the write-through half (signed test signals through doors that save data, rolled back) has never run on a real Postgres and its first run would be on launch day. It waits. |
-| 1 runner, records, alerts | built, checked, repaired, reviewed (Opus: go-with-changes; the one blocker, the empty beat list, was the integrator's job and is fixed) |
-| 2 beats | 7 built: apply-links, pay-webhook, vendor-keys, text-path, email-path, doors-live, db-health |
-| 3 rule, picture, lessons | done — rule in both homes, CLAUDE.md line, docs/journeys/heartbeat-flow.md, docs/lessons/pulse-lessons.md |
+| 0 contract | done (Opus), attacked by an Opus critic (16 issues, go-with-changes) |
+| Tonight's cut | READ-ONLY half only (ops/workflows/pulse-layer-2026-10-09-v1.md) |
+| 1 runner, records, alerts | shipped, ran live |
+| 2 beats | 7 shipped, all green on the first live run |
+| 3 rule, picture, lessons | done: rule in both homes, CLAUDE.md line, docs/journeys/heartbeat-flow.md, docs/lessons/pulse-lessons.md |
+
+## Findings the first run made (data errors, NOT fixed here)
+
+Bank Apply links in the `lenders` table (40 of 987 checked; all 987 are covered in about 25 hours):
+- 404 page: Tri-County Credit Union (tri-county.org), Bay State Savings Bank (www.baystatesavingsbank.com).
+- Address has a space: MountainOne Bank.
+- Stored as `http://`: Adams State Bank, First National Bank Texas (and Ballston Spa National Bank, First State Bank of Wyoming, unproven).
+- No answer in 4.5 s: Twin Cedars Bank.
+The first pass raises nothing by design; from the second pass a link that WAS good and turns dead texts Chris.
 
 ## Manifest — pulse v1
 
@@ -100,6 +115,13 @@ Model: Sonnet for 1 and 2 (back end), Opus for 0 and 3 (contract, routine, rule)
 - Runner and alerts: `src/pulse/runner.mjs`, `src/pulse/alerts.mjs`. Order inside 22 s: read state, run beats (13 s), TEXT, then save records. `damp 2` for vendor keys, doors and bank links.
 - Proof: `npm run pulse:prove -- --beats` builds the real function and runs it from inside: 7 beats, 4.3 s of 22 s, 22 reads, 0 refused, 0 commits, rolled back and destroyed. `node scripts/pulse/run-beat.mjs --probe`: Postgres itself refused INSERT, UPDATE, DELETE, CREATE TABLE and a switch to read-write (7 of 7 pass). Real-database tests 26 of 26. Full suite: the same 12 failures as before tonight, none new.
 - ZERO edits to `netlify/functions/api.mjs`, `src/db.mjs`, the event bus, `outbound-fetch.mjs`, any adapter, `instant-watch.mjs`, `daily-pulse.mjs`, any door or page (checked with `git diff --stat`).
+
+## Leftovers (found on the way, not fixed)
+
+- A registry row (`leads/c01cb7592c8bb994130158e897e99bf1/index.html`) points at a page that exists only on this Mac (git-ignored folder `public/leads/`). `registry.test.mjs` "every registry row names a real handler or desk file" fails on GitHub because of it, and fails on `main` too. Not mine, not fixed.
+- Every beat sees the full `ctx.env` (all secrets). Fine while only this repo's reviewed beats exist; after launch give each beat only the names it declares.
+- `npm run ship` runs lint and two guard tests, not the pulse tests. GitHub runs the whole suite on every push, so a bad beat is caught there, not at ship.
+- The alert's fix line is the beat's line 1, not a line for the step that broke.
 
 ## Not built yet (on purpose)
 
