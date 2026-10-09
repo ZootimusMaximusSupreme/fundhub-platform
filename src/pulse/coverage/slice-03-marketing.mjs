@@ -65,10 +65,14 @@ export const CHECKS = [
     "PASS: GET marketing/health writes page_seen (415; api/marketing/health.mjs)",
     { alreadyInRegistry: listed.has("marketing/health") }
   ),
+  // The drain is capped at once a minute (DRAIN_EVERY_MS) but only runs inside a worker
+  // pass. A pass starts on a clock tick (every 15 min) or on a save. When the drain is
+  // held (no token, dry run) it is not retried inside the pass, so the real beat is one
+  // per clock tick: 15 min, red after 45.
   beatMeta(
     "outbox_drain",
-    "1m",
-    `PASS when max(last_at) for 'outbox_drain' is within ${RED_MULTIPLIER} min while repo_outbox waits (415; worker.mjs recordDrain)`
+    "15m",
+    `PASS when max(last_at) for 'outbox_drain' is within ${RED_MULTIPLIER * 15} min while repo_outbox waits (415; worker.mjs recordDrain; runs on each ${CLOCK_CRON} tick)`
   )
 ];
 
@@ -176,7 +180,7 @@ export async function checkOutboxDrain(ctx) {
   if (waiting <= 0) {
     return row(id, "skip", "no repo save waiting — outbox_drain is not expected to beat");
   }
-  const limit = redAfterMs("1m");
+  const limit = redAfterMs("15m");
   const last = toDate(ctx.beats && ctx.beats.outbox_drain);
   if (!last) {
     return row(id, "FAIL", `${waiting} repo save(s) waiting but outbox_drain has never beat`, FIX);
