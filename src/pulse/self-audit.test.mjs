@@ -17,11 +17,11 @@ import { Inngest } from "inngest";
 import {
   AUDIT_BUDGET_MS,
   AUDIT_COVERS,
-  AUDIT_ROW_IDS,
   BRIEFS_SENT_SQL,
   NAMED_PULSE_IDS,
   auditPulse,
   buildManifest,
+  laneCheckIds,
   loadManifest,
   makeLaneNaVerify,
   notLiveIds
@@ -239,8 +239,9 @@ test("audit:na-verified is green and counts the nothing-to-judge rows that are s
 });
 
 test("audit:na-verified goes red when a reason is no longer true, and the row stops being quiet", async () => {
+  // The reason is a short condition, the way piece A's verifyNa writes it.
   const verifyNa = async (row) => (row.id === "wf:evt-a"
-    ? { ok: false, reason: "3 round.started events came." }
+    ? { ok: false, reason: "no round.started event since 10-06" }
     : { ok: true, reason: "" });
   const res = await run({ verifyNa });
   const r = rowOf(res, "audit:na-verified");
@@ -251,8 +252,7 @@ test("audit:na-verified goes red when a reason is no longer true, and the row st
   assert.equal(replaced.status, "skip");
   assert.equal("na" in replaced, false);
   assert.equal(replaced.kind, "coverage");
-  assert.match(replaced.detail, /^Said nothing to judge, but ".*" is not true\. 3 round\.started events came\.$/);
-  assert.match(replaced.detail, /No round\.started event came since 10-06/);
+  assert.equal(replaced.detail, "Said nothing to judge, but no round.started event since 10-06 is not true.");
   // The other quiet row is left alone.
   assert.equal(res.checks.find((c) => c.id === "wf:evt-off").status, "na");
   // The replaced row lands not checked, so the one aggregate row names it.
@@ -273,7 +273,86 @@ test("an unknown code or missing args (verifyNa says not ok) cannot stay quiet",
 test("a verify that throws counts as not true and the error text is kept", async () => {
   const res = await run({ verifyNa: async () => { throw new Error("events table gone"); } });
   assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
-  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /events table gone/);
+  assert.equal(
+    res.checks.find((c) => c.id === "wf:evt-a").detail,
+    "Said nothing to judge, but the condition being readable (the read failed: events table gone) is not true."
+  );
+});
+
+test("the line for a failed nothing-to-judge row is the contract sentence for every reason shape verifyNa gives", async () => {
+  // These reasons are copied from piece A's verifyNa (src/pulse/na-conditions.mjs):
+  // each is a short condition that fits "Said nothing to judge, but <why> is not true."
+  const reasons = [
+    "no round.started event since 10-06",
+    "no ad running",
+    "the workflow evt-off having no trigger",
+    "the reason code \"bogus\" being one the computer knows",
+    "the proof for \"no-demand\" being complete (since is not a time)",
+    "the row giving a reason the computer can check"
+  ];
+  for (const reason of reasons) {
+    const res = await run({ verifyNa: async (row) => (row.id === "wf:evt-a" ? { ok: false, reason } : { ok: true, reason: "" }) });
+    const detail = res.checks.find((c) => c.id === "wf:evt-a").detail;
+    assert.equal(detail, `Said nothing to judge, but ${reason} is not true.`);
+    // The row's own sentence ("Judged the day one comes.") is not quoted back at Chris.
+    assert.doesNotMatch(detail, /Judged the day/);
+    assert.doesNotMatch(detail, /\. is not true/);
+  }
+});
+
+test("only when verifyNa gives no reason does the row's own sentence stand in for it", async () => {
+  const res = await run({ verifyNa: async (row) => (row.id === "wf:evt-a" ? { ok: false, reason: "" } : { ok: true, reason: "" }) });
+  const detail = res.checks.find((c) => c.id === "wf:evt-a").detail;
+  assert.match(detail, /^Said nothing to judge, but "No round\.started event came since 10-06\. Judged the day one comes\." is not true\.$/);
+});
+
+test("the three reasons the audit writes itself fit the same sentence", async () => {
+  const seen = [];
+  for (const verifyNa of [
+    async () => { throw new Error("events table gone"); },
+    async () => "not an object",
+    () => new Promise(() => {})
+  ]) {
+    const res = await run({ budgetMs: 40, verifyNa });
+    seen.push(res.checks.find((c) => c.id === "wf:evt-a").detail);
+  }
+  assert.deepEqual(seen.map((d) => d.replace(/\(the read failed: [^)]*\)/, "(the read failed: X)")), [
+    "Said nothing to judge, but the condition being readable (the read failed: X) is not true.",
+    "Said nothing to judge, but the check giving an answer is not true.",
+    "Said nothing to judge, but the condition being readable (the read failed: X) is not true."
+  ]);
+  // The audit's budget already spent: the reason is a condition too.
+  const late = await run({ budgetMs: -1, verifyNa: okVerify });
+  assert.equal(
+    late.checks.find((c) => c.id === "wf:evt-a").detail,
+    "Said nothing to judge, but the audit having time left to check it again is not true."
+  );
+});
+
+test("when the real verifyNa is in the tree, its reasons read as one clean sentence (runs the real shape)", async () => {
+  // Piece A builds src/pulse/na-conditions.mjs in the same batch. This test uses it
+  // as soon as it is merged. Before then the module is not there and there is
+  // nothing real to run (the test above carries A's reason shapes by hand).
+  const real = await import("./na-conditions.mjs").catch(() => null);
+  if (!real) {
+    assert.equal(real, null);
+    return;
+  }
+  const eventsDb = (n) => ({ query: async () => ({ rows: [{ n }] }) });
+  const row = (id, na) => ({ id, kind: "coverage", group: "jobs", status: "na", detail: "No x.y event came since 10-06. Judged the day one comes.", na });
+  const good = row("wf:real", { code: "no-demand", args: { names: ["x.y"], since: "2026-10-06T13:00:00.000Z" } });
+  const bogus = row("wf:bogus", { code: "bogus", args: {} });
+  const fx = fixture();
+  fx.checks = [...fx.checks.filter((c) => c.status !== "na"), good, bogus];
+
+  // events came in -> the no-demand claim is not true any more
+  const res = await run({ verifyNa: real.verifyNa, db: eventsDb(5) }, fx);
+  assert.equal(res.checks.find((c) => c.id === "wf:real").detail, "Said nothing to judge, but no x.y event since 10-06 is not true.");
+  assert.equal(res.checks.find((c) => c.id === "wf:bogus").detail, "Said nothing to judge, but the reason code \"bogus\" being one the computer knows is not true.");
+  // no event came in -> the first claim still holds and stays na
+  const held = await run({ verifyNa: real.verifyNa, db: eventsDb(0) }, fx);
+  assert.equal(held.checks.find((c) => c.id === "wf:real").status, "na");
+  assert.equal(held.checks.find((c) => c.id === "wf:bogus").status, "skip");
 });
 
 test("verifyNa gets the row and the pulse's own handles", async () => {
@@ -295,6 +374,80 @@ test("verifyNa gets the row and the pulse's own handles", async () => {
     assert.equal(ctx.laneNaVerify, laneNaVerify);
     assert.ok(Array.isArray(ctx.functions));
   }
+});
+
+test("two lane rows with no sliceId are not merged: the lane comes from the id, as verifyNa reads it", async () => {
+  // Piece A's verifyNa finds the lane from row.sliceId, or else from the id before ":".
+  // The same code and args in two lanes can have two different answers.
+  const fx = fixture();
+  const na = { code: "no-running-ad", args: {} };
+  fx.checks.push(
+    { id: "gap-ads:a", status: "na", detail: "No ad is running.", na },
+    { id: "gap-leads:b", status: "na", detail: "No ad is running.", na: { code: "no-running-ad", args: {} } }
+  );
+  const asked = [];
+  const res = await run({
+    verifyNa: async (row) => {
+      asked.push(row.id);
+      return row.id === "gap-leads:b" ? { ok: false, reason: "no ad running" } : { ok: true, reason: "" };
+    }
+  }, fx);
+  assert.ok(asked.includes("gap-ads:a") && asked.includes("gap-leads:b"), `asked: ${asked}`);
+  assert.equal(res.checks.find((c) => c.id === "gap-ads:a").status, "na");
+  assert.equal(res.checks.find((c) => c.id === "gap-leads:b").status, "skip");
+  assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
+  assert.match(rowOf(res, "audit:na-verified").detail, /gap-leads:b/);
+});
+
+test("two lane rows in the same lane with the same code and args are still asked once", async () => {
+  const fx = fixture();
+  const na = () => ({ code: "no-running-ad", args: {} });
+  fx.checks.push(
+    { id: "gap-ads:a", status: "na", detail: "x.", na: na() },
+    { id: "gap-ads:b", status: "na", detail: "x.", na: na() },
+    { id: "other:c", sliceId: "gap-ads", status: "na", detail: "x.", na: na() } // sliceId wins over the id prefix
+  );
+  const asked = [];
+  await run({ verifyNa: async (row) => { asked.push(row.id); return { ok: true, reason: "" }; } }, fx);
+  assert.equal(asked.filter((id) => ["gap-ads:a", "gap-ads:b", "other:c"].includes(id)).length, 1);
+});
+
+test("rows whose times are Dates are not merged when the times differ, and are merged when they are equal", async () => {
+  // piece A's isTime accepts a Date for `since`. A Date used to turn into {} in the key.
+  const fx = fixture();
+  const demand = (since) => ({ code: "no-demand", args: { names: ["a.b"], since } });
+  fx.checks.push(
+    { id: "wf:d1", status: "na", detail: "x.", na: demand(new Date("2026-10-06T13:00:00Z")) },
+    { id: "wf:d2", status: "na", detail: "x.", na: demand(new Date("2026-10-01T13:00:00Z")) },
+    { id: "wf:d3", status: "na", detail: "x.", na: demand("2026-10-06T13:00:00.000Z") } // the same instant as d1, as text
+  );
+  const asked = [];
+  const res = await run({
+    verifyNa: async (row) => {
+      asked.push(row.id);
+      // five events came after 10-01, none after 10-06
+      const since = row.na.args.since ? new Date(row.na.args.since).toISOString() : "";
+      return since.startsWith("2026-10-01")
+        ? { ok: false, reason: "no a.b event since 10-01" }
+        : { ok: true, reason: "" };
+    }
+  }, fx);
+  assert.ok(asked.includes("wf:d1") && asked.includes("wf:d2"));
+  assert.equal(asked.filter((id) => id === "wf:d1" || id === "wf:d3").length, 1, "d1 and d3 are one instant, so one call");
+  assert.equal(res.checks.find((c) => c.id === "wf:d1").status, "na");
+  assert.equal(res.checks.find((c) => c.id === "wf:d3").status, "na");
+  assert.equal(res.checks.find((c) => c.id === "wf:d2").status, "skip", "the older time must be asked on its own");
+});
+
+test("args that will not turn into JSON are asked on their own instead of throwing", async () => {
+  const fx = fixture();
+  const loop = {};
+  loop.self = loop;
+  fx.checks.push({ id: "wf:loop", status: "na", detail: "x.", na: { code: "no-demand", args: loop } });
+  const asked = [];
+  const res = await run({ verifyNa: async (row) => { asked.push(row.id); return { ok: true, reason: "" }; } }, fx);
+  assert.ok(asked.includes("wf:loop"));
+  assert.notEqual(res.rows[0].id, "audit:crashed");
 });
 
 test("rows with the same code, args and lane are checked once; different args are checked again", async () => {
@@ -334,7 +487,7 @@ test("a nothing-to-judge check that never answers is cut off inside the budget a
   const res = await run({ budgetMs: 60, verifyNa: () => new Promise(() => {}) });
   assert.ok(Date.now() - started < 1500, "the audit must not wait forever");
   assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
-  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /took too long|ran out of time/);
+  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /took too long|having time left/);
   assert.ok(AUDIT_BUDGET_MS <= 3000);
 });
 
@@ -352,7 +505,8 @@ test("audit:totals is green and shows how the numbers add up", async () => {
   assert.equal(r.status, "PASS");
   // 8 checks - 1 claim the audit folds = 7, plus the 7 audit rows = 14.
   assert.match(r.detail, /14 rows = 12 green \+ 0 red \+ 2 with nothing to judge \+ 0 not checked\./);
-  assert.match(r.detail, /3 claims were folded/);
+  // 3 folded before the audit ran + 1 the audit folded itself.
+  assert.match(r.detail, /4 claims were folded/);
 });
 
 test("audit:totals goes red when two rows share one id", async () => {
@@ -466,7 +620,7 @@ test("audit:lanes-ran goes red and names a lane that gave no rows", async () => 
 
 for (const [checkId, why] of [
   ["step", "did not finish"],
-  ["threw", "threw, or would not load"],
+  ["threw", "stopped with an error, or would not load"],
   ["not-listed", "is not on the list in modules.mjs"],
   ["bad-row", "sent back an empty row"]
 ]) {
@@ -514,6 +668,15 @@ test("audit:lanes-ran is a skip, not a pass, when it was not told which lanes ra
   assert.equal(r.status, "skip");
 });
 
+test("audit:lanes-ran goes red, not green, when the list of lanes is empty", async () => {
+  // An empty list used to pass: "All 0 gap lanes answered". Nothing was judged.
+  const r = rowOf(await run({ gapLanes: [] }), "audit:lanes-ran");
+  assert.equal(r.status, "FAIL");
+  assert.equal(r.detail, "The list of gap lanes is empty, so nothing could be judged.");
+  assert.match(r.suggestedFix, /GAP_LANES/);
+  assert.doesNotMatch(r.detail, /All 0/);
+});
+
 // ── audit:workflow-coverage ──────────────────────────────────────────────────
 
 test("audit:workflow-coverage is green when all three rules hold", async () => {
@@ -528,7 +691,8 @@ test("audit:workflow-coverage goes red for a workflow not made on the shared cli
   fx.checks.push({ id: "wf:rogue", status: "PASS", detail: "ok" });
   const r = rowOf(await run({}, fx), "audit:workflow-coverage");
   assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /rogue \(not on the shared client/);
+  assert.match(r.detail, /rogue \(not built on the shared Inngest client in src\/workflows\/client\.mjs\)/);
+  assert.doesNotMatch(r.detail, /receipts/, "run receipts are not built yet, so the line must not promise them");
 });
 
 test("audit:workflow-coverage goes red for a cron that is not on INNGEST_JOBS", async () => {
@@ -551,6 +715,40 @@ test("audit:workflow-coverage is a skip, not a pass, with no workflow list", asy
   assert.equal(rowOf(await run({ functions: null }), "audit:workflow-coverage").status, "skip");
 });
 
+test("audit:workflow-coverage goes red, not green, when the workflow list is empty", async () => {
+  // An empty list used to pass, and a failed load of `functions` that fell back to []
+  // hid all 65 missing wf: rows. Now it is red.
+  const r = rowOf(await run({ functions: [] }), "audit:workflow-coverage");
+  assert.equal(r.status, "FAIL");
+  assert.equal(r.detail, "The list of bundled workflows is empty, so nothing could be judged.");
+  assert.match(r.suggestedFix, /src\/workflows\/index\.mjs/);
+  assert.doesNotMatch(r.detail, /All 0/);
+});
+
+test("a function with a cron and an event is a wf: row like piece B's, not a cron", async () => {
+  // B's checkWorkflowRuns skips only functions with crons and no events. D uses the same rule.
+  const fx = fixture();
+  fx.functions.push(fn("both-kinds", [{ cron: "0 * * * *" }, { event: "x.y" }]));
+  // Not on INNGEST_JOBS and no wf: row -> red, and it asks for the wf: row, not for INNGEST_JOBS.
+  const bad = rowOf(await run({}, fx), "audit:workflow-coverage");
+  assert.equal(bad.status, "FAIL");
+  assert.match(bad.detail, /both-kinds \(no wf: row\)/);
+  assert.doesNotMatch(bad.detail, /both-kinds \(a cron that is not on INNGEST_JOBS\)/);
+  // With its wf: row it is green.
+  fx.checks.push({ id: "wf:both-kinds", kind: "coverage", group: "jobs", status: "PASS", detail: "ran" });
+  assert.equal(rowOf(await run({}, fx), "audit:workflow-coverage").status, "PASS");
+});
+
+test("the manifest expects a wf: id for a function with a cron and an event, and none for a pure cron", () => {
+  const m = buildManifest({
+    registry: [],
+    jobs: [],
+    namedIds: [],
+    functions: [fn("pure", [{ cron: "* * * * *" }]), fn("mixed", [{ cron: "* * * * *" }, { event: "x.y" }])]
+  });
+  assert.deepEqual(m.byGroup.wf, ["wf:mixed"]);
+});
+
 test("audit:workflow-coverage uses the real shared client when none is injected", async () => {
   const fx = fixture();
   const real = [fn(CRON_JOB, [{ cron: "*/15 * * * *" }], inngest), fn("evt-a", [{ event: "round.started" }], inngest), fn("evt-off", [], inngest)];
@@ -563,13 +761,13 @@ test("audit:workflow-coverage uses the real shared client when none is injected"
 
 test("audit:workflow-coverage agrees with today's real bundle: no false red for the real workflows", async () => {
   const wf = bundledFunctions
-    .filter((f) => !f.opts.triggers.some((t) => t.cron))
+    .filter((f) => !((f.opts.triggers || []).some((t) => t.cron) && !(f.opts.triggers || []).some((t) => t.event)))
     .map((f) => ({ id: `wf:${f.opts.id}`, kind: "coverage", group: "jobs", status: "PASS", detail: "ok" }));
   assert.ok(wf.length >= 60, `expected about 65 non-cron workflows, got ${wf.length}`);
   const res = await auditPulse({
     checks: wf,
     functions: bundledFunctions,
-    gapLanes: [],
+    gapLanes: ["gap-x"],
     manifest: { ids: new Set(["wf:x"]), byGroup: {} },
     db: briefsDb(SENT),
     now: NOW,
@@ -619,7 +817,6 @@ test("audit:briefs-sent goes red when there is no row for yesterday", async () =
 });
 
 for (const [status, error, expected] of [
-  ["held_quiet_hours", null, /held back for the quiet hours and never sent/],
   ["failed", "Twilio 21614", /Sending it failed\. Error: Twilio 21614/],
   ["dry_run", null, /only a dry run/],
   ["no_number", null, /no phone number/]
@@ -658,6 +855,37 @@ test("the morning-brief claim folds into audit:briefs-sent (the audit does it, s
   assert.equal(res.folded, 1);
   // It was present in the manifest and is still counted present, through the also list.
   assert.equal(rowOf(res, "audit:expected-present").status, "PASS");
+});
+
+test("the audit is the one owner of that fold: the claim never makes audit:not-checked red, and audit:totals counts it", async () => {
+  // The claim comes in still "not checked". If the fold came after the audit, the audit
+  // would count it as not checked. The pulse may add res.folded to its own count or not:
+  // the totals line is right either way.
+  const fx = fixture();
+  assert.equal(fx.checks.find((c) => c.id === "06-briefs:morning-brief").status, "not checked");
+  const res = await run({ folded: 0 }, fx);
+  assert.equal(rowOf(res, "audit:not-checked").status, "PASS");
+  assert.equal(res.folded, 1);
+  assert.match(rowOf(res, "audit:totals").detail, / 1 claim was folded into the check that ran\.$/);
+  // With nothing folded by the audit, only the pulse's own count shows.
+  const none = fixture();
+  none.checks = none.checks.filter((c) => c.id !== "06-briefs:morning-brief");
+  none.manifest = buildManifest({ registry: [{ id: "home" }], jobs: [{ job: CRON_JOB }], functions: none.functions, namedIds: ["health"] });
+  const res2 = await run({ folded: 5 }, none);
+  assert.equal(res2.folded, 0);
+  assert.match(rowOf(res2, "audit:totals").detail, / 5 claims were folded into the check that ran\.$/);
+  // A claim the pulse's own fold already took is not folded twice (it is not in checks any more).
+  const again = await run({ folded: 1 }, { ...none, checks: res.checks });
+  assert.equal(again.folded, 0);
+});
+
+test("an unknown delivery status gets the generic line (held_quiet_hours is not a status the table allows)", async () => {
+  for (const status of ["something_new", "held_quiet_hours"]) {
+    const db = briefsDb({ delivery_status: status, delivery_error: null });
+    const r = rowOf(await run({ db }, fixture({ db })), "audit:briefs-sent");
+    assert.equal(r.status, "FAIL");
+    assert.match(r.detail, new RegExp(`Its status was "${status}", not sent\\.`));
+  }
 });
 
 test("a claim that already has a real answer is not folded away", async () => {
@@ -729,6 +957,47 @@ test("buildManifest leaves out claims that left the scorecard (NOT_LIVE_ROWS) in
     assert.deepEqual(m.byGroup.slice, ["02-daily-pulse:keep"]);
   }
   assert.deepEqual(buildManifest({ registry: [], jobs: [], namedIds: [], ...base, notLive: [] }).byGroup.slice.length, 2);
+});
+
+test("laneCheckIds reads CHECK_IDS, MSG_CHECK_IDS, GAP_DOORS and GAP_WIDGET_CHECKS, and nothing else", () => {
+  assert.deepEqual(laneCheckIds(null), []);
+  assert.deepEqual(laneCheckIds({}), []);
+  assert.deepEqual(laneCheckIds({ CHECK_IDS: ["a", 3, "", "a"] }), ["a"]);
+  assert.deepEqual(laneCheckIds({ MSG_CHECK_IDS: ["gap:msg-one"] }), ["gap:msg-one"]);
+  assert.deepEqual(
+    laneCheckIds({ GAP_DOORS: [{ id: "door-1" }, null, {}], GAP_WIDGET_CHECKS: [{ id: "funnel:w1", run() {} }] }),
+    ["door-1", "funnel:w1"]
+  );
+  assert.deepEqual(laneCheckIds({ SOMETHING_ELSE: ["x"], CHECKS: ["y"] }), []);
+});
+
+test("buildManifest counts the sms and funnels lanes' own id lists, so a quiet one is seen", () => {
+  const m = buildManifest({
+    registry: [],
+    jobs: [],
+    namedIds: [],
+    gapModules: [
+      { sliceId: "gap-sms", mod: { MSG_CHECK_IDS: ["gap:msg-sent-no-receipt"] } },
+      { sliceId: "gap-funnels", mod: { GAP_DOORS: [{ id: "funnel:door" }], GAP_WIDGET_CHECKS: [{ id: "funnel:sales-videos-play" }] } }
+    ]
+  });
+  assert.deepEqual(m.byGroup.gap, [
+    namespaceGapId("gap:msg-sent-no-receipt", "gap-sms"),
+    namespaceGapId("funnel:door", "gap-funnels"),
+    namespaceGapId("funnel:sales-videos-play", "gap-funnels")
+  ]);
+  // The funnels lane stops sending one of its ids -> the audit sees it go quiet.
+  const checks = [
+    { id: "gap-sms:gap:msg-sent-no-receipt", sliceId: "gap-sms", checkId: "gap:msg-sent-no-receipt", status: "PASS", detail: "ok" },
+    { id: "gap-funnels:funnel:door", sliceId: "gap-funnels", checkId: "funnel:door", status: "PASS", detail: "ok" }
+  ];
+  return auditPulse({ checks, manifest: m, functions: [fn("x", [{ event: "a.b" }])], gapLanes: ["gap-sms", "gap-funnels"], db: briefsDb(SENT), now: NOW, verifyNa: okVerify, sharedClient: SHARED, contract: A_CONTRACT })
+    .then((res) => {
+      const r = rowOf(res, "audit:expected-present");
+      assert.equal(r.status, "FAIL");
+      assert.match(r.detail, /gap-funnels:funnel:sales-videos-play/);
+      assert.doesNotMatch(r.detail, /gap-sms|funnel:door/);
+    });
 });
 
 test("notLiveIds copes with nothing and with junk", () => {
@@ -806,13 +1075,17 @@ test("every real slice claim in the manifest is a row the slice pass really emit
   assert.deepEqual(m.byGroup.slice.filter((id) => !emitted.has(id)), []);
 });
 
-test("every gap lane that lists CHECK_IDS emits every one of them, even with a dead database", async () => {
+test("every gap lane that lists its ids emits every one of them, even with a dead database", async () => {
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error("no network in this test"); };
   try {
     const modules = await loadGapModules();
-    const withList = modules.filter((m) => Array.isArray(m.mod.CHECK_IDS));
+    const withList = modules.filter((m) => laneCheckIds(m.mod).length > 0);
     assert.ok(withList.length >= 25, `only ${withList.length} lanes list their ids`);
+    // gap-sms and gap-funnels name their lists MSG_CHECK_IDS, GAP_DOORS and GAP_WIDGET_CHECKS.
+    for (const named of ["gap-sms", "gap-funnels"]) {
+      assert.ok(withList.some((m) => m.sliceId === named), `${named} must be read by laneCheckIds`);
+    }
     const dead = { query: async () => { throw new Error("no database here"); } };
     for (const item of withList) {
       const rows = await runGapLane(item.sliceId, {
@@ -824,7 +1097,7 @@ test("every gap lane that lists CHECK_IDS emits every one of them, even with a d
         env: {}
       });
       const have = new Set(rows.flatMap((r) => [r.id, r.checkId && namespaceGapId(r.checkId, item.sliceId)]));
-      const missing = item.mod.CHECK_IDS.map((id) => namespaceGapId(id, item.sliceId)).filter((id) => !have.has(id));
+      const missing = laneCheckIds(item.mod).map((id) => namespaceGapId(id, item.sliceId)).filter((id) => !have.has(id));
       assert.deepEqual(missing, [], `${item.sliceId} did not emit ${missing.join(", ")}`);
     }
   } finally {

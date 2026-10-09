@@ -29,8 +29,19 @@
 //
 // Two helpers from pieces built in the same batch are loaded lazily, on first
 // use: verifyNa (src/pulse/na-conditions.mjs) and NOT_LIVE_ROWS
-// (src/pulse/coverage/link.mjs). A broken file there becomes one honest row
-// here, not a dead 6 a.m. pulse. Tests inject both.
+// (src/pulse/coverage/link.mjs). This lets the file run on its own, and tests
+// inject both. It does NOT protect the pulse once the pieces are merged:
+// scorecard.mjs imports na-conditions.mjs and run-slices.mjs imports link.mjs
+// when they load, and this file imports both of those. A syntax error in
+// either file stops this file from loading, so the 6 a.m. pulse does not start.
+//
+// Who folds the 06-briefs:morning-brief claim: THIS file does, inside
+// auditPulse (see AUDIT_COVERS). audit:not-checked and audit:totals are judged
+// in here, so a fold that came after auditPulse would leave that claim counted
+// as not checked. The pulse must add the returned `folded` to its own count.
+// (audit:totals also adds it to the number it prints, so that line is right
+// either way.) Piece C's pointAuditClaims second fold is not needed for this
+// claim; if it runs anyway it finds nothing left to fold.
 
 import { INNGEST_JOBS, JOBS } from "./heartbeats.mjs";
 import { MACHINE_CHECKS } from "./machine.mjs";
@@ -85,7 +96,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const LANE_DIED_CHECK_IDS = Object.freeze(["step", "threw", "not-listed", "bad-row"]);
 const DIED_WHY = Object.freeze({
   step: "did not finish",
-  threw: "threw, or would not load",
+  threw: "stopped with an error, or would not load",
   "not-listed": "is not on the list in modules.mjs",
   "bad-row": "sent back an empty row"
 });
@@ -149,8 +160,10 @@ function stable(value) {
   return JSON.stringify(value === undefined ? null : value);
 }
 
-/* A function is a cron when it has a cron trigger. Everything else is a
-   workflow that starts on an event (or has no trigger at all). */
+/* A function is a cron when it has a cron trigger and no event trigger. This is
+   the same rule as piece B's checkWorkflowRuns (src/pulse/workflow-runs.mjs):
+   a pure cron is a `job:` row, everything else is a `wf:` row. A function with
+   both kinds of trigger is a `wf:` row. */
 function triggersOf(fn) {
   return (fn && fn.opts && Array.isArray(fn.opts.triggers)) ? fn.opts.triggers : [];
 }
@@ -158,7 +171,10 @@ function fnId(fn) {
   return fn && fn.opts && fn.opts.id ? String(fn.opts.id) : null;
 }
 function isCronFn(fn) {
-  return triggersOf(fn).some((t) => t && t.cron);
+  const triggers = triggersOf(fn);
+  const hasCron = triggers.some((t) => t && typeof t.cron === "string" && t.cron);
+  const hasEvent = triggers.some((t) => t && typeof t.event === "string" && t.event);
+  return hasCron && !hasEvent;
 }
 
 /** NOT_LIVE_ROWS can be a list of ids, a list of {id, reason}, a map, or a set. */
@@ -186,13 +202,38 @@ function yesterdayPhoenix(now) {
 // ── the manifest: every id the run must contain ──────────────────────────────
 
 /**
+ * laneCheckIds — the check ids one gap lane file says it emits. Most lanes export
+ * CHECK_IDS. Two lanes name theirs differently, and both are read here:
+ *   gap-sms     MSG_CHECK_IDS (5 ids; its journey rows have no list)
+ *   gap-funnels GAP_DOORS and GAP_WIDGET_CHECKS (every door and widget check)
+ * The other lanes list nothing (a leftover card on the board); audit:lanes-ran
+ * still catches one that dies or gives no rows.
+ */
+export function laneCheckIds(mod) {
+  if (!mod || typeof mod !== "object") return [];
+  const out = [];
+  const take = (list, pick = (x) => x) => {
+    if (!Array.isArray(list)) return;
+    for (const item of list) {
+      const id = pick(item);
+      if (typeof id === "string" && id) out.push(id);
+    }
+  };
+  take(mod.CHECK_IDS);
+  take(mod.MSG_CHECK_IDS);
+  take(mod.GAP_DOORS, (d) => d && d.id);
+  take(mod.GAP_WIDGET_CHECKS, (c) => c && c.id);
+  return [...new Set(out)];
+}
+
+/**
  * buildManifest — pure. Every id the morning run must contain, built only from
  * lists handed in (the live defaults are imported constants).
  *
  * `sliceModules` is the output of loadSliceModules(): [{ sliceId, CHECKS }].
  * `gapModules` is the output of loadGapModules(): [{ sliceId, mod }]. A gap
- * lane that exports CHECK_IDS adds those ids; the 12 lanes that export no list
- * add nothing (a leftover, see the manifest note).
+ * lane that lists its ids (see laneCheckIds) adds those ids; a lane that lists
+ * none adds nothing (a leftover, see the manifest note).
  * `notLive` is NOT_LIVE_ROWS: claims that left the scorecard on purpose.
  *
  * Returns { ids: Set<string>, byGroup: { reg, job, wf, slice, gap, named } }.
@@ -226,10 +267,7 @@ export function buildManifest({
   }
   for (const item of gapModules || []) {
     const sliceId = item && item.sliceId;
-    const list = item && item.mod && Array.isArray(item.mod.CHECK_IDS) ? item.mod.CHECK_IDS : [];
-    for (const id of list) {
-      if (typeof id === "string" && id) byGroup.gap.push(namespaceGapId(id, sliceId));
-    }
+    for (const id of laneCheckIds(item && item.mod)) byGroup.gap.push(namespaceGapId(id, sliceId));
   }
   for (const id of namedIds || []) byGroup.named.push(String(id));
 
@@ -285,15 +323,37 @@ async function defaultVerifyNa() {
   }
 }
 
+/* The `reason` that comes back is the CONDITION in a few words, written so it
+   fits "Said nothing to judge, but <reason> is not true." Piece A's verifyNa
+   writes it that way ("no ad running", "the reason code "x" being one the
+   computer knows"). The three reasons written here use the same shape. */
 async function verifyOne(row, ctx, verify, deadline) {
   const left = deadline - Date.now();
-  if (left <= 0) return { ok: false, reason: "The audit ran out of time before it could check this again." };
+  if (left <= 0) return { ok: false, reason: "the audit having time left to check it again" };
   try {
     const res = await withTimeout(verify(row, ctx), left);
     if (res && typeof res === "object") return { ok: res.ok === true, reason: clip(res.reason, 200) };
-    return { ok: false, reason: "The check gave no answer." };
+    return { ok: false, reason: "the check giving an answer" };
   } catch (err) {
-    return { ok: false, reason: `It could not be checked again (${clip((err && err.message) || err, 120)}).` };
+    return { ok: false, reason: `the condition being readable (the read failed: ${clip((err && err.message) || err, 120)})` };
+  }
+}
+
+/* The memo key for one nothing-to-judge row. A lane code is answered by the lane
+   file, and piece A's verifyNa finds the lane from row.sliceId, or else from the
+   id before the first ":". The key does the same, so two lanes never share one
+   answer. The args go through JSON first, as they do when saved, so a Date and
+   its ISO text are one key. A key that cannot be built (args that will not turn
+   into JSON) is null, and that row is asked on its own. */
+function naKeyOf(row) {
+  const na = row.na;
+  if (!na || typeof na.code !== "string") return null;
+  try {
+    const lane = row.sliceId || (typeof row.id === "string" && row.id.includes(":") ? row.id.split(":")[0] : null);
+    const args = na.args === undefined ? null : JSON.parse(JSON.stringify(na.args));
+    return stable([lane, na.code, args]);
+  } catch {
+    return null;
   }
 }
 
@@ -310,8 +370,7 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs }) {
   async function worker() {
     while (next < naRows.length) {
       const row = naRows[next++];
-      const hasCode = row.na && typeof row.na.code === "string";
-      const key = hasCode ? stable([row.sliceId || null, row.na.code, row.na.args]) : null;
+      const key = naKeyOf(row);
       let pending = key ? memo.get(key) : null;
       if (!pending) {
         pending = verifyOne(row, ctx, verify, deadline);
@@ -324,15 +383,17 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs }) {
   return outcome;
 }
 
+/* "Said nothing to judge, but <why> is not true." <why> is the reason verifyNa
+   gave, a short condition. Only when no reason came back does the row's own
+   sentence stand in for it. */
 function failedNaRow(row, reason) {
   const rest = { ...row };
   delete rest.na;
-  const claim = clip(row.detail, 160) || "its reason";
-  const why = reason ? ` ${reason}` : "";
+  const why = clip(reason, 200) || `"${clip(row.detail, 160) || "its reason"}"`;
   return {
     ...rest,
     status: "skip",
-    detail: clip(`Said nothing to judge, but "${claim}" is not true.${why}`),
+    detail: clip(`Said nothing to judge, but ${why} is not true.`),
     suggestedFix: "Make this a real check, or fix its nothing-to-judge condition in src/pulse/na-conditions.mjs.",
     customerSees: row.customerSees || null
   };
@@ -340,8 +401,9 @@ function failedNaRow(row, reason) {
 
 // ── step 2: yesterday's morning report ───────────────────────────────────────
 
+/* The statuses the table allows besides "sent" (db/migrations/431_morning_briefs.sql,
+   morning_briefs_delivery_status_ck). Any other value gets the generic line. */
 const BRIEF_WHY = Object.freeze({
-  held_quiet_hours: "It was held back for the quiet hours and never sent.",
   failed: "Sending it failed.",
   dry_run: "It was only a dry run. Nothing was sent.",
   no_number: "There was no phone number to send it to."
@@ -457,6 +519,13 @@ function judgeLanesRan(rows, gapLanes) {
       fix: "Pass GAP_LANES from src/pulse/coverage/run-slices.mjs."
     });
   }
+  // A list with nothing in it would pass without judging a single lane.
+  if (gapLanes.length === 0) {
+    return auditRow(id, "FAIL", "The list of gap lanes is empty, so nothing could be judged.", {
+      fix: "Read GAP_LANES in src/pulse/coverage/run-slices.mjs and how the pulse hands it in. The real list has dozens of lanes.",
+      sees: UNWATCHED
+    });
+  }
   const lanes = gapLanes.map((l) => String(l).replace(/\.mjs$/, ""));
   const byLane = new Map(lanes.map((l) => [l, 0]));
   const problems = [];
@@ -501,6 +570,13 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
       fix: "Pass `functions` from src/workflows/index.mjs."
     });
   }
+  // A list with nothing in it would pass without judging a single workflow.
+  if (functions.length === 0) {
+    return auditRow(id, "FAIL", "The list of bundled workflows is empty, so nothing could be judged.", {
+      fix: "Read how the pulse loads `functions` from src/workflows/index.mjs. The real list has dozens of workflows.",
+      sees: UNWATCHED
+    });
+  }
   let client = sharedClient;
   if (!client) {
     try {
@@ -518,7 +594,7 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
       problems.push("a workflow with no id (it cannot be watched)");
       continue;
     }
-    if (fn.client !== client) problems.push(`${fid} (not on the shared client, so it skips the run receipts)`);
+    if (fn.client !== client) problems.push(`${fid} (not built on the shared Inngest client in src/workflows/client.mjs)`);
     if (isCronFn(fn)) {
       if (!cronJobs.has(fid)) problems.push(`${fid} (a cron that is not on INNGEST_JOBS)`);
     } else if (!have.has(`wf:${fid}`)) {
@@ -560,7 +636,10 @@ function judgeNotChecked(rows, contract) {
   return auditRow(id, "PASS", `${rows.length === 1 ? "The 1 check was" : `All ${rows.length} checks were`} green, red, or had a reason to say nothing to judge today. None were left not checked.`);
 }
 
-function judgeTotals(rows, folded, contract) {
+/* `folded` is the count the pulse already folded (it is checked below).
+   `foldedHere` is what this audit folded itself. The line prints both together,
+   so it is right whether or not the pulse adds the returned count to its own. */
+function judgeTotals(rows, folded, contract, foldedHere = 0) {
   const id = AUDIT_ROW_IDS.totals;
   const problems = [];
   const mapped = [];
@@ -594,7 +673,8 @@ function judgeTotals(rows, folded, contract) {
       }
     );
   }
-  const foldedNote = folded ? ` ${folded} ${plural(folded, "claim was", "claims were")} folded into the check that ran.` : "";
+  const foldedAll = (Number.isInteger(folded) && folded > 0 ? folded : 0) + foldedHere;
+  const foldedNote = foldedAll ? ` ${foldedAll} ${plural(foldedAll, "claim was", "claims were")} folded into the check that ran.` : "";
   return auditRow(
     id,
     "PASS",
@@ -694,7 +774,7 @@ export async function auditPulse({
     const partial = [naVerified, expectedPresent, lanesRan, workflowCoverage, briefsRow];
     const notChecked = judgeNotChecked([...afterFold, ...partial], api);
     const totalsStandIn = { id: AUDIT_ROW_IDS.totals, status: "PASS", detail: "stand-in" };
-    const totals = judgeTotals([...afterFold, ...partial, notChecked, totalsStandIn], folded, api);
+    const totals = judgeTotals([...afterFold, ...partial, notChecked, totalsStandIn], folded, api, foldedIds.length);
 
     return {
       checks: afterFold,
