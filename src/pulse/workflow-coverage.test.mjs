@@ -11,7 +11,12 @@
 //   3. it has no trigger, or is switched off, and is not on NOT_LIVE_WORKFLOWS
 //      (src/pulse/workflow-runs.mjs), so a workflow cannot go dark by accident;
 //   4. it is a cron and is not on INNGEST_JOBS (src/pulse/heartbeats.mjs), so it
-//      would have no job: row.
+//      would have no job: row;
+//   5. the shared client does not list the "Run evidence" add-on (Ship 2), so no
+//      run of an event workflow would leave a receipt in workflow_runs;
+//   6. a workflow with cancelOn (its run can be cancelled mid-sleep and stay open)
+//      is not on SLEEPERS (src/pulse/workflow-runs.mjs), so a cancelled run would be
+//      called lost 30 minutes after it began.
 //
 // It also fails when the allow-lists go stale (an entry nothing uses any more).
 // The rules are plain functions over a list, so each one is shown to fail on a
@@ -23,12 +28,15 @@ import { functions } from "../workflows/index.mjs";
 import { inngest } from "../workflows/client.mjs";
 import { CANONICAL_EVENTS } from "../events/canonical.mjs";
 import { INNGEST_JOBS } from "./heartbeats.mjs";
-import { NOT_LIVE_WORKFLOWS, workflowTriggers } from "./workflow-runs.mjs";
+import { NOT_LIVE_WORKFLOWS, SLEEPERS, workflowTriggers } from "./workflow-runs.mjs";
+import { RUN_EVIDENCE_NAME } from "./run-evidence.mjs";
 
 /* Event names a workflow may listen for although the bus does not know them.
    Empty today: all 22 trigger names in the bundle are canonical. A new entry
    needs a reason of 40+ characters. */
 const EVENT_NAME_ALLOW_LIST = Object.freeze({});
+
+const middlewareOf = (client) => ((client && client.options && client.options.middleware) || []).map((m) => m.name);
 
 function findGaps({
   fns,
@@ -36,9 +44,14 @@ function findGaps({
   canonical = new Set(CANONICAL_EVENTS),
   allow = EVENT_NAME_ALLOW_LIST,
   notLive = NOT_LIVE_WORKFLOWS,
-  jobs = new Set(INNGEST_JOBS.map(([job]) => job))
+  jobs = new Set(INNGEST_JOBS.map(([job]) => job)),
+  addOns = middlewareOf(client),
+  sleepers = SLEEPERS
 }) {
   const gaps = [];
+  if (!addOns.includes(RUN_EVIDENCE_NAME)) {
+    gaps.push(`the shared client does not list the "${RUN_EVIDENCE_NAME}" add-on, so no run of an event workflow leaves a receipt`);
+  }
   const seen = new Map();
   const usedAllow = new Set();
   for (const fn of fns) {
@@ -63,6 +76,9 @@ function findGaps({
     if (t.crons.length > 0 && !jobs.has(id)) {
       gaps.push(`${id}: is a cron but is not on INNGEST_JOBS, so it has no job: row`);
     }
+    if (fn.opts && fn.opts.cancelOn && !Object.prototype.hasOwnProperty.call(sleepers, id)) {
+      gaps.push(`${id}: has cancelOn but is not on SLEEPERS, so a cancelled run would be called lost`);
+    }
   }
   for (const id of Object.keys(notLive)) {
     const t = seen.get(id);
@@ -86,6 +102,12 @@ test("workflow coverage: today's bundle has no gap", () => {
 test("workflow coverage: every function is on the shared Inngest client", () => {
   const strays = functions.filter((fn) => fn.client !== inngest).map((fn) => workflowTriggers(fn).id);
   assert.deepEqual(strays, []);
+});
+
+test("workflow coverage: the shared client lists the Run evidence add-on (and the cron heartbeat)", () => {
+  const names = middlewareOf(inngest);
+  assert.ok(names.includes(RUN_EVIDENCE_NAME), `add-ons: ${names.join(", ")}`);
+  assert.ok(names.includes("Job heartbeat"), `add-ons: ${names.join(", ")}`);
 });
 
 test("workflow coverage: every event trigger in the bundle is a canonical event", () => {
@@ -164,4 +186,29 @@ test("stale allow-lists fail: a NOT_LIVE entry that is live or gone, an event al
   assert.match(g3[0], /no workflow listens for it/);
   const g4 = madeUp({ fns: [wf("here")], allow: { "round.started": "z".repeat(40) } });
   assert.match(g4[0], /is canonical now/);
+});
+
+test("rule 5 fails: a shared client without the Run evidence add-on; passes when it is listed", () => {
+  const gaps = madeUp({ fns: [wf("fine")], addOns: ["Job heartbeat"] });
+  assert.equal(gaps.length, 1);
+  assert.match(gaps[0], /^the shared client does not list the "Run evidence" add-on/);
+  assert.deepEqual(madeUp({ fns: [wf("fine")], addOns: ["Job heartbeat", "Run evidence"] }), []);
+  // The real list is read the way the guard reads it: take the add-on off the real client and the guard fails.
+  const real = inngest.options.middleware;
+  const saved = [...real];
+  try {
+    real.splice(0, real.length, ...saved.filter((m) => m.name !== RUN_EVIDENCE_NAME));
+    assert.equal(findGaps({ fns: functions }).filter((g) => /Run evidence/.test(g)).length, 1);
+  } finally {
+    real.splice(0, real.length, ...saved);
+  }
+  assert.deepEqual(findGaps({ fns: functions }), []);
+});
+
+test("rule 6 fails: a workflow with cancelOn that is not on SLEEPERS; passes when it is", () => {
+  const cancellable = wf("cancel-me", { cancelOn: [{ event: "booking.cancelled" }] });
+  const gaps = madeUp({ fns: [cancellable], sleepers: {} });
+  assert.equal(gaps.length, 1);
+  assert.match(gaps[0], /^cancel-me: has cancelOn but is not on SLEEPERS/);
+  assert.deepEqual(madeUp({ fns: [cancellable], sleepers: { "cancel-me": 1000 } }), []);
 });

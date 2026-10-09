@@ -1,25 +1,81 @@
-// Event workflow rows — zero "not checked", Ship 1 (2026-10-09).
+// Event workflow rows — zero "not checked" (Ship 1 judged events only; Ship 2 adds run receipts), 2026-10-09.
 //
 // One row per bundled Inngest function that is not a pure cron: `wf:<id>`.
 // Crons are the `job:` rows in heartbeats.mjs. This file judges the other 65
-// (62 that start on an event, 3 that have no trigger) from the `events` table
-// ONLY. There is no run recorder yet (Ship 2), so nothing here can prove a
-// workflow ran. The rules say that out loud instead of hiding it:
+// (62 that start on an event, 3 that have no trigger).
 //
-//   a. no trigger, or switched off       -> na   no-trigger  (re-checked by bundled code)
-//   b. the read failed                   -> skip (lands "not checked", red)
-//   c. an event came in the last 3 days  -> skip (we handed it work, nothing proves it ran)
-//   d. no event in the last 3 days       -> na   no-demand   (re-checked against `events`)
+// Two reads for ALL of them, no more:
+//   events  one grouped SELECT on `events`: which trigger names had an event in the last 3 days.
+//   runs    one SELECT on `workflow_runs` (written by src/pulse/run-evidence.mjs): the recent runs of
+//           every workflow, the events that never started a run, when receipts began, and whether
+//           the app can still write them.
 //
-// It never returns PASS. A green here would be a guess.
+// A row is a real green, a real red, or "nothing to judge" with a reason the audit re-checks.
+// Rules, FIRST HIT WINS:
 //
-// Reads: one grouped SELECT on `events`, through `scope` (staff) when the pulse
-// has one, else the plain pool. Nothing is written. No repo file is read at run
-// time: the caller hands in the bundled `functions` list.
+//   a. no trigger / switched off                       -> na   no-trigger
+//   b. its newest finished run FAILED for good,
+//      and that was over 15 minutes ago                -> FAIL  "last run failed"
+//      (a failure with a retry still coming is "retrying", PASS, never red)
+//   c. an event came (over 15 minutes ago, after
+//      receipts began) and no run of THIS workflow
+//      carries that event's id                         -> FAIL  "event came, no receipt shows it started"
+//      (a repeat funnel post is not counted: the app stores it and starts no run on purpose)
+//      (if the app cannot write receipts any more:    -> skip  "receipts are off", never a guess)
+//   d. a run that started and never finished:
+//        a workflow that does not sleep, over 30 min   -> FAIL  "started, never finished"
+//        a sleeper, past its longest wait + one day    -> FAIL
+//        a sleeper inside its wait                     -> PASS  "asleep, waits by design"
+//      It is FAIL only when receipts were still being written after the run's deadline. If the app
+//      cannot write receipts, or none was written after the deadline, the finish mark may only have been
+//      lost: skip, never red.
+//   e. its last 3 runs all skipped                     -> FAIL  "every run skipped"
+//   f. a run in the last 30 days finished ok (or
+//      one is asleep or still running)                 -> PASS  with the times
+//   g. no event and no run                             -> na   no-demand
+//   h. an event came and receipts cannot judge it      -> skip  (lands "not checked", red)
+//        - the receipts table cannot be read, or has no start marker
+//        - the event came before receipts began and receipts are not yet a day old
+//
+// The pulse only reports. Nothing here fixes anything. Nothing is written. No repo file is read at
+// run time: the caller hands in the bundled `functions` list.
+
+import { phoenixClock, phoenixTimeWords } from "./quiet-hours.mjs";
 
 export const WORKFLOW_SINCE_DAYS = 3;
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const RUN_WINDOW_DAYS = 30;
+const MIN_MS = 60 * 1000;
+const HOUR_MS = 60 * MIN_MS;
+const DAY_MS = 24 * HOUR_MS;
 const READ_TIMEOUT_MS = 5000;
+
+/* An event younger than this has not been given time to start a run. */
+export const START_GRACE_MS = 15 * MIN_MS;
+/* A failed-for-good run is judged red once it is this old. */
+export const FAILED_JUDGE_AFTER_MS = 15 * MIN_MS;
+/* A workflow that does not sleep has this long to finish. */
+export const OPEN_LIMIT_MS = 30 * MIN_MS;
+/* A sleeper may sleep this long past its longest wait before it is called lost. */
+export const SLEEPER_SLACK_MS = DAY_MS;
+/* Events in the first hour after the receipts marker are not judged: the code deploys a few minutes
+   after the migration, and an event in that gap was handled by the old code. */
+export const RECEIPTS_GRACE_MS = HOUR_MS;
+/* A "nothing came since receipts began" claim needs a window at least this long (the audit's own floor). */
+export const NO_DEMAND_MIN_WINDOW_MS = DAY_MS;
+/* An error saved as "a retry is coming" that has no later attempt after this long is not waiting any more. */
+export const RETRY_GIVE_UP_MS = DAY_MS;
+export const SKIPPED_RUNS_JUDGED = 3;
+export const RUNS_PER_FUNCTION = 25;
+/* The function id of the marker row db/migrations/478 inserts. Real ids never start with an underscore. */
+export const RECORDER_FUNCTION_ID = "_recorder";
+
+/* Funnel posts the app stores and does NOT hand to Inngest on purpose: a repeat post of the same event name,
+   address and funnel inside 6 hours (src/adapters/clickfunnels.mjs isRepeatFunnelPost, live since 2026-09-03).
+   ClickFunnels sends one post per survey screen. No run can carry the id of such an event, so it must not
+   be counted as "never started". Copied from that file, not imported (it is not exported and pulls the whole
+   adapter into the pulse); workflow-runs.test.mjs fails when the two stop matching. */
+export const REPEAT_SUPPRESSED_EVENTS = Object.freeze(["survey.submitted", "entry.captured"]);
+export const FUNNEL_REPEAT_WINDOW_MINUTES = 6 * 60;
 
 /* Workflows that are dark on purpose. Each needs a reason of 40+ characters.
    workflow-coverage.test.mjs fails when a function has no trigger and is not
@@ -33,7 +89,40 @@ export const NOT_LIVE_WORKFLOWS = Object.freeze({
     "Retired 2026-08-22. Both triggers were removed and the workflow is switched off. Owner call: every lead is hot."
 });
 
-/** The start of the look-back window: three days before `now`. */
+/* SLEEPERS — the workflows that call step.sleep, step.sleepUntil or step.waitForEvent, with the LONGEST
+   time one run can stay open (sum of its sleeps, with room). A run of these has a start mark and no finish
+   mark for as long as it sleeps, and that is by design. A run older than its wait plus a day is lost.
+
+   A workflow that is NOT here has one request's worth of work: it is red if a run is still open after
+   30 minutes. A workflow that sleeps and is missing here would be called lost 30 minutes into its first sleep.
+   workflow-runs.test.mjs reads the bundled workflow files and fails when a sleeper is missing from this map,
+   when an entry is not a sleeper, and when a workflow with cancelOn is missing (a cancelled run also stays open).
+
+   Booking-based waits: the longest lead measured on 68 real bookings is 2 days 23 hours 59 minutes, so
+   14 days is room, not a guess at the calendar. If bookings are ever taken further ahead, raise these. */
+const H = HOUR_MS;
+const D = DAY_MS;
+export const SLEEPERS = Object.freeze({
+  "ai-set-01-josh-setter": 1 * D, // sleeps to the end of quiet hours (8 p.m. to 8 a.m.), at most one night
+  "ai-set-03-no-answer-cadence": 3 * H, // 30 minutes, then 2 hours
+  "ai-set-04-3way-handoff": 14 * D, // sleeps until 15 minutes before a booked call
+  "ar-collections": 14 * D, // 7 days, then 7 days
+  "bc-01-customer-responsiveness": 3 * D, // 24 hours, then 48 hours
+  "bs-01-precall-launcher": 21 * D, // until 48 hours before the call, then 3 days of touches
+  "dpc-02-call-outcome-enforcement": 14 * D, // until 5 minutes after the booked call ends
+  "dpc-05-no-progress-escalation": 3 * D, // 72 hours
+  "f-02-portal-id-missing": 3 * D, // 3 hours, then 2 days
+  "n-06-renewal-second-wave": 180 * D, // 180 days
+  "s-02-incomplete-survey-nudge": 1 * H, // 20 minutes
+  "s-04b-booking-reminders": 14 * D, // until 24 hours, then 2 hours, before a booked call
+  "s-nobook-chase": 5 * D, // 2 hours, 24 hours, then 72 hours
+  "s-05a-no-show-recovery": 8 * D, // 24 hours, 48 hours, then 96 hours
+  "slo-genuine-followup": 1 * H, // 15 minutes
+  "slo-no-reply-197": 2 * D, // 24 hours
+  "slo-paid-form-nudge": 1 * H // 15 minutes
+});
+
+/** The start of the events look-back window: three days before `now`. */
 export function workflowSince(now = new Date()) {
   return new Date(now.getTime() - WORKFLOW_SINCE_DAYS * DAY_MS);
 }
@@ -56,7 +145,8 @@ export function workflowTriggers(fn) {
   return { id, events, crons, enabled: opts.enabled !== false, hasTrigger: events.length + crons.length > 0 };
 }
 
-const SQL_EVENTS = `SELECT name,
+/* The events read: how many events of each trigger name came since the window start. */
+export const EVENTS_SQL = `SELECT name,
        count(*)::int AS n,
        min(created_at) AS first_at,
        max(created_at) AS last_at
@@ -65,15 +155,92 @@ const SQL_EVENTS = `SELECT name,
    AND created_at > $2::timestamptz
  GROUP BY name`;
 
+/* A repeat funnel post: the app stored it and did not hand it to Inngest, so no run can carry its id. Same test
+   as isRepeatFunnelPost: an earlier events row, same org, name, address (any case) and funnel, inside the window.
+   No address is never a repeat. */
+const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}'`).join(", ")})
+     AND COALESCE(e.payload->>'email', '') <> ''
+     AND EXISTS (
+       SELECT 1 FROM events p
+        WHERE p.org_id = e.org_id
+          AND p.name = e.name
+          AND p.created_at < e.created_at
+          AND p.created_at > e.created_at - make_interval(mins => ${FUNNEL_REPEAT_WINDOW_MINUTES})
+          AND lower(p.payload->>'email') = lower(e.payload->>'email')
+          AND COALESCE(p.payload->>'funnel', '') = COALESCE(e.payload->>'funnel', '')
+     )`;
+
+/* The runs read. Three kinds of row come back, told apart by `kind`:
+     run   the latest state of each recent run (the newest finished attempt wins; an unfinished run is
+           shown by its start mark), with the time its first attempt began. At most $8 per workflow.
+     miss  per workflow and event name: events after receipts began, over 15 minutes old, that NO run
+           of that workflow carries the id of (count, first and last time). A repeat funnel post is left out.
+           Nothing, when receipts have no marker.
+     meta  one row: when receipts began (the marker row) in "at", the newest receipt time of any workflow in
+           "finished_at" (a finish time, or a start time for a run still open), and n = 1 when the app can
+           still write receipts.
+   $1 workflow ids, $2 their event names (same length, one pair per trigger), $3 events window start,
+   $4 events window end (now minus 15 minutes), $5 runs window start, $6 unfinished-runs window start,
+   $7 minutes of grace after the marker, $8 runs kept per workflow. */
+export const RUNS_SQL = `WITH began AS (
+  SELECT min(started_at) AS at FROM workflow_runs WHERE function_id = '${RECORDER_FUNCTION_ID}'
+),
+specs AS (
+  SELECT function_id, name FROM unnest($1::text[], $2::text[]) AS s(function_id, name)
+),
+latest AS (
+  SELECT DISTINCT ON (run_id)
+         run_id, function_id, event_name, bus_event_id, attempt, max_attempts,
+         min(started_at) OVER (PARTITION BY run_id) AS run_started_at,
+         finished_at, outcome, "final", skipped, note, error
+    FROM workflow_runs
+   WHERE function_id <> '${RECORDER_FUNCTION_ID}'
+     AND function_id IN (SELECT function_id FROM specs)
+     AND (started_at > $5::timestamptz OR (finished_at IS NULL AND started_at > $6::timestamptz))
+   ORDER BY run_id, finished_at DESC NULLS LAST, attempt DESC
+),
+ranked AS (
+  SELECT latest.*, row_number() OVER (PARTITION BY function_id ORDER BY run_started_at DESC) AS rn
+    FROM latest
+)
+SELECT 'run'::text AS kind, function_id, run_id, event_name, bus_event_id, attempt, max_attempts,
+       run_started_at AS at, finished_at, outcome, "final", skipped, note, error, NULL::int AS n
+  FROM ranked
+ WHERE rn <= $8::int
+UNION ALL
+SELECT 'miss', s.function_id, NULL, s.name, NULL, NULL, NULL,
+       min(e.created_at), max(e.created_at), NULL, NULL, NULL, NULL, NULL, count(*)::int
+  FROM specs s
+  JOIN events e ON e.name = s.name
+ WHERE (SELECT at FROM began) IS NOT NULL
+   AND e.created_at > greatest($3::timestamptz, (SELECT at FROM began) + make_interval(mins => $7::int))
+   AND e.created_at <= $4::timestamptz
+   AND NOT EXISTS (
+     SELECT 1 FROM workflow_runs w
+      WHERE w.function_id = s.function_id AND w.bus_event_id = e.id::text
+   )
+   AND NOT (${REPEAT_POST_SQL})
+ GROUP BY s.function_id, s.name
+UNION ALL
+SELECT 'meta', NULL, NULL, NULL, NULL, NULL, NULL,
+       (SELECT at FROM began), (SELECT max(coalesce(finished_at, run_started_at)) FROM latest), NULL, NULL, NULL, NULL, NULL,
+       CASE WHEN has_table_privilege(current_user, 'public.workflow_runs', 'INSERT')
+             AND has_table_privilege(current_user, 'public.workflow_runs', 'UPDATE') THEN 1 ELSE 0 END`;
+
+// ── small helpers ────────────────────────────────────────────────────────────
+
+/* Times are on the Arizona clock, the one Chris reads (src/pulse/quiet-hours.mjs). */
 function dayOf(date) {
-  return date.toISOString().slice(0, 10);
+  const c = phoenixClock(date);
+  return `${c.year}-${String(c.month).padStart(2, "0")}-${String(c.day).padStart(2, "0")}`;
 }
 
 function minuteOf(date) {
-  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  return `${dayOf(date)} ${phoenixTimeWords(date)} Arizona time`;
 }
 
 function toDate(value) {
+  if (value == null) return null;
   const d = value instanceof Date ? value : new Date(value);
   return Number.isFinite(d.getTime()) ? d : null;
 }
@@ -88,16 +255,50 @@ function clip(text, max) {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
-async function readEventCounts({ db, scope, names, since, timeoutMs }) {
+function plural(n, one, many) {
+  return n === 1 ? one : many;
+}
+
+/* "30 minutes", "3 hours", "14 days". */
+function human(ms) {
+  if (ms < HOUR_MS) {
+    const m = Math.max(1, Math.round(ms / MIN_MS));
+    return `${m} ${plural(m, "minute", "minutes")}`;
+  }
+  if (ms < 2 * DAY_MS) {
+    const h = Math.max(1, Math.round(ms / HOUR_MS));
+    return `${h} ${plural(h, "hour", "hours")}`;
+  }
+  const d = Math.round(ms / DAY_MS);
+  return `${d} days`;
+}
+
+function ago(ms) {
+  return `${human(Math.max(0, ms))} ago`;
+}
+
+function whyFailed(err) {
+  const code = err && err.code ? `${err.code} ` : "";
+  return clip(`${code}${(err && err.message) || err || "unknown error"}`, 160) || "unknown error";
+}
+
+/* The one place a read can go wrong in words a person can use. */
+function readFailure(err) {
+  if (err && err.code === "42P01") return "the workflow_runs table does not exist yet (42P01)";
+  return whyFailed(err);
+}
+
+async function readRows({ db, scope, text, params, timeoutMs }) {
   const canScope = typeof scope === "function";
   if (!canScope && (!db || typeof db.query !== "function")) {
-    throw new Error("no database in this run, so events were not read");
+    throw new Error("no database in this run, so nothing was read");
   }
   let timer;
   // Wrapped so a synchronous throw (no DATABASE_URL) becomes a rejection.
   const run = (async () => (canScope
-    ? scope((tx) => tx.query(SQL_EVENTS, [names, since.toISOString()]))
-    : db.query(SQL_EVENTS, [names, since.toISOString()])))();
+    ? scope((tx) => tx.query(text, params))
+    : db.query(text, params)))();
+  run.catch(() => {}); // a late rejection after the timer won must not be unhandled
   try {
     const res = await Promise.race([
       run,
@@ -119,10 +320,287 @@ function row(id, status, detail, extra = {}) {
     status,
     detail,
     suggestedFix: extra.suggestedFix || null,
-    customerSees: null,
+    customerSees: extra.customerSees || null,
     schedule: extra.schedule || null,
     ...(extra.na ? { na: extra.na } : {})
   };
+}
+
+/* Turn the rows of the runs read into per-workflow lists.
+   An error saved as "a retry is coming" is final in two more cases: it was the last attempt (the engine
+   did not say how many it allows when it was written), or no later attempt came in a day. Otherwise it
+   would read "retrying" for ever. */
+function readRunRows(rows, now) {
+  const runs = new Map();
+  const miss = new Map();
+  let began = null;
+  let lastReceipt = null;
+  let canWrite = true;
+  for (const r of rows) {
+    if (r.kind === "run") {
+      const startedAt = toDate(r.at);
+      if (!startedAt || !r.function_id) continue;
+      const list = runs.get(r.function_id) || [];
+      const attempt = Number.isInteger(r.attempt) ? r.attempt : 0;
+      const maxAttempts = Number.isInteger(r.max_attempts) ? r.max_attempts : null;
+      const finishedAt = toDate(r.finished_at);
+      const outcome = r.outcome === "error" ? "error" : (r.outcome === "ok" ? "ok" : null);
+      let final = r.final === true;
+      let gaveUp = false;
+      if (outcome === "error" && !final) {
+        if (maxAttempts != null && attempt + 1 >= maxAttempts) final = true;
+        else if (finishedAt && now.getTime() - finishedAt.getTime() > RETRY_GIVE_UP_MS) { final = true; gaveUp = true; }
+      }
+      list.push({
+        runId: String(r.run_id),
+        attempt,
+        maxAttempts,
+        startedAt,
+        finishedAt,
+        outcome,
+        final,
+        gaveUp,
+        skipped: r.skipped === true,
+        note: r.note ? String(r.note) : null,
+        error: r.error ? String(r.error) : null
+      });
+      runs.set(r.function_id, list);
+    } else if (r.kind === "miss") {
+      const list = miss.get(r.function_id) || [];
+      list.push({ name: String(r.event_name), n: Number(r.n) || 0, first: toDate(r.at), last: toDate(r.finished_at) });
+      miss.set(r.function_id, list);
+    } else if (r.kind === "meta") {
+      began = toDate(r.at);
+      lastReceipt = toDate(r.finished_at);
+      canWrite = Number(r.n) === 1;
+    }
+  }
+  return { runs, miss, began, lastReceipt, canWrite };
+}
+
+// ── the rules ────────────────────────────────────────────────────────────────
+
+/* judgeFromRuns — rules b to f, from the run receipts alone. Returns a row, or null when the receipts
+   have nothing to say (the caller then looks at demand: rules g and h). */
+function judgeFromRuns(s, { runs, miss, canWrite, lastReceipt, now }) {
+  const nowMs = now.getTime();
+  const schedule = s.events.join(" + ");
+  const fix = `Open ${s.id} in Inngest and read that run. Do not re-run it from this pulse.`;
+  const switchedOffFix = "Put the write permission on workflow_runs back (GRANT INSERT, UPDATE to fundhub_app), or take the add-on out of src/workflows/client.mjs on purpose.";
+  const finished = runs
+    .filter((r) => r.finishedAt)
+    .sort((a, b) => b.finishedAt - a.finishedAt);
+  const open = runs.filter((r) => !r.finishedAt).sort((a, b) => a.startedAt - b.startedAt);
+  const newest = finished[0] || null;
+
+  // b. its newest finished run failed for good.
+  if (newest && newest.outcome === "error" && newest.final) {
+    const age = nowMs - newest.finishedAt.getTime();
+    if (age >= FAILED_JUDGE_AFTER_MS) {
+      return row(
+        s.id,
+        "FAIL",
+        `Its last run failed ${minuteOf(newest.finishedAt)}: ${newest.error || "no reason was saved"}. ${newest.gaveUp ? "No retry was saved after it." : "No retry is coming."}`,
+        {
+          suggestedFix: fix,
+          customerSees: `${s.id} stopped on its last run, so the work it does for leads and clients was not done.`,
+          schedule
+        }
+      );
+    }
+    return row(
+      s.id,
+      "skip",
+      `Its last run failed ${ago(age)}: ${newest.error || "no reason was saved"}. It is judged once it is ${human(FAILED_JUDGE_AFTER_MS)} old.`,
+      { suggestedFix: fix, schedule }
+    );
+  }
+
+  // c. an event came and no run of this workflow carries its id.
+  const lost = miss.reduce((sum, m) => sum + m.n, 0);
+  if (lost > 0) {
+    const firsts = miss.map((m) => m.first).filter(Boolean).sort((a, b) => a - b);
+    const said = miss.map((m) => `${m.n} ${m.name}`).join(" and ");
+    if (!canWrite) {
+      return row(
+        s.id,
+        "skip",
+        `${said} ${plural(lost, "event", "events")} came, but run receipts are switched off (the app cannot write them). This workflow was not judged.`,
+        { suggestedFix: switchedOffFix, schedule }
+      );
+    }
+    return row(
+      s.id,
+      "FAIL",
+      `${said} ${plural(lost, "event", "events")} came and no receipt shows this workflow started` +
+        `${firsts.length ? ` (first ${minuteOf(firsts[0])})` : ""}.`,
+      {
+        suggestedFix: `Open ${s.id} in Inngest and look for the ${miss[0].name} event. If Inngest never got it, the send was lost. If it did, the workflow ran and only its start receipt was lost. Do not re-run it from this pulse.`,
+        customerSees: `Work that ${s.id} should have started for a lead or client may not have been started.`,
+        schedule
+      }
+    );
+  }
+
+  // d. a run that started and never finished.
+  const sleep = Object.prototype.hasOwnProperty.call(SLEEPERS, s.id) ? SLEEPERS[s.id] : null;
+  const limit = sleep == null ? OPEN_LIMIT_MS : sleep + SLEEPER_SLACK_MS;
+  const overLimit = open.filter((r) => nowMs - r.startedAt.getTime() > limit);
+  const inLimit = open.filter((r) => nowMs - r.startedAt.getTime() <= limit);
+  if (overLimit.length > 0 && !canWrite) {
+    // The app cannot write receipts, so a finish mark may be missing only because it could not be saved.
+    return row(
+      s.id,
+      "skip",
+      `${overLimit.length} ${plural(overLimit.length, "run", "runs")} started and ${plural(overLimit.length, "has", "have")} no finish mark, but run receipts are switched off (the app cannot write them). This workflow was not judged.`,
+      { suggestedFix: switchedOffFix, schedule }
+    );
+  }
+  // A run is lost only if receipts were still being written after its deadline. If nothing was saved after it,
+  // the database may have been paused or down, and its finish mark may just be missing.
+  const wasWriting = (r) => lastReceipt != null && lastReceipt.getTime() >= r.startedAt.getTime() + limit;
+  const lostRuns = overLimit.filter(wasWriting);
+  const unsure = overLimit.filter((r) => !wasWriting(r));
+  if (lostRuns.length > 0) {
+    const oldest = lostRuns[0];
+    const said = sleep == null
+      ? `${lostRuns.length} ${plural(lostRuns.length, "run", "runs")} started and never finished. The oldest began ${minuteOf(oldest.startedAt)}. This workflow should finish in ${human(OPEN_LIMIT_MS)}.`
+      : `${lostRuns.length} ${plural(lostRuns.length, "run", "runs")} ${plural(lostRuns.length, "has", "have")} been asleep too long. The oldest began ${minuteOf(oldest.startedAt)}. The longest wait for this workflow is ${human(sleep)}.`;
+    return row(s.id, "FAIL", said, {
+      suggestedFix: fix,
+      customerSees: `A run of ${s.id} stopped part of the way, so the rest of its work was not done.`,
+      schedule
+    });
+  }
+
+  // A failure with a retry still coming. Never red.
+  if (newest && newest.outcome === "error" && !newest.final) {
+    const of = newest.maxAttempts ? ` of ${newest.maxAttempts}` : "";
+    return row(
+      s.id,
+      "PASS",
+      `Retrying: attempt ${newest.attempt + 1}${of} failed ${minuteOf(newest.finishedAt)}: ${newest.error || "no reason was saved"}. It is judged again when the retries are done.`,
+      { schedule }
+    );
+  }
+
+  // e. every one of its last runs did nothing on purpose.
+  const lastRuns = finished.slice(0, SKIPPED_RUNS_JUDGED);
+  if (lastRuns.length === SKIPPED_RUNS_JUDGED && lastRuns.every((r) => r.outcome === "ok" && r.skipped)) {
+    const why = lastRuns[0].note ? `: ${lastRuns[0].note}` : " (no reason was saved)";
+    return row(
+      s.id,
+      "FAIL",
+      `Every run skipped${why}. Its last ${SKIPPED_RUNS_JUDGED} runs all ran and did nothing.`,
+      {
+        suggestedFix: `Read why ${s.id} skips. A switch or a key may be off. Do not re-run it from this pulse.`,
+        customerSees: `${s.id} is running and doing nothing, so its work for leads and clients is not happening.`,
+        schedule
+      }
+    );
+  }
+
+  // f. it ran, or it is asleep or running by design.
+  const lastOk = finished.find((r) => r.outcome === "ok") || null;
+  const unsureNote = unsure.length > 0
+    ? `${unsure.length} older ${plural(unsure.length, "run has", "runs have")} no finish mark. Run receipts may have been paused, so ${plural(unsure.length, "it was", "they were")} not judged.`
+    : null;
+  if (lastOk || inLimit.length > 0) {
+    const parts = [];
+    if (lastOk) {
+      parts.push(lastOk.skipped
+        ? `Last run started ${minuteOf(lastOk.startedAt)} and finished ok ${minuteOf(lastOk.finishedAt)}. It skipped${lastOk.note ? `: ${lastOk.note}` : ""}.`
+        : `Last run started ${minuteOf(lastOk.startedAt)} and finished ok ${minuteOf(lastOk.finishedAt)}.`);
+    }
+    if (inLimit.length > 0) {
+      const since = minuteOf(inLimit[0].startedAt);
+      parts.push(sleep == null
+        ? `${inLimit.length} ${plural(inLimit.length, "run is", "runs are")} still running (the oldest began ${since}).`
+        : `${inLimit.length} ${plural(inLimit.length, "run is", "runs are")} asleep (the oldest began ${since}). It waits by design, up to ${human(sleep)}.`);
+    }
+    if (unsureNote) parts.push(unsureNote);
+    return row(s.id, "PASS", parts.join(" "), { schedule });
+  }
+  if (unsure.length > 0) {
+    return row(
+      s.id,
+      "skip",
+      `${unsure.length} ${plural(unsure.length, "run", "runs")} started and ${plural(unsure.length, "has", "have")} no finish mark (the oldest began ${minuteOf(unsure[0].startedAt)}). Run receipts may have been paused, so it is not known if ${plural(unsure.length, "it was", "they were")} lost. This workflow was not judged.`,
+      { suggestedFix: `Look for [run-evidence] lines in the Netlify function log (a line that says paused means the database did not answer). Then open ${s.id} in Inngest and read that run.`, schedule }
+    );
+  }
+  return null;
+}
+
+/* judgeFromDemand — rules g and h, when the receipts have nothing to say. */
+function judgeFromDemand(s, { events, eventsError, runsError, began, canWrite, now, since }) {
+  const nowMs = now.getTime();
+  const schedule = s.events.join(" + ");
+  const fix = `Open ${s.id} in Inngest and read its runs. Do not re-run it from this pulse.`;
+  if (eventsError) {
+    return row(s.id, "skip", `Events could not be read: ${eventsError}. This workflow was not judged.`, { suggestedFix: fix, schedule });
+  }
+  const hits = s.events
+    .map((name) => ({ name, ...(events.get(name) || { n: 0, first: null, last: null }) }))
+    .filter((h) => h.n > 0);
+
+  // g. nobody handed it work.
+  if (hits.length === 0) {
+    return row(
+      s.id,
+      "na",
+      `No ${nameList(s.events)} event came since ${dayOf(since)}. Judged the day one comes.`,
+      { schedule, na: { code: "no-demand", args: { names: [...s.events], since: since.toISOString() } } }
+    );
+  }
+
+  // h. work came, and the receipts cannot judge it.
+  const total = hits.reduce((sum, h) => sum + h.n, 0);
+  const said = hits.map((h) => `${h.n} ${h.name}`).join(" and ");
+  const lasts = hits.map((h) => h.last).filter(Boolean).sort((a, b) => b - a);
+  const firsts = hits.map((h) => h.first).filter(Boolean).sort((a, b) => a - b);
+  const came = `${said} ${plural(total, "event", "events")} came since ${dayOf(since)}${firsts.length ? ` (first ${minuteOf(firsts[0])})` : ""}`;
+  if (runsError) {
+    return row(s.id, "skip", `${came}, but run receipts could not be read: ${runsError}. This workflow was not judged.`, { suggestedFix: fix, schedule });
+  }
+  if (!began) {
+    return row(s.id, "skip", `${came}, but run receipts have no start marker, so nothing says whether it ran. This workflow was not judged.`, { suggestedFix: fix, schedule });
+  }
+  if (!canWrite) {
+    return row(s.id, "skip", `${came}, but run receipts are switched off (the app cannot write them). This workflow was not judged.`, {
+      suggestedFix: "Put the write permission on workflow_runs back (GRANT INSERT, UPDATE to fundhub_app), or take the add-on out of src/workflows/client.mjs on purpose.",
+      schedule
+    });
+  }
+  const floor = new Date(began.getTime() + RECEIPTS_GRACE_MS);
+  const lastAt = lasts[0] || null;
+  if (lastAt && lastAt.getTime() > floor.getTime()) {
+    // An event after receipts began. The receipts read found no missing run, and none is old enough to be late.
+    if (nowMs - lastAt.getTime() < START_GRACE_MS) {
+      return row(
+        s.id,
+        "PASS",
+        `${said} ${plural(total, "event", "events")} came ${ago(nowMs - lastAt.getTime())}. The workflow has ${human(START_GRACE_MS)} to start.`,
+        { schedule }
+      );
+    }
+    return row(s.id, "skip", `${came}, but no receipt could be matched to it. This workflow was not judged.`, { suggestedFix: fix, schedule });
+  }
+  // Every event came before receipts began. Nothing records whether those ran.
+  if (nowMs - floor.getTime() >= NO_DEMAND_MIN_WINDOW_MS) {
+    return row(
+      s.id,
+      "na",
+      `No ${nameList(s.events)} event came since ${dayOf(floor)}, when run receipts began. Judged the day one comes.`,
+      { schedule, na: { code: "no-demand", args: { names: [...s.events], since: floor.toISOString() } } }
+    );
+  }
+  return row(
+    s.id,
+    "skip",
+    `${came}, before run receipts began (${minuteOf(began)}). Nothing says whether it ran. It is judged from the next event, or once receipts are a day old.`,
+    { suggestedFix: fix, schedule }
+  );
 }
 
 /**
@@ -154,23 +632,49 @@ export async function checkWorkflowRuns({
     specs.push(t);
   }
 
-  // Which functions can be judged from events at all?
+  // Which functions can be judged from events and receipts at all?
   const live = specs.filter((s) => s.enabled && s.events.length > 0);
   const names = [...new Set(live.flatMap((s) => s.events))];
 
-  let counts = null;
-  let readError = null;
-  if (names.length > 0) {
-    try {
-      const rows = await readEventCounts({ db, scope, names, since, timeoutMs: readTimeoutMs });
-      counts = new Map();
-      for (const r of rows) {
-        const first = toDate(r.first_at);
-        counts.set(String(r.name), { n: Number(r.n) || 0, first });
+  const events = new Map();
+  let eventsError = null;
+  let runsError = null;
+  let receipts = { runs: new Map(), miss: new Map(), began: null, lastReceipt: null, canWrite: true };
+
+  if (live.length > 0) {
+    const pairs = live.flatMap((s) => s.events.map((name) => [s.id, name]));
+    const longestSleep = Math.max(0, ...live.map((s) => (Object.prototype.hasOwnProperty.call(SLEEPERS, s.id) ? SLEEPERS[s.id] : 0)));
+    const runsFrom = new Date(now.getTime() - RUN_WINDOW_DAYS * DAY_MS);
+    const openFrom = new Date(now.getTime() - Math.max(RUN_WINDOW_DAYS * DAY_MS, longestSleep + SLEEPER_SLACK_MS));
+    const eventsUntil = new Date(now.getTime() - START_GRACE_MS);
+    const [evRes, runRes] = await Promise.allSettled([
+      readRows({ db, scope, text: EVENTS_SQL, params: [names, since.toISOString()], timeoutMs: readTimeoutMs }),
+      readRows({
+        db,
+        scope,
+        text: RUNS_SQL,
+        params: [
+          pairs.map((p) => p[0]),
+          pairs.map((p) => p[1]),
+          since.toISOString(),
+          eventsUntil.toISOString(),
+          runsFrom.toISOString(),
+          openFrom.toISOString(),
+          Math.round(RECEIPTS_GRACE_MS / MIN_MS),
+          RUNS_PER_FUNCTION
+        ],
+        timeoutMs: readTimeoutMs
+      })
+    ]);
+    if (evRes.status === "fulfilled") {
+      for (const r of evRes.value) {
+        events.set(String(r.name), { n: Number(r.n) || 0, first: toDate(r.first_at), last: toDate(r.last_at) });
       }
-    } catch (err) {
-      readError = clip((err && err.message) || err, 160) || "unknown error";
+    } else {
+      eventsError = whyFailed(evRes.reason);
     }
+    if (runRes.status === "fulfilled") receipts = readRunRows(runRes.value, now);
+    else runsError = readFailure(runRes.reason);
   }
 
   return specs.map((s) => {
@@ -183,40 +687,26 @@ export async function checkWorkflowRuns({
         { na: { code: "no-trigger", args: { id: s.id } } }
       );
     }
-    const schedule = s.events.join(" + ");
-    const fix = `Open ${s.id} in Inngest and read its runs. Do not re-run it from this pulse.`;
-    // b. the read failed.
-    if (readError) {
-      return row(
-        s.id,
-        "skip",
-        `Events could not be read: ${readError}. This workflow was not judged.`,
-        { suggestedFix: fix, schedule }
-      );
+    // b to f, from receipts.
+    if (!runsError) {
+      const judged = judgeFromRuns(s, {
+        runs: receipts.runs.get(s.id) || [],
+        miss: receipts.miss.get(s.id) || [],
+        canWrite: receipts.canWrite,
+        lastReceipt: receipts.lastReceipt,
+        now
+      });
+      if (judged) return judged;
     }
-    // c. work came in. Nothing records that it ran.
-    const hits = s.events
-      .map((name) => ({ name, ...(counts.get(name) || { n: 0, first: null }) }))
-      .filter((h) => h.n > 0);
-    if (hits.length > 0) {
-      const total = hits.reduce((sum, h) => sum + h.n, 0);
-      const firsts = hits.map((h) => h.first).filter(Boolean).sort((a, b) => a - b);
-      const said = hits.map((h) => `${h.n} ${h.name}`).join(" and ");
-      const when = firsts.length ? ` (first ${minuteOf(firsts[0])})` : "";
-      return row(
-        s.id,
-        "skip",
-        `${said} event${total === 1 ? "" : "s"} came since ${dayOf(since)}${when}. ` +
-          "Nothing records that this workflow ran. Run receipts are not switched on yet.",
-        { suggestedFix: fix, schedule }
-      );
-    }
-    // d. no work came in. Nothing to judge until one does.
-    return row(
-      s.id,
-      "na",
-      `No ${nameList(s.events)} event came since ${dayOf(since)}. Judged the day one comes.`,
-      { schedule, na: { code: "no-demand", args: { names: [...s.events], since: since.toISOString() } } }
-    );
+    // g and h, from demand.
+    return judgeFromDemand(s, {
+      events,
+      eventsError,
+      runsError,
+      began: receipts.began,
+      canWrite: receipts.canWrite,
+      now,
+      since
+    });
   });
 }
