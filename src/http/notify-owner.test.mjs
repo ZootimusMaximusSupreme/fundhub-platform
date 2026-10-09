@@ -69,3 +69,30 @@ test("notify-owner: a failed send answers 502 with the reason", async () => {
   assert.equal(r.body.ok, false);
   assert.match(r.body.error, /twilio 401/);
 });
+
+/* Texting hours (owner law 2026-10-09, .claude/rules/texting-hours.md): outside 6 a.m. to 10 p.m. Arizona
+   time the door answers 202 held and nothing is sent. The hold is inside textMorningBrief, the real sender. */
+test("notify-owner: at 2:07 a.m. Arizona the real sender holds it: 202, delivery_status held_quiet_hours, nothing sent", async () => {
+  const { textMorningBrief } = await import("../../src/pulse/notify.mjs");
+  const twilio = [];
+  const send = (args) => textMorningBrief({
+    ...args, now: new Date("2026-10-10T09:07:00Z"),
+    sendImpl: async (m) => { twilio.push(m); return { status: "sent" }; }
+  });
+  const { r } = await call({ send, env: { OPS_NOTIFY_SECRET: SECRET, PULSE_SMS_TO: "+15555556457" } });
+  assert.equal(r.statusCode, 202);
+  assert.deepEqual(r.body, { ok: true, delivery_status: "held_quiet_hours", sent_to_last4: "6457", error: null });
+  assert.equal(twilio.length, 0, "nothing reached Twilio");
+});
+
+test("notify-owner: the same real sender at noon Arizona sends (200)", async () => {
+  const { textMorningBrief } = await import("../../src/pulse/notify.mjs");
+  const twilio = [];
+  const send = (args) => textMorningBrief({
+    ...args, now: new Date("2026-10-09T19:00:00Z"),
+    sendImpl: async (m) => { twilio.push(m); return { status: "sent", providerMessageId: "SM1" }; }
+  });
+  const { r } = await call({ send, env: { OPS_NOTIFY_SECRET: SECRET, PULSE_SMS_TO: "+15555556457" } });
+  assert.equal(r.statusCode, 200);
+  assert.equal(twilio.length, 1);
+});

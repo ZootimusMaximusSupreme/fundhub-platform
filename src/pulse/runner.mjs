@@ -28,6 +28,11 @@
 // records could not be saved, there were no beats to run (an empty list is blind, never green), or an alert was due
 // and reached neither the text nor the buzz (critic issue 11).
 //
+// TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). Outside 6 a.m. to 10 p.m. Arizona time the
+// run still fires every beat, still opens incidents and still damps, but sends nothing (alerts.mjs act() holds it)
+// and claims nothing, so the 6:07 a.m. run tells Chris. A held alert is not a broken run. The blind-pulse text
+// below is held the same way.
+//
 // WHEN THE DATABASE IS DOWN. Beats that read fail at their first read with detail "db: ..." (the harness puts
 // "threw: " in front). The text says the database is down ONCE. Alerts fall back to texting every hour with no state.
 
@@ -43,6 +48,7 @@ import {
   defaultOrgId, listOpenIncidents, lastResults, loadBankLinks, writeBeatResults, upsertBankLinks, cleanError
 } from "./records.mjs";
 import { decide, act, saveIncidents, realSinks, recordingSinks, cleanLine } from "./alerts.mjs";
+import { inTextWindow, HELD } from "./quiet-hours.mjs";
 
 export const RUN_BUDGET_MS = 22_000;
 export const BEATS_PHASE_MS = 13_000;
@@ -155,7 +161,10 @@ export async function runPulse({
   /** A run that has no checks to run. A blind pulse must not be a silent one: live mode texts once. */
   const blindRun = async (error) => {
     const out = emptyResult(runId, { ok: false, error, ms: elapsed() });
-    if (live) {
+    if (live && !inTextWindow(now)) {
+      out.alerts.texts = [{ kind: "load_failed", delivery_status: HELD, sent_to_last4: null }];
+      out.alerts.held = true;
+    } else if (live) {
       const s = await settle(theSinks.text(BLIND_TEXT, { env }), B.alerts);
       out.alerts.texts = [{ kind: "load_failed", delivery_status: s.ok ? String(s.value?.delivery_status || "failed") : "failed", sent_to_last4: s.ok ? s.value?.sent_to_last4 ?? null : null }];
       out.ms = elapsed();
@@ -289,7 +298,7 @@ export async function runPulse({
     // 7. Decide, and SEND THE TEXT (before any record is written).
     const plan = decide({ results, open, prev, beatsById, now, dbDown: !dbUp || Boolean(boxProblem) });
     const textBudget = Math.max(B.minText, Math.min(B.alerts, t0 + B.run - Date.now()));
-    const sent = await act(plan, { env, sinks: theSinks, beatsById, capMs: textBudget });
+    const sent = await act(plan, { env, sinks: theSinks, beatsById, capMs: textBudget, now });
 
     // 8. Records (live only, best effort, own cap). Never inside the box, never before the text.
     const records = { written: false, error: null };
@@ -322,7 +331,7 @@ export async function runPulse({
     const failed = results.filter((r) => !r.ok).length;
     const problems = [];
     if (live && !records.written) problems.push(`records: ${records.error}`);
-    if (sent.due && !sent.delivered) problems.push(sent.error || "alert due but not delivered");
+    if (sent.due && !sent.delivered && !sent.held) problems.push(sent.error || "alert due but not delivered");
     const out = {
       ok: problems.length === 0,
       runId,
@@ -338,10 +347,12 @@ export async function runPulse({
         error: sent.error,
         due: sent.due,
         delivered: sent.delivered,
+        held: Boolean(sent.held),
         body: sent.body,
         newBreaks: plan.newBreaks.map((e) => e.beatId),
         stillBroken: plan.stillBroken.map((e) => e.beatId),
         healed: plan.healed.map((e) => e.beatId),
+        healedQuiet: plan.healedQuiet.map((e) => e.beatId),
         damped: plan.damped.map((e) => e.beatId),
         quiet: plan.quiet.map((e) => e.beatId),
         storm: plan.storm,

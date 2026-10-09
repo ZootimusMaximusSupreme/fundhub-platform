@@ -6,7 +6,8 @@ import {
   formatMorningText,
   summarizeSystems,
   reportUrl,
-  buildMorningBrief
+  buildMorningBrief,
+  runMorningBrief
 } from "./morning-brief.mjs";
 import { textMorningBrief } from "../pulse/notify.mjs";
 import { verifyBriefToken } from "./brief-link.mjs";
@@ -87,6 +88,7 @@ test("the text uses PULSE_SMS_TO and does not invent a number", async () => {
     body: "Good morning, Chris.",
     env: { PULSE_SMS_TO: "+15555550865" },
     dryRun: false,
+    now: SIX_AM_AZ, // texting hours: 6:00 a.m. Arizona is inside the window
     sendImpl: async (msg) => {
       sends.push(msg);
       return { status: "sent", providerMessageId: "SM1" };
@@ -160,4 +162,64 @@ test("with no secret the text still builds and says the report is not available"
   assert.equal(warned.length, 1);
   assert.match(warned[0], /BRIEF_LINK_SECRET/);
   assert.doesNotMatch(brief.text_body, /k=/);
+});
+
+/* ---------- texting hours (owner law 2026-10-09, .claude/rules/texting-hours.md) ---------- */
+
+/* A database that answers every read with no rows and keeps the one morning_briefs save. */
+function savingDb() {
+  const saved = [];
+  return {
+    saved,
+    query: async (sql, params) => {
+      if (/INSERT INTO morning_briefs/.test(sql)) {
+        saved.push({ delivery_status: params[12], sent_to_last4: params[10], text_body: params[8], kind: params[15] });
+        return { rows: [{ delivery_status: params[12] }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+}
+async function runBrief(now, kind, sendImpl) {
+  const db = savingDb();
+  const { out } = await quietWarn(() => runMorningBrief({
+    db, orgId: ORG, kind, live: true, now,
+    env: { ...LINK_ENV, PULSE_SMS_TO: "+15555550865" },
+    scorecard: { checks: [{ id: "health", status: "green" }] }, suggest: async () => [], sendImpl
+  }));
+  return { out, db };
+}
+
+test("texting hours: the 9:00 p.m. evening brief goes out", async () => {
+  const sends = [];
+  const { out } = await runBrief(new Date("2026-10-10T04:00:00Z"), "evening", async (m) => { sends.push(m); return { status: "sent", providerMessageId: "SM1" }; });
+  assert.equal(out.delivery.delivery_status, "sent");
+  assert.equal(sends.length, 1);
+});
+
+test("texting hours: an evening brief retried at 10:10 p.m. is held, and the row is still saved as held_quiet_hours", async () => {
+  const { out, db } = await runBrief(new Date("2026-10-10T05:10:00Z"), "evening", async () => { throw new Error("must not text at night"); });
+  assert.equal(out.ok, true, "a held brief is not a failed brief, so the pulse job sends no fallback text");
+  assert.equal(out.delivery.delivery_status, "held_quiet_hours");
+  const row = db.saved[0];
+  assert.equal(row.delivery_status, "held_quiet_hours", "never lost: the brief and its report link are saved");
+  assert.match(row.text_body, /^Good evening, Chris\./);
+  assert.equal(row.sent_to_last4, "0865");
+});
+
+test("texting hours: the 6:00 a.m. brief goes; one second before 6 it would be held", async () => {
+  const sends = [];
+  const send = async (m) => { sends.push(m); return { status: "sent", providerMessageId: "SM2" }; };
+  const six = await runBrief(new Date("2026-10-09T13:00:00Z"), "morning", send);
+  assert.equal(six.out.delivery.delivery_status, "sent");
+  const early = await runBrief(new Date("2026-10-09T12:59:59Z"), "morning", send);
+  assert.equal(early.out.delivery.delivery_status, "held_quiet_hours");
+  assert.equal(sends.length, 1);
+});
+
+test("the migration lets a held brief save (the old CHECK allowed four values)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync(new URL("../../db/migrations/476_morning_briefs_held_quiet_hours.sql", import.meta.url), "utf8");
+  assert.match(sql, /DROP CONSTRAINT IF EXISTS morning_briefs_delivery_status_ck/);
+  assert.match(sql, /CHECK \(delivery_status IN \('dry_run', 'sent', 'failed', 'no_number', 'held_quiet_hours'\)\)/);
 });

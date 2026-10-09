@@ -6,6 +6,7 @@ import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors
 import { readPipelineMotionCounts } from "./pipeline-motion.mjs";
 import { normalizeUsNumber } from "./notify.mjs";
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
+import { inTextWindow, HELD } from "./quiet-hours.mjs";
 
 export const INSTANT_AGENT_CODE = "pulse-instant";
 export const INSTANT_COOLDOWN_MS = 60 * 60 * 1000;
@@ -109,6 +110,13 @@ export async function runInstantWatch({
   const failures = checks.filter((c) => c.status === "FAIL");
   if (!failures.length) {
     return { ok: true, failures: [], sms: { sent: false, reason: "all_pass" } };
+  }
+  /* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). Outside 6 a.m. to 10 p.m.
+     Arizona time: no text, and no alert row either. The cooldown reads those rows, so writing one here
+     would keep the first run inside the window quiet. With none, a critical door that is still down at
+     6:00 a.m. is texted on that first run. */
+  if (!inTextWindow(now)) {
+    return { ok: true, failures, sms: { sent: false, reason: HELD } };
   }
   const fingerprint = failures.map((f) => f.id).sort().join(",");
   const sinceMs = now.getTime() - cooldownMs;

@@ -11,9 +11,15 @@
 // x-ops-notify-secret header. No secret set on the server → 503. Wrong secret → 401.
 //
 // Body: { "text": "..." } — 1 to 600 characters. The reply names the last 4 digits only.
+//
+// TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). textMorningBrief holds every text
+// outside 6 a.m. to 10 p.m. Arizona time. Then nothing is sent and the answer is 202
+// { ok: true, delivery_status: "held_quiet_hours" }: the door worked, the text waits for the caller to send
+// it again inside the window. It is not a failure, so it is not a 502.
 
 import crypto from "node:crypto";
 import { textMorningBrief } from "../../src/pulse/notify.mjs";
+import { HELD } from "../../src/pulse/quiet-hours.mjs";
 
 export const NOTIFY_SECRET_ENV = "OPS_NOTIFY_SECRET";
 export const NOTIFY_SECRET_HEADER = "x-ops-notify-secret";
@@ -50,6 +56,9 @@ export default async function handler(req, res, deps = {}) {
   }
 
   const out = await send({ body: text, env, dryRun: false });
+  if (out && out.delivery_status === HELD) {
+    return res.status(202).json({ ok: true, delivery_status: HELD, sent_to_last4: out.sent_to_last4 ?? null, error: null });
+  }
   const sent = out && out.delivery_status === "sent";
   return res.status(sent ? 200 : 502).json({
     ok: sent,

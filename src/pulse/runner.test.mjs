@@ -26,9 +26,19 @@ const INC = (n) => `33333333-3333-4333-8333-${String(n).padStart(12, "0")}`;
 const ENV = Object.freeze({ DATABASE_URL: "postgres://fake.invalid/db", URL: "https://fundhub.ai", PULSE_SMS_TO: "+15555550100" });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* THE TEST CLOCK. Texting hours (owner law 2026-10-09, src/pulse/quiet-hours.mjs): the runner texts only from
+   6 a.m. to 10 p.m. Arizona time, judged by the run's own `now`. These tests used the machine's real clock, so
+   at night every "it texts" test would fail. The clock is pinned to noon Arizona time on 2026-10-09 and ticks
+   with the real clock, so the 50-minute claim window and the hours an incident was open still add up. The
+   fake records database stamps its rows from the same clock, the way Postgres now() would. */
+const CLOCK_BASE = Date.parse("2026-10-09T19:00:00.000Z"); // 12:00 p.m. Arizona
+const REAL_START = Date.now();
+const clockMs = () => CLOCK_BASE + (Date.now() - REAL_START);
+
 /* ---------------- the stateful fake records database ---------------- */
 
-function fakeRdb({ down = false, hangWrites = false, missingTables = false, failLast = false, open = [], bankLinks = [], events = [] } = {}) {
+function fakeRdb({ down = false, hangWrites = false, missingTables = false, failLast = false, open = [], bankLinks = [], events = [], clock = clockMs } = {}) {
+  const stamp = () => new Date(clock()).toISOString();
   const state = { beats: [], incidents: open.map((x) => ({ ...x })), upserts: [], opens: 0, claims: 0, closes: 0, writes: 0 };
   let nextInc = 100;
   const missing = () => Object.assign(new Error('relation "pulse_beats" does not exist'), { code: "42P01" });
@@ -58,7 +68,7 @@ function fakeRdb({ down = false, hangWrites = false, missingTables = false, fail
         if (hangWrites) return new Promise(() => {});
         if (missingTables) throw missing();
         const rows = JSON.parse(params[2]);
-        for (const r of rows) state.beats.push({ seq: state.beats.length + 1, beat_id: r.beat_id, run_id: params[1], ran_at: new Date().toISOString(), ok: r.ok, step: r.step ?? null, detail: r.detail ?? null, duration_ms: r.duration_ms ?? null, raw: r });
+        for (const r of rows) state.beats.push({ seq: state.beats.length + 1, beat_id: r.beat_id, run_id: params[1], ran_at: stamp(), ok: r.ok, step: r.step ?? null, detail: r.detail ?? null, duration_ms: r.duration_ms ?? null, raw: r });
         return { rows: [], rowCount: rows.length };
       }
       if (sql === SQL_UPSERT_BANK_LINKS) {
@@ -70,23 +80,23 @@ function fakeRdb({ down = false, hangWrites = false, missingTables = false, fail
         events.push("write:incident-open"); state.writes++;
         if (state.incidents.some((i) => i.beat_id === params[1] && !i.closed_at)) return { rows: [], rowCount: 0 };
         state.opens++;
-        const row = { id: INC(nextInc++), beat_id: params[1], opened_at: new Date().toISOString(), opened_run_id: params[2], first_step: params[3], first_detail: params[4], last_alert_at: null, alerts_sent: 0, closed_at: null };
+        const row = { id: INC(nextInc++), beat_id: params[1], opened_at: stamp(), opened_run_id: params[2], first_step: params[3], first_detail: params[4], last_alert_at: null, alerts_sent: 0, closed_at: null };
         state.incidents.push(row);
         return { rows: [{ id: row.id }], rowCount: 1 };
       }
       if (sql === SQL_CLAIM_ALERT) {
         events.push("write:claim"); state.writes++;
         const i = state.incidents.find((x) => x.id === params[0] && !x.closed_at);
-        const ok = i && (!i.last_alert_at || Date.now() - new Date(i.last_alert_at).getTime() > 50 * 60 * 1000);
+        const ok = i && (!i.last_alert_at || clock() - new Date(i.last_alert_at).getTime() > 50 * 60 * 1000);
         if (!ok) return { rows: [], rowCount: 0 };
-        i.last_alert_at = new Date().toISOString(); i.alerts_sent++; state.claims++;
+        i.last_alert_at = stamp(); i.alerts_sent++; state.claims++;
         return { rows: [{ id: i.id, alerts_sent: i.alerts_sent }], rowCount: 1 };
       }
       if (sql === SQL_CLOSE_INCIDENT) {
         events.push("write:incident-close"); state.writes++;
         const i = state.incidents.find((x) => x.id === params[0] && !x.closed_at);
         if (!i) return { rows: [], rowCount: 0 };
-        i.closed_at = new Date().toISOString(); state.closes++;
+        i.closed_at = stamp(); state.closes++;
         return { rows: [{ id: i.id }], rowCount: 1 };
       }
       throw new Error(`fakeRdb: unexpected statement: ${String(sql).slice(0, 70)}`);
@@ -128,7 +138,7 @@ function harness(beats, { rdbOpts = {}, sinkOpts = {}, now, ...runOpts } = {}) {
     pgs.push(pg);
     return pg;
   };
-  const go = (over = {}) => runPulse({ env: ENV, now, beats, mode: "live", sinks, rdb, connect, probe: okProbe, ...runOpts, ...over });
+  const go = (over = {}) => runPulse({ env: ENV, now: now ?? new Date(clockMs()), beats, mode: "live", sinks, rdb, connect, probe: okProbe, ...runOpts, ...over });
   return { events, rdb, sinks, pgs, go };
 }
 
@@ -530,8 +540,8 @@ describe("one text an hour", () => {
   });
 
   test("an hour later (past the 50 minute claim) it texts 'still broken, hour N'", async () => {
-    const old = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
-    const h = harness([redBeat("a")], { rdbOpts: { open: [{ id: INC(1), beat_id: "a", opened_at: old, opened_run_id: INC(2), first_step: "two", first_detail: "x", last_alert_at: new Date(Date.now() - 61 * 60 * 1000).toISOString(), alerts_sent: 3, closed_at: null }] } });
+    const old = new Date(clockMs() - 3 * 3600 * 1000).toISOString();
+    const h = harness([redBeat("a")], { rdbOpts: { open: [{ id: INC(1), beat_id: "a", opened_at: old, opened_run_id: INC(2), first_step: "two", first_detail: "x", last_alert_at: new Date(clockMs() - 61 * 60 * 1000).toISOString(), alerts_sent: 3, closed_at: null }] } });
     const out = await h.go();
     assert.deepEqual(out.alerts.stillBroken, ["a"]);
     assert.match(h.sinks.calls.text[0], /^Fundhub STILL BROKEN, hour 4: Beat a at "two"\. Fix: /);
@@ -647,7 +657,7 @@ describe("modes other than live write nothing and send nothing real", () => {
     const rdb = fakeRdb({ events });
     const h = harness([redBeat("a")]);
     // No sinks passed on purpose: a non-live run must build recording fakes, not the real ones.
-    const out = await runPulse({ env: ENV, beats: [redBeat("a")], mode: "prove", rdb, connect: async () => createFakePg({ answer: () => [{ n: 1 }] }), probe: okProbe });
+    const out = await runPulse({ env: ENV, now: new Date(clockMs()), beats: [redBeat("a")], mode: "prove", rdb, connect: async () => createFakePg({ answer: () => [{ n: 1 }] }), probe: okProbe });
     assert.equal(rdb.state.writes, 0, events.join(","));
     assert.equal(rdb.state.opens, 0);
     assert.equal(out.alerts.due, true);
@@ -659,7 +669,7 @@ describe("modes other than live write nothing and send nothing real", () => {
 
   test("one: the same, and `only` picks the beat", async () => {
     const rdb = fakeRdb();
-    const out = await runPulse({ env: ENV, beats: [redBeat("a"), greenBeat("b")], mode: "one", only: ["b"], rdb, connect: async () => createFakePg({ answer: () => [{ n: 1 }] }), probe: okProbe });
+    const out = await runPulse({ env: ENV, now: new Date(clockMs()), beats: [redBeat("a"), greenBeat("b")], mode: "one", only: ["b"], rdb, connect: async () => createFakePg({ answer: () => [{ n: 1 }] }), probe: okProbe });
     assert.deepEqual(out.results.map((r) => r.beatId), ["b"]);
     assert.equal(rdb.state.writes, 0);
   });
@@ -687,5 +697,92 @@ describe("publicSummary", () => {
     assert.ok(s.error.length <= 160);
     assert.doesNotMatch(s.error, /abcdef0123456789/);
     assert.deepEqual(publicSummary(undefined), { ok: false, ran: 0, failed: 0, timedOut: 0, ms: null });
+  });
+});
+
+/* ============================== texting hours ============================== */
+
+/* Owner law 2026-10-09 (.claude/rules/texting-hours.md): every text to Chris goes out only from 6 a.m. to
+   10 p.m. Arizona time. The pulse runs every hour at :07. Overnight it still checks and still keeps the
+   incident, but sends nothing and claims nothing, so the 6:07 a.m. run tells him. Arizona is UTC-7. */
+describe("texting hours: the overnight pulse keeps the record and the 6:07 a.m. run sends one text", () => {
+  /** A harness whose clock is set by hand, for the run and for the fake database's now(). */
+  function nightHarness(beats) {
+    let clock = Date.parse("2026-10-10T09:07:00.000Z"); // 2:07 a.m. Arizona, October 10
+    const h = harness(beats, { rdbOpts: { clock: () => clock } });
+    return { ...h, set: (iso) => { clock = Date.parse(iso); }, run: () => h.go({ now: new Date(clock) }) };
+  }
+
+  test("a break at 2:07 a.m. sends nothing; the same break at 6:07 a.m. sends ONE text; alerts_sent stays 0 until then", async () => {
+    const flag = { red: true };
+    const h = nightHarness([flipBeat("a", flag)]);
+
+    const night = await h.run();
+    assert.equal(night.ok, true, "a held text is not a broken run, so job:pulse-hourly stays green");
+    assert.equal(night.alerts.held, true);
+    assert.equal(night.alerts.delivered, false);
+    assert.deepEqual(night.alerts.texts.map((t) => t.delivery_status), ["held_quiet_hours"]);
+    assert.equal(h.sinks.calls.text.length, 0, "no text at 2:07 a.m.");
+    assert.equal(h.sinks.calls.ntfy.length, 0, "no buzz at 2:07 a.m.");
+    assert.equal(h.rdb.state.opens, 1, "the break is still saved as an open incident");
+    assert.equal(h.rdb.state.claims, 0, "claimAlert is not used up");
+    assert.equal(h.rdb.state.incidents[0].alerts_sent, 0);
+
+    for (const iso of ["2026-10-10T10:07:00.000Z", "2026-10-10T11:07:00.000Z", "2026-10-10T12:07:00.000Z"]) {
+      h.set(iso); // 3:07, 4:07, 5:07 a.m.
+      const r = await h.run();
+      assert.equal(r.alerts.held, true, iso);
+    }
+    assert.equal(h.sinks.calls.text.length, 0, "nothing all night");
+    assert.equal(h.rdb.state.incidents[0].alerts_sent, 0, "still never told");
+    assert.equal(h.rdb.state.opens, 1, "one incident, not one per hour");
+
+    h.set("2026-10-10T13:07:00.000Z"); // 6:07 a.m.
+    const morning = await h.run();
+    assert.equal(morning.ok, true);
+    assert.equal(h.sinks.calls.text.length, 1, "one text at 6:07 a.m.");
+    assert.match(h.sinks.calls.text[0], /^Fundhub BROKEN since 2:07 a\.m\.: Beat a\. It stopped at "two"\./);
+    assert.equal(h.rdb.state.claims, 1);
+    assert.equal(h.rdb.state.incidents[0].alerts_sent, 1);
+
+    h.set("2026-10-10T13:17:00.000Z"); // a retry ten minutes later stays quiet
+    await h.run();
+    assert.equal(h.sinks.calls.text.length, 1, "the claim window still stops a second text");
+  });
+
+  test("a break that opens and heals overnight gets no text at all, not even FIXED, and the incident is closed", async () => {
+    const flag = { red: true };
+    const h = nightHarness([flipBeat("a", flag)]);
+    await h.run(); // 2:07 a.m. red
+    flag.red = false;
+    h.set("2026-10-10T10:07:00.000Z"); // 3:07 a.m. green
+    const healedAtNight = await h.run();
+    assert.deepEqual(healedAtNight.alerts.healedQuiet, ["a"]);
+    h.set("2026-10-10T13:07:00.000Z"); // 6:07 a.m. still green
+    const morning = await h.run();
+    assert.equal(morning.alerts.due, false);
+    assert.equal(h.sinks.calls.text.length, 0);
+    assert.equal(h.rdb.state.closes, 1);
+    assert.equal(h.rdb.state.incidents.filter((i) => !i.closed_at).length, 0);
+  });
+
+  test("10:00 p.m. is held, 9:59 p.m. is not", async () => {
+    const late = nightHarness([redBeat("a")]);
+    late.set("2026-10-10T04:59:00.000Z"); // 9:59 p.m. Arizona on the 9th
+    await late.run();
+    assert.equal(late.sinks.calls.text.length, 1);
+    const ten = nightHarness([redBeat("a")]);
+    ten.set("2026-10-10T05:00:00.000Z"); // 10:00 p.m.
+    const out = await ten.run();
+    assert.equal(ten.sinks.calls.text.length, 0);
+    assert.equal(out.alerts.held, true);
+  });
+
+  test("the blind-pulse text is held at night too (the run is still not ok, so its heartbeat goes red)", async () => {
+    const h = nightHarness(undefined);
+    const out = await h.go({ now: new Date("2026-10-10T09:07:00.000Z"), beats: undefined, loadBeatsImpl: async () => { throw new Error("bad list"); } });
+    assert.equal(out.ok, false);
+    assert.equal(h.sinks.calls.text.length, 0);
+    assert.deepEqual(out.alerts.texts.map((t) => t.delivery_status), ["held_quiet_hours"]);
   });
 });

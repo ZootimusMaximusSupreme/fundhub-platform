@@ -171,7 +171,7 @@ describe("notifyDyingBefore25 — the real buzz path, no send injected", () => {
     const db = fakeDb(SLO2_DAY);
     const seen = [];
     const out = await withFetch(async (url) => { seen.push(String(url)); throw new Error("must not be called"); },
-      () => notifyDyingBefore25(db, { partnerId: "p-1", env: { ...FAKE_ENV } }));
+      () => notifyDyingBefore25(db, { partnerId: "p-1", env: { ...FAKE_ENV }, now: new Date("2026-10-09T19:00:00Z") }));
 
     assert.deepEqual(seen, [], "the fence was up — nothing may reach the network");
     assert.equal(out.checked, 1);
@@ -188,7 +188,7 @@ describe("notifyDyingBefore25 — the real buzz path, no send injected", () => {
       seen.push({ url: String(url), body: String(init && init.body) });
       const body = /twilio\.invalid/.test(String(url)) ? { sid: "SMtest123" } : { id: "ntfy-test-1" };
       return { ok: true, status: 200, headers: { get: () => "application/json" }, text: async () => JSON.stringify(body) };
-    }, () => notifyDyingBefore25(db, { partnerId: "p-1", env: { ...FAKE_ENV, MESSAGING_DRY_RUN: "0" } }));
+    }, () => notifyDyingBefore25(db, { partnerId: "p-1", env: { ...FAKE_ENV, MESSAGING_DRY_RUN: "0" }, now: new Date("2026-10-09T19:00:00Z") /* noon Arizona: inside texting hours */ }));
 
     assert.equal(out.alerted, 1);
     assert.equal(out.failed, 0);

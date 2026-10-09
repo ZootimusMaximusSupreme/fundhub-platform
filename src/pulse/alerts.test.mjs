@@ -391,7 +391,7 @@ describe("realSinks: dryRun:false is passed on purpose", () => {
         TWILIO_SEND_FROM: "+15555550199"
         // MESSAGING_DRY_RUN is not set: the fence holds every send.
       };
-      const r = await realSinks().text("Fundhub test", { env });
+      const r = await realSinks().text("Fundhub test", { env, now: NOW });
       assert.notEqual(r.delivery_status, "dry_run", "dry_run would mean dryRun was left at its default of true");
       assert.equal(r.delivery_status, "failed");
       assert.equal(calls, 0, "the fence held it: nothing left the process");
@@ -477,5 +477,150 @@ describe("saveIncidents: the records, written after the text", () => {
     const rdb = recordsDb();
     await saveIncidents(plan(), { rdb, orgId: null, runId: RUN, delivered: true });
     assert.equal(rdb.log.length, 0);
+  });
+});
+
+/* ============================== texting hours ============================== */
+
+/* Owner law 2026-10-09 (.claude/rules/texting-hours.md): Chris is texted only 6 a.m. to 10 p.m. Arizona time.
+   Arizona is UTC-7, so 2:07 a.m. there is 09:07 UTC and 10:00 p.m. there is 05:00 UTC the next day. */
+describe("texting hours: nothing is sent at night, and the morning text tells what was missed", () => {
+  const AT_2AM = new Date("2026-10-10T09:07:00.000Z");
+  const b = beat("a", { title: "Thing A" });
+
+  test("2:07 a.m.: a new break sends NO text and NO buzz, is held, and is not an error", async () => {
+    const sinks = recordingSinks({ textStatus: "sent", ntfyStatus: "sent" });
+    const plan = decide({ results: [red("a")], open: [], prev: new Map(), beatsById: byId(b), now: AT_2AM });
+    const r = await act(plan, { sinks, beatsById: byId(b) });
+    assert.deepEqual(sinks.calls, { text: [], ntfy: [] });
+    assert.equal(r.due, true);
+    assert.equal(r.held, true);
+    assert.equal(r.delivered, false);
+    assert.equal(r.error, null, "a held text is on purpose, not a failure");
+    assert.deepEqual(r.texts.map((t) => t.delivery_status), ["held_quiet_hours"]);
+  });
+
+  test("the text-path beat red at night: still nothing (no critical exception)", async () => {
+    const tp = beat("text-path", { title: "Text path" });
+    const sinks = recordingSinks({ textStatus: "failed", ntfyStatus: "sent" });
+    const plan = decide({ results: [red("text-path")], open: [], prev: new Map(), beatsById: byId(tp), now: AT_2AM });
+    const r = await act(plan, { sinks, beatsById: byId(tp) });
+    assert.deepEqual(sinks.calls, { text: [], ntfy: [] });
+    assert.equal(r.held, true);
+  });
+
+  test("9:59:59 p.m. texts; 10:00:00 p.m. and 5:59:59 a.m. are held; 6:00:00 a.m. texts", async () => {
+    for (const [iso, sends] of [["2026-10-10T04:59:59Z", 1], ["2026-10-10T05:00:00Z", 0], ["2026-10-10T12:59:59Z", 0], ["2026-10-10T13:00:00Z", 1]]) {
+      const sinks = recordingSinks();
+      const plan = decide({ results: [red("a")], open: [], prev: new Map(), beatsById: byId(b), now: new Date(iso) });
+      const r = await act(plan, { sinks, beatsById: byId(b) });
+      assert.equal(sinks.calls.text.length, sends, iso);
+      assert.equal(r.held, sends === 0, iso);
+    }
+  });
+
+  test("an explicit now wins over the plan's clock", async () => {
+    const sinks = recordingSinks();
+    const plan = decide({ results: [red("a")], open: [], prev: new Map(), beatsById: byId(b), now: NOW });
+    const r = await act(plan, { sinks, beatsById: byId(b), now: AT_2AM });
+    assert.equal(sinks.calls.text.length, 0);
+    assert.equal(r.held, true);
+  });
+
+  test("6:07 a.m.: a break Chris was never told about (alerts_sent 0) says BROKEN since the time it opened", () => {
+    const opened = new Date("2026-10-10T09:07:00.000Z").toISOString(); // 2:07 a.m.
+    const row = openRow("a", 1, { opened_at: opened, last_alert_at: null, alerts_sent: 0 });
+    const plan = decide({ results: [red("a")], open: [row], prev: new Map(), beatsById: byId(b), now: new Date("2026-10-10T13:07:00Z") });
+    assert.equal(plan.stillBroken.length, 1);
+    assert.equal(plan.stillBroken[0].untold, true);
+    const t = formatText(plan, { beatsById: byId(b) });
+    assert.equal(t.kind, "break");
+    assert.match(t.body, /^Fundhub BROKEN since 2:07 a\.m\.: Thing A\. It stopped at "two"\. Fix: /);
+    assert.doesNotMatch(t.body, /STILL/);
+    assert.ok(t.body.length <= MAX_TEXT_CHARS);
+  });
+
+  test("a break Chris WAS told about still says STILL BROKEN, with the hour", () => {
+    const plan = decide({ results: [red("a")], open: [openRow("a", 1)], prev: new Map(), beatsById: byId(b), now: NOW });
+    assert.equal(plan.stillBroken[0].untold, false);
+    assert.match(formatText(plan, { beatsById: byId(b) }).body, /^Fundhub STILL BROKEN, hour 4: Thing A/);
+  });
+
+  test("two overnight breaks and one told one: one text, the overnight ones say since when", () => {
+    const bs = [beat("a", { title: "Thing A" }), beat("b", { title: "Thing B" }), beat("c", { title: "Thing C" })];
+    const plan = decide({
+      results: [red("a"), red("b"), red("c")],
+      open: [
+        openRow("a", 1, { opened_at: "2026-10-10T09:07:00.000Z", last_alert_at: null, alerts_sent: 0 }),
+        openRow("b", 2, { opened_at: "2026-10-10T11:07:00.000Z", last_alert_at: null, alerts_sent: 0 }),
+        openRow("c", 3, { opened_at: "2026-10-10T03:07:00.000Z", last_alert_at: "2026-10-10T04:07:00.000Z", alerts_sent: 2 })
+      ],
+      prev: new Map(), beatsById: byId(...bs), now: new Date("2026-10-10T13:07:00Z")
+    });
+    const t = formatText(plan, { beatsById: byId(...bs) });
+    assert.equal(t.kind, "mixed");
+    assert.match(t.body, /BROKEN since 2:07 a\.m\.: Thing A/);
+    assert.match(t.body, /BROKEN since 4:07 a\.m\.: Thing B/);
+    assert.match(t.body, /STILL BROKEN: Thing C/);
+  });
+
+  test("opened and healed overnight with no text ever sent: no FIXED text, but the incident is still closed", async () => {
+    const row = openRow("a", 1, { opened_at: "2026-10-10T09:07:00.000Z", last_alert_at: null, alerts_sent: 0 });
+    const plan = decide({ results: [green("a")], open: [row], prev: new Map(), beatsById: byId(b), now: new Date("2026-10-10T13:07:00Z") });
+    assert.equal(plan.healed.length, 0);
+    assert.deepEqual(plan.healedQuiet.map((e) => e.beatId), ["a"]);
+    assert.equal(hasNews(plan), false);
+    assert.equal(formatText(plan, { beatsById: byId(b) }), null);
+    const sinks = recordingSinks();
+    await act(plan, { sinks, beatsById: byId(b) });
+    assert.equal(sinks.calls.text.length, 0, "no FIXED text for a break he never heard about");
+    const rdb = recordsDb();
+    const r = await saveIncidents(plan, { rdb, orgId: ORG, runId: RUN, delivered: false });
+    assert.equal(r.closed, 1);
+    assert.deepEqual(rdb.log, [["close", INC(1), "auto"]]);
+  });
+
+  test("a told break that heals still gets its FIXED text", () => {
+    const plan = decide({ results: [green("a")], open: [openRow("a", 1)], prev: new Map(), beatsById: byId(b), now: NOW });
+    assert.equal(plan.healedQuiet.length, 0);
+    assert.match(formatText(plan, { beatsById: byId(b) }).body, /^Fundhub FIXED: Thing A/);
+  });
+
+  test("held at night: saveIncidents opens the incident but claims nothing (alerts_sent stays 0)", async () => {
+    const plan = decide({ results: [red("a")], open: [], prev: new Map(), beatsById: byId(b), now: AT_2AM });
+    const sent = await act(plan, { sinks: recordingSinks(), beatsById: byId(b) });
+    const rdb = recordsDb();
+    const r = await saveIncidents(plan, { rdb, orgId: ORG, runId: RUN, delivered: sent.delivered });
+    assert.equal(r.opened, 1);
+    assert.equal(r.claimed, 0);
+    assert.deepEqual(rdb.log.map((x) => x[0]), ["open"]);
+  });
+
+  test("10 p.m. came while the run was going: a text the sender held is not a failure and fires no buzz", async () => {
+    const sinks = recordingSinks({ textStatus: "held_quiet_hours", ntfyStatus: "sent" });
+    const r = await act(decide({ results: [red("a")], open: [], prev: new Map(), beatsById: byId(b), now: NOW }), { sinks, beatsById: byId(b) });
+    assert.equal(sinks.calls.text.length, 1);
+    assert.equal(sinks.calls.ntfy.length, 0, "no buzz at 10 p.m. either");
+    assert.equal(r.held, true);
+    assert.equal(r.error, null);
+  });
+
+  test("the real sinks check the window at the hand-off: at 2:07 a.m. neither the text nor the buzz leaves", async () => {
+    const realFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw new Error("no network in this test"); };
+    try {
+      const env = {
+        PULSE_SMS_TO: "+15555550100", MESSAGING_DRY_RUN: "0", NTFY_TOPIC: "test-topic",
+        TWILIO_SEND_ACCOUNT_SID: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", TWILIO_SEND_AUTH_TOKEN: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", TWILIO_SEND_FROM: "+15555550199"
+      };
+      const t = await realSinks().text("Fundhub test", { env, now: AT_2AM });
+      assert.equal(t.delivery_status, "held_quiet_hours");
+      const n = await realSinks().ntfy({ title: "t", body: "b" }, { env, now: AT_2AM });
+      assert.equal(n.status, "held_quiet_hours");
+      assert.equal(calls, 0, "nothing left the process");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });

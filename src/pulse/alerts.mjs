@@ -24,6 +24,13 @@
 //      before the records on purpose: a slow database must never hold the text back.
 //   Worst case is one duplicate text. That is accepted (contract 5.4).
 //
+// TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). Chris is texted only from 6 a.m. to
+// 10 p.m. Arizona time. act() checks inTextWindow(now) before either road. Outside the window it sends NOTHING
+// (no text, no buzz) and answers held: true, so the runner does not call the run broken and saveIncidents()
+// claims nothing. The break is still opened as an incident and still damped, so the first run inside the window
+// (6:07 a.m.) carries it in one text: "BROKEN since 2:07 a.m." for a break Chris was never told about
+// (alerts_sent 0). A break that opened and healed with no text ever sent gets no "fixed" text.
+//
 // WHAT NEVER GOES IN A TEXT: a phone, an email, a name, an amount, a token, a response body. The text carries
 // the beat's title, the step it stopped at, and line 1 of its own fix guide (all written in code). The runtime
 // `detail` only ever reaches the buzz, after redact() and a scrub, capped.
@@ -32,6 +39,7 @@ import { textMorningBrief } from "./notify.mjs";
 import { send as sendNtfy, isNtfyConfigured } from "../messaging/providers/ntfy.mjs";
 import { redact } from "../lib/outbound-fetch.mjs";
 import { openIncident, claimAlert, closeIncident } from "./records.mjs";
+import { inTextWindow, HELD, HELD_REASON, phoenixTimeWords } from "./quiet-hours.mjs";
 
 export const MAX_TEXT_CHARS = 480;
 export const CLAIM_WINDOW_MS = 50 * 60 * 1000;
@@ -128,7 +136,7 @@ export function decide({ results = [], open = null, prev = null, beatsById = new
   const openByBeat = new Map();
   if (Array.isArray(open)) for (const row of open) if (row && !row.closed_at) openByBeat.set(row.beat_id, row);
 
-  const plan = { newBreaks: [], stillBroken: [], healed: [], damped: [], quiet: [], storm: false, dbDown: false, red: 0, dbReds: 0 };
+  const plan = { newBreaks: [], stillBroken: [], healed: [], healedQuiet: [], damped: [], quiet: [], storm: false, dbDown: false, red: 0, dbReds: 0, now };
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
 
   for (const result of results) {
@@ -141,7 +149,7 @@ export function decide({ results = [], open = null, prev = null, beatsById = new
       if (isDbDetail(result.detail)) plan.dbReds++;
       if (inc) {
         const h = hoursBetween(inc.opened_at, nowMs);
-        const entry = { beatId, result, incident: inc, hour: h === null ? null : Math.floor(h) + 1 };
+        const entry = { beatId, result, incident: inc, hour: h === null ? null : Math.floor(h) + 1, untold: neverTold(inc) };
         const last = inc.last_alert_at ? new Date(inc.last_alert_at).getTime() : null;
         if (last === null || !Number.isFinite(last) || nowMs - last >= CLAIM_WINDOW_MS) plan.stillBroken.push(entry);
         else plan.quiet.push(entry);
@@ -159,7 +167,10 @@ export function decide({ results = [], open = null, prev = null, beatsById = new
       else plan.damped.push({ beatId, result });
     } else if (result.ok === true && inc) {
       const h = hoursBetween(inc.opened_at, nowMs);
-      plan.healed.push({ beatId, result, incident: inc, hours: h === null ? null : Math.max(1, Math.round(h)) });
+      const entry = { beatId, result, incident: inc, hours: h === null ? null : Math.max(1, Math.round(h)) };
+      // Never told it broke (it opened and healed outside the window, say): close it, but no "fixed" text.
+      if (neverTold(inc)) plan.healedQuiet.push(entry);
+      else plan.healed.push(entry);
     }
   }
 
@@ -167,6 +178,17 @@ export function decide({ results = [], open = null, prev = null, beatsById = new
   plan.storm = plan.red >= STORM_AT && due > 0;
   plan.dbDown = Boolean(dbDown) && plan.dbReds >= DB_DOWN_AT && due > 0;
   return plan;
+}
+
+/** An open incident Chris was never texted about: alerts_sent is exactly 0 (a missing count is not 0). */
+function neverTold(inc) {
+  return Boolean(inc) && (inc.alerts_sent === 0 || inc.alerts_sent === "0");
+}
+
+/** "BROKEN since 2:07 a.m." for a break Chris was never told about, plain "BROKEN" otherwise. */
+function brokenLead(e) {
+  const since = e && e.untold ? phoenixTimeWords(e.incident && e.incident.opened_at) : "";
+  return since ? `BROKEN since ${since}` : "BROKEN";
 }
 
 /** True when this plan has anything to say. */
@@ -211,8 +233,9 @@ export function formatText(plan, { beatsById = new Map() } = {}) {
   if (total === 1 && breaks.length === 1) {
     const e = breaks[0];
     const info = infoOf(beatsById, e.beatId, e.result);
-    if (e.kind === "new") {
-      return fit({ kind: "break", parts: info, make: ({ title, step, fix }) => `Fundhub BROKEN: ${title}. It stopped at "${step}". Fix: ${noDot(fix)}.` });
+    if (e.kind === "new" || e.untold) {
+      const lead = brokenLead(e);
+      return fit({ kind: "break", parts: info, make: ({ title, step, fix }) => `Fundhub ${lead}: ${title}. It stopped at "${step}". Fix: ${noDot(fix)}.` });
     }
     const hourWords = e.hour ? `, hour ${e.hour}` : "";
     return fit({ kind: "still", parts: info, make: ({ title, step, fix }) => `Fundhub STILL BROKEN${hourWords}: ${title} at "${step}". Fix: ${noDot(fix)}.` });
@@ -226,7 +249,7 @@ export function formatText(plan, { beatsById = new Map() } = {}) {
 
   // Two or more things changed in one run: one text, each fix line cut short.
   const items = [
-    ...breaks.map((e) => ({ type: e.kind === "still" ? "still" : "new", info: infoOf(beatsById, e.beatId, e.result), hour: e.hour })),
+    ...breaks.map((e) => ({ type: e.kind === "still" && !e.untold ? "still" : "new", lead: brokenLead(e), info: infoOf(beatsById, e.beatId, e.result), hour: e.hour })),
     ...healed.map((h) => ({ type: "fixed", info: infoOf(beatsById, h.beatId, h.result), hours: h.hours }))
   ];
   return fitMany(items);
@@ -260,7 +283,7 @@ function fitMany(items) {
     const bits = shown.map((it) => {
       const t = cut(it.info.title, rung.title);
       if (it.type === "fixed") return `FIXED: ${t}${it.hours ? ` (${it.hours} h)` : ""}`;
-      const lead = it.type === "still" ? "STILL BROKEN" : "BROKEN";
+      const lead = it.type === "still" ? "STILL BROKEN" : it.lead || "BROKEN";
       const fix = fixCut ? ` Fix: ${noDot(cut(it.info.fix, fixCut))}.` : "";
       return `${lead}: ${t} at "${cut(it.info.step, rung.step)}".${fix}`;
     });
@@ -286,14 +309,21 @@ export function formatBuzz(plan, { beatsById = new Map() } = {}) {
 
 /**
  * The two real roads to Chris's phone.
- *   text(body, { env })           -> { delivery_status: "sent" | "failed" | "no_number" | "dry_run", sent_to_last4, error }
- *   ntfy(notification, { env })   -> { status: "sent" | "failed" | "rejected", error } or null when ntfy is not configured
+ *   text(body, { env })           -> { delivery_status: "sent" | "failed" | "no_number" | "dry_run" | "held_quiet_hours", sent_to_last4, error }
+ *   ntfy(notification, { env })   -> { status: "sent" | "failed" | "rejected" | "held_quiet_hours", error } or null when ntfy is not configured
+ * Both check texting hours again at the moment of the hand-off, on the real clock (act() does not pass its
+ * run clock in, so a run that started at 9:59:50 p.m. cannot text at 10:00:05). `now` is for tests only.
  */
 export function realSinks() {
   return {
     real: true,
-    text: (body, { env } = {}) => textMorningBrief({ body, env, dryRun: false }),
-    ntfy: async (notification, { env } = {}) => (isNtfyConfigured(env) ? sendNtfy({ notification }, { env }) : null)
+    text: (body, { env, now } = {}) => textMorningBrief({ body, env, dryRun: false, ...(now ? { now } : {}) }),
+    ntfy: async (notification, { env, now } = {}) => {
+      if (!isNtfyConfigured(env)) return null;
+      // The buzz rings Chris's own phone: same window as the text.
+      if (!inTextWindow(now || new Date())) return { status: HELD, providerMessageId: null, error: HELD_REASON };
+      return sendNtfy({ notification }, { env });
+    }
   };
 }
 
@@ -343,10 +373,22 @@ async function within(promise, ms) {
  *           delivered, error }.
  *   due        there was news to tell
  *   delivered  the text was "sent" OR the buzz was "sent"
+ *   held       outside 6 a.m. to 10 p.m. Arizona time: nothing was sent, on purpose (texting hours)
+ *
+ * `now` is the run's clock (default: the plan's own `now`, then the real clock).
  */
-export async function act(plan, { env = process.env, sinks, beatsById = new Map(), capMs = 6000 } = {}) {
+export async function act(plan, { env = process.env, sinks, beatsById = new Map(), capMs = 6000, now } = {}) {
   const text = formatText(plan, { beatsById });
-  if (!text) return { due: false, kind: null, body: null, texts: [], ntfy: null, delivered: false, error: null };
+  if (!text) return { due: false, kind: null, body: null, texts: [], ntfy: null, delivered: false, held: false, error: null };
+
+  // Texting hours. No text and no buzz outside the window. Nothing is claimed, so the next window carries it.
+  if (!inTextWindow(now ?? plan.now ?? new Date())) {
+    return {
+      due: true, kind: text.kind, body: text.body,
+      texts: [{ kind: text.kind, delivery_status: HELD, sent_to_last4: null }],
+      ntfy: null, delivered: false, held: true, error: null
+    };
+  }
 
   const s = sinks || realSinks();
   const started = Date.now();
@@ -376,12 +418,14 @@ export async function act(plan, { env = process.env, sinks, beatsById = new Map(
     [textRes, buzzRes] = await Promise.all([sendText(left()), sendBuzz(left())]);
   } else {
     textRes = await sendText(Math.min(left(), Math.max(1500, capMs - 1500)));
-    if (textRes.delivery_status !== "sent") buzzRes = await sendBuzz(left());
+    // A text the sender held (10 p.m. came while this run was going) is not a failed text: no buzz either.
+    if (textRes.delivery_status !== "sent" && textRes.delivery_status !== HELD) buzzRes = await sendBuzz(left());
   }
 
   const textSent = textRes.delivery_status === "sent";
   const buzzSent = Boolean(buzzRes && buzzRes.status === "sent");
   const failedBoth = !textSent && !buzzSent;
+  const heldLate = failedBoth && textRes.delivery_status === HELD && (!buzzRes || buzzRes.status === HELD);
   return {
     due: true,
     kind: text.kind,
@@ -389,7 +433,8 @@ export async function act(plan, { env = process.env, sinks, beatsById = new Map(
     texts: [{ kind: text.kind, delivery_status: String(textRes.delivery_status || "failed"), sent_to_last4: textRes.sent_to_last4 ?? null }],
     ntfy: buzzRes ? { status: String(buzzRes.status || "failed") } : null,
     delivered: textSent || buzzSent,
-    error: failedBoth ? cleanLine(`alert due but not delivered: text ${textRes.delivery_status}${textRes.error ? ` (${textRes.error})` : ""}${buzzRes ? `; buzz ${buzzRes.status}` : "; buzz not set up"}`, 200) : null
+    held: heldLate,
+    error: failedBoth && !heldLate ? cleanLine(`alert due but not delivered: text ${textRes.delivery_status}${textRes.error ? ` (${textRes.error})` : ""}${buzzRes ? `; buzz ${buzzRes.status}` : "; buzz not set up"}`, 200) : null
   };
 }
 
@@ -431,7 +476,7 @@ export async function saveIncidents(plan, { rdb, orgId, runId, delivered = false
       })());
     }
   }
-  for (const h of plan.healed) {
+  for (const h of [...plan.healed, ...(plan.healedQuiet || [])]) {
     jobs.push((async () => {
       const r = await closeIncident(rdb, h.incident.id, { closedBy: "auto" });
       note(r);

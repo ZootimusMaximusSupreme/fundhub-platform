@@ -8,6 +8,11 @@
 
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
 import { send as sendWhatsApp } from "../messaging/providers/twilio-whatsapp.mjs";
+import { inTextWindow, HELD } from "./quiet-hours.mjs";
+
+/* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). textChris and textMorningBrief text
+   Chris's own number, so each one checks inTextWindow(now) right before the hand-off to Twilio. Outside
+   6 a.m. to 10 p.m. Arizona time nothing is sent and the answer says HELD ("held_quiet_hours"). */
 
 export const PULSE_SMS_TO_ENV = "PULSE_SMS_TO";
 export const CHRIS_PULSE_SMS_ENV = "CHRIS_PULSE_SMS";
@@ -83,7 +88,8 @@ export async function textChris({
   topFails,
   env = process.env,
   dryRun = true,
-  sendImpl = sendSms
+  sendImpl = sendSms,
+  now = new Date()
 } = {}) {
   const body = formatChrisSms({ date, pass, fail, skip, topFails });
   const to = chrisPulseSmsTo(env);
@@ -91,6 +97,7 @@ export async function textChris({
     return { sent: false, reason: `${PULSE_SMS_TO_ENV} unset`, body, to: null };
   }
   if (dryRun) return { sent: false, reason: "dry_run", body, to };
+  if (!inTextWindow(now)) return { sent: false, reason: HELD, body, to };
   const result = await sendImpl(
     { to, body, channel: "sms" },
     { env }
@@ -137,7 +144,8 @@ export async function textMorningBrief({
   body,
   env = process.env,
   dryRun = true,
-  sendImpl = sendSms
+  sendImpl = sendSms,
+  now = new Date()
 } = {}) {
   const to = chrisPulseSmsTo(env);
   if (!to) {
@@ -150,6 +158,9 @@ export async function textMorningBrief({
   }
   if (dryRun) {
     return { delivery_status: "dry_run", sent_to_last4: last4(to), error: null, provider_message_id: null };
+  }
+  if (!inTextWindow(now)) {
+    return { delivery_status: HELD, sent_to_last4: last4(to), error: null, provider_message_id: null };
   }
   const result = await sendImpl({ to, body, channel: "sms" }, { env });
   const sent = result?.status === "sent";
