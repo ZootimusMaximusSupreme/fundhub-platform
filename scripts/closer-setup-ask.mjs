@@ -3,7 +3,11 @@
 //
 //   node --env-file=.env scripts/closer-setup-ask.mjs open   --staff <staff id> --asked-at <ISO time> [--grace-days 3] [--dry-run]
 //   node --env-file=.env scripts/closer-setup-ask.mjs snooze --staff <staff id> (--days <n> | --until <ISO time>) [--dry-run]
-//   node --env-file=.env scripts/closer-setup-ask.mjs close  --staff <staff id> [--dry-run]
+//   node --env-file=.env scripts/closer-setup-ask.mjs close  --staff <staff id> [--task <ask id>] [--dry-run]
+//
+// Times are written as a full ISO time with a zone, like 2026-10-07T17:41:33Z.
+// Anything looser (a bare number, a date with no time, a time with no zone) is
+// refused, so a typo cannot save a wrong ask.
 //
 // WHY. An ask sent from Gmail leaves no trace in our system, so the pulse had
 // nothing to watch. This writes one task per person that says who was asked, when,
@@ -22,13 +26,21 @@
 // close   Marks the one open ask done (the person joined, or the ask is dropped).
 //         snooze and close do not need the person to be active, so the ask for
 //         someone who left can still be dropped.
+//         With two open asks for one person (a race, or a hand insert), snooze
+//         and close refuse and list their ids. Then close --task <ask id> closes
+//         the one named, and the one left can be snoozed or closed on its own.
 //
 // --dry-run reads, prints what it would do, and writes nothing.
 
 import { pathToFileURL } from "node:url";
 
 import { createTask as defaultCreateTask } from "../src/lib/create-task.mjs";
-import { ASK_BODY_PREFIX, ASK_SOURCE, GRACE_DAYS } from "../src/pulse/coverage/gap-closer-setup.mjs";
+import {
+  ASK_BODY_PREFIX,
+  ASK_SOURCE,
+  GRACE_DAYS,
+  parseIsoTime
+} from "../src/pulse/coverage/gap-closer-setup.mjs";
 
 export const COMMANDS = Object.freeze(["open", "snooze", "close"]);
 export const EVENT_NAME = "Funding Strategy Meeting";
@@ -88,16 +100,16 @@ function dayLabel(date) {
   return `${p.month} ${p.day}, ${p.year}`;
 }
 
-/** argv (without node and the script) -> { command, staff, askedAt, graceDays, days, until, dryRun, help, errors }. */
+/** argv (without node and the script) -> { command, staff, askedAt, graceDays, days, until, task, dryRun, help, errors }. */
 export function parseArgs(argv = []) {
   const out = {
-    command: null, staff: null, askedAt: null, graceDays: null, days: null, until: null,
+    command: null, staff: null, askedAt: null, graceDays: null, days: null, until: null, task: null,
     dryRun: false, help: false, errors: []
   };
   const list = [...argv];
   const takes = new Map([
     ["--staff", "staff"], ["--asked-at", "askedAt"], ["--grace-days", "graceDays"],
-    ["--days", "days"], ["--until", "until"]
+    ["--days", "days"], ["--until", "until"], ["--task", "task"]
   ]);
   while (list.length) {
     const a = list.shift();
@@ -146,17 +158,28 @@ export async function run(args, { db, orgId, now = new Date(), createTask = defa
   }
   const staffId = String(args.staff).toLowerCase();
   const dry = args.dryRun === true;
+  if (args.task != null) {
+    if (args.command !== "close") return refuse("--task only goes with close.");
+    if (!UUID_RE.test(String(args.task))) return refuse("--task must be an ask id (a uuid).");
+  }
 
   if (args.command === "open") return openAsk({ args, db, orgId, now, createTask, log, staffId, dry });
   if (args.command === "snooze") return snoozeAsk({ args, db, orgId, now, log, staffId, dry });
-  return closeAsk({ db, orgId, log, staffId, dry });
+  return closeAsk({ args, db, orgId, log, staffId, dry });
 }
 
 async function openAsk({ args, db, orgId, now, createTask, log, staffId, dry }) {
-  const askedAt = validDate(args.askedAt);
   if (!args.askedAt) return refuse("--asked-at is required: the time the email went out, as an ISO time.");
-  if (!askedAt) return refuse(`--asked-at "${args.askedAt}" is not a time.`);
+  const askedAt = parseIsoTime(args.askedAt);
+  if (!askedAt) {
+    return refuse(
+      `--asked-at "${args.askedAt}" is not a time. Write the full time with a zone, like 2026-10-07T17:41:33Z.`
+    );
+  }
   if (askedAt.getTime() > now.getTime() + SKEW_MS) return refuse("--asked-at is in the future.");
+  if (askedAt.getTime() < now.getTime() - MAX_DAYS * DAY_MS) {
+    return refuse(`--asked-at is more than ${MAX_DAYS} days ago. Check the date.`);
+  }
 
   let graceDays = GRACE_DAYS;
   if (args.graceDays != null) {
@@ -227,7 +250,13 @@ async function theOneOpenAsk(db, orgId, staffId) {
   const open = await openAsks(db, orgId, staffId);
   if (open.length === 0) return { error: "There is no open ask for that staff id." };
   if (open.length > 1) {
-    return { error: `There are ${open.length} open asks for that staff id. Close the extras first.` };
+    const ids = open.map((r) => r.id).join(", ");
+    return {
+      error:
+        `There are ${open.length} open asks for that staff id (ask ids: ${ids}). ` +
+        "To close one, run: close --staff <staff id> --task <ask id>. " +
+        "Snooze and close work on their own once one ask is left."
+    };
   }
   return { row: open[0] };
 }
@@ -251,8 +280,12 @@ async function snoozeAsk({ args, db, orgId, now, log, staffId, dry }) {
     const base = current && current.getTime() > now.getTime() ? current : now;
     next = new Date(base.getTime() + days * DAY_MS);
   } else {
-    next = validDate(args.until);
-    if (!next) return refuse(`--until "${args.until}" is not a time.`);
+    next = parseIsoTime(args.until);
+    if (!next) {
+      return refuse(
+        `--until "${args.until}" is not a time. Write the full time with a zone, like 2026-10-20T16:00:00Z.`
+      );
+    }
     if (next.getTime() <= now.getTime()) return refuse("--until must be in the future.");
   }
 
@@ -267,10 +300,18 @@ async function snoozeAsk({ args, db, orgId, now, log, staffId, dry }) {
   return { ok: true, action: "snooze", dryRun: false, ...plan };
 }
 
-async function closeAsk({ db, orgId, log, staffId, dry }) {
-  const found = await theOneOpenAsk(db, orgId, staffId);
-  if (found.error) return refuse(found.error);
-  const row = found.row;
+async function closeAsk({ args, db, orgId, log, staffId, dry }) {
+  let row;
+  if (args.task != null) {
+    const want = String(args.task).toLowerCase();
+    const open = await openAsks(db, orgId, staffId);
+    row = open.find((r) => String(r.id).toLowerCase() === want);
+    if (!row) return refuse("That ask id is not an open ask for that staff id. Nothing was changed.");
+  } else {
+    const found = await theOneOpenAsk(db, orgId, staffId);
+    if (found.error) return refuse(found.error);
+    row = found.row;
+  }
   if (dry) {
     log(`DRY RUN. Nothing was written. Would mark the ask ${row.id} done.`);
     return { ok: true, action: "close", dryRun: true, id: row.id };
@@ -284,7 +325,8 @@ async function closeAsk({ db, orgId, log, staffId, dry }) {
 const USAGE = `Usage:
   node --env-file=.env scripts/closer-setup-ask.mjs open   --staff <staff id> --asked-at <ISO time> [--grace-days 3] [--dry-run]
   node --env-file=.env scripts/closer-setup-ask.mjs snooze --staff <staff id> (--days <n> | --until <ISO time>) [--dry-run]
-  node --env-file=.env scripts/closer-setup-ask.mjs close  --staff <staff id> [--dry-run]`;
+  node --env-file=.env scripts/closer-setup-ask.mjs close  --staff <staff id> [--task <ask id>] [--dry-run]
+Times are a full ISO time with a zone, like 2026-10-07T17:41:33Z.`;
 
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);

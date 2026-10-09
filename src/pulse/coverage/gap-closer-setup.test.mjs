@@ -13,6 +13,7 @@ import {
   GRACE_DAYS,
   gapChecks,
   parseAskBody,
+  parseIsoTime,
   readBookingBlock
 } from "./gap-closer-setup.mjs";
 import { GAP_FILES } from "./modules.mjs";
@@ -416,7 +417,7 @@ test("calendar-late: the morning after the due time is a FAIL that names who, wh
   assert.match(late.detail, /Justice Nikkel \(closer\)/);
   assert.match(late.detail, /Sarah Blankstein \(sales manager\)/);
   assert.match(late.detail, /asked Oct 7/);
-  assert.match(late.detail, /3 days ago/);
+  assert.match(late.detail, /4 days ago/, "Oct 7 to Oct 11 is 4 days on a calendar, though 3.8 days of 24 hours");
   assert.match(late.detail, /due Oct 10/);
   assert.match(late.detail, /Hosts on the page now: Chris Stanbridge\./);
 });
@@ -448,7 +449,7 @@ test("calendar-late: the FAIL words hold no staff name and no pronoun in custome
   assert.doesNotMatch(line1, PRONOUN);
   assert.equal(
     line1,
-    "A closer is past due to join the booking page. Send the ClickFunnels invite, nudge, give more days, or drop the ask."
+    "A team member is past due to join the booking page. Send the ClickFunnels invite, nudge, give more days, or drop the ask."
   );
   assert.match(late.customerSees, /No buyer is hurt yet/);
   const line2 = late.suggestedFix.split("\n")[1];
@@ -579,6 +580,176 @@ test("calendar-late: a row with no usable date is left out and counted, not a cr
   const { late } = await run({ rows: [junk] });
   assert.equal(late.status, "PASS");
   assert.match(late.detail, /1 ask row has no usable date/);
+});
+
+// ── repairs: strict times, calendar days, names, address, words ───────────────
+
+test("parseIsoTime: only a full ISO time with a zone is a time", () => {
+  assert.equal(parseIsoTime("2026-10-07T17:41:33.000Z").toISOString(), "2026-10-07T17:41:33.000Z");
+  assert.equal(parseIsoTime("2026-10-07T17:41:33Z").toISOString(), "2026-10-07T17:41:33.000Z");
+  assert.equal(parseIsoTime("2026-10-07T17:41Z").toISOString(), "2026-10-07T17:41:00.000Z");
+  assert.equal(parseIsoTime("2026-10-07T10:41:33-07:00").toISOString(), "2026-10-07T17:41:33.000Z");
+  assert.equal(parseIsoTime(" 2026-10-07T17:41:33Z ").toISOString(), "2026-10-07T17:41:33.000Z");
+  const bad = [
+    "7", "2026", "2026-10-07", "2026-10-07T17:41:33", "2026-10-07 17:41:33Z", "Oct 7 2026",
+    "2026-02-31T10:00:00Z", "2026-04-31T10:00:00Z", "2026-13-01T10:00:00Z", "2026-10-07T24:00:00Z",
+    "2026-10-07T17:61:00Z", "", "   ", null, undefined, 7, new Date("2026-10-07T17:41:33Z")
+  ];
+  for (const value of bad) assert.equal(parseIsoTime(value), null, String(value));
+});
+
+test("a body whose time is loose, partial or not real is not read as that time; the saved day is used", async () => {
+  for (const tail of ["7", "2026-10-07", "2026-10-07T17:41:33", "2026-02-31T10:00:00Z", "Oct 7"]) {
+    const body = `${ASK_BODY_PREFIX}${JUSTICE}:${tail}`;
+    assert.equal(parseAskBody(body).askedAt, null, tail);
+    const { late } = await run({ rows: [ask({ body, created_at: "2026-10-07T17:00:00.000Z" })], now: LATE });
+    assert.equal(late.status, "FAIL", tail);
+    assert.match(late.detail, /ask saved Oct 7/, tail);
+    assert.doesNotMatch(late.detail, /2001|, \d{4},/, tail);
+  }
+  // Nothing after the last colon: the saved day, too.
+  const bare = ask({ body: `${ASK_BODY_PREFIX}${JUSTICE}:`, created_at: "2026-10-07T17:00:00.000Z" });
+  const { late } = await run({ rows: [bare], now: LATE });
+  assert.match(late.detail, /ask saved Oct 7/);
+  // The twin: the full time the writer saves is still read from the body.
+  const good = ask({ created_at: "2026-10-09T01:00:00.000Z" });
+  assert.deepEqual(parseAskBody(good.body), { staffId: JUSTICE, askedAt: new Date(ASKED_JUSTICE) });
+});
+
+test("the booking block: a data-type decoy is not read; a charset, quotes or no quotes on the real type are", () => {
+  const real = '{"event_type":{"id":"real","event_hosts":[{"name":"Real Host"}]}}';
+  const decoy = '{"event_type":{"id":"decoy","event_hosts":[{"name":"Decoy Host"}]}}';
+  const decoyTag = `<script data-type="application/json" type="text/plain">${decoy}</script>`;
+
+  assert.equal(readBookingBlock(decoyTag), null);
+  assert.equal(readBookingBlock(`${decoyTag}\n<script type="application/json">${real}</script>`).id, "real");
+
+  assert.equal(readBookingBlock(`<script type="application/json; charset=utf-8">${real}</script>`).id, "real");
+  assert.equal(readBookingBlock(`<script type='application/json;charset=UTF-8' id=x>${real}</script>`).id, "real");
+  assert.equal(readBookingBlock(`<script type=application/json id=x>${real}</script>`).id, "real");
+  assert.equal(readBookingBlock(`<script id="x" data-type="a"  type = "application/json" >${real}</script>`).id, "real");
+
+  // A value that only mentions the type is not the type. The first type wins, as in a browser.
+  assert.equal(readBookingBlock(`<script data-note="type=application/json" type="text/plain">${real}</script>`), null);
+  assert.equal(readBookingBlock(`<script type="text/plain" type="application/json">${real}</script>`), null);
+  for (const kind of ["application/jsonp", "application/json-seq", "application/ld+json", "text/json", ""]) {
+    assert.equal(readBookingBlock(`<script type="${kind}">${real}</script>`), null, kind);
+  }
+});
+
+test("the live page still reads when a decoy with a data-type sits ahead of the real block", () => {
+  const decoy = `<script data-type="application/json" type="text/plain">{"event_type":{"id":"decoy","event_hosts":[]}}</script>`;
+  const block = readBookingBlock(pageWith([decoy, LIVE_STATE_1, LIVE_STATE_2]));
+  assert.equal(block.id, "14234");
+  assert.equal(block.event_hosts.length, 1);
+});
+
+test("calendar-late: a hyphen in a name counts like a space; part of a name or another person does not match", async () => {
+  const withHost = (name) => fetchOf(pageWith([
+    LIVE_STATE_1,
+    stateWith((d) => { d.event_type.event_hosts.push({ id: 7, name }); })
+  ]));
+  const a = await run({ rows: [ask({ staff_name: "Mary-Ann Lee" })], now: LATE, fetchImpl: withHost("Mary Ann Lee") });
+  assert.equal(a.late.status, "PASS");
+  assert.match(a.late.detail, /so the ask can be closed: Mary-Ann Lee/);
+  const b = await run({ rows: [ask({ staff_name: "Mary Ann Lee" })], now: LATE, fetchImpl: withHost("Mary-Ann  LEE") });
+  assert.equal(b.late.status, "PASS");
+
+  // The twins: part of a name, or a different name, stays red.
+  for (const shown of ["Justice N.", "Justice", "Nikkel", "Justice Nikkels", "Mary Lee"]) {
+    const row = shown === "Mary Lee" ? ask({ staff_name: "Mary-Ann Lee" }) : ask();
+    const out = await run({ rows: [row], now: LATE, fetchImpl: withHost(shown) });
+    assert.equal(out.late.status, "FAIL", shown);
+  }
+});
+
+test("the GET address uses only the origin of FUNNEL_URL: a path, a query or a login on it cannot bend it", async () => {
+  const cases = [
+    ["https://go.example.com/some/page?x=1#top", "https://go.example.com/funding-book-call"],
+    ["https://go.example.com/x?y", "https://go.example.com/funding-book-call"],
+    ["https://go.example.com/", "https://go.example.com/funding-book-call"],
+    ["https://go.example.com", "https://go.example.com/funding-book-call"],
+    ["http://localhost:8888/app", "http://localhost:8888/funding-book-call"],
+    ["https://user:secret@go.example.com/x", "https://go.example.com/funding-book-call"]
+  ];
+  for (const [given, want] of cases) {
+    const out = await run({ env: { FUNNEL_URL: given } });
+    assert.equal(out.fetchImpl.calls.length, 1, given);
+    assert.equal(out.fetchImpl.calls[0].url, want, given);
+    assert.equal(out.host.status, "PASS", given);
+  }
+  for (const junk of ["http://[bad", "ftp://go.example.com", "go.example.com", "https://"]) {
+    const out = await run({ env: { FUNNEL_URL: junk } });
+    assert.equal(out.fetchImpl.calls[0].url, "https://apply.fundhub.ai/funding-book-call", junk);
+  }
+});
+
+test("calendar-late: 'days ago' counts Arizona calendar days, not blocks of 24 hours", async () => {
+  // Asked Oct 7 10:41 Arizona. The Oct 11 6 a.m. run is 3.8 days later and 4 calendar days later.
+  const four = await run({ rows: [ask()], now: LATE });
+  assert.match(four.late.detail, /asked Oct 7, 4 days ago, due Oct 10/);
+
+  // Asked Oct 7 at 10 p.m. Arizona (Oct 8 05:00 UTC). At 6 a.m. Oct 8 it is 1 calendar day, 8 hours.
+  const evening = ask({
+    body: `${ASK_BODY_PREFIX}${JUSTICE}:2026-10-08T05:00:00.000Z`,
+    due_at: "2026-10-08T05:30:00.000Z"
+  });
+  const one = await run({ rows: [evening], now: new Date("2026-10-08T13:00:00.000Z") });
+  assert.equal(one.late.status, "FAIL");
+  assert.match(one.late.detail, /asked Oct 7, 1 day ago/);
+
+  // The same day says today, not "0 days ago".
+  const morning = ask({
+    body: `${ASK_BODY_PREFIX}${JUSTICE}:2026-10-08T12:00:00.000Z`,
+    due_at: "2026-10-08T12:30:00.000Z"
+  });
+  const today = await run({ rows: [morning], now: new Date("2026-10-08T13:00:00.000Z") });
+  assert.match(today.late.detail, /asked Oct 8, today, due Oct 8/);
+  assert.doesNotMatch(today.late.detail, /0 days/);
+});
+
+test("calendar-late: a host name that ends in a period does not make two periods in a row", async () => {
+  const html = pageWith([
+    LIVE_STATE_1,
+    stateWith((d) => { d.event_type.event_hosts = [{ id: 1, name: "Chris S" }, { id: 2, name: "Justice N." }]; })
+  ]);
+  const red = await run({ rows: [ask({ staff_name: "Sarah Blankstein" })], now: LATE, fetchImpl: fetchOf(html) });
+  assert.equal(red.late.status, "FAIL");
+  assert.match(red.late.detail, /Hosts on the page now: Chris S, Justice N\.$/);
+  assert.doesNotMatch(red.late.detail, /\.\./);
+
+  const green = await run({ rows: [ask({ staff_name: "Justice N." })], now: LATE, fetchImpl: fetchOf(html) });
+  assert.equal(green.late.status, "PASS");
+  assert.doesNotMatch(green.late.detail, /\.\./);
+});
+
+test("a skip about changed page code keeps one level of parentheses, so the line reads in one pass", async () => {
+  const gone = fetchOf(pageWith([LIVE_STATE_1]));
+  const noList = fetchOf(pageWith([LIVE_STATE_1, stateWith((d) => { delete d.event_type.event_hosts; })]));
+  for (const fetchImpl of [gone, noList]) {
+    const { host, late } = await run({ rows: [ask()], now: LATE, fetchImpl });
+    assert.equal(host.status, "skip");
+    assert.equal(late.status, "skip");
+    for (const text of [host.detail, late.detail]) {
+      assert.match(text, /ClickFunnels may have changed the page code/);
+      assert.doesNotMatch(text, /\([^()]*\(/, `a parenthesis opened inside a parenthesis: ${text}`);
+    }
+  }
+});
+
+test("calendar-late: fix line 1 holds no staff name, no pronoun and no role when the late person is a sales manager", async () => {
+  const { late } = await run({ rows: [sarahAsk()], now: LATE });
+  assert.equal(late.status, "FAIL");
+  const line1 = late.suggestedFix.split("\n")[0];
+  assert.equal(
+    line1,
+    "A team member is past due to join the booking page. Send the ClickFunnels invite, nudge, give more days, or drop the ask."
+  );
+  assert.doesNotMatch(line1, /closer|manager|setter/i);
+  assert.doesNotMatch(line1, NAMES);
+  assert.doesNotMatch(line1, PRONOUN);
+  assert.doesNotMatch(late.customerSees, NAMES);
+  assert.doesNotMatch(late.customerSees, PRONOUN);
 });
 
 // ── how it reads ──────────────────────────────────────────────────────────────

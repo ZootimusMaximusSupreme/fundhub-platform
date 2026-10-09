@@ -213,6 +213,40 @@ test("open refuses a missing, unreadable or future ask time", async () => {
   assert.match(future.reason, /in the future/);
 });
 
+test("open: --asked-at must be a full ISO time with a zone; a bare number, a date, a zoneless time or a day that does not exist is refused before any read", async () => {
+  const loose = ["7", "2026", "2026-10-07", "2026-10-07T17:41:33", "2026-10-07 17:41:33Z", "2026-02-31T10:00:00Z", "2026-10-07T24:00:00Z"];
+  for (const askedAt of loose) {
+    const db = fakeDb();
+    const out = await run(openArgs({ askedAt }), { db, orgId: ORG, now: NOW });
+    assert.equal(out.ok, false, askedAt);
+    assert.match(out.reason, /is not a time/, askedAt);
+    assert.match(out.reason, /2026-10-07T17:41:33Z/, "the refusal shows the shape to write");
+    assert.equal(db.calls.length, 0, `${askedAt}: refused before any read`);
+  }
+  // The twins: the full shape, with Z or with an offset, is taken.
+  const z = await run(openArgs({ askedAt: "2026-10-07T17:41:33Z", dryRun: true }), { db: fakeDb(), orgId: ORG, now: NOW });
+  assert.equal(z.ok, true);
+  const offset = await run(openArgs({ askedAt: "2026-10-07T10:41:33-07:00", dryRun: true }), { db: fakeDb(), orgId: ORG, now: NOW });
+  assert.equal(offset.ok, true);
+  assert.equal(offset.body, `closer-calendar:${JUSTICE}:2026-10-07T17:41:33.000Z`);
+  assert.equal(offset.dueAt, "2026-10-10T17:41:33.000Z");
+});
+
+test("open: an ask time more than 60 days back is refused; 60 days back is taken", async () => {
+  const hundred = await run(openArgs({ askedAt: "2026-07-01T00:00:00Z" }), { db: fakeDb(), orgId: ORG, now: NOW });
+  assert.equal(hundred.ok, false);
+  assert.match(hundred.reason, /more than 60 days ago/);
+
+  const justOver = await run(openArgs({ askedAt: "2026-08-10T13:59:00Z" }), { db: fakeDb(), orgId: ORG, now: NOW });
+  assert.equal(justOver.ok, false);
+  assert.match(justOver.reason, /more than 60 days ago/);
+
+  const sixty = await run(openArgs({ askedAt: "2026-08-10T14:00:00Z", dryRun: true }), { db: fakeDb(), orgId: ORG, now: NOW });
+  assert.equal(sixty.ok, true);
+  const recent = await run(openArgs({ askedAt: "2026-10-07T17:41:33Z", dryRun: true }), { db: fakeDb(), orgId: ORG, now: NOW });
+  assert.equal(recent.ok, true);
+});
+
 test("open uses the IS NOT DISTINCT FROM pre-check, like the C-suite helper, and an exact repeat writes nothing", async () => {
   const db = fakeDb({ sameBody: { id: "ask-0", done: false } });
   const out = await run(openArgs(), { db, orgId: ORG, now: NOW });
@@ -326,6 +360,22 @@ test("snooze --until sets the exact time and refuses a time that is not in the f
   assert.match(past.reason, /in the future/);
 });
 
+test("snooze --until is a full ISO time with a zone too: a bare number or a date is refused", async () => {
+  for (const until of ["7", "2026-10-20", "2026-10-20T16:00:00", "next week"]) {
+    const db = fakeDb({ asks: [openRow()] });
+    const out = await run({ command: "snooze", staff: JUSTICE, until, dryRun: false }, { db, orgId: ORG, now: NOW });
+    assert.equal(out.ok, false, until);
+    assert.match(out.reason, /is not a time/, until);
+    assert.deepEqual(writes(db), [], until);
+  }
+  const ok = await run(
+    { command: "snooze", staff: JUSTICE, until: "2026-10-20T09:00:00-07:00", dryRun: false },
+    { db: fakeDb({ asks: [openRow()] }), orgId: ORG, now: NOW }
+  );
+  assert.equal(ok.ok, true);
+  assert.equal(ok.to, "2026-10-20T16:00:00.000Z");
+});
+
 test("snooze needs exactly one of --days or --until, a sane number, and one open ask", async () => {
   const base = { command: "snooze", staff: JUSTICE, dryRun: false };
   const both = await run({ ...base, days: "1", until: "2026-10-20T00:00:00Z" }, { db: fakeDb({ asks: [openRow()] }), orgId: ORG, now: NOW });
@@ -382,6 +432,88 @@ test("close refuses when there is no open ask, and --dry-run sends no write", as
   assert.equal(b.ok, true);
   assert.equal(b.dryRun, true);
   assert.deepEqual(writes(dry), []);
+});
+
+const ASK_A = "aaaaaaaa-0000-4000-8000-00000000000a";
+const ASK_B = "bbbbbbbb-0000-4000-8000-00000000000b";
+const TWO_OPEN = () => [openRow({ id: ASK_A }), openRow({ id: ASK_B, body: `${ASK_BODY_PREFIX}${JUSTICE}:2026-10-08T00:00:00.000Z` })];
+
+test("parseArgs: --task takes an ask id", () => {
+  const a = parseArgs(["close", "--staff", JUSTICE, "--task", ASK_A]);
+  assert.equal(a.task, ASK_A);
+  assert.deepEqual(a.errors, []);
+  assert.equal(parseArgs(["close", "--staff", JUSTICE]).task, null);
+  assert.match(parseArgs(["close", "--task"]).errors.join(" "), /--task needs a value/);
+});
+
+test("two open asks for one person: close and snooze refuse and list both ask ids and the way out", async () => {
+  for (const args of [
+    { command: "close", staff: JUSTICE, dryRun: false },
+    { command: "snooze", staff: JUSTICE, days: "2", dryRun: false }
+  ]) {
+    const db = fakeDb({ asks: TWO_OPEN() });
+    const out = await run(args, { db, orgId: ORG, now: NOW });
+    assert.equal(out.ok, false, args.command);
+    assert.match(out.reason, /2 open asks/);
+    assert.ok(out.reason.includes(ASK_A) && out.reason.includes(ASK_B), "both ask ids are named");
+    assert.match(out.reason, /close --staff <staff id> --task <ask id>/);
+    assert.doesNotMatch(out.reason, /Close the extras first\.$/, "no step that cannot be done");
+    assert.deepEqual(writes(db), []);
+  }
+});
+
+test("close --task closes only the named ask and writes one row", async () => {
+  const db = fakeDb({ asks: TWO_OPEN() });
+  const out = await run({ command: "close", staff: JUSTICE, task: ASK_B, dryRun: false }, { db, orgId: ORG, now: NOW });
+  assert.equal(out.ok, true);
+  assert.equal(out.action, "close");
+  assert.equal(out.id, ASK_B);
+  assert.equal(writes(db).length, 1);
+  const up = db.calls.find((c) => /UPDATE tasks SET done = true/.test(c.text));
+  assert.deepEqual(up.params, [ASK_B, ORG, ASK_SOURCE]);
+
+  // The ask id is not case sensitive, and it can name the only open ask too.
+  const one = fakeDb({ asks: [openRow({ id: ASK_A })] });
+  const upper = await run({ command: "close", staff: JUSTICE, task: ASK_A.toUpperCase(), dryRun: false }, { db: one, orgId: ORG, now: NOW });
+  assert.equal(upper.ok, true);
+  assert.equal(upper.id, ASK_A);
+});
+
+test("close --task refuses an id that is not an open ask for that person, and writes nothing", async () => {
+  const elsewhere = "cccccccc-0000-4000-8000-00000000000c";
+  for (const task of [elsewhere, ASK_A]) {
+    // ASK_A is on file but already done, so it is not an open ask.
+    const db = fakeDb({ asks: [openRow({ id: ASK_A, done: true }), openRow({ id: ASK_B })] });
+    const out = await run({ command: "close", staff: JUSTICE, task, dryRun: false }, { db, orgId: ORG, now: NOW });
+    assert.equal(out.ok, false, task);
+    assert.match(out.reason, /not an open ask for that staff id/);
+    assert.deepEqual(writes(db), []);
+  }
+});
+
+test("close --task: a bad id is refused before any read, and --task goes with close only", async () => {
+  const db = fakeDb({ asks: TWO_OPEN() });
+  const bad = await run({ command: "close", staff: JUSTICE, task: "ask-1", dryRun: false }, { db, orgId: ORG, now: NOW });
+  assert.equal(bad.ok, false);
+  assert.match(bad.reason, /--task must be an ask id/);
+  for (const command of ["snooze", "open"]) {
+    const out = await run(
+      { ...openArgs(), command, task: ASK_A, days: "1", dryRun: false },
+      { db, orgId: ORG, now: NOW }
+    );
+    assert.equal(out.ok, false, command);
+    assert.match(out.reason, /--task only goes with close/);
+  }
+  assert.equal(db.calls.length, 0, "refused before any read");
+});
+
+test("close --task --dry-run sends no write", async () => {
+  const db = fakeDb({ asks: TWO_OPEN() });
+  const out = await run({ command: "close", staff: JUSTICE, task: ASK_A, dryRun: true }, { db, orgId: ORG, now: NOW });
+  assert.equal(out.ok, true);
+  assert.equal(out.dryRun, true);
+  assert.equal(out.id, ASK_A);
+  assert.deepEqual(writes(db), []);
 });
 
 test("close and snooze say so when the ask was closed while they ran", async () => {

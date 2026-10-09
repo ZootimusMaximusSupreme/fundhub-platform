@@ -92,12 +92,14 @@ function words(value) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
 
-/* "Justice  Nikkel" and "justice nikkel" are the same person. */
+/* "Justice  Nikkel" and "justice nikkel" are the same person. So are "Mary-Ann"
+   and "Mary Ann". Part of a name ("Justice N.") is not a match and stays red. */
 function norm(value) {
   return String(value == null ? "" : value)
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    .replace(/[-\u2010-\u2015]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -106,6 +108,24 @@ function validDate(value) {
   if (value == null || value === "") return null;
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/* One strict reading of a time written as text: a full ISO time with a zone, like
+   2026-10-07T17:41:33Z. Nothing looser. "7", "2026-10-07" and a time with no zone
+   are not times here, and a day that does not exist (Feb 31) is not rolled into
+   the next month. The writer scripts/closer-setup-ask.mjs uses this too. */
+const ISO_TIME_RE =
+  /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d)(?:\.\d+)?)?(Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+
+export function parseIsoTime(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const m = ISO_TIME_RE.exec(text);
+  if (!m) return null;
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (day.getUTCMonth() !== Number(m[2]) - 1 || day.getUTCDate() !== Number(m[3])) return null;
+  return d;
 }
 
 /* "Oct 10" in Arizona time, the clock Chris reads. The year shows only when it
@@ -123,6 +143,25 @@ function dayLabel(date, now) {
   return a.year === b.year ? `${a.month} ${a.day}` : `${a.month} ${a.day}, ${a.year}`;
 }
 
+/* Whole calendar days from one day to another on the Arizona clock: asked Oct 7,
+   read Oct 11 is 4, whatever the hour. A count of 24 hour blocks would say 3. */
+function arizonaDay(date) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "numeric", day: "numeric" })
+      .formatToParts(date).map((x) => [x.type, x.value])
+  );
+  return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) / DAY_MS;
+}
+
+function daysAgo(from, now) {
+  return Math.max(0, Math.round(arizonaDay(now) - arizonaDay(from)));
+}
+
+/* A name that ends in a period ("Justice N.") must not make two periods in a row. */
+function noDot(text) {
+  return String(text).replace(/[.\s]+$/, "");
+}
+
 function plural(n, one, many) {
   return n === 1 ? one : many;
 }
@@ -136,12 +175,13 @@ const BODY_RE = new RegExp("^" + PREFIX_SOURCE + "(" + UUID_SOURCE + "):(.+)$");
 /**
  * "closer-calendar:<staff id>:<asked ISO>" -> { staffId, askedAt }.
  * The ISO time has colons in it, so the staff id is the first part and the rest
- * is the time. askedAt is null when the time part is not a date.
+ * is the time. askedAt is null when the time part is not a full ISO time with a
+ * zone (parseIsoTime), so the saved day is used instead.
  */
 export function parseAskBody(body) {
   const m = BODY_RE.exec(String(body == null ? "" : body).trim());
   if (!m) return null;
-  return { staffId: m[1].toLowerCase(), askedAt: validDate(m[2]) };
+  return { staffId: m[1].toLowerCase(), askedAt: parseIsoTime(m[2]) };
 }
 
 function askOf(row) {
@@ -219,7 +259,20 @@ async function readAsks(ctx) {
 
 /* ----------------------------------------------------------- the booking page */
 
-const JSON_TYPE_RE = /\btype\s*=\s*(["']?)application\/json\1(?=[\s/>]|$)/i;
+/* The type of a script tag, read from its attributes one by one, so that
+   data-type="application/json" is not the type, a value with "type=" written
+   inside it is not the type, and application/json; charset=utf-8 is JSON. The
+   first type attribute wins, as it does in a browser. */
+function isJsonScript(attrs) {
+  const re = /([^\s"'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  let a;
+  while ((a = re.exec(attrs))) {
+    if (a[1].toLowerCase() !== "type") continue;
+    const value = [a[2], a[3], a[4]].find((v) => typeof v === "string") || "";
+    return /^application\/json\s*(?:;.*)?$/i.test(value.trim());
+  }
+  return false;
+}
 
 /**
  * The event block from a booking page: the first <script type="application/json">
@@ -231,7 +284,7 @@ export function readBookingBlock(html) {
   const re = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
   let m;
   while ((m = re.exec(text))) {
-    if (!JSON_TYPE_RE.test(m[1])) continue;
+    if (!isJsonScript(m[1])) continue;
     let data;
     try {
       data = JSON.parse(m[2]);
@@ -244,10 +297,19 @@ export function readBookingBlock(html) {
   return null;
 }
 
+/* FUNNEL_URL is the funnel's address. Only its origin is used (scheme, host and
+   port), so a path or a query on it cannot bend the booking page address. */
 function pageUrl(env) {
   const given = env && typeof env === "object" ? words(env.FUNNEL_URL) : "";
-  const origin = /^https?:\/\/[^\s*]+$/i.test(given) ? given : DEFAULT_FUNNEL_URL;
-  return `${origin.replace(/\/+$/, "")}${PAGE_PATH}`;
+  let origin = DEFAULT_FUNNEL_URL;
+  if (/^https?:\/\/[^\s*]+$/i.test(given)) {
+    try {
+      origin = new URL(given).origin;
+    } catch {
+      origin = DEFAULT_FUNNEL_URL;
+    }
+  }
+  return new URL(PAGE_PATH, origin).href;
 }
 
 /* One GET. Never throws: { ok: false, reason } or { ok: true, ...hosts }. */
@@ -286,11 +348,11 @@ async function readPage(ctx) {
   if (!block) {
     return {
       ok: false,
-      reason: "the page answered but its booking block is not in it (ClickFunnels may have changed the page code)"
+      reason: "the page answered but its booking block is not in it; ClickFunnels may have changed the page code"
     };
   }
   if (!Array.isArray(block.event_hosts)) {
-    return { ok: false, reason: "the booking block has no host list (ClickFunnels may have changed the page code)" };
+    return { ok: false, reason: "the booking block has no host list; ClickFunnels may have changed the page code" };
   }
   const names = block.event_hosts.map((h) => words(h && h.name)).filter(Boolean);
   const sel = block.selected_host && typeof block.selected_host === "object" ? block.selected_host : null;
@@ -308,7 +370,7 @@ async function readPage(ctx) {
 /* ------------------------------------------------------------------ the rows */
 
 const FIX_LATE =
-  "A closer is past due to join the booking page. Send the ClickFunnels invite, nudge, give more days, or drop the ask.\n" +
+  "A team member is past due to join the booking page. Send the ClickFunnels invite, nudge, give more days, or drop the ask.\n" +
   "Only a ClickFunnels team admin can send the invite and add a host. The API cannot. The pulse sends nothing.\n" +
   "To give more days or drop the ask: node scripts/closer-setup-ask.mjs snooze or close, with --staff and the staff id.";
 
@@ -351,15 +413,16 @@ function judgeLate(asksRead, page, now) {
   }
 
   const hostsSeen = hostsKnown
-    ? page.hostNames.length > 0 ? page.hostNames.join(", ") : "no host is listed"
+    ? page.hostNames.length > 0 ? noDot(page.hostNames.join(", ")) : "no host is listed"
     : "not read";
   const note = (ask) => {
-    const since = Math.max(0, Math.floor((now.getTime() - ask.askedAt.getTime()) / DAY_MS));
+    const since = daysAgo(ask.askedAt, now);
+    const ago = since === 0 ? "today" : `${since} ${plural(since, "day", "days")} ago`;
     const role = ask.role ? ` (${ask.role})` : "";
     const when = ask.askedFromBody ? "asked" : "ask saved";
     const extra = ask.notActive ? ` Note: ${ask.notActive}.` : "";
     return (
-      `${ask.name}${role}: ${when} ${dayLabel(ask.askedAt, now)}, ${since} ${plural(since, "day", "days")} ago, ` +
+      `${ask.name}${role}: ${when} ${dayLabel(ask.askedAt, now)}, ${ago}, ` +
       `due ${dayLabel(ask.dueAt, now)}, not a host on the booking page.${extra}`
     );
   };
@@ -390,7 +453,7 @@ function judgeLate(asksRead, page, now) {
     );
   }
   if (joined.length > 0) {
-    parts.push(`On the booking page now, so the ask can be closed: ${listNames(joined)}.`);
+    parts.push(`On the booking page now, so the ask can be closed: ${noDot(listNames(joined))}.`);
   }
   return check(id, "PASS", parts.join(" "));
 }
