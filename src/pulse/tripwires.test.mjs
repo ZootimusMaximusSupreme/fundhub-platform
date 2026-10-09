@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,7 +20,7 @@ const BASELINE = JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8"));
 /* The baseline only shrinks. When you sort entries out of it, lower this number to the new
    length in the same change. Never raise it: a new surface goes in TRIPWIRES or
    NOT_CUSTOMER_FACING, not in the baseline. */
-const BASELINE_MAX = 496;
+const BASELINE_MAX = 495;
 
 function htmlFiles(dir) {
   return fs.readdirSync(dir, { recursive: true })
@@ -27,15 +28,32 @@ function htmlFiles(dir) {
     .map((name) => name.replace(/\\/g, "/"));
 }
 
+/* Pages and desks are counted from what git tracks plus new files not yet staged (never the ignored ones), not from what happens to sit on one disk. A page that
+   is git-ignored (public/leads/ on the owner's Mac) is not in the repo, so a build from the repo cannot
+   have a tripwire decision for it. Counting from disk made this test pass on the Mac and fail on GitHub.
+   If git is not available the disk is used. */
+function trackedPublicHtml() {
+  try {
+    const out = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "public"], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    const files = out.split("\0").filter((f) => f.endsWith(".html")).map((f) => f.slice("public/".length));
+    return files.length ? files : null;
+  } catch {
+    return null;
+  }
+}
+
 function surfaces() {
   const out = new Set();
   for (const key of Object.keys(ROUTES)) out.add(`route:${key}`);
-  for (const file of fs.readdirSync(path.join(ROOT, "public/app")).filter((n) => n.endsWith(".html"))) {
-    out.add(`desk:${file}`);
-  }
-  for (const file of htmlFiles(path.join(ROOT, "public")).filter((n) => !n.startsWith("app/"))) {
-    out.add(`page:${file}`);
-  }
+  const tracked = trackedPublicHtml();
+  const desks = tracked
+    ? tracked.filter((n) => /^app\/[^/]+\.html$/.test(n)).map((n) => n.slice("app/".length))
+    : fs.readdirSync(path.join(ROOT, "public/app")).filter((n) => n.endsWith(".html"));
+  for (const file of desks) out.add(`desk:${file}`);
+  const pages = tracked
+    ? tracked.filter((n) => !n.startsWith("app/"))
+    : htmlFiles(path.join(ROOT, "public")).filter((n) => !n.startsWith("app/"));
+  for (const file of pages) out.add(`page:${file}`);
   for (const fn of functions) out.add(`job:${fn.opts.id}`);
   for (const file of Object.keys(SEND_PATHS)) out.add(`send:${file}`);
   return out;

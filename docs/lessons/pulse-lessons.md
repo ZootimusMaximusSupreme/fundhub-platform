@@ -25,6 +25,11 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-09 — tripwire map — pulse_false_alarm
+- Cause: the tripwire map counted pages from the files on this Mac's disk. One page (`public/leads/…`) is git-ignored, so the test passed here and failed on GitHub for every branch since 2026-10-08.
+- Fix: count pages and desks from `git ls-files --cached --others --exclude-standard`, so ignored files never count and a new unstaged file still does.
+- Guard added: `src/pulse/tripwires.test.mjs` (a new unstaged page fails it; an ignored page does not). Lesson: a test that reads the disk can pass on the owner's Mac and fail in CI. Run a throwaway-branch CI check after adding a guard that scans files.
+
 ## Lessons carried in from before the pulse (2026-10-08)
 
 ## 2026-10-08 — pulse coverage — deploy_or_bundle
