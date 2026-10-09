@@ -90,3 +90,7 @@ Model: Sonnet for 1 and 2 (back end), Opus for 0 and 3 (contract, routine, rule)
 | 1 | pending — waits on 0 |
 | 2 | pending — waits on 0 |
 | 3 | pending — waits on 1 and 2 |
+
+## Leftovers
+
+- `scripts/github-push-whole-repo.mjs` pushes `main` with `--force-with-lease`. After a fetch the lease passes, so it can overwrite commits another session pushed. It did at about 02:00 on 2026-10-09 (two TODO commits, restored by merge in 1d37d819). Not changed here.
