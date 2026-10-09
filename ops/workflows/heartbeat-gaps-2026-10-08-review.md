@@ -93,6 +93,12 @@ Real breaks the new checks catch today (not fixed — product, owner hard lock):
 2. The roadmap drip steps people forward even when no email queued. Everyone shares the key `workflow:<template>:null`, so the second person at a step gets nothing. `email:drip-step-no-email`, `email:morning-no-failure-check`.
 3. Paying repair client FH-000507 stuck in analysis since 2026-10-05 (1 hour clock), no letters, no next step on the screen. `fulfillment:next-action`, `repair-letter-round`.
 4. Company Brain has not embedded anything since about 2026-09-18. `brain:embed-key`.
+5. Email unsubscribe links cannot be signed. `UNSUBSCRIBE_TOKEN_SECRET` on Netlify production is a 20-character mask that starts with `*`, so email goes out with no unsubscribe link. `opt-out:unsubscribe-link`. Not overwritten (never remove or replace a key); Chris's call.
+
+## Shipped
+
+- `81b50d23` shipped 2026-10-08 18:44 (`bbbc6288` ship log). Health: pending 0. Inngest re-registered. The live api bundle carries all 72 coverage files (37 gap). Local `main` = GitHub `main`.
+- The test text to 480 was NOT sent. Twilio answered 401 "invalid username": `TWILIO_SEND_ACCOUNT_SID` and `TWILIO_SEND_AUTH_TOKEN` are masks in `.env`, `credentials/env.full.snapshot`, and Netlify (stored as `--secret`, so the CLI never returns them). The live site still has the real values; this morning's text went out at 6:01 to the number ending 0865.
 
 ## Leftovers (not this hole — not fixed)
 
@@ -102,3 +108,5 @@ Real breaks the new checks catch today (not fixed — product, owner hard lock):
 - Failing before today, unrelated: diagrams and journeys generators stale, climate page copy, read-endpoint org scope, journeys runner registry, repo edit-ops, workflow index pin. `npx tsc` error in `src/marketing/filmed-receive.mjs`.
 - The morning text layout Chris called bad at 3:14 pm is unchanged, and its "Full report" link (`/app/morning-brief.html`) still answers 404.
 - Cursor's stashes `stash@{0..6}` are still in the stash list. Nothing in them is newer than the files on disk.
+- The laptop has no working Twilio send keys (see Shipped). No agent on this Mac can text Chris until the real SID and token are back in `.env`.
+- `claude/creator-incentive-program-6s4371` is rejected on every full push (GitHub has a newer tip). Left alone.
