@@ -56,6 +56,13 @@ Model: A and C Sonnet, B Opus.
 
 | # | Status |
 |---|---|
-| A | pending — waiting on Chris's go |
-| B | pending — waiting on Chris's go |
+| A | claimed — Sonnet audit running (9 groups, a checker each); maps land in ops/workflows/heartbeat-complete-2026-10-09-map/ |
+| B | rule, picture, proof command done (da48c866). Left: the test that makes every money or customer surface name its deep check — needs A's list, lands with C |
 | C | pending — waits on A |
+
+## Manifest — B (da48c866)
+
+- `.claude/rules/heartbeat-on-every-build.md`, `.cursor/rules/heartbeat-on-every-build.mdc` — the tripwire law, same words.
+- `CLAUDE.md` — one sentence added to "Heartbeat on every build". No renumbering.
+- `docs/journeys/heartbeat-flow.md` — the picture; `docs/journeys/CHANGELOG.md` line.
+- `scripts/pulse/prove.mjs`, `package.json` script `pulse:prove`. First run: 39 steps, slowest 11.7 s, 0 SQL errors, 0 writes, OK.
