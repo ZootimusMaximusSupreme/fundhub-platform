@@ -234,6 +234,26 @@ export async function checkJobHeartbeats({ db, now = new Date(), jobs = JOBS } =
       if (!firstEver) return mk(row, "skip", "no job heartbeats recorded yet — the receipts start with this change");
       const tooSoon = firstEver.getTime() > dueBy || nowMs <= dueBy + graceMs && interval == null;
       if (tooSoon) {
+        // A monthly job whose last due time came BEFORE receipts began has
+        // nothing to judge yet. That is a verified "nothing to judge" (code
+        // monthly-not-due: na-conditions.mjs re-checks that the first receipt
+        // is later than lastMonthlyFire). The one-day grace after a due time
+        // is different (receipts began earlier, the run just is not in yet), so
+        // it stays a skip and lands "not checked" instead of a claim that fails.
+        if (interval == null && firstEver.getTime() > monthly.getTime()) {
+          const nextDue = new Date(Date.UTC(
+            monthly.getUTCFullYear(), monthly.getUTCMonth() + 1,
+            monthly.getUTCDate(), monthly.getUTCHours(), monthly.getUTCMinutes()
+          ));
+          return {
+            ...mk(
+              row,
+              "na",
+              `Runs once a month. Its last due time came before receipts began. First judged after ${nextDue.toISOString().slice(0, 10)}.`
+            ),
+            na: { code: "monthly-not-due", args: { cron: row.cron } }
+          };
+        }
         return mk(row, "skip", `no run recorded yet; heartbeats started ${ago(nowMs - firstEver.getTime())} ago, too soon to expect one`);
       }
       return mk(row, "FAIL", `no run recorded since heartbeats started ${ago(nowMs - firstEver.getTime())} ago (schedule ${row.cron})`, fix, sees);
