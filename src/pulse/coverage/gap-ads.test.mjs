@@ -116,6 +116,17 @@ test("running means the ad, its ad set and its campaign are all ACTIVE", () => {
   assert.match(SPEND_DAYS_SQL, /AT TIME ZONE 'America\/Phoenix'/);
 });
 
+test("running_now counts every running ad, however new: no created_at bound", () => {
+  const tail = SPEND_DAYS_SQL.slice(SPEND_DAYS_SQL.indexOf("AS running,") + "AS running,".length);
+  assert.match(tail, /\) AS running_now/);
+  assert.doesNotMatch(tail, /created_at/);
+  assert.match(tail, /upper\(coalesce\(a\.status, ''\)\) = 'ACTIVE'/);
+  assert.match(tail, /upper\(coalesce\(s\.status, ''\)\) = 'ACTIVE'/);
+  assert.match(tail, /upper\(coalesce\(c\.status, ''\)\) = 'ACTIVE'/);
+  // The older count keeps its bound.
+  assert.match(SPEND_DAYS_SQL, /a\.created_at < \(\$1::date\)::timestamp AT TIME ZONE 'America\/Phoenix'\) AS running,/);
+});
+
 test("spent_days lists days with real spend from the day before the gap to today", () => {
   assert.match(SPEND_DAYS_SQL, /string_agg\(x\.d, ','/);
   assert.match(SPEND_DAYS_SQL, /date BETWEEN \(\$1::date - 1\) AND \(\$2::date \+ 1\)/);
@@ -234,7 +245,7 @@ test("empty closed days with every ad paused is nothing to judge (na no-running-
   // Measured live 2026-10-09: running = 0, last day empty, sync fresh.
   const answers = {
     ...HEALTHY,
-    [SPEND_DAYS_SQL]: { last_saved: FRESH_SYNC, first_day: "2026-08-04", rows_0: 0, rows_1: 0, running: 0 }
+    [SPEND_DAYS_SQL]: { last_saved: FRESH_SYNC, first_day: "2026-08-04", rows_0: 0, rows_1: 0, running: 0, running_now: 0 }
   };
   const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-spend-day-missing"];
   assertShape(r);
@@ -243,6 +254,44 @@ test("empty closed days with every ad paused is nothing to judge (na no-running-
   assert.match(r.detail, /no ad is running/);
   assert.match(r.detail, /2026-10-04 and 2026-10-05/);
   assert.match(r.detail, /Judged the day an ad runs\./);
+});
+
+test("an ad switched on after the older closed day began is running: never na, never 'no ad is running'", async () => {
+  // running = 0 counts only ads created before the older closed day began. A brand-new ad that is
+  // ACTIVE and spending is in running_now. The day before and the day after the empty day have spend.
+  const answers = spendAnswer({ rows_0: 4, rows_1: 0, running: 0, running_now: 1 });
+  const rows = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }));
+  const r = rows["ads-spend-day-missing"];
+  assertShape(r);
+  assert.equal(r.status, "FAIL");
+  assert.equal(r.na, undefined);
+  assert.match(r.detail, /Spend rows are missing for 2026-10-05\./);
+  assert.match(r.detail, /1 ad is running, so that day should have synced/);
+  assert.doesNotMatch(r.detail, /no ad is running/);
+  // Several new ads: the count shown is the number running now.
+  const many = byId(await gapChecks({ scope: scopeFor(spendAnswer({ running: 0, running_now: 3 })), now: NOW }));
+  assert.match(many["ads-spend-day-missing"].detail, /3 ads are running/);
+});
+
+test("a new ad is running but nothing spent on one side of the empty day: skip, never na", async () => {
+  for (const spent_days of ["2026-10-03,2026-10-04", "2026-10-06", ""]) {
+    const answers = spendAnswer({ running: 0, running_now: 2, spent_days });
+    const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-spend-day-missing"];
+    assertShape(r);
+    assert.equal(r.status, "skip", spent_days);
+    assert.equal(r.na, undefined);
+    assert.match(r.detail, /not a missed sync/);
+  }
+});
+
+test("running = 0 and the running_now count did not come back: stays a skip, never na", async () => {
+  for (const running_now of [undefined, null, "", "x"]) {
+    const answers = spendAnswer({ rows_0: 0, rows_1: 0, running: 0, running_now });
+    const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-spend-day-missing"];
+    assertShape(r);
+    assert.equal(r.status, "skip", `running_now = ${String(running_now)}`);
+    assert.equal(r.na, undefined);
+  }
 });
 
 test("no running ad but the running count did not come back: stays a skip, never na", async () => {
@@ -490,6 +539,7 @@ test("no running ad old enough: metrics check is nothing to judge (na no-running
   assert.equal(r.status, "na");
   assert.deepEqual(r.na, { code: "no-running-ad", args: { check: "ads-running-no-metrics", running: 0 } });
   assert.match(r.detail, /older than 24 h/);
+  assert.match(r.detail, /Judged the day an ad has run for 24 hours\./);
 });
 
 test("a stale or never-stamped sync with no running ad stays a skip: only the running count makes na", async () => {
@@ -510,7 +560,7 @@ test("a stale or never-stamped sync with no running ad stays a skip: only the ru
 
 test("naVerify no-running-ad, ads-spend-day-missing: true at zero running ads, with the lane's own SQL and days", async () => {
   const seen = [];
-  const answers = spendAnswer({ rows_0: 0, rows_1: 0, running: 0 });
+  const answers = spendAnswer({ rows_0: 0, rows_1: 0, running: 0, running_now: 0 });
   const ok = await naVerify["no-running-ad"]({ check: "ads-spend-day-missing" }, { scope: scopeFor(answers, seen), now: NOW });
   assert.equal(ok, true);
   assert.equal(seen.length, 1);
@@ -532,6 +582,21 @@ test("naVerify no-running-ad, ads-spend-day-missing: false when an ad is running
       { scope: scopeFor(spendAnswer({ running })), now: NOW }
     );
     assert.equal(ok, false, `running = ${String(running)}`);
+  }
+  // A new ad is not in `running`. Only running_now = 0 proves that nothing runs.
+  for (const running_now of [1, 5, "2"]) {
+    const ok = await naVerify["no-running-ad"](
+      { check: "ads-spend-day-missing" },
+      { scope: scopeFor(spendAnswer({ running: 0, running_now })), now: NOW }
+    );
+    assert.equal(ok, false, `running_now = ${running_now}`);
+  }
+  for (const running_now of [undefined, null, "", "x"]) {
+    const ok = await naVerify["no-running-ad"](
+      { check: "ads-spend-day-missing" },
+      { scope: scopeFor(spendAnswer({ running: 0, running_now })), now: NOW }
+    );
+    assert.equal(ok, false, `running_now = ${String(running_now)}`);
   }
 });
 
@@ -581,18 +646,24 @@ test("naVerify no-running-ad: db.query works when scope is omitted", async () =>
 });
 
 test("round trip: the na row's own args pass naVerify, and fail the moment an ad runs", async () => {
-  const quiet = spendAnswer({ rows_0: 0, rows_1: 0, running: 0 });
+  const quiet = spendAnswer({ rows_0: 0, rows_1: 0, running: 0, running_now: 0 });
   quiet[RUNNING_BARE_SQL] = { last_synced_at: FRESH_SYNC, running: 0, bare: 0, names: null };
   const rows = byId(await gapChecks({ scope: scopeFor(quiet), now: NOW }));
   for (const id of ["ads-spend-day-missing", "ads-running-no-metrics"]) {
     assert.equal(rows[id].status, "na", id);
     assert.equal(await naVerify[rows[id].na.code](rows[id].na.args, { scope: scopeFor(quiet), now: NOW }), true, id);
   }
-  const running = spendAnswer({ rows_0: 0, rows_1: 0, running: 1 });
+  const running = spendAnswer({ rows_0: 0, rows_1: 0, running: 1, running_now: 1 });
   running[RUNNING_BARE_SQL] = { last_synced_at: FRESH_SYNC, running: 1, bare: 0, names: null };
   for (const id of ["ads-spend-day-missing", "ads-running-no-metrics"]) {
     assert.equal(await naVerify[rows[id].na.code](rows[id].na.args, { scope: scopeFor(running), now: NOW }), false, id);
   }
+  // A brand-new ad (not in `running`) also kills the spend row's claim.
+  const fresh = spendAnswer({ rows_0: 0, rows_1: 0, running: 0, running_now: 1 });
+  assert.equal(
+    await naVerify[rows["ads-spend-day-missing"].na.code](rows["ads-spend-day-missing"].na.args, { scope: scopeFor(fresh), now: NOW }),
+    false
+  );
 });
 
 test("one broken query is its own FAIL and the other checks still run", async () => {

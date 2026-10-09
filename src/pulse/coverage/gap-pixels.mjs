@@ -25,10 +25,13 @@
 //
 // Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
 // ad-click-stored returns status "na" with na: { code: "low-traffic", args } when
-// Meta really counted fewer than MIN_META_CLICKS link clicks. `naVerify` re-reads
-// with AD_CLICK_SQL and the same minimum, so the audit can prove the claim again.
-// Every other quiet reason (no database, no manifest page, too few page views for
-// the button-click check) stays "skip".
+// Meta really counted fewer than MIN_META_CLICKS link clicks AND the read could see
+// Meta's table: the Meta connection saved within FRESH_HOURS. A sum over an empty
+// table is 0 too (a dead sync, or the plain app role under row security), so the
+// count alone is not proof. `naVerify` re-reads with AD_CLICK_SQL, the same minimum
+// and the same freshness rule, so the audit can prove the claim again.
+// Every other quiet reason (no database, no manifest page, a count with no fresh
+// sync behind it, too few page views for the button-click check) stays "skip".
 
 import {
   CLARITY_SRC,
@@ -40,6 +43,7 @@ import {
   metaPixelId
 } from "../../../marketing/landing-pages/tracking-manifest.mjs";
 import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
+import { FRESH_HOURS } from "../machine.mjs";
 
 export const APP_BASE = "https://fundhub.ai";
 export const UTM_CAPTURE_PATH = "/api/public/slo-interest";
@@ -146,7 +150,9 @@ export function clarityScriptHasProjectId(js) {
 // no session id and funnel.page does, so the two are counted apart and the larger
 // one wins. Adding them would count one person twice.
 // ad_metrics_daily is a row-security table: it reads empty on the plain app role,
-// so this runs on the staff scope.
+// so this runs on the staff scope. `last_synced_at` is the proof the read could see
+// Meta's side at all: the same Meta connections gap-ads reads (RUNNING_BARE_SQL). An
+// empty table sums to 0, so a low count only means "ads paused" when a sync is fresh.
 const AD_VISIT_WHERE = `
               AND coalesce(e.is_demo, false) = false
               AND e.created_at >= ($1::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}'
@@ -161,6 +167,14 @@ export const AD_CLICK_SQL = `
            WHERE m.date >= $1::date
              AND m.date <= $2::date
              AND ($3::uuid IS NULL OR m.org_id = $3::uuid)) AS meta_clicks,
+         (SELECT max(k.last_synced_at)
+            FROM ad_platform_connections k
+           WHERE k.platform = 'meta'
+             AND k.connection_state IN ('active', 'pending')
+             AND k.encrypted_access_token IS NOT NULL
+             AND k.external_ad_account_id IS NOT NULL
+             AND k.external_ad_account_id NOT ILIKE 'pending:%'
+             AND ($3::uuid IS NULL OR k.org_id = $3::uuid)) AS last_synced_at,
          GREATEST(
            (SELECT count(*)::int
               FROM events e
@@ -255,7 +269,7 @@ function runnerOf(ctx) {
  * @param {(fn: (tx: any) => Promise<any>) => Promise<any>} [ctx.scope] staff scope
  * @param {string} [ctx.orgId]
  * @param {Date} [ctx.now]
- * @returns {Promise<Array<{ id: string, status: "PASS" | "FAIL" | "skip", detail: string, suggestedFix: string | null }>>}
+ * @returns {Promise<Array<{ id: string, status: "PASS" | "FAIL" | "skip" | "na", detail: string, suggestedFix: string | null, na?: { code: string, args: object } }>>}
  */
 export async function gapChecks(ctx = {}) {
   const fetchImpl = ctx.fetchImpl || ctx.fetch || globalThis.fetch;
@@ -474,6 +488,14 @@ function countOf(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+/** True when the Meta connection saved within FRESH_HOURS of `now`: the read could see Meta's side. */
+function syncIsFresh(stamp, now) {
+  if (stamp == null || stamp === "") return false;
+  const last = stamp instanceof Date ? stamp : new Date(stamp);
+  if (!Number.isFinite(last.getTime())) return false;
+  return now.getTime() - last.getTime() <= FRESH_HOURS * 60 * 60 * 1000;
+}
+
 /** The three closed Arizona days the ad-click read covers. */
 function adClickDays(now) {
   const today = adAccountDay(now);
@@ -501,7 +523,8 @@ export const naVerify = Object.freeze({
     const out = await run((tx) => tx.query(AD_CLICK_SQL, [from, to, org ? String(org) : null]));
     const rec = (out && out.rows && out.rows[0]) || {};
     const clicks = countOf(rec.meta_clicks);
-    return clicks !== null && clicks < MIN_META_CLICKS;
+    // A low count is only "nothing to judge" when a fresh sync proves the read could see Meta's table.
+    return clicks !== null && clicks < MIN_META_CLICKS && syncIsFresh(rec.last_synced_at, at);
   }
 });
 
@@ -531,11 +554,19 @@ async function assessAdClicks(ctx) {
   const stored = Number(rec.stored) || 0;
   if (meta < MIN_META_CLICKS) {
     const why = `Meta counted ${meta} link clicks from ${from} to ${to}, under ${MIN_META_CLICKS}, so there is too little ad traffic to judge`;
-    // Only a count Meta's table really gave is proof. A missing count stays a skip.
+    // Only a count Meta's table really gave is proof, and only when a fresh sync shows the read
+    // could see that table (an empty table sums to 0 too). Anything else stays a skip.
     if (countOf(rec.meta_clicks) !== null) {
-      const args = { check: id, clicks: meta, min: MIN_META_CLICKS, from, to };
-      if (orgId) args.orgId = orgId;
-      return naRow(id, "low-traffic", args, `${why}. Judged the day Meta counts ${MIN_META_CLICKS}.`);
+      if (syncIsFresh(rec.last_synced_at, now)) {
+        const args = { check: id, clicks: meta, min: MIN_META_CLICKS, from, to };
+        if (orgId) args.orgId = orgId;
+        return naRow(id, "low-traffic", args, `${why}. Judged the day Meta counts ${MIN_META_CLICKS} clicks.`);
+      }
+      return row(
+        id,
+        "skip",
+        `Meta counted ${meta} link clicks from ${from} to ${to}, under ${MIN_META_CLICKS}, but the Meta sync shows no save in the last ${FRESH_HOURS} hours, so we cannot tell if ads are paused`
+      );
     }
     return row(id, "skip", why);
   }

@@ -29,8 +29,11 @@
 //     missed. It now counts.
 //   * Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
 //     social:video-stats-stale returns status "na" with na: { code: "not-connected",
-//     args } when the read really shows no active YouTube connection. `naVerify`
-//     re-reads with VIDEO_STATS_SQL, so the audit can prove the claim again.
+//     args } when the read really shows no active YouTube connection AND it ran on
+//     the staff scope (ctx.scope). The plain role reads analytics_connections as
+//     EMPTY, so a zero from ctx.db alone proves nothing and stays a skip. `naVerify`
+//     re-reads with VIDEO_STATS_SQL on the staff scope only, so the audit can prove
+//     the claim again.
 
 /** One day. The sync stores one stat_date per run. */
 export const VIDEO_STATS_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -145,15 +148,18 @@ async function one(run, sql, params) {
 /**
  * The audit calls this to prove a "nothing to judge" row again. It reads with the
  * same SQL (VIDEO_STATS_SQL) and the same watched states the lane used, and answers
- * true only when the read really counts zero active YouTube connections. No read,
- * or a count that is not a number, is false. A read that throws is left to throw:
- * the audit counts a throw as false.
+ * true only when the read, run on the staff scope, really counts zero active YouTube
+ * connections. No staff scope (the plain role sees no rows there), no read, or a
+ * count that is not a number is false. A read that throws is left to throw: the
+ * audit counts a throw as false.
  * @param {{ check?: string, orgId?: string }} args
  * @param {{ db?: any, scope?: Function, orgId?: string }} ctx
  */
 export const naVerify = Object.freeze({
   "not-connected": async (args, ctx = {}) => {
     if (!args || args.check !== "social:video-stats-stale") return false;
+    // Only the staff scope can see analytics_connections. A plain-role zero is a blind read.
+    if (!ctx || typeof ctx.scope !== "function") return false;
     const run = bind(ctx);
     if (!run) return false;
     const orgId = args.orgId || ctx.orgId || null;
@@ -185,7 +191,7 @@ async function checkYoutubeLastError({ run, orgId }) {
   }
 }
 
-async function checkVideoStatsStale({ run, orgId, now }) {
+async function checkVideoStatsStale({ run, orgId, now, staff }) {
   const id = "social:video-stats-stale";
   if (!run) return row(id, "skip", "no database in this run — video stats sync not read");
   const fix =
@@ -201,6 +207,14 @@ async function checkVideoStatsStale({ run, orgId, now }) {
       const why = "no active YouTube connection, so there is no video stats sync to be late.";
       // Only a count the read really sent is proof. A null count stays a skip.
       if (hit.watched == null || hit.watched === "") return row(id, "skip", why);
+      // The plain role reads this table as empty, so its zero is a blind read, not "none connected".
+      if (!staff) {
+        return row(
+          id,
+          "skip",
+          "no active YouTube connection was seen, but this read ran without the staff scope, which sees no rows in that table, so it cannot say none is connected."
+        );
+      }
       const args = { check: id };
       if (orgId) args.orgId = String(orgId);
       return naRow(id, "not-connected", args, `${why} Judged the day one is connected.`);
@@ -280,7 +294,8 @@ async function checkStudioRead({ run, orgId, readers }) {
 /**
  * Three read-only checks. ctx: { scope, db, orgId, now, socialReaders }.
  * scope is the staff scope the pulse passes. Each row is
- * { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
+ * { id, status, detail, suggestedFix } with status PASS, FAIL, skip, or na
+ * (nothing to judge: the row then also carries na: { code, args }).
  */
 export async function gapChecks(ctx = {}) {
   const run = bind(ctx);
@@ -297,7 +312,7 @@ export async function gapChecks(ctx = {}) {
   }
   return [
     await checkYoutubeLastError({ run, orgId }),
-    await checkVideoStatsStale({ run, orgId, now }),
+    await checkVideoStatsStale({ run, orgId, now, staff: Boolean(ctx && typeof ctx.scope === "function") }),
     readersError
       ? row(
           "social:studio-read",

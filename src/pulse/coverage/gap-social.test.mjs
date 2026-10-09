@@ -246,6 +246,23 @@ test("gap social: no active YouTube connection is nothing to judge (na not-conne
   assert.deepEqual([rows[0].status, rows[2].status], ["PASS", "PASS"]);
 });
 
+test("gap social: a zero from the plain handle alone is a skip, never na (that role reads the table as empty)", async () => {
+  const seen = [];
+  const tx = txFrom(quietMap({ [VIDEO_STATS_SQL]: { rows: [{ watched: 0, last_synced_at: null, connected_at: null }] } }), seen);
+  const rows = await gapChecks({ db: tx, orgId: ORG, now: NOW, socialReaders: readers() });
+  rows.forEach(shape);
+  assert.equal(rows[1].status, "skip");
+  assert.equal(rows[1].na, undefined);
+  assert.match(rows[1].detail, /no active YouTube connection was seen/);
+  assert.match(rows[1].detail, /without the staff scope/);
+  // The same answer on the staff scope is nothing to judge.
+  const staff = await gapChecks(ctxOf(quietMap({ [VIDEO_STATS_SQL]: { rows: [{ watched: 0, last_synced_at: null, connected_at: null }] } })));
+  assert.equal(staff[1].status, "na");
+  // An active connection seen through the plain handle is still judged (PASS), as before.
+  const live = await gapChecks({ db: txFrom(quietMap()), orgId: ORG, now: NOW, socialReaders: readers() });
+  assert.equal(live[1].status, "PASS");
+});
+
 test("gap social: with no org id the na args carry none", async () => {
   const rows = await gapChecks({
     scope: scopeFrom(quietMap({ [VIDEO_STATS_SQL]: { rows: [{ watched: 0 }] } })),
@@ -329,12 +346,17 @@ test("naVerify not-connected: no read, no row, another check or no args is false
   const empty = async (fn) => fn({ query: async () => ({ rows: [] }) });
   assert.equal(await naVerify["not-connected"](STATS, { scope: empty }), false);
   const broken = { query: async () => { throw new Error("permission denied for table analytics_connections"); } };
-  await assert.rejects(naVerify["not-connected"](STATS, { db: broken }), /permission denied/);
+  await assert.rejects(naVerify["not-connected"](STATS, { scope: (fn) => fn(broken) }), /permission denied/);
 });
 
-test("naVerify not-connected: db alone works", async () => {
-  const tx = txFrom(statsMap(0));
-  assert.equal(await naVerify["not-connected"](STATS, { db: tx }), true);
+test("naVerify not-connected: db alone is false and reads nothing (the plain role sees no rows in that table)", async () => {
+  const seen = [];
+  const tx = txFrom(statsMap(0), seen);
+  assert.equal(await naVerify["not-connected"](STATS, { db: tx }), false);
+  assert.equal(await naVerify["not-connected"](STATS, { db: tx, orgId: ORG }), false);
+  assert.equal(seen.length, 0);
+  // The same zero on the staff scope is proof.
+  assert.equal(await naVerify["not-connected"](STATS, { scope: scopeFrom(statsMap(0)), db: tx }), true);
 });
 
 test("round trip: the na row's own args pass naVerify, and fail the moment YouTube is connected", async () => {

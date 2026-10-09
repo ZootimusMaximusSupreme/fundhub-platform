@@ -13,7 +13,7 @@
 //   - No web call, no send, no vendor write. No repo file is read at run time.
 //   - A read that does not come back is `skip` with the reason, never PASS.
 //   - PASS means the pipe was PROVEN by a real row. Too little traffic to judge
-//     is `skip`, not PASS (same call as gap-pixels.mjs "ads paused is a skip").
+//     is `na` (nothing to judge, with a reason the audit re-checks), never PASS.
 //   - No email, phone or name is ever put in a detail line.
 //
 // What "real" means here (the plan said "non-demo"; the data said that is not enough):
@@ -424,7 +424,7 @@ export function pipeCheck(f, now) {
       id,
       "low-traffic",
       withOrg({ check: id, clicks: f.adClicks, min: MIN_AD_CLICKS, first: f.first, last: f.last }, f.orgId),
-      `Ads sent ${plural(f.adClicks, "link click")} on ${f.first} and ${f.last}. Zero leads only means something at ${MIN_AD_CLICKS} clicks or more. Zero real people saved on /roadmap since ${f.first}.${cfNote} Judged the day ads send ${MIN_AD_CLICKS} clicks.`
+      `Ads sent ${plural(f.adClicks, "link click")} on ${f.first} and ${f.last}. Zero leads only means something at ${MIN_AD_CLICKS} clicks or more.${cfNote} Judged the day ads send ${MIN_AD_CLICKS} clicks.`
     );
   }
   const posts = f.cfPosts > 0
@@ -462,7 +462,7 @@ export function postsCheck(f, now) {
       id,
       "low-traffic",
       withOrg({ check: id, views: f.formViews, min: MIN_FORM_PAGE_VIEWS, first: f.first }, f.orgId),
-      `Too quiet to expect a post: ${people(f.formViews)} opened a ClickFunnels form page since ${f.first} (needs ${MIN_FORM_PAGE_VIEWS}). Ad clicks do not count, because the ads land on /roadmap and it posts to our own door. ClickFunnels sent zero posts. Judged the day ${MIN_FORM_PAGE_VIEWS} people open a form page.`
+      `Too quiet to expect a post: ${people(f.formViews)} opened a ClickFunnels form page since ${f.first} (needs ${MIN_FORM_PAGE_VIEWS}), and ClickFunnels sent none. Ad clicks do not count. Judged the day ${MIN_FORM_PAGE_VIEWS} people open a form page.`
     );
   }
   if (f.otherPosts === 0) {
@@ -609,7 +609,9 @@ function contactParams(orgId, now) {
 
 async function readContacts(run, orgId, now) {
   const out = await run((tx) => tx.query(CONTACTS_SQL, contactParams(orgId, now)));
-  return (out && out.rows) || [];
+  // A read that came back with no rows list is a read that did not answer. It is not "zero leads".
+  if (!out || !Array.isArray(out.rows)) throw new Error("the read came back with no list of leads");
+  return out.rows;
 }
 
 /** The company a re-check reads: the one the row carries, else the one the caller has, else all. */

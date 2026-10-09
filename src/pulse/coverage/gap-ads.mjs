@@ -8,9 +8,9 @@
 //                            already in the pull, an ad is running, and ads spent
 //                            money on a day before AND a day after the gap. With
 //                            every ad paused Meta sends no row, so an empty day
-//                            is normal and is a skip, not a FAIL. Ads switched
-//                            back on this morning have no spend after the gap
-//                            yet, so that is a skip too.
+//                            is normal: that is "nothing to judge" (na), not a
+//                            FAIL. Ads switched back on this morning have no
+//                            spend after the gap yet, so that is a skip.
 //   ads-number-unmapped      an ad that spent in the last 28 days has no
 //                            fundhub_ad_number. Old paused test ads are not
 //                            looked at, so they cannot keep the pulse red.
@@ -30,6 +30,9 @@
 // Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
 // When the lane's own read says no ad is running, ads-spend-day-missing and
 // ads-running-no-metrics return status "na" with na: { code: "no-running-ad", args }.
+// ads-spend-day-missing says it only when NO ad at all is running now (running_now),
+// including one switched on after the older closed day began; ads-running-no-metrics
+// asks whether any running ad is old enough to need a metrics row.
 // `naVerify` re-reads with the same SQL, so the audit can prove the claim again.
 // Every other quiet reason (sync never ran, sync late, no spend either side of a
 // gap) stays "skip": "we cannot see it" is never a nothing-to-judge condition.
@@ -168,8 +171,10 @@ const RUNNING_WHERE = `
      AND upper(coalesce(c.status, '')) = 'ACTIVE'`;
 
 // $1 is the older closed day, $2 is yesterday, both Arizona dates. `running` counts
-// ads that were already here when the older closed day began. `spent_days` lists the
-// days from the day before $1 to the day after $2 (today) on which any ad spent money.
+// ads that were already here when the older closed day began. `running_now` counts every
+// running ad, however new: only a zero here can say that no ad is running at all.
+// `spent_days` lists the days from the day before $1 to the day after $2 (today) on
+// which any ad spent money.
 // ads.updated_at cannot tell when an ad was switched on: every sync stamps it.
 export const SPEND_DAYS_SQL = `
   SELECT (SELECT max(synced_at) FROM ad_metrics_daily) AS last_saved,
@@ -189,7 +194,12 @@ export const SPEND_DAYS_SQL = `
             JOIN ad_sets s ON s.id = a.ad_set_id
             JOIN campaigns c ON c.id = a.campaign_id
            WHERE ${RUNNING_WHERE}
-             AND a.created_at < ($1::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}') AS running`;
+             AND a.created_at < ($1::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}') AS running,
+         (SELECT count(*)::int
+            FROM ads a
+            JOIN ad_sets s ON s.id = a.ad_set_id
+            JOIN campaigns c ON c.id = a.campaign_id
+           WHERE ${RUNNING_WHERE}) AS running_now`;
 
 // $1 is the first Arizona day of the 28-day window. Only an ad that spent money in
 // it counts. A zero-spend row, or an ad that stopped spending long ago, does not.
@@ -307,12 +317,15 @@ export async function checkSpendDayMissing({ run, now }) {
     if (first < days[i]) missing.push(days[i]);
   }
   const running = num(r.running);
-  if (missing.length && !running) {
+  const runningNow = num(r.running_now);
+  if (missing.length && !running && !runningNow) {
     // Meta sends a row only for an ad that delivered. With every ad paused an empty
     // day is the normal answer, not a sync that skipped it.
     const why = `No spend row for ${missing.join(" and ")}, and no ad is running, so Meta had nothing to send.`;
-    // Only a count the read really sent is proof. A missing count stays a skip.
-    if (count(r.running) === 0) {
+    // Only counts the read really sent are proof, and only zero ads running NOW is "no ad
+    // is running". An ad switched on after the older closed day began is not in `running`,
+    // so `running` alone cannot say it. A missing count stays a skip.
+    if (count(r.running) === 0 && count(r.running_now) === 0) {
       return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day an ad runs.`);
     }
     return row(id, "skip", why);
@@ -337,7 +350,8 @@ export async function checkSpendDayMissing({ run, now }) {
     }
     const list = missing.join(" and ");
     const word = missing.length === 1 ? "That day should" : "Those days should";
-    const ads = running === 1 ? "1 ad is running" : `${running} ads are running`;
+    const live = Math.max(running, runningNow);
+    const ads = live === 1 ? "1 ad is running" : `${live} ads are running`;
     return row(
       id,
       "FAIL",
@@ -404,7 +418,7 @@ export async function checkRunningNoMetrics({ run, now }) {
   if (!running) {
     const why = `No running ad is older than ${NEW_AD_GRACE_HOURS} h, so none needs a metrics row yet.`;
     if (count(r.running) === 0) {
-      return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day one is.`);
+      return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day an ad has run for ${NEW_AD_GRACE_HOURS} hours.`);
     }
     return row(id, "skip", why);
   }
@@ -439,7 +453,8 @@ export const naVerify = Object.freeze({
     const check = args && args.check;
     if (check === "ads-spend-day-missing") {
       const r = await one(run, SPEND_DAYS_SQL, closedDays(now));
-      return count(r.running) === 0;
+      // Nothing running now, new ads included, not just nothing older than the older closed day.
+      return count(r.running) === 0 && count(r.running_now) === 0;
     }
     if (check === "ads-running-no-metrics") {
       const cutoff = new Date(now.getTime() - NEW_AD_GRACE_HOURS * HOUR_MS);

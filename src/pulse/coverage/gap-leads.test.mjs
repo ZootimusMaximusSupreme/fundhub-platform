@@ -674,6 +674,48 @@ test("lane: one read failing does not take down the other check", async () => {
   assert.equal(rows["lead:slo-contact-not-in-clickfunnels"].status, "FAIL");
 });
 
+test("lane: a contacts read with no rows list is a skip with the reason, never na (the audit would call it a lie)", async () => {
+  // A scope that answers FACTS_SQL fine and answers CONTACTS_SQL with nothing usable.
+  for (const answer of [undefined, null, {}, { rows: null }, { rows: "none" }]) {
+    const scope = async (fn) =>
+      fn({ query: async (sql) => (sql === FACTS_SQL ? { rows: [factsRow()] } : answer) });
+    const rows = byId(await gapChecks({ scope, now: NOW, orgId: ORG }));
+    const r = rows["lead:slo-contact-not-in-clickfunnels"];
+    assertShape(r);
+    assert.equal(r.status, "skip", JSON.stringify(answer));
+    assert.match(r.detail, /could not read roadmap leads: the read came back with no list of leads/);
+  }
+  // An empty list is a real answer: zero leads.
+  const empty = async (fn) => fn({ query: async (sql) => (sql === FACTS_SQL ? { rows: [factsRow()] } : { rows: [] }) });
+  const ok = byId(await gapChecks({ scope: empty, now: NOW, orgId: ORG }));
+  assert.equal(ok["lead:slo-contact-not-in-clickfunnels"].status, "na");
+});
+
+test("lane: 400 clicks, 25 people on /roadmap, nobody saved -> pipe FAIL; posts and contact are na (twin of the SQL meaning test)", async () => {
+  // Same numbers the shadowed FACTS_SQL gives in the SQL-meaning test of this name: 2 ad rows,
+  // 400 clicks, 25 /roadmap views, no ClickFunnels form page, no post from any sender, no lead.
+  const rows = byId(await gapChecks({
+    scope: scopeFor({
+      facts: factsRow({ ad_rows: 2, ad_clicks: "400", road_views: 25, form_views: 0, cf_posts: 0, other_posts: 0 }),
+      contacts: []
+    }),
+    now: NOW,
+    orgId: ORG
+  }));
+  Object.values(rows).forEach(assertShape);
+  assert.equal(rows["lead:pipe-cut-with-traffic"].status, "FAIL");
+  assert.match(rows["lead:pipe-cut-with-traffic"].detail, /400 link clicks/);
+  assert.match(rows["lead:pipe-cut-with-traffic"].detail, /25 people opened \/roadmap/);
+  // 400 ad clicks alone do not make ClickFunnels "silent".
+  const posts = rows["lead:clickfunnels-posts-silent"];
+  assert.equal(posts.status, "na");
+  assert.equal(posts.na.code, "low-traffic");
+  assert.equal(posts.na.args.views, 0);
+  const contact = rows["lead:slo-contact-not-in-clickfunnels"];
+  assert.equal(contact.status, "na");
+  assert.equal(contact.na.code, "no-real-lead");
+});
+
 test("lane: a read that comes back with a missing number is a skip, not a guess", async () => {
   for (const key of ["road_leads", "cf_leads", "road_views", "form_views"]) {
     const rows = await gapChecks({
@@ -1208,9 +1250,14 @@ test("sql meaning, whole lane: 400 clicks, 25 people on /roadmap, nobody saved -
   assert.equal(r["lead:pipe-cut-with-traffic"].status, "FAIL");
   assert.match(r["lead:pipe-cut-with-traffic"].detail, /400 link clicks/);
   assert.match(r["lead:pipe-cut-with-traffic"].detail, /25 people opened \/roadmap/);
-  // 400 ad clicks alone do not make ClickFunnels "silent".
-  assert.equal(r["lead:clickfunnels-posts-silent"].status, "skip");
-  assert.equal(r["lead:slo-contact-not-in-clickfunnels"].status, "skip");
+  // 400 ad clicks alone do not make ClickFunnels "silent": nothing to judge (na), never FAIL.
+  const posts = r["lead:clickfunnels-posts-silent"];
+  assert.equal(posts.status, "na");
+  assert.equal(posts.na.code, "low-traffic");
+  assert.equal(posts.na.args.views, 0, "only /roadmap pages were opened, no ClickFunnels form page");
+  const contact = r["lead:slo-contact-not-in-clickfunnels"];
+  assert.equal(contact.status, "na");
+  assert.equal(contact.na.code, "no-real-lead");
 });
 
 test("sql meaning, whole lane: a lead that ClickFunnels already held, and a lost copy next to it", { skip: SQL_SKIP }, async () => {
