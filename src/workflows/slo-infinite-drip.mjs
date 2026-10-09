@@ -23,6 +23,19 @@ export const SOURCE_WORKFLOW = "slo-infinite-drip";
 
 const CHRIS = { sender_name: "Chris", sender: { name: "Chris" } };
 
+/* The send key for one person at one step. sendTemplated makes the message's
+   provider_ref from it (workflow:<template>:<key>), and that ref is unique per
+   company. With eventId null the ref was workflow:<template>:null, the same for
+   everyone, so the second person to reach a step was folded into the first
+   person's row and got nothing (measured 2026-10-09: FH-000532 on step 3 with 0
+   drip emails; FH-000531 holds all four rows). Person + step makes it one row
+   per person per step: a rerun of the same step finds that person's own row
+   and sends nothing twice. The step counts up forever, so a wrapped lane
+   (step 7 is template 1 again) is still a new key. */
+export function dripSendKey(clientId, step) {
+  return `${SOURCE_WORKFLOW}:${clientId}:${step}`;
+}
+
 export async function laneForClient(db, clientId, fields = {}) {
   const paid = await hasPaidDiagnostic(db, { clientId });
   if (paid) return null;
@@ -59,9 +72,17 @@ export async function sendDueDrip(db, row) {
     clientId: row.id,
     channel: "email",
     templateKey,
-    eventId: null,
+    eventId: dripSendKey(row.id, step),
     context
   });
+  /* Move the step only when the email row is there for this person. A send
+     that did not queue (template not ready, draft copy) leaves the step where
+     it is, so the next run tries the same email again. */
+  if (!email || email.sent !== true) {
+    const reason = (email && email.reason) || "not_queued";
+    console.warn(`[slo-infinite-drip] ${templateKey} not queued for client ${row.id}: ${reason}. Step stays ${step}.`);
+    return { id: row.id, sent: false, lane, templateKey, reason, email };
+  }
   await mergeCustomFields(db, row.id, {
     [DRIP_STEP]: String(step + 1),
     [DRIP_NEXT]: nextDripAt(new Date(), dripGapDays(lane, step))
