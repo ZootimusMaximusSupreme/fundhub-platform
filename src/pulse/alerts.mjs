@@ -30,6 +30,8 @@
 // claims nothing. The break is still opened as an incident and still damped, so the first run inside the window
 // (6:07 a.m.) carries it in one text: "BROKEN since 2:07 a.m." for a break Chris was never told about
 // (alerts_sent 0). A break that opened and healed with no text ever sent gets no "fixed" text.
+// A break Chris WAS told about that heals overnight is NOT closed while the text is held (saveIncidents held:
+// true): it stays open, so the first run inside the window says FIXED and closes it then.
 //
 // WHAT NEVER GOES IN A TEXT: a phone, an email, a name, an amount, a token, a response body. The text carries
 // the beat's title, the step it stopped at, and line 1 of its own fix guide (all written in code). The runtime
@@ -444,9 +446,11 @@ export async function act(plan, { env = process.env, sinks, beatsById = new Map(
  * Open, claim and close incidents. Runs AFTER act(). Every call is one statement and none throws.
  *
  * delivered false: incidents still open, but nothing is claimed, so the next run's text is not "quiet".
+ * held true (texting hours: the text was held): a healed break Chris WAS told about stays open, so the first
+ *   run inside the window still sends its FIXED text. Only never-told healed breaks (healedQuiet) close.
  * Returns { opened, claimed, dupes, closed, errors: [string] }.
  */
-export async function saveIncidents(plan, { rdb, orgId, runId, delivered = false } = {}) {
+export async function saveIncidents(plan, { rdb, orgId, runId, delivered = false, held = false } = {}) {
   const out = { opened: 0, claimed: 0, dupes: 0, closed: 0, errors: [] };
   if (!rdb || !orgId || !runId) return out;
   const note = (r) => { if (r && r.ok === false && r.error) out.errors.push(String(r.error).slice(0, 160)); };
@@ -476,7 +480,7 @@ export async function saveIncidents(plan, { rdb, orgId, runId, delivered = false
       })());
     }
   }
-  for (const h of [...plan.healed, ...(plan.healedQuiet || [])]) {
+  for (const h of [...(held ? [] : plan.healed), ...(plan.healedQuiet || [])]) {
     jobs.push((async () => {
       const r = await closeIncident(rdb, h.incident.id, { closedBy: "auto" });
       note(r);

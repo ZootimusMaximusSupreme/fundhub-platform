@@ -766,6 +766,40 @@ describe("texting hours: the overnight pulse keeps the record and the 6:07 a.m. 
     assert.equal(h.rdb.state.incidents.filter((i) => !i.closed_at).length, 0);
   });
 
+  test("a break Chris WAS told about that heals overnight stays open, and 6:07 a.m. sends ONE FIXED text, then closes it", async () => {
+    const flag = { red: true };
+    const h = nightHarness([flipBeat("a", flag)]);
+    h.set("2026-10-10T04:07:00.000Z"); // 9:07 p.m. Arizona on the 9th: inside the window, so he is told
+    await h.run();
+    assert.equal(h.sinks.calls.text.length, 1, "told at 9:07 p.m.");
+    assert.equal(h.rdb.state.incidents[0].alerts_sent, 1);
+
+    flag.red = false;
+    h.set("2026-10-10T09:07:00.000Z"); // 2:07 a.m. green
+    const night = await h.run();
+    assert.deepEqual(night.alerts.healed, ["a"]);
+    assert.equal(night.alerts.held, true);
+    assert.equal(h.sinks.calls.text.length, 1, "no FIXED text at 2:07 a.m.");
+    assert.equal(h.rdb.state.closes, 0, "the incident stays open, so the morning run can say FIXED");
+
+    h.set("2026-10-10T10:07:00.000Z"); // 3:07 a.m. still green, still held, still open
+    await h.run();
+    assert.equal(h.sinks.calls.text.length, 1);
+    assert.equal(h.rdb.state.closes, 0);
+
+    h.set("2026-10-10T13:07:00.000Z"); // 6:07 a.m.
+    const morning = await h.run();
+    assert.deepEqual(morning.alerts.healed, ["a"]);
+    assert.equal(h.sinks.calls.text.length, 2, "exactly one FIXED text at 6:07 a.m.");
+    assert.match(h.sinks.calls.text[1], /^Fundhub FIXED: Beat a\./);
+    assert.equal(h.rdb.state.closes, 1);
+    assert.equal(h.rdb.state.incidents.filter((i) => !i.closed_at).length, 0);
+
+    h.set("2026-10-10T14:07:00.000Z"); // 7:07 a.m. says nothing
+    await h.run();
+    assert.equal(h.sinks.calls.text.length, 2);
+  });
+
   test("10:00 p.m. is held, 9:59 p.m. is not", async () => {
     const late = nightHarness([redBeat("a")]);
     late.set("2026-10-10T04:59:00.000Z"); // 9:59 p.m. Arizona on the 9th

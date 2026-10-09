@@ -452,6 +452,21 @@ describe("saveIncidents: the records, written after the text", () => {
     assert.equal(rdb.log.filter((x) => x[0] === "claim").length, 0);
   });
 
+  test("held (texting hours): a told break that healed stays open for the morning FIXED text; a never-told one closes", async () => {
+    const quiet = decide({
+      results: [green("c"), green("d")],
+      open: [openRow("c", 3), { ...openRow("d", 4), alerts_sent: 0 }], prev: new Map(), beatsById: byId(beat("c"), beat("d")), now: NOW
+    });
+    assert.equal(quiet.healed.length, 1);
+    assert.equal(quiet.healedQuiet.length, 1);
+    const rdb = recordsDb();
+    const r = await saveIncidents(quiet, { rdb, orgId: ORG, runId: RUN, delivered: false, held: true });
+    assert.equal(r.closed, 1, "only the never-told one closes");
+    const closes = rdb.log.filter((x) => x[0] === "close");
+    assert.equal(closes.length, 1);
+    assert.equal(closes[0][1], quiet.healedQuiet[0].incident.id);
+  });
+
   test("a claim another run already took is counted as a duplicate", async () => {
     const rdb = recordsDb({ claimWins: false });
     const r = await saveIncidents(plan(), { rdb, orgId: ORG, runId: RUN, delivered: true });

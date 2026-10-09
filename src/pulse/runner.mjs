@@ -315,7 +315,7 @@ export async function runPulse({
       const saved = await settle(Promise.all([
         writeBeatResults(rdb, { orgId, runId, results }),
         links.length ? upsertBankLinks(rdb, { orgId, rows: links }) : Promise.resolve({ ok: true }),
-        saveIncidents(plan, { rdb, orgId, runId, delivered: sent.delivered })
+        saveIncidents(plan, { rdb, orgId, runId, delivered: sent.delivered, held: Boolean(sent.held) })
       ]), B.records);
       if (!saved.ok) {
         records.error = saved.timedOut ? `records took more than ${B.records} ms` : say(saved.error);
