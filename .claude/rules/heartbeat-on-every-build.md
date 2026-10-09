@@ -22,6 +22,10 @@ How it works, in one picture: `docs/journeys/heartbeat-flow.md`.
 12. **A beat reads. It never writes or sends.** It gets only `ctx.read` (a box where Postgres itself refuses writes), `ctx.http` (GET and HEAD) and the frozen `ctx.env`. No database module, no fetch, no provider, no event. The runner alone saves results, and only into the three `pulse_*` tables.
 13. **Learn from every break.** When someone fixes a pulse break, fill `cause_category`, `cause_note`, `fix_summary` and `guard_added` on its `pulse_incidents` row and add an entry to `docs/lessons/pulse-lessons.md`. Read that file before writing a new fix guide or a new beat, so the same mistake is not built twice.
 14. **Prove the hourly pulse from the bundle.** `npm run pulse:prove -- --beats` builds the real function, runs every beat from inside it, read-only, and must say OK. `node scripts/pulse/run-beat.mjs <id>` runs one beat live; `--selftest <id>` shows it green and red; `--probe` proves Postgres refuses writes.
+15. **Nothing live is ever "not checked" (owner-set 2026-10-09).** Every live thing on the morning report ends green, red, or "nothing to judge today". "Nothing to judge" must carry a code from `src/pulse/na-conditions.mjs` whose `verify()` re-checks it true on every run. Anything else lands as `not_checked` and is counted into the one red row `audit:not-checked`. A `skip` that lasts is a break in the heartbeat: write the real check, or a verified N/A. A claim that only says "covered" folds into the check that really ran (`src/pulse/coverage/link.mjs`), or it is a gap.
+16. **The pulse audits itself.** `src/pulse/self-audit.mjs` runs inside the morning pulse: did every check show up, did every lane finish, do the totals add up, is every "nothing to judge" still true, is every workflow watched, did yesterday's morning report go out, are the run receipts writing. A new check's id must be on the lists the manifest is built from (imports only), or the audit goes red. `npm run pulse:prove` prints the whole morning from the built bundle and fails on any unexplained "not checked".
+17. **Every event workflow leaves a receipt.** Workflows are built on the shared client in `src/workflows/client.mjs`, which carries the Run evidence add-on (`src/pulse/run-evidence.mjs`, table `workflow_runs`). Each non-cron workflow gets a `wf:` row from `src/pulse/workflow-runs.mjs`. A workflow that sleeps or waits goes on its `SLEEPERS` map (a test reads the bundled sources and fails if one is missing). The no-deploy switch-off is `REVOKE INSERT, UPDATE ON public.workflow_runs FROM fundhub_app;`.
+18. **A person's setup step is a reminder lane, not a tripwire.** When we ask a person to do something we cannot do for them (connect a calendar, accept an invite), the ask is saved with a due day (`scripts/closer-setup-ask.mjs`). The check is green while we wait, red after the due day, and quiet once it is done (`src/pulse/coverage/gap-closer-setup.mjs`). It never texts hourly.
 
 ## Never
 
@@ -32,6 +36,8 @@ How it works, in one picture: `docs/journeys/heartbeat-flow.md`.
 - Make a beat write, send, or call a vendor with anything but GET or HEAD.
 - Send a test signal through a door that saves data until that is proven on a scratch database and the owner has watched one run (the write-through half is not built yet).
 - Add a surface to `tripwires-baseline.json`, or raise `BASELINE_MAX`.
+- Leave a live row "not checked", or make a `skip` the normal answer for something that is live.
+- Ship a new event workflow built on any client but the shared one.
 - Weaken `src/pulse/registry.test.mjs`, `src/pulse/heartbeats.test.mjs`, `src/pulse/tripwires.test.mjs`, `src/pulse/beats/beats.test.mjs` or `src/pulse/coverage/modules.test.mjs`.
 
 ## Example
