@@ -86,7 +86,7 @@ Model: Sonnet for 1 and 2 (back end), Opus for 0 and 3 (contract, routine, rule)
 
 | # | Status |
 |---|---|
-| 0 | pending — waiting on Chris's go |
+| 0 | claimed 2026-10-09 ~03:00 — Chris said go. Grounding (6 readers) → contract spec (Opus) → critic (Opus). Output: ops/workflows/pulse-layer-2026-10-09-brief/*.md and pulse-layer-2026-10-09-contract.md. Learning loop added: every closed incident records cause_category, cause_note, fix_summary, guard_added; the fixer appends docs/lessons/pulse-lessons.md in its PR. |
 | 1 | pending — waits on 0 |
 | 2 | pending — waits on 0 |
 | 3 | pending — waits on 1 and 2 |
