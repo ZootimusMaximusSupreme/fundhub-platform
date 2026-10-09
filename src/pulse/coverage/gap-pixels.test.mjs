@@ -19,18 +19,22 @@ import {
   clarityRequiredOn,
   clarityScriptHasProjectId,
   gapChecks,
+  naVerify,
   ownPixelPages,
   pageHasClaritySnippet,
   pageHasPixel,
   requiredPixelPage,
   scriptsRequiredOn
 } from "./gap-pixels.mjs";
+import { FRESH_HOURS } from "../machine.mjs";
 
 const PIXEL = "998877665544";
 const TOKEN = "clarity-export-token-do-not-print";
 const PROJECT = "proj-do-not-print";
 const PAGE = requiredPixelPage();
 const NOW = new Date("2026-10-08T15:00:00Z"); // 8:00 a.m. Phoenix, Oct 8
+// The Meta connection saved two hours ago: proof the read could see Meta's side.
+const SYNCED = new Date(NOW.getTime() - 2 * 60 * 60 * 1000);
 const ORG = "11111111-1111-4111-8111-111111111111";
 
 const CLARITY_JS = 'var CLARITY_PROJECT_ID = "abcdef1234";\n(function(){ /* loader */ })();';
@@ -116,10 +120,18 @@ function byId(checks) {
 function assertShape(checks) {
   assert.deepEqual(checks.map((c) => c.id), [...CHECK_IDS]);
   for (const c of checks) {
-    assert.deepEqual(Object.keys(c).sort(), ["detail", "id", "status", "suggestedFix"]);
-    assert.ok(c.status === "PASS" || c.status === "FAIL" || c.status === "skip");
+    // A nothing-to-judge row (na) carries one extra key, na: { code, args }. No other row may.
+    const keys = ["detail", "id", "status", "suggestedFix"];
+    assert.deepEqual(Object.keys(c).sort(), c.status === "na" ? [...keys, "na"].sort() : keys);
+    assert.ok(c.status === "PASS" || c.status === "FAIL" || c.status === "skip" || c.status === "na");
     assert.equal(typeof c.detail, "string");
     assert.ok(c.detail.length > 0);
+    if (c.status === "na") {
+      assert.equal(c.id, "ad-click-stored");
+      assert.equal(c.na.code, "low-traffic");
+      assert.equal(c.na.args.check, "ad-click-stored");
+      assert.match(c.detail, /Judged the day/);
+    }
     if (c.status === "FAIL") {
       assert.equal(typeof c.suggestedFix, "string");
       assert.match(c.suggestedFix, /Recon/);
@@ -409,16 +421,214 @@ test("ad click: a stored share under 10 percent of Meta's count is a FAIL, 27 pe
   assert.equal(fine["ad-click-stored"].status, "PASS");
 });
 
-test("ad click: ads paused (Meta counted almost nothing) is a skip, not a PASS", async () => {
+test("ad click: ads paused (Meta counted almost nothing) is nothing to judge (na low-traffic), not a PASS", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  const checks = await gapChecks({
+    fetchImpl,
+    env: env(),
+    scope: scopeFor({ ad: { meta_clicks: MIN_META_CLICKS - 1, stored: 0, last_synced_at: SYNCED } }),
+    now: NOW
+  });
+  assertShape(checks);
+  const r = byId(checks)["ad-click-stored"];
+  assert.equal(r.status, "na");
+  assert.match(r.detail, /too little ad traffic/);
+  assert.match(r.detail, /Judged the day Meta counts 20 clicks\./);
+  assert.deepEqual(r.na, {
+    code: "low-traffic",
+    args: { check: "ad-click-stored", clicks: 19, min: 20, from: "2026-10-05", to: "2026-10-07" }
+  });
+  assert.equal(r.suggestedFix, null);
+});
+
+test("ad click: Meta counted zero clicks (measured live 2026-10-09: meta_clicks 0, stored 0) is na, and the company rides along", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  const checks = await gapChecks({
+    fetchImpl,
+    env: env(),
+    scope: scopeFor({ ad: { meta_clicks: 0, stored: 0, last_synced_at: SYNCED } }),
+    now: NOW,
+    orgId: ORG
+  });
+  assertShape(checks);
+  const r = byId(checks)["ad-click-stored"];
+  assert.equal(r.status, "na");
+  assert.equal(r.na.args.clicks, 0);
+  assert.equal(r.na.args.orgId, ORG);
+});
+
+test("ad click: at the minimum, or above it, the row is never na (PASS or FAIL, as before)", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  const at = async (ad) => byId(await gapChecks({ fetchImpl, env: env(), scope: scopeFor({ ad }), now: NOW }))["ad-click-stored"];
+  const exactly = await at({ meta_clicks: MIN_META_CLICKS, stored: MIN_META_CLICKS });
+  assert.equal(exactly.status, "PASS");
+  assert.equal(exactly.na, undefined);
+  const dead = await at({ meta_clicks: MIN_META_CLICKS, stored: 0 });
+  assert.equal(dead.status, "FAIL");
+  assert.equal(dead.na, undefined);
+  const hurt = await at({ meta_clicks: 500, stored: 3 });
+  assert.equal(hurt.status, "FAIL");
+  assert.equal(hurt.na, undefined);
+});
+
+test("ad click: a count that did not come back, or a read that failed, is never na", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  for (const meta_clicks of [undefined, null, "", "x"]) {
+    const r = byId(await gapChecks({ fetchImpl, env: env(), scope: scopeFor({ ad: { meta_clicks, stored: 0 } }), now: NOW }))["ad-click-stored"];
+    assert.equal(r.status, "skip", `meta_clicks = ${String(meta_clicks)}`);
+    assert.equal(r.na, undefined);
+  }
+  const failed = byId(await gapChecks({ fetchImpl, env: env(), scope: scopeFor({ ad: new Error("boom") }), now: NOW }))["ad-click-stored"];
+  assert.equal(failed.status, "FAIL");
+  assert.equal(failed.na, undefined);
+});
+
+test("ad click: a low count with no fresh Meta sync behind it is a skip, never na (an empty table sums to 0 too)", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  const hours = (h) => new Date(NOW.getTime() - h * 60 * 60 * 1000);
+  const blind = [undefined, null, "", "not a date", hours(FRESH_HOURS + 0.01), hours(200)];
+  for (const last_synced_at of blind) {
+    const checks = await gapChecks({
+      fetchImpl,
+      env: env(),
+      scope: scopeFor({ ad: { meta_clicks: 0, stored: 0, last_synced_at } }),
+      now: NOW
+    });
+    assertShape(checks);
+    const r = byId(checks)["ad-click-stored"];
+    assert.equal(r.status, "skip", `last_synced_at = ${String(last_synced_at)}`);
+    assert.equal(r.na, undefined);
+    assert.match(r.detail, /Meta counted 0 link clicks from 2026-10-05 to 2026-10-07, under 20/);
+    assert.match(r.detail, /no save in the last 36 hours, so we cannot tell if ads are paused/);
+  }
+  // A sync inside the window is the proof: exactly 36 hours old still counts.
+  for (const last_synced_at of [hours(0), hours(2), hours(FRESH_HOURS), hours(FRESH_HOURS).toISOString()]) {
+    const r = byId(await gapChecks({
+      fetchImpl,
+      env: env(),
+      scope: scopeFor({ ad: { meta_clicks: 0, stored: 0, last_synced_at } }),
+      now: NOW
+    }))["ad-click-stored"];
+    assert.equal(r.status, "na", `last_synced_at = ${String(last_synced_at)}`);
+  }
+});
+
+test("ad click: enough clicks need no sync stamp to be judged (PASS or FAIL, as before)", async () => {
   const { fetchImpl } = fakeFetch(liveRoutes());
   const r = byId(await gapChecks({
     fetchImpl,
     env: env(),
-    scope: scopeFor({ ad: { meta_clicks: MIN_META_CLICKS - 1, stored: 0 } }),
+    scope: scopeFor({ ad: { meta_clicks: 200, stored: 0, last_synced_at: null } }),
     now: NOW
   }))["ad-click-stored"];
-  assert.equal(r.status, "skip");
-  assert.match(r.detail, /too little ad traffic/);
+  assert.equal(r.status, "FAIL");
+});
+
+test("the ad-click read also returns when the Meta connection last saved (proof the read can see Meta's side)", () => {
+  assert.match(AD_CLICK_SQL, /max\(k\.last_synced_at\)/);
+  assert.match(AD_CLICK_SQL, /FROM ad_platform_connections k/);
+  assert.match(AD_CLICK_SQL, /k\.platform = 'meta'/);
+  assert.match(AD_CLICK_SQL, /k\.encrypted_access_token IS NOT NULL/);
+  assert.match(AD_CLICK_SQL, /\) AS last_synced_at,/);
+  // The token column is only tested for NULL, never selected.
+  assert.doesNotMatch(AD_CLICK_SQL, /encrypted_access_token(?! IS NOT NULL)/);
+});
+
+// ---------------------------------------------------------------------------
+// naVerify: the audit proves the row again, with the lane's own SQL, days and minimum.
+
+const AD = { check: "ad-click-stored" };
+
+test("naVerify low-traffic: true under the minimum, with AD_CLICK_SQL and the same three days", async () => {
+  const seen = [];
+  const ok = await naVerify["low-traffic"](AD, { scope: scopeFor({ ad: { meta_clicks: 19, stored: 0, last_synced_at: SYNCED } }, seen), now: NOW });
+  assert.equal(ok, true);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].sql, AD_CLICK_SQL);
+  assert.deepEqual(seen[0].params, ["2026-10-05", "2026-10-07", null]);
+  assert.equal(await naVerify["low-traffic"](AD, { scope: scopeFor({ ad: { meta_clicks: 0, last_synced_at: SYNCED } }), now: NOW }), true);
+});
+
+test("naVerify low-traffic: false at the minimum and above it", async () => {
+  for (const meta_clicks of [MIN_META_CLICKS, MIN_META_CLICKS + 1, 5000]) {
+    assert.equal(await naVerify["low-traffic"](AD, { scope: scopeFor({ ad: { meta_clicks, stored: 0 } }), now: NOW }), false, String(meta_clicks));
+  }
+});
+
+test("naVerify low-traffic: a low count with no fresh Meta sync is false (a blind read proves nothing)", async () => {
+  const hours = (h) => new Date(NOW.getTime() - h * 60 * 60 * 1000);
+  for (const last_synced_at of [undefined, null, "", "not a date", hours(FRESH_HOURS + 0.01), hours(500)]) {
+    assert.equal(
+      await naVerify["low-traffic"](AD, { scope: scopeFor({ ad: { meta_clicks: 0, last_synced_at } }), now: NOW }),
+      false,
+      `last_synced_at = ${String(last_synced_at)}`
+    );
+  }
+  for (const last_synced_at of [hours(1), hours(FRESH_HOURS), hours(FRESH_HOURS).toISOString()]) {
+    assert.equal(
+      await naVerify["low-traffic"](AD, { scope: scopeFor({ ad: { meta_clicks: 0, last_synced_at } }), now: NOW }),
+      true,
+      `last_synced_at = ${String(last_synced_at)}`
+    );
+  }
+});
+
+test("naVerify low-traffic: the company on the row is the company read; else ctx.orgId; else all", async () => {
+  const org = async (args, ctx) => {
+    const seen = [];
+    await naVerify["low-traffic"](args, { scope: scopeFor({ ad: { meta_clicks: 1 } }, seen), now: NOW, ...ctx });
+    return seen[0].params[2];
+  };
+  assert.equal(await org({ ...AD, orgId: ORG }, { orgId: "other" }), ORG);
+  assert.equal(await org(AD, { orgId: ORG }), ORG);
+  assert.equal(await org(AD, {}), null);
+});
+
+test("naVerify low-traffic: no read, a missing count, another check or no args is false; a failed read throws", async () => {
+  const scope = scopeFor({ ad: { meta_clicks: 0, stored: 0 } });
+  assert.equal(await naVerify["low-traffic"](AD, { now: NOW }), false);
+  assert.equal(await naVerify["low-traffic"]({ check: "funnel-click-stored" }, { scope, now: NOW }), false);
+  assert.equal(await naVerify["low-traffic"]({}, { scope, now: NOW }), false);
+  assert.equal(await naVerify["low-traffic"](undefined, { scope, now: NOW }), false);
+  for (const meta_clicks of [undefined, null, "", "x"]) {
+    assert.equal(await naVerify["low-traffic"](AD, { scope: scopeFor({ ad: { meta_clicks } }), now: NOW }), false, String(meta_clicks));
+  }
+  const empty = async (fn) => fn({ query: async () => ({ rows: [] }) });
+  assert.equal(await naVerify["low-traffic"](AD, { scope: empty, now: NOW }), false);
+  await assert.rejects(naVerify["low-traffic"](AD, { scope: scopeFor({ ad: new Error("boom") }), now: NOW }), /boom/);
+});
+
+test("naVerify low-traffic: db alone works, and a bad now is false", async () => {
+  const seen = [];
+  const scope = scopeFor({ ad: { meta_clicks: 2, last_synced_at: SYNCED } }, seen);
+  const db = { query: (sql, params) => scope((tx) => tx.query(sql, params)) };
+  assert.equal(await naVerify["low-traffic"](AD, { db, now: NOW }), true);
+  assert.equal(await naVerify["low-traffic"](AD, { db, now: "not a date" }), false);
+});
+
+test("round trip: the na row's own args pass naVerify, and fail the moment Meta counts enough", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  const quiet = scopeFor({ ad: { meta_clicks: 4, stored: 0, last_synced_at: SYNCED } });
+  const r = byId(await gapChecks({ fetchImpl, env: env(), scope: quiet, now: NOW, orgId: ORG }))["ad-click-stored"];
+  assert.equal(r.status, "na");
+  assert.equal(await naVerify[r.na.code](r.na.args, { scope: quiet, now: NOW }), true);
+  const busy = scopeFor({ ad: { meta_clicks: 300, stored: 200, last_synced_at: SYNCED } });
+  assert.equal(await naVerify[r.na.code](r.na.args, { scope: busy, now: NOW }), false);
+  // The same low count with no fresh sync behind it (a blind read) fails the re-check too.
+  const blind = scopeFor({ ad: { meta_clicks: 4, stored: 0, last_synced_at: null } });
+  assert.equal(await naVerify[r.na.code](r.na.args, { scope: blind, now: NOW }), false);
+});
+
+test("the na row carries no secret: the redact pass keeps na and the pixel id stays out of every row", async () => {
+  const { fetchImpl } = fakeFetch(liveRoutes());
+  const checks = await gapChecks({
+    fetchImpl,
+    env: env(),
+    scope: scopeFor({ ad: { meta_clicks: 0, stored: 0, last_synced_at: SYNCED } }),
+    now: NOW
+  });
+  assert.ok(byId(checks)["ad-click-stored"].na);
+  assertNoSecrets(checks);
 });
 
 test("ad click: a failed read is a FAIL with the reason", async () => {

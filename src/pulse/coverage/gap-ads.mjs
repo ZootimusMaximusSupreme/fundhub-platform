@@ -8,9 +8,9 @@
 //                            already in the pull, an ad is running, and ads spent
 //                            money on a day before AND a day after the gap. With
 //                            every ad paused Meta sends no row, so an empty day
-//                            is normal and is a skip, not a FAIL. Ads switched
-//                            back on this morning have no spend after the gap
-//                            yet, so that is a skip too.
+//                            is normal: that is "nothing to judge" (na), not a
+//                            FAIL. Ads switched back on this morning have no
+//                            spend after the gap yet, so that is a skip.
 //   ads-number-unmapped      an ad that spent in the last 28 days has no
 //                            fundhub_ad_number. Old paused test ads are not
 //                            looked at, so they cannot keep the pulse red.
@@ -26,6 +26,16 @@
 // Not here: marketing clock (slice 03), dying-ad buzz, ClickFunnels, server
 // events, Meet (machine.mjs). No budget change, no pause, no video upload.
 // One tripwire: Recon (AG-07). No second watchdog. SELECT only.
+//
+// Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
+// When the lane's own read says no ad is running, ads-spend-day-missing and
+// ads-running-no-metrics return status "na" with na: { code: "no-running-ad", args }.
+// ads-spend-day-missing says it only when NO ad at all is running now (running_now),
+// including one switched on after the older closed day began; ads-running-no-metrics
+// asks whether any running ad is old enough to need a metrics row.
+// `naVerify` re-reads with the same SQL, so the audit can prove the claim again.
+// Every other quiet reason (sync never ran, sync late, no spend either side of a
+// gap) stays "skip": "we cannot see it" is never a nothing-to-judge condition.
 
 import { FRESH_HOURS } from "../machine.mjs";
 import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
@@ -54,6 +64,18 @@ function fix(lead) {
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
+}
+
+/** "Nothing to judge today": status na plus the code the audit re-checks. */
+function naRow(id, code, args, detail) {
+  return { id, status: "na", detail, suggestedFix: null, na: { code, args } };
+}
+
+/** A count the read really sent: a finite number, or null. A missing answer is not zero. */
+function count(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function toDate(v) {
@@ -149,8 +171,10 @@ const RUNNING_WHERE = `
      AND upper(coalesce(c.status, '')) = 'ACTIVE'`;
 
 // $1 is the older closed day, $2 is yesterday, both Arizona dates. `running` counts
-// ads that were already here when the older closed day began. `spent_days` lists the
-// days from the day before $1 to the day after $2 (today) on which any ad spent money.
+// ads that were already here when the older closed day began. `running_now` counts every
+// running ad, however new: only a zero here can say that no ad is running at all.
+// `spent_days` lists the days from the day before $1 to the day after $2 (today) on
+// which any ad spent money.
 // ads.updated_at cannot tell when an ad was switched on: every sync stamps it.
 export const SPEND_DAYS_SQL = `
   SELECT (SELECT max(synced_at) FROM ad_metrics_daily) AS last_saved,
@@ -170,7 +194,12 @@ export const SPEND_DAYS_SQL = `
             JOIN ad_sets s ON s.id = a.ad_set_id
             JOIN campaigns c ON c.id = a.campaign_id
            WHERE ${RUNNING_WHERE}
-             AND a.created_at < ($1::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}') AS running`;
+             AND a.created_at < ($1::date)::timestamp AT TIME ZONE '${AD_ACCOUNT_TZ}') AS running,
+         (SELECT count(*)::int
+            FROM ads a
+            JOIN ad_sets s ON s.id = a.ad_set_id
+            JOIN campaigns c ON c.id = a.campaign_id
+           WHERE ${RUNNING_WHERE}) AS running_now`;
 
 // $1 is the first Arizona day of the 28-day window. Only an ad that spent money in
 // it counts. A zero-spend row, or an ad that stopped spending long ago, does not.
@@ -288,14 +317,18 @@ export async function checkSpendDayMissing({ run, now }) {
     if (first < days[i]) missing.push(days[i]);
   }
   const running = num(r.running);
-  if (missing.length && !running) {
+  const runningNow = num(r.running_now);
+  if (missing.length && !running && !runningNow) {
     // Meta sends a row only for an ad that delivered. With every ad paused an empty
     // day is the normal answer, not a sync that skipped it.
-    return row(
-      id,
-      "skip",
-      `No spend row for ${missing.join(" and ")}, and no ad is running, so Meta had nothing to send.`
-    );
+    const why = `No spend row for ${missing.join(" and ")}, and no ad is running, so Meta had nothing to send.`;
+    // Only counts the read really sent are proof, and only zero ads running NOW is "no ad
+    // is running". An ad switched on after the older closed day began is not in `running`,
+    // so `running` alone cannot say it. A missing count stays a skip.
+    if (count(r.running) === 0 && count(r.running_now) === 0) {
+      return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day an ad runs.`);
+    }
+    return row(id, "skip", why);
   }
   if (missing.length) {
     // An ad that is ACTIVE now may have been paused through the empty day and switched
@@ -317,7 +350,8 @@ export async function checkSpendDayMissing({ run, now }) {
     }
     const list = missing.join(" and ");
     const word = missing.length === 1 ? "That day should" : "Those days should";
-    const ads = running === 1 ? "1 ad is running" : `${running} ads are running`;
+    const live = Math.max(running, runningNow);
+    const ads = live === 1 ? "1 ad is running" : `${live} ads are running`;
     return row(
       id,
       "FAIL",
@@ -382,7 +416,11 @@ export async function checkRunningNoMetrics({ run, now }) {
   const running = num(r.running);
   const bare = num(r.bare);
   if (!running) {
-    return row(id, "skip", `No running ad is older than ${NEW_AD_GRACE_HOURS} h, so none needs a metrics row yet.`);
+    const why = `No running ad is older than ${NEW_AD_GRACE_HOURS} h, so none needs a metrics row yet.`;
+    if (count(r.running) === 0) {
+      return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day an ad has run for ${NEW_AD_GRACE_HOURS} hours.`);
+    }
+    return row(id, "skip", why);
   }
   if (!bare) {
     const noun = running === 1 ? "ad has" : "ads have";
@@ -398,6 +436,35 @@ export async function checkRunningNoMetrics({ run, now }) {
   );
 }
 
+/**
+ * The audit calls this to prove a "nothing to judge" row again. It reads with the
+ * same SQL the lane used (SPEND_DAYS_SQL, RUNNING_BARE_SQL) and answers true only
+ * when the read really says zero ads are running. No read, no row, or a count that
+ * is not a number is false. A read that throws is left to throw: the audit counts
+ * a throw as false.
+ * @param {{ check?: string }} args
+ * @param {{ db?: any, scope?: Function, now?: Date|string|number }} ctx
+ */
+export const naVerify = Object.freeze({
+  "no-running-ad": async (args, ctx = {}) => {
+    const run = bind(ctx);
+    if (!run) return false;
+    const now = nowOf(ctx);
+    const check = args && args.check;
+    if (check === "ads-spend-day-missing") {
+      const r = await one(run, SPEND_DAYS_SQL, closedDays(now));
+      // Nothing running now, new ads included, not just nothing older than the older closed day.
+      return count(r.running) === 0 && count(r.running_now) === 0;
+    }
+    if (check === "ads-running-no-metrics") {
+      const cutoff = new Date(now.getTime() - NEW_AD_GRACE_HOURS * HOUR_MS);
+      const r = await one(run, RUNNING_BARE_SQL, [cutoff]);
+      return count(r.running) === 0;
+    }
+    return false;
+  }
+});
+
 const RUNNERS = [
   ["ads-meta-sync-stale", checkMetaSyncStale],
   ["ads-spend-day-missing", checkSpendDayMissing],
@@ -407,7 +474,7 @@ const RUNNERS = [
 
 /**
  * @param {{ db?: { query: Function }, scope?: (fn: (tx: any) => Promise<any>) => Promise<any>, now?: Date|string|number }} [ctx]
- * @returns {Promise<Array<{ id: string, status: "PASS"|"FAIL"|"skip", detail: string, suggestedFix: string|null }>>}
+ * @returns {Promise<Array<{ id: string, status: "PASS"|"FAIL"|"skip"|"na", detail: string, suggestedFix: string|null, na?: { code: string, args: object } }>>}
  */
 export async function gapChecks(ctx = {}) {
   const run = bind(ctx);

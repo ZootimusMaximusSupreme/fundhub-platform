@@ -13,7 +13,7 @@
 //   - No web call, no send, no vendor write. No repo file is read at run time.
 //   - A read that does not come back is `skip` with the reason, never PASS.
 //   - PASS means the pipe was PROVEN by a real row. Too little traffic to judge
-//     is `skip`, not PASS (same call as gap-pixels.mjs "ads paused is a skip").
+//     is `na` (nothing to judge, with a reason the audit re-checks), never PASS.
 //   - No email, phone or name is ever put in a detail line.
 //
 // What "real" means here (the plan said "non-demo"; the data said that is not enough):
@@ -37,6 +37,16 @@
 // Where a check differs from the plan in
 // ops/workflows/heartbeat-complete-2026-10-09-worklist.md, the reason is next to
 // the code and in ops/workflows/heartbeat-gaps-2026-10-08/leads.md.
+//
+// Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
+// Three skips are a measured "too quiet to judge", and now return status "na"
+// with na: { code, args } so the audit can prove the claim again:
+//   lead:pipe-cut-with-traffic            low-traffic  (ads sent fewer than MIN_AD_CLICKS)
+//   lead:clickfunnels-posts-silent        low-traffic  (fewer than MIN_FORM_PAGE_VIEWS opened a form page)
+//   lead:slo-contact-not-in-clickfunnels  no-real-lead (no real roadmap lead in the window)
+// `naVerify` re-reads with the same SQL and the same minimums. Every other quiet
+// reason (no ad row at all, receipts off, a read that failed, a lead still waiting)
+// stays "skip": "we cannot see it" is never a nothing-to-judge condition.
 
 import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
 
@@ -250,6 +260,16 @@ function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
 
+/** "Nothing to judge today": status na plus the code the audit re-checks. */
+function naRow(id, code, args, detail) {
+  return { id, status: "na", detail, suggestedFix: null, na: { code, args } };
+}
+
+/** The company goes in the args only when the lane read one company, so a re-check reads the same. */
+function withOrg(args, orgId) {
+  return orgId ? { ...args, orgId: String(orgId) } : args;
+}
+
 function clip(v, n = 160) {
   return String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, n);
 }
@@ -345,7 +365,8 @@ async function readFacts(run, orgId, now) {
     cfLast: r.cf_last,
     otherPosts: num(r.other_posts),
     first,
-    last
+    last,
+    orgId
   };
   for (const key of ["adRows", "adClicks", "roadLeads", "cfLeads", "roadViews", "formViews", "cfPosts", "otherPosts"]) {
     if (facts[key] == null) throw new Error(`the read came back without ${key}`);
@@ -398,10 +419,12 @@ export function pipeCheck(f, now) {
     );
   }
   if (f.adClicks < MIN_AD_CLICKS) {
-    return row(
+    // Ads did send a measured number of clicks, and it is under the minimum. Nothing to judge.
+    return naRow(
       id,
-      "skip",
-      `Ads sent ${plural(f.adClicks, "link click")} on ${f.first} and ${f.last}. Zero leads only means something at ${MIN_AD_CLICKS} clicks or more (about 1 lead per ${USUAL_CLICKS_PER_LEAD} clicks, so ${MIN_EXPECTED_LEADS} expected). Zero real people saved on /roadmap since ${f.first}.${cfNote}`
+      "low-traffic",
+      withOrg({ check: id, clicks: f.adClicks, min: MIN_AD_CLICKS, first: f.first, last: f.last }, f.orgId),
+      `Ads sent ${plural(f.adClicks, "link click")} on ${f.first} and ${f.last}. Zero leads only means something at ${MIN_AD_CLICKS} clicks or more.${cfNote} Judged the day ads send ${MIN_AD_CLICKS} clicks.`
     );
   }
   const posts = f.cfPosts > 0
@@ -435,10 +458,11 @@ export function postsCheck(f, now) {
     );
   }
   if (f.formViews < MIN_FORM_PAGE_VIEWS) {
-    return row(
+    return naRow(
       id,
-      "skip",
-      `Too quiet to expect a post: ${people(f.formViews)} opened a ClickFunnels form page since ${f.first} (needs ${MIN_FORM_PAGE_VIEWS}). Ad clicks do not count, because the ads land on /roadmap and it posts to our own door. ClickFunnels sent zero posts.`
+      "low-traffic",
+      withOrg({ check: id, views: f.formViews, min: MIN_FORM_PAGE_VIEWS, first: f.first }, f.orgId),
+      `Too quiet to expect a post: ${people(f.formViews)} opened a ClickFunnels form page since ${f.first} (needs ${MIN_FORM_PAGE_VIEWS}), and ClickFunnels sent none. Ad clicks do not count. Judged the day ${MIN_FORM_PAGE_VIEWS} people open a form page.`
     );
   }
   if (f.otherPosts === 0) {
@@ -506,13 +530,14 @@ export function sortContact(r, now) {
   return now.getTime() - at.getTime() > NOTE_GRACE_MINUTES * 60 * 1000 ? "lost" : "waiting";
 }
 
-export function contactCheck(rows, now) {
+export function contactCheck(rows, now, orgId = null) {
   const id = "lead:slo-contact-not-in-clickfunnels";
   if (rows.length === 0) {
-    return row(
+    return naRow(
       id,
-      "skip",
-      `No real roadmap lead in the last ${plural(CONTACT_WINDOW_DAYS, "day")}, so there is no copy to ClickFunnels to judge.`
+      "no-real-lead",
+      withOrg({ check: id, days: CONTACT_WINDOW_DAYS }, orgId),
+      `No real roadmap lead in the last ${plural(CONTACT_WINDOW_DAYS, "day")}, so there is no copy to ClickFunnels to judge. Judged the day one comes.`
     );
   }
   const sorted = rows.map((r) => ({ r, state: sortContact(r, now) }));
@@ -576,11 +601,51 @@ export function contactCheck(rows, now) {
   );
 }
 
-async function readContacts(run, orgId, now) {
+/** The three params CONTACTS_SQL takes: the company, the window start, now. */
+function contactParams(orgId, now) {
   const since = new Date(now.getTime() - CONTACT_WINDOW_DAYS * DAY_MS).toISOString();
-  const out = await run((tx) => tx.query(CONTACTS_SQL, [orgId, since, now.toISOString()]));
-  return (out && out.rows) || [];
+  return [orgId, since, now.toISOString()];
 }
+
+async function readContacts(run, orgId, now) {
+  const out = await run((tx) => tx.query(CONTACTS_SQL, contactParams(orgId, now)));
+  // A read that came back with no rows list is a read that did not answer. It is not "zero leads".
+  if (!out || !Array.isArray(out.rows)) throw new Error("the read came back with no list of leads");
+  return out.rows;
+}
+
+/** The company a re-check reads: the one the row carries, else the one the caller has, else all. */
+function orgOf(args, ctx) {
+  return (args && args.orgId) || (ctx && ctx.orgId) || null;
+}
+
+/**
+ * The audit calls these to prove a "nothing to judge" row again. Each reads with
+ * the same SQL and the same minimum the lane used, and answers true only when the
+ * read really shows the quiet condition. No read, a count that is missing, or a
+ * row for another check is false. A read that throws is left to throw: the audit
+ * counts a throw as false.
+ * @param {{ check?: string, orgId?: string }} args
+ * @param {{ db?: any, scope?: Function, now?: Date|string|number, orgId?: string }} ctx
+ */
+export const naVerify = Object.freeze({
+  "low-traffic": async (args, ctx = {}) => {
+    const check = args && args.check;
+    if (check !== CHECK_IDS[0] && check !== CHECK_IDS[1]) return false;
+    const run = bind(ctx);
+    if (!run) return false;
+    const f = await readFacts(run, orgOf(args, ctx), nowOf(ctx));
+    if (check === CHECK_IDS[0]) return f.adRows > 0 && f.adClicks < MIN_AD_CLICKS;
+    return f.formViews < MIN_FORM_PAGE_VIEWS;
+  },
+  "no-real-lead": async (args, ctx = {}) => {
+    if (!args || args.check !== CHECK_IDS[2]) return false;
+    const run = bind(ctx);
+    if (!run) return false;
+    const out = await run((tx) => tx.query(CONTACTS_SQL, contactParams(orgOf(args, ctx), nowOf(ctx))));
+    return Array.isArray(out && out.rows) && out.rows.length === 0;
+  }
+});
 
 /**
  * Read-only lead flow checks.
@@ -612,7 +677,7 @@ export async function gapChecks(ctx = {}) {
   }
 
   try {
-    out.push(contactCheck(await readContacts(run, orgId, now), now));
+    out.push(contactCheck(await readContacts(run, orgId, now), now, orgId));
   } catch (err) {
     out.push(row(CHECK_IDS[2], "skip", `could not read roadmap leads: ${clip(err && err.message, 180)}`));
   }
