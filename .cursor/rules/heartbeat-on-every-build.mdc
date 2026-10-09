@@ -15,13 +15,14 @@ How it works, in one picture: `docs/journeys/heartbeat-flow.md`.
 
 1. **The ping row.** Pages and routes: `src/pulse/registry.mjs` (`PULSE_REGISTRY`). Timed jobs: `src/pulse/heartbeats.mjs` (`JOBS`). Text, email or mail sends: `SEND_PATHS`. The checks are `src/pulse/registry.test.mjs` and `src/pulse/heartbeats.test.mjs`.
 2. **The tripwire, for money or a paying customer.** A deep check in `src/pulse/coverage/gap-<lane>.mjs`: `export async function gapChecks(ctx)` returns rows `{ id, status, detail, suggestedFix }`, status `PASS`, `FAIL` or `skip`. Ask one yes-or-no question a customer would feel: "did every paid client get the portal?", not "does the page answer?"
-3. **On the list.** Any new coverage file goes on the literal list in `src/pulse/coverage/modules.mjs`. A folder scan finds nothing in the live bundle. `modules.test.mjs` fails until it is listed.
-4. **Under the clock.** Each gap lane runs in its own Inngest step. Keep a lane under 20 seconds. Netlify cuts every step at 26 seconds.
-5. **Read only.** `ctx.db` is a shared pool: never send BEGIN, COMMIT, ROLLBACK or SET on it. Web calls are GET or HEAD only. No text, no email, no AI call, no Plaid, no credit pull, no card charge.
-6. **No repo files at run time.** The live bundle does not carry route source files or `netlify.toml`. Use the `ROUTES` map, import the handler, GET the live door, or read the database.
-7. **Honest status.** A failed read is `skip` with the reason. Never `PASS`. A check that can only pass, or only skip, is not a tripwire.
-8. **Tests both ways.** At least one PASS test and one FAIL test that would break if the logic broke. Never delete, skip or weaken a test.
-9. **Prove it like the server runs it.** Run `npm run pulse:prove`. It builds the real Netlify bundle and runs every pulse step from inside it, read-only, on live data. It must say OK before you call the build done.
+3. **In the tripwire map.** Every page, route, Inngest job and send is sorted in `src/pulse/tripwires.mjs`: money or customer goes in `TRIPWIRES` with the deep check ids that go red on its break; staff-only or internal goes in `NOT_CUSTOMER_FACING` with a reason. `src/pulse/tripwires.test.mjs` fails the build until it is sorted. `tripwires-baseline.json` holds what existed on 2026-10-09 and only shrinks — never add to it.
+4. **On the list.** Any new coverage file goes on the literal list in `src/pulse/coverage/modules.mjs`. A folder scan finds nothing in the live bundle. `modules.test.mjs` fails until it is listed.
+5. **Under the clock.** Each gap lane runs in its own Inngest step. Keep a lane under 20 seconds. Netlify cuts every step at 26 seconds.
+6. **Read only.** `ctx.db` is a shared pool: never send BEGIN, COMMIT, ROLLBACK or SET on it. Web calls are GET or HEAD only. No text, no email, no AI call, no Plaid, no credit pull, no card charge.
+7. **No repo files at run time.** The live bundle does not carry route source files or `netlify.toml`. Use the `ROUTES` map, import the handler, GET the live door, or read the database.
+8. **Honest status.** A failed read is `skip` with the reason. Never `PASS`. A check that can only pass, or only skip, is not a tripwire.
+9. **Tests both ways.** At least one PASS test and one FAIL test that would break if the logic broke. Never delete, skip or weaken a test.
+10. **Prove it like the server runs it.** Run `npm run pulse:prove`. It builds the real Netlify bundle and runs every pulse step from inside it, read-only, on live data. It must say OK before you call the build done.
 
 ## Never
 
@@ -29,7 +30,8 @@ How it works, in one picture: `docs/journeys/heartbeat-flow.md`.
 - Ship a money or customer path with only a ping.
 - Call a check covered because its unit test is green. Prove it from the bundle.
 - Let the pulse auto-fix.
-- Weaken `src/pulse/registry.test.mjs`, `src/pulse/heartbeats.test.mjs` or `src/pulse/coverage/modules.test.mjs`.
+- Add a surface to `tripwires-baseline.json`, or raise `BASELINE_MAX`.
+- Weaken `src/pulse/registry.test.mjs`, `src/pulse/heartbeats.test.mjs`, `src/pulse/tripwires.test.mjs` or `src/pulse/coverage/modules.test.mjs`.
 
 ## Example
 

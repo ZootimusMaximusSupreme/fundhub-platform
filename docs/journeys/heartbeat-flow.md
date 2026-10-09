@@ -20,6 +20,8 @@ Traced from code on 2026-10-09: `src/workflows/daily-pulse.mjs`, `src/pulse/dail
 
 Anything that touches money or a paying customer needs a deep check. A ping alone is not enough.
 
+The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and send is sorted: money or customer names its deep check, the rest says why it is not customer-facing. A new one fails the tests until it is sorted. That is what sews the tripwires into every build.
+
 ## The picture
 
 ```mermaid
@@ -27,9 +29,13 @@ flowchart TD
     BUILD["Agent builds a page, route, job or send"] --> PING["Ping row in the same change<br/>registry.mjs · heartbeats.mjs · SEND_PATHS"]
     BUILD --> MONEY{"Touches money or<br/>a paying customer?"}
     MONEY -->|Yes| DEEP["Deep check<br/>src/pulse/coverage/gap-lane.mjs<br/>PASS test + FAIL test"]
+    DEEP --> MAP["Named in the tripwire map<br/>src/pulse/tripwires.mjs"]
+    MONEY -->|No| NCF["NOT_CUSTOMER_FACING<br/>with a reason"]
+    MAP --> TESTS
+    NCF --> TESTS
     MONEY -->|No| TESTS
     DEEP --> LIST["On the literal list<br/>src/pulse/coverage/modules.mjs"]
-    PING --> TESTS["Tests fail the build if a row is missing<br/>registry.test · heartbeats.test · modules.test"]
+    PING --> TESTS["Tests fail the build if a row is missing<br/>registry.test · heartbeats.test · modules.test · tripwires.test"]
     LIST --> TESTS
     TESTS --> PROVE["npm run pulse:prove<br/>builds the real bundle, runs every step,<br/>read-only, on live data"]
     PROVE -->|OK| SHIP["npm run ship"]
