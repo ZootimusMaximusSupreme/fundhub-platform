@@ -16,7 +16,10 @@ import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
 import { checkMachine } from "./machine.mjs";
 import { checkJobHeartbeats } from "./heartbeats.mjs";
-import { runCoverageSlices } from "./coverage/run-slices.mjs";
+import { GAP_LANES, runCoverageSlices } from "./coverage/run-slices.mjs";
+import { foldCoverage } from "./coverage/link.mjs";
+import { checkWorkflowRuns } from "./workflow-runs.mjs";
+import { auditPulse, makeLaneNaVerify } from "./self-audit.mjs";
 import { checkPipelineMotion } from "./pipeline-motion.mjs";
 import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
 import { checkLivePlaywright } from "./live-playwright-check.mjs";
@@ -362,11 +365,17 @@ export async function runDailyPulse({
   // Slice and gap rows already run in their own Inngest steps. The 6 a.m. job
   // passes these so this step stays under Netlify's 26-second cut. Left null,
   // the coverage pass runs here (CLI and tests).
-  coverageRows = null
+  coverageRows = null,
+  // The bundled Inngest functions (src/workflows/index.mjs). It cannot be imported here: that file
+  // imports the daily pulse. The 6 a.m. job passes it in. Left null, the workflow rows and the
+  // workflow audit rows are skipped, and the audit says so.
+  functions = null,
+  // False in proofs: build the scorecard and the audit, but save nothing.
+  persist = true
 } = {}) {
   const date = phoenixDate(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  const checks = [];
+  let checks = [];
 
   checks.push(await checkHealth({ fetchImpl, baseUrl: origin }));
   checks.push(await checkLogin({ fetchImpl, baseUrl: origin }));
@@ -378,7 +387,10 @@ export async function runDailyPulse({
     })
   );
   checks.push(await checkSuggestionsDoor({ fetchImpl, baseUrl: origin }));
-  checks.push(checkGateRelay({ dirs: gateRelayDirs, nowMs: now.getTime() }));
+  /* The gate messenger is a process on the owner's Mac, so the server cannot see it. A row the server can never
+     check would sit "not checked" forever, which the law forbids. So the row exists only where the messenger lives:
+     the Mac's own run passes its folders in (scripts/daily-pulse.mjs). The server run passes none and has no row. */
+  if (gateRelayDirs) checks.push(checkGateRelay({ dirs: gateRelayDirs, nowMs: now.getTime() }));
   /* A DEAD DATABASE MUST NOT STOP THE PULSE. Each database read that can throw
      becomes one row, so the scorecard and the text still go out. The first
      failure is the one red row; the reads after it are skips (proved
@@ -444,6 +456,44 @@ export async function runDailyPulse({
     }
   }
 
+  if (!Array.isArray(coverageRows) && Array.isArray(functions)) {
+    try {
+      checks.push(...await checkWorkflowRuns({ db, scope: staffScope, now, functions }));
+    } catch (err) {
+      checks.push(check("wf", "skip", `workflow rows not read: ${String((err && err.message) || err).slice(0, 160)}`));
+    }
+  }
+
+  /* NOTHING LIVE IS EVER "NOT CHECKED" (owner-set 2026-10-09). Fold the slice claims into the check that
+     really ran, then audit the pulse itself: did every check show up, does every "nothing to judge" still
+     hold, do the numbers add up. Each stage is wrapped; if it breaks, that is one red row and the morning
+     text still goes. */
+  let folded = 0;
+  try {
+    const f = foldCoverage(checks);
+    folded = f.folded;
+    const audit = await auditPulse({
+      checks: f.checks,
+      folded,
+      functions,
+      gapLanes: GAP_LANES,
+      db,
+      scope: staffScope,
+      now,
+      orgId: resolvedOrg,
+      laneNaVerify: makeLaneNaVerify({ db, scope: staffScope, now })
+    });
+    checks = [...audit.checks, ...audit.rows];
+    folded += audit.folded || 0;
+  } catch (err) {
+    checks.push(check(
+      "audit:crashed",
+      "FAIL",
+      `The pulse could not audit itself: ${String((err && err.message) || err).slice(0, 160)}`,
+      "Read the error. The fold or the audit stage broke; the checks above still ran."
+    ));
+  }
+
   const failRows = checks.filter((c) => c.status === "FAIL" || c.status === "down");
   const findings = failRows.map((c) => `${c.id}: ${c.detail}`);
   const suggestedFixes = failRows.map((c) => c.suggestedFix).filter(Boolean);
@@ -469,7 +519,7 @@ export async function runDailyPulse({
   try {
     const previous = resolvedOrg ? await loadPreviousScorecard(db, resolvedOrg, date) : null;
     scorecard = buildScorecard({ checks, now, previous });
-    if (resolvedOrg && db) await saveScorecard(db, resolvedOrg, scorecard);
+    if (persist && resolvedOrg && db) await saveScorecard(db, resolvedOrg, scorecard);
   } catch (err) {
     if (!scorecard) {
       try { scorecard = buildScorecard({ checks, now }); } catch { scorecard = null; }
@@ -516,6 +566,7 @@ export async function runDailyPulse({
     suggestedFixes,
     sms,
     scorecard,
+    folded,
     darwin,
     wrote,
     agentRun,

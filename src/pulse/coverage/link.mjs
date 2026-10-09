@@ -26,7 +26,13 @@ const UNCHECKED = "not checked";
  * for the brief. The self-audit (audit:briefs-sent) owns that claim.
  */
 export const ALIASES = Object.freeze({
-  "contracts/sign": "contracts:sign-route"
+  "contracts/sign": "contracts:sign-route",
+  // Two repair handlers run in-process, so they have no door to ping. The symptom of each stopping is the thing
+  // a deep check already reads: a repair file that never leaves intake (repair-case-stuck reads files waiting past
+  // their clock in intake and the other waiting stages), and a paid file with no letters (repair-letter-round
+  // reads "an open case with items and no letter" and "still in analysis past its hour").
+  "repair-stage-moves": "repair-case-stuck",
+  "repair.docs.complete": "repair-letter-round"
 });
 
 /**

@@ -99,7 +99,12 @@ test("dry-run writes a board and does not send or fix", async () => {
   const sliceRows = coverage.filter((c) => !String(c.sliceId || "").startsWith("gap-"));
   const gapRows = coverage.filter((c) => String(c.sliceId || "").startsWith("gap-"));
   assert.ok(sliceRows.length > 0);
-  assert.ok(sliceRows.every((c) => c.status === "not checked"));
+  /* A slice claim never passes on its own say-so. It is folded into the real check that ran, or it stays a
+     live "not checked" / skip that the audit counts. */
+  assert.ok(sliceRows.every((c) => ["not checked", "skip", "na", "PASS", "FAIL"].includes(c.status)));
+  assert.ok(sliceRows.every((c) => c.status !== "PASS" || c.proof || c.detail), "a PASS carries its proof");
+  assert.ok(result.folded > 0, "the slice claims that point at a real check were folded into it");
+  assert.ok(result.checks.some((c) => c.id === "audit:not-checked"), "the pulse audits itself");
   assert.ok(gapRows.length > 0);
   assert.match(body, /## Coverage/);
   assert.match(body, /not checked/);

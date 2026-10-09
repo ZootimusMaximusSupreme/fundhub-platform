@@ -102,7 +102,8 @@ test("coverage runs before the pulse, one step per gap lane, so no step passes N
     }
   });
   assert.deepEqual(names.slice(0, 4), ["coverage-org", "coverage-slices", "coverage-gap-auth", "coverage-gap-repair"]);
-  assert.equal(names[4], "run-pulse");
+  assert.equal(names[4], "coverage-workflow-runs");
+  assert.equal(names[5], "run-pulse");
   const gapRows = seen[0].checks.filter((c) => String(c.sliceId || "").startsWith("gap-"));
   assert.ok(gapRows.some((c) => c.sliceId === "gap-auth"));
   assert.ok(gapRows.some((c) => c.sliceId === "gap-repair"));

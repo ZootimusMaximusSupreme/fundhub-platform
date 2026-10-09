@@ -70,8 +70,9 @@ export const AUDIT_COVERS = Object.freeze({
 });
 
 /* The named ids the 6 a.m. pulse always emits (src/pulse/daily-pulse.mjs): the
-   five door checks, the gate-relay, Recon, unrecorded calls, Gmail, and every
-   machine row. self-audit.test.mjs runs the real pulse and fails if one of
+   five door checks, Recon, unrecorded calls, Gmail, and every machine row. The
+   gate messenger is not here: it is a Mac process, so only the Mac's own run has
+   its row (owner-set 2026-10-09; the server cannot check what it cannot see). self-audit.test.mjs runs the real pulse and fails if one of
    these is not in it. */
 export const NAMED_PULSE_IDS = Object.freeze([
   "health",
@@ -79,7 +80,6 @@ export const NAMED_PULSE_IDS = Object.freeze([
   "apply",
   "funnel:roadmap-sales",
   "suggestions",
-  "gate-relay",
   "recon",
   "unrecorded",
   "gmail",
@@ -393,7 +393,11 @@ function failedNaRow(row, reason) {
   return {
     ...rest,
     status: "skip",
-    detail: clip(`Said nothing to judge, but ${why} is not true.`),
+    // verifyNa says what it FOUND as a whole sentence ("5 x.y events came since 10-06."). Read it after the
+    // plain line. A bare condition ("the audit having time left to check it again") reads inside the line.
+    detail: clip(/[.!?]$/.test(why)
+      ? `Said nothing to judge, but that is not true. ${why}`
+      : `Said nothing to judge, but ${why} is not true.`),
     suggestedFix: "Make this a real check, or fix its nothing-to-judge condition in src/pulse/na-conditions.mjs.",
     customerSees: row.customerSees || null
   };

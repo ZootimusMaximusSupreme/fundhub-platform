@@ -1,5 +1,9 @@
 # TODO
 
+## Launch day — added 2026-10-09
+
+- [ ] Review all the copy before launch (owner 2026-10-09). Everything a customer reads: the message templates (325 in the database today: 232 email and 93 text approved; the 15 placeholder emails were just turned off), the sales and checkout pages, the drip and nudge texts, and the ads. Includes the 12 repair pre-call emails (BS-REPAIR-*) that nobody has written yet. The $197 "30% off" drip text still says more than the $147 price.
+
 ## Capital Blueprint launch — added 2026-10-06 (launch in 48 hours)
 
 - [ ] Tomorrow: work on Blueprint. Map the whole client journey end to end so it pops at launch.

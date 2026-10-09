@@ -95,6 +95,27 @@ const run = async (db) => {
 
 const prod = await run(plain);
 const blind = await run(staff);
+
+/* THE WHOLE MORNING, FROM THE BUNDLE. Fold, audit and scorecard, on the rows the coverage steps just made. Nothing is
+   saved (persist:false), nothing is sent, the board file goes to a temp folder. The question it answers: after the
+   fold and the audit, which rows are still "not checked", and did the audit itself run? */
+let full = null;
+let fullErr = null;
+let fullMs = 0;
+const fullEnv = { ...process.env };
+for (const k of Object.keys(fullEnv)) if (/^(GMAIL|GOOGLE_)/.test(k)) delete fullEnv[k];
+try {
+  const { runDailyPulse } = await import(pathToFileURL(path.join(root, "src/pulse/daily-pulse.mjs")).href);
+  const wf = await import(pathToFileURL(path.join(root, "src/workflows/index.mjs")).href);
+  const t0 = Date.now();
+  full = await runDailyPulse({
+    dryRun: true, sendPulseText: false, recordRun: false, persist: false,
+    db: plain, staffScope: (fn) => fn(staff), env: fullEnv, fetchImpl: globalThis.fetch,
+    boardDir: fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-prove-board-")),
+    gateRelayDirs: null, coverageRows: prod.rows, functions: wf.functions
+  });
+  fullMs = Date.now() - t0;
+} catch (err) { fullErr = err; }
 for (const c of [plainC, staffC]) { try { await c.query("ROLLBACK"); } catch { /* closing */ } try { await c.end(); } catch { /* closing */ } }
 
 const byId = new Map(blind.rows.map((r) => [r.id, r.status]));
@@ -110,7 +131,43 @@ console.log(`steps ${prod.steps.length}, rows ${prod.rows.length}: PASS ${count(
 const slowest = [...prod.steps].sort((a, b) => b.ms - a.ms).slice(0, 5);
 console.log(`slowest: ${slowest.map((s) => `${s.name} ${(s.ms / 1000).toFixed(1)}s`).join(", ")}`);
 for (const r of prod.rows.filter((x) => x.status === "FAIL")) console.log(`  RED  ${r.id}: ${clip(r.detail, 160)}`);
+const LAPTOP_ONLY = /not the live server|row of asterisks|is a mask|oauth is not set|empty or masked|laptop copy/i;
+const EXPECTED_OPEN_UNTIL_RECEIPTS = /^wf:/;
+let finalCounts = null;
+let laptopOnly = [];
+let waitingOnReceipts = [];
+let notChecked = [];
+const auditRows = [];
+if (full) {
+  const { toContractCheck } = await import(pathToFileURL(path.join(root, "src/pulse/scorecard.mjs")).href);
+  const final = full.checks.map((c) => ({ raw: c, row: toContractCheck(c) }));
+  finalCounts = { total: final.length, green: 0, red: 0, na: 0, not_checked: 0 };
+  for (const f of final) finalCounts[f.row.status] = (finalCounts[f.row.status] || 0) + 1;
+  const notCheckedAll = final.filter((f) => f.row.status === "not_checked").map((f) => ({ id: f.row.id, why: clip(f.row.reason || f.raw.detail, 130) }));
+  /* This laptop is not the live server: its copies of the secret keys are masks, it has no Gmail login, and it is not on
+     Netlify. Those rows are green on the live server (this morning's stored card says so). They are printed apart and
+     are never counted green. */
+  laptopOnly = notCheckedAll.filter((n) => LAPTOP_ONLY.test(n.why));
+  /* Until the run receipts ship, a workflow that was handed an event cannot show it ran. Closed list, printed by name. */
+  waitingOnReceipts = notCheckedAll.filter((n) => !LAPTOP_ONLY.test(n.why) && EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id));
+  notChecked = notCheckedAll.filter((n) => !LAPTOP_ONLY.test(n.why) && !EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id)).map((n) => `${n.id}: ${n.why}`);
+  for (const f of final) if (String(f.row.id).startsWith("audit:")) auditRows.push(`${f.row.status.padEnd(11)} ${f.row.id}: ${clip(f.row.proof || f.row.reason || f.raw.detail, 150)}`);
+}
+if (full) {
+  console.log(`\nThe whole morning, from the bundle (nothing saved, nothing sent): ${(fullMs / 1000).toFixed(1)} s`);
+  console.log(`final rows ${finalCounts.total}: green ${finalCounts.green}, red ${finalCounts.red}, nothing to judge ${finalCounts.na}, NOT CHECKED ${finalCounts.not_checked}; claims folded into a real check: ${full.folded}`);
+  for (const a of auditRows) console.log(`  ${a}`);
+  console.log(`  laptop only (green on the live server this morning, never counted green here): ${laptopOnly.length}${laptopOnly.length ? ` (${laptopOnly.map((n) => n.id).join(", ")})` : ""}`);
+  console.log(`  waiting on run receipts (handed an event, nothing records that it ran): ${waitingOnReceipts.length}${waitingOnReceipts.length ? ` (${waitingOnReceipts.map((n) => n.id).join(", ")})` : ""}`);
+  for (const n of notChecked.slice(0, 80)) console.log(`  NOT CHECKED  ${n}`);
+  if (notChecked.length > 80) console.log(`  ... and ${notChecked.length - 80} more`);
+}
 const problems = [
+  ...(fullErr ? [`the whole-morning run threw: ${clip(fullErr && fullErr.stack ? fullErr.stack.split("\n").slice(0, 3).join(" | ") : fullErr, 300)}`] : []),
+  ...(full && full.checks.some((c) => c.id === "audit:crashed") ? ["the self-audit crashed (audit:crashed is in the run)"] : []),
+  ...(full && finalCounts.green + finalCounts.red + finalCounts.na + finalCounts.not_checked !== finalCounts.total ? ["the final counts do not add up"] : []),
+  ...notChecked.map((n) => `NOT CHECKED, no reason on the list: ${n}`),
+  ...(full && fullMs > 20000 ? [`the whole-morning run took ${(fullMs / 1000).toFixed(1)} s (limit 20 s; Netlify cuts at 26 s)`] : []),
   ...missingFiles.map((f) => `bundle is missing ${f}`),
   ...threw.map((s) => `${s.name} threw: ${s.threw}`),
   ...laneSkips.map((r) => `${r.id}: ${clip(r.detail, 160)}`),

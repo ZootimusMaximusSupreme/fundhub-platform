@@ -53,8 +53,10 @@ function target(id, status = "up", extra = {}) {
 
 // ---- ALIASES, LEFT_TO_AUDIT --------------------------------------------------
 
-test("aliases: only contracts/sign today, and morning-brief is not aliased", () => {
-  assert.deepEqual(Object.keys(ALIASES), ["contracts/sign"]);
+test("aliases: contracts/sign and the two in-process repair handlers, and morning-brief is not aliased", () => {
+  assert.deepEqual(Object.keys(ALIASES), ["contracts/sign", "repair-stage-moves", "repair.docs.complete"]);
+  assert.equal(ALIASES["repair-stage-moves"], "repair-case-stuck");
+  assert.equal(ALIASES["repair.docs.complete"], "repair-letter-round");
   assert.equal(ALIASES["contracts/sign"], "contracts:sign-route");
   assert.equal(Object.prototype.hasOwnProperty.call(ALIASES, "morning-brief"), false);
   // The alias points at a check the contracts lane really writes.
@@ -465,6 +467,13 @@ function sliceRows() {
   return slicesOnce;
 }
 
+/* The live scorecard of 2026-10-09 gave an api row and a desk row one id for four doors (contracts, journeys, lenders,
+   soft-pull-approve). The registry now names the desk row "<name>-desk". A claim about the .html desk follows it. */
+const DESK_RENAMED = new Set(["reg:contracts", "reg:journeys", "reg:lenders", "reg:soft-pull-approve"]);
+function liveIdNow(f) {
+  return DESK_RENAMED.has(f.linkedScorecardId) && /\.html$/.test(f.sliceRow) ? `${f.linkedScorecardId}-desk` : f.linkedScorecardId;
+}
+
 test("fixture: all 176 registry claims fold into the reg: row the live scorecard had", async () => {
   const fixture = JSON.parse(fs.readFileSync(FIXTURE, "utf8"));
   assert.equal(fixture.length, 176);
@@ -474,7 +483,7 @@ test("fixture: all 176 registry claims fold into the reg: row the live scorecard
   for (const f of fixture) {
     const row = byId.get(f.sliceRow);
     assert.ok(row, `${f.sliceRow} is not a slice row any more`);
-    assert.equal(row.foldInto, f.linkedScorecardId, f.sliceRow);
+    assert.equal(row.foldInto, liveIdNow(f), f.sliceRow);
     assert.ok(registryIds.has(row.foldInto), `${row.foldInto} is not a registry row`);
   }
 });
@@ -490,8 +499,9 @@ test("fixture: folding 176 claims into the registry rows that ran leaves none da
   assert.deepEqual(out.dangling, []);
   const listed = out.checks.flatMap((c) => c.also || []);
   assert.equal(new Set(listed).size, 176);
-  // 176 claims sit on 127 distinct doors (measure.md section 1).
-  assert.equal(out.checks.filter((c) => (c.also || []).length > 0).length, 127);
+  // 176 claims sat on 127 distinct doors (measure.md section 1). Two of the four ids that an api row and a desk row used
+  // to share now hold a claim each side, so the same claims sit on 129 doors.
+  assert.equal(out.checks.filter((c) => (c.also || []).length > 0).length, 129);
 });
 
 /** Slice rows that end with no fold target, each with the reason it is allowed. */
@@ -506,9 +516,7 @@ const EXPECTED_UNFOLDED = Object.freeze({
   "03-marketing:page_seen": "NOT_LIVE_ROWS",
   "05-funnels:clarity-insights-sweeper": "NOT_REGISTERED_ROWS (foldCoverage makes it a nothing-to-judge row)",
   "06-briefs:morning-brief": "LEFT_TO_AUDIT (audit:briefs-sent)",
-  "16-nurture:n-05-repair-complete-nurture": "NOT_LIVE_ROWS",
-  "33-fulfillment:repair-stage-moves": "leftover: no deep check reads stage moves yet",
-  "33-fulfillment:repair.docs.complete": "leftover: no deep check reads the letter build yet"
+  "16-nurture:n-05-repair-complete-nurture": "NOT_LIVE_ROWS"
 });
 
 test("every slice row ends somewhere known: a fold target, or a written reason", async () => {

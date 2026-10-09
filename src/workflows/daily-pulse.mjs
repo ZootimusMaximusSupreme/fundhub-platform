@@ -11,10 +11,23 @@ import { db as defaultDb } from "../db.mjs";
 import { asStaff } from "../partners/rls.mjs";
 import { DEFAULT_BASE_URL, PULSE_CRON, defaultOrgId, runDailyPulse } from "../pulse/daily-pulse.mjs";
 import { GAP_LANES, runCoverageSlices, runGapLane } from "../pulse/coverage/run-slices.mjs";
+import { checkWorkflowRuns } from "../pulse/workflow-runs.mjs";
 import { MORNING_BRIEF_LIVE, runMorningBrief } from "../ops/morning-brief.mjs";
 import { formatChrisSms, textMorningBrief } from "../pulse/notify.mjs";
 
 export { PULSE_CRON };
+
+/** The bundled Inngest functions. src/workflows/index.mjs imports this file, so it is read at run time, not at load.
+ *  A failed import is null (the audit says "not given"), never an empty list (which would read as "no workflows"). */
+async function loadWorkflowFunctions() {
+  try {
+    const mod = await import("./index.mjs");
+    return Array.isArray(mod.functions) ? mod.functions : null;
+  } catch (err) {
+    console.error("[daily-pulse] could not load the workflow list:", String((err && err.message) || err).slice(0, 200));
+    return null;
+  }
+}
 
 function stepSkip(id, detail) {
   return {
@@ -89,6 +102,15 @@ export async function runCoverageSteps({ step, db, env = process.env, fetchImpl,
       rows.push(stepSkip(`${lane}:step`, `${lane} did not finish: ${(err && err.message) || err}`));
     }
   }
+  try {
+    rows.push(...await step.run("coverage-workflow-runs", async () => {
+      const functions = await loadWorkflowFunctions();
+      if (!functions) throw new Error("the workflow list could not be loaded");
+      return checkWorkflowRuns({ db, scope: staffScope, now: new Date(), functions });
+    }));
+  } catch (err) {
+    rows.push(stepSkip("coverage-workflow-runs", `Workflow rows did not finish: ${(err && err.message) || err}`));
+  }
   return rows;
 }
 
@@ -116,7 +138,8 @@ export async function handle({
     : null;
   let pulse;
   try {
-    pulse = await step.run("run-pulse", () => runDailyPulse({
+    pulse = await step.run("run-pulse", async () => runDailyPulse({
+    functions: db ? await loadWorkflowFunctions() : null,
     db,
     env,
     dryRun,

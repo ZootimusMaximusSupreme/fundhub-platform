@@ -338,7 +338,9 @@ test("when the real verifyNa is in the tree, its reasons read as one clean sente
     assert.equal(real, null);
     return;
   }
-  const eventsDb = (n) => ({ query: async () => ({ rows: [{ n }] }) });
+  const eventsDb = (n) => ({ query: async () => ({ rows: n > 0 ? [{ name: "x.y", n }] : [] }) });
+  // A's no-demand check ties the row to a real bundled function and ALL of its event triggers.
+  const realFn = { opts: { id: "real", triggers: [{ event: "x.y" }] } };
   const row = (id, na) => ({ id, kind: "coverage", group: "jobs", status: "na", detail: "No x.y event came since 10-06. Judged the day one comes.", na });
   const good = row("wf:real", { code: "no-demand", args: { names: ["x.y"], since: "2026-10-06T13:00:00.000Z" } });
   const bogus = row("wf:bogus", { code: "bogus", args: {} });
@@ -346,11 +348,11 @@ test("when the real verifyNa is in the tree, its reasons read as one clean sente
   fx.checks = [...fx.checks.filter((c) => c.status !== "na"), good, bogus];
 
   // events came in -> the no-demand claim is not true any more
-  const res = await run({ verifyNa: real.verifyNa, db: eventsDb(5) }, fx);
-  assert.equal(res.checks.find((c) => c.id === "wf:real").detail, "Said nothing to judge, but no x.y event since 10-06 is not true.");
-  assert.equal(res.checks.find((c) => c.id === "wf:bogus").detail, "Said nothing to judge, but the reason code \"bogus\" being one the computer knows is not true.");
+  const res = await run({ verifyNa: real.verifyNa, db: eventsDb(5), functions: [realFn] }, fx);
+  assert.equal(res.checks.find((c) => c.id === "wf:real").detail, "Said nothing to judge, but that is not true. 5 x.y events came since 10-06.");
+  assert.equal(res.checks.find((c) => c.id === "wf:bogus").detail, "Said nothing to judge, but that is not true. The reason code \"bogus\" is not one the computer knows.");
   // no event came in -> the first claim still holds and stays na
-  const held = await run({ verifyNa: real.verifyNa, db: eventsDb(0) }, fx);
+  const held = await run({ verifyNa: real.verifyNa, db: eventsDb(0), functions: [realFn] }, fx);
   assert.equal(held.checks.find((c) => c.id === "wf:real").status, "na");
   assert.equal(held.checks.find((c) => c.id === "wf:bogus").status, "skip");
 });
@@ -1061,9 +1063,12 @@ test("the manifest's registry, job and named ids are all in a real pulse run (dr
   assert.deepEqual(missing, []);
   assert.equal(m.byGroup.reg.length, new Set(PULSE_REGISTRY.map((r) => r.id)).size);
   assert.equal(m.byGroup.job.length, JOBS.length);
-  for (const id of ["health", "login", "apply", "funnel:roadmap-sales", "suggestions", "gate-relay", "recon", "unrecorded", "gmail"]) {
+  for (const id of ["health", "login", "apply", "funnel:roadmap-sales", "suggestions", "recon", "unrecorded", "gmail"]) {
     assert.ok(NAMED_PULSE_IDS.includes(id), id);
   }
+  // The server run has no gate-relay row (a Mac process), and the audit does not expect one.
+  assert.equal(NAMED_PULSE_IDS.includes("gate-relay"), false);
+  assert.equal(emitted.has("gate-relay"), false);
 });
 
 test("every real slice claim in the manifest is a row the slice pass really emits", async () => {

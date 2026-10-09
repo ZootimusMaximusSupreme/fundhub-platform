@@ -613,7 +613,9 @@ export const PULSE_REGISTRY = [
     path: key === "health" ? "/api/health?strict=1" : `/api/${key}`
   })),
   ...DESK_FILES.map((file) => ({
-    id: file.replace(/\.html$/, ""),
+    // A desk whose name is also an api key (contracts, journeys, lenders, soft-pull-approve) gets "-desk" so no
+    // two rows share one id. Two rows with one id hide a red behind a green on the morning report.
+    id: API_KEYS.includes(file.replace(/\.html$/, "")) ? `${file.replace(/\.html$/, "")}-desk` : file.replace(/\.html$/, ""),
     kind: "desk",
     path: `/app/${file}`
   })),

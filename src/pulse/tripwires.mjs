@@ -29,7 +29,7 @@ export const TRIPWIRE_IMPACTS = Object.freeze(["money", "customer"]);
 
 /** Ids that only prove a door answers or a clock ran. Never enough on their own. */
 export function isPingId(id) {
-  return /^(reg|job):/.test(String(id)) || ["health", "login", "apply"].includes(String(id));
+  return /^(reg|job|wf):/.test(String(id)) || ["health", "login", "apply"].includes(String(id));
 }
 
 export const TRIPWIRES = Object.freeze({
