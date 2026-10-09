@@ -13,7 +13,15 @@
 //   { id, kind, group, status: "na", detail: "<one 4th-grade sentence>", na: { code, args } }
 // `args` is a plain JSON object (numbers, strings, ISO times). Nothing else.
 //
-// Core codes carry their own verify(): it is a read (or a pure test on the bundled
+// The producer is not trusted. verifyNa() checks three things, in this order:
+//   1. the proof is complete (the code is on the list and its args are usable);
+//   2. the proof is about THIS row (a wf: row names its own workflow's events, a
+//      job: row names its own job's schedule), so a true claim about one thing
+//      cannot be copied onto another row;
+//   3. the claim is still true, by reading the database (or the bundled
+//      workflow list) again.
+//
+// Core codes carry their own look(): it is a read (or a pure test on the bundled
 // function list). The four lane codes carry the literal string verify: "lane".
 // The lane file that made the row answers for it (see ctx.laneNaVerify below), so
 // this file never imports a lane file and never copies a lane's query or minimum.
@@ -21,9 +29,15 @@
 // READ ONLY. Nothing here writes, sends, or calls out. No repo file is read at run
 // time: the bundled function list arrives as ctx.functions.
 
-import { lastMonthlyFire } from "./heartbeats.mjs";
+import { JOBS, lastMonthlyFire } from "./heartbeats.mjs";
 
 const PHOENIX = "America/Phoenix";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/* A no-demand claim looks back over a window. A window shorter than this is too
+   short to judge, so the claim fails. This is the verifier's own floor: it does
+   not trust the producer's `since`. (The producer today uses three days.) */
+export const NO_DEMAND_MIN_WINDOW_MS = DAY_MS;
 
 /* "10-09" — the month and day on Chris's clock. */
 function monthDay(value) {
@@ -51,6 +65,17 @@ function isText(v) {
   return typeof v === "string" && v.trim() !== "";
 }
 
+/* The clock the check runs on: ctx.now when it is a real Date, else the real now. */
+function clock(ctx) {
+  return ctx && ctx.now instanceof Date && !Number.isNaN(ctx.now.getTime()) ? ctx.now : new Date();
+}
+
+/* What follows `prefix` in the row id ("wf:s-09" -> "s-09"), or null. */
+function idAfter(row, prefix) {
+  const id = row && row.id;
+  return typeof id === "string" && id.startsWith(prefix) && id.length > prefix.length ? id.slice(prefix.length) : null;
+}
+
 /* The id of a bundled Inngest function. Real ones carry opts.id; tests may pass
    { id: "x" } or { opts: { id: "x" } }. */
 function fnIdOf(fn) {
@@ -63,104 +88,200 @@ function fnIdOf(fn) {
   return null;
 }
 
+/* An empty list is no list: a bundle with nothing in it is a broken bundle, and
+   "not in an empty list" must never read as "not switched on". */
+function hasList(functions) {
+  return Array.isArray(functions) && functions.length > 0;
+}
+
 function findFn(functions, id) {
-  if (!Array.isArray(functions)) return null;
+  if (!hasList(functions)) return null;
   return functions.find((fn) => fnIdOf(fn) === id) || null;
 }
 
-/* One read, through ctx.db, or through ctx.scope (the staff runner) when the
-   plain db is not there. Throws when neither is, and verifyNa turns that into
-   ok:false. */
+/* The event names that start a bundled function. */
+function eventsOf(fn) {
+  const triggers = fn && fn.opts && Array.isArray(fn.opts.triggers) ? fn.opts.triggers : [];
+  return triggers.filter((t) => t && isText(t.event)).map((t) => t.event);
+}
+
+/* One read, through ctx.scope (the staff runner) when it is there, else through
+   ctx.db. This is the order gap-handoff uses, and the order the producers use, so
+   the verifier sees the same rows the producer saw. Throws when neither is there,
+   and verifyNa turns that into ok:false. */
 async function readRows(ctx, text, params) {
-  if (ctx && ctx.db && typeof ctx.db.query === "function") {
-    return (await ctx.db.query(text, params)).rows;
-  }
   if (ctx && typeof ctx.scope === "function") {
     return ctx.scope(async (client) => (await client.query(text, params)).rows);
   }
+  if (ctx && ctx.db && typeof ctx.db.query === "function") {
+    return (await ctx.db.query(text, params)).rows;
+  }
   throw new Error("no database in this run");
+}
+
+/* The events table, counted by name since a time. One read answers EVERY
+   no-demand row that shares the run (ctx) and the window: about 60 workflow rows
+   cost one read, not 60. It asks for every name, so a name nobody listed cannot be
+   missed. The answer lives only as long as the ctx object, which the audit makes
+   fresh for each run. */
+const EVENT_COUNTS = new WeakMap();
+const EVENT_COUNTS_SQL = `SELECT name, count(*)::int AS n
+   FROM events
+  WHERE created_at > $1::timestamptz
+  GROUP BY name`;
+
+function eventCountsSince(ctx, sinceIso) {
+  let bySince = EVENT_COUNTS.get(ctx);
+  if (!bySince) {
+    bySince = new Map();
+    EVENT_COUNTS.set(ctx, bySince);
+  }
+  let pending = bySince.get(sinceIso);
+  if (!pending) {
+    pending = readRows(ctx, EVENT_COUNTS_SQL, [sinceIso]).then((rows) => {
+      const counts = new Map();
+      for (const r of rows) counts.set(String(r.name), Number(r.n) || 0);
+      return counts;
+    });
+    bySince.set(sinceIso, pending);
+  }
+  return pending;
 }
 
 /* `say` must never throw: a bad args object is caught by problem(), and the
    scorecard falls back to a plain sentence. Each say() still guards its inputs. */
 const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : null);
 
+const namesIn = (args = {}) => (Array.isArray(args.names) ? args.names.filter(isText) : []);
+
+/* A core condition. look(args, ctx) -> { held, found }:
+     held   true when the claim is still true;
+     found  one short sentence of what was seen instead, said when it is not.
+   verify() is the contract shape (args, ctx) -> boolean, built from look().
+   rowProblem(row, args, ctx) -> string|null is the check that the proof is about
+   THIS row. */
+function core({ say, claim, problem, rowProblem = null, look }) {
+  return Object.freeze({
+    say,
+    claim,
+    problem,
+    rowProblem,
+    look,
+    async verify(args, ctx) {
+      const seen = await look(args, ctx || {});
+      return !!seen && seen.held === true;
+    }
+  });
+}
+
+const LANE_FOUND = "The lane looked again and found something to judge.";
+
 export const NA_CONDITIONS = Object.freeze({
   /* An event workflow that nobody has handed work to. True when the `events`
      table holds no row for any of its trigger names since `since`. It reads
      `events`, never a run-recorder table, so a recorder that is switched off
-     cannot make every workflow look quiet. */
-  "no-demand": Object.freeze({
+     cannot make every workflow look quiet.
+
+     The row must be wf:<id>, the names must be exactly the event triggers of that
+     function in the bundled list, and the window must be at least a day long. */
+  "no-demand": core({
     say(args = {}) {
-      const names = Array.isArray(args.names) ? args.names.filter(isText) : [];
+      const names = namesIn(args);
       const what = names.length ? names.join(" or ") : "trigger";
       return `No ${what} event came since ${monthDay(args.since)}. Judged the day one comes.`;
     },
     claim(args = {}) {
-      const names = Array.isArray(args.names) ? args.names.filter(isText) : [];
-      return `no ${names.length ? names.join(" or ") : "trigger"} event since ${monthDay(args.since)}`;
+      const names = namesIn(args);
+      return `No ${names.length ? names.join(" or ") : "trigger"} event since ${monthDay(args.since)}.`;
     },
     problem(args) {
       if (!Array.isArray(args.names) || !args.names.length || !args.names.every(isText)) return "names is not a list of event names";
       if (!isTime(args.since)) return "since is not a time";
       return null;
     },
-    async verify(args, ctx) {
-      const rows = await readRows(
-        ctx,
-        `SELECT count(*)::int AS n
-           FROM events
-          WHERE name = ANY($1::text[])
-            AND created_at > $2::timestamptz`,
-        [args.names, new Date(args.since).toISOString()]
-      );
-      return Number(rows[0]?.n) === 0;
+    rowProblem(row, args, ctx) {
+      const wf = idAfter(row, "wf:");
+      if (wf === null) return "A no-demand reason only fits a workflow row.";
+      if (!hasList(ctx.functions)) return "There is no workflow list to check the event names against.";
+      const fn = findFn(ctx.functions, wf);
+      if (!fn) return `${wf} is not in the workflow list.`;
+      const real = eventsOf(fn);
+      const named = new Set(args.names);
+      const wrong = args.names.filter((n) => !real.includes(n));
+      if (wrong.length) return `${wrong.join(" and ")} ${wrong.length === 1 ? "does" : "do"} not start ${wf}.`;
+      const left = real.filter((n) => !named.has(n));
+      if (left.length) return `${wf} also starts on ${left.join(" and ")}. The row did not check ${left.length === 1 ? "it" : "them"}.`;
+      return null;
+    },
+    async look(args, ctx) {
+      const since = new Date(args.since);
+      if (since.getTime() > clock(ctx).getTime() - NO_DEMAND_MIN_WINDOW_MS) {
+        return { held: false, found: "The look-back window is under a day long. That is too short to judge." };
+      }
+      const counts = await eventCountsSince(ctx, since.toISOString());
+      const hits = [...new Set(args.names)]
+        .map((name) => [name, counts.get(name) || 0])
+        .filter(([, n]) => n > 0);
+      if (!hits.length) return { held: true, found: "" };
+      const total = hits.reduce((sum, [, n]) => sum + n, 0);
+      const said = hits.map(([name, n]) => `${n} ${name}`).join(" and ");
+      return { held: false, found: `${said} event${total === 1 ? "" : "s"} came since ${monthDay(since)}.` };
     }
   }),
 
   /* A bundled workflow that is turned off in code. True when the function in
-     ctx.functions has no triggers, or enabled is false. */
-  "no-trigger": Object.freeze({
+     ctx.functions has no triggers, or enabled is false. A wf:<id> row must name
+     its own id. */
+  "no-trigger": core({
     say() {
       return "Turned off in code (no trigger). Judged the day a trigger is put back.";
     },
     claim(args = {}) {
-      return `the workflow ${args.id || "named"} having no trigger`;
+      return `${args.id || "The workflow"} has no trigger.`;
     },
     problem(args) {
       return isText(args.id) ? null : "id is not a workflow id";
     },
-    async verify(args, ctx) {
-      const fn = findFn(ctx && ctx.functions, args.id);
-      if (!fn) return false;
+    rowProblem(row, args) {
+      const wf = idAfter(row, "wf:");
+      if (wf !== null && wf !== args.id) return `This row is for ${wf}, not ${args.id}.`;
+      return null;
+    },
+    async look(args, ctx) {
+      if (!hasList(ctx.functions)) return { held: false, found: "There is no workflow list to look at." };
+      const fn = findFn(ctx.functions, args.id);
+      if (!fn) return { held: false, found: `${args.id} is not in the workflow list.` };
       const triggers = fn.opts && fn.opts.triggers;
       const none = !Array.isArray(triggers) || triggers.length === 0;
       const off = !!(fn.opts && fn.opts.enabled === false);
-      return none || off;
+      if (none || off) return { held: true, found: "" };
+      return { held: false, found: `${args.id} has ${triggers.length} ${triggers.length === 1 ? "trigger" : "triggers"} and is switched on.` };
     }
   }),
 
   /* Built, but not switched on. True when the id is not in the bundled list. If
-     the list itself is missing, the answer is false: no list, no claim. */
-  "not-registered": Object.freeze({
+     the list itself is missing or empty, the answer is false: no list, no claim. */
+  "not-registered": core({
     say(args = {}) {
       return `${args.id || "This workflow"} is built but not switched on (it is not in the workflow list). Judged the day it is switched on.`;
     },
     claim(args = {}) {
-      return `the workflow ${args.id || "named"} being left out of the bundle`;
+      return `${args.id || "The workflow"} is not in the workflow list.`;
     },
     problem(args) {
       return isText(args.id) ? null : "id is not a workflow id";
     },
-    async verify(args, ctx) {
-      if (!ctx || !Array.isArray(ctx.functions)) return false;
-      return findFn(ctx.functions, args.id) === null;
+    async look(args, ctx) {
+      if (!hasList(ctx.functions)) return { held: false, found: "There is no workflow list to check against." };
+      if (findFn(ctx.functions, args.id) === null) return { held: true, found: "" };
+      return { held: false, found: `${args.id} is in the workflow list.` };
     }
   }),
 
   /* A monthly job whose last due time came before the receipts began. True when
-     the oldest job receipt is later than the last time the cron was due. */
-  "monthly-not-due": Object.freeze({
+     the oldest job receipt is later than the last time the cron was due. The row
+     must be job:<name>, and the cron must be that job's cron on the job list. */
+  "monthly-not-due": core({
     say(args = {}, now = new Date()) {
       const last = lastMonthlyFire(args.cron, now);
       let when = "the next time it is due";
@@ -172,20 +293,33 @@ export const NA_CONDITIONS = Object.freeze({
       return `Runs once a month. Its last due time came before receipts began. First judged ${when}.`;
     },
     claim() {
-      return "the job receipts having begun after its last due time";
+      return "The first job receipt came after the last due time.";
     },
     problem(args) {
       if (!isText(args.cron)) return "cron is not a schedule";
       return lastMonthlyFire(args.cron) ? null : "cron is not a monthly schedule";
     },
-    async verify(args, ctx) {
-      const now = ctx && ctx.now instanceof Date ? ctx.now : new Date();
-      const last = lastMonthlyFire(args.cron, now);
-      if (!last) return false;
+    rowProblem(row, args) {
+      const name = idAfter(row, "job:");
+      if (name === null) return "A monthly reason only fits a job row.";
+      const job = JOBS.find((j) => j.job === name);
+      if (!job) return `${name} is not on the job list.`;
+      if (String(args.cron).trim() !== job.cron) {
+        return `The schedule on this row (${args.cron}) is not the real schedule of ${name} (${job.cron}).`;
+      }
+      return null;
+    },
+    async look(args, ctx) {
+      const last = lastMonthlyFire(args.cron, clock(ctx));
+      if (!last) return { held: false, found: "The schedule is not a monthly one." };
       const rows = await readRows(ctx, `SELECT min(finished_at) AS first_at FROM job_heartbeats`, []);
       const first = rows[0]?.first_at ? new Date(rows[0].first_at) : null;
-      if (!first || Number.isNaN(first.getTime())) return false;
-      return first.getTime() > last.getTime();
+      if (!first || Number.isNaN(first.getTime())) return { held: false, found: "No job receipt is on file at all." };
+      if (first.getTime() > last.getTime()) return { held: true, found: "" };
+      return {
+        held: false,
+        found: `The first job receipt is from ${monthDay(first)}. The job was due ${monthDay(last)}, so a run should be there.`
+      };
     }
   }),
 
@@ -198,7 +332,7 @@ export const NA_CONDITIONS = Object.freeze({
       return "No ad is running. Judged the day one runs.";
     },
     claim() {
-      return "no ad running";
+      return "No ad is running.";
     },
     problem() {
       return null;
@@ -219,7 +353,7 @@ export const NA_CONDITIONS = Object.freeze({
       return `Too few ${what}${span} to judge. Judged the day there are enough.`;
     },
     claim() {
-      return "the traffic being too low to judge";
+      return "The traffic is too low to judge.";
     },
     problem() {
       return null;
@@ -234,7 +368,7 @@ export const NA_CONDITIONS = Object.freeze({
       return `No real roadmap lead in ${span}. Judged the day one comes.`;
     },
     claim() {
-      return "no real lead in the window";
+      return "There is no real lead in the window.";
     },
     problem() {
       return null;
@@ -248,7 +382,7 @@ export const NA_CONDITIONS = Object.freeze({
       return `${what} is not connected, so there is no sync to be late. Judged the day it is connected.`;
     },
     claim(args = {}) {
-      return `${isText(args.what) ? args.what : "YouTube"} being unconnected`;
+      return `${isText(args.what) ? args.what : "YouTube"} is not connected.`;
     },
     problem() {
       return null;
@@ -291,35 +425,47 @@ export function naSay(na, now = new Date()) {
 const fail = (reason) => ({ ok: false, reason });
 
 /* verifyNa — the one door the audit uses.
-   Returns { ok, reason }. `reason` is the CONDITION in a few words, so the audit can
-   write "Said nothing to judge, but <reason> is not true."
-   Never throws. A thrown error, an unknown code, or missing args is ok:false.
+   Returns { ok, reason }. Never throws. A thrown error, an unknown code, missing
+   args, a proof that is about a different row, or a claim that is no longer true
+   is ok:false.
+
+   `reason` is one short sentence:
+     ok:false  what was found instead ("3 round.started events came since 10-05.").
+               The audit writes: Said nothing to judge, but "<row detail>" is not
+               true. <reason>
+     ok:true   the claim that still holds ("No round.started event since 10-05.").
+
    ctx = { db, scope, now, functions, laneNaVerify } */
-export async function verifyNa(row, ctx = {}) {
+export async function verifyNa(row, ctx) {
   try {
+    const c = ctx && typeof ctx === "object" ? ctx : {};
     const na = row && row.na;
-    if (!isPlainObject(na)) return fail("the row giving a reason the computer can check");
-    if (!isNaCode(na.code)) return fail(`the reason code ${JSON.stringify(String(na.code))} being one the computer knows`);
-    if (!isPlainObject(na.args)) return fail(`the proof for "${na.code}" being a plain list of facts`);
+    if (!isPlainObject(na)) return fail("The row gave no reason the computer can check.");
+    if (!isNaCode(na.code)) return fail(`The reason code ${JSON.stringify(String(na.code))} is not one the computer knows.`);
+    if (!isPlainObject(na.args)) return fail(`The proof for "${na.code}" is not a plain list of facts.`);
     const cond = NA_CONDITIONS[na.code];
     const problem = cond.problem(na.args);
-    if (problem) return fail(`the proof for "${na.code}" being complete (${problem})`);
-    const claim = cond.claim(na.args);
+    if (problem) return fail(`The proof for "${na.code}" is not complete: ${problem}.`);
 
     if (cond.verify === "lane") {
       const sliceId = (row && row.sliceId) ||
         (typeof row?.id === "string" && row.id.includes(":") ? row.id.split(":")[0] : null);
-      if (!sliceId) return fail("the row saying which lane made it");
-      if (!ctx || typeof ctx.laneNaVerify !== "function") return fail("the lane being able to re-check it");
-      const held = await ctx.laneNaVerify(sliceId, na.code, na.args);
-      if (held === undefined) return fail("the lane being able to re-check it");
-      return held === true ? { ok: true, reason: claim } : fail(claim);
+      if (!sliceId) return fail("The row does not say which lane made it.");
+      if (typeof c.laneNaVerify !== "function") return fail("There is no way to ask the lane to check this again.");
+      const held = await c.laneNaVerify(sliceId, na.code, na.args);
+      if (held === undefined) return fail("The lane has no way to check this again.");
+      return held === true ? { ok: true, reason: cond.claim(na.args) } : fail(LANE_FOUND);
     }
 
-    const held = await cond.verify(na.args, ctx || {});
-    return held === true ? { ok: true, reason: claim } : fail(claim);
+    // The proof must be about this row, not just true about something.
+    const mismatch = cond.rowProblem ? cond.rowProblem(row, na.args, c) : null;
+    if (mismatch) return fail(mismatch);
+
+    const seen = await cond.look(na.args, c);
+    if (seen && seen.held === true) return { ok: true, reason: cond.claim(na.args) };
+    return fail((seen && seen.found) || "The reason is not true.");
   } catch (err) {
-    const why = String((err && err.message) || err).slice(0, 80);
-    return fail(`the condition being readable (the read failed: ${why})`);
+    const why = String((err && err.message) || err).slice(0, 80).replace(/\.+$/, "");
+    return fail(`The read failed: ${why}.`);
   }
 }

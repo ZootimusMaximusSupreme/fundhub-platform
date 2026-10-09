@@ -143,9 +143,9 @@ describe("migration 477 against a real Postgres", { skip: SKIP }, () => {
     });
   });
 
-  test("the app role can read, add and change a card, can write na_count, and cannot delete one", async () => {
+  test("the app role can read, add and change a card, can write na_count, and cannot delete one", async (t) => {
     const has = (await pool().query(`SELECT 1 FROM pg_roles WHERE rolname = 'fundhub_app'`)).rowCount;
-    if (!has) return;
+    if (!has) { t.skip("no fundhub_app role in this database, so its privileges were not checked"); return; }
     const p = (await pool().query(
       `SELECT has_table_privilege('fundhub_app', 'public.pulse_scorecards', 'SELECT') AS sel,
               has_table_privilege('fundhub_app', 'public.pulse_scorecards', 'INSERT') AS ins,
