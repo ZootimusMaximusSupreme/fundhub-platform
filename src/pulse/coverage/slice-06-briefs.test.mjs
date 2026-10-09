@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   BRIEF_TZ,
@@ -40,6 +41,16 @@ test("slice 06-briefs: Arizona crons are 6:00 a.m. and 9:00 p.m.", () => {
   assert.ok(evening);
   assert.equal(morning.after, "daily-pulse");
   assert.equal(evening.after, null);
+});
+
+test("slice 06-briefs: a brief that is not on the pulse job list is not watched or wired", () => {
+  const stray = { ...CHECKS[0], id: "stray-brief", jobId: "no-such-job", workflowFile: "src/workflows/no-such.mjs" };
+  assert.deepEqual(wired([stray]), [{ id: "stray-brief", wired: false }]);
+});
+
+test("slice 06-briefs: reads no repo file at run time, so it loads on the server", () => {
+  const code = fs.readFileSync(new URL("./slice-06-briefs.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(code, /node:fs|readFileSync|readdirSync|existsSync/);
 });
 
 test("slice 06-briefs: morning and evening briefs are wired end-to-end", () => {

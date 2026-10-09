@@ -51,6 +51,15 @@ test("slice 11-hiring: workflow files exist and crons match", () => {
   assert.equal(OUTREACH_CRON, "*/30 * * * *");
 });
 
+test("slice 11-hiring: a workflow id that is not in the bundled list is not registered", () => {
+  assert.equal(workflowInIndex("not-a-real-workflow"), false);
+});
+
+test("slice 11-hiring: reads no repo file at run time, so it loads on the server", () => {
+  const code = fs.readFileSync(path.join(HERE, "slice-11-hiring.mjs"), "utf8");
+  assert.doesNotMatch(code, /node:fs|readFileSync|readdirSync|existsSync/);
+});
+
 test("slice 11-hiring: both workflows are in index.mjs; neither is in MACHINE_CHECKS yet", () => {
   assert.equal(workflowInIndex("hiring-bench-sweeper"), true);
   assert.equal(workflowInIndex("hiring-outreach-cadence"), true);

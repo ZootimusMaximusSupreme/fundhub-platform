@@ -2,54 +2,62 @@
 // A GET desk is red when its morning ping is missing from PULSE_REGISTRY.
 // Scoped to routed employee/client desks: pipeline, funding, portal,
 // contracts, hiring, and FinanceOS money tabs.
-
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+//
+// No repo files are read at run time (CLAUDE.md section 12). The desk lists
+// below are a copy of what public/app/shell.js says, made at build time. The
+// test slice-23-pages.test.mjs reads shell.js and the folder and fails the
+// moment either list drifts, so the copy cannot go stale unseen.
 
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 
 export const SLICE_ID = "23-pages";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const APP_DIR = path.resolve(HERE, "../../../public/app");
-const SHELL_SRC = fs.readFileSync(path.join(APP_DIR, "shell.js"), "utf8");
-
 const SCHEDULE = "daily";
 
-/** `var NAME = [ "a.html", … ];` lifted from public/app/shell.js. */
-function shellList(name) {
-  const m = SHELL_SRC.match(new RegExp(`var\\s+${name}\\s*=\\s*\\[([\\s\\S]*?)\\];`));
-  if (!m) return [];
-  return (m[1].match(/"[^"]*\.html"/g) || []).map((s) => JSON.parse(s));
-}
+/** `var ALL = [...]` in public/app/shell.js: every desk the shell guards. */
+export const SHELL_ALL = Object.freeze([
+  "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "pipeline.html",
+  "client-control-panel.html", "messaging.html", "calendar.html", "documents.html",
+  "company-brain.html", "ops-admin.html", "galaxy.html", "agent-editor.html",
+  "automations.html", "products-commissions.html", "staff-teams.html", "csm-queue.html",
+  "inquiry-remover.html", "affiliate.html", "client-portal.html", "partner-galaxy.html",
+  "brand-studio.html", "partner-training.html", "campaign-manager.html", "social-studio.html",
+  "creative-factory.html", "hiring.html", "marketing-command-center.html", "finance-os.html",
+  "journeys.html", "contracts.html", "lenders.html", "content-admin.html", "consent-capture.html"
+]);
 
-/** Sidebar rows under one `data-fh-section` group (SIDEBAR_HTML escapes quotes). */
-function sidebarSectionDesks(sectionId) {
-  const marker = `data-fh-section=\\"${sectionId}\\"`;
-  const start = SHELL_SRC.indexOf(marker);
-  if (start === -1) return [];
-  const chunk = SHELL_SRC.slice(start, start + 6000);
-  const end = chunk.indexOf("</div></div>");
-  const part = end === -1 ? chunk : chunk.slice(0, end);
-  return [...part.matchAll(/href=\\"([^\\"]+\.html)\\"/g)].map((match) => match[1]);
-}
+/** `var STAFF_MONEY = [...]` in public/app/shell.js: the FinanceOS money tabs. */
+export const SHELL_STAFF_MONEY = Object.freeze([
+  "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
+  "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html",
+  "money-banks.html", "money-strategy.html", "money-fundability.html", "money-next.html",
+  "money-helper.html", "money-transfers.html", "money-declines.html", "money-alerts.html",
+  "money-vault.html"
+]);
 
-const ON_DISK = new Set(fs.readdirSync(APP_DIR).filter((name) => name.endsWith(".html")));
-const ALL = new Set(shellList("ALL"));
-const STAFF_MONEY = shellList("STAFF_MONEY");
+/** The desks listed under each `data-fh-section` group of the shell sidebar. */
+export const SIDEBAR_SECTION_DESKS = Object.freeze({
+  sales: Object.freeze([
+    "pipeline.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html"
+  ]),
+  funding: Object.freeze(["lenders.html", "client-control-panel.html", "finance-os.html"]),
+  portals: Object.freeze(["client-portal.html", "affiliate.html"])
+});
+
+const ALL = new Set(SHELL_ALL);
+const STAFF_MONEY = [...SHELL_STAFF_MONEY];
 
 /** Shell-guarded desks only — not orphan HTML on disk. */
 export function isRoutedDesk(file) {
-  return ON_DISK.has(file) && (ALL.has(file) || STAFF_MONEY.includes(file));
+  return ALL.has(file) || STAFF_MONEY.includes(file);
 }
 
 /** Routed desks in the six pulse page lanes (deduped, sorted). */
 export function scopedRoutedDesks() {
   const files = new Set([
-    ...sidebarSectionDesks("sales"),
-    ...sidebarSectionDesks("funding"),
-    ...sidebarSectionDesks("portals"),
+    ...SIDEBAR_SECTION_DESKS.sales,
+    ...SIDEBAR_SECTION_DESKS.funding,
+    ...SIDEBAR_SECTION_DESKS.portals,
     "contracts.html",
     "hiring.html",
     ...STAFF_MONEY

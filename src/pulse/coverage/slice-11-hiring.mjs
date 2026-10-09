@@ -3,10 +3,10 @@
 // is red when it is missing from src/workflows/index.mjs or has no MACHINE_CHECKS
 // row (GET registry rows do not watch cron jobs).
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+// No repo files are read at run time (CLAUDE.md section 12): the bundled
+// function list is imported, so this slice loads on the server too.
 
+import { functions } from "../../workflows/index.mjs";
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import { MACHINE_CHECKS } from "../machine.mjs";
 import {
@@ -25,24 +25,12 @@ const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
 /** GET hiring/* keys present in PULSE_REGISTRY (cron sweepers are not registry rows). */
 export const hiringRegistryDoorCount = [...listed].filter((k) => k.startsWith("hiring/")).length;
 
-const INDEX_SRC = readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "../../workflows/index.mjs"),
-  "utf8"
-);
-
-/** Export symbols for workflows registered via import in index.mjs (not inline createFunction). */
-const INDEX_EXPORT_SYMBOL = {
-  "hiring-bench-sweeper": "hiringBenchSweeper",
-  "hiring-outreach-cadence": "hiringOutreachCadence"
-};
+/** Inngest function ids in the bundled list (src/workflows/index.mjs). */
+const registeredIds = new Set(functions.map((fn) => fn && fn.opts && fn.opts.id).filter(Boolean));
 
 /** True when the workflow id is registered in src/workflows/index.mjs. */
 export function workflowInIndex(id) {
-  if (INDEX_SRC.includes(`id: "${id}"`) || INDEX_SRC.includes(`id: '${id}'`)) {
-    return true;
-  }
-  const sym = INDEX_EXPORT_SYMBOL[id];
-  return Boolean(sym && INDEX_SRC.includes(sym));
+  return registeredIds.has(String(id));
 }
 
 const machineWorkflowFiles = new Set(MACHINE_CHECKS.map((row) => row.file));

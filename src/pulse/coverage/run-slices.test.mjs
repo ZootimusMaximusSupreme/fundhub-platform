@@ -17,6 +17,7 @@ import {
   runGapLane,
   tally
 } from "./run-slices.mjs";
+import { foldCoverage } from "./link.mjs";
 import * as pulseSlice from "./slice-02-daily-pulse.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -360,4 +361,293 @@ test("the default loaders use the named list, not a folder scan the live bundle 
   assert.match(src, /dir \? folderEntries\(dir, \/\^slice-/);
   assert.match(src, /dir \? folderEntries\(dir, \/\^gap-/);
   assert.match(src, /from "\.\/modules\.mjs"/);
+});
+
+// ---- fold: a claim names the real row that covers it ------------------------------------
+
+function fakeFn(id, triggers) {
+  return { opts: { id, triggers }, id: () => id };
+}
+
+test("a registry claim carries foldInto and is still not checked until the pulse folds it", async () => {
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "auth/login", schedule: "daily", proof: "PASS", alreadyInRegistry: true },
+      { id: "pipeline.html", schedule: "daily", proof: "PASS", alreadyInRegistry: true }
+    ],
+    mod: {}
+  }];
+  const rows = await runCoverageSlices({ modules, now: NOW, functions: [] });
+  assert.equal(rows[0].foldInto, "reg:auth/login");
+  assert.equal(rows[1].foldInto, "reg:pipeline");
+  for (const row of rows) {
+    assert.equal(row.status, NOT_CHECKED, "the claim says nothing by itself");
+    assert.match(row.detail, /Slice note: PASS/);
+  }
+});
+
+test("a claim that points at nothing says so, and carries no foldInto", async () => {
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "no-such-door", schedule: "daily", proof: "PASS", alreadyInRegistry: true },
+      { id: "a-plain-gap", schedule: "daily", proof: "Add route key a-plain-gap.", alreadyInRegistry: false }
+    ],
+    mod: {}
+  }];
+  const rows = await runCoverageSlices({ modules, now: NOW, functions: [] });
+  assert.equal(rows[0].foldInto, undefined);
+  assert.equal(rows[0].status, NOT_CHECKED);
+  assert.match(rows[0].detail, /^Claims covered, but no check ran for no-such-door\./);
+  // A row that never claimed to be covered keeps its old words.
+  assert.equal(rows[1].foldInto, undefined);
+  assert.match(rows[1].detail, /No last-success time in the database/);
+});
+
+test("a cron on the job list folds into its job row, and a real red is never folded away", async () => {
+  const job = JOBS.find((row) => row.job === "message-dispatch-sweeper");
+  const limit = STALE_MULTIPLE * cronIntervalMs(job.cron);
+  const modules = [{ sliceId: "t", CHECKS: [{ id: job.job, schedule: "5m", proof: "catalog" }], mod: {} }];
+
+  const fresh = new Date(NOW.getTime() - 60 * 1000);
+  const freshDb = fakeDb([[/job_heartbeats/i, [{ job: job.job, last_at: fresh, last_outcome: "ok", last_error: null }]]]);
+  const freshRows = await runCoverageSlices({ db: freshDb, modules, now: NOW, functions: [] });
+  assert.equal(freshRows[0].status, "PASS");
+  assert.equal(freshRows[0].foldInto, `job:${job.job}`);
+
+  const stale = new Date(NOW.getTime() - limit - 1000);
+  const staleDb = fakeDb([[/job_heartbeats/i, [{ job: job.job, last_at: stale, last_outcome: "ok", last_error: null }]]]);
+  const staleRows = await runCoverageSlices({ db: staleDb, modules, now: NOW, functions: [] });
+  assert.equal(staleRows[0].status, "FAIL");
+  assert.equal(staleRows[0].foldInto, undefined, "a real red stays on the scorecard");
+
+  const errDb = fakeDb([[/job_heartbeats/i, [{ job: job.job, last_at: fresh, last_outcome: "error", last_error: "boom" }]]]);
+  const errRows = await runCoverageSlices({ db: errDb, modules, now: NOW, functions: [] });
+  assert.equal(errRows[0].status, "FAIL");
+  assert.equal(errRows[0].foldInto, undefined);
+});
+
+test("an event workflow folds into its wf: row, but a cron workflow does not", async () => {
+  const functions = [
+    fakeFn("evt-flow", [{ event: "a.b" }]),
+    fakeFn("quiet-flow", []),
+    fakeFn("clock-flow", [{ cron: "0 * * * *" }])
+  ];
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "evt-flow", schedule: "a.b", proof: "Event a.b." },
+      { id: "quiet-flow", schedule: "unwired", proof: "no trigger" },
+      { id: "clock-flow", schedule: "daily", proof: "Event x.y." }
+    ],
+    mod: {}
+  }];
+  const rows = await runCoverageSlices({ modules, now: NOW, functions });
+  assert.equal(rows[0].foldInto, "wf:evt-flow");
+  assert.match(rows[0].detail, /not a cron/i, "an event row keeps its words");
+  assert.equal(rows[1].foldInto, "wf:quiet-flow");
+  assert.equal(rows[2].foldInto, undefined, "a cron function is a job: row, not a wf: row");
+  // With no function list (the import failed) nothing folds into a workflow.
+  const none = await runCoverageSlices({ modules, now: NOW, functions: null });
+  assert.equal(none[0].foldInto, undefined);
+});
+
+test("a payout row keeps its own evaluation when its stamp returns a time, and folds when it does not", async () => {
+  const modules = [{
+    sliceId: "pay",
+    CHECKS: [{ id: "affiliate-payout-run", schedule: "monthly", proof: "payout stamp" }],
+    mod: {
+      PAYOUT_ID: "affiliate-payout-run",
+      AFFILIATE_PAYOUT_LAST_RUN_SQL: "SELECT max(created_at) AS last_run FROM affiliate_payouts"
+    }
+  }];
+  const recent = new Date(NOW.getTime() - 10 * 24 * 60 * 60 * 1000);
+  const withStamp = fakeDb([[/job_heartbeats/i, []], [/affiliate_payouts/i, [{ last_run: recent }]]]);
+  const own = await runCoverageSlices({ db: withStamp, modules, now: NOW, functions: [] });
+  assert.equal(own[0].status, "PASS", "the stamp is real proof");
+  assert.equal(own[0].foldInto, undefined);
+
+  const noStamp = fakeDb([[/job_heartbeats/i, []], [/affiliate_payouts/i, [{ last_run: null }]]]);
+  const folded = await runCoverageSlices({ db: noStamp, modules, now: NOW, functions: [] });
+  assert.equal(folded[0].status, NOT_CHECKED);
+  assert.equal(folded[0].foldInto, "job:affiliate-payout-run");
+});
+
+test("the agent read and the marketing clock reads keep their own evaluation", async () => {
+  const agentModules = [{
+    sliceId: pulseSlice.SLICE_ID,
+    CHECKS: pulseSlice.CHECKS.filter((row) => row.id === "ag-07-cron-daily-pulse"),
+    mod: pulseSlice
+  }];
+  const recent = new Date("2026-10-06T18:00:00Z");
+  const agentDb = fakeDb([[/agent_runs/i, [{ created_at: recent, outcome: "pass", mode: "live", trigger_event: "cron.daily-pulse" }]]]);
+  const agentRows = await runCoverageSlices({ db: agentDb, modules: agentModules, now: NOW, functions: [] });
+  assert.equal(agentRows[0].status, "PASS");
+  assert.equal(agentRows[0].foldInto, undefined);
+
+  const marketing = [{
+    sliceId: "m",
+    CHECKS: [{ id: "clock", schedule: "15m", proof: "PASS when max(last_at) is fresh" }],
+    mod: { checkMarketing: async () => [{ id: "clock", status: "PASS", detail: "beat 3 min ago" }] }
+  }];
+  const rows = await runCoverageSlices({
+    modules: marketing, now: NOW, functions: [], scope: async (fn) => fn({ async query() { return { rows: [] }; } })
+  });
+  assert.equal(rows[0].status, "PASS");
+  assert.equal(rows[0].foldInto, undefined);
+});
+
+test("morning-brief keeps its old words and is not folded: the self-audit owns that claim", async () => {
+  const loaded = await loadSliceModules();
+  const briefs = loaded.filter((item) => item.sliceId === "06-briefs");
+  const rows = await runCoverageSlices({ db: fakeDb([[/job_heartbeats/i, []]]), modules: briefs, now: NOW });
+  const morning = rows.find((row) => row.checkId === "morning-brief");
+  assert.equal(morning.foldInto, undefined);
+  assert.equal(morning.status, NOT_CHECKED);
+  assert.match(morning.detail, /No last-success time in the database for this cron/);
+  // The evening brief IS a job on the job list, so it folds into that row.
+  assert.equal(rows.find((row) => row.checkId === "evening-brief").foldInto, "job:evening-brief");
+});
+
+test("a switched-off workflow stays a plain unchecked row in the runner; the fold turns it into nothing-to-judge", async () => {
+  const loaded = await loadSliceModules();
+  const funnels = loaded.filter((item) => item.sliceId === "05-funnels");
+  const rows = await runCoverageSlices({ modules: funnels, now: NOW });
+  const clarity = rows.find((row) => row.checkId === "clarity-insights-sweeper");
+  assert.equal(clarity.status, NOT_CHECKED);
+  assert.equal(clarity.foldInto, undefined);
+  assert.equal(clarity.na, undefined);
+  const out = foldCoverage(rows);
+  assert.deepEqual(out.notRegistered, ["05-funnels:clarity-insights-sweeper"]);
+  const folded = out.checks.find((row) => row.checkId === "clarity-insights-sweeper");
+  assert.equal(folded.status, "na");
+  assert.deepEqual(folded.na, { code: "not-registered", args: { id: "clarity-insights-sweeper" } });
+});
+
+test("tally counts nothing-to-judge rows on their own", () => {
+  const counts = tally([
+    { status: "PASS" }, { status: "FAIL" }, { status: NOT_CHECKED }, { status: "na" }, { status: "na" }, { status: "skip" }
+  ]);
+  assert.deepEqual(counts, { total: 6, pass: 1, red: 1, notChecked: 1, na: 2, other: 1 });
+});
+
+// ---- gap rows can say "nothing to judge", with a code ---------------------------------------
+
+test("a gap lane row with status na keeps its code and arguments, and nothing else gets through", async () => {
+  const rows = await runCoverageSlices({
+    modules: [],
+    now: NOW,
+    gaps: [
+      {
+        sliceId: "gap-a",
+        file: "gap-a.mjs",
+        gapChecks: async () => [
+          { id: "idle", status: "na", detail: "No ad is running.", na: { code: "no-running-ad", args: { running: 0, since: "2026-10-08T00:00:00.000Z", fn() {} } } },
+          { id: "no-code", status: "na", detail: "Said nothing to judge, gave no reason." },
+          { id: "bad-code", status: "na", detail: "x", na: { code: "  ", args: {} } },
+          { id: "not-an-object", status: "na", detail: "x", na: "no-running-ad" },
+          { id: "weird", status: "idle-ish", detail: "nope", na: { code: "no-running-ad", args: {} } },
+          { id: "plain", status: "PASS", detail: "fine", na: { code: "no-running-ad", args: {} } }
+        ]
+      }
+    ]
+  });
+  const byCheck = new Map(rows.map((row) => [row.checkId, row]));
+  assert.equal(byCheck.get("idle").status, "na");
+  assert.deepEqual(byCheck.get("idle").na, { code: "no-running-ad", args: { running: 0, since: "2026-10-08T00:00:00.000Z" } });
+  assert.equal(byCheck.get("idle").sliceId, "gap-a");
+  assert.equal(byCheck.get("idle").checkId, "idle");
+  assert.equal(byCheck.get("idle").id, "gap-a:idle");
+  // No usable code: still "na" on this row; the scorecard lands it as not checked.
+  for (const id of ["no-code", "bad-code", "not-an-object"]) {
+    assert.equal(byCheck.get(id).status, "na", id);
+    assert.equal(byCheck.get(id).na, undefined, id);
+  }
+  // A status this pulse does not use is still a skip, and a code never rides on a PASS.
+  assert.equal(byCheck.get("weird").status, "skip");
+  assert.equal(byCheck.get("weird").na, undefined);
+  assert.equal(byCheck.get("plain").status, "PASS");
+  assert.equal(byCheck.get("plain").na, undefined);
+});
+
+test("the runner never reads a repo file to find a fold target", () => {
+  const src = fs.readFileSync(RUNNER, "utf8");
+  assert.match(src, /from "\.\/link\.mjs"/);
+  // folderEntries is the one fs use, and only the tests pass it a folder.
+  assert.equal(src.split("fs.readdirSync").length - 1, 1);
+  assert.doesNotMatch(fs.readFileSync(path.join(HERE, "link.mjs"), "utf8"), /node:fs|readFileSync|readdirSync/);
+});
+
+// ---- the workflow list did not load: say so on the rows that needed it ------------------------
+
+test("a workflow list that fails to load is named on the rows that needed it, and on no others", async () => {
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "evt-flow", schedule: "a.b", proof: "Event a.b." },
+      { id: "auth/login", schedule: "daily", proof: "PASS", alreadyInRegistry: true },
+      { id: "message-dispatch-sweeper", schedule: "5m", proof: "catalog" },
+      { id: "no-such-door", schedule: "daily", proof: "PASS", alreadyInRegistry: true },
+      { id: "a-plain-gap", schedule: "daily", proof: "Add route key a-plain-gap.", alreadyInRegistry: false }
+    ],
+    mod: {}
+  }];
+  const broke = await runCoverageSlices({
+    modules,
+    now: NOW,
+    loadFunctions: async () => { throw new Error("Cannot find module './nope.mjs'"); }
+  });
+  const [evt, door, job, claim, gap] = broke;
+  // Rows that could have been a workflow row start with the cause.
+  assert.match(evt.detail, /^Could not load the workflow list \(Cannot find module '\.\/nope\.mjs'\)\. /);
+  assert.equal(evt.status, NOT_CHECKED);
+  assert.equal(evt.foldInto, undefined);
+  assert.match(claim.detail, /^Could not load the workflow list \(.*\)\. Claims covered, but no check ran for no-such-door\./);
+  assert.match(gap.detail, /^Could not load the workflow list \(/);
+  // Rows that never needed the list keep their words and their fold.
+  assert.equal(door.foldInto, "reg:auth/login");
+  assert.doesNotMatch(door.detail, /workflow list/);
+  assert.equal(job.foldInto, "job:message-dispatch-sweeper");
+  assert.doesNotMatch(job.detail, /workflow list/);
+
+  // The list loads: no cause on any row, and the event row folds.
+  const fine = await runCoverageSlices({
+    modules,
+    now: NOW,
+    loadFunctions: async () => ({ functions: [fakeFn("evt-flow", [{ event: "a.b" }])] })
+  });
+  assert.equal(fine[0].foldInto, "wf:evt-flow");
+  assert.ok(fine.every((row) => !/workflow list/.test(row.detail)));
+
+  // Turned off on purpose (null): not an error, so nothing is said.
+  const off = await runCoverageSlices({ modules, now: NOW, functions: null });
+  assert.ok(off.every((row) => !/workflow list/.test(row.detail)));
+
+  // An index that exports no list is also named.
+  const empty = await runCoverageSlices({ modules, now: NOW, loadFunctions: async () => ({}) });
+  assert.match(empty[0].detail, /^Could not load the workflow list \(src\/workflows\/index\.mjs does not export a functions list\)\./);
+});
+
+test("a row that says it is not covered is not folded into a registry ping that shares its name", async () => {
+  const modules = [{
+    sliceId: "t",
+    CHECKS: [
+      { id: "contracts", schedule: "daily", proof: "Add contracts.html to DESK_FILES.", alreadyInRegistry: false },
+      { id: "lenders", schedule: "daily", proof: "PASS" }
+    ],
+    mod: {}
+  }];
+  const rows = await runCoverageSlices({ modules, now: NOW, functions: [] });
+  for (const row of rows) {
+    assert.equal(row.foldInto, undefined, row.id);
+    assert.equal(row.status, NOT_CHECKED, row.id);
+  }
+  // The same id, saying it is covered, folds.
+  const claimed = await runCoverageSlices({
+    modules: [{ sliceId: "t", CHECKS: [{ id: "contracts", schedule: "daily", proof: "PASS", alreadyInRegistry: true }], mod: {} }],
+    now: NOW,
+    functions: []
+  });
+  assert.equal(claimed[0].foldInto, "reg:contracts");
 });
