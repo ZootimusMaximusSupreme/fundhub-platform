@@ -82,14 +82,40 @@ Both: row security on, staff only, same as `job_heartbeats`.
 
 Model: Sonnet for 1 and 2 (back end), Opus for 0 and 3 (contract, routine, rule). Current: Opus. Match.
 
-## Status
+## Status — 2026-10-09 05:35 Arizona
 
 | # | Status |
 |---|---|
-| 0 | claimed 2026-10-09 ~03:00 — Chris said go. Grounding (6 readers) → contract spec (Opus) → critic (Opus). Output: ops/workflows/pulse-layer-2026-10-09-brief/*.md and pulse-layer-2026-10-09-contract.md. Learning loop added: every closed incident records cause_category, cause_note, fix_summary, guard_added; the fixer appends docs/lessons/pulse-lessons.md in its PR. |
-| 1 | pending — waits on 0 |
-| 2 | pending — waits on 0 |
-| 3 | pending — waits on 1 and 2 |
+| 0 contract | done — ops/workflows/pulse-layer-2026-10-09-contract.md (Opus), attacked by an Opus critic (16 issues, go-with-changes) |
+| Tonight's cut | the READ-ONLY half only: ops/workflows/pulse-layer-2026-10-09-v1.md. The critic found the write-through half (signed test signals through doors that save data, rolled back) has never run on a real Postgres and its first run would be on launch day. It waits. |
+| 1 runner, records, alerts | built, checked, repaired, reviewed (Opus: go-with-changes; the one blocker, the empty beat list, was the integrator's job and is fixed) |
+| 2 beats | 7 built: apply-links, pay-webhook, vendor-keys, text-path, email-path, doors-live, db-health |
+| 3 rule, picture, lessons | done — rule in both homes, CLAUDE.md line, docs/journeys/heartbeat-flow.md, docs/lessons/pulse-lessons.md |
+
+## Manifest — pulse v1
+
+- New function `netlify/functions/pulse-hourly.mjs` (minute 7 every hour, own bundle, default export only); wiring: `netlify.toml` block, `NETLIFY_JOBS` row, `scheduled-functions-return.test.mjs`, `SEND_PATHS` row, `NOT_CUSTOMER_FACING` row.
+- Beat harness: `src/pulse/beats/{contract,ctx,readbox,index}.mjs`, `src/messaging/providers/pulse-probe.mjs` (GET and HEAD only), `src/pulse/fake-sinks.mjs`, `scripts/pulse/run-beat.mjs`.
+- Records: `db/migrations/475_pulse_beats_incidents.sql` (`pulse_beats`, `pulse_incidents` with learning columns, `pulse_bank_links`; no delete grant), `src/pulse/records.mjs`.
+- Runner and alerts: `src/pulse/runner.mjs`, `src/pulse/alerts.mjs`. Order inside 22 s: read state, run beats (13 s), TEXT, then save records. `damp 2` for vendor keys, doors and bank links.
+- Proof: `npm run pulse:prove -- --beats` builds the real function and runs it from inside: 7 beats, 4.3 s of 22 s, 22 reads, 0 refused, 0 commits, rolled back and destroyed. `node scripts/pulse/run-beat.mjs --probe`: Postgres itself refused INSERT, UPDATE, DELETE, CREATE TABLE and a switch to read-write (7 of 7 pass). Real-database tests 26 of 26. Full suite: the same 12 failures as before tonight, none new.
+- ZERO edits to `netlify/functions/api.mjs`, `src/db.mjs`, the event bus, `outbound-fetch.mjs`, any adapter, `instant-watch.mjs`, `daily-pulse.mjs`, any door or page (checked with `git diff --stat`).
+
+## Not built yet (on purpose)
+
+1. **The write-through half.** A signed test signal through the doors that save data, inside a database box that is always rolled back (patched `pg.Pool`, patched `fetch`, Inngest guard). Needs: proven on a scratch Postgres in CI, then one first run Chris watches.
+2. **GitHub issues and the Claude "pulse fixer".** Issues on the PUBLIC repo are unsafe (anyone can comment). Needs a private repo and a small issues-only token.
+3. **The alert text** carries the fix line, not a link. No Claude session starts by itself yet.
+4. **Run claim** (a second call of the function in the same hour is not blocked; Netlify does not retry a function that answers 200).
+5. **Beat coverage guard** (every money or customer entry in `TRIPWIRES` must name a beat). Phased in later.
+6. **Retention** of `pulse_beats` (no delete grant until Chris says yes).
+
+## Decisions only Chris can make
+
+1. Fixer: have the Mac run a Claude session every hour that looks for open pulse incidents and works the fix? (Uses the incident table as its mailbox. No GitHub, no new key on the live site.) Or a private GitHub repo for issues?
+2. Let that session skip the "split first, model check, wait for approval" rules in CLAUDE.md only when it works a pulse incident?
+3. Delete pulse results older than 30 days?
+4. Build the write-through half after it is proven on a scratch database?
 
 ## Leftovers
 
