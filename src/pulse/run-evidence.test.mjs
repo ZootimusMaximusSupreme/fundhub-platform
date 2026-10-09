@@ -135,6 +135,60 @@ test("redactText: tokens, emails, long strings out; empty is null; a custom max 
   assert.match(redactText("event 11111111-2222-3333-4444-555555555555 failed"), /11111111-2222-3333-4444-555555555555/);
 });
 
+/* Every shape below was probed unchanged through the first version of redactText. Each has a twin: the
+   plain text next to it stays readable, so a rule that eats everything would fail too. */
+test("redactText: phone, SSN, card and birth-date shaped numbers are out", () => {
+  assert.equal(redactText("The To number +15551234567 is not a valid phone number.", 200), "The To number [number] is not a valid phone number.");
+  assert.equal(redactText("call (555) 123-4567 or 555.123.4567 now", 200), "call [number] or [number] now");
+  assert.equal(redactText("duplicate key for client John Smith (DOB 1980-01-02, SSN 123-45-6789)", 200), "duplicate key for client John Smith (DOB [number], SSN [number])");
+  assert.equal(redactText("Error: 4111 1111 1111 1111 declined", 200), "Error: [number] declined");
+  // twins: short numbers are facts a person needs
+  assert.equal(redactText("attempt 2 of 4 failed with status 502 and code 42501 after 800 ms", 200), "attempt 2 of 4 failed with status 502 and code 42501 after 800 ms");
+  assert.equal(redactText("six digits 123456 stay", 200), "six digits 123456 stay");
+  assert.equal(redactText("seven digits 1234567 go", 200), "seven digits [number] go");
+});
+
+test("redactText: vendor key prefixes shorter than 40 characters are out", () => {
+  assert.equal(redactText("Invalid API Key provided: sk_live_abcdefghijklmnopqrstu", 200), "Invalid API Key provided: [redacted]");
+  for (const key of ["sk_test_abcdef123456", "rk_live_abcdef123456", "pk_live_abcdef123456", "whsec_abcDEF12345", "xoxb-123-456-abcdef", "ghp_abcdef1234567890", "AKIAABCDEFGHIJKLMNOP", "sk-proj-abcdefghijkl"]) {
+    assert.equal(redactText(`vendor said ${key} is bad`, 200), "vendor said [redacted] is bad", key);
+  }
+  assert.equal(redactText("the task-queue is full and risk-score is low", 200), "the task-queue is full and risk-score is low");
+});
+
+test("redactText: Slack and other webhook URLs, URL passwords and query strings are out; the host and path stay", () => {
+  assert.equal(
+    redactText("hook https://hooks.slack.com/services/T000/B000/XXXXXXXXXXXXXXXXXXXXXXXX failed", 200),
+    "hook https://hooks.slack.com/services/[redacted] failed"
+  );
+  assert.equal(redactText("post to https://discord.com/api/webhooks/123456789012345678/abcDEF failed", 200), "post to https://discord.com/api/webhooks/[redacted] failed");
+  assert.equal(redactText("GET https://api.vendor.com/v1/x?key=abc&sig=zzz failed 500", 200), "GET https://api.vendor.com/v1/x failed 500");
+  assert.equal(redactText("https://user:hunter2@db.example.com/x refused", 200), "https://[redacted]@db.example.com/x refused");
+  // twin: a plain URL and an internal route name stay readable
+  assert.equal(redactText("GET https://api.vendor.com/v1/x failed", 200), "GET https://api.vendor.com/v1/x failed");
+  assert.equal(redactText("POST /api/webhooks/stripe answered 500", 200), "POST /api/webhooks/stripe answered 500");
+});
+
+test("redactText: an all-digit uuid is an id and stays whole", () => {
+  assert.equal(
+    redactText("event 11111111-2222-3333-4444-555555555555 failed after 2 of 4", 200),
+    "event 11111111-2222-3333-4444-555555555555 failed after 2 of 4"
+  );
+  assert.equal(
+    redactText("event 0a1b2c3d-1111-2222-3333-4a5b6c7d8e9f and call 555-123-4567", 200),
+    "event 0a1b2c3d-1111-2222-3333-4a5b6c7d8e9f and call [number]"
+  );
+});
+
+test("a vendor message with a phone number, a key and an address is saved redacted in the finish mark", async () => {
+  const db = recorderDb();
+  const { hooks } = createRunEvidence({ getDb: () => db });
+  const hook = await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx(), steps: [] });
+  await hook.finished({ result: { error: new Error("To +15551234567 failed with sk_live_abcdefghijklmnopqrstu for chris@example.com") } });
+  const saved = db.calls.find((c) => c.text === FINISH_SQL).values[12];
+  assert.equal(saved, "To [number] failed with [redacted] for [email]");
+});
+
 /* ---- the hooks, with a recording database ---- */
 
 test("the add-on returns only `finished`, and registers only onFunctionRun: it cannot change input or output", async () => {
@@ -145,7 +199,7 @@ test("the add-on returns only `finished`, and registers only onFunctionRun: it c
   assert.equal(await out.finished({ result: { data: 1 } }), undefined, "`finished` returns nothing");
 });
 
-test("the start mark: first request only (no steps, attempt 0), one insert, with every field", async () => {
+test("the start mark: the first request of a run, one insert, with every field", async () => {
   const clk = clock();
   const db = recorderDb();
   const { hooks } = createRunEvidence({ getDb: () => db, nowFn: clk.nowFn });
@@ -160,19 +214,24 @@ test("the start mark: first request only (no steps, attempt 0), one insert, with
   assert.match(START_SQL, /ON CONFLICT \(run_id, attempt\) DO NOTHING/);
 });
 
-test("no start mark when steps are remembered, on a retry, for a cron, or when the run has no id", async () => {
+test("the start mark is written once per run on the first request this container sees (whatever steps are remembered), and never for a cron or a run with no id", async () => {
   const db = recorderDb();
   const { hooks } = createRunEvidence({ getDb: () => db });
+  // A container that meets a run in the middle (steps already remembered) marks it once.
   await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx(), steps: [{ id: "a" }] });
+  assert.equal(db.calls.length, 1);
+  assert.equal(db.calls[0].text, START_SQL);
+  // Later requests and a retry of the same run, on this container, write no second start mark.
+  await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx(), steps: [{ id: "a" }, { id: "b" }] });
   await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx({ attempt: 1 }), steps: [] });
-  assert.equal(db.calls.length, 0, "later requests and retries write no start mark");
+  assert.equal(db.calls.length, 1, "once marked, a run is not written again by this container");
   const cron = await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx({ event: { name: "inngest/scheduled.timer", data: {} } }), steps: [] });
   assert.deepEqual(cron, {}, "a cron run is left to the job heartbeat");
   assert.deepEqual(await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx({ runId: undefined }), steps: [] }), {});
   assert.deepEqual(await hooks.onFunctionRun({ fn: { opts: {} }, ctx: fakeCtx(), steps: [] }), {});
   assert.deepEqual(await hooks.onFunctionRun({ fn: fakeFn(), ctx: null, steps: [] }), {});
   assert.deepEqual(await hooks.onFunctionRun(), {});
-  assert.equal(db.calls.length, 0);
+  assert.equal(db.calls.length, 1, "a cron, a run with no id and a bad call wrote nothing");
 });
 
 test("a run that asks again with nothing remembered (parallel steps at the start) is marked once per container", async () => {
@@ -193,6 +252,40 @@ test("a start mark that failed is tried again on the next request", async () => 
   assert.equal(db.calls.length, 2);
 });
 
+test("a start mark that failed is written on the next request even when steps are remembered by then", async () => {
+  let n = 0;
+  const db = recorderDb(async () => { n += 1; if (n === 1) throw new Error("took longer than 800 ms"); return { rows: [] }; });
+  const { hooks } = createRunEvidence({ getDb: () => db, log: () => {} });
+  // First request: the start write is lost. The run then goes on (a step ran, the next request carries it).
+  await hooks.onFunctionRun({ fn: fakeFn("ar-collections"), ctx: fakeCtx(), steps: [] });
+  assert.equal(db.calls.length, 1);
+  await hooks.onFunctionRun({ fn: fakeFn("ar-collections"), ctx: fakeCtx(), steps: [{ id: "one" }] });
+  assert.equal(db.calls.length, 2, "the second request tried the start mark again");
+  assert.equal(db.calls[1].text, START_SQL);
+  assert.deepEqual(db.calls[1].values.slice(0, 3), ["RUN-1", 0, "ar-collections"]);
+  // It landed, so the third request writes nothing more.
+  await hooks.onFunctionRun({ fn: fakeFn("ar-collections"), ctx: fakeCtx(), steps: [{ id: "one" }, { id: "two" }] });
+  assert.equal(db.calls.length, 2);
+});
+
+test("a start mark lost while the breaker was open is written on the first request after the pause", async () => {
+  const clk = clock();
+  let fail = true;
+  const db = recorderDb(async () => { if (fail) throw permissionError(); return { rows: [] }; });
+  const { hooks, breaker } = createRunEvidence({ getDb: () => db, nowFn: clk.nowFn, log: () => {} });
+  for (let i = 0; i < BREAKER_LIMIT; i += 1) await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx({ runId: `OPEN${i}` }), steps: [] });
+  assert.equal(breaker.state().open, true);
+  // A sleeper starts while the breaker is open: nothing is written, and nothing is marked.
+  await hooks.onFunctionRun({ fn: fakeFn("n-06-renewal-second-wave"), ctx: fakeCtx({ runId: "SLEEPER" }), steps: [] });
+  assert.equal(db.calls.length, 3);
+  // The pause ends and the database is back. The sleeper's next request marks it.
+  clk.advance(BREAKER_PAUSE_MS + 1);
+  fail = false;
+  await hooks.onFunctionRun({ fn: fakeFn("n-06-renewal-second-wave"), ctx: fakeCtx({ runId: "SLEEPER" }), steps: [{ id: "one" }] });
+  assert.equal(db.calls.length, 4);
+  assert.deepEqual(db.calls[3].values.slice(0, 3), ["SLEEPER", 0, "n-06-renewal-second-wave"]);
+});
+
 test("the bus event id is the string in event.data.id, and nothing else", async () => {
   const db = recorderDb();
   const { hooks } = createRunEvidence({ getDb: () => db });
@@ -210,9 +303,11 @@ test("the finish mark: one upsert on (run_id, attempt) with the outcome, final, 
   const hook = await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx({ attempt: 1 }), steps: [{ id: "a" }] });
   clk.advance(2500);
   await hook.finished({ result: { data: { skipped: true, reason: "switched_off" } } });
-  assert.equal(db.calls.length, 1);
-  const c = db.calls[0];
-  assert.equal(c.text, FINISH_SQL);
+  const finishCalls = db.calls.filter((x) => x.text === FINISH_SQL);
+  assert.equal(finishCalls.length, 1);
+  assert.equal(db.calls.length, 2, "this container had not marked the run yet, so a start mark came first");
+  assert.equal(db.calls[0].text, START_SQL);
+  const c = finishCalls[0];
   assert.match(FINISH_SQL, /ON CONFLICT \(run_id, attempt\) DO UPDATE/);
   assert.deepEqual(c.values.slice(0, 6), ["RUN-1", 1, "wf-x", "round.started", "11111111-2222-3333-4444-555555555555", 4]);
   assert.equal(c.values[6].toISOString(), "2026-10-09T17:00:00.000Z", "started_at is when this request began");
@@ -227,8 +322,10 @@ test("the finish mark for a failed attempt says error and whether a retry is com
   await early.finished({ result: { error: new Error("boom after step one") } });
   const last = await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx({ attempt: 2, maxAttempts: 3 }), steps: [{ id: "a" }] });
   await last.finished({ result: { error: new Error("boom after step one") } });
-  assert.deepEqual(db.calls[0].values.slice(8), ["error", false, false, null, "boom after step one"]);
-  assert.deepEqual(db.calls[1].values.slice(8), ["error", true, false, null, "boom after step one"]);
+  const finishes = db.calls.filter((x) => x.text === FINISH_SQL);
+  assert.equal(finishes.length, 2);
+  assert.deepEqual(finishes[0].values.slice(8), ["error", false, false, null, "boom after step one"]);
+  assert.deepEqual(finishes[1].values.slice(8), ["error", true, false, null, "boom after step one"]);
 });
 
 test("the finish timer: 5 s early in a request, squeezed as the request ages, never under 500 ms", async () => {
@@ -242,7 +339,7 @@ test("the finish timer: 5 s early in a request, squeezed as the request ages, ne
     const hook = await hooks.onFunctionRun({ fn: fakeFn(), ctx: fakeCtx(), steps: [{ id: "a" }] });
     clk.advance(used);
     await hook.finished({ result: { data: 1 } });
-    caps.push(db.calls[0].query_timeout);
+    caps.push(db.calls.find((x) => x.text === FINISH_SQL).query_timeout);
   }
   assert.deepEqual(caps, [5000, 5000, 5000, 3000, 500, 500, 500]);
 });
@@ -506,7 +603,10 @@ test("serve handler: a database that rejects every write changes nothing", async
   const on = await runThreeStep(db);
   assert.deepEqual(on.transcript, base.transcript);
   assert.equal(on.stepBodies, base.stepBodies);
-  assert.equal(db.calls.length, 2, "it tried the start mark and the finish mark, once each");
+  // The start mark is tried on each request until 3 writes have failed; then the breaker pauses everything,
+  // and the finish mark is not even tried. The workflow never noticed.
+  assert.equal(db.calls.length, BREAKER_LIMIT);
+  assert.ok(db.calls.every((c) => c.text === START_SQL));
 });
 
 test("serve handler: a database that throws before it returns changes nothing", async () => {
@@ -525,9 +625,23 @@ test("serve handler: a database that never answers changes nothing, and each req
   const took = Date.now() - t0;
   assert.deepEqual(on.transcript, base.transcript);
   assert.equal(on.stepBodies, base.stepBodies);
-  assert.equal(db.calls.length, 2);
+  assert.equal(db.calls.length, BREAKER_LIMIT, "3 timed-out start marks open the breaker; nothing more is tried");
   assert.ok(on.slowestRequestMs < FAST.finishCeilMs + 400, `the slowest request took ${on.slowestRequestMs} ms`);
   assert.ok(took < FAST.startCapMs + FAST.finishCeilMs + 1500, `the whole run took ${took} ms`);
+});
+
+test("serve handler: a start mark lost on the first request is written on a later request of the same run", async () => {
+  const base = await runThreeStep(null);
+  let n = 0;
+  const db = recorderDb(async () => { n += 1; if (n === 1) throw new Error("took longer than 800 ms"); return { rows: [] }; });
+  const on = await runThreeStep(db);
+  assert.deepEqual(on.transcript, base.transcript);
+  assert.equal(on.stepBodies, base.stepBodies);
+  const starts = db.calls.filter((c) => c.text === START_SQL);
+  const finishes = db.calls.filter((c) => c.text === FINISH_SQL);
+  assert.equal(starts.length, 2, "the lost one, then the one that landed on the next request");
+  assert.equal(finishes.length, 1);
+  assert.deepEqual(starts[1].values.slice(0, 3), ["RUN-X", 0, "wf-three"]);
 });
 
 test("serve handler: a database that answers in 5 seconds changes nothing and is not waited for", async () => {
@@ -555,8 +669,11 @@ test("serve handler: a read-only database takes no write, runs the workflow the 
   assert.deepEqual(on.transcript, base.transcript);
   assert.equal(on.stepBodies, base.stepBodies);
   assert.equal(committed.length, 0, "nothing was written");
-  assert.deepEqual([...new Set(attempted)].sort(), [FINISH_SQL, START_SQL].sort(), "only the two receipt statements were tried");
-  for (const sql of attempted) assert.match(sql, /^INSERT INTO workflow_runs/, "and both are inserts into workflow_runs, nothing else");
+  assert.ok(attempted.length >= 1, "it did try");
+  for (const sql of attempted) {
+    assert.ok(sql === START_SQL || sql === FINISH_SQL, "only the two receipt statements were ever tried");
+    assert.match(sql, /^INSERT INTO workflow_runs/, "and both are inserts into workflow_runs, nothing else");
+  }
 });
 
 /* A run that fails: the finish mark says whether a retry is coming. */

@@ -9,9 +9,11 @@
 // is unchanged and keeps the cron receipts in job_heartbeats).
 //
 // WHAT IT WRITES (table: workflow_runs, db/migrations/478):
-//   start mark   the FIRST request of a run (no steps remembered yet, attempt 0).
-//                One insert. This is what makes a sleeper visible while it sleeps,
-//                and a run that died mid-way visible after it died.
+//   start mark   one insert per run per container, on the first request of the run that this
+//                container sees. If that write is lost (a timer, a database blip, the breaker),
+//                the NEXT request of the same run tries again, until one write lands. ON CONFLICT
+//                DO NOTHING makes a repeat harmless. This is what makes a sleeper visible while
+//                it sleeps, and a run that died mid-way visible after it died.
 //   finish mark  the LAST request of an attempt (Inngest calls `finished` once
 //                when a run returns, and once per failed attempt). One upsert on
 //                (run_id, attempt): how it ended, whether it is over for good
@@ -33,15 +35,17 @@
 //     mark; for the finish mark, 20 s minus what the request already used, kept
 //     between 500 ms and 5 s. Netlify cuts a request at 26 s.
 //   * It never keeps trying a database that is not answering. After 3 failed or
-//     timed-out writes it stops writing for 10 minutes and logs ONE line that
-//     starts with [run-evidence]. Then one write is tried again.
+//     timed-out writes it stops writing for 10 minutes and logs a "paused" line that
+//     starts with [run-evidence]. Then one write is tried again. (A lone failure before
+//     that logs one short line too, at most one a minute, so an isolated failure is seen.)
 //
 // THE SWITCH-OFF THAT NEEDS NO DEPLOY (owner runs it through the Supabase SQL tool):
 //   REVOKE INSERT, UPDATE ON public.workflow_runs FROM fundhub_app;
 // Every write then fails fast with a permission error, the breaker opens, and every
 // workflow keeps running exactly as before. Undo with the matching GRANT. While it
-// is off, audit:run-recorder goes red and the wf: rows say "receipts are off"
-// instead of "never started" (workflow-runs.mjs reads the privilege).
+// is off, audit:run-recorder goes red and the wf: rows say "receipts are switched off"
+// (not checked) instead of "no receipt shows it started" or "started, never finished"
+// (workflow-runs.mjs reads the privilege).
 // The switch-off with a deploy: take "Run evidence" out of the middleware list in
 // src/workflows/client.mjs.
 
@@ -88,13 +92,42 @@ function oneLine(value) {
   return String(value == null ? "" : value).replace(/\s+/g, " ").trim();
 }
 
-/* redactText — credential-shaped text out (the repo's one redactor), then email addresses and long
-   token-like strings out too, then cut to `max`. Returns null for empty text. */
+/* Shapes that are secrets or a person's numbers, beyond what the repo's redact() knows. A redacted
+   error that is harder to read is a far cheaper mistake than a key or an SSN in a column that the
+   morning report prints. */
+const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+/* user:password@ inside a URL. */
+const URL_USERINFO = /(\bhttps?:\/\/)[^\s/@]+@/gi;
+/* A Slack webhook, or any URL with a /webhook/<secret> path (Discord and the like). */
+const SLACK_HOOK = /(\bhttps?:\/\/hooks\.slack\.com\/services\/)\S+/gi;
+const WEBHOOK_PATH = /(\bhttps?:\/\/[^\s/]+\/(?:api\/)?webhooks?\/)\S+/gi;
+/* A query string or fragment on a URL (tokens, signatures and keys ride there). */
+const URL_QUERY = /(\bhttps?:\/\/[^\s?#]+)[?#]\S*/gi;
+/* Vendor key prefixes: Stripe (sk_live_, sk_test_, pk_, rk_), webhook signing (whsec_), Slack (xoxb-),
+   GitHub (ghp_), AWS (AKIA), and sk- keys. */
+const KEY_SHAPES = /\b(?:(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+|whsec_[A-Za-z0-9]+|xox[a-z]-[A-Za-z0-9-]+|gh[pousr]_[A-Za-z0-9]+|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{12,})/g;
+/* Seven or more digits, with spaces, dots, dashes or brackets between them: a phone number, an SSN, a
+   card, a birth date. A leading + or ( goes with it. */
+const NUMBER_RUN = /(?:\+\s*)?\(?\d(?:[\s().-]*\d){6,}/g;
+
+/* redactText — credential-shaped text out (the repo's one redactor), then URL secrets, vendor keys, long
+   numbers, email addresses and long token-like strings out too, then cut to `max`. A uuid is an id, not a
+   secret: it stays readable. Returns null for empty text. */
 export function redactText(value, max = ERROR_MAX) {
   let s = oneLine(redact(oneLine(value)));
+  // A uuid can be all digits and dashes. Set it aside so the number rule cannot eat it.
+  const ids = [];
+  s = s.replace(UUID, (m) => `\u0001${ids.push(m) - 1}\u0002`);
   s = s
+    .replace(URL_USERINFO, "$1[redacted]@")
+    .replace(SLACK_HOOK, "$1[redacted]")
+    .replace(WEBHOOK_PATH, "$1[redacted]")
+    .replace(URL_QUERY, "$1")
+    .replace(KEY_SHAPES, "[redacted]")
+    .replace(NUMBER_RUN, "[number]")
     .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g, "[email]")
     .replace(/\b[A-Za-z0-9_-]{40,}\b/g, "[redacted]");
+  s = s.replace(/\u0001(\d+)\u0002/g, (_, i) => ids[Number(i)]);
   if (!s) return null;
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
@@ -260,13 +293,15 @@ export function createRunEvidence({
   }
 
   const hooks = {
-    async onFunctionRun({ fn, ctx, steps } = {}) {
+    async onFunctionRun({ fn, ctx } = {}) {
       try {
         const run = describeRun({ fn, ctx });
         if (!run) return {};
         const reqStart = nowMs();
-        // The first request of a run: nothing remembered yet, first attempt.
-        if (Array.isArray(steps) && steps.length === 0 && run.attempt === 0 && !marked.has(run.runId)) {
+        // The start mark: the first request of this run that this container sees. If that write is lost,
+        // the next request of the run tries again, because the run is marked only once a write lands. A
+        // repeat is harmless (ON CONFLICT DO NOTHING) and `marked` keeps it to one write per run per container.
+        if (!marked.has(run.runId)) {
           const res = await safeWrite("start", START_SQL, [
             run.runId, run.attempt, run.fnId, run.eventName, run.busEventId, run.maxAttempts, new Date(reqStart)
           ], startCapMs);

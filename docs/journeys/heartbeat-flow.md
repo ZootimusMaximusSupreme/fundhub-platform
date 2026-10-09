@@ -100,7 +100,7 @@ Crons leave a receipt in `job_heartbeats`. A workflow that an **event** starts u
 ```mermaid
 flowchart TD
     BUS["The bus writes an events row,<br/>then hands the event to Inngest<br/>(data.id = the events row id)"] --> RUN["Inngest calls the workflow"]
-    RUN --> START["First request of the run:<br/>START mark (run id, workflow, events row id)"]
+    RUN --> START["First request of the run that this container sees:<br/>START mark (run id, workflow, events row id).<br/>A lost write is tried again on the next request."]
     RUN --> FINISH["Last request of an attempt:<br/>FINISH mark (ok or error,<br/>final?, skipped?, redacted why)"]
     START --> TBL[("workflow_runs")]
     FINISH --> TBL
@@ -108,10 +108,11 @@ flowchart TD
     TBL --> WF["6 a.m. wf: row for each workflow<br/>(2 reads for all 65)"]
     WF --> R1{"Last run failed for good<br/>15+ minutes ago?"}
     R1 -->|Yes| RED1["RED: last run failed"]
-    R1 -->|No| R2{"An event 15+ minutes old,<br/>after receipts began,<br/>and no run carries its id?"}
-    R2 -->|Yes| RED2["RED: event came,<br/>workflow never started"]
+    R1 -->|No| R2{"An event 15+ minutes old,<br/>after receipts began,<br/>and no run carries its id?<br/>(a repeat funnel post does not count)"}
+    R2 -->|Yes| RED2["RED: event came,<br/>no receipt shows it started"]
     R2 -->|No| R3{"A run started and never finished?<br/>no-sleep: over 30 minutes<br/>sleeper: over its longest wait + 1 day"}
-    R3 -->|Yes| RED3["RED: started, never finished"]
+    R3 -->|"Yes, and receipts were still<br/>being written after its deadline"| RED3["RED: started, never finished"]
+    R3 -->|"Yes, but the app cannot write receipts,<br/>or none was written after the deadline"| SK2["not checked: receipts<br/>may have been paused"]
     R3 -->|No| R4{"Last 3 runs all skipped?"}
     R4 -->|Yes| RED4["RED: every run skipped"]
     R4 -->|No| R5{"A run finished ok,<br/>or one is asleep by design?"}
@@ -122,10 +123,13 @@ flowchart TD
     AUD["audit:run-recorder"] -.->|can the app still write them?<br/>is the add-on on the client?<br/>did events come and no run get written?| TBL
 ```
 
-- A failure with a retry still coming is "retrying" (green, pending), never red. A run is final when it returned, threw its last attempt, threw a NonRetriableError, or a step already used up its retries.
+- A failure with a retry still coming is "retrying" (green, pending), never red. A run is final when it returned, threw its last attempt, threw a NonRetriableError, or a step already used up its retries. A failure saved as "retry coming" with no later attempt after a day is final too, so it cannot read "retrying" for ever.
+- ClickFunnels sends one post per survey screen. The app stores a repeat post (same event name, address and funnel, inside 6 hours) and starts no run on purpose. Those repeats are left out of "event came, no receipt shows it started". Today that is `survey.submitted` and `entry.captured`.
+- A lost finish write can look like a lost run. So a run with no finish mark is called lost only when receipts were still being written after its deadline. Otherwise the row says "not checked: receipts may have been paused".
+- The times in these rows are Arizona time, the clock Chris reads.
 - The 17 workflows that sleep are on the `SLEEPERS` list in `src/pulse/workflow-runs.mjs` with their longest wait. A test reads the bundled workflow files and fails when a sleeper is missing, or when a workflow with `cancelOn` is.
 - An event that came **before** receipts began cannot be judged by receipts. Its workflow reads "not checked" until receipts are a day old or a new event comes. That is the honest answer, not a guess.
-- **The switch-off with no deploy:** `REVOKE INSERT, UPDATE ON public.workflow_runs FROM fundhub_app;`. Writes then fail fast and quietly, every workflow keeps running, `audit:run-recorder` goes red, and the `wf:` rows say "receipts are off" instead of "never started". Undo with the matching `GRANT`.
+- **The switch-off with no deploy:** `REVOKE INSERT, UPDATE ON public.workflow_runs FROM fundhub_app;`. Writes then fail fast and quietly, every workflow keeps running, `audit:run-recorder` goes red, and the `wf:` rows say "receipts are switched off" (not checked) instead of "no receipt shows it started" or "started, never finished". Undo with the matching `GRANT`.
 
 ## The states of one check
 

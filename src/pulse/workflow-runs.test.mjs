@@ -5,10 +5,13 @@ import { fileURLToPath } from "node:url";
 import {
   EVENTS_SQL,
   FAILED_JUDGE_AFTER_MS,
+  FUNNEL_REPEAT_WINDOW_MINUTES,
   NOT_LIVE_WORKFLOWS,
   OPEN_LIMIT_MS,
   RECEIPTS_GRACE_MS,
   RECORDER_FUNCTION_ID,
+  REPEAT_SUPPRESSED_EVENTS,
+  RETRY_GIVE_UP_MS,
   RUNS_SQL,
   SLEEPERS,
   SLEEPER_SLACK_MS,
@@ -44,7 +47,7 @@ function runRow(fn, over = {}) {
     event_name: over.event || "round.started",
     bus_event_id: over.bus || null,
     attempt: over.attempt ?? 0,
-    max_attempts: over.max ?? 4,
+    max_attempts: "max" in over ? over.max : 4,
     at: started,
     finished_at: finishedAt,
     outcome: finishedAt ? (over.outcome || "ok") : null,
@@ -67,6 +70,7 @@ function fakeDb({
   miss = [],
   began = BEGAN,
   canWrite = true,
+  lastReceipt = ago(1 * MIN),
   eventsError = null,
   runsError = null
 } = {}) {
@@ -90,7 +94,7 @@ function fakeDb({
       }
       if (sql === RUNS_SQL) {
         if (runsError) throw runsError;
-        const meta = { kind: "meta", at: began, n: canWrite ? 1 : 0 };
+        const meta = { kind: "meta", at: began, finished_at: lastReceipt, n: canWrite ? 1 : 0 };
         return { rows: [...runs, ...miss, meta] };
       }
       throw new Error(`unexpected query: ${String(sql).slice(0, 40)}`);
@@ -185,7 +189,7 @@ test("f: a run finished ok: PASS with the times", async () => {
   });
   assert.equal(r.status, "PASS");
   assert.equal(r.na, undefined);
-  assert.equal(r.detail, "Last run started 2026-10-12 10:00 UTC and finished ok 2026-10-12 10:00 UTC.");
+  assert.equal(r.detail, "Last run started 2026-10-12 3:00 a.m. Arizona time and finished ok 2026-10-12 3:00 a.m. Arizona time.");
   assert.equal(r.schedule, "round.started");
 });
 
@@ -217,7 +221,7 @@ test("b: its newest run failed for good over 15 minutes ago: FAIL, with the reda
     })]
   });
   assert.equal(r.status, "FAIL");
-  assert.equal(r.detail, "Its last run failed 2026-10-12 14:00 UTC: vendor said no. No retry is coming.");
+  assert.equal(r.detail, "Its last run failed 2026-10-12 7:00 a.m. Arizona time: vendor said no. No retry is coming.");
   assert.match(r.suggestedFix, /^Open s-00-welcome in Inngest and read that run\. Do not re-run it from this pulse\.$/);
   assert.match(r.customerSees, /s-00-welcome/);
 });
@@ -237,7 +241,7 @@ test("b: a failure with a retry still coming is PASS-pending 'retrying', never r
     runs: [runRow("s-00-welcome", { started: ago(40 * MIN), outcome: "error", final: false, attempt: 1, max: 4, error: "timeout" })]
   });
   assert.equal(r.status, "PASS");
-  assert.match(r.detail, /^Retrying: attempt 2 of 4 failed 2026-10-12 \d\d:\d\d UTC: timeout\./);
+  assert.match(r.detail, /^Retrying: attempt 2 of 4 failed 2026-10-12 \d{1,2}:\d\d [ap]\.m\. Arizona time: timeout\./);
 });
 
 test("b: a failure for good that is under 15 minutes old waits (skip), it is not guessed", async () => {
@@ -255,6 +259,37 @@ test("b: a failed run with no saved reason still says so", async () => {
   assert.match(r.detail, /no reason was saved/);
 });
 
+test("b: a 'retry coming' error with no later attempt is final once it is older than a day; the engine's own max_attempts also ends it", async () => {
+  const fn = ev("x", "round.started");
+  // The engine did not say how many attempts it allows. A day later nothing else came.
+  const stale = await one(fn, { runs: [runRow("x", { started: ago(RETRY_GIVE_UP_MS + 2 * HOUR), outcome: "error", final: false, attempt: 1, max: null, error: "timeout" })] });
+  assert.equal(stale.status, "FAIL");
+  assert.match(stale.detail, /: timeout\. No retry was saved after it\.$/);
+  // Its twin: the same error 2 hours old is still a retry that may come.
+  const fresh = await one(fn, { runs: [runRow("x", { started: ago(2 * HOUR), outcome: "error", final: false, attempt: 1, max: null, error: "timeout" })] });
+  assert.equal(fresh.status, "PASS");
+  assert.match(fresh.detail, /^Retrying: attempt 2 failed /);
+  // The last attempt of the engine's own count is final even if the row says otherwise.
+  const last = await one(fn, { runs: [runRow("x", { started: ago(2 * HOUR), outcome: "error", final: false, attempt: 3, max: 4, error: "timeout" })] });
+  assert.equal(last.status, "FAIL");
+  assert.match(last.detail, /No retry is coming\.$/);
+  // Attempt 2 of 4 is not the last.
+  assert.equal((await one(fn, { runs: [runRow("x", { started: ago(2 * HOUR), outcome: "error", final: false, attempt: 2, max: 4, error: "timeout" })] })).status, "PASS");
+  assert.equal(RETRY_GIVE_UP_MS, DAY);
+});
+
+test("times are on the Arizona clock: morning, afternoon, and a UTC time that is the evening before", async () => {
+  const stamp = async (iso) => (await one(ev("x", "round.started"), {
+    runs: [runRow("x", { started: new Date(iso), finished: new Date(new Date(iso).getTime() + 30000) })]
+  })).detail;
+  assert.match(await stamp("2026-10-12T13:05:00Z"), /^Last run started 2026-10-12 6:05 a\.m\. Arizona time /);
+  assert.match(await stamp("2026-10-12T19:30:00Z"), /^Last run started 2026-10-12 12:30 p\.m\. Arizona time /);
+  assert.match(await stamp("2026-10-13T03:30:00Z"), /^Last run started 2026-10-12 8:30 p\.m\. Arizona time /, "03:30 UTC on the 13th is 8:30 p.m. on the 12th in Arizona");
+  assert.match(await stamp("2026-10-12T07:00:00Z"), /^Last run started 2026-10-12 12:00 a\.m\. Arizona time /);
+  const all = (await checkWorkflowRuns({ db: fakeDb(), now: NOW, functions: [ev("f-01", "round.started")] }))[0].detail;
+  assert.doesNotMatch(all, /UTC/);
+});
+
 /* ═════ c. the event came and the workflow never started ═════ */
 
 test("c: an event came, over 15 minutes ago, after receipts began, and no run carries it: FAIL, with the count and the first time", async () => {
@@ -262,7 +297,7 @@ test("c: an event came, over 15 minutes ago, after receipts began, and no run ca
     miss: [missRow("slo-paid-form-nudge", "payment.received", 3, new Date("2026-10-11T14:02:00Z"), new Date("2026-10-12T09:00:00Z"))]
   });
   assert.equal(r.status, "FAIL");
-  assert.equal(r.detail, "3 payment.received events came and this workflow never started (first 2026-10-11 14:02 UTC). The engine did not run it.");
+  assert.equal(r.detail, "3 payment.received events came and no receipt shows this workflow started (first 2026-10-11 7:02 a.m. Arizona time).");
   assert.match(r.suggestedFix, /look for the payment\.received event/);
   assert.match(r.suggestedFix, /Do not re-run it from this pulse/);
 });
@@ -271,9 +306,9 @@ test("c: one event says event, two names are both listed", async () => {
   const r = await one(ev("f-06", "mail.response", "docs.received"), {
     miss: [missRow("f-06", "mail.response", 1, ago(3 * HOUR)), missRow("f-06", "docs.received", 2, ago(2 * HOUR))]
   });
-  assert.match(r.detail, /^1 mail\.response and 2 docs\.received events came and this workflow never started/);
+  assert.match(r.detail, /^1 mail\.response and 2 docs\.received events came and no receipt shows this workflow started/);
   const single = await one(ev("f-01", "round.started"), { miss: [missRow("f-01", "round.started", 1, ago(3 * HOUR))] });
-  assert.match(single.detail, /^1 round\.started event came and this workflow never started/);
+  assert.match(single.detail, /^1 round\.started event came and no receipt shows this workflow started/);
 });
 
 test("c (its twin): the event came and a run of this workflow carries it: no 'never started' (the read returns no miss)", async () => {
@@ -312,6 +347,44 @@ test("c: a miss beats a good old run: the newest event still has nothing behind 
   assert.equal(r.status, "FAIL");
 });
 
+test("c: the words claim only what the pulse knows: no receipt shows it started, never 'the engine did not run it'", async () => {
+  const r = await one(ev("f-01", "round.started"), { miss: [missRow("f-01", "round.started", 2, ago(3 * HOUR))] });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /came and no receipt shows this workflow started/);
+  assert.doesNotMatch(r.detail, /engine did not run it|never started/);
+  assert.doesNotMatch(r.customerSees, /was never started/);
+  assert.match(r.suggestedFix, /only its start receipt was lost/);
+});
+
+test("c: the repeat-post rule in the runs read matches the adapter that makes repeats (names and six-hour window)", () => {
+  const cf = readFileSync(fileURLToPath(new URL("../adapters/clickfunnels.mjs", import.meta.url)), "utf8");
+  const names = /REPEAT_SUPPRESSED_EVENTS = new Set\(\[([^\]]*)\]\)/.exec(cf);
+  assert.ok(names, "the adapter still declares REPEAT_SUPPRESSED_EVENTS");
+  const inAdapter = [...names[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual([...REPEAT_SUPPRESSED_EVENTS].sort(), inAdapter);
+  assert.match(cf, /FUNNEL_REPEAT_WINDOW_MINUTES = 6 \* 60/);
+  assert.equal(FUNNEL_REPEAT_WINDOW_MINUTES, 6 * 60);
+  // The adapter asks: same org, same name, same address (any case), same funnel, an earlier row inside the window.
+  assert.match(cf, /org_id = \$1[\s\S]*?name = \$2[\s\S]*?lower\(payload->>'email'\) = \$3[\s\S]*?COALESCE\(payload->>'funnel', ''\) = \$4[\s\S]*?created_at > now\(\) - make_interval/);
+  // Both are trigger names, and they are the only skipInngest events that are (so nothing else can be missing a run on purpose).
+  assert.ok(REPEAT_SUPPRESSED_EVENTS.includes("entry.captured") && REPEAT_SUPPRESSED_EVENTS.includes("survey.submitted"));
+});
+
+test("c: the miss read leaves out a repeat funnel post, and only that", () => {
+  const miss = RUNS_SQL.slice(RUNS_SQL.indexOf("SELECT 'miss'"), RUNS_SQL.indexOf("SELECT 'meta'"));
+  assert.match(miss, /AND NOT \(e\.name IN \('survey\.submitted', 'entry\.captured'\)/);
+  assert.match(miss, /COALESCE\(e\.payload->>'email', ''\) <> ''/, "no address is never a repeat");
+  assert.match(miss, /p\.org_id = e\.org_id/);
+  assert.match(miss, /p\.name = e\.name/);
+  assert.match(miss, /p\.created_at < e\.created_at/, "an EARLIER row");
+  assert.match(miss, /p\.created_at > e\.created_at - make_interval\(mins => 360\)/, "inside six hours");
+  assert.match(miss, /lower\(p\.payload->>'email'\) = lower\(e\.payload->>'email'\)/);
+  assert.match(miss, /COALESCE\(p\.payload->>'funnel', ''\) = COALESCE\(e\.payload->>'funnel', ''\)/);
+  // the run branch and the meta branch do not carry it
+  assert.doesNotMatch(RUNS_SQL.slice(0, RUNS_SQL.indexOf("SELECT 'miss'")), /make_interval\(mins => 360\)/);
+  assert.equal((RUNS_SQL.match(/make_interval\(mins => 360\)/g) || []).length, 1);
+});
+
 /* ═════ d. a run that started and never finished ═════ */
 
 test("d: a workflow that does not sleep, with a run open over 30 minutes: FAIL 'started, never finished'", async () => {
@@ -319,7 +392,7 @@ test("d: a workflow that does not sleep, with a run open over 30 minutes: FAIL '
     runs: [runRow("s-00-welcome", { started: ago(45 * MIN), finished: null })]
   });
   assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /^1 run started and never finished\. The oldest began 2026-10-12 16:15 UTC\. This workflow should finish in 30 minutes\.$/);
+  assert.match(r.detail, /^1 run started and never finished\. The oldest began 2026-10-12 9:15 a\.m\. Arizona time\. This workflow should finish in 30 minutes\.$/);
   assert.match(r.customerSees, /stopped part of the way/);
   assert.equal(OPEN_LIMIT_MS, 30 * MIN);
 });
@@ -337,7 +410,7 @@ test("d: a sleeper inside its wait is PASS 'asleep, waits by design'", async () 
     runs: [runRow("ar-collections", { started: ago(6 * DAY), finished: null })]
   });
   assert.equal(r.status, "PASS");
-  assert.match(r.detail, /1 run is asleep \(the oldest began 2026-10-06 17:00 UTC\)\. It waits by design, up to 14 days\.$/);
+  assert.match(r.detail, /1 run is asleep \(the oldest began 2026-10-06 10:00 a\.m\. Arizona time\)\. It waits by design, up to 14 days\.$/);
 });
 
 test("d: a sleeper past its longest wait plus one day is FAIL; one day short of that is still PASS", async () => {
@@ -382,6 +455,75 @@ test("d: a lost run is red even when another run finished ok after it", async ()
     ]
   });
   assert.equal(r.status, "FAIL");
+});
+
+test("d: the app cannot write receipts and a run has no finish mark: skip 'switched off', never 'lost'", async () => {
+  const fn = ev("s-00-welcome", "entry.captured");
+  const runs = [runRow("s-00-welcome", { started: ago(2 * HOUR), finished: null })];
+  const off = await one(fn, { runs, canWrite: false });
+  assert.equal(off.status, "skip");
+  assert.match(off.detail, /^1 run started and has no finish mark, but run receipts are switched off \(the app cannot write them\)\. This workflow was not judged\.$/);
+  assert.match(off.suggestedFix, /GRANT INSERT, UPDATE/);
+  assert.equal(off.customerSees, null, "no claim about the customer: nothing is known");
+  // its twin: receipts can be written, so the same open run is lost
+  const on = await one(fn, { runs, canWrite: true });
+  assert.equal(on.status, "FAIL");
+  // a sleeper behaves the same way
+  const sleeper = ev("ar-collections", "payment.received");
+  const old = [runRow("ar-collections", { started: ago(SLEEPERS["ar-collections"] + SLEEPER_SLACK_MS + HOUR), finished: null })];
+  assert.equal((await one(sleeper, { runs: old, canWrite: false })).status, "skip");
+  assert.equal((await one(sleeper, { runs: old, canWrite: true })).status, "FAIL");
+});
+
+test("d: a run inside its time is still judged when receipts are switched off (nothing to explain away)", async () => {
+  const r = await one(ev("s-00-welcome", "entry.captured"), {
+    runs: [runRow("s-00-welcome", { started: ago(10 * MIN), finished: null })],
+    canWrite: false
+  });
+  assert.equal(r.status, "PASS");
+});
+
+test("d: no receipt was saved after the run's deadline: skip 'may have been paused', not 'lost'", async () => {
+  const fn = ev("s-00-welcome", "entry.captured");
+  const started = ago(5 * HOUR);
+  const deadline = new Date(started.getTime() + OPEN_LIMIT_MS);
+  const runs = [runRow("s-00-welcome", { started, finished: null })];
+  // Nothing at all was saved since the run began (the database was paused): cannot tell.
+  const paused = await one(fn, { runs, lastReceipt: started });
+  assert.equal(paused.status, "skip");
+  assert.match(paused.detail, /^1 run started and has no finish mark \(the oldest began .*\)\. Run receipts may have been paused, so it is not known if it was lost\. This workflow was not judged\.$/);
+  assert.match(paused.suggestedFix, /\[run-evidence\] lines/);
+  assert.equal(paused.customerSees, null);
+  // The newest receipt is one minute short of the deadline: still cannot tell.
+  assert.equal((await one(fn, { runs, lastReceipt: new Date(deadline.getTime() - MIN) })).status, "skip");
+  // No receipt anywhere (the read found none): cannot tell.
+  assert.equal((await one(fn, { runs, lastReceipt: null })).status, "skip");
+  // Its twins: a receipt saved at the deadline, or any time after it, means writes were working. The run is lost.
+  assert.equal((await one(fn, { runs, lastReceipt: deadline })).status, "FAIL");
+  assert.equal((await one(fn, { runs, lastReceipt: ago(1 * MIN) })).status, "FAIL");
+});
+
+test("d: a sleeper is judged the same way: past its wait plus a day, with no receipt after that, it is skip", async () => {
+  const fn = ev("s-nobook-chase", "survey.submitted");
+  const limit = SLEEPERS["s-nobook-chase"] + SLEEPER_SLACK_MS;
+  const started = ago(limit + 2 * HOUR);
+  const runs = [runRow("s-nobook-chase", { started, finished: null })];
+  assert.equal((await one(fn, { runs, lastReceipt: new Date(started.getTime() + 3 * DAY) })).status, "skip");
+  assert.equal((await one(fn, { runs, lastReceipt: new Date(started.getTime() + limit + MIN) })).status, "FAIL");
+});
+
+test("d: a workflow that finished ok recently stays PASS, and says an older open run was not judged", async () => {
+  const started = ago(5 * HOUR);
+  const r = await one(ev("s-00-welcome", "entry.captured"), {
+    runs: [runRow("s-00-welcome", { started, finished: null }), runRow("s-00-welcome", { started: ago(1 * HOUR) })],
+    lastReceipt: started
+  });
+  assert.equal(r.status, "PASS");
+  assert.match(r.detail, /1 older run has no finish mark\. Run receipts may have been paused, so it was not judged\.$/);
+});
+
+test("the runs read hands back the newest receipt time of any workflow: finish time, or start time for an open run", () => {
+  assert.match(RUNS_SQL, /\(SELECT max\(coalesce\(finished_at, run_started_at\)\) FROM latest\)/);
 });
 
 /* ═════ e. every run skipped ═════ */
@@ -432,7 +574,7 @@ test("h: the receipts table cannot be read (42P01): events came, so the row is s
   assert.equal(r.na, undefined);
   assert.equal(
     r.detail,
-    "3 round.started events came since 2026-10-09 (first 2026-10-11 08:00 UTC), but run receipts could not be read: the workflow_runs table does not exist yet (42P01). This workflow was not judged."
+    "3 round.started events came since 2026-10-09 (first 2026-10-11 1:00 a.m. Arizona time), but run receipts could not be read: the workflow_runs table does not exist yet (42P01). This workflow was not judged."
   );
   assert.equal(find(rows, "f-07").status, "na", "no event came: still nothing to judge");
 });
@@ -458,7 +600,7 @@ test("h: the event came BEFORE receipts began and receipts are under a day old: 
   assert.equal(r.na, undefined);
   assert.equal(
     r.detail,
-    "6 payment.received events came since 2026-10-09 (first 2026-10-12 07:05 UTC), before run receipts began (2026-10-12 14:00 UTC). Nothing says whether it ran. It is judged from the next event, or once receipts are a day old."
+    "6 payment.received events came since 2026-10-09 (first 2026-10-12 12:05 a.m. Arizona time), before run receipts began (2026-10-12 7:00 a.m. Arizona time). Nothing says whether it ran. It is judged from the next event, or once receipts are a day old."
   );
 });
 

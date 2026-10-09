@@ -566,8 +566,8 @@ async function checkRunRecorder({ db, scope, now, functions, sharedClient }) {
   }
   if (found.can_insert !== true || found.can_update !== true) {
     const lacks = [found.can_insert !== true ? "INSERT" : null, found.can_update !== true ? "UPDATE" : null].filter(Boolean).join(" and ");
-    problems.push(`the app cannot write run receipts (it lacks ${lacks} on workflow_runs), so every nothing-to-judge row for a workflow is blind`);
-    fixes.push("If the switch-off was left on, put the permission back: GRANT INSERT, UPDATE ON public.workflow_runs TO fundhub_app.");
+    problems.push("the app is not allowed to save run receipts, so the workflow rows cannot tell if work ran");
+    fixes.push(`The app lacks ${lacks} on workflow_runs. If the switch-off was left on, put the permission back: GRANT INSERT, UPDATE ON public.workflow_runs TO fundhub_app.`);
   }
   if (!found.began_at) {
     problems.push("the receipts table has no start marker, so no workflow can be judged from it");

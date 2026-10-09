@@ -1178,14 +1178,16 @@ test("audit:run-recorder is green with nothing to record: no workflow event came
 test("audit:run-recorder goes red when the app can no longer INSERT or UPDATE (the no-deploy switch-off was left on)", async () => {
   const noInsert = await runRecorder({ ...HEALTHY_RECORDER, can_insert: false });
   assert.equal(noInsert.status, "FAIL");
-  assert.match(noInsert.detail, /it lacks INSERT on workflow_runs\), so every nothing-to-judge row for a workflow is blind/);
+  assert.match(noInsert.detail, /the app is not allowed to save run receipts, so the workflow rows cannot tell if work ran/);
+  assert.doesNotMatch(noInsert.detail, /INSERT|UPDATE|blind|nothing-to-judge/, "the sentence Chris reads has no database words");
+  assert.match(noInsert.suggestedFix, /The app lacks INSERT on workflow_runs\./);
   assert.match(noInsert.suggestedFix, /GRANT INSERT, UPDATE ON public\.workflow_runs TO fundhub_app/);
   assert.ok(noInsert.customerSees);
   const noUpdate = await runRecorder({ ...HEALTHY_RECORDER, can_update: false });
   assert.equal(noUpdate.status, "FAIL");
-  assert.match(noUpdate.detail, /it lacks UPDATE on workflow_runs/);
+  assert.match(noUpdate.suggestedFix, /The app lacks UPDATE on workflow_runs\./);
   const neither = await runRecorder({ ...HEALTHY_RECORDER, can_insert: false, can_update: false });
-  assert.match(neither.detail, /it lacks INSERT and UPDATE on workflow_runs/);
+  assert.match(neither.suggestedFix, /The app lacks INSERT and UPDATE on workflow_runs\./);
 });
 
 test("audit:run-recorder goes red when the receipts table is missing (42P01)", async () => {
