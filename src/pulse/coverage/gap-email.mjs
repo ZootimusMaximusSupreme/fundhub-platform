@@ -98,13 +98,14 @@ SELECT count(*)::int AS n
 `.trim();
 
 /* The roadmap drip (src/workflows/slo-infinite-drip.mjs, 8:00 a.m. Arizona) moves a
-   person's slo_drip_step up by one every time it runs, whether or not an email was
-   queued. So a person whose step is higher than the number of drip emails they
-   have is a person the drip skipped. This reads the result in the database, which
-   is the one place that works when the source file is not on disk.
-   Measured 2026-10-08: sendTemplated is called with eventId null, so the ref is
-   workflow:<template>:null and every person after the first dedupes into the
-   first person's row. */
+   person's slo_drip_step up by one each time it queues their email. So a person
+   whose step is higher than the number of drip emails they have is a person the
+   drip skipped. This reads the result in the database, which is the one place
+   that works when the source file is not on disk.
+   Measured 2026-10-08: sendTemplated was called with eventId null, so the ref was
+   workflow:<template>:null and every person after the first deduped into the
+   first person's row. Fixed 2026-10-09: the key is person + step, and the step
+   moves only when email.sent is true. */
 export const DRIP_SQL = `
 SELECT count(*)::int AS n,
        COALESCE(sum(gap), 0)::int AS missing

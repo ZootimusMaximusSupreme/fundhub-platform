@@ -262,9 +262,10 @@ test("gap email: a file that does not send email is not a miss", () => {
   );
 });
 
-test("gap email: live morning files — drip ignores the result, chase and vault do not", () => {
+test("gap email: live morning files — drip, chase and vault all read the send result", () => {
+  // Fixed 2026-10-09: the drip moves the step only when email.sent is true.
   const misses = unreadMorningEmailPaths(liveSources());
-  assert.deepEqual(misses.map((row) => row.id), ["slo-infinite-drip"]);
+  assert.deepEqual(misses.map((row) => row.id), []);
 });
 
 test("gap email: magic-link template key matches the auth module", () => {
@@ -319,9 +320,12 @@ test("gap email: the drip read uses the drip's own field names and template pref
   assert.match(plan, /DRIP_STEP = "slo_drip_step"/);
   assert.match(plan, /`EMAIL-SLO-DRIP-COLD-\$\{n\}`/);
   assert.match(plan, /`EMAIL-SLO-DRIP-HOT-\$\{n\}`/);
-  // The drip steps up whether or not an email was queued. That is why a step with no row is a break.
+  // The drip steps up only after a queued email, one row per person per step.
+  // So a step with no row is still a break, and DRIP_SQL still finds it.
   assert.match(drip, /DRIP_STEP\]: String\(step \+ 1\)/);
-  assert.match(drip, /eventId: null/);
+  assert.match(drip, /email\.sent !== true/);
+  assert.match(drip, /eventId: dripSendKey\(row\.id, step\)/);
+  assert.doesNotMatch(drip, /eventId: null/);
   assert.match(DRIP_SQL, /custom_fields->>'slo_drip_on' = '1'/);
   assert.match(DRIP_SQL, /custom_fields->>'slo_drip_step'/);
   assert.match(DRIP_SQL, /template_key LIKE 'EMAIL-SLO-DRIP-%'/);
