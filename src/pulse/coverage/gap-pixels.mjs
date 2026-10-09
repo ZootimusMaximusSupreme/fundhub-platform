@@ -22,6 +22,13 @@
 //     no purchase.
 //
 // Details name env keys only. They never include secret values or the pixel id.
+//
+// Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
+// ad-click-stored returns status "na" with na: { code: "low-traffic", args } when
+// Meta really counted fewer than MIN_META_CLICKS link clicks. `naVerify` re-reads
+// with AD_CLICK_SQL and the same minimum, so the audit can prove the claim again.
+// Every other quiet reason (no database, no manifest page, too few page views for
+// the button-click check) stays "skip".
 
 import {
   CLARITY_SRC,
@@ -178,6 +185,11 @@ function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
 
+/** "Nothing to judge today": status na plus the code the audit re-checks. */
+function naRow(id, code, args, detail) {
+  return { id, status: "na", detail, suggestedFix: null, na: { code, args } };
+}
+
 function clip(s, n = 200) {
   return String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n);
 }
@@ -309,12 +321,17 @@ function hiddenValues(env, pixelId) {
 }
 
 function redactRows(rows, hidden) {
-  return rows.map((r) => ({
-    id: r.id,
-    status: r.status,
-    detail: redact(r.detail, hidden),
-    suggestedFix: r.suggestedFix == null ? null : redact(r.suggestedFix, hidden)
-  }));
+  return rows.map((r) => {
+    const out = {
+      id: r.id,
+      status: r.status,
+      detail: redact(r.detail, hidden),
+      suggestedFix: r.suggestedFix == null ? null : redact(r.suggestedFix, hidden)
+    };
+    // The reason the computer re-checks. It holds counts and days only, never a secret.
+    if (r.na) out.na = r.na;
+    return out;
+  });
 }
 
 function redact(text, hidden) {
@@ -450,9 +467,48 @@ function shiftDay(iso, delta) {
   return d.toISOString().slice(0, 10);
 }
 
+/** A count the read really sent: a finite number, or null. A missing answer is not zero. */
+function countOf(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** The three closed Arizona days the ad-click read covers. */
+function adClickDays(now) {
+  const today = adAccountDay(now);
+  return { from: shiftDay(today, -3), to: shiftDay(today, -1) };
+}
+
+/**
+ * The audit calls this to prove a "nothing to judge" row again. It reads with the
+ * same SQL (AD_CLICK_SQL), the same three days and the same minimum (MIN_META_CLICKS)
+ * the lane used, and answers true only when Meta's table really shows fewer clicks
+ * than the minimum. No read, or a count that is not a number, is false. A read that
+ * throws is left to throw: the audit counts a throw as false.
+ * @param {{ check?: string, orgId?: string }} args
+ * @param {{ db?: any, scope?: Function, now?: Date|string|number, orgId?: string }} ctx
+ */
+export const naVerify = Object.freeze({
+  "low-traffic": async (args, ctx = {}) => {
+    if (!args || args.check !== "ad-click-stored") return false;
+    const run = runnerOf(ctx);
+    if (!run) return false;
+    const at = ctx.now == null ? new Date() : new Date(ctx.now);
+    if (!Number.isFinite(at.getTime())) return false;
+    const { from, to } = adClickDays(at);
+    const org = args.orgId || ctx.orgId;
+    const out = await run((tx) => tx.query(AD_CLICK_SQL, [from, to, org ? String(org) : null]));
+    const rec = (out && out.rows && out.rows[0]) || {};
+    const clicks = countOf(rec.meta_clicks);
+    return clicks !== null && clicks < MIN_META_CLICKS;
+  }
+});
+
 // An ad click is a person who clicked a Meta ad. Meta counts it (link clicks); we
 // store it as a visit that carries a UTM or an fbclid. Zero stored while Meta
-// counted many means the capture is dead. Few Meta clicks (ads paused) is a skip.
+// counted many means the capture is dead. Few Meta clicks (ads paused) is a
+// nothing-to-judge row (na), not a quiet skip.
 async function assessAdClicks(ctx) {
   const id = "ad-click-stored";
   const fix =
@@ -462,9 +518,7 @@ async function assessAdClicks(ctx) {
   const run = runnerOf(ctx);
   if (!run) return row(id, "skip", "no database in this run — ad clicks not read");
   const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const today = adAccountDay(now);
-  const from = shiftDay(today, -3);
-  const to = shiftDay(today, -1);
+  const { from, to } = adClickDays(now);
   const orgId = ctx.orgId ? String(ctx.orgId) : null;
   let rec;
   try {
@@ -476,11 +530,14 @@ async function assessAdClicks(ctx) {
   const meta = Number(rec.meta_clicks) || 0;
   const stored = Number(rec.stored) || 0;
   if (meta < MIN_META_CLICKS) {
-    return row(
-      id,
-      "skip",
-      `Meta counted ${meta} link clicks from ${from} to ${to}, under ${MIN_META_CLICKS}, so there is too little ad traffic to judge`
-    );
+    const why = `Meta counted ${meta} link clicks from ${from} to ${to}, under ${MIN_META_CLICKS}, so there is too little ad traffic to judge`;
+    // Only a count Meta's table really gave is proof. A missing count stays a skip.
+    if (countOf(rec.meta_clicks) !== null) {
+      const args = { check: id, clicks: meta, min: MIN_META_CLICKS, from, to };
+      if (orgId) args.orgId = orgId;
+      return naRow(id, "low-traffic", args, `${why}. Judged the day Meta counts ${MIN_META_CLICKS}.`);
+    }
+    return row(id, "skip", why);
   }
   if (stored < meta * MIN_STORE_SHARE) {
     return row(

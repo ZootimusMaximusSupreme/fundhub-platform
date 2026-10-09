@@ -26,6 +26,13 @@
 // Not here: marketing clock (slice 03), dying-ad buzz, ClickFunnels, server
 // events, Meet (machine.mjs). No budget change, no pause, no video upload.
 // One tripwire: Recon (AG-07). No second watchdog. SELECT only.
+//
+// Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
+// When the lane's own read says no ad is running, ads-spend-day-missing and
+// ads-running-no-metrics return status "na" with na: { code: "no-running-ad", args }.
+// `naVerify` re-reads with the same SQL, so the audit can prove the claim again.
+// Every other quiet reason (sync never ran, sync late, no spend either side of a
+// gap) stays "skip": "we cannot see it" is never a nothing-to-judge condition.
 
 import { FRESH_HOURS } from "../machine.mjs";
 import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
@@ -54,6 +61,18 @@ function fix(lead) {
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
+}
+
+/** "Nothing to judge today": status na plus the code the audit re-checks. */
+function naRow(id, code, args, detail) {
+  return { id, status: "na", detail, suggestedFix: null, na: { code, args } };
+}
+
+/** A count the read really sent: a finite number, or null. A missing answer is not zero. */
+function count(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function toDate(v) {
@@ -291,11 +310,12 @@ export async function checkSpendDayMissing({ run, now }) {
   if (missing.length && !running) {
     // Meta sends a row only for an ad that delivered. With every ad paused an empty
     // day is the normal answer, not a sync that skipped it.
-    return row(
-      id,
-      "skip",
-      `No spend row for ${missing.join(" and ")}, and no ad is running, so Meta had nothing to send.`
-    );
+    const why = `No spend row for ${missing.join(" and ")}, and no ad is running, so Meta had nothing to send.`;
+    // Only a count the read really sent is proof. A missing count stays a skip.
+    if (count(r.running) === 0) {
+      return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day an ad runs.`);
+    }
+    return row(id, "skip", why);
   }
   if (missing.length) {
     // An ad that is ACTIVE now may have been paused through the empty day and switched
@@ -382,7 +402,11 @@ export async function checkRunningNoMetrics({ run, now }) {
   const running = num(r.running);
   const bare = num(r.bare);
   if (!running) {
-    return row(id, "skip", `No running ad is older than ${NEW_AD_GRACE_HOURS} h, so none needs a metrics row yet.`);
+    const why = `No running ad is older than ${NEW_AD_GRACE_HOURS} h, so none needs a metrics row yet.`;
+    if (count(r.running) === 0) {
+      return naRow(id, "no-running-ad", { check: id, running: 0 }, `${why} Judged the day one is.`);
+    }
+    return row(id, "skip", why);
   }
   if (!bare) {
     const noun = running === 1 ? "ad has" : "ads have";
@@ -398,6 +422,34 @@ export async function checkRunningNoMetrics({ run, now }) {
   );
 }
 
+/**
+ * The audit calls this to prove a "nothing to judge" row again. It reads with the
+ * same SQL the lane used (SPEND_DAYS_SQL, RUNNING_BARE_SQL) and answers true only
+ * when the read really says zero ads are running. No read, no row, or a count that
+ * is not a number is false. A read that throws is left to throw: the audit counts
+ * a throw as false.
+ * @param {{ check?: string }} args
+ * @param {{ db?: any, scope?: Function, now?: Date|string|number }} ctx
+ */
+export const naVerify = Object.freeze({
+  "no-running-ad": async (args, ctx = {}) => {
+    const run = bind(ctx);
+    if (!run) return false;
+    const now = nowOf(ctx);
+    const check = args && args.check;
+    if (check === "ads-spend-day-missing") {
+      const r = await one(run, SPEND_DAYS_SQL, closedDays(now));
+      return count(r.running) === 0;
+    }
+    if (check === "ads-running-no-metrics") {
+      const cutoff = new Date(now.getTime() - NEW_AD_GRACE_HOURS * HOUR_MS);
+      const r = await one(run, RUNNING_BARE_SQL, [cutoff]);
+      return count(r.running) === 0;
+    }
+    return false;
+  }
+});
+
 const RUNNERS = [
   ["ads-meta-sync-stale", checkMetaSyncStale],
   ["ads-spend-day-missing", checkSpendDayMissing],
@@ -407,7 +459,7 @@ const RUNNERS = [
 
 /**
  * @param {{ db?: { query: Function }, scope?: (fn: (tx: any) => Promise<any>) => Promise<any>, now?: Date|string|number }} [ctx]
- * @returns {Promise<Array<{ id: string, status: "PASS"|"FAIL"|"skip", detail: string, suggestedFix: string|null }>>}
+ * @returns {Promise<Array<{ id: string, status: "PASS"|"FAIL"|"skip"|"na", detail: string, suggestedFix: string|null, na?: { code: string, args: object } }>>}
  */
 export async function gapChecks(ctx = {}) {
   const run = bind(ctx);

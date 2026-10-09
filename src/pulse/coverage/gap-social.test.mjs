@@ -14,7 +14,8 @@ import {
   VIDEO_STATS_STALE_MS,
   WATCHED_STATES,
   YOUTUBE_ERROR_SQL,
-  gapChecks
+  gapChecks,
+  naVerify
 } from "./gap-social.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -30,11 +31,21 @@ const NOW = new Date("2026-10-08T15:00:00.000Z");
 const HOUR = 60 * 60 * 1000;
 
 function shape(row) {
-  assert.deepEqual(Object.keys(row), ["id", "status", "detail", "suggestedFix"]);
+  // A nothing-to-judge row (na) carries one extra key, na: { code, args }. No other row may.
+  assert.deepEqual(
+    Object.keys(row),
+    row.status === "na" ? ["id", "status", "detail", "suggestedFix", "na"] : ["id", "status", "detail", "suggestedFix"]
+  );
   assert.ok(CHECK_IDS.includes(row.id));
-  assert.ok(row.status === "PASS" || row.status === "FAIL" || row.status === "skip");
+  assert.ok(row.status === "PASS" || row.status === "FAIL" || row.status === "skip" || row.status === "na");
   assert.equal(typeof row.detail, "string");
   assert.ok(row.detail.length > 0);
+  if (row.status === "na") {
+    assert.equal(row.id, "social:video-stats-stale");
+    assert.equal(row.na.code, "not-connected");
+    assert.equal(row.na.args.check, row.id);
+    assert.match(row.detail, /Judged the day/);
+  }
   if (row.status === "FAIL") {
     assert.equal(typeof row.suggestedFix, "string");
     assert.match(row.suggestedFix, /Recon \(AG-07\) is the one tripwire/);
@@ -221,13 +232,117 @@ test("gap social: a connection that never synced is judged from the day it was c
   assert.match(fresh[1].detail, /has not run yet/);
 });
 
-test("gap social: no active YouTube connection skips the stale check", async () => {
+test("gap social: no active YouTube connection is nothing to judge (na not-connected) for the stale check", async () => {
+  // Measured live 2026-10-09: watched 0, last_synced_at null, connected_at null.
   const rows = await gapChecks(ctxOf(quietMap({
     [VIDEO_STATS_SQL]: { rows: [{ watched: 0, last_synced_at: null, connected_at: null }] }
   })));
   rows.forEach(shape);
-  assert.equal(rows[1].status, "skip");
+  assert.equal(rows[1].status, "na");
+  assert.deepEqual(rows[1].na, { code: "not-connected", args: { check: "social:video-stats-stale", orgId: ORG } });
   assert.match(rows[1].detail, /no active YouTube connection/);
+  assert.match(rows[1].detail, /Judged the day one is connected\./);
+  // The other two rows are untouched by it.
+  assert.deepEqual([rows[0].status, rows[2].status], ["PASS", "PASS"]);
+});
+
+test("gap social: with no org id the na args carry none", async () => {
+  const rows = await gapChecks({
+    scope: scopeFrom(quietMap({ [VIDEO_STATS_SQL]: { rows: [{ watched: 0 }] } })),
+    now: NOW,
+    socialReaders: readers()
+  });
+  assert.equal(rows[1].status, "na");
+  assert.deepEqual(rows[1].na.args, { check: "social:video-stats-stale" });
+});
+
+test("gap social: an active connection is never na (PASS or FAIL, as before)", async () => {
+  const fresh = await gapChecks(ctxOf(quietMap()));
+  assert.equal(fresh[1].status, "PASS");
+  assert.equal(fresh[1].na, undefined);
+  const stale = await gapChecks(ctxOf(quietMap({
+    [VIDEO_STATS_SQL]: {
+      rows: [{
+        watched: 1,
+        last_synced_at: new Date(NOW.getTime() - 4 * 24 * HOUR).toISOString(),
+        connected_at: new Date(NOW.getTime() - 30 * 24 * HOUR).toISOString()
+      }]
+    }
+  })));
+  stale.forEach(shape);
+  assert.equal(stale[1].status, "FAIL");
+  assert.equal(stale[1].na, undefined);
+});
+
+test("gap social: a count that did not come back is never na", async () => {
+  // A missing count is FAIL (not a number). A null count was a skip; it must not become na.
+  const missing = await gapChecks(ctxOf(quietMap({ [VIDEO_STATS_SQL]: { rows: [{}] } })));
+  assert.equal(missing[1].status, "FAIL");
+  assert.equal(missing[1].na, undefined);
+  const nul = await gapChecks(ctxOf(quietMap({ [VIDEO_STATS_SQL]: { rows: [{ watched: null }] } })));
+  nul.forEach(shape);
+  assert.equal(nul[1].status, "skip");
+  assert.equal(nul[1].na, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// naVerify: the audit proves the row again, with the lane's own SQL and states.
+
+const STATS = { check: "social:video-stats-stale" };
+const statsMap = (watched, extra = {}) => quietMap({ [VIDEO_STATS_SQL]: { rows: [{ watched, ...extra }] } });
+
+test("naVerify not-connected: true at zero active YouTube connections, with VIDEO_STATS_SQL and the watched states", async () => {
+  const seen = [];
+  const ok = await naVerify["not-connected"](STATS, { scope: scopeFrom(statsMap(0), seen), orgId: ORG });
+  assert.equal(ok, true);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].sql, VIDEO_STATS_SQL);
+  assert.deepEqual(seen[0].params, [ORG, [...WATCHED_STATES]]);
+  assert.equal(await naVerify["not-connected"](STATS, { scope: scopeFrom(statsMap("0")) }), true);
+});
+
+test("naVerify not-connected: false with one or more active connections, or a count that is not a number", async () => {
+  for (const watched of [1, 2, "3"]) {
+    assert.equal(await naVerify["not-connected"](STATS, { scope: scopeFrom(statsMap(watched)) }), false, String(watched));
+  }
+  for (const watched of [undefined, null, "", "x"]) {
+    assert.equal(await naVerify["not-connected"](STATS, { scope: scopeFrom(statsMap(watched)) }), false, String(watched));
+  }
+});
+
+test("naVerify not-connected: the company on the row is the company read; else ctx.orgId; else all", async () => {
+  const org = async (args, ctx) => {
+    const seen = [];
+    await naVerify["not-connected"](args, { scope: scopeFrom(statsMap(0), seen), ...ctx });
+    return seen[0].params[0];
+  };
+  assert.equal(await org({ ...STATS, orgId: ORG }, { orgId: PARTNER }), ORG);
+  assert.equal(await org(STATS, { orgId: PARTNER }), PARTNER);
+  assert.equal(await org(STATS, {}), null);
+});
+
+test("naVerify not-connected: no read, no row, another check or no args is false; a failed read throws", async () => {
+  assert.equal(await naVerify["not-connected"](STATS, {}), false);
+  assert.equal(await naVerify["not-connected"]({ check: "social:youtube-last-error" }, { scope: scopeFrom(statsMap(0)) }), false);
+  assert.equal(await naVerify["not-connected"]({}, { scope: scopeFrom(statsMap(0)) }), false);
+  assert.equal(await naVerify["not-connected"](undefined, { scope: scopeFrom(statsMap(0)) }), false);
+  const empty = async (fn) => fn({ query: async () => ({ rows: [] }) });
+  assert.equal(await naVerify["not-connected"](STATS, { scope: empty }), false);
+  const broken = { query: async () => { throw new Error("permission denied for table analytics_connections"); } };
+  await assert.rejects(naVerify["not-connected"](STATS, { db: broken }), /permission denied/);
+});
+
+test("naVerify not-connected: db alone works", async () => {
+  const tx = txFrom(statsMap(0));
+  assert.equal(await naVerify["not-connected"](STATS, { db: tx }), true);
+});
+
+test("round trip: the na row's own args pass naVerify, and fail the moment YouTube is connected", async () => {
+  const rows = await gapChecks(ctxOf(statsMap(0)));
+  const r = rows[1];
+  assert.equal(r.status, "na");
+  assert.equal(await naVerify[r.na.code](r.na.args, { scope: scopeFrom(statsMap(0)) }), true);
+  assert.equal(await naVerify[r.na.code](r.na.args, { scope: scopeFrom(statsMap(1)) }), false);
 });
 
 test("gap social: a Social Studio read that throws is FAIL and names the read", async () => {

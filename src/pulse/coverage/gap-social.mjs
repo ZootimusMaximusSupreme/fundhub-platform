@@ -27,6 +27,10 @@
 //     judged against the day it was connected, so a fresh connection is not red.
 //   * A connection left in state error or expired with no last_error text was
 //     missed. It now counts.
+//   * Nothing to judge (owner law 2026-10-09: a live thing is never "not checked").
+//     social:video-stats-stale returns status "na" with na: { code: "not-connected",
+//     args } when the read really shows no active YouTube connection. `naVerify`
+//     re-reads with VIDEO_STATS_SQL, so the audit can prove the claim again.
 
 /** One day. The sync stores one stat_date per run. */
 export const VIDEO_STATS_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -104,6 +108,11 @@ function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
 
+/** "Nothing to judge today": status na plus the code the audit re-checks. */
+function naRow(id, code, args, detail) {
+  return { id, status: "na", detail, suggestedFix: null, na: { code, args } };
+}
+
 function clip(err, n = 160) {
   return String((err && err.message) || err).replace(/\s+/g, " ").trim().slice(0, n);
 }
@@ -132,6 +141,28 @@ async function one(run, sql, params) {
   const out = await run((tx) => tx.query(sql, params));
   return (out && out.rows && out.rows[0]) || {};
 }
+
+/**
+ * The audit calls this to prove a "nothing to judge" row again. It reads with the
+ * same SQL (VIDEO_STATS_SQL) and the same watched states the lane used, and answers
+ * true only when the read really counts zero active YouTube connections. No read,
+ * or a count that is not a number, is false. A read that throws is left to throw:
+ * the audit counts a throw as false.
+ * @param {{ check?: string, orgId?: string }} args
+ * @param {{ db?: any, scope?: Function, orgId?: string }} ctx
+ */
+export const naVerify = Object.freeze({
+  "not-connected": async (args, ctx = {}) => {
+    if (!args || args.check !== "social:video-stats-stale") return false;
+    const run = bind(ctx);
+    if (!run) return false;
+    const orgId = args.orgId || ctx.orgId || null;
+    const hit = await one(run, VIDEO_STATS_SQL, [orgId, [...WATCHED_STATES]]);
+    if (hit.watched == null || hit.watched === "") return false;
+    const watched = Number(hit.watched);
+    return Number.isFinite(watched) && watched === 0;
+  }
+});
 
 async function checkYoutubeLastError({ run, orgId }) {
   const id = "social:youtube-last-error";
@@ -167,11 +198,12 @@ async function checkVideoStatsStale({ run, orgId, now }) {
       return row(id, "FAIL", "video stats sync count was not a number", fix);
     }
     if (watched === 0) {
-      return row(
-        id,
-        "skip",
-        "no active YouTube connection — there is no video stats sync to be late"
-      );
+      const why = "no active YouTube connection, so there is no video stats sync to be late.";
+      // Only a count the read really sent is proof. A null count stays a skip.
+      if (hit.watched == null || hit.watched === "") return row(id, "skip", why);
+      const args = { check: id };
+      if (orgId) args.orgId = String(orgId);
+      return naRow(id, "not-connected", args, `${why} Judged the day one is connected.`);
     }
     const last = toDate(hit.last_synced_at);
     const connected = toDate(hit.connected_at);
