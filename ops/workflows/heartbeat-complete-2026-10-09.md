@@ -52,17 +52,38 @@ Model: A and C Sonnet, B Opus.
 
 > Waits for A's map. For every MISSING row, build a read-only gap check in the matching src/pulse/coverage/gap-<lane>.mjs (or a new lane on the modules.mjs list), with PASS and FAIL tests. Prove it with the live read-only tool and from a built Netlify bundle. Do not fix product code; a real break stays red and is reported.
 
-## Status
+## Status — 2026-10-09 01:35 Arizona
 
 | # | Status |
 |---|---|
-| A | claimed — Sonnet audit running (9 groups, a checker each); maps land in ops/workflows/heartbeat-complete-2026-10-09-map/ |
-| B | rule, picture, proof command done (da48c866). Left: the test that makes every money or customer surface name its deep check — needs A's list, lands with C |
-| C | pending — waits on A |
+| A | done — 997 surfaces mapped: 265 deep, 439 ping only, 104 weak, 189 missing. Maps: ops/workflows/heartbeat-complete-2026-10-09-map/ |
+| B | done — rule (both homes), CLAUDE.md line, picture, `npm run pulse:prove`, tripwire map + test (da48c866, 810050ca) |
+| C tier 1 | done and shipped (803b2fe5) — 12 lanes built and checked; 4 new lanes listed; 37 launch-day surfaces in the tripwire map |
+| C tier 2 | pending — 253 money or customer holes, listed in ops/workflows/heartbeat-complete-2026-10-09-worklist.md |
+| C tier 3 | pending — 161 staff-only or internal holes, same file |
 
-## Manifest — B (da48c866)
+## Manifest — C tier 1 (803b2fe5)
 
-- `.claude/rules/heartbeat-on-every-build.md`, `.cursor/rules/heartbeat-on-every-build.mdc` — the tripwire law, same words.
-- `CLAUDE.md` — one sentence added to "Heartbeat on every build". No renumbering.
-- `docs/journeys/heartbeat-flow.md` — the picture; `docs/journeys/CHANGELOG.md` line.
-- `scripts/pulse/prove.mjs`, `package.json` script `pulse:prove`. First run: 39 steps, slowest 11.7 s, 0 SQL errors, 0 writes, OK.
+- New lanes: `gap-handoff`, `gap-keys`, `gap-leads`, `gap-outside-inngest` (on `modules.mjs`). Extended: payments, sms, soft-pull, underwrite, funnels, webhooks, portal, calls.
+- The heartbeat now speaks when the database is down: `src/pulse/instant-watch.mjs` (dead database = one red row, at most 2 texts an hour), `src/pulse/daily-pulse.mjs` (each database read guarded), `src/workflows/daily-pulse.mjs` (one fallback text if the brief or the pulse dies), `src/ops/morning-brief.mjs` (a failed save never throws after the text).
+- `src/pulse/tripwires.mjs`: 37 launch-day surfaces with their deep checks; baseline 533 → 496.
+- `api/ops/notify-owner.mjs` (12f052c3): one text to the owner number behind `OPS_NOTIFY_SECRET`. Used at 01:33 to text Chris "shipped" — sent to …6457.
+- Proof: `npm run pulse:prove` from a built bundle — 43 steps, slowest 11.8 s, 0 SQL errors, 0 writes. Full suite: the same 12 failures as before today, 0 new. Live bundle carries 76 coverage files.
+
+## Real breaks the launch-day tripwires see today (not fixed — product)
+
+1. apply.fundhub.ai/order charges $297; the till says $147 (the /roadmap price). `funnel:order-price-matches-till`
+2. 15 message templates are marked ready but hold lorem ipsum or a draft mark; the sender holds them, so the customer gets nothing. `gap:msg-approved-template-bad-copy`
+3. New bookings carry no join link (0 of the newest 5). `calls:booked-no-join-link`
+4. A lead got no welcome email (FH-000532). `handoff:lead-first-touches-missing`
+5. One paid order for a product name we do not know, no access given. `payments:paid-product-unmapped`
+6. A paying client has had portal access 3 days and never signed in, never sent a link. `portal:paid-client-never-signed-in`
+7. Two emails left with no delivery receipt for over a day. `gap:msg-sent-no-receipt`
+8. Still red from 10-08: roadmap drip skips emails, repair file FH-000507 stuck in analysis, a lead with no welcome text.
+
+Laptop-only reds (masked keys on this Mac, real on Netlify): `brain:embed-key`, `opt-out:unsubscribe-link`.
+
+## Next
+
+- Move the money tripwires (leads cut, checkout no link, receipts waiting, paid no access) onto the 5-minute watch so a launch-day break texts in minutes, not next morning.
+- Run tier 2 the same way.
