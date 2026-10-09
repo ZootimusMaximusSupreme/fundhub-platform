@@ -60,6 +60,7 @@ export const SEND_PATHS = {
   "src/ad-videos/notify-fanout.mjs": { watch: "ad-video-sweeper" },
   "src/auth/staff-mail.mjs": { watch: "auth/invite" },
   "src/metro2/delivery/send.mjs": { watch: "repair/send" },
+  "src/pulse/alerts.mjs": { watch: "pulse-hourly" },
   "src/pulse/instant-watch.mjs": { watch: "pulse-instant-watch" },
   "src/pulse/notify.mjs": { watch: "daily-pulse" },
   "src/push/send.mjs": { watch: "push/subscribe" },
