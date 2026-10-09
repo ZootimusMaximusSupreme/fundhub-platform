@@ -34,4 +34,7 @@ export function isPingId(id) {
 
 export const TRIPWIRES = Object.freeze({});
 
-export const NOT_CUSTOMER_FACING = Object.freeze({});
+export const NOT_CUSTOMER_FACING = Object.freeze({
+  "route:ops/notify-owner":
+    "Owner-only: one text to Chris's own pulse number for an agent on the Mac, behind a secret. It never reaches a customer. Its ping is reg:ops/notify-owner."
+});

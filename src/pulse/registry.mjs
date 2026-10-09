@@ -230,6 +230,7 @@ const API_KEYS = [
      accept / reject / waive / add a line) is never pinged. */
   "money/vault",
   "ops/hire-closer",
+  "ops/notify-owner",
   "org-brand",
   "partner-brand/verify-domain",
   "partner-brand",

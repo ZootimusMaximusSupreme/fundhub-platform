@@ -108,6 +108,7 @@ import readCompanyBrainAffiliate from "../../api/read/company-brain-affiliate.mj
 import readOpsPulse from "../../api/read/ops-pulse.mjs";
 import readMorningBrief from "../../api/read/morning-brief.mjs";
 import opsHireCloser from "../../api/ops/hire-closer.mjs";
+import opsNotifyOwner from "../../api/ops/notify-owner.mjs";
 import companyBrainReviews from "../../api/company-brain/reviews.mjs";
 import companyBrainSync from "../../api/company-brain/sync.mjs";
 import companyBrainUpload from "../../api/company-brain/upload.mjs";
@@ -644,6 +645,8 @@ export const ROUTES = {
   "read/ops-pulse": readOpsPulse,
   "read/morning-brief": readMorningBrief,
   "ops/hire-closer": opsHireCloser,
+  // One text to Chris (PULSE_SMS_TO only) for an agent on the Mac, behind OPS_NOTIFY_SECRET.
+  "ops/notify-owner": opsNotifyOwner,
 
   // Owner-only classification review queue (H-3). Also carries staff uploads
   // waiting for approval — same queue, same owner-only decision.
