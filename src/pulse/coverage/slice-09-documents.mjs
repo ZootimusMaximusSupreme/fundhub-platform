@@ -2,10 +2,10 @@
 // A cron job is red after 3 times its schedule. A GET door is red when its
 // morning ping is missing from the registry.
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+// No repo files are read at run time (CLAUDE.md section 12): the bundled
+// function list is imported, so this slice loads on the server too.
 
+import { functions } from "../../workflows/index.mjs";
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import { SWEEP_CRON as DOC_CHECK_RETRY_CRON } from "../../workflows/doc-check-retry-sweeper.mjs";
 import { SWEEP_CRON as DOCUMENT_VAULT_CHASE_CRON } from "../../workflows/document-vault-chase.mjs";
@@ -14,23 +14,12 @@ export const SLICE_ID = "09-documents";
 
 const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
 
-const INDEX_SRC = readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "../../workflows/index.mjs"),
-  "utf8"
-);
+/** Inngest function ids in the bundled list (src/workflows/index.mjs). */
+const registeredIds = new Set(functions.map((fn) => fn && fn.opts && fn.opts.id).filter(Boolean));
 
-/** Served from index.mjs: import path plus the symbol in the functions array. */
-const WORKFLOW_INDEX_MARKERS = Object.freeze({
-  "doc-check": ["./doc-check.mjs", "docCheck,"],
-  "doc-check-retry-sweeper": ["./doc-check-retry-sweeper.mjs", "docCheckRetrySweeper,"],
-  "document-vault-chase": ["./document-vault-chase.mjs", "documentVaultChase,"]
-});
-
-/** True when the workflow is imported and listed in src/workflows/index.mjs. */
+/** True when the workflow id is registered in src/workflows/index.mjs. */
 export function workflowInIndex(id) {
-  const marks = WORKFLOW_INDEX_MARKERS[id];
-  if (!marks) return false;
-  return marks.every((m) => INDEX_SRC.includes(m));
+  return registeredIds.has(String(id));
 }
 
 /** Human schedule label from a cron string (matches slice redAfter wording). */

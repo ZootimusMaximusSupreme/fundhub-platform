@@ -1,12 +1,14 @@
 // Morning and evening brief crons for the pulse coverage map. Report only.
 // Never auto-fix. Never text. A job is red after 3 times its daily schedule
 // (3 days). alreadyInRegistry is true only when existing pulse code already
-// watches the job (machine.mjs, daily-pulse.mjs, or registry.mjs).
+// watches the job (machine.mjs or the pulse job list in heartbeats.mjs).
+//
+// No repo files are read at run time (CLAUDE.md section 12). "Is the workflow
+// registered" is answered by the bundled function list, and "does the pulse
+// watch it" by the machine rows and the job list, all imported.
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
+import { functions } from "../../workflows/index.mjs";
+import { INNGEST_JOBS } from "../heartbeats.mjs";
 import { MACHINE_CHECKS } from "../machine.mjs";
 
 export const SLICE_ID = "06-briefs";
@@ -20,58 +22,30 @@ export const EVENING_BRIEF_ID = "evening-brief";
 
 const DAILY = "daily";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = path.resolve(HERE, "../../..");
-
-const INDEX_FILE = "src/workflows/index.mjs";
-const PULSE_WATCH_FILES = [
-  "src/pulse/daily-pulse.mjs",
-  "src/pulse/machine.mjs",
-  "src/pulse/registry.mjs"
-];
-
 /** Workflow file paths watched by src/pulse/machine.mjs. */
 const machineWorkflowFiles = new Set(MACHINE_CHECKS.map((row) => row.file));
+
+/** Inngest function ids in the bundled list (src/workflows/index.mjs). */
+const registeredIds = new Set(functions.map((fn) => fn && fn.opts && fn.opts.id).filter(Boolean));
+
+/** Job ids the pulse job list (heartbeats.mjs) already reads. */
+const pulseJobIds = new Set(INNGEST_JOBS.map(([job]) => job));
 
 function machineRowForWorkflowFile(workflowFile) {
   return MACHINE_CHECKS.find((row) => row.file === workflowFile) ?? null;
 }
 
-function repoFileExists(relPath) {
-  return fs.existsSync(path.join(REPO_ROOT, relPath));
+function pulseAlreadyChecks({ jobId, workflowFile }) {
+  return machineWorkflowFiles.has(workflowFile) || pulseJobIds.has(jobId);
 }
 
-function repoFileIncludes(relPath, needle) {
-  if (!repoFileExists(relPath)) return false;
-  return fs.readFileSync(path.join(REPO_ROOT, relPath), "utf8").includes(needle);
-}
-
-function pulseAlreadyChecks({ id, workflowFile, pulseFile }) {
-  if (machineWorkflowFiles.has(workflowFile)) return true;
-  const needles = [
-    id,
-    path.basename(pulseFile, ".mjs"),
-    path.basename(workflowFile, ".mjs")
-  ];
-  return PULSE_WATCH_FILES.some((rel) => needles.some((n) => repoFileIncludes(rel, n)));
-}
-
-function indexRegistersBrief(workflowFile, inngestExport) {
-  if (!repoFileExists(INDEX_FILE)) return false;
-  const text = fs.readFileSync(path.join(REPO_ROOT, INDEX_FILE), "utf8");
-  return text.includes(workflowFile) || text.includes(inngestExport);
-}
-
-function isWired({ pulseFile, workflowFile, inngestExport }) {
-  return (
-    repoFileExists(pulseFile) &&
-    repoFileExists(workflowFile) &&
-    indexRegistersBrief(workflowFile, inngestExport)
-  );
+function isWired({ jobId }) {
+  return registeredIds.has(jobId) && pulseJobIds.has(jobId);
 }
 
 function briefRow({
   id,
+  jobId,
   pulseFile,
   workflowFile,
   cron,
@@ -79,19 +53,20 @@ function briefRow({
   after = null
 }) {
   const machine = machineRowForWorkflowFile(workflowFile);
-  const alreadyInRegistry = pulseAlreadyChecks({ id, workflowFile, pulseFile });
+  const alreadyInRegistry = pulseAlreadyChecks({ jobId, workflowFile });
   let proof;
   if (alreadyInRegistry && machine) {
     proof = `PASS — machine row ${machine.id} reads what ${id} leaves behind (${machine.watches}).`;
   } else if (alreadyInRegistry) {
-    proof = `PASS — ${id} is already watched in the morning pulse code.`;
+    proof = `PASS — ${id} is already watched in the morning pulse code (job ${jobId}).`;
   } else {
     proof =
       `Wire ${pulseFile} and ${workflowFile} (cron ${cron}), register ${inngestExport} in ` +
-      `${INDEX_FILE}, then add a pulse watch (machine row or daily-pulse check). Do not auto-fix from this pulse.`;
+      `src/workflows/index.mjs, then add a pulse watch (machine row or daily-pulse check). Do not auto-fix from this pulse.`;
   }
   return {
     id,
+    jobId,
     schedule: DAILY,
     redAfter: `3x ${DAILY}`,
     cron,
@@ -109,6 +84,7 @@ function briefRow({
 export const CHECKS = [
   briefRow({
     id: MORNING_BRIEF_ID,
+    jobId: "daily-pulse",
     pulseFile: "src/ops/morning-brief.mjs",
     workflowFile: "src/workflows/daily-pulse.mjs",
     cron: MORNING_BRIEF_CRON,
@@ -117,6 +93,7 @@ export const CHECKS = [
   }),
   briefRow({
     id: EVENING_BRIEF_ID,
+    jobId: "evening-brief",
     pulseFile: "src/ops/morning-brief.mjs",
     workflowFile: "src/workflows/evening-brief.mjs",
     cron: EVENING_BRIEF_CRON,

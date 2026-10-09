@@ -14,12 +14,17 @@
 // An event workflow (booking.created, round.funded, and the rest) is not a
 // cron. It is "not checked" unless a last-success time is actually in the
 // database. A catalog note that says PASS is not a pass.
+//
+// A slice row that only claims "covered" carries `foldInto`: the id of the real
+// check that ran (a registry ping, a job row, a workflow row). link.mjs folds it
+// into that row once the whole run exists. This file never copies a verdict.
 
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { JOBS, STALE_MULTIPLE, cronIntervalMs, lastMonthlyFire } from "../heartbeats.mjs";
+import { buildFoldIndex, foldTargetFor } from "./link.mjs";
 import { GAP_FILES, SLICE_FILES } from "./modules.mjs";
 
 
@@ -125,11 +130,12 @@ function result(row, sliceId, status, detail, extra = {}) {
 }
 
 export function tally(rows = []) {
-  const n = { total: rows.length, pass: 0, red: 0, notChecked: 0, other: 0 };
+  const n = { total: rows.length, pass: 0, red: 0, notChecked: 0, na: 0, other: 0 };
   for (const row of rows) {
     if (row.status === "PASS") n.pass += 1;
     else if (row.status === "FAIL") n.red += 1;
     else if (row.status === NOT_CHECKED) n.notChecked += 1;
+    else if (row.status === "na") n.na += 1;
     else n.other += 1;
   }
   return n;
@@ -427,6 +433,40 @@ function fromCron(row, sliceId, cron, ctx) {
   );
 }
 
+/**
+ * The row's own evaluation, as it always was. `keep` marks the rows whose own
+ * evaluation is real and is never replaced by a fold: the marketing clock reads,
+ * the AG-07 agent read, and a payout or floor row whose stamp read returned a time.
+ * `plain` marks a row that is neither a cron nor an event.
+ */
+function evaluateOwn(row, sliceId, ctx) {
+  if (ctx.marketingError && ctx.marketingIds.has(String(row.id)) && !ctx.marketingById.has(String(row.id))) {
+    return {
+      out: fromUnchecked(row, sliceId, `Not checked. Could not read marketing heartbeats (${ctx.marketingError}).`),
+      keep: true
+    };
+  }
+  if (ctx.marketingById.has(String(row.id))) {
+    return { out: fromMarketing(row, sliceId, ctx.marketingById.get(String(row.id))), keep: true };
+  }
+  if (ctx.agent && ctx.agent.checkId === row.id) return { out: fromAgent(row, sliceId, ctx), keep: true };
+  const cron = cronExpression(row);
+  if (cron) {
+    return { out: fromCron(row, sliceId, cron, ctx), keep: ctx.stamps.has(String(row.id)) };
+  }
+  if (looksLikeEvent(row)) return { out: fromEvent(row, sliceId), keep: false };
+  return {
+    out: fromUnchecked(row, sliceId, "Not checked. No last-success time in the database."),
+    keep: false,
+    plain: true
+  };
+}
+
+/**
+ * One slice row. A claim of "covered" gets `foldInto` (see link.mjs). Who answers,
+ * first hit wins: the row's own real evaluation; a real red (never folded away);
+ * the fold target; and last, a claim that points at nothing.
+ */
 function evaluateRow(row, sliceId, ctx) {
   if (!row || typeof row !== "object") {
     return result(
@@ -436,20 +476,17 @@ function evaluateRow(row, sliceId, ctx) {
       "Not checked. This slice row was empty."
     );
   }
-  if (ctx.marketingError && ctx.marketingIds.has(String(row.id)) && !ctx.marketingById.has(String(row.id))) {
-    return fromUnchecked(row, sliceId, `Not checked. Could not read marketing heartbeats (${ctx.marketingError}).`);
+  const { out, keep, plain } = evaluateOwn(row, sliceId, ctx);
+  if (keep || out.status === "FAIL") return out;
+  const target = foldTargetFor(row, ctx.fold, sliceId);
+  if (target) return { ...out, foldInto: target };
+  if (plain && row.alreadyInRegistry === true) {
+    return fromUnchecked(row, sliceId, `Claims covered, but no check ran for ${row.id}.`);
   }
-  if (ctx.marketingById.has(String(row.id))) {
-    return fromMarketing(row, sliceId, ctx.marketingById.get(String(row.id)));
-  }
-  if (ctx.agent && ctx.agent.checkId === row.id) return fromAgent(row, sliceId, ctx);
-  const cron = cronExpression(row);
-  if (cron) return fromCron(row, sliceId, cron, ctx);
-  if (looksLikeEvent(row)) return fromEvent(row, sliceId);
-  return fromUnchecked(row, sliceId, "Not checked. No last-success time in the database.");
+  return out;
 }
 
-const GAP_STATUSES = new Set(["PASS", "FAIL", "skip"]);
+const GAP_STATUSES = new Set(["PASS", "FAIL", "skip", "na"]);
 
 function laneTokens(sliceId) {
   const stem = String(sliceId || "gap");
@@ -509,6 +546,22 @@ function gapSkip(sliceId, detail, checkId = "threw") {
   };
 }
 
+/** `{ code, args }` from a lane's `na`, as plain JSON. Null when the lane gave no usable code. */
+function naOf(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const code = typeof raw.code === "string" ? raw.code.trim() : "";
+  if (!code) return null;
+  let args = {};
+  if (raw.args && typeof raw.args === "object" && !Array.isArray(raw.args)) {
+    try {
+      args = JSON.parse(JSON.stringify(raw.args));
+    } catch {
+      args = {};
+    }
+  }
+  return { code, args };
+}
+
 function gapResult(sliceId, row) {
   if (!row || typeof row !== "object") {
     return gapSkip(sliceId, `${sliceId} returned an empty row.`, "bad-row");
@@ -518,7 +571,7 @@ function gapResult(sliceId, row) {
   const detail = status === row.status
     ? clip(row.detail, 500)
     : clip(`${row.detail || "Gap check returned a status this pulse does not use."}`, 500);
-  return {
+  const built = {
     id: namespaceGapId(checkId, sliceId),
     checkId,
     sliceId,
@@ -530,6 +583,14 @@ function gapResult(sliceId, row) {
     customerSees: row.customerSees || (status === "FAIL" ? clip(row.detail, 240) : null),
     schedule: null
   };
+  if (status === "na") {
+    // A lane may say "nothing to judge" only with a code the audit can re-check.
+    // A row with no usable code stays "na" with no object; the scorecard then
+    // lands it as not checked.
+    const na = naOf(row.na);
+    if (na) built.na = na;
+  }
+  return built;
 }
 
 /**
@@ -636,10 +697,29 @@ export async function runGapLane(sliceId, args = {}) {
 }
 
 /**
+ * The bundled Inngest functions, the list a workflow claim folds against. A list
+ * passed in wins. With none, import src/workflows/index.mjs on the first call (a
+ * lazy import: that file reaches the pulse, so a static import would be a loop).
+ * `null` or `false` turns the workflow step off. A failed import is a null list.
+ */
+async function bundledFunctions(given) {
+  if (Array.isArray(given)) return given;
+  if (given === null || given === false) return null;
+  try {
+    const mod = await import("../../workflows/index.mjs");
+    return Array.isArray(mod.functions) ? mod.functions : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Evaluate every slice CHECKS row, then every gapChecks row.
  * `modules` is for slice tests. Live calls load every slice-*.mjs file and
  * every gap-*.mjs file. Passing `modules` does not load gap files unless
  * `gaps` is a list, so a slice test still sees one heartbeat read.
+ * `functions` is the bundled Inngest function list (see bundledFunctions).
+ * A claim row comes back with `foldInto`; foldCoverage (link.mjs) folds it.
  * Does not send. Does not fix. Does not charge. Does not pull credit.
  */
 export async function runCoverageSlices({
@@ -651,9 +731,11 @@ export async function runCoverageSlices({
   orgId = null,
   fetchImpl = undefined,
   baseUrl = undefined,
-  env = undefined
+  env = undefined,
+  functions = undefined
 } = {}) {
   const loaded = modules || await loadSliceModules();
+  const fnList = await bundledFunctions(functions);
   const signals = collectSignals(loaded);
   const checkIds = new Set();
   const cronIds = [];
@@ -683,7 +765,8 @@ export async function runCoverageSlices({
           ? (item.CHECKS || []).map((row) => row && String(row.id))
           : []
       )).filter(Boolean)
-    )
+    ),
+    fold: buildFoldIndex({ functions: fnList })
   };
   const out = [];
   for (const item of loaded) {

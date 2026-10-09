@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   CHECKS,
@@ -39,6 +40,17 @@ test("slice 09-documents: cron labels match the workflow modules", () => {
 
 test("slice 09-documents: gaps is empty when registry and index are complete", () => {
   assert.deepEqual(gaps(), []);
+});
+
+test("slice 09-documents: a workflow that is not in the bundled list is not registered", () => {
+  assert.equal(workflowInIndex("not-a-real-workflow"), false);
+  const row = CHECKS.find((r) => r.id === "doc-check");
+  assert.equal(row.alreadyInRegistry, true);
+});
+
+test("slice 09-documents: reads no repo file at run time, so it loads on the server", () => {
+  const code = fs.readFileSync(new URL("./slice-09-documents.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(code, /node:fs|readFileSync|readdirSync|existsSync/);
 });
 
 test("slice 09-documents: gaps lists rows that fail proof", () => {
