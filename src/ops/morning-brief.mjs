@@ -42,6 +42,7 @@ import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 import { loadCashflowByDay } from "../finance/cashflow.mjs";
 import { fromCents } from "../commissions/money.mjs";
 import { textMorningBrief } from "../pulse/notify.mjs";
+import { TRIPWIRES } from "../pulse/tripwires.mjs";
 import { buildSuggestions } from "./suggestions.mjs";
 import { briefUrl } from "./brief-link.mjs";
 import { groupByOfferFunnel, groupClosers, loadOfferNumbers, readClosersByOffer, OFFER_NOTES } from "./brief-offers.mjs";
@@ -153,18 +154,21 @@ function errLine(label, err) {
 /* ---------- systems (MB2 scorecard, src/pulse/scorecard.mjs) ---------- */
 
 /* The systems section reads MB2's scorecard — the board contract: every check
-   green / red / not_checked, and each red with customer_sees, since, day_count
-   and fix. The morning takes the one runDailyPulse just built (pulse.scorecard,
+   green / red / na (nothing to judge today) / not_checked, and each red with
+   customer_sees, since, day_count and fix. The morning takes the one runDailyPulse just built (pulse.scorecard,
    the same object it saves to pulse_scorecards). Anything else reads the row
    stored for that Arizona day. Nothing here re-runs or re-maps a check. */
 export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine = LINES.systemsMissing } = {}) {
   if (!scorecard || !Array.isArray(scorecard.checks)) {
-    return { status: "missing", total: 0, green: 0, red: 0, not_checked: 0, reds: [], line: missingLine };
+    return { status: "missing", total: 0, green: 0, red: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
   }
   const checks = scorecard.checks;
   const green = checks.filter((c) => c.status === "green").length;
-  const reds = checks.filter((c) => c.status === "red");
-  const notChecked = checks.filter((c) => c.status !== "green" && c.status !== "red").length;
+  const reds = orderReds(checks.filter((c) => c.status === "red"));
+  // "na" is its own count now (zero-unchecked build, 2026-10-09). It is nothing to judge
+  // today, with a reason the computer re-checks, and it is not "not checked".
+  const na = checks.filter((c) => c.status === "na").length;
+  const notChecked = checks.filter((c) => c.status !== "green" && c.status !== "red" && c.status !== "na").length;
   let line = `${prefix} ${green} of ${checks.length} checks green.`;
   if (reds.length) {
     line += ` ${reds.length} red: ` + reds.slice(0, 3).map((c) => {
@@ -173,6 +177,7 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
     }).join(", ") + (reds.length > 3 ? `, and ${reds.length - 3} more in the report.` : ".");
   }
   if (notChecked) line += ` ${notChecked} not checked.`;
+  if (na) line += ` ${na} had nothing to judge today.`;
   // Never "nothing needs you" while anything is red or not checked.
   if (!reds.length && !notChecked) line += " Nothing needs you.";
   return {
@@ -180,11 +185,52 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
     total: checks.length,
     green,
     red: reds.length,
+    na,
     not_checked: notChecked,
     reds,
     line,
     scorecard
   };
+}
+
+/* The order the morning text names the reds, so a new break is not buried under
+   a red that has stood for weeks (critic #10): new today (day_count 1) first;
+   then reds on a money tripwire; then a customer tripwire; then the audit's own
+   rows (audit:*); then the rest. Stable inside each group. The tripwire ids come
+   from TRIPWIRES[*].checks in src/pulse/tripwires.mjs, read only. A scorecard id
+   may carry its lane in front ("gap-payments:payments:paid-no-entitlement"), so
+   an id also matches on every part after a colon. */
+const TRIPWIRE_RANK = (() => {
+  const rank = new Map();
+  for (const [impact, n] of [["customer", 1], ["money", 0]]) {
+    for (const entry of Object.values(TRIPWIRES)) {
+      if (entry.impact !== impact) continue;
+      for (const id of entry.checks || []) rank.set(id, n);
+    }
+  }
+  return rank;
+})();
+
+function reasonRank(check) {
+  const ids = [check.id, check.checkId].filter((x) => typeof x === "string");
+  let best = null;
+  for (const id of ids) {
+    const parts = id.split(":");
+    for (let i = 0; i < parts.length; i += 1) {
+      const hit = TRIPWIRE_RANK.get(parts.slice(i).join(":"));
+      if (hit !== undefined && (best === null || hit < best)) best = hit;
+    }
+  }
+  if (best !== null) return best;               // 0 money, 1 customer
+  if (typeof check.id === "string" && check.id.startsWith("audit:")) return 2;
+  return 3;
+}
+
+function orderReds(reds) {
+  return reds
+    .map((check, index) => ({ check, index, fresh: check.day_count === 1 ? 0 : 1, rank: reasonRank(check) }))
+    .sort((a, b) => a.fresh - b.fresh || a.rank - b.rank || a.index - b.index)
+    .map((x) => x.check);
 }
 
 /* The stored scorecard for one Arizona day (pulse_scorecards, migration 430,

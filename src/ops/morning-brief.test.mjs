@@ -10,6 +10,7 @@ import {
 } from "./morning-brief.mjs";
 import { textMorningBrief } from "../pulse/notify.mjs";
 import { verifyBriefToken } from "./brief-link.mjs";
+import { TRIPWIRES } from "../pulse/tripwires.mjs";
 
 const LINK_ENV = { APP_BASE_URL: "https://fundhub.ai", BRIEF_LINK_SECRET: "c3".repeat(32) };
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
@@ -160,4 +161,121 @@ test("with no secret the text still builds and says the report is not available"
   assert.equal(warned.length, 1);
   assert.match(warned[0], /BRIEF_LINK_SECRET/);
   assert.doesNotMatch(brief.text_body, /k=/);
+});
+
+/* ---------- the systems line: green, red, not checked, and "nothing to judge" ---------- */
+
+const manyRows = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+const greenRow = (i) => ({ id: `reg:ok-${i}`, status: "green", proof: "answered 200" });
+const naRow = (i) => ({ id: `gap-ads:quiet-${i}`, status: "na", reason: "No ad is running. Judged the day one runs.", na_code: "no-running-ad", na_args: {} });
+const redRow = (id, extra = {}) => ({ id, status: "red", proof: "x", ...extra });
+
+/* From the real tripwire map: a check id that is money only, one that is customer only,
+   and one that is on both. */
+function tripwireIds() {
+  const money = new Set();
+  const customer = new Set();
+  for (const e of Object.values(TRIPWIRES)) {
+    for (const id of e.checks) (e.impact === "money" ? money : customer).add(id);
+  }
+  return {
+    moneyOnly: [...money].find((id) => !customer.has(id)),
+    customerOnly: [...customer].find((id) => !money.has(id)),
+    both: [...money].find((id) => customer.has(id))
+  };
+}
+
+test("the systems line counts green, red and 'nothing to judge' apart, and the numbers add up", () => {
+  const checks = [
+    ...manyRows(690, greenRow),
+    redRow("job:one"), redRow("job:two"), redRow("job:three"),
+    ...manyRows(64, naRow)
+  ];
+  const s = summarizeSystems({ checks });
+  assert.equal(checks.length, 757);
+  assert.equal(s.line, "Systems: 690 of 757 checks green. 3 red: job:one, job:two, job:three. 64 had nothing to judge today.");
+  assert.deepEqual([s.total, s.green, s.red, s.na, s.not_checked], [757, 690, 3, 64, 0]);
+  assert.equal(s.green + s.red + s.na + s.not_checked, s.total);
+  assert.equal(s.reds.length, 3);
+});
+
+test("na is not 'not checked': 64 rows with nothing to judge leave not_checked at 0, and nothing needs you", () => {
+  const s = summarizeSystems({ checks: [...manyRows(5, greenRow), ...manyRows(64, naRow)] });
+  assert.equal(s.not_checked, 0);
+  assert.equal(s.na, 64);
+  assert.equal(s.line, "Systems: 5 of 69 checks green. 64 had nothing to judge today. Nothing needs you.");
+});
+
+test("'Nothing needs you' is never said while a row is red or not checked", () => {
+  const red = summarizeSystems({ checks: [greenRow(1), redRow("job:a")] });
+  assert.doesNotMatch(red.line, /Nothing needs you/);
+  const nc = summarizeSystems({ checks: [greenRow(1), { id: "gap-x:y", status: "not_checked", reason: "no database" }, naRow(1)] });
+  assert.equal(nc.not_checked, 1);
+  assert.equal(nc.na, 1);
+  assert.match(nc.line, /1 not checked\./);
+  assert.match(nc.line, /1 had nothing to judge today\./);
+  assert.doesNotMatch(nc.line, /Nothing needs you/);
+  const clean = summarizeSystems({ checks: [greenRow(1), greenRow(2)] });
+  assert.equal(clean.line, "Systems: 2 of 2 checks green. Nothing needs you.");
+});
+
+test("an odd status counts as not checked, never as green, red or na", () => {
+  const s = summarizeSystems({ checks: [greenRow(1), { id: "a", status: "skip" }, { id: "b" }, { id: "c", status: "NA" }] });
+  assert.deepEqual([s.green, s.red, s.na, s.not_checked], [1, 0, 0, 3]);
+});
+
+test("a missing scorecard still returns every key, with na at 0", () => {
+  const s = summarizeSystems(null);
+  assert.deepEqual(
+    { status: s.status, total: s.total, green: s.green, red: s.red, na: s.na, not_checked: s.not_checked, reds: s.reds },
+    { status: "missing", total: 0, green: 0, red: 0, na: 0, not_checked: 0, reds: [] }
+  );
+});
+
+test("reds are named in this order: new today, money tripwire, customer tripwire, audit, the rest", () => {
+  const { moneyOnly, customerOnly } = tripwireIds();
+  assert.ok(moneyOnly && customerOnly, "the tripwire map has a money-only id and a customer-only id");
+  const checks = [
+    redRow("job:plain-old", { day_count: 9 }),
+    redRow("audit:not-checked", { day_count: 3 }),
+    redRow(customerOnly, { day_count: 4 }),
+    redRow(moneyOnly, { day_count: 2 }),
+    redRow("job:plain-new", { day_count: 1 }),
+    redRow(`gap-lane:${moneyOnly}`, { day_count: 5 }),
+    redRow("job:plain-old-two", { day_count: 7 })
+  ];
+  const s = summarizeSystems({ checks });
+  assert.deepEqual(s.reds.map((r) => r.id), [
+    "job:plain-new",               // new today beats everything
+    moneyOnly,                     // then money, in the order they came
+    `gap-lane:${moneyOnly}`,       // a lane in front of the id still matches
+    customerOnly,
+    "audit:not-checked",
+    "job:plain-old",
+    "job:plain-old-two"
+  ]);
+  assert.match(s.line, /7 red: job:plain-new, [^,]+, [^,]+, and 4 more in the report\./);
+});
+
+test("a new red that is a money tripwire comes before a new red that is plain", () => {
+  const { moneyOnly } = tripwireIds();
+  const s = summarizeSystems({ checks: [redRow("job:plain", { day_count: 1 }), redRow(moneyOnly, { day_count: 1 })] });
+  assert.deepEqual(s.reds.map((r) => r.id), [moneyOnly, "job:plain"]);
+});
+
+test("an id on both money and customer ranks as money, and a red with no day_count is not 'new'", () => {
+  const { both, customerOnly } = tripwireIds();
+  assert.ok(both, "the tripwire map has an id on both lists");
+  const s = summarizeSystems({ checks: [redRow(customerOnly, { day_count: 3 }), redRow(both, { day_count: 3 })] });
+  assert.equal(s.reds[0].id, both);
+  const s2 = summarizeSystems({ checks: [redRow("job:a"), redRow("job:b", { day_count: 1 })] });
+  assert.deepEqual(s2.reds.map((r) => r.id), ["job:b", "job:a"]);
+});
+
+test("the sort never loses or changes a red, and the day suffix stays on reds past day 1", () => {
+  const checks = [redRow("job:a", { day_count: 4 }), redRow("job:b", { day_count: 1 })];
+  const s = summarizeSystems({ checks });
+  assert.equal(s.reds.length, 2);
+  assert.equal(s.reds[1], checks[0], "the very same row objects");
+  assert.match(s.line, /2 red: job:b, job:a \(day 4\)\./);
 });
