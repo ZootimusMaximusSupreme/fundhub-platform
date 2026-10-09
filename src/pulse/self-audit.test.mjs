@@ -19,11 +19,13 @@ import {
   AUDIT_COVERS,
   BRIEFS_SENT_SQL,
   NAMED_PULSE_IDS,
+  RUN_RECORDER_SQL,
   auditPulse,
   buildManifest,
   laneCheckIds,
   loadManifest,
   makeLaneNaVerify,
+  middlewareNames,
   notLiveIds
 } from "./self-audit.mjs";
 import { INNGEST_JOBS, JOBS } from "./heartbeats.mjs";
@@ -66,9 +68,26 @@ function fn(id, triggers, client = SHARED) {
   return { opts: { id, triggers }, client };
 }
 
-function briefsDb(rowOrNull, calls = []) {
+/* A healthy answer to the run-recorder read (audit:run-recorder): it can write, it has a start marker, and it
+   recorded runs for the events that came. */
+const HEALTHY_RECORDER = Object.freeze({
+  can_insert: true,
+  can_update: true,
+  began_at: new Date("2026-10-08T12:00:00Z"),
+  runs_n: 4,
+  events_n: 4
+});
+
+/* The same fake database answers both reads the audit makes. `calls` counts the morning-report reads only, as
+   before; the run-recorder reads are counted in `recorderCalls`. */
+function briefsDb(rowOrNull, calls = [], recorder = HEALTHY_RECORDER, recorderCalls = []) {
   return {
     async query(sql, params) {
+      if (sql === RUN_RECORDER_SQL) {
+        recorderCalls.push({ sql, params });
+        if (recorder instanceof Error) throw recorder;
+        return { rows: recorder ? [recorder] : [] };
+      }
       calls.push({ sql, params });
       return { rows: rowOrNull ? [rowOrNull] : [] };
     }
@@ -162,7 +181,8 @@ test("a clean run makes every audit row green, in the contract order", async () 
     "audit:expected-present",
     "audit:lanes-ran",
     "audit:workflow-coverage",
-    "audit:briefs-sent"
+    "audit:briefs-sent",
+    "audit:run-recorder"
   ]);
   for (const r of res.rows) {
     assert.equal(r.status, "PASS", `${r.id}: ${r.detail}`);
@@ -505,8 +525,8 @@ test("a row that is not na is never sent to verifyNa", async () => {
 test("audit:totals is green and shows how the numbers add up", async () => {
   const r = rowOf(await run(), "audit:totals");
   assert.equal(r.status, "PASS");
-  // 8 checks - 1 claim the audit folds = 7, plus the 7 audit rows = 14.
-  assert.match(r.detail, /14 rows = 12 green \+ 0 red \+ 2 with nothing to judge \+ 0 not checked\./);
+  // 8 checks - 1 claim the audit folds = 7, plus the 8 audit rows = 15.
+  assert.match(r.detail, /15 rows = 13 green \+ 0 red \+ 2 with nothing to judge \+ 0 not checked\./);
   // 3 folded before the audit ran + 1 the audit folded itself.
   assert.match(r.detail, /4 claims were folded/);
 });
@@ -541,7 +561,7 @@ test("audit:totals goes red when the four counts do not add up to the rows", asy
   const contract = { ...A_CONTRACT, countChecks: () => ({ green: 1, red: 0, na: 0, not_checked: 0 }) };
   const r = rowOf(await run({ contract }), "audit:totals");
   assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /the four counts add to 1, but there are 14 rows/);
+  assert.match(r.detail, /the four counts add to 1, but there are 15 rows/);
 });
 
 test("audit:totals goes red on a folded count that is not a whole number, and ignores none", async () => {
@@ -1118,4 +1138,187 @@ test("loadManifest builds the live list from the named slice and gap files", asy
   assert.ok(m.byGroup.slice.length > 300);
   assert.ok(m.byGroup.gap.length > 50);
   assert.equal(m.ids.size, Object.values(m.byGroup).flat().length, "no id is listed twice");
+});
+
+// ── audit:run-recorder (Ship 2) ──────────────────────────────────────────────
+
+/** A stand-in for the shared client that shows its add-on list the way a real Inngest client does. */
+const clientWith = (...names) => ({ name: "a client", options: { middleware: names.map((name) => ({ name })) } });
+
+/** A run where the shared client is `client` and the database answers the recorder read with `recorder`. */
+async function runRecorder(recorder, { client = SHARED, over = {}, calls = [], recorderCalls = [] } = {}) {
+  const db = briefsDb(SENT, calls, recorder, recorderCalls);
+  const functions = [fn(CRON_JOB, [{ cron: "*/15 * * * *" }], client), fn("evt-a", [{ event: "round.started" }], client), fn("evt-off", [], client)];
+  const fx = fixture({ db });
+  return rowOf(await run({ db, functions, sharedClient: client, ...over }, { ...fx, functions }), "audit:run-recorder");
+}
+
+test("audit:run-recorder is green when it can write, is on the client, and recorded runs; and it asks one read-only question", async () => {
+  const recorderCalls = [];
+  const r = await runRecorder(HEALTHY_RECORDER, { recorderCalls });
+  assert.equal(r.status, "PASS", r.detail);
+  assert.equal(r.group, "backend");
+  assert.equal(r.detail, "The run recorder can write, is on the shared workflow client, and recorded 4 runs in the last day.");
+  assert.equal(recorderCalls.length, 1, "one read");
+  const [p] = recorderCalls.map((c) => c.params);
+  assert.equal(p[0], new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString());
+  assert.deepEqual(p[1], ["round.started"], "the event names that start a bundled workflow");
+  assert.equal(p[2], new Date(NOW.getTime() - 15 * 60 * 1000).toISOString());
+  assert.equal(p[3], 60, "an hour of grace after the receipts marker");
+  assert.match(RUN_RECORDER_SQL, /^\s*WITH/);
+  assert.doesNotMatch(RUN_RECORDER_SQL.replace(/'[^']*'/g, "''"), /\b(insert|update|delete|drop|alter|truncate|begin|commit|set)\b/i);
+});
+
+test("audit:run-recorder is green with nothing to record: no workflow event came in the last day", async () => {
+  const r = await runRecorder({ ...HEALTHY_RECORDER, runs_n: 0, events_n: 0 });
+  assert.equal(r.status, "PASS");
+  assert.match(r.detail, /recorded 0 runs in the last day \(no workflow event came to record\)\./);
+});
+
+test("audit:run-recorder goes red when the app can no longer INSERT or UPDATE (the no-deploy switch-off was left on)", async () => {
+  const noInsert = await runRecorder({ ...HEALTHY_RECORDER, can_insert: false });
+  assert.equal(noInsert.status, "FAIL");
+  assert.match(noInsert.detail, /it lacks INSERT on workflow_runs\), so every nothing-to-judge row for a workflow is blind/);
+  assert.match(noInsert.suggestedFix, /GRANT INSERT, UPDATE ON public\.workflow_runs TO fundhub_app/);
+  assert.ok(noInsert.customerSees);
+  const noUpdate = await runRecorder({ ...HEALTHY_RECORDER, can_update: false });
+  assert.equal(noUpdate.status, "FAIL");
+  assert.match(noUpdate.detail, /it lacks UPDATE on workflow_runs/);
+  const neither = await runRecorder({ ...HEALTHY_RECORDER, can_insert: false, can_update: false });
+  assert.match(neither.detail, /it lacks INSERT and UPDATE on workflow_runs/);
+});
+
+test("audit:run-recorder goes red when the receipts table is missing (42P01)", async () => {
+  const missing = Object.assign(new Error('relation "workflow_runs" does not exist'), { code: "42P01" });
+  const r = await runRecorder(missing);
+  assert.equal(r.status, "FAIL");
+  assert.equal(r.detail, "The workflow_runs table does not exist, so nothing can record that a workflow ran.");
+  assert.match(r.suggestedFix, /478_workflow_runs\.sql/);
+});
+
+test("audit:run-recorder goes red when the receipts have no start marker", async () => {
+  const r = await runRecorder({ ...HEALTHY_RECORDER, began_at: null, events_n: 0, runs_n: 0 });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /no start marker/);
+});
+
+test("audit:run-recorder goes red when workflow events came in the last day and not one run was recorded", async () => {
+  const r = await runRecorder({ ...HEALTHY_RECORDER, events_n: 3, runs_n: 0 });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /3 workflow events came in the last day and not one run was recorded, so the recorder is not writing/);
+  assert.match(r.suggestedFix, /\[run-evidence\]/);
+  const one = await runRecorder({ ...HEALTHY_RECORDER, events_n: 1, runs_n: 0 });
+  assert.match(one.detail, /1 workflow event came in the last day/);
+  // The twin: events and runs both there is green. Runs but no events is green too.
+  assert.equal((await runRecorder({ ...HEALTHY_RECORDER, events_n: 3, runs_n: 3 })).status, "PASS");
+  assert.equal((await runRecorder({ ...HEALTHY_RECORDER, events_n: 0, runs_n: 2 })).status, "PASS");
+});
+
+test("audit:run-recorder goes red when the shared client does not list the Run evidence add-on", async () => {
+  const without = clientWith("Job heartbeat");
+  const r = await runRecorder(HEALTHY_RECORDER, { client: without });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /the shared workflow client does not list the "Run evidence" add-on, so no run of a workflow is recorded/);
+  assert.match(r.suggestedFix, /src\/workflows\/client\.mjs/);
+  const withIt = await runRecorder(HEALTHY_RECORDER, { client: clientWith("Job heartbeat", "Run evidence") });
+  assert.equal(withIt.status, "PASS", withIt.detail);
+});
+
+test("audit:run-recorder says all its problems at once, and still names the client when the read fails", async () => {
+  const many = await runRecorder({ ...HEALTHY_RECORDER, can_insert: false, events_n: 2, runs_n: 0 }, { client: clientWith("Job heartbeat") });
+  assert.equal(many.status, "FAIL");
+  assert.match(many.detail, /3 problems/);
+  const failedRead = await runRecorder(new Error("connection terminated"), { client: clientWith("Job heartbeat") });
+  assert.equal(failedRead.status, "FAIL");
+  assert.match(failedRead.detail, /The run recorder is off: the shared workflow client does not list/);
+});
+
+test("audit:run-recorder: a read that fails is a skip (never green), and audit:not-checked then names it", async () => {
+  const db = briefsDb(SENT, [], new Error("connection terminated"));
+  const fx = fixture({ db });
+  const res = await run({ db }, fx);
+  const r = rowOf(res, "audit:run-recorder");
+  assert.equal(r.status, "skip");
+  assert.match(r.detail, /^The run recorder could not be looked up \(connection terminated\)\.$/);
+  const nc = rowOf(res, "audit:not-checked");
+  assert.equal(nc.status, "FAIL");
+  assert.match(nc.detail, /audit:run-recorder/);
+});
+
+test("audit:run-recorder: no database is a skip", async () => {
+  const fx = fixture();
+  const res = await run({ db: null }, fx);
+  assert.equal(rowOf(res, "audit:run-recorder").status, "skip");
+  assert.match(rowOf(res, "audit:run-recorder").detail, /No database in this run/);
+});
+
+test("audit:run-recorder uses the staff scope when the pulse hands one over", async () => {
+  const recorderCalls = [];
+  const inner = briefsDb(SENT, [], HEALTHY_RECORDER, recorderCalls);
+  let scoped = 0;
+  const scope = (f) => { scoped += 1; return f(inner); };
+  const fx = fixture();
+  const res = await run({ scope }, fx);
+  assert.equal(rowOf(res, "audit:run-recorder").status, "PASS");
+  assert.equal(scoped, 1);
+  assert.equal(recorderCalls.length, 1);
+});
+
+test("audit:run-recorder: a read that never answers is cut and is a skip", async () => {
+  const db = { query: (sql) => (sql === RUN_RECORDER_SQL ? new Promise(() => {}) : briefsDb(SENT).query(sql)) };
+  const fx = fixture({ db });
+  const t0 = Date.now();
+  const res = await run({ db }, fx);
+  assert.ok(Date.now() - t0 < 4000);
+  assert.equal(rowOf(res, "audit:run-recorder").status, "skip");
+  assert.match(rowOf(res, "audit:run-recorder").detail, /took too long/);
+});
+
+test("audit:run-recorder is green on the real shared client with a healthy read", async () => {
+  const real = [fn(CRON_JOB, [{ cron: "*/15 * * * *" }], inngest), fn("evt-a", [{ event: "round.started" }], inngest), fn("evt-off", [], inngest)];
+  const res = await run({ sharedClient: null, functions: real }, { ...fixture(), functions: real });
+  assert.equal(rowOf(res, "audit:run-recorder").status, "PASS", rowOf(res, "audit:run-recorder").detail);
+});
+
+test("middlewareNames: the real client lists its add-ons; anything else is null", () => {
+  assert.deepEqual(middlewareNames(inngest), ["Job heartbeat", "Run evidence"]);
+  assert.equal(middlewareNames(SHARED), null);
+  assert.equal(middlewareNames(null), null);
+  assert.equal(middlewareNames({ options: { middleware: "x" } }), null);
+  assert.deepEqual(middlewareNames({ options: { middleware: [{ name: "A" }, {}, null, { name: "B" }] } }), ["A", "B"]);
+});
+
+// ── audit:workflow-coverage knows about the Run evidence add-on ──────────────
+
+test("audit:workflow-coverage goes red when the shared client does not list the Run evidence add-on, and is green when it does", async () => {
+  const lacking = clientWith("Job heartbeat");
+  const functions = [fn(CRON_JOB, [{ cron: "*/15 * * * *" }], lacking), fn("evt-a", [{ event: "round.started" }], lacking), fn("evt-off", [], lacking)];
+  const fx = { ...fixture(), functions };
+  const bad = rowOf(await run({ sharedClient: lacking, functions }, fx), "audit:workflow-coverage");
+  assert.equal(bad.status, "FAIL");
+  assert.match(bad.detail, /the shared workflow client does not list the "Run evidence" add-on/);
+  assert.match(bad.suggestedFix, /Run evidence/);
+  const having = clientWith("Job heartbeat", "Run evidence");
+  const goodFns = [fn(CRON_JOB, [{ cron: "*/15 * * * *" }], having), fn("evt-a", [{ event: "round.started" }], having), fn("evt-off", [], having)];
+  const good = rowOf(await run({ sharedClient: having, functions: goodFns }, { ...fixture(), functions: goodFns }), "audit:workflow-coverage");
+  assert.equal(good.status, "PASS", good.detail);
+  assert.match(good.detail, /the client carries the Run evidence add-on/);
+});
+
+test("audit:workflow-coverage on the real client: green today, red the moment Run evidence is taken off the list", async () => {
+  const real = [fn(CRON_JOB, [{ cron: "*/15 * * * *" }], inngest), fn("evt-a", [{ event: "round.started" }], inngest), fn("evt-off", [], inngest)];
+  const ok = rowOf(await run({ sharedClient: null, functions: real }, { ...fixture(), functions: real }), "audit:workflow-coverage");
+  assert.equal(ok.status, "PASS", ok.detail);
+  const list = inngest.options.middleware;
+  const saved = [...list];
+  try {
+    list.splice(0, list.length, ...saved.filter((m) => m.name !== "Run evidence"));
+    const bad = rowOf(await run({ sharedClient: null, functions: real }, { ...fixture(), functions: real }), "audit:workflow-coverage");
+    assert.equal(bad.status, "FAIL");
+    assert.match(bad.detail, /does not list the "Run evidence" add-on/);
+    const rec = rowOf(await run({ sharedClient: null, functions: real }, { ...fixture(), functions: real }), "audit:run-recorder");
+    assert.equal(rec.status, "FAIL");
+  } finally {
+    list.splice(0, list.length, ...saved);
+  }
 });

@@ -16,7 +16,14 @@
 //   2. Reads yesterday's morning report row once (audit:briefs-sent).
 //   3. Judges the final list: audit:not-checked, audit:na-verified,
 //      audit:totals, audit:expected-present, audit:lanes-ran,
-//      audit:workflow-coverage, audit:briefs-sent.
+//      audit:workflow-coverage, audit:briefs-sent, audit:run-recorder.
+//
+// audit:run-recorder (Ship 2): is the recorder that makes every wf: row honest still able to
+// write, and is it writing? Red when the app role lost INSERT or UPDATE on workflow_runs (the
+// no-deploy switch-off was left on), when the table is missing, when the shared Inngest client
+// does not list the "Run evidence" add-on, or when workflow events came in the last day and not
+// one run was recorded. Without it a switched-off recorder would make every wf: row read
+// "nothing to judge" for the wrong reason.
 //
 // Rules:
 //   - Reads only. Never writes, sends, fixes, or calls an AI or a vendor.
@@ -47,6 +54,8 @@ import { INNGEST_JOBS, JOBS } from "./heartbeats.mjs";
 import { MACHINE_CHECKS } from "./machine.mjs";
 import { PULSE_REGISTRY } from "./registry.mjs";
 import { countChecks, phoenixDate, toContractCheck } from "./scorecard.mjs";
+import { RUN_EVIDENCE_NAME } from "./run-evidence.mjs";
+import { RECEIPTS_GRACE_MS, RECORDER_FUNCTION_ID, START_GRACE_MS } from "./workflow-runs.mjs";
 import { GAP_FILES } from "./coverage/modules.mjs";
 import { loadGapModules, loadSliceModules, namespaceGapId } from "./coverage/run-slices.mjs";
 
@@ -58,6 +67,7 @@ export const AUDIT_ROW_IDS = Object.freeze({
   lanesRan: "audit:lanes-ran",
   workflowCoverage: "audit:workflow-coverage",
   briefsSent: "audit:briefs-sent",
+  runRecorder: "audit:run-recorder",
   crashed: "audit:crashed"
 });
 
@@ -111,6 +121,28 @@ SELECT delivery_status, delivery_error
    AND kind = 'morning'
    AND org_id = COALESCE($1::uuid, (SELECT id FROM orgs WHERE is_default LIMIT 1))
  LIMIT 1`;
+
+/* The run recorder, in one read. $1 = the start of the last day, $2 = the event names that start a
+   workflow, $3 = events older than this count (the engine has had time), $4 = minutes of grace after the
+   receipts marker. Events before the marker never count: nothing was recording yet.
+   Fails with 42P01 when the table is missing; checkRunRecorder turns that into a red row. */
+export const RUN_RECORDER_SQL = `
+WITH began AS (
+  SELECT min(started_at) AS at FROM workflow_runs WHERE function_id = '${RECORDER_FUNCTION_ID}'
+),
+win AS (
+  SELECT greatest($1::timestamptz, (SELECT at FROM began) + make_interval(mins => $4::int)) AS from_at
+)
+SELECT
+  has_table_privilege(current_user, 'public.workflow_runs', 'INSERT') AS can_insert,
+  has_table_privilege(current_user, 'public.workflow_runs', 'UPDATE') AS can_update,
+  (SELECT at FROM began) AS began_at,
+  (SELECT count(*)::int FROM workflow_runs r, win
+    WHERE r.function_id <> '${RECORDER_FUNCTION_ID}' AND r.started_at > win.from_at) AS runs_n,
+  (SELECT count(*)::int FROM events e, win
+    WHERE e.name = ANY($2::text[]) AND e.created_at > win.from_at AND e.created_at <= $3::timestamptz) AS events_n`;
+
+const RUN_RECORDER_READ_MS = 2000;
 
 // ── small helpers ────────────────────────────────────────────────────────────
 
@@ -440,6 +472,127 @@ async function checkBriefsSent({ db, now, orgId }) {
   return auditRow(id, "FAIL", `No morning report was sent for ${day}. ${why}${err}`, { fix, sees });
 }
 
+// ── step 2b: the run recorder ────────────────────────────────────────────────
+
+/* The names of the add-ons on the shared Inngest client, or null when the client does not show them.
+   A real client keeps them at client.options.middleware (each has a `name`). */
+export function middlewareNames(client) {
+  const list = client && client.options && client.options.middleware;
+  if (!Array.isArray(list)) return null;
+  return list.map((m) => (m && typeof m.name === "string" ? m.name : "")).filter(Boolean);
+}
+
+/* The event names that start a bundled workflow. */
+function eventNamesOf(functions) {
+  const names = new Set();
+  for (const fn of Array.isArray(functions) ? functions : []) {
+    for (const t of triggersOf(fn)) if (t && typeof t.event === "string" && t.event) names.add(t.event);
+  }
+  return [...names];
+}
+
+async function resolveClient(sharedClient) {
+  if (sharedClient) return { client: sharedClient, injected: true, error: null };
+  try {
+    return { client: await defaultSharedClient(), injected: false, error: null };
+  } catch (err) {
+    return { client: null, injected: false, error: clip((err && err.message) || err, 120) };
+  }
+}
+
+/* Why the shared client does not record runs, or null when it does. An injected client that shows no
+   add-on list (a test stand-in) is not judged; the real client always shows it. */
+function clientProblem({ client, injected }) {
+  const names = middlewareNames(client);
+  if (names) {
+    return names.includes(RUN_EVIDENCE_NAME)
+      ? null
+      : `the shared workflow client does not list the "${RUN_EVIDENCE_NAME}" add-on, so no run of a workflow is recorded`;
+  }
+  return injected ? null : "the shared workflow client's add-on list could not be read";
+}
+
+async function checkRunRecorder({ db, scope, now, functions, sharedClient }) {
+  const id = AUDIT_ROW_IDS.runRecorder;
+  const sees = "A break in a workflow that handles leads or clients would not show on the morning report.";
+  const resolved = await resolveClient(sharedClient);
+  if (resolved.error) {
+    return auditRow(id, "skip", `The shared workflow client would not load (${resolved.error}), so the run recorder was not checked.`);
+  }
+  const wrongClient = clientProblem(resolved);
+  const canScope = typeof scope === "function";
+  if (!canScope && (!db || typeof db.query !== "function")) {
+    return wrongClient
+      ? auditRow(id, "FAIL", `The run recorder is off: ${wrongClient}.`, {
+        fix: `Put the "${RUN_EVIDENCE_NAME}" add-on back in src/workflows/client.mjs.`,
+        sees
+      })
+      : auditRow(id, "skip", "No database in this run, so the run recorder was not checked.");
+  }
+  const dayAgo = new Date(now.getTime() - DAY_MS);
+  const until = new Date(now.getTime() - START_GRACE_MS);
+  const params = [dayAgo.toISOString(), eventNamesOf(functions), until.toISOString(), Math.round(RECEIPTS_GRACE_MS / 60000)];
+  let found;
+  try {
+    const run = (async () => (canScope
+      ? scope((tx) => tx.query(RUN_RECORDER_SQL, params))
+      : db.query(RUN_RECORDER_SQL, params)))();
+    run.catch(() => {});
+    const res = await withTimeout(run, RUN_RECORDER_READ_MS);
+    found = res && res.rows ? res.rows[0] : null;
+  } catch (err) {
+    if (err && err.code === "42P01") {
+      return auditRow(id, "FAIL", "The workflow_runs table does not exist, so nothing can record that a workflow ran.", {
+        fix: "Apply migration db/migrations/478_workflow_runs.sql. npm run ship applies it.",
+        sees
+      });
+    }
+    return wrongClient
+      ? auditRow(id, "FAIL", `The run recorder is off: ${wrongClient}.`, {
+        fix: `Put the "${RUN_EVIDENCE_NAME}" add-on back in src/workflows/client.mjs.`,
+        sees
+      })
+      : auditRow(id, "skip", `The run recorder could not be looked up (${clip((err && err.message) || err, 120)}).`);
+  }
+  if (!found) {
+    return auditRow(id, "skip", "The run recorder read came back empty, so it was not checked.");
+  }
+
+  const problems = [];
+  const fixes = [];
+  if (wrongClient) {
+    problems.push(wrongClient);
+    fixes.push(`Put the "${RUN_EVIDENCE_NAME}" add-on back in src/workflows/client.mjs.`);
+  }
+  if (found.can_insert !== true || found.can_update !== true) {
+    const lacks = [found.can_insert !== true ? "INSERT" : null, found.can_update !== true ? "UPDATE" : null].filter(Boolean).join(" and ");
+    problems.push(`the app cannot write run receipts (it lacks ${lacks} on workflow_runs), so every nothing-to-judge row for a workflow is blind`);
+    fixes.push("If the switch-off was left on, put the permission back: GRANT INSERT, UPDATE ON public.workflow_runs TO fundhub_app.");
+  }
+  if (!found.began_at) {
+    problems.push("the receipts table has no start marker, so no workflow can be judged from it");
+    fixes.push("Read db/migrations/478_workflow_runs.sql. The marker row (function _recorder) is inserted there.");
+  }
+  const events = Number(found.events_n) || 0;
+  const runs = Number(found.runs_n) || 0;
+  if (found.began_at && events > 0 && runs === 0) {
+    problems.push(`${events} workflow ${plural(events, "event", "events")} came in the last day and not one run was recorded, so the recorder is not writing`);
+    fixes.push("Look for [run-evidence] lines in the Netlify function logs (a line that says paused means the database did not answer). Then check that Inngest is still calling the app.");
+  }
+  if (problems.length) {
+    return auditRow(id, "FAIL", `The run recorder has ${problems.length} ${plural(problems.length, "problem", "problems")}: ${problems.join("; ")}.`, {
+      fix: fixes.join(" "),
+      sees
+    });
+  }
+  return auditRow(
+    id,
+    "PASS",
+    `The run recorder can write, is on the shared workflow client, and recorded ${runs} ${plural(runs, "run", "runs")} in the last day` +
+      `${events === 0 ? " (no workflow event came to record)" : ""}.`
+  );
+}
+
 // ── step 3: the judgments ────────────────────────────────────────────────────
 
 function judgeNaVerified(naRows, outcome) {
@@ -592,6 +745,9 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
   const cronJobs = new Set(INNGEST_JOBS.map(([job]) => job));
   const have = new Set(rows.filter(Boolean).map((r) => String(r.id)));
   const problems = [];
+  // The shared client must carry the run recorder, or no event workflow leaves a receipt.
+  const recorderProblem = clientProblem({ client, injected: !!sharedClient });
+  if (recorderProblem) problems.push(recorderProblem);
   for (const fn of functions) {
     const fid = fnId(fn);
     if (!fid) {
@@ -611,7 +767,7 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
       "FAIL",
       `${problems.length} workflow ${plural(problems.length, "problem", "problems")}: ${listIds(problems)}.`,
       {
-        fix: "Build each workflow on the shared client in src/workflows/client.mjs, list each cron in INNGEST_JOBS in src/pulse/heartbeats.mjs, and give each other workflow a wf: row.",
+        fix: `Build each workflow on the shared client in src/workflows/client.mjs, keep the "${RUN_EVIDENCE_NAME}" add-on on that client, list each cron in INNGEST_JOBS in src/pulse/heartbeats.mjs, and give each other workflow a wf: row.`,
         sees: UNWATCHED
       }
     );
@@ -619,7 +775,7 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
   return auditRow(
     id,
     "PASS",
-    `${functions.length === 1 ? "The 1 bundled workflow is" : `All ${functions.length} bundled workflows are`} on the shared client, every cron is on INNGEST_JOBS, and every other workflow has a wf: row.`
+    `${functions.length === 1 ? "The 1 bundled workflow is" : `All ${functions.length} bundled workflows are`} on the shared client, the client carries the ${RUN_EVIDENCE_NAME} add-on, every cron is on INNGEST_JOBS, and every other workflow has a wf: row.`
   );
 }
 
@@ -740,10 +896,11 @@ export async function auditPulse({
         (want) => ({ want, error: null }),
         (err) => ({ want: null, error: clip((err && err.message) || err, 120) })
       );
-    const [outcome, briefs, built] = await Promise.all([
+    const [outcome, briefs, built, recorder] = await Promise.all([
       verifyAllNa(checks, { verifyNa, ctx, budgetMs }),
       checkBriefsSent({ db, now, orgId }),
-      manifestJob
+      manifestJob,
+      checkRunRecorder({ db, scope, now, functions, sharedClient })
     ]);
 
     // 1. every failed "nothing to judge" row becomes a skip row.
@@ -775,14 +932,14 @@ export async function auditPulse({
     const lanesRan = judgeLanesRan(afterFold, gapLanes);
     const workflowCoverage = await judgeWorkflowCoverage(afterFold, functions, sharedClient);
 
-    const partial = [naVerified, expectedPresent, lanesRan, workflowCoverage, briefsRow];
+    const partial = [naVerified, expectedPresent, lanesRan, workflowCoverage, briefsRow, recorder];
     const notChecked = judgeNotChecked([...afterFold, ...partial], api);
     const totalsStandIn = { id: AUDIT_ROW_IDS.totals, status: "PASS", detail: "stand-in" };
     const totals = judgeTotals([...afterFold, ...partial, notChecked, totalsStandIn], folded, api, foldedIds.length);
 
     return {
       checks: afterFold,
-      rows: [notChecked, naVerified, totals, expectedPresent, lanesRan, workflowCoverage, briefsRow],
+      rows: [notChecked, naVerified, totals, expectedPresent, lanesRan, workflowCoverage, briefsRow, recorder],
       folded: foldedIds.length
     };
   } catch (err) {

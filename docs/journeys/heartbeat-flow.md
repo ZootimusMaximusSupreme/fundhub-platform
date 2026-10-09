@@ -93,6 +93,40 @@ flowchart TD
 - When the fix is done, the four learning fields on the incident and an entry in `docs/lessons/pulse-lessons.md` record what broke and what now guards it.
 - **Not built yet (on purpose):** the write-through half, where a signed test signal travels through the doors that save data inside a rolled-back box. It needs locks inside the Node process that have never run on a real Postgres. It waits until proven on a scratch database and watched once. Also not built: GitHub issues and the Claude "pulse fixer" session (they wait on an owner decision about a private repo).
 
+## Run receipts for event workflows (added 2026-10-09)
+
+Crons leave a receipt in `job_heartbeats`. A workflow that an **event** starts used to leave none, so its `wf:` row could only say "nothing to judge" or "not checked". Now every run leaves two receipts in `workflow_runs` (migration 478), written by the **Run evidence** add-on on the shared Inngest client (`src/pulse/run-evidence.mjs`). The add-on never changes what a workflow returns and never throws into it. Every write has a timer (800 ms for the start mark; 500 ms to 5 s for the finish mark), and after 3 failed writes it stops for 10 minutes and logs one `[run-evidence]` line.
+
+```mermaid
+flowchart TD
+    BUS["The bus writes an events row,<br/>then hands the event to Inngest<br/>(data.id = the events row id)"] --> RUN["Inngest calls the workflow"]
+    RUN --> START["First request of the run:<br/>START mark (run id, workflow, events row id)"]
+    RUN --> FINISH["Last request of an attempt:<br/>FINISH mark (ok or error,<br/>final?, skipped?, redacted why)"]
+    START --> TBL[("workflow_runs")]
+    FINISH --> TBL
+    EVT[("events")] --> WF
+    TBL --> WF["6 a.m. wf: row for each workflow<br/>(2 reads for all 65)"]
+    WF --> R1{"Last run failed for good<br/>15+ minutes ago?"}
+    R1 -->|Yes| RED1["RED: last run failed"]
+    R1 -->|No| R2{"An event 15+ minutes old,<br/>after receipts began,<br/>and no run carries its id?"}
+    R2 -->|Yes| RED2["RED: event came,<br/>workflow never started"]
+    R2 -->|No| R3{"A run started and never finished?<br/>no-sleep: over 30 minutes<br/>sleeper: over its longest wait + 1 day"}
+    R3 -->|Yes| RED3["RED: started, never finished"]
+    R3 -->|No| R4{"Last 3 runs all skipped?"}
+    R4 -->|Yes| RED4["RED: every run skipped"]
+    R4 -->|No| R5{"A run finished ok,<br/>or one is asleep by design?"}
+    R5 -->|Yes| GREEN["GREEN with the times"]
+    R5 -->|No| R6{"Any event in 3 days?"}
+    R6 -->|No| NA["nothing to judge<br/>(no-demand, the audit re-checks)"]
+    R6 -->|Yes| SK["not checked: the event came before<br/>receipts began, or receipts cannot be read"]
+    AUD["audit:run-recorder"] -.->|can the app still write them?<br/>is the add-on on the client?<br/>did events come and no run get written?| TBL
+```
+
+- A failure with a retry still coming is "retrying" (green, pending), never red. A run is final when it returned, threw its last attempt, threw a NonRetriableError, or a step already used up its retries.
+- The 17 workflows that sleep are on the `SLEEPERS` list in `src/pulse/workflow-runs.mjs` with their longest wait. A test reads the bundled workflow files and fails when a sleeper is missing, or when a workflow with `cancelOn` is.
+- An event that came **before** receipts began cannot be judged by receipts. Its workflow reads "not checked" until receipts are a day old or a new event comes. That is the honest answer, not a guess.
+- **The switch-off with no deploy:** `REVOKE INSERT, UPDATE ON public.workflow_runs FROM fundhub_app;`. Writes then fail fast and quietly, every workflow keeps running, `audit:run-recorder` goes red, and the `wf:` rows say "receipts are off" instead of "never started". Undo with the matching `GRANT`.
+
 ## The states of one check
 
 ```mermaid
