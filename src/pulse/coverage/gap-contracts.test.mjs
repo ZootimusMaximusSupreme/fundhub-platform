@@ -2,12 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { OFFERS } from "../../config/offers.mjs";
+import { isUuid } from "../../http/read-api.mjs";
+import { verifyContractRequest } from "../../contracts/signed-link.mjs";
 import { CHECKS as SLICE_CHECKS } from "./slice-10-contracts.mjs";
 import {
   CHECK_IDS,
+  FORGED_LINK,
   SQL_SENT,
   SQL_SIGNED,
   SQL_TEMPLATES,
@@ -110,6 +114,8 @@ test("a healthy file passes, a bare GET 404 is not a break, and the forged link 
   }
   assert.equal(calls.length, 2);
   assert.ok(calls.every((c) => c.opts.method === "GET"));
+  // A hung sign door must end as a red row, so every call carries its own time limit.
+  assert.ok(calls.every((c) => c.opts.signal instanceof AbortSignal && c.opts.signal.aborted === false));
   assert.equal(calls[0].url, "https://fundhub.ai/api/contracts/sign");
   assert.equal(calls[0].url.includes("?"), false);
   assert.match(calls[1].url, /^https:\/\/fundhub\.ai\/api\/contracts\/sign\?id=00000000-0000-4000-8000-000000000000&exp=\d+&sig=00$/);
@@ -263,6 +269,8 @@ test("sign link: a forged link must answer 404, and 503 means the signing secret
   assert.equal(classifyForgedSignGet(500, null).status, "FAIL");
   assert.equal(classifyForgedSignGet(401, null).status, "FAIL");
   assert.equal(classifyForgedSignGet(404, { path: "contracts/sign" }).status, "FAIL");
+  // The router's own 404 is named as that, not as "not the expected 404".
+  assert.match(classifyForgedSignGet(404, { path: "contracts/sign" }).detail, /router has no route for contracts\/sign/);
 
   const noSecret = await gapChecks({
     routeMounted: true,
@@ -407,4 +415,313 @@ test("the file does not sign, edit a page, read Recon, or send", () => {
   assert.doesNotMatch(src, /PULSE_REGISTRY|MACHINE_CHECKS/);
   assert.doesNotMatch(src, /FROM agents/);                       // Recon is the daily pulse's own check
   assert.match(src, /export async function gapChecks/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pins that read the real sign door's own rules, so the queries cannot drift.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const listOf = (text) => [...String(text).matchAll(/['"]([a-z_]+)['"]/g)].map((m) => m[1]);
+
+test("the 'nobody can sign' clause uses the signer states the sign door uses", () => {
+  // Source of truth 1: the states the table allows.
+  const migration = fs.readFileSync(path.join(ROOT, "db/migrations/125_contract_esign.sql"), "utf8");
+  const allowed = /status\s+text NOT NULL DEFAULT 'pending'\s+CHECK \(status IN \(([^)]*)\)\)/.exec(migration);
+  assert.ok(allowed, "contract_signers.status CHECK moved; update this pin");
+  // Source of truth 2: the states signers.mjs treats as finished, and its turn rule.
+  const signers = fs.readFileSync(path.join(ROOT, "src/contracts/signers.mjs"), "utf8");
+  const terminal = /const TERMINAL = new Set\(\[([^\]]*)\]\)/.exec(signers);
+  assert.ok(terminal, "TERMINAL in signers.mjs moved; update this pin");
+  assert.match(signers, /\.filter\(\(s\) => s\.status !== "signed"\)/, "canSign's turn rule changed; update SQL_SENT");
+  const open = listOf(allowed[1]).filter((state) => !listOf(terminal[1]).includes(state));
+  assert.deepEqual(open, ["pending", "sent", "viewed"]);
+
+  const where = SQL_SENT.slice(SQL_SENT.indexOf("WHERE c.org_id"));
+  // The whole signer test is in the WHERE, not only in the label above it.
+  const clause = /OR NOT EXISTS \(\s*SELECT 1\s+FROM contract_signers s\s+WHERE s\.contract_id = c\.id\s+AND s\.status IN \(([^)]*)\)\s+AND \(\s+c\.signing_order = 'parallel'\s+OR NOT EXISTS \(\s*SELECT 1\s+FROM contract_signers ahead\s+WHERE ahead\.contract_id = c\.id\s+AND ahead\.signer_index < s\.signer_index\s+AND ahead\.status <> 'signed'\s+\)\s+\)\s+\)/.exec(where);
+  assert.ok(clause, "the 'nobody can sign' clause is missing from the WHERE or changed shape");
+  assert.deepEqual(listOf(clause[1]), open);
+});
+
+test("every query is scoped to the one company and the signed-file read checks both stored rows", () => {
+  assert.match(SQL_SENT, /WHERE c\.org_id = \$1::uuid/);
+  assert.match(SQL_SIGNED, /WHERE c\.org_id = \$1::uuid/);
+  assert.match(SQL_TEMPLATES, /WHERE org_id = \$1::uuid/);
+  assert.match(SQL_TEMPLATES, /template_key = ANY\(\$2::text\[\]\)/);
+  assert.match(SQL_SIGNED, /OR NOT EXISTS \(\s*SELECT 1 FROM document_versions dv\s+WHERE dv\.id = c\.signed_document_version_id\s*\)/);
+  assert.match(SQL_SIGNED, /OR NOT EXISTS \(\s*SELECT 1 FROM documents d\s+WHERE d\.id = c\.signed_document_id\s*\)/);
+});
+
+test("the forged link is shaped to reach the secret check and can never be a 410", () => {
+  const url = new URL(FORGED_LINK, "http://x.invalid");
+  assert.equal(url.pathname, "/api/contracts/sign");
+  // A malformed id is refused (404) before the secret is read, which would hide a missing secret.
+  assert.equal(isUuid(url.searchParams.get("id")), true);
+  assert.ok(Number(url.searchParams.get("exp")) * 1000 > Date.now() + 365 * 24 * 3600 * 1000, "the link must not be expired");
+
+  const secret = "S".repeat(48);
+  const withSecret = verifyContractRequest(FORGED_LINK, { secret });
+  assert.deepEqual([withSecret.valid, withSecret.reason], [false, "bad_signature"]);
+  // The door checks the signature before the expiry, so even a long-dead forged link is a 404, never a 410.
+  const old = verifyContractRequest(FORGED_LINK.replace(/exp=\d+/, "exp=1"), { secret });
+  assert.deepEqual([old.valid, old.reason], [false, "bad_signature"]);
+
+  // No secret: the door says not_configured, which is what makes the check red.
+  const saved = { a: process.env.CONTRACT_URL_SECRET, b: process.env.DOCUMENT_URL_SECRET };
+  delete process.env.CONTRACT_URL_SECRET;
+  delete process.env.DOCUMENT_URL_SECRET;
+  try {
+    assert.equal(verifyContractRequest(FORGED_LINK).reason, "no_secret");
+  } finally {
+    if (saved.a !== undefined) process.env.CONTRACT_URL_SECRET = saved.a;
+    if (saved.b !== undefined) process.env.DOCUMENT_URL_SECRET = saved.b;
+  }
+});
+
+test("a sent contract whose signer said no is named as declined, not as a system fault", async () => {
+  const rows = await gapChecks({
+    db: fakeDb([
+      [/gap:sent-unsignable/, [{ id: "c-7", template_key: "FUNDING-AGREEMENT", status: "sent", why: "declined" }]],
+      [/gap:signed-store/, []],
+      [/gap:templates/, liveContractTemplateKeys().map((template_key) => ({ template_key }))]
+    ]),
+    orgId: ORG,
+    routeMounted: true
+  });
+  const sent = byId(rows, "contracts:sent-unsignable");
+  assert.equal(sent.status, "FAIL");
+  assert.match(sent.detail, /c-7 \(a signer said no, so staff must void it or send a new one\)/);
+  assert.match(SQL_SENT, /d\.status = 'declined'\s*\)\s*THEN 'declined'/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The real queries, run on a real Postgres over made-up rows.
+//
+// Each table the query names is replaced, for that one statement, by a list of
+// made-up rows (a CTE with the table's name shadows the real table). The gap
+// file's own SQL runs unchanged. The whole thing sits in BEGIN READ ONLY and is
+// rolled back, so nothing is created or written, even on the live database.
+// Runs when DATABASE_URL is set (CI, and the live proof). Skipped without it;
+// the pins above still run everywhere.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HAVE_DB = !!process.env.DATABASE_URL;
+const NO_DB = "no DATABASE_URL: the made-up-rows proof runs in CI and in the live proof";
+const OTHER_ORG = "22222222-2222-2222-2222-222222222222";
+const BODY = "This agreement is between Fundhub and the client.";
+const sha = (text) => `sha256:${createHash("sha256").update(Buffer.from(String(text), "utf8")).digest("hex")}`;
+
+const SHADOW_COLS = {
+  contracts: [
+    ["id", "uuid"], ["org_id", "uuid"], ["is_demo", "boolean"], ["status", "text"], ["template_key", "text"],
+    ["document_version_id", "uuid"], ["rendered_body", "text"], ["body_sha", "text"],
+    ["source_kind", "text"], ["source_document_id", "uuid"], ["signing_order", "text"],
+    ["signed_document_id", "uuid"], ["signed_document_version_id", "uuid"], ["signed_body_sha", "text"]
+  ],
+  document_versions: [["id", "uuid"], ["checksum", "text"]],
+  documents: [["id", "uuid"]],
+  contract_signers: [["contract_id", "uuid"], ["status", "text"], ["signer_index", "integer"]],
+  contract_templates: [["org_id", "uuid"], ["template_key", "text"], ["active", "boolean"], ["is_demo", "boolean"]]
+};
+
+async function withShadow(rowsByTable, run) {
+  const { default: pg } = await import("pg");
+  const url = process.env.DATABASE_URL;
+  const client = new pg.Client({
+    connectionString: url,
+    ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false }
+  });
+  await client.connect();
+  try {
+    await client.query("BEGIN READ ONLY");
+    const tables = Object.keys(SHADOW_COLS);
+    const db = {
+      async query(sql, params = []) {
+        const withs = tables.map((name, i) => {
+          const cols = SHADOW_COLS[name].map(([c, t]) => `"${c}" ${t}`).join(", ");
+          return `${name} AS (SELECT * FROM jsonb_to_recordset($${params.length + i + 1}::jsonb) AS x(${cols}))`;
+        });
+        const json = tables.map((name) => JSON.stringify(rowsByTable[name] || []));
+        return client.query(`WITH ${withs.join(", ")} ${String(sql)}`, [...params, ...json]);
+      }
+    };
+    return await run(db);
+  } finally {
+    try { await client.query("ROLLBACK"); } catch { /* nothing was written */ }
+    await client.end();
+  }
+}
+
+/** Made-up ids that read well in a failure message. */
+function idMaker() {
+  const ids = {};
+  const id = (label) => {
+    if (!ids[label]) ids[label] = `00000000-0000-4000-8000-${String(Object.keys(ids).length + 1).padStart(12, "0")}`;
+    return ids[label];
+  };
+  const label = (value) => Object.keys(ids).find((key) => ids[key] === value) || value;
+  return { id, label };
+}
+
+function sentFixture() {
+  const { id, label } = idMaker();
+  const contracts = [];
+  const versions = [];
+  const signers = [];
+  const add = (name, opts = {}, expected = null) => {
+    const body = "body" in opts ? opts.body : BODY;
+    const hashed = body == null ? BODY : body;
+    let versionId = null;
+    if (opts.anchor === undefined || opts.anchor === true) {
+      versionId = id(`${name}:version`);
+      versions.push({ id: versionId, checksum: "checksum" in opts ? opts.checksum : sha(hashed) });
+    } else if (opts.anchor === "ghost") {
+      versionId = id(`${name}:ghost`);
+    }
+    contracts.push({
+      id: id(name),
+      org_id: opts.org || ORG,
+      is_demo: opts.demo === true,
+      status: opts.status || "sent",
+      template_key: "FUNDING-AGREEMENT",
+      document_version_id: versionId,
+      rendered_body: body,
+      body_sha: "bodySha" in opts ? opts.bodySha : (body == null ? null : sha(body)),
+      source_kind: (opts.source && opts.source.source_kind) || "text",
+      source_document_id: (opts.source && opts.source.source_document_id) || null,
+      signing_order: opts.order || "sequential"
+    });
+    (opts.signers || ["pending"]).forEach((status, i) => {
+      signers.push({ contract_id: id(name), status, signer_index: i });
+    });
+    return [name, expected];
+  };
+  const cases = [
+    add("ok-single"),
+    add("ok-viewed", { status: "viewed", signers: ["viewed"] }),
+    add("ok-parallel-one-signed", { order: "parallel", signers: ["signed", "pending"] }),
+    add("ok-parallel-both-pending", { order: "parallel", signers: ["pending", "pending"] }),
+    add("ok-parallel-one-declined", { order: "parallel", signers: ["declined", "pending"] }),
+    add("ok-sequential-second-turn", { signers: ["signed", "pending"] }),
+    add("ok-sequential-third-turn", { signers: ["signed", "signed", "viewed"] }),
+    add("ok-sequential-first-turn", { signers: ["pending", "pending"] }),
+    add("ok-pdf", { source: { source_kind: "pdf", source_document_id: id("pdf-file") } }),
+    add("ok-unicode-crlf", { body: "Café — 契約\r\nSecond line" }),
+    add("no-signers", { signers: [] }, "no_signer"),
+    add("everyone-signed-but-status-sent", { signers: ["signed", "signed"] }, "no_signer"),
+    add("only-signer-declined", { signers: ["declined"] }, "declined"),
+    add("sequential-first-declined", { signers: ["declined", "pending"] }, "declined"),
+    add("parallel-all-declined", { order: "parallel", signers: ["declined", "declined"] }, "declined"),
+    add("no-anchor", { anchor: false }, "no_anchor"),
+    add("anchor-points-nowhere", { anchor: "ghost" }, "no_anchor"),
+    add("anchor-without-checksum", { checksum: null }, "no_anchor"),
+    add("no-words", { body: null }, "no_body"),
+    add("no-words-hash", { bodySha: null }, "no_body"),
+    add("pdf-file-missing", { source: { source_kind: "pdf", source_document_id: null } }, "pdf_missing"),
+    add("words-changed-after-send", { body: "Edited after it was sent.", checksum: sha(BODY), bodySha: sha(BODY) }, "content_changed"),
+    add("only-body-hash-differs", { bodySha: sha("something else") }, "content_changed"),
+    add("only-frozen-copy-differs", { checksum: sha("something else") }, "content_changed"),
+    add("draft-not-sent", { status: "draft", signers: [] }),
+    add("already-signed", { status: "signed", signers: ["signed"] }),
+    add("voided", { status: "void", signers: [] }),
+    add("demo-contract", { demo: true, signers: [] }),
+    add("other-company", { org: OTHER_ORG, signers: [] })
+  ];
+  return { rowsByTable: { contracts, document_versions: versions, contract_signers: signers }, cases, label };
+}
+
+test("the sent-contract query flags exactly the contracts a client cannot sign, on real rows", { skip: HAVE_DB ? false : NO_DB }, async () => {
+  const { rowsByTable, cases, label } = sentFixture();
+  const out = await withShadow(rowsByTable, (db) => db.query(SQL_SENT, [ORG]));
+  const got = Object.fromEntries(out.rows.map((row) => [label(row.id), row.why]));
+  const want = Object.fromEntries(cases.filter(([, why]) => why).map(([name, why]) => [name, why]));
+  assert.deepEqual(got, want);
+});
+
+test("the signed-contract query flags exactly the signed contracts with no stored copy, on real rows", { skip: HAVE_DB ? false : NO_DB }, async () => {
+  const { id, label } = idMaker();
+  const contracts = [];
+  const versions = [{ id: id("version-ok"), checksum: "x" }];
+  const documents = [{ id: id("document-ok") }];
+  const signed = (name, over = {}) => contracts.push({
+    id: id(name),
+    org_id: ORG,
+    is_demo: false,
+    status: "signed",
+    template_key: "FUNDING-AGREEMENT",
+    signed_document_id: id("document-ok"),
+    signed_document_version_id: id("version-ok"),
+    signed_body_sha: "sha256:abc",
+    ...over
+  });
+  signed("stored-ok");
+  signed("no-signed-document", { signed_document_id: null });
+  signed("no-signed-version", { signed_document_version_id: null });
+  signed("no-signed-hash", { signed_body_sha: null });
+  signed("signed-version-row-gone", { signed_document_version_id: id("version-ghost") });
+  signed("signed-document-row-gone", { signed_document_id: id("document-ghost") });
+  signed("demo-signed-empty", { is_demo: true, signed_document_id: null });
+  signed("other-company-empty", { org_id: OTHER_ORG, signed_document_id: null });
+  signed("still-sent-empty", { status: "sent", signed_document_id: null, signed_document_version_id: null, signed_body_sha: null });
+
+  const out = await withShadow({ contracts, document_versions: versions, documents }, (db) => db.query(SQL_SIGNED, [ORG]));
+  assert.deepEqual(
+    out.rows.map((row) => label(row.id)).sort(),
+    ["no-signed-document", "no-signed-hash", "no-signed-version", "signed-document-row-gone", "signed-version-row-gone"]
+  );
+});
+
+test("the template query returns only this company's active, real templates for the keys asked", { skip: HAVE_DB ? false : NO_DB }, async () => {
+  const rows = [
+    { org_id: ORG, template_key: "A", active: true, is_demo: false },
+    { org_id: ORG, template_key: "B", active: false, is_demo: false },
+    { org_id: OTHER_ORG, template_key: "C", active: true, is_demo: false },
+    { org_id: ORG, template_key: "D", active: true, is_demo: true },
+    { org_id: ORG, template_key: "E", active: true, is_demo: false }
+  ];
+  const out = await withShadow({ contract_templates: rows }, (db) => db.query(SQL_TEMPLATES, [ORG, ["A", "B", "C", "D"]]));
+  assert.deepEqual(out.rows.map((row) => row.template_key), ["A"]);
+});
+
+test("the whole lane, on made-up rows: stuck, unsaved and missing go red; a healthy file stays green", { skip: HAVE_DB ? false : NO_DB }, async () => {
+  const keys = liveContractTemplateKeys();
+  const templates = keys.map((template_key) => ({ org_id: ORG, template_key, active: true, is_demo: false }));
+  const good = sentFixture();
+  const healthy = good.cases.filter(([, why]) => !why).map(([name]) => name);
+  assert.ok(healthy.length > 5);
+  const healthyRows = {
+    contracts: good.rowsByTable.contracts.filter((c) => healthy.includes(good.label(c.id))),
+    document_versions: good.rowsByTable.document_versions,
+    contract_signers: good.rowsByTable.contract_signers,
+    contract_templates: templates
+  };
+  // The healthy sent contracts include one with status "signed"; give it a stored copy so the signed read is clean too.
+  const docId = "00000000-0000-4000-8000-0000000000aa";
+  const verId = "00000000-0000-4000-8000-0000000000bb";
+  healthyRows.contracts = healthyRows.contracts.map((c) =>
+    c.status === "signed" ? { ...c, signed_document_id: docId, signed_document_version_id: verId, signed_body_sha: "sha256:abc" } : c);
+  healthyRows.document_versions = [...healthyRows.document_versions, { id: verId, checksum: "x" }];
+  healthyRows.documents = [{ id: docId }];
+  const clean = await withShadow(healthyRows, (db) => gapChecks({ db, orgId: ORG, routeMounted: true }));
+  for (const id of ["contracts:sent-unsignable", "contracts:signed-not-stored", "contracts:template-missing"]) {
+    assert.equal(byId(clean, id).status, "PASS", `${id}: ${byId(clean, id).detail}`);
+  }
+
+  const broken = await withShadow(
+    {
+      ...good.rowsByTable,
+      contracts: [
+        ...good.rowsByTable.contracts,
+        { id: "00000000-0000-4000-8000-0000000000cc", org_id: ORG, is_demo: false, status: "signed", template_key: "FUNDING-AGREEMENT" }
+      ],
+      contract_templates: templates.filter((t) => t.template_key !== "CAPITAL-BLUEPRINT-AGREEMENT")
+    },
+    (db) => gapChecks({ db, orgId: ORG, routeMounted: true })
+  );
+  assert.equal(byId(broken, "contracts:sent-unsignable").status, "FAIL");
+  assert.match(byId(broken, "contracts:sent-unsignable").detail, /cannot be signed/);
+  assert.equal(byId(broken, "contracts:signed-not-stored").status, "FAIL");
+  assert.match(byId(broken, "contracts:signed-not-stored").detail, /0000000000cc/);
+  assert.equal(byId(broken, "contracts:template-missing").status, "FAIL");
+  assert.match(byId(broken, "contracts:template-missing").detail, /CAPITAL-BLUEPRINT-AGREEMENT/);
 });

@@ -10,7 +10,7 @@ Do not run a new Drive sync. Do not upload.
 |---|---|
 | Drive sync `last_error` set | `meet-transcript-sweeper` in `src/pulse/machine.mjs` (`checkMeetTranscripts`) reads `brain_drive_sync.last_error`. |
 | Drive scan older than the job allows | The same check. Red after 30 minutes (3 times the 10 minute sweeper). |
-| Search / read door answers 500 | The morning list pings `read/company-brain` and `read/company-brain-affiliate` (`reg:` rows). |
+| Search / read door is up at all | The morning list pings `read/company-brain` and `read/company-brain-affiliate` (`reg:` rows). Those are GET pings on doors that only take POST. A 405 counts as up, so they cannot see a 500 on a real search. The two search checks below cover that. |
 
 ## Checks
 
@@ -18,11 +18,12 @@ Do not run a new Drive sync. Do not upload.
 |---|---|---|
 | `brain:search-staff` | Runs the real staff search door (`api/read/company-brain.mjs`) on the real database. | The door throws, answers 500, or answers anything but 200 with `ok: true`. |
 | `brain:search-affiliate` | Runs the real affiliate search door (`api/read/company-brain-affiliate.mjs`) the same way. | Same. |
+| `brain:embed-key` | Looks at the OpenAI key the runtime holds for Company Brain (the same one the real embed step reads). Sends nothing to OpenAI. | The key is missing, or it is a row of 4 or more asterisks (a mask). Skips when the run has no `env`. |
 
-How: the door's own code runs. The sign-in step and the AI step are swapped out. The search vector is a fixed stub, so no AI call is made and nothing is spent. Chat history saving is switched off, so nothing is written. The search SQL runs read only, limit 1.
+How: the door's own code runs. The sign-in step and the AI step are swapped out. The search vector is a fixed stub, so no AI call is made and nothing is spent. That stub hides one thing: a real question that cannot be turned into a vector. `brain:embed-key` covers that, by reading the key. Chat history saving is switched off, so nothing is written. The search SQL runs read only, limit 1.
 
 PASS, FAIL, or skip. Shape is `{ id, status, detail, suggestedFix }`.
-No database skips both rows. It makes no web calls at all.
+No database skips both search rows. `brain:embed-key` needs only `env`, so it still answers with no database. It makes no web calls at all.
 
 ## Files
 
@@ -51,3 +52,35 @@ How it was proved:
 - 8 deliberate breaks in the code. The tests caught 7. The 8th removes the "no history" stub, which changes nothing today because the door already refuses to save history when there is no staff id.
 
 Test result: 7 pass, 0 fail, 0 skipped.
+
+### Second pass — after the checker
+
+What was wrong:
+- Gap. The fixed stub hides the most likely way real search fails: the question cannot be embedded because the OpenAI key is missing or is only a mask. The real door answers 502 then, and both search rows still read PASS.
+- The table said the morning list pings can see a door answering 500. They cannot (GET on a POST-only door, 405 counts as up). The first review in this file already said so.
+- One break in my own test run lived on: taking out the "no chat history" stub changed nothing, so no test noticed.
+
+What changed:
+- New row `brain:embed-key`. Reads `ctx.env` only (never the process env). Same key order as the real embed step: `OPENAI_API_KEY`, then `COMPANY_BRAIN_OPENAI_API_KEY`. FAIL if missing or a mask. The key is never printed. No call to OpenAI, no spend. Not watched anywhere else in the pulse (searched `src/pulse`).
+- Table row fixed.
+- The parts the check swaps into the doors are now exported for tests (`__test`), and a test pins that they save no history.
+- 10 tests, up from 7. Needs `env` in the pulse context to do anything; without it the row skips and says why.
+
+Live result after (production database, read only): prod 2 PASS, 1 FAIL, 0 skip. Staff view the same. Bare (no db, no env): 0 PASS, 0 FAIL, 3 skip. 0 SQL errors, 0 writes, 0 web calls.
+
+The FAIL is `brain:embed-key`, and it reads this Mac's `.env`, where `OPENAI_API_KEY` is a row of 16 asterisks plus 4 letters. The Netlify CLI shows the same, but Netlify hides secret values, so I cannot say what the Netlify function really holds. Kept as a FAIL, not called a false alarm, because the data agrees with a broken embed step:
+- Newest `brain_chunks` row: 2026-09-19. Nothing searchable since.
+- Every `brain_files` row created after 2026-09-19 (243 of them) has zero chunks.
+- `failed_events` has an OpenAI 429 "no credit" from 2026-09-18.
+- Owner note, 2026-09-17: the stored OpenAI key was a mask and OpenAI answered 401.
+Cause is not proven. It could be the mask, the empty OpenAI account, or both. This check can only see the mask. If the Netlify key is real but the account has no credit, this row reads PASS and search is still down. A sure test would need a real OpenAI call, which this lane may not make.
+
+The 8th break from the first pass (remove the no-history stub) is harmless today. It is now pinned by a test, so it no longer survives.
+
+Left over, not fixed (outside this lane's three breaks): Company Brain has not saved a new searchable chunk since 2026-09-19 while the Drive sync keeps adding files. Nothing in the pulse says so by name.
+
+How it was proved:
+- 17 deliberate breaks in the code (mask rule, missing key, key name, process-env fallback, history stub, trim, skip paths, dropped rows, door checks, stub vector, limit, roles). The tests caught all 17.
+- Live tool run above.
+
+Test result: 10 pass, 0 fail, 0 skipped.

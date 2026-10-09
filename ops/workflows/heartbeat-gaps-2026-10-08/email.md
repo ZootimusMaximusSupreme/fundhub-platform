@@ -16,7 +16,7 @@ Each row is `{ id, status, detail, suggestedFix }`. Status is PASS, FAIL, or ski
 | `email:provider-fail` | An outbound email failed or bounced in the last 3 days. A test address or a missing address does not count. |
 | `email:magic-link-unqueued` | A short-lived sign-in link was issued in the last 24 hours and no `EMAIL-PORTAL-MAGIC-LINK` row was queued. |
 | `email:drip-step-no-email` | A person is on the roadmap drip and their step number is higher than the number of drip emails they have. |
-| `email:morning-no-failure-check` | A morning job sends email and never reads whether it queued. Reads source files, so it is a skip where the files are not on disk. |
+| `email:morning-no-failure-check` | A morning job sends email and never reads whether it queued. Reads the source files. It looks in the checkout, then the deployed function folder, then the working folder. A skip only where no folder has `src/`. |
 
 No database, or no org: the first four are skip. The morning row still reads the files.
 
@@ -65,3 +65,19 @@ The two FAILs are the same real break, seen two ways:
 
 Tests: `node --test src/pulse/coverage/gap-email.test.mjs` = 17 pass, 0 fail, 0 skipped.
 
+### Second look — Claude, 2026-10-08 (a checker found more)
+
+What was still wrong, and what changed:
+
+- **The morning row could only skip on the live site.** It looked for `src/` three folders above its own file. On the live site the lane is packed into one file at `netlify/functions/`, so that path lands outside the package. The files were never found, even though they are in the package. I opened the live package (`.netlify/functions/api.zip`, built 16:37 today). It holds `src/workflows/slo-infinite-drip.mjs`, `src/contracts/notify.mjs` and `src/finance/document-vault-chase.mjs`. Now the row looks in the checkout, then two folders above the packed file, then `LAMBDA_TASK_ROOT`, then the working folder. First folder that has the file wins.
+- **Proof it works there.** I packed the new lane the way the live site does, put the three real files from the live package next to it, and ran it from an unrelated folder. The old lane: skip, "not on disk". The new lane: FAIL on `slo-infinite-drip.mjs`, which is the real break. The other two files read fine and pass.
+- That means the contract chase and the vault chase are now watched on the live site too, not only the drip.
+- **Test gap closed.** The old stuck-email test said it read email only. The renamed one lost that. It is back: email only, outbound only, never SMS or queued.
+
+New tests (nothing removed): the folders it looks in; files found under a live-style folder with a PASS and a FAIL; a folder with no `src/` is a skip with the reason.
+
+Judged small, left alone: a bounce to one of our own test mailboxes (7 of the 8 old bounces) will show red for 3 days. A bounce on our own domain can also be a real mail problem, so I did not hide it. The word list in the morning check (`.sent`, `notQueued`, and so on) is loose. It passes any file that mentions one of those words. Both are low.
+
+Live result now (read-only, production): prod 3 PASS / 2 FAIL / 0 skip. Staff access gives the same. 0 SQL errors, 0 writes. The 2 FAILs are still one real break seen two ways: the drip (database view and code view). On the live site both views now show.
+
+Tests: `node --test src/pulse/coverage/gap-email.test.mjs` = 21 pass, 0 fail, 0 skipped.

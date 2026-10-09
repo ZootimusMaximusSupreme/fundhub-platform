@@ -13,6 +13,7 @@ import {
   checklistProductCodes,
   PORTAL_SHELL_PATH,
   PAID_ENTITLEMENT_SQL,
+  UNRESOLVED_PAID_SQL,
   NEXT_STEP_SQL,
   SUMMARY_CLIENT_SQL,
   SUMMARY_READS,
@@ -66,7 +67,7 @@ const norm = (s) => String(s).replace(/\s+/g, " ").trim();
 /* The fake answers by the SQL it is given, and it records the params, so a test
    can see which org, status and email pattern were sent. Anything it does not
    know throws, which turns a changed query into a FAIL row, not a quiet pass. */
-function fakeDb({ entitlement = [], steps = [], client = CLIENT, failOn = null, failAll = null } = {}) {
+function fakeDb({ entitlement = [], unresolved = [], steps = [], client = CLIENT, failOn = null, failAll = null } = {}) {
   const calls = [];
   return {
     calls,
@@ -77,6 +78,7 @@ function fakeDb({ entitlement = [], steps = [], client = CLIENT, failOn = null, 
       if (failOn && failOn.test(text)) throw new Error(`boom ${failOn.source}`);
       if (/FROM orgs/i.test(text)) return { rows: [{ id: ORG }] };
       if (/gap:portal-paid-entitlement/.test(text)) return { rows: entitlement };
+      if (/gap:portal-unresolved-paid/.test(text)) return { rows: unresolved };
       if (/gap:portal-next-step/.test(text)) return { rows: steps };
       if (/gap:portal-summary-client/.test(text)) return { rows: client ? [{ id: client }] : [] };
       if (/FROM documents d/i.test(text)) return { rows: [] };
@@ -95,6 +97,9 @@ function healthyRoutes() {
 }
 
 const paidRow = (client, isTest, has) => ({ client_id: client, is_test: isTest, has_entitlement: has });
+const unresolvedRow = (client, { isTest = false, hasAny = false, door = true } = {}) => ({
+  client_id: client, is_test: isTest, has_any_entitlement: hasAny, came_through_the_door: door
+});
 
 test("gap checks use the blueprint product that opens the checklist", () => {
   assert.equal(productCreatesChecklist(BLUEPRINT_PRODUCT_CODE), true);
@@ -128,6 +133,8 @@ test("a healthy signed-out portal is all PASS", async () => {
   assert.equal(step.params[3], TEST_CLIENT_EMAIL_RE);
   const paid = db.calls.find((c) => /gap:portal-paid-entitlement/.test(c.sql));
   assert.deepEqual(paid.params, [ORG, "succeeded", TEST_CLIENT_EMAIL_RE]);
+  const lost = db.calls.find((c) => /gap:portal-unresolved-paid/.test(c.sql));
+  assert.deepEqual(lost.params, [ORG, "succeeded", TEST_CLIENT_EMAIL_RE]);
   for (const c of db.calls) {
     assert.match(c.sql.replace(/\/\*[\s\S]*?\*\//g, "").trim(), /^(SELECT|WITH)\b/i);
     assert.doesNotMatch(c.sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE|BEGIN|COMMIT|ROLLBACK)\b/i);
@@ -289,7 +296,7 @@ test("test clients with no entitlement are left out and named in the pass", asyn
   });
   const row = rows.find((r) => r.id === "portal:paid-entitlement");
   assert.equal(row.status, "PASS");
-  assert.match(row.detail, /1 real purchases read/);
+  assert.match(row.detail, /1 paid rows read/);
   assert.match(row.detail, /2 test clients have none and are left out/);
 });
 
@@ -311,7 +318,8 @@ test("the test-client pattern catches the sim tags and test domains, not real pe
     "stanbridgejchris+sim-12@gmail.com",
     "someone@example.com",
     "adv-blk5a-1.1@example.test",
-    "x@thing.invalid"
+    "x@thing.invalid",
+    "roster@demo.fundhub.local"
   ]) {
     assert.ok(re.test(mail), mail);
   }
@@ -346,18 +354,24 @@ test("a checklist that never opened fails", async () => {
 });
 
 test("the sql ignores fresh payments, failed payments, demo rows and test clients", () => {
-  assert.match(GRACE, /hour/);
-  for (const sql of [PAID_ENTITLEMENT_SQL, NEXT_STEP_SQL]) {
+  // Pin the number itself. A grace of '0 hour' would fail every payment still on its way.
+  assert.equal(GRACE, "1 hour");
+  for (const sql of [PAID_ENTITLEMENT_SQL, UNRESOLVED_PAID_SQL, NEXT_STEP_SQL]) {
     assert.match(sql, new RegExp(`created_at < now\\(\\) - interval '${GRACE}'`));
     assert.match(sql, /c\.is_demo IS TRUE/);
     assert.match(sql, /custom_fields ->> 'synthetic'/);
     assert.match(sql, /~\* \$\d/);
   }
   assert.match(PAID_ENTITLEMENT_SQL, /t\.is_demo IS NOT TRUE/);
+  assert.match(UNRESOLVED_PAID_SQL, /t\.is_demo IS NOT TRUE/);
+  assert.match(UNRESOLVED_PAID_SQL, /lower\(btrim\(COALESCE\(t\.status, ''\)\)\) = \$2/);
   assert.match(PAID_ENTITLEMENT_SQL, /lower\(btrim\(COALESCE\(t\.status, ''\)\)\) = \$2/);
   assert.match(NEXT_STEP_SQL, /rp\.status <> 'cancelled'/);
+  // The entitlement is looked up by the same code the product map names, case and space ignored.
+  assert.match(PAID_ENTITLEMENT_SQL, /lower\(btrim\(pe\.product_code\)\) = lower\(btrim\(p\.code\)\)/);
+  assert.match(PAID_ENTITLEMENT_SQL, /e\.entitlement_code = lower\(btrim\(p\.entitlement_code\)\)/);
   assert.match(SUMMARY_CLIENT_SQL, /c\.is_demo IS NOT TRUE/);
-  assert.equal(READ_ONLY_SQL.length, 3 + SUMMARY_READS.length);
+  assert.equal(READ_ONLY_SQL.length, 4 + SUMMARY_READS.length);
   for (const sql of READ_ONLY_SQL) {
     assert.doesNotMatch(sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER)\b/i);
   }
@@ -424,4 +438,93 @@ test("the module does not write, log in, or add a second watchdog", () => {
   assert.doesNotMatch(src, /password|magic-link|client_id=/i);
   assert.match(src, /Do not invent a second watchdog/);
   assert.doesNotMatch(src, /second tripwire|new watchdog/i);
+});
+
+/* Payments whose product name matches no product. The join in the first read
+   drops them, so these are read apart. */
+
+test("a payment under an unknown product name and a client with nothing fails", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({ unresolved: [unresolvedRow("u1"), unresolvedRow("u2", { hasAny: true })] }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  assertShape(rows);
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /1 paid client paid under a product name that matches no product and holds no entitlement at all/);
+  assert.doesNotMatch(row.detail, /mapped product/);
+  assert.match(row.suggestedFix, /alias/);
+  assert.match(row.suggestedFix, /Do not guess a product/);
+  assert.match(row.suggestedFix, /Do not auto-fix from this pulse/);
+  assert.doesNotMatch(row.detail, /u1/);
+});
+
+test("an unknown product name whose client still holds an entitlement passes and is counted", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({ unresolved: [unresolvedRow("u1", { hasAny: true })] }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /plus 1 under a product name that matches no product/);
+});
+
+test("an unknown product name with no payment event is left out and named", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({ unresolved: [unresolvedRow("u1", { door: false }), unresolvedRow("u2", { door: false })] }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /2 payments with no payment event are left out/);
+});
+
+test("an unknown product name on a test client is not counted at all", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({ unresolved: [unresolvedRow("t1", { isTest: true })] }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /plus 0 under a product name/);
+});
+
+test("a mapped miss and an unknown-name miss are both named in one row", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({
+      entitlement: [paidRow("c1", false, false)],
+      unresolved: [unresolvedRow("u1"), unresolvedRow("u1")]
+    }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /1 paid client has no entitlement for a mapped product/);
+  assert.match(row.detail, /1 paid client paid under a product name that matches no product/);
+  assert.match(row.suggestedFix, /Write the entitlement/);
+  assert.match(row.suggestedFix, /alias/);
+});
+
+test("the unknown-name read failing is a fail, not a pass", async () => {
+  const rows = await gapChecks({
+    db: fakeDb({ entitlement: [paidRow("c1", false, true)], failOn: /gap:portal-unresolved-paid/ }),
+    orgId: ORG,
+    fetchImpl: fetchImpl(healthyRoutes(), [])
+  });
+  const row = rows.find((r) => r.id === "portal:paid-entitlement");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /paid entitlement read failed/);
+});
+
+test("the unknown-name sql looks only at names that resolve to nothing, and at the payment door", () => {
+  assert.match(UNRESOLVED_PAID_SQL, /resolve_product_id\(t\.org_id, t\.product_name\) IS NULL/);
+  assert.match(UNRESOLVED_PAID_SQL, /FROM entitlements e\s+WHERE e\.org_id = t\.org_id\s+AND e\.client_id = t\.client_id/);
+  assert.match(UNRESOLVED_PAID_SQL, /ev\.name = 'payment\.received'/);
+  assert.match(UNRESOLVED_PAID_SQL, /interval '1 day'/);
+  assert.match(UNRESOLVED_PAID_SQL, /t\.client_id IS NOT NULL/);
 });

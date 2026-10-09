@@ -18,15 +18,22 @@
 //   * the chat history writes are switched off, so nothing is saved
 // A 500, a throw, or an error body is a fail.
 //
+// THE ONE THING THE STUB HIDES. The question vector above is fixed, so the real
+// door could still answer 502 in production because it cannot embed the
+// question (no OpenAI key, or a key that is only a row of asterisks). The third
+// row, brain:embed-key, looks at the key the runtime holds and says so. It
+// sends nothing to OpenAI and spends nothing.
+//
 // Never runs a Drive sync. Never uploads. Never POSTs over the network.
 
-import { EMBEDDING_DIMS } from "../../company-brain/embed.mjs";
+import { EMBEDDING_DIMS, embedConfigFromEnv } from "../../company-brain/embed.mjs";
 import { retrieveChunks, retrieveAffiliateChunks } from "../../company-brain/retrieve.mjs";
 
 export const ID_STAFF = "brain:search-staff";
 export const ID_AFFILIATE = "brain:search-affiliate";
+export const ID_EMBED = "brain:embed-key";
 
-export const CHECK_IDS = Object.freeze([ID_STAFF, ID_AFFILIATE]);
+export const CHECK_IDS = Object.freeze([ID_STAFF, ID_AFFILIATE, ID_EMBED]);
 
 /** The question the door is asked. It is never sent to a model. */
 export const PROBE_QUESTION = "morning pulse read check";
@@ -152,6 +159,41 @@ function score(id, label, path, outcome) {
   );
 }
 
+/** Four or more asterisks in a row is a display mask (Netlify list, a pasted copy), never a key. */
+const MASKED = /\*{4,}/;
+
+/**
+ * Can the runtime turn a question into a search vector? Looks at the same key
+ * the real embed step reads (OPENAI_API_KEY, else COMPANY_BRAIN_OPENAI_API_KEY).
+ * No network call, no spend, and the key itself is never printed.
+ */
+function checkEmbedKey(ctx) {
+  const env = ctx.env;
+  if (!env || typeof env !== "object") {
+    return row(ID_EMBED, "skip", "no env in this run — the Company Brain search key was not looked at");
+  }
+  const cfg = embedConfigFromEnv(env);
+  const key = cfg.apiKey == null ? "" : String(cfg.apiKey).trim();
+  const name = env.OPENAI_API_KEY ? "OPENAI_API_KEY" : "COMPANY_BRAIN_OPENAI_API_KEY";
+  if (!cfg.ready || !key) {
+    return row(
+      ID_EMBED,
+      "FAIL",
+      "No OpenAI key is set for Company Brain. Every question gets a 502 and no new text file can be saved for search.",
+      `Set a real OpenAI key in OPENAI_API_KEY (or COMPANY_BRAIN_OPENAI_API_KEY) and ship once. ${RECON}`
+    );
+  }
+  if (MASKED.test(key)) {
+    return row(
+      ID_EMBED,
+      "FAIL",
+      `${name} is a row of asterisks (a mask), not a key. OpenAI refuses it, so Company Brain cannot turn a question into a search. Every question gets a 502 and no new text file can be saved for search.`,
+      `Put the real OpenAI key in ${name} and ship once. Do not unset or delete any stored key. ${RECON}`
+    );
+  }
+  return row(ID_EMBED, "PASS", `${name} is set and is not a mask (nothing was sent to OpenAI)`);
+}
+
 async function checkStaff(ctx, db, orgId) {
   try {
     const handler = ctx.brainDoors && ctx.brainDoors.staff
@@ -176,19 +218,28 @@ async function checkAffiliate(ctx, db, orgId) {
   }
 }
 
+/** Exposed for the tests only: the parts the check swaps into the real doors. */
+export const __test = { staffDeps, affiliateDeps };
+
 /**
- * Two read-only checks. ctx: { db, orgId }. `ctx.brainDoors` is for tests only.
+ * Three read-only checks. ctx: { db, orgId, env }. `ctx.brainDoors` is for tests only.
+ * The two search rows need db and orgId; the key row needs only env.
  * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
 export async function gapChecks(ctx = {}) {
   const db = ctx.db || null;
   const orgId = ctx.orgId || null;
+  const key = checkEmbedKey(ctx);
   if (!db || typeof db.query !== "function" || !orgId) {
-    return CHECK_IDS.map((id) =>
-      row(id, "skip", "no database in this run — Company Brain search not run"));
+    return [
+      row(ID_STAFF, "skip", "no database in this run — Company Brain search not run"),
+      row(ID_AFFILIATE, "skip", "no database in this run — Company Brain search not run"),
+      key
+    ];
   }
   return [
     await checkStaff(ctx, db, orgId),
-    await checkAffiliate(ctx, db, orgId)
+    await checkAffiliate(ctx, db, orgId),
+    key
   ];
 }

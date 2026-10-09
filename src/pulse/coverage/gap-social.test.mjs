@@ -279,6 +279,18 @@ test("gap social: the repo still exports the two readers this check runs", async
   assert.equal(typeof settings.readSettings, "function");
 });
 
+test("gap social: with no partner on file the settings read is not run, and the PASS line says so", async () => {
+  let settingsCalls = 0;
+  const rows = await gapChecks(ctxOf(quietMap({ [STUDIO_PARTNER_SQL]: { rows: [] } }), {
+    socialReaders: readers({ settings: async () => { settingsCalls += 1; return {}; } })
+  }));
+  assert.equal(rows[2].status, "PASS");
+  assert.equal(settingsCalls, 0);
+  assert.match(rows[2].detail, /settings read was not run: no partner is on file/);
+  const full = await gapChecks(ctxOf(quietMap()));
+  assert.match(full[2].detail, /\(posts, channels, settings\)/);
+});
+
 test("gap social: the real readers load when none are passed, and a missing partner is not a failure", async () => {
   const seen = [];
   const map = quietMap({ [STUDIO_PARTNER_SQL]: { rows: [] } });

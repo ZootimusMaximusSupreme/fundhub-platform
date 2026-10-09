@@ -54,3 +54,19 @@ One more fix: each live GET now has an 8 second abort. The lane runs as one puls
 
 Tests: `node --test src/pulse/coverage/gap-webhooks.test.mjs` = 21 pass, 0 fail, 0 skipped.
 
+### Second look — Claude, 2026-10-08 (a checker found more)
+
+The checker agreed with the lane. One thing it flagged as medium: the first read-only test banned the router name everywhere, and the review loosened that to let the router probe run. That is a weaker test on its face. Here is why it stayed, and what was added so it is not weaker in practice:
+
+- The lane was asked for a door check that can fail. A live GET answers 405 for any provider name, so only the router can say a door is missing. The blanket ban made the check blind.
+- The first ban is now back, word for word, on the whole file minus the one pinned import and the one pinned call. Any other mention of a handler, the inbox worker, or a drain still fails.
+- New proof the probe is safe. The real router is called with a database that counts every query. For the three doors it answers 401. For a door that does not exist it answers 404. The count of queries is 0. If the router ever starts touching the database before it checks the signature, that test fails. Before, the database only threw, which a router could swallow and hide.
+
+Kept on purpose, both low:
+
+- `webhooks:commas` overlaps `payments:commas-webhook-route`. The webhooks lane prompt names Commas as in scope, so both stay. One missing door shows as two red rows.
+- `webhooks:calendar-booking` is the ClickFunnels door. The prompt names it. One missing door shows as two red rows.
+
+Live result now (read-only, production): prod 5 PASS / 0 FAIL / 0 skip. Staff access gives the same. 0 SQL errors, 0 writes. Only GET left the machine.
+
+Tests: `node --test src/pulse/coverage/gap-webhooks.test.mjs` = 23 pass, 0 fail, 0 skipped.

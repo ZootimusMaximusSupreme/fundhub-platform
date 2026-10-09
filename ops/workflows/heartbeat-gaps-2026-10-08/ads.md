@@ -21,7 +21,7 @@ This lane does not change budgets, pause campaigns, or upload video. It does not
 | id | FAIL when |
 |---|---|
 | `ads-meta-sync-stale` | A Meta account is due and `last_synced_at` is missing or older than 3 hours (3 times the hourly pull). No due account is a skip. The 36 hour nightly row stays on machine `meta-sync`. |
-| `ads-spend-day-missing` | A closed Arizona day in the 3-day window has no spend row, an older spend row shows that day should have synced, **and an ad is running**. With every ad paused Meta sends no row, so an empty day is a skip. A save older than 36 hours is a skip. |
+| `ads-spend-day-missing` | A closed Arizona day in the 3-day window has no spend row, an older spend row shows that day should have synced, an ad is running, **and ads spent money on a day before the gap and a day after it (today counts)**. With every ad paused Meta sends no row, so an empty day is a skip. Ads switched back on this morning have no spend after the gap yet, so that is a skip too. A save older than 36 hours is a skip. |
 | `ads-number-unmapped` | An ad that **spent money in the last 28 days** has no Fundhub ad number (`fundhub_ad_number` empty). Old paused test ads are not looked at. |
 | `ads-running-no-metrics` | A running ad created at least **24 hours** ago has no `ad_metrics_daily` row, and the Meta connection synced inside 36 hours. (24 hours because Meta can hold a new ad in review for a day.) |
 
@@ -33,7 +33,7 @@ Closed days at 6:00 a.m. Phoenix on 2026-10-06 are 2026-10-04 and 2026-10-05. Th
 
 `node --test src/pulse/coverage/gap-ads.test.mjs`
 
-Result: 24 pass, 0 fail, 0 skipped. Four checks.
+Result: 32 pass, 0 fail, 0 skipped. Four checks.
 
 ## Review — Claude, 2026-10-08
 
@@ -59,3 +59,29 @@ Result: 24 pass, 0 fail, 0 skipped. Four checks.
 **Left for Chris (not a check problem)**
 
 - The 3 August test ads still have no number and carry $647 of old spend. They no longer turn the pulse red. Set `fundhub_ad_number` on them only if that old spend matters to a report.
+
+### Round 2 — Claude, 2026-10-08 (second checker)
+
+**What was wrong**
+
+- `ads-spend-day-missing` could still cry wolf on the morning after ads are switched back on. "Running" was read from the ad status right now, not from the day that was empty. A day with no rows while every ad was paused then looked like a missed sync. I proved it on real rows: with the 7 paused ads treated as ACTIVE and the clock at 6:00 a.m. Phoenix on 2026-10-06, the old check said FAIL for 2026-10-05.
+- I could not use `ads.updated_at` to see when an ad went live. The sync stamps it on every run.
+
+**What changed**
+
+- The query now also returns `spent_days`: the days from the day before the gap to today on which any ad spent money (spend above zero).
+- A missing day is a FAIL only when an ad is running **and** ads spent before the gap **and** ads spent after it. Otherwise it is a skip that says which side had no spend.
+- 8 new tests: the SQL text, the relaunch morning, no spend before, no spend on either side, a missing answer, the older day empty, both days empty, and an array answer. I broke the code four ways on purpose and the tests caught each one.
+
+**Live proof (read-only, as `fundhub_app` inside `BEGIN READ ONLY`)**
+
+- Relaunch replay on real rows: now a skip ("No ad spent money after it"). Real `spent_days` for the window is 2026-10-03 and 2026-10-04 only.
+- Real gap replay: ads treated as ACTIVE, clock on 2026-10-04, Oct 3 rows hidden. The real SQL runs and the result is FAIL for 2026-10-03.
+- Live tool: prod 3 PASS, 0 FAIL, 1 skip. Staff mode and bare mode match. 0 SQL errors, 0 writes.
+- Tests: `node --test src/pulse/coverage/gap-ads.test.mjs` is 32 pass, 0 fail, 0 skipped.
+
+**Left as is**
+
+- One narrow false alarm remains. If every ad is off for exactly one full Arizona day, and is switched back on and spends before 6:00 a.m. the next day, the check says FAIL. Data alone cannot tell that from a missed sync.
+- The skip text on `ads-running-no-metrics` says "No running ad is older than 24 h" even when every ad is paused. Wrong words, harmless. Not changed (low).
+

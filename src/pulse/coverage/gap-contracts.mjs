@@ -18,10 +18,16 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const API_FILE = path.resolve(HERE, "../../../netlify/functions/api.mjs");
 
 const SIGN_PATH = "/api/contracts/sign";
-/** A link no contract owns: nil id, far-future expiry, a signature that cannot match. */
-const FORGED_LINK = `${SIGN_PATH}?id=00000000-0000-4000-8000-000000000000&exp=4102444800&sig=00`;
+/**
+ * A link no contract owns: nil id, far-future expiry, a signature that cannot match.
+ * The door checks the signature before the expiry (verifyContractUrl), so this link
+ * can only answer 404 (secret set) or 503 (no secret). It can never answer 410.
+ */
+export const FORGED_LINK = `${SIGN_PATH}?id=00000000-0000-4000-8000-000000000000&exp=4102444800&sig=00`;
 const DEFAULT_BASE_URL = "https://fundhub.ai";
 const ROW_CAP = 50;
+/** A hung sign door must show as a red row, not wait for the pulse's own step cut. */
+const FETCH_TIMEOUT_MS = 15_000;
 
 export const CHECK_IDS = Object.freeze([
   "contracts:sent-unsignable",
@@ -42,7 +48,9 @@ const NO_SECOND =
  *     contract's own body_sha. The hash is computed here the way send.mjs bodyHash
  *     does: "sha256:" plus the hex sha256 of the UTF-8 text.
  *   canSign: somebody must be able to sign now (a pending/sent/viewed signer, and
- *     in sequential order nobody unsigned ahead of them).
+ *     in sequential order nobody unsigned ahead of them). A signer who declined
+ *     leaves the contract stuck on purpose; it still shows, labeled 'declined',
+ *     because only staff can void it or send a new one.
  * The DB itself refuses a sent contract with no body, no hash, or no PDF
  * (contracts_sent_has_artifact_ck), so those cases are listed only as a backstop.
  */
@@ -58,6 +66,10 @@ export const SQL_SENT = `
            WHEN c.source_kind = 'pdf' AND c.source_document_id IS NULL THEN 'pdf_missing'
            WHEN h.sha IS DISTINCT FROM dv.checksum
              OR h.sha IS DISTINCT FROM c.body_sha THEN 'content_changed'
+           WHEN EXISTS (
+             SELECT 1 FROM contract_signers d
+              WHERE d.contract_id = c.id AND d.status = 'declined'
+           ) THEN 'declined'
            ELSE 'no_signer'
          END AS why
     FROM contracts c
@@ -138,6 +150,7 @@ const WHY = Object.freeze({
   content_changed: "the words do not match the copy that was sent",
   no_body: "no words on the contract",
   pdf_missing: "the PDF file is missing",
+  declined: "a signer said no, so staff must void it or send a new one",
   no_signer: "nobody can sign it"
 });
 
@@ -286,7 +299,13 @@ export function classifyBareSignGet(status, body) {
  */
 export function classifyForgedSignGet(status, body) {
   const code = Number(status);
-  if (code === 404 && !(body && typeof body === "object" && typeof body.path === "string")) {
+  if (code === 404) {
+    if (body && typeof body === "object" && typeof body.path === "string") {
+      return {
+        status: "FAIL",
+        detail: `The router has no route for ${body.path}. A forged sign link got the router's no-such-route 404, not the sign door's.`
+      };
+    }
     return {
       status: "PASS",
       detail:
@@ -367,7 +386,8 @@ function fetchOf(ctx) {
 async function getJson(fetchImpl, url) {
   const res = await fetchImpl(url, {
     method: "GET",
-    headers: { accept: "application/json" }
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
   });
   return probeBody(res);
 }

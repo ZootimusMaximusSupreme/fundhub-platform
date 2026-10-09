@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { describe, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,11 +11,12 @@ import {
   STAFF_ROLES,
   SHELL_PATH,
   ROLE_GATE_PATH,
-  HIRING_APPLY_PATH,
-  INVITE_MAIL_ENV
+  HIRING_APPLY_PATH
 } from "./gap-staff.mjs";
+import { gapChecks as authGapChecks } from "./gap-auth.mjs";
 import { CHECKS as HIRING_SLICE } from "./slice-11-hiring.mjs";
 import { CHECKS as CSM_SLICE } from "./slice-30-csm-owner.mjs";
+import { db as pgDb, close as closePg } from "../../db.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ORG = "11111111-1111-4111-8111-111111111111";
@@ -113,10 +114,9 @@ function site(overrides = {}) {
   };
 }
 
-test("gap staff: an empty run skips all five rows and does not throw", async () => {
+test("gap staff: an empty run skips all four rows and does not throw", async () => {
   const rows = await gapChecks({});
   assert.deepEqual(rows.map((row) => row.id), [
-    "staff-invite-send",
     "staff-invite-link",
     "role-gate",
     "hiring-apply",
@@ -128,23 +128,16 @@ test("gap staff: an empty run skips all five rows and does not throw", async () 
   }
 });
 
-test("gap staff: invite email keys missing fail by name, and set keys pass without showing a value", async () => {
-  const secret = "re_VERY_SECRET_VALUE_123";
-  const pass = byId(await gapChecks({ env: { RESEND_API_KEY: secret, RESEND_FROM: "Fundhub <noreply@fundhub.ai>" } }), "staff-invite-send");
-  shape(pass);
-  assert.equal(pass.status, "PASS");
-  assert.doesNotMatch(JSON.stringify(pass), /VERY_SECRET|noreply/);
-
-  const noKey = byId(await gapChecks({ env: { RESEND_FROM: "x" } }), "staff-invite-send");
-  shape(noKey);
-  assert.equal(noKey.status, "FAIL");
-  assert.match(noKey.detail, /RESEND_API_KEY/);
-  assert.doesNotMatch(noKey.detail, /RESEND_FROM/);
-  assert.match(noKey.detail, /Did not invite a person/);
-
-  const blank = byId(await gapChecks({ env: { RESEND_API_KEY: "   ", RESEND_FROM: "" } }), "staff-invite-send");
-  assert.equal(blank.status, "FAIL");
-  for (const name of INVITE_MAIL_ENV) assert.match(blank.detail, new RegExp(name));
+test("gap staff: the invite mail keys are gap:auth-reset-mail's job, so this file reads no env and has no staff-invite-send row", async () => {
+  // A run that carries a missing Resend key must not add a second FAIL here.
+  const rows = await gapChecks({ env: {}, now: NOW });
+  assert.equal(rows.some((row) => row.id === "staff-invite-send"), false);
+  assert.equal(rows.some((row) => /RESEND/i.test(row.detail)), false);
+  // The row the board names as the watcher must still exist.
+  const auth = await authGapChecks({});
+  assert.ok(auth.some((row) => row.id === "gap:auth-reset-mail"));
+  const src = fs.readFileSync(path.join(HERE, "gap-staff.mjs"), "utf8");
+  assert.doesNotMatch(src, /RESEND|ctx\.env|process\.env/);
 });
 
 test("gap staff: the invite link query is read-only and asks about invited people, kind invite, unused, not expired", () => {
@@ -365,4 +358,111 @@ test("gap staff: source does not invite, change a role, edit HTML, read the repo
   assert.doesNotMatch(src, /BEGIN|COMMIT|ROLLBACK/);
   assert.equal(src.includes(HIRING_APPLY_PATH), true);
   assert.doesNotMatch(src, /second tripwire|new watchdog/i);
+});
+
+/* ------------------------------------------------------------------------
+   The invite SQL, run for real. staff and password_resets are replaced for one
+   query by fixture rows (a CTE with the table's name), so STUCK_INVITE_SQL runs
+   on the Postgres engine over rows we choose. SELECT only, nothing is stored.
+   Skipped without DATABASE_URL, like every *.pg.test.mjs. If someone changes the
+   status filter, the link kind, the used test or the expiry test, these fail.
+   ------------------------------------------------------------------------ */
+const HAVE_DB = !!process.env.DATABASE_URL;
+const COLS = {
+  staff: [["id", "uuid"], ["org_id", "uuid"], ["status", "text"]],
+  password_resets: [["staff_id", "uuid"], ["kind", "text"], ["used_at", "timestamptz"], ["expires_at", "timestamptz"]]
+};
+
+function fixtureDb(rows = {}) {
+  const ctes = Object.entries(COLS).map(([name, cols]) => {
+    const json = JSON.stringify(rows[name] || []).replace(/'/g, "''");
+    return `${name} AS (SELECT * FROM jsonb_to_recordset('${json}'::jsonb) AS x(${cols.map(([c, t]) => `"${c}" ${t}`).join(", ")}))`;
+  });
+  return {
+    async query(sql, params) {
+      return pgDb.query(`WITH ${ctes.join(", ")} ${String(sql).trim()}`, params);
+    }
+  };
+}
+
+describe("gap-staff invite SQL on the Postgres engine, over fixture rows", { skip: HAVE_DB ? false : "no DATABASE_URL" }, () => {
+  after(async () => { await closePg(); });
+  const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
+  let seq = 0;
+  const uid = () => `00000000-0000-4000-8000-${(++seq).toString(16).padStart(12, "0")}`;
+  const hours = (h) => new Date(NOW.getTime() + h * 3600e3).toISOString();
+  const person = (o = {}) => ({ id: uid(), org_id: ORG, status: "invited", ...o });
+  const link = (p, o = {}) => ({ staff_id: p.id, kind: "invite", used_at: null, expires_at: hours(48), ...o });
+
+  async function run(rows, ctx = {}) {
+    const out = await gapChecks({ db: fixtureDb(rows), orgId: ORG, now: NOW, ...ctx });
+    return byId(out, "staff-invite-link");
+  }
+
+  test("an invited person with an unused, unexpired invite link passes; nobody invited passes", async () => {
+    const p = person();
+    const ok = await run({ staff: [p], password_resets: [link(p)] });
+    assert.equal(ok.status, "PASS");
+    assert.match(ok.detail, /1 invited person has a working set-password link/);
+    const none = await run({ staff: [] });
+    assert.equal(none.status, "PASS");
+    assert.match(none.detail, /nobody is waiting/);
+    // An active person is not waiting on an invite, link or no link.
+    const active = await run({ staff: [person({ status: "active" }), person({ status: "suspended" })] });
+    assert.equal(active.status, "PASS");
+    assert.match(active.detail, /nobody is waiting/);
+  });
+
+  test("no link, an expired link, a used link, or only a reset link fails", async () => {
+    const none = person();
+    const expired = person();
+    const used = person();
+    const resetOnly = person();
+    const live = person();
+    const out = await run({
+      staff: [none, expired, used, resetOnly, live],
+      password_resets: [
+        link(expired, { expires_at: hours(-1) }),
+        link(used, { used_at: hours(-5) }),
+        link(resetOnly, { kind: "reset" }),
+        link(live)
+      ]
+    });
+    assert.equal(out.status, "FAIL");
+    assert.match(out.detail, /4 of 5 invited people have no working set-password link/);
+    // One at a time, so a broken single test cannot hide behind the others.
+    for (const [name, p, l] of [
+      ["no link", none, null],
+      ["expired", expired, link(expired, { expires_at: hours(-1) })],
+      ["used", used, link(used, { used_at: hours(-5) })],
+      ["reset only", resetOnly, link(resetOnly, { kind: "reset" })]
+    ]) {
+      const one = await run({ staff: [p], password_resets: l ? [l] : [] });
+      assert.equal(one.status, "FAIL", name);
+      assert.match(one.detail, /1 of 1 invited person has no working set-password link/, name);
+    }
+  });
+
+  test("a person with an old dead link and a new live link is fine; another person's link does not count", async () => {
+    const p = person();
+    const q = person();
+    const both = await run({
+      staff: [p],
+      password_resets: [link(p, { expires_at: hours(-100) }), link(p)]
+    });
+    assert.equal(both.status, "PASS");
+    const wrongPerson = await run({ staff: [p, q], password_resets: [link(q)] });
+    assert.equal(wrongPerson.status, "FAIL");
+    assert.match(wrongPerson.detail, /1 of 2 invited people have no working set-password link/);
+  });
+
+  test("with an org id only that company is read; with none, every company is", async () => {
+    const mine = person();
+    const theirs = person({ org_id: OTHER_ORG });
+    const rows = { staff: [mine, theirs], password_resets: [link(mine)] };
+    assert.equal((await run(rows)).status, "PASS");
+    const all = await run(rows, { orgId: undefined });
+    assert.equal(all.status, "FAIL");
+    assert.match(all.detail, /1 of 2 invited people have no working set-password link/);
+  });
 });

@@ -13,7 +13,11 @@
 // Claude review 2026-10-08: the invite check used to look for a row in
 // messages. The invite mail never writes one (it goes out through Resend
 // straight to notify_email, not to the login address), so that check could not
-// pass. It now reads the two things that can really stop an invite.
+// pass. A second fix dropped its replacement too: the Resend key and from-address
+// are already read by gap:auth-reset-mail in gap-auth.mjs (it also ignores a
+// masked key and looks for real Resend mail this week), so a second row would
+// have called one break twice. This file keeps the part nobody else reads:
+// an invited person with no working set-password link.
 
 export const DEFAULT_BASE_URL = "https://fundhub.ai";
 
@@ -37,9 +41,6 @@ export const ROLE_GATE_PATH = "/api/hiring/candidates";
 
 /** GET. Public careers door. Never POST — a POST would file an application. */
 export const HIRING_APPLY_PATH = "/api/hiring/apply";
-
-/** The two env names the staff invite mail needs. Names only, never values. */
-export const INVITE_MAIL_ENV = Object.freeze(["RESEND_API_KEY", "RESEND_FROM"]);
 
 const TRIPWIRE =
   "Recon (AG-07) is the only tripwire. Do not build a second watchdog. Do not auto-fix from this pulse.";
@@ -129,37 +130,6 @@ function fix(line) {
 }
 
 /**
- * Can the staff invite email leave at all? It goes out through Resend and needs
- * both env names set. Reads names only, never the values. Does not send.
- * This cannot prove Resend takes the key, only that the pulse's own copy of the
- * env has both. A run with no env skips.
- */
-export function checkStaffInviteSend(ctx = {}) {
-  const env = ctx.env;
-  if (!env || typeof env !== "object") {
-    return check(
-      "staff-invite-send",
-      "skip",
-      "no env in this run — invite mail keys were not read. Did not invite a person."
-    );
-  }
-  const missing = INVITE_MAIL_ENV.filter((name) => !String(env[name] || "").trim());
-  if (missing.length) {
-    return check(
-      "staff-invite-send",
-      "FAIL",
-      `staff invite email cannot leave: ${missing.join(", ")} not set. The invite link would not be mailed. Did not invite a person.`,
-      fix(`Set ${missing.join(" and ")} for the site. Do not invite a real person from this pulse.`)
-    );
-  }
-  return check(
-    "staff-invite-send",
-    "PASS",
-    `invite email keys are set (${INVITE_MAIL_ENV.join(", ")}). Names only; this does not prove Resend accepts them. Did not invite a person.`
-  );
-}
-
-/**
  * Invited people with no working set-password link. They cannot log in, and
  * nothing tells the owner. Does not POST /api/auth/invite. Does not insert a person.
  */
@@ -207,6 +177,8 @@ export async function checkStaffInviteLink(ctx = {}) {
  * A crashed gate answers 500. 401 or 403 means it refused cleanly.
  * Sends a cookie that is not a session, so no role can change. The registry
  * pings this door with no cookie; only a bad cookie reaches the cookie reader.
+ * Limit: the bad cookie is turned away at the cookie reader with a 401, before
+ * the hiring role check runs. A crash inside the role check itself is not seen.
  */
 export async function checkRoleGate(ctx = {}) {
   const fetchImpl = fetcher(ctx);
@@ -364,10 +336,9 @@ export async function checkRoleDesk(ctx = {}) {
   }
 }
 
-/** Five gap rows. Shape is { id, status, detail, suggestedFix }. Status is PASS, FAIL, or skip. */
+/** Four gap rows. Shape is { id, status, detail, suggestedFix }. Status is PASS, FAIL, or skip. */
 export async function gapChecks(ctx = {}) {
   return Promise.all([
-    checkStaffInviteSend(ctx),
     checkStaffInviteLink(ctx),
     checkRoleGate(ctx),
     checkHiringApply(ctx),

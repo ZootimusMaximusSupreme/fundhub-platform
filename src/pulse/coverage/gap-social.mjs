@@ -223,10 +223,12 @@ async function checkStudioRead({ run, orgId, readers }) {
       bad.push(`${name}: ${clip(err, 100)}`);
     }
   }
+  let settingsRan = false;
   try {
     const partner = await one(run, STUDIO_PARTNER_SQL, [orgId]);
     if (partner.id) {
       await run((tx) => readers.readSettings(tx, partner.id, orgId));
+      settingsRan = true;
     }
   } catch (err) {
     bad.push(`settings: ${clip(err, 100)}`);
@@ -235,7 +237,9 @@ async function checkStudioRead({ run, orgId, readers }) {
     return row(
       id,
       "PASS",
-      "Social Studio reads ran on the staff scope (posts, channels, settings); none would answer 500"
+      settingsRan
+        ? "Social Studio reads ran on the staff scope (posts, channels, settings); none would answer 500"
+        : "Social Studio reads ran on the staff scope (posts, channels); none would answer 500. The settings read was not run: no partner is on file."
     );
   }
   return row(id, "FAIL", `Social Studio read would answer 500 — ${bad.join("; ")}`, fix);

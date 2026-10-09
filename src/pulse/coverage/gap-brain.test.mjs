@@ -8,14 +8,19 @@ import { EMBEDDING_DIMS } from "../../company-brain/embed.mjs";
 import {
   CHECK_IDS,
   ID_AFFILIATE,
+  ID_EMBED,
   ID_STAFF,
   PROBE_QUESTION,
+  __test,
   gapChecks
 } from "./gap-brain.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = fs.readFileSync(path.join(HERE, "gap-brain.mjs"), "utf8");
 const ORG = "11111111-1111-4111-8111-111111111111";
+/** Looks like a real key, is not one. Only used to prove the check never prints a key. */
+const GOOD_KEY = "sk-proj-TESTONLY0123456789abcdefghijklmnopqrstuvwx";
+const MASKED_KEY = "****************abcd";
 
 function chunkRow(tier) {
   return {
@@ -109,25 +114,31 @@ test("gap brain: does not repeat the Drive sync read or the door ping, and never
   assert.doesNotMatch(SRC, /\bfetch\s*\(/);
   assert.doesNotMatch(SRC, /method:\s*["']POST["']\s*,\s*headers[^}]*accept/);
   assert.doesNotMatch(SRC, /second watchdog|new watchdog|second tripwire/i);
-  assert.deepEqual([...CHECK_IDS], ["brain:search-staff", "brain:search-affiliate"]);
+  assert.deepEqual([...CHECK_IDS], ["brain:search-staff", "brain:search-affiliate", "brain:embed-key"]);
+  // The key row looks at the env it is handed. It never reaches for the process env or the network.
+  assert.doesNotMatch(SRC, /process\.env/);
 });
 
-test("gap brain: no database skips both rows and calls nothing", async () => {
+test("gap brain: no database skips both search rows, and with no env the key row skips too", async () => {
   const rows = await withNoNetwork(() => gapChecks({}));
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 3);
   rows.forEach(shape);
-  assert.deepEqual(rows.map((r) => r.status), ["skip", "skip"]);
+  assert.deepEqual(rows.map((r) => r.status), ["skip", "skip", "skip"]);
   const noOrg = await gapChecks({ db: fakeDb() });
-  assert.deepEqual(noOrg.map((r) => r.status), ["skip", "skip"]);
+  assert.deepEqual(noOrg.map((r) => r.status), ["skip", "skip", "skip"]);
+  // The key row needs only env: it still answers when there is no database.
+  const keyOnly = await gapChecks({ env: { OPENAI_API_KEY: GOOD_KEY } });
+  assert.deepEqual(keyOnly.map((r) => r.status), ["skip", "skip", "PASS"]);
 });
 
 test("gap brain: the real doors run on the database, with no AI call and no write", async () => {
   const db = fakeDb({ staffRows: [chunkRow("staff")], affiliateRows: [chunkRow("affiliate")] });
-  const rows = await withNoNetwork(() => gapChecks({ db, orgId: ORG }));
-  assert.equal(rows.length, 2);
+  const rows = await withNoNetwork(() => gapChecks({ db, orgId: ORG, env: { OPENAI_API_KEY: GOOD_KEY } }));
+  assert.equal(rows.length, 3);
   rows.forEach(shape);
   assert.equal(byId(rows, ID_STAFF).status, "PASS");
   assert.equal(byId(rows, ID_AFFILIATE).status, "PASS");
+  assert.equal(byId(rows, ID_EMBED).status, "PASS");
   assert.match(byId(rows, ID_STAFF).detail, /no AI call, nothing saved/);
 
   // Exactly the two search reads ran, both plain SELECTs. Not one write was even tried.
@@ -160,7 +171,7 @@ test("gap brain: a crashed search read is a FAIL for each door and names the cau
 test("gap brain: a 500 or an error body from a door is a FAIL, a 200 is not", async () => {
   const ok = { staff: async (req, res) => res.status(200).json({ ok: true }), affiliate: async (req, res) => res.status(200).json({ ok: true }) };
   const clear = await gapChecks({ db: fakeDb(), orgId: ORG, brainDoors: ok });
-  assert.deepEqual(clear.map((r) => r.status), ["PASS", "PASS"]);
+  assert.deepEqual(clear.map((r) => r.status), ["PASS", "PASS", "skip"]);
 
   const five = await gapChecks({
     db: fakeDb(),
@@ -219,4 +230,70 @@ test("gap brain: the search doors still take the injected parts this check swaps
   for (const name of ["deps.requirePrincipal", "deps.retrieveAffiliateChunks", "deps.synthesizeAnswer"]) {
     assert.ok(affiliateDoor.includes(name), name);
   }
+});
+
+test("gap brain: a missing or masked OpenAI key is a FAIL that names the variable and never prints the key", async () => {
+  const probe = async (env) => byId(await withNoNetwork(() => gapChecks({ env })), ID_EMBED);
+
+  const good = await probe({ OPENAI_API_KEY: GOOD_KEY });
+  shape(good);
+  assert.equal(good.status, "PASS");
+  assert.match(good.detail, /OPENAI_API_KEY is set and is not a mask/);
+  assert.match(good.detail, /nothing was sent to OpenAI/);
+  assert.equal(good.detail.includes(GOOD_KEY), false);
+
+  // The real embed step reads OPENAI_API_KEY first, then COMPANY_BRAIN_OPENAI_API_KEY.
+  const spare = await probe({ COMPANY_BRAIN_OPENAI_API_KEY: GOOD_KEY });
+  assert.equal(spare.status, "PASS");
+  assert.match(spare.detail, /COMPANY_BRAIN_OPENAI_API_KEY is set/);
+  const maskFirst = await probe({ OPENAI_API_KEY: MASKED_KEY, COMPANY_BRAIN_OPENAI_API_KEY: GOOD_KEY });
+  assert.equal(maskFirst.status, "FAIL", "the real embed step would use the masked OPENAI_API_KEY");
+
+  const masked = await probe({ OPENAI_API_KEY: MASKED_KEY });
+  shape(masked);
+  assert.equal(masked.status, "FAIL");
+  assert.match(masked.detail, /OPENAI_API_KEY is a row of asterisks/);
+  assert.match(masked.detail, /502/);
+  assert.equal(masked.detail.includes("abcd"), false);
+  assert.match(masked.suggestedFix, /Do not unset or delete any stored key/);
+
+  for (const env of [{}, { OPENAI_API_KEY: "" }, { OPENAI_API_KEY: "   " }]) {
+    const none = await probe(env);
+    shape(none);
+    assert.equal(none.status, "FAIL", JSON.stringify(env));
+    assert.match(none.detail, /No OpenAI key is set/);
+  }
+
+  // Four asterisks in a row is the line: a real key never has them.
+  assert.equal((await probe({ OPENAI_API_KEY: "sk-****" })).status, "FAIL");
+  assert.equal((await probe({ OPENAI_API_KEY: "sk-***x" })).status, "PASS");
+});
+
+test("gap brain: the key row reads the env it is handed, not the process env", async () => {
+  const saved = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = GOOD_KEY;
+  try {
+    const row = byId(await gapChecks({ env: { OPENAI_API_KEY: MASKED_KEY } }), ID_EMBED);
+    assert.equal(row.status, "FAIL");
+    const none = byId(await gapChecks({}), ID_EMBED);
+    assert.equal(none.status, "skip");
+  } finally {
+    if (saved === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = saved;
+  }
+});
+
+test("gap brain: the parts swapped into the doors save no chat history and carry no real sign-in", async () => {
+  const staff = __test.staffDeps(fakeDb(), ORG);
+  for (const name of ["getThread", "createThread", "appendMessage"]) {
+    assert.deepEqual(await staff[name](), { ok: false }, name);
+  }
+  assert.equal((await staff.requireAuth()).id, null);
+  assert.equal((await staff.requireAuth()).org_id, ORG);
+  assert.deepEqual(await staff.synthesizeAnswer(), { text: "", citations: [], thin: true, source: "pulse-read-check" });
+  const affiliate = __test.affiliateDeps(fakeDb(), ORG);
+  assert.equal((await affiliate.requirePrincipal()).kind, "affiliate");
+  assert.equal((await affiliate.requirePrincipal()).org_id, ORG);
+  assert.deepEqual(await affiliate.synthesizeAnswer(), { text: "", citations: [], thin: true, source: "pulse-read-check" });
+  assert.equal("createThread" in affiliate, false);
 });

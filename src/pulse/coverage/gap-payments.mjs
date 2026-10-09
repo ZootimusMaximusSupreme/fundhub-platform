@@ -16,6 +16,17 @@
 //     with an unsigned empty post and a database that refuses every read.
 //   * Simulated receipts (provider_ref sim-pay-...) are test money. They are
 //     counted, named in the PASS line, and kept out of the FAIL.
+//
+// Second review (Claude, 2026-10-08):
+//   * The pay link check fired on any money from the same client, whatever the
+//     amount. Chris's own $1 prove payment lit it red on a $297 link. The money
+//     must now match the link's amount in cents.
+//   * It could not see "the webhook was recorded and the link was never settled".
+//     That is a processed payment.succeeded inbox row that carries the link ref
+//     while the link still reads created or sent. It is now the first thing it reads.
+//   * A webhook that never arrived leaves no row anywhere (src/payments/commas-api.mjs
+//     says so). No read-only check can see that. It is written on the board, not faked.
+//   * The site GET has a timeout, so a hung site cannot eat the whole lane's step.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -80,43 +91,69 @@ const INVOICE_STUCK_SQL = `
   ) AS n
 `;
 
-/* An open link, money that landed for the same client after it was minted, and
-   the payment did not come through this link or any other link of ours (its ref
-   is not a payment_links.link_ref) and no inbox row carries this link's ref.
-   Grace sits on the payment: a receipt the sweeper has not finished yet is not
-   a break. A client who paid through a different link of ours is not this break. */
+/* An open link (created or sent) that money has already reached, in one of two ways.
+   rec:   a payment.succeeded row in the Commas inbox, processed more than the grace
+          ago, carries this link's ref, and the link still is not settled. The webhook
+          was recorded. The settling was not.
+   money: a succeeded payment from the same client, after the link was minted, for the
+          same amount in cents as this link, and its ref is not any OTHER link of ours.
+          (Its own ref counts: the link was paid through and never settled.) The amount
+          tie is what keeps a $1 prove payment from lighting up a $297 link.
+   Grace sits on the receipt: one the sweeper has not finished yet is not a break.
+   Simulated receipts (sim-pay-) are test money. They are counted apart (sim_n).
+   A webhook that never arrived leaves no row at all, so this cannot see that case. */
 const PAY_LINK_WEBHOOK_SQL = `
   /* gap:pay-link-webhook */
-  SELECT count(*)::int AS n
-    FROM payment_links pl
-   WHERE pl.org_id = $1::uuid
-     AND COALESCE(pl.is_demo, false) = false
-     AND pl.checkout_url IS NOT NULL
-     AND btrim(pl.checkout_url) <> ''
-     AND pl.link_ref IS NOT NULL
-     AND pl.status IN ('created', 'sent')
-     AND EXISTS (
-       SELECT 1
-         FROM transactions t
-        WHERE t.org_id = pl.org_id
-          AND t.client_id = pl.client_id
-          AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
-          AND COALESCE(t.is_demo, false) = false
-          AND t.created_at >= pl.created_at
-          AND t.created_at < $2::timestamptz
-          AND NOT EXISTS (
-            SELECT 1
-              FROM payment_links other
-             WHERE other.org_id = t.org_id
-               AND other.link_ref = t.raw_payload ->> 'ref'
-          )
-     )
-     AND NOT EXISTS (
-       SELECT 1
-         FROM commas_inbox ci
-        WHERE ci.org_id = pl.org_id
-          AND position(pl.link_ref in ci.raw_body) > 0
-     )
+  SELECT count(*) FILTER (WHERE x.rec OR x.money)::int AS n,
+         count(*) FILTER (WHERE x.rec)::int AS rec_n,
+         count(*) FILTER (WHERE x.money AND NOT x.rec)::int AS money_n,
+         count(*) FILTER (WHERE x.sim AND NOT x.rec AND NOT x.money)::int AS sim_n
+    FROM (
+      SELECT
+        EXISTS (
+          SELECT 1
+            FROM commas_inbox ci
+           WHERE ci.org_id = pl.org_id
+             AND ci.event_type = 'payment.succeeded'
+             AND ci.status IN ('done', 'ignored')
+             AND COALESCE(ci.processed_at, ci.received_at) < $2::timestamptz
+             AND COALESCE(ci.payment_id, '') NOT LIKE $3::text
+             AND position(pl.link_ref in ci.raw_body) > 0
+        ) AS rec,
+        EXISTS (
+          SELECT 1
+            FROM commas_inbox ci
+           WHERE ci.org_id = pl.org_id
+             AND ci.event_type = 'payment.succeeded'
+             AND ci.status IN ('done', 'ignored')
+             AND COALESCE(ci.payment_id, '') LIKE $3::text
+             AND position(pl.link_ref in ci.raw_body) > 0
+        ) AS sim,
+        EXISTS (
+          SELECT 1
+            FROM transactions t
+           WHERE t.org_id = pl.org_id
+             AND t.client_id = pl.client_id
+             AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+             AND COALESCE(t.is_demo, false) = false
+             AND COALESCE(t.provider_ref, '') NOT LIKE $3::text
+             AND t.created_at >= pl.created_at
+             AND t.created_at < $2::timestamptz
+             AND round(t.amount_paid * 100) = pl.amount_cents
+             AND NOT EXISTS (
+               SELECT 1
+                 FROM payment_links other
+                WHERE other.org_id = t.org_id
+                  AND other.id <> pl.id
+                  AND other.link_ref = t.raw_payload ->> 'ref'
+             )
+        ) AS money
+        FROM payment_links pl
+       WHERE pl.org_id = $1::uuid
+         AND COALESCE(pl.is_demo, false) = false
+         AND pl.link_ref IS NOT NULL
+         AND pl.status IN ('created', 'sent')
+    ) x
 `;
 
 /* Same resolver reconcileFromTransactions uses (resolve_product_id on the
@@ -177,21 +214,37 @@ async function checkInvoiceStuck({ db, orgId }) {
   }
 }
 
+function intOf(value) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
 async function checkPayLinkWebhook({ db, orgId, now }) {
   const id = "payments:pay-link-webhook";
   const why = skipWhy({ db, orgId }, "pay link webhooks");
   if (why) return row(id, "skip", why);
   const cutoff = new Date(now.getTime() - LINK_WEBHOOK_GRACE_MS).toISOString();
   try {
-    const n = await readCount(db, PAY_LINK_WEBHOOK_SQL, [orgId, cutoff]);
+    const result = await db.query(PAY_LINK_WEBHOOK_SQL, [orgId, cutoff, `${SIM_RECEIPT_PREFIX}%`]);
+    const n = countOf(result);
+    const recN = intOf(result?.rows?.[0]?.rec_n);
+    const moneyN = intOf(result?.rows?.[0]?.money_n);
+    const simN = intOf(result?.rows?.[0]?.sim_n);
+    const simNote = simN > 0 ? ` (${plural(simN, "open link")} with a simulated receipt left out: no card was charged)` : "";
     if (n === 0) {
-      return row(id, "PASS", "no open pay link has money that landed for its client outside every link, with no Commas inbox row for the link ref");
+      return row(
+        id,
+        "PASS",
+        `no open pay link has a processed Commas payment for its ref, or matching money from its own client, waiting to be settled${simNote}`
+      );
     }
     return row(
       id,
       "FAIL",
-      `${plural(n, "pay link")} minted and still open while a payment succeeded for the same client, and no Commas inbox row carries the link ref.`,
-      `${RECON} Read payment_links and commas_inbox for that link ref, and the transaction raw_payload ref. Do not mint another link.`
+      `${plural(n, "pay link")} minted and still open after money landed: ` +
+        `${recN} with a processed Commas payment.succeeded row for the link ref, ` +
+        `${moneyN} with a payment from the same client for the same amount that came through no other link of ours.${simNote}`,
+      `${RECON} Read payment_links, commas_inbox (by link ref) and transactions for that link. Settle or void the link in the existing pay link flow. Do not mint another link.`
     );
   } catch (err) {
     return row(
@@ -298,14 +351,23 @@ export async function probeCommasDoor(handleWebhookImpl = null) {
 
 const WEBHOOK_URL_PATH = "/api/webhooks/commas";
 
+/** Each lane is one pulse step with a 26 second ceiling. A hung site must be a skip, not a dead step. */
+export const PING_TIMEOUT_MS = 8000;
+
 /**
- * GET the door on the site. The webhook route answers 405 to any GET once the
- * webhooks/ prefix is mounted; an unmounted prefix answers 404. A GET is not
- * uptime and does not touch a payment.
+ * GET the door on the site. The webhook function answers 405 to any GET, for
+ * any provider name, once the webhooks/ prefix is mounted; an unmounted prefix
+ * answers 404. So a 405 proves the prefix is mounted, not that commas is: the
+ * 401 from the router probe is the proof for commas. A GET is not uptime and
+ * does not touch a payment.
  */
 async function pingDoor(fetchImpl, baseUrl) {
   const url = `${String(baseUrl).replace(/\/+$/, "")}${WEBHOOK_URL_PATH}`;
-  const res = await fetchImpl(url, { method: "GET", headers: { accept: "application/json" } });
+  const res = await fetchImpl(url, {
+    method: "GET",
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(PING_TIMEOUT_MS)
+  });
   return { status: Number(res && res.status), url };
 }
 
@@ -342,7 +404,7 @@ async function checkCommasWebhookRoute({ readText, handleWebhookImpl, fetchImpl,
   try {
     const ping = await pingDoor(fetchImpl, baseUrl);
     if (ping.status === 405) {
-      return row(id, "PASS", `Commas webhook door is wired (${proof}: unsigned post refused 401; ${WEBHOOK_URL_PATH} answers 405 to a GET on the site)`);
+      return row(id, "PASS", `Commas webhook door is wired (${proof}: unsigned post refused 401; ${WEBHOOK_URL_PATH} answers 405 to a GET on the site, so the webhooks/ prefix is mounted)`);
     }
     return row(
       id,

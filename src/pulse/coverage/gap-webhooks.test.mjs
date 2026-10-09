@@ -421,3 +421,45 @@ test("gap webhooks: every live GET carries a timeout, and a timed-out door is a 
   assert.match(commas.detail, /unreachable: The operation was aborted due to timeout/);
   assert.equal(rows.find((r) => r.id === "webhooks:twilio-status").status, "PASS");
 });
+
+test("gap webhooks: the original read-only ban still holds for everything except the one pinned probe", () => {
+  // The first version of the 'source stays read-only' test banned handleWebhook everywhere. That ban made
+  // the door check blind (a live GET answers 405 for any name), so the router probe had to be allowed.
+  // This keeps the first ban word for word and applies it to the whole file minus that one import
+  // and that one call. Anything else that names a handler, the inbox worker or a drain still fails.
+  const importLine = /const \{ handleWebhook: route \} = await import\("\.\.\/\.\.\/http\/router\.mjs"\);/;
+  assert.match(SRC, importLine);
+  const rest = SRC.replace(importLine, "");
+  assert.doesNotMatch(rest, /handleWebhook|handleCommasWebhook|processCommasInboxRow|\bdrain\s*\(/);
+});
+
+test("gap webhooks: the real router answers the unsigned empty probe without running a single query", async () => {
+  // The probe passes REFUSING_DB, which throws. If the router caught that throw and carried on, the
+  // throw would hide a write attempt. This counts the calls instead, so a router that starts touching
+  // the database before it checks the signature fails here, not in production.
+  const { handleWebhook } = await import("../../http/router.mjs");
+  const queries = [];
+  const countingDb = {
+    async query(sql) {
+      queries.push(String(sql).slice(0, 80));
+      throw new Error("refused");
+    }
+  };
+  for (const door of DOORS) {
+    const provider = door.path.split("/").pop();
+    const out = await handleWebhook({
+      db: countingDb, provider, rawBody: "", headers: {}, url: `${DEFAULT_BASE_URL}${door.path}`, env: {}
+    });
+    assert.equal(out.status, 401, `${provider} should refuse an unsigned empty probe`);
+  }
+  const gone = await handleWebhook({
+    db: countingDb,
+    provider: "a-door-that-does-not-exist",
+    rawBody: "",
+    headers: {},
+    url: `${DEFAULT_BASE_URL}/api/webhooks/a-door-that-does-not-exist`,
+    env: {}
+  });
+  assert.equal(gone.status, 404);
+  assert.deepEqual(queries, [], "the probe must not reach the database");
+});

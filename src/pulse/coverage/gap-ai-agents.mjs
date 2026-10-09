@@ -1,26 +1,62 @@
-// Live AI agents — one tripwire for the morning pulse.
+// Live AI agents for the morning pulse. Read only. Report only.
 //
 // Slice 24 already checks that the agent workflows are named on the pulse list.
-// This file does not do that again.
+// The registry already pings /api/agent-call and /api/agents every morning.
+// This file does neither of those again.
 //
 // Recon (AG-07, cron.daily-pulse) is the morning watchdog. This file does not
-// watch it.
+// watch it. It never retires an agent, never places a call, never writes.
 //
-// Read only. SELECT inside BEGIN READ ONLY, then ROLLBACK.
-// The call route is probed with GET only, so this file cannot dial.
-// It never retires an agent and never places a call.
+// Two rows:
+//   ai-agents:retired       an agent that was wired to run is retired
+//   ai-agents:failed-runs   a run failed and nothing tried it again
+//
+// Review notes (Claude, 2026-10-08):
+//   * The first draft sent BEGIN READ ONLY and ROLLBACK on ctx.db. In production
+//     that is the shared pool, so those two statements could land on different
+//     connections and leave one stuck inside a transaction. Every read is now a
+//     single plain SELECT.
+//   * The first draft was one row. A PASS could hide "the call route was not
+//     probed". Each break now has its own row, so a skip stays a skip.
+//   * The call route probe (GET /api/agent-call) is gone. The registry already
+//     pings that route (reg:agent-call, 405 counts as up, 500 is down). A GET
+//     never reaches the call logic, so it said nothing the registry did not.
+//   * A failed run was judged against all of history. It is now the last 7 days,
+//     and only a run by a real agent row (the live-playwright-sweep row in
+//     agent_runs is a script, not an agent).
+//   * Document reads (docs.received) are not judged here. A failed read goes on
+//     the dead-letter queue, doc-check-retry-sweeper retries it every 20 minutes,
+//     and the documents lane (documents:stuck-processing) watches that queue.
+//   * The outcome list now includes Anthropic errors, which the model code writes
+//     as "anthropic <status>:" the same way it writes "openai <status>:".
+//   * A third row, ai-agents:bland-webhook, is gone (second review, 2026-10-08).
+//     It read the status of the latest Bland webhook from webhook_captures and
+//     went red at 500. But src/http/router.mjs stores a capture ONLY when the
+//     answer was 200 ("verified traffic only"), and the Bland adapter answers
+//     only 200, 400 or 401. A stored Bland row always says 200, so that row
+//     could never fail. Live check: every stored capture that has a status says
+//     200. A Bland webhook that answered 500 leaves nothing in the database.
+//   * no_api_key is left out of FAIL_OUTCOMES on purpose. The owner has put the
+//     AI spend on hold, and a live agent with no model key writes that outcome by
+//     design. A morning red for it would be noise until credit is back.
 
-export const CHECK_ID = "ai-agents";
+export const CHECK_RETIRED = "ai-agents:retired";
+export const CHECK_FAILED = "ai-agents:failed-runs";
+
+export const CHECK_IDS = Object.freeze([CHECK_RETIRED, CHECK_FAILED]);
 
 /** Morning Recon. Slice 02 already watches this row. */
 export const RECON_CODE = "AG-07";
 export const RECON_TRIGGER = "cron.daily-pulse";
 
+/** The document reader has its own retry queue, watched by the documents lane. */
+export const DOC_READ_TRIGGER = "docs.received";
+
 /** A failed run younger than this may still be inside an in-flight retry. */
 export const RETRY_GRACE_MS = 15 * 60 * 1000;
 
-/** How far back the Bland voice webhook answer is read. */
-export const BLAND_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+/** A failed run older than this is history, not this morning's news. */
+export const FAILED_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Outcomes that mean the run broke. Skips and normal replies are not in here. */
 export const FAIL_OUTCOMES = Object.freeze([
@@ -38,7 +74,8 @@ export const FAIL_OUTCOMES = Object.freeze([
 export const RETIRED_SQL = `
 SELECT a.code, a.status
   FROM agents a
- WHERE a.code <> 'AG-07'
+ WHERE ($1::uuid IS NULL OR a.org_id = $1::uuid)
+   AND a.code <> 'AG-07'
    AND a.code NOT LIKE 'GHL-%'
    AND a.runtime IS NOT NULL
    AND btrim(COALESCE(a.prompt, '')) <> ''
@@ -55,13 +92,17 @@ SELECT a.code, a.status
 export const FAILED_RUN_SQL = `
 SELECT r.agent_code, r.outcome, r.trigger_event, r.created_at
   FROM agent_runs r
- WHERE r.agent_code IS NOT NULL
+  JOIN agents ag ON ag.org_id = r.org_id AND ag.code = r.agent_code
+ WHERE ($1::uuid IS NULL OR r.org_id = $1::uuid)
    AND r.agent_code <> 'AG-07'
    AND COALESCE(r.trigger_event, '') <> 'cron.daily-pulse'
-   AND r.created_at <= $1::timestamptz
+   AND COALESCE(r.trigger_event, '') <> 'docs.received'
+   AND r.created_at <= $2::timestamptz
+   AND r.created_at >= $3::timestamptz
    AND (
-     lower(r.outcome) = ANY($2::text[])
+     lower(r.outcome) = ANY($4::text[])
      OR r.outcome ILIKE 'openai %'
+     OR r.outcome ILIKE 'anthropic %'
      OR r.outcome ILIKE '%runtime_error%'
      OR r.outcome ILIKE '%model_error%'
      OR r.outcome ILIKE '%bland_rejected%'
@@ -87,196 +128,119 @@ SELECT r.agent_code, r.outcome, r.trigger_event, r.created_at
  ORDER BY r.created_at DESC
  LIMIT 20`.trim();
 
-export const BLAND_SQL = `
-SELECT CASE
-         WHEN (parsed->>'status') ~ '^[0-9]+$' THEN (parsed->>'status')::int
-         ELSE NULL
-       END AS status
-  FROM webhook_captures
- WHERE provider = 'bland'
-   AND created_at >= $1::timestamptz
- ORDER BY created_at DESC
- LIMIT 1`.trim();
+const FIX_AGENT =
+  "Look at the named agent in the Agent Editor. If it was retired by mistake, a person puts it back. " +
+  "This pulse leaves every agent status as it is and leaves the phone alone.";
+const FIX_RUN =
+  "Open the named agent's run list in the Agent Editor and retry the failed run by hand. " +
+  "This pulse leaves every agent status as it is and leaves the phone alone.";
 
-const FIX =
-  "Look at the named agent in the Agent Editor and retry the failed run. " +
-  "If the call route answered 500, fix that route. " +
-  "Leave every agent status as it is. Leave the phone alone.";
-
-function check(status, detail, suggestedFix = null) {
-  return { id: CHECK_ID, status, detail, suggestedFix };
+function row(id, status, detail, suggestedFix = null) {
+  return { id, status, detail, suggestedFix };
 }
 
 function clip(s, n = 180) {
-  return String(s == null ? "" : s)
+  const text = s && s.message ? s.message : s == null ? "" : s;
+  return String(text)
     .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, n);
 }
 
-function codeOf(row) {
-  return String((row && (row.code || row.agent_code)) || "").trim().toUpperCase();
+function codeOf(r) {
+  return String((r && (r.code || r.agent_code)) || "").trim().toUpperCase();
 }
 
 /** Recon and the retired GoHighLevel rows are outside this tripwire. */
-export function ignoredAgent(row) {
-  const code = codeOf(row);
+export function ignoredAgent(r) {
+  const code = codeOf(r);
   if (!code || code === RECON_CODE || code.startsWith("GHL-")) return true;
-  if (String((row && row.trigger_event) || "") === RECON_TRIGGER) return true;
+  if (String((r && r.trigger_event) || "") === RECON_TRIGGER) return true;
   return false;
-}
-
-function oldEnough(row, cutoff) {
-  if (!row || row.created_at == null || row.created_at === "") return true;
-  const t = new Date(row.created_at).getTime();
-  if (!Number.isFinite(t)) return true;
-  return t <= cutoff.getTime();
 }
 
 function listCodes(rows) {
   const codes = [];
-  for (const row of rows) {
-    const code = codeOf(row);
+  for (const r of rows) {
+    const code = codeOf(r);
     if (code && !codes.includes(code)) codes.push(code);
   }
   return codes.slice(0, 8);
 }
 
-/**
- * Turn already-read rows into the one tripwire.
- * route.probed false means nobody asked the call route.
- */
-export function judge({
-  dbRead = false,
-  readError = null,
-  retired = [],
-  failed = [],
-  blandStatus = null,
-  route = { probed: false, status: null },
-  now = new Date()
-} = {}) {
-  const cutoff = new Date(now.getTime() - RETRY_GRACE_MS);
-  const routeStatus = route && route.probed ? Number(route.status) : null;
-  const routeDown = Number.isFinite(routeStatus) && routeStatus >= 500;
-  const blandDown = Number.isFinite(Number(blandStatus)) && Number(blandStatus) >= 500;
+/** ctx.db first (one plain SELECT per call). The staff scope is only the fallback. */
+function bind(ctx) {
+  if (ctx && ctx.db && typeof ctx.db.query === "function") return (fn) => fn(ctx.db);
+  if (ctx && typeof ctx.scope === "function") return (fn) => ctx.scope(fn);
+  return null;
+}
 
-  const retiredHits = (retired || []).filter((row) => !ignoredAgent(row));
-  const failedHits = (failed || []).filter((row) => !ignoredAgent(row) && oldEnough(row, cutoff));
+async function select(run, sql, params) {
+  const out = await run((tx) => tx.query(sql, params));
+  return (out && out.rows) || [];
+}
 
-  if (!dbRead) {
-    if (routeDown) {
-      return check(
-        "FAIL",
-        `The agent call route answered ${routeStatus}. No call was placed.` +
-          (readError ? ` Agent rows could not be read: ${clip(readError.message || readError)}.` : ""),
-        FIX
-      );
-    }
-    if (readError) {
-      return check("skip", `Agent rows could not be read: ${clip(readError.message || readError)}.`);
-    }
-    return check("skip", "Agent rows were not read. No call route status was passed in.");
+/** Rows already read in, one verdict out. Pure, so the tests can feed it. */
+export function judgeRetired(rows) {
+  const hits = (rows || []).filter((r) => !ignoredAgent(r));
+  if (!hits.length) {
+    return row(CHECK_RETIRED, "PASS", "no agent with a script, a runtime and a trigger still on is retired");
   }
-
-  const parts = [];
-  if (retiredHits.length) {
-    const codes = listCodes(retiredHits);
-    const verb = codes.length === 1 ? "is" : "are";
-    parts.push(`${codes.join(", ")} should be on and ${verb} retired, with a trigger still on.`);
-  }
-  if (failedHits.length) {
-    const sample = failedHits[0];
-    const codes = listCodes(failedHits).join(", ");
-    const outcome = clip(sample.outcome, 60) || "failed";
-    parts.push(`${codes} run failed (${outcome}) and was not retried.`);
-  }
-  if (blandDown) {
-    parts.push(`The Bland voice webhook answered ${Number(blandStatus)}.`);
-  }
-  if (routeDown) {
-    parts.push(`The agent call route answered ${routeStatus}. No call was placed.`);
-  }
-
-  if (parts.length) {
-    return check("FAIL", parts.join(" "), FIX);
-  }
-
-  const routeNote = route && route.probed
-    ? `The call route answered ${routeStatus}.`
-    : "The call route was not probed.";
-  const blandNote = blandStatus == null
-    ? "The Bland voice webhook is quiet."
-    : `The Bland voice webhook answered ${Number(blandStatus)}.`;
-  return check(
-    "PASS",
-    `Agents that should be on are on. No failed run is sitting past 15 minutes. ${routeNote} ${blandNote}`
+  const codes = listCodes(hits);
+  const verb = codes.length === 1 ? "is" : "are";
+  return row(
+    CHECK_RETIRED,
+    "FAIL",
+    `${codes.join(", ")} should be on and ${verb} retired, with a trigger still on`,
+    FIX_AGENT
   );
 }
 
-async function readRoute(ctx) {
-  if (ctx.agentCallStatus != null && ctx.agentCallStatus !== "") {
-    const status = Number(ctx.agentCallStatus);
-    return { probed: Number.isFinite(status), status: Number.isFinite(status) ? status : null };
+export function judgeFailedRuns(rows, { now = new Date() } = {}) {
+  const cutoff = now.getTime() - RETRY_GRACE_MS;
+  const floor = now.getTime() - FAILED_LOOKBACK_MS;
+  const hits = (rows || []).filter((r) => {
+    if (ignoredAgent(r)) return false;
+    const t = new Date(r && r.created_at).getTime();
+    // A row with no usable time cannot be proven old enough, so it is not counted.
+    return Number.isFinite(t) && t <= cutoff && t >= floor;
+  });
+  if (!hits.length) {
+    return row(CHECK_FAILED, "PASS", "no failed agent run in the last 7 days is waiting past 15 minutes with no retry");
   }
-  if (typeof ctx.fetch !== "function" || !ctx.baseUrl) {
-    return { probed: false, status: null };
-  }
-  const base = String(ctx.baseUrl).replace(/\/$/, "");
-  try {
-    const res = await ctx.fetch(`${base}/api/agent-call`, { method: "GET" });
-    const status = Number(res && res.status);
-    return { probed: Number.isFinite(status), status: Number.isFinite(status) ? status : null };
-  } catch {
-    return { probed: false, status: null };
-  }
+  const sample = hits[0];
+  const codes = listCodes(hits).join(", ");
+  const outcome = clip(sample.outcome, 60) || "failed";
+  const noun = hits.length === 1 ? "run" : "runs";
+  return row(CHECK_FAILED, "FAIL", `${codes} ${hits.length} failed ${noun} (${outcome}) and not retried`, FIX_RUN);
 }
 
-async function readRows(db, now) {
-  await db.query("BEGIN READ ONLY");
+async function readRow(id, fix, go) {
   try {
-    const cutoff = new Date(now.getTime() - RETRY_GRACE_MS);
-    const blandSince = new Date(now.getTime() - BLAND_LOOKBACK_MS);
-    const retired = await db.query(RETIRED_SQL);
-    const failed = await db.query(FAILED_RUN_SQL, [cutoff, FAIL_OUTCOMES]);
-    const bland = await db.query(BLAND_SQL, [blandSince]);
-    const blandRow = (bland.rows || [])[0] || null;
-    const blandStatus = blandRow && blandRow.status != null ? Number(blandRow.status) : null;
-    return {
-      ok: true,
-      retired: retired.rows || [],
-      failed: failed.rows || [],
-      blandStatus: Number.isFinite(blandStatus) ? blandStatus : null
-    };
+    return await go();
   } catch (err) {
-    return { ok: false, error: err };
-  } finally {
-    try {
-      await db.query("ROLLBACK");
-    } catch {
-      /* The read already failed. Rolling back is best-effort. */
-    }
+    return row(id, "FAIL", `could not read for this check: ${clip(err)}`, fix);
   }
 }
 
-/** One tripwire. Shape: { id, status, detail, suggestedFix }. status is PASS, FAIL, or skip. */
+/**
+ * Two read-only rows. ctx: { db, scope, orgId, now }.
+ * Each row is { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
+ */
 export async function gapChecks(ctx = {}) {
+  const run = bind(ctx);
+  if (!run) {
+    return CHECK_IDS.map((id) => row(id, "skip", "no database in this run — agent rows not read"));
+  }
   const now = ctx.now instanceof Date ? ctx.now : new Date();
-  const route = await readRoute(ctx);
-  const db = ctx.db;
-  if (!db || typeof db.query !== "function") {
-    return [judge({ dbRead: false, route, now })];
-  }
-  const read = await readRows(db, now);
-  if (!read.ok) {
-    return [judge({ dbRead: false, readError: read.error, route, now })];
-  }
-  return [judge({
-    dbRead: true,
-    retired: read.retired,
-    failed: read.failed,
-    blandStatus: read.blandStatus,
-    route,
-    now
-  })];
+  const orgId = ctx.orgId || null;
+  const cutoff = new Date(now.getTime() - RETRY_GRACE_MS);
+  const floor = new Date(now.getTime() - FAILED_LOOKBACK_MS);
+
+  const retired = await readRow(CHECK_RETIRED, FIX_AGENT, async () =>
+    judgeRetired(await select(run, RETIRED_SQL, [orgId])));
+  const failed = await readRow(CHECK_FAILED, FIX_RUN, async () =>
+    judgeFailedRuns(await select(run, FAILED_RUN_SQL, [orgId, cutoff, floor, [...FAIL_OUTCOMES]]), { now }));
+  return [retired, failed];
 }

@@ -224,3 +224,47 @@ test("gap sms: the cutoffs come from now, so a text sent a minute ago is not lat
   assert.equal(db.seen[2].params[1], "2026-10-08T11:45:00.000Z");
   assert.equal(db.seen[2].params[2], "2026-10-01T12:00:00.000Z");
 });
+
+test("gap sms: journey sql leaves out demo events and demo clients", () => {
+  // Measured 2026-10-08 on past days: every flagged event on 2026-09-21 (135) and 2026-09-24 (62)
+  // was a journey run or seed with is_demo true. They never get a text row. Without this the
+  // check goes red on test traffic. Same filter as gap-nurture.mjs.
+  const sql = buildJourneyZeroSql();
+  assert.match(sql, /COALESCE\(e\.is_demo, false\) = false/);
+  assert.match(
+    sql,
+    /NOT EXISTS \(\s*SELECT 1 FROM clients d WHERE d\.id = rc\.id AND COALESCE\(d\.is_demo, false\) = true\s*\)/
+  );
+  // The demo filter sits on the event rows being read, before the message lookup.
+  assert.ok(sql.indexOf("e.is_demo") < sql.indexOf("FROM messages m"));
+});
+
+test("gap sms: provider failed leaves out the no-phone refusal, keeps a real phone company failure", async () => {
+  // The dispatcher writes "the client has no phone to send to" (no_address, dispatch.mjs).
+  // A lead who gave no number is a hole in the client record, not the phone company saying no.
+  // Measured 2026-10-08: the only failed SMS row was exactly that, and it held the check red for 7 days.
+  const clearDb = fakeDb(() => ({ rows: [{ customer_n: 0, staff_n: 0, n: 0, names: [] }] }));
+  await gapChecks({ db: clearDb, orgId: ORG });
+  const sql = clearDb.seen.find((q) => q.sql.includes("status = 'failed'")).sql;
+  assert.match(sql, /COALESCE\(last_error, ''\) NOT ILIKE '%to send to%'/);
+  assert.match(sql, /COALESCE\(last_error, ''\) NOT ILIKE '%test record from a journey run%'/);
+  // Anything else (a rejection, gave up after N attempts) still counts. No catch-all exclusion.
+  assert.doesNotMatch(sql, /NOT ILIKE '%'|NOT ILIKE '%%'/);
+  assert.doesNotMatch(sql, /NOT ILIKE '%gave up|NOT ILIKE '%rejected/);
+  assert.match(sql, /status = 'failed'/);
+  assert.match(sql, /channel = 'sms'/);
+
+  const failedDb = fakeDb((s) => {
+    if (s.includes("status = 'failed'")) return { rows: [{ customer_n: 1, staff_n: 0 }] };
+    return { rows: [{ customer_n: 0, staff_n: 0, n: 0, names: [] }] };
+  });
+  const rows = await gapChecks({ db: failedDb, orgId: ORG });
+  assert.equal(rows[1].status, "FAIL");
+  assert.match(rows[1].detail, /1 customer text/);
+});
+
+test("gap sms: texts channel stays sms only on the sending and failed reads", () => {
+  assert.match(SRC, /AND channel = 'sms'\s+AND status = 'sending'/);
+  assert.match(SRC, /AND channel = 'sms'\s+AND status = 'failed'/);
+  assert.doesNotMatch(SRC, /channel = 'email'/);
+});

@@ -188,24 +188,48 @@ export function unreadMorningEmailPaths(sources, paths = MORNING_EMAIL_PATHS) {
   return misses;
 }
 
-function loadMorningSources({ root = REPO_ROOT, sources } = {}) {
-  if (sources) return sources;
+/**
+ * Where src/ can live. In a checkout it is three folders above this file. A deployed
+ * function is bundled into netlify/functions/<name>.mjs, so this file's own folder is
+ * gone and src/ sits next to netlify/ at the function root, which is also LAMBDA_TASK_ROOT
+ * and the working folder. Measured 2026-10-08: .netlify/functions/api.zip carries
+ * src/workflows/slo-infinite-drip.mjs, src/contracts/notify.mjs and
+ * src/finance/document-vault-chase.mjs. Reading from REPO_ROOT alone never found them
+ * there, so the row could only ever skip. An explicit root (tests) is the only root.
+ */
+export function morningRoots({ root, env = process.env, cwd = process.cwd() } = {}) {
+  if (root) return [root];
+  const list = [REPO_ROOT, path.resolve(HERE, "../.."), env && env.LAMBDA_TASK_ROOT, cwd];
+  return [...new Set(list.filter((r) => typeof r === "string" && r))];
+}
+
+/** First root that holds the file wins. A file no root holds is null, never an empty string. */
+export function readMorningSources(roots, paths = MORNING_EMAIL_PATHS) {
   const out = {};
-  for (const row of MORNING_EMAIL_PATHS) {
-    try {
-      out[row.file] = fs.readFileSync(path.join(root, row.file), "utf8");
-    } catch {
-      out[row.file] = null;
+  for (const row of paths) {
+    out[row.file] = null;
+    for (const dir of roots) {
+      try {
+        out[row.file] = fs.readFileSync(path.join(dir, row.file), "utf8");
+        break;
+      } catch {
+        // not under this root; try the next
+      }
     }
   }
   return out;
 }
 
+function loadMorningSources({ root, sources } = {}) {
+  if (sources) return sources;
+  return readMorningSources(morningRoots({ root }));
+}
+
 /**
- * The morning files are read from disk. A deployed function does not carry
- * src/, so an unreadable file is a skip with the reason, never a FAIL and
- * never a PASS. The roadmap drip has its own database read (email:drip-step-no-email)
- * that works without the file.
+ * The morning files are read from disk (see morningRoots for where). If a run
+ * truly has no src/, an unreadable file is a skip with the reason, never a FAIL and
+ * never a PASS. The roadmap drip also has its own database read
+ * (email:drip-step-no-email) that works without the file.
  */
 function morningCheck(sources) {
   const id = "email:morning-no-failure-check";

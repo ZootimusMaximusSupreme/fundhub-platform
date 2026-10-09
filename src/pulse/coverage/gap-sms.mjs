@@ -28,8 +28,8 @@ export const ALREADY_WATCHED = Object.freeze([
     covers: "sms queued and due for more than 30 minutes"
   }),
   Object.freeze({
-    id: "instant-watch:pipeline:outbound",
-    where: "src/pulse/instant-watch.mjs",
+    id: "pipeline:outbound",
+    where: "src/pulse/instant-watch.mjs (line 81, same id, sent as an instant text)",
     covers: "the same queued-stuck count. It already texts. Do not text again."
   }),
   Object.freeze({
@@ -134,6 +134,9 @@ function assertStep(s) {
  * (measured 2026-10-08: every booking.created, deposit.paid and round.* row).
  * The workflow finds the person by that email (resolveClient), so this does
  * too. Without the email lookup five of the six steps were never looked at.
+ * Demo events and demo clients are journey runs and seeds. They never get a
+ * text row, so they are left out (measured 2026-10-08: 135 of 135 flagged
+ * events on 2026-09-21 were is_demo). Same filter as gap-nurture.mjs.
  */
 export function buildJourneyZeroSql(steps = SMS_JOURNEY_STEPS) {
   const values = steps.map((s) => {
@@ -170,7 +173,11 @@ SELECT count(*)::int AS n,
     ) AS id
   ) rc
  WHERE e.org_id = $1::uuid
+   AND COALESCE(e.is_demo, false) = false
    AND (rc.id IS NOT NULL OR btrim(COALESCE(e.payload->>'email', '')) <> '')
+   AND NOT EXISTS (
+     SELECT 1 FROM clients d WHERE d.id = rc.id AND COALESCE(d.is_demo, false) = true
+   )
    AND e.created_at < $2::timestamptz
    AND e.created_at >= $3::timestamptz
    AND NOT EXISTS (
@@ -221,6 +228,9 @@ SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
    AND status = 'sending'
    AND COALESCE(last_attempt_at, updated_at, created_at) < $2::timestamptz`.trim();
 
+// The dispatcher writes "the client has no phone to send to" when a person gave no number
+// (src/messaging/dispatch.mjs, no_address). That is a hole in the client record, not the phone
+// company saying no, so it is left out. gap-email.mjs drops the same class.
 const FAILED_SQL = `
 SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
        count(*) FILTER (WHERE sender_staff_id IS NOT NULL)::int AS staff_n
@@ -230,7 +240,8 @@ SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
    AND channel = 'sms'
    AND status = 'failed'
    AND COALESCE(last_attempt_at, updated_at, created_at) >= $2::timestamptz
-   AND COALESCE(last_error, '') NOT ILIKE '%test record from a journey run%'`.trim();
+   AND COALESCE(last_error, '') NOT ILIKE '%test record from a journey run%'
+   AND COALESCE(last_error, '') NOT ILIKE '%to send to%'`.trim();
 
 function namesOf(value) {
   if (Array.isArray(value)) return value.map((x) => String(x)).filter(Boolean);

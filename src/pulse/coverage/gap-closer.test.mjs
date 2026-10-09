@@ -102,19 +102,44 @@ test("pages: a wrong page behind a 200 fails, and says which marker is gone", as
   }
 });
 
-test("pages: a page that is down is the registry's red, so this row skips and names it", async () => {
+test("pages: a html page that is down is the registry's red, so this row skips and names it", async () => {
   const dash = await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/closer-dashboard.html": 404 }) });
   const d = check(dash, "closer:desk-pages");
   assert.equal(d.status, "skip");
   assert.match(d.detail, /Closer Dashboard answered 404; reg:closer-dashboard reports a page that is down/);
 
   const present = await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.html": 500 }) });
-  assert.match(check(present, "closer:desk-pages").detail, /reg:present/);
+  const p = check(present, "closer:desk-pages");
+  assert.equal(p.status, "skip");
+  assert.match(p.detail, /reg:present/);
 
-  const boom = await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.js": new Error("socket hang up") }) });
+  const boom = await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.html": new Error("socket hang up") }) });
   const b = check(boom, "closer:desk-pages");
   assert.equal(b.status, "skip");
   assert.match(b.detail, /socket hang up/);
+});
+
+test("pages: the Present script has no registry row, so when it is down this row FAILS", async () => {
+  assert.equal(PAGES.find((p) => p.path === "/app/present.js").reg, null);
+  for (const down of [404, 500, 503]) {
+    const rows = await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.js": down }) });
+    const hit = check(rows, "closer:desk-pages");
+    assert.equal(hit.status, "FAIL", String(down));
+    assert.match(hit.detail, new RegExp(`Present script answered ${down}, so no disposition can be saved`));
+  }
+  const boom = await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.js": new Error("socket hang up") }) });
+  const b = check(boom, "closer:desk-pages");
+  assert.equal(b.status, "FAIL");
+  assert.match(b.detail, /Present script not opened \(socket hang up\)/);
+});
+
+test("pages: every page is asked with a timeout, so a hung page cannot hold the lane", async () => {
+  const fetchImpl = pagesFetch();
+  await gapChecks({ fetchImpl });
+  assert.equal(fetchImpl.seen.length, 3);
+  for (const s of fetchImpl.seen) {
+    assert.ok(s.opts.signal instanceof AbortSignal, s.url);
+  }
 });
 
 test("pages: one page down and another wrong is still a FAIL and mentions both", async () => {
@@ -130,9 +155,14 @@ test("pages: one page down and another wrong is still a FAIL and mentions both",
 test("closerDeskPageReport counts the pages it could read", async () => {
   const ok = await closerDeskPageReport({ fetchImpl: pagesFetch() });
   assert.deepEqual(ok, { wrong: [], down: [], read: 3 });
-  const part = await closerDeskPageReport({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.js": 503 }) });
+  const part = await closerDeskPageReport({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.html": 503 }) });
   assert.equal(part.read, 2);
   assert.equal(part.down.length, 1);
+  assert.equal(part.wrong.length, 0);
+  const noScript = await closerDeskPageReport({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.js": 503 }) });
+  assert.equal(noScript.read, 2);
+  assert.equal(noScript.down.length, 0);
+  assert.equal(noScript.wrong.length, 1);
 });
 
 test("dispositions: nothing missing is PASS; the window and the wait are sent to the query", async () => {

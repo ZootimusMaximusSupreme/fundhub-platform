@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +16,7 @@ import {
   scrub,
   gapChecks
 } from "./gap-jobs.mjs";
+import { db as pgDb, close as closePg } from "../../db.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../..");
@@ -259,4 +260,192 @@ test("this file does not write heartbeats, drain the queue, or control a transac
     assert.match(sql, /^WITH /);
     assert.doesNotMatch(sql, /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b/i);
   }
+});
+
+/* ------------------------------------------------------------------------
+   The SQL, run for real. failed_events and job_heartbeats are replaced for one
+   query by fixture rows (a CTE with the table's name), so STUCK_SQL and
+   UNLISTED_SQL run on the Postgres engine over rows we choose. SELECT only,
+   nothing is stored. Skipped without DATABASE_URL, like every *.pg.test.mjs.
+   The fake db above only checks how the answer is worded. These are the tests
+   that fail if the status filter, the late rule, the doc-check grace, the
+   test-address rule, or the job list rule is changed.
+   ------------------------------------------------------------------------ */
+const HAVE_DB = !!process.env.DATABASE_URL;
+const COLS = {
+  failed_events: [
+    ["handler_name", "text"],
+    ["status", "text"],
+    ["next_attempt_at", "timestamptz"],
+    ["last_seen_at", "timestamptz"],
+    ["error_message", "text"],
+    ["payload", "jsonb"]
+  ],
+  job_heartbeats: [["job", "text"], ["finished_at", "timestamptz"]]
+};
+
+/* STUCK_SQL starts with WITH, so the fixture rows are put in front of its own CTE. */
+function fixtureDb(rows = {}) {
+  const ctes = Object.entries(COLS).map(([name, cols]) => {
+    const json = JSON.stringify(rows[name] || []).replace(/'/g, "''");
+    return `${name} AS (SELECT * FROM jsonb_to_recordset('${json}'::jsonb) AS x(${cols.map(([c, t]) => `"${c}" ${t}`).join(", ")}))`;
+  });
+  return {
+    async query(sql, params) {
+      const text = String(sql).trim();
+      const full = /^WITH\s/i.test(text)
+        ? text.replace(/^WITH\s+/i, `WITH ${ctes.join(", ")}, `)
+        : `WITH ${ctes.join(", ")} ${text}`;
+      return pgDb.query(full, params);
+    }
+  };
+}
+
+describe("gap-jobs SQL on the Postgres engine, over fixture rows", { skip: HAVE_DB ? false : "no DATABASE_URL" }, () => {
+  after(async () => { await closePg(); });
+  const ago = (min) => new Date(NOW.getTime() - min * 60e3).toISOString();
+  const ahead = (min) => ago(-min);
+  const row = (o = {}) => ({
+    handler_name: "onSomething",
+    status: "pending",
+    next_attempt_at: ago(10),
+    last_seen_at: ago(60),
+    error_message: "boom",
+    payload: { email: "pat.smith@gmail.com" },
+    ...o
+  });
+
+  async function stuck(failed_events) {
+    const out = await gapChecks({ db: fixtureDb({ failed_events }), now: NOW, jobs: [] });
+    return byId(out, "failed-events");
+  }
+  async function unlisted(job_heartbeats, jobs) {
+    const out = await gapChecks({ db: fixtureDb({ job_heartbeats }), now: NOW, jobs });
+    return byId(out, "job-heartbeats-unlisted");
+  }
+
+  test("an exhausted row fails; a pending row that is late, or has no retry time, fails", async () => {
+    const exhausted = await stuck([row({ status: "exhausted", next_attempt_at: ahead(600) })]);
+    assert.equal(exhausted.status, "FAIL");
+    assert.match(exhausted.detail, /1 stuck dead-letter row \(1 exhausted, 0 pending overdue\)/);
+
+    const late = await stuck([row()]);
+    assert.equal(late.status, "FAIL");
+    assert.match(late.detail, /1 stuck dead-letter row \(0 exhausted, 1 pending overdue\)/);
+
+    const noTime = await stuck([row({ next_attempt_at: null })]);
+    assert.equal(noTime.status, "FAIL");
+    assert.match(noTime.detail, /0 exhausted, 1 pending overdue/);
+
+    const both = await stuck([row({ status: "exhausted" }), row(), row({ handler_name: "other" })]);
+    assert.match(both.detail, /3 stuck dead-letter rows \(1 exhausted, 2 pending overdue\)/);
+  });
+
+  test("a retry still in the future, a resolved row, an ignored row, and no rows at all pass", async () => {
+    for (const rows of [
+      [row({ next_attempt_at: ahead(5) })],
+      [row({ status: "resolved" })],
+      [row({ status: "ignored" })],
+      []
+    ]) {
+      const hit = await stuck(rows);
+      assert.equal(hit.status, "PASS");
+      assert.match(hit.detail, /No stuck dead-letter rows/);
+    }
+  });
+
+  test("a doc-check pending row is stuck only after 3 times the 20 minute sweeper; any other handler as soon as it is late", async () => {
+    // The grace is 60 minutes. 59 minutes late is inside it, 61 is outside.
+    assert.equal((await stuck([row({ handler_name: DOC_CHECK_HANDLER, next_attempt_at: ago(30) })])).status, "PASS");
+    assert.equal((await stuck([row({ handler_name: DOC_CHECK_HANDLER, next_attempt_at: ago(59) })])).status, "PASS");
+    const outside = await stuck([row({ handler_name: DOC_CHECK_HANDLER, next_attempt_at: ago(61) })]);
+    assert.equal(outside.status, "FAIL");
+    assert.match(outside.detail, /0 exhausted, 1 pending overdue/);
+    // No retry time on a doc-check row is also stuck.
+    assert.equal((await stuck([row({ handler_name: DOC_CHECK_HANDLER, next_attempt_at: null })])).status, "FAIL");
+    // Another handler at 30 minutes late has no sweeper clock, so it is stuck now.
+    assert.equal((await stuck([row({ handler_name: "onDepositPaidMoney", next_attempt_at: ago(30) })])).status, "FAIL");
+    // Giving up is never given grace.
+    assert.equal((await stuck([row({ handler_name: DOC_CHECK_HANDLER, status: "exhausted", next_attempt_at: ahead(30) })])).status, "FAIL");
+  });
+
+  test("rows on names that can never get mail are counted and left alone; a real row beside them still fails", async () => {
+    const testRows = [
+      row({ payload: { email: "audit-blk6-1787272496358@example.test" } }),
+      row({ payload: { email: "Live-Probe@EXAMPLE.COM" }, status: "exhausted" }),
+      row({ payload: { email: "x@box.localhost" } })
+    ];
+    const quiet = await stuck(testRows);
+    assert.equal(quiet.status, "PASS");
+    assert.match(quiet.detail, /3 old dead-letter rows are on test addresses/);
+
+    const mixed = await stuck([...testRows, row({ handler_name: "onDepositPaidMoney" })]);
+    assert.equal(mixed.status, "FAIL");
+    assert.match(mixed.detail, /1 stuck dead-letter row \(0 exhausted, 1 pending overdue\)/);
+
+    // Look-alikes and rows with no email are real customers' rows.
+    for (const payload of [
+      { email: "client@notexample.com" },
+      { email: "client@example.com.au" },
+      { email: "stanbridgejchris+sim-08@gmail.com" },
+      {},
+      { phone: "+16025550142" },
+      null
+    ]) {
+      const real = await stuck([row({ payload })]);
+      assert.equal(real.status, "FAIL", JSON.stringify(payload));
+      assert.match(real.detail, /1 stuck dead-letter row \(/);
+    }
+  });
+
+  test("the latest handler and error are the newest real row, never a test row, and an email in the error is hidden", async () => {
+    const hit = await stuck([
+      row({ handler_name: "oldHandler", last_seen_at: ago(500), error_message: "old problem" }),
+      row({ handler_name: "newHandler", last_seen_at: ago(5), error_message: "bad row for pat.smith@gmail.com" }),
+      row({ handler_name: "testHandler", last_seen_at: ago(1), error_message: "test problem", payload: { email: "z@example.test" } })
+    ]);
+    assert.equal(hit.status, "FAIL");
+    assert.match(hit.detail, /2 stuck dead-letter rows/);
+    assert.match(hit.detail, /Latest: newHandler/);
+    assert.doesNotMatch(hit.detail, /oldHandler|testHandler|test problem/);
+    assert.match(hit.detail, /bad row for \[email\]/);
+    assert.doesNotMatch(hit.detail, /pat\.smith|gmail/);
+  });
+
+  test("a job that reported in the last 3 days and is not on the list fails and is named, newest first", async () => {
+    const jobs = [{ job: "daily-pulse" }, { job: "ad-video-sweeper" }];
+    const hit = await unlisted([
+      { job: "daily-pulse", finished_at: ago(30) },
+      { job: "new-cron-a", finished_at: ago(10) },
+      { job: "new-cron-b", finished_at: ago(100) },
+      { job: "new-cron-b", finished_at: ago(200) }
+    ], jobs);
+    assert.equal(hit.status, "FAIL");
+    assert.match(hit.detail, /2 scheduled jobs report a run but are not on the heartbeat list: new-cron-a, new-cron-b\./);
+    const one = await unlisted([{ job: "new-cron-a", finished_at: ago(10) }, { job: "daily-pulse", finished_at: ago(10) }], jobs);
+    assert.match(one.detail, /1 scheduled job reports a run but is not on the heartbeat list: new-cron-a\./);
+  });
+
+  test("every reported job on the list passes; a run older than 3 days is not counted; no recent run skips", async () => {
+    const jobs = [{ job: "daily-pulse" }, { job: "ad-video-sweeper" }];
+    const ok = await unlisted([
+      { job: "daily-pulse", finished_at: ago(30) },
+      { job: "ad-video-sweeper", finished_at: ago(30) }
+    ], jobs);
+    assert.equal(ok.status, "PASS");
+    assert.match(ok.detail, /all 2 jobs/);
+
+    // An unlisted name that last ran 4 days ago is outside the window.
+    const old = await unlisted([
+      { job: "daily-pulse", finished_at: ago(30) },
+      { job: "retired-cron", finished_at: ago(4 * 24 * 60) }
+    ], jobs);
+    assert.equal(old.status, "PASS");
+    assert.match(old.detail, /all 1 jobs/);
+
+    const quiet = await unlisted([{ job: "retired-cron", finished_at: ago(4 * 24 * 60) }], jobs);
+    assert.equal(quiet.status, "skip");
+    assert.match(quiet.detail, /nothing to compare/);
+    assert.equal((await unlisted([], jobs)).status, "skip");
+  });
 });

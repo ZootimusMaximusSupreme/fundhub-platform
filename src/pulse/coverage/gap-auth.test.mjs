@@ -7,6 +7,7 @@ import {
   LOGIN_FAIL_MIN,
   LOGIN_FAIL_EMAILS,
   SESSION_PROBE_HASH,
+  SIGNIN_GRANTS,
   STAFF_LOGIN_SQL,
   MAGIC_TEMPLATE_SQL,
   MAGIC_DEAD_SQL,
@@ -66,7 +67,7 @@ function healthyMap(over = {}) {
       subject: "Your Fundhub sign-in link"
     }]],
     ["gap:auth-magic-link-dead", [{ n: over.dead ?? 0 }]],
-    ["gap:auth-session-read", [{ staff_hits: 0, account_hits: 0, ...over.session }]],
+    ["gap:auth-session-read", [{ staff_hits: 0, account_hits: 0, missing_privs: null, ...over.session }]],
     ["gap:auth-signin-no-session", [{
       staff_ok: 3, staff_no_session: 0, links_used: 1, links_no_session: 0, ...over.signin
     }]],
@@ -126,7 +127,7 @@ test("a quiet healthy login lane passes", async () => {
     assert.equal(row.status, "PASS", row.id);
   }
   const sessionCall = db.calls.find((c) => c.sql.includes("gap:auth-session-read"));
-  assert.deepEqual(sessionCall.params, [SESSION_PROBE_HASH]);
+  assert.deepEqual(sessionCall.params, [SESSION_PROBE_HASH, JSON.stringify(SIGNIN_GRANTS)]);
 });
 
 test("nobody can sign in when no active staff password exists", async () => {
@@ -423,4 +424,111 @@ test("the login lane only reads: no write sql, no transaction control", async ()
     assert.doesNotMatch(c.sql, /^\s*(begin|commit|rollback|set|insert|update|delete)\b/i);
     assert.match(c.sql.replace(/\/\*[\s\S]*?\*\//g, "").trim(), /^(SELECT|WITH)\b/i);
   }
+});
+
+test("a missing write grant on a sign-in table fails the session row and names it", async () => {
+  const db = healthyMap({ session: { missing_privs: "sessions INSERT, staff UPDATE" } });
+  const row = byId(await gapChecks({ db, env: GOOD_ENV }))["gap:auth-session-read"];
+  shape(row);
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /sessions INSERT, staff UPDATE/);
+  assert.match(row.suggestedFix, /105_login_path_grants/);
+});
+
+test("a session row that leaves the grants out is a fail, not a pass", async () => {
+  const db = healthyMap();
+  const real = db.query;
+  db.query = async (sql, params) => {
+    if (String(sql).includes("gap:auth-session-read")) return { rows: [{ staff_hits: 0, account_hits: 0 }] };
+    return real(sql, params);
+  };
+  const row = byId(await gapChecks({ db, env: GOOD_ENV }))["gap:auth-session-read"];
+  assert.equal(row.status, "FAIL");
+});
+
+test("blank grant text counts as nothing missing", async () => {
+  const db = healthyMap({ session: { missing_privs: "  " } });
+  const row = byId(await gapChecks({ db, env: GOOD_ENV }))["gap:auth-session-read"];
+  assert.equal(row.status, "PASS");
+});
+
+test("the grant probe covers every table sign-in, sessions, logout and reset write", () => {
+  const byTable = {};
+  for (const g of SIGNIN_GRANTS) (byTable[g.tbl] ||= []).push(g.priv);
+  assert.deepEqual(Object.keys(byTable).sort(), [
+    "account_magic_links", "account_sessions", "accounts", "auth_attempts", "password_resets", "sessions", "staff"
+  ]);
+  for (const tbl of ["sessions", "account_sessions"]) {
+    assert.deepEqual(byTable[tbl].sort(), ["INSERT", "SELECT", "UPDATE"], `${tbl}: sign-in inserts, the check slides, logout revokes`);
+  }
+  assert.deepEqual(byTable.auth_attempts.sort(), ["INSERT", "SELECT"]);
+  // The words live in the parameter. The SQL text itself carries none.
+  assert.match(SESSION_READ_SQL, /jsonb_to_recordset\(\$2::jsonb\)/);
+  assert.match(SESSION_READ_SQL, /has_table_privilege\(current_user, 'public\.' \|\| v\.tbl, v\.priv\)/);
+  assert.doesNotMatch(SESSION_READ_SQL, /\b(insert|update|delete|grant)\b/i);
+});
+
+test("on the live server a masked key is a fail, even when Resend sent mail this week", async () => {
+  const db = healthyMap({ resendOk: 14 });
+  const env = { ...MASKED_ENV, AWS_LAMBDA_FUNCTION_NAME: "api" };
+  const row = byId(await gapChecks({ db, env }))["gap:auth-reset-mail"];
+  shape(row);
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /RESEND_API_KEY is not set to a real value on the live server/);
+  assert.match(row.detail, /14 emails in 7 days/);
+  assert.doesNotMatch(row.detail, /works/);
+  assert.match(row.suggestedFix, /Netlify/);
+});
+
+test("on the live server an empty from address is a fail, whichever server name is set", async () => {
+  for (const mark of [{ NETLIFY: "true" }, { LAMBDA_TASK_ROOT: "/var/task" }, { AWS_LAMBDA_FUNCTION_NAME: "api" }]) {
+    const db = healthyMap({ resendOk: 9 });
+    const env = { RESEND_API_KEY: GOOD_ENV.RESEND_API_KEY, RESEND_FROM: "", ...mark };
+    const row = byId(await gapChecks({ db, env }))["gap:auth-reset-mail"];
+    assert.equal(row.status, "FAIL", JSON.stringify(mark));
+    assert.match(row.detail, /RESEND_FROM is not set to a real value on the live server/);
+  }
+});
+
+test("on the live server a real key and from address pass", async () => {
+  const db = healthyMap({ resendOk: 0 });
+  const env = { ...GOOD_ENV, AWS_LAMBDA_FUNCTION_NAME: "api" };
+  const row = byId(await gapChecks({ db, env }))["gap:auth-reset-mail"];
+  assert.equal(row.status, "PASS");
+});
+
+test("the laptop skip never claims the live key works", async () => {
+  const db = healthyMap({ resendOk: 14 });
+  const row = byId(await gapChecks({ db, env: MASKED_ENV }))["gap:auth-reset-mail"];
+  assert.equal(row.status, "skip");
+  assert.match(row.detail, /not the live server/);
+  assert.doesNotMatch(row.detail, /works/);
+});
+
+test("the sign-in storm line is five failures from two emails, not softer", () => {
+  // Read through the constants the tests above use, so pin the numbers here.
+  // A line moved to 500 or 200 would never fire and leave every other test green.
+  assert.equal(LOGIN_FAIL_MIN, 5);
+  assert.equal(LOGIN_FAIL_EMAILS, 2);
+});
+
+test("the time windows in the sql stay where the board says they are", () => {
+  // The fake db never runs the sql, so the windows are pinned as text.
+  // Staff login tries: the last 24 hours.
+  assert.match(STAFF_LOGIN_SQL, /a\.created_at > now\(\) - interval '24 hours'/);
+  // Sign-ins and spent links: the last 24 hours, minus a 3 minute grace.
+  assert.equal((SIGNIN_NO_SESSION_SQL.match(/> now\(\) - interval '24 hours'/g) || []).length, 2);
+  assert.match(SIGNIN_NO_SESSION_SQL, /a\.created_at < now\(\) - interval '3 minutes'/);
+  assert.match(SIGNIN_NO_SESSION_SQL, /m\.consumed_at < now\(\) - interval '3 minutes'/);
+  // The session has to land within a minute before to two minutes after the sign-in.
+  assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at >= o\.created_at - interval '1 minute'/);
+  assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at <= o\.created_at \+ interval '2 minutes'/);
+  assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at >= l\.consumed_at - interval '1 minute'/);
+  assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at <= l\.consumed_at \+ interval '2 minutes'/);
+  // Short magic links: issued in 24 hours, 2 minute grace for the email to queue.
+  assert.match(MAGIC_DEAD_SQL, /m\.created_at > now\(\) - interval '24 hours'/);
+  assert.match(MAGIC_DEAD_SQL, /m\.created_at < now\(\) - interval '2 minutes'/);
+  // Resets asked in 24 hours. Resend mail looked at over 7 days.
+  assert.match(RESET_READ_SQL, /pr\.created_at > now\(\) - interval '24 hours'/);
+  assert.match(RESET_READ_SQL, /g\.created_at > now\(\) - interval '7 days'/);
 });

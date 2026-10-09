@@ -43,7 +43,14 @@ function byId(rows) {
 
 const HEALTHY = {
   [SYNC_DUE_SQL]: { last_synced_at: FRESH_SYNC, due: 1 },
-  [SPEND_DAYS_SQL]: { last_saved: FRESH_SYNC, first_day: "2026-09-01", rows_0: 4, rows_1: 4, running: 2 },
+  [SPEND_DAYS_SQL]: {
+    last_saved: FRESH_SYNC,
+    first_day: "2026-09-01",
+    rows_0: 4,
+    rows_1: 4,
+    spent_days: "2026-10-03,2026-10-04,2026-10-05,2026-10-06",
+    running: 2
+  },
   [UNMAPPED_SQL]: { unmapped: 0, with_spend: 4, names: null },
   [RUNNING_BARE_SQL]: { last_synced_at: FRESH_SYNC, running: 2, bare: 0, names: null }
 };
@@ -99,6 +106,13 @@ test("running means the ad, its ad set and its campaign are all ACTIVE", () => {
     assert.match(sql, /upper\(coalesce\(c\.status, ''\)\) = 'ACTIVE'/);
   }
   assert.match(SPEND_DAYS_SQL, /AT TIME ZONE 'America\/Phoenix'/);
+});
+
+test("spent_days lists days with real spend from the day before the gap to today", () => {
+  assert.match(SPEND_DAYS_SQL, /string_agg\(x\.d, ','/);
+  assert.match(SPEND_DAYS_SQL, /date BETWEEN \(\$1::date - 1\) AND \(\$2::date \+ 1\)/);
+  assert.match(SPEND_DAYS_SQL, /GROUP BY date\s+HAVING sum\(spend_cents\) > 0/);
+  assert.match(SPEND_DAYS_SQL, /\) AS spent_days/);
 });
 
 test("the number check looks only at ads that spent money in the 28-day window", () => {
@@ -178,7 +192,14 @@ test("hourly sync never stamped is FAIL", async () => {
 test("a closed day with older spend and no row is FAIL", async () => {
   const answers = {
     ...HEALTHY,
-    [SPEND_DAYS_SQL]: { last_saved: FRESH_SYNC, first_day: "2026-09-01", rows_0: 4, rows_1: 0, running: 2 }
+    [SPEND_DAYS_SQL]: {
+      last_saved: FRESH_SYNC,
+      first_day: "2026-09-01",
+      rows_0: 4,
+      rows_1: 0,
+      spent_days: "2026-10-03,2026-10-04,2026-10-06",
+      running: 2
+    }
   };
   const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-spend-day-missing"];
   assertShape(r);
@@ -216,11 +237,86 @@ test("empty closed days with every ad paused is a skip, not a FAIL", async () =>
 test("one running ad and one empty closed day is still a FAIL", async () => {
   const answers = {
     ...HEALTHY,
-    [SPEND_DAYS_SQL]: { last_saved: FRESH_SYNC, first_day: "2026-08-04", rows_0: 3, rows_1: 0, running: 1 }
+    [SPEND_DAYS_SQL]: {
+      last_saved: FRESH_SYNC,
+      first_day: "2026-08-04",
+      rows_0: 3,
+      rows_1: 0,
+      spent_days: "2026-10-03,2026-10-04,2026-10-06",
+      running: 1
+    }
   };
   const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-spend-day-missing"];
   assert.equal(r.status, "FAIL");
   assert.match(r.detail, /1 ad is running, so that day should have synced/);
+});
+
+function spendAnswer(over) {
+  return {
+    ...HEALTHY,
+    [SPEND_DAYS_SQL]: {
+      last_saved: FRESH_SYNC,
+      first_day: "2026-08-04",
+      rows_0: 4,
+      rows_1: 0,
+      spent_days: "2026-10-03,2026-10-04,2026-10-06",
+      running: 7,
+      ...over
+    }
+  };
+}
+
+async function spendRow(over) {
+  const rows = await gapChecks({ scope: scopeFor(spendAnswer(over)), now: NOW });
+  const r = byId(rows)["ads-spend-day-missing"];
+  assertShape(r);
+  return r;
+}
+
+test("relaunch morning: ads are ACTIVE again but did not spend after the empty day, so skip", async () => {
+  // Measured live 2026-10-08: Oct 4 spent 12021 cents, Oct 5 has no row, Oct 6 and 7
+  // hold one zero-spend row. If every ad were switched back on, status alone said "running".
+  const r = await spendRow({ spent_days: "2026-10-03,2026-10-04" });
+  assert.equal(r.status, "skip");
+  assert.match(r.detail, /No spend row for 2026-10-05/);
+  assert.match(r.detail, /No ad spent money after it/);
+  assert.match(r.detail, /not a missed sync/);
+});
+
+test("ads only started after the empty day: no spend before it, so skip", async () => {
+  const r = await spendRow({ spent_days: "2026-10-06" });
+  assert.equal(r.status, "skip");
+  assert.match(r.detail, /No ad spent money before it/);
+});
+
+test("no spend on either side of the empty day: skip says both sides", async () => {
+  const r = await spendRow({ spent_days: "" });
+  assert.equal(r.status, "skip");
+  assert.match(r.detail, /No ad spent money before or after it/);
+});
+
+test("a missing spent_days answer is never a FAIL", async () => {
+  const r = await spendRow({ spent_days: null });
+  assert.equal(r.status, "skip");
+});
+
+test("the older closed day is empty and yesterday has spend after it: FAIL", async () => {
+  const r = await spendRow({ rows_0: 0, rows_1: 4, spent_days: "2026-10-03,2026-10-05,2026-10-06" });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /missing for 2026-10-04\./);
+  assert.doesNotMatch(r.detail, /2026-10-05/);
+});
+
+test("both closed days empty with ads spending before and today: FAIL names both days", async () => {
+  const r = await spendRow({ rows_0: 0, rows_1: 0, spent_days: "2026-10-03,2026-10-06" });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /missing for 2026-10-04 and 2026-10-05/);
+  assert.match(r.detail, /7 ads are running/);
+});
+
+test("spent_days as a real array also counts", async () => {
+  const r = await spendRow({ spent_days: ["2026-10-03", "2026-10-04", "2026-10-06"] });
+  assert.equal(r.status, "FAIL");
 });
 
 test("spend days skip when the save is older than 36 h", async () => {

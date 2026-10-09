@@ -10,6 +10,9 @@
 // the same read), dropped the file-text route check (the registry pings that
 // door, and the file is not in the live bundle), counted application movement as
 // round movement, and made the advisor queue read the step the screen shows.
+// Second pass: the applications door is now run in this process for a real
+// client (the registry and slice 28 only knock without a login, and a 401 hides
+// a 500 behind the login). The door is only ever read (GET).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -38,6 +41,7 @@ export const MAX_FILES_READ = 25;
 export const CHECK_IDS = Object.freeze([
   "funding:round-stuck",
   "funding:lender-book",
+  "funding:apply-door",
   "funding:submit-path",
   "funding:advisor-queue"
 ]);
@@ -85,6 +89,22 @@ const APPLY_SQL = `
      AND a.submitted_date IS NULL
      AND a.updated_at < $2::timestamptz
      AND lower(fr.status) <> ALL($3::text[])
+`;
+
+// The client the applications door is opened for: the newest real client that
+// already has a bank row (so the door reads real rows), else the newest real
+// client (an empty answer still proves the door and its two reads run).
+const DOOR_CLIENT_SQL = `
+  SELECT c.id::text AS id
+    FROM clients c
+   WHERE c.org_id = $1::uuid
+     AND COALESCE(c.is_demo, false) = false
+   ORDER BY EXISTS (
+              SELECT 1 FROM applications a
+               WHERE a.client_id = c.id AND a.org_id = c.org_id
+            ) DESC,
+            c.created_at DESC
+   LIMIT 1
 `;
 
 // Files that have sat in a waiting stage past the line. The step they show is
@@ -138,6 +158,68 @@ function clip(err) {
 const RECON_LINE =
   "Recon (AG-07) is the tripwire. Do not invent a second watchdog. Do not auto-fix from this pulse.";
 
+function mockRes() {
+  return {
+    statusCode: 0,
+    body: null,
+    headers: {},
+    setHeader(name, value) { this.headers[String(name).toLowerCase()] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; }
+  };
+}
+
+// The only fake in the door run: the staff session lookup. verifySession checks
+// the token with one statement that also slides the session. That statement is
+// answered here with a staff row, so nothing is written and no login is minted.
+// Every other statement goes to the real database, so the door runs its real
+// login gate, role gate and reads. The test runs the real verifySession against
+// this, so a change to the login statement turns that test red and the live
+// check falls back to a skip.
+const SESSION_STATEMENT = /UPDATE\s+sessions[\s\S]*RETURNING\s+id,\s*staff_id,\s*org_id/i;
+
+export function doorDatabase(db, orgId, now = new Date()) {
+  return {
+    async query(sql, params) {
+      if (SESSION_STATEMENT.test(String(sql))) {
+        return {
+          rows: [{
+            session_id: "00000000-0000-4000-8000-0000000000b1",
+            expires_at: new Date(now.getTime() + 60 * 60 * 1000),
+            staff_id: "00000000-0000-4000-8000-0000000000b2",
+            org_id: orgId,
+            role: "owner",
+            email: "pulse@fundhub.ai",
+            name: "Morning pulse",
+            status: "active",
+            avatar_key: null,
+            active_flag: null
+          }]
+        };
+      }
+      return db.query(sql, params);
+    }
+  };
+}
+
+/** GET /api/applications in this process for one client. Reads only. */
+export async function openApplicationsDoor({ db, orgId, clientId, now = new Date(), handler = null }) {
+  // Literal path, so the live bundle carries the handler file.
+  const run = handler || (await import("../../../api/applications.mjs")).default;
+  const res = mockRes();
+  const req = {
+    method: "GET",
+    headers: { authorization: "Bearer morning-pulse-in-process" },
+    query: { client_id: clientId }
+  };
+  try {
+    await run(req, res, { db: doorDatabase(db, orgId, now) });
+    return { status: res.statusCode, body: res.body, thrown: null };
+  } catch (err) {
+    return { status: res.statusCode, body: res.body, thrown: err };
+  }
+}
+
 export function countBookDataRows(text) {
   const lines = String(text || "").split(/\r?\n/).filter((line) => line.trim() !== "");
   if (lines.length <= 1) return 0;
@@ -178,7 +260,7 @@ async function roundStuck(db, orgId, at) {
     return check(
       "funding:round-stuck",
       "PASS",
-      "no open funding round, or bank row on it, has moved less than 72 hours ago"
+      "no open funding round has sat still for 72 hours or more (a bank row moving counts as the round moving)"
     );
   }
   return check(
@@ -219,6 +301,53 @@ async function lenderBook(db, orgId, ctx, root) {
     "FAIL",
     `lender list is empty and the book has ${plural(Math.floor(rows), "bank")} to load`,
     `Load the lender book into the lender list. Do not invent bank names. ${RECON_LINE}`
+  );
+}
+
+const DOOR_FIX =
+  `Open the applications door as a staff member and read the error it gives. Do not submit a real lender app from here. ${RECON_LINE}`;
+
+// Runs the real applications handler in this process (GET only) for one real
+// client. The registry and slice 28 knock on this door with no login, so they
+// only ever see the 401. A crash behind the login looks fine there.
+async function applyDoor(db, orgId, now, ctx) {
+  const id = "funding:apply-door";
+  const picked = await db.query(DOOR_CLIENT_SQL, [orgId]);
+  const clientId = picked && picked.rows && picked.rows[0] && picked.rows[0].id;
+  if (!clientId) {
+    return check(id, "skip", "no real client to open the applications door for");
+  }
+  const open = typeof ctx.openApplicationsDoor === "function" ? ctx.openApplicationsDoor : openApplicationsDoor;
+  let out;
+  try {
+    out = await open({ db, orgId, clientId, now, handler: ctx.applicationsHandler || null });
+  } catch (err) {
+    // The handler file would not even load.
+    return check(id, "FAIL", `applications door would not load for client ${clientId}: ${clip(err)}`, DOOR_FIX);
+  }
+  const status = Number(out && out.status) || 0;
+  const body = (out && out.body) || null;
+  if (out && out.thrown) {
+    return check(
+      id,
+      "FAIL",
+      `applications door would answer 500 for client ${clientId}: ${clip(out.thrown)}`,
+      DOOR_FIX
+    );
+  }
+  if (status === 200 && body && body.ok === true) {
+    return check(id, "PASS", `applications door answered 200 for client ${clientId}`);
+  }
+  const why = body && (body.error || body.message) ? ` (${clip(body.error || body.message).slice(0, 80)})` : "";
+  if (status >= 500 && !(body && body.error === "auth_unavailable")) {
+    return check(id, "FAIL", `applications door answered ${status} for client ${clientId}${why}`, DOOR_FIX);
+  }
+  // 401, 403, 400, or the session lookup itself: this run could not open the
+  // door. That is not proof it works. It is not a PASS.
+  return check(
+    id,
+    "skip",
+    `applications door could not be opened in this run: answered ${status || "nothing"}${why}`
   );
 }
 
@@ -267,7 +396,9 @@ async function advisorQueue(db, orgId, at, ctx) {
     }
   }
   if (noStep.length > 0) {
-    const shown = noStep.slice(0, 5).map((f) => f.client_id).join(", ");
+    // The stage rides along so a file waiting on a bank can be told from a file
+    // nobody is working.
+    const shown = noStep.slice(0, 5).map((f) => `${f.client_id} (${f.stage_key})`).join(", ");
     const more = noStep.length > 5 ? ` and ${noStep.length - 5} more` : "";
     return check(
       id,
@@ -292,7 +423,7 @@ async function advisorQueue(db, orgId, at, ctx) {
 }
 
 /**
- * @param {{ db?: { query: Function }, orgId?: string, now?: Date, bookRows?: number, root?: string, readShownStep?: Function }} [ctx]
+ * @param {{ db?: { query: Function }, orgId?: string, now?: Date, bookRows?: number, root?: string, readShownStep?: Function, openApplicationsDoor?: Function, applicationsHandler?: Function }} [ctx]
  * @returns {Promise<Array<{ id: string, status: "PASS"|"FAIL"|"skip", detail: string, suggestedFix: string|null }>>}
  */
 export async function gapChecks(ctx = {}) {
@@ -320,6 +451,7 @@ export async function gapChecks(ctx = {}) {
   return Promise.all([
     run("funding:round-stuck", () => roundStuck(db, orgId, at)),
     run("funding:lender-book", () => lenderBook(db, orgId, ctx, root)),
+    run("funding:apply-door", () => applyDoor(db, orgId, now, ctx)),
     run("funding:submit-path", () => submitPath(db, orgId, at)),
     run("funding:advisor-queue", () => advisorQueue(db, orgId, at, ctx))
   ]);

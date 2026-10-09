@@ -5,9 +5,12 @@
 //                            machine.mjs meta-sync still owns the 36 h nightly save.
 //   ads-spend-day-missing    a closed Arizona day in the hourly window has no
 //                            spend row, an older spend row says that day was
-//                            already in the pull, and an ad is running. With
+//                            already in the pull, an ad is running, and ads spent
+//                            money on a day before AND a day after the gap. With
 //                            every ad paused Meta sends no row, so an empty day
-//                            is normal and is a skip, not a FAIL.
+//                            is normal and is a skip, not a FAIL. Ads switched
+//                            back on this morning have no spend after the gap
+//                            yet, so that is a skip too.
 //   ads-number-unmapped      an ad that spent in the last 28 days has no
 //                            fundhub_ad_number. Old paused test ads are not
 //                            looked at, so they cannot keep the pulse red.
@@ -112,6 +115,12 @@ async function one(run, sql, params) {
   return (out && out.rows && out.rows[0]) || {};
 }
 
+/** `spent_days` is a comma list from the query. A real array is taken as is. */
+function spentDaysOf(v) {
+  const list = Array.isArray(v) ? v : String(v == null ? "" : v).split(",");
+  return new Set(list.map((d) => String(d).trim().slice(0, 10)).filter(Boolean));
+}
+
 function nameList(names, more) {
   const list = Array.isArray(names)
     ? names.filter(Boolean).join(", ")
@@ -140,12 +149,22 @@ const RUNNING_WHERE = `
      AND upper(coalesce(c.status, '')) = 'ACTIVE'`;
 
 // $1 is the older closed day, $2 is yesterday, both Arizona dates. `running` counts
-// ads that were already here when the older closed day began.
+// ads that were already here when the older closed day began. `spent_days` lists the
+// days from the day before $1 to the day after $2 (today) on which any ad spent money.
+// ads.updated_at cannot tell when an ad was switched on: every sync stamps it.
 export const SPEND_DAYS_SQL = `
   SELECT (SELECT max(synced_at) FROM ad_metrics_daily) AS last_saved,
          (SELECT min(date)::text FROM ad_metrics_daily) AS first_day,
          (SELECT count(*)::int FROM ad_metrics_daily WHERE date = $1::date) AS rows_0,
          (SELECT count(*)::int FROM ad_metrics_daily WHERE date = $2::date) AS rows_1,
+         (SELECT string_agg(x.d, ',' ORDER BY x.d)
+            FROM (
+              SELECT date::text AS d
+                FROM ad_metrics_daily
+               WHERE date BETWEEN ($1::date - 1) AND ($2::date + 1)
+               GROUP BY date
+              HAVING sum(spend_cents) > 0
+            ) x) AS spent_days,
          (SELECT count(*)::int
             FROM ads a
             JOIN ad_sets s ON s.id = a.ad_set_id
@@ -279,6 +298,23 @@ export async function checkSpendDayMissing({ run, now }) {
     );
   }
   if (missing.length) {
+    // An ad that is ACTIVE now may have been paused through the empty day and switched
+    // back on this morning. Only call it a sync gap when ads were spending on both
+    // sides of it: the day before, and the day after (or today).
+    const spent = spentDaysOf(r.spent_days);
+    const span = [shiftDay(days[0], -1), ...days, shiftDay(days[days.length - 1], 1)];
+    const at = missing.map((d) => span.indexOf(d));
+    const before = span.slice(0, Math.min(...at)).some((d) => spent.has(d));
+    const after = span.slice(Math.max(...at) + 1).some((d) => spent.has(d));
+    if (!before || !after) {
+      const gap = missing.join(" and ");
+      const side = !before && !after ? "before or after it" : !before ? "before it" : "after it";
+      return row(
+        id,
+        "skip",
+        `No spend row for ${gap}. No ad spent money ${side}. That looks like ads switched off or on, not a missed sync.`
+      );
+    }
     const list = missing.join(" and ");
     const word = missing.length === 1 ? "That day should" : "Those days should";
     const ads = running === 1 ? "1 ad is running" : `${running} ads are running`;

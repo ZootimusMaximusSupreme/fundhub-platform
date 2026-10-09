@@ -10,6 +10,8 @@
 // The page row reads the pages over HTTP, the way a closer opens them. It does not
 // read repo files: the shipped function holds no public/ folder and no site config file,
 // so a file read there fails every morning whether or not the page is fine.
+// present.js has no registry row. If it is down, nothing else says so, so that is a FAIL
+// here. The two html pages have registry rows, so a down page is a skip that names the row.
 
 export const CHECK_IDS = Object.freeze(["closer:desk-pages", "closer:held-disposition"]);
 
@@ -20,8 +22,13 @@ const TRIP =
 const DEFAULT_BASE = "https://fundhub.ai";
 const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
 const LOG_GRACE_MS = 2 * 60 * 60 * 1000;
+const PAGE_TIMEOUT_MS = 8000;
 
-/** What each page must say for the closer desk to work. */
+/**
+ * What each page must say for the closer desk to work.
+ * reg is the registry row that already goes red when the page is down. null means
+ * no row watches it, so this check must.
+ */
 export const PAGES = Object.freeze([
   {
     path: "/app/closer-dashboard.html",
@@ -143,7 +150,12 @@ function plural(n, word) {
 
 async function openPage(fetchImpl, origin, page) {
   try {
-    const res = await fetchImpl(`${origin}${page.path}`, { method: "GET", headers: { accept: "text/html" } });
+    const opts = { method: "GET", headers: { accept: "text/html" } };
+    // A hung page must not hold the whole lane until the step is cut.
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      opts.signal = AbortSignal.timeout(PAGE_TIMEOUT_MS);
+    }
+    const res = await fetchImpl(`${origin}${page.path}`, opts);
     const status = Number(res?.status);
     const text = typeof res?.text === "function" ? String(await res.text()) : "";
     return { page, status, text, error: null };
@@ -155,8 +167,9 @@ async function openPage(fetchImpl, origin, page) {
 /**
  * The closer pages over HTTP. FAIL when a page answers 2xx and is the wrong page
  * (a redirect took the address, the script tag is gone, Present no longer posts
- * log_disposition). A page that does not answer 2xx is the registry's red; this
- * row says so and skips unless another page is wrong in content.
+ * log_disposition), or when the Present script is down (no registry row watches it).
+ * A html page that does not answer 2xx is the registry's red; this row says so and
+ * skips unless another page is wrong.
  * @returns {{ wrong: string[], down: string[], read: number }}
  */
 export async function closerDeskPageReport({ fetchImpl, baseUrl } = {}) {
@@ -164,19 +177,21 @@ export async function closerDeskPageReport({ fetchImpl, baseUrl } = {}) {
   const wrong = [];
   const down = [];
   let read = 0;
-  for (const page of PAGES) {
-    const got = await openPage(fetchImpl, origin, page);
-    if (!(got.status >= 200 && got.status < 300)) {
-      const why = got.error ? `not opened (${got.error})` : `answered ${Number.isFinite(got.status) ? got.status : "no status"}`;
-      down.push(`${page.name} ${why}${page.reg ? `; ${page.reg} reports a page that is down` : ""}`);
+  const got = await Promise.all(PAGES.map((page) => openPage(fetchImpl, origin, page)));
+  for (const one of got) {
+    const { page } = one;
+    if (!(one.status >= 200 && one.status < 300)) {
+      const why = one.error ? `not opened (${one.error})` : `answered ${Number.isFinite(one.status) ? one.status : "no status"}`;
+      if (page.reg) down.push(`${page.name} ${why}; ${page.reg} reports a page that is down`);
+      else wrong.push(`${page.name} ${why}, so no disposition can be saved`);
       continue;
     }
     read += 1;
     for (const [re, why] of page.must) {
-      if (!re.test(got.text)) wrong.push(`${page.name} ${why}`);
+      if (!re.test(one.text)) wrong.push(`${page.name} ${why}`);
     }
     for (const [re, why] of page.mustNot) {
-      if (re.test(got.text)) wrong.push(`${page.name} ${why}`);
+      if (re.test(one.text)) wrong.push(`${page.name} ${why}`);
     }
   }
   return { wrong, down, read };

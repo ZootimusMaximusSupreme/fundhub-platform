@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,6 +17,8 @@ import {
   SENDING_STUCK_SQL,
   gapChecks,
   morningEmailPathMissesFailureCheck,
+  morningRoots,
+  readMorningSources,
   unreadMorningEmailPaths
 } from "./gap-email.mjs";
 
@@ -337,4 +340,73 @@ test("gap email: this module does not send and does not touch the outbound switc
   const queries = `${SENDING_STUCK_SQL}\n${PROVIDER_FAIL_SQL}\n${MAGIC_LINK_SQL}\n${DRIP_SQL}`;
   assert.match(queries, /^SELECT\b/m);
   assert.doesNotMatch(queries, /\b(INSERT|UPDATE|DELETE|ALTER)\b/i);
+});
+
+// The deployed function is one bundled file at <root>/netlify/functions/<name>.mjs, with src/
+// next to netlify/. Measured 2026-10-08 in .netlify/functions/api.zip. REPO_ROOT (three folders
+// above this file) lands outside the zip there, which is why the morning row could only skip.
+function lambdaLayout(bodies = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gap-email-lambda-"));
+  fs.mkdirSync(path.join(root, "netlify", "functions"), { recursive: true });
+  for (const row of MORNING_EMAIL_PATHS) {
+    const file = path.join(root, row.file);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, bodies[row.file] ?? okSources()[row.file]);
+  }
+  return root;
+}
+
+test("gap email: morning roots cover the checkout, the bundled function folder, the lambda root and the working folder", () => {
+  const roots = morningRoots({ env: { LAMBDA_TASK_ROOT: "/var/task" }, cwd: "/var/task" });
+  assert.ok(roots.includes(REPO_ROOT));
+  assert.ok(roots.includes(path.resolve(HERE, "../..")));
+  assert.ok(roots.includes("/var/task"));
+  assert.equal(new Set(roots).size, roots.length, "no root is listed twice");
+  // Bundled at /var/task/netlify/functions/<name>.mjs, two folders up is the root that holds src/.
+  assert.equal(path.resolve("/var/task/netlify/functions", "../.."), "/var/task");
+  // An explicit root is the only root, so a test can prove a missing file really skips.
+  assert.deepEqual(morningRoots({ root: "/somewhere" }), ["/somewhere"]);
+  assert.deepEqual(morningRoots({ env: {}, cwd: REPO_ROOT }).filter((r) => r === REPO_ROOT), [REPO_ROOT]);
+});
+
+test("gap email: the morning files are found under a lambda-style root and a miss there still FAILs", async () => {
+  const root = lambdaLayout();
+  try {
+    const got = readMorningSources(["/this/path/does/not/exist", root]);
+    for (const row of MORNING_EMAIL_PATHS) assert.equal(typeof got[row.file], "string", `${row.file} was not found`);
+
+    const pass = byId(await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, root }));
+    assert.equal(pass["email:morning-no-failure-check"].status, "PASS");
+
+    fs.writeFileSync(
+      path.join(root, "src/workflows/slo-infinite-drip.mjs"),
+      "const email = await sendTemplated(db, { channel: \"email\" });\nreturn { sent: true, email };\n"
+    );
+    const fail = byId(await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, root }));
+    assert.equal(fail["email:morning-no-failure-check"].status, "FAIL");
+    assert.match(fail["email:morning-no-failure-check"].detail, /slo-infinite-drip\.mjs/);
+    assert.doesNotMatch(fail["email:morning-no-failure-check"].detail, /notify\.mjs|document-vault-chase\.mjs/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("gap email: a root with no src is a skip with the reason, never a PASS", async () => {
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), "gap-email-empty-"));
+  try {
+    const got = readMorningSources([empty]);
+    assert.ok(MORNING_EMAIL_PATHS.every((row) => got[row.file] === null));
+    const rows = byId(await gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, root: empty }));
+    assert.equal(rows["email:morning-no-failure-check"].status, "skip");
+    assert.match(rows["email:morning-no-failure-check"].detail, /not on disk/);
+  } finally {
+    fs.rmSync(empty, { recursive: true, force: true });
+  }
+});
+
+test("gap email: sending-stuck reads email only and never reads queued or sms", () => {
+  assert.match(SENDING_STUCK_SQL, /channel = 'email'/);
+  assert.match(SENDING_STUCK_SQL, /direction = 'outbound'/);
+  assert.doesNotMatch(SENDING_STUCK_SQL, /sms/);
+  assert.match(SENDING_STUCK_SQL, /coalesce\(last_attempt_at, updated_at, created_at\) < \$2::timestamptz/);
 });

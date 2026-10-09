@@ -33,7 +33,7 @@ export const GRACE = "1 hour";
    testing. Measured 2026-10-08: the seven "paid, no entitlement" clients were all
    +walk-0N / +sim-NN walk clients that nobody had flagged yet. */
 export const TEST_CLIENT_EMAIL_RE =
-  String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost)$`;
+  String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost|local)$`;
 
 export const PAID_ENTITLEMENT_SQL = `
 /* gap:portal-paid-entitlement */
@@ -63,6 +63,47 @@ SELECT p.client_id::text AS client_id,
             AND e.entitlement_code = lower(btrim(p.entitlement_code))
        ) AS has_entitlement
   FROM paid p
+`.trim();
+
+/* The payment the join above cannot see: a product_name that matches no product
+   and no alias. resolve_product_id() hands back NULL, so the join drops it and a
+   renamed or brand-new product name would pass unnoticed. reconcileFromTransactions
+   counts the same row as "unresolved" and leaves it alone.
+   A name that matches nothing is not a break by itself: the one real purchase on
+   file ("Consulting Services Standard") has an old name and its client still holds
+   an entitlement from another path. So a row only counts when the client holds NO
+   entitlement of any kind.
+   It also has to have come in through the payment door. Every real payment leaves
+   a payment.received event for its client in the same moment; a row dropped
+   straight into transactions leaves none (measured 2026-10-08: the 10-07 test
+   batch). Those are counted apart, not failed. */
+export const UNRESOLVED_PAID_SQL = `
+/* gap:portal-unresolved-paid */
+SELECT t.client_id::text AS client_id,
+       (c.is_demo IS TRUE
+        OR COALESCE(c.custom_fields ->> 'synthetic', '') = 'true'
+        OR COALESCE(c.email, '') ~* $3) AS is_test,
+       EXISTS (
+         SELECT 1 FROM entitlements e
+          WHERE e.org_id = t.org_id
+            AND e.client_id = t.client_id
+       ) AS has_any_entitlement,
+       EXISTS (
+         SELECT 1 FROM events ev
+          WHERE ev.org_id = t.org_id
+            AND ev.client_id = t.client_id
+            AND ev.name = 'payment.received'
+            AND ev.created_at BETWEEN t.created_at - interval '1 day'
+                                  AND t.created_at + interval '1 day'
+       ) AS came_through_the_door
+  FROM transactions t
+  LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+ WHERE t.org_id = $1::uuid
+   AND lower(btrim(COALESCE(t.status, ''))) = $2
+   AND t.client_id IS NOT NULL
+   AND t.is_demo IS NOT TRUE
+   AND t.created_at < now() - interval '${GRACE}'
+   AND resolve_product_id(t.org_id, t.product_name) IS NULL
 `.trim();
 
 export const NEXT_STEP_SQL = `
@@ -151,6 +192,7 @@ export const SUMMARY_READS = Object.freeze([
 
 export const READ_ONLY_SQL = Object.freeze([
   PAID_ENTITLEMENT_SQL,
+  UNRESOLVED_PAID_SQL,
   NEXT_STEP_SQL,
   SUMMARY_CLIENT_SQL,
   ...SUMMARY_READS.map((r) => r.sql)
@@ -284,22 +326,59 @@ export async function checkPaidEntitlement({ db, orgId } = {}) {
     const missing = new Set(
       real.filter((r) => r.has_entitlement !== true).map((r) => String(r.client_id))
     );
-    if (missing.size === 0) {
-      const note = testMissing.size
+
+    // A paid row whose product name matches no product drops out of the join
+    // above. Read those apart (see UNRESOLVED_PAID_SQL for what counts).
+    const unresolvedOut = await db.query(UNRESOLVED_PAID_SQL, [orgId, PAID, TEST_CLIENT_EMAIL_RE]);
+    const unresolved = ((unresolvedOut && unresolvedOut.rows) || []).filter((r) => r.is_test !== true);
+    const stranded = new Set(
+      unresolved
+        .filter((r) => r.has_any_entitlement !== true && r.came_through_the_door === true)
+        .map((r) => String(r.client_id))
+    );
+    const noDoor = new Set(
+      unresolved
+        .filter((r) => r.has_any_entitlement !== true && r.came_through_the_door !== true)
+        .map((r) => String(r.client_id))
+    );
+
+    if (missing.size === 0 && stranded.size === 0) {
+      const testNote = testMissing.size
         ? ` ${testMissing.size} test client${testMissing.size === 1 ? " has" : "s have"} none and ${testMissing.size === 1 ? "is" : "are"} left out.`
+        : "";
+      const doorNote = noDoor.size
+        ? ` ${noDoor.size} payment${noDoor.size === 1 ? "" : "s"} with no payment event ${noDoor.size === 1 ? "is" : "are"} left out.`
         : "";
       return check(
         "portal:paid-entitlement",
         "PASS",
-        `every paid mapped product has an entitlement row (${real.length} real purchases read).${note}`
+        `every paid mapped product has an entitlement row (${real.length} paid rows read, plus ` +
+          `${unresolved.length} under a product name that matches no product).${testNote}${doorNote}`
       );
     }
-    const n = missing.size;
+    const parts = [];
+    if (missing.size) {
+      const n = missing.size;
+      parts.push(`${n} paid client${n === 1 ? "" : "s"} ha${n === 1 ? "s" : "ve"} no entitlement for a mapped product`);
+    }
+    if (stranded.size) {
+      const n = stranded.size;
+      parts.push(
+        `${n} paid client${n === 1 ? "" : "s"} paid under a product name that matches no product and hold${n === 1 ? "s" : ""} no entitlement at all`
+      );
+    }
+    const fixes = [];
+    if (missing.size) {
+      fixes.push("Write the entitlement the product map already names. Use the existing reconcile. Do not create a new catalog product.");
+    }
+    if (stranded.size) {
+      fixes.push("Add the product name as an alias on the product it belongs to, then use the existing reconcile. Do not guess a product.");
+    }
     return check(
       "portal:paid-entitlement",
       "FAIL",
-      `${n} paid client${n === 1 ? "" : "s"} ha${n === 1 ? "s" : "ve"} no entitlement for a mapped product`,
-      "Write the entitlement the product map already names. Use the existing reconcile. Do not create a new catalog product. Do not auto-fix from this pulse."
+      parts.join(". "),
+      `${fixes.join(" ")} Do not auto-fix from this pulse.`
     );
   } catch (err) {
     return check(

@@ -22,7 +22,7 @@ These stay as they are. This lane does not add a second copy.
 | Id | Where | What it already sees |
 |---|---|---|
 | pipeline:outbound | src/pulse/pipeline-motion.mjs | Queued outbound, texts included, older than 30 minutes |
-| pipeline:outbound (sent by instant-watch) | src/pulse/instant-watch.mjs line 81 | The same queued count, same id. It already texts. Do not text again. |
+| pipeline:outbound (sent by instant-watch) | src/pulse/instant-watch.mjs line 81 | The same queued count, same id, sent as its own instant text. It already texts. Do not text again. That is 3 different ids in 4 rows. |
 | job:message-dispatch-sweeper | src/pulse/heartbeats.mjs | The customer dispatch clock ran |
 | job:staff-message-sweeper | src/pulse/heartbeats.mjs | The staff dispatch clock ran |
 
@@ -79,3 +79,18 @@ The one FAIL is real, not a false alarm. A real lead (not a test record, no phon
 
 Tests: `node --test src/pulse/coverage/gap-sms.test.mjs` = 12 pass, 0 fail, 0 skipped.
 
+### Second look — Claude, 2026-10-08 (a checker found more)
+
+What was still wrong, and what changed:
+
+- **Test traffic made the "no text row" check go red.** It did not skip demo events. Journey runs and seeds never get a text row. On 2026-09-21 all 135 flagged events were demo. On 2026-09-24 all 62 were. Now it skips demo events and demo clients, the same way the nurture check does. Proved on live data as of past days: 135 flags became 0, and the real lead from 2026-10-02 is still flagged.
+- **"The client has no phone to send to" was counted as the phone company saying no.** That is a hole in the client record, not a provider failure. The only failed text in the database was exactly that one, and it held the check red for 7 days. Now that line is skipped. A real rejection or "gave up after N tries" still counts. The email check already did the same.
+- **The inventory had a made-up id.** The code still said `instant-watch:pipeline:outbound`. The real id is `pipeline:outbound`. Fixed in the code. There are 3 different ids in 4 rows, because instant-watch sends the same id as its own text.
+
+New tests (nothing removed): the demo filter is on the event and on the client and sits before the message lookup; the no-phone line is skipped and a real failure still shows FAIL; both reads stay SMS only.
+
+Left alone, on purpose: the tests still check the SQL by its text, because there is no database in the test suite. The live proof above is where the SQL itself was run.
+
+Live result now (read-only, production): prod 2 PASS / 1 FAIL / 0 skip. Staff access gives the same. 0 SQL errors, 0 writes. The 1 FAIL is the same real lead (no welcome text, no welcome email, welcome lock empty). It ages out after 7 days.
+
+Tests: `node --test src/pulse/coverage/gap-sms.test.mjs` = 15 pass, 0 fail, 0 skipped.

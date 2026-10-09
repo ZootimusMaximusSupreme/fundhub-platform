@@ -46,7 +46,9 @@ Event-only Inngest functions are not on `JOBS` on purpose. There are 65 of them.
 
 `node --test src/pulse/coverage/gap-jobs.test.mjs`
 
-13 tests. 13 pass. 0 fail.
+Without a database: 13 tests, 13 pass, 0 fail. The 7 Postgres-engine tests skip (no `DATABASE_URL`).
+
+With `DATABASE_URL`: 20 tests, 20 pass, 0 fail. Those 7 run the real `STUCK_SQL` and `UNLISTED_SQL` on made-up rows (a read-only SELECT, nothing stored).
 
 ## Review — Claude, 2026-10-08
 
@@ -72,3 +74,15 @@ Broke one thing per run on the live data to prove each row can FAIL: with the te
 Not done on purpose: the 24 old rows are still `pending`. Marking them ignored is a write. This lane is read only.
 
 Tests: 13 pass, 0 fail. The old file had 8 tests.
+
+Second pass (checker found the SQL was not guarded):
+
+- The 13 tests above use a fake db that hands back a ready-made answer. They check the wording. They do not check the SQL. In a scratch copy, `status = 'exhausted'` was changed to `'zzz'`, and `handler_name <> $3` was flipped. All the fake-db tests still passed.
+- Added 7 tests that run the real SQL on Postgres over made-up rows. They cover: exhausted, late, no retry time, future retry, resolved, ignored; the doc-check wait (59 minutes late passes, 61 fails, other handlers fail at 30); test-address rows (counted and left alone, a real row beside them still fails, `notexample.com` and `example.com.au` count as real, no email counts as real, upper case is read as lower case); newest real row is the "latest" one; the 3 day window, the job list, and newest first for the unlisted read.
+- Proof the new tests have teeth: 14 wrong versions of the SQL were tried one at a time in a scratch copy (status, late rule, null retry time, doc-check wait, test-address rule, count, sort order, 3 day window, job list). All 14 made a Postgres test fail. 0 survived.
+- Live result still prod 2 PASS, 0 FAIL, 0 skip.
+
+Known and left alone:
+
+- A stuck `doc-check` row can show twice in the morning: once in `gap-documents` and once here. The other lanes (`gap-documents`, `gap-calls`, `gap-underwrite`) each read one handler. This lane reads every handler, which is what the lane asked for. Nothing else retries a pending row except the doc-check sweeper, so a late pending row really is stuck.
+- `job-heartbeats-unlisted` looks back 3 days. A weekly or monthly job that is missing from the list shows for 3 mornings after it runs. `src/pulse/heartbeats.test.mjs` is the main guard for those, because it fails when the list drifts from the registered crons and `netlify.toml`.

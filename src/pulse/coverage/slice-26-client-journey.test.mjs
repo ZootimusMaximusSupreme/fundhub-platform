@@ -67,8 +67,6 @@ const EXPECTED_GAP_IDS = [
   "commas-inbox-drain",
   "paid-checkout-expiry-sweeper",
   "slo-paid-form-nudge",
-  "portal-login.html",
-  "progress.html",
   "contracts/sign",
   "doc-check",
   "doc-check-retry-sweeper",
@@ -128,7 +126,9 @@ test("slice 26-client-journey: pay sweepers and gaps match registry and machine 
     "read/client-progress",
     "documents-upload",
     "finance/soft-pull",
-    "waypoint-tick"
+    "waypoint-tick",
+    "portal-login.html",
+    "progress.html"
   ]) {
     const row = CHECKS.find((r) => r.id === id);
     assert.ok(row, id);

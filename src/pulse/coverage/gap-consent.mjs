@@ -4,7 +4,7 @@
 // The morning pulse already pings the consent page and the consent API
 // (reg:consent-capture and reg:consent/capture in the registry). This file does
 // not ping the API again. It reads the page body once, to see that the page
-// still talks to the capture API, and it reads the database for the three ways
+// still talks to the capture API, and it reads the database for the four ways
 // a consent goes missing.
 //
 // It does NOT look at files on disk. The pulse runs inside the deployed
@@ -20,7 +20,8 @@ export const CHECK_IDS = Object.freeze([
   "consent:page",
   "consent:required",
   "consent:store",
-  "consent:slo-store"
+  "consent:slo-store",
+  "consent:dispute-required"
 ]);
 
 /** A payment this young may still be waiting for the buyer to fill in the form. */
@@ -29,12 +30,16 @@ export const PAID_GRACE_HOURS = 24;
 export const STORE_GRACE_HOURS = 1;
 /** A stored identity older than this is old news, not a morning break. */
 export const SLO_LOOKBACK_DAYS = 7;
+/** A repair client gets this long to sign before "no authorization" is a morning break.
+    The repair desk chases a missing contract after 3 business days (src/repair/sla.mjs);
+    a week is that plus a weekend, so the desk has had its turn before the pulse speaks. */
+export const DISPUTE_GRACE_DAYS = 7;
 
 /* A test client is one nobody is selling to: the demo flag, the synthetic flag,
    the +walk-N / +sim-N tags the sim seeder writes into every address, or an
    address on a domain reserved for testing. Same pattern as gap-portal.mjs. */
 export const TEST_CLIENT_EMAIL_RE =
-  String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost)$`;
+  String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost|local)$`;
 
 const PAGE_FIX =
   "Restore the consent page so it loads and calls the capture API. Do not record consent for a real person from this check. Do not auto-fix.";
@@ -42,6 +47,8 @@ const REQUIRED_FIX =
   "A client who paid for a credit report has no live written permission. Use the consent page with that client before any credit pull. Do not record consent for a real person from this check. Do not auto-fix.";
 const STORE_FIX =
   "A signed soft-pull paper has no stored consent row. Store it only through the existing capture path after a real yes. Do not record consent for a real person from this check. Do not auto-fix.";
+const DISPUTE_FIX =
+  "A repair client has neither a live dispute authorization nor a signed repair agreement, so no letters can be prepared. Chase the signature through the consent page or the repair agreement. Do not record consent for a real person from this check. Do not auto-fix.";
 const SLO_FIX =
   "A buyer's identity was saved on the roadmap form and the consent row was not. Read the roadmap pull form and the consent capture. Do not record consent for a real person from this check. Do not auto-fix.";
 
@@ -150,7 +157,47 @@ SELECT count(*)::int AS n
         AND cc.client_id = pl.client_id
         AND cc.kind = 'soft_pull_consent')`;
 
-export const READ_ONLY_SQL = Object.freeze([REQUIRED_SQL, STORE_SQL, SLO_STORE_SQL]);
+/* A repair client the letters cannot be prepared for. analyzeAndGenerate
+   (src/repair/analyze.mjs) refuses with "no_authorization" unless a signed repair
+   agreement (hasRepairAgreement, src/repair/dispute-auth.mjs) OR a live
+   dispute_authorization consent is on file, so those are the two things this
+   looks for. The agreement test is copied from SIGNED_REPAIR_SQL there, and a
+   test fails if that file changes it.
+   Only active programs older than DISPUTE_GRACE_DAYS count: a new buyer is still
+   signing. A client who withdrew an authorization (any revoked row) said no on
+   purpose, which is not a break, the same way a withdrawal after signing is not
+   a failed store above. Funding-offer clients also sign this paper but have no
+   program row to read, so they are not in this population. */
+export const DISPUTE_SQL = `
+SELECT count(*)::int AS n
+  FROM repair_programs rp
+  JOIN clients c ON c.id = rp.client_id AND c.org_id = rp.org_id
+ WHERE rp.org_id = $1::uuid
+   AND ($2::boolean OR NOT ${isTestClient("c", "$3")})
+   AND rp.status = 'active'
+   AND rp.created_at < now() - interval '${DISPUTE_GRACE_DAYS} days'
+   AND NOT EXISTS (
+     SELECT 1 FROM client_consents cc
+      WHERE cc.client_id = rp.client_id
+        AND cc.org_id = rp.org_id
+        AND cc.kind = 'dispute_authorization'
+        AND (${CONSENT_VALID_SQL}))
+   AND NOT EXISTS (
+     SELECT 1 FROM client_consents cc
+      WHERE cc.client_id = rp.client_id
+        AND cc.org_id = rp.org_id
+        AND cc.kind = 'dispute_authorization'
+        AND cc.revoked_at IS NOT NULL)
+   AND NOT EXISTS (
+     SELECT 1 FROM contracts k
+       LEFT JOIN contract_templates t
+         ON t.org_id = k.org_id AND t.template_key = k.template_key
+      WHERE k.org_id = rp.org_id
+        AND k.client_id = rp.client_id
+        AND k.status = 'signed'
+        AND (t.subtype = 'credit_repair' OR k.template_key ILIKE '%REPAIR%'))`;
+
+export const READ_ONLY_SQL = Object.freeze([REQUIRED_SQL, STORE_SQL, SLO_STORE_SQL, DISPUTE_SQL]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -257,7 +304,7 @@ async function countReading(ctx, sql, params) {
 }
 
 /**
- * Consent capture gap. One tripwire, four readings.
+ * Consent capture gap. One tripwire, five readings.
  * @param {object} [ctx]
  * @returns {Promise<Array<{ id: string, status: "PASS"|"FAIL"|"skip", detail: string, suggestedFix: string|null }>>}
  */
@@ -270,15 +317,18 @@ export async function gapChecks(ctx = {}) {
     let required;
     let store;
     let sloStore;
+    let dispute;
     if (!canQuery(ctx) || !orgId) {
       required = { skip: true };
       store = { skip: true };
       sloStore = { skip: true };
+      dispute = { skip: true };
     } else {
-      [required, store, sloStore] = await Promise.all([
+      [required, store, sloStore, dispute] = await Promise.all([
         countReading(ctx, REQUIRED_SQL, [orgId, demoOn, SOFT_PULL_KIND, TEST_CLIENT_EMAIL_RE]),
         countReading(ctx, STORE_SQL, [orgId, demoOn, TEST_CLIENT_EMAIL_RE]),
-        countReading(ctx, SLO_STORE_SQL, [orgId, demoOn, TEST_CLIENT_EMAIL_RE])
+        countReading(ctx, SLO_STORE_SQL, [orgId, demoOn, TEST_CLIENT_EMAIL_RE]),
+        countReading(ctx, DISPUTE_SQL, [orgId, demoOn, TEST_CLIENT_EMAIL_RE])
       ]);
     }
 
@@ -311,6 +361,14 @@ export async function gapChecks(ctx = {}) {
         (n) => `${n} roadmap ${n === 1 ? "order saved" : "orders saved"} an identity and no consent row in the last ${SLO_LOOKBACK_DAYS} days.`,
         SLO_FIX,
         skipDetail
+      ),
+      countRow(
+        "consent:dispute-required",
+        dispute,
+        `No active repair client older than ${DISPUTE_GRACE_DAYS} days is missing a dispute authorization or a signed repair agreement.`,
+        (n) => `${n} active repair ${n === 1 ? "client has" : "clients have"} been enrolled over ${DISPUTE_GRACE_DAYS} days and ${n === 1 ? "has" : "have"} neither a live dispute authorization nor a signed repair agreement.`,
+        DISPUTE_FIX,
+        skipDetail
       )
     ];
   } catch (err) {
@@ -319,7 +377,8 @@ export async function gapChecks(ctx = {}) {
       check("consent:page", "FAIL", detail, PAGE_FIX),
       check("consent:required", "FAIL", detail, REQUIRED_FIX),
       check("consent:store", "FAIL", detail, STORE_FIX),
-      check("consent:slo-store", "FAIL", detail, SLO_FIX)
+      check("consent:slo-store", "FAIL", detail, SLO_FIX),
+      check("consent:dispute-required", "FAIL", detail, DISPUTE_FIX)
     ];
   }
 }

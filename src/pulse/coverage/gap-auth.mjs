@@ -79,10 +79,27 @@ SELECT count(*)::int AS n
    )
 `.trim();
 
+/** What the app role must be able to do for sign-in, a session check, logout, a reset and a magic link. */
+export const SIGNIN_GRANTS = Object.freeze([
+  ["auth_attempts", "SELECT"], ["auth_attempts", "INSERT"],
+  ["staff", "SELECT"], ["staff", "UPDATE"],
+  ["sessions", "SELECT"], ["sessions", "INSERT"], ["sessions", "UPDATE"],
+  ["accounts", "SELECT"], ["accounts", "UPDATE"],
+  ["account_sessions", "SELECT"], ["account_sessions", "INSERT"], ["account_sessions", "UPDATE"],
+  ["password_resets", "SELECT"], ["password_resets", "INSERT"], ["password_resets", "UPDATE"],
+  ["account_magic_links", "SELECT"], ["account_magic_links", "INSERT"], ["account_magic_links", "UPDATE"]
+].map(([tbl, priv]) => Object.freeze({ tbl, priv })));
+
 // The same columns and joins verifySession() and verifyAccountSession() read
 // (src/auth/session.mjs, src/auth/account-session.mjs), minus their UPDATE.
 // A column that drifts away makes the real session check 500, and this fails
 // the same way. A bare token_hash count would not.
+//
+// missing_privs asks the database what the app role may do on the tables a
+// sign-in, a session check, a logout and a reset write to. Reading cannot show
+// a missing INSERT or UPDATE grant, and a missing grant is how login has
+// already 500ed once (db/migrations/105_login_path_grants.sql). NULL means
+// nothing is missing. This is a catalog read: it writes nothing.
 export const SESSION_READ_SQL = `
 /* gap:auth-session-read */
 SELECT
@@ -101,7 +118,11 @@ SELECT
        FROM account_sessions x
        JOIN accounts a ON a.id = x.account_id
       WHERE x.token_hash = $1
-  ) account_read) AS account_hits
+  ) account_read) AS account_hits,
+  (SELECT string_agg(v.tbl || ' ' || v.priv, ', ' ORDER BY v.tbl, v.priv)
+     FROM jsonb_to_recordset($2::jsonb) AS v(tbl text, priv text)
+    WHERE NOT has_table_privilege(current_user, 'public.' || v.tbl, v.priv)
+  ) AS missing_privs
 `.trim();
 
 // A sign-in that was said yes to but left no session behind. login() writes the
@@ -206,7 +227,7 @@ const SKIP_ENV = "no env in this run — the reset mail setup was not read";
 
 const FIX_LOGIN = "People cannot sign in. Read staff passwords and the sign-in tries. Do not reset a password from this pulse.";
 const FIX_MAGIC = "A sign-in link or a portal link had no email queued. Read EMAIL-PORTAL-MAGIC-LINK. Do not send from this pulse.";
-const FIX_SESSION = "The session tables could not be read, so a session check would 500 and logout cannot see the row. Do not write from this pulse.";
+const FIX_SESSION = "The session tables could not be read or written the way sign-in needs, so a session check would 500 and logout cannot revoke the row. Read the app role grants (db/migrations/105_login_path_grants.sql). Do not write from this pulse.";
 const FIX_SIGNIN = "A sign-in said yes and no session was made, so the person got an error. Read createSession and the account session insert. Do not write from this pulse.";
 const FIX_RESET = "Password reset mail cannot go out. Reset mail goes straight to Resend, not the message queue. Read RESEND_API_KEY and RESEND_FROM on Netlify. Do not send from this pulse.";
 
@@ -312,15 +333,23 @@ async function magicLink(db, orgId) {
 async function sessionRead(db) {
   const id = "gap:auth-session-read";
   try {
-    const out = await db.query(SESSION_READ_SQL, [SESSION_PROBE_HASH]);
+    const out = await db.query(SESSION_READ_SQL, [SESSION_PROBE_HASH, JSON.stringify(SIGNIN_GRANTS)]);
     const row = out && out.rows && out.rows[0];
-    if (!row || num(row.staff_hits) == null || num(row.account_hits) == null) {
+    if (!row || num(row.staff_hits) == null || num(row.account_hits) == null || row.missing_privs === undefined) {
       return check(id, "FAIL", "Session read did not come back.", FIX_SESSION);
+    }
+    const missing = String(row.missing_privs == null ? "" : row.missing_privs).trim();
+    if (missing) {
+      return check(id, "FAIL", `The app cannot do what sign-in needs on these tables: ${missing}.`, FIX_SESSION);
     }
   } catch (err) {
     return check(id, "FAIL", `Session read failed: ${clip(err)}`, FIX_SESSION);
   }
-  return check(id, "PASS", "Staff sessions and client sessions can be read the way sign-in reads them.");
+  return check(
+    id,
+    "PASS",
+    "Staff sessions and client sessions can be read the way sign-in reads them, and the app can write what sign-in writes."
+  );
 }
 
 async function signinNoSession(db) {
@@ -360,6 +389,11 @@ async function signinNoSession(db) {
   );
 }
 
+/** True inside the deployed function (Netlify runs functions on Lambda), false on a laptop. */
+function onServer(env) {
+  return !!(env && (env.AWS_LAMBDA_FUNCTION_NAME || env.LAMBDA_TASK_ROOT || env.NETLIFY));
+}
+
 /** A key that is empty, or a masked copy like ****************abcd, cannot send. */
 function envMissing(env) {
   const bad = [];
@@ -389,19 +423,30 @@ async function resetMail(db, env) {
   const bad = envMissing(env);
   if (bad.length) {
     const names = bad.join(" and ");
-    // This run holds a masked or empty copy. If Resend sent real mail this week,
-    // the live key works and this run is the odd one out (a laptop .env). Say so.
+    const verb = bad.length === 1 ? "is" : "are";
+    // On the live server the env IS the live value. A masked or empty key there
+    // is a real break, and older sends this week do not change that.
+    if (onServer(env)) {
+      return check(
+        id,
+        "FAIL",
+        `Reset and invite mail cannot go out: ${names} ${verb} not set to a real value on the live server. Resend sent ${sent7d} emails in 7 days, but that was before today's value.`,
+        FIX_RESET
+      );
+    }
+    // Off the server (a laptop .env) a masked copy is the odd one out. If Resend
+    // sent real mail this week, say skip and give the number. Do not say it is fine.
     if (sent7d > 0) {
       return check(
         id,
         "skip",
-        `This run's copy of ${names} is empty or masked, so it was not proved here. Resend sent ${sent7d} emails in 7 days, so the live key works.`
+        `This run is not the live server and its copy of ${names} is empty or masked, so it was not proved here. Resend sent ${sent7d} emails in 7 days.`
       );
     }
     return check(
       id,
       "FAIL",
-      `Reset and invite mail cannot go out: ${names} ${bad.length === 1 ? "is" : "are"} not set to a real value, and Resend sent no email in 7 days.`,
+      `Reset and invite mail cannot go out: ${names} ${verb} not set to a real value, and Resend sent no email in 7 days.`,
       FIX_RESET
     );
   }
