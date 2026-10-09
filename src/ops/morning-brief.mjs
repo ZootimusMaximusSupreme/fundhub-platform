@@ -43,6 +43,7 @@ import { loadCashflowByDay } from "../finance/cashflow.mjs";
 import { fromCents } from "../commissions/money.mjs";
 import { textMorningBrief } from "../pulse/notify.mjs";
 import { buildSuggestions } from "./suggestions.mjs";
+import { briefUrl } from "./brief-link.mjs";
 import { groupByOfferFunnel, groupClosers, loadOfferNumbers, readClosersByOffer, OFFER_NOTES } from "./brief-offers.mjs";
 
 export const MORNING_BRIEF_LIVE = true;
@@ -477,18 +478,21 @@ export function formatMorningText({ kind = "morning", now = new Date(), systems,
   // The last line is always the link to the full report (per offer, funnel
   // and closer). Owner-set 2026-10-05: the text is the summary, the stored
   // report is the detail.
-  lines.push("", `Full report: ${url || "not saved"}`);
+  // No link code (BRIEF_LINK_SECRET missing) → the text still goes out and
+  // says so plainly.
+  lines.push("", `Full report: ${url || "not available"}`);
   return lines.join("\n");
 }
 
 /* ---------- build, save, send ---------- */
 
 /** The report page the text links to (MB5): public/app/morning-brief.html.
-    Evening rows carry &kind=evening so the page opens the evening brief. */
-export function reportUrl(briefDate, env = process.env, kind = "morning") {
-  const base = String(env?.APP_BASE_URL || env?.URL || "https://fundhub.ai").replace(/\/+$/, "");
-  const tail = kind === "evening" ? "&kind=evening" : "";
-  return `${base}/app/morning-brief.html?date=${briefDate}${tail}`;
+    Evening rows carry &kind=evening so the page opens the evening brief. The
+    link carries a secret code (k=, src/ops/brief-link.mjs) so it opens with no
+    login and only for this org, kind and day. Returns null — never throws — when
+    no code can be made (no BRIEF_LINK_SECRET, or no org id). */
+export function reportUrl(briefDate, env = process.env, kind = "morning", orgId = null) {
+  return briefUrl({ orgId, kind, date: briefDate, env });
 }
 
 export async function buildMorningBrief(db, { orgId, kind = "morning", env = process.env, now = new Date(), pulse = null, scorecard = null, suggest = buildSuggestions, staffScope = null } = {}) {
@@ -529,7 +533,10 @@ export async function buildMorningBrief(db, { orgId, kind = "morning", env = pro
     loadTeam(db, { orgId, now, window, closerRows: nums ? nums.closers : null }),
     loadSuggestions(db, { orgId, briefDate, env, suggest, scorecard: card })
   ]);
-  const url = reportUrl(briefDate, env, kind);
+  const url = reportUrl(briefDate, env, kind, orgId);
+  if (!url) {
+    console.warn("[morning-brief] no report link: BRIEF_LINK_SECRET is missing or not usable. The text says the report is not available.");
+  }
   const text = formatMorningText({ kind, now, systems, marketing, money: moneySection, team, suggestions, reportUrl: url });
   return {
     org_id: orgId,

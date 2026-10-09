@@ -25,6 +25,12 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-09 — brief-link — missing_route
+- Cause: every morning and evening text ended with "Full report: <link>". The page behind it (`public/app/morning-brief.html`) was never built, so the link answered 404 for days and nothing noticed. The text was sent and logged, so every check said the text was fine.
+- Fix: built the page and a public data route (`api/public/morning-brief.mjs`). The link now carries a secret code, so it opens with no sign-in and only for the exact report. If the secret is missing the text says "Full report: not available" and the new beat goes red.
+- Guard added: beat `brief-link` (`src/pulse/beats/beat-brief-link.mjs`, tested in `beat-brief-link.test.mjs`). Every hour it reads the newest saved text, follows its real link, and checks the page opens (`link-saved`, `page-opens`, `report-loads`). Lesson: a check that proves "the text went out" does not prove "the link in the text works". Follow the link, the way a person would.
+- Incident: none (found by hand, before the beat existed)  PR: none
+
 ## 2026-10-09 — tripwire map — pulse_false_alarm
 - Cause: the tripwire map counted pages from the files on this Mac's disk. One page (`public/leads/…`) is git-ignored, so the test passed here and failed on GitHub for every branch since 2026-10-08.
 - Fix: count pages and desks from `git ls-files --cached --others --exclude-standard`, so ignored files never count and a new unstaged file still does.

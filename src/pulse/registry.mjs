@@ -38,6 +38,7 @@ export const ALLOWED_UNMONITORED = {
   "marketing/research/approve": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would stamp Chris's approval on a research report nobody read. Its read sibling marketing/research answers GET and is the monitored door for the research card.",
   "marketing/research/tweak": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would start a paid research run (model calls and web searches) that nobody asked for. The monitored door is marketing/research.",
   "marketing/research/brain": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would write a report into Company Brain and pay for embedding it. The monitored door is marketing/research.",
+  "public/morning-brief": "The secret link code in Chris's morning and evening text is the whole credential, so a GET without the exact date, kind and code answers 404 on purpose, and it answers that identically for a wrong code, an old date and a missing brief, so the door cannot be used to find out which reports exist. A plain ping would read that correct refusal as an outage every day (isUp counts 200, 400, 401, 403 and 405 as up, not 404). The watch for this surface is the brief-link beat (src/pulse/beats/beat-brief-link.mjs), which follows the real link from the newest text every hour and goes red if the page or this route stops answering.",
   "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting.",
   "404.html": "This is the missing-page file. Opening it is what a bad link does. A morning ping of the not-found page does not watch a product door.",
   "climate/404.html": "Climate site missing-page file. A morning ping of the not-found page does not watch the climate door. climate/index.html is the page the pulse pings.",
@@ -533,6 +534,10 @@ const DESK_FILES = [
   "money-next.html",
   "money-transfers.html",
   "money-alerts.html",
+  /* The page the "Full report" link in the morning and evening text opens. No sign-in: the
+     page loads no staff shell and answers 200 to a plain GET, so the ping is honest. The link
+     itself (page plus data route) is followed every hour by the brief-link beat. */
+  "morning-brief.html",
   "my-numbers.html",
   "ops-admin.html",
   "partner-galaxy.html",

@@ -61,6 +61,9 @@ const APP = path.resolve(HERE, "../../public/app");
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
    teleprompter-remote.html — pocket remote for the same shoot; no shell.js, no sign-in
+   morning-brief.html   — the daily brief Chris opens from his text with one tap; no
+                          sign-in, the long code in the link is the key, so no shell.js
+                          and no staff navigation (src/http/morning-brief-page.test.mjs)
    *.fragment.html      — a fragment, not a screen */
 const NO_SIDEBAR = new Set([
   "index.html",
@@ -87,7 +90,8 @@ const NO_SIDEBAR = new Set([
   "money-transfers.html",
   "money-alerts.html",
   "teleprompter.html",
-  "teleprompter-remote.html"
+  "teleprompter-remote.html",
+  "morning-brief.html"
 ]);
 
 function navHrefs(html) {

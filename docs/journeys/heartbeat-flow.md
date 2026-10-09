@@ -60,25 +60,27 @@ flowchart TD
 
 ## The hourly pulse (added 2026-10-09)
 
-Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. Tonight's pulse is the **read-only half**: each beat reads data through a box where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. The pulse is the **read-only half** (8 beats): each beat reads data through a box where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
 
 ```mermaid
 flowchart TD
     CLOCK["Every hour at minute 7<br/>pulse-hourly (Netlify scheduled function)"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
     PRE --> BOX["Open ONE read box<br/>BEGIN READ ONLY, staff scope, always rolled back"]
-    BOX --> BEATS["Run all 7 beats at once (13 s)"]
+    BOX --> BEATS["Run all 8 beats at once (13 s)"]
     BEATS --> B1["apply-links<br/>40 bank Apply pages an hour"]
     BEATS --> B2["pay-webhook<br/>door, sweeper, stuck inbox"]
     BEATS --> B3["vendor-keys<br/>Twilio, Resend, Commas accept the keys"]
     BEATS --> B4["text-path and email-path<br/>queue moving, templates ready, dispatcher alive"]
     BEATS --> B5["doors-live<br/>10 money doors and pages answer right"]
     BEATS --> B6["db-health<br/>pool writable, grants, connections"]
+    BEATS --> B7["brief-link<br/>the link in today's morning text really opens"]
     B1 --> DECIDE["Decide: new break, still broken, fixed"]
     B2 --> DECIDE
     B3 --> DECIDE
     B4 --> DECIDE
     B5 --> DECIDE
     B6 --> DECIDE
+    B7 --> DECIDE
     DECIDE --> TEXT["TEXT FIRST (6 s): Chris, and ntfy if the text fails"]
     TEXT --> REC["Then save (2.5 s): pulse_beats, pulse_incidents, pulse_bank_links"]
     REC --> BEAT["job heartbeat pulse-hourly<br/>red at the 6 a.m. check if it stops for 3 hours"]

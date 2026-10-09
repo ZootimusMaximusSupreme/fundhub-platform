@@ -199,6 +199,7 @@ import publicPartnerApply from "../../api/public/partner-apply.mjs";
 import publicFunnelCheckout from "../../api/public/funnel-checkout.mjs";
 import publicSloCheckout from "../../api/public/slo-checkout.mjs";
 import publicSloInterest from "../../api/public/slo-interest.mjs";
+import publicMorningBrief from "../../api/public/morning-brief.mjs";
 import publicSloPull from "../../api/public/slo-pull.mjs";
 import publicSloStatus from "../../api/public/slo-status.mjs";
 import publicSloRepairCheckout from "../../api/public/slo-repair-checkout.mjs";
@@ -853,6 +854,7 @@ export const ROUTES = {
      and writes nothing. POST writes a visit or a name/email/phone. No client,
      no card, no mail. */
   "public/slo-interest": publicSloInterest,
+  "public/morning-brief": publicMorningBrief,
   /* RB2B identified-visitor push. GET answers {ok:true} and writes nothing.
      POST needs ?secret= (RB2B_WEBHOOK_SECRET) — they document no signature,
      only a self-contained URL. Stores into events as rb2b.visitor_identified.

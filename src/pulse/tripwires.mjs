@@ -75,6 +75,10 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "desk:morning-brief.html":
+    "Owner-only report page: it opens from the secret link in Chris's own morning and evening text and never reaches a customer. Its guard is the brief-link beat.",
+  "route:public/morning-brief":
+    "Owner-only report data behind a secret link code, answers the same 404 to everyone without the exact code, never reaches a customer. Its guard is the brief-link beat.",
   "send:src/pulse/alerts.mjs":
     "Owner-only: the hourly pulse's alert texts and buzzes go to Chris's own number and ntfy topic. It never reaches a customer. Its heartbeat is job pulse-hourly.",
   "route:ops/notify-owner":
