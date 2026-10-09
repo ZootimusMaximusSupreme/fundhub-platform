@@ -138,13 +138,21 @@ test("outbox_drain: no waiting saves is skip", async () => {
   assert.equal(r.status, "skip");
 });
 
-test("outbox_drain: waiting saves and 5 min stale is FAIL", async () => {
+test("outbox_drain: waiting saves and 50 min stale is FAIL (red after 45 min, 3x the 15-min clock)", async () => {
   const r = await checkOutboxDrain(ctx({
     work: { ...NO_WORK, outbox_waiting: 1 },
-    beats: { outbox_drain: new Date("2026-10-06T12:55:00Z") }
+    beats: { outbox_drain: new Date("2026-10-06T12:10:00Z") }
   }));
   assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /red after 3 min/);
+  assert.match(r.detail, /red after 45 min/);
+});
+
+test("outbox_drain: 15 min since the last clock-tick drain is PASS, not a false alarm", async () => {
+  const r = await checkOutboxDrain(ctx({
+    work: { ...NO_WORK, outbox_waiting: 13 },
+    beats: { outbox_drain: new Date("2026-10-06T12:44:40Z") }
+  }));
+  assert.equal(r.status, "PASS");
 });
 
 test("outbox_drain: waiting saves and 30 s ago is PASS", async () => {
