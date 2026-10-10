@@ -468,7 +468,11 @@ export const NA_CONDITIONS = Object.freeze({
     problem(args) {
       return Array.isArray(args.boards) && args.boards.length > 0 && args.boards.every(isText)
         ? null
-        : "boards is not a list of board keys";,
+        : "boards is not a list of board keys";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row
