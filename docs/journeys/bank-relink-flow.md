@@ -81,12 +81,20 @@ flowchart TD
     E -->|yes| T[sendTemplated queues SMS-FINANCE-OS-RECONNECT]
     T -->|queued| K[reconnect_notified_at = now]
     T -->|opted out, template not approved| R[not marked: the next pass tries again]
+    R -.->|TODAY: the template is seeded NOT approved until the Reconnect screen ships| H[held: no text, no message row, every login keeps waiting]
     K --> F{client taps Reconnect, then finish}
     F -->|read worked| C[marker cleared: the episode is over]
     F -->|still broken| H[marker stays: no second text]
     C --> B[a later break starts a new episode: one more text]
 ```
 
+* THE TEXT IS HELD UNTIL THE RECONNECT SCREEN SHIPS. It says "tap Reconnect" and that button is not built, so
+  migration 474 seeds the template not approved and `sendTemplated` refuses it. The screen's change turns it on
+  with a new migration (`compliance_passed = true` for this one key). Until then the lane
+  `bank-relink-error-login-not-told` goes red when a paying client's login has been broken for 2 days and
+  nobody told them.
+* The job's candidate query leaves out clients who opted out of SMS and clients who do not pay, so they cannot
+  fill the daily batch of 200 and starve a paying client.
 * The text is queued AFTER the loop over clients, not inside it: a login that broke drops out of the list the loop
   walks (`clientsWithPlaid` lists active logins), so a client whose only login went bad would never be seen by a
   per-client step on the next pass. The step reads every `plaid_items` row in `error` with no marker.

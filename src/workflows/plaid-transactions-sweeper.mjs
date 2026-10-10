@@ -13,7 +13,9 @@
 //      the client must sign in again) — or any login an earlier day left there — gets
 //      ONE text: "your bank connection needs a quick reconnect in FinanceOS"
 //      (src/finance/bank-reconnect-notice.mjs). Finance OS clients and Blueprint
-//      buyers only; once per error episode. It runs after the loop, as its own step,
+//      buyers only; once per error episode. HELD: the template is seeded NOT
+//      approved (migration 474) until the Reconnect screen ships, so today this
+//      step queues nothing and marks nobody. It runs after the loop, as its own step,
 //      because a broken login drops out of clientsWithPlaid() — the list the loop
 //      walks — so a client's only login going bad would never be seen by a per-client
 //      step on the NEXT pass.

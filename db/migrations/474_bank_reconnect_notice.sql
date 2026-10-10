@@ -36,11 +36,29 @@
 -- It is not a credential and no API returns it.
 --
 --
--- *** 2. THE TEXT ***
+-- *** 2. THE TEXT — SEEDED NOT APPROVED, ON PURPOSE ***
 --
 -- Used by src/finance/bank-reconnect-notice.mjs through sendTemplated, which only
 -- queues; the dispatcher sends, behind dry-run, quiet hours and the opt-out read.
 -- FinanceOS tells and reminds. It never moves money.
+--
+-- THE ROW IS SEEDED WITH compliance_passed = false. The text tells the client to
+-- "tap Reconnect" in FinanceOS, and that button is not built yet (the back end,
+-- POST /api/banking/relink, is; the screen is not: docs/finance/bank-relink.md is its
+-- contract). A text that goes out tells a paying client to press a button that is not
+-- there, and a text cannot be taken back. sendTemplated refuses a template that is not
+-- approved (reason 'template_pending'), so until the screen ships the daily job queues
+-- nothing, writes no message row and leaves reconnect_notified_at NULL for every login.
+--
+-- WHEN THE SCREEN SHIPS, turn the text on in the SAME change as the screen: a new
+-- migration that sets compliance_passed = true for this key (and only this key). The
+-- next 07:00 UTC pass then texts every paying client whose login is still in 'error'
+-- once, because their marker is still NULL. Nothing is lost by waiting.
+--
+-- WHILE IT IS HELD the pulse still goes red (gap-bank-relink,
+-- bank-relink-error-login-not-told) the day a paying client's login has been broken
+-- for 2 days and nobody has told them. That is the point: a held text must not hide a
+-- client who is stuck. The red's fix line says the text is held on purpose.
 --
 -- The one {{bank.*}} tag is filled by that job, not by the client record:
 --   bank.name   the bank's own name, e.g. "Chase". "bank" when the name is not known.
@@ -67,6 +85,6 @@ SELECT o.id,
        'sms',
        NULL::text,
        $c$Fundhub alert: your {{bank.name}} connection needs a quick reconnect in FinanceOS. Open FinanceOS and tap Reconnect. Reply STOP to opt out.$c$,
-       true
+       false
   FROM orgs o
 ON CONFLICT (org_id, template_key) DO NOTHING;

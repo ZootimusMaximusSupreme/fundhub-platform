@@ -54,7 +54,8 @@
 //                 the one it had before. A login must never read "Connected" on the
 //                 strength of a button press.
 //               - Plaid answered but our own write was refused (write_failed): the
-//                 login works, so it stays active, and the failure is reported.
+//                 login works, so it stays active, its marker is cleared the same
+//                 way, and the failure is reported.
 //
 // ONE TEXT PER ERROR EPISODE. plaid_items.reconnect_notified_at (migration 474) is
 // set when the "needs a quick reconnect" text is queued (src/finance/
@@ -443,6 +444,17 @@ export async function finishRelink(db, {
   if (item.reason === REFRESH_REASONS.WRITE_FAILED) {
     // Plaid answered, so the login works; only our own write was refused. Active
     // stays true — reverting would tell the client to reconnect something that is fine.
+    // The bank answered, so the error episode is over too: clear the "we texted you"
+    // marker. Left set, a break months from now would find a login that is already
+    // marked as told, and the client would never be texted. Best effort — the database
+    // that refused one write may refuse this one, and the answer below must still come
+    // back as write_failed rather than a 500. If it is refused too, the marker stays
+    // set, which is no worse than before this call existed.
+    try {
+      await db.query(END_EPISODE_SQL, [itemRowId, orgId]);
+    } catch {
+      // Nothing more to do here: the failure is reported below.
+    }
     return {
       ok: false, reason: RELINK_REASONS.WRITE_FAILED, state: "active",
       error: item.error ?? null,

@@ -87,6 +87,25 @@ test("the SQL is one read, never selects the token, and asks for the job's own c
   assert.doesNotMatch(SRC, /fetch\(|api\.plaid\.com|sendTemplated|\bemit\(/);
 });
 
+test("the job's candidate query carries the SAME opt-out and audience block as this lane (only the parameter numbers differ)", () => {
+  // The job keeps non-paying and opted-out clients out in SQL, so a pile of logins it will
+  // never text cannot fill its batch of 200 and starve a paying client. If one file's block
+  // changes and the other's does not, the lane and the job disagree about who is waiting.
+  const norm = (s) => s.replace(/\s+/g, " ").replace(/\$\d+/g, () => "$n").trim();
+  const block = UNTOLD_SQL.slice(UNTOLD_SQL.indexOf("AND NOT EXISTS ("));
+  assert.ok(block.includes("opt_outs") && block.includes("FROM subscriptions") && block.includes("FROM transactions"),
+    "the block under test is the opt-out and audience predicates");
+  assert.ok(norm(JOB).includes(norm(block)), "the job's candidate query no longer has this lane's opt-out and audience block");
+});
+
+test("the red says the text is held on purpose until the Reconnect screen ships", async () => {
+  const row = judgeUntold({ clients: 1, logins: 1, oldest: "2026-10-08T07:00:00.000Z", last_code: "ITEM_LOGIN_REQUIRED" }, NOW);
+  assert.equal(row.status, "FAIL");
+  assert.match(row.suggestedFix, /held on purpose/);
+  assert.match(row.suggestedFix, /NOT approved/);
+  assert.match(row.suggestedFix, /Reconnect screen/);
+});
+
 test("no database is a skip with a reason, never a pass", async () => {
   const rows = await gapChecks({});
   assert.equal(rows.length, 1);

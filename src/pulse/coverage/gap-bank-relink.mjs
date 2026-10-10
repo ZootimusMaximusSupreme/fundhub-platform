@@ -29,8 +29,14 @@
 // break, then stamps plaid_items.reconnect_notified_at (migration 474). A login
 // in 'error' for more than two days with that stamp still empty went through at
 // least one pass that should have queued it and did not. Likely causes: the
-// SMS-FINANCE-OS-RECONNECT template is missing or not approved, the job's
-// reconnect step threw, or a pass has not run.
+// SMS-FINANCE-OS-RECONNECT template is not approved, the job's reconnect step
+// threw, or a pass has not run.
+//
+// THE TEXT IS HELD ON PURPOSE UNTIL THE RECONNECT SCREEN SHIPS. Migration 474 seeds
+// the template NOT approved, because the text tells the client to tap a Reconnect
+// button that is not built yet. This lane does not look at the template, so it goes
+// red the day a paying client's login has been broken for 2 days: a held text must
+// not hide a client who is stuck. The fix line below says so.
 //
 // READ ONLY. One SELECT. No text, no Plaid call, no write, no transaction
 // control. The access token column is only tested for NULL, never selected.
@@ -128,9 +134,10 @@ function reader(ctx) {
 
 const FIX =
   "Read plaid_items in 'error' with reconnect_notified_at empty, then the reconnect tally of the " +
-  "plaid-transactions-sweeper pass. Likely causes: the SMS-FINANCE-OS-RECONNECT template is missing or " +
-  "not approved (migration 474), or the reconnect step threw. Do not text from this check. " +
-  "Do not call Plaid. Do not auto-fix. Chris fixes reds.";
+  "plaid-transactions-sweeper pass. Likely causes: the SMS-FINANCE-OS-RECONNECT template is held on " +
+  "purpose (migration 474 seeds it NOT approved until the Reconnect screen ships; if the screen is " +
+  "live, approve it in a new migration), it is missing, or the reconnect step threw. " +
+  "Do not text from this check. Do not call Plaid. Do not auto-fix. Chris fixes reds.";
 
 /** judge — one row of UNTOLD_SQL → the check row. Pure. */
 export function judgeUntold(row, now = new Date()) {

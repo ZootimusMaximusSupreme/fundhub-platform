@@ -398,6 +398,34 @@ describe("finishRelink — the client says it is fixed", () => {
     assert.equal(db.state.items[0].link_state, "active", "reverting would send a client to reconnect a login that is fine");
   });
 
+  test("Plaid answered but our write was refused: the 'we texted you' marker is cleared too, so a LATER break is texted", async () => {
+    const db = fakeBankDb({ items: [login({ reconnect_notified_at: "2026-10-05T07:05:00.000Z" })] });
+    const plaid = plaidStub({ byToken: { [TOKEN_A]: [plaidAccount({ id: "p1", name: "x".repeat(600) })] } });
+    const r = await finish(db, plaid);
+    assert.equal(r.reason, RELINK_REASONS.WRITE_FAILED);
+    assert.equal(db.state.items[0].link_state, "active");
+    assert.equal(
+      db.state.items[0].reconnect_notified_at, null,
+      "the bank answered, so the episode is over — a marker left set would hide the next break from the text job"
+    );
+  });
+
+  test("...and if clearing the marker is refused as well, the answer is still write_failed — never a crash, and the marker is untouched", async () => {
+    const inner = fakeBankDb({ items: [login({ reconnect_notified_at: "2026-10-05T07:05:00.000Z" })] });
+    const db = {
+      state: inner.state,
+      calls: inner.calls,
+      query: (sql, params) => (/relink:episode-end/.test(sql) ? Promise.reject(new Error("db blip")) : inner.query(sql, params))
+    };
+    const plaid = plaidStub({ byToken: { [TOKEN_A]: [plaidAccount({ id: "p1", name: "x".repeat(600) })] } });
+    const r = await finish(db, plaid);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, RELINK_REASONS.WRITE_FAILED);
+    assert.equal(r.state, "active");
+    assert.equal(inner.state.items[0].link_state, "active");
+    assert.equal(inner.state.items[0].reconnect_notified_at, "2026-10-05T07:05:00.000Z");
+  });
+
   test("a login that is ALREADY active is a no-op: no Plaid call, no change, and a second tap is harmless", async () => {
     const db = fakeBankDb({ items: [login({ linkState: "active" })] });
     const plaid = plaidStub();

@@ -325,12 +325,14 @@ describe("the reconnect text, end to end (real template, real sendTemplated, rea
        FROM messages WHERE org_id = $1 AND client_id = $2 ORDER BY created_at, provider_ref`, [w.orgId, clientId]
   )).rows;
 
-  test("one pass: the subscriber is texted, the opted-out client is not, the non-subscriber is not, the unfixable login is not even looked at", async () => {
+  test("one pass: the subscriber is texted; the opted-out client, the non-subscriber and the unfixable login are kept out by the query itself", async () => {
     const r = await queueReconnectNotices(w.conn, { now: NOW });
-    assert.equal(r.checked, 3, "A, B and C; the ITEM_NOT_FOUND login is not a candidate");
+    // The candidate query carries the opt-out read and the audience (finance-os subscriber or
+    // paid Blueprint), so a pile of logins that will never be texted cannot fill the batch.
+    assert.equal(r.checked, 1, "only A: B opted out, C never subscribed, and ITEM_NOT_FOUND is not a reconnect code");
     assert.equal(r.queued, 1);
-    assert.equal(r.notEntitled, 1);
-    assert.deepEqual(r.notQueued, [{ itemRowId: itemB.id, reason: "opted_out" }]);
+    assert.equal(r.notEntitled, 0);
+    assert.deepEqual(r.notQueued, []);
     assert.deepEqual(r.errored, []);
 
     const msgs = await messagesFor(a);
@@ -354,9 +356,9 @@ describe("the reconnect text, end to end (real template, real sendTemplated, rea
     assert.equal((await w.item(itemNoFix.id)).reconnect_notified_at, null);
   });
 
-  test("the next morning: nothing more for the texted login — the opted-out and unsubscribed ones are looked at again", async () => {
+  test("the next morning: nothing more — A is marked as told, and B (opted out) and C (never subscribed) are still not candidates", async () => {
     const r = await queueReconnectNotices(w.conn, { now: new Date("2026-10-08T07:00:00.000Z") });
-    assert.equal(r.checked, 2);
+    assert.equal(r.checked, 0);
     assert.equal(r.queued, 0);
     assert.equal((await messagesFor(a)).length, 1);
   });

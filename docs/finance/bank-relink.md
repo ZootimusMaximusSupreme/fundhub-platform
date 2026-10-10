@@ -327,8 +327,20 @@ When a login goes to `needs_reconnect` for a reason a reconnect fixes, the clien
 
 > Fundhub alert: your Chase connection needs a quick reconnect in FinanceOS. Open FinanceOS and tap Reconnect. Reply STOP to opt out.
 
-* **Who:** a client with an active `finance-os` subscription, or who paid for the Capital Blueprint.
-  Nobody else is texted; their broken login only shows on this screen.
+**THE TEXT IS HELD UNTIL THE RECONNECT SCREEN SHIPS.** It tells the client to tap **Reconnect**, and that
+button is not built yet. A text that goes out cannot be taken back, so migration 474 seeds the template
+**not approved** (`compliance_passed = false`). `sendTemplated` refuses an unapproved template
+(`template_pending`), so today the daily job queues nothing, writes no message, and marks no login as told.
+Every login stays waiting. **Whoever ships the screen turns the text on in the same change**, with a new
+migration that sets `compliance_passed = true` for `SMS-FINANCE-OS-RECONNECT` and nothing else. The first
+07:00 UTC pass after that texts each paying client whose login is still broken, once. While it is held, the
+pulse lane `bank-relink-error-login-not-told` still goes red the day a paying client's login has been broken
+for 2 days with nobody told, so a held text never hides a client who is stuck.
+
+* **Who:** a client with an active `finance-os` subscription, or who paid for the Capital Blueprint, and who
+  has not opted out of SMS. The job's own query leaves everyone else out, so a login that will never be texted
+  cannot fill the daily batch of 200 ahead of a paying client's. Nobody else is texted; their broken login
+  only shows on this screen.
 * **Which codes:** only the `fix: "reconnect"` codes. Not a bank that is down (`check_again`), not a login
   Plaid cannot repair (`connect_again`), not a code nobody mapped.
 * **When:** the daily Plaid job (`plaid-transactions-sweeper`, 07:00 UTC) queues it right after the reads,
@@ -342,8 +354,8 @@ When a login goes to `needs_reconnect` for a reason a reconnect fixes, the clien
   as sent. The next morning's pass tries again while the login is still broken.
 * The bank's name is the one stored, with the sandbox label left off. "bank" when it is not known.
 * The wording lives in `message_templates` as `SMS-FINANCE-OS-RECONNECT` (migration 474, seeded the way
-  433, 444 and 471 seed theirs; an edited copy is never overwritten). A test renders the template against
-  the sentence the code stores, so the two cannot drift.
+  433, 444 and 471 seed theirs, except **not approved**; an edited copy is never overwritten). A test renders
+  the template against the sentence the code stores, so the two cannot drift.
 
 The screen should send the client to the same place the text does: the FinanceOS page, where the
 **Reconnect** button for a `needs_reconnect` login lives.
@@ -353,7 +365,7 @@ The screen should send the client to the same place the text does: the FinanceOS
 * `plaid_items.reconnect_notified_at` — `timestamptz`, nullable, no default. When the text was queued for the
   login's **current** error. `NULL` = not texted for this error (or no error). Cleared only by a `finish` whose read
   worked. Never returned by an API.
-* One SMS template, `SMS-FINANCE-OS-RECONNECT`.
+* One SMS template, `SMS-FINANCE-OS-RECONNECT`, seeded **not approved** (see §7).
 
 Nothing else changes. No login is deleted, no account is closed, no credential is touched.
 

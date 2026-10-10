@@ -9,6 +9,8 @@
 //   * a text to someone who never bought FinanceOS or the Blueprint;
 //   * a text marked as sent when it was refused (opted out, template not approved),
 //     so the client is never told;
+//   * the text going out BEFORE the Reconnect screen exists: it says "tap Reconnect",
+//     so migration 474 seeds it NOT approved, and the real sendTemplated refuses it;
 //   * the template and the sentence the code stores drifting apart.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -24,8 +26,13 @@ import { finishRelink } from "../banking/plaid-relink.mjs";
 import { refreshClientAccounts } from "../banking/plaid-refresh.mjs";
 import { encryptPlaidToken } from "../banking/plaid.mjs";
 import { fakeBankDb, plaidAccount, stubPlaid } from "../banking/plaid-fake-db.mjs";
+import { NOTIFY_CODES } from "../banking/plaid-item-errors.mjs";
 import { renderTemplate } from "../lib/render-template.mjs";
 import { isDraftTemplateRow } from "../messaging/draft-guard.mjs";
+import { sendTemplated } from "../workflows/messaging.mjs";
+import { FINANCE_OS_TIER } from "./finance-os-entitlement.mjs";
+import { PAID_TRANSACTION_STATUS } from "../entitlements/entitlements.mjs";
+import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
 import { EXPECTED_MIGRATIONS } from "../../db/expected-migrations.mjs";
 
 const ENV = Object.freeze({
@@ -271,6 +278,23 @@ describe("who is texted", () => {
     assert.equal((await pass(db, { send: sender().send })).checked, 0);
   });
 
+  test("the candidate QUERY keeps non-paying and opted-out clients out, so they cannot fill the batch and starve a paying client", async () => {
+    const db = fakeBankDb({ items: [login()] });
+    await pass(db, { send: sender().send });
+    const cand = db.calls.find((q) => /reconnect:candidates/.test(q.sql));
+    // Same predicates the lane (gap-bank-relink.mjs) uses; its test fails if the two drift.
+    assert.match(cand.sql, /NOT EXISTS \(\s*SELECT 1 FROM opt_outs o\s+WHERE o\.client_id = i\.client_id AND o\.channel = 'sms' AND o\.opted_in_at IS NULL/);
+    assert.match(cand.sql, /FROM subscriptions s[\s\S]*s\.tier = \$4::text AND s\.status = 'active'/);
+    assert.match(cand.sql, /FROM transactions t[\s\S]*resolve_product_id\(t\.org_id, t\.product_name\)/);
+    // The batch limit is still $2: "the batch is bounded" below reads params[1].
+    assert.deepEqual(cand.params, [
+      [...NOTIFY_CODES], DEFAULT_LIMIT, NOW.toISOString(), FINANCE_OS_TIER, BLUEPRINT_PRODUCT_CODE, PAID_TRANSACTION_STATUS
+    ]);
+    const used = [...cand.sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1]));
+    assert.equal(Math.max(...used), cand.params.length, "every parameter the query names is bound, and none is left over");
+    assert.deepEqual([...new Set(used)].sort(), ["1", "2", "3", "4", "5", "6"].map(Number).sort());
+  });
+
   test("logins whose code a reconnect cannot fix are not candidates — and cannot crowd the others out of a batch", async () => {
     const db = fakeBankDb({
       items: [
@@ -406,10 +430,13 @@ describe("migration 474 — the text", () => {
     assert.equal(seeded[1], TEMPLATE_KEY);
   });
 
-  test("seeded the way 433, 444 and 471 seed theirs: SMS, compliance passed, an edited copy is never overwritten", () => {
+  test("seeded as SMS and NOT approved — held until the Reconnect screen ships — and an edited copy is never overwritten", () => {
     assert.match(SQL, /INSERT INTO message_templates \(org_id, template_key, channel, subject, body, compliance_passed\)/);
     assert.match(SQL, /'sms',\s+NULL::text,/);
-    assert.match(SQL, /\$c\$[\s\S]*\$c\$,\s+true\s+FROM orgs o\s+ON CONFLICT \(org_id, template_key\) DO NOTHING;/);
+    // 433, 444 and 471 seed `true`. This one is `false` on purpose: the text tells the client
+    // to tap Reconnect, and that button is not built. Flipping it is a new migration, in the
+    // same change as the screen.
+    assert.match(SQL, /\$c\$[\s\S]*\$c\$,\s+false\s+FROM orgs o\s+ON CONFLICT \(org_id, template_key\) DO NOTHING;/);
   });
 
   test("the template ends with the opt-out line, spells the company Fundhub, and is not a draft", () => {
@@ -434,5 +461,97 @@ describe("migration 474 — the text", () => {
 
   test("the only tag is the one the job supplies", () => {
     assert.deepEqual([...seeded[2].matchAll(/\{\{\s*([\w.]+)\s*\}\}/g)].map((m) => m[1]), ["bank.name"]);
+  });
+});
+
+/* ── held until the Reconnect screen ships ───────────────────────────────────── */
+
+describe("the text is HELD: it says 'tap Reconnect', and that button is not built yet", () => {
+  // What the migration seeds, read from the file itself — so this proves 474 and the
+  // real sendTemplated together, not a stand-in's idea of either.
+  const SEED = /\$c\$([\s\S]*?)\$c\$,\s+(true|false)\s+FROM orgs o/.exec(SQL);
+  const BODY = SEED[1];
+  const APPROVED = SEED[2] === "true";
+
+  /** A database that holds the one template row 474 seeds, answers the opt-out read
+   *  with "not opted out", and RECORDS (and refuses) anything else. */
+  function seededDb() {
+    const other = [];
+    return {
+      other,
+      async query(sql) {
+        if (/FROM opt_outs/.test(sql)) return { rows: [] };
+        if (/FROM message_templates/.test(sql)) {
+          return { rows: [{ body: BODY, subject: null, compliance_passed: APPROVED }] };
+        }
+        other.push(String(sql).slice(0, 80));
+        throw new Error(`nothing else should run while the text is held: ${String(sql).slice(0, 60)}`);
+      }
+    };
+  }
+
+  test("what 474 seeds, the real sendTemplated refuses: template_pending, and no message row is written", async () => {
+    assert.equal(APPROVED, false, "474 must seed the text not approved until the Reconnect screen ships");
+    const held = seededDb();
+    const r = await sendTemplated(held, {
+      orgId: ORG, clientId: CLIENT, channel: "sms", templateKey: TEMPLATE_KEY, eventId: "reconnect:x:1",
+      context: { bank: { name: "Chase" } }
+    });
+    assert.deepEqual(r, { sent: false, reason: "template_pending" });
+    assert.deepEqual(held.other, [], "a message, an event or any other write was attempted");
+  });
+
+  test("a whole daily pass: nothing queued, nothing written, nobody marked as told, every login still waiting", async () => {
+    const db = fakeBankDb({
+      items: [
+        login({ id: ITEM_A }),
+        login({ id: ITEM_B, clientId: CLIENT_2, at: "2026-10-06T06:00:00.000Z" })
+      ]
+    });
+    const held = seededDb();
+    const r = await pass(db, { send: (_conn, args) => sendTemplated(held, args) });
+
+    assert.equal(r.checked, 2);
+    assert.equal(r.queued, 0, "a text went out before the Reconnect screen exists");
+    assert.deepEqual(r.notQueued.map((n) => n.reason), ["template_pending", "template_pending"]);
+    assert.deepEqual(r.errored, []);
+    assert.deepEqual(held.other, []);
+    for (const it of db.state.items) {
+      assert.equal(it.reconnect_notified_at, null, "marked as told, so the client would never be texted once it is turned on");
+    }
+
+    // Tomorrow it is the same, and the logins are still waiting: nothing is lost by the hold.
+    const again = await pass(db, { send: (_conn, args) => sendTemplated(held, args) });
+    assert.equal(again.checked, 2);
+    assert.equal(again.queued, 0);
+  });
+
+  test("no later migration may approve the text unless the Reconnect screen is in public/ — the approval and the button ship together", () => {
+    const approvers = readdirSync(MIGRATIONS)
+      .filter((f) => f.endsWith(".sql") && f !== FILE)
+      .filter((f) => readFileSync(join(MIGRATIONS, f), "utf8").includes(TEMPLATE_KEY));
+    if (approvers.length === 0) return; // nothing approves it: it stays held, which is the point
+    const APP = join(HERE, "..", "..", "public", "app");
+    const callsRelink = readdirSync(APP)
+      .filter((f) => /\.(js|html)$/.test(f))
+      .some((f) => readFileSync(join(APP, f), "utf8").includes("/api/banking/relink"));
+    assert.ok(
+      callsRelink,
+      `${approvers.join(", ")} names ${TEMPLATE_KEY}, but no page under public/app/ calls /api/banking/relink. ` +
+      "The text says 'tap Reconnect'. Do not turn it on before that button exists."
+    );
+  });
+
+  test("the day it is approved, every waiting login is texted once — the hold costs nobody their text", async () => {
+    const db = fakeBankDb({ items: [login({ id: ITEM_A }), login({ id: ITEM_B, clientId: CLIENT_2 })] });
+    const refused = sender({ sent: false, reason: "template_pending" });
+    await pass(db, { send: refused.send });
+    for (const it of db.state.items) assert.equal(it.reconnect_notified_at, null);
+
+    const approved = sender();
+    const r = await pass(db, { send: approved.send });
+    assert.equal(r.queued, 2);
+    assert.equal(approved.calls.length, 2);
+    assert.equal((await pass(db, { send: approved.send })).queued, 0, "and only once");
   });
 });

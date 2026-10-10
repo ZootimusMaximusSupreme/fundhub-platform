@@ -19,6 +19,21 @@
 // audience as the file-protection alerts (src/workflows/blueprint-finance-os-alerts.mjs
 // alertAudience). Anyone else's broken login is left for the screen and for staff.
 //
+// THE AUDIENCE IS IN THE CANDIDATE QUERY, NOT ONLY IN A GATE AFTER IT. A client who
+// does not pay, or who opted out of SMS, is never texted and so is never stamped — so
+// their login would sit at the front of an oldest-first batch every day, and once 200
+// of them piled up a paying client's later break would never make the batch. The query
+// leaves them out. The JS gates below stay as the second line (and as the seam a test
+// drives). The lane that watches this (src/pulse/coverage/gap-bank-relink.mjs) carries
+// the same two predicates; a test fails if the two files drift.
+//
+// THE TEXT IS HELD UNTIL THE RECONNECT SCREEN SHIPS. It says "tap Reconnect", and that
+// button is not built yet, so migration 474 seeds the template NOT approved.
+// sendTemplated refuses an unapproved template ('template_pending'), so until someone
+// approves it this job queues nothing, writes no message and stamps no login: every
+// login stays waiting, and the first pass after approval texts them once. Approving it
+// is a new migration in the SAME change as the screen (docs/finance/bank-relink.md §7).
+//
 // ONCE PER ERROR EPISODE. An episode starts when a login goes to 'error' and ends
 // when a read proves it works again (plaid-relink.mjs finishRelink). The state is
 // plaid_items.reconnect_notified_at (migration 474):
@@ -48,8 +63,10 @@
 // src/workflows/plaid-transactions-sweeper.mjs.
 
 import { sendTemplated as defaultSend } from "../workflows/messaging.mjs";
-import { financeOsEntitlement } from "./finance-os-entitlement.mjs";
+import { financeOsEntitlement, FINANCE_OS_TIER } from "./finance-os-entitlement.mjs";
 import { isCapitalBlueprintBuyer } from "../blueprint/coach-exception.mjs";
+import { PAID_TRANSACTION_STATUS } from "../entitlements/entitlements.mjs";
+import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
 import { describeItemError, NOTIFY_CODES } from "../banking/plaid-item-errors.mjs";
 
 export const TEMPLATE_KEY = "SMS-FINANCE-OS-RECONNECT";
@@ -102,9 +119,13 @@ export function planReconnectNotice(item) {
   };
 }
 
-/* Every login that is waiting for its one text. The credential column is not read.
-   The tag on the first line is for tests that stand in for the database; Postgres
-   ignores it. */
+/* Every login that is waiting for its one text, for a client who can be texted. The
+   credential column is not read. The tag on the first line is for tests that stand in
+   for the database; Postgres ignores it.
+   $1 the codes a reconnect fixes, $2 the batch size, $3 now, $4 the finance-os tier,
+   $5 the Blueprint product code, $6 the paid status.
+   The last two predicates are the audience (isNoticeAudience) and the opt-out read
+   (sendTemplated), written the way gap-bank-relink.mjs writes them. */
 const CANDIDATES_SQL = `/* reconnect:candidates */
   SELECT i.id, i.org_id, i.client_id, i.institution_name, i.last_error_code, i.last_error_at, i.updated_at
     FROM plaid_items i
@@ -115,6 +136,26 @@ const CANDIDATES_SQL = `/* reconnect:candidates */
      AND i.plaid_item_id IS NOT NULL
      AND i.plaid_item_id NOT LIKE 'mock:%'
      AND i.last_error_code = ANY($1::text[])
+     AND NOT EXISTS (
+           SELECT 1 FROM opt_outs o
+            WHERE o.client_id = i.client_id AND o.channel = 'sms' AND o.opted_in_at IS NULL
+         )
+     AND (
+           EXISTS (
+             SELECT 1 FROM subscriptions s
+              WHERE s.org_id = i.org_id AND s.client_id = i.client_id
+                AND s.tier = $4::text AND s.status = 'active'
+                AND s.effective_from <= $3::timestamptz
+                AND (s.effective_to IS NULL OR s.effective_to > $3::timestamptz)
+           )
+        OR EXISTS (
+             SELECT 1 FROM transactions t
+               JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+              WHERE t.org_id = i.org_id AND t.client_id = i.client_id
+                AND lower(p.code) = lower($5::text)
+                AND lower(btrim(COALESCE(t.status, ''))) = $6::text
+           )
+         )
    ORDER BY i.last_error_at ASC NULLS LAST, i.id ASC
    LIMIT $2`;
 
@@ -149,7 +190,9 @@ export async function queueReconnectNotices(conn, {
   const bounded = Math.max(1, Math.min(Number(limit) || DEFAULT_LIMIT, 1000));
   const out = { checked: 0, queued: 0, notEntitled: 0, notQueued: [], skipped: [], errored: [] };
 
-  const rows = (await conn.query(CANDIDATES_SQL, [NOTIFY_CODES, bounded])).rows;
+  const rows = (await conn.query(CANDIDATES_SQL, [
+    NOTIFY_CODES, bounded, nowDate.toISOString(), FINANCE_OS_TIER, BLUEPRINT_PRODUCT_CODE, PAID_TRANSACTION_STATUS
+  ])).rows;
   out.checked = rows.length;
 
   const audience = new Map(); // one entitlement answer per client per pass
