@@ -794,6 +794,15 @@
     return parts.join(" ");
   }
 
+  /**
+   * A phone never keeps a saved turn (owner, 2026-10-10: one stray tap on Turn left the words
+   * lying on their side). Turn is for the glass rig. On a phone only a link that says ?rot=
+   * turns the words. A tablet keeps its saved turn.
+   */
+  function turnFor(rot, isPhone, linkGaveRot) {
+    return isPhone && !linkGaveRot ? 0 : rot;
+  }
+
   /** The next quarter turn: 0, 90, 180, 270, then back to 0. */
   function nextRot(rot) {
     var order = [0, 90, 180, 270];
@@ -832,7 +841,7 @@
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
-    storedWpm: storedWpm, rigQuery: rigQuery, rigLook: rigLook, rigTransform: rigTransform, nextRot: nextRot
+    storedWpm: storedWpm, rigQuery: rigQuery, rigLook: rigLook, rigTransform: rigTransform, nextRot: nextRot, turnFor: turnFor
   };
 
   var doc = root.document;
@@ -866,6 +875,10 @@
   S.flipV = look.flipV;
   S.rot = look.rot;
   if (rigQ.mirror != null || rigQ.rot != null) save();
+  var phoneScreen = false;
+  try { phoneScreen = Math.min(root.screen.width, root.screen.height) < 600; } catch (e) { /* no screen */ }
+  var rotFromLink = !(rigQ.rot == null || rigQ.rot === "");
+  if (S.rot !== turnFor(S.rot, phoneScreen, rotFromLink)) { S.rot = 0; save(); }
   var learned = LS.get("keys", {});
   var queue = LS.get("queue", []);
 
@@ -2769,7 +2782,11 @@
       mb.textContent = S.mirror ? "Mirror on" : "Mirror off";
     }
     var tb = $("b-turn");
-    if (tb) tb.textContent = "Turn " + (S.rot || 0);
+    if (tb) {
+      tb.textContent = "Turn " + (S.rot || 0);
+      // No Turn button on a phone: a thumb hits it by mistake next to Record.
+      tb.style.display = phoneScreen && !rotFromLink ? "none" : "";
+    }
     var remote = $("b-remote");
     if (remote) {
       var k = filmKey();

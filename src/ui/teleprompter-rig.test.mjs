@@ -97,3 +97,14 @@ describe("pocket remote", () => {
     assert.doesNotMatch(REMOTE_HTML + REMOTE_SRC, /FundHub/);
   });
 });
+
+describe("a phone never keeps a stray turn (owner call 2026-10-10)", () => {
+  test("a saved turn is dropped on a phone, kept on a tablet, and a link's ?rot= still wins", () => {
+    const T = load("teleprompter.js").FundhubTeleprompter;
+    assert.equal(T.turnFor(90, true, false), 0);
+    assert.equal(T.turnFor(270, true, false), 0);
+    assert.equal(T.turnFor(90, true, true), 90);
+    assert.equal(T.turnFor(90, false, false), 90);
+    assert.equal(T.turnFor(0, true, false), 0);
+  });
+});

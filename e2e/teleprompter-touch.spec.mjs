@@ -582,7 +582,9 @@ test.describe("sideways phone: the controls take little room (owner call 2026-10
     // The controls and the thin line together stay under 100 px, so the words keep 290 of the 390.
     expect(m.bar.h + m.pulse.h).toBeLessThanOrEqual(100);
     expect(m.stage.h).toBeGreaterThanOrEqual(285);
-    for (const k of ["rec", "play", "up", "down", "mirror", "turn", "remote"]) {
+    // Turn is not on a phone (a stray tap laid the words on their side).
+    expect(m.turn.w).toBe(0);
+    for (const k of ["rec", "play", "up", "down", "mirror", "remote"]) {
       expect(m[k].w, k).toBeGreaterThan(20);
       expect(m[k].top, k).toBeGreaterThanOrEqual(0);
       expect(m[k].bottom, k).toBeLessThanOrEqual(m.vh);
@@ -591,5 +593,31 @@ test.describe("sideways phone: the controls take little room (owner call 2026-10
     // Tap targets stay usable.
     expect(m.rec.h).toBeGreaterThanOrEqual(38);
     expect(m.play.h).toBeGreaterThanOrEqual(38);
+  });
+});
+
+test.describe("a phone never shows the words lying on their side (owner call 2026-10-10)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const look = (page) => page.evaluate(() => ({
+    transform: document.getElementById("flip").style.transform,
+    turnShown: getComputedStyle(document.getElementById("b-turn")).display !== "none",
+    saved: JSON.parse(localStorage.getItem("fhtp.settings") || "{}").rot
+  }));
+
+  test("a turn saved by a stray tap is dropped on load, and the Turn button is gone", async ({ page }) => {
+    await open(page, { settings: { countdown: false, rot: 90 } });
+    const l = await look(page);
+    expect(l.transform).toBe("");
+    expect(l.turnShown).toBe(false);
+    expect(l.saved).toBe(0);
+  });
+
+  test("a rig link that says ?rot=90 still turns the words", async ({ page }) => {
+    await open(page);
+    await page.goto("/app/teleprompter.html?rot=90");
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    const l = await look(page);
+    expect(l.transform).toContain("rotate(90deg)");
+    expect(l.turnShown).toBe(true);
   });
 });
