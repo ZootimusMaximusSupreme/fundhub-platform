@@ -1,0 +1,273 @@
+import AVFoundation
+import Photos
+import UIKit
+
+/// Films at 1080p. The front camera tries 60 fps, then 30. It never asks for 4K.
+/// The back wide camera is the phone that sits and films him: the steadiest 1080p,
+/// and only if this phone has no front camera. The front preview stays a mirror.
+/// The back camera is not mirrored. HEVC, no bitrate cap, Dolby Vision when the
+/// camera has it. Each take is saved to Photos under its take name
+/// (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
+final class CameraController: NSObject, ObservableObject {
+
+    enum State: Equatable {
+        case idle
+        case noPermission(String)
+        case unavailable(String)
+        case ready
+        case recording(started: Date)
+        case saving
+    }
+
+    @Published private(set) var state: State = .idle
+    /// What the camera is really set to, in plain words: "Front camera · 1080p 1920×1080 · 60 fps · HEVC · mirrored".
+    @Published private(set) var summary: String = ""
+    /// When the camera could not give what Chris picked. Shown in red.
+    @Published private(set) var shortfall: String?
+    /// The last take saved, or what went wrong.
+    @Published private(set) var lastSaved: String?
+    @Published private(set) var lastError: String?
+
+    let session = AVCaptureSession()
+    private let queue = DispatchQueue(label: "ai.fundhub.prompter.camera")
+    private var device: AVCaptureDevice?
+    private var videoInput: AVCaptureDeviceInput?
+    private var audioInput: AVCaptureDeviceInput?
+    private let movieOutput = AVCaptureMovieFileOutput()
+    private var rotation: AVCaptureDevice.RotationCoordinator?
+    private var settings = PrompterSettings()
+    private var pendingName: String = "Take.mp4"
+    private var configured = false
+
+    /// Ask for camera and microphone, then set the camera up.
+    func start(with s: PrompterSettings) {
+        settings = s
+        guard s.recordOnThisDevice else {
+            state = .unavailable("Recording is off on this device. The camera behind the glass films.")
+            return
+        }
+        Task { @MainActor in
+            let cam = await AVCaptureDevice.requestAccess(for: .video)
+            let mic = await AVCaptureDevice.requestAccess(for: .audio)
+            guard cam else {
+                self.state = .noPermission("The camera is off for Fundhub Prompter. Turn it on in Settings › Fundhub Prompter.")
+                return
+            }
+            if !mic { self.lastError = "The microphone is off. Takes will have no sound." }
+            self.queue.async { self.configure(withAudio: mic) }
+        }
+    }
+
+    func stop() {
+        queue.async {
+            if self.session.isRunning { self.session.stopRunning() }
+        }
+    }
+
+    /// Settings changed (quality, frame rate, codec, steady, exposure, mirror).
+    func apply(_ s: PrompterSettings) {
+        settings = s
+        guard configured else { return }
+        queue.async { self.configureFormat() }
+    }
+
+    private func frontCamera() -> AVCaptureDevice? {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInTrueDepthCamera, .builtInWideAngleCamera],
+                                         mediaType: .video, position: .front).devices.first
+    }
+
+    /// The wide back camera. Not the ultra-wide and not the telephoto.
+    private func backCamera() -> AVCaptureDevice? {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera],
+                                         mediaType: .video, position: .back).devices.first
+    }
+
+    /// Front camera when this phone has one. Otherwise the back camera, so the preview stays up.
+    private func filmingCamera() -> AVCaptureDevice? {
+        frontCamera() ?? backCamera()
+    }
+
+    private func configure(withAudio: Bool) {
+        guard let cam = filmingCamera() else {
+            DispatchQueue.main.async { self.state = .unavailable("No front camera here. The words still roll.") }
+            return
+        }
+        device = cam
+        session.beginConfiguration()
+        session.sessionPreset = .inputPriority
+        do {
+            if videoInput == nil {
+                let vi = try AVCaptureDeviceInput(device: cam)
+                if session.canAddInput(vi) { session.addInput(vi); videoInput = vi }
+            }
+            if withAudio, audioInput == nil, let mic = AVCaptureDevice.default(for: .audio) {
+                let ai = try AVCaptureDeviceInput(device: mic)
+                if session.canAddInput(ai) { session.addInput(ai); audioInput = ai }
+            }
+        } catch {
+            session.commitConfiguration()
+            DispatchQueue.main.async { self.state = .unavailable("The camera did not start: \(error.localizedDescription)") }
+            return
+        }
+        if !session.outputs.contains(movieOutput), session.canAddOutput(movieOutput) {
+            session.addOutput(movieOutput)
+        }
+        session.commitConfiguration()
+        configured = true
+        configureFormat()
+        rotation = AVCaptureDevice.RotationCoordinator(device: cam, previewLayer: nil)
+        if !session.isRunning { session.startRunning() }
+        DispatchQueue.main.async { self.state = .ready }
+    }
+
+    /// Pick and lock the format, frame rate, steady mode and exposure. Runs on the camera queue.
+    private func configureFormat() {
+        guard let cam = device else { return }
+        let s = settings
+        let want = stabilizationMode(s.stabilization)
+        let infos: [CaptureChoice.FormatInfo] = cam.formats.enumerated().map { i, f in
+            let dims = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
+            let sub = CMFormatDescriptionGetMediaSubType(f.formatDescription)
+            return CaptureChoice.FormatInfo(
+                index: i, width: Int(dims.width), height: Int(dims.height),
+                maxFPS: f.videoSupportedFrameRateRanges.map { $0.maxFrameRate }.max() ?? 0,
+                stabilization: want == .off || f.isVideoStabilizationModeSupported(want),
+                videoRange: sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+                hdr: f.isVideoHDRSupported && sub != kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange && sub != kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+        }
+        let lens = cam.position == .back ? "back" : "front"
+        guard let pick = CaptureChoice.pickForLens(infos, lens: lens, wantStabilization: want != .off) else {
+            DispatchQueue.main.async { self.shortfall = "This camera has no 16:9 video format." }
+            return
+        }
+        let format = cam.formats[pick.index]
+        session.beginConfiguration()
+        do {
+            try cam.lockForConfiguration()
+            cam.activeFormat = format
+            let frame = CMTime(value: 1, timescale: CMTimeScale(pick.fps))
+            cam.activeVideoMinFrameDuration = frame
+            cam.activeVideoMaxFrameDuration = frame
+            if format.isVideoHDRSupported {
+                cam.automaticallyAdjustsVideoHDREnabled = false
+                cam.isVideoHDREnabled = true
+            }
+            if s.lockExposure {
+                if cam.isExposureModeSupported(.locked) { cam.exposureMode = .locked }
+            } else if cam.isExposureModeSupported(.continuousAutoExposure) {
+                cam.exposureMode = .continuousAutoExposure
+            }
+            cam.unlockForConfiguration()
+        } catch {
+            DispatchQueue.main.async { self.lastError = "The camera would not change: \(error.localizedDescription)" }
+        }
+        if let conn = movieOutput.connection(with: .video) {
+            mirror(conn)
+            if conn.isVideoStabilizationSupported {
+                conn.preferredVideoStabilizationMode = want
+            }
+            applyOutputSettings(conn)
+        }
+        session.commitConfiguration()
+        let codecWord = s.codec == .h264 ? "H.264" : "HEVC"
+        let front = cam.position != .back
+        let size: String
+        if pick.width == 3840 && pick.height == 2160 { size = "4K \(pick.width)×\(pick.height)" }
+        else if pick.width == 1920 && pick.height == 1080 { size = "1080p \(pick.width)×\(pick.height)" }
+        else { size = "\(pick.width)×\(pick.height)" }
+        let who = front ? "Front camera" : "Back camera"
+        var note = pick.shortfall
+        if note == nil && s.quality == .uhd4K && pick.width == 1920 && pick.height == 1080 {
+            note = "1920×1080 is 1080p. It is not 4K."
+        }
+        DispatchQueue.main.async {
+            self.summary = "\(who) · \(size) · \(pick.fps) fps · \(codecWord)" + (front ? " · mirrored" : "")
+            self.shortfall = note
+        }
+    }
+
+    private func stabilizationMode(_ s: PrompterSettings.Steady) -> AVCaptureVideoStabilizationMode {
+        switch s {
+        case .off: return .off
+        case .standard: return .standard
+        case .cinematic: return .cinematic
+        }
+    }
+
+    /// The front camera stays a mirror. The back camera is not flipped.
+    private func mirror(_ conn: AVCaptureConnection) {
+        guard conn.isVideoMirroringSupported else { return }
+        conn.automaticallyAdjustsVideoMirroring = false
+        conn.isVideoMirrored = device?.position != .back
+    }
+
+    /// Codec only. Apple publishes no bitrate, so this sets none. A cap would
+    /// squeeze the file. On iOS only keys the output lists may be set, or it
+    /// throws (Apple: AVCaptureMovieFileOutput.setOutputSettings(_:for:)).
+    private func applyOutputSettings(_ conn: AVCaptureConnection) {
+        let codec: AVVideoCodecType = settings.codec == .h264 ? .h264 : .hevc
+        guard movieOutput.availableVideoCodecTypes.contains(codec) else { return }
+        let keys = Set(movieOutput.supportedOutputSettingsKeys(for: conn))
+        guard keys.contains(AVVideoCodecKey) else { return }
+        movieOutput.setOutputSettings([AVVideoCodecKey: codec], for: conn)
+    }
+
+    // MARK: - Recording
+
+    var isRecording: Bool { if case .recording = state { return true } else { return false } }
+
+    /// Start a take. `name` is the take file name from the server.
+    func startRecording(name: String) {
+        guard case .ready = state else { return }
+        pendingName = name
+        let angle = rotation?.videoRotationAngleForHorizonLevelCapture ?? 90
+        queue.async {
+            guard let conn = self.movieOutput.connection(with: .video) else { return }
+            if conn.isVideoRotationAngleSupported(angle) { conn.videoRotationAngle = angle }
+            self.mirror(conn)
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension("mov")
+            self.movieOutput.startRecording(to: url, recordingDelegate: self)
+            DispatchQueue.main.async { self.state = .recording(started: Date()) }
+        }
+    }
+
+    func stopRecording() {
+        queue.async {
+            if self.movieOutput.isRecording { self.movieOutput.stopRecording() }
+        }
+    }
+}
+
+extension CameraController: AVCaptureFileOutputRecordingDelegate {
+    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo url: URL,
+                    from connections: [AVCaptureConnection], error: Error?) {
+        let name = pendingName
+        // A recording that stopped with an error can still hold a good file
+        // (for example the phone ran low on space); keep it if it says so.
+        let finished = (error as NSError?)?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool ?? (error == nil)
+        DispatchQueue.main.async { self.state = .saving }
+        guard finished else {
+            DispatchQueue.main.async {
+                self.state = .ready
+                self.lastError = "The take did not record: \(error?.localizedDescription ?? "unknown")"
+            }
+            return
+        }
+        Task {
+            let result = await PhotosSaver.save(movie: url, takeName: name)
+            await MainActor.run {
+                self.state = .ready
+                switch result {
+                case .success(let saved): self.lastSaved = "Saved to Photos: \(saved)"; self.lastError = nil
+                case .failure(let e): self.lastError = e.message
+                }
+            }
+        }
+    }
+}
+
+/// The camera keeps its own serial queue for every AVFoundation call and
+/// publishes only on the main queue.
+extension CameraController: @unchecked Sendable {}

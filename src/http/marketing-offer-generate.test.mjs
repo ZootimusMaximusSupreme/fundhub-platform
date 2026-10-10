@@ -14,6 +14,8 @@ import { runOfferJob } from "../marketing/offer-run.mjs";
 import { askAnthropic } from "../marketing/offer-transport.mjs";
 import { makeFakeDb } from "../marketing/fixtures/offer-fake-db.mjs";
 import { anthropicMessage, CANDIDATES_TEXT, SYNTHESIS_TEXT, panelsText } from "../marketing/fixtures/offer-replies.mjs";
+import { macAsk } from "../marketing/run-queue.mjs";
+import { costOfCalls } from "../marketing/model-prices.mjs";
 
 const ORG = randomUUID();
 const OWNER = { id: randomUUID(), org_id: ORG, role: "owner", token: "tok-owner" };
@@ -194,4 +196,62 @@ test("the background writer refuses anyone but an owner or admin, and a bad job 
   const ok = await post(OWNER.token, { job_id: randomUUID() });
   assert.equal(ok.status, 200);
   assert.equal(ran, 1);
+});
+
+// ── MARKETING_AI_RUNNER=local: the Mac runs the offer (src/marketing/ai-runner.mjs) ──
+
+test("local runner: Write offer saves the job, wakes nothing, and says it waits for the Mac", async () => {
+  const db = makeFakeDb({ staff: [OWNER] });
+  const wakes = [];
+  const r = res();
+  await handler(req(OWNER.token, { body: { avatar_summary: "AVATAR", ad_research_summary: "RESEARCH" } }), r,
+    { db, env: { ...ENV, MARKETING_AI_RUNNER: "local" }, wake: async (w) => { wakes.push(w); return { ok: true }; } });
+  assert.equal(r.code, 202, JSON.stringify(r.body));
+  assert.equal(r.body.ok, true);
+  assert.equal(r.body.started, false);
+  assert.equal(r.body.waiting_for, "mac");
+  assert.equal(r.body.message, "Saved. Waiting for your Mac to run it.");
+  assert.equal(r.body.job.status, "queued");
+  assert.deepEqual(wakes, []);
+  assert.equal(db.jobs[0].status, "queued");
+});
+
+test("local runner: the offer background function runs nothing, even for the owner", async () => {
+  const db = makeFakeDb({ staff: [OWNER] });
+  let ran = 0;
+  const worker = makeHandler({ database: db, env: { MARKETING_AI_RUNNER: "local" }, run: async () => { ran++; return { ok: true }; } });
+  const r = await worker(new Request("https://x.test/w", {
+    method: "POST", headers: { authorization: `Bearer ${OWNER.token}` }, body: JSON.stringify({ job_id: randomUUID() })
+  }));
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).waiting_for, "mac");
+  assert.equal(ran, 0);
+});
+
+test("the Mac writes the queued offer with Claude Code: same claim and save, model claude-code, cost $0", async () => {
+  const db = makeFakeDb({ staff: [OWNER] });
+  const r = res();
+  await handler(req(OWNER.token, { body: { avatar_summary: "AVATAR", ad_research_summary: "RESEARCH" } }), r,
+    { db, env: { ...ENV, MARKETING_AI_RUNNER: "local" } });
+  const jobId = r.body.job.id;
+  const asked = [];
+  // Stands in for callModel({provider:'claude-code'}): the same replies the API tests use.
+  const fakeCall = async (args) => {
+    asked.push(args.provider);
+    let text = SYNTHESIS_TEXT;
+    if (args.user.startsWith("Design SIX offers")) text = CANDIDATES_TEXT;
+    else if (args.user.startsWith("You are a panel of four judges")) {
+      text = panelsText([...new Set([...args.user.matchAll(/"blindId":"(Offer [A-F])"/g)].map((m) => m[1]))]);
+    }
+    return { mode: "live", text, error: null, status: 200, stopReason: "end_turn", servedModel: "claude-code", usage: { input_tokens: 10, output_tokens: 20 } };
+  };
+  const out = await runOfferJob(db, { jobId, orgId: ORG, ask: macAsk(fakeCall), modelName: "claude-code" });
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.ok(asked.length >= 3 && asked.every((p) => p === "claude-code"));
+  const one = await call(db, OWNER.token, { method: "GET", query: { id: jobId } });
+  assert.equal(one.body.job.status, "done");
+  assert.equal(one.body.offer.model, "claude-code");
+  assert.equal(one.body.offer.offer.name, "Live or We Keep Building");
+  assert.ok(one.body.offer.usage.calls.every((c) => c.model === "claude-code"));
+  assert.equal(costOfCalls(one.body.offer.usage.calls).cents, 0, "a real $0, never Opus prices");
 });

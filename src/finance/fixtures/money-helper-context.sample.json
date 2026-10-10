@@ -1,0 +1,477 @@
+{
+ "_note": "FinanceOS test client f1cb9c27 read with readContext (src/finance/money-helper.mjs) as of 2026-10-07 17:00 UTC, read only, 2026-10-07. Sandbox test data. One sample file: every persona in the money helper tests is this file.",
+ "today": "2026-10-07",
+ "asOf": "2026-10-07T17:00:00.000Z",
+ "overview": {
+  "client": {
+   "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+   "name": "Test Test"
+  },
+  "sandbox": true,
+  "accounts": [
+   {
+    "id": "c73daf51-36a8-4c25-a365-3b2281ae9fc7",
+    "name": "Business Checking",
+    "mask": "2202",
+    "type": "depository",
+    "subtype": "checking",
+    "kind": "business",
+    "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+    "institution": "First Platypus Bank (Plaid sandbox — test data)",
+    "current_cents": 1875000,
+    "available_cents": 1875000,
+    "limit_cents": null,
+    "provider": "plaid"
+   },
+   {
+    "id": "3d9afef8-9644-4872-8049-087965036a2c",
+    "name": "Personal Checking",
+    "mask": "1101",
+    "type": "depository",
+    "subtype": "checking",
+    "kind": "personal",
+    "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+    "institution": "First Platypus Bank (Plaid sandbox — test data)",
+    "current_cents": 421055,
+    "available_cents": 421055,
+    "limit_cents": null,
+    "provider": "plaid"
+   },
+   {
+    "id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+    "name": "Business Amex",
+    "mask": "4404",
+    "type": "credit",
+    "subtype": "credit card",
+    "kind": "business",
+    "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+    "institution": "First Platypus Bank (Plaid sandbox — test data)",
+    "current_cents": 540000,
+    "available_cents": 1960000,
+    "limit_cents": 2500000,
+    "provider": "plaid"
+   },
+   {
+    "id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+    "name": "Personal Visa",
+    "mask": "3303",
+    "type": "credit",
+    "subtype": "credit card",
+    "kind": "personal",
+    "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+    "institution": "First Platypus Bank (Plaid sandbox — test data)",
+    "current_cents": 132040,
+    "available_cents": 667960,
+    "limit_cents": 800000,
+    "provider": "plaid"
+   },
+   {
+    "id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+    "name": "Sample Chase Ink",
+    "mask": "9999",
+    "type": "credit",
+    "subtype": "credit card",
+    "kind": "business",
+    "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+    "institution": null,
+    "current_cents": 200000,
+    "available_cents": null,
+    "limit_cents": 1000000,
+    "provider": "manual"
+   },
+   {
+    "id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+    "name": "SBA Loan",
+    "mask": null,
+    "type": "loan",
+    "subtype": null,
+    "kind": "business",
+    "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+    "institution": null,
+    "current_cents": 4800000,
+    "available_cents": null,
+    "limit_cents": null,
+    "provider": "manual"
+   }
+  ],
+  "debt": {
+   "total_cents": 5672040,
+   "is_floor": false,
+   "by_kind": {
+    "personal": 132040,
+    "business": 5540000,
+    "unknown": null
+   },
+   "by_container": [
+    {
+     "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+     "name": "Fundhub LLC",
+     "kind": "business",
+     "owed_cents": 5540000,
+     "is_floor": false
+    },
+    {
+     "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+     "name": "Chris (personal)",
+     "kind": "personal",
+     "owed_cents": 132040,
+     "is_floor": false
+    }
+   ],
+   "cards": [
+    {
+     "account_id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+     "name": "Business Amex",
+     "mask": "4404",
+     "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+     "kind": "business",
+     "balance_cents": 540000,
+     "limit_cents": 2500000,
+     "room_cents": 1960000,
+     "used_pct": 21.6,
+     "due_on": "2026-10-15",
+     "min_due_cents": 13500,
+     "past_due_cents": null
+    },
+    {
+     "account_id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+     "name": "Personal Visa",
+     "mask": "3303",
+     "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+     "kind": "personal",
+     "balance_cents": 132040,
+     "limit_cents": 800000,
+     "room_cents": 667960,
+     "used_pct": 16.5,
+     "due_on": "2026-10-25",
+     "min_due_cents": 4000,
+     "past_due_cents": null
+    },
+    {
+     "account_id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+     "name": "Sample Chase Ink",
+     "mask": "9999",
+     "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+     "kind": "business",
+     "balance_cents": 200000,
+     "limit_cents": 1000000,
+     "room_cents": 800000,
+     "used_pct": 20,
+     "due_on": null,
+     "min_due_cents": null,
+     "past_due_cents": null
+    }
+   ],
+   "loans": [
+    {
+     "account_id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+     "name": "SBA Loan",
+     "mask": null,
+     "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+     "kind": "business",
+     "balance_cents": 4800000,
+     "due_on": "2026-11-01",
+     "payment_cents": 105000
+    }
+   ]
+  },
+  "upcoming": [
+   {
+    "type": "bill",
+    "name": "Uber",
+    "on": "2026-10-08",
+    "amount_cents": 3400
+   },
+   {
+    "type": "bill",
+    "name": "Netflix",
+    "on": "2026-10-10",
+    "amount_cents": 1549
+   },
+   {
+    "type": "bill",
+    "name": "Whole Foods",
+    "on": "2026-10-11",
+    "amount_cents": 8100
+   },
+   {
+    "type": "bill",
+    "name": "GEICO",
+    "on": "2026-10-13",
+    "amount_cents": 18000
+   },
+   {
+    "type": "bill",
+    "name": "Shell Gas Station",
+    "on": "2026-10-14",
+    "amount_cents": 4340
+   },
+   {
+    "type": "card_due",
+    "name": "Business Amex",
+    "on": "2026-10-15",
+    "amount_cents": 13500
+   },
+   {
+    "type": "bill",
+    "name": "Staples Office Supplies",
+    "on": "2026-10-21",
+    "amount_cents": 12000
+   },
+   {
+    "type": "card_due",
+    "name": "Personal Visa",
+    "on": "2026-10-25",
+    "amount_cents": 4000
+   },
+   {
+    "type": "loan_due",
+    "name": "SBA Loan",
+    "on": "2026-11-01",
+    "amount_cents": 105000
+   },
+   {
+    "type": "bill",
+    "name": "Oakwood Apartments Rent",
+    "on": "2026-11-02",
+    "amount_cents": 250000
+   },
+   {
+    "type": "bill",
+    "name": "AWS",
+    "on": "2026-11-03",
+    "amount_cents": 42000
+   },
+   {
+    "type": "bill",
+    "name": "HubSpot Software Subscription",
+    "on": "2026-11-04",
+    "amount_cents": 30000
+   }
+  ],
+  "tip": null
+ },
+ "plans": [
+  {
+   "id": "a159a137-ac24-4398-9f83-e236c36f6126",
+   "kind": "clarity",
+   "owed_to": "Fundhub LLC",
+   "label": null,
+   "invoice_id": null,
+   "name": "Fundhub payment plan",
+   "status": "open",
+   "settled_at": null,
+   "original_cents": 150000,
+   "paid_cents": 50000,
+   "left_cents": 100000,
+   "is_late": true,
+   "days_late": 4,
+   "late_cents": 50000,
+   "next": {
+    "seq": 2,
+    "due_on": "2026-10-03",
+    "left_cents": 50000,
+    "state": "late"
+   },
+   "installments": [
+    {
+     "id": "4ee59d27-c7de-405f-8d79-8b9d9b68db73",
+     "seq": 1,
+     "due_on": "2026-09-03",
+     "amount_cents": 50000,
+     "paid_cents": 50000,
+     "left_cents": 0,
+     "paid_at": "2026-09-03T17:00:00.000Z",
+     "state": "paid",
+     "days_late": 0
+    },
+    {
+     "id": "824c8cf7-3885-4570-8e72-4858aca547d5",
+     "seq": 2,
+     "due_on": "2026-10-03",
+     "amount_cents": 50000,
+     "paid_cents": 0,
+     "left_cents": 50000,
+     "paid_at": null,
+     "state": "late",
+     "days_late": 4
+    },
+    {
+     "id": "450d518e-7c52-4c0f-bb3d-9caeb3db6997",
+     "seq": 3,
+     "due_on": "2026-11-03",
+     "amount_cents": 50000,
+     "paid_cents": 0,
+     "left_cents": 50000,
+     "paid_at": null,
+     "state": "upcoming",
+     "days_late": 0
+    }
+   ]
+  },
+  {
+   "id": "349f9ed9-e596-4670-a60c-5c835a42dc1c",
+   "kind": "bnpl",
+   "owed_to": "Fundhub LLC",
+   "label": null,
+   "invoice_id": null,
+   "name": "buy now, pay later plan with Fundhub LLC",
+   "status": "open",
+   "settled_at": null,
+   "original_cents": 60000,
+   "paid_cents": 30000,
+   "left_cents": 30000,
+   "is_late": false,
+   "days_late": 0,
+   "late_cents": 0,
+   "next": {
+    "seq": 3,
+    "due_on": "2026-11-15",
+    "left_cents": 15000,
+    "state": "upcoming"
+   },
+   "installments": [
+    {
+     "id": "d98b740d-0cf0-4e5c-841b-4831781cf5c4",
+     "seq": 1,
+     "due_on": "2026-09-16",
+     "amount_cents": 15000,
+     "paid_cents": 15000,
+     "left_cents": 0,
+     "paid_at": "2026-09-16T17:00:00.000Z",
+     "state": "paid",
+     "days_late": 0
+    },
+    {
+     "id": "7d668cb0-e778-4548-b294-f56e55306d02",
+     "seq": 2,
+     "due_on": "2026-10-16",
+     "amount_cents": 15000,
+     "paid_cents": 15000,
+     "left_cents": 0,
+     "paid_at": "2026-10-07T01:26:56.202Z",
+     "state": "paid",
+     "days_late": 0
+    },
+    {
+     "id": "8da1d20d-f139-450c-afd0-48f1001b50ac",
+     "seq": 3,
+     "due_on": "2026-11-15",
+     "amount_cents": 15000,
+     "paid_cents": 0,
+     "left_cents": 15000,
+     "paid_at": null,
+     "state": "upcoming",
+     "days_late": 0
+    },
+    {
+     "id": "afc66558-d7a9-4452-a5b2-216f66f11424",
+     "seq": 4,
+     "due_on": "2026-12-15",
+     "amount_cents": 15000,
+     "paid_cents": 0,
+     "left_cents": 15000,
+     "paid_at": null,
+     "state": "upcoming",
+     "days_late": 0
+    }
+   ]
+  }
+ ],
+ "pins": [
+  {
+   "id": "due:d6ce2c94-3632-4c63-af98-802fef41ac62:2026-10-15",
+   "date": "2026-10-15",
+   "kind": "due",
+   "title": "Pay Business Amex",
+   "detail": "The due date on your latest statement.",
+   "amount_cents": 13500,
+   "bank": "First Platypus Bank (Plaid sandbox — test data)",
+   "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+   "status": "planned",
+   "source": "dues",
+   "can_mark": []
+  },
+  {
+   "id": "clarity:7d668cb0-e778-4548-b294-f56e55306d02",
+   "date": "2026-10-16",
+   "kind": "due",
+   "title": "Buy now, pay later plan with Fundhub LLC: payment 2 of 4",
+   "detail": "Paid on Oct 7.",
+   "amount_cents": 15000,
+   "bank": null,
+   "container_id": null,
+   "status": "done",
+   "source": "clarity",
+   "can_mark": []
+  },
+  {
+   "id": "due:f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea:2026-10-25",
+   "date": "2026-10-25",
+   "kind": "due",
+   "title": "Pay Personal Visa",
+   "detail": "The due date on your latest statement.",
+   "amount_cents": 4000,
+   "bank": "First Platypus Bank (Plaid sandbox — test data)",
+   "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+   "status": "planned",
+   "source": "dues",
+   "can_mark": []
+  },
+  {
+   "id": "due:6af70e59-db5c-4220-95b7-69f6a4a87ff8:2026-11-01",
+   "date": "2026-11-01",
+   "kind": "due",
+   "title": "Pay SBA Loan",
+   "detail": "Worked out from the due day on file (the 1st).",
+   "amount_cents": 105000,
+   "bank": null,
+   "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+   "status": "planned",
+   "source": "dues",
+   "can_mark": []
+  },
+  {
+   "id": "clarity:450d518e-7c52-4c0f-bb3d-9caeb3db6997",
+   "date": "2026-11-03",
+   "kind": "due",
+   "title": "Fundhub payment plan: payment 3 of 3",
+   "detail": "Owed to Fundhub LLC.",
+   "amount_cents": 50000,
+   "bank": null,
+   "container_id": null,
+   "status": "planned",
+   "source": "clarity",
+   "can_mark": []
+  },
+  {
+   "id": "clarity:8da1d20d-f139-450c-afd0-48f1001b50ac",
+   "date": "2026-11-15",
+   "kind": "due",
+   "title": "Buy now, pay later plan with Fundhub LLC: payment 3 of 4",
+   "detail": "Owed to Fundhub LLC.",
+   "amount_cents": 15000,
+   "bank": null,
+   "container_id": null,
+   "status": "planned",
+   "source": "clarity",
+   "can_mark": []
+  },
+  {
+   "id": "due:d6ce2c94-3632-4c63-af98-802fef41ac62:2026-11-15",
+   "date": "2026-11-15",
+   "kind": "due",
+   "title": "Pay Business Amex",
+   "detail": "Worked out from the due day on file (the 15th). The amount shows once that statement is out.",
+   "amount_cents": null,
+   "bank": "First Platypus Bank (Plaid sandbox — test data)",
+   "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+   "status": "planned",
+   "source": "dues",
+   "can_mark": []
+  }
+ ],
+ "agentPins": [],
+ "openTasks": [],
+ "extras": {}
+}

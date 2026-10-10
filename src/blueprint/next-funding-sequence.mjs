@@ -1,4 +1,9 @@
 // Capital Blueprint — Next Funding Sequence (staff-set ready date → closer task).
+//
+// The staff date WINS when it is set. When it is not, the file math suggests one
+// (src/blueprint/next-sequence-plan.mjs computeNextSequenceDate) and the same
+// closer alert goes out on that date (sweepSuggested, same file). One task per
+// date or per finished sequence: see nextSequenceAlertKey.
 
 import { mergeCustomFields } from "../workflows/custom-fields.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -47,27 +52,53 @@ export async function dueForNextSequenceAlert(db, { today = new Date() } = {}) {
   return r.rows;
 }
 
+/** The closer task's title. The push after a sequence is "the next funding sequence". */
+export function nextSequenceTitle(basis = "staff") {
+  return basis === "suggested"
+    ? "Next funding sequence — file is ready, close it (date from the file math)"
+    : "Next funding sequence — file is ready, close it (date set by staff)";
+}
+
+/**
+ * The task's dedupe key. It is also the task's `body` (createTask stores the key
+ * there), so it must be the same every day.
+ *   staff      one task per staff date.
+ *   suggested  one task per finished sequence: keyed on the last funded round, not
+ *              on the date, because a suggestion can move. A later funded round
+ *              is a later sequence and earns its own alert.
+ */
+export function nextSequenceAlertKey({ clientId, basis = "staff", readyDate = null, alertKey = null }) {
+  return basis === "suggested"
+    ? `blueprint-next-sequence:${clientId}:after:${alertKey}`
+    : `blueprint-next-sequence:${clientId}:${readyDate}`;
+}
+
 export async function createNextSequenceCloserTask(db, {
   orgId,
   clientId,
   readyDate,
-  now = new Date()
+  basis = "staff",
+  alertKey = null
 } = {}) {
   if (!orgId || !clientId || !readyDate) {
     return { created: false, reason: "missing_args" };
   }
+  if (basis === "suggested" && !alertKey) return { created: false, reason: "missing_args" };
   const blueprint = await isCapitalBlueprintBuyer(db, { orgId, clientId });
   if (!blueprint) return { created: false, reason: "not_blueprint_buyer" };
 
-  const eventId = `blueprint-next-sequence:${clientId}:${readyDate}`;
+  /* The body IS the dedupe key (createTask stores the key there). It used to be
+     { readyDate, alertedAt: now }, which changed on every run, so the same client
+     got a new task every day. A stable string makes a second run create nothing. */
+  const key = nextSequenceAlertKey({ clientId, basis, readyDate, alertKey });
   return createTask(db, {
     orgId,
     clientId,
-    title: "Next Funding Sequence — file ready, close the next round",
+    title: nextSequenceTitle(basis),
     sourceWorkflow: SOURCE_WORKFLOW,
     assigneeRole: "closer",
-    eventId,
-    body: { readyDate, alertedAt: now.toISOString() }
+    eventId: key,
+    body: key
   });
 }
 
@@ -82,8 +113,7 @@ export async function sweep(db, { now = new Date() } = {}) {
       const out = await createNextSequenceCloserTask(db, {
         orgId: row.org_id,
         clientId: row.client_id,
-        readyDate: row.ready_date,
-        now
+        readyDate: row.ready_date
       });
       if (out.created) tally.created += 1;
       else tally.skipped.push({ clientId: row.client_id, reason: out.reason || "not_created" });

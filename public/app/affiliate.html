@@ -94,6 +94,9 @@ table.grid tbody tr:hover{background:var(--soft)}
 .linkrow input:focus{outline:none;border-color:#3F3F46}
 .linkrow .btn{background:transparent;border-color:var(--cardline);color:var(--cardtext)}
 .linkrow .btn:hover{background:#1A1A1D;border-color:#3F3F46}
+.offerrow{margin-top:13px}
+.offerrow .offername{font-size:var(--fs-caption);font-weight:600;color:var(--cardtext)}
+.offerrow .linkrow{margin-top:6px}
 
 .banner{border:1px solid var(--alert);background:rgba(242,166,155,.14);border-radius:10px;padding:14px 16px;display:flex;gap:13px;align-items:flex-start;margin-top:14px}
 .banner .bi{font-family:var(--mono);font-size:var(--fs-body);color:#6E2A22;line-height:1.2}
@@ -202,10 +205,14 @@ table.grid tbody tr:hover{background:var(--soft)}
       <div class="linkbox">
         <div class="lt"></div>
         <div class="lb">
-          <div class="eyebrow">YOUR REFERRAL LINK</div>
+          <div class="eyebrow">YOUR REFERRAL LINKS — ONE PER OFFER</div>
+          <!-- One row per offer (owner call 2026-10-06): same code, different page.
+               Rows come from GET /api/read/affiliate-portal (offerLinks), built by
+               src/affiliates/share-link.mjs. This page never assembles a link. -->
+          <div id="offerLinks">
+            <div class="linkrow"><input readonly value="" placeholder="No code yet" aria-label="Referral link"></div>
+          </div>
           <div class="linkrow">
-            <input id="reflink" readonly value="">
-            <button class="btn mono" id="copyLink">Copy link</button>
             <button class="btn mono" id="copyCode">Copy code</button>
           </div>
           <div style="display:flex;gap:26px;margin-top:15px;flex-wrap:wrap">
@@ -610,7 +617,21 @@ function copy(txt,btn,label){
   else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
        try{document.execCommand('copy')}catch(e){} document.body.removeChild(ta);done();}
 }
-document.getElementById('copyLink').addEventListener('click',function(){copy(document.getElementById('reflink').value,this,'Copy link')});
+/* paintOfferLinks — one row per offer: name, the link, Copy link. */
+function paintOfferLinks(links){
+  var box=document.getElementById('offerLinks');
+  if(!box||!links||!links.length) return;
+  box.innerHTML='';
+  links.forEach(function(l){
+    var row=document.createElement('div');row.className='offerrow';
+    var nm=document.createElement('div');nm.className='offername';nm.textContent=l.name;
+    var lr=document.createElement('div');lr.className='linkrow';
+    var inp=document.createElement('input');inp.readOnly=true;inp.value=l.url;inp.setAttribute('aria-label',l.name+' link');
+    var b=document.createElement('button');b.type='button';b.className='btn mono';b.textContent='Copy link';
+    b.addEventListener('click',function(){copy(l.url,b,'Copy link')});
+    lr.appendChild(inp);lr.appendChild(b);row.appendChild(nm);row.appendChild(lr);box.appendChild(row);
+  });
+}
 document.getElementById('copyCode').addEventListener('click',function(){
   var code=(document.getElementById('affCode').textContent||'').trim();
   if(!code||code==='No code yet') return;
@@ -648,14 +669,12 @@ renderLeads(); renderPayouts();
   function applyCode(code) {
     var c = String(code || "").trim();
     var el = document.getElementById("affCode");
-    var link = document.getElementById("reflink");
+    /* The links themselves come from the portal read (paintOfferLinks). */
     if (!c) {
       if (el) el.textContent = "No code yet";
-      if (link) link.value = "";
       return;
     }
     if (el) el.textContent = c;
-    if (link) link.value = "https://fundhub.ai/start?ref=" + c;
   }
 
   /* num — a count the endpoint did not send is UNKNOWN, and unknown is null.
@@ -1160,11 +1179,9 @@ renderLeads(); renderPayouts();
     if (!aff) return;
     if (aff.code) {
       setText("affCode", aff.code);
-      var link = byId("reflink");
-      /* The link comes from the server, which builds it from the configured base
-         URL. This page does not assemble one from location.origin — a copy of
-         the link taken off a preview deploy would then point at the preview. */
-      if (link && aff.shareUrl) link.value = aff.shareUrl;
+      /* The links come from the server, one per offer. This page does not
+         assemble one — a link built here could drift from the one that credits. */
+      paintOfferLinks(aff.offerLinks);
     }
     var name = String(aff.name || "").trim();
     var who = byId("affWho");

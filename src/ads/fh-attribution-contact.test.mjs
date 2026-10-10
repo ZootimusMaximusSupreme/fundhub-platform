@@ -443,3 +443,28 @@ describe("fbclid, fbc and fbp", () => {
     assert.equal((p.doc.listeners.click || []).length, 0, "no Pay-press listener");
   });
 });
+
+describe("fh-attribution.js counts a direct affiliate link click (2026-10-06)", () => {
+  const clicks = (p) => p.posts.filter((x) => x.url === "https://fundhub.ai/api/public/affiliate-click");
+
+  test("roadmap?a1=…&ref=… counts one click for that code", () => {
+    const p = runRoadmap({ search: "?a1=AFF-000121&ref=AFF-000121" });
+    assert.deepEqual(clicks(p).map((c) => c.body), [{ code: "AFF-000121", source: "offer/roadmap" }]);
+  });
+
+  test("a reload in the same tab does not count it twice", () => {
+    const first = runRoadmap({ search: "?a1=AFF-000121" });
+    const again = runRoadmap({ search: "?a1=AFF-000121", storage: first.store });
+    assert.equal(clicks(again).length, 0);
+  });
+
+  test("start.html already counted it (via=start): no second click", () => {
+    const p = runRoadmap({ search: "?a1=AFF-000121&ref=AFF-000121&via=start" });
+    assert.equal(clicks(p).length, 0);
+  });
+
+  test("the paid return's slo_ order ref is not a code", () => {
+    const p = runRoadmap({ search: "?ref=slo_abc123def&client_id=00000000-0000-0000-0000-000000000000" });
+    assert.equal(clicks(p).length, 0);
+  });
+});

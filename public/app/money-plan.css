@@ -1,0 +1,151 @@
+/* Plan section — FinanceOS.sections.plan (money-plan.js).
+   Every rule is under .fh-plan (mount() paints that wrapper), so the section can
+   sit inside the one FinanceOS page without its .card / .grid / .row rules
+   reaching a neighbour, and the page needs no other rules to paint it.
+   8px spacing scale. No px font sizes: the page wrapper is .app, so
+   fundhub-brand.css sizes type — h1/h2 title, .big metric, .caption / .eyebrow /
+   .tag / th caption, everything else body (UI-STANDARDS §12.7). Small text in
+   this section is small because it carries .caption, not because of a size here. */
+
+.fh-plan{--surface:#FFFFFF;--text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2)}
+.fh-plan button{font:inherit;color:inherit;cursor:pointer}
+.fh-plan ol,.fh-plan ul{list-style:none;margin:0;padding:0}
+.fh-plan .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* base pieces — the same shapes the other money sections use */
+.fh-plan .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-plan .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.fh-plan .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.fh-plan .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.fh-plan .caption{color:var(--text-dim)}
+.fh-plan .big,.fh-plan .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-plan .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.fh-plan .num{font-weight:500;color:var(--ink)}
+.fh-plan .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.fh-plan .tiles>*{grid-column:span 4}
+.fh-plan .tile{display:flex;flex-direction:column;gap:8px}
+.fh-plan .btn-primary,.fh-plan .btn{min-height:44px;padding:8px 16px;border-radius:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;white-space:nowrap}
+.fh-plan .btn-primary{border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+.fh-plan .btn-primary:hover{background:var(--ink2)}
+.fh-plan .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.fh-plan .btn:hover{border-color:var(--ink)}
+.fh-plan .btn-text{min-height:40px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.fh-plan .btn-primary[disabled],.fh-plan .btn[disabled]{opacity:.6;cursor:default}
+.fh-plan :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* A part of the plan that did not load. Literal amber, so it stays a warning on
+   every tenant, and it says so in words (UI-STANDARDS §12.6). */
+.fh-plan .fail{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+.fh-plan .fail .btn-text{color:#92400E}
+
+/* the month bar — stays on a phone */
+.fh-plan .monthbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.fh-plan .monthbar h2{font-weight:600;color:var(--ink)}
+.fh-plan .month-nav{display:flex;gap:8px;flex-wrap:wrap}
+
+/* the calendar — a Mon–Sun table */
+.fh-plan .cal{padding:0;overflow:hidden;margin-bottom:24px}
+.fh-plan .cal-grid{width:100%;border-collapse:collapse;table-layout:fixed}
+.fh-plan .cal-grid th{padding:8px;text-align:left;font-family:var(--mono);font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--line)}
+.fh-plan .cal-grid td{vertical-align:top;height:96px;padding:8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.fh-plan .cal-grid td:last-child{border-right:0}
+.fh-plan .cal-grid tbody tr:last-child td{border-bottom:0}
+.fh-plan .cal-out{background:var(--soft)}
+.fh-plan .cal-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-height:24px}
+.fh-plan .dnum{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink)}
+.fh-plan .is-past .dnum{color:var(--text-faint)}
+.fh-plan .cal-pins{display:flex;flex-direction:column;gap:8px}
+.fh-plan .ic{display:inline-flex;flex:0 0 auto;width:16px;height:16px}
+.fh-plan .ic svg{display:block;width:16px;height:16px}
+
+/* TODAY — an ink ring AND the word, never colour alone (UI-STANDARDS §12.6).
+   The ring is a colour token, not --spectrum (§12.6: a gradient paints nothing). */
+.fh-plan .is-today{box-shadow:inset 0 0 0 2px var(--ink)}
+.fh-plan .today-tag{display:inline-block;background:var(--ink);color:var(--paper);border-radius:999px;padding:0 8px;font-family:var(--sans);font-weight:600;letter-spacing:normal;text-transform:none;white-space:nowrap}
+
+/* A pin in a cell: the title, and the amount under it. At least 40px tall
+   (UI-STANDARDS §5); a long title truncates and the whole line is in the
+   button's tooltip. */
+.fh-plan .pin{display:flex;align-items:flex-start;gap:8px;width:100%;min-height:40px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-align:left;line-height:1.3}
+.fh-plan .pin:hover{border-color:var(--ink)}
+.fh-plan .pin-body{display:flex;flex-direction:column;flex:1 1 auto;min-width:0}
+.fh-plan .pin-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fh-plan .pin-a{font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fh-plan .more{min-height:40px;margin-top:8px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+/* STATUS. A shape and a word, never colour alone: done carries a check and is
+   struck through, missed carries an "!" and literal amber, a passed date with
+   nothing recorded sits before the Today ring and is muted. The list and the
+   panel say each one in words. */
+.fh-plan .pin.st-done{color:var(--text-dim)}
+.fh-plan .pin.st-done .pin-t{text-decoration:line-through}
+.fh-plan .pin.st-missed{background:#FEF3C7;border-color:#FCD34D;color:#92400E;font-weight:600}
+.fh-plan .pin.st-past{color:var(--text-dim)}
+
+/* the list — the same pins, day by day; the whole view on a phone */
+.fh-plan .plan-list{margin-bottom:24px}
+.fh-plan .day{padding:16px 0;border-top:1px solid var(--line)}
+.fh-plan .day:first-child{border-top:0;padding-top:0}
+.fh-plan .day:last-child{padding-bottom:0}
+.fh-plan .day-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.fh-plan .rows{display:flex;flex-direction:column;gap:8px}
+.fh-plan .row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 16px;align-items:center;width:100%;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-align:left}
+.fh-plan .row:hover{border-color:var(--ink)}
+.fh-plan .row-main{display:flex;flex-direction:column;min-width:0}
+.fh-plan .row-t{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-plan .row-end{display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right}
+.fh-plan .row.st-done .row-t{color:var(--text-dim);text-decoration:line-through}
+.fh-plan .st{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;white-space:nowrap;color:var(--text-dim)}
+.fh-plan .st.is-planned{color:var(--ink)}
+.fh-plan .st.is-done{border-color:var(--ink);color:var(--ink);font-weight:600}
+.fh-plan .st.is-missed{background:#FEF3C7;color:#92400E;border-color:#FCD34D;font-weight:600}
+
+/* the panel for one pin — it floats above the page, so it is the one place
+   here with more than the resting shadow (UI-STANDARDS §12.3) */
+.fh-plan .pl-layer[hidden]{display:none}
+.fh-plan .pl-scrim{position:fixed;inset:0;background:rgba(10,10,10,.32);z-index:60}
+.fh-plan .pl-drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);z-index:61;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding:24px;background:var(--surface);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(10,10,10,.12)}
+.fh-plan .pl-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.fh-plan .pl-kind{display:inline-flex;align-items:center;gap:8px;margin:0}
+.fh-plan .pl-drawer h2{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-plan .pl-when{color:var(--ink)}
+.fh-plan .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:0}
+.fh-plan .facts dd{margin:0;overflow-wrap:anywhere}
+.fh-plan .pl-why p{color:var(--ink)}
+.fh-plan .pl-why .eyebrow{margin-bottom:8px}
+.fh-plan .pl-act{display:flex;flex-direction:column;align-items:flex-start;gap:8px;border-top:1px dashed var(--line);padding-top:16px}
+.fh-plan .act-msg:empty{display:none}
+.fh-plan .pl-drawer a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+/* empty and error */
+.fh-plan .empty,.fh-plan .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.fh-plan .empty h2,.fh-plan .error h2{font-weight:600;color:var(--ink)}
+.fh-plan .empty p,.fh-plan .error p{max-width:60ch}
+
+/* loading — skeletons in the real layout */
+.fh-plan .skel{display:flex;flex-direction:column;gap:8px}
+.fh-plan .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fh-plan-sk 1.2s ease-in-out infinite}
+.fh-plan .sk-s{height:12px;width:40%}
+.fh-plan .sk-m{height:16px;width:70%}
+.fh-plan .sk-l{height:32px;width:60%}
+@keyframes fh-plan-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){
+  .fh-plan .sk{animation:none}
+}
+
+@media (max-width:1100px){
+  .fh-plan .pin .ic{display:none}
+}
+/* A phone: the calendar collapses to the list, one column, no sideways page
+   scroll (UI-STANDARDS §11). */
+@media (max-width:760px){
+  .fh-plan .card{padding:16px}
+  .fh-plan .tiles>*{grid-column:span 6}
+  .fh-plan .tiles>:first-child{grid-column:span 12}
+  .fh-plan .tiles{gap:8px}
+  .fh-plan .cal{display:none}
+  .fh-plan .row{grid-template-columns:auto minmax(0,1fr);padding:8px}
+  .fh-plan .row-end{grid-column:2;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;text-align:left}
+  .fh-plan .pl-drawer{padding:16px}
+  .fh-plan .facts{grid-template-columns:minmax(0,1fr)}
+}

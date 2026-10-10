@@ -111,8 +111,12 @@ export async function enqueue(tx, {
 
    Takes the next queued job for a partner, respecting the concurrency cap. The
    UPDATE is conditional on status still being 'queued', so two workers racing
-   cannot both claim one job — the loser gets no row and moves on. */
-export async function claim(tx, { partnerId }) {
+   cannot both claim one job — the loser gets no row and moves on.
+
+   assetKinds / excludeAssetKinds (added 2026-10-06, src/marketing/ai-runner.mjs):
+   with MARKETING_AI_RUNNER=local, Netlify never claims a 'copy' job (the model writes
+   it) and the Mac runner claims only those. Neither given: any job, as before. */
+export async function claim(tx, { partnerId, assetKinds = null, excludeAssetKinds = null }) {
   const settings = await tx.query(
     `SELECT max_concurrent_jobs FROM partner_module_settings WHERE partner_id = $1`,
     [partnerId]
@@ -126,16 +130,26 @@ export async function claim(tx, { partnerId }) {
   );
   if (running.rows[0].n >= cap) return null;
 
+  const params = [partnerId];
+  let scope = "";
+  if (Array.isArray(assetKinds)) {
+    params.push(assetKinds.map(String));
+    scope += ` AND spec->>'assetKind' = ANY($${params.length}::text[])`;
+  }
+  if (Array.isArray(excludeAssetKinds) && excludeAssetKinds.length) {
+    params.push(excludeAssetKinds.map(String));
+    scope += ` AND NOT (coalesce(spec->>'assetKind', '') = ANY($${params.length}::text[]))`;
+  }
   const { rows } = await tx.query(
     `UPDATE generation_jobs SET status = 'running', started_at = now(), attempt = attempt + 1
       WHERE id = (
         SELECT id FROM generation_jobs
-         WHERE partner_id = $1 AND status = 'queued'
+         WHERE partner_id = $1 AND status = 'queued'${scope}
          ORDER BY created_at
          FOR UPDATE SKIP LOCKED
          LIMIT 1)
       RETURNING *`,
-    [partnerId]
+    params
   );
   return rows[0] || null;
 }

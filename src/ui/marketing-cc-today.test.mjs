@@ -379,6 +379,21 @@ describe("Waiting on you: scripts ready and stuck jobs with Retry", () => {
     assert.match(html, /<li class="row" data-wait="stuck" data-job-row="00000000-0000-4000-8000-000000000501">/);
   });
 
+  test("MARKETING_AI_RUNNER=local: the Mac's queue row sits after scripts and before stuck jobs; no key or nothing queued, no row", () => {
+    const line = "2 AI jobs are waiting for your Mac.";
+    const waiting = cc.waitingList(view({ mac_queue: { waiting: 2, running: 1, line } }), VIDEOS_NONE, NOW, {});
+    assert.deepEqual(plain(waiting.map((r) => r.kind)), ["scripts", "mac", "stuck"]);
+    assert.equal(waiting[1].what, "Waiting for your Mac to run it");
+    assert.equal(waiting[1].why, line);
+    assert.match(cc.renderWaiting(view({ mac_queue: { waiting: 2, running: 1, line } }), VIDEOS_NONE, NOW, {}), /<li class="row" data-wait="mac">/);
+    const running = cc.waitingList(view({ mac_queue: { waiting: 0, running: 1, line } }), VIDEOS_NONE, NOW, {});
+    assert.equal(running.find((r) => r.kind === "mac").what, "Your Mac is running it now");
+    for (const mac_queue of [{ waiting: 0, running: 0, line: "" }, null]) {
+      const none = cc.waitingList(view({ mac_queue }), VIDEOS_NONE, NOW, {});
+      assert.deepEqual(plain(none.map((r) => r.kind)), ["scripts", "stuck"]);
+    }
+  });
+
   test("after a retry the row says it is running again and the button goes; a job that fails again gets it back", () => {
     const id = "00000000-0000-4000-8000-000000000501";
     const at = Date.parse("2026-10-12T19:00:00Z");

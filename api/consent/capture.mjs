@@ -14,9 +14,17 @@
 //        → { ok, consent }
 //
 // *** THIS ENDPOINT DOES NOT PULL ANYBODY'S CREDIT AND SENDS NOTHING. ***
-// It writes rows to `client_consents` and returns. The pull path is
+// It writes rows to `client_consents`. The pull path is
 // api/finance/soft-pull.mjs, which now refuses unless a row written here says
 // the consumer agreed.
+//
+// ONE SIDE EFFECT BEYOND CONSENTS (2026-10-09). Storing a `dispute_authorization`
+// grant also starts the Repair letter writer, if that client's repair card is
+// waiting on 'analysis' (src/repair/start-letters.mjs). That writes dispute
+// cases, dispute items and dispute letters, saves each letter as a client
+// file, and moves the repair card. It still pulls no credit, mails no
+// letter and emails the client nothing. The signature is saved first, and the
+// answer to the caller is the same `{ ok, consent }` whatever the writer does.
 //
 // A POST, NOT A GET, for grant AND for revoke. Same reasoning as the SSN reveal
 // in api/pii.mjs and the soft-pull request next door: both are actions with a
@@ -67,6 +75,7 @@ import { mayAuthorizeDisputes } from "../../src/consent/dispute-consent.mjs";
 import { signSoftPullApproveUrl } from "../../src/consent/approve-token.mjs";
 import { secretFromEnv } from "../../src/documents/signed-url.mjs";
 import { readIdentity } from "../../src/pii/index.mjs";
+import { startLettersAfterAuthorization } from "../../src/repair/start-letters.mjs";
 import {
   captureConsent,
   revokeConsent,
@@ -462,6 +471,24 @@ async function handlePost(req, res, principal, orgId) {
     documentId: isUuid(body.document_id) ? String(body.document_id).trim() : null,
     expiresAt: body.expires_at ?? null
   });
+
+  /* THE SIGNATURE STARTS THE LETTERS. The writer refuses with `no_authorization`
+     when the client's documents land before they sign, saves nothing, and
+     nothing used to try again. So once the authorization is stored, if this
+     client's repair card is waiting on 'analysis', run the SAME call the
+     documents door runs (src/repair/start-letters.mjs). It makes letters and
+     mails nothing; mailing stays a staff click.
+
+     THE SIGNATURE IS ALREADY SAVED, AND NOTHING BELOW MAY UNDO OR HIDE IT.
+     startLettersAfterAuthorization never throws, and a client with no repair
+     card, or a card on another stage, gets no writer call at all. */
+  if (kind === "dispute_authorization") {
+    await startLettersAfterAuthorization(db, {
+      orgId,
+      clientId,
+      staffId: principal.kind === "staff" ? principal.staffId : null
+    });
+  }
 
   return res.status(200).json({ ok: true, consent });
 }

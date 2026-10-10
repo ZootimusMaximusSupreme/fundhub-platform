@@ -9,6 +9,7 @@
 --   key          landing page                        lane     other
 --   book_call    https://apply.fundhub.ai/watch      sorting  book_call true; mix {"standard":2,"sorting":1}
 --   roadmap_147  https://apply.fundhub.ai/roadmap    uwiq     mix {"standard":1}
+--   optimize     https://fundhub.ai/optimize         unknown  credit repair (473)
 --
 -- PLAN-CHOSEN, NOT IN THE SPEC (recorded in the U03 change manifest):
 --   * offer_key. The spec names the column but no values. book_call sells the
@@ -49,7 +50,8 @@ SELECT p.org_id, f.key, f.name, f.landing_url, f.offer_key, f.lane::ad_lane, f.b
   JOIN orgs o ON o.id = p.org_id AND o.is_default
  CROSS JOIN (VALUES
    ('book_call',   'Book a call', 'https://apply.fundhub.ai/watch',   'funding_dfy', 'sorting', true,  '{"standard":2,"sorting":1}'),
-   ('roadmap_147', 'Roadmap',     'https://apply.fundhub.ai/roadmap', 'slo_roadmap', 'uwiq',    false, '{"standard":1}')
+   ('roadmap_147', 'Roadmap',     'https://apply.fundhub.ai/roadmap', 'slo_roadmap', 'uwiq',    false, '{"standard":1}'),
+   ('optimize',    'Credit repair', 'https://fundhub.ai/optimize',  NULL,          'unknown', false, '{}')
  ) AS f(key, name, landing_url, offer_key, lane, book_call, format_mix)
  WHERE p.slug = 'fundhub-house'
 ON CONFLICT (org_id, key) DO NOTHING;

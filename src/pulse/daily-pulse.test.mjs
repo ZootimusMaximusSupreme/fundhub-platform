@@ -45,29 +45,22 @@ const LIVE_PAGES = {
   "/api/read/underwrite": { status: 401, text: '{"error":"unauthorized"}' }
 };
 
-/* The time Denver's clock shows when the cron fires on a given day. A cron
-   with a TZ= prefix fires on that zone's clock (Inngest's syntax); a bare cron
-   fires on UTC. */
-function denverTimeWhenCronFires(cron, ymd) {
+/* A TZ= cron fires on that zone's own clock. Arizona does not change clocks. */
+function zoneTimeWhenCronFires(cron, zone) {
   const tz = /^TZ=(\S+)\s+/.exec(cron);
+  assert.equal(tz && tz[1], zone);
   const [minute, hour] = cron.replace(/^TZ=\S+\s+/, "").trim().split(/\s+/).map(Number);
-  if (tz && tz[1] === "America/Denver") return { hour, minute };
-  assert.equal(tz, null, `unexpected cron timezone ${tz && tz[1]}`);
-  const pad = (n) => String(n).padStart(2, "0");
-  const fired = new Date(`${ymd}T${pad(hour)}:${pad(minute)}:00Z`);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Denver", hour: "numeric", minute: "numeric", hourCycle: "h23"
-  }).formatToParts(fired);
-  return {
-    hour: Number(parts.find((p) => p.type === "hour").value),
-    minute: Number(parts.find((p) => p.type === "minute").value)
-  };
+  return { hour, minute };
 }
 
-test("cron fires at 7:00 a.m. Denver in summer AND after the 2026-11-01 fall-back", () => {
-  assert.equal(PULSE_TZ, "America/Denver");
+test("cron fires at 6:00 a.m. Arizona all year", () => {
+  assert.equal(PULSE_TZ, "America/Phoenix");
   for (const day of ["2026-07-01", "2026-10-05", "2026-11-02", "2027-01-15", "2027-03-15"]) {
-    assert.deepEqual(denverTimeWhenCronFires(PULSE_CRON, day), { hour: 7, minute: 0 }, `${PULSE_CRON} on ${day}`);
+    assert.deepEqual(
+      zoneTimeWhenCronFires(PULSE_CRON, "America/Phoenix"),
+      { hour: 6, minute: 0 },
+      `${PULSE_CRON} on ${day}`
+    );
   }
 });
 
@@ -102,6 +95,19 @@ test("dry-run writes a board and does not send or fix", async () => {
   assert.match(body, /\/app\/pipeline\.html/);
   assert.equal(sends.length, 0);
   assert.equal(result.sms.sent, false);
+  const coverage = result.checks.filter((c) => c.kind === "coverage");
+  const sliceRows = coverage.filter((c) => !String(c.sliceId || "").startsWith("gap-"));
+  const gapRows = coverage.filter((c) => String(c.sliceId || "").startsWith("gap-"));
+  assert.ok(sliceRows.length > 0);
+  /* A slice claim never passes on its own say-so. It is folded into the real check that ran, or it stays a
+     live "not checked" / skip that the audit counts. */
+  assert.ok(sliceRows.every((c) => ["not checked", "skip", "na", "PASS", "FAIL"].includes(c.status)));
+  assert.ok(sliceRows.every((c) => c.status !== "PASS" || c.proof || c.detail), "a PASS carries its proof");
+  assert.ok(result.folded > 0, "the slice claims that point at a real check were folded into it");
+  assert.ok(result.checks.some((c) => c.id === "audit:not-checked"), "the pulse audits itself");
+  assert.ok(gapRows.length > 0);
+  assert.match(body, /## Coverage/);
+  assert.match(body, /not checked/);
   assert.match(result.sms.reason, /PULSE_SMS_TO unset/);
   assert.match(result.darwin.reason, /DARWIN_WHATSAPP unset/);
   assert.ok(result.checks.every((c) => c.id !== "fix"));
@@ -232,4 +238,26 @@ test("this module does not import the Ops Admin money pulse", () => {
   const src = readFileSync(path.join(HERE, "daily-pulse.mjs"), "utf8");
   assert.doesNotMatch(src, /^import .*from ["'].*ops\/pulse/m);
   assert.doesNotMatch(src, /^import .*ops-pulse/m);
+});
+
+test("a dead database does not stop the pulse: one red db row, the rest still run", async () => {
+  const deadDb = { query: async () => { throw new Error("connection terminated unexpectedly"); } };
+  const boardDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulse-deaddb-"));
+  const result = await runDailyPulse({
+    dryRun: true,
+    db: deadDb,
+    env: {},
+    boardDir,
+    sendPulseText: false,
+    recordRun: false,
+    coverageRows: [],
+    fetchImpl: async () => ({ status: 200, text: async () => "Sign in password Generate Apps Apply door" })
+  });
+  const db = result.checks.filter((c) => c.id === "db");
+  assert.equal(db.length, 1, "exactly one database row");
+  assert.equal(db[0].status, "FAIL");
+  assert.match(db[0].detail, /could not be read/);
+  assert.ok(result.checks.some((c) => c.id === "health"), "the web checks still ran");
+  assert.ok(result.scorecard, "a scorecard is still built");
+  fs.rmSync(boardDir, { recursive: true, force: true });
 });

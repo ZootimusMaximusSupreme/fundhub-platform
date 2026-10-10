@@ -13,10 +13,20 @@
 //
 // Eligible = status in (live, shadow), channel covers the inbound channel,
 // agent_class = client_facing, channel is messaging (sms|email|sms_email),
-// runtime !== 'bland' | 'ghl' (Bland = voice vendor; the CRM is out — owner 2026-08-15).
+// runtime !== 'bland' | 'ghl' (Bland = voice vendor; the CRM is out — owner 2026-08-15),
+// and not an agent that answers on its own path (OWN_PATH_AGENT_CODES below).
 
 const MESSAGING_CHANNELS = new Set(["sms", "email", "sms_email"]);
 const RUNNING = new Set(["live", "shadow"]);
+
+/* AGENTS THAT ANSWER ON THEIR OWN PATH, never through this runtime.
+   FOS-01, the FinanceOS Money Helper (db/migrations/465), is a shadow sms
+   agent with a prompt — exactly the shape the channel match below would pick
+   for EVERY inbound text from EVERY client (no other messaging agent runs
+   today), and this runtime would then answer with a plain model call and none
+   of the helper's checks. It answers in its own thread through
+   src/finance/money-agent-ai.mjs instead. */
+export const OWN_PATH_AGENT_CODES = Object.freeze(["FOS-01"]);
 
 export function channelCompatible(agentChannel, inboundChannel) {
   if (!agentChannel || !inboundChannel) return false;
@@ -29,6 +39,7 @@ export function channelCompatible(agentChannel, inboundChannel) {
 
 export function isEligibleAgent(agent, inboundChannel) {
   if (!agent) return false;
+  if (OWN_PATH_AGENT_CODES.includes(String(agent.code || "").trim().toUpperCase())) return false;
   if (!RUNNING.has(agent.status)) return false;
   if (agent.agent_class && agent.agent_class !== "client_facing") return false;
   if (!MESSAGING_CHANNELS.has(agent.channel)) return false;

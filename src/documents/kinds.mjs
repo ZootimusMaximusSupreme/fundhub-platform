@@ -64,6 +64,21 @@ export const SUBTYPES = Object.freeze({
     "tax_return",
     "additional_fraud_docs",
     "dispute_mail_receipt",
+    // A bank's decline letter, for decline defense (src/blueprint/decline-defense.mjs).
+    "decline_letter",
+    // The business half of the application document vault
+    // (src/finance/document-vault-items.mjs). The three personal papers reuse
+    // id_document / proof_of_address / tax_return above; these name the papers
+    // that belong to a BUSINESS, so a business statement is never mistaken for a
+    // personal one. Staff-reviewed only — see VAULT_ONLY_SUBTYPES there.
+    "business_bank_statement",
+    "business_tax_return",
+    "articles_of_organization",
+    "ein_letter",
+    "certificate_good_standing",
+    // Not a standard vault item (no repo source says lenders need it) — it is
+    // here so staff can add it to one client's list and have uploads file under it.
+    "business_license",
     "other"
   ]),
   bureau_response: Object.freeze([
@@ -110,8 +125,15 @@ export const SUBTYPE_TITLES = Object.freeze({
   bank_statement: "Bank Statement",
   proof_of_income: "Proof of Income",
   tax_return: "Tax Return",
+  business_bank_statement: "Business Bank Statement",
+  business_tax_return: "Business Tax Return",
+  articles_of_organization: "Articles of Organization",
+  ein_letter: "EIN Confirmation Letter",
+  certificate_good_standing: "Certificate of Good Standing",
+  business_license: "Business License",
   additional_fraud_docs: "Additional documentation — fraud / identity theft cases",
   dispute_mail_receipt: "Dispute Mailing Proof",
+  decline_letter: "Bank Decline Letter",
   bureau_letter: "Bureau Response Letter",
   ftc_report: "FTC Identity Theft Report",
   other: "Uploaded Document"

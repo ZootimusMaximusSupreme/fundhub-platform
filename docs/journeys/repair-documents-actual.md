@@ -2,7 +2,11 @@
 
 What the code **does** today when a credit-repair client sends us the two
 documents the whole program is built on: a government photo ID and a proof of
-address. Traced from the code on branch `feat/repair-doc-path`, not from a spec.
+address. Traced from the code, not from a spec. First traced on branch
+`feat/repair-doc-path`; the letters half re-traced 2026-10-09 on
+`build/ZU-P-2026-10-09` after the signing box started the letters, and again on
+`build/ZU-P-r2-2026-10-09` after the gate order and the server ID read were
+corrected.
 
 The identity in those two pictures is what stays on the credit report. Every
 other name and every other address on the report is disputed off against it. So
@@ -47,12 +51,46 @@ flowchart TD
     GUARD -->|"only one of the two is in"| STOP3["ignored — says which is missing"]
     GUARD -->|"both are in"| EV3
 
-    EV3 --> ANALYSIS["card → analysis"]
-    ANALYSIS --> BRAIN["src/repair/analyze.mjs<br/>analyzeAndGenerate — the credit-repair brain"]
-    BRAIN -->|"letters stored"| COPY["same letter body saved twice:<br/>dispute_letters (bureau send)<br/>and documents (client copy)"]
-    COPY --> READY["card → letters_generated then ready_to_send<br/>Specialist Send is still a human click"]
-    BRAIN -->|"refused (no credit file, ID unread)"| STAY["card stays on analysis"]
+    EV3 --> ANALYSIS["card → analysis<br/>src/repair/handlers.mjs onRepairEvent"]
+    ANALYSIS --> START["src/repair/start-letters.mjs<br/>startRepairLetters — round R1<br/>ONE shared call, used by BOTH doors"]
+    START --> BRAIN["src/repair/analyze.mjs<br/>analyzeAndGenerate — the credit-repair brain"]
+
+    BRAIN --> AUTH{"Is there a signed repair agreement<br/>OR a live dispute_authorization consent?<br/>src/repair/dispute-auth.mjs"}
+    AUTH -->|"neither"| NOAUTH["REFUSED: no_authorization<br/>nothing saved, nothing flagged<br/>card stays on analysis"]
+    AUTH -->|"yes"| EARLY{"First gates, in order:<br/>letters already on file for R1 · round cap ·<br/>stored credit file"}
+    EARLY -->|"R1 letters already on file"| DONE0["already_generated<br/>nothing written — safe to call twice"]
+    EARLY -->|"round cap, or no stored credit file"| STAY["REFUSED with its own reason<br/>card stays on analysis<br/>nothing retries these<br/>Staff can press Stage: api/repair/generate.mjs<br/>sla.mjs raises engineering_engine_failure after 1 hour"]
+    EARLY -->|"all clear"| PATH{"On the repair path?<br/>signed repair agreement<br/>OR an ACTIVE repair_programs row<br/>OR outcome tier REPAIR_ONLY / FUNDING_PLUS_REPAIR"}
+    PATH -->|"yes"| IDGATE{"Client and name on record?<br/>THEN: is the name verified from the ID?<br/>src/identity/verified.mjs<br/>THE ID CHECK APPLIES ON THE REPAIR PATH ONLY"}
+    PATH -->|"no"| REC{"Client and name on record?"}
+    IDGATE -->|"no client or name on record,<br/>or name not verified from the ID"| STAY
+    REC -->|"no"| STAY
+    IDGATE -->|"yes"| WIDE["engine findings + derogatory claims<br/>+ personal-information floor"]
+    REC -->|"yes"| NARROW["engine findings only"]
+    WIDE --> ANY{"Anything to dispute?"}
+    NARROW --> ANY
+    ANY -->|"no — no_violations"| STAY
+    ANY -->|"yes"| STORE["cases, items and letters stored"]
+    STORE --> COPY["same letter body saved twice:<br/>dispute_letters (bureau send)<br/>and documents (client copy)"]
+    COPY --> READY["card → letters_generated then ready_to_send<br/>NO email to the client<br/>Specialist Send is still a human click"]
+
+    NOAUTH --> SIGN["Client portal box<br/>'Sign to authorize dispute letters'<br/>public/app/client-portal.html<br/>shown only when dispute_consent is true:<br/>metro2-letter-pack OR funding-snapshot entitlement<br/>api/read/portal-summary.mjs"]
+    SIGN --> CAP["POST /api/consent/capture<br/>kind dispute_authorization<br/>consent row saved FIRST"]
+    CAP --> SAVED["Client gets the same answer as before:<br/>{ ok, consent }"]
+    CAP --> RETRY{"api/consent/capture.mjs →<br/>startLettersAfterAuthorization<br/>Is the repair card on analysis?"}
+    RETRY -->|"no card, or any other stage"| NOTHING["nothing runs<br/>if the documents are not in yet,<br/>the docs door starts the letters when they land"]
+    RETRY -->|"yes"| START
+    RETRY -.->|"the writer throws"| KEEP["caught and logged<br/>the signature stays saved"]
+
+    NOAUTH -.-> DESK["Repair desk chip 'Needs agreement'<br/>src/repair/read-repair-signals.mjs authorization_ok<br/>= live consent OR signed repair contract<br/>false only when BOTH reads worked and found nothing;<br/>a failed read leaves it unknown and shows no chip<br/>src/repair/lens.mjs deriveChip"]
 ```
+
+How to read the new part: the two ways in are `repair.docs.complete` (the
+documents landed) and a signed dispute authorization (the portal box). Both call
+the same `startRepairLetters`. Whichever paper arrives **last** starts the
+letters. The signature only acts on a card that is already sitting on
+`analysis`, so a client who signs before the documents arrive changes nothing
+until the documents land.
 
 ## What each piece is, and where it lives
 
@@ -69,7 +107,10 @@ flowchart TD
 | The upload doors | `src/repair/upload-doors.mjs` | the identity door opens for repair AND funding |
 | A texted photo | `src/handlers/inbound-mms-docs.mjs` | classified before it is filed |
 | Reads the images | `src/handlers/doc-check.mjs` | seeded in `db/migrations/114_ghl_agent_seed.sql` |
-| Builds the letters | `src/repair/analyze.mjs` | `analyzeAndGenerate` on `repair.docs.complete` and on POST `/api/repair/generate`. Mails nothing. |
+| Builds the letters | `src/repair/analyze.mjs` | `analyzeAndGenerate`. Called from `startRepairLetters` (below) and from POST `/api/repair/generate`. Mails nothing. Refuses with `no_authorization` until a signed repair agreement or a live `dispute_authorization` consent is on file. A client with an ACTIVE `repair_programs` row is on the repair path (`hasActiveRepairProgram`), keyed to that row and not to the `metro2-letter-pack` entitlement. The path is decided first; the verified-name check then applies on the repair path only. The verified name comes from `verifiedIdentity` in `src/identity/verified.mjs`, imported statically at the top of the file so the server bundle carries it (a string-path `import()` used here until 2026-10-09 could not find the file on the server). |
+| Starts the letter writer | `src/repair/start-letters.mjs` | `startRepairLetters` is the one call. `repair.docs.complete` (in `handlers.mjs`) and a signed dispute authorization (in `api/consent/capture.mjs`, through `startLettersAfterAuthorization`) both use it. The signature only acts on a card on `analysis`. Never throws. Emails the client nothing: `TEMPLATE_BY_EVENT` in `notify.mjs` has no template for `repair.docs.complete`, `repair.analysis.complete` or `repair.letters.ready`. |
+| The signing box | `public/app/client-portal.html`, `api/consent/capture.mjs` | Shown when `api/read/portal-summary.mjs` says `dispute_consent` (repair or funding entitlement). Stores a `dispute_authorization` consent. The `$1,000` repair agreement text is a placeholder the system refuses to send, so this box is the one working paper. |
+| What the Repair desk says | `src/repair/read-repair-signals.mjs`, `src/repair/lens.mjs` | `authorization_ok` is a live `dispute_authorization` consent or a signed repair contract. An enrolled program no longer counts (changed 2026-10-09), so the "Needs agreement" chip shows for a paid client who has signed nothing. It is false only when both reads worked and found nothing. If one read failed and the other found nothing, it stays unknown and no chip shows. |
 | Client copy of the same letter | `src/repair/persist-generated-letters.mjs` | Same `body_text` as `dispute_letters`, saved as an HTML deliverable |
 
 ## What was broken until 2026-09-04
@@ -120,8 +161,9 @@ flowchart TD
 
 ## What this page does NOT claim
 
-Three things on this path are real and are not fixed here. They are written down
-so nobody reads the diagram as more finished than it is.
+Four notes on this path. Some are real and not fixed here, and one is a
+correction of an old claim. They are written down so nobody reads the diagram as
+more finished than it is.
 
 * **CORRECTED 2026-09-04 — the earlier claim here was wrong.** An earlier draft
   of this page said the document agent has no instructions on a freshly migrated
@@ -143,13 +185,35 @@ so nobody reads the diagram as more finished than it is.
   check itself. So enrolment moves the card to `awaiting_documents` without that
   check running. COMPLIANCE REVIEW REQUIRED.
 
-* **Nothing moves a card out of `analysis` on its own.** When both documents
-  land, the card moves to `analysis` and the client's portal reads "We're
-  reviewing your report" (`src/repair/portal.mjs`). The only caller of
-  `analyzeAndGenerate()` is `api/repair/generate.mjs`, which a member of staff
-  has to press. `src/repair/sla.mjs` raises `engineering_engine_failure` on the
-  staff board one hour later. No repair client had ever reached this stage
-  before this change, so this is newly reachable behaviour.
+* **CORRECTED 2026-10-09 — the earlier claim here is out of date.** It said
+  nothing moves a card out of `analysis` on its own and that only
+  `api/repair/generate.mjs` calls `analyzeAndGenerate()`. Since commit
+  `2e19c7c7` (2026-09-18) `repair.docs.complete` runs the writer by itself, and
+  since the signing change a signed dispute authorization runs it too. What is
+  still true: when the writer refuses for any reason other than a missing
+  signature (no stored credit file, name not verified from the ID, nothing to
+  dispute, round cap), the card stays on `analysis` and nothing retries it.
+  Staff can press Stage (`api/repair/generate.mjs`), and `src/repair/sla.mjs`
+  raises `engineering_engine_failure` on the staff board one hour later.
+
+* **UNVERIFIED on the live site — the new signing path has not run there.** The
+  code path above is traced and tested against a stand-in database. The ID read
+  and the letter counts were also proved from a built server bundle, read-only,
+  with the signature and every write faked (see the ZU-P manifest): signed, the
+  writer makes 3 letters for FH-000507 (TU 13, EX 5, EQ 14 items); unsigned, it
+  answers `no_authorization`. That proof is not a live run. The change has not
+  shipped. The one paying repair client, FH-000507, has an active program, a card
+  on `analysis`, and no consent on file; until he signs the box, the writer still
+  refuses him.
+
+* **KNOWN, NOT FIXED — two writer runs at the same moment make two sets.** Repeat
+  clicks of the sign button are guarded in the page (a busy flag), not on the
+  server. Two signature posts, or a signature that lands while the documents door
+  is still running the writer, can each pass the "letters already on file" check
+  before either saves. There is no database rule that stops a second set of
+  cases, and the send claim is per case, so both sets could be mailed by staff.
+  Shown possible with a stand-in database in the checker's race run. Narrow, and
+  it needs a lock or a unique rule to close.
 
 ## Not covered here
 

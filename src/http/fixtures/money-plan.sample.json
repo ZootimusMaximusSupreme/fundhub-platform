@@ -1,0 +1,296 @@
+{
+  "ok": true,
+  "client": {
+    "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+    "name": "Test Test"
+  },
+  "viewer": "client",
+  "today": "2026-10-07",
+  "month": "2026-10",
+  "from": "2026-10-01",
+  "to": "2026-10-31",
+  "days": [
+    {
+      "date": "2026-10-01",
+      "weekday": 4,
+      "is_today": false,
+      "pin_count": 1
+    },
+    {
+      "date": "2026-10-02",
+      "weekday": 5,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-03",
+      "weekday": 6,
+      "is_today": false,
+      "pin_count": 1
+    },
+    {
+      "date": "2026-10-04",
+      "weekday": 7,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-05",
+      "weekday": 1,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-06",
+      "weekday": 2,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-07",
+      "weekday": 3,
+      "is_today": true,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-08",
+      "weekday": 4,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-09",
+      "weekday": 5,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-10",
+      "weekday": 6,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-11",
+      "weekday": 7,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-12",
+      "weekday": 1,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-13",
+      "weekday": 2,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-14",
+      "weekday": 3,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-15",
+      "weekday": 4,
+      "is_today": false,
+      "pin_count": 1
+    },
+    {
+      "date": "2026-10-16",
+      "weekday": 5,
+      "is_today": false,
+      "pin_count": 1
+    },
+    {
+      "date": "2026-10-17",
+      "weekday": 6,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-18",
+      "weekday": 7,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-19",
+      "weekday": 1,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-20",
+      "weekday": 2,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-21",
+      "weekday": 3,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-22",
+      "weekday": 4,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-23",
+      "weekday": 5,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-24",
+      "weekday": 6,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-25",
+      "weekday": 7,
+      "is_today": false,
+      "pin_count": 1
+    },
+    {
+      "date": "2026-10-26",
+      "weekday": 1,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-27",
+      "weekday": 2,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-28",
+      "weekday": 3,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-29",
+      "weekday": 4,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-30",
+      "weekday": 5,
+      "is_today": false,
+      "pin_count": 0
+    },
+    {
+      "date": "2026-10-31",
+      "weekday": 6,
+      "is_today": false,
+      "pin_count": 0
+    }
+  ],
+  "pins": [
+    {
+      "id": "due:6af70e59-db5c-4220-95b7-69f6a4a87ff8:2026-10-01",
+      "date": "2026-10-01",
+      "kind": "due",
+      "title": "Pay SBA Loan",
+      "detail": "Worked out from the due day on file (the 1st).",
+      "amount_cents": 105000,
+      "bank": null,
+      "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "status": "planned",
+      "source": "dues",
+      "can_mark": []
+    },
+    {
+      "id": "clarity:824c8cf7-3885-4570-8e72-4858aca547d5",
+      "date": "2026-10-03",
+      "kind": "due",
+      "title": "Fundhub payment plan: payment 2 of 3",
+      "detail": "Owed to Fundhub LLC. 4 days late.",
+      "amount_cents": 50000,
+      "bank": null,
+      "container_id": null,
+      "status": "missed",
+      "source": "clarity",
+      "can_mark": []
+    },
+    {
+      "id": "due:d6ce2c94-3632-4c63-af98-802fef41ac62:2026-10-15",
+      "date": "2026-10-15",
+      "kind": "due",
+      "title": "Pay Business Amex",
+      "detail": "The due date on your latest statement.",
+      "amount_cents": 13500,
+      "bank": "First Platypus Bank (Plaid sandbox — test data)",
+      "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "status": "planned",
+      "source": "dues",
+      "can_mark": []
+    },
+    {
+      "id": "clarity:7d668cb0-e778-4548-b294-f56e55306d02",
+      "date": "2026-10-16",
+      "kind": "due",
+      "title": "Buy now, pay later plan with Fundhub LLC: payment 2 of 4",
+      "detail": "Paid on Oct 7.",
+      "amount_cents": 15000,
+      "bank": null,
+      "container_id": null,
+      "status": "done",
+      "source": "clarity",
+      "can_mark": []
+    },
+    {
+      "id": "due:f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea:2026-10-25",
+      "date": "2026-10-25",
+      "kind": "due",
+      "title": "Pay Personal Visa",
+      "detail": "The due date on your latest statement.",
+      "amount_cents": 4000,
+      "bank": "First Platypus Bank (Plaid sandbox — test data)",
+      "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+      "status": "planned",
+      "source": "dues",
+      "can_mark": []
+    }
+  ],
+  "sources": [
+    {
+      "name": "waypoints",
+      "ok": true,
+      "count": 0
+    },
+    {
+      "name": "dues",
+      "ok": true,
+      "count": 3
+    },
+    {
+      "name": "clarity",
+      "ok": true,
+      "count": 2
+    }
+  ],
+  "containers": [
+    {
+      "id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "name": "Fundhub LLC",
+      "kind": "business"
+    },
+    {
+      "id": "36b90655-f93d-4444-90a8-ccf713426e56",
+      "name": "Chris (personal)",
+      "kind": "personal"
+    }
+  ]
+}

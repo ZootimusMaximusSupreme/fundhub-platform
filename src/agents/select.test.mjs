@@ -72,3 +72,25 @@ test("selectAgent: when both live, lower sort_order wins", async () => {
   assert.equal(selected.agent.code, "A-AGENT");
   assert.equal(selected.reason, "tiebreak_channel_match");
 });
+
+test("FOS-01, the FinanceOS Money Helper, answers on its own path — never picked for an inbound text", async () => {
+  const helper = {
+    code: "FOS-01", status: "shadow", agent_class: "client_facing", channel: "sms",
+    runtime: "internal", prompt: "You are the FinanceOS Money Helper.", sort_order: 150, created_at: "2026-10-07T00:00:00Z"
+  };
+  assert.equal(isEligibleAgent(helper, "sms"), false);
+  const db = {
+    async query(sql) {
+      if (/FROM conversations/.test(sql)) return { rows: [] };
+      if (/FROM agents/.test(sql) && /status IN/.test(sql)) return { rows: [helper] };
+      return { rows: [] };
+    }
+  };
+  const selected = await selectAgent(db, {
+    orgId: "11111111-1111-4111-8111-111111111111",
+    clientId: "22222222-2222-4222-8222-222222222222",
+    channel: "sms"
+  });
+  assert.equal(selected.agent, null);
+  assert.equal(selected.reason, "no_eligible_agent");
+});

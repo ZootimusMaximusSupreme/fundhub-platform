@@ -115,8 +115,9 @@ test.describe("live affiliate onboard", () => {
     await expect(page).toHaveURL(/affiliate\.html/);
     await expect(page.locator("h1")).toContainText(/Affiliate/i);
     await expect(page.locator("body")).toContainText(/YOUR REFERRAL LINK/i);
-    await expect(page.locator("#reflink")).toBeVisible();
-    await expect(page.locator("#copyLink")).toBeVisible();
+    await expect(page.locator("#offerLinks")).toBeVisible();
+    await expect(page.locator("#copyCode")).toBeVisible();
+    await expect(page.locator("#affCode")).toBeVisible();
     const funnel = page.locator("#funnel");
     await expect(funnel).toBeVisible();
     if (await funnel.evaluate((el) => el.classList.contains("empty"))) {

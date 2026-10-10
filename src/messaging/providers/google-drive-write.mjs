@@ -247,8 +247,8 @@ function verdictOf(res, what) {
   return { ok: false, retryable: cls.retryable, status: res.status, error: redact(res.error || `${what} returned HTTP ${res.status}`) };
 }
 
-async function driveCall(method, url, { token, body, contentType, env = process.env, fetchImpl, timeoutMs, signal, what }) {
-  const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
+async function driveCall(method, url, { token, body, contentType, extraHeaders, env = process.env, fetchImpl, timeoutMs, signal, what }) {
+  const headers = { authorization: `Bearer ${token}`, accept: "application/json", ...(extraHeaders || {}) };
   const opts = { fence: ADAPTERS, env, fetchImpl, timeoutMs, signal, what };
   if (method === "POST" && body !== undefined) {
     return postJsonTo(url, { headers, body, contentType: contentType || "application/json", ...opts });
@@ -680,6 +680,124 @@ export async function uploadVideo({
   return { ok: true, retryable: false, fileId: String(id), name: pv.body?.name || fileName, byteLength: payload.byteLength };
 }
 
+/** A Drive resumable session URL. Anything else is refused, so this cannot be
+    pointed at some other host. */
+export function driveSessionUrl(url) {
+  try {
+    const u = new URL(String(url || ""));
+    return u.protocol === "https:"
+      && u.hostname === "www.googleapis.com"
+      && u.pathname.startsWith("/upload/drive/");
+  } catch {
+    return false;
+  }
+}
+
+function receivedFromRange(header) {
+  const m = /bytes=(\d+)-(\d+)/i.exec(String(header || ""));
+  if (!m) return null;
+  return Number(m[2]) + 1;
+}
+
+function readChunkStatus(put, { start, total }) {
+  if (put.blocked || put.transmitted === false) {
+    return { ok: false, retryable: true, error: put.error || "the upload did not leave" };
+  }
+  const received = receivedFromRange(put.headers?.range);
+  if (put.status === 308) {
+    if (received == null || received <= start) {
+      return { ok: false, retryable: true, status: 308, error: "Drive did not keep that part of the file" };
+    }
+    return { ok: true, done: received >= total, received, status: 308 };
+  }
+  if (put.status >= 200 && put.status < 300) {
+    const id = put.body?.id;
+    if (!id) return { ok: false, retryable: true, status: put.status, error: "Drive accepted the video but returned no file id" };
+    return {
+      ok: true, done: true, fileId: String(id), name: put.body?.name || null,
+      received: total, status: put.status
+    };
+  }
+  return {
+    ok: false, retryable: put.status >= 500 || put.status === 0, status: put.status,
+    error: put.error || `Drive returned HTTP ${put.status}`
+  };
+}
+
+/**
+ * Open a resumable upload into one folder. No video bytes move here.
+ * The caller then sends the file in pieces with putVideoChunk.
+ */
+export async function openVideoSession({
+  parentId, name, totalBytes, contentType = "video/mp4",
+  env = process.env, fetchImpl, timeoutMs = 20_000, signal
+} = {}) {
+  const parent = String(parentId || "").trim();
+  const fileName = String(name || "").trim();
+  const total = Number(totalBytes);
+  if (!parent) return { ok: false, retryable: false, error: "openVideoSession needs a parentId" };
+  if (!fileName) return { ok: false, retryable: false, error: "openVideoSession needs a name" };
+  if (!Number.isFinite(total) || total < 1) {
+    return { ok: false, retryable: false, error: "openVideoSession needs the file size" };
+  }
+
+  const tok = await driveAccessToken({ env, fetchImpl });
+  if (!tok.ok) return tok;
+
+  const startUrl = `${DRIVE_UPLOAD_API}/files?${qs({ uploadType: "resumable", fields: "id,name", ...SHARED })}`;
+  const started = await driveCall("POST", startUrl, {
+    token: tok.accessToken,
+    body: JSON.stringify({ name: fileName, parents: [parent] }),
+    extraHeaders: {
+      "X-Upload-Content-Type": contentType,
+      "X-Upload-Content-Length": String(total)
+    },
+    env, fetchImpl, timeoutMs, signal, what: "drive open upload session"
+  });
+  const sv = verdictOf(started, "drive open upload session");
+  if (!sv.ok) return sv;
+
+  const session = started.headers?.location || null;
+  if (!session || !driveSessionUrl(session)) {
+    return { ok: false, retryable: true,
+      error: "Drive opened an upload session but returned no location header — nothing was uploaded" };
+  }
+  return { ok: true, sessionUrl: session };
+}
+
+/**
+ * Forward one slice of the original file. The bytes are not re-encoded.
+ * A 308 means Drive has that slice and wants the next one.
+ */
+export async function putVideoChunk({
+  sessionUrl, bytes, start, end, total, contentType = "video/mp4",
+  env = process.env, fetchImpl, timeoutMs = 25_000, signal
+} = {}) {
+  if (!driveSessionUrl(sessionUrl)) {
+    return { ok: false, retryable: false, error: "that upload session is not a Drive upload" };
+  }
+  const tok = await driveAccessToken({ env, fetchImpl });
+  if (!tok.ok) return tok;
+  const payload = bytes instanceof Uint8Array ? bytes : Buffer.from(bytes || []);
+  const put = await postBinaryTo(sessionUrl, {
+    method: "PUT",
+    redirect: "manual",
+    headers: {
+      authorization: `Bearer ${tok.accessToken}`,
+      "content-range": `bytes ${start}-${end}/${total}`
+    },
+    contentType,
+    body: payload,
+    byteLength: payload.byteLength,
+    maxBytes: Math.max(payload.byteLength, 1),
+    timeoutMs,
+    fence: ADAPTERS,
+    env, fetchImpl, signal,
+    what: "drive upload video chunk"
+  });
+  return readChunkStatus(put, { start, total });
+}
+
 /** send — provider contract. Writes the brief; refuses anything else. */
 export async function send(message = {}, options = {}) {
   try {
@@ -701,5 +819,5 @@ export default {
   PROVIDER, CHANNELS, ADDRESS_FIELD, ENABLED, TRANSMITS, send,
   driveAccessToken, resetTokenCache, grantsWrite,
   listNewVideos, getFileMeta, renameFile, ensureFolder, uploadTextFile,
-  downloadFile, uploadVideo
+  downloadFile, uploadVideo, openVideoSession, putVideoChunk, driveSessionUrl
 };

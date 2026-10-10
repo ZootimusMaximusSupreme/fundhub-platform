@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" data-brief-page="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>Daily brief · Fundhub</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  THE DAILY BRIEF PAGE — morning and evening. The last line of Chris's brief
+  text links here: /app/morning-brief.html?date=YYYY-MM-DD[&kind=evening]&k=<code>.
+
+  NO SIGN-IN, ON PURPOSE (owner-set 2026-10-09: "no login gate"). Chris opens
+  this on his phone with one tap. So this page loads NO staff shell: no
+  shell.js, no data.js, no sidebar, no chat, no service worker — those send a
+  visitor with no session to the staff sign-in page. The long code `k` in the
+  link is the only key. The server (api/public/morning-brief.mjs) checks it and
+  answers the same plain "not found" for every failure, so this page shows one
+  calm sentence for every failure too and never the reason.
+
+  THE CODE IS NEVER WRITTEN DOWN. It is read from the address bar and sent once
+  to the data route. It never goes to storage, a cookie, the console, or the
+  title. The referrer meta above keeps it out of every other request (fonts).
+
+  WHY THE CODE STAYS IN THE ADDRESS BAR (not stripped with replaceState). The
+  page has nothing to read it back from, because it is never stored. iPhone
+  Safari reloads a tab from its address when it comes back from the
+  background, and pull-to-refresh does the same; a stripped address would then
+  show "not valid" on a link that is still good. The referrer policy (this
+  meta, and the route's own header) already keeps the address from leaking.
+
+  EVERY VALUE GOES IN AS TEXT (textContent). The page never builds markup from
+  data. Money is integer cents, shown with the same rule as money() in
+  src/ops/morning-brief.mjs. A section the brief does not have says so plainly.
+-->
+<style>
+:root{
+  --red-ink:#8A2D22;            /* coral's dark partner: readable text on white */
+  --red-tint:#FDF0EE;
+  --green-ink:#2C5138;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;
+  background:var(--soft);color:var(--ink);
+  font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.page{
+  padding:24px max(16px, env(safe-area-inset-right)) 64px max(16px, env(safe-area-inset-left));
+}
+/* A reading measure on the column, not a page cap: this is a report read on a
+   phone; on a wide screen it stays one readable column. */
+.col{max-width:720px;margin:0 auto}
+
+/* ---------- head ---------- */
+.top{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.top .logo{width:88px;height:18px}
+h1{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em;line-height:1.25;margin:8px 0 0}
+.lede{color:var(--gray);margin:8px 0 0}
+
+/* ---------- sections ---------- */
+section.card{
+  background:#fff;border:1px solid var(--line);border-radius:10px;
+  box-shadow:var(--panel-shadow);
+  padding:16px;margin-top:16px;
+}
+section.card h2{font-size:var(--fs-title);font-weight:600;line-height:1.25;margin:0 0 16px}
+.plain{margin:0;overflow-wrap:anywhere}
+.note{font-size:var(--fs-caption);color:var(--gray);margin:16px 0 0;overflow-wrap:anywhere}
+.caption{font-size:var(--fs-caption);color:var(--gray)}
+
+/* ---------- big numbers ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.tile{background:var(--soft);border-radius:8px;padding:8px 16px 16px;min-width:0}
+.tile.wide{grid-column:1 / -1}
+.tile .lb{display:block;font-size:var(--fs-caption);color:var(--gray)}
+.tile .big{
+  /* The metric size, eased down on the narrowest phones so two tiles fit a
+     row at 320px: 32px from 400px up, 25.6px at 320px. */
+  display:block;font-size:clamp(1.5rem, 8vw, var(--fs-metric));font-weight:600;line-height:1.15;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+.tile .big.word{font-size:var(--fs-title);line-height:1.6}
+/* Status is never colour alone (UI-STANDARDS §12.6): the label says "Red",
+   the stripe is the second signal. */
+.tile.is-red{background:var(--red-tint);box-shadow:inset 4px 0 0 var(--alert)}
+.tile.is-red .lb,.tile.is-red .big{color:var(--red-ink)}
+.tile.is-green .big{color:var(--green-ink)}
+
+/* ---------- lists ---------- */
+.list{list-style:none;margin:16px 0 0;padding:0}
+.list > li{border-top:1px solid var(--line);padding:16px 0 0;margin-top:16px}
+.list > li:first-child{border-top:0;padding-top:0;margin-top:0}
+.row-title{font-weight:600;margin:0;overflow-wrap:anywhere}
+.row-line{margin:8px 0 0;overflow-wrap:anywhere}
+.row-line b{font-weight:600}
+.mono{font-family:var(--mono);font-size:var(--fs-caption);overflow-wrap:anywhere}
+.tag{
+  display:inline-block;font-family:var(--mono);font-size:var(--fs-caption);
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:0 8px;border-radius:20px;border:1px solid var(--line);margin-right:8px
+}
+.tag.red{border-color:var(--alert);background:var(--red-tint);color:var(--red-ink)}
+.red-item{box-shadow:inset 4px 0 0 var(--alert);padding-left:16px !important}
+
+.more{
+  margin-top:16px;width:100%;min-height:44px;padding:8px 16px;
+  border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
+  font:inherit;font-weight:600;cursor:pointer
+}
+.more:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+/* ---------- loading ---------- */
+.sk{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:16px}
+.sk i{display:block;height:16px;border-radius:4px;background:var(--line);margin-top:8px;animation:sk 1.4s ease-in-out infinite}
+.sk i:first-child{width:40%;height:20px;margin-top:0}
+.sk i.w{width:70%}
+@keyframes sk{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.sk i{animation:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- the one sentence for a bad link ---------- */
+.gone{margin:32px 0 0;font-size:var(--fs-title);line-height:1.4}
+</style>
+</head>
+<body>
+<main class="page" id="app">
+  <div class="col" role="status" aria-live="polite">
+    <p class="sr">Loading the brief.</p>
+    <div class="sk" aria-hidden="true"><i></i><i></i><i class="w"></i></div>
+    <div class="sk" aria-hidden="true"><i></i><i></i><i class="w"></i></div>
+    <div class="sk" aria-hidden="true"><i></i><i></i><i class="w"></i></div>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+
+  var BAD_LINK = "This link is not valid or has expired.";
+  // A good link during a short outage or bad signal. Never the reason, never data.
+  var LATER = "The report could not load right now. Try again in a minute.";
+  var root = document.getElementById("app");
+
+  /* ---------- tiny DOM helpers: text only, never markup ---------- */
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = String(text);
+    return n;
+  }
+  function add(parent) {
+    for (var i = 1; i < arguments.length; i++) if (arguments[i]) parent.appendChild(arguments[i]);
+    return parent;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+  function showMessage(text) {
+    clear(root);
+    var col = el("div", "col");
+    add(root, add(col, el("p", "gone", text)));
+  }
+  function showBadLink() { showMessage(BAD_LINK); }
+  function showLater() { showMessage(LATER); }
+
+  /* ---------- formatting ---------- */
+  /* Same rule as money() in src/ops/morning-brief.mjs: integer cents in,
+     "$1,234.56" out, "unknown" when there is no number. A value that is not a
+     whole number of cents is not guessed at; it is "unknown" too. */
+  function money(cents) {
+    if (cents == null || cents === "") return "unknown";
+    var n = Number(cents);
+    if (!Number.isInteger(n)) return "unknown";
+    var neg = n < 0;
+    var abs = Math.abs(n);
+    var whole = Math.floor(abs / 100);
+    var frac = String(abs % 100);
+    if (frac.length < 2) frac = "0" + frac;
+    return (neg ? "-" : "") + "$" + whole.toLocaleString("en-US") + "." + frac;
+  }
+  function count(v) {
+    if (v == null || v === "") return "unknown";
+    var n = Number(v);
+    return Number.isFinite(n) ? n.toLocaleString("en-US") : "unknown";
+  }
+  function isNum(v) { return v != null && v !== "" && Number.isFinite(Number(v)); }
+  function plural(n, one, many) { return Number(n) === 1 ? one : many; }
+  function obj(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : null; }
+  function arr(v) { return Array.isArray(v) ? v : null; }
+  function str(v) { return typeof v === "string" && v.trim() ? v.trim() : null; }
+
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December"];
+  var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  function dayParts(ymd) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || "");
+    if (!m) return null;
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return null;
+    return d;
+  }
+  function longDay(d) { return DAYS[d.getUTCDay()] + ", " + MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); }
+  function dayBefore(d) { return new Date(d.getTime() - 86400000); }
+
+  /* ---------- section frame ---------- */
+  var sectionN = 0;
+  function section(title) {
+    var id = "s" + (++sectionN);
+    var s = el("section", "card");
+    s.setAttribute("aria-labelledby", id);
+    var h = el("h2", null, title);
+    h.id = id;
+    s.appendChild(h);
+    return s;
+  }
+  function tile(label, value, opts) {
+    opts = opts || {};
+    var t = el("div", "tile" + (opts.wide ? " wide" : "") + (opts.tone ? " is-" + opts.tone : ""));
+    add(t, el("span", "lb", label), el("span", "big" + (opts.word ? " word" : ""), value));
+    return t;
+  }
+  function plain(text) { return el("p", "plain", text); }
+  function note(text) { return el("p", "note", text); }
+
+  /* ---------- 1. systems ---------- */
+  var REDS_SHOWN = 5;
+  function renderSystems(sys) {
+    var s = section("Systems");
+    if (!obj(sys) || sys.status !== "ok" || !isNum(sys.total)) {
+      add(s, plain(str(sys && sys.line) || (obj(sys) ? "Systems: the morning check did not run, so nothing was checked." : "Systems: could not be read.")));
+      return s;
+    }
+    var red = Number(sys.red) || 0;
+    var notChecked = Number(sys.not_checked) || 0;
+    var tiles = el("div", "tiles");
+    add(tiles,
+      tile("Red", count(red), { tone: red ? "red" : null }),
+      tile("Green", count(sys.green), { tone: "green" }),
+      tile("Not checked", count(notChecked)));
+    add(s, tiles);
+    var from = /^Systems, (from this morning's check(?: at \d{1,2}:\d{2}\s?[AP]M)?):/.exec(str(sys.line) || "");
+    var lead = "Out of " + count(sys.total) + " checks.";
+    if (from) lead += " " + from[1].charAt(0).toUpperCase() + from[1].slice(1) + ".";
+    add(s, note(lead));
+    if (!red && !notChecked) add(s, el("p", "row-line", "Nothing needs you."));
+
+    var reds = arr(sys.reds) || [];
+    if (reds.length) {
+      var list = el("ul", "list");
+      list.setAttribute("aria-label", "Red checks");
+      reds.forEach(function (c, i) {
+        c = obj(c) || {};
+        var li = el("li", "red-item");
+        if (i >= REDS_SHOWN) li.hidden = true;
+        var title = el("p", "row-title");
+        var day = isNum(c.day_count) && Number(c.day_count) > 1 ? "Red · day " + count(c.day_count) : "Red";
+        add(title, el("span", "tag red", day), el("span", "mono", str(c.id) || "unnamed check"));
+        add(li, title);
+        var sees = str(c.customer_sees);
+        if (sees && !/^unknown/i.test(sees)) add(li, labelled("What people see: ", sees));
+        if (str(c.proof)) add(li, labelled("What we saw: ", c.proof));
+        add(li, labelled("Fix: ", str(c.fix) || "no fix written yet."));
+        list.appendChild(li);
+      });
+      add(s, list);
+      if (reds.length > REDS_SHOWN) {
+        var btn = el("button", "more", "Show all " + reds.length + " red checks");
+        btn.type = "button";
+        btn.setAttribute("aria-expanded", "false");
+        btn.addEventListener("click", function () {
+          var open = btn.getAttribute("aria-expanded") !== "true";
+          Array.prototype.forEach.call(list.children, function (li, i) { if (i >= REDS_SHOWN) li.hidden = !open; });
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+          btn.textContent = open ? "Show only the first " + REDS_SHOWN : "Show all " + reds.length + " red checks";
+        });
+        add(s, btn);
+      }
+    }
+    return s;
+  }
+  function labelled(label, text) {
+    var p = el("p", "row-line");
+    add(p, el("b", null, label), document.createTextNode(String(text)));
+    return p;
+  }
+
+  /* ---------- 2. last 24 hours ---------- */
+  function c8(team, key) {
+    var c = obj(team) && obj(team.company_8);
+    var v = c && obj(c[key]);
+    return v && isNum(v.value) ? v.value : null;
+  }
+  function renderLast24(team) {
+    var s = section("Last 24 hours");
+    if (!obj(team) || !obj(team.company_8)) {
+      add(s, plain(str(team && team.company_error) || "Cash collected: unknown."));
+      return s;
+    }
+    var cash = c8(team, "cash_cents");
+    var tiles = el("div", "tiles");
+    add(tiles,
+      tile("Cash collected", money(cash), { wide: true }),
+      tile("Files funded", count(c8(team, "funded_count"))),
+      tile("Funded dollars", money(c8(team, "funded_dollars_cents")), { wide: true }));
+    add(s, tiles);
+    return s;
+  }
+
+  /* ---------- 3. team ---------- */
+  function windowWords(kind, d) {
+    if (kind === "evening") return "today so far";
+    return d ? "yesterday, " + longDay(dayBefore(d)) : "yesterday";
+  }
+  function closeWords(sales, held) {
+    if (!isNum(held) || !Number(held)) return "No calls held.";
+    return count(sales) + " " + plural(sales, "sale", "sales") + " from " + count(held) + " " + plural(held, "call", "calls") + ".";
+  }
+  function renderTeam(team, ctx) {
+    var s = section("Team");
+    if (!obj(team)) { add(s, plain("Team: could not be read.")); return s; }
+    add(s, el("p", "caption", "Calls " + windowWords(ctx.kind, ctx.day) + "."));
+    var closers = arr(team.closers);
+    if (!closers) {
+      add(s, el("p", "row-line", str(team.closers_error) || "Closer calls: could not be read."));
+    } else {
+      var held = 0, noShows = 0, sales = 0;
+      closers.forEach(function (c) {
+        c = obj(c) || {};
+        held += Number(c.calls_held) || 0;
+        noShows += Number(c.no_shows) || 0;
+        sales += Number(c.deposits) || 0;
+      });
+      var tiles = el("div", "tiles");
+      tiles.style.marginTop = "8px";
+      add(tiles, tile("Calls held", count(held)), tile("Sales", count(sales)), tile("No-shows", count(noShows)));
+      add(s, tiles);
+      add(s, el("p", "row-line", closeWords(sales, held)));
+      if (!closers.length) {
+        add(s, note("No closer logged a call."));
+      } else {
+        var list = el("ul", "list");
+        list.setAttribute("aria-label", "Each closer");
+        closers.forEach(function (c) {
+          c = obj(c) || {};
+          var li = el("li");
+          add(li, el("p", "row-title", str(c.name) || "Name not on file"));
+          add(li, el("p", "row-line",
+            count(c.calls_held) + " " + plural(c.calls_held, "call", "calls") + " held, " +
+            count(c.deposits) + " " + plural(c.deposits, "sale", "sales") + ", " +
+            count(c.no_shows) + " " + plural(c.no_shows, "no-show", "no-shows") + "."));
+          list.appendChild(li);
+        });
+        add(s, list);
+      }
+    }
+    var now = el("ul", "list");
+    now.setAttribute("aria-label", "Right now");
+    var csm = el("li");
+    add(csm, el("p", "row-title", "Right now"),
+      el("p", "row-line", isNum(team.csm_overdue)
+        ? count(team.csm_overdue) + " " + plural(team.csm_overdue, "task is", "tasks are") + " late for the success team."
+        : (str(team.csm_error) || "Late success team tasks: unknown.")),
+      el("p", "row-line", isNum(team.unrecorded_calls)
+        ? count(team.unrecorded_calls) + " " + plural(team.unrecorded_calls, "call was", "calls were") + " not recorded."
+        : (str(team.unrecorded_error) || "Calls not recorded: unknown.")));
+    now.appendChild(csm);
+    add(s, now);
+    (arr(team.waiting) || []).forEach(function (w) { if (str(w)) add(s, note(w)); });
+    return s;
+  }
+
+  /* ---------- 4. money ---------- */
+  function renderMoney(m, ctx) {
+    var s = section("Money");
+    if (!obj(m) || m.status !== "ok") {
+      add(s, plain(str(m && m.line) || (obj(m) && m.status === "not_connected" ? "Money: not connected yet." : "Money: could not be read.")));
+      return s;
+    }
+    add(s, el("p", "caption", "Bank money " + windowWords(ctx.kind, ctx.day) + "."));
+    var tiles = el("div", "tiles");
+    tiles.style.marginTop = "8px";
+    add(tiles,
+      tile("In", money(m.in_cents), { wide: true }),
+      tile("Out", money(m.out_cents), { wide: true }),
+      tile("In this month", money(m.mtd_in_cents), { wide: true }),
+      tile("Out this month", money(m.mtd_out_cents), { wide: true }));
+    add(s, tiles);
+    var accts = arr(m.by_account);
+    if (accts && accts.length) {
+      var list = el("ul", "list");
+      list.setAttribute("aria-label", "Each bank account");
+      accts.forEach(function (a) {
+        a = obj(a) || {};
+        var li = el("li");
+        var name = (str(a.name) || "Account not known") + (str(a.mask) ? " ··" + a.mask : "");
+        add(li, el("p", "row-title", name), el("p", "row-line", money(a.in_cents) + " in, " + money(a.out_cents) + " out."));
+        list.appendChild(li);
+      });
+      add(s, list);
+    }
+    (arr(m.waiting) || []).forEach(function (w) { if (str(w)) add(s, note(w)); });
+    return s;
+  }
+
+  /* ---------- 5. ads and sales ---------- */
+  function backPerDollar(roas) {
+    if (!isNum(roas)) return "unknown";
+    return money(Math.round(Number(roas) * 100)) + " back for each $1";
+  }
+  function perBooked(cpb) {
+    var c = obj(cpb);
+    if (c && isNum(c.cost_cents)) return money(c.cost_cents);
+    return "Too few booked to say";
+  }
+  function offerLine(t) {
+    t = obj(t) || {};
+    return (isNum(t.spend_cents) ? money(t.spend_cents) + " ad spend, " : "") +
+      count(t.leads) + " new " + plural(t.leads, "person", "people") + ", " +
+      count(t.booked) + " booked, " + count(t.showed) + " showed, " +
+      count(t.sales) + " " + plural(t.sales, "sale", "sales") + ", " + money(t.cash_cents) + " cash.";
+  }
+  function renderAds(mk, ctx) {
+    var s = section("Ads and sales");
+    if (!obj(mk) || mk.status !== "ok" || !obj(mk.all_offers) || !obj(mk.all_offers.totals)) {
+      add(s, plain(str(mk && mk.line) || "Ads and sales: could not be read."));
+      return s;
+    }
+    var t = mk.all_offers.totals;
+    add(s, el("p", "caption", "All offers, " + windowWords(ctx.kind, ctx.day) + "."));
+    var tiles = el("div", "tiles");
+    tiles.style.marginTop = "8px";
+    add(tiles,
+      tile("Ad spend", isNum(t.spend_cents) ? money(t.spend_cents) : "None synced", { wide: true, word: !isNum(t.spend_cents) }),
+      tile("New people", count(t.leads)),
+      tile("Booked", count(t.booked)),
+      tile("Showed", count(t.showed)),
+      tile("Sales", count(t.sales)),
+      tile("Cash", money(t.cash_cents), { wide: true }),
+      tile("Cost per booked person", perBooked(t.cost_per_booked), { wide: true, word: !(obj(t.cost_per_booked) && isNum(t.cost_per_booked.cost_cents)) }),
+      tile("Return on ad spend", backPerDollar(t.roas), { wide: true, word: true }));
+    add(s, tiles);
+
+    (arr(mk.all_offers.not_split) || []).forEach(function (x) {
+      x = obj(x) || {};
+      if (!isNum(x.value) || !str(x.what)) return;
+      add(s, note(x.what + ": " + (x.unit === "cents" ? money(x.value) : count(x.value)) + "."));
+    });
+
+    var offers = arr(mk.offers) || [];
+    if (!offers.length) {
+      add(s, note("No offer had ads or sales."));
+    } else {
+      var list = el("ul", "list");
+      list.setAttribute("aria-label", "Each offer");
+      offers.forEach(function (o) {
+        o = obj(o) || {};
+        var li = el("li");
+        add(li, el("p", "row-title", str(o.name) || "No offer label"), el("p", "row-line", offerLine(o.totals)));
+        (arr(o.funnels) || []).forEach(function (f) {
+          f = obj(f) || {};
+          add(li, el("p", "row-line caption", (str(f.name) || "No landing page") + ": " + offerLine(f.totals)));
+        });
+        list.appendChild(li);
+      });
+      add(s, list);
+    }
+    if (str(mk.dashboard_line)) add(s, note(mk.dashboard_line));
+    return s;
+  }
+
+  /* ---------- 6. dying ads ---------- */
+  function renderDying(mk) {
+    var s = section("Dying ads");
+    if (!obj(mk) || mk.status !== "ok") { add(s, plain("Dying ads: could not be read.")); return s; }
+    var dying = arr(mk.dying_ads) || [];
+    if (!dying.length) { add(s, plain("None flagged.")); return s; }
+    var list = el("ul", "list");
+    list.setAttribute("aria-label", "Dying ads");
+    dying.forEach(function (d) {
+      d = obj(d) || {};
+      var li = el("li", "red-item");
+      var title = el("p", "row-title");
+      add(title, el("span", "tag red", "Dying"), document.createTextNode(str(d.ad_name) || "Ad name not on file"));
+      add(li, title);
+      if (str(d.offer_name)) add(li, el("p", "row-line caption", "Offer: " + d.offer_name));
+      if (isNum(d.plays) && isNum(d.reached_25_rate)) {
+        var got = Math.round(Number(d.plays) * Number(d.reached_25_rate));
+        add(li, el("p", "row-line", count(got) + " of " + count(d.plays) + " plays got a quarter of the way in."));
+      }
+      if (isNum(d.spend_7d_cents)) add(li, el("p", "row-line", money(d.spend_7d_cents) + " spent on it in the last 7 days."));
+      add(li, labelled("Fix: ", "change the opening line. Keep the rest."));
+      list.appendChild(li);
+    });
+    add(s, list);
+    return s;
+  }
+
+  /* ---------- 7. suggestions ---------- */
+  function renderSuggestions(items) {
+    var s = section("Suggestions");
+    var list = (arr(items) || []).map(obj).filter(function (x) { return x && (str(x.write_up) || str(x.headline)); });
+    if (!list.length) { add(s, plain("None today.")); return s; }
+    var ul = el("ul", "list");
+    ul.setAttribute("aria-label", "Suggestions");
+    list.forEach(function (x) {
+      var li = el("li");
+      add(li, el("p", "plain", str(x.write_up) || str(x.headline)));
+      if (str(x.rule_text)) add(li, el("p", "row-line caption", x.rule_text));
+      ul.appendChild(li);
+    });
+    add(s, ul);
+    return s;
+  }
+
+  /* ---------- 8. today ---------- */
+  function renderToday(today) {
+    var s = section("Today");
+    var t = obj(today);
+    var line = t && t.status !== "waiting" ? str(t.line) : null;
+    add(s, plain(line || "Nothing on today's list yet."));
+    return s;
+  }
+
+  /* ---------- the whole page ---------- */
+  function guarded(fn, title) {
+    try { return fn(); } catch (e) {
+      var s = section(title);
+      add(s, plain("This part could not be shown."));
+      return s;
+    }
+  }
+
+  function render(brief, ctx) {
+    clear(root);
+    var col = el("div", "col");
+    var top = el("div", "top");
+    var logo = el("span", "logo");
+    logo.setAttribute("role", "img");
+    logo.setAttribute("aria-label", "Fundhub");
+    add(top, logo);
+    add(col, top);
+    add(col, el("p", "eyebrow", ctx.kind === "evening" ? "Evening brief" : "Morning brief"));
+    add(col, el("h1", null, ctx.day ? longDay(ctx.day) : "Your brief"));
+    add(col, el("p", "lede", ctx.kind === "evening"
+      ? "Numbers are for today so far. Cash is the last 24 hours."
+      : "Numbers are for " + windowWords(ctx.kind, ctx.day) + ". Cash is the last 24 hours."));
+
+    add(col,
+      guarded(function () { return renderSystems(brief.systems); }, "Systems"),
+      guarded(function () { return renderLast24(brief.team); }, "Last 24 hours"),
+      guarded(function () { return renderTeam(brief.team, ctx); }, "Team"),
+      guarded(function () { return renderMoney(brief.money, ctx); }, "Money"),
+      guarded(function () { return renderAds(brief.marketing, ctx); }, "Ads and sales"),
+      guarded(function () { return renderDying(brief.marketing); }, "Dying ads"),
+      guarded(function () { return renderSuggestions(brief.suggestions); }, "Suggestions"),
+      guarded(function () { return renderToday(brief.today); }, "Today"));
+    add(root, col);
+    document.title = (ctx.kind === "evening" ? "Evening" : "Morning") + " brief · Fundhub";
+  }
+
+  /* ---------- read the link, fetch once ---------- */
+  var q = new URLSearchParams(location.search);
+  var date = q.get("date") || "";
+  var kind = q.get("kind") || "morning";
+  var k = q.get("k") || "";
+  var day = dayParts(date);
+  if (!day || (kind !== "morning" && kind !== "evening") || !/^[A-Za-z0-9_-]{16,128}$/.test(k)) {
+    showBadLink();
+    return;
+  }
+
+  var url = "/api/public/morning-brief?date=" + encodeURIComponent(date) +
+    "&kind=" + encodeURIComponent(kind) + "&k=" + encodeURIComponent(k);
+  k = null;
+  var ctrl = typeof AbortController === "function" ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 20000) : null;
+
+  fetch(url, {
+    method: "GET",
+    credentials: "omit",
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+    headers: { Accept: "application/json" },
+    signal: ctrl ? ctrl.signal : undefined
+  })
+    .then(function (res) {
+      if (res.status === 200) return res.json();
+      // Only the route's own "not found" means the link is bad. A 503 (database blip), a 5xx, a blocked
+      // request or a dropped signal says nothing about the link, so it must not call a good link expired.
+      var err = new Error("status");
+      err.fhKind = res.status === 404 ? "bad" : "later";
+      throw err;
+    })
+    .then(function (body) {
+      if (timer) clearTimeout(timer);
+      if (!body || body.ok !== true || !obj(body.brief)) {
+        var err = new Error("shape");
+        err.fhKind = "bad";
+        throw err;
+      }
+      render(body.brief, { kind: kind, day: day });
+    })
+    .catch(function (e) {
+      if (timer) clearTimeout(timer);
+      if (e && e.fhKind === "bad") showBadLink();
+      else showLater();
+    });
+})();
+</script>
+</body>
+</html>

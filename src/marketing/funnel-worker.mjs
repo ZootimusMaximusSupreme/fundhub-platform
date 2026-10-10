@@ -19,6 +19,7 @@
 import { finishJob, failJob } from "./jobs.mjs";
 import { JOB_KINDS } from "./job-kinds.mjs";
 import { FUNNEL_JOB_KINDS } from "./funnel-store.mjs";
+import { runnerIsLocal, isAiKind } from "./ai-runner.mjs";
 
 /** The background function's own limit is 15 minutes; this leaves a margin. */
 export const PASS_BUDGET_MS = 14 * 60_000;
@@ -44,9 +45,12 @@ export async function runFunnelJob(db, { jobId, orgId, env = process.env, deps =
   const now = deps.now ?? (() => Date.now());
   const started = now();
   let last = { status: "skipped", job_id: jobId, error: "the job was not queued (already running, finished, or not a funnel job)" };
+  /* MARKETING_AI_RUNNER=local (src/marketing/ai-runner.mjs): the page writer ('funnel')
+     is AI work and is never claimed here; it waits for the Mac. The push still runs. */
+  const kinds = runnerIsLocal(env) ? FUNNEL_JOB_KINDS.filter((k) => !isAiKind(k)) : [...FUNNEL_JOB_KINDS];
 
   for (let pass = 0; pass < 3; pass += 1) {
-    const claimed = await db.query(CLAIM_SQL, [jobId, orgId, FUNNEL_JOB_KINDS]);
+    const claimed = await db.query(CLAIM_SQL, [jobId, orgId, kinds]);
     const job = claimed.rows[0];
     if (!job) return last;
 

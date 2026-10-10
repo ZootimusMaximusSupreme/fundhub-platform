@@ -1,4 +1,7 @@
-// Live-path registry for the 7:00 a.m. pulse.
+// Live-path registry for the 6:00 a.m. Arizona pulse.
+// Page and route pings live here. Scheduled-job lateness lives in
+// src/pulse/heartbeats.mjs: a job is red when its newest run is older than
+// 3 times its schedule. That check reports only. It never restarts a job.
 // Add a row in the same change as the feature. See .cursor/rules/pulse-registry.mdc.
 // Completeness is enforced by registry.test.mjs (routes.test.mjs allow-list pattern).
 // Audit only. GET pings. Never auto-fix. Never live CRS. Never charge a card.
@@ -23,6 +26,7 @@ export const ALLOWED_UNMONITORED = {
   "training-progress": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would stamp a compliance certification against a partner nobody assessed. The monitored door for the training is read/partner-training, which is what a partner actually opens.",
   "push/unsubscribe": "POST or DELETE only — it is the control that switches a client's notifications off. A GET answers 405 by design, which a ping would read as an outage, and pinging it with a body would retire a real device. Its read sibling push/subscribe answers GET and is the monitored door for this pair.",
   "sidebar.fragment.html": "Shared chrome fragment mounted into other pages. Not a live desk.",
+  "merchant/events": "POST only — the open API a client's own merchant processor posts sales and payouts to, with a per-connection Bearer key as the whole credential. A GET answers 405 by design, which a ping would read as an outage, and a ping has no key, so it could only ever be refused. Its read sibling money/connections answers GET and is the monitored door for this surface.",
   "analytics/clickfunnels-connect": "POST only. A GET answers 405 by design, and pinging it with a body would try to save an org's ClickFunnels credential from whatever junk the pinger sent, and validates by calling the real ClickFunnels API before saving — a scheduled ping would burn a real API call against Chris's account every time it ran. The monitored door for this surface is read/funnel-pages, which reports the connection's real state.",
   "analytics/clickfunnels-sync": "POST only. A GET answers 405 by design, and pinging it with a body would trigger a real sync against ClickFunnels' API on a schedule nobody asked for, and updates last_synced_at/last_error whether or not anyone wanted a sync to run right then. The monitored door is read/funnel-pages.",
   "analytics/youtube-connect": "POST only, same reasoning as analytics/clickfunnels-connect — it exchanges a real OAuth refresh token with Google before saving, so a scheduled ping would spend a real Google API call. The monitored door is read/video-stats.",
@@ -34,7 +38,38 @@ export const ALLOWED_UNMONITORED = {
   "marketing/research/approve": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would stamp Chris's approval on a research report nobody read. Its read sibling marketing/research answers GET and is the monitored door for the research card.",
   "marketing/research/tweak": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would start a paid research run (model calls and web searches) that nobody asked for. The monitored door is marketing/research.",
   "marketing/research/brain": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would write a report into Company Brain and pay for embedding it. The monitored door is marketing/research.",
-  "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting."
+  "public/morning-brief": "The secret link code in Chris's morning and evening text is the whole credential, so a GET without the exact date, kind and code answers 404 on purpose, and it answers that identically for a wrong code, an old date and a missing brief, so the door cannot be used to find out which reports exist. A plain ping would read that correct refusal as an outage every day (isUp counts 200, 400, 401, 403 and 405 as up, not 404). The watch for this surface is the brief-link beat (src/pulse/beats/beat-brief-link.mjs), which follows the real link from the newest text every hour and goes red if the page or this route stops answering.",
+  "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting.",
+  "404.html": "This is the missing-page file. Opening it is what a bad link does. A morning ping of the not-found page does not watch a product door.",
+  "climate/404.html": "Climate site missing-page file. A morning ping of the not-found page does not watch the climate door. climate/index.html is the page the pulse pings.",
+  "climate/404/index.html": "Same missing-page file as climate/404.html, at the folder URL. The pulse watches climate/index.html instead of this file.",
+  "aniso-face/logo-6k/index.html": "Brand logo render for the face file. Not a customer door and not a staff desk. A morning ping would not say whether the product is up.",
+  "aniso-face/logo-6k/preview.html": "Brand logo preview for the face file. Not a customer door and not a staff desk. A morning ping would not say whether the product is up.",
+  "partner/autopsy/index.html": "Shelved by the owner on 2026-08-31. netlify.toml sends /partner/autopsy/* to the price menu. A ping follows that redirect and would score the menu, not this page.",
+  "roadmap/index.html": "fundhub.ai/roadmap and this file 301 to apply.fundhub.ai/roadmap. That sales page is already checkFunnelRoadmapSales. A ping here would follow the redirect and score the other site."
+};
+
+/* Modules outside src/messaging/providers that call a provider send() for
+   SMS, email, paper mail, web push, or the phone buzz. watch is a registry
+   key or a JOBS id the morning pulse already checks. reason is 40+ characters
+   when a ping would send or would look down. registry.test.mjs fails when a
+   new file imports send and is not listed here. */
+export const SEND_PATHS = {
+  "netlify/functions/teleprompter-live-text.mjs": {
+    reason: "One-shot POST. The nonce is the whole credential. A GET answers 404 on purpose, so a morning ping would look down every day, and a body would text a real phone. Not a scheduled job."
+  },
+  "src/ad-videos/notify-fanout.mjs": { watch: "ad-video-sweeper" },
+  "src/auth/staff-mail.mjs": { watch: "auth/invite" },
+  "src/metro2/delivery/send.mjs": { watch: "repair/send" },
+  "src/pulse/alerts.mjs": { watch: "pulse-hourly" },
+  "src/pulse/instant-watch.mjs": { watch: "pulse-instant-watch" },
+  "src/pulse/notify.mjs": { watch: "daily-pulse" },
+  "src/push/send.mjs": { watch: "push/subscribe" },
+  "src/staff/blake-lead-watch.mjs": { watch: "blake-lead-watch" },
+  "src/staff/comp-alerts.mjs": {
+    reason: "Fires on commission.paid, sale.closed, and deposit.paid. There is no schedule and no GET door. A morning ping cannot send a payout email. The commissions desk is the page a person opens for this."
+  },
+  "src/workflows/ad-video-sweeper.mjs": { watch: "ad-video-sweeper" }
 };
 
 const API_KEYS = [
@@ -60,8 +95,12 @@ const API_KEYS = [
   "auth/staff-update",
   "auth/suspend",
   "banking/accounts",
+  "banking/link-exchange",
+  "banking/link-token",
   "banking/revoke",
   "banking/sync-accounts",
+  "banking/sync-liabilities",
+  "banking/sync-transactions",
   "bookings",
   "brand/review",
   "call-outcomes",
@@ -127,6 +166,7 @@ const API_KEYS = [
   "finance/bills",
   "finance/cards",
   "finance/cashflow",
+  "finance/containers",
   "finance/crs-pull",
   "finance/entities",
   "finance/liabilities",
@@ -163,7 +203,36 @@ const API_KEYS = [
   "message-templates",
   "messages-outbound",
   "messages",
+  "money/credit",
+  "money/accounts",
+  "money/overview",
+  "money/trends",
+  "money/setup",
+  "money/connections",
+  "money/payments",
+  "money/plan",
+  "money/banks",
+  "money/strategy",
+  "money/fundability",
+  /* FinanceOS wave 5 W5: both GETs answer 401 to an unsigned ping; the POSTs
+     (do_task, the ready press) are never pinged. */
+  "money/tasks",
+  "money/ready-to-fund",
+  /* W6 money helper: the GET answers 401 to an unsigned ping; the POST that
+     starts a turn is never pinged. */
+  "money/helper",
+  /* FinanceOS wave 5 W7: the GET answers 401 to an unsigned ping; approve,
+     cancel and propose are POSTs and are never pinged. */
+  "money/transfers",
+  /* File-protection alerts (Capital Blueprint launch B2): the GET answers 401 to an
+     unsigned ping; the POSTs (set_alert, set_promo, set_statement_close_day) are
+     never pinged. */
+  "money/alerts",
+  /* Capital Blueprint B3: the GET answers 401 to an unsigned ping; the POST (staff
+     accept / reject / waive / add a line) is never pinged. */
+  "money/vault",
   "ops/hire-closer",
+  "ops/notify-owner",
   "org-brand",
   "partner-brand/verify-domain",
   "partner-brand",
@@ -251,6 +320,9 @@ const API_KEYS = [
   "read/banking-surface",
   "read/blueprint-combined-approval",
   "blueprint/staff-actions",
+  /* Decline defense. A plain GET answers 401 to an unsigned ping; the POST
+     actions are never pinged. */
+  "blueprint/declines",
   "read/call-outcomes",
   /* The only read behind the client progress page. An outage here is a client
      who paid up to $10,000 seeing no scores, no checklist and no next step. */
@@ -292,6 +364,7 @@ const API_KEYS = [
   "read/message-templates",
   "read/messages",
   "read/money-map",
+  "read/morning-brief",
   "read/my-numbers",
   "read/ops-pulse",
   "read/partners",
@@ -406,10 +479,15 @@ const API_KEYS = [
      routes answer 405 to a GET before they read anything. A ping never
      writes, queues or spends. */
   "marketing/flywheel/spend-read",
-  /* X5 Shoot Day: the GET answers 401 to an unsigned ping; mark is POST-only
-     and answers 405 to a GET before it reads anything. A ping never writes. */
+  /* X5 Shoot Day: the GET is open (the teleprompter rolls with no sign-in) and
+     answers 200 to an unsigned ping; mark is POST-only and answers 405 to a
+     GET before it reads anything. A ping never writes. */
   "marketing/shoot",
-  "marketing/shoot/mark"
+  "marketing/shoot/mark",
+  /* Save the video. POST starts the Drive upload and PUT sends the original
+     bytes. A GET answers 405 before it reads anything (isUp counts 405 as up).
+     A ping never uploads a file. */
+  "marketing/shoot/take"
 ];
 
 const DESK_FILES = [
@@ -431,6 +509,7 @@ const DESK_FILES = [
   "csm-queue.html",
   "documents.html",
   "finance-os.html",
+  "financeos.html",
   "galaxy.html",
   "hiring.html",
   "index.html",
@@ -439,6 +518,26 @@ const DESK_FILES = [
   "lenders.html",
   "marketing-command-center.html",
   "messaging.html",
+  "money-credit.html",
+  "money-accounts.html",
+  "money-payments.html",
+  "money-plan.html",
+  "money-banks.html",
+  "money-fundability.html",
+  "money-helper.html",
+  "money-declines.html",
+  "money-vault.html",
+  "money.html",
+  "money-setup.html",
+  "money-connections.html",
+  "money-strategy.html",
+  "money-next.html",
+  "money-transfers.html",
+  "money-alerts.html",
+  /* The page the "Full report" link in the morning and evening text opens. No sign-in: the
+     page loads no staff shell and answers 200 to a plain GET, so the ping is honest. The link
+     itself (page plus data route) is followed every hour by the brief-link beat. */
+  "morning-brief.html",
   "my-numbers.html",
   "ops-admin.html",
   "partner-galaxy.html",
@@ -451,11 +550,61 @@ const DESK_FILES = [
   "social-studio.html",
   "soft-pull-approve.html",
   "staff-teams.html",
-  "teleprompter.html"
+  "teleprompter.html",
+  "teleprompter-remote.html"
 ];
 
-/** Static HTML under public/ (not public/app desks). */
-const PUBLIC_STATIC_FILES = ["climate/index.html"];
+/** Static HTML under public/ (not public/app desks) that the morning ping GETs.
+    A file on disk that is not in this list must be in ALLOWED_UNMONITORED. */
+const PUBLIC_STATIC_FILES = [
+  "affiliates/index.html",
+  "careers.html",
+  "climate/index.html",
+  "climate/lender-climate/index.html",
+  "consulting/index.html",
+  "consulting/privacy/index.html",
+  "consulting/refund/index.html",
+  "consulting/terms/index.html",
+  "contract.html",
+  "crm.html",
+  "education/enroll/index.html",
+  "education/index.html",
+  "education/learn/index.html",
+  "education/privacy/index.html",
+  "education/refund/index.html",
+  "education/terms/index.html",
+  "index.html",
+  "leads/c01cb7592c8bb994130158e897e99bf1/index.html",
+  "login.html",
+  "optimize-plan.html",
+  "optimize.html",
+  "partner/board/index.html",
+  "partner/board/live/index.html",
+  "partner/index.html",
+  "partner/menu/index.html",
+  "partner/trial/index.html",
+  "partner/trial/live/index.html",
+  "portal-login.html",
+  "privacy/index.html",
+  "progress.html",
+  "reset-password.html",
+  "roadmap/pay.html",
+  "roadmap/pull.html",
+  "start.html",
+  "terms/index.html",
+  "unsubscribe.html"
+];
+
+function publicStaticPath(file) {
+  if (file === "index.html") return "/";
+  if (file.endsWith("/index.html")) return `/${file.slice(0, -"index.html".length)}`;
+  return `/${file}`;
+}
+
+function publicStaticId(file) {
+  if (file === "index.html") return "home";
+  return file.replace(/\.html$/, "").replace(/\//g, "-");
+}
 
 export const PULSE_REGISTRY = [
   ...API_KEYS.map((key) => ({
@@ -464,15 +613,17 @@ export const PULSE_REGISTRY = [
     path: key === "health" ? "/api/health?strict=1" : `/api/${key}`
   })),
   ...DESK_FILES.map((file) => ({
-    id: file.replace(/\.html$/, ""),
+    // A desk whose name is also an api key (contracts, journeys, lenders, soft-pull-approve) gets "-desk" so no
+    // two rows share one id. Two rows with one id hide a red behind a green on the morning report.
+    id: API_KEYS.includes(file.replace(/\.html$/, "")) ? `${file.replace(/\.html$/, "")}-desk` : file.replace(/\.html$/, ""),
     kind: "desk",
     path: `/app/${file}`
   })),
   ...PUBLIC_STATIC_FILES.map((file) => ({
-    id: file.replace(/\.html$/, "").replace(/\//g, "-"),
+    id: publicStaticId(file),
     kind: "public_static",
     file,
-    path: file === "climate/index.html" ? "/climate/" : `/${file}`
+    path: publicStaticPath(file)
   }))
 ];
 
@@ -486,6 +637,7 @@ export function coverageKey(row) {
 export function missingFromRegistry({
   handlerKeys = [],
   deskFiles = [],
+  publicFiles = [],
   registry = PULSE_REGISTRY,
   allow = ALLOWED_UNMONITORED
 } = {}) {
@@ -498,6 +650,9 @@ export function missingFromRegistry({
     if (!covered.has(key)) missing.push(key);
   }
   for (const file of deskFiles) {
+    if (!covered.has(file)) missing.push(file);
+  }
+  for (const file of publicFiles) {
     if (!covered.has(file)) missing.push(file);
   }
   return missing.sort();

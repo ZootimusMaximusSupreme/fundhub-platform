@@ -35,8 +35,35 @@ const APP = path.resolve(HERE, "../../public/app");
    closer-call.html     — backward-compatible redirect to Closer Dashboard
    payment-success.html — public post-payment thank-you; no CRM shell, no staff nav
    soft-pull-approve.html — public signed-link consent page; no CRM shell, no staff nav
+   money.html           — the client's Finance OS page; client-facing like client-portal,
+                          no shell.js, no staff navigation (finance spec §8 step 4)
+   money-credit.html    — the client's credit page; same rule as money.html
+   money-setup.html     — the client's Finance OS setup page; same as money.html
+   money-accounts.html  — the client's Finance OS Accounts page; same as money.html
+   money-connections.html — Finance OS merchant connections; same client-facing frame as money.html
+   money-payments.html  — the client's Finance OS Payments page; same reason as money.html
+   money-plan.html      — the FinanceOS Plan (the month of dated pins); same frame as money.html
+   money-banks.html     — the client's FinanceOS bank strategy page; same reason as money.html
+   money-fundability.html — the client's Finance OS Fundability page; same reason as money.html
+   money-helper.html    — the FinanceOS Money Helper chat; same frame as money.html
+   money-declines.html  — the client's applications and decline defense; same reason as money.html
+   money-vault.html     — the client's funding papers (document vault); same reason as money.html
+   financeos.html       — the client's one-page FinanceOS (tabs over the money sections);
+   money-strategy.html  — the client's FinanceOS payment strategy page; same reason as money.html
+   financeos.html      — the client's one-page FinanceOS (tabs over the money sections);
+                          same client-facing frame as money.html
+   money-next.html      — FinanceOS "What to do next" (Do task, Ready to get funded);
+                          same client-facing frame as money.html
+   money-transfers.html — FinanceOS money moves (approve, history); same client-facing
+                          frame as money.html
+   money-alerts.html    — FinanceOS file-protection alerts (the four texts, switches,
+                          promo dates); same client-facing frame as money.html
    teleprompter.html    — full-screen reading stage for Shoot Day (spec §8.1: "Add the
                           page to NO_SIDEBAR"); no shell.js, links back to the Command Center
+   teleprompter-remote.html — pocket remote for the same shoot; no shell.js, no sign-in
+   morning-brief.html   — the daily brief Chris opens from his text with one tap; no
+                          sign-in, the long code in the link is the key, so no shell.js
+                          and no staff navigation (src/http/morning-brief-page.test.mjs)
    *.fragment.html      — a fragment, not a screen */
 const NO_SIDEBAR = new Set([
   "index.html",
@@ -45,7 +72,26 @@ const NO_SIDEBAR = new Set([
   "present.html",
   "payment-success.html",
   "soft-pull-approve.html",
-  "teleprompter.html"
+  "money.html",
+  "money-credit.html",
+  "money-setup.html",
+  "money-accounts.html",
+  "money-connections.html",
+  "money-payments.html",
+  "money-plan.html",
+  "money-banks.html",
+  "money-strategy.html",
+  "money-fundability.html",
+  "money-helper.html",
+  "money-declines.html",
+  "money-vault.html",
+  "financeos.html",
+  "money-next.html",
+  "money-transfers.html",
+  "money-alerts.html",
+  "teleprompter.html",
+  "teleprompter-remote.html",
+  "morning-brief.html"
 ]);
 
 function navHrefs(html) {

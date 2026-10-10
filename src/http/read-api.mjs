@@ -167,6 +167,12 @@ export const ROLE_SETS = {
      commissioned role ever appears, this is the line to revisit. Decided, not
      open — logged here so nobody re-derives it, not so it gets re-argued. */
   FINANCE: new Set(["owner", "admin", "sales_manager"]),
+  // FinanceOS (the client's money page and its /api/money/* and Plaid link doors).
+  // Owner-set 2026-10-07: "closers should have access to everything" — a closer
+  // demos FinanceOS on the sales call and works the client's file. Kept apart from
+  // FINANCE on purpose: FINANCE also gates invoices, staff records and payouts,
+  // which this decision does not open to closers.
+  FINANCE_OS: new Set(["owner", "admin", "sales_manager", "closer"]),
   // Operational reads any employee needs to do their job.
   // csm added 2026-09-05 (db/migrations/290_csm_role.sql). Without it a CSM
   // 403s on every client read they need to do the job they were created for.

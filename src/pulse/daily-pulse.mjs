@@ -1,9 +1,7 @@
 // Daily pulse — audit only. Suggested fixes + proof. Never auto-fixes.
 //
-// 7:00 a.m. America/Denver, all year. The cron carries Inngest's TZ= prefix,
-// so it fires on Denver's own clock: 13:00 UTC in daylight time, 14:00 UTC
-// after the fall-back (2026-11-01). Nobody has to flip it twice a year.
-// (It was a bare 0 13 * * *, which would have fired at 6:00 a.m. all winter.)
+// 6:00 a.m. America/Phoenix, all year. Arizona does not change clocks.
+// The morning brief texts right after this check.
 //
 // Do not stretch the Ops Admin money pulse into this.
 // Tripwire is existing Recon (AG-07) + scripts/gate-relay. No second watchdog.
@@ -17,10 +15,19 @@ import { gmailConfigFromEnv, createGmailClientFromConfig } from "../gmail/index.
 import { textChris, ticketDarwin } from "./notify.mjs";
 import { checkRegistry } from "./registry.mjs";
 import { checkMachine } from "./machine.mjs";
+import { checkJobHeartbeats } from "./heartbeats.mjs";
+import { GAP_LANES, runCoverageSlices } from "./coverage/run-slices.mjs";
+import { foldCoverage } from "./coverage/link.mjs";
+import { checkWorkflowRuns } from "./workflow-runs.mjs";
+import { auditPulse, makeLaneNaVerify } from "./self-audit.mjs";
+import { checkPipelineMotion } from "./pipeline-motion.mjs";
+import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
+import { checkLivePlaywright } from "./live-playwright-check.mjs";
+import { buildScorecard, loadPreviousScorecard, phoenixDate, saveScorecard } from "./scorecard.mjs";
 import { listUnrecordedCalls } from "../sales/unrecorded.mjs";
 
-export const PULSE_CRON = "TZ=America/Denver 0 7 * * *";
-export const PULSE_TZ = "America/Denver";
+export const PULSE_CRON = "TZ=America/Phoenix 0 6 * * *";
+export const PULSE_TZ = "America/Phoenix";
 export const AGENT_CODE = "AG-07";
 export const SOURCE_WORKFLOW = "daily-pulse";
 export const DEFAULT_BASE_URL = "https://fundhub.ai";
@@ -234,20 +241,23 @@ export async function checkGmail({ env = process.env, fetchImpl, gmailClient } =
 }
 
 export function formatScorecard({ date, dryRun, checks = [], sms, darwin } = {}) {
-  const named = checks.filter((c) => c.kind !== "registry");
+  const coverage = checks.filter((c) => c.kind === "coverage");
   const uptime = checks.filter((c) => c.kind === "registry");
-  const pass = named.filter((c) => c.status === "PASS").length;
-  const fail = named.filter((c) => c.status === "FAIL").length;
-  const skip = named.filter((c) => c.status === "skip").length;
+  const named = checks.filter((c) => c.kind !== "registry" && c.kind !== "coverage");
+  const scored = [...named, ...coverage];
+  const pass = scored.filter((c) => c.status === "PASS").length;
+  const fail = scored.filter((c) => c.status === "FAIL").length;
+  const skip = scored.filter((c) => c.status === "skip").length;
+  const unchecked = scored.filter((c) => c.status === "not checked").length;
   const up = uptime.filter((c) => c.status === "up").length;
   const down = uptime.filter((c) => c.status === "down").length;
   const score = uptime.length
-    ? `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip. Uptime: ${up} up / ${down} down`
-    : `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip`;
+    ? `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip / ${unchecked} not checked. Uptime: ${up} up / ${down} down`
+    : `Score: ${pass} PASS / ${fail} FAIL / ${skip} skip / ${unchecked} not checked`;
   const lines = [
     `# Pulse ${date}`,
     "",
-    `Timezone: ${PULSE_TZ}. Cron: \`${PULSE_CRON}\` (7:00 a.m. Denver, summer and winter).`,
+    `Timezone: ${PULSE_TZ}. Cron: \`${PULSE_CRON}\` (6:00 a.m. Arizona, all year).`,
     `Dry-run: ${dryRun ? "yes" : "no"}. **This run does not auto-fix.**`,
     "",
     score,
@@ -258,6 +268,20 @@ export function formatScorecard({ date, dryRun, checks = [], sms, darwin } = {})
   for (const c of named) {
     const fix = c.suggestedFix ? String(c.suggestedFix).replace(/\|/g, "/") : "—";
     lines.push(`| ${c.id} | ${c.status} | ${String(c.detail || "").replace(/\|/g, "/")} | ${fix} |`);
+  }
+  if (coverage.length) {
+    lines.push("");
+    lines.push("## Coverage");
+    lines.push("");
+    lines.push("Slice checks. A cron is red when its last success is older than 3 times its schedule. A row with no last-success time says not checked. This pulse does not fix them.");
+    lines.push("");
+    lines.push("| Check | Status | Proof | Suggested fix |");
+    lines.push("|---|---|---|---|");
+    for (const c of coverage) {
+      const fix = c.suggestedFix ? String(c.suggestedFix).replace(/\|/g, "/") : "—";
+      const proof = String(c.detail || "").replace(/\|/g, "/").replace(/\s+/g, " ").trim();
+      lines.push(`| ${c.id} | ${c.status} | ${proof} | ${fix} |`);
+    }
   }
   if (uptime.length) {
     lines.push("");
@@ -333,26 +357,142 @@ export async function runDailyPulse({
   gmailClient = null,
   sendSms = undefined,
   sendWhatsApp = undefined,
+  sendPulseText = true,
   recordRun = true,
   // Staff-visibility runner for the marketing-machine rows (asStaff on live).
   // Those tables are FORCE row security and read empty on the plain app role.
-  staffScope = null
+  staffScope = null,
+  // Slice and gap rows already run in their own Inngest steps. The 6 a.m. job
+  // passes these so this step stays under Netlify's 26-second cut. Left null,
+  // the coverage pass runs here (CLI and tests).
+  coverageRows = null,
+  // The bundled Inngest functions (src/workflows/index.mjs). It cannot be imported here: that file
+  // imports the daily pulse. The 6 a.m. job passes it in. Left null, the workflow rows and the
+  // workflow audit rows are skipped, and the audit says so.
+  functions = null,
+  // False in proofs: build the scorecard and the audit, but save nothing.
+  persist = true
 } = {}) {
-  const date = denverDateStamp(now);
+  const date = phoenixDate(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  const checks = [];
+  let checks = [];
 
   checks.push(await checkHealth({ fetchImpl, baseUrl: origin }));
   checks.push(await checkLogin({ fetchImpl, baseUrl: origin }));
   checks.push(await checkApplyDoor({ fetchImpl, baseUrl: origin }));
+  checks.push(
+    await checkFunnelRoadmapSales({
+      fetchImpl,
+      baseUrl: String(env.FUNNEL_URL || DEFAULT_FUNNEL_BASE_URL)
+    })
+  );
   checks.push(await checkSuggestionsDoor({ fetchImpl, baseUrl: origin }));
-  checks.push(checkGateRelay({ dirs: gateRelayDirs, nowMs: now.getTime() }));
-  const resolvedOrg = orgId || await defaultOrgId(db);
-  checks.push(await checkRecon({ db, orgId: resolvedOrg }));
-  checks.push(await checkUnrecorded({ db, orgId: resolvedOrg, now }));
+  /* The gate messenger is a process on the owner's Mac, so the server cannot see it. A row the server can never
+     check would sit "not checked" forever, which the law forbids. So the row exists only where the messenger lives:
+     the Mac's own run passes its folders in (scripts/daily-pulse.mjs). The server run passes none and has no row. */
+  if (gateRelayDirs) checks.push(checkGateRelay({ dirs: gateRelayDirs, nowMs: now.getTime() }));
+  /* A DEAD DATABASE MUST NOT STOP THE PULSE. Each database read that can throw
+     becomes one row, so the scorecard and the text still go out. The first
+     failure is the one red row; the reads after it are skips (proved
+     2026-10-09 by gap-outside-inngest: the old code threw here and no text left). */
+  let dbDown = false;
+  const guard = async (id, fn) => {
+    try {
+      const out = await fn();
+      return Array.isArray(out) ? out : [out];
+    } catch (err) {
+      const why = String((err && err.message) || err).slice(0, 160);
+      if (dbDown) return [check(id, "skip", `not read — the database is down (${why})`)];
+      dbDown = true;
+      return [check("db", "FAIL", `The database could not be read: ${why}`,
+        "Check https://fundhub.ai/api/health and the Supabase project first.")];
+    }
+  };
+  let resolvedOrg = orgId || null;
+  if (!resolvedOrg) {
+    const [row] = await guard("db", async () => {
+      resolvedOrg = await defaultOrgId(db);
+      return [];
+    });
+    if (row) checks.push(row);
+  }
+  checks.push(...await guard("recon", () => checkRecon({ db: dbDown ? null : db, orgId: resolvedOrg })));
+  checks.push(...await guard("unrecorded", () => checkUnrecorded({ db: dbDown ? null : db, orgId: resolvedOrg, now })));
+  if (resolvedOrg && db && !dbDown) {
+    checks.push(...await guard("pipeline", () => checkPipelineMotion({ db, orgId: resolvedOrg, now })));
+    checks.push(...await guard("live-playwright", () => checkLivePlaywright({ db, now })));
+  }
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
-  checks.push(...await checkMachine({ db, scope: staffScope, now }));
+  checks.push(...await guard("machine", () => checkMachine({ db: dbDown ? null : db, scope: dbDown ? null : staffScope, now })));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
+  try {
+    checks.push(...await checkJobHeartbeats({ db, now }));
+  } catch (err) {
+    checks.push(check(
+      "jobs",
+      "skip",
+      `job heartbeats not read: ${String((err && err.message) || err).slice(0, 160)}`
+    ));
+  }
+  if (Array.isArray(coverageRows)) {
+    checks.push(...coverageRows);
+  } else {
+    try {
+      checks.push(...await runCoverageSlices({
+        db,
+        scope: staffScope,
+        now,
+        orgId: resolvedOrg,
+        fetchImpl,
+        baseUrl: origin,
+        env
+      }));
+    } catch (err) {
+      checks.push(check(
+        "coverage",
+        "skip",
+        `coverage slices not read: ${String((err && err.message) || err).slice(0, 160)}`
+      ));
+    }
+  }
+
+  if (!Array.isArray(coverageRows) && Array.isArray(functions)) {
+    try {
+      checks.push(...await checkWorkflowRuns({ db, scope: staffScope, now, functions }));
+    } catch (err) {
+      checks.push(check("wf", "skip", `workflow rows not read: ${String((err && err.message) || err).slice(0, 160)}`));
+    }
+  }
+
+  /* NOTHING LIVE IS EVER "NOT CHECKED" (owner-set 2026-10-09). Fold the slice claims into the check that
+     really ran, then audit the pulse itself: did every check show up, does every "nothing to judge" still
+     hold, do the numbers add up. Each stage is wrapped; if it breaks, that is one red row and the morning
+     text still goes. */
+  let folded = 0;
+  try {
+    const f = foldCoverage(checks);
+    folded = f.folded;
+    const audit = await auditPulse({
+      checks: f.checks,
+      folded,
+      functions,
+      gapLanes: GAP_LANES,
+      db,
+      scope: staffScope,
+      now,
+      orgId: resolvedOrg,
+      laneNaVerify: makeLaneNaVerify({ db, scope: staffScope, now })
+    });
+    checks = [...audit.checks, ...audit.rows];
+    folded += audit.folded || 0;
+  } catch (err) {
+    checks.push(check(
+      "audit:crashed",
+      "FAIL",
+      `The pulse could not audit itself: ${String((err && err.message) || err).slice(0, 160)}`,
+      "Read the error. The fold or the audit stage broke; the checks above still ran."
+    ));
+  }
 
   const failRows = checks.filter((c) => c.status === "FAIL" || c.status === "down");
   const findings = failRows.map((c) => `${c.id}: ${c.detail}`);
@@ -361,16 +501,30 @@ export async function runDailyPulse({
   const fail = failRows.length;
   const skip = checks.filter((c) => c.status === "skip").length;
 
-  const sms = await textChris({
-    date,
-    pass,
-    fail,
-    skip,
-    topFails: findings,
-    env,
-    dryRun,
-    sendImpl: sendSms
-  });
+  const sms = sendPulseText
+    ? await textChris({
+      date,
+      pass,
+      fail,
+      skip,
+      topFails: findings,
+      env,
+      dryRun,
+      sendImpl: sendSms,
+      now
+    })
+    : { sent: false, reason: "replaced_by_morning_brief", body: null, to: null };
+
+  let scorecard = null;
+  try {
+    const previous = resolvedOrg ? await loadPreviousScorecard(db, resolvedOrg, date) : null;
+    scorecard = buildScorecard({ checks, now, previous });
+    if (persist && resolvedOrg && db) await saveScorecard(db, resolvedOrg, scorecard);
+  } catch (err) {
+    if (!scorecard) {
+      try { scorecard = buildScorecard({ checks, now }); } catch { scorecard = null; }
+    }
+  }
   const darwin = await ticketDarwin({
     date,
     findings,
@@ -411,6 +565,8 @@ export async function runDailyPulse({
     findings,
     suggestedFixes,
     sms,
+    scorecard,
+    folded,
     darwin,
     wrote,
     agentRun,

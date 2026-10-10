@@ -11,6 +11,9 @@ function fakeDb(rows) {
     query: async (sql, params) => {
       calls.push({ sql: String(sql), params });
       const text = String(sql);
+      if (/^\s*SELECT \* FROM payment_links WHERE link_ref = \$1/i.test(text)) {
+        return { rows: rows.filter((r) => r.link_ref === params[0]) };
+      }
       if (/link_ref = \$1/i.test(text)) {
         const [link_ref, , commas_session_id, paid_amount_cents, openStatuses] = params;
         const row = rows.find((r) => r.link_ref === link_ref && openStatuses.includes(r.status));
@@ -171,5 +174,89 @@ describe("onPaymentReceivedForLink", () => {
       0,
       "$32 soft-pull stays off the SLO portal path"
     );
+  });
+
+  /* Finance OS setup (wave 3 G1): the setup link paid → one finance-os
+     subscription, once. Any other link never touches subscriptions. */
+  const ORG = "11111111-1111-4111-8111-111111111111";
+  const CLIENT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const LINK_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+  function setupDb(links) {
+    const subs = [];
+    const base = fakeDb(links);
+    const db = {
+      subs,
+      calls: base.calls,
+      query: async (sql, params) => {
+        const text = String(sql);
+        if (/FROM subscriptions/.test(text) && /provider_ref = \$4/.test(text)) {
+          base.calls.push({ sql: text, params });
+          return { rows: subs.filter((r) => r.provider_ref === params[3] && r.tier === params[2]) };
+        }
+        if (/FROM subscriptions/.test(text)) {
+          base.calls.push({ sql: text, params });
+          return { rows: subs.filter((r) => r.client_id === params[1] && r.tier === params[2]) };
+        }
+        if (/INSERT INTO subscriptions/.test(text)) {
+          base.calls.push({ sql: text, params });
+          const row = { id: `sub-${subs.length + 1}`, org_id: params[0], client_id: params[1], tier: params[2], price_cents: params[4], provider_ref: params[8], effective_from: params[11] };
+          subs.push(row);
+          return { rows: [row] };
+        }
+        return base.query(sql, params);
+      }
+    };
+    return db;
+  }
+
+  function setupLink(extra = {}) {
+    return {
+      id: LINK_ID, link_ref: "pl_setup1", status: "sent", org_id: ORG, client_id: CLIENT,
+      purpose: "custom", description: "Finance OS setup", paid_at: null, ...extra
+    };
+  }
+
+  test("a paid Finance OS setup link turns Finance OS on for that client", async () => {
+    const links = [setupLink()];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({ payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } }, db);
+    assert.equal(links[0].status, "paid");
+    assert.equal(db.subs.length, 1);
+    assert.equal(db.subs[0].tier, "finance-os");
+    assert.equal(db.subs[0].client_id, CLIENT);
+    assert.equal(db.subs[0].provider_ref, `payment_link:${LINK_ID}`);
+    assert.equal(db.subs[0].price_cents, null, "not priced is null, never 0");
+  });
+
+  test("a replayed setup payment does not open a second subscription", async () => {
+    const links = [setupLink()];
+    const db = setupDb(links);
+    const evt = { payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } };
+    await onPaymentReceivedForLink(evt, db);
+    await onPaymentReceivedForLink(evt, db);
+    await onPaymentReceivedForLink(evt, db);
+    assert.equal(db.subs.length, 1);
+  });
+
+  test("a replay heals a setup link that was marked paid but never granted", async () => {
+    const links = [setupLink({ status: "paid", paid_at: new Date("2026-10-06T12:00:00Z") })];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({ payload: { ref: "pl_setup1", amount: 500 } }, db);
+    assert.equal(db.subs.length, 1);
+  });
+
+  test("a paid link that is not the setup link never touches subscriptions", async () => {
+    const links = [
+      setupLink({ link_ref: "pl_soft", description: "Business Financial Assessment", purpose: "diagnostic" }),
+      setupLink({ id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", link_ref: "pl_custom", description: "Something else" })
+    ];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({ payload: { ref: "pl_soft", amount: 32 } }, db);
+    await onPaymentReceivedForLink({ payload: { ref: "pl_custom", amount: 10 } }, db);
+    assert.equal(links[0].status, "paid");
+    assert.equal(links[1].status, "paid");
+    assert.equal(db.subs.length, 0);
+    assert.equal(db.calls.filter((c) => /subscriptions/.test(c.sql)).length, 0);
   });
 });

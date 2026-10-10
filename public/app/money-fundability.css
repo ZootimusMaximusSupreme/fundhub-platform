@@ -1,0 +1,131 @@
+/* Fundability section — FinanceOS.sections.fundability (money-fundability.js).
+   Every rule is under .fh-fundability so the section can sit inside the
+   combined FinanceOS page (/app/financeos.html) with this one <link> and touch
+   nothing around it. It carries its own base pieces (card, eyebrow, caption,
+   big, grid, buttons, skeletons) so it needs no rules copied from another page.
+
+   UI-STANDARDS: 8px spacing scale; cards span 4, 6 or 12; no px font sizes
+   (§12.7 — sizes come from the brand whitelist: h1/h2, .big, .eyebrow,
+   .caption); no hand-rolled resting shadow (§12.2 — .card takes
+   --panel-shadow from fundhub-brand.css); status is a word and a shape, never
+   colour alone (§12.6); one column and no sideways page scroll on a phone
+   (§11). */
+
+.fh-fundability{display:block}
+.fh-fundability p{max-width:72ch}
+
+/* head */
+.fh-fundability .fd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-fundability .fd-head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+
+/* Sample banner — literal amber, not a brand variable, so it stays a warning
+   on every tenant, and it says so in words (UI-STANDARDS §12.6). */
+.fh-fundability .fd-sample{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+
+/* the 12-column grid */
+.fh-fundability .fd-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.fh-fundability .fd-thirds>*{grid-column:span 4}
+.fh-fundability .fd-halves>*{grid-column:span 6}
+
+/* the resting container (§12.1). The shadow comes from the brand file. */
+.fh-fundability .card{background:var(--surface,#FFFFFF);border:1px solid var(--line);border-radius:10px;padding:16px 24px;min-width:0}
+.fh-fundability .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim,var(--gray));margin-bottom:8px}
+.fh-fundability .caption{color:var(--text-dim,var(--gray))}
+.fh-fundability .big,.fh-fundability .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-fundability .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.fh-fundability .num{font-weight:500;color:var(--ink)}
+.fh-fundability .fd-tile{display:flex;flex-direction:column;gap:8px}
+/* The tier is a solid word, so it reads the same on a one-hue tenant. */
+.fh-fundability .fd-tier{font-weight:600;color:var(--ink)}
+
+/* buttons and links — one primary per screen */
+.fh-fundability .fd-btn-primary{display:inline-flex;align-items:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none}
+.fh-fundability .fd-btn-primary:hover{background:var(--ink2)}
+.fh-fundability .fd-link{display:inline-flex;align-items:center;min-height:40px;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+/* checks — a mark, the words, and the status word */
+.fh-fundability .fd-factors{list-style:none;margin:0;padding:0}
+.fh-fundability .fd-factor{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.fh-fundability .fd-factor:first-child{border-top:0}
+.fh-fundability .fd-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;border:1px solid var(--line);font-weight:600;color:var(--ink)}
+.fh-fundability .is-pass .fd-mark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.fh-fundability .is-unknown .fd-mark{border-style:dashed}
+.fh-fundability .fd-factor-main{display:flex;flex-direction:column;min-width:0}
+.fh-fundability .fd-factor-label{font-weight:600;color:var(--ink)}
+.fh-fundability .fd-status{font-weight:600;white-space:nowrap;color:var(--ink)}
+.fh-fundability .is-unknown .fd-status{color:var(--text-dim,var(--gray))}
+
+/* the chart: lines in SVG, every word in HTML */
+.fh-fundability .fd-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:8px}
+.fh-fundability .fd-key{display:inline-block;width:24px;height:0;border-top:2px solid var(--ink);vertical-align:middle;margin-right:8px}
+.fh-fundability .fd-key-ifr{border-top-style:dashed}
+.fh-fundability .fd-plot-wrap{padding:8px 24px 0 32px}
+.fh-fundability .fd-plot{position:relative;height:200px}
+.fh-fundability .fd-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.fh-fundability .fd-grid-line{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+.fh-fundability .fd-base{stroke:var(--line);stroke-width:1}
+.fh-fundability .fd-line{fill:none;stroke:var(--ink);stroke-width:2}
+.fh-fundability .fd-line-ifr{stroke-dasharray:8 6}
+.fh-fundability .fd-ylabel{position:absolute;left:-32px;width:24px;text-align:right;transform:translateY(-50%);line-height:1}
+.fh-fundability .fd-dot{position:absolute;width:12px;height:12px;transform:translate(-50%,-50%);border-radius:999px;border:2px solid var(--ink);background:var(--ink);pointer-events:none}
+.fh-fundability .fd-dot-ifr{background:var(--surface,#FFFFFF)}
+/* One tap target per date, the full height of the plot, 44px wide (§5). */
+.fh-fundability .fd-col{position:absolute;top:0;bottom:0;width:44px;transform:translateX(-50%);min-height:40px;padding:0;border:0;background:transparent;cursor:pointer}
+.fh-fundability .fd-col::after{content:"";position:absolute;top:0;bottom:0;left:50%;border-left:1px dashed transparent}
+.fh-fundability .fd-col:hover::after,.fh-fundability .fd-col:focus-visible::after{border-left-color:var(--gray2,var(--line))}
+.fh-fundability .fd-col[aria-pressed="true"]::after{border-left:2px solid var(--ink)}
+.fh-fundability .fd-col:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.fh-fundability .fd-xaxis{position:relative;height:32px;margin-top:8px}
+.fh-fundability .fd-xlabel{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.fh-fundability .fd-xlabel.is-first{transform:none}
+.fh-fundability .fd-xlabel.is-last{transform:translateX(-100%)}
+.fh-fundability .fd-xl-short{display:none}
+.fh-fundability .fd-detail{border-top:1px solid var(--line);margin-top:8px;padding-top:16px;display:flex;flex-direction:column;gap:16px}
+.fh-fundability .fd-detail-head{font-weight:600;color:var(--ink)}
+.fh-fundability .fd-series{display:flex;flex-direction:column;gap:8px}
+.fh-fundability .fd-series-head{font-weight:600}
+.fh-fundability .fd-assume{list-style:disc;padding-left:24px;display:flex;flex-direction:column;gap:8px}
+.fh-fundability .fd-chart-card{display:flex;flex-direction:column;gap:8px}
+
+/* what moves it, what it cannot say */
+.fh-fundability .fd-moves{list-style:decimal;padding-left:24px;display:flex;flex-direction:column;gap:16px;margin-bottom:8px}
+.fh-fundability .fd-cannot{list-style:disc;padding-left:24px;display:flex;flex-direction:column;gap:8px}
+
+/* businesses */
+.fh-fundability .fd-block{margin-bottom:48px}
+.fh-fundability .fd-block>h2{font-weight:600;color:var(--ink)}
+.fh-fundability .fd-block>.caption{margin-bottom:16px}
+.fh-fundability .fd-biz{display:flex;flex-direction:column;gap:8px}
+.fh-fundability .fd-biz-name{font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.fh-fundability .fd-biz-empty{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.fh-fundability .fd-scroll{overflow-x:auto}
+.fh-fundability .fd-mini{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.fh-fundability .fd-mini th{text-align:left;font-weight:500;color:var(--text-dim,var(--gray));padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.fh-fundability .fd-mini td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.fh-fundability .fd-mini .r{text-align:right}
+
+/* empty and error */
+.fh-fundability .fd-empty,.fh-fundability .fd-error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+
+/* loading skeletons, in the real layout */
+.fh-fundability .fd-skel{display:flex;flex-direction:column;gap:8px}
+.fh-fundability .fd-sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fd-sk 1.2s ease-in-out infinite}
+.fh-fundability .fd-sk-s{height:12px;width:40%}
+.fh-fundability .fd-sk-m{height:16px;width:70%}
+.fh-fundability .fd-sk-l{height:32px;width:60%}
+.fh-fundability .fd-sk-chart{height:200px;width:100%}
+@keyframes fd-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){
+  .fh-fundability .fd-sk{animation:none}
+}
+
+@media (max-width:1100px){
+  .fh-fundability .fd-halves>*{grid-column:span 12}
+}
+@media (max-width:760px){
+  .fh-fundability .fd-thirds>*{grid-column:span 12}
+  .fh-fundability .card{padding:16px}
+  .fh-fundability .fd-plot{height:160px}
+  .fh-fundability .fd-xl-long{display:none}
+  .fh-fundability .fd-xl-short{display:inline}
+}

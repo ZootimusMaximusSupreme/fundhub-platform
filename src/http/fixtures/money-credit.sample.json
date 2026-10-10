@@ -1,0 +1,107 @@
+{
+  "ok": true,
+  "client": {
+    "id": "029964c5-4d8e-47ed-88c9-53ac13863fd4",
+    "name": "Sim Eleven-Blueprint"
+  },
+  "as_of": "2026-10-06T18:00:00.000Z",
+  "has_pull": true,
+  "sample": true,
+  "personal": {
+    "experian": {
+      "score": 771,
+      "pulled_at": "2026-09-30T04:30:03.759Z",
+      "sample": true
+    },
+    "equifax": {
+      "score": 778,
+      "pulled_at": "2026-09-30T04:30:03.759Z",
+      "sample": true
+    },
+    "transunion": {
+      "score": 766,
+      "pulled_at": "2026-09-30T04:30:03.759Z",
+      "sample": true
+    }
+  },
+  "business": {
+    "name": null,
+    "intelliscore": null,
+    "fsr": null
+  },
+  "utilization": {
+    "percent": 6.1,
+    "band": "excellent",
+    "partial": false,
+    "source": "accounts"
+  },
+  "accounts": {
+    "open": 4,
+    "revolving": 3,
+    "installment": 1,
+    "source": "tradelines",
+    "list": [
+      {
+        "lender": "TOYOTA MOTOR CREDIT",
+        "kind": "installment",
+        "last4": null,
+        "limit_cents": 3400000,
+        "balance_cents": 1120000,
+        "opened_on": "2023-06-28",
+        "open": true
+      },
+      {
+        "lender": "AMEX",
+        "kind": "revolving",
+        "last4": null,
+        "limit_cents": 1500000,
+        "balance_cents": 85000,
+        "opened_on": "2021-05-28",
+        "open": true
+      },
+      {
+        "lender": "CHASE CARD SERVICES",
+        "kind": "revolving",
+        "last4": null,
+        "limit_cents": 2000000,
+        "balance_cents": 120000,
+        "opened_on": "2019-05-28",
+        "open": true
+      },
+      {
+        "lender": "CAPITAL ONE",
+        "kind": "revolving",
+        "last4": null,
+        "limit_cents": 1000000,
+        "balance_cents": 70000,
+        "opened_on": "2023-02-28",
+        "open": true
+      }
+    ]
+  },
+  "inquiries": {
+    "total": 4,
+    "by_bureau": {
+      "experian": 2,
+      "equifax": 1,
+      "transunion": 1
+    },
+    "source": "custom_fields"
+  },
+  "negative_items": {
+    "count": 0
+  },
+  "late_payments": {
+    "count": 0
+  },
+  "history": [],
+  "suggestions": [
+    {
+      "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+      "topic": "inquiries"
+    }
+  ],
+  "missing": [
+    "business_score"
+  ]
+}

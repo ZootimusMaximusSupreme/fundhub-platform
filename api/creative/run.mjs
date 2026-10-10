@@ -10,6 +10,7 @@ import { claim, run } from "../../src/creative/generate.mjs";
 import { runDue } from "../../src/creative/runner.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { quickCopyVerdict } from "../../src/marketing/quick-copy.mjs";
+import { runnerIsLocal, AI_ASSET_KINDS, MAC_WAIT_LINE } from "../../src/marketing/ai-runner.mjs";
 
 /* plainReason — the failure a job recorded, in words the owner reads.
 
@@ -66,6 +67,10 @@ export default async function handler(req, res, deps = {}) {
   const claimJob = deps.claim ?? claim;
   const runJob = deps.run ?? run;
   const runAllDue = deps.runDue ?? runDue;
+  /* MARKETING_AI_RUNNER=local (src/marketing/ai-runner.mjs): a copy job is written by
+     the model, so this press never claims one; it waits for the Mac's queue runner. */
+  const local = runnerIsLocal(deps.env ?? process.env);
+  const scope = local ? { excludeAssetKinds: [...AI_ASSET_KINDS] } : {};
 
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");
@@ -83,7 +88,7 @@ export default async function handler(req, res, deps = {}) {
       if (principal.kind !== "staff") {
         return res.status(403).json({ ok: false, error: "staff_only_for_all" });
       }
-      const out = await runAllDue(database, { maxJobsPerPartner: maxJobs });
+      const out = await runAllDue(database, { maxJobsPerPartner: maxJobs, ...scope });
       return res.status(200).json({ ok: true, ...out });
     }
 
@@ -94,12 +99,21 @@ export default async function handler(req, res, deps = {}) {
       return res.status(400).json({ ok: false, error: "partner_id_required" });
     }
 
+    let macWaiting = 0;
     const jobs = await partnerScope({ kind: "partner", partnerId }, async (tx) => {
       const out = [];
       for (let i = 0; i < maxJobs; i++) {
-        const job = await claimJob(tx, { partnerId });
+        const job = await claimJob(tx, { partnerId, ...scope });
         if (!job) break;
         out.push({ job_id: job.id, ...(await runJob(tx, job)) });
+      }
+      if (local) {
+        const w = await tx.query(
+          `SELECT count(*)::int AS n FROM generation_jobs
+            WHERE partner_id = $1 AND status = 'queued' AND spec->>'assetKind' = ANY($2::text[])`,
+          [partnerId, [...AI_ASSET_KINDS]]
+        );
+        macWaiting = Number(w.rows[0] && w.rows[0].n) || 0;
       }
       return out;
     });
@@ -129,7 +143,9 @@ export default async function handler(req, res, deps = {}) {
     const firstReason = plainReason((jobs.find((j) => j.error) || {}).error);
 
     let note;
-    if (!jobs.length) {
+    if (!jobs.length && macWaiting > 0) {
+      note = MAC_WAIT_LINE;
+    } else if (!jobs.length) {
       note = "Nothing was waiting to run. Add a batch first, then press this again.";
     } else if (failed && !succeeded) {
       note = (failed === 1
@@ -156,7 +172,8 @@ export default async function handler(req, res, deps = {}) {
       failed,
       requeued,
       jobs,
-      note
+      note,
+      ...(local ? { waiting_for_mac: macWaiting } : {})
     });
   } catch (err) {
     return res.status(500).json({ ok: false, error: safeError(err) });

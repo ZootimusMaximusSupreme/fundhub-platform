@@ -620,3 +620,73 @@ flowchart TD
   not merged with this branch) and this unit's `resolveAdRows` follow the same order; they should become one.
 - **UNVERIFIED in a real database on this Mac** (no Postgres here): proved by
   `src/http/marketing-batches-next.pg.test.mjs` in GitHub CI.
+
+## U35 M1 7.7 batch lifecycle: the weekly batch on the clock, start / write / count / release / expiry, one buzz with the real count, weekly voice export, nightly repo check
+
+Generated from code on 2026-10-06 (branch `mm-u35-batch-lifecycle`): `src/marketing/schedule.mjs` (pure time
+math), `src/marketing/clock.mjs` (`weeklyTick`, `followLateDrafts`), `src/marketing/batch-run.mjs` (`start_batch`,
+`finish_batch`, `release_batch`, `expire_drafts`), `src/marketing/voice-export.mjs` (`voice_export`),
+`src/marketing/nightly-script-check.mjs` (`nightly_script_check`), `src/marketing/job-kinds.mjs` (the six kinds,
+group `system`). Yardstick: spec §7.7, §7.2 second bullet, §7.9, §7.4, §2 items 1 and 4 (the intended journey is not
+on main). Registering `start_batch` makes `GET marketing/batches` answer `write_now_ready: true`.
+
+### A batch's states and the event that moves each one
+
+```mermaid
+stateDiagram-v2
+    [*] --> planned: clock, 3 h before release_at (weekly, enabled only)<br/>INSERT ON CONFLICT on the one-weekly index<br/>or Write now (on_command, release_at = now)
+    planned --> writing: start_batch: pin main's commit (rules_sha, null when GitHub cannot be read),<br/>angles.json at it, then ONE staff tx: gatherPlanInputs, planBatch, savePlan,<br/>one write_slot job per slot, one finish_batch job (30 s out)
+    planned --> failed: start_batch: the plan is empty (no funnel on),<br/>or its 3rd try throws (error in words)
+    failed --> planned: clock tick, weekly only, until release_at + 24 h<br/>(or Chris presses Retry on the start_batch job)
+    writing --> ready: finish_batch, once no write_slot of the batch is queued or running<br/>(it re-queues itself every 30 s until then, no attempt counted):<br/>ready = scripts written, flagged = needs a look, failed = slots with no script;<br/>release_batch queued for release_at
+    ready --> released: release_batch at release_at:<br/>UPDATE ... WHERE status = 'ready' AND release_at has passed, RETURNING
+    released --> released: a late draft (Retry on a failed slot): the clock queues finish_batch,<br/>counts move, the new draft's file is queued, NO second buzz
+```
+
+### What each step writes
+
+```mermaid
+flowchart TD
+    REL["release_batch: the UPDATE changed a row?"] -->|no| NONE["nothing: not ready, not due, or already out"]
+    REL -->|yes, same transaction| FILES["every draft's file: repo_outbox 'replace'<br/>marketing/ads/scripts/machine/WEEK/NN-SLUG.md<br/>(serializeScript via queueScriptFile, op u35:file:ID)"]
+    FILES --> KIND{"kind?"}
+    KIND -->|weekly| BZ["ONE buzz 'scripts_ready', group batch:ID:<br/>'Scripts: 18 of 21 ready, 3 failed.' (the batch's real counts),<br/>held through quiet hours"]
+    KIND -->|on_command| SEEN{"page_seen heartbeat<br/>newer than 2 minutes?"}
+    SEEN -->|yes, Chris is on the page| QUIET["no buzz"]
+    SEEN -->|no| BZ
+    VIS["scripts-store VISIBLE_SQL (U25):<br/>a batch's drafts show only when it is released and release_at has passed"] -.-> FILES
+    EXP["expire_drafts (nightly): source machine, status draft, live version,<br/>batch released more than draft_expiry_days (14) ago"] --> EXPD["status 'expired' + its file again (op u35:expire:ID)<br/>never an import, never Chris's version, never a script with no batch"]
+    VOX["voice_export (weekly): unexported voice_pairs, oldest first,<br/>FOR UPDATE SKIP LOCKED, at most 500"] --> VOXE["repo_outbox 'edit' voice_append_pairs on VOICE.md,<br/>50 pairs each, op u35:voice:FIRST-PAIR-ID;<br/>exported_at stamped in the same transaction (once per pair)"]
+    NIGHT["nightly_script_check: visible live scripts with a file<br/>(or machine scripts of a released batch)"] --> LIST["one Contents listing per folder;<br/>blob hash = last committed app file? its body; else read that one file"]
+    LIST --> CMP{"sha256 of the body = the database's?"}
+    CMP -->|yes, or a save is still waiting| OK["nothing queued"]
+    CMP -->|no, or no file| FIX["repo_outbox 'replace' with the database's file<br/>(the database wins); counts on the job's result"]
+```
+
+### Gaps between the spec and this code (findings, not reconciled)
+
+- **No intended journey on main** (`docs/journeys/marketing-machine-intended.md`); checked against spec §7.7, §7.2,
+  §7.9 and the plan contract.
+- **The health card does not show the nightly check yet.** Spec §7.9 says the fixes "show on the health card". The
+  counts (`checked, ok, missing, mismatched, waiting, unreadable, extra, queued`) are the job's result
+  (`marketing_jobs.result`) and its log line; `api/marketing/health.mjs` and the API contract are not this unit's files.
+- **`enabled` gates every scheduled chore**: the weekly batch, the voice export, the nightly check and expiry. While the
+  switch is off (today, until M1 Done #6 is Chris's tap), voice pairs wait unexported, drafts do not expire, and the
+  nightly check does not run. Write now, its release and the late-draft follow-up work either way.
+- **Times the spec does not set** (safe defaults): the voice export is queued 5 hours before the weekly release (so
+  the week's pairs are in VOICE.md before the batch pins its rules commit); the nightly chores run at the first tick
+  after 02:00 in the settings zone; finish_batch looks again every 30 seconds.
+- **A weekly batch still writing at release_at** is released (with its one buzz) the moment finish_batch marks it
+  ready; every draft still appears at the same moment.
+- **No buzz for a weekly plan that keeps failing.** After 24 hours of retries the batch stays `failed` with its reason
+  (batch history shows it). §2 item 4's "stuck that only he can fix" is not wired for this case.
+- **A failed slot is not written again on its own** after the queue's 3 tries; Chris's Retry makes a late draft.
+- **A voice pair whose new line is empty** (Chris cut the line) is stamped exported but not written to VOICE.md: the
+  edit op refuses an empty line.
+- **page_seen** is written only when the Command Center reads `GET marketing/health`; a page that reads it less often
+  than every 2 minutes can still be buzzed while Chris is on it.
+- **A machine fix of a released draft** (fix_script, U24) saves a new version with no repo file; the nightly check
+  queues it the next night (the database wins).
+- **M1 Done #1 is not claimed from fakes.** The real-Postgres test writes Write now's 3 drafts through the real writer
+  with a fake Anthropic; the live tap (count 1, inside the $40 cap) is for the orchestrator after the ship.
+- **UNVERIFIED on this Mac** (no Postgres): proved by `src/http/marketing-batch-run.pg.test.mjs` in GitHub CI.

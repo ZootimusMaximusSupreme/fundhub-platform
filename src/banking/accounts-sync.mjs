@@ -29,12 +29,17 @@
 
 import { saveAccounts, AccountStoreError } from "./accounts-store.mjs";
 import * as mockProvider from "./providers/mock.mjs";
-import { getAccounts as plaidGetAccounts, SEAM_REASONS as PLAID_SEAM_REASONS } from "./plaid.mjs";
+import { SEAM_REASONS as PLAID_SEAM_REASONS } from "./plaid.mjs";
+import { refreshClientAccounts } from "./plaid-refresh.mjs";
 
 /* The closed registry. Adding a provider means adding a line here AND a value to
    091's CHECK — the two lists are meant to be edited together, and a provider
    the database will reject is better caught at the boundary than by a constraint
-   violation three layers down. */
+   violation three layers down.
+
+   A provider answers one of two ways. `getAccounts` is the simple one: hand back a
+   list, and syncBankAccounts writes it. `sync` is for a provider that has to be read
+   in pieces: it does its own reading AND writing and hands back the result. */
 export const PROVIDERS = Object.freeze({
   mock: {
     name: "mock",
@@ -46,10 +51,13 @@ export const PROVIDERS = Object.freeze({
     name: "plaid",
     label: "Plaid — live bank connection",
     real: true,
-    /* The seam is deliberately unclosed. Wiring it here would not close it; this
-       just carries its honest refusal out to the caller instead of pretending
-       the provider is missing. */
-    getAccounts: ({ itemId, env }) => plaidGetAccounts({ itemId, env })
+    /* A bank connection is read login by login — each has its own token, its own
+       state and its own errors — so it does not fit the one-list shape the mock
+       uses. The whole read-and-write is src/banking/plaid-refresh.mjs, the same
+       code the daily sweep runs. This entry used to call the Plaid seam without
+       the stored token and hand its answer to the store in Plaid's shape instead
+       of the store's, so it could never write an account. */
+    sync: (db, args) => refreshClientAccounts(db, args)
   }
 });
 
@@ -79,18 +87,24 @@ const refusal = (reason, extra = {}) => ({
  * @param {string} providerName  a key of PROVIDERS. Required — there is no default.
  * @param {string} asOf          ISO instant the balances were true. Required:
  *                               this module has no clock, so a caller must say.
- * @param {string} [itemId]      the plaid_items row, for the plaid provider only.
+ * @param {string} [itemId]      the plaid_items row (its uuid, not Plaid's own item
+ *                               id), for the plaid provider only. Omitted, every
+ *                               readable login of the client is refreshed.
+ * @param {Function} [fetchImpl] a stand-in for fetch, for tests. Production passes none.
  *
- * @returns {{ ok, reason, provider, real, written, accounts, vanished, missing? }}
+ * @returns {{ ok, reason, provider, real, written, accounts, vanished, missing?,
+ *             created?, items?, totals? }}
  *
  * `written` is the number of accounts the provider returned and this wrote. An
  * `ok: true` with `written: 0` is a REAL AND MEANINGFUL ANSWER — the provider
  * was asked and said this client has no accounts — and it is not the same as any
- * refusal above, which is why it is reachable at all.
+ * refusal above, which is why it is reachable at all. (For plaid, a client with no
+ * linked bank is also `ok: true` with `written: 0`, and then `ran` is false and
+ * `reason` says no_linked_bank: nobody was asked.)
  */
 export async function syncBankAccounts(
   db,
-  { orgId, clientId, providerName, asOf, itemId = null, env = process.env } = {}
+  { orgId, clientId, providerName, asOf, itemId = null, env = process.env, fetchImpl = undefined } = {}
 ) {
   if (!orgId) return refusal("org_is_required");
   if (!clientId) return refusal("client_is_required");
@@ -103,6 +117,32 @@ export async function syncBankAccounts(
     return refusal(SYNC_REASONS.UNKNOWN_PROVIDER, {
       known: Object.keys(PROVIDERS)
     });
+  }
+
+  if (typeof provider.sync === "function") {
+    const r = await provider.sync(db, { orgId, clientId, asOf, itemRowId: itemId, env, fetchImpl });
+    if (!r || r.ok !== true) {
+      /* The provider's own reason is carried through unchanged — see below. */
+      return refusal(r?.reason ?? SYNC_REASONS.PROVIDER_REFUSED, {
+        provider: provider.name,
+        real: provider.real,
+        missing: r?.missing ?? [],
+        items: r?.items ?? []
+      });
+    }
+    return {
+      ok: true,
+      reason: r.reason ?? null,
+      provider: provider.name,
+      real: provider.real,
+      ran: r.ran,
+      written: r.totals.written,
+      accounts: r.accounts,
+      created: r.created,
+      vanished: r.vanished,
+      items: r.items,
+      totals: r.totals
+    };
   }
 
   const answer = await provider.getAccounts({ clientId, asOf, itemId, env });

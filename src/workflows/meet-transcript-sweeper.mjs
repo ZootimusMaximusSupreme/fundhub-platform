@@ -1,6 +1,7 @@
-// Pull words off Meet recordings already in Drive.
+// Sales recordings path: pick new Meet files from Drive, then pull words.
 // Pair a sibling Transcript / Gemini-notes doc first. Whisper one short leftover
 // per org per pass. Long files wait for the Google transcript doc.
+// Company Brain embed is not required — words still land on call_outcomes.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
