@@ -312,7 +312,7 @@ body.cam-side-right #script-fade {
 
 #cam-shade,
 #cam.glass #cam-shade {
-  background: rgba(0, 0, 0, 0.72) !important;
+  background: rgba(0, 0, 0, 0.62) !important;
   opacity: 1 !important;
   -webkit-backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
   backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
@@ -322,4 +322,54 @@ body.cam-side-right #script-fade {
 body:not(.wording) #content {
   caret-color: transparent;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* A phone on its side (owner call 2026-10-10: "all cramped"): the controls were taller than half
+   the screen. One slim row now: Mirror, Turn, Remote, then Record and Play, then the speed taps.
+   The speed and time-left line floats on the thin line, so it costs no height. */
+@media (max-height: 520px) and (min-width: 560px) {
+  #bar {
+    padding: 4px 12px calc(4px + env(safe-area-inset-bottom, 0px));
+    gap: 0;
+    position: relative;
+  }
+  #rows {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  #rig {
+    order: 1;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  #controls {
+    order: 2;
+    flex: 1 1 auto;
+    grid-column: auto;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    min-width: 0;
+  }
+  #wpm-tap {
+    order: 3;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+  .btn {
+    height: 40px;
+  }
+  #status {
+    position: absolute;
+    left: 50%;
+    top: -26px;
+    transform: translateX(-50%);
+    z-index: 4;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #pulse {
+    min-height: 26px;
+  }
 }

@@ -538,3 +538,58 @@ test.describe("single tap is play and pause only (owner call 2026-10-09)", () =>
     expect(n.wording).toBe(false);
   });
 });
+
+test.describe("a single tap never opens the keyboard (owner call 2026-10-09)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("right after one tap the words are not editable and nothing has focus, then the countdown starts", async ({ page }) => {
+    await open(page, { settings: { countdown: true } });
+    const m = await middle(page);
+    // Watch every moment from the first tap to the countdown: the words must never be editable or focused.
+    await page.evaluate(() => {
+      window.__seen = [];
+      const c = document.getElementById("content");
+      const look = () => window.__seen.push({ ed: c.getAttribute("contenteditable"), focus: document.activeElement === c });
+      new MutationObserver(look).observe(c, { attributes: true, attributeFilter: ["contenteditable"] });
+      document.addEventListener("focusin", look, true);
+    });
+    await page.touchscreen.tap(m.x, m.y);
+    await page.waitForTimeout(150);
+    const mid = await page.evaluate(() => {
+      const c = document.getElementById("content");
+      return { ed: c.getAttribute("contenteditable"), focus: document.activeElement === c };
+    });
+    expect(mid.ed).toBeNull();
+    expect(mid.focus).toBe(false);
+    await page.waitForTimeout(900);
+    const seen = await page.evaluate(() => window.__seen);
+    expect(seen.filter((s) => s.ed === "true" || s.focus)).toEqual([]);
+  });
+});
+
+test.describe("sideways phone: the controls take little room (owner call 2026-10-10)", () => {
+  test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  test("one slim row of controls, every button still on screen, the words get the height", async ({ page }) => {
+    await open(page);
+    const m = await page.evaluate(() => {
+      const r = (id) => { const b = document.getElementById(id).getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, h: b.height, w: b.width }; };
+      return {
+        vh: innerHeight, vw: innerWidth, bar: r("bar"), pulse: r("pulse"), stage: r("stage"),
+        rec: r("b-rec"), play: r("play"), up: r("wpm-up"), down: r("wpm-down"), mirror: r("b-mirror"), turn: r("b-turn"), remote: r("b-remote"),
+        time: r("s-time")
+      };
+    });
+    console.log(JSON.stringify({ bar: m.bar.h, pulse: m.pulse.h, stage: m.stage.h, vh: m.vh }));
+    // The controls and the thin line together stay under 100 px, so the words keep 290 of the 390.
+    expect(m.bar.h + m.pulse.h).toBeLessThanOrEqual(100);
+    expect(m.stage.h).toBeGreaterThanOrEqual(285);
+    for (const k of ["rec", "play", "up", "down", "mirror", "turn", "remote"]) {
+      expect(m[k].w, k).toBeGreaterThan(20);
+      expect(m[k].top, k).toBeGreaterThanOrEqual(0);
+      expect(m[k].bottom, k).toBeLessThanOrEqual(m.vh);
+      expect(m[k].right, k).toBeLessThanOrEqual(m.vw);
+    }
+    // Tap targets stay usable.
+    expect(m.rec.h).toBeGreaterThanOrEqual(38);
+    expect(m.play.h).toBeGreaterThanOrEqual(38);
+  });
+});
