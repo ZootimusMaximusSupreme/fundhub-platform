@@ -19,6 +19,7 @@ import {
   findDarkStretches,
   inngestCronsStale,
   healthDownText,
+  outageStartMs,
   morningPulseDownRun,
   deadDatabase,
   outageFetch,
@@ -924,4 +925,27 @@ test("health-down-text: the real watch with a dead database texts once in a half
   const r = await healthDownText({ now: new Date("2026-10-09T13:00:00Z") });
   assert.equal(r.status, "PASS");
   assert.match(r.detail, /\(1 text in 6 runs\)/);
+});
+
+/* ---- the pretend half hour stays inside texting hours (owner law 2026-10-09) ---- */
+
+test("outageStartMs: inside the window it is the real now; a half hour that would cross 10 p.m. or start before 6 a.m. moves to 6 a.m.", () => {
+  const iso = (s) => new Date(s).getTime();
+  assert.equal(outageStartMs(iso("2026-10-09T15:00:00Z")), iso("2026-10-09T15:00:00Z"), "8:00 a.m. Arizona stays");
+  assert.equal(outageStartMs(iso("2026-10-10T04:20:00Z")), iso("2026-10-10T04:20:00Z"), "9:20 p.m. Arizona stays (ends 9:45)");
+  assert.equal(outageStartMs(iso("2026-10-10T04:50:00Z")), iso("2026-10-10T13:00:00Z"), "9:50 p.m. crosses 10 p.m., so 6 a.m. tomorrow");
+  assert.equal(outageStartMs(iso("2026-10-10T12:30:00Z")), iso("2026-10-10T13:00:00Z"), "5:30 a.m. is before the window, so 6 a.m.");
+});
+
+test("health-down-text: the real watch passes at 9:50 p.m. and 5:30 a.m. (no false red from texting hours)", async () => {
+  for (const at of ["2026-10-10T04:50:00Z", "2026-10-10T12:30:00Z"]) {
+    const r = await healthDownText({ now: new Date(at) });
+    assert.equal(r.status, "PASS", `${at}: ${r.detail}`);
+  }
+});
+
+test("health-down-text: a watch that really sends nothing is still red at night", async () => {
+  const quiet = async () => ({ ok: true });
+  const r = await healthDownText({ runWatch: quiet, now: new Date("2026-10-10T04:50:00Z") });
+  assert.equal(r.status, "FAIL");
 });

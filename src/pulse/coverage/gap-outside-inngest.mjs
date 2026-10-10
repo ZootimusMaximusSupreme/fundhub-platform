@@ -61,6 +61,7 @@
 
 import { runInstantWatch } from "../instant-watch.mjs";
 import { runDailyPulse } from "../daily-pulse.mjs";
+import { inTextWindow, nextWindowStart } from "../quiet-hours.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "outside:inngest-crons-stale",
@@ -341,6 +342,18 @@ function withTimeout(promise, ms) {
 }
 
 /**
+ * The pretend half hour must sit inside Chris's texting hours (6 a.m. to 10 p.m. Arizona). The real watch is
+ * held outside them on purpose, so a half hour that crosses 10 p.m. (or starts before 6 a.m.) texts nothing and
+ * would read as a broken alarm. The question here is "will the alarm text when it is allowed to", so a run that
+ * would cross the window is moved to the next 6 a.m. Inside the window the start is the real now.
+ */
+export function outageStartMs(nowMs) {
+  const lastRun = nowMs + 25 * MIN;
+  if (inTextWindow(new Date(nowMs)) && inTextWindow(new Date(lastRun))) return nowMs;
+  return nextWindowStart(new Date(nowMs + 30 * MIN)).getTime();
+}
+
+/**
  * outside:health-down-text — if the database is down, will anyone be told?
  *
  * Runs the real 5-minute watch against a database that is down, six times, five
@@ -365,7 +378,7 @@ export async function healthDownText({
   };
   const { fetchImpl } = outageFetch();
   let thrown = null;
-  const startMs = now instanceof Date ? now.getTime() : Date.now();
+  const startMs = outageStartMs(now instanceof Date ? now.getTime() : Date.now());
   for (let k = 0; k < 6 && !thrown; k += 1) {
     try {
       await withTimeout(

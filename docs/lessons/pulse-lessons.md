@@ -36,6 +36,17 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 - Fix: count pages and desks from `git ls-files --cached --others --exclude-standard`, so ignored files never count and a new unstaged file still does.
 - Guard added: `src/pulse/tripwires.test.mjs` (a new unstaged page fails it; an ignored page does not). Lesson: a test that reads the disk can pass on the owner's Mac and fail in CI. Run a throwaway-branch CI check after adding a guard that scans files.
 
+## 2026-10-09 — engine stall — pulse_gap
+- Cause: the workflow engine (Inngest) stopped for 46 minutes (2:05 to 2:51 p.m. Arizona). Both 5-minute alarms saved no receipt, then ran a catch-up burst. Nothing live said so; the morning scorecard found it the next day. The engine cannot watch itself.
+- Fix: a new hourly beat on the Netlify clock reads the two alarms' receipts, and goes red if either is over 20 minutes old or any gap over 20 minutes sits in the last 70 minutes.
+- Guard added: beat `engine-alive` (`src/pulse/beats/beat-engine-alive.mjs`, `beat-engine-alive.test.mjs`). The Netlify hourly clock ran straight through the stall, so it is the outside watcher. A true real-time outside clock (every 5 minutes) is still not built.
+- Incident: none (found in the 2026-10-09 evening full run). PR: none
+
+## 2026-10-09 — outside:health-down-text — pulse_false_alarm
+- Cause: the pretend dead-database half hour ran at the real time. When it crossed 10 p.m. (or began before 6 a.m.) the real alarm correctly held its text for texting hours, so the check read "nobody is told" and went red at night.
+- Fix: the pretend half hour is moved to 6 a.m. when it would cross the texting window (`outageStartMs`).
+- Guard added: `gap-outside-inngest.test.mjs` (passes at 9:50 p.m. and 5:30 a.m.; a watch that sends nothing still fails at night).
+
 ## Lessons carried in from before the pulse (2026-10-08)
 
 ## 2026-10-08 — pulse coverage — deploy_or_bundle
