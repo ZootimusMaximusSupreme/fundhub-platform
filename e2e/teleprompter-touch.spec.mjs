@@ -426,3 +426,43 @@ test.describe("the Command Center hears a saved edit", () => {
     await expect.poll(() => reads, { timeout: 5000 }).toBeGreaterThan(before);
   });
 });
+
+// Owner call 2026-10-09: Save shows on a double-tap, the database follows the typing,
+// the speed is one fixed number, and sideways words are half size.
+test.describe("teleprompter fixes 2026-10-09", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("double-tap shows Save, typing reaches the server on its own, Save puts the keyboard away", async ({ page }) => {
+    const { server } = await open(page);
+    const m = await middle(page);
+    await page.touchscreen.tap(m.x, m.y);
+    await page.touchscreen.tap(m.x, m.y);
+    await expect(page.locator("body.wording")).toHaveCount(1);
+    await expect(page.locator("#b-script-save")).toBeVisible();
+    await page.keyboard.type("ZEBRA ");
+    await expect.poll(() => server.posts.length, { timeout: 3000 }).toBeGreaterThan(0);
+    expect(server.posts[0].body).toContain("ZEBRA");
+    await page.locator("#b-script-save").tap();
+    await expect(page.locator("body.wording")).toHaveCount(0);
+    await expect(page.locator("#b-script-save")).toBeHidden();
+  });
+
+  test("sideways, the words are half the size", async ({ page }) => {
+    await open(page);
+    const portrait = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("content")).fontSize));
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("content")).fontSize))).toBe(Math.round(portrait / 2));
+  });
+
+  test("one fixed speed: the run time is words / wpm, with no extra time for gaps", async ({ page }) => {
+    await open(page);
+    const a = await state(page);
+    expect(a.words).toBeGreaterThan(10);
+    expect(Math.abs(a.total - (a.words / a.wpm) * 60)).toBeLessThan(0.01);
+    await page.keyboard.press("ArrowUp");
+    await expect.poll(async () => (await state(page)).wpm).toBe(a.wpm + 5);
+    const b = await state(page);
+    expect(Math.abs(b.total - (b.words / b.wpm) * 60)).toBeLessThan(0.01);
+    expect(b.total).toBeLessThan(a.total);
+  });
+});
