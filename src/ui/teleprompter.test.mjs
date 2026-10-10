@@ -668,7 +668,9 @@ describe("teleprompter film look", () => {
     assert.doesNotMatch(CSS, /#b-stop/);
     assert.match(CSS, /backdrop-filter:\s*blur\(16px\)/);
     assert.match(CSS, /rgba\(12,\s*14,\s*18,\s*0\.28\)/);
-    assert.match(CSS, /rgba\(0,\s*0,\s*0,\s*0\.72\)/);
+    // Owner call 2026-10-10: the dark glass over the camera is 10 points less black (was 0.72).
+    assert.match(CSS, /rgba\(0,\s*0,\s*0,\s*0\.62\)/);
+    assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.72\)/);
     assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.8\)/);
     assert.match(CSS, /#b-script-save,\s*#b-save \{\s*display: none !important;/);
     assert.match(CSS, /body\.wording #controls \{\s*display: none !important;/);
