@@ -12,7 +12,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 
-import { TRIP_SQL, judgeFunding, tripParams } from "./gap-trip-funding.mjs";
+import { COUNT_SQL, TRIP_SQL, judgeFunding, tripParams } from "./gap-trip-funding.mjs";
 import { CARD_STACKING } from "./gap-money-funding.mjs";
 import { HAS_DB, ORG, OTHER_ORG, closeShadowDb, emptyWorld, runWorld, uid } from "./trip-test-kit.mjs";
 
@@ -103,6 +103,10 @@ function round(w, clientId, over = {}) {
 
 async function judge(w) {
   const out = await runWorld(TRIP_SQL, w, tripParams(ORG, NOW));
+  // The light count behind the nothing-to-judge proof must agree with the full read, every time.
+  const p = tripParams(ORG, NOW);
+  const count = await runWorld(COUNT_SQL, w, [p[0], p[1], p[2]]);
+  assert.equal(count.rows[0].n, out.rows.length, "COUNT_SQL and TRIP_SQL must find the same customers");
   return { rows: out.rows, verdict: judgeFunding({ rows: out.rows, now: NOW }) };
 }
 

@@ -113,6 +113,34 @@ export const STEPS = Object.freeze([
   })
 ]);
 
+/* The two facts that start the trip, written once so the full read and the light count read the same
+   thing. A paid diagnostic: a paid payment link of purpose diagnostic, or a diagnostic.paid event. A
+   funding deposit: an active sale in a product of category funding. */
+const DIAG_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT min(q.at) AS at
+        FROM (
+          SELECT COALESCE(pl.paid_at, pl.updated_at) AS at
+            FROM payment_links pl
+           WHERE pl.org_id = $1::uuid AND pl.client_id = t.id AND pl.purpose = 'diagnostic'
+             AND (pl.status = 'paid' OR pl.paid_at IS NOT NULL)
+             AND COALESCE(pl.is_demo, false) = false
+          UNION ALL
+          SELECT e.created_at
+            FROM events e
+           WHERE e.org_id = $1::uuid AND e.client_id = t.id AND e.name = 'diagnostic.paid'
+             AND COALESCE(e.is_demo, false) = false
+        ) q
+    ) d ON true`;
+const DEP_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT min(s.sold_at) AS at
+        FROM sales s
+        JOIN products pr ON pr.id = s.product_id
+       WHERE s.org_id = $1::uuid AND s.client_id = t.id AND s.status = 'active'
+         AND COALESCE(s.is_demo, false) = false AND pr.category = 'funding'
+    ) dep ON true`;
+
 /**
  * One row per customer who started the trip in the window. $1 org, $2 window start, $3 test-client
  * pattern, $4 the card-stacking product value, $5 the call outcomes that mean the call was held.
@@ -156,28 +184,8 @@ export const TRIP_SQL = `
        WHERE c.org_id = $1::uuid
          AND ${realClientSql("c", "$3")}
     ) t
-    LEFT JOIN LATERAL (
-      SELECT min(q.at) AS at
-        FROM (
-          SELECT COALESCE(pl.paid_at, pl.updated_at) AS at
-            FROM payment_links pl
-           WHERE pl.org_id = $1::uuid AND pl.client_id = t.id AND pl.purpose = 'diagnostic'
-             AND (pl.status = 'paid' OR pl.paid_at IS NOT NULL)
-             AND COALESCE(pl.is_demo, false) = false
-          UNION ALL
-          SELECT e.created_at
-            FROM events e
-           WHERE e.org_id = $1::uuid AND e.client_id = t.id AND e.name = 'diagnostic.paid'
-             AND COALESCE(e.is_demo, false) = false
-        ) q
-    ) d ON true
-    LEFT JOIN LATERAL (
-      SELECT min(s.sold_at) AS at
-        FROM sales s
-        JOIN products pr ON pr.id = s.product_id
-       WHERE s.org_id = $1::uuid AND s.client_id = t.id AND s.status = 'active'
-         AND COALESCE(s.is_demo, false) = false AND pr.category = 'funding'
-    ) dep ON true
+${DIAG_LATERAL}
+${DEP_LATERAL}
     LEFT JOIN LATERAL (
       SELECT cd.entered_at, ps.key AS stage
         FROM cards cd
@@ -265,6 +273,32 @@ export const TRIP_SQL = `
    LIMIT ${ROW_CAP}
 `;
 
+/**
+ * The light count behind the nothing-to-judge proof. Same customers, same start rule, same window as
+ * TRIP_SQL, and only the three facts that start a trip (a paid diagnostic, a funding deposit, the newest
+ * round's start). $1 org, $2 window start, $3 test-client pattern.
+ */
+export const COUNT_SQL = `
+  /* gap:trip-funding-count */
+  SELECT count(*)::int AS n
+    FROM (
+      SELECT c.id
+        FROM clients c
+       WHERE c.org_id = $1::uuid
+         AND ${realClientSql("c", "$3")}
+    ) t
+${DIAG_LATERAL}
+${DEP_LATERAL}
+    LEFT JOIN LATERAL (
+      SELECT fr.created_at
+        FROM funding_rounds fr
+       WHERE fr.org_id = $1::uuid AND fr.client_id = t.id AND COALESCE(fr.is_demo, false) = false
+       ORDER BY fr.round_number DESC
+       LIMIT 1
+    ) r ON true
+   WHERE LEAST(d.at, dep.at, r.created_at) >= $2::timestamptz
+`;
+
 /** Pure. One SQL row to one trip row: the facts, the steps that do not apply, and why a trip ended. */
 export function toTripRow(r, now = new Date()) {
   const facts = {};
@@ -331,9 +365,10 @@ export function toTripRow(r, now = new Date()) {
 }
 
 /** Pure. The verdict for the rows the SELECT returned. */
-export function judgeFunding({ rows = [], now = new Date() } = {}) {
+export function judgeFunding({ rows = [], now = new Date(), orgId = null } = {}) {
   return judgeTrip({
     id: ID,
+    orgId,
     tripName: TRIP_NAME,
     steps: STEPS,
     rows: rows.map((r) => toTripRow(r, now)),
@@ -347,8 +382,9 @@ export function judgeFunding({ rows = [], now = new Date() } = {}) {
 }
 
 async function startedCount(run, orgId, now) {
-  const out = await run((tx) => tx.query(TRIP_SQL, tripParams(orgId, now)));
-  return Array.isArray(out && out.rows) ? out.rows.length : 0;
+  const p = tripParams(orgId, now);
+  const out = await run((tx) => tx.query(COUNT_SQL, [p[0], p[1], p[2]]));
+  return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
 }
 
 export function tripParams(orgId, now) {
@@ -376,7 +412,7 @@ export async function gapChecks(ctx = {}) {
   try {
     const got = await readRows(run, ID, "the funding trips", TRIP_SQL, tripParams(orgId, now));
     if (got.skip) return [got.skip];
-    return [judgeFunding({ rows: got.rows, now })];
+    return [judgeFunding({ rows: got.rows, now, orgId })];
   } catch (err) {
     return [skipRow(ID, `could not judge the funding trips: ${clip(err)}`)];
   }

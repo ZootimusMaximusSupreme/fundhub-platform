@@ -97,6 +97,32 @@ flowchart TD
 - When the fix is done, the four learning fields on the incident and an entry in `docs/lessons/pulse-lessons.md` record what broke and what now guards it.
 - **Not built yet (on purpose):** the write-through half, where a signed test signal travels through the doors that save data inside a rolled-back box. It needs locks inside the Node process that have never run on a real Postgres. It waits until proven on a scratch database and watched once. Also not built: GitHub issues and the Claude "pulse fixer" session (they wait on an owner decision about a private repo).
 
+## Whole trips (L4, added 2026-10-10, coverage batch W8)
+
+A deep check asks one question about one thing. A **trip check** follows one customer from the first step to the last and names the **first step that is missing**. There are five, one lane each, read only, at 6 a.m.: `trip:funding`, `trip:repair`, `trip:inquiry`, `trip:partner`, `trip:roadmap` (`src/pulse/coverage/gap-trip-*.mjs`, walked by `src/pulse/coverage/trip-kit.mjs`).
+
+```mermaid
+flowchart TD
+    START["A customer started a trip in the last 60 days<br/>(paid the diagnostic, bought repair, got a case, applied, paid the roadmap)"] --> READ["One SELECT reads a time for each step<br/>(or nothing, if the step did not happen)"]
+    READ --> WALK["Walk the steps in order"]
+    WALK --> OWE{"First missing step: who owes it?"}
+    OWE -->|"The system (a handler or job)"| CLOCK{"Its wait has run out?<br/>(the wait is another lane's own number)"}
+    CLOCK -->|Yes| RED["RED: names the customer and the step"]
+    CLOCK -->|No| WAIT["Waiting, counted by step"]
+    OWE -->|"A person or the customer"| STALL{"A clock the code already<br/>defines says it is overdue?"}
+    STALL -->|"Yes (a repair stage clock, a 72 hour idle case)"| RED
+    STALL -->|No| WAIT
+    WALK --> SKIP{"A step the code cannot skip<br/>was skipped, or the board shows<br/>a step no record backs?"}
+    SKIP -->|Yes| RED
+    WAIT --> GREEN["Green line: N started, F finished, W waiting at ..., E ended"]
+    NOBODY["Nobody started the trip in the window"] --> NA["nothing to judge (low-traffic),<br/>the audit re-counts it every morning"]
+```
+
+- **A waiting customer is never red.** Waiting on a person or on the customer is counted by step in the green line. A step goes red only when the company owes it and its wait is over, or when a clock the code already defines (the repair stage clocks in `src/repair/sla.mjs`, gap-inquiry's 72 hour idle case and call sweeper wait, the 72 hour portal sign-in wait) says it is overdue.
+- **Every wait is another lane's own number.** The kit adds none. Each system step names where its wait comes from (the paid-to-card wait and the round wait are `gap-pipeline-facts.mjs`; the funded-to-bill wait is `gap-money-funding.mjs`; the pack's 2 hours is `gap-underwrite.mjs`).
+- **The funded steps use the money lane's rule** (`roundProblems`), and the pack steps use the underwrite lane's judges (`judgePackFiles`, `judgePackEmail`), so a trip and its lane can never disagree.
+- Test clients, sim and e2e partners, demo rows and archived clients are left out. A trip that started more than 60 days ago is for a person to clean up by hand.
+
 ## Run receipts for event workflows (added 2026-10-09)
 
 Crons leave a receipt in `job_heartbeats`. A workflow that an **event** starts used to leave none, so its `wf:` row could only say "nothing to judge" or "not checked". Now every run leaves two receipts in `workflow_runs` (migration 478), written by the **Run evidence** add-on on the shared Inngest client (`src/pulse/run-evidence.mjs`). The add-on never changes what a workflow returns and never throws into it. Every write has a timer (800 ms for the start mark; 500 ms to 5 s for the finish mark), and after 3 failed writes it stops for 10 minutes and logs one `[run-evidence]` line.

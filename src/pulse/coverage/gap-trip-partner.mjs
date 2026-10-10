@@ -122,6 +122,31 @@ export const PARTNER_STEPS = Object.freeze([
 const QUALIFYING_NO_ROUND = Object.freeze([...REPAIR_PRODUCT_CODES, ...BLUEPRINT_PRODUCT_CODES].map((c) => c.toLowerCase()));
 const QUALIFYING_FUNDING = Object.freeze(FUNDING_PRODUCT_CODES.map((c) => c.toLowerCase()));
 
+/* Who counts as a partner on this trip, written once so the full reads and the light count read the same
+   people: not demo, applied in the window, not a test run by name or address, and with a login (affiliate)
+   or a contact address (white-label partner). $1 org, $2 window start, $3 test address pattern, $4 test
+   name pattern. */
+const AFFILIATE_WHERE = `
+   WHERE a.org_id = $1::uuid
+     AND COALESCE(a.is_demo, false) = false
+     AND a.created_at >= $2::timestamptz
+     AND COALESCE(a.name, '') !~* $4::text
+     AND EXISTS (
+       SELECT 1 FROM accounts ac
+        WHERE ac.org_id = a.org_id AND ac.affiliate_id = a.id
+          AND COALESCE(btrim(ac.email), '') <> '' AND ac.email !~* $3::text
+     )
+`;
+const PARTNER_WHERE = `
+   WHERE p.org_id = $1::uuid
+     AND COALESCE(p.is_demo, false) = false
+     AND p.created_at >= $2::timestamptz
+     AND COALESCE(p.name, '') !~* $4::text
+     AND COALESCE(p.brand_name, '') !~* $4::text
+     AND COALESCE(btrim(p.contact_email), '') <> ''
+     AND p.contact_email !~* $3::text
+`;
+
 /**
  * Affiliates who applied in the window.
  * $1 org, $2 window start, $3 test address pattern, $4 test name pattern, $5 funding codes,
@@ -140,7 +165,7 @@ export const AFFILIATE_SQL = `
          (a.tax_form_received_at IS NOT NULL)         AS tax_ok,
          k.credited_n                                 AS credited_n,
          k.first_click_at                             AS first_click_at,
-         k.uncredited_n                               AS uncredited_n,
+         ku.uncredited_n                              AS uncredited_n,
          rf.converted_n                               AS converted_n,
          rf.converted_at                              AS converted_at,
          rf.rated_n                                   AS rated_n,
@@ -153,18 +178,19 @@ export const AFFILIATE_SQL = `
          po.stuck_n                                   AS stuck_n
     FROM affiliates a
     LEFT JOIN LATERAL (
-      SELECT count(*) FILTER (WHERE c.affiliate_id = a.id)::int                  AS credited_n,
-             min(c.occurred_at) FILTER (WHERE c.affiliate_id = a.id)             AS first_click_at,
-             count(*) FILTER (
-               WHERE c.affiliate_id IS NULL
-                 AND upper(c.tracking_id_used) = upper(a.tracking_id)
-                 AND a.created_at <= c.occurred_at
-                 AND c.occurred_at >= $11::timestamptz)::int                      AS uncredited_n
+      SELECT count(*)::int                 AS credited_n,
+             min(c.occurred_at)            AS first_click_at
         FROM affiliate_link_clicks c
-       WHERE c.org_id = $1::uuid
-         AND (c.affiliate_id = a.id
-              OR (c.affiliate_id IS NULL AND upper(c.tracking_id_used) = upper(a.tracking_id)))
+       WHERE c.org_id = $1::uuid AND c.affiliate_id = a.id
     ) k ON true
+    LEFT JOIN LATERAL (
+      SELECT count(*)::int                 AS uncredited_n
+        FROM affiliate_link_clicks c
+       WHERE c.org_id = $1::uuid AND c.affiliate_id IS NULL
+         AND c.occurred_at >= $11::timestamptz
+         AND c.occurred_at >= a.created_at
+         AND upper(c.tracking_id_used) = upper(a.tracking_id)
+    ) ku ON true
     LEFT JOIN LATERAL (
       SELECT count(*) FILTER (WHERE r.status IN ('converted', 'paid'))::int                          AS converted_n,
              min(r.converted_at) FILTER (WHERE r.status IN ('converted', 'paid'))                    AS converted_at,
@@ -213,16 +239,7 @@ export const AFFILIATE_SQL = `
         FROM affiliate_payouts p
        WHERE p.org_id = $1::uuid AND p.affiliate_id = a.id
     ) po ON true
-   WHERE a.org_id = $1::uuid
-     AND COALESCE(a.is_demo, false) = false
-     AND a.created_at >= $2::timestamptz
-     AND a.name !~* $4::text
-     AND EXISTS (
-       SELECT 1 FROM accounts ac
-        WHERE ac.org_id = a.org_id AND ac.affiliate_id = a.id
-          AND COALESCE(btrim(ac.email), '') <> '' AND ac.email !~* $3::text
-     )
-   ORDER BY a.created_at ASC
+${AFFILIATE_WHERE}   ORDER BY a.created_at ASC
    LIMIT ${ROW_CAP}
 `;
 
@@ -309,15 +326,20 @@ export const PARTNER_SQL = `
         FROM partner_payouts x
        WHERE x.org_id = $1::uuid AND x.partner_id = p.id
     ) po ON true
-   WHERE p.org_id = $1::uuid
-     AND COALESCE(p.is_demo, false) = false
-     AND p.created_at >= $2::timestamptz
-     AND COALESCE(p.name, '') !~* $4::text
-     AND COALESCE(p.brand_name, '') !~* $4::text
-     AND COALESCE(btrim(p.contact_email), '') <> ''
-     AND p.contact_email !~* $3::text
-   ORDER BY p.created_at ASC
+${PARTNER_WHERE}   ORDER BY p.created_at ASC
    LIMIT ${ROW_CAP}
+`;
+
+/** The light count behind the nothing-to-judge proof: both kinds of partner, one read. $1 org, $2 window, $3 address pattern, $4 name pattern. */
+export const COUNT_SQL = `
+  /* gap:trip-partner-count */
+  SELECT (
+    (SELECT count(*) FROM affiliates a
+${AFFILIATE_WHERE})
+    +
+    (SELECT count(*) FROM partners p
+${PARTNER_WHERE})
+  )::int AS n
 `;
 
 const usd = (n) => `$${(Math.round(Number(n) * 100) / 100).toLocaleString("en-US")}`;
@@ -449,13 +471,16 @@ export function stepsFor(row) {
 }
 
 /** Pure. Rows from both reads plus the page reads, to the verdict. */
-export function judgePartner({ affiliates = [], partners = [], pages = new Map(), now = new Date(), note = "" } = {}) {
+export function judgePartner({
+  affiliates = [], partners = [], pages = new Map(), now = new Date(), note = "", orgId = null
+} = {}) {
   const rows = [
     ...affiliates.map((r) => toAffiliateRow(r, now)),
     ...partners.map((r) => toPartnerRow(r, pages.get(String(r.payee_id)) || null, now))
   ];
   return judgeTrip({
     id: ID,
+    orgId,
     tripName: TRIP_NAME,
     steps: stepsFor,
     rows,
@@ -501,10 +526,9 @@ export function tripParams(orgId, now) {
 }
 
 async function startedCount(run, orgId, now) {
-  const p = tripParams(orgId, now);
-  const a = await run((tx) => tx.query(AFFILIATE_SQL, p.affiliate));
-  const b = await run((tx) => tx.query(PARTNER_SQL, p.partner));
-  return (Array.isArray(a && a.rows) ? a.rows.length : 0) + (Array.isArray(b && b.rows) ? b.rows.length : 0);
+  const p = tripParams(orgId, now).affiliate;
+  const out = await run((tx) => tx.query(COUNT_SQL, [p[0], p[1], p[2], p[3]]));
+  return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
 }
 
 export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
@@ -513,11 +537,11 @@ export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runne
  * Read the published pages of the partners in the list. GET only, at most PAGE_CAP, all at once.
  * Returns a Map of partner id to { ok, why }. A partner not read is not in the map.
  */
-async function readPages(fetchImpl, origin, partners, now) {
+async function readPages(web, origin, partners, now) {
   const out = new Map();
   const withPage = partners.filter((r) => r.page_slug && r.status === "active");
   const pick = pickPages(withPage.map((r) => ({ partner_id: r.payee_id, slug: r.page_slug })), now, PAGE_CAP);
-  const results = await Promise.all(pick.map(async (row) => [row.partner_id, await readPage(fetchImpl, origin, row)]));
+  const results = await Promise.all(pick.map(async (row) => [row.partner_id, await readPage(web, origin, row)]));
   for (const [id, res] of results) out.set(String(id), res);
   return out;
 }
@@ -540,12 +564,13 @@ export async function gapChecks(ctx = {}) {
 
     let pages = new Map();
     let note = "";
-    const fetchImpl = typeof ctx.fetchImpl === "function" ? ctx.fetchImpl : (typeof ctx.fetch === "function" ? ctx.fetch : null);
+    // The lane runner hands the same client in as ctx.fetchImpl and ctx.fetch (run-slices.mjs gapContext).
+    const web = typeof ctx.fetchImpl === "function" ? ctx.fetchImpl : null;
     const wantsPages = par.rows.some((r) => r.page_slug && r.status === "active");
     if (wantsPages) {
-      if (fetchImpl) {
+      if (web) {
         const origin = String(ctx.baseUrl || "https://fundhub.ai").replace(/\/+$/, "");
-        pages = await readPages(fetchImpl, origin, par.rows, now);
+        pages = await readPages(web, origin, par.rows, now);
       } else {
         note = "The published pages were not opened in this run, so \"live\" was not judged.";
       }
@@ -553,7 +578,7 @@ export async function gapChecks(ctx = {}) {
     if (aff.rows.length >= ROW_CAP || par.rows.length >= ROW_CAP) {
       note = `${note} Only the first ${ROW_CAP} of one list were read.`.trim();
     }
-    return [judgePartner({ affiliates: aff.rows, partners: par.rows, pages, now, note })];
+    return [judgePartner({ affiliates: aff.rows, partners: par.rows, pages, now, note, orgId })];
   } catch (err) {
     return [skipRow(ID, `could not judge the partner trips: ${clip(err)}`)];
   }

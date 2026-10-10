@@ -8,6 +8,7 @@ import {
   CHECK_IDS, FUNDED_CARD_STAGES, HELD_OUTCOMES, ROW_CAP, SALES_PAID_OR_LATER, STEPS, TRIP_SQL,
   WINDOW_MS, gapChecks, judgeFunding, naVerify, toTripRow, tripParams
 } from "./gap-trip-funding.mjs";
+import { COUNT_SQL } from "./gap-trip-funding.mjs";
 import { CARD_STACKING, FUNDED_BILL_WAIT_MS, LOOKBACK_MS, roundProblems } from "./gap-money-funding.mjs";
 import { PAID_GRACE_MS, SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { BY, walkTrip } from "./trip-kit.mjs";
@@ -337,7 +338,7 @@ test("judgeFunding: waiting customers and finished ones are PASS", () => {
 });
 
 function fakeDb(rows, seen = []) {
-  return tagDb({ "trip-funding": rows }, seen);
+  return tagDb({ "trip-funding": rows, "trip-funding-count": [{ n: rows.length }] }, seen);
 }
 
 test("gapChecks: reads once, through ctx.db, and returns the verdict", async () => {
@@ -378,8 +379,23 @@ test("gapChecks: no database or no org is a skip", async () => {
 test("naVerify: true while the SELECT still returns nobody, false the day someone starts", async () => {
   const none = await naVerify["low-traffic"]({ check: "trip:funding" }, { db: fakeDb([]), orgId: ORG, now: NOW });
   assert.equal(none, true);
+  // the company id may ride in the proof, so the audit's re-check needs no second read
+  const seen = [];
+  const viaArgs = await naVerify["low-traffic"]({ check: "trip:funding", org: ORG }, { db: fakeDb([], seen), now: NOW });
+  assert.equal(viaArgs, true);
+  assert.deepEqual(seen.map((s) => s.tag), ["trip-funding-count"]);
+  assert.equal(seen[0].params[0], ORG);
   const some = await naVerify["low-traffic"]({ check: "trip:funding" }, { db: fakeDb([whole()]), orgId: ORG, now: NOW });
   assert.equal(some, false);
   const wrong = await naVerify["low-traffic"]({ check: "trip:repair" }, { db: fakeDb([]), orgId: ORG, now: NOW });
   assert.equal(wrong, false);
+});
+
+test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 3", () => {
+  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+  assert.match(bare, /^SELECT\b/i);
+  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
+  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  assert.deepEqual(used, [1, 2, 3]);
+  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
 });

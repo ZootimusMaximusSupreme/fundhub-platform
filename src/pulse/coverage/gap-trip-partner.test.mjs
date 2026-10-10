@@ -9,6 +9,7 @@ import {
   TEST_PAYEE_EMAIL_RE, TEST_PAYEE_NAME_RE, WINDOW_MS, gapChecks, judgePartner, naVerify, stepsFor,
   toAffiliateRow, toPartnerRow, tripParams
 } from "./gap-trip-partner.mjs";
+import { COUNT_SQL } from "./gap-trip-partner.mjs";
 import { FUNDED_BILL_WAIT_MS, LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { DEAD_LINK_WINDOW_MS, PAYOUT_STUCK_AFTER_MS } from "./gap-partners.mjs";
@@ -317,7 +318,10 @@ test("judgePartner: waiting partners are PASS, counted by step, and the note rid
 });
 
 function fakeDb(aRows, pRows, seen = []) {
-  return tagDb({ "trip-partner-affiliate": aRows, "trip-partner-white-label": pRows }, seen);
+  return tagDb({
+    "trip-partner-affiliate": aRows, "trip-partner-white-label": pRows,
+    "trip-partner-count": [{ n: aRows.length + pRows.length }]
+  }, seen);
 }
 
 function okFetch(status = 200, body = "<html>Apply</html>") {
@@ -380,4 +384,13 @@ test("naVerify: true while nobody applied in the window, false the day someone d
   assert.equal(await naVerify["low-traffic"]({ check: "trip:partner" }, { db: fakeDb([], []), orgId: ORG, now: NOW }), true);
   assert.equal(await naVerify["low-traffic"]({ check: "trip:partner" }, { db: fakeDb([aff()], []), orgId: ORG, now: NOW }), false);
   assert.equal(await naVerify["low-traffic"]({ check: "trip:partner" }, { db: fakeDb([], [par()]), orgId: ORG, now: NOW }), false);
+});
+
+test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 4", () => {
+  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+  assert.match(bare, /^SELECT\b/i);
+  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
+  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  assert.deepEqual(used, [1, 2, 3, 4]);
+  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
 });

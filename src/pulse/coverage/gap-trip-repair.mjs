@@ -40,7 +40,7 @@ import { LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { PAID_GRACE_MS, SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { INTERNAL_CLIENT_EMAIL_RE } from "./gap-portal.mjs";
 import {
-  clip, nowOf, readRows, runnerOf, skipWhy
+  clip, intOf, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
 import {
   BY, DAY_MS, HOUR_MS, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, whoIs
@@ -85,6 +85,35 @@ export const STEPS = Object.freeze([
   })
 ]);
 
+/* The two facts that start the trip, written once so the full read and the light count read the same
+   thing: a repair purchase (an active sale in a repair product, or a paid repair payment link) and the
+   repair program row. */
+const PU_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT min(q.at) AS at
+        FROM (
+          SELECT s.sold_at AS at
+            FROM sales s
+            JOIN products pr ON pr.id = s.product_id
+           WHERE s.org_id = $1::uuid AND s.client_id = t.id AND s.status = 'active'
+             AND COALESCE(s.is_demo, false) = false AND pr.category = 'repair'
+          UNION ALL
+          SELECT COALESCE(pl.paid_at, pl.updated_at)
+            FROM payment_links pl
+           WHERE pl.org_id = $1::uuid AND pl.client_id = t.id AND pl.purpose = 'repair'
+             AND (pl.status = 'paid' OR pl.paid_at IS NOT NULL)
+             AND COALESCE(pl.is_demo, false) = false
+        ) q
+    ) pu ON true`;
+const RP_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT p.created_at, p.status
+        FROM repair_programs p
+       WHERE p.org_id = $1::uuid AND p.client_id = t.id
+       ORDER BY p.created_at ASC
+       LIMIT 1
+    ) rp ON true`;
+
 /**
  * One row per customer who started the trip in the window. $1 org, $2 window start, $3 test-client
  * pattern. Every fact is a time, or null.
@@ -112,29 +141,8 @@ export const TRIP_SQL = `
        WHERE c.org_id = $1::uuid
          AND ${realClientSql("c", "$3")}
     ) t
-    LEFT JOIN LATERAL (
-      SELECT min(q.at) AS at
-        FROM (
-          SELECT s.sold_at AS at
-            FROM sales s
-            JOIN products pr ON pr.id = s.product_id
-           WHERE s.org_id = $1::uuid AND s.client_id = t.id AND s.status = 'active'
-             AND COALESCE(s.is_demo, false) = false AND pr.category = 'repair'
-          UNION ALL
-          SELECT COALESCE(pl.paid_at, pl.updated_at)
-            FROM payment_links pl
-           WHERE pl.org_id = $1::uuid AND pl.client_id = t.id AND pl.purpose = 'repair'
-             AND (pl.status = 'paid' OR pl.paid_at IS NOT NULL)
-             AND COALESCE(pl.is_demo, false) = false
-        ) q
-    ) pu ON true
-    LEFT JOIN LATERAL (
-      SELECT p.created_at, p.status
-        FROM repair_programs p
-       WHERE p.org_id = $1::uuid AND p.client_id = t.id
-       ORDER BY p.created_at ASC
-       LIMIT 1
-    ) rp ON true
+${PU_LATERAL}
+${RP_LATERAL}
     LEFT JOIN LATERAL (
       SELECT pi.verified_at AS at
         FROM pii_identity pi
@@ -201,6 +209,21 @@ export const TRIP_SQL = `
    WHERE LEAST(pu.at, rp.created_at) >= $2::timestamptz
    ORDER BY LEAST(pu.at, rp.created_at) ASC
    LIMIT ${ROW_CAP}
+`;
+
+/** The light count behind the nothing-to-judge proof: only the two facts that start a trip. $1 org, $2 window start, $3 test-client pattern. */
+export const COUNT_SQL = `
+  /* gap:trip-repair-count */
+  SELECT count(*)::int AS n
+    FROM (
+      SELECT c.id
+        FROM clients c
+       WHERE c.org_id = $1::uuid
+         AND ${realClientSql("c", "$3")}
+    ) t
+${PU_LATERAL}
+${RP_LATERAL}
+   WHERE LEAST(pu.at, rp.created_at) >= $2::timestamptz
 `;
 
 /** "3 business days", "1 hour", "30 minutes", "5 days after the bureau's due date". */
@@ -292,9 +315,10 @@ export function toTripRow(r, now = new Date()) {
 }
 
 /** Pure. The verdict for the rows the SELECT returned. */
-export function judgeRepair({ rows = [], now = new Date() } = {}) {
+export function judgeRepair({ rows = [], now = new Date(), orgId = null } = {}) {
   return judgeTrip({
     id: ID,
+    orgId,
     tripName: TRIP_NAME,
     steps: STEPS,
     rows: rows.map((r) => toTripRow(r, now)),
@@ -312,8 +336,8 @@ export function tripParams(orgId, now) {
 }
 
 async function startedCount(run, orgId, now) {
-  const out = await run((tx) => tx.query(TRIP_SQL, tripParams(orgId, now)));
-  return Array.isArray(out && out.rows) ? out.rows.length : 0;
+  const out = await run((tx) => tx.query(COUNT_SQL, tripParams(orgId, now)));
+  return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
 }
 
 export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
@@ -330,7 +354,7 @@ export async function gapChecks(ctx = {}) {
   try {
     const got = await readRows(run, ID, "the repair trips", TRIP_SQL, tripParams(orgId, now));
     if (got.skip) return [got.skip];
-    return [judgeRepair({ rows: got.rows, now })];
+    return [judgeRepair({ rows: got.rows, now, orgId })];
   } catch (err) {
     return [skipRow(ID, `could not judge the repair trips: ${clip(err)}`)];
   }

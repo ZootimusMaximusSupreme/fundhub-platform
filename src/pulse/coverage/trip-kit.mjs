@@ -189,13 +189,16 @@ function listed(items, shown = SHOWN) {
  */
 export function judgeTrip({
   id, tripName, steps, rows = [], now = new Date(), windowDays = 60, cap = null, fix = NO_FIX, what = "customer",
-  note = ""
+  note = "", orgId = null
 }) {
   if (!rows.length) {
+    // The company id rides in the proof so the audit's re-check is one cheap read, not two.
+    const args = { check: id, count: 0, min: 1, what: `${tripName} trips started`, days: windowDays };
+    if (orgId) args.org = String(orgId);
     return naRow(
       id,
       "low-traffic",
-      { check: id, count: 0, min: 1, what: `${tripName} trips started`, days: windowDays },
+      args,
       `Nobody started the ${tripName} trip in the last ${windowDays} days, so there is no trip to follow. Judged the day one starts.`
     );
   }
@@ -243,7 +246,9 @@ export function judgeTrip({
  * The audit calls naVerify["low-traffic"] to prove a "nothing to judge" row again. It is true only
  * while the same read still finds no customer on the trip. A read that cannot run answers false.
  *
- *   countStarted(run, orgId, now) -> number of customers the lane's own SELECT returns
+ *   countStarted(run, orgId, now) -> number of customers who started the trip in the window. It runs
+ *                                    one light SELECT (the facts that decide who started, nothing else):
+ *                                    the audit gives all its re-checks 2.5 seconds together.
  */
 export function makeNaVerify({ id, countStarted, runnerOf, nowOf, defaultOrg }) {
   return Object.freeze({
@@ -251,7 +256,7 @@ export function makeNaVerify({ id, countStarted, runnerOf, nowOf, defaultOrg }) 
       if (!args || args.check !== id) return false;
       const run = runnerOf(ctx);
       if (!run) return false;
-      const orgId = ctx.orgId || (await defaultOrg(run));
+      const orgId = ctx.orgId || (typeof args.org === "string" && args.org) || (await defaultOrg(run));
       if (!orgId) return false;
       try {
         const n = await countStarted(run, orgId, nowOf(ctx));

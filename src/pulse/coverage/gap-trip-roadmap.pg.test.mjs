@@ -7,7 +7,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 
-import { TRIP_SQL, judgeRoadmap, tripParams } from "./gap-trip-roadmap.mjs";
+import { COUNT_SQL, TRIP_SQL, judgeRoadmap, tripParams } from "./gap-trip-roadmap.mjs";
 import { PACK_EMAIL_TEMPLATE, PACK_SUBTYPES } from "./gap-underwrite.mjs";
 import { NUDGE_KEYS } from "./gap-soft-pull.mjs";
 import { HAS_DB, ORG, OTHER_ORG, closeShadowDb, emptyWorld, runWorld, uid } from "./trip-test-kit.mjs";
@@ -52,6 +52,9 @@ function pack(w, c, subtypes, at, over = {}) {
 
 async function judge(w) {
   const out = await runWorld(TRIP_SQL, w, tripParams(ORG, NOW));
+  const p = tripParams(ORG, NOW);
+  const count = await runWorld(COUNT_SQL, w, [p[0], p[1], p[2]]);
+  assert.equal(count.rows[0].n, out.rows.length, "COUNT_SQL and TRIP_SQL must find the same customers");
   return { rows: out.rows, verdict: judgeRoadmap({ rows: out.rows, now: NOW }) };
 }
 

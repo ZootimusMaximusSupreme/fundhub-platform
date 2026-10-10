@@ -7,7 +7,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 
-import { TRIP_SQL, judgeInquiry, tripParams } from "./gap-trip-inquiry.mjs";
+import { COUNT_SQL, TRIP_SQL, judgeInquiry, tripParams } from "./gap-trip-inquiry.mjs";
 import { HAS_DB, ORG, OTHER_ORG, closeShadowDb, emptyWorld, runWorld, uid } from "./trip-test-kit.mjs";
 
 const NOW = new Date();
@@ -52,6 +52,9 @@ function irCase(w, c, bureau, over = {}) {
 
 async function judge(w, now = NOW) {
   const out = await runWorld(TRIP_SQL, w, tripParams(ORG, now));
+  const p = tripParams(ORG, now);
+  const count = await runWorld(COUNT_SQL, w, [p[0], p[1], p[2]]);
+  assert.equal(count.rows[0].n, out.rows.length, "COUNT_SQL and TRIP_SQL must find the same customers");
   return { rows: out.rows, verdict: judgeInquiry({ rows: out.rows, now }) };
 }
 

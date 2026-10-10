@@ -7,6 +7,7 @@ import {
   CHECK_IDS, FORM_REMINDER_MS, PULL_DUE_MS, ROW_CAP, SIGN_IN_GRACE_MS, STEPS, TRIP_SQL, WINDOW_MS,
   gapChecks, judgeRoadmap, naVerify, toTripRow, tripParams
 } from "./gap-trip-roadmap.mjs";
+import { COUNT_SQL } from "./gap-trip-roadmap.mjs";
 import { LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { SIGN_IN_GRACE } from "./gap-portal.mjs";
 import {
@@ -242,8 +243,17 @@ test("gapChecks: one read, a skip on a failed read, a skip with no database", as
 });
 
 test("naVerify: true while no buyer paid in the window", async () => {
-  const none = tagDb({ "trip-roadmap": [] });
-  const some = tagDb({ "trip-roadmap": [sqlRow({ paid_at: ago(DAY) })] });
+  const none = tagDb({ "trip-roadmap": [], "trip-roadmap-count": [{ n: 0 }] });
+  const some = tagDb({ "trip-roadmap": [sqlRow({ paid_at: ago(DAY) })], "trip-roadmap-count": [{ n: 1 }] });
   assert.equal(await naVerify["low-traffic"]({ check: "trip:roadmap" }, { db: none, orgId: ORG, now: NOW }), true);
   assert.equal(await naVerify["low-traffic"]({ check: "trip:roadmap" }, { db: some, orgId: ORG, now: NOW }), false);
+});
+
+test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 3", () => {
+  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+  assert.match(bare, /^SELECT\b/i);
+  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
+  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  assert.deepEqual(used, [1, 2, 3]);
+  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
 });

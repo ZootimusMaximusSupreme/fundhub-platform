@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   CHECK_IDS, ROW_CAP, STEPS, TRIP_SQL, WINDOW_MS, gapChecks, judgeInquiry, naVerify, toTripRow, tripParams
 } from "./gap-trip-inquiry.mjs";
+import { COUNT_SQL } from "./gap-trip-inquiry.mjs";
 import {
   CALL_DUE_STATUSES, CALL_GRACE_MS, GATE_SOURCE, LETTER_STATUSES, STUCK_AFTER_MS
 } from "./gap-inquiry.mjs";
@@ -231,8 +232,17 @@ test("gapChecks: one read, a skip on a failed read, a skip with no database", as
 });
 
 test("naVerify: true while nobody is on the trip", async () => {
-  const none = tagDb({ "trip-inquiry": [] });
-  const some = tagDb({ "trip-inquiry": [raised()] });
+  const none = tagDb({ "trip-inquiry": [], "trip-inquiry-count": [{ n: 0 }] });
+  const some = tagDb({ "trip-inquiry": [raised()], "trip-inquiry-count": [{ n: 1 }] });
   assert.equal(await naVerify["low-traffic"]({ check: "trip:inquiry" }, { db: none, orgId: ORG, now: NOW }), true);
   assert.equal(await naVerify["low-traffic"]({ check: "trip:inquiry" }, { db: some, orgId: ORG, now: NOW }), false);
+});
+
+test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 3", () => {
+  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+  assert.match(bare, /^SELECT\b/i);
+  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
+  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  assert.deepEqual(used, [1, 2, 3]);
+  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
 });
