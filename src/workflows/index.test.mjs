@@ -132,6 +132,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "paid-checkout-expiry-sweeper",
   "partner-production-floor",
   "plaid-transactions-sweeper",
+  "pulse-instant-watch",
   "repair-bureau-response-reader",
   "round-started-client-notify",
   "s-00-welcome",
@@ -214,6 +215,17 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
      added, in the words of the person who added it. The counts named in it are
      the historical record of what the pin said at the time; the pin itself is
      EXPECTED_WORKFLOW_IDS at the top of this file now, not a number.
+
+     Added the instant pulse (2026-10-07, eee0270dd) — the five-minute watch
+     over the critical doors: the health check, the login door, the apply door,
+     the roadmap sales funnel and outbound messages stuck in the queue. It was
+     registered in index.mjs that day and never named here, so this pin sat red
+     with "pulse-instant-watch" as the only id it could not find.
+     Registering it changes nothing a client sees. It reads, then texts Chris
+     only when a critical check is red, at most once an hour per failure
+     fingerprint, and only inside the texting hours (6 a.m. to 10 p.m. Arizona,
+     .claude/rules/texting-hours.md). Its only write is one agent_runs row per
+     alert, which is the cooldown record. It fixes nothing by itself.
 
      Added the affiliate payout run (2026-09-21) — the first thing in this
      repository that ever turned an affiliate's accrued commission into a payout
