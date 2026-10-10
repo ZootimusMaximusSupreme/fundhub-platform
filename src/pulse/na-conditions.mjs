@@ -468,7 +468,24 @@ export const NA_CONDITIONS = Object.freeze({
     problem(args) {
       return Array.isArray(args.boards) && args.boards.length > 0 && args.boards.every(isText)
         ? null
-        : "boards is not a list of board keys";
+        : "boards is not a list of board keys";,
+  /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
+     reads the messages table again and finds no queued message from any key on its dead list
+     (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row
+     is replaced by "not checked" here, and the lane's own row goes red by name. */
+  "no-sender": Object.freeze({
+    say(args = {}) {
+      const count = num(args.count);
+      const days = num(args.days);
+      const what = count !== null ? `${count} templates have` : "These templates have";
+      const span = days ? ` in the last ${days} ${days === 1 ? "day" : "days"}` : "";
+      return `${what} no sender or are retired. None was queued${span}. Judged the day one is.`;
+    },
+    claim() {
+      return "No template with no sender was queued.";
+    },
+    problem() {
+      return null;
     },
     verify: "lane"
   })
