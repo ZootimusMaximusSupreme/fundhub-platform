@@ -205,17 +205,38 @@ describe("the Today page shows the Mac's queue", () => {
   const SRC = fs.readFileSync(path.resolve(HERE, "../../public/app/marketing-cc-today.js"), "utf8");
   const load = () => { const ctx = createContext({ console }); runInContext(SRC, ctx); return ctx.FHMarketingCC; };
 
-  test("mac_queue becomes the first Waiting row; no key, no row", () => {
+  test("mac_queue is a Waiting row: first when no scripts wait, right after the scripts row when they do; no key, no row", () => {
     const cc = load();
     const view = cc.normalizeToday({ ok: true, mac_queue: { waiting: 2, running: 0, line: "2 AI jobs are waiting for your Mac to run them." } });
     const rows = cc.waitingList(view, null, T0);
     assert.equal(rows[0].kind, "mac");
     assert.equal(rows[0].what, "Waiting for your Mac to run it");
     assert.equal(rows[0].why, "2 AI jobs are waiting for your Mac to run them.");
+    // Scripts to approve (U37) sit above the Mac's row: the order is scripts, then the Mac.
+    const withScripts = cc.normalizeToday({ ok: true, scripts_waiting: { ready: 3, flagged: 0 },
+      mac_queue: { waiting: 2, running: 0, line: "2 AI jobs are waiting for your Mac to run them." } });
+    assert.deepEqual(JSON.parse(JSON.stringify(cc.waitingList(withScripts, null, T0).map((x) => x.kind))), ["scripts", "mac"]);
     const none = cc.waitingList(cc.normalizeToday({ ok: true }), null, T0);
     assert.equal(none.some((x) => x.kind === "mac"), false);
     const empty = cc.waitingList(cc.normalizeToday({ ok: true, mac_queue: { waiting: 0, running: 0, line: "" } }), null, T0);
     assert.equal(empty.some((x) => x.kind === "mac"), false);
+  });
+
+  test("the page's list of AI kinds is the server's list", () => {
+    const cc = load();
+    assert.deepEqual([...cc.MAC_KINDS].sort(), [...AI_JOB_KINDS].sort(),
+      "public/app/marketing-cc-today.js MAC_KINDS must name the same kinds as AI_JOB_KINDS");
+  });
+
+  test("Write now and Retry, local: the answer says it waits for the Mac", () => {
+    const cc = load();
+    const wn = cc.summarizeWriteNow({ status: 202, body: { queued: true, batch_id: "b-1", job_id: "j-1" } }, 3, true);
+    assert.equal(wn.ok, true);
+    assert.equal(wn.mac, true);
+    assert.match(wn.text, /^Saved\. Waiting for your Mac to run it\./);
+    const rt = cc.summarizeRetry({ status: 200, body: { ok: true, job: { id: "j-1", kind: "write_slot", status: "queued" } } }, T0, true);
+    assert.equal(rt.mac, true);
+    assert.match(rt.text, /Waiting for your Mac to run it\.$/);
   });
 
   test("Write ad copy, local: the answer says it waits for the Mac", () => {

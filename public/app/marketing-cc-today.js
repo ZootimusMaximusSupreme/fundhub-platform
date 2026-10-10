@@ -1745,6 +1745,12 @@
     return Object.prototype.hasOwnProperty.call(KIND_WORDS, kind) ? KIND_WORDS[kind] : "a machine step";
   }
 
+  /* The kinds the model writes (src/marketing/ai-runner.mjs AI_JOB_KINDS).
+     With MARKETING_AI_RUNNER=local these wait for Chris's Mac; every other
+     kind still runs on Netlify. src/marketing/ai-runner.test.mjs holds this
+     list the same as the server's, so a new AI kind cannot slip past. */
+  var MAC_KINDS = ["write_slot", "fix_script", "funnel", "avatar", "flywheel_stage", "deep_research"];
+
   /* The clock ticks every 15 minutes (netlify/functions/marketing-clock.mjs,
      SWEEP_CRON "*\/15 * * * *"). Two missed ticks and it reads "Late". */
   var CLOCK_LATE_MS = 30 * 60 * 1000;
@@ -2015,10 +2021,17 @@
     return { ok: false, tone: "err", text: "That angle was not saved. " + answerWords(res) };
   }
 
-  /* summarizeWriteNow — what Write now did. */
-  function summarizeWriteNow(res, n) {
+  /* summarizeWriteNow — what Write now did. `mac` is true when the Today read
+     says MARKETING_AI_RUNNER=local (view.macQueue is there): the batch is
+     saved, but the model writes each script on Chris's Mac, so the line says
+     it waits for the Mac and `mac: true` tells the page to read Today again
+     so the Mac row shows now. */
+  function summarizeWriteNow(res, n, mac) {
     var b = obj(res && res.body);
     if (tapOk(res) && (b.queued === true || b.batch_id)) {
+      if (mac) {
+        return { ok: true, tone: "wait", mac: true, text: "Saved. Waiting for your Mac to run it. " + plural(n, "script") + " will show up in Scripts when it is done." };
+      }
       return { ok: true, tone: "wait", text: "Writing " + plural(n, "script") + " now. They show up in Scripts when they are done. You can leave this page." };
     }
     if (res && res.status === 400 && b.error === "cap_reached") {
@@ -2027,9 +2040,17 @@
     return { ok: false, tone: "err", text: answerWords(res) };
   }
 
-  /* summarizeRetry — what Retry did ("Running again. Started 3:04 PM."). */
-  function summarizeRetry(res, nowMs) {
+  /* summarizeRetry — what Retry did ("Running again. Started 3:04 PM."). `mac`
+     is true when the Today read says MARKETING_AI_RUNNER=local. A job the
+     model writes (MAC_KINDS) is then back in line for the Mac, not running:
+     the line says so and `mac: true` tells the page to read Today again.
+     A job that is not AI work still runs on Netlify, so it keeps the old
+     line. */
+  function summarizeRetry(res, nowMs, mac) {
     if (tapOk(res) && obj(res.body).job) {
+      if (mac && MAC_KINDS.indexOf(str(obj(obj(res.body).job).kind)) !== -1) {
+        return { ok: true, tone: "ok", mac: true, text: "Back in line at " + clockOf(new Date(nowMs)) + ". Waiting for your Mac to run it." };
+      }
       return { ok: true, tone: "ok", text: "Running again. Started " + clockOf(new Date(nowMs)) + "." };
     }
     return { ok: false, tone: "err", text: answerWords(res) };
@@ -2637,6 +2658,7 @@
     renderParts: renderParts,
     /* U37 */
     KIND_WORDS: KIND_WORDS,
+    MAC_KINDS: MAC_KINDS,
     CLOCK_LATE_MS: CLOCK_LATE_MS,
     BATCH_POLL_MS: BATCH_POLL_MS,
     BATCH_POLL_TRIES: BATCH_POLL_TRIES,
@@ -3134,11 +3156,15 @@
         state.ui.wnSay = { tone: "wait", text: "Starting…" };
         paintParts();
         return api("/api/marketing/batches/write-now", { method: "POST", body: writeNowRequest(n, requestId()) }).then(function (res) {
-          var out = summarizeWriteNow(res, n);
+          /* MARKETING_AI_RUNNER=local: Today's own read carries macQueue. */
+          var out = summarizeWriteNow(res, n, Boolean(state.view && state.view.macQueue));
           state.ui.writing = false;
           state.ui.wnSay = out;
           paintParts();
           if (out.ok) { loadBatches(); watchBatch(); }
+          /* The Mac's row ("Waiting for your Mac to run it") is read now, not
+             at the 5-minute reload. */
+          if (out.ok && out.mac) load();
         });
       }).then(null, function () {
         state.ui.writing = false;
@@ -3183,11 +3209,14 @@
       paint();
       api("/api/marketing/jobs/retry", { method: "POST", body: retryRequest(jobId, requestId()) }).then(function (res) {
         var now = Date.now();
-        var out = summarizeRetry(res, now);
+        var out = summarizeRetry(res, now, Boolean(state.view && state.view.macQueue));
         delete state.ui.retrying[jobId];
         state.ui.retried[jobId] = { at: now, ok: out.ok, tone: out.tone, text: out.text };
         paint();
         if (out.ok) loadHealth();
+        /* A job the Mac runs is queued again: Today is read now so its row
+           (and the Mac's) is right, not at the 5-minute reload. */
+        if (out.ok && out.mac) load();
       }, function () {
         delete state.ui.retrying[jobId];
         state.ui.retried[jobId] = { at: Date.now(), ok: false, tone: "err", text: "Something went wrong on this page. Reload it and try again." };

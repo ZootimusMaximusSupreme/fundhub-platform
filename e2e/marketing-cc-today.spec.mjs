@@ -92,10 +92,13 @@ function batches(ready) {
 function handlers({ t = today(), health = [exampleResponse("GET marketing/health"), 200], next = [exampleResponse("GET marketing/batches/next"), 200],
   batchList = [batches(false), 200], writeNow = [exampleResponse("POST marketing/batches/write-now"), 202],
   idea = [exampleResponse("POST marketing/ideas"), 200], retry = [exampleResponse("POST marketing/jobs/retry"), 200],
-  seen = {}, counts = {} } = {}) {
+  seen = {}, counts = {}, reads = {} } = {}) {
   const answer = (v) => (typeof v === "function" ? v() : v);
   return {
-    "/api/marketing/today": async (route) => json(route, t),
+    "/api/marketing/today": async (route) => {
+      reads.today = (reads.today || 0) + 1;
+      return json(route, answer(t));
+    },
     "/api/ad-videos": async (route) => json(route, VIDEOS_NONE),
     "/api/marketing/offer/generate": async (route) => json(route, { ok: false, error: "not_found", path: "marketing/offer/generate" }, 404),
     "/api/marketing/costs": async (route) => json(route, COSTS),
@@ -404,6 +407,46 @@ test("390: when write_now_ready is true, Write now is the one filled button, the
   await phoneRules(page);
 });
 
+test("MARKETING_AI_RUNNER=local: Write now says it waits for the Mac, and the Mac row shows at once, not at the 5-minute reload", async ({ page }) => {
+  const seen = {};
+  const reads = {};
+  let wrote = false;
+  // Today carries mac_queue only while the Mac runs the AI. Nothing waits until the batch is saved.
+  const todayNow = () => today({ mac_queue: wrote
+    ? { waiting: 3, running: 0, line: "3 AI jobs are waiting for your Mac to run them." }
+    : { waiting: 0, running: 0, line: "" } });
+  const h = handlers({ seen, reads, t: todayNow, batchList: [batches(true), 200] });
+  const post = h["/api/marketing/batches/write-now"];
+  h["/api/marketing/batches/write-now"] = async (route) => { wrote = true; return post(route); };
+  const errors = await open(page, h);
+  await expect(page.locator('#waitingList [data-wait="mac"]')).toHaveCount(0);
+  const before = reads.today;
+
+  await page.locator("#writeNowBtn").click();
+  await page.locator('.cc-sheet [data-sheet="yes"]').click();
+  await expect(page.locator("#nextBody .say")).toHaveText(
+    "Saved. Waiting for your Mac to run it. 3 scripts will show up in Scripts when it is done.");
+  await expect(page.locator("#nextBody .say")).not.toContainText("Writing");
+  assertRequestMatchesContract("POST marketing/batches/write-now", seen.writeNow);
+  // GET marketing/today was read again by the tap itself: no clock was run.
+  await expect.poll(() => reads.today).toBeGreaterThan(before);
+  const mac = page.locator('#waitingList [data-wait="mac"]');
+  await expect(mac).toContainText("Waiting for your Mac to run it");
+  await expect(mac).toContainText("3 AI jobs are waiting for your Mac to run them.");
+  await assertPageAlive(page, errors);
+});
+
+test("Write now with the Mac off keeps its old words and does not read Today again", async ({ page }) => {
+  const reads = {};
+  await open(page, handlers({ reads, batchList: [batches(true), 200] }));
+  const before = reads.today;
+  await page.locator("#writeNowBtn").click();
+  await page.locator('.cc-sheet [data-sheet="yes"]').click();
+  await expect(page.locator("#nextBody .say")).toHaveText("Writing 3 scripts now. They show up in Scripts when they are done. You can leave this page.");
+  await page.waitForTimeout(300);
+  expect(reads.today, "no extra read of GET marketing/today").toBe(before);
+});
+
 test("Write now: Cancel on the cost sheet sends nothing; a cap answer says which cap and that nothing started", async ({ page }) => {
   const seen = {};
   await open(page, handlers({ seen, batchList: [batches(true), 200],
@@ -508,6 +551,46 @@ test("Retry posts marketing/jobs/retry for that job and the row says it is runni
   await shot(page, "u37-09-retry-390.png", "Retry answers on the row (390)", [
     { selector: '#waitingList [data-wait="stuck"] .say', caption: "Running again, with the time" }
   ], { anchor: "#cardWaiting" });
+});
+
+test("MARKETING_AI_RUNNER=local: Retry on a script the model writes says it is back in line, and the Mac row shows at once", async ({ page }) => {
+  const seen = {};
+  const reads = {};
+  let retried = false;
+  // After the retry the job is queued, so it leaves stuck_jobs and joins the Mac's line.
+  const todayNow = () => today(retried
+    ? { stuck_jobs: [], mac_queue: { waiting: 1, running: 0, line: "1 AI job is waiting for your Mac to run it." } }
+    : { mac_queue: { waiting: 0, running: 0, line: "" } });
+  const h = handlers({ seen, reads, t: todayNow });
+  const post = h["/api/marketing/jobs/retry"];
+  h["/api/marketing/jobs/retry"] = async (route) => { retried = true; return post(route); };
+  const errors = await open(page, h);
+  await expect(page.locator('#waitingList [data-wait="mac"]')).toHaveCount(0);
+
+  await page.locator('#waitingList [data-wait="stuck"] [data-act="retry"]').click();
+  // Today is read again by the tap: the stuck row is gone and the Mac's row is there. No clock was run.
+  const mac = page.locator('#waitingList [data-wait="mac"]');
+  await expect(mac).toContainText("Waiting for your Mac to run it");
+  await expect(mac).toContainText("1 AI job is waiting for your Mac to run it.");
+  await expect(page.locator('#waitingList [data-wait="stuck"]')).toHaveCount(0);
+  expect(seen.retry.job_id).toBe("00000000-0000-4000-8000-000000000501");
+  assertRequestMatchesContract("POST marketing/jobs/retry", seen.retry);
+  await expect.poll(() => reads.today).toBe(2);
+  await assertPageAlive(page, errors);
+});
+
+test("MARKETING_AI_RUNNER=local: Retry on a step that is not AI work keeps 'Running again' on its row", async ({ page }) => {
+  const seen = {};
+  const reads = {};
+  const stuck = [{ id: "00000000-0000-4000-8000-000000000502", kind: "funnel_push", error: "The page host said no.", since: "2026-10-12T12:40:00.000Z" }];
+  const retry = { ok: true, job: { id: "00000000-0000-4000-8000-000000000502", kind: "funnel_push", status: "queued" } };
+  await open(page, handlers({ seen, reads, retry: [retry, 200],
+    t: () => today({ stuck_jobs: stuck, mac_queue: { waiting: 0, running: 0, line: "" } }) }));
+  const row = page.locator('#waitingList [data-wait="stuck"]');
+  await row.locator('[data-act="retry"]').click();
+  await expect(row.locator(".say")).toHaveText("Running again. Started 12:00 PM.");
+  await page.waitForTimeout(300);
+  expect(reads.today, "Netlify runs it: no extra read of Today").toBe(1);
 });
 
 test("Retry: the server's own sentence when it refuses, and Retry stays", async ({ page }) => {

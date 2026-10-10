@@ -1843,8 +1843,11 @@ flowchart TD
   S -->|no sheet on the page| X[nothing sent: 'This page could not show the cost first']
   S -->|Cancel| X2[nothing sent]
   S -->|Write N| P[POST marketing/batches/write-now<br/>request_id + count]
-  P -->|202 queued| W["'Writing N scripts now. They show up in Scripts when they are done.'"]
+  P -->|202 queued, the Mac switch off| W["'Writing N scripts now. They show up in Scripts when they are done.'"]
+  P -->|202 queued, MARKETING_AI_RUNNER=local<br/>the Today read carries macQueue| WM["'Saved. Waiting for your Mac to run it. N scripts will show up in Scripts when it is done.'"]
+  WM --> TR[GET marketing/today again now<br/>so the Mac's row shows at once]
   W --> R[GET marketing/batches again now, then every 20 s<br/>while the newest batch is planned or writing,<br/>page in view, at most 10 minutes;<br/>a second Write now starts the 10 minutes over]
+  WM --> R
   P -->|400 cap_reached| CR[the server's cap sentence + 'Nothing was started.']
   P -->|401 / 403 / no connection / other| E[plain words; Write now comes back]
 ```
@@ -1873,10 +1876,19 @@ flowchart TD
   S[GET marketing/today stuck_jobs<br/>failed jobs, not offer, newest first] --> R[a Waiting on you row each:<br/>'Stuck: writing one script', the saved reason, stuck since]
   R --> T[ONE Retry button]
   T --> P[POST marketing/jobs/retry<br/>request_id + job_id]
-  P -->|200 queued| OK["'Running again. Started 3:04 PM.' The button goes.<br/>GET marketing/health is read again"]
+  P -->|200 queued, the Mac switch off,<br/>or a job that is not AI work| OK["'Running again. Started 3:04 PM.' The button goes.<br/>GET marketing/health is read again"]
+  P -->|200 queued, MARKETING_AI_RUNNER=local<br/>and the job is one the model writes| OKM["'Back in line at 3:04 PM. Waiting for your Mac to run it.'<br/>GET marketing/health and GET marketing/today are read again:<br/>the stuck row is gone, the Mac's row shows"]
   OK -->|the job fails again later| R2[its row shows 'It failed again after the retry.' and Retry again]
   P -->|400 not failed / 404 not retryable| E[the server's own sentence; Retry stays]
 ```
+
+With `MARKETING_AI_RUNNER=local` the page knows the Mac runs the AI when GET marketing/today carries
+`mac_queue` (it reads `view.macQueue`). A retried job of a kind the model writes (`write_slot`,
+`fix_script`, `funnel`, `avatar`, `flywheel_stage`, `deep_research`; the page's `MAC_KINDS`, held
+equal to the server's `AI_JOB_KINDS` by `src/marketing/ai-runner.test.mjs`) is queued and waits for the
+Mac, so it says so. A job that is not AI work (`funnel_push`, `meta_load`, ...) still runs on Netlify
+and keeps "Running again." Only the Mac words read GET marketing/today again, so with the Mac off
+the confirmation stays on its row until the 5-minute reload, as before.
 
 ### Waiting on you (order)
 
@@ -1952,12 +1964,23 @@ Launch."
 9. **"Late" clock** = no tick for 30 minutes (two missed 15-minute ticks): this page's rule;
    GET marketing/health carries no threshold.
 10. **UNVERIFIED:** the live click path on https://fundhub.ai/app/marketing-command-center.html#today
-    (the orchestrator walks it after ship). write_now_ready is false on main until U35 lands, so
-    Write now is not on the live page yet.
+    (the orchestrator walks it after ship). U35 is on main (`start_batch` is registered in
+    `src/marketing/job-kinds.mjs`), so GET marketing/batches sends `write_now_ready: true` and
+    Write now goes live on the page with this ship, as Today's one filled button.
 11. **Money and leads sizes.** The 6 numbers in each window are body-size bold beside 13px
     labels, so they are not the 2-3x hero size UI-STANDARDS §3 asks for. They read as a table
     (6 rows by 3 windows) on the 390 and 1280 shots; the hero size stays on the spend tiles at
     the top of Today. Left as a table (review U37-R3, a style note).
+12. **Write now and Retry with the Mac switch on (M3 repair round 2).** With
+    `MARKETING_AI_RUNNER=local` the model's work waits for Chris's Mac, so the two U37 buttons
+    say that ("Saved. Waiting for your Mac to run it." / "Back in line at 3:04 PM. Waiting for
+    your Mac to run it.") and read GET marketing/today again at once, so the Mac row shows
+    without the 5-minute reload. Two limits, both UNVERIFIED against a live Mac run: (a) Write
+    now queues `start_batch`, which runs on Netlify and only then queues the `write_slot` jobs
+    the Mac takes, so the read right after the tap can come before those jobs exist; the Mac
+    row then shows on the next Today read (5 minutes, or coming back into view). (b) The page
+    knows the Mac switch is on only from `mac_queue` in GET marketing/today; when that part
+    could not be read the server sends `mac_queue: null` and the old words show.
 
 ## U35 The clock's weekly batch tick and the batch jobs in the worker
 

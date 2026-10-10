@@ -313,6 +313,31 @@ describe("Write now: only when it can run, and then the one filled button", () =
     assert.equal(cc.summarizeWriteNow({ status: 0, body: null, transport: "x" }, 3).text, "Could not reach the server. Check your connection and try again.");
   });
 
+  test("MARKETING_AI_RUNNER=local: Write now says it waits for the Mac, and asks the page to read Today again", () => {
+    const saved = res(exampleResponse("POST marketing/batches/write-now"), 202);
+    assert.deepEqual(plain(cc.summarizeWriteNow(saved, 3, true)),
+      { ok: true, tone: "wait", mac: true, text: "Saved. Waiting for your Mac to run it. 3 scripts will show up in Scripts when it is done." });
+    assert.equal(cc.summarizeWriteNow(saved, 1, true).text, "Saved. Waiting for your Mac to run it. 1 script will show up in Scripts when it is done.");
+    // The Mac off (no third argument, or false): the words are exactly the old ones, and no `mac` flag.
+    for (const off of [undefined, false]) {
+      const out = plain(cc.summarizeWriteNow(saved, 3, off));
+      assert.equal("mac" in out, false);
+      assert.equal(out.text, "Writing 3 scripts now. They show up in Scripts when they are done. You can leave this page.");
+    }
+    // A refusal is never "Saved", Mac or not.
+    const cap = cc.summarizeWriteNow(res({ error: "cap_reached", message: "This batch's model spend cap ($40) is reached." }, 400), 3, true);
+    assert.deepEqual(plain(cap), { ok: false, tone: "err", text: "This batch's model spend cap ($40) is reached. Nothing was started." });
+  });
+
+  test("Write now and Retry read Today again only when the Mac runs the AI (source check)", () => {
+    const wn = SRC.slice(SRC.indexOf("function writeNow() {"), SRC.indexOf("function useAngle("));
+    assert.match(wn, /summarizeWriteNow\(res, n, Boolean\(state\.view && state\.view\.macQueue\)\)/);
+    assert.match(wn, /if \(out\.ok && out\.mac\) load\(\);/);
+    const rt = SRC.slice(SRC.indexOf("function retry(jobId) {"), SRC.indexOf('panel.addEventListener("click"'));
+    assert.match(rt, /summarizeRetry\(res, now, Boolean\(state\.view && state\.view\.macQueue\)\)/);
+    assert.match(rt, /if \(out\.ok && out\.mac\) load\(\);/);
+  });
+
   test("the newest batch in one line", () => {
     const b = (over) => ({ kind: "weekly", status: "released", releaseAt: "2026-10-12T14:00:00Z", releasedAt: null, total: 21, ready: 20, flagged: 2, failed: 1, error: "", ...over });
     assert.equal(cc.batchLine(b({})), "Oct 12 drop: 20 of 21 ready, 2 need a look, 1 did not get written.");
@@ -394,6 +419,24 @@ describe("Waiting on you: scripts ready and stuck jobs with Retry", () => {
     }
   });
 
+  test("the whole order with everything waiting: scripts, the Mac, videos, stuck jobs, then the flywheel rows", () => {
+    const videos = cc.normalizeVideos({ status: 200, body: { ok: true, items: [
+      { ad_id: "84", take_no: 1, updated_at: "2026-10-09T07:55:11Z", approval_expires_at: "2026-10-12T05:45:21Z" }] } });
+    const flywheel = { campaigns: [{ campaign: "partner", advice: null, stages: [
+      { n: 3, key: "offer", label: "offer", state: "FAILED", approved: false, status: "FAILED", why: "did not report guarantees",
+        reasons: ["did not report guarantees"], counts: {}, review_card: null }] }] };
+    const line = "2 AI jobs are waiting for your Mac.";
+    const all = view({ mac_queue: { waiting: 2, running: 0, line }, flywheel });
+    assert.deepEqual(plain(cc.waitingList(all, videos, NOW, {}).map((r) => r.kind)), ["scripts", "mac", "videos", "stuck", "redo"]);
+    // The same order drawn: the Mac's row sits above the videos row, never below it.
+    const html = cc.renderWaiting(all, videos, NOW, {});
+    const at = (kind) => html.indexOf('data-wait="' + kind + '"');
+    assert.ok(at("scripts") >= 0 && at("scripts") < at("mac") && at("mac") < at("videos") && at("videos") < at("stuck") && at("stuck") < at("redo"), html);
+    // No Mac row when the Mac is off: the rest keep their order.
+    const off = view({ flywheel });
+    assert.deepEqual(plain(cc.waitingList(off, videos, NOW, {}).map((r) => r.kind)), ["scripts", "videos", "stuck", "redo"]);
+  });
+
   test("after a retry the row says it is running again and the button goes; a job that fails again gets it back", () => {
     const id = "00000000-0000-4000-8000-000000000501";
     const at = Date.parse("2026-10-12T19:00:00Z");
@@ -437,6 +480,23 @@ describe("Waiting on you: scripts ready and stuck jobs with Retry", () => {
     assert.equal(cc.summarizeRetry(res({ error: "not_found" }, 404), NOW).text, "That is not there yet. It turns on with the next update.");
     assert.equal(cc.summarizeRetry(res({ error: "invalid", field: "job_id", message: "That step already finished. There is nothing to retry." }, 400), NOW).text,
       "That step already finished. There is nothing to retry.");
+  });
+
+  test("MARKETING_AI_RUNNER=local: a retried AI job is back in line for the Mac; a job that is not AI work still runs", () => {
+    const queued = (kind) => res({ ok: true, job: { id: "00000000-0000-4000-8000-000000000501", kind, status: "queued" } });
+    assert.deepEqual(plain(cc.summarizeRetry(queued("write_slot"), NOW, true)),
+      { ok: true, tone: "ok", mac: true, text: "Back in line at 12:00 PM. Waiting for your Mac to run it." });
+    // Every kind the model writes waits for the Mac; the rest run on Netlify and keep the old line.
+    for (const kind of cc.MAC_KINDS) assert.equal(cc.summarizeRetry(queued(kind), NOW, true).mac, true, kind);
+    for (const kind of ["funnel_push", "meta_load", "start_batch", "mystery_kind"]) {
+      const out = plain(cc.summarizeRetry(queued(kind), NOW, true));
+      assert.deepEqual(out, { ok: true, tone: "ok", text: "Running again. Started 12:00 PM." }, kind);
+    }
+    // The Mac off: the old line for an AI kind too, no flag.
+    assert.deepEqual(plain(cc.summarizeRetry(queued("write_slot"), NOW, false)), { ok: true, tone: "ok", text: "Running again. Started 12:00 PM." });
+    // A refusal is never "Back in line".
+    const refused = cc.summarizeRetry(res({ error: "invalid", field: "job_id", message: "That step has not failed. It is waiting or running now." }, 400), NOW, true);
+    assert.deepEqual(plain(refused), { ok: false, tone: "err", text: "That step has not failed. It is waiting or running now." });
   });
 
   test("request ids are ones the marketing routes take", () => {
