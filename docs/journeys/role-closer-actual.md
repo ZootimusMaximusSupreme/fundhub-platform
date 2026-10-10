@@ -36,8 +36,8 @@ flowchart TD
     CAN --> A_hiring[Hiring — 1 route]
     CAN --> A_merchant[merchant — 1 route]
     CAN --> A_money[money — 17 routes]
-    CAN --> A_ops[ops — 1 route]
-    CAN --> A_public[public — 18 routes]
+    CAN --> A_ops[ops — 2 routes]
+    CAN --> A_public[public — 19 routes]
     CAN --> A_read[Reading data — 50 routes]
     CAN --> A_repair[repair — 4 routes]
     CAN --> A_scripts[scripts — 2 routes]
@@ -46,7 +46,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 134 routes]
+    WHO -->|Yes| CANT[Blocked — 136 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 2 blocked]
@@ -59,7 +59,7 @@ flowchart TD
     CANT --> B_finance[Finance — 6 blocked]
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
-    CANT --> B_marketing[marketing — 43 blocked]
+    CANT --> B_marketing[marketing — 44 blocked]
     CANT --> B_ops[ops — 1 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -67,7 +67,7 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 3 blocked]
-    CANT --> B_read[Reading data — 17 blocked]
+    CANT --> B_read[Reading data — 18 blocked]
     CANT --> B_repair[repair — 1 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
@@ -77,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**189 of 323 routes.**
+**191 of 327 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -179,6 +179,7 @@ flowchart TD
 | `/api/money/transfers` | GET, POST | owner, admin, sales_manager, closer |
 | `/api/money/trends` | GET | owner, admin, sales_manager, closer |
 | `/api/money/vault` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/ops/notify-owner` | POST | anyone |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | staff, client |
@@ -191,6 +192,7 @@ flowchart TD
 | `/api/public/education-enroll` | POST | anyone |
 | `/api/public/eeo-survey` | GET, POST | anyone |
 | `/api/public/funnel-checkout` | GET, POST | anyone |
+| `/api/public/morning-brief` | GET | anyone |
 | `/api/public/optimize` | GET, POST | anyone |
 | `/api/public/partner-apply` | POST | anyone |
 | `/api/public/partner-page` | GET | anyone |
@@ -275,12 +277,12 @@ flowchart TD
 
 - **1 route is open to any signed-in employee, whatever their role.** That is not a gate on this journey specifically — anyone who can sign in reaches it: `/api/staff/avatar`.
 - **6 routes also accept a shared secret instead of a sign-in** (`DASHBOARD_SECRET`), so a caller holding that value reaches them without being anybody in particular: `/api/dashboard/client`, `/api/dashboard/client-archive`, `/api/dashboard/clients`, `/api/dashboard/kpis`, `/api/dashboard/pipeline`, `/api/dashboard/pipeline-counts`.
-- **30 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
+- **32 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/ops/notify-owner`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/morning-brief`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
 - **6 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
-**134 of 323 routes.**
+**136 of 327 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -370,6 +372,7 @@ flowchart TD
 | `/api/marketing/settings` | GET, POST | owner, admin |
 | `/api/marketing/shoot` | GET, POST | owner, admin |
 | `/api/marketing/shoot/mark` | POST | owner, admin |
+| `/api/marketing/shoot/take` | POST, PUT | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
@@ -400,6 +403,7 @@ flowchart TD
 | `/api/read/invoices` | GET | owner, admin, sales_manager |
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |
+| `/api/read/morning-brief` | GET | owner, admin |
 | `/api/read/ops-pulse` | GET | owner, admin |
 | `/api/read/partners` | GET | employees: owner, admin, sales_manager<br>plus: partner |
 | `/api/read/proxy-sessions` | GET | owner, funding_advisor |
