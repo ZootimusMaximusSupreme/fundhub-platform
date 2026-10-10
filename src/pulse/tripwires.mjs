@@ -89,7 +89,32 @@ export const TRIPWIRES = Object.freeze({
   "route:read/affiliates": { impact: "money", checks: ["partners:payout-held"] },
   "desk:products-commissions.html": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
   "desk:client-control-panel.html": { impact: "money", checks: ["funding:funded-no-bill", "funding:approved-no-amount"] },
-  "desk:affiliate.html": { impact: "money", checks: ["partners:payout-held"] }
+  "desk:affiliate.html": { impact: "money", checks: ["partners:payout-held"] },
+  // Coverage batch W2 (money B), 2026-10-10: checkout links, the FinanceOS setup fee, money that fits no plan,
+  // past-due plans, stuck money moves, and what Meta says about our ad money. Each id is written in its lane
+  // file under src/pulse/coverage/ and was read on live data, read only, before it was listed.
+  "route:paid-services": { impact: "money", checks: ["checkout:paid-service"] },
+  "route:public/slo-repair-checkout": { impact: "money", checks: ["checkout:repair-price"] },
+  "route:public/funnel-checkout": { impact: "money", checks: ["checkout:funnel-door", "checkout:funnel-no-sale"] },
+  "route:money/setup": { impact: "money", checks: ["finance-os-setup:paid-turns-on", "finance-os-setup:price-set"] },
+  "desk:money-setup.html": { impact: "money", checks: ["finance-os-setup:paid-turns-on", "finance-os-setup:price-set"] },
+  "route:money/payments": {
+    impact: "money",
+    checks: ["payments-unmatched:receipt-waiting", "payments-unmatched:installment-late-no-flag"]
+  },
+  "desk:money-payments.html": {
+    impact: "money",
+    checks: ["payments-unmatched:receipt-waiting", "payments-unmatched:installment-late-no-flag"]
+  },
+  "route:money/transfers": { impact: "money", checks: ["money-moves:stuck"] },
+  "desk:money-transfers.html": { impact: "money", checks: ["money-moves:stuck"] },
+  "job:finance-os-money-transfers": { impact: "money", checks: ["money-moves:stuck"] },
+  "route:finance/subscriptions": { impact: "money", checks: ["subscriptions:past-due"] },
+  "route:finance/cards": { impact: "money", checks: ["subscriptions:past-due"] },
+  "job:subscription-billing-sweeper": { impact: "money", checks: ["subscriptions:past-due"] },
+  "route:partner-addons": { impact: "money", checks: ["subscriptions:addon-paid-no-plan", "subscriptions:past-due"] },
+  "route:campaigns/write": { impact: "money", checks: ["ads-meta:matches"] },
+  "desk:campaign-manager.html": { impact: "money", checks: ["ads-meta:matches", "ads-meta:load-jobs"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
