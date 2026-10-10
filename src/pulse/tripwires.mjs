@@ -75,7 +75,21 @@ export const TRIPWIRES = Object.freeze({
   // M2 repair, 2026-10-09: the push puts a built funnel live on apply.fundhub.ai, where it takes ad
   // traffic and shows on every affiliate's link list. The push proves its pages once. This lane
   // reads every live built funnel's pages again each morning and goes red on a dead or wrong page.
-  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] }
+  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] },
+  // W4 messages truth, 2026-10-10 (ops/workflows/coverage-every-surface-2026-10-10.md). What a customer reads
+  // and whether the path worked: the nine msg:* rows in src/pulse/coverage/gap-msg.mjs and the alert texts
+  // in src/pulse/coverage/gap-alerts.mjs. Each one names a deep check that reads the saved message or alert,
+  // not a ping.
+  "route:messages-outbound": { impact: "customer", checks: ["msg:brakes", "msg:per-template-path", "msg:sent-body-blanks", "msg:links-in-body"] },
+  "desk:messaging.html": { impact: "customer", checks: ["gap:msg-inbound-unmatched", "gap:sms-sending-stuck", "msg:brakes", "msg:staff-template-to-client"] },
+  "desk:ops-admin.html": { impact: "customer", checks: ["msg:brakes", "msg:per-template-path", "msg:sent-body-blanks"] },
+  "route:money/alerts": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  "desk:money-alerts.html": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  "job:blueprint-finance-os-alerts": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  "job:finance-os-card-due-reminders": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  // The paper letter to a bureau, for a paying repair client. The send itself has no read of its own: the
+  // repair lane goes red when a file sits at ready-to-send or in transit past its clock (a letter that never left).
+  "send:src/metro2/delivery/send.mjs": { impact: "customer", checks: ["pipeline:repair", "repair-case-stuck"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
@@ -86,5 +100,25 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
   "send:src/pulse/alerts.mjs":
     "Owner-only: the hourly pulse's alert texts and buzzes go to Chris's own number and ntfy topic. It never reaches a customer. Its heartbeat is job pulse-hourly.",
   "route:ops/notify-owner":
-    "Owner-only: one text to Chris's own pulse number for an agent on the Mac, behind a secret. It never reaches a customer. Its ping is reg:ops/notify-owner."
+    "Owner-only: one text to Chris's own pulse number for an agent on the Mac, behind a secret. It never reaches a customer. Its ping is reg:ops/notify-owner.",
+  // W4 messages truth, 2026-10-10. Each of these sends to Chris or to a staff member. A wrong address is
+  // read by msg:staff-template-to-client (a staff template that reaches someone who is not staff).
+  "send:netlify/functions/teleprompter-live-text.mjs":
+    "Owner-only: one text to Chris's own phone when a film link is ready, behind a secret code. It never reaches a customer. Texting hours apply.",
+  "send:src/ad-videos/notify-fanout.mjs":
+    "Owner-only: texts and buzzes Chris's own phone and ntfy topic when a finished ad is ready. It never reaches a customer. Texting hours apply.",
+  "send:src/pulse/instant-watch.mjs":
+    "Owner-only: the 5-minute watch texts Chris's own number when a critical door is down. It never reaches a customer. Its heartbeat is job pulse-instant-watch.",
+  "send:src/pulse/notify.mjs":
+    "Owner-only: the morning pulse texts Chris's own number its report. It never reaches a customer. Its heartbeat is job daily-pulse.",
+  "send:src/staff/blake-lead-watch.mjs":
+    "Owner-only: texts Chris the name and phone of a lead Blake referred. Its own header says it never texts the lead. Its heartbeat is job blake-lead-watch.",
+  "send:src/auth/staff-mail.mjs":
+    "Staff-only: emails an employee their login or password link. It never reaches a customer. Its door is watched by reg:auth/invite and the auth lane.",
+  "send:src/staff/comp-alerts.mjs":
+    "Staff-only: tells a closer or sales manager their commission was paid or a deal closed. Never a customer. msg:staff-template-to-client reads the text half for a wrong address.",
+  "send:src/workflows/ad-video-sweeper.mjs":
+    "Owner-only: the sweeper's ready-ad buzz goes to Chris through notify-fanout. It never reaches a customer. Its heartbeat is job ad-video-sweeper.",
+  "send:src/push/send.mjs":
+    "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added."
 });

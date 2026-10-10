@@ -25,10 +25,10 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these nine", () => {
+test("the list of codes is closed: exactly these ten", () => {
   assert.deepEqual([...NA_CODES].sort(), [
     "low-traffic", "monthly-not-due", "no-demand", "no-real-lead",
-    "no-running-ad", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
+    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
   for (const code of NA_CODES) assert.equal(Object.isFrozen(NA_CONDITIONS[code]), true, code);
@@ -37,11 +37,11 @@ test("the list of codes is closed: exactly these nine", () => {
   assert.equal(isNaCode("toString"), false, "an inherited property is not a code");
 });
 
-test("the four core codes verify here; the four lane codes say \"lane\"", () => {
+test("the five core codes verify here; the five lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-sender"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -56,7 +56,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "no-running-ad": {},
     "low-traffic": { count: 0, min: 360, what: "ad clicks", days: 2 },
     "no-real-lead": { days: 3 },
-    "not-connected": { what: "YouTube" }
+    "not-connected": { what: "YouTube" },
+    "no-sender": { count: 158, days: 7 }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);
@@ -391,8 +392,8 @@ test("a lane code is answered by the lane: true stands, false does not, and the 
   assert.deepEqual(seen[0], ["gap-ads", "no-running-ad", { running: 0 }]);
 });
 
-test("each of the four lane codes stands on a lane's true and falls on its false", async () => {
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected"]) {
+test("each of the five lane codes stands on a lane's true and falls on its false", async () => {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-sender"]) {
     const row = { id: `gap-x:${code}`, sliceId: "gap-x", na: { code, args: { count: 0, min: 360 } } };
     const up = await verifyNa(row, { laneNaVerify: async (_slice, c) => c === code });
     const down = await verifyNa(row, { laneNaVerify: async () => false });
