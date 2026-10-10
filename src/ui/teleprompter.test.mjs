@@ -634,6 +634,19 @@ describe("teleprompter film look", () => {
     assert.ok(T.readingLineTop(0, 48) < 400);
   });
 
+  test("the script starts four lines down the screen, never past the middle of a short one", () => {
+    const T = load();
+    assert.equal(T.START_LINES_DOWN, 4);
+    const top = T.readingLineTop(47, 48);
+    // 48 px words at 1.32 line height: one line is about 63 px, so four lines is about 253 px lower.
+    assert.equal(T.readingLineTop(47, 48, 63.36), top + 4 * 63.36);
+    assert.ok(T.readingLineTop(47, 48, 63.36) > top + 200);
+    // A short sideways screen: the cap holds it at the middle.
+    assert.equal(T.readingLineTop(0, 24, 31.68, 100), 100);
+    // The cap never lifts the line above the old top line.
+    assert.equal(T.readingLineTop(47, 48, 63.36, 10), top);
+  });
+
   test("pause keeps the scroll time", () => {
     const T = load();
     assert.equal(T.pausePlace(4.25), 4.25);

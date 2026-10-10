@@ -621,3 +621,24 @@ test.describe("a phone never shows the words lying on their side (owner call 202
     expect(l.turnShown).toBe(true);
   });
 });
+
+test.describe("the script starts four lines down (owner call 2026-10-10)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("the red line and the first word sit four lines below the top, with empty room above", async ({ page }) => {
+    await open(page);
+    const m = await page.evaluate(() => {
+      const first = document.querySelector("#content .w").getBoundingClientRect();
+      const line = document.getElementById("line").getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const pitch = parseFloat(getComputedStyle(document.querySelector("#content p")).lineHeight);
+      return { firstTop: first.top - stage.top, firstBottom: first.bottom - stage.top, line: line.top - stage.top, pitch, stageH: stage.height };
+    });
+    // Four full lines of room above the first word.
+    expect(m.firstTop).toBeGreaterThanOrEqual(4 * m.pitch - 2);
+    // The red line runs through that first word.
+    expect(m.line).toBeGreaterThanOrEqual(m.firstTop - 2);
+    expect(m.line).toBeLessThanOrEqual(m.firstBottom + 2);
+    // And it is still in the top half.
+    expect(m.line).toBeLessThanOrEqual(m.stageH * 0.5 + 1);
+  });
+});

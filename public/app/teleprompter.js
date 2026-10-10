@@ -677,10 +677,21 @@
     return Math.round(safe + 8);
   }
 
-  /** Line position: just under the clock, through the top of the word being read. */
-  function readingLineTop(safeTop, lineHeight) {
+  /** The script starts this many lines down the screen, not at the very top (owner, 2026-10-10). */
+  var START_LINES_DOWN = 4;
+
+  /**
+   * Line position: through the word being read, START_LINES_DOWN lines below the clock.
+   * pitch is one line of words in pixels (font size times line height). maxPx keeps the
+   * line in the top part of a short screen. With no pitch it is the old top-of-page line.
+   */
+  function readingLineTop(safeTop, lineHeight, pitch, maxPx) {
     var h = lineHeight > 0 ? lineHeight : 0;
-    return readingLinePx(safeTop) + h * 0.45;
+    var top = readingLinePx(safeTop) + h * 0.45;
+    var down = pitch > 0 ? START_LINES_DOWN * pitch : 0;
+    var y = top + down;
+    if (maxPx > 0 && y > maxPx) y = Math.max(top, maxPx);
+    return y;
   }
 
   /** Pause keeps this scroll time. It does not jump back to the start. */
@@ -839,7 +850,7 @@
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
-    readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
+    readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
     storedWpm: storedWpm, rigQuery: rigQuery, rigLook: rigLook, rigTransform: rigTransform, nextRot: nextRot, turnFor: turnFor
   };
@@ -1332,8 +1343,17 @@
     return measureSafeTop.n;
   }
   function readPx() {
-    var h = words[0] && words[0].el ? words[0].el.offsetHeight : 0;
-    return readingLineTop(safeTopPx(), h);
+    var el0 = words[0] && words[0].el ? words[0].el : null;
+    var h = el0 ? el0.offsetHeight : 0;
+    var pitch = 0;
+    try {
+      var cs = el0 && el0.parentNode ? root.getComputedStyle(el0.parentNode) : null;
+      pitch = cs ? parseFloat(cs.lineHeight) : 0;
+      if (!(pitch > 0)) pitch = h * 1.1;
+    } catch (e) { pitch = h * 1.1; }
+    // Never past the middle of the words area, so a short sideways screen still shows what comes next.
+    var room = stage && stage.clientHeight ? stage.clientHeight * 0.5 : 0;
+    return readingLineTop(safeTopPx(), h, pitch, room);
   }
   function apply(force) {
     if (editing || (textEdit && !force)) return;
@@ -1346,7 +1366,8 @@
   }
   function frame(now) {
     if (!playing) return;
-    var dt = (now - last) / 1000; last = now; if (dt > 0.25) dt = 0.25;
+    // The first frame's clock can read a few ms before go() set `last`: never roll backwards.
+    var dt = (now - last) / 1000; last = now; if (dt > 0.25) dt = 0.25; if (dt < 0) dt = 0;
     var next = Math.min(total, t + dt);
     // Bullets mode: a cue holds on the reading line until the next press.
     for (var h = 0; h < holds.length; h++) {
