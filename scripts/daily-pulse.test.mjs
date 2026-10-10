@@ -12,6 +12,19 @@ import {
   META_SYNC_SQL, CF_NIGHT_SQL, CAPI_SQL, DYING_SCAN_SQL, RUNNING_ADS_SQL, MEET_SYNC_SQL
 } from "../src/pulse/machine.mjs";
 import { BEATS_SQL, MACHINE_ORG_COUNT_SQL } from "../src/pulse/coverage/slice-03-marketing.mjs";
+import { RUN_RECORDER_SQL } from "../src/pulse/self-audit.mjs";
+
+/* Statements that may run on BOTH connections, on purpose. Keep this list to
+   reads of a table that is NOT row-secured, where the plain app connection sees
+   the same rows the staff scope does. Today that is one statement: the lookup
+   of the default company. Several lanes run it on whichever handle they hold. */
+const MAY_RUN_ON_BOTH = new Set([
+  "SELECT id FROM orgs WHERE is_default LIMIT 1"
+]);
+
+/* One statement, one spelling: whitespace squashed, so a re-indented copy of
+   the same SQL is still the same statement. */
+const squash = (sql) => String(sql).replace(/\s+/g, " ").trim();
 
 function tmpRelayDirs() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pulse-cli-relay-"));
@@ -83,12 +96,34 @@ test("--db hands the pulse a db and a staff scope, sends nothing, and always clo
   // look like "the job never ran".
   const machineAndMarketingSql = {
     META_SYNC_SQL, CF_NIGHT_SQL, CAPI_SQL, DYING_SCAN_SQL, RUNNING_ADS_SQL, MEET_SYNC_SQL,
-    BEATS_SQL, MACHINE_ORG_COUNT_SQL
+    BEATS_SQL, MACHINE_ORG_COUNT_SQL, RUN_RECORDER_SQL
   };
   for (const [name, sql] of Object.entries(machineAndMarketingSql)) {
     assert.ok(staffSql.includes(sql), `${name} never ran through the staff scope`);
     assert.ok(!plainSql.includes(sql), `${name} ran on the plain app connection, where it reads empty`);
   }
+  // The named list above only covers the statements it names. This is the
+  // rule that covers the rest: the same SQL text must never run on BOTH the
+  // plain connection and the staff scope. The pulse reads each lane's rows
+  // once through the staff scope; when a second read of the same text (a
+  // "nothing to judge" re-check, a self-audit read) falls back to the plain
+  // connection, a row-secured table reads empty there and the re-check agrees
+  // "nothing to judge" for the wrong reason, a false green. Only the reads on
+  // MAY_RUN_ON_BOTH are exempt. The reads are not listed here by name on
+  // purpose: a new lane adds its own and this rule covers it with no edit.
+  //
+  // Limit, said plainly: the fake db answers every read with no rows, so this
+  // sees only the statements that run in that case. A re-check that reuses a
+  // lane's own SQL is caught here. A re-check written with brand-new SQL that
+  // falls back to the plain connection is caught only if it is named above.
+  const plainSet = new Set(plainSql.map(squash));
+  const onBoth = [...new Set(staffSql.map(squash))]
+    .filter((sql) => plainSet.has(sql) && !MAY_RUN_ON_BOTH.has(sql));
+  assert.equal(
+    onBoth.length,
+    0,
+    `${onBoth.length} statement(s) ran on BOTH the plain connection and the staff scope. The plain run reads empty on a row-secured table, so send every run through the staff scope. The statements (first 160 characters):\n${onBoth.map((sql) => `  ${sql.slice(0, 160)}`).join("\n")}`
+  );
   assert.ok(out.checks.some((c) => c.id === "meta-sync" && c.status !== "skip"));
   fs.rmSync(board, { recursive: true, force: true });
 });

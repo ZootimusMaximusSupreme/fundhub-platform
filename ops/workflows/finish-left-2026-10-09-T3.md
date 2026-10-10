@@ -1,7 +1,27 @@
 # Finish left, 2026-10-09 — T3 manifest
 
-Branch: `fix/T3-2026-10-09` (cut from main at `e58704577`).
+Branch: `fix/T3-2026-10-09` (cut from main at `e58704577`). Round 2: `fix/T3-2026-10-09-r2` (cut from round 1).
 Three red tests. Each one went red when a feature landed and nobody ran the test. None of them was a broken product. One touched a live file (one line, same behavior).
+
+## Round 2 (checker found the daily-pulse test too loose)
+
+The round 1 test checked 8 of the pulse's reads by name. The other reads could lose the staff key and the test stayed green. The checker proved it: drop the staff key at `src/pulse/daily-pulse.mjs:484` (`makeLaneNaVerify`) and the lead re-check ran on the plain connection, where that table reads empty. The self-audit then said "no real lead, nothing to judge" because it was blind, not because it was true. Every test in `src/pulse`, `src/pulse/coverage` and `scripts` stayed green.
+
+**I reproduced it first.** Same one-line mutation, round 1 test: 4 of 4 pass. Confirmed.
+
+**Fix (test only, no product code):** `scripts/daily-pulse.test.mjs` now has a general rule next to the named list. The same SQL text must never run on BOTH the plain connection and the staff scope. One statement is exempt, `SELECT id FROM orgs WHERE is_default LIMIT 1` (the orgs table is not row-secured, so both handles see the same rows). `RUN_RECORDER_SQL` is also added to the named list. The count is still not pinned. Nothing else was weakened.
+
+**Proof (mutate, run, revert, every time):**
+
+| Mutation | Round 1 test | Round 2 test |
+|---|---|---|
+| `makeLaneNaVerify({ db, scope: null, now })` at `daily-pulse.mjs:484` | green (hole) | RED. Names the `gap:lead-contacts` statement as run on both connections |
+| `auditPulse({ ..., scope: null })` (run recorder falls to plain db) | green (hole) | RED: "RUN_RECORDER_SQL never ran through the staff scope" |
+| Correct code | green | green (4 of 4) |
+
+On correct code a probe (fake db, every statement recorded) shows 29 plain runs, 30 staff runs, and exactly one statement on both: the org lookup. That is why the one exemption is enough and nothing else needs one.
+
+**Limit, said plainly:** the fake db answers every read with no rows, so the rule sees only the statements that run in that case. A re-check that reuses a lane's own SQL is caught by the overlap rule (that was the checker's case). A re-check written with brand-new SQL that falls back to the plain connection is caught only if its SQL constant is added to the named list. The test comment says this too.
 
 ## In plain words
 
@@ -39,9 +59,9 @@ The 5th machine row on 2026-10-07 already made the true count 6, so the test has
 
 **Why I did not just write 27:** the heartbeat law adds a lane (and a staff read) with every build. A pinned number goes red on every build and proves nothing. It was bumped by hand twice already.
 
-**What the number stood for:** the marketing-machine tables are FORCE row security and read empty on the plain app connection, so each machine and marketing read must go through the staff scope and none through the plain db. The test now records which connection ran each statement and asserts that for all 8 exported SQL constants (`META_SYNC_SQL`, `CF_NIGHT_SQL`, `CAPI_SQL`, `DYING_SCAN_SQL`, `RUNNING_ADS_SQL`, `MEET_SYNC_SQL`, `BEATS_SQL`, `MACHINE_ORG_COUNT_SQL`). It also asserts close ran exactly once and last, with only staff scopes before it. The old assertions on `dryRun`, `sends`, `sms.reason` and `meta-sync` are unchanged.
+**What the number stood for:** the marketing-machine tables are FORCE row security and read empty on the plain app connection, so each machine and marketing read must go through the staff scope and none through the plain db. The test now records which connection ran each statement and asserts that for 9 exported SQL constants (`META_SYNC_SQL`, `CF_NIGHT_SQL`, `CAPI_SQL`, `DYING_SCAN_SQL`, `RUNNING_ADS_SQL`, `MEET_SYNC_SQL`, `BEATS_SQL`, `MACHINE_ORG_COUNT_SQL`, and in round 2 `RUN_RECORDER_SQL`). Round 2 also adds the general rule: no statement runs on both connections, except the one org lookup. It also asserts close ran exactly once and last, with only staff scopes before it. The old assertions on `dryRun`, `sends`, `sms.reason` and `meta-sync` are unchanged.
 
-**Is the new test stricter in the way that matters?** Yes. Mutation proof: I pointed `checkMachine` at `scope: null` in `src/pulse/daily-pulse.mjs`. The new test went red with "META_SYNC_SQL never ran through the staff scope". Mutation reverted (`git checkout`), file clean.
+**Is the new test stricter in the way that matters?** Round 1 said yes, on one mutation (`checkMachine` at `scope: null` went red). Round 2 found that was true only for the 8 named reads. See "Round 2" above for the mutations that were green in round 1 and are red now.
 
 ## 3. `src/http/read-endpoints-org-scope.test.mjs` — "every read endpoint scopes to the caller's company"
 
@@ -64,10 +84,16 @@ The 5th machine row on 2026-10-07 already made the true count 6, so the test has
 
 Before: all three red (confirmed first thing).
 
-After:
+After (round 1):
 - `node --test src/lib/no-unfenced-transmit.test.mjs scripts/daily-pulse.test.mjs src/http/read-endpoints-org-scope.test.mjs src/http/morning-brief.test.mjs src/http/routes.test.mjs src/http/auth-gate.test.mjs` → 36 tests, 36 pass, 0 fail, 0 skipped.
 - Neighbours: `src/pulse/*.test.mjs`, `src/pulse/coverage/*`, `src/pulse/beats/*`, `src/ops/morning-brief*`, `src/workflows/daily-pulse*`, `src/workflows/evening-brief*`, `scripts/daily-pulse.test.mjs` → 2663 tests, 2607 pass, 1 fail, 55 skipped. The 1 fail is leftover B below and is not caused by this change. The 55 skips are `.pg.test.mjs` files with no `DATABASE_URL` (not run here; none touch these files).
 - `npm run lint` → 3217 files parse clean.
+
+After (round 2, on `fix/T3-2026-10-09-r2`):
+- `node --test scripts/daily-pulse.test.mjs src/lib/no-unfenced-transmit.test.mjs src/http/read-endpoints-org-scope.test.mjs src/http/morning-brief.test.mjs src/http/routes.test.mjs src/http/auth-gate.test.mjs src/pulse/self-audit.test.mjs` → 137 tests, 137 pass, 0 fail, 0 skipped.
+- Same neighbour set as round 1 → 2663 tests, 2607 pass, 1 fail (leftover B, `registry.test.mjs`), 55 skipped (`.pg` files, no `DATABASE_URL`). Identical to round 1.
+- `npm run lint` → 3217 files parse clean.
+- Both mutations above were reverted with `git checkout`. `git diff` on `src/pulse/daily-pulse.mjs` is empty.
 
 ## Leftovers (not fixed; not mine)
 
@@ -79,12 +105,16 @@ C. **`npx tsc --noEmit` has 1 error:** `src/marketing/filmed-receive.mjs(159,75)
 
 D. All three tests above were red for 2 days with nothing stopping the commits that broke them (`f5bf6534b`, `d34300968`, `48b47054e`). That is a note about the commit path, not a defect in these files.
 
+E. **Five staff hiring read doors scope to the DEFAULT company, not the caller's company** (found by the round 1 checker, verified by me in round 2). `api/hiring/funnel.mjs:28`, `candidates.mjs:62`, `decisions.mjs:65`, `bench.mjs:33` and `postings.mjs:43` each filter on `org_id = (SELECT id FROM orgs WHERE is_default LIMIT 1)`. All five are routed in `netlify/functions/api.mjs` (lines 994-999). This is the flaw `src/http/read-endpoints-org-scope.test.mjs` bans, but that test scans only `api/read` (`READ_DIR`, line 49), so it never sees them. Nothing is wrong today because only one company exists. With a second company, its hiring staff would see company A's candidates and none of their own. Fix, not done here: bind `org_id` from the session in those 5 doors, then widen `READ_DIR` in the org-scope test to cover `api/hiring`.
+
+F. **`src/http/climate-match.test.mjs` is red: "climate page: no approval odds, no promised amount, no guarantee".** It fails with `banned public claim matched /approval\s+(odds|chance|probability)/i`. Run in this worktree: 21 tests, 20 pass, 1 fail. T3 changes none of the files that test reads (6 files in the T3 diff, none about climate), so it is red on the base too; the round 1 checker also saw it red in the main checkout. Not fixed here. With B, that makes two red tests left in the neighbour set that T3 did not cause.
+
 ## Change manifest
 
 | File | Change |
 |---|---|
 | `src/lib/no-unfenced-transmit.test.mjs` | + 2 `ALLOWED_RAW_FETCH` entries (funnel-doors, instant-watch) |
-| `scripts/daily-pulse.test.mjs` | pinned count replaced with per-statement connection check + close-once-and-last |
+| `scripts/daily-pulse.test.mjs` | pinned count replaced with per-statement connection check + close-once-and-last; round 2: + `RUN_RECORDER_SQL` on the named list, + "no statement runs on both connections" rule (one exempt: the org lookup) |
 | `src/http/read-endpoints-org-scope.test.mjs` | + `NO_ORG_COLUMN` entry for `morning-brief.mjs` |
 | `api/read/morning-brief.mjs` | 1 line: `orgId` becomes `orgId: staff.org_id` (same value) |
 | `src/http/morning-brief.test.mjs` | + 2 tests proving org binding and the no-org 403 |
