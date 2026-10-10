@@ -338,7 +338,11 @@ test("judgeFunding: waiting customers and finished ones are PASS", () => {
 });
 
 function fakeDb(rows, seen = []) {
-  return tagDb({ "trip-funding": rows, "trip-funding-count": [{ n: rows.length }] }, seen);
+  return tagDb({
+    "trip-funding": rows,
+    "trip-funding-count": [{ n: rows.length }],
+    "trip-counts": [{ "trip:funding": rows.length }]
+  }, seen);
 }
 
 test("gapChecks: reads once, through ctx.db, and returns the verdict", async () => {
@@ -383,8 +387,16 @@ test("naVerify: true while the SELECT still returns nobody, false the day someon
   const seen = [];
   const viaArgs = await naVerify["low-traffic"]({ check: "trip:funding", org: ORG }, { db: fakeDb([], seen), now: NOW });
   assert.equal(viaArgs, true);
-  assert.deepEqual(seen.map((s) => s.tag), ["trip-funding-count"]);
+  // one shared read answers every trip's re-check (trip-kit.mjs sharedCount)
+  assert.deepEqual(seen.map((s) => s.tag), ["trip-counts"]);
   assert.equal(seen[0].params[0], ORG);
+  assert.match(seen[0].sql, /AS "trip:funding"/);
+
+  // and when the shared read cannot run, the lane's own light count answers
+  const own = [];
+  const lonely = tagDb({ "trip-funding-count": [{ n: 0 }] }, own);
+  assert.equal(await naVerify["low-traffic"]({ check: "trip:funding", org: ORG }, { db: lonely, now: NOW }), true);
+  assert.deepEqual(own.map((s) => s.tag), ["trip-counts", "trip-funding-count"]);
   const some = await naVerify["low-traffic"]({ check: "trip:funding" }, { db: fakeDb([whole()]), orgId: ORG, now: NOW });
   assert.equal(some, false);
   const wrong = await naVerify["low-traffic"]({ check: "trip:repair" }, { db: fakeDb([]), orgId: ORG, now: NOW });

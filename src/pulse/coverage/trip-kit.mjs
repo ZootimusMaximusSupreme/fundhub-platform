@@ -242,13 +242,84 @@ export function judgeTrip({
   );
 }
 
+/* ── the light count, shared ───────────────────────────────────────────────────────────────────
+   The audit re-checks every "nothing to judge" row together inside 2.5 seconds, and each of the five
+   trip lanes may have one. So the lanes register their light count here, and the first re-check reads
+   all five in ONE statement; the other four answer from that read. A lane that is not loaded, or a
+   statement that fails, falls back to the lane's own light count. */
+const COUNT_REGISTRY = new Map();
+const COUNT_MEMO = new WeakMap();
+const MEMO_KEEP = 4;
+
+/** A lane tells the kit its light count: `sql` answers one row with `n`; `paramsFor(orgId, now)` are its parameters. */
+export function registerTripCount(id, sql, paramsFor) {
+  COUNT_REGISTRY.set(id, { sql, paramsFor });
+}
+
+const stripComments = (sql) => String(sql).replace(/\/\*[\s\S]*?\*\//g, "").trim();
+const quoteIdent = (id) => `"${String(id).replace(/"/g, '""')}"`;
+
+/** One SELECT that holds every registered count, with each lane's placeholders moved past the last. Pure. */
+export function buildSharedCount(orgId, now, registry = COUNT_REGISTRY) {
+  const parts = [];
+  const params = [];
+  const ids = [];
+  for (const [id, entry] of registry) {
+    const own = entry.paramsFor(orgId, now);
+    const offset = params.length;
+    const moved = stripComments(entry.sql).replace(/\$(\d+)/g, (_, n) => `$${Number(n) + offset}`);
+    parts.push(`(${moved}) AS ${quoteIdent(id)}`);
+    params.push(...own);
+    ids.push(id);
+  }
+  return { sql: `/* gap:trip-counts */\n  SELECT ${parts.join(",\n         ")}`, params, ids };
+}
+
+/**
+ * The number of customers on one trip. Reads all registered trips once per audit run and hands each
+ * lane its own answer. `own()` is the lane's own light count, the fallback.
+ */
+export async function sharedCount({ run, key, id, orgId, now, own, registry = COUNT_REGISTRY }) {
+  const keyObj = key && (typeof key === "object" || typeof key === "function") ? key : null;
+  if (keyObj && registry.has(id) && registry.size > 0) {
+    let slots = COUNT_MEMO.get(keyObj);
+    if (!slots) {
+      slots = new Map();
+      COUNT_MEMO.set(keyObj, slots);
+    }
+    const slot = `${orgId}|${now.getTime()}|${[...registry.keys()].join(",")}`;
+    let pending = slots.get(slot);
+    if (!pending) {
+      const built = buildSharedCount(orgId, now, registry);
+      pending = (async () => {
+        const out = await run((tx) => tx.query(built.sql, built.params));
+        const row = out && out.rows && out.rows[0];
+        if (!row) throw new Error("the shared count came back with no row");
+        const byId = new Map();
+        for (const k of built.ids) byId.set(k, Number(row[k]));
+        return byId;
+      })();
+      slots.set(slot, pending);
+      while (slots.size > MEMO_KEEP) slots.delete(slots.keys().next().value);
+    }
+    try {
+      const byId = await pending;
+      const n = byId.get(id);
+      if (Number.isFinite(n)) return n;
+    } catch {
+      // fall through to the lane's own read
+    }
+  }
+  return own();
+}
+
 /**
  * The audit calls naVerify["low-traffic"] to prove a "nothing to judge" row again. It is true only
  * while the same read still finds no customer on the trip. A read that cannot run answers false.
  *
- *   countStarted(run, orgId, now) -> number of customers who started the trip in the window. It runs
- *                                    one light SELECT (the facts that decide who started, nothing else):
- *                                    the audit gives all its re-checks 2.5 seconds together.
+ *   countStarted(run, orgId, now, ctx) -> number of customers who started the trip in the window.
+ *                                    One light SELECT (the facts that decide who started, nothing
+ *                                    else), shared with the other trips through sharedCount().
  */
 export function makeNaVerify({ id, countStarted, runnerOf, nowOf, defaultOrg }) {
   return Object.freeze({
@@ -259,7 +330,7 @@ export function makeNaVerify({ id, countStarted, runnerOf, nowOf, defaultOrg }) 
       const orgId = ctx.orgId || (typeof args.org === "string" && args.org) || (await defaultOrg(run));
       if (!orgId) return false;
       try {
-        const n = await countStarted(run, orgId, nowOf(ctx));
+        const n = await countStarted(run, orgId, nowOf(ctx), ctx);
         return Number.isFinite(n) && n < 1;
       } catch {
         return false;

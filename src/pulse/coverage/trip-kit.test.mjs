@@ -4,7 +4,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  BY, SHOWN, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, span, walkTrip, whoIs
+  BY, SHOWN, buildSharedCount, defaultOrg, judgeTrip, makeNaVerify, realClientSql, sharedCount, skipRow, span,
+  walkTrip, whoIs
 } from "./trip-kit.mjs";
 
 const MIN = 60 * 1000;
@@ -301,4 +302,67 @@ test("realClientSql leaves out demo, synthetic, test-address and archived client
   assert.match(sql, /synthetic/);
   assert.match(sql, /!~\* \$3::text/);
   assert.match(sql, /crm_archived_at/);
+});
+
+/* ---- the shared light count ---- */
+
+function twoLanes() {
+  return new Map([
+    ["trip:a", { sql: "/* gap:a-count */ SELECT count(*)::int AS n FROM t WHERE org = $1::uuid AND at >= $2::timestamptz", paramsFor: (o, now) => [o, now.toISOString()] }],
+    ["trip:b", { sql: "/* gap:b-count */ SELECT count(*)::int AS n FROM u WHERE org = $1::uuid AND name !~* $2::text AND at >= $3::timestamptz", paramsFor: (o, now) => [o, "x+", now.toISOString()] }]
+  ]);
+}
+
+test("buildSharedCount: one SELECT, a column per trip, each lane's placeholders moved past the last", () => {
+  const b = buildSharedCount("org-1", NOW, twoLanes());
+  assert.deepEqual(b.ids, ["trip:a", "trip:b"]);
+  assert.match(b.sql, /^\/\* gap:trip-counts \*\/\s+SELECT \(SELECT count\(\*\)::int AS n FROM t WHERE org = \$1::uuid AND at >= \$2::timestamptz\) AS "trip:a"/);
+  assert.match(b.sql, /org = \$3::uuid AND name !~\* \$4::text AND at >= \$5::timestamptz\) AS "trip:b"/);
+  assert.deepEqual(b.params, ["org-1", NOW.toISOString(), "org-1", "x+", NOW.toISOString()]);
+  assert.ok(!/gap:a-count|gap:b-count/.test(b.sql), "the lane comments are dropped");
+});
+
+test("sharedCount: five re-checks cost one read, and each lane gets its own number", async () => {
+  const registry = twoLanes();
+  const seen = [];
+  const db = {};
+  const run = async (fn) => fn({ async query(sql, params) { seen.push({ sql, params }); return { rows: [{ "trip:a": 0, "trip:b": 3 }] }; } });
+  const own = async () => { throw new Error("must not be called"); };
+  const a = await sharedCount({ run, key: db, id: "trip:a", orgId: "o", now: NOW, own, registry });
+  const b = await sharedCount({ run, key: db, id: "trip:b", orgId: "o", now: NOW, own, registry });
+  assert.equal(a, 0);
+  assert.equal(b, 3);
+  assert.equal(seen.length, 1);
+});
+
+test("sharedCount: a later run (another now) reads again, never a stale answer", async () => {
+  const registry = twoLanes();
+  let n = 0;
+  const db = {};
+  const run = async (fn) => fn({ async query() { n += 1; return { rows: [{ "trip:a": n, "trip:b": 0 }] }; } });
+  const own = async () => -1;
+  const first = await sharedCount({ run, key: db, id: "trip:a", orgId: "o", now: NOW, own, registry });
+  const later = await sharedCount({ run, key: db, id: "trip:a", orgId: "o", now: new Date(NOW.getTime() + 1000), own, registry });
+  assert.equal(first, 1);
+  assert.equal(later, 2);
+});
+
+test("sharedCount: a failed shared read, a trip nobody registered, or no key falls back to the lane's own count", async () => {
+  const registry = twoLanes();
+  const run = async () => { throw new Error("relation \"u\" does not exist"); };
+  const own = async () => 7;
+  assert.equal(await sharedCount({ run, key: {}, id: "trip:a", orgId: "o", now: NOW, own, registry }), 7);
+  assert.equal(await sharedCount({ run: async (fn) => fn({ query: async () => ({ rows: [{}] }) }), key: {}, id: "trip:z", orgId: "o", now: NOW, own, registry }), 7);
+  assert.equal(await sharedCount({ run, key: null, id: "trip:a", orgId: "o", now: NOW, own, registry }), 7);
+});
+
+test("makeNaVerify hands the run context to the count so the shared read can be keyed", async () => {
+  let got = null;
+  const ctx = { orgId: "o", marker: true };
+  const v = makeNaVerify({
+    id: "trip:x", runnerOf: () => async (fn) => fn({}), nowOf: () => NOW, defaultOrg: async () => "org",
+    countStarted: async (run, orgId, now, c) => { got = c; return 0; }
+  })["low-traffic"];
+  assert.equal(await v({ check: "trip:x" }, ctx), true);
+  assert.equal(got, ctx);
 });

@@ -50,7 +50,8 @@ import {
   MIN_MS, clip, intOf, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
 import {
-  BY, DAY_MS, HOUR_MS, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, whoIs
+  BY, DAY_MS, HOUR_MS, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, whoIs,
+  registerTripCount, sharedCount
 } from "./trip-kit.mjs";
 
 const ID = "trip:roadmap";
@@ -331,10 +332,17 @@ export function tripParams(orgId, now) {
   ];
 }
 
-async function startedCount(run, orgId, now) {
-  const p = tripParams(orgId, now);
-  const out = await run((tx) => tx.query(COUNT_SQL, [p[0], p[1], p[2]]));
-  return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
+const countParams = (orgId, now) => tripParams(orgId, now).slice(0, 3);
+registerTripCount(ID, COUNT_SQL, countParams);
+
+async function startedCount(run, orgId, now, ctx = {}) {
+  return sharedCount({
+    run, key: ctx.scope || ctx.db, id: ID, orgId, now,
+    own: async () => {
+      const out = await run((tx) => tx.query(COUNT_SQL, countParams(orgId, now)));
+      return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
+    }
+  });
 }
 
 export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
