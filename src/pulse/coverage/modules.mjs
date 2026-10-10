@@ -73,6 +73,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-leads.mjs", () => import("./gap-leads.mjs")],
   ["gap-marketing-queue.mjs", () => import("./gap-marketing-queue.mjs")],
   ["gap-meet.mjs", () => import("./gap-meet.mjs")],
+  ["gap-money-funding.mjs", () => import("./gap-money-funding.mjs")],
   ["gap-nurture.mjs", () => import("./gap-nurture.mjs")],
   ["gap-opt-out.mjs", () => import("./gap-opt-out.mjs")],
   ["gap-outside-inngest.mjs", () => import("./gap-outside-inngest.mjs")],
