@@ -2724,8 +2724,17 @@
 
   /* Sideways, the words are half the size: the front-camera half of the screen is narrow. */
   function isLandscape() {
-    try { return !!(root.matchMedia && root.matchMedia("(orientation: landscape)").matches); }
-    catch (e) { return false; }
+    try {
+      // A phone only: the short side of the real screen is under 600. A tablet, a Mac window, or a
+      // phone keyboard squeezing the page never counts, so the words are never shrunk by mistake.
+      var scr = root.screen || {};
+      var shortSide = Math.min(scr.width || 0, scr.height || 0);
+      if (shortSide && shortSide >= 600) return false;
+      var so = scr.orientation;
+      if (so && so.type) return /landscape/.test(so.type);
+      if (typeof root.orientation === "number") return Math.abs(root.orientation) === 90;
+      return !!(root.matchMedia && root.matchMedia("(orientation: landscape)").matches);
+    } catch (e) { return false; }
   }
   function shownFont() { return isLandscape() ? Math.max(12, Math.round(S.font / 2)) : S.font; }
   function applyFont() {
