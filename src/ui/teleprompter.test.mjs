@@ -119,6 +119,17 @@ describe("teleprompter, pure", () => {
     for (const n of [1, 2, 3, 12]) {
       assert.equal(T.fileName(ONE, n), takeFileName({ offerWord: "SLO", adId: "91", angle: "Lenders read two files", takeNo: n }));
     }
+    // Owner, 2026-10-10: the page builds the same name the server does, for every kind of film.
+    for (const row of [
+      { ad_id: "93", title: "Ad 19 — Over and over (broad, film first)", stack_kind: "ad", stack_no: 2, angle_name: "Over and over" },
+      { ad_id: "103", title: "/watch VSL (book-a-call)", stack_kind: "vsl", stack_no: 1, angle_name: "Watch page" },
+      { ad_id: "104", title: "/watch thank-you video", stack_kind: "thank_you", stack_no: null, angle_name: null }
+    ]) {
+      const served = { ...ONE, ...row, ...planFields({ ...ONE, offer_key: "funding_dfy", lane: null, ...row }) };
+      assert.ok(served.take_file_name.startsWith("Direct Book "), served.take_file_name);
+      assert.equal(T.fileName(served, served.take_no), served.take_file_name);
+      assert.equal(T.afterMark(served, "another_take").take_file_name, served.take_file_name.replace("Take 1.mp4", "Take 2.mp4"));
+    }
     assert.equal(T.fileName(TWO, 1), null, "no offer word on file, no name");
     assert.equal(T.fileName({ ...ONE, ad_id: null }, 1), null);
     assert.equal(T.fileName(ONE, 0), null);

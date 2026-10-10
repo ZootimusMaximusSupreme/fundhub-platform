@@ -71,13 +71,21 @@
   /* Owner's hard limits, 2026-10-10: 130 is super slow, 220 is the top. Nothing goes outside them. */
   var MIN_WPM = 130, MAX_WPM = 220;
 
-  /** NAMING.md: `{Offer} Ad {n} — {angle} Take {k}.mp4`, or null when a part is missing. */
+  /**
+   * NAMING.md, the same rule as takeFileName in src/marketing/shoot-plan.mjs:
+   *   an ad `{Offer} Ad {n} — {angle} Take {k}.mp4`, the VSL `{Offer} VSL {n} — {angle} Take {k}.mp4`,
+   *   the thank-you video `{Offer} Thank You Take {k}.mp4`. null when a part is missing.
+   * {n} is the place in the offer's stack (stack_no), not the tracking number.
+   */
   function fileName(s, takeNo) {
-    if (!s || !s.offer_word || !s.angle_name) return null;
-    var ad = s.ad_id == null ? "" : String(s.ad_id);
-    if (!/^(0|[1-9][0-9]{0,8})$/.test(ad)) return null;
+    if (!s || !s.offer_word) return null;
     if (!(takeNo >= 1) || Math.floor(takeNo) !== takeNo) return null;
-    return s.offer_word + " Ad " + ad + " — " + s.angle_name + " Take " + takeNo + ".mp4";
+    var kind = s.stack_kind === "vsl" || s.stack_kind === "thank_you" ? s.stack_kind : "ad";
+    if (kind === "thank_you") return s.offer_word + " Thank You Take " + takeNo + ".mp4";
+    if (!s.angle_name) return null;
+    var n = s.stack_no != null ? String(s.stack_no) : (kind === "ad" && s.ad_id != null ? String(s.ad_id) : "");
+    if (!/^(0|[1-9][0-9]{0,8})$/.test(n)) return null;
+    return s.offer_word + (kind === "vsl" ? " VSL " : " Ad ") + n + " — " + s.angle_name + " Take " + takeNo + ".mp4";
   }
 
   /** CAPS words go bold, except the acronyms v1 lets through. */

@@ -49,7 +49,7 @@ const row = (id, ad, angle, take, extra = {}) => ({
 describe("names — marketing/ads/NAMING.md", () => {
   test("every take-1 name in NAMING.md's table reads back as its four parts", () => {
     const book = fs.readFileSync(path.join(REPO, "marketing/ads/NAMING.md"), "utf8");
-    const rows = [...book.matchAll(/^\|\s*(\d+)\s*\|\s*`([^`]+)`\s*\|$/gm)];
+    const rows = [...book.matchAll(/^\|\s*(\d+)\s*\|\s*`(SLO Ad [^`]+)`\s*\|$/gm)];
     assert.equal(rows.length, 7, "the book lists the seven SLO ads");
     for (const [, ad, file] of rows) {
       const p = parseTakeName(file);
@@ -58,6 +58,16 @@ describe("names — marketing/ads/NAMING.md", () => {
       assert.equal(p.adNumber, Number(ad));
       assert.equal(p.takeNo, 1);
       assert.ok(p.angle.length > 5);
+    }
+    // The Direct Book ads (owner-set 2026-10-10) read back the same way, so their takes group.
+    const direct = [...book.matchAll(/^\|\s*(\d+)\s*\|\s*`(Direct Book Ad [^`]+)`\s*\|$/gm)];
+    assert.equal(direct.length, 11, "the book lists the eleven Direct Book ads");
+    for (const [, ad, file] of direct) {
+      const p = parseTakeName(file);
+      assert.ok(p, `${file} must parse`);
+      assert.equal(p.offer, "DIRECT BOOK");
+      assert.equal(p.adNumber, Number(ad));
+      assert.equal(p.takeNo, 1);
     }
   });
 
@@ -216,7 +226,7 @@ describe("the script — lines in order", () => {
   test("every SLO ad in NAMING.md finds its script in the repo, in order", () => {
     const scripts = loadScripts();
     const book = fs.readFileSync(path.join(REPO, "marketing/ads/NAMING.md"), "utf8");
-    for (const [, , file] of book.matchAll(/^\|\s*(\d+)\s*\|\s*`([^`]+)`\s*\|$/gm)) {
+    for (const [, , file] of book.matchAll(/^\|\s*(\d+)\s*\|\s*`(SLO Ad [^`]+)`\s*\|$/gm)) {
       const p = parseTakeName(file);
       const s = findScript(scripts, p);
       assert.ok(s, `no script for ${file}`);

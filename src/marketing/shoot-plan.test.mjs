@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  OFFER_WORDS, offerWordFor, angleNameFor, takeFileName, takeNameProblem,
+  OFFER_WORDS, offerWordFor, angleNameFor, stackPlaceFor, takeFileName, takeNameProblem,
   teleprompterText, isFirstLineOnly, readSeconds, wordCount, estimateMinutes,
   planCompare, planFields, boardRow, sortBoard, applyMark, BOARD_STEPS, priorTakeNumbers
 } from "./shoot-plan.mjs";
@@ -50,6 +50,17 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     }
   });
 
+  test("every Direct Book name in NAMING.md is what this makes", () => {
+    const ads = [...NAMING.matchAll(/^\| \d+ \| `(Direct Book Ad (\d+) — (.+) Take 1\.mp4)` \|$/gm)];
+    assert.equal(ads.length, 11, "found the eleven Direct Book ads");
+    ads.forEach(([, file, n, angle], i) => {
+      assert.equal(Number(n), i + 1, "numbered 1 to 11 in film order");
+      assert.equal(takeFileName({ offerWord: "Direct Book", adId: n, angle, takeNo: 1, kind: "ad" }), file);
+    });
+    assert.ok(NAMING.includes("`" + takeFileName({ offerWord: "Direct Book", adId: "1", angle: "Watch page", takeNo: 1, kind: "vsl" }) + "`"));
+    assert.ok(NAMING.includes("`" + takeFileName({ offerWord: "Direct Book", adId: null, angle: null, takeNo: 1, kind: "thank_you" }) + "`"));
+  });
+
   test("reads back through the join step's parser to the same four parts", () => {
     for (const [angle, ad, take] of [["Lenders read two files", "91", 1], ["It's a skill, the 80% plan", "104", 3], ["Take 2 of life", "95", 12]]) {
       const name = takeFileName({ offerWord: "SLO", adId: ad, angle, takeNo: take });
@@ -65,12 +76,58 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     assert.equal(takeFileName({ offerWord: "SLO", adId: "91", angle: "x", takeNo: 0 }), null);
   });
 
-  test("the offer word: SLO for the roadmap only; other offers have none on file", () => {
+  test("the offer word: SLO for the roadmap, Direct Book for the book-a-call ads; no other offer has one", () => {
     assert.equal(offerWordFor({ offer_key: "slo_roadmap", lane: "uwiq" }), "SLO");
     assert.equal(offerWordFor({ offer_key: null, lane: "slo" }), "SLO");
-    assert.equal(offerWordFor({ offer_key: "funding_dfy", lane: "sorting" }), null);
+    // Owner, 2026-10-10: the book-a-call ads are the Direct Book offer.
+    assert.equal(offerWordFor({ offer_key: "funding_dfy", lane: "sorting" }), "Direct Book");
+    assert.equal(offerWordFor({ offer_key: "capital_blueprint", lane: "sorting" }), null);
     assert.equal(offerWordFor({ offer_key: "toString", lane: "__proto__" }), null);
-    assert.deepEqual(Object.keys(OFFER_WORDS), ["slo_roadmap"]);
+    assert.deepEqual(Object.keys(OFFER_WORDS), ["slo_roadmap", "funding_dfy"]);
+  });
+
+  test("the number in the name is the place in the offer's stack, not the tracking number", () => {
+    // Tracking number 93, second ad in the Direct Book stack.
+    assert.deepEqual(stackPlaceFor({ ad_id: "93", stack_kind: "ad", stack_no: 2 }), { kind: "ad", no: "2" });
+    // No stack number on file: an ad falls back to its ad number, as before.
+    assert.deepEqual(stackPlaceFor({ ad_id: "91", stack_kind: "ad", stack_no: null }), { kind: "ad", no: "91" });
+    assert.deepEqual(stackPlaceFor({ ad_id: "91" }), { kind: "ad", no: "91" });
+    // A VSL never borrows the tracking number. The thank-you video has no number.
+    assert.deepEqual(stackPlaceFor({ ad_id: "103", stack_kind: "vsl", stack_no: null }), { kind: "vsl", no: null });
+    assert.deepEqual(stackPlaceFor({ ad_id: "103", stack_kind: "vsl", stack_no: 1 }), { kind: "vsl", no: "1" });
+    assert.deepEqual(stackPlaceFor({ ad_id: "104", stack_kind: "thank_you", stack_no: null }), { kind: "thank_you", no: null });
+    assert.deepEqual(stackPlaceFor({ ad_id: "9", stack_kind: "nonsense", stack_no: 0 }), { kind: "ad", no: "9" });
+  });
+
+  test("the 13 Direct Book films get the names Chris set (2026-10-10)", () => {
+    const film = (row, priorTake = 0, mark = null) => planFields({ ...SCRIPT, offer_key: "funding_dfy", lane: null, ...row }, { priorTake, mark });
+    // The stored title carries an old label and a note. The angle is only the name.
+    const two = film({ ad_id: "93", title: "Ad 19 — Over and over (broad, film first)", stack_kind: "ad", stack_no: 2, angle_name: "Over and over" });
+    assert.equal(two.take_file_name, "Direct Book Ad 2 — Over and over Take 1.mp4");
+    assert.equal(two.take_name_problem, null);
+    assert.equal(two.angle_name, "Over and over");
+    assert.equal(two.stack_no, 2);
+    // One take already rolled on this shoot: the next one is Take 2, and the last one was Take 1.
+    const one = film({ ad_id: "92", title: "Script 4 — Tool analogy, the hammer on the flat tire", stack_kind: "ad", stack_no: 1, angle_name: "Tool analogy, the hammer on the flat tire" }, 0, { takes: 1, got_it: false });
+    assert.equal(one.take_file_name, "Direct Book Ad 1 — Tool analogy, the hammer on the flat tire Take 2.mp4");
+    assert.equal(one.last_take_file_name, "Direct Book Ad 1 — Tool analogy, the hammer on the flat tire Take 1.mp4");
+    const vsl = film({ ad_id: "103", title: "/watch VSL (book-a-call)", stack_kind: "vsl", stack_no: 1, angle_name: "Watch page" });
+    assert.equal(vsl.take_file_name, "Direct Book VSL 1 — Watch page Take 1.mp4");
+    const thanks = film({ ad_id: "104", title: "/watch thank-you video", stack_kind: "thank_you", stack_no: null, angle_name: null });
+    assert.equal(thanks.take_file_name, "Direct Book Thank You Take 1.mp4");
+    assert.equal(thanks.take_name_problem, null);
+    // The ad names read back through the join step's parser, so its takes group.
+    assert.deepEqual(parseTakeName(two.take_file_name), { offer: "DIRECT BOOK", adNumber: 2, angle: "Over and over", takeNo: 1, ext: "mp4" });
+    // A VSL with no number has no name, and says why.
+    const bare = film({ ad_id: "103", title: "/watch VSL", stack_kind: "vsl", stack_no: null, angle_name: "Watch page" });
+    assert.equal(bare.take_file_name, null);
+    assert.match(bare.take_name_problem, /no number in its offer/);
+  });
+
+  test("a slash never reaches a file name", () => {
+    assert.equal(angleNameFor({ title: "/watch VSL (book-a-call)" }), "watch VSL (book-a-call)");
+    assert.equal(angleNameFor({ title: "x", angle_name: " Watch  page " }), "Watch page");
+    assert.equal(angleNameFor({ title: "The title", angle_name: "   " }), "The title");
   });
 
   test("the angle is the title, word for word (spaces folded)", () => {
@@ -83,7 +140,8 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     assert.equal(takeNameProblem(SCRIPT), null);
     assert.match(takeNameProblem({ ...SCRIPT, ad_id: null }), /no ad number/);
     assert.match(takeNameProblem({ ...SCRIPT, title: "" }), /no title/);
-    assert.match(takeNameProblem({ ...SCRIPT, offer_key: "funding_dfy", lane: "sorting" }), /Funding.*no file-name word/);
+    assert.equal(takeNameProblem({ ...SCRIPT, offer_key: "funding_dfy", lane: "sorting" }), null);
+    assert.match(takeNameProblem({ ...SCRIPT, offer_key: "capital_blueprint", lane: "sorting" }), /no file-name word/);
     assert.match(takeNameProblem({ ...SCRIPT, offer_key: null, lane: "sorting" }), /names no offer/);
   });
 });
@@ -142,7 +200,7 @@ describe("plan order and plan fields", () => {
   });
 
   test("a script with no offer word gets no name and the reason", () => {
-    const p = planFields({ ...SCRIPT, offer_key: "funding_dfy", lane: "sorting" });
+    const p = planFields({ ...SCRIPT, offer_key: "capital_blueprint", lane: "sorting" });
     assert.equal(p.take_file_name, null);
     assert.match(p.take_name_problem, /no file-name word/);
   });

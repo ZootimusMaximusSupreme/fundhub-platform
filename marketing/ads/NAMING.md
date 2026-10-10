@@ -52,6 +52,37 @@ Take 2 of the same script changes only the take:
 
 `SLO Ad 7 — Haynes, the call that was never a roadmap Take 2.mp4`
 
+## The Direct Book offer (owner-set 2026-10-10)
+
+The book-a-call ads are the **Direct Book** offer. Its offer word is `Direct Book`, spelled like the dashboard.
+
+**The ad number is the ad's number inside its offer.** It is not the tracking number in the ad link. `SLO Ad 7` is tracking number 90. `Direct Book Ad 2` is tracking number 93.
+
+**The angle is only the name.** An old label or a film note in a script's title is not the angle. `Ad 19 — Over and over (broad, film first)` is the angle `Over and over`.
+
+The eleven ads, numbered in film order:
+
+| Ad | File name for take 1 |
+|---|---|
+| 1 | `Direct Book Ad 1 — Tool analogy, the hammer on the flat tire Take 1.mp4` |
+| 2 | `Direct Book Ad 2 — Over and over Take 1.mp4` |
+| 3 | `Direct Book Ad 3 — It's a skill Take 1.mp4` |
+| 4 | `Direct Book Ad 4 — High earners Take 1.mp4` |
+| 5 | `Direct Book Ad 5 — Paying for speed Take 1.mp4` |
+| 6 | `Direct Book Ad 6 — The hidden tax Take 1.mp4` |
+| 7 | `Direct Book Ad 7 — Notes green screen, seven steps Take 1.mp4` |
+| 8 | `Direct Book Ad 8 — Notes green screen Take 1.mp4` |
+| 9 | `Direct Book Ad 9 — The bank Take 1.mp4` |
+| 10 | `Direct Book Ad 10 — Scale without your own cash Take 1.mp4` |
+| 11 | `Direct Book Ad 11 — The penthouse Take 1.mp4` |
+
+Two films in this offer are not ads. One is a VSL. The other is the thank-you video.
+
+- The VSL: `Direct Book VSL 1 — Watch page Take 1.mp4`
+- The thank-you video: `Direct Book Thank You Take 1.mp4`
+
+The teleprompter builds these names by itself and saves each take to Drive under its name (`src/marketing/shoot-plan.mjs`). A script's place in its offer is stored on the script: `stack_kind`, `stack_no`, `angle_name` (migration 479).
+
 ## What belongs in one file
 
 Same offer, same ad number, and the same angle are takes of one video. Join those takes. Read the words first. The words decide the angle. The file name does not.

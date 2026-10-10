@@ -534,12 +534,14 @@ export async function editScript(tx, { orgId, id, version, body, parts, metaCopy
         title, body, hook_text, script_type, lane, angle_key, hook_key, offer_key,
         status, ad_id, script_format, style, funnel_key, batch_id, idea_id,
         parts, check_results, fix_note, animation_plan, meta_copy, source,
-        film_order, needs_retake, locked_at, locked_by, repo_path)
+        film_order, needs_retake, locked_at, locked_by, repo_path,
+        stack_kind, stack_no, angle_name)
      SELECT org_id, partner_id, id, root_script_id, version + 1,
             title, $2, $3, script_type, lane, angle_key, hook_key, offer_key,
             $4, ad_id, script_format, style, funnel_key, batch_id, idea_id,
             $5::jsonb, $6::jsonb, fix_note, animation_plan, $7::jsonb, 'chris',
-            film_order, needs_retake, locked_at, locked_by, repo_path
+            film_order, needs_retake, locked_at, locked_by, repo_path,
+            stack_kind, stack_no, angle_name
        FROM ad_scripts WHERE id = $1
      RETURNING id`,
     [row.id, body, hookText, status,

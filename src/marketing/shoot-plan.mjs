@@ -35,7 +35,9 @@ import { offerFacts } from "./offer-facts.mjs";
 /** Offer key (marketing_funnels.offer_key, src/marketing/offer-facts.mjs) → the
     word that starts the file name. Add a word here only when Chris names one. */
 export const OFFER_WORDS = Object.freeze(Object.assign(Object.create(null), {
-  slo_roadmap: "SLO"
+  slo_roadmap: "SLO",
+  /* Owner, 2026-10-10: the book-a-call ads are the Direct Book offer. */
+  funding_dfy: "Direct Book"
 }));
 
 /** The ad lane 'slo' (migration 406) is the roadmap's own lane: same word. */
@@ -59,28 +61,65 @@ export function offerWordFor(s) {
 /* ── the angle name ──────────────────────────────────────────────────────── */
 
 /**
- * The angle name: the script's title, spaces folded, or null when it has none.
- * @param {{title?: string|null}} s
+ * The angle name. The script's own angle_name when one is on file (owner,
+ * 2026-10-10: a title can carry an old ad label or a film note, and those are
+ * not the angle). Else the title. Spaces folded; null when there is neither.
+ * A "/" is never in a file name, so it is taken out.
+ * @param {{title?: string|null, angle_name?: string|null}} s
  */
 export function angleNameFor(s) {
-  const t = s && typeof s.title === "string" ? s.title.replace(/\s+/g, " ").trim() : "";
+  const fold = (v) => (typeof v === "string" ? v.replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim() : "");
+  const own = fold(s && s.angle_name);
+  if (own) return own;
+  const t = fold(s && s.title);
   return t || null;
+}
+
+const AD_RE = /^(0|[1-9][0-9]{0,8})$/;
+
+/* ── the place in the offer's stack ──────────────────────────────────────── */
+
+/** What a film is, in its offer's stack. An ad, the VSL, or the thank-you video. */
+export const STACK_KINDS = Object.freeze(["ad", "vsl", "thank_you"]);
+
+/**
+ * The script's place in its offer's stack (owner, 2026-10-10). The number in
+ * a file name is the ad's number INSIDE its offer ("SLO Ad 7"), not the
+ * tracking number in the ad link (ad_scripts.ad_id, 90 for that ad). A script
+ * with no stack number on file falls back to its ad number, as before.
+ * @param {{stack_kind?: string|null, stack_no?: number|null, ad_id?: string|number|null}} s
+ * @returns {{kind: "ad"|"vsl"|"thank_you", no: string|null}}
+ */
+export function stackPlaceFor(s) {
+  const k = s && typeof s.stack_kind === "string" && STACK_KINDS.includes(s.stack_kind) ? s.stack_kind : "ad";
+  const kind = /** @type {"ad"|"vsl"|"thank_you"} */ (k);
+  const n = s ? s.stack_no : null;
+  if (Number.isInteger(n) && Number(n) > 0) return { kind, no: String(n) };
+  if (kind === "ad" && s && s.ad_id != null && AD_RE.test(String(s.ad_id))) return { kind, no: String(s.ad_id) };
+  return { kind, no: null };
 }
 
 /* ── the take file name ──────────────────────────────────────────────────── */
 
-const AD_RE = /^(0|[1-9][0-9]{0,8})$/;
-
 /**
- * `{Offer} Ad {n} — {angle} Take {k}.mp4`, or null when any part is missing.
- * @param {{offerWord: string|null, adId: string|number|null, angle: string|null, takeNo: number}} p
+ * The file name, or null when any part is missing. Never a guess.
+ *   an ad:           `{Offer} Ad {n} — {angle} Take {k}.mp4`
+ *   the VSL:         `{Offer} VSL {n} — {angle} Take {k}.mp4`
+ *   the thank-you:   `{Offer} Thank You Take {k}.mp4`
+ * adId is the number in the name: the place in the offer's stack (stackPlaceFor).
+ * The VSL and thank-you shapes are the ones already on Drive for the roadmap
+ * ("SLO VSL 1 — Sales page Take 1.mp4", "SLO Portal Welcome Take 1.mp4").
+ * @param {{offerWord: string|null, adId: string|number|null, angle: string|null, takeNo: number, kind?: string|null}} p
  */
-export function takeFileName({ offerWord, adId, angle, takeNo }) {
-  if (!offerWord || !angle) return null;
+export function takeFileName({ offerWord, adId, angle, takeNo, kind = "ad" }) {
+  if (!offerWord) return null;
+  if (!Number.isInteger(takeNo) || takeNo < 1) return null;
+  if (kind === "thank_you") return `${offerWord} Thank You Take ${takeNo}.mp4`;
+  if (!angle) return null;
   const ad = adId == null ? "" : String(adId);
   if (!AD_RE.test(ad)) return null;
-  if (!Number.isInteger(takeNo) || takeNo < 1) return null;
-  return `${offerWord} Ad ${ad} — ${angle} Take ${takeNo}.mp4`;
+  const word = kind === "vsl" ? "VSL" : "Ad";
+  return `${offerWord} ${word} ${ad} — ${angle} Take ${takeNo}.mp4`;
 }
 
 /**
@@ -91,7 +130,9 @@ export function takeNameProblem(s) {
   if (!s || s.ad_id == null || !AD_RE.test(String(s.ad_id))) {
     return "This script has no ad number yet. Approve it first.";
   }
-  if (!angleNameFor(s)) return "This script has no title, so its angle name is unknown.";
+  const place = stackPlaceFor(s);
+  if (place.kind === "vsl" && !place.no) return "This VSL has no number in its offer yet (like VSL 1), so the file name is unknown.";
+  if (place.kind !== "thank_you" && !angleNameFor(s)) return "This script has no title, so its angle name is unknown.";
   if (!offerWordFor(s)) {
     const facts = s.offer_key ? offerFacts(s.offer_key) : null;
     if (facts) return `The ${facts.label} offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.`;
@@ -217,15 +258,19 @@ export function planFields(s, { wpm = DEFAULT_WPM, priorTake = 0, mark = null } 
   const base = Number.isInteger(priorTake) && priorTake > 0 ? priorTake : 0;
   const offerWord = offerWordFor(s);
   const angle = angleNameFor(s);
+  const place = stackPlaceFor(s);
   const nextTake = base + takes + 1;
   const text = teleprompterText(s);
+  const name = (takeNo) => takeFileName({ offerWord, adId: place.no, angle, takeNo, kind: place.kind });
   return {
     angle_name: angle,
     offer_word: offerWord,
+    stack_kind: place.kind,
+    stack_no: place.no == null ? null : Number(place.no),
     take_no: nextTake,
-    take_file_name: takeFileName({ offerWord, adId: s.ad_id, angle, takeNo: nextTake }),
+    take_file_name: name(nextTake),
     take_name_problem: takeNameProblem(s),
-    last_take_file_name: takes > 0 ? takeFileName({ offerWord, adId: s.ad_id, angle, takeNo: base + takes }) : null,
+    last_take_file_name: takes > 0 ? name(base + takes) : null,
     takes,
     got_it: !!(mark && mark.got_it === true),
     first_line_only: isFirstLineOnly(s),

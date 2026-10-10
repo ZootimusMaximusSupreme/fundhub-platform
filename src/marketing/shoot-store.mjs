@@ -158,7 +158,18 @@ const day = (v) => {
 /** The Script object S plus the fields the plan reads. */
 function withPlan(row, opts) {
   const s = scriptView(row);
-  return { ...s, ...planFields({ ...s, offer_key: row.plan_offer_key ?? s.offer_key, idea_kind: row.idea_kind ?? null }, opts) };
+  return {
+    ...s,
+    ...planFields({
+      ...s,
+      offer_key: row.plan_offer_key ?? s.offer_key,
+      idea_kind: row.idea_kind ?? null,
+      // The place in the offer's stack and the clean angle (migration 479).
+      stack_kind: row.stack_kind ?? null,
+      stack_no: row.stack_no ?? null,
+      angle_name: row.angle_name ?? null
+    }, opts)
+  };
 }
 
 /** The open shoot (any status but done), newest first, or null. */
