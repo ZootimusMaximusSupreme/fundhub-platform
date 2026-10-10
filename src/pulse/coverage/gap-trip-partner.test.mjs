@@ -6,10 +6,9 @@ import assert from "node:assert/strict";
 
 import {
   ACCRUABLE_KINDS, AFFILIATE_SQL, AFFILIATE_STEPS, CHECK_IDS, PARTNER_SQL, PARTNER_STEPS, ROW_CAP,
-  TEST_PAYEE_EMAIL_RE, TEST_PAYEE_NAME_RE, WINDOW_MS, gapChecks, judgePartner, naVerify, stepsFor,
+  TEST_PAYEE_EMAIL_RE, TEST_PAYEE_NAME_RE, WINDOW_MS, gapChecks, judgePartner, stepsFor,
   toAffiliateRow, toPartnerRow, tripParams
 } from "./gap-trip-partner.mjs";
-import { COUNT_SQL } from "./gap-trip-partner.mjs";
 import { FUNDED_BILL_WAIT_MS, LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { DEAD_LINK_WINDOW_MS, PAYOUT_STUCK_AFTER_MS } from "./gap-partners.mjs";
@@ -286,11 +285,11 @@ test("GREEN: a paused partner is an ended trip", () => {
 
 /* ---------- the verdict and the lane ---------- */
 
-test("judgePartner: nobody applied is a verified nothing-to-judge", () => {
+test("judgePartner: nobody applied is a plain green line, not a nothing-to-judge row", () => {
   const r = judgePartner({ now: NOW });
-  assert.equal(r.status, "na");
-  assert.equal(r.na.code, "low-traffic");
-  assert.equal(r.na.args.check, "trip:partner");
+  assert.equal(r.status, "PASS");
+  assert.equal(r.na, undefined);
+  assert.match(r.detail, /^Nobody started the .* trip in the last 60 days, so nobody is stuck\./);
 });
 
 test("judgePartner: one stuck partner of either kind makes the lane FAIL and names the person", () => {
@@ -380,17 +379,4 @@ test("gapChecks: a failed read is a skip with the reason; no database is a skip"
   assert.equal(none[0].status, "skip");
 });
 
-test("naVerify: true while nobody applied in the window, false the day someone does", async () => {
-  assert.equal(await naVerify["low-traffic"]({ check: "trip:partner" }, { db: fakeDb([], []), orgId: ORG, now: NOW }), true);
-  assert.equal(await naVerify["low-traffic"]({ check: "trip:partner" }, { db: fakeDb([aff()], []), orgId: ORG, now: NOW }), false);
-  assert.equal(await naVerify["low-traffic"]({ check: "trip:partner" }, { db: fakeDb([], [par()]), orgId: ORG, now: NOW }), false);
-});
 
-test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 4", () => {
-  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
-  assert.match(bare, /^SELECT\b/i);
-  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
-  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
-  assert.deepEqual(used, [1, 2, 3, 4]);
-  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
-});

@@ -8,7 +8,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  AFFILIATE_SQL, COUNT_SQL, PARTNER_SQL, judgePartner, toAffiliateRow, toPartnerRow, tripParams
+  AFFILIATE_SQL, PARTNER_SQL, judgePartner, toAffiliateRow, toPartnerRow, tripParams
 } from "./gap-trip-partner.mjs";
 import { HAS_DB, ORG, OTHER_ORG, closeShadowDb, emptyWorld, runWorld, uid } from "./trip-test-kit.mjs";
 
@@ -53,25 +53,15 @@ function addAff(w, over = {}) {
   return id;
 }
 
-async function countOf(w, now) {
-  // The count reads both kinds of partner, so every table of both worlds is shadowed.
-  const full = { ...emptyWorld([...new Set([...AFF_TABLES, ...PAR_TABLES])]), ...w };
-  const p = tripParams(ORG, now).affiliate;
-  const count = await runWorld(COUNT_SQL, full, [p[0], p[1], p[2], p[3]]);
-  return count.rows[0].n;
-}
-
 async function runAff(w, now = NOW) {
   const p = tripParams(ORG, now);
   const out = await runWorld(AFFILIATE_SQL, w, p.affiliate);
-  assert.equal(await countOf(w, now), out.rows.length, "COUNT_SQL and AFFILIATE_SQL must find the same affiliates");
   return { rows: out.rows, verdict: judgePartner({ affiliates: out.rows, now }) };
 }
 
 async function runPar(w, now = NOW) {
   const p = tripParams(ORG, now);
   const out = await runWorld(PARTNER_SQL, w, p.partner);
-  assert.equal(await countOf(w, now), out.rows.length, "COUNT_SQL and PARTNER_SQL must find the same partners");
   return { rows: out.rows, verdict: judgePartner({ partners: out.rows, pages: new Map(out.rows.map((r) => [String(r.payee_id), { ok: true }])), now }) };
 }
 
@@ -83,7 +73,8 @@ test("SQL: nobody applied is a nothing-to-judge", { skip }, async () => {
   const { w } = affWorld();
   const { rows, verdict } = await runAff(w);
   assert.equal(rows.length, 0);
-  assert.equal(verdict.status, "na");
+  assert.equal(verdict.status, "PASS");
+  assert.match(verdict.detail, /^Nobody started the/);
 });
 
 test("SQL GREEN: an affiliate with a code, waiting for the first click", { skip }, async () => {

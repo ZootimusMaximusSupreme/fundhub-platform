@@ -47,11 +47,10 @@ import {
 } from "./gap-underwrite.mjs";
 import { classifyVisitor } from "../../slo/visitor.mjs";
 import {
-  MIN_MS, clip, intOf, nowOf, readRows, runnerOf, skipWhy
+  MIN_MS, clip, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
 import {
-  BY, DAY_MS, HOUR_MS, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, whoIs,
-  registerTripCount, sharedCount
+  BY, DAY_MS, HOUR_MS, NO_FIX, judgeTrip, realClientSql, skipRow, whoIs
 } from "./trip-kit.mjs";
 
 const ID = "trip:roadmap";
@@ -78,8 +77,7 @@ export const STEPS = Object.freeze([
   Object.freeze({ key: "portal_sign_in", label: "signed in to the portal", by: BY.CLIENT })
 ]);
 
-/* The one fact that starts the trip, written once so the full read and the light count read the same
-   thing: the newest paid roadmap link, kept when it was paid inside the window. */
+/* The one fact that starts the trip: the newest paid roadmap link, kept when it was paid inside the window. */
 const PL_JOIN = `
     JOIN LATERAL (
       SELECT COALESCE(l.paid_at, l.updated_at) AS paid_at, l.identity_stored_at
@@ -208,19 +206,6 @@ ${PL_JOIN}
    LIMIT ${ROW_CAP}
 `;
 
-/** The light count behind the nothing-to-judge proof. $1 org, $2 window start, $3 test-client pattern. */
-export const COUNT_SQL = `
-  /* gap:trip-roadmap-count */
-  SELECT count(*)::int AS n
-    FROM (
-      SELECT c.id
-        FROM clients c
-       WHERE c.org_id = $1::uuid
-         AND ${realClientSql("c", "$3")}
-    ) t
-${PL_JOIN}
-`;
-
 const ms = (v) => {
   if (v == null) return null;
   const t = v instanceof Date ? v.getTime() : Date.parse(v);
@@ -301,10 +286,9 @@ export function toTripRow(r, now = new Date()) {
 }
 
 /** Pure. The verdict for the rows the SELECT returned. */
-export function judgeRoadmap({ rows = [], now = new Date(), orgId = null } = {}) {
+export function judgeRoadmap({ rows = [], now = new Date() } = {}) {
   return judgeTrip({
     id: ID,
-    orgId,
     tripName: TRIP_NAME,
     steps: STEPS,
     rows: rows.map((r) => toTripRow(r, now)),
@@ -332,21 +316,6 @@ export function tripParams(orgId, now) {
   ];
 }
 
-const countParams = (orgId, now) => tripParams(orgId, now).slice(0, 3);
-registerTripCount(ID, COUNT_SQL, countParams);
-
-async function startedCount(run, orgId, now, ctx = {}) {
-  return sharedCount({
-    run, key: ctx.scope || ctx.db, id: ID, orgId, now,
-    own: async () => {
-      const out = await run((tx) => tx.query(COUNT_SQL, countParams(orgId, now)));
-      return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
-    }
-  });
-}
-
-export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
-
 /**
  * @param {{ db?: object, scope?: Function, orgId?: string, now?: Date }} [ctx]
  */
@@ -359,7 +328,7 @@ export async function gapChecks(ctx = {}) {
   try {
     const got = await readRows(run, ID, "the roadmap trips", TRIP_SQL, tripParams(orgId, now));
     if (got.skip) return [got.skip];
-    return [judgeRoadmap({ rows: got.rows, now, orgId })];
+    return [judgeRoadmap({ rows: got.rows, now })];
   } catch (err) {
     return [skipRow(ID, `could not judge the roadmap trips: ${clip(err)}`)];
   }

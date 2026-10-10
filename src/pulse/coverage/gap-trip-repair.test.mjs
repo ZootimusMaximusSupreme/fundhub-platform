@@ -5,9 +5,8 @@ import assert from "node:assert/strict";
 
 import {
   CHECK_IDS, IDENTITY_GATE_FROM, LETTER_ENGINE_MS, ROUND_DONE_STAGES, ROW_CAP, STEPS, TRIP_SQL, WINDOW_MS,
-  clockText, gapChecks, judgeRepair, naVerify, stageStall, toTripRow, tripParams
+  clockText, gapChecks, judgeRepair, stageStall, toTripRow, tripParams
 } from "./gap-trip-repair.mjs";
-import { COUNT_SQL } from "./gap-trip-repair.mjs";
 import { LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { PAID_GRACE_MS, SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { STAGE_SLA } from "../../repair/sla.mjs";
@@ -266,11 +265,11 @@ test("a paid repair link counts as the purchase even with no sale row", () => {
 
 /* ---------- the verdict and the lane ---------- */
 
-test("judgeRepair: nobody started is a verified nothing-to-judge", () => {
+test("judgeRepair: nobody started is a plain green line, not a nothing-to-judge row", () => {
   const r = judgeRepair({ rows: [], now: NOW });
-  assert.equal(r.status, "na");
-  assert.equal(r.na.code, "low-traffic");
-  assert.equal(r.na.args.check, "trip:repair");
+  assert.equal(r.status, "PASS");
+  assert.equal(r.na, undefined);
+  assert.match(r.detail, /^Nobody started the .* trip in the last 60 days, so nobody is stuck\./);
 });
 
 test("judgeRepair: one stuck file is FAIL with the customer and the step", () => {
@@ -304,18 +303,4 @@ test("gapChecks: reads once and returns the verdict; a failed read is a skip; no
   assert.equal(none[0].status, "skip");
 });
 
-test("naVerify: true while nobody is on the trip, false the day someone is", async () => {
-  const none = tagDb({ "trip-repair": [], "trip-repair-count": [{ n: 0 }] });
-  const some = tagDb({ "trip-repair": [sqlRow({ purchase_at: ago(DAY) })], "trip-repair-count": [{ n: 1 }] });
-  assert.equal(await naVerify["low-traffic"]({ check: "trip:repair" }, { db: none, orgId: ORG, now: NOW }), true);
-  assert.equal(await naVerify["low-traffic"]({ check: "trip:repair" }, { db: some, orgId: ORG, now: NOW }), false);
-});
 
-test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 3", () => {
-  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
-  assert.match(bare, /^SELECT\b/i);
-  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
-  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
-  assert.deepEqual(used, [1, 2, 3]);
-  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
-});

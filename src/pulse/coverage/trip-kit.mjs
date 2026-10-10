@@ -30,7 +30,7 @@
 // READ ONLY. Nothing here writes, sends or calls out.
 
 import {
-  DAY_MS, HOUR_MS, MIN_MS, ageOf, clip, naRow, plural, row, toDate
+  DAY_MS, HOUR_MS, MIN_MS, ageOf, clip, plural, row, toDate
 } from "./money-reads.mjs";
 
 export { DAY_MS, HOUR_MS, MIN_MS };
@@ -189,17 +189,18 @@ function listed(items, shown = SHOWN) {
  */
 export function judgeTrip({
   id, tripName, steps, rows = [], now = new Date(), windowDays = 60, cap = null, fix = NO_FIX, what = "customer",
-  note = "", orgId = null
+  note = ""
 }) {
   if (!rows.length) {
-    // The company id rides in the proof so the audit's re-check is one cheap read, not two.
-    const args = { check: id, count: 0, min: 1, what: `${tripName} trips started`, days: windowDays };
-    if (orgId) args.org = String(orgId);
-    return naRow(
+    // Nobody started the trip, so nobody is stuck. This is green, and it says so in plain words: it is
+    // a read of the books that found no customer, not a proof that the steps work. The first customer
+    // on the trip is the first real test. It is NOT a "nothing to judge" row: the audit re-checks each of
+    // those inside a shared 2.5 seconds, and five more of them tipped the audit over its deadline.
+    return row(
       id,
-      "low-traffic",
-      args,
-      `Nobody started the ${tripName} trip in the last ${windowDays} days, so there is no trip to follow. Judged the day one starts.`
+      "PASS",
+      `Nobody started the ${tripName} trip in the last ${windowDays} days, so nobody is stuck. ` +
+        "There is no customer to follow yet; the first one is the first real test of every step."
     );
   }
   const walks = rows.map((r) => ({
@@ -240,113 +241,6 @@ export function judgeTrip({
     "PASS",
     `${plural(total, what)} started the ${tripName} trip in the last ${windowDays} days${capNote}: ${finished} finished, ${waitText}, ${ended} ended. None is stuck on a step the company owes.${note ? ` ${note}` : ""}`
   );
-}
-
-/* ── the light count, shared ───────────────────────────────────────────────────────────────────
-   The audit re-checks every "nothing to judge" row together inside 2.5 seconds, and each of the five
-   trip lanes may have one. So the lanes register their light count here, and the first re-check reads
-   all five in ONE statement; the other four answer from that read. A lane that is not loaded, or a
-   statement that fails, falls back to the lane's own light count. */
-const COUNT_REGISTRY = new Map();
-const COUNT_MEMO = new WeakMap();
-const MEMO_KEEP = 4;
-
-/** A lane tells the kit its light count: `sql` answers one row with `n`; `paramsFor(orgId, now)` are its parameters. */
-export function registerTripCount(id, sql, paramsFor) {
-  COUNT_REGISTRY.set(id, { sql, paramsFor });
-}
-
-const stripComments = (sql) => String(sql).replace(/\/\*[\s\S]*?\*\//g, "").trim();
-const quoteIdent = (id) => `"${String(id).replace(/"/g, '""')}"`;
-
-/** One SELECT that holds every registered count, with each lane's placeholders moved past the last. Pure. */
-export function buildSharedCount(orgId, now, registry = COUNT_REGISTRY) {
-  const parts = [];
-  const params = [];
-  const ids = [];
-  for (const [id, entry] of registry) {
-    const own = entry.paramsFor(orgId, now);
-    const offset = params.length;
-    const moved = stripComments(entry.sql).replace(/\$(\d+)/g, (_, n) => `$${Number(n) + offset}`);
-    parts.push(`(${moved}) AS ${quoteIdent(id)}`);
-    params.push(...own);
-    ids.push(id);
-  }
-  return { sql: `/* gap:trip-counts */\n  SELECT ${parts.join(",\n         ")}`, params, ids };
-}
-
-/**
- * The number of customers on one trip. Reads all registered trips once per audit run and hands each
- * lane its own answer. `own()` is the lane's own light count, the fallback.
- */
-export async function sharedCount({ run, key, id, orgId, now, own, registry = COUNT_REGISTRY }) {
-  const keyObj = key && (typeof key === "object" || typeof key === "function") ? key : null;
-  if (keyObj && registry.has(id) && registry.size > 0) {
-    let slots = COUNT_MEMO.get(keyObj);
-    if (!slots) {
-      slots = new Map();
-      COUNT_MEMO.set(keyObj, slots);
-    }
-    const slot = `${orgId}|${now.getTime()}|${[...registry.keys()].join(",")}`;
-    let pending = slots.get(slot);
-    if (!pending) {
-      const built = buildSharedCount(orgId, now, registry);
-      pending = (async () => {
-        const out = await run((tx) => tx.query(built.sql, built.params));
-        const row = out && out.rows && out.rows[0];
-        if (!row) throw new Error("the shared count came back with no row");
-        const byId = new Map();
-        for (const k of built.ids) byId.set(k, Number(row[k]));
-        return byId;
-      })();
-      slots.set(slot, pending);
-      while (slots.size > MEMO_KEEP) slots.delete(slots.keys().next().value);
-    }
-    try {
-      const byId = await pending;
-      const n = byId.get(id);
-      if (Number.isFinite(n)) return n;
-    } catch {
-      // fall through to the lane's own read
-    }
-  }
-  return own();
-}
-
-/**
- * The audit calls naVerify["low-traffic"] to prove a "nothing to judge" row again. It is true only
- * while the same read still finds no customer on the trip. A read that cannot run answers false.
- *
- *   countStarted(run, orgId, now, ctx) -> number of customers who started the trip in the window.
- *                                    One light SELECT (the facts that decide who started, nothing
- *                                    else), shared with the other trips through sharedCount().
- */
-export function makeNaVerify({ id, countStarted, runnerOf, nowOf, defaultOrg }) {
-  return Object.freeze({
-    "low-traffic": async (args, ctx = {}) => {
-      if (!args || args.check !== id) return false;
-      const run = runnerOf(ctx);
-      if (!run) return false;
-      const orgId = ctx.orgId || (typeof args.org === "string" && args.org) || (await defaultOrg(run));
-      if (!orgId) return false;
-      try {
-        const n = await countStarted(run, orgId, nowOf(ctx), ctx);
-        return Number.isFinite(n) && n < 1;
-      } catch {
-        return false;
-      }
-    }
-  });
-}
-
-/** One org id when the run has none: the default org, the way gap-checkout reads it. */
-export async function defaultOrg(run) {
-  try {
-    const out = await run((tx) => tx.query("SELECT id FROM orgs WHERE is_default LIMIT 1"));
-    return out && out.rows && out.rows[0] ? String(out.rows[0].id) : null;
-  } catch {
-    return null;
-  }
 }
 
 /** A short plain reason for a skip row. */

@@ -57,8 +57,7 @@ import {
   DAY_MS, clip, intOf, nowOf, plural, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
 import {
-  BY, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, skipRow,
-  registerTripCount, sharedCount
+  BY, NO_FIX, judgeTrip, skipRow
 } from "./trip-kit.mjs";
 
 const ID = "trip:partner";
@@ -123,8 +122,7 @@ export const PARTNER_STEPS = Object.freeze([
 const QUALIFYING_NO_ROUND = Object.freeze([...REPAIR_PRODUCT_CODES, ...BLUEPRINT_PRODUCT_CODES].map((c) => c.toLowerCase()));
 const QUALIFYING_FUNDING = Object.freeze(FUNDING_PRODUCT_CODES.map((c) => c.toLowerCase()));
 
-/* Who counts as a partner on this trip, written once so the full reads and the light count read the same
-   people: not demo, applied in the window, not a test run by name or address, and with a login (affiliate)
+/* Who counts as a partner on this trip: not demo, applied in the window, not a test run by name or address, and with a login (affiliate)
    or a contact address (white-label partner). $1 org, $2 window start, $3 test address pattern, $4 test
    name pattern. */
 const AFFILIATE_WHERE = `
@@ -331,18 +329,6 @@ ${PARTNER_WHERE}   ORDER BY p.created_at ASC
    LIMIT ${ROW_CAP}
 `;
 
-/** The light count behind the nothing-to-judge proof: both kinds of partner, one read. $1 org, $2 window, $3 address pattern, $4 name pattern. */
-export const COUNT_SQL = `
-  /* gap:trip-partner-count */
-  SELECT (
-    (SELECT count(*) FROM affiliates a
-${AFFILIATE_WHERE})
-    +
-    (SELECT count(*) FROM partners p
-${PARTNER_WHERE})
-  )::int AS n
-`;
-
 const usd = (n) => `$${(Math.round(Number(n) * 100) / 100).toLocaleString("en-US")}`;
 
 function heldWhy(r, kind) {
@@ -473,7 +459,7 @@ export function stepsFor(row) {
 
 /** Pure. Rows from both reads plus the page reads, to the verdict. */
 export function judgePartner({
-  affiliates = [], partners = [], pages = new Map(), now = new Date(), note = "", orgId = null
+  affiliates = [], partners = [], pages = new Map(), now = new Date(), note = ""
 } = {}) {
   const rows = [
     ...affiliates.map((r) => toAffiliateRow(r, now)),
@@ -481,7 +467,6 @@ export function judgePartner({
   ];
   return judgeTrip({
     id: ID,
-    orgId,
     tripName: TRIP_NAME,
     steps: stepsFor,
     rows,
@@ -525,21 +510,6 @@ export function tripParams(orgId, now) {
     ]
   };
 }
-
-const countParams = (orgId, now) => tripParams(orgId, now).affiliate.slice(0, 4);
-registerTripCount(ID, COUNT_SQL, countParams);
-
-async function startedCount(run, orgId, now, ctx = {}) {
-  return sharedCount({
-    run, key: ctx.scope || ctx.db, id: ID, orgId, now,
-    own: async () => {
-      const out = await run((tx) => tx.query(COUNT_SQL, countParams(orgId, now)));
-      return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
-    }
-  });
-}
-
-export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
 
 /**
  * Read the published pages of the partners in the list. GET only, at most PAGE_CAP, all at once.
@@ -586,7 +556,7 @@ export async function gapChecks(ctx = {}) {
     if (aff.rows.length >= ROW_CAP || par.rows.length >= ROW_CAP) {
       note = `${note} Only the first ${ROW_CAP} of one list were read.`.trim();
     }
-    return [judgePartner({ affiliates: aff.rows, partners: par.rows, pages, now, note, orgId })];
+    return [judgePartner({ affiliates: aff.rows, partners: par.rows, pages, now, note })];
   } catch (err) {
     return [skipRow(ID, `could not judge the partner trips: ${clip(err)}`)];
   }

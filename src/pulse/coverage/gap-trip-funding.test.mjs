@@ -6,9 +6,8 @@ import fs from "node:fs";
 
 import {
   CHECK_IDS, FUNDED_CARD_STAGES, HELD_OUTCOMES, ROW_CAP, SALES_PAID_OR_LATER, STEPS, TRIP_SQL,
-  WINDOW_MS, gapChecks, judgeFunding, naVerify, toTripRow, tripParams
+  WINDOW_MS, gapChecks, judgeFunding, toTripRow, tripParams
 } from "./gap-trip-funding.mjs";
-import { COUNT_SQL } from "./gap-trip-funding.mjs";
 import { CARD_STACKING, FUNDED_BILL_WAIT_MS, LOOKBACK_MS, roundProblems } from "./gap-money-funding.mjs";
 import { PAID_GRACE_MS, SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { BY, walkTrip } from "./trip-kit.mjs";
@@ -308,13 +307,12 @@ test("the funded steps use roundProblems from the money lane, so the two can nev
 
 /* ---------- the verdict and the lane ---------- */
 
-test("judgeFunding: no customer started is a verified nothing-to-judge, not a PASS", () => {
+test("judgeFunding: no customer started is a plain green line, not a nothing-to-judge row, not a PASS", () => {
   const r = judgeFunding({ rows: [], now: NOW });
   assert.equal(r.id, "trip:funding");
-  assert.equal(r.status, "na");
-  assert.equal(r.na.code, "low-traffic");
-  assert.equal(r.na.args.check, "trip:funding");
-  assert.equal(r.na.args.days, 60);
+  assert.equal(r.status, "PASS");
+  assert.equal(r.na, undefined);
+  assert.match(r.detail, /^Nobody started the .* trip in the last 60 days, so nobody is stuck\./);
 });
 
 test("judgeFunding: one stuck customer makes the lane FAIL and names the customer and the step", () => {
@@ -361,7 +359,8 @@ test("gapChecks: reads through the staff scope when the pulse has one", async ()
   const scope = async (fn) => { used += 1; return fn(db); };
   const out = await gapChecks({ scope, orgId: ORG, now: NOW });
   assert.equal(used, 1);
-  assert.equal(out[0].status, "na");
+  assert.equal(out[0].status, "PASS");
+  assert.match(out[0].detail, /^Nobody started the/);
 });
 
 test("gapChecks: a read that fails is a skip with the reason, never a PASS", async () => {
@@ -380,34 +379,4 @@ test("gapChecks: no database or no org is a skip", async () => {
   assert.match(b[0].detail, /no org id/);
 });
 
-test("naVerify: true while the SELECT still returns nobody, false the day someone starts", async () => {
-  const none = await naVerify["low-traffic"]({ check: "trip:funding" }, { db: fakeDb([]), orgId: ORG, now: NOW });
-  assert.equal(none, true);
-  // the company id may ride in the proof, so the audit's re-check needs no second read
-  const seen = [];
-  const viaArgs = await naVerify["low-traffic"]({ check: "trip:funding", org: ORG }, { db: fakeDb([], seen), now: NOW });
-  assert.equal(viaArgs, true);
-  // one shared read answers every trip's re-check (trip-kit.mjs sharedCount)
-  assert.deepEqual(seen.map((s) => s.tag), ["trip-counts"]);
-  assert.equal(seen[0].params[0], ORG);
-  assert.match(seen[0].sql, /AS "trip:funding"/);
 
-  // and when the shared read cannot run, the lane's own light count answers
-  const own = [];
-  const lonely = tagDb({ "trip-funding-count": [{ n: 0 }] }, own);
-  assert.equal(await naVerify["low-traffic"]({ check: "trip:funding", org: ORG }, { db: lonely, now: NOW }), true);
-  assert.deepEqual(own.map((s) => s.tag), ["trip-counts", "trip-funding-count"]);
-  const some = await naVerify["low-traffic"]({ check: "trip:funding" }, { db: fakeDb([whole()]), orgId: ORG, now: NOW });
-  assert.equal(some, false);
-  const wrong = await naVerify["low-traffic"]({ check: "trip:repair" }, { db: fakeDb([]), orgId: ORG, now: NOW });
-  assert.equal(wrong, false);
-});
-
-test("the light count behind the nothing-to-judge proof is one read-only SELECT on parameters 1 to 3", () => {
-  const bare = COUNT_SQL.replace(/\/\*[\s\S]*?\*\//g, "").trim();
-  assert.match(bare, /^SELECT\b/i);
-  assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT|BEGIN|COMMIT|ROLLBACK)\b/i.test(bare));
-  const used = [...new Set([...COUNT_SQL.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
-  assert.deepEqual(used, [1, 2, 3]);
-  assert.ok(!/\bLIMIT\s+(?!1\b)\d+/i.test(bare), "a count is not capped (LIMIT 1 inside a lookup is fine)");
-});

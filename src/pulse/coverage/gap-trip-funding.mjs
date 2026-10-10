@@ -53,8 +53,7 @@ import {
   clip, intOf, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
 import {
-  BY, DAY_MS, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, whoIs,
-  registerTripCount, sharedCount
+  BY, DAY_MS, NO_FIX, judgeTrip, realClientSql, skipRow, whoIs
 } from "./trip-kit.mjs";
 
 const ID = "trip:funding";
@@ -114,8 +113,7 @@ export const STEPS = Object.freeze([
   })
 ]);
 
-/* The two facts that start the trip, written once so the full read and the light count read the same
-   thing. A paid diagnostic: a paid payment link of purpose diagnostic, or a diagnostic.paid event. A
+/* The two facts that start the trip. A paid diagnostic: a paid payment link of purpose diagnostic, or a diagnostic.paid event. A
    funding deposit: an active sale in a product of category funding. */
 const DIAG_LATERAL = `
     LEFT JOIN LATERAL (
@@ -274,32 +272,6 @@ ${DEP_LATERAL}
    LIMIT ${ROW_CAP}
 `;
 
-/**
- * The light count behind the nothing-to-judge proof. Same customers, same start rule, same window as
- * TRIP_SQL, and only the three facts that start a trip (a paid diagnostic, a funding deposit, the newest
- * round's start). $1 org, $2 window start, $3 test-client pattern.
- */
-export const COUNT_SQL = `
-  /* gap:trip-funding-count */
-  SELECT count(*)::int AS n
-    FROM (
-      SELECT c.id
-        FROM clients c
-       WHERE c.org_id = $1::uuid
-         AND ${realClientSql("c", "$3")}
-    ) t
-${DIAG_LATERAL}
-${DEP_LATERAL}
-    LEFT JOIN LATERAL (
-      SELECT fr.created_at
-        FROM funding_rounds fr
-       WHERE fr.org_id = $1::uuid AND fr.client_id = t.id AND COALESCE(fr.is_demo, false) = false
-       ORDER BY fr.round_number DESC
-       LIMIT 1
-    ) r ON true
-   WHERE LEAST(d.at, dep.at, r.created_at) >= $2::timestamptz
-`;
-
 /** Pure. One SQL row to one trip row: the facts, the steps that do not apply, and why a trip ended. */
 export function toTripRow(r, now = new Date()) {
   const facts = {};
@@ -366,10 +338,9 @@ export function toTripRow(r, now = new Date()) {
 }
 
 /** Pure. The verdict for the rows the SELECT returned. */
-export function judgeFunding({ rows = [], now = new Date(), orgId = null } = {}) {
+export function judgeFunding({ rows = [], now = new Date() } = {}) {
   return judgeTrip({
     id: ID,
-    orgId,
     tripName: TRIP_NAME,
     steps: STEPS,
     rows: rows.map((r) => toTripRow(r, now)),
@@ -382,19 +353,6 @@ export function judgeFunding({ rows = [], now = new Date(), orgId = null } = {})
   });
 }
 
-const countParams = (orgId, now) => tripParams(orgId, now).slice(0, 3);
-registerTripCount(ID, COUNT_SQL, countParams);
-
-async function startedCount(run, orgId, now, ctx = {}) {
-  return sharedCount({
-    run, key: ctx.scope || ctx.db, id: ID, orgId, now,
-    own: async () => {
-      const out = await run((tx) => tx.query(COUNT_SQL, countParams(orgId, now)));
-      return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
-    }
-  });
-}
-
 export function tripParams(orgId, now) {
   return [
     orgId,
@@ -404,8 +362,6 @@ export function tripParams(orgId, now) {
     HELD_OUTCOMES
   ];
 }
-
-export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
 
 /**
  * @param {{ db?: object, scope?: Function, orgId?: string, now?: Date }} [ctx]
@@ -420,7 +376,7 @@ export async function gapChecks(ctx = {}) {
   try {
     const got = await readRows(run, ID, "the funding trips", TRIP_SQL, tripParams(orgId, now));
     if (got.skip) return [got.skip];
-    return [judgeFunding({ rows: got.rows, now, orgId })];
+    return [judgeFunding({ rows: got.rows, now })];
   } catch (err) {
     return [skipRow(ID, `could not judge the funding trips: ${clip(err)}`)];
   }

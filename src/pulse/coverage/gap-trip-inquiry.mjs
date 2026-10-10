@@ -41,8 +41,7 @@ import {
   clip, intOf, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
 import {
-  BY, DAY_MS, NO_FIX, defaultOrg, judgeTrip, makeNaVerify, realClientSql, skipRow, whoIs,
-  registerTripCount, sharedCount
+  BY, DAY_MS, NO_FIX, judgeTrip, realClientSql, skipRow, whoIs
 } from "./trip-kit.mjs";
 
 const ID = "trip:inquiry";
@@ -82,8 +81,7 @@ export const STEPS = Object.freeze([
   })
 ]);
 
-/* The facts that decide who is on the trip, written once so the full read and the light count read the
-   same thing: the newest deposit event, and the round of the client's newest case. */
+/* The facts that decide who is on the trip: the newest deposit event, and the round of the client's newest case. */
 const DP_LATERAL = `
     LEFT JOIN LATERAL (
       SELECT max(e.created_at) AS at
@@ -198,31 +196,6 @@ ${LP_LATERAL}
    LIMIT ${ROW_CAP}
 `;
 
-/**
- * The light count behind the nothing-to-judge proof: a customer is on the trip when the newest pass of
- * cases started in the window, or a deposit event did. $1 org, $2 window start, $3 test-client pattern.
- */
-export const COUNT_SQL = `
-  /* gap:trip-inquiry-count */
-  SELECT count(*)::int AS n
-    FROM (
-      SELECT c.id
-        FROM clients c
-       WHERE c.org_id = $1::uuid
-         AND ${realClientSql("c", "$3")}
-    ) t
-${DP_LATERAL}
-${LP_LATERAL}
-    LEFT JOIN LATERAL (
-      SELECT min(irc.created_at) AS started_at
-        FROM inquiry_removal_cases irc
-       WHERE irc.org_id = $1::uuid AND irc.client_id = t.id AND COALESCE(irc.is_demo, false) = false
-         AND irc.funding_round_id IS NOT DISTINCT FROM lp.round_id
-    ) pass ON true
-   WHERE COALESCE(pass.started_at, dp.at) >= $2::timestamptz
-     AND (pass.started_at IS NOT NULL OR dp.at IS NOT NULL)
-`;
-
 function asList(v) {
   if (Array.isArray(v)) return v.map((x) => String(x));
   if (typeof v === "string" && v.startsWith("{") && v.endsWith("}")) {
@@ -306,10 +279,9 @@ export function toTripRow(r, now = new Date()) {
 }
 
 /** Pure. The verdict for the rows the SELECT returned. */
-export function judgeInquiry({ rows = [], now = new Date(), orgId = null } = {}) {
+export function judgeInquiry({ rows = [], now = new Date() } = {}) {
   return judgeTrip({
     id: ID,
-    orgId,
     tripName: TRIP_NAME,
     steps: STEPS,
     rows: rows.map((r) => toTripRow(r, now)),
@@ -335,21 +307,6 @@ export function tripParams(orgId, now) {
   ];
 }
 
-const countParams = (orgId, now) => tripParams(orgId, now).slice(0, 3);
-registerTripCount(ID, COUNT_SQL, countParams);
-
-async function startedCount(run, orgId, now, ctx = {}) {
-  return sharedCount({
-    run, key: ctx.scope || ctx.db, id: ID, orgId, now,
-    own: async () => {
-      const out = await run((tx) => tx.query(COUNT_SQL, countParams(orgId, now)));
-      return intOf(out && out.rows && out.rows[0] && out.rows[0].n);
-    }
-  });
-}
-
-export const naVerify = makeNaVerify({ id: ID, countStarted: startedCount, runnerOf, nowOf, defaultOrg });
-
 /**
  * @param {{ db?: object, scope?: Function, orgId?: string, now?: Date }} [ctx]
  */
@@ -362,7 +319,7 @@ export async function gapChecks(ctx = {}) {
   try {
     const got = await readRows(run, ID, "the inquiry trips", TRIP_SQL, tripParams(orgId, now));
     if (got.skip) return [got.skip];
-    return [judgeInquiry({ rows: got.rows, now, orgId })];
+    return [judgeInquiry({ rows: got.rows, now })];
   } catch (err) {
     return [skipRow(ID, `could not judge the inquiry trips: ${clip(err)}`)];
   }

@@ -26,9 +26,9 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
 ## 2026-10-10 — trip lanes — timeout_or_capacity
-- Cause: the audit checks every "nothing to judge" row again, all together, inside 2.5 seconds. Three new trip rows each read the database on their own. That pushed the list past the deadline, and 50 other rows after them (every workflow row) read "not true any more" with no real cause. Found by `npm run pulse:prove` before ship.
-- Fix: the five trip lanes register one light count each, and the first re-check reads all five in one statement (`sharedCount` in `src/pulse/coverage/trip-kit.mjs`). The company id rides in the proof, so no second read for it.
-- Guard added: `trip-kit.test.mjs` (one read answers every lane; a failed read falls back), `trip-counts.pg.test.mjs` (the one statement is valid on the real schema), and `audit:na-verified` in `npm run pulse:prove`. Lesson: a new "nothing to judge" row costs part of a shared 2.5 second budget. Make its re-check one cheap read, and share it with its sister rows.
+- Cause: the audit checks every "nothing to judge" row again, all together, inside 2.5 seconds. Three new trip rows that said "nothing to judge" each read the database again. That pushed the list past the deadline, and about 50 other rows after them (every workflow row) read "not true any more" with no real cause. Found by `npm run pulse:prove` before ship. A faster read and one shared read both helped and neither was enough in the proof.
+- Fix: a trip nobody started is a plain green line ("Nobody started the funding trip in the last 60 days, so nobody is stuck"), not a "nothing to judge" row. It costs the audit nothing.
+- Guard added: `trip-kit.test.mjs` (an empty trip is PASS and carries no `na`), each `gap-trip-*.test.mjs` (the same, per lane), and `audit:na-verified` in `npm run pulse:prove`. Lesson: a new "nothing to judge" row spends part of a shared 2.5 second budget, and the proof shows it on a laptop where each read costs three round trips. Say it green in words unless the row truly cannot be read.
 - Incident: none (caught in the proof).  PR: none
 
 ## 2026-10-09 — brief-link — missing_route
