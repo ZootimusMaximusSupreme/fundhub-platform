@@ -236,6 +236,29 @@ describe("the join reads the scripts from the database (owner, 2026-10-10)", () 
     await assert.rejects(() => listDbScripts("the-db", { store: {} }), /asStaff/);
   });
 
+  test("the Drive lookup for a VSL or a thank-you video uses the start of its name", async () => {
+    const seen = [];
+    const store = { asStaff: async (fn) => fn({ query: async (sql, args) => { seen.push(args[0]); return { rows: [] }; } }) };
+    await listAngleTakes("db", { store, row: { drive_raw_name: "Direct Book VSL 1 — Watch page Take 1.mp4" } });
+    await listAngleTakes("db", { store, row: { drive_raw_name: "Direct Book Thank You Take 2.mp4" } });
+    await listAngleTakes("db", { store, row: { drive_raw_name: "Direct Book Thank You 2 — After the call Take 1.mp4" } });
+    await listAngleTakes("db", { store, row: { drive_raw_name: "SLO Ad 7 — Haynes Take 1.mp4" } });
+    assert.deepEqual(seen, ["Direct Book VSL 1%", "Direct Book Thank You%", "Direct Book Thank You 2%", "SLO Ad 7%"]);
+    assert.deepEqual(await listAngleTakes("db", { store, row: { drive_raw_name: "Take.mp4" } }), []);
+  });
+
+  test("the database read brings every kind, with the offer word a take's name carries", async () => {
+    const rows = [
+      { ad_id: "103", stack_kind: "vsl", stack_no: 1, angle_name: "Watch page", title: "t", body: "Welcome. Here is the call.", offer_key: "funding_dfy", lane: null },
+      { ad_id: "104", stack_kind: "thank_you", stack_no: null, angle_name: null, title: "t", body: "Thanks for booking. See you soon.", offer_key: "funding_dfy", lane: null }
+    ];
+    let sql = "";
+    const store = { asStaff: async (fn) => fn({ query: async (q) => { sql = q; return { rows }; } }) };
+    const scripts = await listDbScripts("db", { store });
+    assert.match(sql, /stack_kind <> 'ad'/);
+    assert.deepEqual(scripts.map((s) => `${s.offer}|${s.kind}|${s.adNumber}`), ["DIRECT BOOK|vsl|1", "DIRECT BOOK|thank_you|null"]);
+  });
+
   test("the database comes first; when it cannot be read the files are used and the reason is said", async () => {
     const files = () => [{ adNumber: 7, angle: "from a file", lines: ["x"], source: "a file" }];
     const ok = await allScripts(null, { store: {}, listScripts: async () => [{ adNumber: 2, angle: "from the database", lines: ["y"], source: "database" }], fileScripts: files });

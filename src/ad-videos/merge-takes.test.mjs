@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  parseTakeName, parseAdPrefix, groupKey, normalizeAngle, decideJoin, JOINED_PREFIX,
+  parseTakeName, parseAdPrefix, parseKindPrefix, groupKey, groupLabel, kindWord, OTHER_KINDS, normalizeAngle, decideJoin, JOINED_PREFIX,
   parseScriptMarkdown, scriptsFromRows, findScript, angleMatches, splitSentences, tokenize,
   findHits, normalizeWords, planBestOf, buildEdl, refineWordsWithSilence, avoidBlack,
   summarizePlan, DEFAULTS
@@ -80,6 +80,83 @@ describe("scripts from the database (owner, 2026-10-10)", () => {
     const s = findScript([...scriptsFromRows(ROWS), ...files], { adNumber: 9, angle: "The bank" });
     assert.equal(s.source, "database: ad 100");
     assert.equal(s.lines[0], "The bank behind me already decided.");
+  });
+});
+
+describe("VSLs and thank-you videos, for any offer (owner, 2026-10-10)", () => {
+  test("a VSL, a VSL variant, a thank-you video and a thank-you variant all read back", () => {
+    assert.deepEqual(parseTakeName("Direct Book VSL 1 — Watch page Take 1.mp4"),
+      { offer: "DIRECT BOOK", kind: "vsl", adNumber: 1, angle: "Watch page", takeNo: 1, ext: "mp4" });
+    assert.deepEqual(parseTakeName("Direct Book VSL 2 — Short cut Take 3.mov"),
+      { offer: "DIRECT BOOK", kind: "vsl", adNumber: 2, angle: "Short cut", takeNo: 3, ext: "mov" });
+    assert.deepEqual(parseTakeName("Direct Book Thank You Take 1.mp4"),
+      { offer: "DIRECT BOOK", kind: "thank_you", adNumber: null, angle: "", takeNo: 1, ext: "mp4" });
+    assert.deepEqual(parseTakeName("Direct Book Thank You 2 — After the call Take 1.mp4"),
+      { offer: "DIRECT BOOK", kind: "thank_you", adNumber: 2, angle: "After the call", takeNo: 1, ext: "mp4" });
+    // Another offer reads the same way: nothing here knows an offer's name.
+    assert.equal(parseTakeName("SLO VSL 1 — Sales page Take 1.mp4").kind, "vsl");
+    assert.equal(parseTakeName("Blueprint Thank You Take 2.mp4").offer, "BLUEPRINT");
+    // A VSL with no number is not a name. A kind nobody listed is not a name.
+    assert.equal(parseTakeName("Direct Book VSL — Watch page Take 1.mp4"), null);
+    assert.equal(parseTakeName("SLO Portal Welcome Take 1.mp4"), null);
+  });
+
+  test("an ad name still reads back exactly as before, with no kind on it", () => {
+    assert.deepEqual(parseTakeName("SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4"),
+      { offer: "SLO", adNumber: 7, angle: "Haynes, the call that was never a roadmap", takeNo: 1, ext: "mp4" });
+    assert.equal(parseKindPrefix("SLO Ad 7 — Haynes Take 1.mp4"), null);
+    assert.equal(groupKey(parseTakeName("SLO Ad 7 — Haynes Take 1.mp4")), "SLO|7|haynes");
+  });
+
+  test("takes of one film group together; a VSL never joins an ad or another VSL", () => {
+    const k = (n) => groupKey(parseTakeName(n));
+    assert.equal(k("Direct Book VSL 1 — Watch page Take 1.mp4"), k("Direct Book VSL 1 — Watch page Take 2.mp4"));
+    assert.notEqual(k("Direct Book VSL 1 — Watch page Take 1.mp4"), k("Direct Book VSL 2 — Watch page Take 1.mp4"));
+    assert.notEqual(k("Direct Book VSL 1 — Watch page Take 1.mp4"), k("SLO VSL 1 — Watch page Take 1.mp4"));
+    assert.notEqual(k("Direct Book VSL 1 — Watch page Take 1.mp4"), k("Direct Book Ad 1 — Watch page Take 1.mp4"));
+    assert.equal(k("Direct Book Thank You Take 1.mp4"), k("Direct Book Thank You Take 2.mp4"));
+    assert.notEqual(k("Direct Book Thank You Take 1.mp4"), k("Direct Book Thank You 2 — After the call Take 1.mp4"));
+    assert.equal(groupLabel(parseTakeName("Direct Book VSL 1 — Watch page Take 1.mp4")), "DIRECT BOOK VSL 1 — Watch page");
+    assert.equal(groupLabel(parseTakeName("Direct Book Thank You Take 1.mp4")), "DIRECT BOOK Thank You");
+    assert.equal(kindWord("vsl"), "VSL");
+    assert.equal(kindWord("thank_you"), "Thank You");
+    assert.equal(kindWord("ad"), "Ad");
+  });
+
+  test("two takes of a VSL are joined, never sent alone", () => {
+    const row = (id, n) => ({ id, status: "staged", drive_raw_file_id: "f" + id, drive_raw_name: `Direct Book VSL 1 — Watch page Take ${n}.mp4`, created_at: "2026-10-10T10:00:00Z" });
+    const takes = [row("a", 1), row("b", 2)];
+    const d = decideJoin(takes[0], takes, { now: Date.parse("2026-10-10T12:00:00Z") });
+    assert.equal(d.action, "join");
+    assert.deepEqual(d.members.map((m) => m.takeNo), [1, 2]);
+    assert.equal(d.parsed.kind, "vsl");
+  });
+
+  test("the script is found by offer, kind and number; another offer's thank-you is never used", () => {
+    const rows = [
+      { ad_id: "103", stack_kind: "vsl", stack_no: 1, angle_name: "Watch page", title: "/watch VSL (book-a-call)", body: "Welcome. Here is how the call works.", offer_word: "Direct Book" },
+      { ad_id: "104", stack_kind: "thank_you", stack_no: null, angle_name: null, title: "/watch thank-you video", body: "Thanks for booking. Here is what to bring.", offer_word: "Direct Book" },
+      { ad_id: "300", stack_kind: "thank_you", stack_no: null, angle_name: null, title: "thanks", body: "Another offer says thanks.", offer_word: "Blueprint" },
+      { ad_id: "301", stack_kind: "thank_you", stack_no: 2, angle_name: "After the call", title: "v2", body: "The second thank-you. Bring your ID.", offer_word: "Direct Book" },
+      { ad_id: "93", stack_kind: "ad", stack_no: 2, angle_name: "Over and over", title: "x", body: "Banks will fund you over and over.", offer_word: "Direct Book" },
+      { ad_id: "400", stack_kind: "vsl", stack_no: null, angle_name: "No number", title: "x", body: "A VSL with no number is left out.", offer_word: "Direct Book" }
+    ];
+    const scripts = scriptsFromRows(rows);
+    assert.equal(scripts.length, 5);
+    const find = (n) => findScript(scripts, parseTakeName(n));
+    assert.equal(find("Direct Book VSL 1 — Watch page Take 1.mp4").lines[0], "Welcome.");
+    assert.equal(find("Direct Book Thank You Take 1.mp4").lines[0], "Thanks for booking.");
+    assert.equal(find("Blueprint Thank You Take 1.mp4").lines[0], "Another offer says thanks.");
+    assert.equal(find("Direct Book Thank You 2 — After the call Take 1.mp4").lines[0], "The second thank-you.");
+    assert.equal(find("Direct Book Ad 2 — Over and over Take 1.mp4").source, "database: ad 93");
+    assert.equal(find("Direct Book VSL 2 — Short cut Take 1.mp4"), null);
+    assert.equal(find("SLO Thank You Take 1.mp4"), null, "no SLO thank-you script on file, so none is borrowed");
+    // A VSL is never matched to an ad's words, and the other way round.
+    assert.equal(findScript(scripts, { adNumber: 1, angle: "Watch page" }), null);
+  });
+
+  test("one list names every kind", () => {
+    assert.deepEqual(OTHER_KINDS.map((k) => k.key), ["vsl", "thank_you"]);
   });
 });
 

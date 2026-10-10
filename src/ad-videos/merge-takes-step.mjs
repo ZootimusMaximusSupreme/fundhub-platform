@@ -35,10 +35,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  decideJoin, parseAdPrefix, parseScriptMarkdown, scriptsFromRows, findScript, groupLabel,
+  decideJoin, parseAdPrefix, parseKindPrefix, parseScriptMarkdown, scriptsFromRows, findScript, groupLabel,
   SCRIPT_SOURCES, JOINED_PREFIX, PRE_SUBMAGIC
 } from "./merge-takes.mjs";
 import { resolveLocalJoiner } from "./merge-takes-media.mjs";
+import { offerWordFor } from "../marketing/shoot-plan.mjs";
 import { BIG_FILE_TIMEOUT_MS } from "./pipeline.mjs";
 
 const has = (v) => v !== null && v !== undefined && String(v).trim() !== "";
@@ -69,11 +70,19 @@ const skipped = (note) => ({ ok: true, retryable: false, patch: {}, note, skippe
  */
 export async function listAngleTakes(db, { store, row } = {}) {
   const ad = parseAdPrefix(row?.drive_raw_name);
-  if (!ad) return [];
+  /* A VSL or a thank-you video (any kind in OTHER_KINDS) is looked up the same way,
+     by the start of its name: "{Offer} VSL 1", "{Offer} Thank You". */
+  const other = ad ? null : parseKindPrefix(row?.drive_raw_name);
+  if (!ad && !other) return [];
   if (typeof store?.asStaff !== "function") throw new Error("the store offers no asStaff() to read the other takes with");
-  const offerWords = String(row.drive_raw_name).trim().slice(0, String(row.drive_raw_name).trim().search(/\s+Ad\s+\d/i));
   const esc = (s) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
-  const pattern = `${esc(offerWords)} Ad ${ad.adNumber}%`;
+  let pattern;
+  if (ad) {
+    const offerWords = String(row.drive_raw_name).trim().slice(0, String(row.drive_raw_name).trim().search(/\s+Ad\s+\d/i));
+    pattern = `${esc(offerWords)} Ad ${ad.adNumber}%`;
+  } else {
+    pattern = `${esc(other.offerText)} ${esc(other.word)}${other.adNumber == null ? "" : ` ${other.adNumber}`}%`;
+  }
   return store.asStaff(async (tx) => {
     const r = await tx.query(
       `SELECT id, status, take_no, drive_raw_file_id, drive_raw_name, created_at,
@@ -102,17 +111,21 @@ export async function listDbScripts(db, { store } = {}) {
   if (typeof store?.asStaff !== "function") throw new Error("the store offers no asStaff() to read the scripts with");
   const rows = await store.asStaff(async (tx) => {
     const r = await tx.query(
-      `SELECT ad_id, stack_no, angle_name, title, body
-         FROM ad_scripts
-        WHERE stack_kind = 'ad' AND stack_no IS NOT NULL
-          AND archived_at IS NULL
-          AND status NOT IN ('superseded', 'rejected', 'expired')
-        ORDER BY version DESC, updated_at DESC
+      `SELECT s.ad_id, s.stack_kind, s.stack_no, s.angle_name, s.title, s.body, s.lane,
+              COALESCE(s.offer_key, f.offer_key) AS offer_key
+         FROM ad_scripts s
+         LEFT JOIN marketing_funnels f ON f.org_id = s.org_id AND f.key = s.funnel_key
+        WHERE (s.stack_no IS NOT NULL OR s.stack_kind <> 'ad')
+          AND s.archived_at IS NULL
+          AND s.status NOT IN ('superseded', 'rejected', 'expired')
+        ORDER BY s.version DESC, s.updated_at DESC
         LIMIT 500`
     );
     return r.rows;
   }, { db });
-  return scriptsFromRows(rows);
+  /* The offer word is the one in the take's file name (shoot-plan.mjs), so a
+     script is only ever matched to a take of its own offer. */
+  return scriptsFromRows(rows.map((r) => ({ ...r, offer_word: offerWordFor(r) })));
 }
 
 /**
@@ -202,7 +215,7 @@ export async function joinBeforeSubmagic(db, row, { store, ports = {} } = {}) {
     const script = findScript(scripts, d.parsed);
     if (!script) {
       return { out: hold(
-        `${d.note}: no script titled "Ad ${d.parsed.adNumber} — ${d.parsed.angle}" was found in the database or in ${SCRIPT_SOURCES.join(", ")}` +
+        `${d.note}: no script titled "${label.slice(String(d.parsed.offer || "").length).trim()}" was found in the database or in ${SCRIPT_SOURCES.join(", ")}` +
         `${loaded.note ? ` (${loaded.note})` : ""}. ` +
         "The join puts lines in script order and cannot without the script. Nothing was sent."
       ) };

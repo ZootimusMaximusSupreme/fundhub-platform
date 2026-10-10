@@ -118,23 +118,98 @@ function cleanOffer(s) {
 }
 
 /**
+ * The kinds of film an offer has, besides its ads (owner, 2026-10-10: "most
+ * offers we launch will have VSLs or VSL variants along with thank you pages
+ * and thank you page variants"). ONE ROW PER KIND. To add a kind, add a row:
+ * the name reader, the grouping, the Drive lookup and the script lookup all
+ * read this list. Nothing else names a kind.
+ *
+ *   key          what ad_scripts.stack_kind holds (migration 479)
+ *   word         the word in the file name, where an ad says "Ad"
+ *   needsNumber  must the name carry a number? ("VSL 1"; a lone thank-you
+ *                video has none, its variants do: "Thank You 2")
+ *
+ * The name shape, for any offer:
+ *   `{Offer} {word} {n} — {angle} Take {k}.mp4`   number and angle as the kind needs
+ *   Direct Book VSL 1 — Watch page Take 1.mp4
+ *   Direct Book VSL 2 — Short cut Take 1.mp4          a VSL variant
+ *   Direct Book Thank You Take 1.mp4
+ *   Direct Book Thank You 2 — After the call Take 1.mp4   a thank-you variant
+ */
+export const OTHER_KINDS = Object.freeze([
+  Object.freeze({ key: "vsl", word: "VSL", needsNumber: true }),
+  Object.freeze({ key: "thank_you", word: "Thank You", needsNumber: false })
+]);
+
+const reWord = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+const KIND_RES = OTHER_KINDS.map((k) => ({
+  kind: k,
+  full: new RegExp(`^(.+?)\\s+${reWord(k.word)}(?:\\s+(\\d{1,4}))?(?:\\s+[—–-]\\s+(.+?))?\\s+Take\\s+(\\d{1,3})\\s*\\.([A-Za-z0-9]{2,5})$`, "i"),
+  prefix: new RegExp(`^(.+?)\\s+${reWord(k.word)}(?:\\s+(\\d{1,4}))?(?=\\s|$)`, "i")
+}));
+
+/** The word a kind puts in a file name ("Ad", "VSL", "Thank You"). */
+export function kindWord(kind) {
+  const k = OTHER_KINDS.find((x) => x.key === kind);
+  return k ? k.word : "Ad";
+}
+
+/**
  * parseTakeName("SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4")
  *   → { offer: "SLO", adNumber: 7, angle: "Haynes, the call that was never a roadmap", takeNo: 1, ext: "mp4" }
- * Anything that is not all four parts → null. Never a guess.
+ * An ad needs all four parts. Any other kind (OTHER_KINDS) reads the same way
+ * and also says its kind; its number and angle are null and "" when the name
+ * has none:
+ *   "Direct Book Thank You Take 1.mp4"
+ *   → { offer: "DIRECT BOOK", kind: "thank_you", adNumber: null, angle: "", takeNo: 1, ext: "mp4" }
+ * Anything else → null. Never a guess.
  */
 export function parseTakeName(name) {
   const s = String(name == null ? "" : name).trim();
   const m = TAKE_NAME_RE.exec(s);
-  if (!m) return null;
-  const angle = m[3].trim();
-  if (!angle) return null;
-  return {
-    offer: cleanOffer(m[1]),
-    adNumber: Number(m[2]),
-    angle,
-    takeNo: Number(m[4]),
-    ext: m[5].toLowerCase()
-  };
+  if (m) {
+    const angle = m[3].trim();
+    if (!angle) return null;
+    return {
+      offer: cleanOffer(m[1]),
+      adNumber: Number(m[2]),
+      angle,
+      takeNo: Number(m[4]),
+      ext: m[5].toLowerCase()
+    };
+  }
+  for (const { kind, full } of KIND_RES) {
+    const k = full.exec(s);
+    if (!k) continue;
+    const n = k[2] == null ? null : Number(k[2]);
+    if (kind.needsNumber && n == null) return null;
+    return {
+      offer: cleanOffer(k[1]),
+      kind: kind.key,
+      adNumber: n,
+      angle: (k[3] || "").trim(),
+      takeNo: Number(k[4]),
+      ext: k[5].toLowerCase()
+    };
+  }
+  return null;
+}
+
+/**
+ * The start of a name of another kind, for the Drive lookup: the offer as it
+ * was typed, the kind and its number. null for an ad name or a name of no kind.
+ */
+export function parseKindPrefix(name) {
+  const s = String(name == null ? "" : name).trim();
+  if (AD_PREFIX_RE.test(s)) return null;
+  for (const { kind, prefix } of KIND_RES) {
+    const m = prefix.exec(s);
+    if (!m) continue;
+    const n = m[2] == null ? null : Number(m[2]);
+    if (kind.needsNumber && n == null) return null;
+    return { offer: cleanOffer(m[1]), offerText: m[1].trim(), kind: kind.key, word: kind.word, adNumber: n };
+  }
+  return null;
 }
 
 /** The offer and ad number of a name, even one that left the angle off. */
@@ -158,15 +233,22 @@ export function normalizeAngle(angle) {
     .trim();
 }
 
-/** What makes two takes one video: offer + ad number + angle words. */
+/** What makes two takes one video: offer + ad number + angle words. For a
+    kind that is not an ad the kind is part of it too, so "VSL 1" never joins "Ad 1". */
 export function groupKey(parsed) {
   if (!parsed) return null;
-  return `${cleanOffer(parsed.offer)}|${Number(parsed.adNumber)}|${normalizeAngle(parsed.angle)}`;
+  if (!parsed.kind || parsed.kind === "ad") {
+    return `${cleanOffer(parsed.offer)}|${Number(parsed.adNumber)}|${normalizeAngle(parsed.angle)}`;
+  }
+  const n = parsed.adNumber == null ? "" : Number(parsed.adNumber);
+  return `${cleanOffer(parsed.offer)}|${parsed.kind}:${n}|${normalizeAngle(parsed.angle)}`;
 }
 
 /** "SLO Ad 7 — Haynes, the call that was never a roadmap" — for notes. */
 export function groupLabel(parsed) {
-  return parsed ? `${parsed.offer} Ad ${parsed.adNumber} — ${parsed.angle}` : "(unnamed)";
+  if (!parsed) return "(unnamed)";
+  if (!parsed.kind || parsed.kind === "ad") return `${parsed.offer} Ad ${parsed.adNumber} — ${parsed.angle}`;
+  return `${parsed.offer} ${kindWord(parsed.kind)}${parsed.adNumber == null ? "" : ` ${parsed.adNumber}`}${parsed.angle ? ` — ${parsed.angle}` : ""}`;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -405,20 +487,31 @@ export function scriptsFromRows(rows) {
   const out = [];
   const seen = new Set();
   for (const r of rows || []) {
-    const n = Number(r?.stack_no);
-    if (!Number.isInteger(n) || n < 1) continue;
-    const angle = String(r?.angle_name || r?.title || "").replace(/\s+/g, " ").trim();
+    const kind = OTHER_KINDS.some((k) => k.key === r?.stack_kind) ? r.stack_kind : "ad";
+    const meta = OTHER_KINDS.find((k) => k.key === kind);
+    const raw = r?.stack_no;
+    const n = raw == null || raw === "" ? null : Number(raw);
+    if (n != null && (!Number.isInteger(n) || n < 1)) continue;
+    if (n == null && (kind === "ad" || meta?.needsNumber)) continue;
+    /* An ad's angle is its clean angle, else its title. Any other kind has an
+       angle only when one is on file: its title is a label, not an angle. */
+    const own = String(r?.angle_name || "").replace(/\s+/g, " ").trim();
+    const angle = kind === "ad" ? (own || String(r?.title || "").replace(/\s+/g, " ").trim()) : own;
     const body = typeof r?.body === "string" ? r.body : "";
-    if (!angle || !body.trim()) continue;
-    const key = `${n}|${normalizeAngle(angle)}`;
+    if ((kind === "ad" && !angle) || !body.trim()) continue;
+    const offer = r?.offer_word ? cleanOffer(r.offer_word) : null;
+    const key = `${offer || ""}|${kind}|${n == null ? "" : n}|${normalizeAngle(angle)}`;
     if (seen.has(key)) continue;
     const source = r?.ad_id == null ? DATABASE_SOURCE : `${DATABASE_SOURCE}: ad ${r.ad_id}`;
     /* A "#" at the start of a spoken line would read as a heading and end the script early. */
     const safe = body.replace(/\r/g, "").split("\n").map((l) => l.replace(/^(\s*)#+\s*/, "$1")).join("\n");
-    const [parsed] = parseScriptMarkdown(`## Ad ${n} — ${angle}\n\n${safe}\n`, source);
+    const [parsed] = parseScriptMarkdown(`## Ad 1 — the words\n\n${safe}\n`, source);
     if (!parsed) continue;
     seen.add(key);
-    out.push({ ...parsed, adNumber: n, angle });
+    const script = { ...parsed, adNumber: n, angle, heading: `${kindWord(kind)}${n == null ? "" : ` ${n}`}${angle ? ` — ${angle}` : ""}` };
+    if (kind !== "ad") script.kind = kind;
+    if (offer) script.offer = offer;
+    out.push(script);
   }
   return out;
 }
@@ -432,10 +525,24 @@ export function angleMatches(fileAngle, headingAngle) {
   return h === a || h.startsWith(`${a},`);
 }
 
-/** The first script, in source order, for this ad number and angle — or null. */
-export function findScript(scripts, { adNumber, angle }) {
+/**
+ * The first script, in source order, for this film — or null.
+ *   an ad:        the same ad number and the same angle words, as before.
+ *   another kind: the same kind and number; the angle too when the file name
+ *                 has one ("Thank You Take 1" has none, so the kind decides).
+ * A script that names its offer (the ones from the database do) is only for a
+ * take of that offer, so "Direct Book Thank You" never gets another offer's
+ * thank-you words. A script from a file names no offer and matches as before.
+ */
+export function findScript(scripts, { adNumber, angle, kind, offer } = {}) {
+  const want = kind || "ad";
+  const num = (v) => (v == null || v === "" ? null : Number(v));
   for (const s of scripts || []) {
-    if (Number(s.adNumber) === Number(adNumber) && angleMatches(angle, s.angle)) return s;
+    if ((s.kind || "ad") !== want) continue;
+    if (s.offer && offer && cleanOffer(s.offer) !== cleanOffer(offer)) continue;
+    if (num(s.adNumber) !== num(adNumber)) continue;
+    if (want === "ad") { if (angleMatches(angle, s.angle)) return s; continue; }
+    if (!normalizeAngle(angle) || angleMatches(angle, s.angle)) return s;
   }
   return null;
 }

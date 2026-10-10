@@ -81,7 +81,12 @@
     if (!s || !s.offer_word) return null;
     if (!(takeNo >= 1) || Math.floor(takeNo) !== takeNo) return null;
     var kind = s.stack_kind === "vsl" || s.stack_kind === "thank_you" ? s.stack_kind : "ad";
-    if (kind === "thank_you") return s.offer_word + " Thank You Take " + takeNo + ".mp4";
+    if (kind === "thank_you") {
+      // A thank-you variant carries its number, and its angle when it has one.
+      var tn = s.stack_no != null ? String(s.stack_no) : "";
+      if (tn && !/^(0|[1-9][0-9]{0,8})$/.test(tn)) return null;
+      return s.offer_word + " Thank You" + (tn ? " " + tn : "") + (s.angle_name ? " — " + s.angle_name : "") + " Take " + takeNo + ".mp4";
+    }
     if (!s.angle_name) return null;
     var n = s.stack_no != null ? String(s.stack_no) : (kind === "ad" && s.ad_id != null ? String(s.ad_id) : "");
     if (!/^(0|[1-9][0-9]{0,8})$/.test(n)) return null;

@@ -123,7 +123,9 @@ describe("teleprompter, pure", () => {
     for (const row of [
       { ad_id: "93", title: "Ad 19 — Over and over (broad, film first)", stack_kind: "ad", stack_no: 2, angle_name: "Over and over" },
       { ad_id: "103", title: "/watch VSL (book-a-call)", stack_kind: "vsl", stack_no: 1, angle_name: "Watch page" },
-      { ad_id: "104", title: "/watch thank-you video", stack_kind: "thank_you", stack_no: null, angle_name: null }
+      { ad_id: "104", title: "/watch thank-you video", stack_kind: "thank_you", stack_no: null, angle_name: null },
+      { ad_id: "201", title: "x", stack_kind: "thank_you", stack_no: 2, angle_name: "After the call" },
+      { ad_id: "200", title: "x", stack_kind: "vsl", stack_no: 2, angle_name: "Short cut" }
     ]) {
       const served = { ...ONE, ...row, ...planFields({ ...ONE, offer_key: "funding_dfy", lane: null, ...row }) };
       assert.ok(served.take_file_name.startsWith("Direct Book "), served.take_file_name);

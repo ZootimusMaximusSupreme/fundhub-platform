@@ -81,6 +81,26 @@ Two films in this offer are not ads. One is a VSL. The other is the thank-you vi
 - The VSL: `Direct Book VSL 1 — Watch page Take 1.mp4`
 - The thank-you video: `Direct Book Thank You Take 1.mp4`
 
+### VSLs and thank-you videos, for every offer
+
+Most offers have a VSL, VSL variants, a thank-you video and thank-you variants. The names work the same for any offer. Only the offer word changes.
+
+| Film | File name |
+|---|---|
+| The VSL | `{Offer} VSL 1 — {angle} Take 1.mp4` |
+| A VSL variant | `{Offer} VSL 2 — {angle} Take 1.mp4` |
+| The thank-you video | `{Offer} Thank You Take 1.mp4` |
+| A thank-you variant | `{Offer} Thank You 2 — {angle} Take 1.mp4` |
+
+A VSL always has a number. The first thank-you video has none; a variant has one, and an angle if it has a name.
+
+The cutting step reads these names too, so takes of a VSL or a thank-you video are joined the same way an ad's takes are. The kinds are one list in `src/ad-videos/merge-takes.mjs` (`OTHER_KINDS`). A new kind is one new row there.
+
+To launch a new offer:
+
+1. Give it an offer word in `OFFER_WORDS` (`src/marketing/shoot-plan.mjs`). One line.
+2. Give each script its place: `stack_kind` (`ad`, `vsl` or `thank_you`), `stack_no`, and a clean `angle_name`.
+
 The teleprompter builds these names by itself and saves each take to Drive under its name (`src/marketing/shoot-plan.mjs`). A script's place in its offer is stored on the script: `stack_kind`, `stack_no`, `angle_name` (migration 479).
 
 ## What belongs in one file
