@@ -125,6 +125,10 @@ Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` โ€
 * Still commit locally every session. Then push that commit to GitHub when auth allows.
 * ยง8 branch cleanup and pull requests apply on GitHub where you use them; local merges still matter.
 
+### Teleprompter speed (owner-set 2026-10-10)
+
+The teleprompter runs from 130 to 220 words a minute and nowhere else, at one fixed scroll speed, in steps of 5. The volume buttons walk one ladder: back 220 to back 130, paused, forward 130 to forward 220. Same law: `.cursor/rules/teleprompter-speed.mdc` and `.claude/rules/teleprompter-speed.md`.
+
 ### GitHub ships main (owner-set 2026-10-09)
 
 A push to `main` on GitHub goes live by itself. `.github/workflows/ship.yml` runs the same `npm run ship` the Mac runs, so Claude cloud on the phone ships exactly like the Mac: merge or push to `main`, GitHub does the rest. Netlify's own auto build stays off. Same law: `.cursor/rules/github-ships-main.mdc` and `.claude/rules/github-ships-main.md`.
