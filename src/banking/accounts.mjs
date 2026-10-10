@@ -102,6 +102,8 @@ export class BankAccountWriteError extends Error {
 
 export const ACCOUNT_TYPES = ["depository", "credit", "loan", "investment", "other"];
 export const ENTITY_KINDS = ["unknown", "personal", "business"];
+/** Account types that can carry a due day and a payment (097, widened by 451). */
+export const CYCLE_ACCOUNT_TYPES = ["credit", "loan"];
 
 /**
  * A mask is the LAST FOUR DIGITS AND NOTHING ELSE.
@@ -250,10 +252,12 @@ export async function createManualBankAccount(db, input = {}, { orgId, clientId 
  * not have one — a chequing account has no statement close day — and because the
  * owner may learn his due date after he has already entered the card.
  *
- * REFUSES A CYCLE ON A NON-CREDIT ACCOUNT. 096 could not express this as a CHECK
- * (it is a cross-table condition), so the writer enforces it. A statement cycle
- * on a savings account would put a fake "payment due" on the dashboard for money
- * nobody owes.
+ * REFUSES A CYCLE ON AN ACCOUNT THAT IS NOT A CARD OR A LOAN. 096 could not
+ * express this as a CHECK (it is a cross-table condition), so the writer enforces
+ * it. A statement cycle on a savings account would put a fake "payment due" on
+ * the dashboard for money nobody owes. A loan was added by 451: its due day and
+ * monthly payment live in the same two columns a card uses (minimum_payment_cents
+ * is "what is due by the due date" for both). See 451's header.
  */
 export async function saveStatementCycle(db, input = {}, { orgId, clientId, bankAccountId } = {}) {
   requireUuidish(orgId, "orgId");
@@ -285,9 +289,9 @@ export async function saveStatementCycle(db, input = {}, { orgId, clientId, bank
       // tell "this account exists but is not yours" from "no such account".
       throw new BankAccountWriteError("no such account", { status: 404, field: "bankAccountId" });
     }
-    if (owner.rows[0].account_type !== "credit") {
+    if (!CYCLE_ACCOUNT_TYPES.includes(owner.rows[0].account_type)) {
       throw new BankAccountWriteError(
-        "a statement cycle can only be set on a credit account", { field: "bankAccountId" });
+        "a statement cycle can only be set on a credit account or a loan", { field: "bankAccountId" });
     }
 
     const cols = Object.keys(row);
@@ -442,6 +446,7 @@ export default {
   BankAccountWriteError,
   ACCOUNT_TYPES,
   ENTITY_KINDS,
+  CYCLE_ACCOUNT_TYPES,
   normaliseMask,
   createManualBankAccount,
   saveStatementCycle,

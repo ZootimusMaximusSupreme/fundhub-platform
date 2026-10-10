@@ -23,19 +23,23 @@
 //   A repeated request_id answers the first save again and writes nothing.
 //
 // Owner and admin only: requireAuth, then requireRole(ROLE_SETS.MARKETING)
-// (requireAuth ignores roles, CLAUDE.md §12). One asStaff() transaction
-// (withRequest); the worker is woken after it commits.
+// (requireAuth ignores roles, CLAUDE.md §12). A film key (header x-shoot-film)
+// may save a new version of a script that is on that shoot, and no other
+// script. One asStaff() transaction (withRequest); the worker is woken after
+// it commits.
 
 import { db } from "../../../src/db.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
 import { requireAuth } from "../../../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole } from "../../../src/http/read-api.mjs";
 import {
-  withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany
+  withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany, NotFoundError
 } from "../../../src/marketing/http.mjs";
 import {
   parseScriptRef, parseBody, parseParts, parseMetaCopy, editScript
 } from "../../../src/marketing/scripts-store.mjs";
+import { scriptOnFilmShoot } from "../../../src/marketing/shoot-store.mjs";
+import { FILM_LINK_CLOSED, filmFromReq } from "../../../src/marketing/shoot-film-key.mjs";
 import { wakeWorker } from "../../../src/marketing/wake.mjs";
 
 export const ROUTE = "marketing/scripts/edit";
@@ -49,13 +53,27 @@ export default async function handler(req, res, deps = {}) {
   }
 
   // The gate, in this file on purpose: scripts/journeys/extract.mjs reads each
-  // route's gate from the route's own source.
+  // route's gate from the route's own source. A film key skips the staff gate
+  // and is checked against the shoot inside the write. Everyone else still
+  // goes through requireAuth, then requireRole(ROLE_SETS.MARKETING), then
+  // hasCompany(res, staff).
   const auth = deps.requireAuth ?? requireAuth;
-  const staff = await auth(req, res, { db: database });
-  if (!staff) return;
-  if (!requireRole(res, staff, ROLE_SETS.MARKETING)) return;
-  if (!hasCompany(res, staff)) return;
-  const orgId = staff.org_id;
+  const film = filmFromReq(req, deps);
+  if (film?.bad) {
+    return res.status(404).json({ error: "not_found", message: FILM_LINK_CLOSED });
+  }
+  let orgId = null;
+  let staffId = null;
+  if (film) {
+    orgId = film.orgId;
+  } else {
+    const staff = await auth(req, res, { db: database });
+    if (!staff) return;
+    if (!requireRole(res, staff, ROLE_SETS.MARKETING)) return;
+    if (!hasCompany(res, staff)) return;
+    orgId = staff.org_id;
+    staffId = staff.id ?? null;
+  }
 
   try {
     const body = readBody(req);
@@ -65,9 +83,13 @@ export default async function handler(req, res, deps = {}) {
     const parts = parseParts(body.parts);
     const metaCopy = parseMetaCopy(body.meta_copy);
 
-    const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, (tx) =>
-      editScript(tx, { orgId, id, version, body: text, parts, metaCopy, staffId: staff.id ?? null, requestId })
-    );
+    const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, async (tx) => {
+      if (film) {
+        const on = await scriptOnFilmShoot(tx, { orgId, shootId: film.shootId, scriptId: id });
+        if (!on) throw new NotFoundError("That script is not on this film link.");
+      }
+      return editScript(tx, { orgId, id, version, body: text, parts, metaCopy, staffId, requestId });
+    });
     // After the commit: the outbox row is saved, so the worker can commit it.
     await (deps.wake ?? wakeWorker)(deps.env ?? process.env);
     return res.status(200).json(answer);

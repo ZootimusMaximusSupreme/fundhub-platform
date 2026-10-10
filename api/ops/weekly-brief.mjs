@@ -15,6 +15,8 @@
 // his call, not a cron this file should assume. Wiring this to a weekly
 // Inngest job (src/workflows/index.mjs already has the pattern) is a
 // five-minute follow-up once he says when he wants it to fire.
+//
+// Superseded by docs/specs/marketing-machine-2026-10-04.md (owner-approved 2026-10-05): spec v3 §2 item 1 replaces the chat-only §3c cited above (the marketing machine runs on a schedule and on command, and saves to the repo through a GitHub token limited to the marketing folders); this file's code is unchanged and the brief still runs only when asked.
 
 import { db } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";

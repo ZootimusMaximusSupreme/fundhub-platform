@@ -69,6 +69,7 @@ import readDocuments from "../../api/read/documents.mjs";
 import readBankInbox from "../../api/read/bank-inbox.mjs";
 import readBlueprintCombinedApproval from "../../api/read/blueprint-combined-approval.mjs";
 import blueprintStaffActions from "../../api/blueprint/staff-actions.mjs";
+import blueprintDeclines from "../../api/blueprint/declines.mjs";
 import readFundingRounds from "../../api/read/funding-rounds.mjs";
 import readAffiliates from "../../api/read/affiliates.mjs";
 import readAffiliatePortal from "../../api/read/affiliate-portal.mjs";
@@ -105,7 +106,9 @@ import readFinanceAsk from "../../api/read/finance-ask.mjs";
 import readCompanyBrain from "../../api/read/company-brain.mjs";
 import readCompanyBrainAffiliate from "../../api/read/company-brain-affiliate.mjs";
 import readOpsPulse from "../../api/read/ops-pulse.mjs";
+import readMorningBrief from "../../api/read/morning-brief.mjs";
 import opsHireCloser from "../../api/ops/hire-closer.mjs";
+import opsNotifyOwner from "../../api/ops/notify-owner.mjs";
 import companyBrainReviews from "../../api/company-brain/reviews.mjs";
 import companyBrainSync from "../../api/company-brain/sync.mjs";
 import companyBrainUpload from "../../api/company-brain/upload.mjs";
@@ -141,6 +144,10 @@ import customerInsightsWrite from "../../api/customer-insights.mjs";
 import marketingFlagsWrite from "../../api/marketing-flags.mjs";
 import marketingToday from "../../api/marketing/today.mjs";
 import bankingSyncAccounts from "../../api/banking/sync-accounts.mjs";
+import bankingLinkToken from "../../api/banking/link-token.mjs";
+import bankingLinkExchange from "../../api/banking/link-exchange.mjs";
+import bankingSyncLiabilities from "../../api/banking/sync-liabilities.mjs";
+import bankingSyncTransactions from "../../api/banking/sync-transactions.mjs";
 import inquiries from "../../api/inquiries.mjs";
 import repairExceptions from "../../api/repair/exceptions.mjs";
 import repairEnroll from "../../api/repair/enroll.mjs";
@@ -192,6 +199,7 @@ import publicPartnerApply from "../../api/public/partner-apply.mjs";
 import publicFunnelCheckout from "../../api/public/funnel-checkout.mjs";
 import publicSloCheckout from "../../api/public/slo-checkout.mjs";
 import publicSloInterest from "../../api/public/slo-interest.mjs";
+import publicMorningBrief from "../../api/public/morning-brief.mjs";
 import publicSloPull from "../../api/public/slo-pull.mjs";
 import publicSloStatus from "../../api/public/slo-status.mjs";
 import publicSloRepairCheckout from "../../api/public/slo-repair-checkout.mjs";
@@ -239,9 +247,28 @@ import trainingProgress from "../../api/training-progress.mjs";
 import financeCards from "../../api/finance/cards.mjs";
 import financeLiabilities from "../../api/finance/liabilities.mjs";
 import financeBankAccounts from "../../api/finance/bank-accounts.mjs";
+import financeContainers from "../../api/finance/containers.mjs";
 import financeEntities from "../../api/finance/entities.mjs";
 import financeBills from "../../api/finance/bills.mjs";
 import financeCashflow from "../../api/finance/cashflow.mjs";
+import moneyOverview from "../../api/money/overview.mjs";
+import moneyTrends from "../../api/money/trends.mjs";
+import moneyCredit from "../../api/money/credit.mjs";
+import moneySetup from "../../api/money/setup.mjs";
+import moneyAccounts from "../../api/money/accounts.mjs";
+import moneyConnections from "../../api/money/connections.mjs";
+import merchantEvents from "../../api/merchant/events.mjs";
+import moneyPayments from "../../api/money/payments.mjs";
+import moneyPlan from "../../api/money/plan.mjs";
+import moneyBanks from "../../api/money/banks.mjs";
+import moneyStrategy from "../../api/money/strategy.mjs";
+import moneyFundability from "../../api/money/fundability.mjs";
+import moneyTasks from "../../api/money/tasks.mjs";
+import moneyReadyToFund from "../../api/money/ready-to-fund.mjs";
+import moneyHelper from "../../api/money/helper.mjs";
+import moneyTransfers from "../../api/money/transfers.mjs";
+import moneyAlerts from "../../api/money/alerts.mjs";
+import moneyVault from "../../api/money/vault.mjs";
 import financeAlerts from "../../api/finance/alerts.mjs";
 import financeModel from "../../api/finance/model.mjs";
 import financePaydownSimulator from "../../api/finance/paydown-simulator.mjs";
@@ -333,6 +360,7 @@ import marketingResearchBrain from "../../api/marketing/research/brain.mjs";
 import marketingFlywheelSpendRead from "../../api/marketing/flywheel/spend-read.mjs";
 import marketingShoot from "../../api/marketing/shoot.mjs";
 import marketingShootMark from "../../api/marketing/shoot/mark.mjs";
+import marketingShootTake from "../../api/marketing/shoot/take.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -560,6 +588,11 @@ export const ROUTES = {
   // Capital Blueprint — primary + credit partner combined prequal (lane 6).
   "read/blueprint-combined-approval": readBlueprintCombinedApproval,
   "blueprint/staff-actions": blueprintStaffActions,
+  // Decline defense (unit B1): a bank's decline read into likely reasons and a
+  // reconsideration plan with a source on every line; ops task once; outcome.
+  // Client session = own file (read, paste, link a letter); staff = STAFF role
+  // + client in org. Lender-book lines only for ROLE_SETS.LENDERS.
+  "blueprint/declines": blueprintDeclines,
 
   // read/underwrite runs the vendored UnderwriteIQ Lite engine over the same
   // tradeline rows read/tradelines and read/finance-os already serve to
@@ -611,7 +644,10 @@ export const ROUTES = {
   // Ops / AI COO v1. GET is read-only pulse + briefs. POST creates the
   // hire-closer task and LinkedIn post when packed. ROLE_SETS.OPS.
   "read/ops-pulse": readOpsPulse,
+  "read/morning-brief": readMorningBrief,
   "ops/hire-closer": opsHireCloser,
+  // One text to Chris (PULSE_SMS_TO only) for an agent on the Mac, behind OPS_NOTIFY_SECRET.
+  "ops/notify-owner": opsNotifyOwner,
 
   // Owner-only classification review queue (H-3). Also carries staff uploads
   // waiting for approval — same queue, same owner-only decision.
@@ -708,6 +744,13 @@ export const ROUTES = {
   // transmits: the mock reads a fixture in this repository, and the Plaid seam
   // is deliberately unclosed and returns its refusal unchanged.
   "banking/sync-accounts": bankingSyncAccounts,
+  /* Plaid Link: open, then finish. ROLE_SETS.FINANCE, same as sync-accounts. */
+  "banking/link-token": bankingLinkToken,
+  "banking/link-exchange": bankingLinkExchange,
+  // Card bills (due date, minimum) from Plaid /liabilities/get → statement cycles.
+  "banking/sync-liabilities": bankingSyncLiabilities,
+  /* Plaid charges + deposits → bank_transactions, then repeating bills. Same gate. */
+  "banking/sync-transactions": bankingSyncTransactions,
 
   // Write endpoints. Hand-rolled rather than readHandler-based, so each one owns
   // its own method switch, its 405 + allow header, and its domain-error mapping.
@@ -811,6 +854,7 @@ export const ROUTES = {
      and writes nothing. POST writes a visit or a name/email/phone. No client,
      no card, no mail. */
   "public/slo-interest": publicSloInterest,
+  "public/morning-brief": publicMorningBrief,
   /* RB2B identified-visitor push. GET answers {ok:true} and writes nothing.
      POST needs ?secret= (RB2B_WEBHOOK_SECRET) — they document no signature,
      only a self-contained URL. Stores into events as rb2b.visitor_identified.
@@ -1057,6 +1101,10 @@ export const ROUTES = {
   "finance/cards": financeCards,
   "finance/liabilities": financeLiabilities,
   "finance/bank-accounts": financeBankAccounts,
+  // Containers (Finance OS 2026-10-06) — one per person, one per business,
+  // each an `entities` row. Assign a bank account to one (entity_kind follows)
+  // and read the billing count. ROLE_SETS.FINANCE, same as bank-accounts.
+  "finance/containers": financeContainers,
   // Entity grouping (106_entities.sql) — personal vs. business wallets under a
   // client. Additive: bank_accounts/card_liabilities/recurring_bills all keep
   // working with entity_id NULL. ROLE_SETS.STAFF, matching the read gate on the
@@ -1064,6 +1112,78 @@ export const ROUTES = {
   "finance/entities": financeEntities,
   "finance/bills": financeBills,
   "finance/cashflow": financeCashflow,
+  // Finance OS client dashboard (/app/money.html). Client session = own file
+  // only; staff = ROLE_SETS.FINANCE + ?client_id= in their org.
+  "money/overview": moneyOverview,
+  // FinanceOS tracking over time (wave 4, H6): the Trends line charts. Same
+  // two callers and gate as money/overview. Read only.
+  "money/trends": moneyTrends,
+  // Finance OS credit page (/app/money-credit.html). Same two callers and
+  // gate as money/overview. Read only; never runs a pull.
+  "money/credit": moneyCredit,
+  // Finance OS setup (/app/money-setup.html): setup status, setup checkout,
+  // soft-pull approval form. Same two callers and gate as money/overview.
+  "money/setup": moneySetup,
+  // Finance OS Accounts page (/app/money-accounts.html): containers, business
+  // info, add by hand, Move to. Client session = own file only (every write is
+  // pinned to the session client); staff = ROLE_SETS.FINANCE + client_id.
+  "money/accounts": moneyAccounts,
+  /* Finance OS Connections (/app/money-connections.html): a client's OWN
+     Commas / Whop / open-API merchant hook-ups. Same gate as money/overview.
+     merchant/events is the open API — the per-connection Bearer key is the
+     whole credential, POST only. The Whop and Commas receivers go through the
+     webhooks/ prefix (src/http/router.mjs, merchant-whop/<id>, merchant-commas/<id>). */
+  "money/connections": moneyConnections,
+  "merchant/events": merchantEvents,
+  // Payments page (/app/money-payments.html): Clarity Payments owed to Fundhub,
+  // what is coming up, what the money helper did. Same gate as money/overview;
+  // POST plan changes are staff (FINANCE) only, "talk to a person" is either.
+  "money/payments": moneyPayments,
+  // FinanceOS Plan (/app/money-plan.html, wave 5 W1): a month of dated pins
+  // from every plan source (src/finance/plan-sources/). Same gate as
+  // money/overview; POST marks a pin and is staff (FINANCE) only.
+  "money/plan": moneyPlan,
+  // Bank strategy (FinanceOS wave 5, W2): banks to open by location, card
+  // stacking order, next funding round, bank relationship tracker. Same gate as
+  // money/overview; every POST (plan, open, deposit) is staff (FINANCE) only.
+  "money/banks": moneyBanks,
+  // Strategy (/app/money-strategy.html): payoff plan by method, goal date →
+  // money a month, this month's payments checked against cash. Same gate as
+  // money/overview; POST save_plan by the client or FINANCE staff. Moves no money.
+  "money/strategy": moneyStrategy,
+  // Fundability (/app/money-fundability.html): the UnderwriteIQ fundability
+  // score now, 3/6/12 months ahead on the client's own plan, and per business.
+  // Same gate as money/overview. Read only; never runs a pull.
+  "money/fundability": moneyFundability,
+  /* FinanceOS "What to do next" (/app/money-next.html, FinanceOS wave 5 W5).
+     money/tasks: the client's next steps; POST do_task hands one to the money
+     agent (a payment becomes a proposal the client must approve — nothing
+     moves) or to a CSM. money/ready-to-fund: "Ready to get funded" opens the
+     Capital Blueprint's own CSM closing prep call. Same gate as money/overview. */
+  "money/tasks": moneyTasks,
+  "money/ready-to-fund": moneyReadyToFund,
+  // FinanceOS Money Helper (/app/money-helper.html, wave 5 W6): the chat thread
+  // and sending a message. Same gate as money/overview. The helper is shadow: it
+  // answers in the app and never texts; a transfer is only ever a proposal for
+  // the client to approve (src/finance/money-transfer-seam.mjs).
+  "money/helper": moneyHelper,
+  /* FinanceOS money moves (/app/money-transfers.html, wave 5 W7): proposals
+     waiting for the client's yes, moves sent by Plaid Transfer (sandbox unless
+     PLAID_ENV=production AND FINANCE_OS_TRANSFERS_LIVE=1), and their history.
+     Same gate as money/overview. POST approve is the client's own login only;
+     staff may propose and cancel. Off when the transfer caps are not set. */
+  "money/transfers": moneyTransfers,
+  /* File-protection alerts (Capital Blueprint launch, unit B2): pay before the
+     statement closes, promo ending, cash cushion, new credit. GET the settings,
+     cards and what went out; POST set_alert / set_promo / set_statement_close_day.
+     Same two callers and gate as money/overview. Never texts from here. */
+  "money/alerts": moneyAlerts,
+  /* Application document vault (Capital Blueprint B3): the papers a lender asks
+     for, what is on file against each, what is missing, "file complete". Same two
+     callers and gate as money/overview; a client reads and uploads through
+     documents-upload, POST (accept / reject / waive / add a line) is staff (FINANCE)
+     only. Moves no money and sends nothing. */
+  "money/vault": moneyVault,
   "finance/alerts": financeAlerts,
   "finance/model": financeModel,
   "finance/paydown-simulator": financePaydownSimulator,
@@ -1275,7 +1395,8 @@ export const ROUTES = {
   // X3: the Ideas tab's flywheel (design §3.2 row 6)
   "marketing/flywheel/spend-read": marketingFlywheelSpendRead,
   "marketing/shoot": marketingShoot,
-  "marketing/shoot/mark": marketingShootMark
+  "marketing/shoot/mark": marketingShootMark,
+  "marketing/shoot/take": marketingShootTake
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is
@@ -1384,7 +1505,14 @@ export default async function handler(request, context) {
      handler here reads a plain req.body. */
   let rawBody = "";
   let body = "";
-  if (!noBody && ctype.includes("multipart/form-data")) {
+  /* marketing/shoot/take sends the original video bytes. request.text() would
+     decode them as UTF-8 and change the file. This path keeps the bytes. */
+  const takeBytes = path === "marketing/shoot/take"
+    && !noBody
+    && ctype.includes("application/octet-stream");
+  if (takeBytes) {
+    body = Buffer.from(await request.arrayBuffer());
+  } else if (!noBody && ctype.includes("multipart/form-data")) {
     const form = await request.formData();
     const fields = {};
     const files = [];

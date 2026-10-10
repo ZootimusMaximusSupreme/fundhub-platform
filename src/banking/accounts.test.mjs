@@ -203,6 +203,15 @@ test("a statement cycle on a non-credit account is refused", async () => {
     "a fake 'payment due' on a savings account would put money nobody owes on the dashboard");
 });
 
+test("a loan can carry a due day and a monthly payment (451)", async () => {
+  const db = cycleDb("loan");
+  await saveStatementCycle(db, { payment_due_day: 1, minimum_payment_cents: 105000 },
+    { orgId: ORG, clientId: CLIENT, bankAccountId: ACCOUNT });
+  const row = insertedRow(db.calls.find((c) => /INSERT INTO account_statement_cycles/.test(c.sql)));
+  assert.equal(row.payment_due_day, 1);
+  assert.equal(row.minimum_payment_cents, 105000);
+});
+
 test("an account in another org is a 404, not a 403", async () => {
   const db = cycleDb(null);
   await assert.rejects(

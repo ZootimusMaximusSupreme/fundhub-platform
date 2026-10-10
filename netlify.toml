@@ -100,6 +100,11 @@
   included_files = [
     # Never ship local secrets or the huge local work trees inside credentials/.
     "!credentials/**",
+    # Gap lanes import the router and the route table. That trace was pulling
+    # filmed videos and the ffmpeg binary into the api function (359MB) and the
+    # upload died. Those files are not needed inside a function.
+    "!**/*.mp4",
+    "!node_modules/ffmpeg-static/**",
     "assets/ebooks/fundhub-ebook-placeholder.pdf",
     "assets/gifts/message-blaster.dmg",
     "scripts/black-reports/**",
@@ -199,6 +204,12 @@
 # SWEEP_CRON in netlify/functions/marketing-clock.mjs must match.
 [functions."marketing-clock"]
   schedule = "*/15 * * * *"
+
+# The hourly pulse: runs every beat inside one READ ONLY box and texts Chris on a break.
+# Minute 7, not minute 0 (three Inngest jobs already fire at minute 0).
+# SWEEP_CRON in netlify/functions/pulse-hourly.mjs must match.
+[functions."pulse-hourly"]
+  schedule = "7 * * * *"
 
 # The marketing worker reads the Hormozi vault for deep research ("Research it", design
 # docs/specs/command-center-design-2026-10-05.md §6 slice 10, unit X2): the 110 notes under

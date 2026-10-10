@@ -115,6 +115,30 @@ export default async function handler(req, res) {
     ? "none_given"
     : (subtypeRaw === subtype ? "given" : "unrecognised");
 
+  /* WHICH BUSINESS IS THIS PAPER FOR? (application document vault, B3)
+     A business bank statement belongs to one business, and a client can have
+     several. The vault sends `entity_id` — the business container's id — with the
+     upload, and it is kept on the document (metadata.entity_id) so the vault files
+     the paper under the right business without anyone guessing from a file name.
+     It must be one of THIS client's active business containers; anything else is
+     refused rather than silently dropped, because a paper filed under the wrong
+     business is worse than a paper that failed to upload. Optional: every other
+     upload is exactly what it was. */
+  const entityRaw = typeof fields.entity_id === "string" ? fields.entity_id.trim() : "";
+  let entityId = null;
+  if (entityRaw) {
+    if (!isUuid(entityRaw)) {
+      return res.status(400).json({ ok: false, error: "entity_id must be a uuid" });
+    }
+    const own = await db.query(
+      `SELECT 1 FROM entities
+        WHERE id = $1 AND org_id = $2 AND client_id = $3 AND kind = 'business' AND archived_at IS NULL`,
+      [entityRaw, orgId, clientId]
+    );
+    if (!own.rows[0]) return res.status(404).json({ ok: false, error: "no such business" });
+    entityId = entityRaw;
+  }
+
   const maxBytes = maxUploadBytes();
   const store = storeFromEnv();
   const actor = principal.kind === "staff"
@@ -148,7 +172,9 @@ export default async function handler(req, res) {
           original_filename: file.filename || null,
           uploaded_by: actor,
           // What the caller called this file, and whether we could use it.
-          label: { given: subtypeRaw || null, filed_as: subtype, source: labelSource }
+          label: { given: subtypeRaw || null, filed_as: subtype, source: labelSource },
+          // The business container this paper is for (vault). Absent on every other upload.
+          ...(entityId ? { entity_id: entityId } : {})
         }
       });
 

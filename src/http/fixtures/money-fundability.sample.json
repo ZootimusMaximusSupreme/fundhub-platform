@@ -1,0 +1,185 @@
+{
+  "ok": true,
+  "client": {
+    "id": "029964c5-4d8e-47ed-88c9-53ac13863fd4",
+    "name": "Sim Eleven-Blueprint"
+  },
+  "as_of": "2026-10-07T03:23:18.761Z",
+  "has_pull": true,
+  "sample": true,
+  "engine": {
+    "name": "underwrite_iq_lite",
+    "upstream_commit": "71656f0fe1083429f52eeb0aa095cce076a6b33c",
+    "accounts_from": "tradelines"
+  },
+  "now": {
+    "score": 5,
+    "score_max": 6,
+    "unknown": 0,
+    "tier": "fundable",
+    "funding_estimate_cents": 21200000,
+    "factors": [
+      {
+        "key": "score_700",
+        "label": "Credit score 700 or higher",
+        "target": "700 or higher",
+        "passed": true,
+        "value": 778,
+        "unit": "score",
+        "note": "UnderwriteIQ reads your Equifax score — the highest one on file."
+      },
+      {
+        "key": "utilization_30",
+        "label": "Cards used 30% or less",
+        "target": "30% or less",
+        "passed": true,
+        "value": 6.1,
+        "unit": "percent",
+        "note": null
+      },
+      {
+        "key": "no_negatives",
+        "label": "No negative items",
+        "target": "0",
+        "passed": true,
+        "value": 0,
+        "unit": "count",
+        "note": null
+      },
+      {
+        "key": "anchor_card",
+        "label": "A card 2+ years old with a $5,000+ limit",
+        "target": "$5,000 or more",
+        "passed": true,
+        "value": 2000000,
+        "unit": "cents",
+        "note": null
+      },
+      {
+        "key": "no_inquiries",
+        "label": "No hard inquiries",
+        "target": "0",
+        "passed": false,
+        "value": 4,
+        "unit": "count",
+        "note": null
+      },
+      {
+        "key": "file_depth",
+        "label": "3 or more accounts in good standing",
+        "target": "3 or more",
+        "passed": true,
+        "value": 4,
+        "unit": "count",
+        "note": null
+      }
+    ],
+    "missing": [],
+    "sentences": [
+      {
+        "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+        "topic": "inquiries",
+        "check": "no_inquiries"
+      }
+    ]
+  },
+  "projections": [
+    {
+      "date": "2027-01-07",
+      "months": 3,
+      "scenario": "plan",
+      "score": 5,
+      "score_max": 6,
+      "unknown": 0,
+      "tier": "fundable",
+      "funding_estimate_cents": 21200000,
+      "assumptions": [
+        "3 months go by. Your open accounts stay open."
+      ],
+      "checks": {
+        "score_700": true,
+        "utilization_30": true,
+        "no_negatives": true,
+        "anchor_card": true,
+        "no_inquiries": false,
+        "file_depth": true
+      },
+      "sentences": [
+        {
+          "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+          "topic": "inquiries",
+          "check": "no_inquiries"
+        }
+      ]
+    },
+    {
+      "date": "2027-04-07",
+      "months": 6,
+      "scenario": "plan",
+      "score": 5,
+      "score_max": 6,
+      "unknown": 0,
+      "tier": "fundable",
+      "funding_estimate_cents": 21200000,
+      "assumptions": [
+        "6 months go by. Your open accounts stay open."
+      ],
+      "checks": {
+        "score_700": true,
+        "utilization_30": true,
+        "no_negatives": true,
+        "anchor_card": true,
+        "no_inquiries": false,
+        "file_depth": true
+      },
+      "sentences": [
+        {
+          "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+          "topic": "inquiries",
+          "check": "no_inquiries"
+        }
+      ]
+    },
+    {
+      "date": "2027-10-07",
+      "months": 12,
+      "scenario": "plan",
+      "score": 5,
+      "score_max": 6,
+      "unknown": 0,
+      "tier": "fundable",
+      "funding_estimate_cents": 21200000,
+      "assumptions": [
+        "12 months go by. Your open accounts stay open."
+      ],
+      "checks": {
+        "score_700": true,
+        "utilization_30": true,
+        "no_negatives": true,
+        "anchor_card": true,
+        "no_inquiries": false,
+        "file_depth": true
+      },
+      "sentences": [
+        {
+          "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+          "topic": "inquiries",
+          "check": "no_inquiries"
+        }
+      ]
+    }
+  ],
+  "businesses": [],
+  "plan": {
+    "paydowns": [],
+    "dispute_accounts": 0,
+    "if_removed": false
+  },
+  "cannot_project": [
+    "Credit scores. UnderwriteIQ reads your scores from a pull. It never guesses a new one, so every point uses today's scores.",
+    "Hard inquiries and late payments. UnderwriteIQ counts them but has no age window, so they stay as they are.",
+    "Banking history. UnderwriteIQ does not read bank deposits or how long you have banked somewhere.",
+    "New accounts, new businesses, or a new pull. Only what is on file today, plus your own plan.",
+    "Whether a dispute works. An \"if removed\" line shows what UnderwriteIQ would say. It is not a promise."
+  ]
+}

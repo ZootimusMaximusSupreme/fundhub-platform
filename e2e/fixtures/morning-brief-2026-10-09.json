@@ -1,0 +1,376 @@
+{
+  "ok": true,
+  "date": "2026-10-09",
+  "kind": "morning",
+  "brief": {
+    "date": "2026-10-09",
+    "kind": "morning",
+    "systems": {
+      "red": 14,
+      "line": "Systems: 695 of 1008 checks green. 14 red: live-playwright:desks, 03-marketing:outbox_drain, calls:booked-no-join-link, and 11 more in the report. 299 not checked.",
+      "reds": [
+        {
+          "id": "live-playwright:desks",
+          "fix": "Run node scripts/live-playwright-sweep.mjs on the Mac and wire a nightly launchd/cron.",
+          "group": "backend",
+          "proof": "Last desk sweep was 39.4h ago (score 100/100, 41/41 passed). Too old.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "Unknown — read the proof."
+        },
+        {
+          "id": "03-marketing:outbox_drain",
+          "fix": "Read marketing_heartbeats and the Netlify marketing-clock / marketing-worker logs. Do not auto-fix from this pulse.",
+          "group": "jobs",
+          "proof": "13 repo save(s) waiting but outbox_drain last ran 2026-10-09 12:45 UTC (15.3 min ago; red after 3 min)",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "outbox_drain is late or its last pass failed."
+        },
+        {
+          "id": "calls:booked-no-join-link",
+          "fix": "Decide where a customer gets the call link, and make every booking keep it. ClickFunnels sends none. If the link is in the ClickFunnels confirmation, tell the team that is the plan. Recon (AG-07) on the daily pulse is the only tripwire. Do not build a second watchdog. Do not auto-fix from this pulse.",
+          "group": "backend",
+          "proof": "0 of the newest 5 real bookings carried a join link, so a new booking will not have one either (the newest real booking was made 47 days ago). The 15-minute text sends the portal sign-in page where the link should be.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "0 of the newest 5 real bookings carried a join link, so a new booking will not have one either (the newest real booking was made 47 days ago). The 15-minute text sends the portal sign-in page where the link should be."
+        },
+        {
+          "id": "email:drip-step-no-email",
+          "fix": "The drip moved their step and no email row exists. Read slo_drip_step on the client and the EMAIL-SLO-DRIP rows. sendTemplated ignores a repeat provider_ref. Report it on the morning pulse (Recon AG-07). Do not send email from this check. Do not flip outbound. Do not build a second watchdog.",
+          "group": "backend",
+          "proof": "1 person is on the roadmap drip with 3 steps that never queued an email.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "1 person is on the roadmap drip with 3 steps that never queued an email."
+        },
+        {
+          "id": "email:morning-no-failure-check",
+          "fix": "Read the send result in that morning job and leave the miss on its tally. Report it on the morning pulse (Recon AG-07). Do not send email from this check. Do not flip outbound. Do not build a second watchdog.",
+          "group": "backend",
+          "proof": "src/workflows/slo-infinite-drip.mjs (8:00 a.m. Arizona) sends email and does not check whether it queued.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "src/workflows/slo-infinite-drip.mjs (8:00 a.m. Arizona) sends email and does not check whether it queued."
+        },
+        {
+          "id": "fulfillment:next-action",
+          "fix": "Open the repair desk and set the next step on the file that has been waiting. Recon (AG-07) is the one tripwire. Do not auto-fix from this pulse. Do not apply to a real lender. Do not upload.",
+          "group": "backend",
+          "proof": "1 repair file past the clock and the screen shows no next step. Look at (id hidden) (analysis).",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "1 repair file past the clock and the screen shows no next step. Look at (id hidden) (analysis)."
+        },
+        {
+          "id": "gap-funnels:funnel:order-price-matches-till",
+          "fix": "The old order page and the till (what /roadmap charges) show different prices for the same product. A buyer who lands on /order pays the other price, and a ClickFunnels order does not open the portal. Decide which price is right, then make /order match the till, or take /order down (a 404, a 410, or a redirect off /order clears this row). Do not edit it from this check.",
+          "group": "backend",
+          "proof": "https://apply.fundhub.ai/order charges $297 but the till says $147, the price /roadmap charges",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "https://apply.fundhub.ai/order charges $297 but the till says $147, the price /roadmap charges"
+        },
+        {
+          "id": "handoff:lead-first-touches-missing",
+          "fix": "A new lead got nothing after signing up. Read the lead's entry.captured or survey.submitted event, then the s-00-welcome, s-02-incomplete-survey-nudge or s-nobook-chase run in Inngest. A saved event with no run means the hand-off to Inngest broke (INNGEST_EVENT_KEY, or Inngest itself). Do not send from this check. Do not change the outbound switch. Recon stays the one tripwire.",
+          "group": "backend",
+          "proof": "1 new lead got no welcome email (EMAIL-S00-WELCOME) 30+ minutes after signing up (newest 6 days ago, FH-000532). 1 lead had not finished the survey after 25 minutes and got no nudge email (EMAIL-S02-FINISH-APPLICATION) (newest 6 days ago, FH-000532).",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "1 new lead got no welcome email (EMAIL-S00-WELCOME) 30+ minutes after signing up (newest 6 days ago, FH-000532). 1 lead had not finished the survey after 25 minutes and got no nudge email (EMAIL-S02-FINISH-APPLICATION) (newest 6 days ago, F"
+        },
+        {
+          "id": "payments:paid-product-unmapped",
+          "fix": "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. Do not auto-fix. Do not take a card payment. Do not mint a Commas catalog product. Match each order to its person and product by hand: add the vendor title to the product's aliases through the existing product flow, then give the access in the existing grant flow. Do not take the payment again.",
+          "group": "backend",
+          "proof": "1 paid order in the last 30 days that we cannot match: 1 order for a product name we do not know, with no access given since. UnderwriteIQ soft-pull assessment $32.00 (order ORD-N40H-ZZ26-HKNW, client FH-000530). Left out: 2 orders with an unknown product name already have access, 22 test-client payments.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "1 paid order in the last 30 days that we cannot match: 1 order for a product name we do not know, with no access given since. UnderwriteIQ soft-pull assessment $32.00 (order ORD-N40H-ZZ26-HKNW, client FH-000530). Left out: 2 orders with an "
+        },
+        {
+          "id": "portal:paid-client-never-signed-in",
+          "fix": "Send each of them their sign-in link from the staff screen, or call them. Do not auto-fix from this pulse.",
+          "group": "backend",
+          "proof": "1 paying client has held portal access for over 72 hours and has never signed in (longest wait 3 days; 0 of 1 asked for a sign-in link since access was given). Left out: 1 test client, 0 with no payment event.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "1 paying client has held portal access for over 72 hours and has never signed in (longest wait 3 days; 0 of 1 asked for a sign-in link since access was given). Left out: 1 test client, 0 with no payment event."
+        },
+        {
+          "id": "repair-letter-round",
+          "fix": "A letter round should have been written and was not. A person can look on the Repair desk. Do not mail it. Recon (AG-07) is the only tripwire. Do not add a second watchdog. Do not send bureau mail. Do not pull credit. Do not rewrite a dispute letter that contradicts itself. Do not auto-fix from this check.",
+          "group": "backend",
+          "proof": "1 repair file has sat in analysis past the 1 hour clock with no letters made. Look at (id hidden) (analysis).",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "1 repair file has sat in analysis past the 1 hour clock with no letters made. Look at (id hidden) (analysis)."
+        },
+        {
+          "id": "gap:sms-journey-zero",
+          "fix": "A step that should text wrote no text row. Read the event and the template. Do not send a text from this check. Do not change the outbound switch. Recon stays the one tripwire.",
+          "group": "backend",
+          "proof": "2 steps that should text have no text row (entry.captured).",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "2 steps that should text have no text row (entry.captured)."
+        },
+        {
+          "id": "gap-sms:gap:msg-sent-no-receipt",
+          "fix": "Read the message rows still on sent. Check the delivery receipt door for that channel is switched on, signed and reachable (email events, text status callbacks). Do not resend. Do not send from this check.",
+          "group": "backend",
+          "proof": "2 messages (2 emails) went out and got no delivery receipt for over 24 hours. The oldest left us 17 days ago.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "2 messages (2 emails) went out and got no delivery receipt for over 24 hours. The oldest left us 17 days ago."
+        },
+        {
+          "id": "gap-sms:gap:msg-approved-template-bad-copy",
+          "fix": "Write the real copy, or set the template back to not approved. The sender holds placeholder and draft copy, so no customer ever gets it. Do not send from this check.",
+          "group": "backend",
+          "proof": "15 templates are marked ready but still hold placeholder words (14 lorem ipsum, 1 draft mark). The sender holds these, so the customer gets nothing. First: BS-EMAIL-FUNDING-72HR, BS-EMAIL-REPAIR-72HR, BS-REPAIR-D1-E1-morning, BS-REPAIR-D1-E2-midmorning, BS-REPAIR-D1-E3-lunch and 10 more.",
+          "since": "2026-10-09",
+          "status": "red",
+          "day_count": 1,
+          "customer_sees": "15 templates are marked ready but still hold placeholder words (14 lorem ipsum, 1 draft mark). The sender holds these, so the customer gets nothing. First: BS-EMAIL-FUNDING-72HR, BS-EMAIL-REPAIR-72HR, BS-REPAIR-D1-E1-morning, BS-REPAIR-D1-E"
+        }
+      ],
+      "green": 695,
+      "total": 1008,
+      "status": "ok",
+      "not_checked": 299
+    },
+    "marketing": {
+      "to": "2026-10-09T07:00:00.000Z",
+      "from": "2026-10-08T07:00:00.000Z",
+      "notes": [
+        "Offer comes from each ad's script label (ad_scripts.offer_key). Ads and people with no label show as \"No offer label\".",
+        "Funnel comes from the person's first landing page (src/funnel/pages.mjs)."
+      ],
+      "offers": [],
+      "status": "ok",
+      "window": "yesterday (2026-10-08)",
+      "ads_line": "Ads and sales yesterday (2026-10-08), all offers: no ad spend synced, 0 new people, 0 booked, 0 showed, 0 sales, $0.00 cash; cost per booked person: too few to say; return on ad spend unknown.",
+      "dying_ads": [],
+      "spend_day": "2026-10-08",
+      "all_offers": {
+        "totals": {
+          "roas": null,
+          "leads": 0,
+          "sales": 0,
+          "booked": 0,
+          "showed": 0,
+          "no_shows": 0,
+          "cash_cents": 0,
+          "close_rate": null,
+          "spend_cents": null,
+          "cost_per_booked": {
+            "n": 0,
+            "note": "Need 10 booked people. Have 0. Do not invent a cost.",
+            "status": "INSUFFICIENT",
+            "cost_cents": null
+          }
+        },
+        "not_split": [
+          {
+            "key": "spend_by_funnel",
+            "what": "Spend per funnel",
+            "value": null,
+            "reason": "Spend belongs to an ad, and an ad has no funnel, so spend, cost per booked person and return on ad spend are split by offer only."
+          }
+        ]
+      },
+      "dying_line": "Dying ads: none flagged.",
+      "spend_line": "Ad spend yesterday (2026-10-08): no spend rows synced.",
+      "spend_cents": null,
+      "spend_source": "ad_metrics_daily",
+      "dashboard_url": null,
+      "dashboard_line": "Marketing dashboard: not built yet."
+    },
+    "money": {
+      "line": "Money: not connected yet.",
+      "reason": "PLAID_ENV is not production",
+      "status": "not_connected"
+    },
+    "team": {
+      "to": "2026-10-09T07:00:00.000Z",
+      "from": "2026-10-08T07:00:00.000Z",
+      "line": "Team, yesterday (2026-10-08): 0 calls held, 0 no-shows, 0 sales, close rate: no calls held. Now: 0 CSM tasks overdue, 0 calls not recorded. Last 24 hours: 0 files funded.",
+      "pods": {
+        "tandem": false,
+        "complete": 4,
+        "fa_count": 5,
+        "closer_count": 4,
+        "unpaired_fas": 1,
+        "complete_with": "closer",
+        "unpaired_closers": 0
+      },
+      "status": "ok",
+      "window": "yesterday (2026-10-08)",
+      "closers": [],
+      "waiting": [
+        "Funding advisor files per person: no source yet. Nothing links a funding round to an advisor."
+      ],
+      "calendar": {
+        "packed": false,
+        "reason": "no_closer_due_at",
+        "source": "MODEL",
+        "threshold": null,
+        "window_end": "2026-10-16T00:00:00.000Z",
+        "fill_factor": 0.9,
+        "closer_count": 4,
+        "due_at_count": 0,
+        "window_start": "2026-10-09T00:00:00.000Z",
+        "window_weekdays": 5,
+        "slots_per_closer_day": 10
+      },
+      "company_8": {
+        "show_rate": {
+          "value": null,
+          "missing": true
+        },
+        "cash_cents": {
+          "value": 0,
+          "missing": false
+        },
+        "close_rate": {
+          "value": null,
+          "missing": true
+        },
+        "new_clients": {
+          "value": 0,
+          "missing": false
+        },
+        "booked_calls": {
+          "value": 0,
+          "missing": false
+        },
+        "funded_count": {
+          "value": 0,
+          "missing": false
+        },
+        "funded_dollars_cents": {
+          "value": 0,
+          "missing": false
+        },
+        "cost_per_funded_cents": {
+          "value": null,
+          "reason": "no_funded_clients_in_window",
+          "missing": true
+        }
+      },
+      "all_offers": {
+        "not_split": [
+          {
+            "key": "csm_overdue",
+            "unit": "count",
+            "what": "CSM tasks overdue",
+            "value": 0,
+            "reason": "Counted for the whole company right now; tasks are not split by offer or funnel."
+          },
+          {
+            "key": "unrecorded_calls",
+            "unit": "count",
+            "what": "Calls not recorded",
+            "value": 0,
+            "reason": "Counted for the whole company right now (src/sales/unrecorded.mjs); not split by offer or funnel."
+          },
+          {
+            "key": "company_8",
+            "unit": null,
+            "what": "Company numbers, last 24 hours",
+            "value": null,
+            "reason": "The company pulse (src/ops/pulse.mjs) counts the whole company; it is not split by offer or funnel."
+          }
+        ]
+      },
+      "csm_overdue": 0,
+      "company_window": "last 24 hours",
+      "unrecorded_calls": 0
+    },
+    "suggestions": [
+      {
+        "rule": "fix_broken_same_day",
+        "status": "open",
+        "numbers": {
+          "score": 24,
+          "source": "failed_events",
+          "open_count": 24,
+          "top_handler": "onDepositPaidMoney",
+          "gave_up_count": 0,
+          "new_yesterday": 0,
+          "top_handler_count": 21
+        },
+        "headline": "24 broken steps are still open on the dead-letter list (0 new yesterday, 0 out of retries). Most are in onDepositPaidMoney (21). A repair is fixed today; the cadence wait does not apply.",
+        "write_up": null,
+        "rule_text": "Rule 2: broken things get fixed the same day.",
+        "brief_date": "2026-10-09",
+        "created_at": "2026-10-09T13:02:01.828Z",
+        "model_used": false,
+        "updated_at": "2026-10-09T13:02:01.828Z",
+        "quiet_until": null,
+        "subject_key": "failed_events",
+        "dollar_impact_cents": null
+      },
+      {
+        "rule": "fix_broken_same_day",
+        "status": "open",
+        "numbers": {
+          "proof": "Last desk sweep was 39.4h ago (score 100/100, 41/41 passed). Too old.",
+          "score": 1,
+          "source": "pulse_scorecards",
+          "check_id": "live-playwright:desks"
+        },
+        "headline": "Systems check red (live-playwright:desks): Last desk sweep was 39.4h ago (score 100/100, 41/41 passed). Too old. Fix today; the cadence wait does not apply.",
+        "write_up": null,
+        "rule_text": "Rule 2: broken things get fixed the same day.",
+        "brief_date": "2026-10-09",
+        "created_at": "2026-10-09T13:02:02.343Z",
+        "model_used": false,
+        "updated_at": "2026-10-09T13:02:02.343Z",
+        "quiet_until": null,
+        "subject_key": "scorecard:live-playwright:desks",
+        "dollar_impact_cents": null
+      },
+      {
+        "rule": "fix_broken_same_day",
+        "status": "open",
+        "numbers": {
+          "proof": "13 repo save(s) waiting but outbox_drain last ran 2026-10-09 12:45 UTC (15.3 min ago; red after 3 min)",
+          "score": 1,
+          "source": "pulse_scorecards",
+          "check_id": "03-marketing:outbox_drain"
+        },
+        "headline": "Systems check red (03-marketing:outbox_drain): 13 repo save(s) waiting but outbox_drain last ran 2026-10-09 12:45 UTC (15.3 min ago; red after 3 min) Fix today; the cadence wait does not apply.",
+        "write_up": null,
+        "rule_text": "Rule 2: broken things get fixed the same day.",
+        "brief_date": "2026-10-09",
+        "created_at": "2026-10-09T13:02:02.895Z",
+        "model_used": false,
+        "updated_at": "2026-10-09T13:02:02.895Z",
+        "quiet_until": null,
+        "subject_key": "scorecard:03-marketing:outbox_drain",
+        "dollar_impact_cents": null
+      }
+    ],
+    "today": {
+      "line": "Today: no source yet (MB4).",
+      "status": "waiting"
+    }
+  }
+}

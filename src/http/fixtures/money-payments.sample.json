@@ -1,0 +1,278 @@
+{
+  "ok": true,
+  "client": {
+    "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+    "name": "Sample Client"
+  },
+  "as_of": "2026-10-06T17:00:00.000Z",
+  "owed": {
+    "open_count": 2,
+    "left_cents": 145000,
+    "late_cents": 50000,
+    "late_count": 1
+  },
+  "plans": [
+    {
+      "id": "c1a71e00-0000-4000-8000-000000000001",
+      "kind": "clarity",
+      "owed_to": "Fundhub LLC",
+      "label": null,
+      "name": "Fundhub payment plan",
+      "status": "open",
+      "settled_at": null,
+      "original_cents": 150000,
+      "paid_cents": 50000,
+      "left_cents": 100000,
+      "is_late": true,
+      "days_late": 4,
+      "late_cents": 50000,
+      "next": {
+        "seq": 2,
+        "due_on": "2026-10-02",
+        "left_cents": 50000,
+        "state": "late"
+      },
+      "installments": [
+        {
+          "id": "c1a71e00-0000-4000-8000-0000000000a1",
+          "seq": 1,
+          "due_on": "2026-09-02",
+          "amount_cents": 50000,
+          "paid_cents": 50000,
+          "left_cents": 0,
+          "paid_at": "2026-09-02T17:00:00.000Z",
+          "state": "paid",
+          "days_late": 0
+        },
+        {
+          "id": "c1a71e00-0000-4000-8000-0000000000a2",
+          "seq": 2,
+          "due_on": "2026-10-02",
+          "amount_cents": 50000,
+          "paid_cents": 0,
+          "left_cents": 50000,
+          "paid_at": null,
+          "state": "late",
+          "days_late": 4
+        },
+        {
+          "id": "c1a71e00-0000-4000-8000-0000000000a3",
+          "seq": 3,
+          "due_on": "2026-11-02",
+          "amount_cents": 50000,
+          "paid_cents": 0,
+          "left_cents": 50000,
+          "paid_at": null,
+          "state": "upcoming",
+          "days_late": 0
+        }
+      ]
+    },
+    {
+      "id": "b0b10000-0000-4000-8000-000000000002",
+      "kind": "bnpl",
+      "owed_to": "Fundhub LLC",
+      "label": null,
+      "name": "buy now, pay later plan with Fundhub LLC",
+      "status": "open",
+      "settled_at": null,
+      "original_cents": 60000,
+      "paid_cents": 15000,
+      "left_cents": 45000,
+      "is_late": false,
+      "days_late": 0,
+      "late_cents": 0,
+      "next": {
+        "seq": 2,
+        "due_on": "2026-10-15",
+        "left_cents": 15000,
+        "state": "upcoming"
+      },
+      "installments": [
+        {
+          "id": "b0b10000-0000-4000-8000-0000000000b1",
+          "seq": 1,
+          "due_on": "2026-09-15",
+          "amount_cents": 15000,
+          "paid_cents": 15000,
+          "left_cents": 0,
+          "paid_at": "2026-09-15T17:00:00.000Z",
+          "state": "paid",
+          "days_late": 0
+        },
+        {
+          "id": "b0b10000-0000-4000-8000-0000000000b2",
+          "seq": 2,
+          "due_on": "2026-10-15",
+          "amount_cents": 15000,
+          "paid_cents": 0,
+          "left_cents": 15000,
+          "paid_at": null,
+          "state": "upcoming",
+          "days_late": 0
+        },
+        {
+          "id": "b0b10000-0000-4000-8000-0000000000b3",
+          "seq": 3,
+          "due_on": "2026-11-15",
+          "amount_cents": 15000,
+          "paid_cents": 0,
+          "left_cents": 15000,
+          "paid_at": null,
+          "state": "upcoming",
+          "days_late": 0
+        },
+        {
+          "id": "b0b10000-0000-4000-8000-0000000000b4",
+          "seq": 4,
+          "due_on": "2026-12-15",
+          "amount_cents": 15000,
+          "paid_cents": 0,
+          "left_cents": 15000,
+          "paid_at": null,
+          "state": "upcoming",
+          "days_late": 0
+        }
+      ]
+    }
+  ],
+  "upcoming": [
+    {
+      "type": "clarity",
+      "name": "buy now, pay later plan with Fundhub LLC",
+      "on": "2026-10-15",
+      "amount_cents": 15000,
+      "plan_id": "b0b10000-0000-4000-8000-000000000002"
+    },
+    {
+      "type": "card_due",
+      "name": "Business Amex",
+      "on": "2026-10-21",
+      "amount_cents": 13500
+    },
+    {
+      "type": "clarity",
+      "name": "Fundhub payment plan",
+      "on": "2026-11-02",
+      "amount_cents": 50000,
+      "plan_id": "c1a71e00-0000-4000-8000-000000000001"
+    }
+  ],
+  "agent_log": [
+    {
+      "id": "10910000-0000-4000-8000-000000000001",
+      "item_kind": "clarity_installment",
+      "item_label": "Fundhub payment plan — payment 2",
+      "decided_on": "2026-10-05",
+      "action": "second_check_in",
+      "actor": "agent",
+      "brain": "rules",
+      "reason": null,
+      "message_status": "queued",
+      "task_created": false,
+      "amount_cents": 50000,
+      "at": "2026-10-05T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000002",
+      "item_kind": "clarity_installment",
+      "item_label": "Fundhub payment plan — payment 2",
+      "decided_on": "2026-10-03",
+      "action": "late_check_in",
+      "actor": "agent",
+      "brain": "rules",
+      "reason": null,
+      "message_status": "queued",
+      "task_created": false,
+      "amount_cents": 50000,
+      "at": "2026-10-03T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000003",
+      "item_kind": "clarity_installment",
+      "item_label": "Fundhub payment plan — payment 2",
+      "decided_on": "2026-09-29",
+      "action": "reminder",
+      "actor": "agent",
+      "brain": "rules",
+      "reason": null,
+      "message_status": "queued",
+      "task_created": false,
+      "amount_cents": 50000,
+      "at": "2026-09-29T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000004",
+      "item_kind": "clarity_payment",
+      "item_label": "bnpl",
+      "decided_on": "2026-09-15",
+      "action": "payment_recorded",
+      "actor": "staff",
+      "brain": null,
+      "reason": null,
+      "message_status": null,
+      "task_created": false,
+      "amount_cents": 15000,
+      "at": "2026-09-15T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000005",
+      "item_kind": "clarity_installment",
+      "item_label": "buy now, pay later plan with Fundhub LLC — payment 1",
+      "decided_on": "2026-09-12",
+      "action": "reminder",
+      "actor": "agent",
+      "brain": "rules",
+      "reason": null,
+      "message_status": "queued",
+      "task_created": false,
+      "amount_cents": 15000,
+      "at": "2026-09-12T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000006",
+      "item_kind": "clarity_payment",
+      "item_label": "clarity",
+      "decided_on": "2026-09-02",
+      "action": "payment_recorded",
+      "actor": "staff",
+      "brain": null,
+      "reason": null,
+      "message_status": null,
+      "task_created": false,
+      "amount_cents": 50000,
+      "at": "2026-09-02T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000007",
+      "item_kind": "clarity_payment",
+      "item_label": "bnpl",
+      "decided_on": "2026-09-01",
+      "action": "plan_added",
+      "actor": "staff",
+      "brain": null,
+      "reason": null,
+      "message_status": null,
+      "task_created": false,
+      "amount_cents": 60000,
+      "at": "2026-09-01T16:30:00.000Z"
+    },
+    {
+      "id": "10910000-0000-4000-8000-000000000008",
+      "item_kind": "clarity_payment",
+      "item_label": "clarity",
+      "decided_on": "2026-09-01",
+      "action": "plan_added",
+      "actor": "staff",
+      "brain": null,
+      "reason": null,
+      "message_status": null,
+      "task_created": false,
+      "amount_cents": 150000,
+      "at": "2026-09-01T16:30:00.000Z"
+    }
+  ],
+  "agent": {
+    "brain": "rules"
+  }
+}

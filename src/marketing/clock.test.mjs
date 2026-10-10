@@ -21,11 +21,13 @@ const NO_WORK = Object.freeze({ outbox_waiting: 0, buzzes_due: 0, jobs_due: 0, s
 const ORG_A = "11111111-1111-4111-8111-111111111111";
 const ORG_B = "22222222-2222-4222-8222-222222222222";
 
-/** Fake deps: records every call. */
-function fakeDeps({ settings = [{ org_id: ORG_A, enabled: false }], work = NO_WORK, orgs = [ORG_A] } = {}) {
-  const calls = { readSettings: 0, readWaitingWork: [], machineOrgIds: 0, beats: [], wakes: 0, logs: [] };
+/** Fake deps: records every call. weeklyTick (U35) answers `weekly` for each enabled company. */
+function fakeDeps({ settings = [{ org_id: ORG_A, enabled: false }], work = NO_WORK, orgs = [ORG_A], weekly = { queued: [] }, late = [] } = {}) {
+  const calls = { readSettings: 0, weeklyTick: [], followLateDrafts: 0, readWaitingWork: [], machineOrgIds: 0, beats: [], wakes: 0, logs: [] };
   const deps = {
     readSettings: async () => { calls.readSettings += 1; return settings; },
+    weeklyTick: async (s, now) => { calls.weeklyTick.push({ org_id: s.org_id, now }); return typeof weekly === "function" ? weekly(s) : weekly; },
+    followLateDrafts: async () => { calls.followLateDrafts += 1; return late; },
     readWaitingWork: async (opts) => { calls.readWaitingWork.push(opts); return work; },
     machineOrgIds: async () => { calls.machineOrgIds += 1; return orgs; },
     beat: async (name, entries) => { calls.beats.push({ name, entries }); return entries.length; },
@@ -83,13 +85,51 @@ describe("tick: 'enabled' is the weekly-batch switch only", () => {
     });
   }
 
-  test("enabled true: the batch is 'on' and still plans nothing in this unit (U35 adds the schedule)", async () => {
-    const { deps, calls } = fakeDeps({ settings: [{ org_id: ORG_A, enabled: true }, { org_id: ORG_B, enabled: false }], orgs: [ORG_A, ORG_B] });
+  test("enabled true: the weekly step runs for that company only; enabled false never reaches it (U35)", async () => {
+    const queued = [{ kind: "start_batch", batch_id: "b1" }, { kind: "nightly_script_check", day: "2026-10-12" }];
+    const { deps, calls } = fakeDeps({
+      settings: [{ org_id: ORG_A, enabled: true }, { org_id: ORG_B, enabled: false }], orgs: [ORG_A, ORG_B],
+      weekly: { queued, release_at: "2026-10-12T14:00:00.000Z", week_key: "2026-W42", made_batch: "b1" }
+    });
+    const { out, hits } = await withNoNetwork(() => tick({ deps }));
+    assert.deepEqual(hits, []);
+    assert.deepEqual(calls.weeklyTick.map((c) => c.org_id), [ORG_A], "the disabled company never reaches the weekly step");
+    assert.equal(calls.weeklyTick[0].now.toISOString(), "2026-10-12T15:00:00.000Z", "the tick's own clock is passed on");
+    assert.deepEqual(out.batch.map((b) => [b.org_id, b.batch, b.planned]), [[ORG_A, "on", 2], [ORG_B, "disabled", 0]]);
+    assert.match(out.batch[0].note, /queued start_batch, nightly_script_check; made this week's batch/);
+    assert.deepEqual(calls.beats[0].entries.map((e) => [e.orgId, e.detail.enabled, e.detail.batch, e.detail.planned]),
+      [[ORG_A, true, "on", 2], [ORG_B, false, "disabled", 0]]);
+  });
+
+  test("enabled true with nothing due: 'on', nothing queued", async () => {
+    const { deps, calls } = fakeDeps({ settings: [{ org_id: ORG_A, enabled: true }] });
     const { out } = await withNoNetwork(() => tick({ deps }));
-    assert.deepEqual(out.batch.map((b) => [b.org_id, b.batch, b.planned]), [[ORG_A, "on", 0], [ORG_B, "disabled", 0]]);
+    assert.equal(calls.weeklyTick.length, 1);
+    assert.deepEqual(out.batch.map((b) => [b.batch, b.planned]), [["on", 0]]);
+    assert.match(out.batch[0].note, /nothing to queue this tick/);
     assert.equal(calls.wakes, 0);
-    assert.deepEqual(calls.beats[0].entries.map((e) => [e.orgId, e.detail.enabled, e.detail.batch]),
-      [[ORG_A, true, "on"], [ORG_B, false, "disabled"]]);
+  });
+
+  test("a company whose weekly step throws is logged; the others still run and the clock still beats", async () => {
+    const { deps, calls } = fakeDeps({
+      settings: [{ org_id: ORG_A, enabled: true }, { org_id: ORG_B, enabled: true }], orgs: [ORG_A, ORG_B],
+      weekly: (s) => { if (s.org_id === ORG_A) throw new Error("db hiccup"); return { queued: [{ kind: "voice_export" }] }; }
+    });
+    const { out } = await withNoNetwork(() => tick({ deps }));
+    assert.equal(out.ok, true);
+    assert.equal(out.batch[0].error, "db hiccup");
+    assert.match(out.batch[0].note, /failed \(db hiccup\); the next tick tries again/);
+    assert.equal(out.batch[1].planned, 1);
+    assert.equal(calls.beats.length, 1);
+  });
+
+  test("late drafts are followed up for every company, even with the weekly switch off", async () => {
+    const { deps, calls } = fakeDeps({ late: [{ org_id: ORG_A, batch_id: "33333333-3333-4333-8333-333333333333" }] });
+    const { out } = await withNoNetwork(() => tick({ deps }));
+    assert.equal(calls.followLateDrafts, 1);
+    assert.equal(calls.weeklyTick.length, 0);
+    assert.deepEqual(out.late, [{ org_id: ORG_A, batch_id: "33333333-3333-4333-8333-333333333333" }]);
+    assert.ok(calls.logs.some((l) => /late drafts: queued finish_batch for 33333333/.test(l)));
   });
 
   test("no company has settings yet: logs 'disabled', still beats for companies with waiting work, and wakes", async () => {
@@ -178,11 +218,17 @@ describe("the clock only reads, queues and wakes — no model, GitHub or Meta ca
     }
   });
 
-  test("the clock's source writes only its heartbeat (no job insert, no settings row)", () => {
+  test("the clock's source writes only its heartbeat, the weekly batch row and queued jobs (no settings row, no delete)", () => {
     const src = readFileSync(path.join(ROOT, "src/marketing/clock.mjs"), "utf8");
     // "ON CONFLICT ... DO UPDATE SET" is the heartbeat's own upsert, not a second write.
     const writes = [...src.matchAll(/(?<!DO )\b(INSERT INTO|UPDATE|DELETE FROM)\s+(\w+)/g)].map((m) => `${m[1]} ${m[2]}`);
-    assert.deepEqual([...new Set(writes)], ["INSERT INTO marketing_heartbeats"]);
+    assert.deepEqual([...new Set(writes)].sort(), [
+      "INSERT INTO marketing_batches",   // U35: the week's batch row (ON CONFLICT DO NOTHING)
+      "INSERT INTO marketing_heartbeats",
+      "INSERT INTO marketing_jobs",      // U35: followLateDrafts (start/release/voice/nightly go through enqueueJob)
+      "UPDATE marketing_batches"         // U35: a failed weekly plan back to 'planned' before its retry
+    ]);
+    assert.doesNotMatch(src, /\bDELETE\b/);
   });
 });
 

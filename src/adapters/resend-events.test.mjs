@@ -132,6 +132,17 @@ test("a bounce and a failure are different statuses, not one", async () => {
   }
 });
 
+test("a suppressed event is a receipt: the message leaves 'sent' as bounced", async () => {
+  const db = dbWith(ROW);
+  const out = await handleResendDeliveryEvent({ db, ...signed(evt("email.suppressed")), secret: SECRET, now: NOW });
+  assert.equal(out.status, 200);
+  assert.notEqual(out.reason, "unknown_event");
+  assert.equal(out.updated, 1);
+  const upd = db.calls.find((c) => /UPDATE messages/.test(c.sql));
+  assert.ok(upd, "no UPDATE messages ran for email.suppressed");
+  assert.equal(upd.params[1], "bounced");
+});
+
 test("a complaint writes the opt-out BEFORE it touches the message row", async () => {
   /* Order matters and is not cosmetic: a failure updating the message must not
      cost us the withdrawal of consent, because that is the half with legal

@@ -76,6 +76,11 @@ function fakeTx(world, log) {
         return { rows: (world.copyCalls || []).slice(0, params[1]) };
       }
       if (s.includes("FROM partner_ai_usage")) return { rows: [{ used: world.used ?? 0 }] };
+      // MARKETING_AI_RUNNER=local only: the Mac's queue (src/marketing/ai-runner.mjs).
+      if (s.includes("-- mac_queue")) {
+        assert.equal(params[0], ORG, "the Mac queue line counts this company's jobs only");
+        return { rows: [world.macQueue || { waiting: 0, running: 0 }] };
+      }
       // The offer cost read only. U32's stuck_jobs read also says FROM marketing_jobs;
       // it carries a "-- m5:" tag and is answered below from world.m5.
       if (s.includes("FROM marketing_jobs") && !s.includes("-- m5:")) {
@@ -486,6 +491,18 @@ describe("marketing/today — the M5 keys (U32)", () => {
     assert.deepEqual(r.body.waiting, []);
   });
 
+  test("MARKETING_AI_RUNNER=local adds mac_queue (the AI jobs waiting for the Mac); unset, the key is not there", async () => {
+    const { r } = await call({ ...WORLD, macQueue: { waiting: 2, running: 1 } }, { env: { ANTHROPIC_API_KEY: ANT, MARKETING_AI_RUNNER: "local" } });
+    assert.equal(r.code, 200);
+    assert.deepEqual(Object.keys(r.body), [...OLD_KEYS, ...NEW_KEYS, "mac_queue"]);
+    assert.deepEqual(r.body.mac_queue, {
+      waiting: 2, running: 1,
+      line: "2 AI jobs are waiting for your Mac to run them. Your Mac is running 1 now."
+    });
+    const off = await call({ ...WORLD, macQueue: { waiting: 2, running: 1 } });
+    assert.equal("mac_queue" in off.r.body, false);
+  });
+
   test("no M5 data: unknown money stays null, counts are a real 0, lists are empty", async () => {
     const { r } = await call(WORLD);
     const b = r.body;
@@ -585,7 +602,14 @@ describe("model prices — only with a source", () => {
     assert.equal(priceOf("claude-sonnet-4-5-20250929"), null);
     assert.equal(priceOf("gpt-4o-mini"), null);
     assert.equal(priceOf("claude-opus-5-5-20260401"), null, "exact names only, no near matches");
-    assert.deepEqual(Object.keys(MODEL_PRICES), ["claude-opus-5-5"]);
+    assert.deepEqual(Object.keys(MODEL_PRICES), ["claude-opus-5-5", "claude-code"]);
+  });
+
+  test("claude-code (the Mac queue runner, Chris's subscription) is a real $0, not unknown", () => {
+    assert.deepEqual({ ...priceOf("claude-code") }, { inCentsPerMTok: 0, outCentsPerMTok: 0 });
+    const c = costOfCalls([{ model: "claude-code", input_tokens: 24551, output_tokens: 28640 }]);
+    assert.equal(c.cents, 0);
+    assert.deepEqual(c.unpriced, []);
   });
 
   test("the offer contract's measured run is 67 cents", () => {

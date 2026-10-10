@@ -2,7 +2,13 @@
 //
 // Body: { action, client_id, ...fields }
 //   create_credit_partner — first_name, last_name, email, phone?
-//   set_next_sequence_date — ready_date (YYYY-MM-DD)
+//   set_next_sequence_date — ready_date (YYYY-MM-DD). The staff date wins over the
+//                            file math's suggestion.
+//   get_next_sequence_plan — (no extra fields) READ ONLY. The date the file math
+//                            suggests for the next funding sequence, with each
+//                            reason and its source, the blockers, the confidence,
+//                            and the staff date next to it. See
+//                            src/blueprint/next-sequence-plan.mjs.
 //   offer_bank_tracker — offered (boolean, default true)
 //   add_bank_todo — bank_key, account_kind (personal|business), notes?
 //   list_bank_todos — (no extra fields)
@@ -14,6 +20,8 @@ import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { createCreditPartnerFile } from "../../src/blueprint/credit-partner.mjs";
 import { setNextFundingSequenceReadyDate } from "../../src/blueprint/next-funding-sequence.mjs";
+import { computeNextSequenceDate } from "../../src/blueprint/next-sequence-plan.mjs";
+import { planSummaryText } from "../../src/blueprint/next-sequence-math.mjs";
 import {
   setBankRelationshipOffered,
   addBankRelationshipTodo,
@@ -25,13 +33,18 @@ const ROLES = ROLE_SETS.STAFF;
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
+  /* Test seams, the same shape api/money/banks.mjs uses. In production none is set. */
+  const authenticate = deps.requireAuth ?? requireAuth;
+  const inOrg = deps.requireClientInOrg ?? requireClientInOrg;
+  const planFor = deps.computeNextSequenceDate ?? computeNextSequenceDate;
+  const clock = deps.now ?? (() => new Date());
 
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 
-  const staff = await requireAuth(req, res, { db: database });
+  const staff = await authenticate(req, res, { db: database });
   if (!staff) return;
   if (!requireRole(res, staff, ROLES)) return;
 
@@ -48,7 +61,7 @@ export default async function handler(req, res, deps = {}) {
   const clientId = String(body.client_id).trim();
 
   try {
-    if (!(await requireClientInOrg(res, database, staff, clientId))) return;
+    if (!(await inOrg(res, database, staff, clientId))) return;
 
     if (action === "create_credit_partner") {
       const out = await createCreditPartnerFile(database, {
@@ -78,6 +91,12 @@ export default async function handler(req, res, deps = {}) {
         return res.status(status).json({ ok: false, ...out });
       }
       return res.status(200).json({ ok: true, ...out });
+    }
+
+    if (action === "get_next_sequence_plan") {
+      const plan = await planFor(database, { orgId, clientId, asOf: clock() });
+      if (!plan) return res.status(404).json({ ok: false, error: "not_found" });
+      return res.status(200).json({ ok: true, plan, summary: planSummaryText(plan) });
     }
 
     if (action === "offer_bank_tracker") {

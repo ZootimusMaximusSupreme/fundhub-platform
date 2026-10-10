@@ -1,0 +1,63 @@
+{
+  "_about": "GET /api/money/transfers for the FinanceOS test client (Test Test, f1cb9c27-…), one file: the accounts and balances are its Plaid sandbox item — sandbox bank v3 (S1): Personal Checking ••1101 $13,385.00 available, Business Checking ••2202 $21,406.00, read 2026-10-07; the $117.00 card payment is Business Amex ••4404's v3 statement minimum (account_statement_cycles, due on the 15th); the settled $20.00 move is the sandbox role-play run of scripts/finance-os-sandbox-transfer.mjs (Plaid sandbox moves no balances, so the balances do not change). The limits are example env settings (FINANCE_OS_TRANSFER_MAX_CENTS=250000, FINANCE_OS_TRANSFER_DAILY_MAX_CENTS=500000), not a Fundhub rule.",
+  "ok": true,
+  "client": { "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e", "name": "Test Test" },
+  "today": "2026-10-07",
+  "mode": { "enabled": true, "environment": "sandbox", "live": false, "reason": null },
+  "limits": { "per_transfer_cents": 250000, "daily_cents": 500000, "used_today_cents": 2000, "left_today_cents": 498000 },
+  "accounts": [
+    { "id": "1d1dee31-8a8a-43f4-bf24-f6168be17c38", "label": "Personal Checking ••1101", "kind": "personal", "available_balance_cents": 1338500 },
+    { "id": "77c8d9c7-4ef9-4c81-a484-edf7ddad3c5a", "label": "Business Checking ••2202", "kind": "business", "available_balance_cents": 2140600 }
+  ],
+  "waiting": [
+    {
+      "id": "7b0f0c52-31d6-4f0e-9d6e-2a51f1e0a001",
+      "title": "Deposit to build banking history at your business account",
+      "why": "Money that sits in your business account builds history with the bank before you apply.",
+      "kind": "deposit", "source": "staff", "proposed_by": "staff", "to_kind": "bank_account",
+      "to": { "id": "77c8d9c7-4ef9-4c81-a484-edf7ddad3c5a", "label": "Business Checking ••2202" },
+      "amount_cents": 200000, "date": "2026-10-20", "due_on": "2026-10-20",
+      "suggested_from_account_id": "1d1dee31-8a8a-43f4-bf24-f6168be17c38",
+      "can_approve": true, "blocked": null, "created_at": "2026-10-07T13:30:00.000Z"
+    },
+    {
+      "id": "7b0f0c52-31d6-4f0e-9d6e-2a51f1e0a002",
+      "title": "Pay $117.00 to Business Amex",
+      "why": "The minimum on your latest statement.",
+      "kind": "due", "source": "dues", "proposed_by": "rules", "to_kind": "card",
+      "to": { "id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e", "label": "Business Amex ••4404" },
+      "amount_cents": 11700, "date": "2026-10-15", "due_on": "2026-10-15",
+      "suggested_from_account_id": null, "can_approve": false, "blocked": "card_payment",
+      "created_at": "2026-10-07T13:00:00.000Z"
+    }
+  ],
+  "history": [
+    {
+      "id": "7b0f0c52-31d6-4f0e-9d6e-2a51f1e0a003",
+      "title": "Sandbox proof: move $20.00 to Business Checking",
+      "amount_cents": 2000, "to_kind": "bank_account", "proposed_by": "staff", "proposal_status": "done", "message": null,
+      "created_at": "2026-10-07T04:08:00.000Z",
+      "transfer": {
+        "id": "9c1d2e3f-0000-4000-8000-00000000a003", "status": "settled", "status_reason": null, "environment": "sandbox",
+        "from_label": "Personal Checking ••1101", "to_label": "Business Checking ••2202", "date": "2026-10-07",
+        "debit_status": "funds_available", "credit_status": "settled",
+        "approved_by": "sandbox_role_play", "approved_at": "2026-10-07T04:08:01.000Z",
+        "words": "Move $20.00 from Personal Checking ••1101 to Business Checking ••2202 on Oct 7, 2026",
+        "settled_at": "2026-10-07T04:08:14.000Z", "cancelled_by": null, "can_cancel": false,
+        "events": [
+          { "type": "approved", "at": "2026-10-07T04:08:01.000Z", "leg": null, "actor": "sandbox_role_play", "from_status": null, "to_status": "approved" },
+          { "type": "started", "at": "2026-10-07T04:08:02.000Z", "leg": null, "actor": "system", "from_status": "approved", "to_status": "approved" },
+          { "type": "authorized", "at": "2026-10-07T04:08:02.000Z", "leg": "debit", "actor": "provider", "from_status": "approved", "to_status": "authorized" },
+          { "type": "submitted", "at": "2026-10-07T04:08:03.000Z", "leg": "debit", "actor": "provider", "from_status": "authorized", "to_status": "submitted" },
+          { "type": "plaid_posted", "at": "2026-10-07T04:08:05.000Z", "leg": "debit", "actor": "provider", "from_status": "submitted", "to_status": "submitted" },
+          { "type": "plaid_settled", "at": "2026-10-07T04:08:07.000Z", "leg": "debit", "actor": "provider", "from_status": "submitted", "to_status": "submitted" },
+          { "type": "plaid_funds_available", "at": "2026-10-07T04:08:09.000Z", "leg": "debit", "actor": "provider", "from_status": "submitted", "to_status": "submitted" },
+          { "type": "credit_authorized", "at": "2026-10-07T04:08:09.000Z", "leg": "credit", "actor": "provider", "from_status": "submitted", "to_status": "submitted" },
+          { "type": "credit_submitted", "at": "2026-10-07T04:08:10.000Z", "leg": "credit", "actor": "provider", "from_status": "submitted", "to_status": "submitted" },
+          { "type": "plaid_posted", "at": "2026-10-07T04:08:12.000Z", "leg": "credit", "actor": "provider", "from_status": "submitted", "to_status": "submitted" },
+          { "type": "plaid_settled", "at": "2026-10-07T04:08:14.000Z", "leg": "credit", "actor": "provider", "from_status": "submitted", "to_status": "settled" }
+        ]
+      }
+    }
+  ]
+}

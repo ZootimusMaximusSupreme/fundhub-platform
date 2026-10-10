@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
+<link rel="stylesheet" href="ccp-declines.css">
 <style>
   /* Local aliases onto fundhub-brand.css — no brand token is redeclared here.
      Two tiers per hue, because the real status colors are pastels: the pastel
@@ -361,6 +362,9 @@
      link box showed on every client with no representative
      (e2e/ccp-headline.spec.mjs sweep, 2026-10-05). */
   #ccp-rep-remove[hidden],.rep-field[hidden]{display:none;}
+  /* Same trap: .action-btn sets display, so the role-gated FinanceOS row
+     needs its own [hidden] line or it shows to every role. */
+  #ccp-link-financeos[hidden]{display:none;}
 
   /* Capital Blueprint group. Only class names this screen already sizes are
      used for text (.kv-label, .fact-note, .fact-row, label), so no second
@@ -1360,6 +1364,17 @@
         <a class="action-btn" id="ccp-link-present" href="present.html">Open Closer Deck <span class="arrow">↗</span></a>
         <a class="action-btn" id="ccp-link-messaging" href="messaging.html">Open Messaging <span class="arrow">↗</span></a>
         <a class="action-btn" id="ccp-link-ir" href="inquiry-remover.html">Open Inquiry Remover <span class="arrow">↗</span></a>
+        <!-- OPEN FINANCEOS (wave 4, 2026-10-06). The client's money page,
+             /app/financeos.html, opened on THIS client. Owner, admin and
+             sales_manager only — ROLE_SETS.FINANCE, the gate on /api/money/*,
+             which already takes ?client_id= from those three. They cannot open
+             client-portal.html (PORTAL_ONLY in shell.js, an older rule kept on
+             purpose), so the portal's FinanceOS card gave staff no door at all.
+             HIDDEN by default and shown by wireFinanceOsLink() for those three
+             roles only (UI-STANDARDS §4: a role never sees a link it cannot
+             use). shell.js gateLinks() hides it again for any other role,
+             because only those three carry STAFF_MONEY. -->
+        <a class="action-btn" id="ccp-link-financeos" href="financeos.html" hidden>Open FinanceOS <span class="arrow">↗</span></a>
 
         <details class="more" id="more-menu">
           <summary>More <span class="arrow">⌄</span></summary>
@@ -1453,6 +1468,16 @@
             <div class="bp-sec-end"><button type="button" class="link-btn" id="bp-unoffer" hidden>Take the offer back</button></div>
           </div>
 
+          <!-- DECLINES (decline defense, Blueprint launch unit B1). Record a
+               bank's decline, read the likely reasons and the source of each,
+               work the reconsideration plan, record the outcome. Painted by
+               ccp-declines.js from GET /api/blueprint/declines; posts to
+               POST /api/blueprint/declines. -->
+          <div class="bp-sec" id="bp-declines">
+            <div class="cp-sec-title card-title">Declines</div>
+            <div id="bp-declines-root" aria-live="polite"><p class="fact-note">Loading declines…</p></div>
+          </div>
+
         </div>
       </div>
 
@@ -1509,6 +1534,7 @@ document.querySelectorAll('.group-title.tog').forEach(function(t){
 <script defer src="data.js"></script>
 <script src="proxy-apply.js"></script>
 <script src="money-input.js"></script>
+<script defer src="ccp-declines.js"></script>
 <script>
 /* FH-CCP-BEGIN
    THE TWO DECISIONS ON THIS SCREEN THAT CAN QUIETLY BECOME A LIE, kept pure
@@ -2525,6 +2551,26 @@ document.addEventListener("DOMContentLoaded", function () {
     href("ccp-consent-link", "consent-capture.html?client_id=" + q);
   }
 
+  /* Open FinanceOS — the client's money page on this client, for owner, admin
+     and sales_manager (ROLE_SETS.FINANCE in src/http/read-api.mjs, the gate on
+     /api/money/*). Every other role, and a page with no client open, keeps the
+     row hidden. The role is the one shell.js caches at sign-in, the same read
+     wirePortalLink() does; the endpoints stay the authority either way.
+     data-fh-href is kept in step for the same reason as wireLinks() above. */
+  function wireFinanceOsLink(id) {
+    var a = $("ccp-link-financeos");
+    if (!a) return;
+    var role = "";
+    try { role = String(localStorage.getItem("fh_role") || "").trim().toLowerCase(); }
+    catch (e) { role = ""; }
+    var may = role === "owner" || role === "admin" || role === "sales_manager" || role === "closer";
+    if (!id || !may) { a.hidden = true; return; }
+    var url = "financeos.html?client_id=" + encodeURIComponent(id);
+    a.setAttribute("href", url);
+    a.setAttribute("data-fh-href", url);
+    a.hidden = false;
+  }
+
   function paintBusinesses(state, rows, errMsg) {
     var box = $("ccp-biz-list");
     if (!box) return;
@@ -2848,6 +2894,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var id = FHData.param("id") || FHData.param("client_id") || FHData.param("client") || FHData.param("contact");
   wireLinks(id);
+  wireFinanceOsLink(id);
   /* Nothing picked is not the same as nothing known. It used to print a dash
      where the client's name goes, next to nine more dashes, which reads as a
      screen that failed rather than one waiting to be pointed at a file. */

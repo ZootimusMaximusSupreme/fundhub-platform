@@ -17,7 +17,7 @@
 // integer cents — same rule as model-usage.mjs. A price that is not known is NULL,
 // never 0, and counts at the highest known rate wherever a cap is checked.
 
-import { costUsd, worstCaseUsd, tokensOf, costStatus } from "../model-usage.mjs";
+import { costUsd, worstCaseUsd, tokensOf, costStatus, FREE_MODELS } from "../model-usage.mjs";
 
 /** One web search: $10 per 1,000. */
 export const SEARCH_USD = 0.01;
@@ -35,6 +35,8 @@ const count = (v) => {
 export function callCostUsd(model, usage, searches = 0) {
   const tokens = costUsd(model, tokensOf({ usage }));
   if (tokens == null) return null;
+  // Claude Code on the Mac (model 'claude-code'): no bill per call, no search fee.
+  if (FREE_MODELS.includes(String(model))) return tokens;
   return round6(tokens + count(searches) * SEARCH_USD);
 }
 

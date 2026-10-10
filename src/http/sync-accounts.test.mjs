@@ -316,6 +316,96 @@ describe("refusals", () => {
   });
 });
 
+describe("the plaid refresh report (src/banking/plaid-refresh.mjs)", () => {
+  const LOGIN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+  /* What refreshClientAccounts reports per login — plus two fields that must never
+     reach a response: a ciphertext and the raw store rows. */
+  const report = (over = {}) => ({
+    itemRowId: LOGIN, institution: "First Platypus Bank (Plaid sandbox — test data)",
+    ok: true, reason: null, errorCode: null, errorType: null, error: null, retryable: false,
+    relinkNeeded: false, balanceSource: "accounts_get", realtimeError: null, firstRead: false,
+    read: 4, skippedNoId: 0, written: 4,
+    created: [{ id: "n1", name: "Chase Freedom", mask: "4321", account_type: "credit", account_subtype: "credit card" }],
+    vanished: [{ id: "v1", name: "Old Visa", mask: "7777", account_type: "credit", account_subtype: null, note: "…" }],
+    balancesChanged: [{ id: "a1", name: "Checking", mask: "2202", current: { before: 100, after: 200 }, available: { before: 100, after: 150 } }],
+    encrypted_access_token: "v1:SECRET-CIPHERTEXT", rows: [{ id: "a1", raw: { huge: true } }],
+    ...over
+  });
+  const plaidOk = (over = {}) => syncOk({
+    provider: "plaid", real: true, ran: true, written: 4,
+    created: report().created, vanished: report().vanished, items: [report()], ...over
+  });
+
+  test("a plaid success carries what was created and one hand-picked report per login", async () => {
+    const { res } = await call({ body: { client_id: CLIENT_ID, provider: "plaid" }, sync: plaidOk() });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ran, true);
+    assert.equal(res.body.created.length, 1);
+    assert.equal(res.body.created[0].name, "Chase Freedom");
+    assert.equal(res.body.vanished.length, 1);
+    const [item] = res.body.items;
+    assert.equal(item.item_id, LOGIN);
+    assert.equal(item.institution, "First Platypus Bank (Plaid sandbox — test data)");
+    assert.equal(item.accounts_read, 4);
+    assert.equal(item.relink_needed, false);
+    assert.equal(item.balance_source, "accounts_get");
+    assert.deepEqual(item.balances_changed[0].current, { before: 100, after: 200 });
+    assert.equal(item.created.length, 1);
+    assert.equal(item.vanished.length, 1);
+  });
+
+  test("no token, no ciphertext and no raw rows ever reach the response", async () => {
+    const { res } = await call({ body: { client_id: CLIENT_ID, provider: "plaid" }, sync: plaidOk() });
+    const text = JSON.stringify(res.body);
+    for (const leak of ["SECRET-CIPHERTEXT", "encrypted_access_token", "huge"]) {
+      assert.equal(text.includes(leak), false, `${leak} leaked into the response`);
+    }
+  });
+
+  test("the named login is passed through as the row id the session's client owns", async () => {
+    const sync = plaidOk();
+    await call({ body: { client_id: CLIENT_ID, provider: "plaid", item_id: LOGIN }, sync });
+    assert.equal(sync.calls[0].itemId, LOGIN);
+    assert.equal(sync.calls[0].providerName, "plaid");
+  });
+
+  test("a client with no linked bank is a 200 that says nobody was asked", async () => {
+    const sync = plaidOk({ ran: false, reason: "no_linked_bank", written: 0, accounts: [], created: [], vanished: [], items: [] });
+    const { res } = await call({ body: { client_id: CLIENT_ID, provider: "plaid" }, sync });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ran, false);
+    assert.equal(res.body.reason, "no_linked_bank");
+  });
+
+  test("a login Plaid says needs the client to sign in again is a 409 whose report says relink_needed", async () => {
+    const sync = syncRefuses("upstream_error", {
+      provider: "plaid",
+      items: [report({ ok: false, reason: "upstream_error", errorCode: "ITEM_LOGIN_REQUIRED", errorType: "ITEM_ERROR", relinkNeeded: true, created: [], vanished: [], balancesChanged: [], written: 0 })]
+    });
+    const { res } = await call({ body: { client_id: CLIENT_ID, provider: "plaid" }, sync });
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.error, "upstream_error");
+    assert.equal(res.body.items[0].relink_needed, true);
+    assert.equal(res.body.items[0].error_code, "ITEM_LOGIN_REQUIRED");
+    assert.equal(JSON.stringify(res.body).includes("SECRET-CIPHERTEXT"), false);
+  });
+
+  test("a named login that cannot be read is a 404, not a 409", async () => {
+    const sync = syncRefuses("no_readable_item", { provider: "plaid", missing: ["no active, consented bank login with that id for this client"] });
+    const { res } = await call({ body: { client_id: CLIENT_ID, provider: "plaid", item_id: LOGIN }, sync });
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.body.error, "no_readable_item");
+    assert.equal(res.body.written, 0);
+  });
+
+  test("the mock response is unchanged in shape — it just gains empty plaid fields", async () => {
+    const { res } = await call();
+    assert.equal(res.body.ran, true);
+    assert.deepEqual(res.body.created, []);
+    assert.deepEqual(res.body.items, []);
+  });
+});
+
 describe("routing — the failure this repo has shipped twice", () => {
 
   test("the handler is in the hardcoded ROUTES map", async () => {

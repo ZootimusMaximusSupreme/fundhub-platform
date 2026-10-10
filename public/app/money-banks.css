@@ -1,0 +1,125 @@
+/* Banks section — FinanceOS.sections.banks (money-banks.js).
+   Every rule is under .fh-banks, so the section can sit inside the combined
+   FinanceOS page without touching its neighbours, and it carries its own base
+   pieces (.card, .grid, .eyebrow, .caption, .big, buttons, table, skeletons) so
+   it looks the same on its standalone page and as a tab. 8px spacing scale; no
+   px font sizes — sizes come from the brand classes (UI-STANDARDS §12.7).
+   Status is said in words; the pill shape and fill are the second signal
+   (UI-STANDARDS §12.6). */
+
+.fh-banks{--bk-surface:var(--surface,#fff);--bk-dim:var(--text-dim,var(--gray))}
+.fh-banks *,.fh-banks *::before,.fh-banks *::after{box-sizing:border-box}
+.fh-banks ol,.fh-banks ul{list-style:none;margin:0;padding:0}
+.fh-banks p,.fh-banks h1,.fh-banks h2,.fh-banks h3,.fh-banks dl,.fh-banks dd{margin:0}
+.fh-banks input,.fh-banks select,.fh-banks button{font:inherit;color:inherit}
+.fh-banks button{cursor:pointer}
+
+.fh-banks .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-banks .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+
+.fh-banks .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.fh-banks .tiles>*{grid-column:span 4}
+.fh-banks .two>*{grid-column:span 6}
+.fh-banks .card{background:var(--bk-surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.fh-banks .tile{display:flex;flex-direction:column;gap:8px}
+.fh-banks .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--bk-dim);margin-bottom:8px}
+.fh-banks .caption{color:var(--bk-dim)}
+.fh-banks .big,.fh-banks .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-banks .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.fh-banks .num{font-weight:500;color:var(--ink)}
+.fh-banks .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--bk-dim);white-space:nowrap}
+.fh-banks .not-set{color:var(--bk-dim);font-style:italic}
+.fh-banks .src{display:inline;white-space:normal}
+
+.fh-banks .block{margin-bottom:48px}
+.fh-banks .block>h2{font-weight:600;color:var(--ink)}
+.fh-banks .block>.caption{margin-bottom:16px}
+
+.fh-banks .btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+.fh-banks .btn-line{display:inline-flex;align-items:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600;text-decoration:none}
+.fh-banks .btn-line[disabled],.fh-banks .btn-primary[disabled]{opacity:.6;cursor:default}
+.fh-banks .btn-text{min-height:40px;padding:8px 0;border:0;background:transparent;text-decoration:underline;text-underline-offset:3px;color:var(--bk-dim)}
+.fh-banks .act-msg:empty{display:none}
+
+/* banks near you */
+.fh-banks .banks{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:16px}
+.fh-banks .banks>.bank{grid-column:span 6;display:flex;flex-direction:column;gap:16px}
+.fh-banks .bank-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.fh-banks .bank-name{font-weight:600;color:var(--ink)}
+.fh-banks .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px}
+.fh-banks .steps{counter-reset:bk-step;display:flex;flex-direction:column;gap:8px}
+.fh-banks .steps li{counter-increment:bk-step;display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:8px}
+.fh-banks .steps li::before{content:counter(bk-step);grid-row:span 2;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;border:1px solid var(--ink);font-family:var(--mono);font-weight:500}
+.fh-banks .steps li.is-not-set::before{border-style:dashed;color:var(--bk-dim)}
+.fh-banks .steps .how{display:block}
+.fh-banks .spacing{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.fh-banks .why{display:flex;flex-direction:column;gap:8px}
+.fh-banks .why li{padding-left:16px;border-left:2px solid var(--line)}
+.fh-banks .on-plan{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fh-banks .left-out{margin-top:8px}
+
+/* card stacking */
+.fh-banks .notes{margin-bottom:16px}
+.fh-banks .note-card{display:flex;flex-direction:column;gap:8px}
+.fh-banks .stack{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.fh-banks .stack-row{display:grid;grid-template-columns:48px minmax(0,2fr) minmax(0,1fr);gap:16px;padding:16px}
+.fh-banks .stack-n{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;background:var(--ink);color:var(--paper)}
+.fh-banks .stack-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-banks .stack-side{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-banks .gate{border-left:2px solid var(--ink);padding-left:16px}
+
+/* next funding round */
+.fh-banks .round{display:flex;flex-direction:column;gap:24px}
+.fh-banks .gaps{display:flex;flex-direction:column;gap:8px}
+.fh-banks .gaps li{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:8px}
+.fh-banks .gaps li::before{content:"";width:16px;height:16px;margin-top:4px;border:2px solid var(--ink);border-radius:2px}
+
+/* relationships */
+.fh-banks .scroll-x{overflow-x:auto}
+.fh-banks table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.fh-banks caption{text-align:left;padding-bottom:8px}
+.fh-banks th{text-align:left;font-weight:500;color:var(--bk-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.fh-banks td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.fh-banks .r{text-align:right}
+.fh-banks .ctl-row td{border-bottom:1px solid var(--line);padding-top:0}
+.fh-banks .status{display:inline-block;border-radius:999px;padding:0 8px;border:1px solid var(--ink);white-space:nowrap}
+.fh-banks .st-planned{border-style:dashed}
+.fh-banks .st-seasoned{background:var(--ink);color:var(--paper);font-weight:600}
+.fh-banks .st-skipped{border-color:var(--line);color:var(--bk-dim);text-decoration:line-through}
+
+/* staff controls */
+.fh-banks .staff{border-top:1px dashed var(--line);padding-top:16px;display:flex;flex-direction:column;gap:8px}
+.fh-banks .row-staff{border-top:0;padding-top:0}
+.fh-banks .staff form{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.fh-banks .field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-banks .field input,.fh-banks .field select{min-height:40px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bk-surface)}
+.fh-banks .addbank{margin-top:16px}
+
+/* not set yet */
+.fh-banks .notset{display:flex;flex-direction:column;gap:8px}
+.fh-banks .ns-list{display:flex;flex-wrap:wrap;gap:8px}
+.fh-banks .ns-list li{border:1px dashed var(--line);border-radius:999px;padding:0 16px;min-height:32px;display:inline-flex;align-items:center}
+
+/* states */
+.fh-banks .empty,.fh-banks .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.fh-banks .empty p,.fh-banks .error p{max-width:60ch}
+.fh-banks .skel{display:flex;flex-direction:column;gap:8px}
+.fh-banks .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fh-banks-sk 1.2s ease-in-out infinite}
+.fh-banks .sk-s{height:12px;width:40%}
+.fh-banks .sk-m{height:16px;width:70%}
+.fh-banks .sk-l{height:32px;width:60%}
+@keyframes fh-banks-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.fh-banks .sk{animation:none}}
+
+@media (max-width:1100px){
+  .fh-banks .banks>.bank{grid-column:span 12}
+}
+@media (max-width:760px){
+  .fh-banks .tiles>*,.fh-banks .two>*{grid-column:span 12}
+  .fh-banks .card{padding:16px}
+  .fh-banks .facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fh-banks .round .facts{grid-template-columns:minmax(0,1fr)}
+  .fh-banks .stack-row{grid-template-columns:40px minmax(0,1fr)}
+  .fh-banks .stack-side{grid-column:1 / -1}
+  .fh-banks .staff form{flex-direction:column;align-items:stretch}
+}

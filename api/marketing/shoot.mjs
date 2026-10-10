@@ -31,19 +31,24 @@
 //   Saving the order also sets each script's film order (one order, two tabs).
 //   A repeated request_id answers the first save again and writes nothing.
 //
-// Owner and admin only: requireAuth, then requireRole(ROLE_SETS.MARKETING)
-// (requireAuth ignores roles, CLAUDE.md §12). A GET reads in one asStaff()
-// transaction (staffRead); a POST writes in one (withRequest). Free: no model,
-// no vendor, nothing queued for the repo.
+// POST is owner and admin only: requireAuth, then requireRole(ROLE_SETS.MARKETING)
+// (requireAuth ignores roles, CLAUDE.md §12). A GET with a sign-in still reads
+// that company's shoot and adds film.path, the teleprompter link for this shoot.
+// A GET with the film key (header x-shoot-film) reads that shoot only, with no
+// staff session. A GET with no sign-in and no key reads the default company's
+// shoot so an old bookmark still rolls. A GET reads in one asStaff() transaction
+// (staffRead); a POST writes in one (withRequest). The film key cannot POST.
+// Free: no model, no vendor, nothing queued for the repo.
 
 import { db } from "../../src/db.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
-import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
+import { bearerToken, requireAuth } from "../../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole } from "../../src/http/read-api.mjs";
 import {
   staffRead, withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany
 } from "../../src/marketing/http.mjs";
 import { parseWpm, parseShootWrite, readShootPage, writeShoot } from "../../src/marketing/shoot-store.mjs";
+import { FILM_LINK_CLOSED, filmFromReq, mintFilmKey, secretFromEnv } from "../../src/marketing/shoot-film-key.mjs";
 
 export const ROUTE = "marketing/shoot";
 
@@ -57,19 +62,55 @@ export default async function handler(req, res, deps = {}) {
   }
 
   // The gate, in this file on purpose: scripts/journeys/extract.mjs reads each
-  // route's gate from the route's own source.
+  // route's gate from the route's own source. POST (and a signed-in GET) still
+  // go through requireAuth, then requireRole(res, staff, ROLE_SETS.MARKETING),
+  // then hasCompany(res, staff). A GET with a film key reads that shoot and
+  // skips the staff gate. A GET with no token and no key reads the default
+  // company only.
   const auth = deps.requireAuth ?? requireAuth;
-  const staff = await auth(req, res, { db: database });
-  if (!staff) return;
-  if (!requireRole(res, staff, ROLE_SETS.MARKETING)) return;
-  if (!hasCompany(res, staff)) return;
-  const orgId = staff.org_id;
+  const film = req.method === "GET" ? filmFromReq(req, { ...deps, now: () => now.getTime() }) : null;
+  if (film?.bad) {
+    return res.status(404).json({ error: "not_found", message: FILM_LINK_CLOSED });
+  }
+  const openRead = req.method === "GET" && !bearerToken(req) && !film;
+  let orgId = null;
+  let staff = null;
+  if (film) {
+    orgId = film.orgId;
+  } else if (!openRead) {
+    staff = await auth(req, res, { db: database });
+    if (!staff) return;
+    if (!requireRole(res, staff, ROLE_SETS.MARKETING)) return;
+    if (!hasCompany(res, staff)) return;
+    orgId = staff.org_id;
+  }
 
   try {
     if (req.method === "GET") {
       const wpm = parseWpm(req.query || {});
+      if (openRead) {
+        orgId = await defaultOrgId(database);
+        if (!orgId) {
+          return res.status(200).json({
+            shoot: null,
+            plan_candidates: [],
+            plan_estimated_minutes: 0,
+            past_shoots: [],
+            wpm,
+            as_of: now.toISOString()
+          });
+        }
+      }
       const page = await staffRead(database, (tx) => readShootPage(tx, { orgId, wpm }));
-      return res.status(200).json({ ...page, as_of: now.toISOString() });
+      if (film && (!page.shoot || page.shoot.id !== film.shootId)) {
+        return res.status(404).json({ error: "not_found", message: FILM_LINK_CLOSED });
+      }
+      const body = { ...page, as_of: now.toISOString() };
+      if (staff && page.shoot) {
+        const minted = mintForStaff(staff.org_id, page.shoot.id, now, deps);
+        if (minted) body.film = { path: minted.path, expires_at: minted.expiresAtIso };
+      }
+      return res.status(200).json(body);
     }
 
     const body = readBody(req);
@@ -86,4 +127,19 @@ export default async function handler(req, res, deps = {}) {
     if (dbDown(res, err)) return;
     throw err;
   }
+}
+
+function mintForStaff(orgId, shootId, now, deps) {
+  try {
+    const secret = deps.filmSecret || secretFromEnv(deps.env);
+    return mintFilmKey({ orgId, shootId, secret, now: () => now.getTime() });
+  } catch {
+    return null;
+  }
+}
+
+async function defaultOrgId(database) {
+  if (!database || typeof database.query !== "function") return null;
+  const org = await database.query(`SELECT id FROM orgs WHERE is_default LIMIT 1`);
+  return org.rows[0]?.id || null;
 }

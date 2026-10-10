@@ -1,0 +1,112 @@
+/* Money helper section — FinanceOS.sections.helper (money-helper.js).
+   Every rule is under .fh-helper (mount() paints that wrapper), so the section
+   can sit inside the one FinanceOS page without its rules reaching a neighbour.
+   8px spacing scale. No px font sizes: the page wrapper is .app, so
+   fundhub-brand.css sizes type — h1/h2 title, .caption / .eyebrow / .tag
+   caption, everything else body (UI-STANDARDS §12.7). */
+
+.fh-helper{--surface:#FFFFFF;--text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2)}
+.fh-helper button,.fh-helper textarea{font:inherit;color:inherit}
+.fh-helper button{cursor:pointer}
+.fh-helper ol,.fh-helper ul{list-style:none;margin:0;padding:0}
+.fh-helper .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* base pieces — the same shapes the other money sections use */
+.fh-helper .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.fh-helper .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.fh-helper .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+.fh-helper .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.fh-helper .caption{color:var(--text-dim)}
+.fh-helper .btn-primary,.fh-helper .btn{min-height:44px;padding:8px 16px;border-radius:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.fh-helper .btn-primary{border:1px solid var(--ink);background:var(--ink);color:var(--paper);white-space:nowrap}
+.fh-helper .btn-primary:hover{background:var(--ink2)}
+.fh-helper .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:left}
+.fh-helper .btn:hover{border-color:var(--ink)}
+.fh-helper .btn-text{min-height:40px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.fh-helper .btn-primary[disabled],.fh-helper .btn[disabled]{opacity:.6;cursor:default}
+.fh-helper :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* what the helper is right now — words, not colours */
+.fh-helper .status{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.fh-helper .tag{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--text-dim)}
+
+/* the helper stopped / is off: a hairline box with an ink edge AND the words */
+.fh-helper .banner{border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:8px;background:var(--soft);color:var(--ink);padding:8px 16px;margin-bottom:16px}
+
+/* the thread — its own scroll box, newest at the bottom */
+.fh-helper .thread{max-height:min(64vh,720px);overflow-y:auto;margin-bottom:16px}
+.fh-helper .msgs{display:flex;flex-direction:column;gap:16px}
+.fh-helper .msg{display:flex;flex-direction:column;gap:8px;max-width:72%;min-width:0}
+.fh-helper .from-client{align-self:flex-end;align-items:flex-end}
+.fh-helper .from-helper{align-self:flex-start;align-items:flex-start}
+.fh-helper .bubble{padding:8px 16px;border-radius:10px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+.fh-helper .from-client .bubble{background:var(--ink);color:var(--paper);border:1px solid var(--ink)}
+.fh-helper .from-client .bubble .eyebrow{color:var(--gray2);margin-bottom:0}
+.fh-helper .from-helper .bubble{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.fh-helper .is-halted .bubble{border-left:4px solid var(--ink)}
+.fh-helper .is-failed .bubble{border-style:dashed;color:var(--text-dim)}
+.fh-helper .meta{margin:0}
+.fh-helper .brain{font-weight:600;color:var(--ink)}
+.fh-helper .why{color:var(--text-dim)}
+
+/* thinking — three dots; still under reduced motion, the word says it */
+.fh-helper .is-thinking .bubble{color:var(--text-dim)}
+.fh-helper .dots{display:inline-flex;gap:8px;margin-right:8px;vertical-align:middle}
+.fh-helper .dots i{display:block;width:6px;height:6px;border-radius:50%;background:var(--text-dim);animation:fh-helper-dot 1.2s ease-in-out infinite}
+.fh-helper .dots i:nth-child(2){animation-delay:.2s}
+.fh-helper .dots i:nth-child(3){animation-delay:.4s}
+@keyframes fh-helper-dot{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+/* what the helper did — one card each, under its answer */
+.fh-helper .acts{display:flex;flex-direction:column;gap:8px;width:100%}
+.fh-helper .act{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink)}
+.fh-helper .ic{display:inline-flex;flex:0 0 auto;width:16px;height:24px;align-items:center}
+.fh-helper .ic svg{display:block;width:16px;height:16px}
+/* The words get room first: on a narrow card the status pill drops to its own line. */
+.fh-helper .act-main{display:flex;flex-direction:column;flex:1 1 200px;min-width:0}
+.fh-helper .act-t{font-weight:600}
+.fh-helper .pill{flex:0 0 auto;display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;white-space:nowrap;color:var(--text-dim);background:var(--surface)}
+/* A proposal that waits on the client: literal amber so it stays a "look
+   here" on every tenant, and it says so in words (UI-STANDARDS §12.6). */
+.fh-helper .pill-approve{background:#FEF3C7;color:#92400E;border-color:#FCD34D;font-weight:600}
+.fh-helper .pill-warn{background:#FEF3C7;color:#92400E;border-color:#FCD34D}
+.fh-helper .stuck{margin-top:16px}
+
+/* empty — what will appear, and three ways to start */
+.fh-helper .empty{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:8px 0}
+.fh-helper .empty h2{font-weight:600;color:var(--ink)}
+.fh-helper .empty p{max-width:60ch}
+.fh-helper .suggest{display:flex;flex-wrap:wrap;gap:8px}
+
+/* the box to type in — the one primary button on the screen */
+.fh-helper .composer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:end}
+.fh-helper textarea{width:100%;min-height:48px;max-height:160px;resize:vertical;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);line-height:1.5}
+.fh-helper textarea:focus{outline:2px solid var(--ink);outline-offset:0;border-color:var(--ink)}
+.fh-helper .send-msg{grid-column:1 / -1;margin:0}
+.fh-helper .send-msg:empty{display:none}
+
+/* error */
+.fh-helper .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.fh-helper .error h2{font-weight:600;color:var(--ink)}
+.fh-helper .error p{max-width:60ch}
+
+/* loading — skeleton bubbles in the real layout */
+.fh-helper .skel{min-width:160px}
+.fh-helper .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fh-helper-sk 1.2s ease-in-out infinite}
+.fh-helper .sk-s{height:16px;width:120px}
+.fh-helper .sk-m{height:16px;width:240px}
+.fh-helper .sk-l{height:16px;width:320px;max-width:100%}
+@keyframes fh-helper-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){
+  .fh-helper .sk,.fh-helper .dots i{animation:none}
+}
+
+/* A phone: one column, bubbles nearly full width, no sideways page scroll
+   (UI-STANDARDS §11). The Send button stays a 44px target. */
+@media (max-width:760px){
+  .fh-helper .card{padding:16px}
+  .fh-helper .msg{max-width:88%}
+  .fh-helper .thread{max-height:none}
+  .fh-helper .act{padding:8px}
+  .fh-helper .sk-m,.fh-helper .sk-l{width:160px}
+}

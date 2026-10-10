@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Your funding papers</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="stylesheet" href="money-vault.css">
+<!-- ══ YOUR FUNDING PAPERS — THE APPLICATION DOCUMENT VAULT ═══════════════════
+     Capital Blueprint launch unit B3, the screen (ops/workflows/blueprint-launch-2026-10-06.md,
+     map item 15). Offer: "The agent collects bank statements, tax returns and ID
+     ahead of time, so the file is complete when the closer calls."
+
+     Reads ONE endpoint, GET /api/money/vault (shape: docs/finance/document-vault.md).
+     A client sends each paper through the EXISTING upload endpoint,
+     POST /api/documents-upload, with the exact fields the line carries. Staff
+     (owner, admin, sales manager) also accept or reject each file and add a paper
+     the standard list lacks (POST /api/money/vault).
+
+     CLIENT-FACING, SO NO shell.js — same reason as money.html. The gate is the
+     endpoint: a client session only gets its own file; staff need ?client_id=.
+
+     THIN SHELL. The section itself is FinanceOS.sections.vault in money-vault.js
+     (styles in money-vault.css, all under .fh-vault), so the combined FinanceOS
+     page can mount it with one stylesheet link and one script tag. This page only
+     adds the header, the money nav and the frame. The header is money-accounts.html's
+     dark bar; the nav is the single row that scrolls inside itself on a phone
+     (money-declines.html), so the page never scrolls sideways (UI-STANDARDS §11).
+
+     .app on the wrapper so fundhub-brand.css sizes type to the four tokens.
+     No px font sizes anywhere (UI-STANDARDS §12.7). -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:#FFFFFF;
+  --text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2);
+}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+ul,ol{list-style:none}
+
+/* header — same dark bar as money.html */
+.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sub{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
+
+/* the money pages' shared nav. The current page is a solid fill and carries
+   aria-current, so "where am I" never rests on colour (UI-STANDARDS §12.6).
+   On a phone it scrolls sideways inside itself; the page never does (§11). */
+.mnav{display:flex;gap:8px;padding:8px 24px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
+.mnav a{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;text-decoration:none;white-space:nowrap;border:1px solid var(--line)}
+.mnav a[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600}
+
+main{padding:24px 24px 64px}
+
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .mbar,.mnav{padding:8px 16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mbar">
+    <div class="brand">
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <div class="sub">Your funding papers</div>
+    </div>
+    <a id="money-back" href="client-portal.html">Back to my portal</a>
+  </header>
+  <nav class="mnav" id="money-nav" aria-label="Money">
+    <a href="/app/financeos.html#overview">Money</a>
+    <a href="/app/financeos.html#accounts">Accounts</a>
+    <a href="/app/financeos.html#credit">Credit</a>
+    <a href="/app/financeos.html#declines">Applications</a>
+    <a href="/app/money-vault.html" aria-current="page">Funding papers</a>
+    <a href="/app/financeos.html#connections">Connections</a>
+    <a href="/app/financeos.html#payments">Payments</a>
+    <a href="/app/financeos.html#setup">Setup</a>
+  </nav>
+  <main>
+    <div id="vault-root">
+      <div class="fh-vault"><div class="vt-head"><div><h1>Your funding papers</h1><p class="caption">Loading your papers…</p></div></div></div>
+    </div>
+  </main>
+</div>
+<script defer src="money-vault.js"></script>
+</body>
+</html>

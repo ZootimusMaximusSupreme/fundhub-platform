@@ -1,0 +1,162 @@
+/* Your funding papers — FinanceOS.sections.vault (money-vault.js).
+   Every rule is under .fh-vault so the section can sit inside the combined
+   FinanceOS page (/app/financeos.html) with this one <link> and touch nothing
+   around it. It carries its own base pieces (card, eyebrow, caption, buttons,
+   fields, skeletons) so it needs no rules copied from another page.
+
+   UI-STANDARDS: 8px spacing scale; no px font sizes (§12.7 — sizes come from
+   the brand whitelist: h1/h2, .eyebrow, .caption, .tag, label, .fh-num); no
+   hand-rolled resting shadow (§12.2 — .card takes --panel-shadow from
+   fundhub-brand.css); status is a word and a shape, never colour alone
+   (§12.6) — a filled ink mark is done, a dashed edge is still owed; one column
+   and no sideways page scroll on a phone (§11). */
+
+.fh-vault{display:block}
+.fh-vault p{max-width:72ch}
+.fh-vault :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fh-vault .vt-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* head */
+.fh-vault .vt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-vault .vt-head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+
+/* the resting container (§12.1). The shadow comes from the brand file. */
+.fh-vault .card{background:var(--surface,#FFFFFF);border:1px solid var(--line);border-radius:10px;padding:16px 24px;min-width:0}
+.fh-vault .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim,var(--gray));margin:0 0 8px}
+.fh-vault .caption{color:var(--text-dim,var(--gray))}
+.fh-vault h2,.fh-vault h3{font-weight:600;color:var(--ink)}
+.fh-vault ul{list-style:none;margin:0;padding:0}
+
+/* progress — the big number top-left, the bar, and the same numbers in words */
+.fh-vault .vt-progress{display:flex;flex-direction:column;gap:8px;margin-bottom:32px}
+.fh-vault .vt-count{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;color:var(--ink)}
+.fh-vault .vt-count .fh-num{font-family:var(--mono);font-weight:500;line-height:1.2}
+.fh-vault .vt-bar{display:flex;width:100%;height:8px;border:1px solid var(--line);border-radius:999px;background:var(--soft);overflow:hidden}
+.fh-vault .vt-bar-done{display:block;background:var(--ink)}
+.fh-vault .vt-bar-check{display:block;background:repeating-linear-gradient(135deg,var(--ink) 0 2px,var(--soft) 2px 6px)}
+.fh-vault .vt-tally{display:flex;flex-wrap:wrap;gap:8px 24px}
+.fh-vault .vt-tally li{display:inline-flex;align-items:center;gap:8px}
+.fh-vault .vt-key{display:inline-block;width:16px;height:8px;border:1px solid var(--ink);border-radius:999px;background:var(--surface,#FFFFFF)}
+.fh-vault .vt-key.is-done{background:var(--ink)}
+.fh-vault .vt-key.is-check{background:repeating-linear-gradient(135deg,var(--ink) 0 2px,var(--surface,#FFFFFF) 2px 6px)}
+.fh-vault .vt-key.is-todo{border-style:dashed}
+.fh-vault .vt-key.is-sort{border-style:dotted}
+.fh-vault .vt-next{font-weight:600;color:var(--ink)}
+
+/* file complete — a solid ink block, so it reads as done on every tenant */
+.fh-vault .vt-complete{display:grid;grid-template-columns:48px minmax(0,1fr);gap:16px;align-items:start;margin-bottom:32px;background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.fh-vault .vt-complete h2{color:var(--paper)}
+.fh-vault .vt-complete-mark{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:999px;background:var(--paper);color:var(--ink);font-weight:600}
+.fh-vault .vt-complete-body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-vault .vt-closer{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-left:16px;border-left:2px solid var(--paper)}
+.fh-vault .vt-closer-label{font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--gray2)}
+.fh-vault .vt-closer q{font-weight:600;overflow-wrap:anywhere}
+
+/* groups — Personal, then one per business */
+.fh-vault .vt-groups{display:flex;flex-direction:column;gap:24px;margin-bottom:32px}
+.fh-vault .vt-group-head{display:flex;align-items:baseline;gap:8px 16px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.fh-vault .vt-group-name{overflow-wrap:anywhere}
+.fh-vault .vt-group-count{margin-left:auto}
+.fh-vault .vt-tag{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid var(--line);border-radius:999px;color:var(--text-dim,var(--gray))}
+
+/* one paper: a mark, what it is and why, the status and the one action */
+.fh-vault .vt-item{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:8px 16px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
+.fh-vault .vt-item:first-child{border-top:0}
+.fh-vault .vt-mark{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);font-weight:600;line-height:1}
+.fh-vault .vt-item.is-done>.vt-mark{background:var(--ink);color:var(--paper)}
+.fh-vault .vt-item.is-missing>.vt-mark,.fh-vault .vt-item.is-waived>.vt-mark{border-style:dashed}
+.fh-vault .vt-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-vault .vt-title-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fh-vault .vt-title{overflow-wrap:anywhere}
+.fh-vault .vt-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right;min-width:0}
+.fh-vault .vt-status{display:inline-flex;align-items:center;min-height:32px;padding:0 16px;border:1px solid var(--ink);border-radius:999px;font-weight:600;color:var(--ink);white-space:nowrap}
+.fh-vault .vt-item.is-done .vt-status{background:var(--ink);color:var(--paper)}
+.fh-vault .vt-item.is-missing .vt-status,.fh-vault .vt-item.is-waived .vt-status{border-style:dashed}
+.fh-vault .vt-msg,.fh-vault .vt-item>.vt-docs{grid-column:2 / -1}
+.fh-vault .vt-msg:empty{display:none}
+.fh-vault .vt-flash{font-weight:600;color:var(--ink);padding:8px 16px;border-left:2px solid var(--ink)}
+.fh-vault .vt-flash.is-bad{border-left-style:dashed}
+/* Visually hidden, not display:none — the upload button opens it. */
+.fh-vault .vt-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+
+/* the files sent for a paper — a flat tint, not a second shadow (§12.5) */
+.fh-vault .vt-docs{border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.fh-vault .vt-doc{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px 16px;align-items:start;padding:8px 16px;border-top:1px solid var(--line)}
+.fh-vault .vt-doc:first-child{border-top:0}
+.fh-vault .vt-doc-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);font-weight:600;line-height:1}
+.fh-vault .vt-doc.is-done>.vt-doc-mark{background:var(--ink);color:var(--paper)}
+.fh-vault .vt-doc.is-checking>.vt-doc-mark{border-style:dashed}
+.fh-vault .vt-doc-main{display:flex;flex-direction:column;min-width:0}
+.fh-vault .vt-doc-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-vault .vt-reason{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-vault .vt-doc-act{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+/* Reject sits apart from Accept — never adjacent (UI-STANDARDS §5). */
+.fh-vault .vt-doc-act .vt-btn-no{margin-left:16px}
+
+/* staff forms, inline under the file they act on */
+.fh-vault .vt-form{grid-column:2 / -1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;padding:16px;border:1px dashed var(--ink);border-radius:8px;background:var(--surface,#FFFFFF)}
+.fh-vault .vt-form[hidden],.fh-vault .vt-f[hidden]{display:none}
+.fh-vault .vt-f{grid-column:span 6;display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-vault .vt-f-wide{grid-column:span 12}
+.fh-vault .vt-form-act{grid-column:span 12;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.fh-vault .vt-form-msg{grid-column:span 12;font-weight:600;color:var(--ink)}
+.fh-vault .vt-form-msg:empty{display:none}
+.fh-vault label{font-weight:600;color:var(--ink)}
+.fh-vault .vt-field{display:block;width:100%;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#FFFFFF);color:var(--ink)}
+.fh-vault .vt-field:focus-visible{outline:2px solid var(--ink);outline-offset:0}
+
+/* buttons — one filled button per screen, the rest outline (§1, §5) */
+.fh-vault .vt-btn,.fh-vault .vt-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border:1px solid var(--ink);border-radius:8px;font-weight:600;text-align:center;cursor:pointer}
+.fh-vault .vt-btn{background:var(--surface,#FFFFFF);color:var(--ink)}
+.fh-vault .vt-btn:hover{background:var(--soft)}
+.fh-vault .vt-btn-primary{background:var(--ink);color:var(--paper)}
+.fh-vault .vt-btn-primary:hover{background:var(--ink2)}
+.fh-vault .vt-btn[disabled],.fh-vault .vt-btn-primary[disabled]{opacity:.6;cursor:progress}
+.fh-vault .vt-btn-s{min-height:40px;padding:0 16px}
+.fh-vault .vt-btn-no{border-style:dashed}
+.fh-vault .vt-link{display:inline-flex;align-items:center;min-height:40px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* files to sort (staff), other files (client), add a paper (staff) */
+.fh-vault .vt-sort,.fh-vault .vt-other,.fh-vault .vt-add{margin-bottom:32px}
+.fh-vault .vt-sort>h2,.fh-vault .vt-other>h2{margin-bottom:8px}
+.fh-vault .vt-sort .vt-msg,.fh-vault .vt-other .vt-msg{margin-top:16px}
+.fh-vault .vt-sort>.vt-docs,.fh-vault .vt-other>.vt-docs{margin-top:16px}
+.fh-vault .vt-add>summary{display:list-item;min-height:44px;padding-top:8px;font-weight:600;color:var(--ink);cursor:pointer}
+.fh-vault .vt-add>summary .caption{font-weight:400;margin-left:8px}
+.fh-vault .vt-add-note{margin-top:8px}
+.fh-vault .vt-add-form{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
+
+/* states */
+.fh-vault .vt-none{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:24px;margin-bottom:32px}
+.fh-vault .vt-error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+
+/* loading skeletons, in the real layout */
+.fh-vault .vt-skel{display:flex;flex-direction:column;gap:8px}
+.fh-vault .vt-skel-row{grid-template-columns:32px minmax(0,1fr)}
+.fh-vault .vt-sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:vt-sk 1.2s ease-in-out infinite}
+.fh-vault .vt-sk-dot{width:32px;height:32px;border-radius:999px}
+.fh-vault .vt-sk-s{height:12px;width:40%}
+.fh-vault .vt-sk-m{height:16px;width:70%}
+.fh-vault .vt-sk-l{height:32px;width:30%}
+.fh-vault .vt-sk-bar{height:8px;width:100%}
+@keyframes vt-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){
+  .fh-vault .vt-sk{animation:none}
+}
+
+@media (max-width:760px){
+  .fh-vault .card{padding:16px}
+  .fh-vault .vt-item{grid-template-columns:32px minmax(0,1fr)}
+  .fh-vault .vt-side{grid-column:2;align-items:stretch;text-align:left}
+  .fh-vault .vt-status{align-self:flex-start;white-space:normal}
+  .fh-vault .vt-side .vt-btn,.fh-vault .vt-side .vt-btn-primary{width:100%}
+  .fh-vault .vt-msg,.fh-vault .vt-item>.vt-docs{grid-column:1 / -1}
+  .fh-vault .vt-doc{grid-template-columns:24px minmax(0,1fr)}
+  .fh-vault .vt-doc-act{grid-column:2;justify-content:flex-start;gap:16px}
+  .fh-vault .vt-doc-act>.vt-link:first-child{padding-left:0}
+  .fh-vault .vt-doc-act .vt-btn-no{margin-left:0}
+  .fh-vault .vt-form{grid-column:1 / -1}
+  .fh-vault .vt-f{grid-column:span 12}
+  .fh-vault .vt-group-count{margin-left:0;flex-basis:100%}
+  .fh-vault .vt-complete{grid-template-columns:minmax(0,1fr)}
+}

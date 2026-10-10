@@ -60,6 +60,13 @@
      after at least a minute away (main's contract: "5-minute reload, focus"). */
   var REFRESH_MS = 5 * 60 * 1000;
   var REFOCUS_MS = 60 * 1000;
+  /* The tabs that show a script's words. When the teleprompter saves an edit
+     in this browser (public/app/teleprompter.js: BroadcastChannel
+     "fundhub-scripts", and the localStorage key fh.scripts.changed for a
+     browser with no channel), the one on screen reads again at once. */
+  var WORD_TABS = ["shoot", "scripts"];
+  var WORDS_CHANNEL = "fundhub-scripts";
+  var WORDS_KEY = "fh.scripts.changed";
   /* The words a main-contract api call starts with. */
   var METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
@@ -621,6 +628,9 @@
     COSTS_TTL_MS: COSTS_TTL_MS,
     REFRESH_MS: REFRESH_MS,
     REFOCUS_MS: REFOCUS_MS,
+    WORD_TABS: WORD_TABS,
+    WORDS_CHANNEL: WORDS_CHANNEL,
+    WORDS_KEY: WORDS_KEY,
     esc: esc,
     parseHash: parseHash,
     tabFromSearch: tabFromSearch,
@@ -965,6 +975,25 @@
     refreshTab(key);
   }
 
+  /* New words saved from the teleprompter: the Shoot or Scripts tab on screen
+     reads again now. With a sheet open it waits for the next 30-second beat
+     (its refreshedAt is cleared), so an open sheet is never redrawn under you. */
+  function wordsChanged() {
+    WORD_TABS.forEach(function (k) { frame.refreshedAt[k] = 0; });
+    var key = frame.active;
+    if (!key || WORD_TABS.indexOf(key) < 0 || sheet || !inView()) return;
+    refreshTab(key);
+  }
+  function listenForWords() {
+    try {
+      if (typeof root.BroadcastChannel === "function") {
+        var ch = new root.BroadcastChannel(WORDS_CHANNEL);
+        ch.onmessage = function (e) { if (e && e.data && e.data.type === "script-saved") wordsChanged(); };
+      }
+    } catch (e) { /* no channel in this browser: the storage event below still works */ }
+    root.addEventListener("storage", function (e) { if (e && e.key === WORDS_KEY) wordsChanged(); });
+  }
+
   function mount() {
     if (frame.mounted || !$("mcc-root") || !$("mccTabs") || !$("mccPanels")) return;
     frame.mounted = true;
@@ -973,6 +1002,7 @@
     root.setInterval(function () { due(REFRESH_MS); }, 30 * 1000);
     doc.addEventListener("visibilitychange", function () { due(REFOCUS_MS); });
     root.addEventListener("focus", function () { due(REFOCUS_MS); });
+    listenForWords();
     route();
   }
 

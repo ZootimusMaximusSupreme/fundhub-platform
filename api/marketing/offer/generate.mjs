@@ -27,6 +27,7 @@ import { safeError } from "../../../src/http/health.mjs";
 import { resolveOfferInputs, isCampaign, DEFAULT_CAMPAIGN } from "../../../src/marketing/offer-inputs.mjs";
 import { repoFlywheelDefaults } from "../../../src/marketing/research/repo-read.mjs";
 import { anthropicKeyOf, wakeOfferWorker } from "../../../src/marketing/offer-transport.mjs";
+import { runnerIsLocal, MAC_WAIT_LINE } from "../../../src/marketing/ai-runner.mjs";
 import {
   createOfferJob, failOfferJob, getOfferJob, latestOfferJobs,
   isNotReady, jobView, offerView
@@ -97,6 +98,16 @@ export default async function handler(req, res, deps = {}) {
         ok: true, started: false, already_running: true, job: jobView(job),
         poll: `/api/marketing/offer/generate?id=${job.id}`,
         message: "An offer is already being written. This is that run."
+      });
+    }
+
+    // MARKETING_AI_RUNNER=local (src/marketing/ai-runner.mjs): the offer waits for
+    // `npm run marketing:run-queue` on Chris's Mac. No wake; the job stays queued.
+    if (runnerIsLocal(env)) {
+      return res.status(202).json({
+        ok: true, started: false, already_running: false, waiting_for: "mac", job: jobView(job),
+        poll: `/api/marketing/offer/generate?id=${job.id}`,
+        message: `Saved. ${MAC_WAIT_LINE}`
       });
     }
 

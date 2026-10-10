@@ -50,13 +50,16 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
   // 037 seeded the fourteen agents from the shipped screen; 114 added the
   // eight real the CRM agents extracted from the source-of-truth doc
   // (GHL-A1..A7 minus the un-defined Agent 6, plus Document Check and Recon)
-  // — twenty-two rows total, all still client_facing/ops per 037's mix plus
-  // 114's eight, which are all client_facing.
-  test("the twenty-two seeded agents are registered", async () => {
+  // — twenty-two rows, all still client_facing/ops per 037's mix plus 114's
+  // eight, which are all client_facing. 465 (FinanceOS wave 5, W6) adds the
+  // twenty-third: FOS-01, the FinanceOS Money Helper, client_facing, seeded
+  // shadow (the beforeEach below resets it to draft like every other row).
+  test("the twenty-three seeded agents are registered", async () => {
     const rows = await list(db, { orgId: org });
-    assert.equal(rows.length, 22);
-    assert.equal(rows.filter((r) => r.agent_class === "client_facing").length, 17);
+    assert.equal(rows.length, 23);
+    assert.equal(rows.filter((r) => r.agent_class === "client_facing").length, 18);
     assert.equal(rows.filter((r) => r.agent_class === "ops").length, 5);
+    assert.ok(rows.some((r) => r.code === "FOS-01" && r.name === "FinanceOS Money Helper" && r.channel === "sms"));
   });
 
   test("only Setter Josh and the Inquiry Removal AI are live", async () => {
@@ -65,7 +68,7 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     assert.deepEqual(running.map((r) => r.name).sort(),
       ["Inquiry Removal AI", "Setter Josh"]);
     // The screen marks eleven as live; that must not have been believed.
-    assert.equal((await list(db, { orgId: org, status: "draft" })).length, 20);
+    assert.equal((await list(db, { orgId: org, status: "draft" })).length, 21);
   });
 
   test("both live agents record where they actually run", async () => {

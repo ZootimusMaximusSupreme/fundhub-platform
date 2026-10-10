@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Fundhub custom platform — Postgres + event bus replacing the old CRM and spreadsheet. Master Rebuild Spec v1.",
+  "description": "Fundhub custom platform \u2014 Postgres + event bus replacing the old CRM and spreadsheet. Master Rebuild Spec v1.",
   "engines": {
     "node": "22.x"
   },
@@ -23,6 +23,7 @@
     "guard:rls": "node --test src/security/rls-shape.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test -c playwright.live.config.mjs",
+    "pulse:live-playwright": "node scripts/live-playwright-sweep.mjs",
     "verify:e2e": "node scripts/run-e2e-verification.mjs",
     "sim:report": "node scripts/purge-sim-data.mjs report",
     "sim:hide": "node scripts/purge-sim-data.mjs flag",
@@ -44,8 +45,12 @@
     "lenders:audit": "node scripts/lenders-audit/run.mjs",
     "lenders:audit:apply": "node scripts/lenders-audit/apply-manifest.mjs",
     "flywheel:status": "node scripts/flywheel/status.mjs",
+    "marketing:run-queue": "node scripts/marketing-run-queue.mjs",
+    "money:run-queue": "node scripts/money-agent-run-queue.mjs",
+    "money:roleplay": "node scripts/money-agent-roleplay.mjs",
     "marketing:data:health": "node scripts/marketing-data-health.mjs",
-    "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs"
+    "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs",
+    "pulse:prove": "node scripts/pulse/prove.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.11",

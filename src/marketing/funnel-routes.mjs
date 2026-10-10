@@ -18,6 +18,7 @@ import { URL_TAG_LANES } from "./url-tags.mjs";
 import { isCampaign } from "./offer-inputs.mjs";
 import * as cfPages from "../messaging/providers/clickfunnels-pages.mjs";
 import { wakeFunnelWorker } from "./funnel-transport.mjs";
+import { runnerIsLocal, isAiKind, MAC_WAIT_LINE } from "./ai-runner.mjs";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -119,6 +120,8 @@ export function knownConflict(err) {
  */
 export async function wakeOrFail(database, { job, token, env, wake = wakeFunnelWorker }) {
   if (!job || job.status !== "queued") return { started: false, reason: null };
+  // MARKETING_AI_RUNNER=local: the page writer waits for the Mac (src/marketing/ai-runner.mjs).
+  if (runnerIsLocal(env) && isAiKind(job.kind)) return { started: false, reason: null, waiting_for: "mac", message: MAC_WAIT_LINE };
   const woke = await wake({ jobId: job.id, token, env });
   if (woke.ok) return { started: true, reason: null };
   const reason = `The worker could not be started: ${woke.reason}. Press the button again.`;

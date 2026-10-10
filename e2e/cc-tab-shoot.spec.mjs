@@ -105,6 +105,15 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) 
       if (size.width === 390) await noSideways(page);
     });
 
+    test("the teleprompter link carries the film key from the shoot", async ({ page }) => {
+      const key = "/app/teleprompter.html?k=11111111-1111-4111-8111-111111111111.22222222-2222-4222-8222-222222222222.1.ab";
+      const keyed = { ...PAGE, film: { path: key, expires_at: "2026-10-14T16:00:00.000Z" } };
+      await host(page, { get: keyed });
+      await expect(page.getByRole("link", { name: "Open the teleprompter" })).toHaveAttribute("href", key);
+      await expect(page.locator("ol.rows > li").nth(1).getByRole("link", { name: "Roll it" })).toHaveAttribute("href", `${key}&script=${TWO.root_script_id}`);
+      await expect(page.getByText(/sign in/i)).toHaveCount(0);
+    });
+
     test("with a shoot: the teleprompter is the filled button, rows mark takes, the board and the two-tap close", async ({ page }) => {
       const posts = [];
       const errors = await host(page, { get: PAGE, posts });

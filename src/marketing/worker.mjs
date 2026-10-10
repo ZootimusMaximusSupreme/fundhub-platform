@@ -59,6 +59,7 @@ import { beatMachine, lastBeat, workerKinds } from "./clock.mjs";
 import { drainOutbox } from "../repo/outbox.mjs";
 import { send as fanoutSend } from "../ad-videos/notify-fanout.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
+import { netlifyRegistry, runnerIsLocal, AI_JOB_KINDS } from "./ai-runner.mjs";
 
 /** Stop taking new work this long after the pass starts. */
 export const STOP_TAKING_MS = 9 * 60 * 1000;
@@ -271,14 +272,23 @@ export function groupKinds(registry = JOB_KINDS) {
  *
  * Never throws: a part that fails is logged and counted in `errors`, and the pass goes on.
  *
+ * MARKETING_AI_RUNNER=local (src/marketing/ai-runner.mjs): with no registry passed, the
+ * AI job kinds are left out, so they stay queued for the Mac, and reclaimStale leaves
+ * them alone. The Mac runner (scripts/marketing-run-queue.mjs) calls this same pass with
+ * the AI kinds only, its own reclaimScope, and the drain, buzzes and wake turned off.
+ *
  * @param {{ db?: any, env?: Record<string, any>, send?: Function,
- *           registry?: Record<string, any>, deps?: Partial<WorkerDeps>, jobDeps?: object }} [ctx]
+ *           registry?: Record<string, any>, deps?: Partial<WorkerDeps>, jobDeps?: object,
+ *           reclaimScope?: { kinds?: string[], excludeKinds?: string[] } | null }} [ctx]
  */
 export async function runPass(ctx = {}) {
   const env = ctx.env || process.env;
   /** @type {WorkerDeps} */
   const deps = { ...workerDeps({ db: ctx.db, env, send: ctx.send }), ...(ctx.deps || {}) };
-  const registry = ctx.registry || JOB_KINDS;
+  const registry = ctx.registry || netlifyRegistry(env, JOB_KINDS);
+  const reclaimScope = ctx.reclaimScope !== undefined
+    ? ctx.reclaimScope
+    : (!ctx.registry && runnerIsLocal(env) ? { excludeKinds: [...AI_JOB_KINDS] } : null);
   const kinds = workerKinds(registry);
   const groups = groupKinds(registry);
   const startMs = deps.now().getTime();
@@ -317,7 +327,7 @@ export async function runPass(ctx = {}) {
   };
 
   await safe("heartbeat", () => deps.beat("worker", { state: "running", started_at: summary.started_at }), null);
-  const reclaimed = await safe("reclaim", () => deps.reclaimStale({ olderThanMin: STALE_AFTER_MINUTES }), []);
+  const reclaimed = await safe("reclaim", () => deps.reclaimStale({ olderThanMin: STALE_AFTER_MINUTES, ...(reclaimScope || {}) }), []);
   summary.reclaimed = Array.isArray(reclaimed) ? reclaimed.length : 0;
 
   /* ── the drain, at most once a minute across every pass ── */

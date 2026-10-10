@@ -39,3 +39,45 @@ export function shareUrlFor(code, env = process.env) {
 }
 
 export default shareUrlFor;
+
+// ONE LINK PER OFFER (owner call 2026-10-06). The affiliate page used to show one
+// generic link that always landed on /watch, while the $297 text sent people to
+// /roadmap, and an affiliate could not tell which link was live. Now every offer
+// a referral can buy through gets its own row: same code, different page.
+//
+// THE OFFERS ARE THE LIVE FUNNELS, READ FROM marketing_funnels — never a list in
+// code (owner ask 2026-10-06: a new offer or funnel must appear on its own). The
+// funnel builder (src/marketing/funnel-store.mjs) sets status='live', active=true
+// and landing_url once every page is proven, so a new funnel shows up here the
+// moment it goes live, and a draft (e.g. /blueprint, still 404) never does.
+//
+// The code rides as BOTH a1 and ref. a1 is the name public/funnel/fh-attribution.js,
+// the ClickFunnels adapter and api/public/slo-checkout.mjs read; ref is the name
+// people expect. /roadmap also uses ?ref= for its paid return, but only together
+// with client_id and a slo_ ref, so an AFF- code never trips it.
+export const LIVE_OFFERS_SQL = `
+  SELECT key, name, landing_url
+    FROM marketing_funnels
+   WHERE org_id = $1 AND active AND status = 'live' AND btrim(landing_url) <> ''
+   ORDER BY created_at, key`;
+
+/** liveOffers(db, orgId) → the company's live funnels, oldest first. */
+export async function liveOffers(database, orgId) {
+  return (await database.query(LIVE_OFFERS_SQL, [orgId])).rows;
+}
+
+/**
+ * offerLinksFor(code, offers) → [{ key, name, url }] one per live funnel, or []
+ * for a missing code (an empty ref would credit a real sale to nobody).
+ * `offers` are marketing_funnels rows: { key, name, landing_url }.
+ */
+export function offerLinksFor(code, offers = []) {
+  const c = code == null ? "" : String(code).trim();
+  if (!c) return [];
+  return (offers || []).map((o) => {
+    const u = new URL(String(o.landing_url).trim());
+    u.searchParams.set("a1", c);
+    u.searchParams.set("ref", c);
+    return { key: o.key, name: o.name, url: u.toString() };
+  });
+}
