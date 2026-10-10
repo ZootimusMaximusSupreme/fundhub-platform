@@ -278,7 +278,7 @@ export function toTripRow(r, now = new Date()) {
   const fundingPath = String(r.product_path || "") === "Funding";
   if (!fundingPath) notOwed.push("funding_resumes");
   if (r.fraud_alert === true) {
-    ended = ended || { why: "a fraud alert is on file; funding is held until a person clears it (C-03 does this on purpose)" };
+    ended = ended || { why: "a fraud alert is on file, so funding is held on purpose until a person clears it" };
   }
   if (r.ready_for_next_round === true && facts.event_fired) facts.funding_resumes = r.removed_event_at;
 

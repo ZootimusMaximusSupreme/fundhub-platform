@@ -292,7 +292,7 @@ export function toTripRow(r, now = new Date()) {
   if (r.signed_in !== true && sinceMs != null && nowMs - sinceMs > SIGN_IN_GRACE_MS) {
     stall = {
       key: "portal_sign_in",
-      why: `the buyer has held access for over ${SIGN_IN_GRACE} and has never signed in (src/pulse/coverage/gap-portal.mjs)`
+      why: `the buyer has held access for over ${SIGN_IN_GRACE} and has never signed in`
     };
   }
 

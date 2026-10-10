@@ -247,7 +247,7 @@ export function stageStall(r, now = new Date()) {
   const stage = r.card_stage == null ? null : String(r.card_stage);
   if (!stage) return null;
   if (stage === "stalled") {
-    return { why: 'the file is in "Stalled": the automation failed and a person has not moved it (src/repair/sla.mjs STALLED_STAGE)' };
+    return { why: 'the file is in "Stalled": the automation failed and a person has not moved it' };
   }
   const sla = STAGE_SLA[stage];
   if (!sla) return null;
@@ -258,7 +258,7 @@ export function stageStall(r, now = new Date()) {
     responseDueAt: r.response_due_at || null
   });
   if (!res.breached) return null;
-  return { why: `the file has been in "${STAGE_WORDS[stage] || stage}" past its clock of ${clockText(sla)} (src/repair/sla.mjs)` };
+  return { why: `the file has been in "${STAGE_WORDS[stage] || stage}" past its clock of ${clockText(sla)}` };
 }
 
 /** Pure. One SQL row to one trip row. */
