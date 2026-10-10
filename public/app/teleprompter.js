@@ -1708,6 +1708,7 @@
     if (gest.down && gest.down.dbl) {
       cancelSettle();
       clearTimeout(longTimer);
+      primeEdit();   // only the second tap makes the words editable
       return;
     }
     if (e.cancelable) e.preventDefault();
@@ -1747,7 +1748,8 @@
     if (topGest.hot) { feedTop("up", e); return; }
     if (!gest.down) return;
     feed("up", e);
-    if (gest.pending) { primeEdit(); armSettle(); }
+    // A single tap never makes the words editable: that popped the phone keyboard open and shut.
+    if (gest.pending) { armSettle(); }
     else { cancelSettle(); if (!textEdit) disarmEdit(); }
   });
   stage.addEventListener("pointercancel", function () {
@@ -2736,15 +2738,20 @@
   /* Sideways, the words are half the size: the front-camera half of the screen is narrow. */
   function isLandscape() {
     try {
-      // A phone only: the short side of the real screen is under 600. A tablet, a Mac window, or a
-      // phone keyboard squeezing the page never counts, so the words are never shrunk by mistake.
+      // Sideways only when the page itself is wider than tall AND the phone says landscape.
+      // A phone only: the short side of the real screen is under 600. A tablet, a Mac window,
+      // a phone keyboard squeezing the page, or a browser that reports the wrong orientation
+      // never counts, so the words are never shrunk by mistake.
       var scr = root.screen || {};
       var shortSide = Math.min(scr.width || 0, scr.height || 0);
       if (shortSide && shortSide >= 600) return false;
+      var wide = (root.innerWidth || 0) > (root.innerHeight || 0);
+      var mq = !!(root.matchMedia && root.matchMedia("(orientation: landscape)").matches);
+      if (!wide || !mq) return false;
       var so = scr.orientation;
       if (so && so.type) return /landscape/.test(so.type);
       if (typeof root.orientation === "number") return Math.abs(root.orientation) === 90;
-      return !!(root.matchMedia && root.matchMedia("(orientation: landscape)").matches);
+      return true;
     } catch (e) { return false; }
   }
   function shownFont() { return isLandscape() ? Math.max(12, Math.round(S.font / 2)) : S.font; }

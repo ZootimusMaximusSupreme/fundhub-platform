@@ -538,3 +538,30 @@ test.describe("single tap is play and pause only (owner call 2026-10-09)", () =>
     expect(n.wording).toBe(false);
   });
 });
+
+test.describe("a single tap never opens the keyboard (owner call 2026-10-09)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("right after one tap the words are not editable and nothing has focus, then the countdown starts", async ({ page }) => {
+    await open(page, { settings: { countdown: true } });
+    const m = await middle(page);
+    // Watch every moment from the first tap to the countdown: the words must never be editable or focused.
+    await page.evaluate(() => {
+      window.__seen = [];
+      const c = document.getElementById("content");
+      const look = () => window.__seen.push({ ed: c.getAttribute("contenteditable"), focus: document.activeElement === c });
+      new MutationObserver(look).observe(c, { attributes: true, attributeFilter: ["contenteditable"] });
+      document.addEventListener("focusin", look, true);
+    });
+    await page.touchscreen.tap(m.x, m.y);
+    await page.waitForTimeout(150);
+    const mid = await page.evaluate(() => {
+      const c = document.getElementById("content");
+      return { ed: c.getAttribute("contenteditable"), focus: document.activeElement === c };
+    });
+    expect(mid.ed).toBeNull();
+    expect(mid.focus).toBe(false);
+    await page.waitForTimeout(900);
+    const seen = await page.evaluate(() => window.__seen);
+    expect(seen.filter((s) => s.ed === "true" || s.focus)).toEqual([]);
+  });
+});
