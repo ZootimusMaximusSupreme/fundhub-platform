@@ -25,6 +25,12 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-10 — trip lanes — timeout_or_capacity
+- Cause: the audit checks every "nothing to judge" row again, all together, inside 2.5 seconds. Three new trip rows each read the database on their own. That pushed the list past the deadline, and 50 other rows after them (every workflow row) read "not true any more" with no real cause. Found by `npm run pulse:prove` before ship.
+- Fix: the five trip lanes register one light count each, and the first re-check reads all five in one statement (`sharedCount` in `src/pulse/coverage/trip-kit.mjs`). The company id rides in the proof, so no second read for it.
+- Guard added: `trip-kit.test.mjs` (one read answers every lane; a failed read falls back), `trip-counts.pg.test.mjs` (the one statement is valid on the real schema), and `audit:na-verified` in `npm run pulse:prove`. Lesson: a new "nothing to judge" row costs part of a shared 2.5 second budget. Make its re-check one cheap read, and share it with its sister rows.
+- Incident: none (caught in the proof).  PR: none
+
 ## 2026-10-09 — brief-link — missing_route
 - Cause: every morning and evening text ended with "Full report: <link>". The page behind it (`public/app/morning-brief.html`) was never built, so the link answered 404 for days and nothing noticed. The text was sent and logged, so every check said the text was fine.
 - Fix: built the page and a public data route (`api/public/morning-brief.mjs`). The link now carries a secret code, so it opens with no sign-in and only for the exact report. If the secret is missing the text says "Full report: not available" and the new beat goes red.

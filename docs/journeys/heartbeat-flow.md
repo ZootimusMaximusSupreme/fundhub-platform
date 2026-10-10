@@ -121,6 +121,7 @@ flowchart TD
 - **A waiting customer is never red.** Waiting on a person or on the customer is counted by step in the green line. A step goes red only when the company owes it and its wait is over, or when a clock the code already defines (the repair stage clocks in `src/repair/sla.mjs`, gap-inquiry's 72 hour idle case and call sweeper wait, the 72 hour portal sign-in wait) says it is overdue.
 - **Every wait is another lane's own number.** The kit adds none. Each system step names where its wait comes from (the paid-to-card wait and the round wait are `gap-pipeline-facts.mjs`; the funded-to-bill wait is `gap-money-funding.mjs`; the pack's 2 hours is `gap-underwrite.mjs`).
 - **The funded steps use the money lane's rule** (`roundProblems`), and the pack steps use the underwrite lane's judges (`judgePackFiles`, `judgePackEmail`), so a trip and its lane can never disagree.
+- **"Nothing to judge" is re-counted every morning.** A trip nobody started says `nothing to judge` (code `low-traffic`). The audit asks again, and the five trips share one light read (`sharedCount`), because the audit gives all its re-checks 2.5 seconds together.
 - Test clients, sim and e2e partners, demo rows and archived clients are left out. A trip that started more than 60 days ago is for a person to clean up by hand.
 
 ## Run receipts for event workflows (added 2026-10-09)
