@@ -12,6 +12,7 @@ import {
   ALLOWED_UNMONITORED,
   PULSE_REGISTRY,
   SEND_PATHS,
+  SHIPPED_OUTSIDE_GIT,
   checkRegistry,
   coverageKey,
   missingFromRegistry
@@ -99,7 +100,8 @@ test("registry: every ALLOWED_UNMONITORED entry carries a written reason", () =>
 });
 
 test("registry: every registry row names a real handler or desk file", () => {
-  const live = new Set([...KEYS, ...DESKS, ...PUBLIC_STATICS]);
+  // A page that ships from outside git (SHIPPED_OUTSIDE_GIT, with its reason) is not in a fresh checkout.
+  const live = new Set([...KEYS, ...DESKS, ...PUBLIC_STATICS, ...Object.keys(SHIPPED_OUTSIDE_GIT)]);
   for (const row of PULSE_REGISTRY) {
     const key = coverageKey(row);
     assert.ok(live.has(key), `PULSE_REGISTRY has "${key}" (${row.path}) but that file is gone.`);
@@ -121,6 +123,18 @@ test("registry: every api row the pulse pings is actually routed", () => {
     [],
     `the pulse pings these, but netlify/functions/api.mjs does not route them, so they answer 404 every day:\n  ${unrouted.join("\n  ")}`
   );
+});
+
+test("registry: a page shipped from outside git is still pinged, has a reason, and is named by the ship workflow", () => {
+  const covered = new Set(PULSE_REGISTRY.map(coverageKey));
+  const ship = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../.github/workflows/ship.yml"), "utf8");
+  const keys = Object.keys(SHIPPED_OUTSIDE_GIT);
+  assert.ok(keys.length <= 3, "this list stays tiny");
+  for (const key of keys) {
+    assert.ok(covered.has(key), `"${key}" ships from outside git, so the pulse must still ping it`);
+    assert.ok(String(SHIPPED_OUTSIDE_GIT[key]).length > 40, `"${key}" needs a written reason`);
+    assert.ok(ship.includes(`public/${key}`), `the GitHub ship must write public/${key}, or the page goes 404 on the next ship`);
+  }
 });
 
 test("registry: a GET ping writes up or down and never auto-fixes", async () => {

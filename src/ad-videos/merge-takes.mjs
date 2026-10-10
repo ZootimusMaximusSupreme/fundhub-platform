@@ -81,6 +81,9 @@ export const JOINED_PREFIX = "joined into one master:";
     files are word-for-word compilations that also carry the newer ads. */
 export const SCRIPT_SOURCES = Object.freeze([
   "marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md",
+  /* The Direct Book ads under their own numbers (owner-set 2026-10-10). Read before
+     the compilations below, which still carry the same ads under older labels. */
+  "marketing/ads/direct-book/DIRECT-BOOK-ADS.md",
   "marketing/ads/scripts/ALL-ADS-since-2026-09-03.md",
   "marketing/ads/scripts/2026-10-02.md",
   "marketing/ads/scripts/book-a-call-final-2026-10-03.md",

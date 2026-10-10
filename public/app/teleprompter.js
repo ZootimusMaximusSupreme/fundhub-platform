@@ -2045,15 +2045,32 @@
   function openHistory() {
     var s = scripts[cur];
     if (!s) return;
-    if (editing) edits.commit();
+    // Let a save that is on its way land first, so History never says "waiting to save" about
+    // words the server already has.
+    var saved = editing ? edits.commit() : null;
     closeSheets(true);
     $("hist").hidden = false;
     var list = $("hist-list");
     list.innerHTML = "";
     $("hist-title").textContent = "History: Ad " + (s.ad_id || "?") + " · " + (s.angle_name || s.title || "Untitled");
     list.appendChild(el("p", "note", "Loading every version…"));
-    var it = edits.item(s.root_script_id);
-    api("GET", "marketing/script?id=" + encodeURIComponent(it ? it.base_id : s.id)).then(function (r) {
+    var it = null;
+    // commit() answers at once when a save is already in the air, so also wait for that one
+    // (up to 3 seconds; after that History shows what it has).
+    function settled(tries) {
+      return new Promise(function (res) {
+        (function look(n) {
+          var st = edits.status();
+          if (!st.saving || n <= 0) return res();
+          setTimeout(function () { look(n - 1); }, 100);
+        })(tries);
+      });
+    }
+    Promise.resolve(saved).then(null, function () { return null; }).then(function () { return settled(30); }).then(function () {
+      s = scripts[cur] || s;
+      it = edits.item(s.root_script_id);
+      return api("GET", "marketing/script?id=" + encodeURIComponent(it ? it.base_id : s.id));
+    }).then(function (r) {
       list.innerHTML = "";
       var versions = r.status === 200 && r.data && Array.isArray(r.data.versions) ? r.data.versions : null;
       var liveV = versions ? E.liveOf(versions) : null;

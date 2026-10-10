@@ -305,11 +305,11 @@ test("climate page: the owner's 2026-09-18 swap holds — the Darwin dashboard s
 
 test("climate page: no approval odds, no promised amount, no guarantee", () => {
   /* Same list as before, now over the page that ships and the scripts it
-     loads. RED ON 2026-10-05, AND LEFT RED ON PURPOSE: the Darwin dashboard's
-     lender table has a column headed "Approval Odds"
-     (_next/static/chunks/375-9c2ed26a6c945538.js). The offer brief this file
-     cites bans approval odds on this page, and the owner shipped this page.
-     Which one stands is the owner's call, not a test edit. */
+     loads. It was red from 2026-10-05: the Darwin dashboard's state table had a
+     column headed "Approval Odds". The server never sent that number (the
+     climate engine drops invented odds, src/climate/engine.test.mjs), so the
+     column only ever showed a dash. The dead column was taken out of the page
+     on 2026-10-10 (owner: "figure that out"), and this is green again. */
   const text = PAGE + PAGE_SCRIPTS;
   const banned = [
     /\b\d{1,3}\s?%\s?(approval|approved|odds)/i,

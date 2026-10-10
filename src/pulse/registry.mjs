@@ -6,6 +6,17 @@
 // Completeness is enforced by registry.test.mjs (routes.test.mjs allow-list pattern).
 // Audit only. GET pings. Never auto-fix. Never live CRS. Never charge a card.
 
+/**
+ * Live pages that ship from OUTSIDE git, with the reason. The file is not in a fresh checkout, so
+ * "that file is gone" does not apply to it; the pulse still pings the live door every morning.
+ * Keep this list tiny. A page goes here only when it cannot be in a public repository.
+ */
+export const SHIPPED_OUTSIDE_GIT = Object.freeze({
+  "leads/c01cb7592c8bb994130158e897e99bf1/index.html":
+    "The private lead call list: real names and phone numbers, so it is git-excluded (public/leads/). " +
+    "The Mac ships it from that folder; a GitHub ship writes it from the PRIVATE_LEADS_PAGE_B64 secret (.github/workflows/ship.yml)."
+});
+
 export const ALLOWED_UNMONITORED = {
   "inngest": "Inngest serve() is not a GET uptime door. Liveness is the daily-pulse cron itself.",
   "webhooks/[provider]": "Signed webhook POST only. A GET ping is not uptime and can look like a replay.",

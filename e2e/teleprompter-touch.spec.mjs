@@ -359,7 +359,8 @@ test.describe("teleprompter on an iPad: the rig", () => {
     const controls = await page.locator("#controls").boundingBox();
     expect(controls.width).toBeGreaterThan(600);
     const labels = await page.locator("#controls .btn").allTextContents();
-    expect(labels.map((s) => s.trim())).toEqual(["Record", "Stop", "Play"]);
+    // Record turns into Stop while it records, so there are two buttons, not three (owner, 2026-10-07).
+    expect(labels.map((s) => s.trim())).toEqual(["Record", "Play"]);
     const small = await page.locator("#bar .btn").evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 56).length);
     expect(small).toBe(0);
     await page.evaluate(() => window.__fhtp.openSheet("set"));

@@ -11,7 +11,8 @@
 # OFF (stop_builds), so one push is one deploy, never two.
 #
 # Secrets (Settings -> Secrets and variables -> Actions): NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID,
-# SUPABASE_ACCESS_TOKEN, SHIP_GITHUB_TOKEN (the repo token ship uses to push the ship log back).
+# SUPABASE_ACCESS_TOKEN, SHIP_GITHUB_TOKEN (the repo token ship uses to push the ship log back),
+# PRIVATE_LEADS_PAGE_B64 (the one page kept out of git; see the step below).
 # Nothing here prints them; GitHub masks them in logs.
 
 name: Ship to live
@@ -62,6 +63,24 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm install -g netlify-cli
+
+      # One live page is kept OUT of git on purpose: the private lead call list holds real names and
+      # phone numbers, and this repository is public. On the Mac it sits in a git-excluded folder
+      # (public/leads/) and went live with every Mac deploy. A GitHub runner has no such folder, so
+      # the page answered 404 from the first GitHub ship (2026-10-09) until this step (2026-10-10).
+      # The page is stored as an Actions secret and written here, excluded from git the same way,
+      # so ship still sees a clean tree. Nothing prints it.
+      - name: Put the private pages in place
+        env:
+          PRIVATE_LEADS_PAGE_B64: ${{ secrets.PRIVATE_LEADS_PAGE_B64 }}
+        run: |
+          if [ -n "$PRIVATE_LEADS_PAGE_B64" ]; then
+            mkdir -p public/leads/c01cb7592c8bb994130158e897e99bf1
+            printf '%s' "$PRIVATE_LEADS_PAGE_B64" | base64 -d > public/leads/c01cb7592c8bb994130158e897e99bf1/index.html
+            echo "public/leads/" >> .git/info/exclude
+            test -s public/leads/c01cb7592c8bb994130158e897e99bf1/index.html
+            test -z "$(git status --porcelain)"
+          fi
 
       - name: Ship
         env:

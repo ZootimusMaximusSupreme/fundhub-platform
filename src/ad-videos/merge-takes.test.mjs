@@ -232,6 +232,18 @@ describe("the script — lines in order", () => {
       assert.ok(s, `no script for ${file}`);
       assert.ok(s.lines.length >= 10, `${file}: ${s.lines.length} lines`);
     }
+    // The Direct Book ads (owner-set 2026-10-10): every name in the book finds its own script.
+    const direct = [...book.matchAll(/^\|\s*(\d+)\s*\|\s*`(Direct Book Ad [^`]+)`\s*\|$/gm)];
+    assert.equal(direct.length, 11);
+    for (const [, , file] of direct) {
+      const p = parseTakeName(file);
+      const s = findScript(scripts, p);
+      assert.ok(s, `no script for ${file}`);
+      assert.equal(s.source, "marketing/ads/direct-book/DIRECT-BOOK-ADS.md", `${file} must come from the Direct Book file`);
+      assert.ok(s.lines.length >= 5, `${file}: ${s.lines.length} lines`);
+    }
+    const d2 = findScript(scripts, { adNumber: 2, angle: "Over and over" });
+    assert.equal(d2.lines[0], "Banks will fund you over and over for the rest of your life.");
     const s7 = findScript(scripts, { adNumber: 7, angle: A7 });
     assert.equal(s7.lines[0], "They told you to hop on a call and they'd walk you through your file.");
     assert.equal(s7.lines.at(-1), "We pull your credit with a soft inquiry, so your score doesn't move.");
