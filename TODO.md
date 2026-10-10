@@ -109,6 +109,7 @@ Business only. Every item was checked against the repo and the live site on 10/4
   - [ ] Load only locked scripts into BigVU
   - [ ] On filming day, film only. Any new idea goes on the list for the next batch
 - [ ] Fundhub teleprompter (owner decision 2026-10-04: BigVU drifts speed, needs a restart every take, can't pause and resume, and can't start anywhere in the script)
+  - [ ] iPhone app (paused, owner-set 2026-10-10): bring `tools/teleprompter-ios/` level with the web page and make the volume buttons run the speed ladder. Build spec: `docs/specs/teleprompter-ios-app-build-2026-10-10.md`. Starts when Chris pays the $99 Apple account.
   - [x] Decided: words only (owner, 2026-10-04)
   - [x] First version built 2026-10-04 and published as a private Claude artifact (Fundhub Teleprompter), code in `tools/teleprompter/`
   - [ ] Put it on your phone as a real app through TestFlight ($99/year Apple developer account)
