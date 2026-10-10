@@ -1631,6 +1631,15 @@
     content.removeAttribute("autocapitalize");
     doc.body.classList.remove("wording");
     allowSelect(false);
+    dropFocus();
+  }
+  /* A single tap is play and pause only: no cursor, no keyboard, no selection left behind. */
+  function dropFocus() {
+    try { if (doc.activeElement === content) content.blur(); } catch (e) { /* nothing focused */ }
+    try {
+      var sel = root.getSelection ? root.getSelection() : null;
+      if (sel && sel.rangeCount) sel.removeAllRanges();
+    } catch (e2) { /* no selection api */ }
   }
   function act(a, e) {
     if (a.do === "pause") {
@@ -2561,7 +2570,7 @@
     syncCaretText(true);
     edits.commit();
     textEdit = null;
-    disarmEdit();
+    disarmEdit();          // also drops focus: no cursor and no keyboard after Save
     if (redrawNow && scripts[cur]) {
       var at = words.length ? Math.max(0, wordAt(t)) : 0;
       redraw(at);

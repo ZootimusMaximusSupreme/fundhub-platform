@@ -483,3 +483,58 @@ test.describe("double tap edits while the words roll (owner call 2026-10-09)", (
     expect(server.posts[0].body).toContain("ROLLING");
   });
 });
+
+test.describe("single tap is play and pause only (owner call 2026-10-09)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const noCursor = (page) => page.evaluate(() => {
+    const c = document.getElementById("content");
+    const sel = window.getSelection();
+    return {
+      focused: document.activeElement === c,
+      editable: c.getAttribute("contenteditable"),
+      ranges: sel ? sel.rangeCount : 0,
+      wording: document.body.classList.contains("wording"),
+      caret: getComputedStyle(c).caretColor
+    };
+  });
+
+  test("one tap pauses, one tap plays: never a cursor, a focus, or a selection", async ({ page }) => {
+    await open(page);
+    await roll(page);
+    const m = await middle(page);
+    await page.touchscreen.tap(m.x, m.y);
+    await expect.poll(async () => (await state(page)).playing).toBe(false);
+    let n = await noCursor(page);
+    expect(n.focused).toBe(false);
+    expect(n.ranges).toBe(0);
+    expect(n.wording).toBe(false);
+    expect(n.editable).toBeNull();
+    await page.waitForTimeout(400);
+    await page.touchscreen.tap(m.x, m.y);
+    await expect.poll(async () => (await state(page)).playing).toBe(true);
+    n = await noCursor(page);
+    expect(n.focused).toBe(false);
+    expect(n.ranges).toBe(0);
+  });
+
+  test("after a double-tap edit and Save, the next single tap still shows no cursor", async ({ page }) => {
+    await open(page);
+    const m = await middle(page);
+    await page.touchscreen.tap(m.x, m.y);
+    await page.touchscreen.tap(m.x, m.y);
+    await expect(page.locator("body.wording")).toHaveCount(1);
+    await page.keyboard.type("X ");
+    await page.locator("#b-script-save").tap();
+    await expect(page.locator("body.wording")).toHaveCount(0);
+    let n = await noCursor(page);
+    expect(n.focused).toBe(false);
+    expect(n.ranges).toBe(0);
+    await page.waitForTimeout(500);
+    await page.touchscreen.tap(m.x, m.y);
+    await page.waitForTimeout(150);
+    n = await noCursor(page);
+    expect(n.focused).toBe(false);
+    expect(n.ranges).toBe(0);
+    expect(n.wording).toBe(false);
+  });
+});

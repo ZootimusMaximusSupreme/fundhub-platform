@@ -317,3 +317,9 @@ body.cam-side-right #script-fade {
   -webkit-backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
   backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
 }
+
+/* Outside a double-tap edit there is never a text cursor. A single tap is play and pause only. */
+body:not(.wording) #content {
+  caret-color: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
