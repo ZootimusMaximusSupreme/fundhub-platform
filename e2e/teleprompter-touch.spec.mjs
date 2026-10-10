@@ -466,3 +466,20 @@ test.describe("teleprompter fixes 2026-10-09", () => {
     expect(b.total).toBeLessThan(a.total);
   });
 });
+
+test.describe("double tap edits while the words roll (owner call 2026-10-09)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("two quick taps while rolling pause the words and open the editor with Save", async ({ page }) => {
+    const { server } = await open(page);
+    await roll(page);
+    const m = await middle(page);
+    await page.touchscreen.tap(m.x, m.y);
+    await page.touchscreen.tap(m.x, m.y);
+    await expect.poll(async () => (await state(page)).playing).toBe(false);
+    await expect(page.locator("body.wording")).toHaveCount(1);
+    await expect(page.locator("#b-script-save")).toBeVisible();
+    await page.keyboard.type("ROLLING ");
+    await expect.poll(() => server.posts.length, { timeout: 3000 }).toBeGreaterThan(0);
+    expect(server.posts[0].body).toContain("ROLLING");
+  });
+});

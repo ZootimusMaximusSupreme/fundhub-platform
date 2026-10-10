@@ -303,15 +303,13 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("two quick taps place a cursor only when the words are paused", () => {
+  test("two quick taps place a cursor in every mode: paused, rolling, scrolling (owner call 2026-10-09)", () => {
     const T = load();
-    const paused = run(T, [...tap(0), ...tap(200), settle(T, 200)], "paused");
-    assert.deepEqual(paused.acts.map((a) => a.do), ["caret"]);
-    assert.equal(paused.acts[0].x, 100);
-    assert.equal(paused.acts[0].y, 300);
-    for (const mode of ["rolling", "scroll"]) {
+    for (const mode of ["paused", "rolling", "scroll"]) {
       const r = run(T, [...tap(0), ...tap(200), settle(T, 200)], mode);
-      assert.deepEqual(r.acts.map((a) => a.do), [], mode);
+      assert.deepEqual(r.acts.map((a) => a.do), ["caret"], mode);
+      assert.equal(r.acts[0].x, 100);
+      assert.equal(r.acts[0].y, 300);
     }
   });
 

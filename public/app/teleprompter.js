@@ -24,9 +24,8 @@
  * TOUCH (owner, 2026-10-07, the film page). Tap the words: they pause if they
  * are rolling, and they play if they are stopped. The camera keeps recording.
  * The tap waits a short beat so a double tap is not also a play or a pause.
- * Double tap while the words are paused: a text cursor lands in the words.
- * The phone keyboard comes up. A double tap while the words are rolling does
- * nothing. He presses Pause first. The Record and Play buttons hide until
+ * Double tap, rolling or paused: the words pause and a text cursor lands in
+ * them (owner call 2026-10-09). The phone keyboard comes up. The Record and Play buttons hide until
  * that edit ends. A finger drag still moves the script. The camera keeps
  * recording. X throws away every change from this edit. Leaving without X
  * still sends the words through the script edit route.
@@ -355,8 +354,8 @@
    * Returns {g, acts}. acts, in order:
    *   {do:'pause'}      one tap while rolling, after the short wait
    *   {do:'resume'}     one tap while paused or in scroll mode, after the wait
-   *   {do:'caret', x, y} two quick taps while paused: put the cursor there.
-   *                     No play, no pause. While rolling or scrolling, no edit.
+   *   {do:'caret', x, y} two quick taps, in any mode: pause the words and put the
+   *                     cursor there. The camera keeps recording.
    *   {do:'grab'}       a finger started dragging: stop the auto-scroll
    *   {do:'drag', dy}   the finger moved dy pixels (down is positive). scriptDelta
    *                     rolls the words up when the thumb moves up.
@@ -408,7 +407,8 @@
         if (near) {
           out.lastTap = null;
           out.pending = null;
-          if (mode === "paused") acts.push({ do: "caret", x: ev.x, y: ev.y });
+          // Owner call 2026-10-09: a double tap edits in every mode. The page pauses the words first.
+          acts.push({ do: "caret", x: ev.x, y: ev.y });
         } else {
           var nowMode = mode;
           if (out.pending) {
@@ -1648,6 +1648,8 @@
       start(atTake || seeked || t >= total);
     } else if (a.do === "caret") {
       cancelSettle();
+      if (playing || countTimer) stop();          // double tap while rolling: pause, then edit
+      if (scrollMode) setScroll(false);
       placeCaret(a.x, a.y);
       if (!textEdit) disarmEdit();
       if (e && e.preventDefault) e.preventDefault();
