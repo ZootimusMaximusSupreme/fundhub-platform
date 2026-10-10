@@ -146,7 +146,7 @@ export async function checkWorker(ctx) {
   const id = "worker";
   const work = ctx.work;
   if (!work || !hasWork(work)) {
-    return row(id, "skip", "nothing waiting for the worker — a missing worker beat is not an outage");
+    return { ...row(id, "na", "nothing waiting for the worker — a missing worker beat is not an outage"), na: { code: "no-work-waiting", args: { what: "worker" } } };
   }
   const limit = redAfterMs("15m");
   const last = toDate(ctx.beats && ctx.beats.worker);
@@ -178,7 +178,7 @@ export async function checkOutboxDrain(ctx) {
   const id = "outbox_drain";
   const waiting = ctx.work ? Number(ctx.work.outbox_waiting) || 0 : 0;
   if (waiting <= 0) {
-    return row(id, "skip", "no repo save waiting — outbox_drain is not expected to beat");
+    return { ...row(id, "na", "no repo save waiting — outbox_drain is not expected to beat"), na: { code: "no-work-waiting", args: { what: "outbox_drain" } } };
   }
   const limit = redAfterMs("15m");
   const last = toDate(ctx.beats && ctx.beats.outbox_drain);

@@ -30,6 +30,9 @@
 // time: the bundled function list arrives as ctx.functions.
 
 import { JOBS, lastMonthlyFire } from "./heartbeats.mjs";
+import { hasWork, readWaitingWork, workerKinds } from "../marketing/clock.mjs";
+import { netlifyRegistry } from "../marketing/ai-runner.mjs";
+import { JOB_KINDS } from "../marketing/job-kinds.mjs";
 
 const PHOENIX = "America/Phoenix";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -320,6 +323,49 @@ export const NA_CONDITIONS = Object.freeze({
         held: false,
         found: `The first job receipt is from ${monthDay(first)}. The job was due ${monthDay(last)}, so a run should be there.`
       };
+    }
+  }),
+
+  /* The marketing worker has nothing to do. True when the same waiting-work read
+     the lane uses (readWaitingWork + hasWork, same job kinds) finds nothing. The
+     row must be 03-marketing:<what>, so a true claim about one beat cannot be
+     copied onto another. `worker` means no work of any kind; `outbox_drain` means
+     no repo save is waiting. */
+  "no-work-waiting": core({
+    say(args = {}) {
+      return args.what === "outbox_drain"
+        ? "No repo save is waiting, so the drain has nothing to do. Judged the day one waits."
+        : "Nothing is waiting for the marketing worker. Judged the day work waits.";
+    },
+    claim(args = {}) {
+      return args.what === "outbox_drain" ? "No repo save is waiting." : "Nothing is waiting for the marketing worker.";
+    },
+    problem(args) {
+      return args.what === "worker" || args.what === "outbox_drain" ? null : "what is not worker or outbox_drain";
+    },
+    rowProblem(row, args) {
+      const id = idAfter(row, "03-marketing:");
+      if (id === null) return "A no-work-waiting reason only fits a 03-marketing row.";
+      return id === args.what ? null : `This row is for ${id}, not ${args.what}.`;
+    },
+    async look(args, ctx) {
+      const kinds = workerKinds(netlifyRegistry(process.env, JOB_KINDS));
+      let work;
+      if (ctx && typeof ctx.scope === "function") {
+        work = await ctx.scope((client) => readWaitingWork(client, { kinds }));
+      } else if (ctx && ctx.db && typeof ctx.db.query === "function") {
+        work = await readWaitingWork(ctx.db, { kinds });
+      } else {
+        throw new Error("no database in this run");
+      }
+      if (args.what === "outbox_drain") {
+        return work.outbox_waiting <= 0
+          ? { held: true, found: "" }
+          : { held: false, found: `${work.outbox_waiting} repo save${work.outbox_waiting === 1 ? " is" : "s are"} waiting.` };
+      }
+      return hasWork(work)
+        ? { held: false, found: "Work is waiting for the marketing worker." }
+        : { held: true, found: "" };
     }
   }),
 

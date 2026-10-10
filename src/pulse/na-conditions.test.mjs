@@ -25,10 +25,10 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these eight", () => {
+test("the list of codes is closed: exactly these nine", () => {
   assert.deepEqual([...NA_CODES].sort(), [
     "low-traffic", "monthly-not-due", "no-demand", "no-real-lead",
-    "no-running-ad", "no-trigger", "not-connected", "not-registered"
+    "no-running-ad", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
   for (const code of NA_CODES) assert.equal(Object.isFrozen(NA_CONDITIONS[code]), true, code);
@@ -38,7 +38,7 @@ test("the list of codes is closed: exactly these eight", () => {
 });
 
 test("the four core codes verify here; the four lane codes say \"lane\"", () => {
-  for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due"]) {
+  for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
   for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected"]) {
@@ -52,6 +52,7 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "no-trigger": { id: "n-01-cold-nurture" },
     "not-registered": { id: "clarity-insights-sweeper" },
     "monthly-not-due": { cron: "0 12 1 * *" },
+    "no-work-waiting": { what: "worker" },
     "no-running-ad": {},
     "low-traffic": { count: 0, min: 360, what: "ad clicks", days: 2 },
     "no-real-lead": { days: 3 },
@@ -497,4 +498,35 @@ test("naSay gives the code's sentence, and a plain fallback for a code it does n
   assert.match(naSay({ code: "no-running-ad", args: {} }), /^No ad is running/);
   assert.equal(naSay({ code: "nope", args: {} }), "Nothing to judge today.");
   assert.equal(naSay(undefined), "Nothing to judge today.");
+});
+
+/* ---- no-work-waiting: the marketing worker rows ---- */
+
+const waitingScope = (work) => async (fn) => fn({ async query() { return { rows: [work] }; } });
+const NONE = { outbox_waiting: 0, buzzes_due: 0, jobs_due: 0, stale_claims: 0 };
+
+test("no-work-waiting: still true when nothing waits (worker and drain)", async () => {
+  const scope = waitingScope(NONE);
+  for (const what of ["worker", "outbox_drain"]) {
+    const v = await verifyNa({ id: `03-marketing:${what}`, na: { code: "no-work-waiting", args: { what } } }, { scope });
+    assert.equal(v.ok, true, what);
+  }
+});
+
+test("no-work-waiting: goes false the moment work waits, and says what it saw", async () => {
+  const scope = waitingScope({ ...NONE, outbox_waiting: 2 });
+  const drain = await verifyNa({ id: "03-marketing:outbox_drain", na: { code: "no-work-waiting", args: { what: "outbox_drain" } } }, { scope });
+  assert.equal(drain.ok, false);
+  assert.match(drain.reason, /2 repo saves are waiting/);
+  const worker = await verifyNa({ id: "03-marketing:worker", na: { code: "no-work-waiting", args: { what: "worker" } } }, { scope });
+  assert.equal(worker.ok, false);
+});
+
+test("no-work-waiting: a proof for one beat cannot sit on another row", async () => {
+  const scope = waitingScope(NONE);
+  const v = await verifyNa({ id: "03-marketing:worker", na: { code: "no-work-waiting", args: { what: "outbox_drain" } } }, { scope });
+  assert.equal(v.ok, false);
+  const other = await verifyNa({ id: "wf:s-09", na: { code: "no-work-waiting", args: { what: "worker" } } }, { scope });
+  assert.equal(other.ok, false);
+  assert.equal(naProblem({ code: "no-work-waiting", args: { what: "nonsense" } }) !== null, true);
 });

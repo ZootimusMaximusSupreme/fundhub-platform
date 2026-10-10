@@ -108,9 +108,10 @@ test("clock: no companies is skip", async () => {
   assert.equal(r.status, "skip");
 });
 
-test("worker: no waiting work is skip", async () => {
+test("worker: no waiting work is a checkable nothing-to-judge row", async () => {
   const r = await checkWorker(ctx());
-  assert.equal(r.status, "skip");
+  assert.equal(r.status, "na");
+  assert.deepEqual(r.na, { code: "no-work-waiting", args: { what: "worker" } });
 });
 
 test("worker: waiting work and stale beat is FAIL", async () => {
@@ -133,9 +134,10 @@ test("page_seen is always skip on a timer", async () => {
   assert.match(r.detail, /marketing\/health/);
 });
 
-test("outbox_drain: no waiting saves is skip", async () => {
+test("outbox_drain: no waiting saves is a checkable nothing-to-judge row", async () => {
   const r = await checkOutboxDrain(ctx());
-  assert.equal(r.status, "skip");
+  assert.equal(r.status, "na");
+  assert.deepEqual(r.na, { code: "no-work-waiting", args: { what: "outbox_drain" } });
 });
 
 test("outbox_drain: waiting saves and 50 min stale is FAIL (red after 45 min, 3x the 15-min clock)", async () => {
@@ -195,9 +197,9 @@ test("checkMarketing runs through scope and never sends", async () => {
   const rows = await checkMarketing({ scope, now: NOW });
   assert.deepEqual(rows.map((r) => [r.id, r.status]), [
     ["clock", "PASS"],
-    ["worker", "skip"],
+    ["worker", "na"],
     ["page_seen", "skip"],
-    ["outbox_drain", "skip"]
+    ["outbox_drain", "na"]
   ]);
   assert.ok(queries.some((q) => /marketing_heartbeats/.test(q)));
 });

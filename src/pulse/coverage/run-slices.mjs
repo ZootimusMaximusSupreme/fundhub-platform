@@ -311,6 +311,9 @@ function fromMarketing(row, sliceId, m) {
   if (m && m.status === "PASS") {
     return result(row, sliceId, "PASS", detail, { group: "jobs" });
   }
+  if (m && m.status === "na" && m.na) {
+    return { ...result(row, sliceId, "na", detail, { group: "jobs" }), na: m.na };
+  }
   if (m && m.status === "FAIL" && /never/i.test(detail)) {
     return fromUnchecked(row, sliceId, `Not checked. No last-success time in the database. ${detail}`);
   }
