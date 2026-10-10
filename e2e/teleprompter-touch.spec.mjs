@@ -447,11 +447,11 @@ test.describe("teleprompter fixes 2026-10-09", () => {
     await expect(page.locator("#b-script-save")).toBeHidden();
   });
 
-  test("sideways, the words are half the size", async ({ page }) => {
+  test("sideways, the words are 0.6 of the size", async ({ page }) => {
     await open(page);
     const portrait = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("content")).fontSize));
     await page.setViewportSize({ width: 844, height: 390 });
-    await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("content")).fontSize))).toBe(Math.round(portrait / 2));
+    await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("content")).fontSize))).toBe(Math.round(portrait * 0.6));
   });
 
   test("one fixed speed: the run time is words / wpm, with no extra time for gaps", async ({ page }) => {

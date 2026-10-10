@@ -2788,7 +2788,9 @@
       return true;
     } catch (e) { return false; }
   }
-  function shownFont() { return isLandscape() ? Math.max(12, Math.round(S.font / 2)) : S.font; }
+  /* Sideways the words are 0.6 of the set size (owner, 2026-10-10: half was a bit small at arm's length). */
+  var SIDEWAYS_FONT = 0.6;
+  function shownFont() { return isLandscape() ? Math.max(12, Math.round(S.font * SIDEWAYS_FONT)) : S.font; }
   function applyFont() {
     content.style.fontSize = shownFont() + "px";
     content.style.setProperty("--measure", S.measure + "ch");

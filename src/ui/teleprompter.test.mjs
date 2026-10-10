@@ -753,7 +753,9 @@ describe("teleprompter, one fixed speed (owner call 2026-10-09)", () => {
     assert.equal(plain(T.steadyPace(raw, 0, 150)).length, 1);
   });
   test("sideways words are half size, the Save button shows only during a double-tap edit", () => {
-    assert.match(SRC, /Math\.round\(S\.font \/ 2\)/);
+    // Owner call 2026-10-10: sideways is 0.6 of the set size (half was a bit small).
+    assert.match(SRC, /var SIDEWAYS_FONT = 0\.6;/);
+    assert.match(SRC, /Math\.round\(S\.font \* SIDEWAYS_FONT\)/);
     const CSS = fs.readFileSync(path.join(APP, "teleprompter.css"), "utf8");
     assert.match(CSS, /body\.wording #b-script-save\s*\{\s*display:\s*block !important/);
     assert.match(SRC, /syncCaretText\(true\);\s*\/\/ queue the change now/);
