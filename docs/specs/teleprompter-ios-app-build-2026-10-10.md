@@ -19,8 +19,8 @@ Each line is a rule Chris set on the web teleprompter. The web code is the refer
 
 | # | Rule | Web reference (`public/app/teleprompter.js`) |
 |---|---|---|
-| 1 | **Speed is held to 130 to 260 words a minute.** 130 is super slow, 260 is the top. Nothing goes outside. | `MIN_WPM`, `MAX_WPM`, `storedWpm` |
-| 2 | **Volume buttons run it with no finger on the glass.** One ladder, 5 words a minute per press: back 260 … back 130 · paused · forward 130 … forward 260. Down while rolling slows it; at 130 one more press pauses; down again rolls back at 130; down again rolls back faster, up to 260, and stays. Up walks the other way: slower roll back, pause, roll forward, up to 260. Rolling back stops by itself at the first word. | `volumeLadder`, `volumeStep` |
+| 1 | **Speed is held to 130 to 320 words a minute.** 130 is super slow, 320 is the top. Nothing goes outside. | `MIN_WPM`, `MAX_WPM`, `storedWpm` |
+| 2 | **Volume buttons run it with no finger on the glass.** One ladder, 5 words a minute per press: back 320 … back 130 · paused · forward 130 … forward 320. Down while rolling slows it; at 130 one more press pauses; down again rolls back at 130; down again rolls back faster, up to 320, and stays. Up walks the other way: slower roll back, pause, roll forward, up to 320. Rolling back stops by itself at the first word. | `volumeLadder`, `volumeStep` |
 | 3 | **One fixed scroll speed.** Script height in pixels divided by (words ÷ words a minute × 60). Blank gaps and paragraph breaks never speed it up. | `steadyPace` |
 | 4 | **The script starts four lines down the screen**, not at the top. Never past the middle of a short screen. | `START_LINES_DOWN`, `readingLineTop` |
 | 5 | **Sideways words are 0.6 of the set size.** Only on a phone that is really turned. | `SIDEWAYS_FONT`, `isLandscape` |

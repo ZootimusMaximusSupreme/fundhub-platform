@@ -68,9 +68,9 @@
   /* ── pure helpers ───────────────────────────────────────────────────── */
 
   var NOT_CAPS = { LLC: 1, LLCS: 1, SBA: 1, FICO: 1, OPM: 1, ROI: 1, CEO: 1, NAICS: 1, USA: 1, US: 1, AI: 1, OK: 1, ID: 1, TV: 1, CTA: 1, VSL: 1, WPM: 1 };
-  /* Owner's hard limits, 2026-10-10: 130 is super slow, 260 is the top (raised from 220 the same day:
-     220 was too slow sideways). Nothing goes outside them. */
-  var MIN_WPM = 130, MAX_WPM = 260;
+  /* Owner's hard limits, 2026-10-10: 130 is super slow, 320 is the top (raised from 220, then 260, the same day:
+     too slow sideways). Nothing goes outside them. */
+  var MIN_WPM = 130, MAX_WPM = 320;
 
   /**
    * NAMING.md, the same rule as takeFileName in src/marketing/shoot-plan.mjs:
@@ -744,7 +744,7 @@
 
   /**
    * The volume buttons, with no finger on the glass (owner, 2026-10-10). One ladder:
-   *   back 260 … back 130 · paused · forward 130 … forward 260
+   *   back 320 … back 130 · paused · forward 130 … forward 320
    * Volume down steps left, volume up steps right, 5 words a minute at a time.
    * st: { mode: 'fwd' | 'paused' | 'rev', wpm, rev }. wpm is the forward speed, rev the backward one.
    *   forward: down slows to MIN, then pauses. up speeds to MAX and stays.
