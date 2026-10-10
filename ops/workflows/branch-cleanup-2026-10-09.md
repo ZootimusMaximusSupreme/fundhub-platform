@@ -67,3 +67,15 @@ Chris: "all branches on main, for GitHub and for local." Done the same day. `mai
   - #24 `finance-os-f2-bank-relink`: not merge-ready (Postgres tests never run, text held, owner pick pending). Customer-facing, so it waits.
 - **One failing test left:** `src/http/climate-match.test.mjs` (the live climate page still shows an "Approval Odds" column; the owner banned approval-odds words). Fix is a live page edit, so it needs a marked draft first (`ops/workflows/finish-left-2026-10-09-T4.md` has the exact strings).
 - GitHub now holds only `main` and those 3 pull-request branches. Local matches.
+
+## Night update, 2026-10-09 — owner order: no branches, local or GitHub
+
+Chris ordered it: only `main`, synced. The 3 held draft-PR branches are gone (local, GitHub, and their work folders). Nothing was merged to main. Each tip is kept as a tag on GitHub so no work is lost. Restore with `git branch <name> archive/<name>`.
+
+| tag | what it holds | why it was held |
+|---|---|---|
+| `archive/finance-os-f2-bank-relink` (`914cc2004`) | FinanceOS F2: client fixes a broken bank login (PR #24) | not merge-ready; customer-facing text held |
+| `archive/mm-gl-blueprint-glue` (`6449ded2e`) | Blueprint glue review fixes (PR #26) | adds model-cost buttons; no AI spend rule |
+| `archive/mm-u37-today-additions` (`4e4359719`) | Marketing "Today" tab additions (PR #22) | adds model-cost buttons; no AI spend rule |
+
+The three draft pull requests closed when their branches went.
