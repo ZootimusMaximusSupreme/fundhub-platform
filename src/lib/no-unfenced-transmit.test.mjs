@@ -245,6 +245,20 @@ const ALLOWED_RAW_FETCH = {
   "src/pulse/registry.mjs":
     "Read-only GET uptime pings for the 7am pulse. Never POSTs. Never sends SMS " +
     "or email. Unrecorded is a local count only.",
+  // ── Added 2026-10-09 (T3). Both landed 2026-10-07 (f5bf6534b) without being
+  // sorted onto this list. Each was read before it was listed. ─────────────────
+  "src/pulse/funnel-doors.mjs":
+    "Read-only GET of our own ClickFunnels sales page (apply.fundhub.ai/roadmap) for " +
+    "the 6 a.m. pulse and the 5-minute watch. The one call passes a URL and an accept " +
+    "header and no method or body, so it is a GET. Never POSTs. Never sends. No " +
+    "client is contacted and no vendor record is changed.",
+  "src/pulse/instant-watch.mjs":
+    "Conduit: defaults fetchImpl to globalThis.fetch and hands it on, never calling it " +
+    "itself. It goes to (1) the read-only door checks, which GET our own pages " +
+    "(src/pulse/daily-pulse.mjs and src/pulse/funnel-doors.mjs, both listed here), and " +
+    "(2) the Twilio provider for the one alert text to the owner's own number, which " +
+    "sends through postJsonTo() behind the MESSAGING fence; a fetchImpl handed to a " +
+    "provider does not bypass that fence (src/messaging/providers/http.mjs).",
   // ── Added 2026-10-08 (heartbeat gap lanes). Each was read before it was
   // listed, and each lane was run against the live site with a fetch that
   // refuses anything but GET and HEAD: 0 refused calls in every lane. ──────

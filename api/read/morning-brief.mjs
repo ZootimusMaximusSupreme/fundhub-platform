@@ -48,7 +48,7 @@ export default async function handler(req, res, deps = {}) {
     const kind = parseBriefKind(req.query?.kind);
     if (!kind) return res.status(400).json({ ok: false, error: "kind must be morning or evening" });
 
-    const brief = await readMorningBrief(database, { orgId, date, kind });
+    const brief = await readMorningBrief(database, { orgId: staff.org_id, date, kind });
     if (!brief) return res.status(404).json({ ok: false, error: "no_brief", date, kind });
 
     return res.status(200).json({ ok: true, date, kind, brief });

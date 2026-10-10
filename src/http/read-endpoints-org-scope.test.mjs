@@ -126,6 +126,13 @@ const NO_ORG_COLUMN = new Map([
      org. Until 2026-10-05 it took no org at all and returned every company's
      aggregates; this file is what caught it. */
   ["eeo-aggregate.mjs", "scoped in src/hiring/eeo-selfid.mjs fetchEeoAggregate(), which binds org_id = $1::uuid and returns [] without an org"],
+  /* Morning and evening brief — handler writes no SQL. readMorningBrief() in
+     src/ops/morning-brief.mjs binds `org_id = $1` and throws without an org,
+     and the handler 403s a session whose org is not a UUID before it reads.
+     The handler arrived 2026-10-07 (d34300968) without a row here, so this
+     test was red from that day. Proved against the handler, with a stub that
+     records the SQL, in src/http/morning-brief.test.mjs. Read 2026-10-09. */
+  ["morning-brief.mjs", "scoped in src/ops/morning-brief.mjs readMorningBrief(), which binds org_id = $1 and throws without an org"],
 ]);
 
 /* An allow-listed endpoint must still prove it hands the SESSION's org to
