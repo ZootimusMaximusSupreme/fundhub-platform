@@ -25,6 +25,12 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-10 — trip lanes — timeout_or_capacity
+- Cause: the audit checks every "nothing to judge" row again, all together, inside 2.5 seconds. Three new trip rows that said "nothing to judge" each read the database again. That pushed the list past the deadline, and about 50 other rows after them (every workflow row) read "not true any more" with no real cause. Found by `npm run pulse:prove` before ship. A faster read and one shared read both helped and neither was enough in the proof.
+- Fix: a trip nobody started is a plain green line ("Nobody started the funding trip in the last 60 days, so nobody is stuck"), not a "nothing to judge" row. It costs the audit nothing.
+- Guard added: `trip-kit.test.mjs` (an empty trip is PASS and carries no `na`), each `gap-trip-*.test.mjs` (the same, per lane), and `audit:na-verified` in `npm run pulse:prove`. Lesson: a new "nothing to judge" row spends part of a shared 2.5 second budget, and the proof shows it on a laptop where each read costs three round trips. Say it green in words unless the row truly cannot be read.
+- Incident: none (caught in the proof).  PR: none
+
 ## 2026-10-09 — brief-link — missing_route
 - Cause: every morning and evening text ended with "Full report: <link>". The page behind it (`public/app/morning-brief.html`) was never built, so the link answered 404 for days and nothing noticed. The text was sent and logged, so every check said the text was fine.
 - Fix: built the page and a public data route (`api/public/morning-brief.mjs`). The link now carries a secret code, so it opens with no sign-in and only for the exact report. If the secret is missing the text says "Full report: not available" and the new beat goes red.

@@ -103,6 +103,11 @@ export const GAP_FILES = Object.freeze([
   ["gap-staff.mjs", () => import("./gap-staff.mjs")],
   ["gap-subscriptions.mjs", () => import("./gap-subscriptions.mjs")],
   ["gap-training.mjs", () => import("./gap-training.mjs")],
+  ["gap-trip-funding.mjs", () => import("./gap-trip-funding.mjs")],
+  ["gap-trip-inquiry.mjs", () => import("./gap-trip-inquiry.mjs")],
+  ["gap-trip-partner.mjs", () => import("./gap-trip-partner.mjs")],
+  ["gap-trip-repair.mjs", () => import("./gap-trip-repair.mjs")],
+  ["gap-trip-roadmap.mjs", () => import("./gap-trip-roadmap.mjs")],
   ["gap-underwrite.mjs", () => import("./gap-underwrite.mjs")],
   ["gap-webhooks.mjs", () => import("./gap-webhooks.mjs")]
 ]);

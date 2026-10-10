@@ -48,13 +48,13 @@ export const TRIPWIRES = Object.freeze({
   "job:slo-no-reply-197": { impact: "money", checks: ["handoff:contact-no-followup"] },
   "job:slo-genuine-checkout-sms": { impact: "money", checks: ["handoff:contact-no-followup"] },
   "job:slo-infinite-drip": { impact: "money", checks: ["email:drip-step-no-email"] },
-  "page:roadmap/pull.html": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h", "consent:slo-store"] },
+  "page:roadmap/pull.html": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h", "consent:slo-store", "trip:roadmap"] },
   "route:public/slo-pull": { impact: "customer", checks: ["softpull:request-failed-or-stuck", "consent:slo-store"] },
   "route:soft-pull-approve": { impact: "customer", checks: ["softpull:approve-click-no-pull", "soft-pull:approve-read"] },
   "desk:soft-pull-approve.html": { impact: "customer", checks: ["softpull:approve-click-no-pull", "soft-pull:approve-page"] },
   "job:c-00-crs-soft-pull-request": { impact: "customer", checks: ["softpull:request-failed-or-stuck", "keys:credit-pull-live-allowed"] },
-  "job:slo-paid-form-nudge": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h"] },
-  "job:slo-pack-delivery": { impact: "customer", checks: ["uw-paid-roadmap-no-pack", "uw-pack-files-incomplete", "uw-pack-email-not-queued"] },
+  "job:slo-paid-form-nudge": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h", "trip:roadmap"] },
+  "job:slo-pack-delivery": { impact: "customer", checks: ["uw-paid-roadmap-no-pack", "uw-pack-files-incomplete", "uw-pack-email-not-queued", "trip:roadmap"] },
   "job:message-dispatch-sweeper": { impact: "customer", checks: ["gap:sms-sending-stuck", "email:sending-stuck", "gap:msg-sent-no-receipt"] },
   "job:s-00-welcome": { impact: "customer", checks: ["handoff:lead-first-touches-missing", "gap:sms-journey-zero"] },
   "job:s-04-call-booked": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-join-link"] },
@@ -105,13 +105,13 @@ export const TRIPWIRES = Object.freeze({
   // payouts. Each deep check reads what the money chain, the bank answers, the payout run or the
   // commission screens actually left in the books, and goes red when it is wrong.
   // W3 adds its own board check ids to route:pipeline-cards after this merges.
-  "route:pipeline-cards": { impact: "money", checks: ["funding:funded-no-bill", "pipeline:count-true", "pipeline:stage-vs-fact", "pipeline:nobody-lost"] },
+  "route:pipeline-cards": { impact: "money", checks: ["funding:funded-no-bill", "pipeline:count-true", "pipeline:stage-vs-fact", "pipeline:nobody-lost", "trip:funding"] },
   "route:applications": { impact: "money", checks: ["funding:approved-no-amount", "funding:funded-no-bill"] },
   "route:commissions": { impact: "money", checks: ["commissions:ledger"] },
   "route:commission-rules": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
   "route:slo-connections": { impact: "money", checks: ["commissions:slo-map"] },
   "route:dashboard/seed": { impact: "money", checks: ["books:sample-rows"] },
-  "route:read/affiliates": { impact: "money", checks: ["partners:payout-held"] },
+  "route:read/affiliates": { impact: "money", checks: ["partners:payout-held", "trip:partner"] },
   "desk:products-commissions.html": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
   "desk:client-control-panel.html": { impact: "money", checks: ["funding:funded-no-bill", "funding:approved-no-amount"] },
   "desk:affiliate.html": { impact: "money", checks: ["partners:payout-held"] },
@@ -165,7 +165,26 @@ export const TRIPWIRES = Object.freeze({
   "job:finance-os-card-due-reminders": { impact: "customer", checks: ["alerts:texts-went-out"] },
   // The paper letter to a bureau, for a paying repair client. The send itself has no read of its own: the
   // repair lane goes red when a file sits at ready-to-send or in transit past its clock (a letter that never left).
-  "send:src/metro2/delivery/send.mjs": { impact: "customer", checks: ["pipeline:repair", "repair-case-stuck"] }
+  "send:src/metro2/delivery/send.mjs": { impact: "customer", checks: ["pipeline:repair", "repair-case-stuck"] },
+  // Coverage batch W8 whole trips, 2026-10-10 (src/pulse/coverage/gap-trip-*.mjs). A trip check follows
+  // each customer from the first step to the last and names the first step that is missing. Each line
+  // below is a surface whose break turns one trip red: the handler, door or job that makes a step the
+  // company owes. The deep check named beside the trip id is the same break read from the stage's side.
+  "job:f-07-funding-locked": { impact: "money", checks: ["trip:funding", "funding:funded-no-bill"] },
+  "job:doc-check": { impact: "customer", checks: ["trip:repair", "documents:stuck-processing"] },
+  "job:doc-check-retry-sweeper": { impact: "customer", checks: ["trip:repair", "documents:stuck-processing"] },
+  "job:repair-bureau-response-reader": { impact: "customer", checks: ["trip:repair", "repair-case-stuck"] },
+  "route:repair/enroll": { impact: "customer", checks: ["trip:repair"] },
+  "route:repair/generate": { impact: "customer", checks: ["trip:repair", "repair-letter-round"] },
+  "route:repair/send": { impact: "customer", checks: ["trip:repair", "repair-case-stuck"] },
+  "route:repair/inbound-mail": { impact: "customer", checks: ["trip:repair", "repair-case-stuck"] },
+  "job:c-03-inquiry-removed-resume-or-hold": { impact: "customer", checks: ["trip:inquiry"] },
+  "job:inquiry-call-sweeper": { impact: "customer", checks: ["trip:inquiry", "inquiry:case-stuck"] },
+  "route:inquiries": { impact: "customer", checks: ["trip:inquiry"] },
+  "route:inquiry": { impact: "customer", checks: ["trip:inquiry", "inquiry:case-stuck"] },
+  "route:partners/approve": { impact: "customer", checks: ["trip:partner", "partner-pages:live"] },
+  "route:public/affiliate-click": { impact: "customer", checks: ["trip:partner", "partners:referral-link"] },
+  "job:affiliate-payout-run": { impact: "money", checks: ["trip:partner", "partners:commission-payable", "partners:payout-stuck"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
