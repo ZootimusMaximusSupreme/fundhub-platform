@@ -35,7 +35,7 @@ import { fileURLToPath } from "node:url";
 
 import { loadEnv } from "./load-env.mjs";
 import { parseTakeName, groupKey, groupLabel, findScript } from "../src/ad-videos/merge-takes.mjs";
-import { loadScripts } from "../src/ad-videos/merge-takes-step.mjs";
+import { loadScripts, allScripts } from "../src/ad-videos/merge-takes-step.mjs";
 import { resolveLocalJoiner } from "../src/ad-videos/merge-takes-media.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,7 +85,21 @@ async function offline({ dir, out, keep }) {
 
   const joiner = await resolveLocalJoiner({ env: process.env, cwd: ROOT });
   if (!joiner.ok) { console.log(`cannot join here: ${joiner.why}`); return 1; }
-  const scripts = loadScripts();
+  /* The database is the truth for the words (owner, 2026-10-10). The script files
+     cover the ads that are not numbered there yet, and stand in when it cannot be read. */
+  let scripts;
+  try {
+    loadEnv();
+    const { db } = await import("../src/db.mjs");
+    const store = await import("../src/ad-videos/store.mjs");
+    const got = await allScripts(db, { store });
+    scripts = got.scripts;
+    if (got.note) console.log(got.note);
+    try { await db.end?.(); } catch { /* the pool may already be closed */ }
+  } catch (e) {
+    console.log(`the scripts in the database could not be read (${String(e?.message || e).slice(0, 120)}), so only the script files were used`);
+    scripts = loadScripts();
+  }
 
   let failed = 0;
   for (const { parsed, members } of groups.values()) {

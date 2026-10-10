@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   parseTakeName, parseAdPrefix, groupKey, normalizeAngle, decideJoin, JOINED_PREFIX,
-  parseScriptMarkdown, findScript, angleMatches, splitSentences, tokenize,
+  parseScriptMarkdown, scriptsFromRows, findScript, angleMatches, splitSentences, tokenize,
   findHits, normalizeWords, planBestOf, buildEdl, refineWordsWithSilence, avoidBlack,
   summarizePlan, DEFAULTS
 } from "./merge-takes.mjs";
@@ -46,6 +46,43 @@ const row = (id, ad, angle, take, extra = {}) => ({
 });
 
 /* ═════════════════════════════════════════════════════════════════════════ */
+describe("scripts from the database (owner, 2026-10-10)", () => {
+  const BODY = "Banks will fund you over and over for the rest of your life.\n\nI've pulled hundred-thousand-dollar credit lines on four companies. One detail made that possible.\n\nHook: this label is not spoken.\n\n# A line that starts with a hash is still spoken.\n\nTap below and book a call.";
+  const ROWS = [
+    { ad_id: "93", stack_no: 2, angle_name: "Over and over", title: "Ad 19 — Over and over (broad, film first)", body: BODY },
+    { ad_id: "93", stack_no: 2, angle_name: "Over and over", title: "old version", body: "Old words that were replaced." },
+    { ad_id: "100", stack_no: 9, angle_name: "The bank", title: "Ad 9 — The bank", body: "The bank behind me already decided. They look at one file first." },
+    { ad_id: "104", stack_no: null, angle_name: null, title: "/watch thank-you video", body: "Thanks for booking." },
+    { ad_id: "200", stack_no: 3, angle_name: "Empty", title: "Empty", body: "   " }
+  ];
+
+  test("a Direct Book take finds its script by the number and angle in its file name", () => {
+    const scripts = scriptsFromRows(ROWS);
+    const p = parseTakeName("Direct Book Ad 2 — Over and over Take 1.mp4");
+    const s = findScript(scripts, p);
+    assert.ok(s, "found");
+    assert.equal(s.source, "database: ad 93");
+    assert.equal(s.lines[0], "Banks will fund you over and over for the rest of your life.");
+    assert.equal(s.lines.at(-1), "Tap below and book a call.");
+    assert.ok(s.lines.includes("A line that starts with a hash is still spoken."));
+    assert.ok(!s.lines.some((l) => /^hook\b/i.test(l)), "the Hook label is not a spoken word");
+  });
+
+  test("the newest row wins, and a row with no number or no words is left out", () => {
+    const scripts = scriptsFromRows(ROWS);
+    assert.deepEqual(scripts.map((s) => `${s.adNumber}|${s.angle}`), ["2|Over and over", "9|The bank"]);
+    assert.ok(!scripts.some((s) => s.lines.includes("Old words that were replaced.")));
+    assert.deepEqual(scriptsFromRows(null), []);
+  });
+
+  test("the database comes before the script files, so changed words are the ones used", () => {
+    const files = [{ adNumber: 9, angle: "The bank", heading: "Ad 9 — The bank", lines: ["Stale words from a file."], source: "a file" }];
+    const s = findScript([...scriptsFromRows(ROWS), ...files], { adNumber: 9, angle: "The bank" });
+    assert.equal(s.source, "database: ad 100");
+    assert.equal(s.lines[0], "The bank behind me already decided.");
+  });
+});
+
 describe("names — marketing/ads/NAMING.md", () => {
   test("every take-1 name in NAMING.md's table reads back as its four parts", () => {
     const book = fs.readFileSync(path.join(REPO, "marketing/ads/NAMING.md"), "utf8");
@@ -232,18 +269,6 @@ describe("the script — lines in order", () => {
       assert.ok(s, `no script for ${file}`);
       assert.ok(s.lines.length >= 10, `${file}: ${s.lines.length} lines`);
     }
-    // The Direct Book ads (owner-set 2026-10-10): every name in the book finds its own script.
-    const direct = [...book.matchAll(/^\|\s*(\d+)\s*\|\s*`(Direct Book Ad [^`]+)`\s*\|$/gm)];
-    assert.equal(direct.length, 11);
-    for (const [, , file] of direct) {
-      const p = parseTakeName(file);
-      const s = findScript(scripts, p);
-      assert.ok(s, `no script for ${file}`);
-      assert.equal(s.source, "marketing/ads/direct-book/DIRECT-BOOK-ADS.md", `${file} must come from the Direct Book file`);
-      assert.ok(s.lines.length >= 5, `${file}: ${s.lines.length} lines`);
-    }
-    const d2 = findScript(scripts, { adNumber: 2, angle: "Over and over" });
-    assert.equal(d2.lines[0], "Banks will fund you over and over for the rest of your life.");
     const s7 = findScript(scripts, { adNumber: 7, angle: A7 });
     assert.equal(s7.lines[0], "They told you to hop on a call and they'd walk you through your file.");
     assert.equal(s7.lines.at(-1), "We pull your credit with a soft inquiry, so your score doesn't move.");

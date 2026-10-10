@@ -81,9 +81,6 @@ export const JOINED_PREFIX = "joined into one master:";
     files are word-for-word compilations that also carry the newer ads. */
 export const SCRIPT_SOURCES = Object.freeze([
   "marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md",
-  /* The Direct Book ads under their own numbers (owner-set 2026-10-10). Read before
-     the compilations below, which still carry the same ads under older labels. */
-  "marketing/ads/direct-book/DIRECT-BOOK-ADS.md",
   "marketing/ads/scripts/ALL-ADS-since-2026-09-03.md",
   "marketing/ads/scripts/2026-10-02.md",
   "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
@@ -384,6 +381,45 @@ export function parseScriptMarkdown(text, source = null) {
     if (spoken) para.push(spoken);
   }
   close();
+  return out;
+}
+
+/** The source name on a script that came from the database. */
+export const DATABASE_SOURCE = "database";
+
+/**
+ * scriptsFromRows(rows) → the same shape parseScriptMarkdown() gives, from the
+ * live ad_scripts rows that have a place in an offer's stack (migration 479).
+ *
+ * The database is the truth for the words: an edit on the teleprompter is a
+ * new row there the moment it saves, so the cutting step never reads a stale
+ * copy (owner, 2026-10-10). The number is the ad's number inside its offer and
+ * the angle is the clean angle, the same two parts that are in the take's file
+ * name (src/marketing/shoot-plan.mjs takeFileName). The body goes through the
+ * same line rules as a script file. A row with no number, no angle or no
+ * spoken line is left out. When two rows claim the same number and angle the
+ * first one wins, so pass the newest first.
+ * @param {Array<{ad_id?: any, stack_no?: any, angle_name?: any, title?: any, body?: any}>} rows
+ */
+export function scriptsFromRows(rows) {
+  const out = [];
+  const seen = new Set();
+  for (const r of rows || []) {
+    const n = Number(r?.stack_no);
+    if (!Number.isInteger(n) || n < 1) continue;
+    const angle = String(r?.angle_name || r?.title || "").replace(/\s+/g, " ").trim();
+    const body = typeof r?.body === "string" ? r.body : "";
+    if (!angle || !body.trim()) continue;
+    const key = `${n}|${normalizeAngle(angle)}`;
+    if (seen.has(key)) continue;
+    const source = r?.ad_id == null ? DATABASE_SOURCE : `${DATABASE_SOURCE}: ad ${r.ad_id}`;
+    /* A "#" at the start of a spoken line would read as a heading and end the script early. */
+    const safe = body.replace(/\r/g, "").split("\n").map((l) => l.replace(/^(\s*)#+\s*/, "$1")).join("\n");
+    const [parsed] = parseScriptMarkdown(`## Ad ${n} — ${angle}\n\n${safe}\n`, source);
+    if (!parsed) continue;
+    seen.add(key);
+    out.push({ ...parsed, adNumber: n, angle });
+  }
   return out;
 }
 

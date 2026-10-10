@@ -35,7 +35,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  decideJoin, parseAdPrefix, parseScriptMarkdown, findScript, groupLabel,
+  decideJoin, parseAdPrefix, parseScriptMarkdown, scriptsFromRows, findScript, groupLabel,
   SCRIPT_SOURCES, JOINED_PREFIX, PRE_SUBMAGIC
 } from "./merge-takes.mjs";
 import { resolveLocalJoiner } from "./merge-takes-media.mjs";
@@ -88,6 +88,45 @@ export async function listAngleTakes(db, { store, row } = {}) {
     );
     return r.rows;
   }, { db });
+}
+
+/**
+ * listDbScripts(db, { store }) → the live scripts that have a place in an
+ * offer's stack, newest first, as scripts the join can read (scriptsFromRows).
+ *
+ * SELECT only, one staff transaction through the store's own asStaff(), the
+ * same way listAngleTakes() reads. The live version of a script is the one
+ * that is not archived and not replaced.
+ */
+export async function listDbScripts(db, { store } = {}) {
+  if (typeof store?.asStaff !== "function") throw new Error("the store offers no asStaff() to read the scripts with");
+  const rows = await store.asStaff(async (tx) => {
+    const r = await tx.query(
+      `SELECT ad_id, stack_no, angle_name, title, body
+         FROM ad_scripts
+        WHERE stack_kind = 'ad' AND stack_no IS NOT NULL
+          AND archived_at IS NULL
+          AND status NOT IN ('superseded', 'rejected', 'expired')
+        ORDER BY version DESC, updated_at DESC
+        LIMIT 500`
+    );
+    return r.rows;
+  }, { db });
+  return scriptsFromRows(rows);
+}
+
+/**
+ * Every script the join may use: the database first (the truth for the words),
+ * then the repo's script files for the ads that are not numbered there yet.
+ * A database read that fails is not hidden: the reason comes back in `note`,
+ * and the files alone are used.
+ */
+export async function allScripts(db, { store, listScripts = listDbScripts, fileScripts = loadScripts } = {}) {
+  let fromDb = [];
+  let note = null;
+  try { fromDb = await listScripts(db, { store }); }
+  catch (e) { note = `the scripts in the database could not be read (${String(e?.message || e).slice(0, 120)}), so only the script files were used`; }
+  return { scripts: [...fromDb, ...fileScripts()], note };
 }
 
 /** Every script in SCRIPT_SOURCES, in that order. A missing file is skipped. */
@@ -156,11 +195,15 @@ export async function joinBeforeSubmagic(db, row, { store, ports = {} } = {}) {
       ) };
     }
 
-    const scripts = opts.scripts || loadScripts();
+    const loaded = opts.scripts
+      ? { scripts: opts.scripts, note: null }
+      : await allScripts(db, { store, ...(opts.listScripts ? { listScripts: opts.listScripts } : {}) });
+    const scripts = loaded.scripts;
     const script = findScript(scripts, d.parsed);
     if (!script) {
       return { out: hold(
-        `${d.note}: no script titled "Ad ${d.parsed.adNumber} — ${d.parsed.angle}" was found in ${SCRIPT_SOURCES.join(", ")}. ` +
+        `${d.note}: no script titled "Ad ${d.parsed.adNumber} — ${d.parsed.angle}" was found in the database or in ${SCRIPT_SOURCES.join(", ")}` +
+        `${loaded.note ? ` (${loaded.note})` : ""}. ` +
         "The join puts lines in script order and cannot without the script. Nothing was sent."
       ) };
     }

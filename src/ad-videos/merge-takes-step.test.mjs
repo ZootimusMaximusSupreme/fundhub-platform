@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { walk, portsFor } from "../workflows/ad-video-sweeper.mjs";
-import { listAngleTakes, joinBeforeSubmagic, withMasterBytes } from "./merge-takes-step.mjs";
+import { listAngleTakes, listDbScripts, allScripts, joinBeforeSubmagic, withMasterBytes } from "./merge-takes-step.mjs";
 import { JOINED_PREFIX } from "./merge-takes.mjs";
 
 const A7 = "Haynes, the call that was never a roadmap";
@@ -211,5 +211,55 @@ describe("the database read", () => {
     const d = withMasterBytes(drive, "lead", Buffer.from("M"));
     assert.equal((await d.downloadFile("lead")).bytes.toString(), "M");
     assert.equal((await d.downloadFile("other")).bytes.toString(), "other");
+  });
+});
+
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+describe("the join reads the scripts from the database (owner, 2026-10-10)", () => {
+  const ROW = { ad_id: "93", stack_no: 2, angle_name: "Over and over", title: "Ad 19 — Over and over", body: "Banks will fund you over and over. One detail made that possible." };
+
+  test("one read-only staff read of the live, numbered scripts", async () => {
+    const seen = [];
+    const store = { asStaff: async (fn, opts) => fn({ query: async (sql, args) => { seen.push({ sql, args, opts }); return { rows: [ROW] }; } }) };
+    const scripts = await listDbScripts("the-db", { store });
+    assert.equal(seen.length, 1);
+    assert.match(seen[0].sql, /^\s*SELECT/);
+    assert.doesNotMatch(seen[0].sql, /\b(INSERT|UPDATE|DELETE|ALTER|DROP)\b/i);
+    assert.match(seen[0].sql, /stack_no IS NOT NULL/);
+    assert.match(seen[0].sql, /archived_at IS NULL/);
+    assert.match(seen[0].sql, /'superseded'/);
+    assert.equal(seen[0].opts.db, "the-db");
+    assert.equal(scripts.length, 1);
+    assert.equal(scripts[0].adNumber, 2);
+    assert.equal(scripts[0].lines[0], "Banks will fund you over and over.");
+    await assert.rejects(() => listDbScripts("the-db", { store: {} }), /asStaff/);
+  });
+
+  test("the database comes first; when it cannot be read the files are used and the reason is said", async () => {
+    const files = () => [{ adNumber: 7, angle: "from a file", lines: ["x"], source: "a file" }];
+    const ok = await allScripts(null, { store: {}, listScripts: async () => [{ adNumber: 2, angle: "from the database", lines: ["y"], source: "database" }], fileScripts: files });
+    assert.deepEqual(ok.scripts.map((s) => s.angle), ["from the database", "from a file"]);
+    assert.equal(ok.note, null);
+    const down = await allScripts(null, { store: {}, listScripts: async () => { throw new Error("connection refused"); }, fileScripts: files });
+    assert.deepEqual(down.scripts.map((s) => s.angle), ["from a file"]);
+    assert.match(down.note, /could not be read \(connection refused\)/);
+  });
+
+  test("a Direct Book take is joined in the order of the words in the database", async () => {
+    const dbTake = (id, n) => ({ ...take(id, n), drive_raw_name: `Direct Book Ad 2 — Over and over Take ${n}.mp4` });
+    const w = world([dbTake("d1", 1), dbTake("d2", 2)]);
+    const calls = [];
+    const reads = [];
+    await walk({}, {
+      store: w.store,
+      ports: { ...portsFor({ env: {} }), drive: w.drive, submagic: w.submagic,
+        join: { listTakes: w.listTakes, now: LATER, joiner: fakeJoiner(calls),
+          listScripts: async () => { reads.push(1); return (await import("./merge-takes.mjs")).scriptsFromRows([ROW]); } } }
+    });
+    assert.ok(reads.length >= 1, "the scripts were read from the database");
+    assert.equal(calls.length, 1, "one master was built");
+    assert.deepEqual(calls[0].members, [1, 2]);
+    assert.equal(calls[0].lines, 2, "the two lines of the database script");
   });
 });
