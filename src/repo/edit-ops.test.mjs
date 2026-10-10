@@ -17,6 +17,16 @@ import { bodyHash } from "../../scripts/flywheel/status.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const REGISTRY = fs.readFileSync(path.join(ROOT, "marketing", "ads", "registry.json"), "utf8");
 
+/* The registry_add_ad tests add an ad to a copy of the real registry file
+   (read into memory above; nothing is written back to disk). So the new number
+   must be one no real ad uses. A number typed in by hand breaks the day a real
+   ad takes it. 91 did on 2026-10-08 (ae3c014cd added ad 91, "The Conveyor
+   Belt"), and 92 and 93 were next in line. These are 1, 2 and 3 past the
+   highest ad in the file. */
+const NEW_ID = String(Math.max(...JSON.parse(REGISTRY).ads.map((a) => Number(a.id))) + 1);
+const NEW_ID_2 = String(Number(NEW_ID) + 1);
+const NEW_ID_3 = String(Number(NEW_ID) + 2);
+
 const RULES = [
   "# RULES.md — the ad SOP",
   "",
@@ -155,14 +165,14 @@ describe("ban_phrase", () => {
 
 describe("registry_add_ad", () => {
   test("adds the ad with gate, entry and offers from rules[lane], and it still loads", () => {
-    const out = applyEdit(REGISTRY, { op: "registry_add_ad", id: 91, title: "denial angle", lane: "uwiq" });
+    const out = applyEdit(REGISTRY, { op: "registry_add_ad", id: Number(NEW_ID), title: "denial angle", lane: "uwiq" });
     const doc = JSON.parse(out);
-    const ad = doc.ads.find((a) => a.id === "91");
+    const ad = doc.ads.find((a) => a.id === NEW_ID);
     assert.deepEqual(ad, {
-      id: "91", title: "denial angle", lane: "uwiq", gate: "none", entry: "sorting",
+      id: NEW_ID, title: "denial angle", lane: "uwiq", gate: "none", entry: "sorting",
       primary_offer: "capital_blueprint", secondary_offers: "all", variants: []
     });
-    assert.equal(parseRegistry(doc).byId.get("91").lane, "uwiq");
+    assert.equal(parseRegistry(doc).byId.get(NEW_ID).lane, "uwiq");
     // The rest of the file is unchanged.
     assert.equal(doc.ads.length, JSON.parse(REGISTRY).ads.length + 1);
     assert.deepEqual(doc.rules, JSON.parse(REGISTRY).rules);
@@ -171,29 +181,29 @@ describe("registry_add_ad", () => {
   });
 
   test("a direct lane copies its offer list", () => {
-    const doc = JSON.parse(applyEdit(REGISTRY, { op: "registry_add_ad", id: "92", title: null, lane: "funding600" }));
-    const ad = doc.ads.find((a) => a.id === "92");
+    const doc = JSON.parse(applyEdit(REGISTRY, { op: "registry_add_ad", id: NEW_ID_2, title: null, lane: "funding600" }));
+    const ad = doc.ads.find((a) => a.id === NEW_ID_2);
     assert.equal(ad.gate, "600");
     assert.deepEqual(ad.secondary_offers, []);
     assert.equal(ad.title, null);
   });
 
   test("refuses a lane with no rule (slo has none by design)", () => {
-    throwsEdit(() => applyEdit(REGISTRY, { op: "registry_add_ad", id: "93", title: "x", lane: "slo" }), /no rule/);
-    throwsEdit(() => applyEdit(REGISTRY, { op: "registry_add_ad", id: "93", title: "x", lane: "" }), /no rule/);
+    throwsEdit(() => applyEdit(REGISTRY, { op: "registry_add_ad", id: NEW_ID_3, title: "x", lane: "slo" }), /no rule/);
+    throwsEdit(() => applyEdit(REGISTRY, { op: "registry_add_ad", id: NEW_ID_3, title: "x", lane: "" }), /no rule/);
   });
 
   test("the same ad twice is a no-op; a different ad under a used number is refused", () => {
-    const once = applyEdit(REGISTRY, { op: "registry_add_ad", id: "91", title: "a", lane: "uwiq" });
-    assert.equal(applyEdit(once, { op: "registry_add_ad", id: "91", title: "a", lane: "uwiq" }), once);
-    throwsEdit(() => applyEdit(once, { op: "registry_add_ad", id: "91", title: "b", lane: "uwiq" }), /already/);
+    const once = applyEdit(REGISTRY, { op: "registry_add_ad", id: NEW_ID, title: "a", lane: "uwiq" });
+    assert.equal(applyEdit(once, { op: "registry_add_ad", id: NEW_ID, title: "a", lane: "uwiq" }), once);
+    throwsEdit(() => applyEdit(once, { op: "registry_add_ad", id: NEW_ID, title: "b", lane: "uwiq" }), /already/);
   });
 
   test("refuses invalid JSON and a registry that fails parseRegistry", () => {
-    throwsEdit(() => applyEdit("{\"ads\": [", { op: "registry_add_ad", id: "91", lane: "uwiq" }), /not valid JSON/);
+    throwsEdit(() => applyEdit("{\"ads\": [", { op: "registry_add_ad", id: NEW_ID, lane: "uwiq" }), /not valid JSON/);
     const broken = JSON.parse(REGISTRY);
     broken.ads[0].gate = "999";
-    throwsEdit(() => applyEdit(JSON.stringify(broken), { op: "registry_add_ad", id: "91", title: "x", lane: "uwiq" }), /would not load/);
+    throwsEdit(() => applyEdit(JSON.stringify(broken), { op: "registry_add_ad", id: NEW_ID, title: "x", lane: "uwiq" }), /would not load/);
     throwsEdit(() => applyEdit(REGISTRY, { op: "registry_add_ad", id: "9a", lane: "uwiq" }), /digits/);
   });
 });
@@ -320,7 +330,7 @@ describe("dispatch and checks", () => {
   });
 
   test("pure: the same input gives the same output and the input is not changed", () => {
-    const edit = { op: "registry_add_ad", id: "91", title: "a", lane: "uwiq" };
+    const edit = { op: "registry_add_ad", id: NEW_ID, title: "a", lane: "uwiq" };
     const copy = JSON.stringify(edit);
     assert.equal(applyEdit(REGISTRY, edit), applyEdit(REGISTRY, edit));
     assert.equal(JSON.stringify(edit), copy);
