@@ -125,6 +125,10 @@ Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` โ€
 * Still commit locally every session. Then push that commit to GitHub when auth allows.
 * ยง8 branch cleanup and pull requests apply on GitHub where you use them; local merges still matter.
 
+### GitHub ships main (owner-set 2026-10-09)
+
+A push to `main` on GitHub goes live by itself. `.github/workflows/ship.yml` runs the same `npm run ship` the Mac runs, so Claude cloud on the phone ships exactly like the Mac: merge or push to `main`, GitHub does the rest. Netlify's own auto build stays off. Same law: `.cursor/rules/github-ships-main.mdc` and `.claude/rules/github-ships-main.md`.
+
 ### Never ask permission to run a tool (owner-set 2026-09-08)
 
 Bash is always allowed. So are Read, Write, Edit, Glob, Grep, WebFetch and WebSearch.

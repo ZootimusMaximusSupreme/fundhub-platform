@@ -1,0 +1,75 @@
+# Ship main to live from GitHub (owner-set 2026-10-09).
+#
+# Chris: "make sure GitHub is the one pushing everything live" so a Claude cloud session on his phone
+# can ship exactly like the Mac. A push to main (a merged pull request, or a direct push) runs the SAME
+# command the Mac runs: `npm run ship` (scripts/ship.mjs). That keeps every guard it already has:
+# lint, the guard tests, pending database changes applied first, one production deploy, the
+# /api/health check for pending 0, the Inngest re-register, the ship-log line, and the push back.
+#
+# It skips by itself when nothing that ships has changed since the last ship (ship.mjs step 3), so
+# the ship-log commit it pushes back does not cause a second deploy. Netlify's own auto build stays
+# OFF (stop_builds), so one push is one deploy, never two.
+#
+# Secrets (Settings -> Secrets and variables -> Actions): NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID,
+# SUPABASE_ACCESS_TOKEN, SHIP_GITHUB_TOKEN (the repo token ship uses to push the ship log back).
+# Nothing here prints them; GitHub masks them in logs.
+
+name: Ship to live
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "Dry run: say what would ship, change nothing"
+        type: boolean
+        default: false
+
+# One ship at a time. A second push waits; it is never cancelled mid-deploy.
+concurrency:
+  group: ship-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ship:
+    # The ship-log commit that a ship pushes back starts with "ship:". It never ships again.
+    if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'ship:') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Be on main, with a git name
+        run: |
+          git checkout -B main origin/main
+          git config user.name "Fundhub ship"
+          git config user.email "ship@fundhub.ai"
+
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm install -g netlify-cli
+
+      - name: Ship
+        env:
+          CI: "true"
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SHIP_GITHUB_TOKEN }}
+          DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry }}
+        run: |
+          if [ "$DRY" = "true" ]; then npm run ship -- --dry; else npm run ship; fi
