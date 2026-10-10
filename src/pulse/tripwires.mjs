@@ -72,6 +72,31 @@ export const TRIPWIRES = Object.freeze({
   "route:contracts/sign": { impact: "customer", checks: ["contracts:sent-unsignable", "contracts:signed-not-stored"] },
   "route:documents-upload": { impact: "customer", checks: ["documents:upload-store", "documents:stuck-processing"] },
   "route:consent/capture": { impact: "customer", checks: ["consent:store", "consent:required"] },
+  // Coverage batch W5, 2026-10-10: customer records and bank links. Each check below reads the data and
+  // goes red when the client's result is wrong. Written in src/pulse/coverage/gap-bank-links.mjs,
+  // gap-money-helper.mjs, gap-records.mjs, gap-partner-pages.mjs and the key list in gap-keys.mjs.
+  "route:banking/link-token": { impact: "customer", checks: ["keys:launch-secrets-present", "banks:login-broken"] },
+  "route:banking/link-exchange": { impact: "customer", checks: ["banks-active-link-no-accounts", "banks-linked-not-on-screen", "keys:launch-secrets-present"] },
+  "route:banking/revoke": { impact: "customer", checks: ["privacy:erasure"] },
+  "route:banking/sync-accounts": { impact: "customer", checks: ["banks:login-broken", "banks-sync-stale"] },
+  "route:banking/sync-transactions": { impact: "customer", checks: ["banks-sync-stale", "banks:login-broken"] },
+  "route:banking/sync-liabilities": { impact: "customer", checks: ["banks:login-broken", "banks-sync-stale"] },
+  "route:money/connections": { impact: "customer", checks: ["banks:merchant-sync", "keys:launch-secrets-present"] },
+  "route:money/helper": { impact: "customer", checks: ["helper:rows-stuck", "finance-os:helper"] },
+  "route:money/tasks": { impact: "customer", checks: ["helper:rows-stuck"] },
+  "route:privacy/erasure": { impact: "customer", checks: ["privacy:erasure"] },
+  "route:pii": { impact: "customer", checks: ["privacy:pii-company"] },
+  "route:partner-pages": { impact: "customer", checks: ["partner-pages:live"] },
+  "route:partner-brand": { impact: "customer", checks: ["partner-pages:live"] },
+  "route:ai-bureau-config": { impact: "customer", checks: ["bureau-config:complete"] },
+  "desk:money-accounts.html": { impact: "customer", checks: ["banks:login-broken", "banks-linked-not-on-screen", "banks-active-link-no-accounts"] },
+  "desk:money-banks.html": { impact: "customer", checks: ["crm-data:lenders", "crm-data:lender-matches"] },
+  "desk:money-connections.html": { impact: "customer", checks: ["banks:merchant-sync"] },
+  "desk:money-helper.html": { impact: "customer", checks: ["helper:rows-stuck", "finance-os:helper"] },
+  "desk:brand-studio.html": { impact: "customer", checks: ["partner-pages:live"] },
+  "desk:lenders.html": { impact: "customer", checks: ["apply-links", "crm-data:lenders", "bureau-config:complete"] },
+  "job:plaid-transactions-sweeper": { impact: "customer", checks: ["banks-sync-stale", "banks:login-broken"] },
+  "job:merchant-pull-sweeper": { impact: "customer", checks: ["banks:merchant-sync"] },
   // M2 repair, 2026-10-09: the push puts a built funnel live on apply.fundhub.ai, where it takes ad
   // traffic and shows on every affiliate's link list. The push proves its pages once. This lane
   // reads every live built funnel's pages again each morning and goes red on a dead or wrong page.

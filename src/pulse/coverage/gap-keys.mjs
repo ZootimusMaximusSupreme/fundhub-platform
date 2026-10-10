@@ -59,9 +59,26 @@ export const INNGEST_KEYS = Object.freeze(["INNGEST_EVENT_KEY", "INNGEST_SIGNING
  *     does not use that value first, and its real health is read by
  *     keys:checkout-key-read, which asks Commas about the key the mint would use.
  *
+ * Added 2026-10-10 (coverage batch W5, owner brief): the bank-login and receipt
+ * keys that no lane watched. Each is read by code that runs for a client:
+ *   PLAID_CLIENT_ID, PLAID_SECRET   connect a bank and the daily bank sync
+ *                                   (src/banking/plaid.mjs REQUIRED_ENV)
+ *   PLAID_TOKEN_ENC_KEY             locks every stored bank login (same list)
+ *   MERCHANT_SECRET_ENC_KEY         locks a client's processor key and webhook secret
+ *                                   (src/merchant/secrets.mjs)
+ *   FINANCE_OS_SETUP_FEE_CENTS      the FinanceOS setup price (src/finance/money-setup.mjs)
+ *   LENDFLOW_WEBHOOK_SECRET         signs the bank-decision webhook (src/http/router.mjs)
+ *   RESEND_WEBHOOK_SECRET           signs email delivery receipts (src/http/router.mjs)
+ *   TWILIO_AUTH_TOKEN               signs inbound texts and text receipts (src/http/router.mjs)
+ * The last two are the receipt keys: with them empty, a sent message never
+ * becomes delivered. The test below reads each name from the code that uses it.
+ * "Set and not a mask" is all this lane judges. Whether Plaid accepts the key is
+ * not asked here (that needs a Plaid call, and a pulse never calls Plaid).
+ *
  * Left out on purpose, each with the reason:
- *   LENDFLOW_*            Lendflow submit has no caller and the alt-fin rail is off
- *                         the screens; both keys are absent on Netlify today.
+ *   LENDFLOW_API_KEY      Lendflow submit has no caller and the alt-fin rail is off
+ *                         the screens. (Its webhook secret is on the list above, by
+ *                         the owner's W5 brief.)
  *   UNSUBSCRIBE_TOKEN_SECRET  opt-out:unsubscribe-link signs and checks a real link.
  *                         It also falls back to DOCUMENT_URL_SECRET.
  *   META_CAPI_ACCESS_TOKEN    optional: the token falls back to ad_platform_connections
@@ -82,7 +99,15 @@ export const LAUNCH_SECRETS = Object.freeze([
   { name: "RESEND_FROM", what: "email" },
   { name: "TWILIO_SEND_ACCOUNT_SID", what: "texts" },
   { name: "TWILIO_SEND_AUTH_TOKEN", what: "texts" },
-  { name: "TWILIO_SEND_FROM", what: "texts" }
+  { name: "TWILIO_SEND_FROM", what: "texts" },
+  { name: "PLAID_CLIENT_ID", what: "connecting a bank and the daily bank sync" },
+  { name: "PLAID_SECRET", what: "connecting a bank and the daily bank sync" },
+  { name: "PLAID_TOKEN_ENC_KEY", what: "the lock on every stored bank login" },
+  { name: "MERCHANT_SECRET_ENC_KEY", what: "the lock on a client's processor key" },
+  { name: "FINANCE_OS_SETUP_FEE_CENTS", what: "the FinanceOS setup price" },
+  { name: "LENDFLOW_WEBHOOK_SECRET", what: "bank decision receipts" },
+  { name: "RESEND_WEBHOOK_SECRET", what: "email delivery receipts" },
+  { name: "TWILIO_AUTH_TOKEN", what: "inbound texts and text delivery receipts" }
 ].map((row) => Object.freeze(row)));
 
 /** The three settings a real credit pull needs, besides the allow-live switch and the host. */

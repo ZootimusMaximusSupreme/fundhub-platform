@@ -410,7 +410,8 @@ test("launch-secrets-present: several broken keys are all named, and no value le
 });
 
 test("launch-secrets-present: keys that are not launch keys do not turn it red", () => {
-  const env = without(goodEnv(), "LENDFLOW_WEBHOOK_SECRET", "LENDFLOW_API_KEY", "META_CAPI_ACCESS_TOKEN", "META_PIXEL_ID", "UNSUBSCRIBE_TOKEN_SECRET");
+  // LENDFLOW_WEBHOOK_SECRET left this list on 2026-10-10: the W5 brief made it a launch key.
+  const env = without(goodEnv(), "LENDFLOW_API_KEY", "META_CAPI_ACCESS_TOKEN", "META_PIXEL_ID", "UNSUBSCRIBE_TOKEN_SECRET");
   assert.equal(launchSecretsPresent(env).status, "PASS");
 });
 
@@ -421,11 +422,19 @@ test("launch-secrets-present: the list is exactly the keys the launch needs (pin
     "COMMAS_WEBHOOK_SECRET",
     "CORTANA_COMMAS_API_KEY",
     "FANBASIS_CHECKOUT_API_KEY",
+    "FINANCE_OS_SETUP_FEE_CENTS",
     "INQUIRY_REMOVAL_WEBHOOK_SECRET",
+    "LENDFLOW_WEBHOOK_SECRET",
+    "MERCHANT_SECRET_ENC_KEY",
+    "PLAID_CLIENT_ID",
+    "PLAID_SECRET",
+    "PLAID_TOKEN_ENC_KEY",
     "POSTGRID_API_KEY",
     "POSTGRID_WEBHOOK_SECRET",
     "RESEND_API_KEY",
     "RESEND_FROM",
+    "RESEND_WEBHOOK_SECRET",
+    "TWILIO_AUTH_TOKEN",
     "TWILIO_SEND_ACCOUNT_SID",
     "TWILIO_SEND_AUTH_TOKEN",
     "TWILIO_SEND_FROM"
@@ -491,17 +500,76 @@ test("launch-secrets-present: no fix line in the lane says a full value lives in
   for (const fix of fixes) assert.doesNotMatch(fix, /values? (live|lives) in credentials/);
 });
 
-test("launch-secrets-present: every webhook secret the router reads is on the list, except the one left off on purpose", () => {
+test("launch-secrets-present: every webhook secret the router reads is on the list, with none left off", () => {
   // Test-time read only. The lane itself reads no repo file.
   const router = fs.readFileSync(path.join(HERE, "../../http/router.mjs"), "utf8");
   const named = [...router.matchAll(/\benv:\s*"([A-Z0-9_]+)"/g)].map((m) => m[1]);
   assert.ok(named.length >= 5, "found the router's secret names");
   const listed = new Set(LAUNCH_SECRETS.map((s) => s.name));
-  // Lendflow: no caller submits to it and the screens dropped the rail, so it is not a launch key.
-  const leftOff = new Set(["LENDFLOW_WEBHOOK_SECRET"]);
+  // Lendflow was the one left off until 2026-10-10; the W5 brief put its secret on the list.
   for (const name of named) {
-    assert.ok(listed.has(name) || leftOff.has(name), `${name} is read by the router but is not a launch key on the list`);
+    assert.ok(listed.has(name), `${name} is read by the router but is not a launch key on the list`);
   }
+  // The receipt keys are read through env.<NAME> in the router rather than a table entry.
+  for (const name of ["RESEND_WEBHOOK_SECRET", "TWILIO_AUTH_TOKEN"]) {
+    assert.ok(router.includes(`env.${name}`), `${name} is no longer read by the router; the list would watch a dead key`);
+    assert.ok(listed.has(name), `${name} is read by the router but is not on the list`);
+  }
+});
+
+// ── the eight keys the W5 brief added (2026-10-10) ────────────────────────
+
+const W5_KEYS = Object.freeze([
+  ["PLAID_CLIENT_ID", "../../banking/plaid.mjs"],
+  ["PLAID_SECRET", "../../banking/plaid.mjs"],
+  ["PLAID_TOKEN_ENC_KEY", "../../banking/plaid.mjs"],
+  ["MERCHANT_SECRET_ENC_KEY", "../../merchant/secrets.mjs"],
+  ["FINANCE_OS_SETUP_FEE_CENTS", "../../finance/money-setup.mjs"],
+  ["LENDFLOW_WEBHOOK_SECRET", "../../http/router.mjs"],
+  ["RESEND_WEBHOOK_SECRET", "../../http/router.mjs"],
+  ["TWILIO_AUTH_TOKEN", "../../http/router.mjs"]
+]);
+
+test("W5 keys: each of the eight is on the list, strictly watched, and read by the code that needs it", () => {
+  const listed = new Map(LAUNCH_SECRETS.map((s) => [s.name, s]));
+  for (const [name, file] of W5_KEYS) {
+    assert.ok(listed.has(name), `${name} is not on the list`);
+    assert.ok(!listed.get(name).setOnly, `${name} must be strict: a mask is a break`);
+    // Test-time read only. A key the code no longer reads would be watched for nothing.
+    const src = fs.readFileSync(path.join(HERE, file), "utf8");
+    assert.ok(src.includes(name), `${name} is not read in ${file}`);
+  }
+  assert.equal(W5_KEYS.length, 8);
+});
+
+test("W5 keys: PASS when all eight are real, and each one alone turns the row red by name", () => {
+  assert.equal(launchSecretsPresent(goodEnv()).status, "PASS");
+  for (const [name] of W5_KEYS) {
+    for (const bad of [undefined, "", "   ", "****************f377"]) {
+      const env = goodEnv({ [name]: bad });
+      if (bad === undefined) delete env[name];
+      const r = launchSecretsPresent(env);
+      assert.equal(r.status, "FAIL", `${name} = ${JSON.stringify(bad)}`);
+      assert.match(r.detail, new RegExp(`${name} (is not set|is a row of asterisks)`));
+      assert.match(r.detail, /1 launch key/);
+    }
+  }
+});
+
+test("W5 keys: the receipt keys say what stops when they are empty, and no value leaks", () => {
+  const gone = launchSecretsPresent(without(goodEnv(), "RESEND_WEBHOOK_SECRET", "TWILIO_AUTH_TOKEN"));
+  assert.equal(gone.status, "FAIL");
+  assert.match(gone.detail, /RESEND_WEBHOOK_SECRET is not set \(email delivery receipts\)/);
+  assert.match(gone.detail, /TWILIO_AUTH_TOKEN is not set \(inbound texts and text delivery receipts\)/);
+  assert.match(gone.detail, /2 launch keys/);
+  for (const [name] of W5_KEYS) {
+    assert.doesNotMatch(JSON.stringify(gone), new RegExp(SECRET(name)), `${name} value leaked`);
+  }
+});
+
+test("W5 keys: a laptop run is still a skip, so the eight cannot go red on a masked laptop copy", () => {
+  const env = without(goodEnv({ PLAID_SECRET: "****************abcd" }), "NETLIFY");
+  assert.equal(launchSecretsPresent(env).status, "skip");
 });
 
 test("launch-secrets-present: laptop and missing env are skip", () => {

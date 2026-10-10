@@ -284,6 +284,7 @@ const ALLOWED_RAW_FETCH = {
   "src/pulse/coverage/gap-marketing-queue.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-msg.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-owner-tools.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-partner-pages.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-partners.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-payments.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-pixels.mjs": PULSE_GAP_READS,
