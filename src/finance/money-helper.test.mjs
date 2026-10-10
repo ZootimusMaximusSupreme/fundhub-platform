@@ -9,9 +9,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   submitMessage, processTurn, executeActions, answerOrphans, claimNextTurn, viewTurn, reasonWords,
-  bridgeStatus, BRIDGE_FRESH_MS, INLINE_AI_TIMEOUT_MS, TASK_SOURCE, DAILY_TURN_CAP
+  bridgeStatus, BRIDGE_FRESH_MS, INLINE_AI_TIMEOUT_MS, TASK_SOURCE, DAILY_TURN_CAP, readBlueprintBuyer, actionLabel,
+  MAX_INPUT_CHARS
 } from "./money-helper.mjs";
 import { HELPER_PROMPT, HELPER_GUARDRAILS, HELPER_SCHEMA } from "./money-agent-ai.mjs";
+import { readDeclinePaste, MAX_PASTE_CHARS } from "./money-decline.mjs";
+import { SAMPLE_DECLINE_LETTER } from "./money-agent-sim.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CTX = JSON.parse(fs.readFileSync(path.join(HERE, "fixtures/money-helper-context.sample.json"), "utf8"));
@@ -22,7 +25,7 @@ const AMEX = "d6ce2c94-3632-4c63-af98-802fef41ac62";
 const NOW = new Date("2026-10-07T17:00:00.000Z");
 const AGENT_ROW = { code: "FOS-01", name: "FinanceOS Money Helper", status: "shadow", prompt: HELPER_PROMPT, guardrails: HELPER_GUARDRAILS };
 
-function world({ agentRow = AGENT_ROW, halted = null, today = 0, bridgeLast = null, queued = [] } = {}) {
+function world({ agentRow = AGENT_ROW, halted = null, today = 0, bridgeLast = null, queued = [], recent = [] } = {}) {
   const turns = new Map();
   let seq = 0;
   const w = {
@@ -40,7 +43,7 @@ function world({ agentRow = AGENT_ROW, halted = null, today = 0, bridgeLast = nu
         turns.set(id, row);
         return { rows: [row] };
       }
-      if (/FROM money_helper_turns\s+WHERE org_id = \$1 AND client_id = \$2 AND status IN \('answered', 'halted'\)/.test(sql)) return { rows: [] };
+      if (/FROM money_helper_turns\s+WHERE org_id = \$1 AND client_id = \$2 AND status IN \('answered', 'halted'\)/.test(sql)) return { rows: recent };
       if (/UPDATE money_helper_turns\s+SET status = \$2, reply = \$3/.test(sql)) {
         const t = turns.get(params[0]);
         Object.assign(t, { status: params[1], reply: params[2], actions: JSON.parse(params[3]), brain: params[4], model: params[5], reason: params[6], answered_at: params[8] });
@@ -60,8 +63,9 @@ function world({ agentRow = AGENT_ROW, halted = null, today = 0, bridgeLast = nu
 }
 
 function spies() {
-  const s = { shadow: [], runs: [], optOuts: [], tasks: [], asks: [], proposals: [] };
+  const s = { shadow: [], runs: [], optOuts: [], tasks: [], asks: [], proposals: [], declines: [] };
   s.deps = {
+    recordDecline: async (_db, args) => { s.declines.push(args); return { ok: true, created: true, decline_id: "decline-1" }; },
     readContext: async () => JSON.parse(JSON.stringify(CTX)),
     recordShadow: async (_db, row) => { s.shadow.push(row); return { id: "s" }; },
     recordRun: async (_db, row) => { s.runs.push(row); return { id: "r" }; },
@@ -302,5 +306,170 @@ describe("the agent row", () => {
     const fn = model({ reply: "Okay.", actions: [] });
     await send(world({ agentRow: { ...AGENT_ROW, prompt: " ", guardrails: {} } }), s, "hi", { env: { MONEY_HELPER_RUNNER: "server" }, callModelFn: fn });
     assert.ok(fn.calls[0].system.startsWith(HELPER_PROMPT.slice(0, 40)));
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   A PASTED BANK DECLINE (Capital Blueprint launch B1b)
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe("a pasted bank decline in the thread", () => {
+  const PASTE = `I just got declined by Chase — here's the letter:\n\n${SAMPLE_DECLINE_LETTER}`;
+  const paste = readDeclinePaste(PASTE);
+  const turnId = "00000000-0000-4000-8000-000000000077";
+  const save = { type: "record_decline", bank: "Chase", product: "Chase Ink Business Unlimited", letter_hash: paste.hash };
+  const buyerCtx = (b) => ({ ...JSON.parse(JSON.stringify(CTX)), blueprintBuyer: b });
+  const GOOD = [
+    "I read your letter. These are the likely reasons, not sure ones.",
+    "The bank saw too many recent credit checks on your report. It wrote: \"Too many inquiries on your credit report\".",
+    "It also saw high balances compared to your card limits. It wrote: \"Proportion of balances to credit limits is too high on revolving accounts\".",
+    "First, find Chase's reconsideration phone number. The letter gives this number: 800-555-0142.",
+    "Next, call that line and ask about the recent application.",
+    "I saved this decline, and your Fundhub funding team has the second look."
+  ].join("\n");
+  const SAVE_ANSWER = { reply: GOOD, actions: [{ ...blank, type: "record_decline", title: "Chase", detail: "Chase Ink Business Unlimited" }] };
+  const SERVER = { MONEY_HELPER_RUNNER: "server" };
+
+  test("record_decline goes through the Capital Blueprint's own paste path: the client's masked letter, the bank and product, source client_paste", async () => {
+    const s = spies();
+    const out = await executeActions(world(), { orgId: ORG, clientId: CLIENT, turnId, todayIso: "2026-10-07", actor: "client", declineText: paste.text, actions: [save], deps: s.deps });
+    assert.equal(s.declines.length, 1);
+    const call = s.declines[0];
+    assert.deepEqual([call.orgId, call.clientId, call.source, call.by], [ORG, CLIENT, "client_paste", { kind: "client" }]);
+    assert.deepEqual(call.input, { text: paste.text, bank: "Chase", product: "Chase Ink Business Unlimited" });
+    assert.ok(!call.input.text.includes("4471902238"), "the letter that is saved is the masked one");
+    assert.deepEqual([out[0].status, out[0].ref_id, out[0].letter_hash], ["done", "decline-1", paste.hash]);
+    assert.equal(out[0].label, "Saved your Chase decline. Your Fundhub funding team has the second look");
+    assert.equal(actionLabel(save), out[0].label);
+  });
+
+  test("a staff member typing on the client's thread is recorded as staff", async () => {
+    const s = spies();
+    await executeActions(world(), { orgId: ORG, clientId: CLIENT, turnId, todayIso: "2026-10-07", actor: "staff", staffId: "5a5a5a5a-0000-4000-8000-000000000001", declineText: paste.text, actions: [save], deps: s.deps });
+    assert.deepEqual([s.declines[0].source, s.declines[0].by], ["staff", { kind: "staff", staffId: "5a5a5a5a-0000-4000-8000-000000000001" }]);
+  });
+
+  test("the same letter again is 'already saved', not a second decline; a refusal or a throw is 'not done', never a pretend success", async () => {
+    const run = async (record) => (await executeActions(world(), { orgId: ORG, clientId: CLIENT, turnId, todayIso: "2026-10-07", declineText: paste.text, actions: [save], deps: { recordDecline: record } }))[0];
+    const dup = await run(async () => ({ ok: true, created: false, duplicate: true, decline_id: "decline-0" }));
+    assert.deepEqual([dup.status, dup.ref_id, dup.label], ["skipped", "decline-0", "Your Chase decline was already saved"]);
+    const refused = await run(async () => ({ ok: false, error: "not_blueprint_buyer" }));
+    assert.deepEqual([refused.status, refused.error], ["failed", "not_blueprint_buyer"]);
+    const capped = await run(async () => ({ ok: false, error: "too_many_pastes" }));
+    assert.equal(capped.error, "too_many_pastes");
+    const threw = await run(async () => { throw Object.assign(new Error("Tell us which bank sent it."), { code: "bank_required" }); });
+    assert.deepEqual([threw.status, threw.error], ["failed", "Tell us which bank sent it."]);
+  });
+
+  test("no letter handed over means nothing is saved; a role-play run is dry", async () => {
+    const s = spies();
+    const none = await executeActions(world(), { orgId: ORG, clientId: CLIENT, turnId, todayIso: "2026-10-07", actions: [save], deps: s.deps });
+    assert.deepEqual([none[0].status, none[0].error, s.declines.length], ["failed", "no_letter", 0]);
+    const dry = await executeActions(world(), { orgId: null, clientId: null, turnId: "sim", dry: true, actions: [save], deps: s.deps });
+    assert.deepEqual([dry[0].status, s.declines.length], ["would_do", 0]);
+  });
+
+  test("a paid buyer's paste, start to end: answered by the AI, the letter stored masked with its lines, the decline saved once", async () => {
+    const w = world();
+    const s = spies();
+    s.deps.readContext = async () => buyerCtx(true);
+    const fn = model(SAVE_ANSWER);
+    const r = await send(w, s, PASTE, { env: SERVER, callModelFn: fn });
+    assert.equal(r.ok, true);
+    assert.deepEqual([r.turn.status, r.turn.brain], ["answered", "ai"]);
+    assert.equal(s.declines.length, 1);
+    assert.equal(s.declines[0].input.bank, "Chase");
+    assert.equal(s.declines[0].input.text, paste.text);
+    assert.deepEqual(r.turn.actions.map((a) => [a.type, a.status, a.letter_hash]), [["record_decline", "done", paste.hash]]);
+    const stored = [...w.turns.values()][0].input;
+    assert.equal(stored, paste.text, "what the thread keeps is the masked letter, with its line breaks");
+    assert.ok(stored.length > 1500 && stored.includes("\n") && !stored.includes("4471902238"));
+    assert.match(fn.calls[0].user, /"client_is_blueprint_buyer": true/);
+    assert.equal(s.shadow[0].inboundBody, stored, "the shadow log holds the masked letter too");
+  });
+
+  test("a client who has not bought: the letter is read and explained, nothing is saved, and the model's attempt to save it is refused", async () => {
+    const w = world();
+    const s = spies();
+    s.deps.readContext = async () => buyerCtx(false);
+    const r = await send(w, s, PASTE, { env: SERVER, callModelFn: model(SAVE_ANSWER) });
+    assert.equal(r.turn.brain, "rules");
+    assert.match(r.turn.reason, /record_decline:not_a_blueprint_buyer/);
+    assert.equal(s.declines.length, 0);
+    assert.match(r.turn.reply, /Capital Blueprint team can run the second look for you/);
+    // A file whose Blueprint status could not be read is not a buyer either.
+    const s2 = spies();
+    s2.deps.readContext = async () => ({ ...buyerCtx(null) });
+    const r2 = await send(world(), s2, PASTE, { env: SERVER, callModelFn: model(SAVE_ANSWER) });
+    assert.equal(s2.declines.length, 0);
+    assert.match(r2.turn.reason, /record_decline:not_a_blueprint_buyer/);
+  });
+
+  test("with the Mac off the rules brain still reads the letter, and saves it for a buyer", async () => {
+    const w = world();
+    const s = spies();
+    s.deps.readContext = async () => buyerCtx(true);
+    const r = await send(w, s, PASTE, { env: {} });
+    assert.deepEqual([r.turn.brain, r.turn.reason], ["rules", "bridge_off"]);
+    assert.equal(s.declines.length, 1);
+    assert.match(r.turn.reply, /^I read your letter\./);
+    assert.deepEqual(r.turn.actions.map((a) => [a.type, a.status]), [["record_decline", "done"]]);
+  });
+
+  test("a bank letter is long: it is let in up to the decline reader's cap, and nothing else is", async () => {
+    const long = `${PASTE}\n\n${"Please keep this letter for your records. ".repeat(60)}`;
+    assert.ok(long.length > MAX_INPUT_CHARS && long.length < MAX_PASTE_CHARS);
+    const s = spies();
+    s.deps.readContext = async () => buyerCtx(false);
+    const ok = await send(world(), s, long, { env: SERVER, callModelFn: model(SAVE_ANSWER) });
+    assert.equal(ok.ok, true, ok.error);
+    // The same length of anything that is not a decline letter is still a chat message that is too long.
+    const chat = "I have a question about my plan and what is due. ".repeat(60);
+    assert.ok(chat.length > MAX_INPUT_CHARS);
+    assert.equal((await send(world(), spies(), chat)).error, "message_too_long");
+    assert.equal((await send(world(), spies(), "x".repeat(MAX_PASTE_CHARS + 1))).error, "message_too_long");
+    assert.equal((await send(world(), spies(), `${PASTE}\n\n${"x ".repeat(MAX_PASTE_CHARS)}`)).error, "message_too_long", "past the reader's cap even a real letter is refused");
+  });
+
+  test("the bank's own unsubscribe and opt-out notices do not stop the helper or opt the client out of texts", async () => {
+    const w = world();
+    const s = spies();
+    s.deps.readContext = async () => buyerCtx(false);
+    const footer = `${PASTE}\n\nTo unsubscribe from marketing email, or to opt out of prescreened offers, call the number above. Questions about this notice may go to the Office of the Attorney General.`;
+    const r = await send(w, s, footer, { env: SERVER, callModelFn: model({ reply: GOOD.replace(/\nI saved.*$/, ""), actions: [] }) });
+    assert.equal(r.turn.status, "answered");
+    assert.equal(w.halt, null);
+    assert.equal(s.optOuts.length, 0);
+    assert.equal(s.tasks.length + s.asks.length, 0, "no lawyer task, no person task");
+    // The client's own STOP ahead of the letter does stop it.
+    const w2 = world();
+    const s2 = spies();
+    const stopped = await send(w2, s2, `STOP\n\n${SAMPLE_DECLINE_LETTER}`, { env: SERVER, callModelFn: model(SAVE_ANSWER) });
+    assert.equal(stopped.turn.status, "halted");
+    assert.equal(w2.halt, "stop");
+    assert.equal(s2.optOuts.length, 1);
+  });
+
+  test("a follow-up after a saved decline: the helper still has the analysis, and does not save the letter again", async () => {
+    const earlier = { id: "00000000-0000-4000-8000-000000000060", kind: "message", input: paste.text, reply: GOOD, actions: [{ type: "record_decline", status: "done", bank: "Chase", letter_hash: paste.hash }], brain: "ai", status: "answered" };
+    const w = world({ recent: [earlier] });
+    const s = spies();
+    s.deps.readContext = async () => buyerCtx(true);
+    const fn = model({ reply: "Use the paydown plan in FinanceOS to choose which cards to pay first.", actions: [] });
+    const r = await send(w, s, "What should I fix first?", { env: SERVER, callModelFn: fn });
+    assert.equal(r.turn.brain, "ai", r.turn.reason);
+    assert.match(fn.calls[0].user, /"already_saved": true/);
+    assert.equal(s.declines.length, 0);
+  });
+
+  test("the Blueprint status read: true, false, and null when the read itself fails (never a guess)", async () => {
+    const dbOf = (rows) => ({ query: async () => ({ rows }) });
+    assert.equal(await readBlueprintBuyer(dbOf([{ "?column?": 1 }]), { orgId: ORG, clientId: CLIENT }), true);
+    assert.equal(await readBlueprintBuyer(dbOf([]), { orgId: ORG, clientId: CLIENT }), false);
+    assert.equal(await readBlueprintBuyer({ query: async () => { throw new Error("function resolve_product_id does not exist"); } }, { orgId: ORG, clientId: CLIENT }), null);
+  });
+
+  test("the thread module still holds no send path after the decline wiring", () => {
+    const src = fs.readFileSync(path.join(HERE, "money-helper.mjs"), "utf8");
+    assert.doesNotMatch(src, /sendTemplated|dispatchMessage|composeAgentReply|fetch\(/);
   });
 });

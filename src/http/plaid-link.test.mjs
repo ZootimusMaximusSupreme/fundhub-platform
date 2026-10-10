@@ -19,7 +19,7 @@ function makeRes() {
 
 const CLIENT_ID = "11111111-2222-3333-4444-555555555555";
 const OWNER = { id: "s1", role: "owner", org_id: "org-1" };
-const CLOSER = { id: "s2", role: "closer", org_id: "org-1" };
+const CLOSER = { id: "s2", role: "setter", org_id: "org-1" };
 const db = (clientRows = [{ "?column?": 1 }]) => ({
   query: async (sql) => (/FROM clients/.test(sql) ? { rows: clientRows } : { rows: [] })
 });
@@ -212,7 +212,7 @@ describe("client session — POST /api/banking/link-exchange", () => {
   test("a staff session still goes through the staff gate", async () => {
     const res = makeRes();
     await linkExchange({ method: "POST", body: { client_id: CLIENT_ID, public_token: "p" } }, res, {
-      db: db(), resolvePrincipal: async () => ({ kind: "staff", role: "closer", orgId: "org-1" }),
+      db: db(), resolvePrincipal: async () => ({ kind: "staff", role: "setter", orgId: "org-1" }),
       requireAuth: authAs(CLOSER), completeLink: async () => assert.fail("must not exchange")
     });
     assert.equal(res.statusCode, 403);

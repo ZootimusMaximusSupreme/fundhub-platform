@@ -1,4 +1,4 @@
-# Cursor prompt — end-to-end test of everything built 2026-10-05/06
+# Cursor prompt — end-to-end test of everything built 2026-10-05/06 (marketing machine, teleprompters, bridge, FinanceOS)
 
 Paste everything below the line into Cursor (Claude model, agent mode, repo `/Users/chrisstanbridge/Developer/fundhub-platform`).
 
@@ -36,6 +36,22 @@ You are testing, end to end, everything Fundhub shipped on 2026-10-05 and 2026-1
 10. **Launch safety.** The Launch tab and `POST marketing/meta/load` load PAUSED only and refuse without the needed ids. Do not actually load anything to Meta.
 11. **iPhone app.** `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test` for `tools/teleprompter-ios` on the iPhone 17 Pro Max and iPad simulators. Note what only a real phone can prove (camera 4K/60, Photos, remote, real login).
 12. **Funnel builder (not live, by owner choice).** Confirm the Blueprint funnel `d6e3726c-d9ee-4dff-9721-268582ef1f9f` is still a draft and no apply.fundhub.ai page changed. Do not push it.
+
+## Part 2 — FinanceOS (run after FinanceOS wave 5 is shipped)
+
+Check first: `ops/workflows/finance-os-wave5-2026-10-06.md` must show every unit done and shipped. If any unit is not shipped, test what is live and mark the rest NOT RUN (not shipped).
+
+Read: `docs/finance/finance-os-direction-2026-10-06.md` (owner vision wins), the boards `ops/workflows/finance-os-build-2026-10-06.md`, `finance-os-pages-2026-10-06.md`, `finance-os-wave3-2026-10-06.md`, `finance-os-wave4-2026-10-06.md`, `finance-os-wave5-2026-10-06.md`, and `docs/journeys/` for FinanceOS.
+
+Extra rules: use sim clients only (never a real client's file); Plaid in **sandbox** only; no real money moves; no text or email to a real client (sim plus-tag email and the agent phone only, per `.cursor/rules/full-end-to-end-audit.mdc`).
+
+13. **The page.** https://fundhub.ai/app/financeos.html (and the older /app/finance-os.html): every tab renders at 390 and 1280 with a sim client's real rows, no console errors, numbers match a SELECT.
+14. **Turn on.** A paid setup fee turns FinanceOS on for that sim client; staff see the FinanceOS card and open it from the client control panel.
+15. **Loans.** A loan gets a due date, a payment and reminders; the loan table shows on Overview; Plaid (sandbox) loan due dates fill in.
+16. **Payments in.** A Commas payment marks the matching Clarity / BNPL installment paid; merchant processing pulls by API key (Commas, Whop) for the sim.
+17. **Wave 5.** Waypoints timeline (`GET /api/money/plan`) shows dated pins from every plan source; bank strategy (`GET /api/money/banks`); fundability now / projected / per business (`GET /api/money/fundability`); payment strategy goal date to monthly amount (`GET/POST /api/money/strategy`); "Ready to get funded" hands off to the CSM with the Blueprint upsell; every "Do task" button works.
+18. **The money agent.** Runs through the Claude Code bridge (no API spend): a role-play simulation with a sim client, shadow mode first; it proposes, it does not act alone.
+19. **Plaid sandbox transfer.** Propose, the sim client approves, the transfer runs in sandbox, and events, ledger and limits are written. Nothing real moves.
 
 ## Output
 

@@ -99,7 +99,7 @@ describe("GET /api/money/fundability — staff", () => {
   });
 
   test("a role outside FINANCE is 403 and nothing is read", async () => {
-    for (const role of ["closer", "funding_advisor", "setter", "inquiry_specialist", "csm"]) {
+    for (const role of ["setter", "funding_advisor", "setter", "inquiry_specialist", "csm"]) {
       const build = spyBuild();
       const res = makeRes();
       await handler({ method: "GET", query: { client_id: MINE } }, res,

@@ -20,18 +20,21 @@
 //   A repeated request_id answers the first save again and writes nothing, so
 //   a press queued on the phone while offline is never counted twice.
 //
-// Owner and admin only: requireAuth, then requireRole(ROLE_SETS.MARKETING)
-// (requireAuth ignores roles, CLAUDE.md §12). One asStaff() transaction
-// (withRequest). Free.
+// A signed-in save is owner and admin only: requireAuth, then
+// requireRole(ROLE_SETS.MARKETING) (requireAuth ignores roles, CLAUDE.md §12).
+// A film key (header x-shoot-film) marks that shoot only, with no staff session.
+// Got it and Another take with no sign-in and no key save on the default
+// company's shoot. One asStaff() transaction (withRequest). Free.
 
 import { db } from "../../../src/db.mjs";
 import { dbDown } from "../../../src/http/db-down.mjs";
-import { requireAuth } from "../../../src/http/middleware/requireAuth.mjs";
+import { bearerToken, requireAuth } from "../../../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole } from "../../../src/http/read-api.mjs";
 import {
   withRequest, readBody, checkRequestId, sendKnownError, sendNotReady, hasCompany
 } from "../../../src/marketing/http.mjs";
 import { parseMarkWrite, markShoot } from "../../../src/marketing/shoot-store.mjs";
+import { FILM_LINK_CLOSED, filmFromReq } from "../../../src/marketing/shoot-film-key.mjs";
 
 export const ROUTE = "marketing/shoot/mark";
 
@@ -44,18 +47,40 @@ export default async function handler(req, res, deps = {}) {
   }
 
   // The gate, in this file on purpose: scripts/journeys/extract.mjs reads each
-  // route's gate from the route's own source.
+  // route's gate from the route's own source. A signed-in mark still goes
+  // through requireAuth, then requireRole(res, staff, ROLE_SETS.MARKETING),
+  // then hasCompany(res, staff). A film key marks that shoot only. No token
+  // and no key marks the default company only.
   const auth = deps.requireAuth ?? requireAuth;
-  const staff = await auth(req, res, { db: database });
-  if (!staff) return;
-  if (!requireRole(res, staff, ROLE_SETS.MARKETING)) return;
-  if (!hasCompany(res, staff)) return;
-  const orgId = staff.org_id;
+  const film = filmFromReq(req, deps);
+  if (film?.bad) {
+    return res.status(404).json({ error: "not_found", message: FILM_LINK_CLOSED });
+  }
+  const openMark = !bearerToken(req) && !film;
+  let orgId = null;
+  if (film) {
+    orgId = film.orgId;
+  } else if (!openMark) {
+    const staff = await auth(req, res, { db: database });
+    if (!staff) return;
+    if (!requireRole(res, staff, ROLE_SETS.MARKETING)) return;
+    if (!hasCompany(res, staff)) return;
+    orgId = staff.org_id;
+  }
 
   try {
     const body = readBody(req);
     const requestId = checkRequestId(body.request_id);
     const { shootId, root, mark } = parseMarkWrite(body);
+    if (film && shootId !== film.shootId) {
+      return res.status(404).json({ error: "not_found", message: FILM_LINK_CLOSED });
+    }
+    if (openMark) {
+      orgId = await defaultOrgId(database);
+      if (!orgId) {
+        return res.status(404).json({ error: "not_found", message: "That shoot was not found, or that script is not on it." });
+      }
+    }
     const answer = await withRequest(database, { orgId, route: ROUTE, requestId }, (tx) =>
       markShoot(tx, { orgId, shootId, root, mark, now: deps.now ? deps.now() : new Date() })
     );
@@ -66,4 +91,10 @@ export default async function handler(req, res, deps = {}) {
     if (dbDown(res, err)) return;
     throw err;
   }
+}
+
+async function defaultOrgId(database) {
+  if (!database || typeof database.query !== "function") return null;
+  const org = await database.query(`SELECT id FROM orgs WHERE is_default LIMIT 1`);
+  return org.rows[0]?.id || null;
 }

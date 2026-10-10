@@ -19,7 +19,7 @@
 // TWO CALLERS, same gate as api/money/overview.mjs:
 //   * a signed-in CLIENT sees and changes their own file only. client_id comes
 //     off the session; one in the query or body is never read.
-//   * STAFF with ROLE_SETS.FINANCE (owner / admin / sales_manager) name the
+//   * STAFF with ROLE_SETS.FINANCE_OS (owner / admin / sales_manager) name the
 //     client with client_id (query on GET, body on POST), and the client must
 //     be in their org. A client in another org is 404.
 import { db } from "../../src/db.mjs";
@@ -91,7 +91,7 @@ export default async function handler(req, res, deps = {}) {
     who = { kind: "client", id: principal.accountId && isUuid(principal.accountId) ? principal.accountId : null };
   } else {
     const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-    if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+    if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return;
     const qid = method === "GET" ? req.query && req.query.client_id : body.client_id;
     if (!isUuid(qid)) {
       return res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

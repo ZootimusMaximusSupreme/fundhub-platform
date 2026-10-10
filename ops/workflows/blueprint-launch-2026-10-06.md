@@ -28,7 +28,7 @@ Value: ★★★ = moves the client toward funding / the reason they pay $5–10
 | 17 | Letter-mailing upsell (per letter) | ★ | **Guard built, billing not set** | `332_dispute_letter_mail_guard.sql`; Commas title not set (owner) |
 | 18 | Welcome kit | ★ | Parked by owner | `src/blueprint/welcome-kit.mjs` exists (money-chain hook) |
 | 19 | Quizzes | ★ | TODO (owner idea) | — |
-| 20 | Offer stack in sales presentation | ★★★ (sells it) | TODO — tomorrow | `public/app/present.js` already has Blueprint slides |
+| 20 | Offer stack in sales presentation | ★★★ (sells it) | **Built on a branch** — marked draft waiting for Chris; not live | `public/app/present.js` section 06 (B-01–B-06); PS manifest below |
 
 **Read:** 11 of the ★★★/★★ items are built. The gaps that matter most for "worth $5–10K": decline defense (9), new-credit alert (11), promo + reserve + payment-timing alerts going out (12–14), round-two math (10), document vault checklist (15), and the presentation (20).
 
@@ -37,10 +37,11 @@ Value: ★★★ = moves the client toward funding / the reason they pay $5–10
 | # | Unit | Status | Migration # |
 |---|---|---|---|
 | B1 | Decline defense: client pastes the decline into the agent → likely reasons → reconsideration steps as a tracked process (agent / ops / client), cited from the bank book; ops task + script | running | 470 |
+| B1b | Decline defense in the FinanceOS Money Helper chat: paste the decline → likely reasons → reconsideration steps in order; `record_decline` for paid Blueprint buyers | **back end done** (Sonnet) — screen next; manifest below | 468 |
 | B2 | File-protection alerts that actually send: payment timing, promo end 60/30/7 (promo-end field), cash reserve < 6× minimums, new card / new inquiry the day it shows (Plaid new account + pull diff) | **back end done** (Sonnet) — screen next (Opus); manifest below | 471 |
 | B3 | Document vault: required-docs checklist (statements, returns, ID, business docs), agent chases missing, closer sees "file complete" at ready time | queued | 472 |
 | B4 | Next funding sequence planner math: when the file is ready for the next sequence, from repo-documented windows (inquiry age, new-account age, utilization back under target), staff can override; rename "next round" labels to "next funding sequence" | queued | 473 |
-| B5 | Offer stack in the presentation (`present.js`): every Blueprint + FinanceOS item with buttons and logic for the rep | tomorrow (owner) | — |
+| B5 | Offer stack in the presentation (`present.js`): every Blueprint + FinanceOS item with buttons and logic for the rep | **built (unit PS)** — marked draft waiting for Chris, then merge; manifest below | — |
 
 ## Owner calls (2026-10-06, late)
 - Decline defense = paste the decline into the agent; it finds the reason and the reconsideration process.
@@ -81,6 +82,24 @@ Monthly member fee amount · Commas titles for member fee and per-letter mailing
 
 **Proof:** read-only dry run over test client `f1cb9c27-…` (not in the daily audience — no Finance OS subscription, no paid Blueprint transaction): `node --env-file=.env scripts/blueprint-file-alerts-dry-run.mjs`.
 
+## B1b manifest — decline defense in the Money Helper chat, back end (2026-10-07)
+
+**Done:** a client pastes a bank's decline into the FinanceOS Money Helper chat; it reads the letter (the B1 `analyze_decline` TOOL), says the likely reasons with the bank's own words, the reconsideration steps in order with who does each, what to fix first; a paid Blueprint buyer's decline is saved through B1's own paste path (`recordDecline`, one per letter, one ops task). A client who has not bought gets the reasons and the steps they can take themselves, plus one line that the Blueprint team can run the second look. Contract and diagram: `docs/journeys/money-helper-flow.md` ("A pasted bank decline").
+
+**Files:** `src/finance/money-decline.mjs` (new, pure: detection, FACTS.decline_analysis, the checks, the no-model answer, the score card's readers) · `src/finance/money-agent-ai.mjs` (prompt, closed action `record_decline`, validation, rules answer, paste-aware STOP/lawyer reading) · `src/finance/money-helper.mjs` (buyer flag in the context read, masked store, length gate, `executeActions` → `recordDecline`) · `src/finance/money-agent-sim.mjs` + `scripts/money-agent-roleplay.mjs` (persona g, four scorer checks, `--buyer`, `--prompt`) · `db/migrations/468_money_helper_declines.sql` + `db/expected-migrations.mjs` · tests `src/finance/money-decline.test.mjs`, `money-agent-ai.test.mjs`, `money-helper.test.mjs`, `money-agent-sim.test.mjs`.
+
+**Migration 468 (not on production until ship):** re-sets FOS-01's prompt word for word from `HELPER_PROMPT` (a test pins them), and widens `money_helper_turns.input`'s check from 2000 to 20000 (`MAX_PASTE_CHARS`, same cap as the decline reader; a test pins them). Additive; deletes nothing. The code still refuses a long message that is not a decline letter at 2000.
+
+**Choices made (named, changeable):** a message is a paste only when ≥ 250 characters, has application wording, and decline-analyze reads it as a decline with a reason-shaped signal (`MIN_PASTE_CHARS`, `money-decline.mjs`) · the bank is taken from the client's words ("declined by Chase") or the letter's own signature, else the helper asks for it and saves nothing · STOP / a lawyer / "a person" are read from the client's short first paragraph ahead of a letter, never from the letter (a bank email ends in "unsubscribe" and "opt out") · a decline answer may run 2400 characters · the buyer flag is `isCapitalBlueprintBuyer`; a failed read counts as "not a buyer".
+
+**Needs from the screen unit:** `public/app/money-helper.js` caps the box at 2000 (`MAX_CHARS`, and the textarea `maxlength`) — a real letter is longer, so raise it to 20000; `ACT_WORD` has no word for `record_decline` (the label is the server's: "Saved your Chase decline. Your Fundhub funding team has the second look"; status `skipped` = "Already done", `failed` = "Not done"). The test client is not a buyer on production, so a buyer's path is proved here by simulation (`--buyer=yes`).
+
+**Journeys impacted:** client (the Money Helper chat now reads a pasted decline). `-actual.md` journeys and the `docs/journeys/CHANGELOG.md` line were NOT written here (told not to run `npm run journeys`; a changelog line from every unit would collide at the top of the file) — left for the orchestrator's journeys pass. `docs/journeys/money-helper-flow.md` (hand-authored) is updated.
+
+**Leftover card (not fixed — outside this hole):** the helper's "claims money moved" check matches "I have sent this to your client success manager" (`MOVED_RES` in `money-agent-ai.mjs`), so a correct AI answer about a CSM task is blocked and the rules brain answers. Seen on role-play persona b, turn 2.
+
+**Proof:** `node --env-file=.env scripts/money-agent-roleplay.mjs --scripted --persona=g --prompt=code` through Claude Code (`claude -p`), read only: PASS, AI answered 2, blocked 0, for the file's own status (not a buyer) and for `--buyer=yes` (simulated; the save would run once, the follow-up did not save it again). All seven personas (a–g) pass through the same bridge with the new prompt.
+
 ## B2 manifest — file-protection alerts, the screen (2026-10-07)
 
 **Done (on the B2-front worktree branch, not merged):** the client can now see and run the four texts. Each one is a card with its own on/off switch, what it watches, the next text and what it is about, and the texts already sent (the day, the card, the words). Promo: set the end date and rate per card; it shows what is left and the payoff line from the API, plus the 60 / 30 / 7 schedule. Remove asks first. A card with no statement close day is asked for it right in its card, with one sentence why. That is the screen's one filled button. Cash: personal and business are two checks, each against 6 times its own minimums. No added number anywhere; a test checks the three sums never show.
@@ -92,3 +111,51 @@ Monthly member fee amount · Commas titles for member fee and per-letter mailing
 **Journeys impacted:** client. `-actual.md` not regenerated (told not to run `npm run journeys`).
 
 **Proof:** fixture server = the real `api/money/alerts.mjs` handler and the real payload builder over the sample rows, writes in memory, no database, no login. Its first read equals the pinned fixture. Marked shots at 1440 and 375 (full, empty, error, loading, promo editing and saved, a day saved, a switch off, STOP) are in the B2-front worktree under `ops/workflows/blueprint-launch-2026-10-06-evidence/b2/` (gitignored).
+
+### Orchestrator log (2026-10-07)
+- B1 decline defense (470) merged → FinanceOS tab "Applications". B1b (paste a decline into the money helper) running.
+- B2 alerts back end (471) + screen merged → tab "Alerts".
+- B3 vault back end (472) merged; screen running.
+- B4 next funding sequence math merged (no migration). Banks tab labels now say "next funding sequence"; reads `next_sequence`.
+- F1 daily Plaid refresh merged; key-rotation AAD bug fixed (would have broken real tokens).
+- F2 bank reconnect (update mode) back end running. Presentation offer stack (PS) running as a MARKED DRAFT — merge only when Chris says push.
+- Leftover (page-edit law, needs a marked draft): `public/app/client-portal.html` promo copy says "before the next round" — should say "next funding sequence".
+- PS offer stack: built on branch `worktree-agent-a1006bcf9965d16ba` @ f407c404 (section 06, slides B-01…B-06). NOT merged. Marked draft for Chris: https://claude.ai/artifact/X64XnM8129X7TLiDcWmvNx — merge + ship only when he says "push it". Open calls: closers' FinanceOS access, S-24 "Nobody is working the file for you" wording, Blueprint agreement text (288) out of date.
+
+## PS manifest — offer stack in the presentation (2026-10-07)
+
+**What it is:** a new section 06 on the closer deck (`/app/present.html`). Six slides. The rep opens them with the new **06** button, or **Show the full Blueprint stack** on S-19 when the Blueprint rung is picked. Next and Back skip the section from outside, so a funding call runs S-22 → S-23 like before. **Not live** until Chris sees the marked draft and says push.
+
+| Slide | Title | What the caller sees | Rep's buttons |
+|---|---|---|---|
+| B-01 | Capital Blueprint | The system around your file. Two doors: Blueprint and FinanceOS | Leave the stack |
+| B-02 | Your stack | Every item that fits this caller, one plain line each | 13 toggles, Reset to this file |
+| B-03 | FinanceOS | One page and its 16 real tabs (Alerts and Funding papers included) | One demo link per tab (sample client, new tab) |
+| B-04 | The investment | Items that are on, then the price, member fee $X, financing | **Yes: close the Blueprint** · Not ready: show FinanceOS · toggles |
+| B-05 | Start with FinanceOS | Setup $X, $X per container per month; what FinanceOS gives vs what the Blueprint adds | Show the path up · Back to the price |
+| B-06 | The path up | FinanceOS → "I'm ready to get funded" → CSM → Blueprint → closer | Back to the price · Back to FinanceOS |
+
+**Stack items (all built, each cites its file in the code):** dispute rounds with proof · accountability helper · money helper · monthly soft pull · ready to get funded · paydown and payment strategy · FinanceOS (12 months) · file-protection alerts · credit partner file · bank relationship tracker · decline defense · funding papers checklist · next funding sequence (B4: the file suggests the date, a staff date wins). Left off on purpose: welcome kit, quizzes, letter-mailing upsell, pre-application check.
+
+**Toggle logic (starts from what the deck already knows):**
+- Dispute rounds: on only when the file shows negative items (or the engine sorted it to repair and the count is missing). A clean file gets none.
+- Ready to get funded: off when the engine sorted the file to funding today; on otherwise.
+- Credit partner: off until the rep turns it on.
+- A business on the file: the funding papers line adds business papers, the FinanceOS line adds business accounts.
+- Everything else: on. The rep's picks win. "Reset to this file" undoes them. The caller's screen shows only what is on.
+
+**Prices:** Blueprint = `price("UWIQ_DELIVERABLES")` from `src/config/offers.mjs` ($5,000 today). FinanceOS setup fee, FinanceOS per container, and the monthly member fee = "$X" (not set). No made-up "value" dollar figures.
+
+**Close:** "Yes" sets the same state the descent ladder's own Blueprint rungs set (`desc:diy`, or `desc:eduLow` on the education route), then opens S-23, which sells Capital Blueprint with its own agreement. FinanceOS has no checkout, so B-05 tells the rep to take no payment.
+
+**Files:** `public/app/present.js` (DECK, the section 06 block between its markers, cockpit hooks, `go`/`jumpTo`, click handler) · `public/app/present.html` (`.stk-*` styles, all 11px or more) · `src/http/present-blueprint-stack.test.mjs` (new, 33 tests). The deck's tab list is pinned to `financeos.js` TABS both ways: a new FinanceOS tab fails that test until it is added to `FOS_TABS`.
+
+**Journeys impacted:** role-closer (Present gains section 06). `-actual.md` not regenerated (told not to run `npm run journeys`).
+
+**Marked draft (gitignored, on disk):** `ops/workflows/blueprint-launch-2026-10-06-evidence/ps/` — `index.html` plus 36 PNGs at 1440 and 375. Every new element is in a green box with a legend. The caller is the FinanceOS test client, run through the real engine (`fixture-deck-test-test.json`: FUNDING_PLUS_REPAIR, 3 negative items, 1 business). Scripts in `_raw/`.
+
+**Leftover cards (not fixed — outside this hole):**
+1. S-24's Blueprint wrap still says "Nobody is working the file for you" (`CLOSE_TALK.UWIQ_DELIVERABLES` in `present.js`). That now fights the stack (helper, CSM). Wording is Chris's call.
+2. The Capital Blueprint agreement (`db/migrations/288_real_contract_text.sql`) still describes the written-plan Blueprint. It does not name FinanceOS, the monthly pull, the helper, or the CSM.
+3. Closers cannot open the FinanceOS demo: `/api/money/*` lets in owner, admin, and sales manager only (`ROLE_SETS.FINANCE`). The deck shows a closer a note instead of a link that would error. Letting closers in is Chris's call.
+4. Demo links open Fundhub's sample client. A white-label company's rep (another company) would get "not found".

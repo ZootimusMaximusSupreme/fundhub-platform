@@ -114,3 +114,29 @@ test("Darwin ticket lists FAIL rows and suggested fixes", () => {
   assert.match(ticket, /1\. Restore \/login.html/);
   assert.match(ticket, /No auto-fix/);
 });
+
+/* Texting hours (owner law 2026-10-09, .claude/rules/texting-hours.md): both senders to Chris's number hold
+   everything outside 6 a.m. to 10 p.m. Arizona time (UTC-7). */
+test("texting hours: textMorningBrief and textChris hold at night and send in the window", async () => {
+  const { textMorningBrief } = await import("./notify.mjs");
+  const env = { [PULSE_SMS_TO_ENV]: FAKE_PULSE_SMS };
+  const sends = [];
+  const sendImpl = async (m) => { sends.push(m); return { status: "sent", providerMessageId: "SM1" }; };
+  const cases = [
+    ["2026-10-09T12:59:59Z", false], // 5:59:59 a.m.
+    ["2026-10-09T13:00:00Z", true],  // 6:00:00 a.m.
+    ["2026-10-10T04:59:59Z", true],  // 9:59:59 p.m.
+    ["2026-10-10T05:00:00Z", false], // 10:00:00 p.m.
+    ["2026-10-10T09:07:00Z", false]  // 2:07 a.m.
+  ];
+  for (const [iso, goes] of cases) {
+    const before = sends.length;
+    const brief = await textMorningBrief({ body: "x", env, dryRun: false, now: new Date(iso), sendImpl });
+    assert.equal(brief.delivery_status, goes ? "sent" : "held_quiet_hours", `brief ${iso}`);
+    assert.equal(brief.sent_to_last4, "0123", `brief ${iso}`);
+    const chris = await textChris({ date: "2026-10-09", pass: 1, fail: 0, skip: 0, env, dryRun: false, now: new Date(iso), sendImpl });
+    assert.equal(chris.sent, goes, `textChris ${iso}`);
+    if (!goes) assert.equal(chris.reason, "held_quiet_hours");
+    assert.equal(sends.length - before, goes ? 2 : 0, `sends ${iso}`);
+  }
+});

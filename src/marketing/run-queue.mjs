@@ -9,9 +9,10 @@
 //   * marketing_jobs of the AI kinds (write_slot, fix_script, funnel, avatar,
 //     flywheel_stage, deep_research): the worker's own runPass (src/marketing/worker.mjs)
 //     with the AI kinds only — the same claim (FOR UPDATE SKIP LOCKED, group caps under
-//     an advisory lock), the same handlers, the same finishJob / failJob. The outbox
-//     drain, the buzzes, the heartbeat and the wake are turned off here: Netlify still
-//     does those.
+//     an advisory lock), the same handlers, the same finishJob / failJob. The GitHub
+//     commit, the buzzes, the heartbeat and the wake stay off here: Netlify still
+//     does those. Waiting outbox rows are written onto this checkout instead
+//     (applyOutboxLocal): this Mac already has the database, so no GitHub token.
 //   * the Write offer jobs: runOfferJob (src/marketing/offer-run.mjs), the same function
 //     the offer background function calls, with its claim by id.
 //   * Write ad copy (generation_jobs with assetKind 'copy'): runDue
@@ -28,6 +29,7 @@
 // job up where it stood. A copy job's claim is inside its own transaction, so it rolls
 // back to queued by itself when the connection closes.
 
+import { applyOutboxLocal } from "../repo/outbox.mjs";
 import { runPass as realRunPass } from "./worker.mjs";
 import { macRegistry, AI_JOB_KINDS, AI_ASSET_KINDS } from "./ai-runner.mjs";
 import { requeueJob as realRequeueJob, OFFER_KIND } from "./jobs.mjs";
@@ -143,7 +145,16 @@ export function makeQueueRunner({ db, env = process.env, log = (l) => console.lo
         beat: async () => null,
         lastDrain: async () => ({ at: null, detail: null }),
         outboxWaiting: async () => 0,
-        drainOutbox: async () => ({ skipped: "mac" }),
+        drainOutbox: async () => {
+          const out = await applyOutboxLocal(db, deps.outboxRoot ? { root: deps.outboxRoot } : {});
+          const wrote = (out && out.written) || [];
+          if (wrote.length) log(`outbox wrote ${wrote.length} file(s) on this Mac`);
+          for (const p of wrote) log(p);
+          for (const r of (out && out.rejected) || []) log(`outbox left row ${r.id}: ${r.error}`);
+          if (out && out.error) log(`outbox file write failed: ${out.error}`);
+          if (wrote.length) return { written: wrote.length };
+          return { skipped: (out && out.skipped) || "empty" };
+        },
         recordDrain: async () => null,
         sendDueBuzzes: async () => null,
         wake: async () => ({ skipped: "mac" }),

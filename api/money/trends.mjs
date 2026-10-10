@@ -10,7 +10,7 @@
 //
 //   * A signed-in CLIENT sees their own file only. client_id comes off the
 //     SESSION; a client_id in the query string is never read on this branch.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) (owner / admin / sales_manager) +
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) (owner / admin / sales_manager) +
 //     requireClientInOrg on ?client_id=. A client in another org is 404.
 //
 // range defaults to 90d. Anything else than 30d / 90d / 12m is a 400.
@@ -50,7 +50,7 @@ export default async function handler(req, res, deps = {}) {
     }
   } else {
     const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-    if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+    if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return;
     const qid = req.query && req.query.client_id;
     if (!isUuid(qid)) {
       return res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

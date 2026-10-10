@@ -2,11 +2,11 @@ import AVFoundation
 import Photos
 import UIKit
 
-/// The front camera. Highest quality the phone gives for what Chris picked:
-/// 4K (VSLs, testimonials — owner law: non-ad videos are 4K) or 1080p (ads),
-/// 30 or 60 frames a second, H.264 (what Meta's ad specs name) or HEVC, a
-/// fixed frame rate (Meta asks for one), mirrored or not, steady video, and
-/// an exposure lock. Each take is saved to Photos under its take name
+/// Films at 1080p. The front camera tries 60 fps, then 30. It never asks for 4K.
+/// The back wide camera is the phone that sits and films him: the steadiest 1080p,
+/// and only if this phone has no front camera. The front preview stays a mirror.
+/// The back camera is not mirrored. HEVC, no bitrate cap, Dolby Vision when the
+/// camera has it. Each take is saved to Photos under its take name
 /// (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
 final class CameraController: NSObject, ObservableObject {
 
@@ -20,7 +20,7 @@ final class CameraController: NSObject, ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
-    /// What the camera is really set to, in plain words: "4K · 30 fps · H.264".
+    /// What the camera is really set to, in plain words: "Front camera · 1080p 1920×1080 · 60 fps · HEVC · mirrored".
     @Published private(set) var summary: String = ""
     /// When the camera could not give what Chris picked. Shown in red.
     @Published private(set) var shortfall: String?
@@ -76,8 +76,19 @@ final class CameraController: NSObject, ObservableObject {
                                          mediaType: .video, position: .front).devices.first
     }
 
+    /// The wide back camera. Not the ultra-wide and not the telephoto.
+    private func backCamera() -> AVCaptureDevice? {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera],
+                                         mediaType: .video, position: .back).devices.first
+    }
+
+    /// Front camera when this phone has one. Otherwise the back camera, so the preview stays up.
+    private func filmingCamera() -> AVCaptureDevice? {
+        frontCamera() ?? backCamera()
+    }
+
     private func configure(withAudio: Bool) {
-        guard let cam = frontCamera() else {
+        guard let cam = filmingCamera() else {
             DispatchQueue.main.async { self.state = .unavailable("No front camera here. The words still roll.") }
             return
         }
@@ -124,8 +135,8 @@ final class CameraController: NSObject, ObservableObject {
                 videoRange: sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
                 hdr: f.isVideoHDRSupported && sub != kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange && sub != kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
         }
-        guard let pick = CaptureChoice.pick(infos, width: s.quality.width, height: s.quality.height,
-                                            fps: s.fps, wantStabilization: want != .off) else {
+        let lens = cam.position == .back ? "back" : "front"
+        guard let pick = CaptureChoice.pickForLens(infos, lens: lens, wantStabilization: want != .off) else {
             DispatchQueue.main.async { self.shortfall = "This camera has no 16:9 video format." }
             return
         }
@@ -137,6 +148,10 @@ final class CameraController: NSObject, ObservableObject {
             let frame = CMTime(value: 1, timescale: CMTimeScale(pick.fps))
             cam.activeVideoMinFrameDuration = frame
             cam.activeVideoMaxFrameDuration = frame
+            if format.isVideoHDRSupported {
+                cam.automaticallyAdjustsVideoHDREnabled = false
+                cam.isVideoHDREnabled = true
+            }
             if s.lockExposure {
                 if cam.isExposureModeSupported(.locked) { cam.exposureMode = .locked }
             } else if cam.isExposureModeSupported(.continuousAutoExposure) {
@@ -147,21 +162,27 @@ final class CameraController: NSObject, ObservableObject {
             DispatchQueue.main.async { self.lastError = "The camera would not change: \(error.localizedDescription)" }
         }
         if let conn = movieOutput.connection(with: .video) {
-            if conn.isVideoMirroringSupported {
-                conn.automaticallyAdjustsVideoMirroring = false
-                conn.isVideoMirrored = s.recordMirrored
-            }
+            mirror(conn)
             if conn.isVideoStabilizationSupported {
                 conn.preferredVideoStabilizationMode = want
             }
-            applyOutputSettings(conn, width: pick.width, fps: pick.fps)
+            applyOutputSettings(conn)
         }
         session.commitConfiguration()
         let codecWord = s.codec == .h264 ? "H.264" : "HEVC"
-        let size = pick.width >= 3840 ? "4K" : pick.width >= 1920 ? "1080p" : "\(pick.width)×\(pick.height)"
+        let front = cam.position != .back
+        let size: String
+        if pick.width == 3840 && pick.height == 2160 { size = "4K \(pick.width)×\(pick.height)" }
+        else if pick.width == 1920 && pick.height == 1080 { size = "1080p \(pick.width)×\(pick.height)" }
+        else { size = "\(pick.width)×\(pick.height)" }
+        let who = front ? "Front camera" : "Back camera"
+        var note = pick.shortfall
+        if note == nil && s.quality == .uhd4K && pick.width == 1920 && pick.height == 1080 {
+            note = "1920×1080 is 1080p. It is not 4K."
+        }
         DispatchQueue.main.async {
-            self.summary = "\(size) · \(pick.fps) fps · \(codecWord)\(s.recordMirrored ? " · mirrored" : "")"
-            self.shortfall = pick.shortfall
+            self.summary = "\(who) · \(size) · \(pick.fps) fps · \(codecWord)" + (front ? " · mirrored" : "")
+            self.shortfall = note
         }
     }
 
@@ -173,21 +194,22 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
-    /// Codec and bitrate. On iOS only keys the output lists may be set, or it
-    /// throws (Apple: AVCaptureMovieFileOutput.setOutputSettings(_:for:)), so
-    /// every key is checked first.
-    private func applyOutputSettings(_ conn: AVCaptureConnection, width: Int, fps: Int) {
+    /// The front camera stays a mirror. The back camera is not flipped.
+    private func mirror(_ conn: AVCaptureConnection) {
+        guard conn.isVideoMirroringSupported else { return }
+        conn.automaticallyAdjustsVideoMirroring = false
+        conn.isVideoMirrored = device?.position != .back
+    }
+
+    /// Codec only. Apple publishes no bitrate, so this sets none. A cap would
+    /// squeeze the file. On iOS only keys the output lists may be set, or it
+    /// throws (Apple: AVCaptureMovieFileOutput.setOutputSettings(_:for:)).
+    private func applyOutputSettings(_ conn: AVCaptureConnection) {
         let codec: AVVideoCodecType = settings.codec == .h264 ? .h264 : .hevc
         guard movieOutput.availableVideoCodecTypes.contains(codec) else { return }
         let keys = Set(movieOutput.supportedOutputSettingsKeys(for: conn))
         guard keys.contains(AVVideoCodecKey) else { return }
-        var out: [String: Any] = [AVVideoCodecKey: codec]
-        if keys.contains(AVVideoCompressionPropertiesKey) {
-            out[AVVideoCompressionPropertiesKey] = [
-                AVVideoAverageBitRateKey: CaptureChoice.bitrate(width: width, fps: fps, hevc: codec == .hevc)
-            ]
-        }
-        movieOutput.setOutputSettings(out, for: conn)
+        movieOutput.setOutputSettings([AVVideoCodecKey: codec], for: conn)
     }
 
     // MARK: - Recording
@@ -202,10 +224,7 @@ final class CameraController: NSObject, ObservableObject {
         queue.async {
             guard let conn = self.movieOutput.connection(with: .video) else { return }
             if conn.isVideoRotationAngleSupported(angle) { conn.videoRotationAngle = angle }
-            if conn.isVideoMirroringSupported {
-                conn.automaticallyAdjustsVideoMirroring = false
-                conn.isVideoMirrored = self.settings.recordMirrored
-            }
+            self.mirror(conn)
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension("mov")

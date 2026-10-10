@@ -474,6 +474,7 @@ export async function postBinaryTo(url, {
   maxBytes = DEFAULT_MAX_BINARY_BYTES,
   timeoutMs = DEFAULT_BINARY_TIMEOUT_MS,
   method = "POST",
+  redirect,
   ...rest
 } = {}) {
   const cap = Math.min(Math.max(Number(maxBytes) || 0, 0), HARD_MAX_BINARY_BYTES);
@@ -488,11 +489,15 @@ export async function postBinaryTo(url, {
       fence: rest.fence ?? null
     };
   }
-  return transmit(url, {
+  const init = {
     method,
     headers: contentType ? { "Content-Type": contentType, ...headers } : headers,
     body
-  }, { ...rest, timeoutMs });
+  };
+  /* Google's resumable upload answers 308 while the file is still incomplete.
+     fetch follows 308 by default and would throw the rest of the file away. */
+  if (redirect) init.redirect = redirect;
+  return transmit(url, init, { ...rest, timeoutMs });
 }
 
 /** JSON POST — the shape almost every caller wants. */

@@ -100,7 +100,7 @@ describe("GET /api/money/trends — staff", () => {
 
   test("a role outside FINANCE is 403; no ?client_id is 400; another org is 404", async () => {
     let res = makeRes();
-    await handler({ method: "GET", query: { client_id: MINE } }, res, { db: db(), requirePrincipal: gateAs(staffPrincipal("closer")), moneyTrends: spyBuild() });
+    await handler({ method: "GET", query: { client_id: MINE } }, res, { db: db(), requirePrincipal: gateAs(staffPrincipal("setter")), moneyTrends: spyBuild() });
     assert.equal(res.statusCode, 403);
     res = makeRes();
     await handler({ method: "GET", query: {} }, res, { db: db(), requirePrincipal: gateAs(staffPrincipal("owner")), moneyTrends: spyBuild() });

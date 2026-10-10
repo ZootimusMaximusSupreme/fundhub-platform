@@ -20,7 +20,7 @@
 //     read on this branch. Every write below also passes that clientId down, so
 //     a container or account id belonging to another client answers 404 —
 //     exactly like an id that does not exist.
-//   * STAFF: ROLE_SETS.FINANCE (its own requireRole call — requireAuth drops a
+//   * STAFF: ROLE_SETS.FINANCE_OS (its own requireRole call — requireAuth drops a
 //     `roles` key, CLAUDE.md §12) + client_id (query on GET, body on POST) +
 //     requireClientInOrg. The staff doors api/finance/containers.mjs and
 //     api/finance/bank-accounts.mjs are unchanged.
@@ -88,7 +88,7 @@ export default async function handler(req, res, deps = {}) {
     by = { kind: "client", id: principal.accountId ?? null };
   } else {
     const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-    if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+    if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return;
     const raw = req.method === "GET" ? req.query && req.query.client_id : body.client_id;
     if (!isUuid(raw)) {
       return res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

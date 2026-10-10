@@ -13,7 +13,7 @@
 //     `client_id` in the query string is never read on this branch — not
 //     validated and ignored, just never consulted.
 //   * STAFF: a staff session (resolved by the same authenticate() requireAuth
-//     uses) + requireRole(ROLE_SETS.FINANCE)
+//     uses) + requireRole(ROLE_SETS.FINANCE_OS)
 //     (owner / admin / sales_manager) + requireClientInOrg on ?client_id=. The
 //     role check is its own call; requireAuth drops a `roles` key (CLAUDE.md §12).
 //
@@ -57,7 +57,7 @@ export default async function handler(req, res, deps = {}) {
     }
   } else {
     const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-    if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+    if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return;
     const qid = req.query && req.query.client_id;
     if (!isUuid(qid)) {
       return res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

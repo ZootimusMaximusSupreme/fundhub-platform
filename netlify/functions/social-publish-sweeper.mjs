@@ -6,6 +6,7 @@
 // otherwise SOCIAL_PUBLISH_DRY_RUN=1 marks posted with a dryrun: id for tests.
 
 import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { publishDueAll } from "../../src/social/publish-all.mjs";
 
 export const SWEEP_CRON = "*/5 * * * *";
@@ -42,6 +43,7 @@ export async function handler() {
       `[social-publish-sweeper] partners=${result.partners} posted=${result.posted} failed=${result.failed}`
     );
   }
+  await noteScheduledRun(db, "social-publish-sweeper", result);
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { "content-type": "application/json" }

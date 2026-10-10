@@ -83,7 +83,7 @@ describe("GET /api/money/strategy", () => {
   });
 
   test("a staff role outside FINANCE is refused", async () => {
-    for (const role of ["closer", "funding_advisor", "setter", "csm"]) {
+    for (const role of ["setter", "funding_advisor", "setter", "csm"]) {
       const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.load, undefined);
@@ -121,7 +121,7 @@ describe("POST /api/money/strategy save_plan", () => {
   });
 
   test("a closer cannot save; a client in another org is 404", async () => {
-    assert.equal((await call({ method: "POST", body: { ...body, client_id: MINE } }, staffP("closer"))).res.statusCode, 403);
+    assert.equal((await call({ method: "POST", body: { ...body, client_id: MINE } }, staffP("setter"))).res.statusCode, 403);
     assert.equal((await call({ method: "POST", body: { ...body, client_id: OTHER } }, staffP("owner"))).res.statusCode, 404);
   });
 

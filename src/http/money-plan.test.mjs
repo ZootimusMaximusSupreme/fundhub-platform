@@ -100,7 +100,7 @@ describe("GET /api/money/plan — staff", () => {
   });
 
   test("outside FINANCE is 403; no client_id is 400; another org is 404", async () => {
-    assert.equal((await call({ method: "GET", query: { client_id: MINE } }, staffP("closer"))).res.statusCode, 403);
+    assert.equal((await call({ method: "GET", query: { client_id: MINE } }, staffP("setter"))).res.statusCode, 403);
     assert.equal((await call({ method: "GET", query: {} }, staffP("owner"))).res.statusCode, 400);
     const outside = await call({ method: "GET", query: { client_id: OTHER } }, staffP("admin"), { inOrg: [MINE] });
     assert.equal(outside.res.statusCode, 404);

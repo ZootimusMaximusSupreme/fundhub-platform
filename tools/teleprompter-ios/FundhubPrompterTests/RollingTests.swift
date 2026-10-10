@@ -22,6 +22,15 @@ final class PromptClockTests: XCTestCase {
         XCTAssertEqual(PromptClock.clock(65), "1:05")
     }
 
+    func testVolumeButtonsStepSpeedAndDoNotStickAtTheEnds() {
+        XCTAssertEqual(VolumeWpm.direction(from: 0.4, to: 0.55), 1)
+        XCTAssertEqual(VolumeWpm.direction(from: 0.55, to: 0.4), -1)
+        XCTAssertEqual(VolumeWpm.direction(from: 0.5, to: 0.5), 0)
+        XCTAssertTrue(VolumeWpm.shouldRecenter(0.05))
+        XCTAssertTrue(VolumeWpm.shouldRecenter(0.95))
+        XCTAssertFalse(VolumeWpm.shouldRecenter(0.5))
+    }
+
     func testScrollTrackIsSmoothAndInverts() {
         let paras = [Paragraph(text: "a b c d", cue: false)]
         let c = PromptClock(paragraphs: paras, wpm: 80, pauseSeconds: 0)
@@ -33,6 +42,36 @@ final class PromptClockTests: XCTestCase {
         XCTAssertEqual(track.y(at: line2 / 2), 30, accuracy: 1e-9, "half way through line 1, half way to line 2")
         XCTAssertEqual(track.y(at: 99), 50)
         XCTAssertEqual(track.t(at: 30), line2 / 2, accuracy: 1e-9)
+    }
+
+    func testAFastParagraphGapDoesNotRace() {
+        // 120 words a minute is half a second a word. The first line moves
+        // 20px in 1s (20 px/s). The next step is 40px in 1.4s, which would race.
+        let paras = [Paragraph(text: "one two three four", cue: false), Paragraph(text: "five", cue: false)]
+        let c = PromptClock(paragraphs: paras, wpm: 120, pauseSeconds: 0.4)
+        let track = ScrollTrack(clock: c, wordY: [0, 0, 20, 20, 60])
+        XCTAssertEqual(c.words[4].start, 2.4, accuracy: 1e-9)
+        XCTAssertEqual(track.pace, 20, accuracy: 1e-9, "the words move 20px in 1s")
+        let wall = track.wallRemaining(from: 1) - track.wallRemaining(from: 2.4)
+        XCTAssertEqual(wall, 2, accuracy: 1e-6, "the 40px gap takes 2s, same speed as the words")
+        let moved = track.advance(from: 1, wall: 1)
+        let pixels = track.y(at: 1 + moved) - track.y(at: 1)
+        XCTAssertEqual(pixels, 20, accuracy: 1e-6, "one real second in the gap moves 20px")
+    }
+
+    func testASlowGapIsNotSpedUp() {
+        let paras = [Paragraph(text: "one two three four", cue: false), Paragraph(text: "five", cue: false)]
+        let c = PromptClock(paragraphs: paras, wpm: 120, pauseSeconds: 8)
+        let track = ScrollTrack(clock: c, wordY: [0, 0, 20, 20, 40])
+        // The gap already takes 9s of clock time for 20px. Do not speed it up.
+        XCTAssertEqual(c.words[4].start, 10, accuracy: 1e-9)
+        XCTAssertEqual(track.advance(from: 1, wall: 9), 9, accuracy: 1e-6)
+    }
+
+    func testThumbUpRollsTheWordsUp() {
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: -30, flippedVertically: false), 30, "thumb up rolls the words up")
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: false), -80, "thumb down moves the words down")
+        XCTAssertEqual(PrompterDrag.offsetDelta(screenFingerDy: 80, flippedVertically: true), 80, "upside-down glass keeps the same feel")
     }
 }
 
@@ -99,6 +138,32 @@ final class CaptureChoiceTests: XCTestCase {
         .init(index: i, width: w, height: h, maxFPS: fps, stabilization: stab, videoRange: video, hdr: hdr)
     }
 
+    func testHighest4KUsesTheFastestRealRate() {
+        let formats = [f(0, 3840, 2160, 30), f(1, 3840, 2160, 60), f(2, 1920, 1080, 120)]
+        let p = CaptureChoice.pickHighest(formats, width: 3840, height: 2160, wantStabilization: true)!
+        XCTAssertEqual(p.width, 3840)
+        XCTAssertEqual(p.height, 2160)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testHighest1080UsesTheFastestRealRate() {
+        let formats = [f(0, 1920, 1080, 30), f(1, 1920, 1080, 60), f(2, 1280, 720, 240), f(3, 3840, 2160, 30)]
+        let p = CaptureChoice.pickHighest(formats, width: 1920, height: 1080, wantStabilization: false)!
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testDoesNotCallASmallerPicture4K() {
+        let p = CaptureChoice.pickHighest([f(0, 1920, 1080, 60)], width: 3840, height: 2160, wantStabilization: true)!
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertEqual(p.shortfall, "This camera tops out at 1920×1080. It is not 4K.")
+    }
+
     func testPicks4K60WhenThePhoneHasIt() {
         let formats = [f(0, 1920, 1080, 60), f(1, 3840, 2160, 30), f(2, 3840, 2160, 60, video: false), f(3, 3840, 2160, 60)]
         let p = CaptureChoice.pick(formats, width: 3840, height: 2160, fps: 60, wantStabilization: true)!
@@ -121,15 +186,64 @@ final class CaptureChoiceTests: XCTestCase {
         XCTAssertNotNil(p.shortfall)
     }
 
-    func testPrefersStabilizationAndNoHDR() {
-        let formats = [f(0, 1920, 1080, 30, stab: false), f(1, 1920, 1080, 30, hdr: true), f(2, 1920, 1080, 30)]
-        XCTAssertEqual(CaptureChoice.pick(formats, width: 1920, height: 1080, fps: 30, wantStabilization: true)?.index, 2)
+    func testPrefersStabilizationAndDolbyVision() {
+        let formats = [f(0, 1920, 1080, 60, stab: false), f(1, 1920, 1080, 60, hdr: true), f(2, 1920, 1080, 60)]
+        XCTAssertEqual(CaptureChoice.pick(formats, width: 1920, height: 1080, fps: 60, wantStabilization: true)?.index, 1)
     }
 
-    func testBitrate() {
-        XCTAssertEqual(CaptureChoice.bitrate(width: 3840, fps: 30, hevc: false), 50_000_000)
-        XCTAssertEqual(CaptureChoice.bitrate(width: 1920, fps: 60, hevc: false), 30_000_000)
-        XCTAssertEqual(CaptureChoice.bitrate(width: 1920, fps: 30, hevc: true), 20_000_000 * 2 / 3)
+    func testSlowMotionIsNotTheFilmingRate() {
+        let formats = [f(0, 1920, 1080, 120), f(1, 1920, 1080, 60), f(2, 1920, 1080, 30)]
+        let p = CaptureChoice.pickHighest(formats, width: 1920, height: 1080, wantStabilization: true)!
+        XCTAssertEqual(p.index, 1)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testASlowMotionOnlyFormatStillFilmsAt60() {
+        let p = CaptureChoice.pickHighest([f(0, 1920, 1080, 120)], width: 1920, height: 1080, wantStabilization: false)!
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testFront1080Ignores4KAndFallsBackTo30() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 30)]
+        let p = CaptureChoice.pickFront1080(formats, wantStabilization: true)!
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 30)
+        XCTAssertNil(p.shortfall)
+        XCTAssertNotEqual(p.width, 3840)
+    }
+
+    func testFront1080Uses60WhenTheCameraHasIt() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60), f(2, 1920, 1080, 30)]
+        let p = CaptureChoice.pickForLens(formats, lens: "front", wantStabilization: true)!
+        XCTAssertEqual(p.index, 1)
+        XCTAssertEqual(p.fps, 60)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testBackCameraPrefersSteady1080Over4K() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60, stab: false), f(2, 1920, 1080, 30), f(3, 1920, 1080, 120)]
+        let p = CaptureChoice.pickStable1080(formats, wantStabilization: true)!
+        XCTAssertEqual(p.index, 2, "a steady 30 beats an unsteady 60 and slow motion")
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+        XCTAssertEqual(p.fps, 30)
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testBackCameraUsesSteady60WhenItCanHoldIt() {
+        let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60), f(2, 1920, 1080, 30, stab: false)]
+        let p = CaptureChoice.pickForLens(formats, lens: "back", wantStabilization: true)!
+        XCTAssertEqual(p.index, 1)
+        XCTAssertEqual(p.fps, 60)
+    }
+
+    func testASmallerPictureIsNotCalled1080() {
+        let p = CaptureChoice.pickFront1080([f(0, 1280, 720, 30)], wantStabilization: false)!
+        XCTAssertEqual(p.width, 1280)
+        XCTAssertEqual(p.shortfall, "This camera tops out at 1280×720. It is not 1080p.")
     }
 
     func testTakeNameFallbacks() {

@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b0c0e">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fundhub">
 <title>Fundhub — Teleprompter</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -15,24 +19,26 @@
 /* ══ TELEPROMPTER ═════════════════════════════════════════════════════════
    Spec docs/specs/marketing-machine-2026-10-04.md §8.1 (web version), §8.2.
    One full-screen reading stage with a red reading line, a thumb bar at the
-   bottom, sheets that slide up over it. One dark look on purpose: it is read
-   off a screen behind glass, and white text on black is what a beam-splitter
-   rig shows best. Ported from v1, tools/teleprompter/index.html.
+   bottom, sheets that slide up over it. Black glass is the front camera,
+   mirrored like a selfie, with a dark cover so the words stay bright. It is
+   not a solid black page and not a reflection in the phone glass. Ported
+   from v1, tools/teleprompter/index.html.
    No shell, no sidebar (like present.html): src/http/app-nav-matches-shell.test.mjs
-   lists it in NO_SIDEBAR. Owner and admin only, through the API's own gate.
+   lists it in NO_SIDEBAR. The shoot read loads with no sign-in. Saves stay
+   owner and admin.
    #flip holds everything that is READ through the glass — the text, the
    countdown, the progress bar, the reading line, the cue hold and the end
    card — so a mirror flips all of it together. The bars Chris taps on the
    iPad itself are not flipped, and they hide while a script rolls.
    v2 (owner, 2026-10-06; docs/specs/teleprompter-requirements-2026-10-06.md):
-   dark glass (pure black, white words), a change pulse row that never hides,
+   dark glass (dimmed mirrored camera, white words), a change pulse row that never hides,
    an edit box in place of a line, a history sheet, a two-versions picker, a
    line-width setting, and on a tablet the sheets open as a side drawer.
    ═════════════════════════════════════════════════════════════════════════ */
 :root{
   color-scheme:dark;
   --bg:#000;
-  --panel:#0d0e10;
+  --panel:#000;
   --panel-2:#17191d;
   --rule:#2b2f36;
   --ink:#fff;
@@ -47,7 +53,7 @@
   --data-face:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;background:#000}
 body{background:var(--bg);color:var(--ink);font-family:var(--read-face);overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit}
 a{color:inherit}
@@ -55,7 +61,7 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 [hidden]{display:none !important}
 
 /* layout: header row, the stage, the change pulse, the thumb bar */
-#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto auto}
+#app{position:fixed;inset:0;z-index:1;display:grid;grid-template-rows:auto 1fr auto auto;background:transparent}
 
 /* header: which ad, which take, the file name to give the clip */
 #top{padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;border-bottom:1px solid var(--rule);background:var(--panel);display:grid;gap:4px;transition:opacity .4s;min-width:0}
@@ -69,12 +75,12 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 .mini{border:1px solid var(--rule);background:var(--panel-2);border-radius:10px;padding:8px 12px;min-height:40px;font-size:13px;cursor:pointer;white-space:nowrap}
 
 /* the stage */
-#flip{position:relative;overflow:hidden;min-height:0}
+#flip{position:relative;overflow:visible;z-index:2;min-height:0;background:transparent}
 #flip.mirror-x{transform:scaleX(-1)}
 #flip.mirror-y{transform:scaleY(-1)}
 #flip.mirror-x.mirror-y{transform:scale(-1,-1)}
-#stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform;--measure:30ch}
+#stage{position:absolute;inset:0;overflow:hidden;background:transparent;touch-action:none;cursor:default;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#content{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,6vw);will-change:transform;--measure:30ch;color:#fff;background:transparent}
 #content p{margin:0 auto .9em;line-height:1.32;max-width:var(--measure)}
 #content p.cue{color:var(--cue);border-left:4px solid var(--cue);padding-left:.4em}
 #content .w{transition:color .25s}
@@ -89,38 +95,38 @@ button:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{
 #line::after{right:0;border-right-color:var(--tally)}
 #progress{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--rule);pointer-events:none}
 #progress-fill{height:100%;width:0;background:var(--tally)}
-#scrollchip{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--cue);color:#000;border-radius:999px;padding:4px 16px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
+#scrollchip{position:absolute;top:auto;bottom:-28px;left:50%;transform:translateX(-50%);height:28px;line-height:26px;padding:0 12px;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;background:#000;color:var(--cue);border:1px solid #3a3a3a;border-radius:999px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
 #count{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-family:var(--data-face);font-size:min(38vw,240px);color:var(--tally);text-shadow:0 0 40px rgba(0,0,0,.8)}
-#cuehold{position:absolute;left:16px;right:16px;bottom:16px;text-align:center;font-size:15px;color:var(--bg);background:var(--cue);border-radius:12px;padding:8px 16px;pointer-events:none}
+#cuehold{position:absolute;left:50%;right:auto;bottom:-28px;transform:translateX(-50%);height:28px;line-height:26px;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:13px;font-weight:700;color:var(--cue);background:#000;border:1px solid #3a3a3a;border-radius:999px;padding:0 12px;pointer-events:none;white-space:nowrap}
 .card{position:absolute;left:16px;right:16px;bottom:24px;margin:0 auto;max-width:560px;background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:16px;display:grid;gap:12px;box-shadow:0 -20px 60px rgba(0,0,0,.6)}
 .card h2{margin:0;font-size:20px}
 .card p{margin:0;color:var(--ink-2);font-size:15px;line-height:1.45}
 .card .file{font-family:var(--data-face);font-size:13px;color:var(--ink);overflow-wrap:anywhere}
 .card .acts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .big{min-height:56px;border-radius:12px;border:1px solid var(--rule);background:var(--panel-2);font-size:17px;font-weight:700;cursor:pointer;padding:8px 16px;text-decoration:none;display:grid;place-items:center;text-align:center}
-.big.primary{background:var(--ok);border-color:var(--ok);color:#06210d}
+.big.primary{background:#000;border-color:var(--ok);color:#fff}
 .keys{font-family:var(--data-face);font-size:12px;color:var(--ink-2)}
-#empty,#wall{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center}
-#wall{position:fixed;background:var(--bg);z-index:8}
-#empty .box,#wall .box{display:grid;gap:16px;max-width:420px;justify-items:center}
-#empty p,#wall p{margin:0;color:var(--ink-2);font-size:17px;line-height:1.45}
+#empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center}
+#empty .box{display:grid;gap:16px;max-width:420px;justify-items:center}
+#empty p{margin:0;color:var(--ink-2);font-size:17px;line-height:1.45}
 
 /* the change pulse: the take name and the save status. It never hides. */
-#pulse{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px;min-height:28px;background:var(--bg);border-top:1px solid var(--rule);min-width:0}
-#p-file{font-family:var(--data-face);font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-#p-save{border:0;background:none;color:var(--ok);font-size:12px;padding:8px 0;min-height:28px;cursor:pointer;white-space:nowrap;flex:none;text-align:right}
+#pulse{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px;min-height:28px;background:transparent;border-top:1px solid var(--rule);min-width:0}
+#p-file{position:relative;z-index:1;flex:none;max-width:9rem;height:22px;min-height:22px;margin:0;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(12,14,18,.55);color:#fff;font-family:var(--data-face);font-size:11px;font-weight:700;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;touch-action:manipulation}
+#p-save{position:relative;z-index:1;border:0;background:#000;color:var(--ok);font-size:12px;padding:8px 0;min-height:28px;cursor:pointer;white-space:nowrap;flex:none;text-align:right}
 #p-save.busy{color:var(--ink-2)}
 #p-save.warn{color:var(--cue);font-weight:700}
 body.rolling #pulse{opacity:.7}
 
 /* the thumb bar */
 #bar{background:var(--panel);border-top:1px solid var(--rule);padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;transition:opacity .4s}
-body.rolling #bar,body.rolling #top{opacity:0;pointer-events:none}
+body.rolling #top,body.rolling #status,body.rolling #tools{opacity:0;pointer-events:none}
 #rows{display:grid;gap:8px}
 #status{display:flex;justify-content:space-between;gap:12px;font-family:var(--data-face);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:0}
-#status .note{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--read-face);font-size:12px}
+#status .note{white-space:normal;overflow:visible;min-width:0;font-family:var(--read-face);font-size:12px;line-height:1.35}
 #tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center}
-#controls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center}
+#controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-items:center}
+#controls .btn.word{font-size:17px;font-weight:700}
 .btn.word{font-size:14px}
 .btn.word span{white-space:nowrap}
 .btn{height:52px;border-radius:12px;border:1px solid var(--rule);background:var(--panel-2);display:grid;place-items:center;touch-action:manipulation;cursor:pointer;padding:0;min-width:0}
@@ -164,14 +170,16 @@ body.editing #flip{transform:none !important}
 body.editing #stage{touch-action:manipulation;user-select:text;-webkit-user-select:text}
 body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{visibility:hidden}
 .edit-box{display:block;width:100%;max-width:var(--measure);margin:0 auto .9em;padding:8px 12px;border:2px solid var(--cue);border-radius:12px;background:#111;color:var(--ink);font-family:var(--read-face);line-height:1.32;resize:none;overflow:hidden;-webkit-user-select:text;user-select:text}
-#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
+body.wording #flip{transform:none !important}
+.word-box{display:inline-block;min-width:2ch;max-width:100%;margin:0;padding:0 2px;border:2px solid var(--cue);border-radius:6px;background:#111;color:#fff;font:inherit;line-height:inherit;vertical-align:baseline}
+#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 96px 8px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
 #e-status{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-#e-done{background:var(--ok);border-color:var(--ok);color:#06210d;font-weight:700}
+#e-done{background:#000;border-color:var(--ok);color:#fff;font-weight:700}
 
 /* a tablet (iPad, either way up): bigger taps, one row of controls, and the
    sheets open as a drawer from the right so the script stays in view */
 @media (min-width:700px) and (min-height:600px){
-  #rows{grid-template-columns:4fr 5fr;gap:24px}
+  #rows{grid-template-columns:1fr;gap:8px}
   .btn{height:60px}
   #p-file,#p-save{font-size:13px}
   .sheet{left:auto;top:0;bottom:0;width:min(440px,92vw);max-height:none;border-radius:18px 0 0 18px;border-top:0;border-left:1px solid var(--rule);align-content:start;padding-top:calc(16px + env(safe-area-inset-top,0px))}
@@ -180,18 +188,73 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 @media (max-height:520px) and (min-width:560px){
   #top .row3,#top .banner{display:none}
   #s-title{font-size:15px}
-  #rows{grid-template-columns:4fr 5fr;gap:16px}
+  #rows{grid-template-columns:1fr;gap:8px}
   .btn{height:44px}
 }
 
 /* messages */
 #toast{position:fixed;left:16px;right:16px;top:calc(16px + env(safe-area-inset-top,0px));margin:0 auto;max-width:560px;background:var(--panel-2);border:1px solid var(--rule);border-radius:12px;padding:12px 16px;font-size:15px;z-index:9;overflow-wrap:anywhere}
 .banner{font-size:13px;color:var(--cue);margin:0}
+.pill.on{border-color:var(--tally)}
+#cam-line{font-size:13px;color:var(--cue);margin:0}
+/* Full-screen front camera under the words. Mirrored like a selfie. The shade
+   dims the picture so the words pop. It never goes solid black. The beam-splitter
+   switch still flips only the words, because this layer sits outside #flip. */
+#cam{position:fixed;z-index:0;inset:0;width:auto;height:auto;border:0;border-radius:0;overflow:hidden;background:#000;pointer-events:none}
+#cam-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#000}
+#cam-shade{position:absolute;inset:0;background:#000;opacity:.55;pointer-events:none}
+#cam.glass #cam-shade{opacity:.55}
+#cam-corner{position:absolute;inset:0;margin:0;border:0;padding:0;background:transparent;pointer-events:none}
+#rec{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(0,0,0,.6);border-radius:999px;font-family:var(--data-face);font-size:12px;font-weight:600}
+#rec-dot{width:10px;height:10px;border-radius:50%;background:var(--tally);flex:none}
+#b-save{position:fixed;z-index:6;top:calc(40px + env(safe-area-inset-top,0px));left:8px}
+#b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
+<link rel="stylesheet" href="teleprompter.css">
+<script>
+/* Full screen so the words can reach the edges. Safari will not drop its
+   address bar until a tap, so try on open and again on the first tap.
+   Does not touch play, record, or the scroll. */
+(function () {
+  function enter() {
+    var d = document;
+    if (d.fullscreenElement || d.webkitFullscreenElement) return null;
+    var el = d.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
+    if (!req) return null;
+    try {
+      return req.call(el, { navigationUI: "hide" });
+    } catch (e) {
+      try { return req.call(el); } catch (e2) { return null; }
+    }
+  }
+  function quiet(p) {
+    if (p && typeof p.then === "function") p.then(function () {}, function () {});
+  }
+  function arm() {
+    var stop = function () {
+      document.removeEventListener("pointerdown", once, true);
+      document.removeEventListener("touchstart", once, true);
+    };
+    function once() {
+      quiet(enter());
+      stop();
+    }
+    document.addEventListener("pointerdown", once, true);
+    document.addEventListener("touchstart", once, true);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { quiet(enter()); });
+  else quiet(enter());
+  arm();
+})();
+</script>
 </head>
 <body>
+<button type="button" class="mini" id="b-script-save" hidden>Save</button>
+<button type="button" id="b-cancel" aria-label="Cancel">X</button>
 <div id="app">
+  <!-- Kept for the script name. teleprompter.css hides this whole bar. -->
   <header id="top">
     <div class="row1">
       <span id="s-ad"></span>
@@ -204,12 +267,14 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
     </div>
     <p class="banner" id="offline" hidden></p>
     <p class="banner" id="pending" hidden>Your marks are saved on this phone and send when you are back online.</p>
+    <p id="cam-line" hidden></p>
   </header>
 
   <div id="flip">
     <div id="stage" aria-label="Script">
       <div id="content"></div>
       <div id="line"></div>
+      <div id="script-fade" aria-hidden="true"></div>
     </div>
     <div id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
     <div id="scrollchip" hidden>Scroll mode · drag to move · tap to roll</div>
@@ -238,32 +303,32 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
     <div id="empty" hidden>
       <div class="box">
         <p id="empty-msg">No shoot is planned.</p>
-        <a class="big primary" href="/app/marketing-command-center.html#shoot">Plan it on the Shoot tab</a>
+        <a class="big primary" id="empty-plan" href="/app/marketing-command-center.html#shoot">Plan it on the Shoot tab</a>
         <button type="button" class="big" id="empty-retry" hidden>Try again</button>
       </div>
     </div>
   </div>
 
   <div id="pulse">
-    <span id="p-file"></span>
-    <button type="button" id="p-save" aria-label="Save status. Tap for the history.">No changes yet</button>
+    <button type="button" id="p-file" hidden></button>
+    <span id="p-save">No changes yet</span>
   </div>
 
   <div id="bar">
-    <div id="status"><span class="note">Tap to pause. Double tap to scroll. Hold a line to change it.</span><span id="s-time"></span></div>
+    <div id="status"><span class="note">Play rolls the words. Tap Play again and the words pause. The camera keeps recording. When the words are paused, double-tap a word to change it. A blank gap keeps that same speed, so you can breathe.</span><span id="s-time"></span></div>
     <div id="rows">
-      <div id="tools">
-        <button type="button" class="btn" id="b-lib" aria-label="Scripts on this shoot"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
-        <button type="button" class="btn word" id="b-edit" aria-label="Edit this line"><span>Edit</span></button>
-        <button type="button" class="btn word" id="b-hist" aria-label="History of this script"><span>History</span></button>
-        <button type="button" class="btn" id="b-set" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+      <div id="rig" aria-label="Mirror rig">
+        <button type="button" id="b-mirror" aria-pressed="false">Mirror off</button>
+        <button type="button" id="b-turn">Turn 0</button>
+        <a id="b-remote" href="teleprompter-remote.html">Remote</a>
+      </div>
+      <div id="wpm-tap" aria-label="Speed">
+        <button type="button" id="wpm-down" aria-label="Slower">−</button>
+        <button type="button" id="wpm-up" aria-label="Faster">+</button>
       </div>
       <div id="controls">
-        <button type="button" class="btn" id="b-slow" aria-label="Slower"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-        <button type="button" class="btn" id="b-restart" aria-label="Restart this take"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
-        <button type="button" class="btn" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-ico"><path d="M8 5l11 7-11 7z"/></svg></button>
-        <button type="button" class="btn" id="b-next" aria-label="Next script"><svg viewBox="0 0 24 24"><path d="M5 5l9 7-9 7z"/><path d="M18 5v14"/></svg></button>
-        <button type="button" class="btn" id="b-fast" aria-label="Faster"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button>
+        <button type="button" class="btn word" id="b-rec" aria-label="Record"><span>Record</span></button>
+        <button type="button" class="btn word" id="play" aria-label="Play" aria-pressed="false"><span>Play</span></button>
       </div>
     </div>
   </div>
@@ -276,6 +341,11 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
   <button type="button" class="mini" id="e-done">Done</button>
 </div>
 
+<section id="qmenu" hidden aria-label="Scripts still to film">
+  <div class="row"><h2>Still to film</h2><button type="button" class="x" data-close>Close</button></div>
+  <div class="list" id="qmenu-list"></div>
+</section>
+
 <section class="sheet" id="lib" hidden aria-label="Scripts on this shoot">
   <div class="row"><h2>This shoot</h2><button type="button" class="x" data-close>Close</button></div>
   <div class="list" id="list"></div>
@@ -284,20 +354,27 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 
 <section class="sheet" id="set" hidden aria-label="Settings">
   <div class="row"><h2>Settings</h2><button type="button" class="x" data-close>Close</button></div>
+  <p class="note" id="how">Play rolls the words. Tap Play again and the words pause. The camera keeps recording. When the words are paused, double-tap a word to change it. A blank gap keeps that same speed, so you can breathe.</p>
   <div class="field"><label for="r-wpm">Speed <span id="v-wpm"></span></label><input type="range" id="r-wpm" min="80" max="260" step="5"></div>
   <div class="field"><label for="r-font">Text size <span id="v-font"></span></label><input type="range" id="r-font" min="24" max="120" step="2"></div>
   <div class="field"><label for="r-measure">Line width <span id="v-measure"></span></label><input type="range" id="r-measure" min="12" max="60" step="1"></div>
   <div class="field"><label for="r-line">Reading line <span id="v-line"></span></label><input type="range" id="r-line" min="8" max="60" step="1"></div>
-  <div class="field"><label for="r-pause">Pause at each blank line <span id="v-pause"></span></label><input type="range" id="r-pause" min="0" max="2.5" step="0.1"></div>
+  <div class="field"><label for="r-pause">Extra time on a blank gap <span id="v-pause"></span></label><input type="range" id="r-pause" min="0" max="2.5" step="0.1"></div>
+  <p class="note">A blank gap keeps the same speed as the words. This only adds more time. It does not make the gap race.</p>
   <label class="toggle" for="t-mirror">Mirror left to right (beam-splitter glass) <input type="checkbox" id="t-mirror"></label>
   <label class="toggle" for="t-flipv">Flip upside down (some rigs need it) <input type="checkbox" id="t-flipv"></label>
   <label class="toggle" for="t-count">3-2-1 countdown before each take <input type="checkbox" id="t-count"></label>
+  <h3>Camera</h3>
+  <p class="note" id="cam-now">The front camera is starting.</p>
+  <button type="button" class="pill" id="q-4k">4K (3840×2160) — VSLs, thank-you, testimonials</button>
+  <button type="button" class="pill" id="q-1080">1080p (1920×1080) — ads</button>
+  <p class="note">4K for VSLs, thank-you videos and testimonials. 1080p for ads. Each one uses the fastest real frame rate at that size. A smaller picture is never stretched and called 4K.</p>
   <h3>Learn remote</h3>
   <p class="note">Tap a slot, then press the button on your remote or foot pedal. It is saved on this device.</p>
   <div class="list" id="learn"></div>
   <button type="button" class="pill" id="b-forget">Clear learned buttons</button>
   <h3>Touch</h3>
-  <p class="note">Tap: pause, and tap again to roll on. Double tap: scroll mode, so you can drag or flick the words. Tap to roll from there. Hold a line to change its words; it saves by itself.</p>
+  <p class="note">Play moves the words. Tap Play again and the words pause. The camera keeps going. When the words are paused, double-tap a word to change that word. Hold a line to change the whole line.</p>
   <p class="note keys">Keyboard: Space, Enter or Page Down plays and pauses. The arrows change the speed. Page Up restarts the take. At the end of a script, Space is Got it and Page Up is Another take.</p>
 </section>
 
@@ -313,12 +390,13 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
   <div class="acts" id="pick-acts"></div>
 </section>
 
-<div id="wall" hidden>
-  <div class="box">
-    <p id="wall-msg">Sign in to use the teleprompter.</p>
-    <a class="big primary" href="/login.html?next=/app/teleprompter.html">Sign in</a>
-  </div>
+<div id="cam" hidden>
+  <video id="cam-video" playsinline autoplay muted></video>
+  <div id="cam-shade"></div>
+  <button type="button" id="cam-corner" aria-label="Show the camera"></button>
 </div>
+<div id="rec" hidden><span id="rec-dot"></span><span id="rec-time">0:00</span></div>
+<button type="button" class="mini" id="b-save" hidden>Save the video</button>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 

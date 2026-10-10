@@ -225,7 +225,7 @@
   var STAFF_MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-credit.html",
     "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
     "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
-    "money-transfers.html", "money-declines.html", "money-alerts.html"];
+    "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"];
 
   /* Consent desk — the credit-pull permission screen. api/consent/capture.mjs
      gates on CONSENT_ROLES = owner, admin, closer, funding_advisor, and that
@@ -420,7 +420,7 @@
       "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
       "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
       "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
-      "money-transfers.html", "money-declines.html", "money-alerts.html"],
+      "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"],
     affiliate: ["affiliate.html"],
     /* NO CAMPAIGNS ROW YET, AND THAT IS AN OPEN QUESTION, NOT AN OVERSIGHT.
        A partner cannot reach campaign-manager.html from any screen (proven live
@@ -516,7 +516,7 @@
     if (m === "admin") {
       return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; }).concat(STAFF_MONEY);
     }
-    if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY);
+    if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY).concat(STAFF_MONEY);
     if (m === "funding_advisor") return staffTabs().concat(ADVISOR_ONLY).concat(CONSENT_DESK_ONLY);
     if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY);
     if (m === "csm") return staffTabs().concat(CONSENT_DESK_ONLY);

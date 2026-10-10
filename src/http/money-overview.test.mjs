@@ -101,7 +101,7 @@ describe("GET /api/money/overview — staff", () => {
     const build = spyBuild();
     const res = makeRes();
     await handler({ method: "GET", query: { client_id: MINE } }, res,
-      { db: db(), requirePrincipal: gateAs(staffPrincipal("closer")), moneyOverview: build, now: NOW });
+      { db: db(), requirePrincipal: gateAs(staffPrincipal("setter")), moneyOverview: build, now: NOW });
     assert.equal(res.statusCode, 403);
     assert.equal(build.calls.length, 0);
   });

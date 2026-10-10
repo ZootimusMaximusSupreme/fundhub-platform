@@ -7,7 +7,8 @@ import assert from "node:assert/strict";
 
 import {
   seasoningRule, noAccountNeeded, spacingRule, relationshipSignals, relationshipSteps,
-  recommendedBanks, cardStacking, relationshipView, buildNextRound, fundingEstimate,
+  recommendedBanks, cardStacking, relationshipView, buildNextRound, buildNextSequence, fundingEstimate,
+  nextRoundDate, nextSequenceDate, setNextRoundDate, setNextSequenceDate, bankStrategy,
   bankPins, roundPins, notSetList, dollarsToCents, monthsBetween, planBank, openAccount,
   recordDeposit, setRelationshipState, BankStrategyInputError, pickBookRow
 } from "./bank-strategy.mjs";
@@ -244,7 +245,7 @@ describe("the tracker", () => {
   });
 });
 
-describe("the next funding round", () => {
+describe("the next funding sequence", () => {
   const today = "2026-10-06";
   test("no credit pull: says so; the NAICS gap names the company; unknown amounts stay null", () => {
     const nr = buildNextRound({
@@ -333,11 +334,11 @@ describe("plan pins", () => {
     assert.deepEqual(bankPins([noDate], { today }), []);
   });
 
-  test("no open day but a round date: the last day that still leaves the bank's seasoning", () => {
+  test("no open day but a staff next funding sequence date: the last day that still leaves the bank's seasoning", () => {
     const noDate = relationshipView({ id: "r2", bank_key: "chase", account_kind: "business", state: "open" }, { today, book: CHASE });
     const [p] = bankPins([noDate], { today, nextDate: "2026-12-01" });
     assert.equal(p.date, "2026-11-01");
-    assert.match(p.detail, /30 days of seasoning by your next round on 2026-12-01/);
+    assert.match(p.detail, /30 days of seasoning by your next funding sequence on 2026-12-01/);
   });
 
   test("opened: done pins for the open day and each deposit, and the seasoning checkpoint", () => {
@@ -355,7 +356,7 @@ describe("plan pins", () => {
     assert.deepEqual(bankPins([skipped], { today }), []);
   });
 
-  test("rounds: the next round on the staff date with the estimate; past rounds with what they funded", () => {
+  test("rounds: the next funding sequence on the staff date with the estimate; past rounds with what they funded", () => {
     const pins = roundPins({
       nextDate: "2026-12-01", estimateCents: 12500000, today, clientId: "c-1",
       rounds: [{ id: "fr1", round_number: 1, status: "funded", funded_amount: "50000.00", approved_amount: "60000.00", created_at: "2026-07-01T10:00:00Z" }]
@@ -364,6 +365,8 @@ describe("plan pins", () => {
       ["funding-rounds:round:fr1", "2026-07-01", "done", 5000000],
       ["funding-rounds:next:c-1:2026-12-01", "2026-12-01", "planned", 12500000]
     ]);
+    assert.equal(pins[1].title, "Next funding sequence: your file is ready");
+    assert.equal(pins[0].title, "Funding round 1", "a past round is still a round: a sequence holds several");
     assert.equal(roundPins({ nextDate: "2026-10-01", today })[0].status, "missed");
     assert.equal(roundPins({ nextDate: "2026-12-01", estimateCents: null, today })[0].amount_cents, null);
   });
@@ -451,5 +454,212 @@ describe("staff writes refuse what cannot be true", () => {
   test("state: only skip or open; an opened account cannot be put back to planned", async () => {
     await assert.rejects(setRelationshipState(fakeDb([]), { orgId: ORG, clientId: CLIENT, input: { relationship_id: REL, state: "done" } }), /skipped or open/);
     await assert.rejects(setRelationshipState(fakeDb([opened("2026-10-01")]), { orgId: ORG, clientId: CLIENT, input: { relationship_id: REL, state: "open" } }), /already open/);
+  });
+});
+
+describe("the next funding sequence: the staff date, the file math next to it, the old names", () => {
+  const today = "2026-10-06";
+  const computed = (over = {}) => ({
+    confidence: "computed", suggested_date: "2027-04-03", blockers: [], blueprint_buyer: true, ...over
+  });
+  const base = { today, hasCreditFile: true, underwrite: { fundable: true }, matchStates: { states: ["AZ"] } };
+
+  test("the old names are the same functions, kept for one release", () => {
+    assert.equal(buildNextRound, buildNextSequence);
+    assert.equal(nextRoundDate, nextSequenceDate);
+    assert.equal(setNextRoundDate, setNextSequenceDate);
+  });
+
+  test("no staff date and a computed suggestion: the suggestion is the effective date; `date` and `ready` read as they always did", () => {
+    const nr = buildNextSequence({ ...base, suggestion: computed() });
+    assert.equal(nr.date, null);
+    assert.equal(nr.suggested_date, "2027-04-03");
+    assert.equal(nr.effective_date, "2027-04-03");
+    assert.equal(nr.effective_source, "suggested");
+    assert.equal(nr.ready, false, "ready still means: a staff date is set and nothing is left to do");
+    assert.equal(nr.suggestion.confidence, "computed");
+  });
+
+  test("the staff date wins; the suggestion rides next to it", () => {
+    const nr = buildNextSequence({ ...base, customFields: { blueprint_next_sequence_ready_date: "2026-12-01" }, suggestion: computed() });
+    assert.equal(nr.date, "2026-12-01");
+    assert.equal(nr.effective_date, "2026-12-01");
+    assert.equal(nr.effective_source, "staff");
+    assert.equal(nr.suggested_date, "2027-04-03");
+    assert.equal(nr.ready, true);
+  });
+
+  test("a partial suggestion is shown but never promoted to the date", () => {
+    const nr = buildNextSequence({ ...base, suggestion: computed({ confidence: "partial" }) });
+    assert.equal(nr.suggested_date, "2027-04-03");
+    assert.equal(nr.effective_date, null);
+    assert.equal(nr.effective_source, null);
+  });
+
+  test("a computed suggestion with a blocker (no funded round, an open application, a stale file) is shown but not promoted", () => {
+    const nr = buildNextSequence({ ...base, suggestion: computed({ blockers: [{ id: "no_funding_yet", text: "x" }] }) });
+    assert.equal(nr.suggested_date, "2027-04-03", "the dates themselves still travel");
+    assert.equal(nr.suggestion.blockers.length, 1);
+    assert.equal(nr.effective_date, null);
+    assert.equal(nr.effective_source, null);
+    const staff = buildNextSequence({ ...base, customFields: { blueprint_next_sequence_ready_date: "2026-12-01" },
+      suggestion: computed({ blockers: [{ id: "no_funding_yet", text: "x" }] }) });
+    assert.equal(staff.effective_date, "2026-12-01", "a staff date is the staff's call, blockers or not");
+  });
+
+  test("no suggestion at all (its reads failed): the old shape, nothing breaks", () => {
+    const nr = buildNextSequence(base);
+    assert.equal(nr.suggestion, null);
+    assert.equal(nr.suggested_date, null);
+    assert.equal(nr.effective_date, null);
+    assert.equal(nr.date, null);
+  });
+
+  test("the not-set list says 'next funding sequence date'; the key keeps its old spelling; both parameter names work", () => {
+    const list = notSetList({ nextSequence: { date: null, estimated_amount_cents: 1 }, relationships: [], stacking: null });
+    assert.deepEqual(list, [{ key: "next_round_date", text: "Next funding sequence date" }]);
+    const old = notSetList({ nextRound: { date: null, estimated_amount_cents: 1 }, relationships: [], stacking: null });
+    assert.deepEqual(old, list);
+    assert.deepEqual(notSetList({ nextSequence: { date: "2026-12-01", estimated_amount_cents: 1 }, relationships: [], stacking: null }), []);
+  });
+});
+
+describe("plan pins for the suggested next funding sequence", () => {
+  const today = "2026-10-06";
+  const PIN_KEYS = ["amount_cents", "bank", "container_id", "date", "detail", "id", "kind", "source", "status", "title"];
+  const computed = (over = {}) => ({
+    confidence: "computed", suggested_date: "2027-04-03", blockers: [], blueprint_buyer: true, ...over
+  });
+
+  test("computed, nothing blocking, a Blueprint buyer: one planned pin on the suggested date, same keys as every pin", () => {
+    const pins = roundPins({ today, clientId: "c-1", estimateCents: 12500000, suggestion: computed() });
+    assert.equal(pins.length, 1);
+    const [p] = pins;
+    assert.deepEqual(Object.keys(p).sort(), PIN_KEYS);
+    assert.equal(p.id, "funding-rounds:next-suggested:c-1", "the id does not carry the date, so the pin is the same pin as the date moves");
+    assert.equal(p.date, "2027-04-03");
+    assert.equal(p.status, "planned");
+    assert.equal(p.kind, "apply");
+    assert.equal(p.amount_cents, 12500000);
+    assert.equal(p.title, "Next funding sequence: your file should be ready");
+    assert.match(p.detail, /file math, not from staff/);
+    assert.match(p.detail, /Your closer gets a task that day/);
+  });
+
+  test("a suggested date that has passed pins on today: ready now, not 'missed'", () => {
+    const [p] = roundPins({ today, clientId: "c-1", suggestion: computed({ suggested_date: "2026-03-01" }) });
+    assert.equal(p.date, today);
+    assert.equal(p.status, "planned");
+    assert.equal(p.amount_cents, null, "no estimate on file: null, never 0");
+  });
+
+  test("a staff date is the only next pin; the staff date wins", () => {
+    const pins = roundPins({ today, clientId: "c-1", nextDate: "2026-12-01", suggestion: computed() });
+    assert.deepEqual(pins.map((p) => p.id), ["funding-rounds:next:c-1:2026-12-01"]);
+  });
+
+  test("not a Blueprint buyer, a partial answer, or a blocker: no suggested pin", () => {
+    assert.deepEqual(roundPins({ today, clientId: "c-1", suggestion: computed({ blueprint_buyer: false }) }), []);
+    assert.deepEqual(roundPins({ today, clientId: "c-1", suggestion: computed({ confidence: "partial" }) }), []);
+    assert.deepEqual(roundPins({ today, clientId: "c-1", suggestion: computed({ blockers: [{ id: "decisions_pending" }] }) }), []);
+    assert.deepEqual(roundPins({ today, clientId: "c-1", suggestion: computed({ suggested_date: null }) }), []);
+    assert.deepEqual(roundPins({ today, clientId: "c-1", suggestion: null }), []);
+  });
+
+  test("the window filter applies to the suggested pin too", () => {
+    assert.deepEqual(roundPins({ today, clientId: "c-1", suggestion: computed(), from: "2026-10-01", to: "2026-12-31" }), []);
+    assert.equal(roundPins({ today, clientId: "c-1", suggestion: computed(), from: "2027-04-01", to: "2027-04-30" }).length, 1);
+  });
+});
+
+describe("GET /api/money/banks payload: next_sequence, and next_round as the same object under its old name", () => {
+  const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
+  const CLIENT = "029964c5-4d8e-47ed-88c9-53ac13863fd4";
+
+  function fakeDb({ buyer = true, staffDate = null } = {}) {
+    const seen = [];
+    return {
+      seen,
+      query: async (sql, params) => {
+        seen.push({ sql, params });
+        const s = sql.replace(/\s+/g, " ");
+        if (/FROM transactions t JOIN products p/.test(s)) return { rows: buyer ? [{ x: 1 }] : [] };
+        if (/FROM clients WHERE id = \$1 AND org_id = \$2/.test(s)) {
+          return { rows: [{ id: CLIENT, first_name: "Sim", last_name: "Eleven-Blueprint",
+            custom_fields: { crs_negative_items_count: 0, crs_late_payments_count: 0, crs_inquiries_ex: 1, crs_inquiries_eq: 1, crs_inquiries_tu: 1,
+              ...(staffDate ? { blueprint_next_sequence_ready_date: staffDate } : {}) } }] };
+        }
+        if (/FROM crs_results/.test(s)) {
+          return { rows: [{ id: "crs-1", created_at: "2026-10-05T12:00:00Z", result: {
+            environment: "production", bureausPulled: ["EX", "EQ", "TU"], scores: { ex: 731, eq: 740, tu: 725 },
+            inquiries: [{ source: "EX", date: "2026-09-14" }, { source: "EQ", date: "2026-09-15" }, { source: "TU", date: "2026-09-16" }] } }] };
+        }
+        if (/FROM tradelines/.test(s)) {
+          return { rows: [
+            { id: "t0", lender: "OLD", kind: "revolving", credit_limit_cents: 1500000, balance_cents: 150000, apr: "0.1899", opened_on: "2019-05-28", closed_at: null },
+            { id: "t1", lender: "NEW", kind: "revolving", credit_limit_cents: 1000000, balance_cents: 100000, apr: "0.1899", opened_on: "2026-09-20", closed_at: null }
+          ] };
+        }
+        if (/FROM funding_rounds/.test(s)) {
+          return { rows: [{ id: "r1", round_number: 1, status: "funded", funded_amount: "50000.00", approved_amount: "50000.00",
+            created_at: new Date("2026-09-10T00:00:00Z"), updated_at: new Date("2026-09-25T00:00:00Z") }] };
+        }
+        return { rows: [] };
+      }
+    };
+  }
+  const match = async () => ({ summary: { home_state: "AZ", client_states: ["AZ"] }, matches: [] });
+  const read = (db) => bankStrategy(db, { orgId: ORG, clientId: CLIENT, asOf: new Date("2026-10-06T12:00:00Z"), match });
+
+  test("next_sequence is sent, and next_round is the very same object (one release)", async () => {
+    const out = await read(fakeDb());
+    assert.ok(out.next_sequence && typeof out.next_sequence === "object");
+    assert.equal(out.next_round, out.next_sequence);
+    assert.equal(out.next_sequence.can_set_date, true);
+    /* every field the current screen reads is still there, with the same meaning */
+    for (const k of ["date", "date_source", "can_set_date", "estimated_amount_cents", "amount_source", "step", "readiness_gaps", "ready"]) {
+      assert.ok(k in out.next_round, k);
+    }
+  });
+
+  test("the file math's answer is on it, next to the (empty) staff date", async () => {
+    const out = await read(fakeDb());
+    const n = out.next_sequence;
+    assert.equal(n.date, null);
+    assert.equal(n.suggestion.confidence, "computed");
+    assert.equal(n.suggested_date, "2027-03-21");
+    assert.equal(n.effective_date, "2027-03-21");
+    assert.equal(n.effective_source, "suggested");
+    assert.equal(n.suggestion.blueprint_buyer, true);
+    assert.deepEqual(n.suggestion.reasons.map((r) => r.factor), ["inquiries", "new_credit", "utilization"]);
+    assert.ok(n.suggestion.reasons.every((r) => r.source && r.source.label && r.source.ref));
+    assert.deepEqual(out.not_set.map((x) => x.text).filter((t) => /sequence/.test(t)), ["Next funding sequence date"]);
+  });
+
+  test("a staff date wins on the same read", async () => {
+    const out = await read(fakeDb({ staffDate: "2026-12-01" }));
+    assert.equal(out.next_sequence.date, "2026-12-01");
+    assert.equal(out.next_sequence.effective_date, "2026-12-01");
+    assert.equal(out.next_sequence.effective_source, "staff");
+    assert.equal(out.next_sequence.suggested_date, "2027-03-21");
+  });
+
+  test("if the suggestion's reads fail, the page still loads and the suggestion is absent", async () => {
+    const db = fakeDb();
+    const real = db.query;
+    db.query = async (sql, params) => {
+      if (/FROM applications a/.test(sql)) throw new Error("applications read failed");
+      return real(sql, params);
+    };
+    const quiet = console.error;
+    console.error = () => {};
+    try {
+      const out = await read(db);
+      assert.equal(out.next_sequence.suggestion, null);
+      assert.equal(out.next_sequence.effective_date, null);
+      assert.equal(out.next_round, out.next_sequence);
+    } finally {
+      console.error = quiet;
+    }
   });
 });

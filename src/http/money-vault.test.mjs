@@ -87,7 +87,7 @@ describe("/api/money/vault", () => {
     assert.equal((await call({ method: "GET", query: {} }, staffP("admin"))).res.statusCode, 400);
     assert.equal((await call({ method: "GET", query: { client_id: "not-a-uuid" } }, staffP("admin"))).res.statusCode, 400);
     assert.equal((await call({ method: "GET", query: { client_id: OTHER } }, staffP("owner"))).res.statusCode, 404, "another org's client is 404, not 403");
-    for (const role of ["closer", "csm", "setter", "funding_advisor"]) {
+    for (const role of ["setter", "csm", "setter", "funding_advisor"]) {
       const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.read, undefined, role);

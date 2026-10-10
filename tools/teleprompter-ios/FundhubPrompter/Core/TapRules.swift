@@ -62,3 +62,14 @@ struct TapRules: Equatable {
         return first.modeBefore == .scroll ? .scrollOff : .scrollOn
     }
 }
+
+/// Thumb drag on the glass. Positive screen movement is the thumb moving down.
+/// A negative result lowers the text offset, so the words move down with the thumb.
+/// Thumb up rolls the words up: the next lines come from below.
+/// A rig that flips the words upside down uses the opposite offset so the
+/// thumb still does the same thing on the glass.
+enum PrompterDrag {
+    static func offsetDelta(screenFingerDy: Double, flippedVertically: Bool) -> Double {
+        flippedVertically ? screenFingerDy : -screenFingerDy
+    }
+}

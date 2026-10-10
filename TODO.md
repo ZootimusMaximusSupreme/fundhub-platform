@@ -1,5 +1,9 @@
 # TODO
 
+## Launch day — added 2026-10-09
+
+- [ ] Review all the copy before launch (owner 2026-10-09). Everything a customer reads: the message templates (325 in the database today: 232 email and 93 text approved; the 15 placeholder emails were just turned off), the sales and checkout pages, the drip and nudge texts, and the ads. Includes the 12 repair pre-call emails (BS-REPAIR-*) that nobody has written yet. The $197 "30% off" drip text still says more than the $147 price.
+
 ## Capital Blueprint launch — added 2026-10-06 (launch in 48 hours)
 
 - [ ] Tomorrow: work on Blueprint. Map the whole client journey end to end so it pops at launch.
@@ -190,6 +194,14 @@ Business only. Every item was checked against the repo and the live site on 10/4
 - [ ] White label: set the build clock and the guarantee terms (9/4)
 - [ ] Contracts: finish your additions to the 3 agreements (Business Funding Consultation, Credit Optimization Services, Credit Optimization Starter) (9/4)
 - [ ] Whop KYB ticket for FH Consulting LLC, only if you still use Whop once ClarityPay is direct (9/29)
+- [ ] Amoeba + Lithos to run a lot of agents across the businesses. Owner-set 10/9: go. Run Lithos with Amoeba, then move to the Claude API for use cases. Amoeba is free and Mac only, and it shows several Claude Code or Codex sessions in one window. Lithos here means Lithos AI's Motus, a kit for building agents (swap it if you meant a different Lithos).
+  - [ ] Install Amoeba on the Mac and open this repo in it.
+  - [ ] Add Motus to the repo.
+  - [ ] Pick the first agent to build. Start with one already on this list: background marketing agents or doc-collection agents.
+  - [ ] Build that agent with Motus in a Claude Code session inside Amoeba.
+  - [ ] Open a second session side by side for the next agent.
+  - [ ] List the Claude API use cases across the businesses.
+  - [ ] Pick the first use case and move it to the Claude API.
 
 ### Next 30 days (launch by about 2026-11-03)
 - [ ] Alt finance offer: SBA, hard money and real estate lending

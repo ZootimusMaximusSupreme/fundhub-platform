@@ -76,7 +76,13 @@ export const RESEND_STATUS_MAP = {
   "email.bounced": "bounced",
   "email.complained": "complained",
   "email.delivery_delayed": null,
-  "email.failed": "failed"
+  "email.failed": "failed",
+  /* Resend refused to send because the address is on its suppression list (an
+     earlier bounce or complaint). It is a final answer: the mail never left. It
+     files as 'bounced', the same word a hard bounce gets, so the row leaves 'sent'
+     and the morning report stops calling it a message with no receipt. Before this
+     line the event was captured and then dropped as unknown_event. */
+  "email.suppressed": "bounced"
 };
 
 export const IGNORED_RESEND_EVENTS = new Set([

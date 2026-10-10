@@ -82,8 +82,9 @@ test("full: the four parts, from the real read, each rule with its source", () =
   assert.match(t, /Days between two banks: not set\./);
   assert.match(t, /Inquiries cost fundability\. Any more than zero should come off\. Source: Owner rule, 2026-09-29/);
   assert.match(t, /Open it in the LLC name, using the EIN\..* Source: Fundhub checklist · Open a business checking account/);
-  // Next funding round
-  assert.match(t, /Next funding round .*Date Not set/);
+  // Next funding sequence (owner 2026-10-06: never "round two"; a sequence has ~6 rounds)
+  assert.match(t, /Next funding sequence .*Date Not set/);
+  assert.doesNotMatch(t, /next funding round|round two/i);
   assert.match(t, /Estimated amount Not worked out yet/);
   assert.match(t, /No credit pull on file yet\. UnderwriteIQ needs one to say your file is ready\. Source: UnderwriteIQ/);
   assert.match(t, /Fundhub LLC has no NAICS code \(industry code\) on file\. Source: Fundhub funding order/);
@@ -91,7 +92,7 @@ test("full: the four parts, from the real read, each rule with its source", () =
   assert.match(t, /Your bank relationships .*No banks on your plan yet/);
   assert.match(t, /Your advisor adds banks to your plan\./);
   // Not set
-  assert.match(t, /Not set yet .*Next round date .*Days between card applications at two banks/);
+  assert.match(t, /Not set yet .*Next funding sequence date .*Days between card applications at two banks/);
 });
 
 test("every rule line printed with a source carries the exact book row on hover", () => {
@@ -123,7 +124,7 @@ test("a client never sees a plan control; staff do", () => {
   assert.match(staff, /Add a bank to the plan/);
   // The real read's client has not bought the Capital Blueprint: no date form, said in words.
   assert.doesNotMatch(staff, /data-form="round"/);
-  assert.match(text(staff), /The next-round date is part of the Capital Blueprint\. This client has not bought it/);
+  assert.match(text(staff), /The next funding sequence date is part of the Capital Blueprint\. This client has not bought it/);
   const d = fixture();
   d.next_round.can_set_date = true;
   assert.match(B.render(d, { staff: true }), /data-form="round"/);

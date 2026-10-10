@@ -17,8 +17,11 @@ import { assertMatchesContract } from "../marketing/api-contract.mjs";
 import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 import shootHandler from "../../api/marketing/shoot.mjs";
 import markHandler from "../../api/marketing/shoot/mark.mjs";
+import editHandler from "../../api/marketing/scripts/edit.mjs";
+import { mintFilmKey } from "../marketing/shoot-film-key.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
+const FILM_SECRET = "x".repeat(48);
 const SLUG_A = "zz-x5-shoot-a";
 const SLUG_B = "zz-x5-shoot-b";
 const EMAIL_TAG = "x5_shoot_pg";
@@ -43,12 +46,14 @@ const res = () => {
   return r;
 };
 
-async function call(handler, token, { method = "GET", query = {}, body } = {}) {
+async function call(handler, token, { method = "GET", query = {}, body, headers = {} } = {}) {
   const r = res();
+  const h = { ...headers };
+  if (token) h.authorization = "Bearer " + token;
   await handler(
-    { method, headers: token ? { authorization: "Bearer " + token } : {}, query, body },
+    { method, headers: h, query, body },
     r,
-    { db }
+    { db, filmSecret: FILM_SECRET, wake: async () => {} }
   );
   if (r.body !== null) r.body = JSON.parse(JSON.stringify(r.body));
   return r;
@@ -124,6 +129,8 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
   async function purge() {
     const orgs = (await db.query(`SELECT id FROM orgs WHERE slug = ANY($1)`, [[SLUG_A, SLUG_B]])).rows.map((r) => r.id);
     if (orgs.length) {
+      await db.query(`DELETE FROM voice_pairs WHERE org_id = ANY($1)`, [orgs]);
+      await db.query(`DELETE FROM repo_outbox WHERE org_id = ANY($1)`, [orgs]);
       await db.query(`DELETE FROM marketing_requests WHERE org_id = ANY($1)`, [orgs]);
       await staffTx(async (c) => {
         await c.query(`DELETE FROM marketing_shoots WHERE org_id = ANY($1)`, [orgs]);
@@ -201,8 +208,15 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     try { await purge(); } finally { await close(); }
   });
 
-  test("owner and admin only: unsigned 401, a closer 403, the wrong method 405", async () => {
-    assert.equal((await get(null)).code, 401);
+  test("the shoot read is open with no sign-in; a write stays owner and admin: unsigned POST 401, a closer 403, the wrong method 405", async () => {
+    const open = await get(null);
+    assert.equal(open.code, 200, JSON.stringify(open.body));
+    assertMatchesContract("GET marketing/shoot", open.body);
+    assert.equal(JSON.stringify(open.body).includes(s91.id), false, "the open read is the default company, not this fixture");
+    assert.equal((await save(null, { request_id: rid("open"), root_script_ids: [s91.id] })).code, 401);
+    const openMark = await mark(null, { request_id: rid("openmark"), shoot_id: s91.id, root_script_id: s91.id, mark: "maybe" });
+    assert.equal(openMark.code, 400, "Got it with no sign-in is refused as a bad mark, not as a login");
+    assert.notEqual(openMark.code, 401);
     assert.equal((await get(closerA.token)).code, 403);
     assert.equal((await save(closerA.token, { request_id: rid("c"), root_script_ids: [s91.id] })).code, 403);
     const r = await call(markHandler, ownerA.token, { method: "GET" });
@@ -385,6 +399,76 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     const onNext = Object.fromEntries(next.body.shoot.scripts.map((s) => [s.root_script_id, s]));
     assert.equal(onNext[s92.id].take_no, 3, "the next shoot carries on from the closed shoot's takes");
     assert.equal(onNext[s91.id].take_no, 2);
+  });
+
+  test("a film link reads and marks that shoot, edits a script on it, and is not a staff login", async () => {
+    const page = await get(ownerA.token);
+    assert.equal(page.code, 200);
+    assert.ok(page.body.shoot, "a shoot is open");
+    assert.match(page.body.film.path, /^\/app\/teleprompter\.html\?k=/);
+    const key = page.body.film.path.slice("/app/teleprompter.html?k=".length);
+    const headers = { "x-shoot-film": key };
+
+    const open = await call(shootHandler, null, { headers });
+    assert.equal(open.code, 200, JSON.stringify(open.body));
+    assert.equal(open.body.shoot.id, page.body.shoot.id);
+    assert.equal(open.body.film, undefined, "the phone does not get a new key");
+
+    const junk = await call(shootHandler, null, { headers: { "x-shoot-film": key + "no" } });
+    assert.equal(junk.code, 404);
+    const asBearer = await call(shootHandler, key);
+    assert.equal(asBearer.code, 401, "the film key is not a staff session");
+    const plan = await call(shootHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmplan"), root_script_ids: [s91.id] }
+    });
+    assert.equal(plan.code, 401, "the film key cannot change the plan");
+
+    const closed = mintFilmKey({ orgId: orgA, shootId, secret: FILM_SECRET });
+    const old = await call(shootHandler, null, { headers: { "x-shoot-film": closed.token } });
+    assert.equal(old.code, 404, "a key for a closed shoot does not open the new one");
+
+    const script = page.body.shoot.scripts[0];
+    assert.match(script.body, /TWO/, "the fixture word this save changes");
+    const marked = await call(markHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmmark"), shoot_id: page.body.shoot.id, root_script_id: script.root_script_id, mark: "another_take" }
+    });
+    assert.equal(marked.code, 200, JSON.stringify(marked.body));
+    const wrong = await call(markHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("wrongshoot"), shoot_id: shootId, root_script_id: script.root_script_id, mark: "got_it" }
+    });
+    assert.equal(wrong.code, 404);
+
+    const editReq = rid("filmedit");
+    const nextBody = script.body.replace("TWO", "BOTH");
+    const nextParts = (script.parts || []).map((p) => (
+      p.kind === "hook" ? { ...p, text: String(p.text).replace("TWO", "BOTH") } : p
+    ));
+    const edited = await call(editHandler, null, {
+      method: "POST", headers,
+      body: { request_id: editReq, id: script.id, version: script.version, body: nextBody, parts: nextParts }
+    });
+    assert.equal(edited.code, 200, JSON.stringify(edited.body));
+    assert.match(edited.body.script.body, /BOTH/);
+    assert.notEqual(edited.body.script.id, script.id, "a new version, the old words kept");
+    const file = (await db.query(
+      `SELECT path, mode, content, committed_sha FROM repo_outbox WHERE org_id = $1 AND op_id = $2`,
+      [orgA, `u25:edit-file:${editReq}`]
+    )).rows[0];
+    assert.ok(file, "the changed word is stored for the machine");
+    assert.equal(file.mode, "replace");
+    assert.equal(file.path, edited.body.script.repo_path);
+    assert.match(file.path, /^marketing\/ads\/scripts\/machine\//);
+    assert.match(file.content, /BOTH/);
+    assert.equal(file.committed_sha, null, "waiting in the outbox until the repo copy runs");
+    const offRow = await scriptRow(s93.id);
+    const off = await call(editHandler, null, {
+      method: "POST", headers,
+      body: { request_id: rid("filmoff"), id: offRow.id, version: offRow.version, body: offRow.body }
+    });
+    assert.equal(off.code, 404, "a script that is not on this shoot cannot be edited");
   });
 
   test("another company sees none of it", async () => {

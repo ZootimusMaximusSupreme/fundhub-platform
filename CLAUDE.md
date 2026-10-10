@@ -167,6 +167,10 @@ When a chat gets long, or the named task is done, remind Chris once: the loud `/
 
 Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This replaces the 5th grade level in §10; where they differ, this wins. Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
 
+### Texting hours (owner-set 2026-10-09)
+
+Any text to Chris goes out only from 6:00 a.m. to 10:00 p.m. Mountain Standard Time (Arizona time), 100%. A break found overnight is saved and goes out in the first text of the next window. Same law: `.cursor/rules/texting-hours.mdc` and `.claude/rules/texting-hours.md`.
+
 ### Chris never clicks ClickFunnels (owner-set 2026-09-21)
 
 Chris never logs into ClickFunnels admin. Agents push funnel HTML via API using `CLICKFUNNELS_API_KEY`. Same law: `.cursor/rules/chris-never-clickfunnels.mdc` and `.claude/rules/chris-never-clickfunnels.md`.
@@ -230,6 +234,10 @@ When Chris asks to change a page, he sees a marked draft before anything goes li
 ### Clarity Data Export (owner-set 2026-09-29)
 
 Clarity Data Export: one pull per time Chris asks. Go through `src/adapters/clarity-export.mjs` only. Do not curl or fetch `https://www.clarity.ms/export-data` yourself. Do not retry. If that one pull fails, say the error and stop. Also never exceed Microsoft's 10 requests per project per day; the helper blocks call 11 before any HTTP request. Same law: `.cursor/rules/clarity-export-rate-limit.mdc` and `.claude/rules/clarity-export-rate-limit.md`.
+
+### Heartbeat on every build (owner-set 2026-10-07)
+
+Every new live page, routed api handler, Inngest job, or outbound send path gets a heartbeat row in the same change. The morning pulse checks it. A job is red if it has not run in 3 times its schedule. The pulse only reports. It never auto-fixes. Chris fixes reds. Missing heartbeat on a new build is a failed change. Anything that touches money or a paying customer also gets a tripwire (owner-set 2026-10-09): a deep gap check that goes red when the customer's result is wrong, on the `src/pulse/coverage/modules.mjs` list, proven with `npm run pulse:prove`. Every hour a read-only pulse (`src/pulse/beats/`, `netlify/functions/pulse-hourly.mjs`) tests the money doors, texts, payments and keys and texts Chris on a break; a new money or customer surface gets a beat (`npm run pulse:prove -- --beats`), and every fixed break is written to `docs/lessons/pulse-lessons.md`. Nothing live is ever "not checked" (owner-set 2026-10-09): every live thing is green, red, or a verified "nothing to judge", the pulse audits itself (`src/pulse/self-audit.mjs`), and every event workflow leaves a run receipt. Picture: `docs/journeys/heartbeat-flow.md`. Same law: `.cursor/rules/heartbeat-on-every-build.mdc` and `.claude/rules/heartbeat-on-every-build.md`.
 
 ## 3. Before writing any code
 

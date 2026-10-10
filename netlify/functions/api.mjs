@@ -106,7 +106,9 @@ import readFinanceAsk from "../../api/read/finance-ask.mjs";
 import readCompanyBrain from "../../api/read/company-brain.mjs";
 import readCompanyBrainAffiliate from "../../api/read/company-brain-affiliate.mjs";
 import readOpsPulse from "../../api/read/ops-pulse.mjs";
+import readMorningBrief from "../../api/read/morning-brief.mjs";
 import opsHireCloser from "../../api/ops/hire-closer.mjs";
+import opsNotifyOwner from "../../api/ops/notify-owner.mjs";
 import companyBrainReviews from "../../api/company-brain/reviews.mjs";
 import companyBrainSync from "../../api/company-brain/sync.mjs";
 import companyBrainUpload from "../../api/company-brain/upload.mjs";
@@ -198,6 +200,7 @@ import publicPartnerApply from "../../api/public/partner-apply.mjs";
 import publicFunnelCheckout from "../../api/public/funnel-checkout.mjs";
 import publicSloCheckout from "../../api/public/slo-checkout.mjs";
 import publicSloInterest from "../../api/public/slo-interest.mjs";
+import publicMorningBrief from "../../api/public/morning-brief.mjs";
 import publicSloPull from "../../api/public/slo-pull.mjs";
 import publicSloStatus from "../../api/public/slo-status.mjs";
 import publicSloRepairCheckout from "../../api/public/slo-repair-checkout.mjs";
@@ -358,6 +361,7 @@ import marketingResearchBrain from "../../api/marketing/research/brain.mjs";
 import marketingFlywheelSpendRead from "../../api/marketing/flywheel/spend-read.mjs";
 import marketingShoot from "../../api/marketing/shoot.mjs";
 import marketingShootMark from "../../api/marketing/shoot/mark.mjs";
+import marketingShootTake from "../../api/marketing/shoot/take.mjs";
 
 export const config = { path: "/api/*" };
 
@@ -641,7 +645,10 @@ export const ROUTES = {
   // Ops / AI COO v1. GET is read-only pulse + briefs. POST creates the
   // hire-closer task and LinkedIn post when packed. ROLE_SETS.OPS.
   "read/ops-pulse": readOpsPulse,
+  "read/morning-brief": readMorningBrief,
   "ops/hire-closer": opsHireCloser,
+  // One text to Chris (PULSE_SMS_TO only) for an agent on the Mac, behind OPS_NOTIFY_SECRET.
+  "ops/notify-owner": opsNotifyOwner,
 
   // Owner-only classification review queue (H-3). Also carries staff uploads
   // waiting for approval — same queue, same owner-only decision.
@@ -852,6 +859,7 @@ export const ROUTES = {
      and writes nothing. POST writes a visit or a name/email/phone. No client,
      no card, no mail. */
   "public/slo-interest": publicSloInterest,
+  "public/morning-brief": publicMorningBrief,
   /* RB2B identified-visitor push. GET answers {ok:true} and writes nothing.
      POST needs ?secret= (RB2B_WEBHOOK_SECRET) — they document no signature,
      only a self-contained URL. Stores into events as rb2b.visitor_identified.
@@ -1392,7 +1400,8 @@ export const ROUTES = {
   // X3: the Ideas tab's flywheel (design §3.2 row 6)
   "marketing/flywheel/spend-read": marketingFlywheelSpendRead,
   "marketing/shoot": marketingShoot,
-  "marketing/shoot/mark": marketingShootMark
+  "marketing/shoot/mark": marketingShootMark,
+  "marketing/shoot/take": marketingShootTake
 
   /* NOT ROUTED, ON PURPOSE — see ALLOWED_UNROUTED in src/http/routes.test.mjs
      for the current list and the reason attached to each entry. That list is
@@ -1501,7 +1510,14 @@ export default async function handler(request, context) {
      handler here reads a plain req.body. */
   let rawBody = "";
   let body = "";
-  if (!noBody && ctype.includes("multipart/form-data")) {
+  /* marketing/shoot/take sends the original video bytes. request.text() would
+     decode them as UTF-8 and change the file. This path keeps the bytes. */
+  const takeBytes = path === "marketing/shoot/take"
+    && !noBody
+    && ctype.includes("application/octet-stream");
+  if (takeBytes) {
+    body = Buffer.from(await request.arrayBuffer());
+  } else if (!noBody && ctype.includes("multipart/form-data")) {
     const form = await request.formData();
     const fields = {};
     const files = [];

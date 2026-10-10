@@ -64,6 +64,8 @@ flowchart TD
 | `awaiting_approval` | **Chris taps Approve or Reject** | `approved` / `rejected` | a person. Nothing else moves it. |
 | `approved` | folder `043`, the brief, the video | `delivered` | `pipeline.mjs` `deliverToPaul()` |
 
+Save the video on the teleprompter sends the original file to `POST` then `PUT /api/marketing/shoot/take`. The server puts those same bytes in the SLO Ads Drive folder (`13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ`). No re-encode. The Mac listener on port 8787 is unchanged and is not what the page uses. A row still starts only when the file is in that Drive folder.
+
 ---
 
 ## Two places the code does not match the plan

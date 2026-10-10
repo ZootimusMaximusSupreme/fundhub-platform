@@ -12,7 +12,7 @@
 //     can read the list and upload through the existing upload endpoint
 //     (POST /api/documents-upload — each line carries the exact fields to send); a
 //     client cannot POST here. Accepting a paper is a person's job.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) + requireClientInOrg on client_id. Staff
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) + requireClientInOrg on client_id. Staff
 //     see the same list plus where each line's rule came from, and may POST:
 //
 //       accept       { document_id, item_key?, entity_id?, covers?, period_end? }
@@ -61,7 +61,7 @@ async function scope(req, res, { database, gate, body, method }) {
   }
 
   const staff = principal.staff || { role: principal.role, org_id: principal.orgId, id: principal.staffId };
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
   const qid = body ? body.client_id : req.query && req.query.client_id;
   if (!isUuid(qid)) {
     res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

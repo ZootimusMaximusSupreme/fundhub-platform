@@ -13,6 +13,7 @@ import { blakeLeadWatch } from './blake-lead-watch.mjs';
 import { bs01PrecallLauncher } from './bs-01-precall-launcher.mjs';
 import { contractChaser } from './contract-chaser.mjs';
 import { dailyPulse } from './daily-pulse.mjs';
+import { eveningBrief } from './evening-brief.mjs';
 import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { commasInboxDrain } from './commas-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
@@ -30,6 +31,7 @@ import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-se
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
 import { documentVaultChase } from './document-vault-chase.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
+import { pulseInstantWatch } from './pulse-instant-watch.mjs';
 import { affiliatePayoutRun } from './affiliate-payout-run.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
 import { metaCampaignSyncSweeper } from './meta-campaign-sync-sweeper.mjs';
@@ -120,9 +122,12 @@ export const functions = [
      The chaser also runs today WITHOUT Inngest, through
      /api/contracts { action: "run_reminders" } — see its header. */
   contractChaser,
-  /* Daily pulse — 7:00 a.m. America/Denver all year (cron TZ=America/Denver 0 7 * * *).
-     Audit only. Recon AG-07 runtime. Does not auto-fix. */
+  /* Daily pulse — 6:00 a.m. Arizona all year (cron TZ=America/Phoenix 0 6 * * *).
+     Audit only. Recon AG-07 runtime. Does not auto-fix. The morning brief
+     texts after this check. */
   dailyPulse,
+  /* Evening brief — 9:00 p.m. Arizona. Reuses this morning's systems check. */
+  eveningBrief,
 
   /* THE OUTBOUND DRAIN. Registered 2026-08-02, and it is the reason any client
      email leaves this platform at all — twenty-six workflows queue mail and
@@ -284,6 +289,7 @@ export const functions = [
 
      COMPLIANCE REVIEW REQUIRED: payment rails and fee timing. */
   paidCheckoutExpirySweeper,
+  pulseInstantWatch,
 
   /* THE AFFILIATE PAYOUT RUN. Registered 2026-09-21, and it closes the second
      half of a feature that has been sold as whole since August.

@@ -15,6 +15,15 @@
     { code: "S-17", phase: "05 Commit" }, { code: "S-18", phase: "05 Commit" },
     { code: "S-19", phase: "05 Commit" }, { code: "S-20", phase: "05 Commit" },
     { code: "S-21", phase: "05 Commit" }, { code: "S-22", phase: "05 Commit" },
+    /* 06 BLUEPRINT — the Capital Blueprint + FinanceOS offer stack (owner ask
+       2026-10-06). The rep opens it on purpose: the phase strip's 06, or "Show
+       the full Blueprint stack" on S-19. From anywhere outside it, Next and
+       Back step over these six (go()), so a funding call still runs S-22 →
+       S-23 exactly as before. Everything for it lives between the 06 BLUEPRINT
+       STACK markers below. */
+    { code: "B-01", phase: "06 Blueprint" }, { code: "B-02", phase: "06 Blueprint" },
+    { code: "B-03", phase: "06 Blueprint" }, { code: "B-04", phase: "06 Blueprint" },
+    { code: "B-05", phase: "06 Blueprint" }, { code: "B-06", phase: "06 Blueprint" },
     { code: "S-23", phase: "07 Close" }, { code: "S-24", phase: "07 Close" }
   ];
   var EDU_SKIP = ["S-11", "S-12", "S-13", "S-14", "S-15", "S-16"];
@@ -185,7 +194,10 @@
        out, and how many times. F24 — see sendBtn below. */
     sends: {}, moreOpen: false, repairReferral: false,
     stagedLetters: [], repairBusy: false, repairMsg: "", amountPaidDollars: "",
-    businesses: [], incBusy: "", incMsg: ""
+    businesses: [], incBusy: "", incMsg: "",
+    /* 06 Blueprint: the rep's own on/off picks (only where they differ from
+       what this file says), and the slide they opened the stack from. */
+    stackPick: {}, stackFrom: null
   };
 
   function esc(s) {
@@ -439,6 +451,7 @@
 
   function clientSlide() {
     var c = code();
+    if (isStackCode(c)) return stackSlide(c);
     var d = state.engine || {};
     var sv = state.survey || {};
     var funding = isFunding() && !state.edu;
@@ -650,6 +663,407 @@
     return needsEngine && !d.available ? slide(c, "Session", unavail()) : "";
   }
 
+  /* ───────── 06 BLUEPRINT STACK — begin ─────────
+     The Capital Blueprint + FinanceOS offer stack, for the rep on a live call.
+     Owner, 2026-10-06: "Add these items into our offer stack so they show up
+     when we're doing presentations for clients... a whole presentation section
+     with the buttons and logic."
+
+     WHAT IS ON IT, AND WHY ONLY THAT. Every item is built, measured against the
+     code on 2026-10-07 (ops/workflows/blueprint-launch-2026-10-06.md), and each
+     names the file that does it. The welcome kit (parked by the owner), quizzes
+     (not built), the letter-mailing upsell (no billing yet) and the
+     pre-application check (not built) are left off on purpose. Add a line here
+     only when its code ships.
+
+     PRICES. The Blueprint's price is price("UWIQ_DELIVERABLES"): the catalog in
+     src/config/offers.mjs, the same number the pay link charges. A price the
+     owner has not set is UNSET_PRICE, "$X": FinanceOS's setup fee and its
+     per-container price (no catalog entry; the FinanceOS Setup tab paints the
+     same $X), and the Blueprint's monthly member fee (named, never priced:
+     docs/finance/capital-blueprint-next-2026-09-29.md). No item carries a
+     "value" dollar figure. No such number exists in the repo, so each one says
+     what it does for the caller instead.
+
+     WORDS. Never "round two": the next one is the next funding sequence (owner,
+     2026-10-06). Nothing here promises an approval, an amount, a score or a
+     removal. The Capital Blueprint agreement says the same in its section 3
+     (db/migrations/288_real_contract_text.sql). */
+  var UNSET_PRICE = "$X";
+  var NO_PROMISE = "No guarantee of credit scores, removals, approvals, or funding amounts.";
+
+  /* door "both": FinanceOS has it on its own too, and `fos` is what the
+     FinanceOS downsell slide (B-05) calls it there. door "blueprint": only with
+     the Blueprint. B-05 prints this split, so it is the code's split, not a
+     sales guess:
+       - decline defense writes need a paid Blueprint (api/blueprint/declines.mjs)
+       - the document vault chase is Blueprint buyers only
+         (src/workflows/document-vault-chase.mjs)
+       - file alerts go to Blueprint buyers AND FinanceOS subscribers
+         (src/workflows/blueprint-finance-os-alerts.mjs)
+       - "Ready to get funded" lives in FinanceOS; a FinanceOS-only client stops
+         at the CSM (src/finance/ready-to-fund.mjs)
+       - the credit partner and the bank tracker refuse a non-Blueprint client
+         (src/blueprint/credit-partner.mjs, bank-relationship.mjs) */
+  var STACK = [
+    /* db/migrations/400_blueprint_dispute_waypoint_definitions.sql, src/waypoints/verify.mjs */
+    { key: "disputes", door: "blueprint", name: "Dispute rounds, with proof",
+      line: "Each dispute round is a step on your checklist: mail the letters, upload the mail receipt, upload the bureau's answer. A step clears only with the proof." },
+    /* src/nudge/ladder.mjs: four rungs, and the last one is a person */
+    { key: "helper", door: "blueprint", name: "Accountability helper",
+      line: "A helper stays on your open step. A text when it is due, then an email, then a text. Still stuck? A person on our team steps in." },
+    /* src/finance/money-helper.mjs (readContext), FinanceOS Money helper tab */
+    { key: "moneyhelper", door: "both", name: "Money helper", fos: "Money helper",
+      line: "Ask what to pay and when. It answers from your own accounts." },
+    /* src/workflows/finance-os-pull-sweeper.mjs, then src/blueprint/monthly-pull-aftercare.mjs */
+    { key: "pull", door: "blueprint", name: "Monthly soft pull",
+      line: "A new soft pull every 30 days. Your checklist and your letters update from what changed." },
+    /* src/blueprint/closer-ready.mjs, src/finance/ready-to-fund.mjs */
+    { key: "ready", door: "both", name: "Ready to get funded", fos: "The “I'm ready to get funded” button",
+      line: "When the engine says your file is ready, your CSM preps you and a closer calls about funding. You can also ask with one button." },
+    /* src/blueprint/paydown-simulator.mjs, FinanceOS Strategy tab */
+    { key: "paydown", door: "both", name: "Paydown and payment strategy", fos: "Payment strategy",
+      line: "Enter the cash you have. See which cards to pay down first, by how much, and a payoff plan to your goal date." },
+    /* public/app/financeos.html; card-due reminders (finance-os-card-due-reminders) */
+    { key: "financeos", door: "both", name: "FinanceOS, 12 months included", fos: "Every account, card, and due date on one page",
+      line: "Every account, card, and due date on one page, with a reminder before each due date." },
+    /* src/finance/file-alerts/ (migration 471) */
+    { key: "alerts", door: "both", name: "File-protection alerts", fos: "File-protection alerts",
+      line: "A text before each statement date, 60, 30, and 7 days before a 0% promo ends, when cash drops below six months of minimum payments, and when a new card or inquiry shows up." },
+    /* src/blueprint/credit-partner.mjs; the Control Panel: "One partner is included with the Blueprint." */
+    { key: "partner", door: "blueprint", name: "Credit partner file",
+      line: "One spouse or business partner can join as a second applicant. They give their own consent, and their file gets its own checklist." },
+    /* src/blueprint/bank-relationship.mjs, FinanceOS Banks tab */
+    { key: "banks", door: "blueprint", name: "Bank relationship tracker",
+      line: "Open accounts at the banks on your match list. We track your deposits there, so the relationship is in place before you apply." },
+    /* src/blueprint/decline-analyze.mjs, FinanceOS Applications tab */
+    { key: "declines", door: "blueprint", name: "Decline defense",
+      line: "If a bank says no, paste the letter in. You get the likely reasons and the steps to ask for a second look." },
+    /* src/finance/document-vault.mjs (migration 472), FinanceOS Funding papers tab. The
+       asks are the Blueprint part: src/workflows/document-vault-chase.mjs chases
+       paid Blueprint buyers only. */
+    { key: "vault", door: "blueprint", name: "Funding papers checklist",
+      line: "We ask for your bank statements, tax returns, and ID ahead of time, one paper at a time, so your file is complete when the closer calls." },
+    /* src/blueprint/next-sequence-math.mjs: the file suggests the date from cited
+       windows, a staff date wins; src/workflows/blueprint-next-funding-sequence-sweeper.mjs
+       tells the closer that day */
+    { key: "nextseq", door: "blueprint", name: "Next funding sequence",
+      line: "After funding, the planner reads your file and suggests when it is ready for the next funding sequence. That date goes on your plan, and a closer is told that day." }
+  ];
+
+  /* The FinanceOS page's own tabs, in its order: public/app/financeos.js TABS.
+     src/http/present-blueprint-stack.test.mjs fails if the two drift apart, so
+     a demo link never points at a tab that is not on the page, and a new tab
+     there is added here. */
+  var FOS_TABS = [
+    ["overview", "Overview"], ["next", "Next steps"], ["helper", "Money helper"], ["transfers", "Money moves"],
+    ["plan", "Plan"], ["banks", "Banks"], ["strategy", "Strategy"], ["fundability", "Fundability"],
+    ["declines", "Applications"], ["alerts", "Alerts"], ["vault", "Funding papers"],
+    ["accounts", "Accounts"], ["credit", "Credit"],
+    ["connections", "Connections"], ["payments", "Payments"], ["setup", "Setup"]
+  ];
+  /* The one client every demo opens: the FinanceOS test client (sandbox bank v3
+     plus one sample credit file, scripts/finance-os-sample-v3.mjs). A real
+     client's file is never opened on a sales call. */
+  var FOS_DEMO_CLIENT = "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e";
+  /* /api/money/* opens another person's FinanceOS only for ROLE_SETS.FINANCE
+     (src/http/read-api.mjs). A closer is outside that set, so for a closer a
+     demo link would open an error page on a live call. The test pins this list
+     to that set. The role read is the same cached hint shell.js keeps and
+     financeos.js reads; the server still decides. */
+  var FOS_DEMO_ROLES = ["owner", "admin", "sales_manager", "closer"];
+
+  var STACK_TALK = {
+    "B-01": {
+      title: "The Blueprint. Two doors, one system.",
+      lines: [
+        "Most people get a plan and then get stuck on it. The Capital Blueprint is the system that keeps you moving on yours.",
+        "Two parts. The Blueprint makes the plan and runs the credit side. FinanceOS watches your money every day. The Blueprint includes 12 months of FinanceOS.",
+        "Want me to show you what's in it for your file?"
+      ],
+      watch: "Sell decisions, not pages: their file, their next move. Never promise an approval, an amount, a score, or a removal."
+    },
+    "B-02": {
+      title: "The stack. Walk each line.",
+      lines: [
+        "Here's everything in your Blueprint. I turned on the pieces that fit your file.",
+        "One line each, then a tie-down: does that make sense?",
+        "Is there a spouse or business partner who would apply with you? One partner file is included."
+      ],
+      watch: "Their screen shows only what is on. Never promise an approval, an amount, a score, or a removal. Fundhub switches live monthly pulls on, so never promise the date of the first one. After the payment posts, set up the credit partner and the bank tracker on the Client Control Panel."
+    },
+    "B-03": {
+      title: "FinanceOS. Show it live.",
+      lines: [
+        "This is FinanceOS. Every account, every card, every due date, on one page.",
+        "Let me open a sample client so you can see it working.",
+        "This is a sample file with test data, not a real person."
+      ],
+      watch: "Demos open the sample client in a new tab. Never open a real client's FinanceOS on a call. Live bank linking waits on Plaid; until then accounts are typed in, so do not promise a bank connection."
+    },
+    "B-04": {
+      title: "The investment.",
+      lines: [
+        "That's the whole system, for 12 months.",
+        "Read the price off the screen. Financing is available.",
+        "Want me to get you set up?",
+        "Then stop talking."
+      ],
+      watch: "Price only from the screen. The member fee after 12 months is not set yet and shows $X, so never quote a number. Never promise an approval, an amount, a score, or a removal. The three guarantees on S-21 belong to the funding offer: read them word for word there, never for the Blueprint."
+    },
+    "B-05": {
+      title: "Downsell. Start with FinanceOS.",
+      lines: [
+        "If the full Blueprint isn't right today, start with FinanceOS.",
+        "One setup fee, then a monthly price for each container. A container is each business and each person on your account.",
+        "When you're ready to get funded, one button tells your CSM."
+      ],
+      watch: "FinanceOS prices are not set yet and show $X. This deck has no FinanceOS checkout, so take no payment for it on this call and do not log it as a sale."
+    },
+    "B-06": {
+      title: "Upsell path. One button up.",
+      lines: [
+        "Here's how it works when you're ready.",
+        "You prep in FinanceOS. Press \"I'm ready to get funded\" and your CSM reaches out.",
+        "Move up to the Blueprint, and when the engine says your file is ready, a closer calls about funding."
+      ],
+      watch: "A FinanceOS-only client stops at the CSM. The closer is called only for a Blueprint client whose file is ready. Never promise when that will be."
+    }
+  };
+
+  function isStackCode(c) {
+    for (var i = 0; i < DECK.length; i++) if (DECK[i].code === c) return DECK[i].phase.indexOf("06") === 0;
+    return false;
+  }
+  function plural(n, word) {
+    return n + " " + word + (n === 1 ? "" : (/s$/.test(word) ? "es" : "s"));
+  }
+  /* What the deck already knows about this caller, and nothing else: the
+     engine's sort and item count, and the companies on the file. */
+  function stackCtx() {
+    var d = state.engine || {};
+    var n = d.available && d.negItems != null && isFinite(Number(d.negItems)) ? Number(d.negItems) : null;
+    return {
+      pulled: !!d.available,
+      neg: n,
+      fundable: state.tier === "FULL_FUNDING" || state.tier === "FUNDING_PLUS_REPAIR",
+      repairSort: state.tier === "REPAIR_ONLY" || state.tier === "FUNDING_PLUS_REPAIR",
+      biz: businesses().length
+    };
+  }
+  /* [on, why]: where each item starts for this caller, and the reason the rep
+     reads under it. A clean file gets no dispute rounds (one file, one story:
+     .claude/rules/sample-clients-consistent.md). Nobody on the deck is a credit
+     partner until the rep says so. */
+  function stackDefault(key, x) {
+    if (key === "disputes") {
+      if (x.neg != null && x.neg > 0) return [true, plural(x.neg, "negative item") + " on this file."];
+      if (x.neg === 0) return [false, "No negative items on this file. Nothing to dispute."];
+      if (x.repairSort) return [true, "Sorted to repair. The item count is not on the file."];
+      return [false, x.pulled
+        ? "No negative items on the file. Turn on only if the report shows one."
+        : "No credit file on this deck yet. Turn on only if the report shows negative items."];
+    }
+    if (key === "ready") {
+      return x.fundable
+        ? [false, "Sorted to funding today. The funding offer is the path, not a wait."]
+        : [true, "Not sorted to funding yet. This is how the file gets there."];
+    }
+    if (key === "partner") return [false, "No partner on the file. Turn on if a spouse or business partner will apply too."];
+    if (key === "vault" && x.biz > 0) return [true, plural(x.biz, "business") + " on the file, so its papers go in too."];
+    if (key === "financeos" && x.biz > 0) return [true, plural(x.biz, "business") + " on the file. Each one is its own container."];
+    return [true, "Part of every Blueprint."];
+  }
+  function stackOn(key, x) {
+    if (Object.prototype.hasOwnProperty.call(state.stackPick, key)) return !!state.stackPick[key];
+    return stackDefault(key, x || stackCtx())[0];
+  }
+  function stackLine(it, x) {
+    if (it.key === "financeos" && x.biz > 0) return "Every personal and business account, card, and due date on one page, with a reminder before each due date.";
+    if (it.key === "vault" && x.biz > 0) return "We ask for your bank statements, tax returns, ID, and your business papers ahead of time, one paper at a time, so your file is complete when the closer calls.";
+    return it.line;
+  }
+  function canOpenFosDemo() {
+    var role = "";
+    try { role = String(window.localStorage.getItem("fh_role") || "").trim().toLowerCase(); } catch (e) { role = ""; }
+    return FOS_DEMO_ROLES.indexOf(role) >= 0;
+  }
+  function fosDemoHref(tab) {
+    return "/app/financeos.html?client_id=" + encodeURIComponent(FOS_DEMO_CLIENT) + "#" + encodeURIComponent(tab);
+  }
+  function stackNames(list, side) {
+    if (!list.length) return '<div class="stk-none">—</div>';
+    return '<div class="stk-inc one">' + list.map(function (it) {
+      return '<div class="stk-incl"><span class="ck" aria-hidden="true">✓</span><span>' + esc(side === "fos" && it.fos ? it.fos : it.name) + "</span></div>";
+    }).join("") + "</div>";
+  }
+  function stackPath(steps) {
+    return '<ol class="stk-path">' + steps.map(function (s, i) {
+      return '<li><span class="n">' + String(i + 1).padStart(2, "0") + '</span><div class="t">' + esc(s[0]) + '</div><div class="d">' + esc(s[1]) + "</div></li>";
+    }).join("") + "</ol>";
+  }
+
+  /* Like fill(), but a block taller than the slide (a phone, a long stack)
+     scrolls from its top instead of being cut off at both ends: the auto
+     margins centre it only while it fits. */
+  function stackFill(inner) { return '<div class="stk-fill"><div class="stk-fill-in roomy">' + inner + "</div></div>"; }
+
+  /* The client half: what the caller sees on the screen share. */
+  function stackSlide(c) {
+    var x = stackCtx();
+    var on = STACK.filter(function (it) { return stackOn(it.key, x); });
+    var picking = sub("Your rep is picking the pieces that fit your file.");
+    if (c === "B-01") {
+      return slide("B-01", "Capital Blueprint", stackFill(
+        kicker("Capital Blueprint + FinanceOS") +
+        h1("The system around your file.", "clamp(26px,3.8vw,46px)") +
+        sub("Most people get a plan and then get stuck. This one stays on the plan with you, for 12 months.") +
+        '<div style="margin-top:12px;max-width:760px">' +
+          row("Capital Blueprint", "The plan", "Makes your plan and runs the credit side, then brings in a closer when your file is ready.") +
+          row("FinanceOS", "Your money", "Watches your money every day: every account, card, and due date on one page. 12 months included.") +
+        "</div>" + fine(NO_PROMISE)));
+    }
+    if (c === "B-02") {
+      if (!on.length) return slide("B-02", "Your stack", stackFill(kicker("Built around your file") + h1("Your Capital Blueprint.") + picking));
+      return slide("B-02", "Your stack", stackFill(kicker("Built around your file") + h1("Everything in your Capital Blueprint.") +
+        '<div class="stk-grid">' + on.map(function (it, i) {
+          return '<div class="stk-item" data-stack="' + esc(it.key) + '"><span class="n">' + String(i + 1).padStart(2, "0") +
+            '</span><div class="t">' + esc(it.name) + '</div><div class="d">' + esc(stackLine(it, x)) + "</div></div>";
+        }).join("") + "</div>" + fine(NO_PROMISE)));
+    }
+    if (c === "B-03") {
+      return slide("B-03", "FinanceOS", stackFill(
+        kicker("FinanceOS · 12 months included with the Blueprint") +
+        h1("Your money, on one page.", "clamp(24px,3.4vw,42px)") +
+        sub("Every account, card, and due date in one place, with a money helper that answers what to pay and when.") +
+        '<div class="stk-chips">' + FOS_TABS.map(function (t) {
+          return '<span class="stk-chip">' + esc(t[1]) + "</span>";
+        }).join("") + "</div>"));
+    }
+    if (c === "B-04") {
+      return slide("B-04", "The investment", stackFill(
+        kicker("Everything in your Blueprint") +
+        (on.length ? '<div class="stk-inc">' + on.map(function (it) {
+          return '<div class="stk-incl"><span class="ck" aria-hidden="true">✓</span><span>' + esc(it.name) + "</span></div>";
+        }).join("") + "</div>" : picking) +
+        '<div class="stk-price"><span class="mono">Capital Blueprint · 12 months</span>' +
+          h1(esc(price("UWIQ_DELIVERABLES")), "clamp(30px,4.6vw,56px)") + "</div>" +
+        '<div style="max-width:760px">' + row("After 12 months", "Monthly member fee · " + UNSET_PRICE, "Not set yet") + "</div>" +
+        financingNote("UWIQ_DELIVERABLES") + fine(NO_PROMISE)));
+    }
+    if (c === "B-05") {
+      return slide("B-05", "Start with FinanceOS", stackFill(
+        kicker("Not ready for the full Blueprint?") +
+        h1("Start with FinanceOS.", "clamp(24px,3.4vw,42px)") +
+        '<div style="margin-top:10px;max-width:760px">' +
+          row("Setup, one time", UNSET_PRICE) +
+          row("Each container, per month", UNSET_PRICE, "A container is each business and each person on your account.") +
+        "</div>" +
+        '<div class="stk-cols">' +
+          '<div><span class="mono">FinanceOS gives you</span>' + stackNames(on.filter(function (it) { return it.door === "both"; }), "fos") + "</div>" +
+          '<div><span class="mono">The Blueprint adds</span>' + stackNames(on.filter(function (it) { return it.door === "blueprint"; })) + "</div>" +
+        "</div>" + fine("$X means the price is not set yet.")));
+    }
+    if (c === "B-06") {
+      return slide("B-06", "The path up", stackFill(
+        kicker("When you're ready") +
+        h1("One button moves you up.", "clamp(24px,3.4vw,42px)") +
+        stackPath([
+          ["FinanceOS", "Track and prep"],
+          ["“I'm ready to get funded”", "One button"],
+          ["Your CSM", "Preps your file"],
+          ["Capital Blueprint", "The full system"],
+          ["A closer calls", "When the file is ready"]
+        ]) +
+        sub("Start with FinanceOS. Press the button and your CSM reaches out. Move up to the Blueprint, and a closer calls when the engine says your file is ready.") +
+        fine("Ready means UnderwriteIQ's own checks pass on your newest file. It is not a promise of approval or an amount.")));
+    }
+    return slide(c, "Capital Blueprint", "");
+  }
+
+  /* The cockpit half: the rep's buttons for this section. */
+  function stackToggles(x) {
+    var html = '<div><span class="mono">What fits this caller</span>' +
+      '<div class="stk-why">Starts from this file. Tap to change. Their screen shows only what is on.</div><div class="stk-togs">';
+    STACK.forEach(function (it) {
+      var on = stackOn(it.key, x);
+      var mine = Object.prototype.hasOwnProperty.call(state.stackPick, it.key);
+      var why = mine ? ("You turned this " + (on ? "on." : "off.")) : stackDefault(it.key, x)[1];
+      html += '<button type="button" class="stk-tog' + (on ? " on" : "") + '" data-act="stack:' + esc(it.key) +
+        '" aria-pressed="' + (on ? "true" : "false") + '"><span class="box" aria-hidden="true"></span>' +
+        '<span class="txt"><span class="nm">' + esc(it.name) + '</span><span class="why">' + esc(why) + "</span></span>" +
+        '<span class="st">' + (on ? "On" : "Off") + "</span></button>";
+    });
+    html += "</div>";
+    if (Object.keys(state.stackPick).length) html += '<div style="margin-top:6px">' + ckBtn("Reset to this file", "stack-reset") + "</div>";
+    return html + "</div>";
+  }
+  function fosDemo() {
+    var html = '<div><span class="mono">Show it live · sample client</span>';
+    if (!canOpenFosDemo()) {
+      return html + '<div class="stk-why">This login cannot open FinanceOS for a client. Owner, admin, and sales manager logins can. Walk the tabs on their screen instead.</div></div>';
+    }
+    return html + '<div class="stk-demo">' + FOS_TABS.map(function (t) {
+      return '<a class="ck-btn" href="' + esc(fosDemoHref(t[0])) + '" target="_blank" rel="noopener">' + esc(t[1]) + "</a>";
+    }).join("") + '</div><div class="stk-why">Each opens a new tab on the sample client. Test data, not a real person. Say so out loud.</div></div>';
+  }
+  function stackCockpit() {
+    var c = code();
+    var x = stackCtx();
+    var html = "";
+    /* On the price slide the answer leads; the toggles sit under it, so the
+       one action that matters is never below the fold. */
+    if (c === "B-04") {
+      html += '<div><span class="mono">Their answer</span><div class="stk-acts">' +
+        ckBtn("Yes: close the Blueprint · " + price("UWIQ_DELIVERABLES"), "stack-close", true) +
+        ckBtn("Not ready: show FinanceOS", "stack-go:B-05") +
+        '</div><div class="stk-why">Yes sets Capital Blueprint as the offer and opens S-23 for the agreement and pay link.</div></div>';
+    }
+    if (c === "B-02" || c === "B-04") html += stackToggles(x);
+    if (c === "B-03") html += fosDemo();
+    if (c === "B-05") {
+      html += '<div><span class="mono">Next move</span><div class="stk-acts">' +
+        ckBtn("Ready later? Show the path up", "stack-go:B-06") +
+        ckBtn("Back to the Blueprint price", "stack-go:B-04") + "</div></div>";
+    }
+    if (c === "B-06") {
+      html += '<div><span class="mono">Next move</span><div class="stk-acts">' +
+        ckBtn("Back to the Blueprint price", "stack-go:B-04") +
+        ckBtn("Back to FinanceOS", "stack-go:B-05") + "</div></div>";
+    }
+    var from = state.stackFrom != null && DECK[state.stackFrom] ? DECK[state.stackFrom].code : null;
+    html += ckBtn(from ? "Leave the stack: back to " + from : "Leave the stack", "stack-leave");
+    return html;
+  }
+
+  function enterStack(at) {
+    if (!isStackCode(code())) state.stackFrom = state.idx;
+    jumpTo(at || "B-01");
+  }
+  function leaveStack() {
+    var back = state.stackFrom;
+    jumpTo(back != null && DECK[back] && !isStackCode(DECK[back].code) ? DECK[back].code : "S-22");
+  }
+  function toggleStack(key) {
+    var known = STACK.some(function (it) { return it.key === key; });
+    if (!known) return;
+    var x = stackCtx();
+    var next = !stackOn(key, x);
+    if (next === stackDefault(key, x)[0]) delete state.stackPick[key];
+    else state.stackPick[key] = next;
+    render();
+  }
+  /* The same two states the descent ladder's own Blueprint rungs set (desc:eduLow
+     on the education route, desc:diy everywhere else). selectedOfferKey() is then
+     UWIQ_DELIVERABLES, the pay link charges the catalog price, and Send contract
+     picks CAPITAL-BLUEPRINT-AGREEMENT: no new offer path for either to drift on. */
+  function closeBlueprint() {
+    if (state.edu) { state.forceRepair = false; state.rung = 1; }
+    else { state.forceRepair = true; state.rung = 2; }
+    jumpTo("S-23");
+  }
+  /* ───────── 06 BLUEPRINT STACK — end ───────── */
+
   function ckBtn(label, action, primary, extra) {
     return '<button type="button" class="ck-btn' + (primary ? " k" : "") + '" data-act="' + esc(action) + '"' + (extra || "") + ">" + esc(label) + "</button>";
   }
@@ -766,7 +1180,7 @@
   }
 
   function cockpit() {
-    var t = closeTalk(code()) || TALK[code()] || { title: "", lines: [], watch: "" };
+    var t = closeTalk(code()) || TALK[code()] || STACK_TALK[code()] || { title: "", lines: [], watch: "" };
     var d = state.engine || {};
     var funding = isFunding() && !state.edu;
     var ph = phase();
@@ -880,9 +1294,17 @@
           eduHint = "Top down. Only step down on a no.";
         }
         html += '</div><div style="font-size:10.5px;color:var(--gray2);margin-top:6px">' + eduHint + "</div>";
+        /* The Blueprint rung opens the full 06 stack: every piece, FinanceOS,
+           the price build-up, and the FinanceOS downsell. */
+        if (selectedOfferKey() === "UWIQ_DELIVERABLES") {
+          html += '<div style="margin-top:7px">' + ckBtn("Show the full Blueprint stack", "stack-open") +
+            '<div class="stk-why">Opens section 06: every piece, FinanceOS live, the price, and the FinanceOS downsell.</div></div>';
+        }
         if (!state.edu) html += '<div style="margin-top:7px">' + ckBtn("UnderwriteIQ package → repair + funding", "bridge") + '<div style="font-size:10px;color:var(--gray2);margin-top:4px">Bridges them to the combined package. Jumps to the funding pitch.</div></div>';
         html += "</div>";
       }
+
+      if (isStackCode(code())) html += stackCockpit();
 
       if (code() === "S-23") {
         /* ONE ACTION LEADS (F25). Chris: "we've already chosen the offer. So
@@ -1004,9 +1426,9 @@
     }
 
     html += '</div><div class="ck-ph">';
-    ["01", "02", "03", "04", "05", "07"].forEach(function (p) {
+    ["01", "02", "03", "04", "05", "06", "07"].forEach(function (p) {
       var active = ph.indexOf(p) === 0;
-      html += '<button type="button" data-act="phase:' + p + '" style="flex:1;font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:5px 0;background:' + (active ? "var(--ink)" : "transparent") + ";color:" + (active ? "var(--paper)" : "var(--gray2)") + ";border:1px solid var(--line);cursor:pointer\">" + p + "</button>";
+      html += '<button type="button" data-act="phase:' + p + '"' + (p === "06" ? ' title="Capital Blueprint + FinanceOS"' : "") + ' style="flex:1;font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:5px 0;background:' + (active ? "var(--ink)" : "transparent") + ";color:" + (active ? "var(--paper)" : "var(--gray2)") + ";border:1px solid var(--line);cursor:pointer\">" + p + "</button>";
     });
     html += '</div><div class="ck-ft"><button type="button" class="ck-btn" data-act="back" style="width:auto"' + (state.idx === 0 ? " disabled" : "") + ">Back</button><button type=\"button\" class=\"ck-btn k\" data-act=\"next\" style=\"flex:1\" " + (state.idx === DECK.length - 1 ? "disabled" : "") + ">Next screen</button></div>";
     if (state.toast) html += '<div class="toast">' + esc(state.toast) + "</div>";
@@ -1064,15 +1486,28 @@
 
   function go(n) {
     state.obj = null; state.showRef = false;
+    /* Inside section 06, Next and Back walk its slides and leave at its ends
+       (B-01 back to S-22, B-06 on to S-23). Outside it, they step over it, so
+       nobody lands on the Blueprint stack by pressing Next. */
+    var inStack = isStackCode(code());
     var j = Math.max(0, Math.min(DECK.length - 1, state.idx + n));
-    while (state.edu && EDU_SKIP.indexOf(DECK[j].code) >= 0 && j > 0 && j < DECK.length - 1) {
+    while (j > 0 && j < DECK.length - 1 &&
+      ((state.edu && EDU_SKIP.indexOf(DECK[j].code) >= 0) || (!inStack && isStackCode(DECK[j].code)))) {
       j = j + (n > 0 ? 1 : -1);
     }
     state.idx = Math.max(0, Math.min(DECK.length - 1, j));
+    if (!isStackCode(DECK[state.idx].code)) state.stackFrom = null;
     render();
   }
   function jumpTo(c) {
-    for (var i = 0; i < DECK.length; i++) if (DECK[i].code === c) { state.idx = i; state.obj = null; state.showRef = false; render(); return; }
+    for (var i = 0; i < DECK.length; i++) {
+      if (DECK[i].code === c) {
+        state.idx = i; state.obj = null; state.showRef = false;
+        if (!isStackCode(c)) state.stackFrom = null;
+        render();
+        return;
+      }
+    }
   }
   function toast(m) {
     state.toast = m;
@@ -1391,10 +1826,17 @@
     if (a.indexOf("check:") === 0) { var k = a.slice(6); state.checks[k] = !state.checks[k]; render(); return; }
     if (a.indexOf("phase:") === 0) {
       var p = a.slice(6);
+      if (p === "06") { enterStack("B-01"); return; }
       var target = DECK.filter(function (s) { return s.phase.indexOf(p) === 0; })[0];
       if (target) jumpTo(target.code);
       return;
     }
+    if (a === "stack-open") { enterStack("B-01"); return; }
+    if (a === "stack-leave") { leaveStack(); return; }
+    if (a === "stack-reset") { state.stackPick = {}; render(); return; }
+    if (a === "stack-close") { closeBlueprint(); return; }
+    if (a.indexOf("stack-go:") === 0) { jumpTo(a.slice(9)); return; }
+    if (a.indexOf("stack:") === 0) { toggleStack(a.slice(6)); return; }
     if (a === "bridge") { state.tier = "FUNDING_PLUS_REPAIR"; state.edu = false; state.forceRepair = false; jumpTo("S-08"); return; }
     if (a === "desc:fund") { state.forceRepair = false; state.edu = false; jumpTo("S-19"); return; }
     if (a === "desc:dfy") { state.edu = false; state.forceRepair = true; state.rung = 0; jumpTo("S-19"); return; }

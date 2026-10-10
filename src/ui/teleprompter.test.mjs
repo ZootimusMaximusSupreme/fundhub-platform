@@ -27,6 +27,93 @@ const PAGE = plain(CONTRACT["GET marketing/shoot"].example.response);
 const [ONE, TWO] = PAGE.shoot.scripts;
 
 describe("teleprompter, pure", () => {
+  test("2160×3840 and 3840×2160 are 4K; 1920×1080 is not", () => {
+    const T = load();
+    const tall = T.cameraReport({ width: 2160, height: 3840, frameRate: 30 }, "4k");
+    const wide = T.cameraReport({ width: 3840, height: 2160, frameRate: 30 }, "4k");
+    const hd = T.cameraReport({ width: 1920, height: 1080, frameRate: 30 }, "4k");
+    assert.match(tall.line, /^4K/);
+    assert.equal(tall.short, "");
+    assert.match(wide.line, /^4K/);
+    assert.equal(wide.short, "");
+    assert.doesNotMatch(hd.line, /4K/);
+    assert.match(hd.short, /not 4K/);
+    const asked = T.cameraReport({ width: 1920, height: 1080, frameRate: 60 }, "1080p");
+    assert.match(asked.line, /^1080p/);
+    assert.equal(asked.short, "");
+    assert.doesNotMatch(asked.line, /4K/);
+  });
+
+  test("front camera asks for real 4K at the highest frame rate", () => {
+    const T = load();
+    const tries = T.cameraTries("user", "4k");
+    assert.equal(tries[0].facingMode.ideal, "user");
+    assert.equal(tries[0].width.ideal, 3840);
+    assert.equal(tries[0].height.ideal, 2160);
+    assert.equal(tries[0].width.max, undefined);
+    assert.equal(tries[0].height.max, undefined);
+    assert.equal(tries[0].frameRate.ideal, 60);
+    assert.equal(tries[0].frameRate.max, undefined);
+    assert.equal(tries[0].focusMode, undefined);
+    const four = tries.filter((c) => c.width && c.width.ideal === 3840);
+    const rates = four.map((c) => c.frameRate && c.frameRate.ideal);
+    assert.ok(rates.indexOf(60) < rates.indexOf(30));
+    assert.notEqual(tries[0].facingMode.ideal, "environment");
+  });
+
+  test("settings 1080p asks for 1920x1080 at 60 fps", () => {
+    const T = load();
+    const tries = T.cameraTries("user", "1080p");
+    assert.equal(tries[0].facingMode.ideal, "user");
+    assert.equal(tries[0].width.ideal, 1920);
+    assert.equal(tries[0].width.max, 1920);
+    assert.equal(tries[0].height.ideal, 1080);
+    assert.equal(tries[0].height.max, 1080);
+    assert.equal(tries[0].frameRate.min, 60);
+    assert.equal(tries[0].frameRate.ideal, 60);
+    assert.equal(tries[0].frameRate.max, 60);
+    for (const c of tries) {
+      const blob = JSON.stringify(c);
+      assert.equal(blob.includes("3840"), false);
+      assert.equal(blob.includes("2160"), false);
+      if (c.width && c.width.max) assert.ok(c.width.max <= 1920);
+      if (c.height && c.height.max) assert.ok(c.height.max <= 1920);
+      assert.notEqual(c.facingMode.ideal || c.facingMode, "environment");
+    }
+  });
+
+  test("back camera asks are steady 1080p and never 4K", () => {
+    const T = load();
+    const tries = T.cameraTries("environment");
+    assert.equal(tries[0].facingMode.ideal, "environment");
+    assert.equal(tries[0].width.ideal, 1920);
+    assert.equal(tries[0].height.ideal, 1080);
+    assert.equal(tries[0].frameRate.min, 60);
+    assert.equal(tries[0].focusMode, "continuous");
+    const rates = tries.map((c) => c.frameRate && c.frameRate.ideal).filter((n) => n);
+    assert.ok(rates.indexOf(60) < rates.indexOf(30));
+    for (const c of tries) {
+      const blob = JSON.stringify(c);
+      assert.equal(blob.includes("3840"), false);
+      assert.equal(blob.includes("2160"), false);
+      if (c.width && c.width.max) assert.ok(c.width.max <= 1920);
+      if (c.height && c.height.max) assert.ok(c.height.max <= 1920);
+    }
+  });
+
+  test("the wide back camera is chosen, not the ultra-wide", () => {
+    const T = load();
+    const devices = [
+      { kind: "videoinput", deviceId: "front", label: "Front Camera" },
+      { kind: "videoinput", deviceId: "ultra", label: "Back Ultra Wide Camera" },
+      { kind: "videoinput", deviceId: "wide", label: "Back Camera" },
+      { kind: "videoinput", deviceId: "tele", label: "Back Telephoto Camera" }
+    ];
+    assert.equal(T.pickVideoDevice(devices, "environment"), "wide");
+    assert.equal(T.pickVideoDevice(devices, "user"), "front");
+    assert.equal(T.pickVideoDevice([{ kind: "videoinput", deviceId: "x", label: "" }], "environment"), "");
+  });
+
   test("the file name is the server's NAMING.md name, letter for letter", () => {
     const T = load();
     for (const n of [1, 2, 3, 12]) {
@@ -115,6 +202,52 @@ describe("teleprompter, pure", () => {
     assert.equal(T.nextInOrder([{ got_it: true }, { got_it: true }], 1), -1);
   });
 
+  test("a blank gap keeps the same pixel speed as the words", () => {
+    const T = load();
+    // Words move 20px in 2s (10 px per second). The gap of 40px was given 0.4s
+    // (100 px per second). That is the race. After the fix it takes 4s.
+    const raw = [
+      { t: 0, y: 0 },
+      { t: 2, y: 20 },
+      { t: 2.4, y: 60, blank: true },
+      { t: 4.4, y: 80 }
+    ];
+    const out = T.paceThroughBlanks(raw);
+    const speed = (a, b) => (b.y - a.y) / (b.t - a.t);
+    assert.equal(speed(out[0], out[1]), 10);
+    assert.equal(speed(out[1], out[2]), 10);
+    assert.equal(out[2].t, 6);
+    assert.equal(out[2].y, 60);
+    assert.equal(out[3].t, 8);
+    // A word that started when the old gap ended now starts when the blank is done.
+    assert.equal(T.scrollTime(raw, out, 2.4), 6);
+    assert.equal(T.scrollTime(raw, out, 0), 0);
+    assert.equal(T.scrollTime(raw, out, 4.4), 8);
+  });
+
+  test("a taller blank takes longer, still at the word speed, and a slow blank is not sped up", () => {
+    const T = load();
+    const raw = [
+      { t: 0, y: 0 },
+      { t: 2, y: 20 },
+      { t: 2.2, y: 40, blank: true },
+      { t: 4.2, y: 60 },
+      { t: 4.4, y: 100, blank: true }
+    ];
+    const out = T.paceThroughBlanks(raw);
+    const speed = (a, b) => (b.y - a.y) / (b.t - a.t);
+    const words = speed(out[0], out[1]);
+    assert.ok(Math.abs(speed(out[1], out[2]) - words) < 1e-9);
+    assert.ok(Math.abs(speed(out[3], out[4]) - words) < 1e-9);
+    assert.ok(out[4].t - out[3].t > out[2].t - out[1].t);
+    const slow = [
+      { t: 0, y: 0 },
+      { t: 2, y: 20 },
+      { t: 10, y: 40, blank: true }
+    ];
+    assert.equal(T.paceThroughBlanks(slow)[2].t, 10);
+  });
+
   test("after an edit it rolls on from the same word, or from the start of the line that changed", () => {
     const T = load();
     // paragraphs of 4, 5, 3 words; paragraph 1 grew to 7
@@ -126,8 +259,9 @@ describe("teleprompter, pure", () => {
   });
 });
 
-/* The touch rules (owner, 2026-10-06): one tap pauses, a tap again rolls on,
-   a double tap is scroll mode, drag moves the words, hold a line to edit. */
+/* The touch rules: one tap plays or pauses after a short wait. Two quick taps
+   put a cursor in the words and do not play or pause. A drag reports the
+   finger's own movement. Hold a line to edit. */
 describe("teleprompter touch rules (gestureStep)", () => {
   function run(T, events, mode) {
     let g = T.gestureStart();
@@ -141,17 +275,19 @@ describe("teleprompter touch rules (gestureStep)", () => {
     return { g, acts: all };
   }
   const tap = (t, x = 100, y = 300) => [{ type: "down", x, y, t }, { type: "up", x, y, t: t + 60 }];
+  const settle = (T, t) => ({ type: "settle", t: t + 60 + T.DBL_MS });
 
-  test("one tap while rolling pauses, at once (no waiting for a second tap)", () => {
+  test("one tap while rolling does not pause until the double-tap wait ends", () => {
     const T = load();
-    const r = run(T, tap(0), "rolling");
-    assert.deepEqual(r.acts, [{ do: "pause" }]);
+    assert.deepEqual(run(T, tap(0), "rolling").acts, []);
+    assert.deepEqual(run(T, [...tap(0), { type: "settle", t: 60 + T.DBL_MS - 1 }], "rolling").acts, []);
+    assert.deepEqual(run(T, [...tap(0), settle(T, 0)], "rolling").acts, [{ do: "pause" }]);
   });
 
   test("one tap while paused rolls on; one tap in scroll mode rolls on from there", () => {
     const T = load();
-    assert.deepEqual(run(T, tap(0), "paused").acts, [{ do: "resume" }]);
-    assert.deepEqual(run(T, tap(0), "scroll").acts, [{ do: "resume" }]);
+    assert.deepEqual(run(T, [...tap(0), settle(T, 0)], "paused").acts, [{ do: "resume" }]);
+    assert.deepEqual(run(T, [...tap(0), settle(T, 0)], "scroll").acts, [{ do: "resume" }]);
   });
 
   test("two taps far apart in time are two single taps: pause, then roll on", () => {
@@ -159,7 +295,7 @@ describe("teleprompter touch rules (gestureStep)", () => {
     let mode = "rolling";
     const seen = [];
     let g = T.gestureStart();
-    for (const ev of [...tap(0), ...tap(1000)]) {
+    for (const ev of [...tap(0), settle(T, 0), ...tap(1000), settle(T, 1000)]) {
       const r = T.gestureStep(g, ev, mode);
       g = r.g;
       for (const a of plain(r.acts)) { seen.push(a.do); if (a.do === "pause") mode = "paused"; if (a.do === "resume") mode = "rolling"; }
@@ -167,34 +303,39 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(seen, ["pause", "resume"]);
   });
 
-  test("a double tap turns scroll mode on (undoing the first tap), and a double tap in scroll mode turns it off", () => {
+  test("two quick taps place a cursor only when the words are paused", () => {
     const T = load();
-    let mode = "rolling";
-    const seen = [];
+    const paused = run(T, [...tap(0), ...tap(200), settle(T, 200)], "paused");
+    assert.deepEqual(paused.acts.map((a) => a.do), ["caret"]);
+    assert.equal(paused.acts[0].x, 100);
+    assert.equal(paused.acts[0].y, 300);
+    for (const mode of ["rolling", "scroll"]) {
+      const r = run(T, [...tap(0), ...tap(200), settle(T, 200)], mode);
+      assert.deepEqual(r.acts.map((a) => a.do), [], mode);
+    }
+  });
+
+  test("the second tap is marked so the page can skip play and pause", () => {
+    const T = load();
     let g = T.gestureStart();
-    const step = (ev) => {
-      const r = T.gestureStep(g, ev, mode);
-      g = r.g;
-      for (const a of plain(r.acts)) {
-        seen.push(a.do);
-        if (a.do === "pause") mode = "paused";
-        if (a.do === "resume") mode = "rolling";
-        if (a.do === "scroll-on") mode = "scroll";
-        if (a.do === "scroll-off") mode = "paused";
-      }
-    };
-    [...tap(0), ...tap(200)].forEach(step);
-    assert.deepEqual(seen, ["pause", "scroll-on"]);
-    assert.equal(mode, "scroll");
-    [...tap(2000), ...tap(2200)].forEach(step);
-    assert.deepEqual(seen, ["pause", "scroll-on", "resume", "scroll-off"]);
-    assert.equal(mode, "paused");
+    for (const ev of tap(0)) g = T.gestureStep(g, ev, "rolling").g;
+    const down = T.gestureStep(g, { type: "down", x: 104, y: 304, t: 200 }, "rolling");
+    assert.equal(down.g.down.dbl, true);
+    assert.deepEqual(plain(down.acts), []);
   });
 
   test("a second tap too far away is not a double tap", () => {
     const T = load();
-    const r = run(T, [...tap(0, 100, 300), ...tap(150, 300, 600)], "paused");
-    assert.deepEqual(r.acts.map((a) => a.do), ["resume", "resume"]);
+    const r = run(T, [...tap(0, 100, 300), ...tap(150, 300, 600), settle(T, 150)], "paused");
+    assert.deepEqual(r.acts.map((a) => a.do), ["resume", "pause"]);
+  });
+
+  test("thumb up rolls the words up; thumb down moves them down with the hand", () => {
+    const T = load();
+    assert.equal(T.scriptDelta(-80, false), 80, "thumb up: next lines come from below");
+    assert.equal(T.scriptDelta(80, false), -80, "thumb down: the words go down with the hand");
+    assert.equal(T.scriptDelta(80, true), 80, "upside-down glass: the thumb still matches");
+    assert.equal(T.scriptDelta(-30, true), -30);
   });
 
   test("a drag grabs the words, then moves them by the finger's distance; a tap is not a drag", () => {
@@ -253,10 +394,136 @@ describe("teleprompter touch rules (gestureStep)", () => {
   });
 });
 
+describe("top edge changes the script", () => {
+  function run(T, events, top = 36) {
+    let g = T.topEdgeStart();
+    const acts = [];
+    let claim = false;
+    for (const ev of events) {
+      const r = T.topEdgeStep(g, ev, top);
+      g = r.g;
+      claim = r.claim;
+      for (const a of r.acts) acts.push(a.do);
+    }
+    return { g, acts, claim };
+  }
+
+  test("only scripts still to film stay in the queue", () => {
+    const T = load();
+    const list = [{ got_it: false }, { got_it: true }, { got_it: false }];
+    assert.deepEqual(plain(T.filmQueue(list)), [0, 2]);
+    assert.equal(T.queueStep([0, 2], 0, 1), 2);
+    assert.equal(T.queueStep([0, 2], 2, 1), -1);
+    assert.equal(T.queueStep([0, 2], 2, -1), 0);
+    assert.equal(T.queueStep([0, 2], 1, 1), 0);
+    assert.equal(T.nextUnfilmed(list, 0), 2);
+    assert.equal(T.nextUnfilmed([{ got_it: true }], 0), -1);
+  });
+
+  test("scroll up from the top is the next script, scroll down is the previous, two taps mark it filmed", () => {
+    const T = load();
+    const up = run(T, [
+      { type: "down", x: 100, y: 10, t: 0 },
+      { type: "move", x: 100, y: 10 - T.SWAP_PX, t: 40 },
+      { type: "up", x: 100, y: 10 - T.SWAP_PX, t: 50 }
+    ]);
+    assert.deepEqual(plain(up.acts), ["next"]);
+    const down = run(T, [
+      { type: "down", x: 100, y: 8, t: 0 },
+      { type: "move", x: 102, y: 8 + T.SWAP_PX, t: 40 },
+      { type: "up", x: 102, y: 8 + T.SWAP_PX, t: 50 }
+    ]);
+    assert.deepEqual(plain(down.acts), ["prev"]);
+    const tap = run(T, [
+      { type: "down", x: 80, y: 12, t: 0 },
+      { type: "up", x: 80, y: 14, t: 40 }
+    ]);
+    assert.deepEqual(plain(tap.acts), ["arm"]);
+    let g = T.topEdgeStart();
+    g = T.topEdgeStep(g, { type: "down", x: 80, y: 12, t: 0 }, 36).g;
+    g = T.topEdgeStep(g, { type: "up", x: 80, y: 12, t: 30 }, 36).g;
+    const later = T.topEdgeStep(g, { type: "down", x: 90, y: 400, t: 200 }, 36);
+    assert.equal(later.claim, true);
+    const moved = T.topEdgeStep(later.g, { type: "move", x: 90, y: 400 + T.SWAP_PX, t: 240 }, 36);
+    assert.deepEqual(plain(moved.acts.map((a) => a.do)), ["prev"]);
+    const miss = T.topEdgeStep(T.topEdgeStart(), { type: "down", x: 90, y: 400, t: 0 }, 36);
+    assert.equal(miss.claim, false);
+    assert.deepEqual(plain(miss.acts), []);
+    const done = run(T, [
+      { type: "down", x: 40, y: 10, t: 0 },
+      { type: "up", x: 40, y: 10, t: 40 },
+      { type: "down", x: 44, y: 12, t: 180 },
+      { type: "up", x: 44, y: 12, t: 220 }
+    ]);
+    assert.deepEqual(plain(done.acts), ["arm", "done"]);
+  });
+
+  test("the tiny name button takes two taps and does not stop the camera", () => {
+    const T = load();
+    assert.equal(T.chipLabel({ take_file_name: "SLO Ad 7 — Haynes Take 1.mp4", title: "Haynes" }), "SLO Ad 7 — Haynes Take 1.mp4");
+    assert.equal(T.chipLabel({
+      take_file_name: null,
+      angle_name: "Inquiries off first",
+      take_name_problem: "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown."
+    }), "Inquiries off first");
+    assert.equal(T.chipLabel({ title: "  Ad 14 — It's a skill  " }), "Ad 14 — It's a skill");
+    assert.equal(T.chipLabel({}), "Next");
+    assert.equal(T.chipLabel(null), "Next");
+    assert.doesNotMatch(T.chipLabel({ take_name_problem: "The Funding, done-for-you offer has no file-name word yet" }), /unknown|file-name word/i);
+    const one = T.chipStep(T.chipStart(), { type: "up", x: 10, y: 10, t: 0 });
+    assert.equal(one.go, false);
+    const two = T.chipStep(one.g, { type: "up", x: 12, y: 14, t: 100 });
+    assert.equal(two.go, true);
+    const late = T.chipStep(one.g, { type: "up", x: 12, y: 14, t: T.DBL_MS + 50 });
+    assert.equal(late.go, false);
+    const far = T.chipStep(one.g, { type: "up", x: 10 + T.DBL_SLOP + 5, y: 10, t: 80 });
+    assert.equal(far.go, false);
+    assert.match(HTML, /<button type="button" id="p-file"/);
+    assert.doesNotMatch(SRC, /File name unknown/);
+    const up = SRC.slice(SRC.indexOf('chipBtn.addEventListener("pointerup"'), SRC.indexOf('chipBtn.addEventListener("click"'));
+    assert.match(up, /if \(r\.go\) openQueueMenu\(\)/);
+    assert.doesNotMatch(up, /completeFromTop\(/);
+    assert.doesNotMatch(up, /markThis\(/);
+    assert.doesNotMatch(up, /endRec\(/);
+    assert.doesNotMatch(up, /nextScript\(/);
+    const menuFn = SRC.slice(SRC.indexOf("function drawQueue"), SRC.indexOf("function pickQueued"));
+    assert.match(menuFn, /filmQueue\(scripts\)/);
+    assert.doesNotMatch(menuFn, /markThis\(/);
+    assert.doesNotMatch(menuFn, /endRec\(/);
+    const pickFn = SRC.slice(SRC.indexOf("function pickQueued"), SRC.indexOf("function openQueueMenu"));
+    assert.match(pickFn, /open\(i, true\)/);
+    assert.doesNotMatch(pickFn, /markThis\(/);
+    assert.doesNotMatch(pickFn, /endRec\(/);
+    const openMenu = SRC.slice(SRC.indexOf("function openQueueMenu"), SRC.indexOf("function topLimit"));
+    assert.match(openMenu, /drawQueue\(\)/);
+    assert.match(openMenu, /openSheet\("qmenu"\)/);
+    assert.doesNotMatch(openMenu, /markThis\(/);
+    assert.doesNotMatch(openMenu, /completeFromTop\(/);
+    assert.match(HTML, /id="qmenu"/);
+    assert.match(HTML, /id="qmenu-list"/);
+  });
+
+  test("a swap from the top does not stop the camera", () => {
+    const openFn = SRC.slice(SRC.indexOf("function open(i, keepCamera)"), SRC.indexOf("function redraw("));
+    assert.match(openFn, /if \(!keepCamera\) endRec\(\)/);
+    assert.match(SRC, /open\(n, true\)/);
+    const swapFn = SRC.slice(SRC.indexOf("function swapQueued"), SRC.indexOf("function completeFromTop"));
+    const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
+    assert.doesNotMatch(swapFn, /endRec\(/);
+    assert.doesNotMatch(doneFn, /endRec\(/);
+  });
+});
+
 describe("teleprompter page", () => {
-  test("the page: no shell, a sign-in wall, the mirror switches, the remote words, Fundhub spelled right", () => {
+  test("the page: no shell, no sign-in, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
-    assert.match(HTML, /href="\/login\.html\?next=\/app\/teleprompter\.html"/);
+    assert.doesNotMatch(HTML, /login\.html/);
+    assert.doesNotMatch(HTML + SRC, /sign in/i);
+    assert.doesNotMatch(SRC, /showWall/);
+    assert.match(SRC, /x-shoot-film/);
+    assert.match(SRC, /if \(filmKey\(\)\) return showEmpty\("This film link did not open the shoot\."/);
+    assert.match(SRC, /plan\.hidden = !!filmKey\(\)/);
+    assert.match(HTML, /id="empty-plan"/);
     assert.match(HTML, /id="t-mirror"/);
     assert.match(HTML, /id="t-flipv"/);
     assert.match(HTML, /#flip\.mirror-x\{transform:scaleX\(-1\)\}/);
@@ -273,5 +540,183 @@ describe("teleprompter page", () => {
     assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js"'));
     // Editing turns the glass flip off so the words read the right way round.
     assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
+    assert.match(HTML, /Play rolls the words/);
+    assert.match(HTML, /A blank gap keeps that same speed/);
+    assert.match(HTML, /id="how"/);
+    assert.match(HTML, /id="b-rec"/);
+    assert.match(HTML, /id="b-script-save" hidden/);
+    assert.match(HTML, />Record</);
+    assert.match(HTML, />Play</);
+    assert.doesNotMatch(HTML, /id="b-stop"/);
+    assert.doesNotMatch(HTML, />Stop</);
+    const controlsAt = HTML.indexOf('<div id="controls">');
+    const controls = HTML.slice(controlsAt, HTML.indexOf("</div>", controlsAt));
+    assert.match(controls, /id="b-rec"/);
+    assert.match(controls, /id="play"/);
+    assert.doesNotMatch(controls, /id="b-stop"/);
+    assert.doesNotMatch(controls, /Save/);
+    assert.doesNotMatch(HTML, /id="b-slow"/);
+    assert.doesNotMatch(HTML, /id="b-fast"/);
+    assert.doesNotMatch(HTML, /id="b-hist"/);
+    assert.doesNotMatch(HTML, /id="b-restart"/);
+    assert.doesNotMatch(HTML, /id="play-ico"/);
+    assert.doesNotMatch(HTML, /body\.rolling #bar,body\.rolling #top\{opacity:0/);
+    assert.match(HTML, /body\.rolling #top,body\.rolling #status,body\.rolling #tools\{opacity:0;pointer-events:none\}/);
+    assert.match(SRC, /\$\("b-rec"\)\.onclick = recordToggle/);
+    assert.match(SRC, /function recordToggle\(\) \{[\s\S]*?if \(wantRec\) stopRecClick\(\);\s*else recordClick\(\)/);
+    assert.match(SRC, /scriptSave\.onclick = saveScript/);
+    assert.match(SRC, /on \? "Pause" : "Play"/);
+    assert.doesNotMatch(SRC, /label\.textContent = "Play"/);
+    const startFn = SRC.slice(SRC.indexOf("function start("), SRC.indexOf("function cancelCount("));
+    assert.doesNotMatch(startFn, /ensureRecording/);
+    assert.match(SRC, /function recordClick\(\) \{[\s\S]*?ensureRecording\(\)/);
+    assert.match(SRC, /function stopRecClick\(\) \{\s*endRec\(\);/);
+  });
+
+  test("a double tap places a cursor in the words and does not stop the camera", () => {
+    assert.match(SRC, /setAttribute\("contenteditable", "true"\)/);
+    assert.match(SRC, /caretRangeFromPoint/);
+    assert.doesNotMatch(SRC, /word-box/);
+    const caret = SRC.slice(SRC.indexOf("function placeCaret"), SRC.indexOf("function flatWords"));
+    assert.doesNotMatch(caret, /endRec\(/);
+    assert.doesNotMatch(caret, /stop\(\)/);
+    assert.match(caret, /playing \|\| countTimer \|\| scrollMode\) return/);
+    assert.match(SRC, /function saveScript\(\) \{\s*if \(textEdit\) syncCaretText\(true\)/);
+    assert.match(SRC, /function leaveCaret\(redrawNow\) \{\s*if \(!textEdit\) return;\s*syncCaretText\(true\);\s*edits\.commit\(\)/);
+    const cancel = SRC.slice(SRC.indexOf("function cancelCaret"), SRC.indexOf("function setRecLabel"));
+    assert.doesNotMatch(cancel, /edits\.commit/);
+    assert.doesNotMatch(cancel, /endRec\(/);
+    assert.match(cancel, /edits\.drop\(snap\.root\)/);
+    assert.match(cancel, /withWords\(scripts\[i\], snap\.body, snap\.parts\)/);
+    assert.match(HTML, /id="b-cancel"/);
+    assert.match(HTML, /aria-label="Cancel"/);
+    assert.match(SRC, /\$\("b-cancel"\)\.addEventListener\("pointerdown"/);
+    assert.match(SRC, /if \(textEdit\) leaveCaret\(true\)/);
+    const editMove = SRC.slice(SRC.indexOf('stage.addEventListener("pointermove"'), SRC.indexOf('stage.addEventListener("pointerup"'));
+    assert.match(editMove, /if \(textEdit\)/);
+    assert.match(editMove, /moveBy\(/);
+    assert.match(SRC, /if \(editing \|\| \(textEdit && !force\)\) return/);
+    assert.match(SRC, /apply\(!!textEdit\)/);
+    assert.match(SRC, /send: function \(body\) \{ return api\("POST", "marketing\/scripts\/edit", body\); \}/);
+  });
+
+  test("a word save uses the script edit route and does not stop the camera", () => {
+    assert.match(SRC, /send: function \(body\) \{ return api\("POST", "marketing\/scripts\/edit", body\); \}/);
+    const stopFn = SRC.slice(SRC.indexOf("function stop()"), SRC.indexOf("function hold("));
+    const begin = SRC.slice(SRC.indexOf("function beginEdit"), SRC.indexOf("function grow"));
+    const end = SRC.slice(SRC.indexOf("function endEdit"), SRC.indexOf("function putBack"));
+    assert.match(stopFn, /edits\.commit\(\)/);
+    assert.match(end, /edits\.commit\(\)/);
+    assert.doesNotMatch(stopFn, /endRec\(/);
+    assert.doesNotMatch(begin, /endRec\(/);
+    assert.doesNotMatch(end, /endRec\(/);
+    assert.match(SRC, /if \(cam\.rec && cam\.rec\.state === "recording"\) return;/);
+  });
+
+  test("Save the video sends the original file to the live site", () => {
+    assert.match(SRC, /\/api\/marketing\/shoot\/take/);
+    assert.match(SRC, /method:\s*"PUT"/);
+    assert.match(SRC, /file\.slice\(at, end\)/);
+    assert.match(SRC, /x-shoot-film/);
+    assert.match(SRC, /\$\("b-save"\)\.onclick = saveClick/);
+    assert.match(SRC, /setTransform\(-1/);
+    assert.doesNotMatch(SRC, /8787/);
+    assert.doesNotMatch(SRC, /ffmpeg/);
+  });
+});
+
+describe("teleprompter film look", () => {
+  const CSS = fs.readFileSync(path.join(APP, "teleprompter.css"), "utf8");
+
+  test("the red line is the top reading point, not the middle", () => {
+    const T = load();
+    assert.equal(T.readingLinePx(0), 8);
+    assert.equal(T.readingLinePx(47), 55);
+    assert.ok(T.readingLineTop(47, 48) < 844 * 0.2);
+    assert.ok(T.readingLineTop(0, 48) < 400);
+  });
+
+  test("pause keeps the scroll time", () => {
+    const T = load();
+    assert.equal(T.pausePlace(4.25), 4.25);
+    assert.notEqual(T.pausePlace(4.25), 0);
+    const stopFn = SRC.slice(SRC.indexOf("function stop()"), SRC.indexOf("function hold("));
+    assert.match(stopFn, /t = pausePlace\(t\)/);
+  });
+
+  test("sideways words sit on the front-camera half", () => {
+    const T = load();
+    assert.equal(T.cameraWordSide({ type: "landscape-primary" }), "left");
+    assert.equal(T.cameraWordSide({ type: "landscape-secondary" }), "right");
+    assert.equal(T.cameraWordSide({ type: "portrait-primary" }), "full");
+    assert.equal(T.cameraWordSide({ angle: 90 }), "left");
+    assert.equal(T.cameraWordSide({ angle: -90 }), "right");
+    assert.equal(T.cameraWordSide({ angle: 270 }), "right");
+    assert.equal(T.cameraWordSide({ landscape: true }), "left");
+    assert.equal(T.cameraWordSide({}), "full");
+    assert.equal(T.cameraWordSide({ type: "landscape-secondary", angle: 90 }), "right");
+    assert.match(CSS, /body\.cam-side-left #content/);
+    assert.match(CSS, /width: 50%/);
+    assert.match(SRC, /tp-portrait/);
+  });
+
+  test("the two film buttons are glass, the shade is a little lighter, and speed is a tiny control", () => {
+    assert.match(HTML, /id="wpm-down"/);
+    assert.match(HTML, /id="wpm-up"/);
+    assert.match(HTML, /aria-label="Slower"/);
+    assert.match(HTML, /aria-label="Faster"/);
+    assert.match(CSS, /#play/);
+    assert.match(CSS, /#b-rec/);
+    assert.doesNotMatch(CSS, /#b-stop/);
+    assert.match(CSS, /backdrop-filter:\s*blur\(16px\)/);
+    assert.match(CSS, /rgba\(12,\s*14,\s*18,\s*0\.28\)/);
+    assert.match(CSS, /rgba\(0,\s*0,\s*0,\s*0\.72\)/);
+    assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.8\)/);
+    assert.match(CSS, /#b-script-save,\s*#b-save \{\s*display: none !important;/);
+    assert.match(CSS, /body\.wording #controls \{\s*display: none !important;/);
+    assert.match(CSS, /body\.wording #b-cancel \{\s*display: grid;/);
+    assert.match(CSS, /#b-cancel \{\s*display: none;/);
+    assert.match(CSS, /#controls \{\s*grid-template-columns: repeat\(2, 1fr\);/);
+    assert.match(SRC, /\$\("wpm-down"\)\.onclick/);
+    assert.match(SRC, /\$\("wpm-up"\)\.onclick/);
+    assert.match(SRC, /LS\.set\("wpm", S\.wpm\)/);
+  });
+
+  test("a saved speed stays until he changes it", () => {
+    const T = load();
+    assert.equal(T.storedWpm(null, 150), 150);
+    assert.equal(T.storedWpm("", 150), 150);
+    assert.equal(T.storedWpm("nope", 150), 150);
+    assert.equal(T.storedWpm(180, 150), 180);
+    assert.equal(T.storedWpm("165", 150), 165);
+    assert.equal(T.storedWpm(153, 150), 155);
+    assert.equal(T.storedWpm(10, 150), 80);
+    assert.equal(T.storedWpm(9999, 150), 260);
+  });
+
+  test("no per-word underline, and the portrait bottom third fades", () => {
+    assert.match(CSS, /#content \.w\.start[\s\S]*box-shadow:\s*none/);
+    assert.match(CSS, /#content \.w\.read[\s\S]*color:\s*inherit/);
+    assert.doesNotMatch(SRC, /classList\.toggle\("read"/);
+    assert.doesNotMatch(SRC, /classList\.toggle\("start"/);
+    assert.match(HTML, /id="script-fade"/);
+    assert.match(CSS, /body\.tp-portrait #script-fade/);
+    assert.match(CSS, /height:\s*33%/);
+    assert.match(CSS, /body\.cam-side-left #script-fade[\s\S]*display:\s*none/);
+  });
+
+  test("volume up is faster and volume down is slower, only when the level actually moves", () => {
+    const T = load();
+    assert.equal(T.volumeKeyDir("VolumeUp", ""), 1);
+    assert.equal(T.volumeKeyDir("VolumeDown", ""), -1);
+    assert.equal(T.volumeKeyDir("", "AudioVolumeUp"), 1);
+    assert.equal(T.volumeKeyDir("", "AudioVolumeDown"), -1);
+    assert.equal(T.volumeKeyDir(" ", ""), 0);
+    assert.equal(T.volumeLevelDir(0.4, 0.55), 1);
+    assert.equal(T.volumeLevelDir(0.55, 0.4), -1);
+    assert.equal(T.volumeLevelDir(0.5, 0.5), 0);
+    assert.equal(T.volumeLevelDir(null, 0.5), 0);
+    assert.match(SRC, /volumechange/);
+    assert.match(SRC, /volumeKeyDir\(e\.key, e\.code\)/);
   });
 });

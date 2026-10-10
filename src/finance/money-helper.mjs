@@ -32,6 +32,11 @@
 //                              a no-money agent row only
 //   transfer PROPOSALS         W5's proposeTransfer (src/finance/money-transfer-seam.mjs):
 //                              a money_agent_tasks row at needs_approval, nothing else
+//   a pasted bank DECLINE      recordDecline (src/blueprint/decline-defense.mjs), the
+//                              same path the Capital Blueprint screen's paste uses:
+//                              one decline per letter, its plan, one ops task. Paid
+//                              Blueprint buyers only (the brain checks; recordDecline
+//                              checks again). The letter saved is the client's MASKED paste.
 //   a STOP                     opt_outs (the same recordOptOut the SMS inbound path
 //                              uses) + money_helper_threads
 // It never moves money and never sends a text.
@@ -45,6 +50,8 @@ import { askForPerson as defaultAskForPerson } from "./money-agent.mjs";
 import { createTask as defaultCreateTask } from "../lib/create-task.mjs";
 import { recordOptOut as defaultRecordOptOut } from "../lib/opt-out.mjs";
 import { proposeTransfer as defaultProposeTransfer } from "./money-transfer-seam.mjs";
+import { recordDecline as defaultRecordDecline } from "../blueprint/decline-defense.mjs";
+import { isCapitalBlueprintBuyer } from "../blueprint/coach-exception.mjs";
 import { recordShadow as defaultRecordShadow, recordRun as defaultRecordRun } from "../agents/shadow-log.mjs";
 import { byCode } from "../agents/registry.mjs";
 import { callModel as defaultCallModel } from "../agents/model.mjs";
@@ -53,6 +60,7 @@ import {
   AGENT_CODE, AGENT_NAME, HELPER_PROMPT, HELPER_GUARDRAILS, BRAIN_AI,
   decideTurn, readRecentTurns, runnerMode, classifyInbound, addDaysIso
 } from "./money-agent-ai.mjs";
+import { readDeclinePaste, MAX_PASTE_CHARS } from "./money-decline.mjs";
 
 export const BRIDGE_NAME = "money-helper-mac";
 /** A heartbeat younger than this means the Mac runner is on. It beats every 15 s. */
@@ -149,8 +157,18 @@ export async function readTask(db, { orgId, clientId, taskId }) {
 }
 
 /**
+ * Has this client paid for the Capital Blueprint? One read-only SELECT
+ * (src/blueprint/coach-exception.mjs, the same rule the decline store gates on).
+ * true | false | null — null when the read itself fails, which the helper treats as
+ * "not a buyer": a decline is never saved on a guess.
+ */
+export async function readBlueprintBuyer(db, { orgId, clientId }) {
+  try { return await isCapitalBlueprintBuyer(db, { orgId, clientId }); } catch { return null; }
+}
+
+/**
  * readContext(db, { orgId, clientId, asOf, env, helperTables, extraReads }) →
- *   { today, asOf, overview, plans, pins, pinSources, agentPins, openTasks, extras } | null
+ *   { today, asOf, overview, plans, pins, pinSources, agentPins, openTasks, extras, blueprintBuyer } | null
  *
  * The same reads the money pages make: the overview (src/finance/money-overview.mjs),
  * the plan (src/finance/plan-sources/), Clarity plans (src/finance/clarity-payments.mjs),
@@ -176,10 +194,11 @@ export async function readContext(db, { orgId, clientId, asOf = new Date(), env 
     if (!r || typeof r.read !== "function" || !r.name) continue;
     try { extras[r.name] = await r.read(db, { orgId, clientId, asOf: now, env, today }); } catch { /* left out, never guessed */ }
   }
+  const blueprintBuyer = await readBlueprintBuyer(db, { orgId, clientId });
   return {
     today, asOf: now.toISOString(), overview, plans,
     pins: list(plan.pins).filter((p) => p.source !== "agent"), pinSources: plan.sources,
-    agentPins, openTasks, extras
+    agentPins, openTasks, extras, blueprintBuyer
   };
 }
 
@@ -231,11 +250,15 @@ export async function turnsToday(db, { orgId, clientId, now = new Date() }) {
 }
 
 export async function insertTurn(db, { orgId, clientId, kind, actor, staffId = null, input, taskId = null, status }) {
+  /* A pasted bank decline is stored MASKED (the client's own numbers hidden the
+     way decline-analyze hides them) and with its line breaks, which the reader
+     finds a reason list by. Everything else is stored as before. */
+  const paste = kind === "message" ? readDeclinePaste(input) : null;
   const r = await db.query(
     `INSERT INTO money_helper_turns (org_id, client_id, kind, actor, staff_id, input, task_id, status, claimed_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $8 = 'running' THEN now() ELSE NULL END)
      RETURNING ${TURN_COLS}`,
-    [orgId, clientId, kind, actor, staffId, clip(input, MAX_INPUT_CHARS), taskId, status]
+    [orgId, clientId, kind, actor, staffId, paste ? paste.text : clip(input, MAX_INPUT_CHARS), taskId, status]
   );
   return r.rows[0];
 }
@@ -332,6 +355,7 @@ export function actionLabel(a) {
     case "create_csm_task": return "Your client success manager has a task to reach out";
     case "mark_task_in_progress": return `Marked in progress: ${a.title || "your task"}`;
     case "propose_transfer": return `Transfer proposal: ${dollars(a.amount_cents)} to ${a.to_name}, from ${a.from_name} — needs your approval`;
+    case "record_decline": return `Saved your ${a.bank} decline. Your Fundhub funding team has the second look`;
     case "halt": return a.reason === "stop" ? "Texts stopped. The helper will not text you." : "The helper stopped. A person will follow up.";
     default: return KIND_WORDS[a.pin_kind] || "Done";
   }
@@ -341,16 +365,19 @@ export function actionLabel(a) {
 const TO_KIND = { depository: "bank_account", credit: "card", loan: "loan" };
 
 /**
- * executeActions(db, { orgId, clientId, turnId, todayIso, actor, staffId, actions, dry, deps }) → results
+ * executeActions(db, { orgId, clientId, turnId, todayIso, actor, staffId, actions, dry, declineText, deps }) → results
  * dry:true (the role-play) writes nothing and returns status 'would_do'.
- * deps: { createTask, askForPerson, proposeTransfer }.
+ * declineText: the client's MASKED pasted letter (decideTurn's decline.text) — what a
+ * record_decline action saves. The model never supplies it.
+ * deps: { createTask, askForPerson, proposeTransfer, recordDecline }.
  */
 export async function executeActions(db, {
-  orgId, clientId, turnId, todayIso, actor = "client", staffId = null, actions = [], dry = false, deps = {}
+  orgId, clientId, turnId, todayIso, actor = "client", staffId = null, actions = [], dry = false, declineText = null, deps = {}
 } = {}) {
   const createTask = deps.createTask || defaultCreateTask;
   const ask = deps.askForPerson || defaultAskForPerson;
   const propose = deps.proposeTransfer || defaultProposeTransfer;
+  const record = deps.recordDecline || defaultRecordDecline;
   const out = [];
   let n = 0;
   for (const a of list(actions)) {
@@ -422,6 +449,28 @@ export async function executeActions(db, {
         out.push(r && r.ok
           ? { ...base, status: r.status || "needs_approval", ref_id: r.proposalId || null }
           : { ...base, status: "failed", error: (r && r.reason) || "not_saved" });
+      } else if (a.type === "record_decline") {
+        /* The Capital Blueprint's own paste path: one decline per letter (the same
+           letter again comes back as a duplicate, not a second decline), its plan,
+           and one ops task on the funding advisor's queue. recordDecline checks the
+           paid Blueprint again, caps a client at its daily pastes, and masks the
+           letter again. Nothing here calls a bank, sends a text or moves money. */
+        if (!declineText) {
+          out.push({ ...base, status: "failed", error: "no_letter" });
+        } else {
+          const byStaff = actor === "staff";
+          const r = await record(db, {
+            orgId, clientId,
+            by: byStaff ? { kind: "staff", staffId } : { kind: "client" },
+            source: byStaff ? "staff" : "client_paste",
+            input: { text: declineText, bank: a.bank, product: a.product || null }
+          });
+          if (r && r.ok) {
+            out.push({ ...base, status: r.duplicate ? "skipped" : "done", ref_id: r.decline_id || null, ...(r.duplicate ? { label: `Your ${a.bank} decline was already saved` } : {}) });
+          } else {
+            out.push({ ...base, status: "failed", error: (r && r.error) || "not_saved" });
+          }
+        }
       } else {
         out.push({ ...base, status: "skipped" });
       }
@@ -482,7 +531,7 @@ export async function processTurn(db, turn, {
 
   const results = await executeActions(db, {
     orgId, clientId, turnId: turn.id, todayIso: context.today, actor: turn.actor, staffId: turn.staff_id || null,
-    actions: decision.actions, deps
+    actions: decision.actions, declineText: decision.decline ? decision.decline.text : null, deps
   });
   if (decision.halt) {
     await haltThread(db, { orgId, clientId, reason: decision.halt });
@@ -575,7 +624,12 @@ export async function routeTurn(db, {
 export async function submitMessage(db, { orgId, clientId, input, actor, staffId = null, env = process.env, now = new Date(), deps = {}, callModelFn } = {}) {
   const words = typeof input === "string" ? input.trim() : "";
   if (!words) return { ok: false, error: "message_required", message: "Type a message first." };
-  if (words.length > MAX_INPUT_CHARS) return { ok: false, error: "message_too_long", message: `Keep it under ${MAX_INPUT_CHARS} characters.` };
+  /* A chat message is short. A bank's decline letter is not, and the helper reads it
+     (a letter up to what decline defense accepts, MAX_PASTE_CHARS), so a paste that
+     really is a decline may be longer. Anything else stays under the chat cap. */
+  if (words.length > MAX_INPUT_CHARS && !(words.length <= MAX_PASTE_CHARS && readDeclinePaste(words))) {
+    return { ok: false, error: "message_too_long", message: `Keep it under ${MAX_INPUT_CHARS} characters.` };
+  }
   const agent = await loadAgent(db, { orgId });
   if (!helperIsOn(agent)) return { ok: false, error: "helper_off", message: "The money helper is not switched on." };
   const state = await threadState(db, { orgId, clientId });

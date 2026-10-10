@@ -16,7 +16,7 @@
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
 //   * a signed-in CLIENT reads and acts on their own file only. client_id comes
 //     off the session; one in the query or body is never read on this branch.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) + requireClientInOrg on client_id.
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) + requireClientInOrg on client_id.
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
@@ -63,7 +63,7 @@ async function scope(req, res, { database, gate, body }) {
   }
 
   const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
   const qid = body ? body.client_id : req.query && req.query.client_id;
   if (!isUuid(qid)) {
     res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

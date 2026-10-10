@@ -5,6 +5,7 @@ import { gmailConfigFromEnv, createGmailClientFromConfig } from "../gmail/index.
 import { plainTextFromMessage } from "../gmail/client.mjs";
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
 import { chrisPulseSmsTo } from "../pulse/notify.mjs";
+import { inTextWindow, HELD } from "../pulse/quiet-hours.mjs";
 import {
   BLAKE_GMAIL_QUERY,
   PROCESSED_LABEL,
@@ -26,7 +27,8 @@ export async function sendChrisLeadSms({
   phone,
   env = process.env,
   dryRun = false,
-  sendImpl = sendSms
+  sendImpl = sendSms,
+  now = new Date()
 } = {}) {
   const body = formatChrisLeadSms({ name, phone });
   const to = chrisPulseSmsTo(env);
@@ -34,6 +36,10 @@ export async function sendChrisLeadSms({
     return { sent: false, reason: "PULSE_SMS_TO unset", body, to: null };
   }
   if (dryRun) return { sent: false, reason: "dry_run", body, to };
+  /* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md): Chris's number, so nothing goes
+     out from 10 p.m. to 6 a.m. Arizona time. Not sent means the mail is not labeled, so the first poll
+     inside the window texts it (8 hours of hold is inside the 12 hour SEND_MAX_AGE_MS). */
+  if (!inTextWindow(now)) return { sent: false, reason: HELD, body, to };
   const result = await sendImpl({ to, body, channel: "sms" }, { env });
   return { sent: result?.status === "sent", reason: result?.error || null, body, to, result };
 }
@@ -42,7 +48,8 @@ export async function watchBlakeLeads({
   env = process.env,
   dryRun = false,
   gmailClient,
-  sendImpl = sendSms
+  sendImpl = sendSms,
+  now
 } = {}) {
   const to = chrisPulseSmsTo(env);
   if (!to) {
@@ -95,7 +102,8 @@ export async function watchBlakeLeads({
       phone: lead.phone,
       env,
       dryRun,
-      sendImpl
+      sendImpl,
+      ...(now ? { now } : {})
     });
     if (out.sent || dryRun) {
       await mark();

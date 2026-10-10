@@ -14,6 +14,7 @@
 import { send as sendNtfy } from "../messaging/providers/ntfy.mjs";
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
 import { chrisPulseSmsTo, normalizeUsNumber } from "../pulse/notify.mjs";
+import { inTextWindow, HELD, HELD_REASON } from "../pulse/quiet-hours.mjs";
 
 export const AD_VIDEO_SMS_TO_ENV = "AD_VIDEO_SMS_TO";
 
@@ -37,6 +38,15 @@ export function smsBody(notification = {}) {
 export async function send(message = {}, options = {}) {
   const env = options.env || process.env;
   const out = { ntfy: null, sms: null };
+
+  /* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). Both roads ring Chris's own
+     phone, so outside 6 a.m. to 10 p.m. Arizona time neither one is used. The answer is not "sent", so
+     every caller keeps the buzz for later: the ad pipeline's renotify() tries again inside a day, and the
+     marketing buzz queue tries again on a later pass. options.now is the clock (tests); default: now. */
+  if (!inTextWindow(options.now || new Date())) {
+    console.log(`[ad-video-notify] held: outside 6 a.m. to 10 p.m. Arizona time | sms: not sent | ntfy: not sent`);
+    return { ok: false, status: HELD, channels: { ntfy: false, sms: false }, error: HELD_REASON };
+  }
 
   try { out.ntfy = await sendNtfy(message, options); }
   catch (err) { out.ntfy = { ok: false, status: "failed", error: String((err && err.message) || err) }; }

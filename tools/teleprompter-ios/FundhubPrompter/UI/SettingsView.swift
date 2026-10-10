@@ -42,14 +42,11 @@ struct SettingsView: View {
                     Picker("Quality", selection: $model.settings.quality) {
                         ForEach(PrompterSettings.VideoQuality.allCases) { Text($0.label).tag($0) }
                     }
-                    Picker("Frames a second", selection: $model.settings.fps) {
-                        Text("30 — Meta's normal").tag(30)
-                        Text("60 — smoother").tag(60)
-                    }
+                    Text("Frame rate: 60, or 30 if that is all the camera can do. The front camera stays a mirror. The back camera does not.")
+                        .foregroundStyle(.secondary)
                     Picker("Video format", selection: $model.settings.codec) {
                         ForEach(PrompterSettings.VideoCodecChoice.allCases) { Text($0.label).tag($0) }
                     }
-                    Toggle("Record mirrored (like the preview)", isOn: $model.settings.recordMirrored)
                     Picker("Steady video", selection: $model.settings.stabilization) {
                         ForEach(PrompterSettings.Steady.allCases) { Text($0.label).tag($0) }
                     }
@@ -61,7 +58,7 @@ struct SettingsView: View {
                     if !camera.summary.isEmpty { Text("Right now: \(camera.summary)").foregroundStyle(.secondary) }
                     if let s = camera.shortfall { Text(s).foregroundStyle(Brand.bad) }
                 } header: { Text("Camera") } footer: {
-                    Text("Pick 4K for VSLs, testimonials and portal videos (owner rule: they must be 4K). 1080p is fine for ads. Lock brightness after you light the room.")
+                    Text("The front camera and the back camera film at 1080p. A 1080p picture is not called 4K. The front preview stays a mirror. Lock brightness after you light the room.")
                 }
 
                 Section {

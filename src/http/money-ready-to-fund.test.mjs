@@ -89,7 +89,7 @@ describe("/api/money/ready-to-fund", () => {
     assert.equal(other.res.statusCode, 404);
     const noId = await call({ method: "GET", query: {} }, staffP("admin"));
     assert.equal(noId.res.statusCode, 400);
-    for (const role of ["closer", "csm", "setter"]) {
+    for (const role of ["setter", "csm", "setter"]) {
       const { res, calls } = await call({ method: "POST", body: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.request, undefined, role);

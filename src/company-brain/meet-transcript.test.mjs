@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pairMeetTranscripts, processOrgMeetWords, sweepMeetTranscripts } from "./meet-transcript.mjs";
+import { applyMeetWords, pairMeetTranscripts, processOrgMeetWords, sweepMeetTranscripts } from "./meet-transcript.mjs";
 import { WHISPER_CREDITS_ERROR } from "./transcribe.mjs";
 import { SWEEP_CRON } from "../workflows/meet-transcript-sweeper.mjs";
 
@@ -164,6 +164,9 @@ test("sweepMeetTranscripts stops other orgs after a credit miss", async () => {
   let orgsSeen = 0;
   const db = {
     async query(sql) {
+      if (/UNION/i.test(sql) && /brain_drive_sync/i.test(sql)) {
+        return { rows: [{ org_id: ORG }, { org_id: "00000000-0000-4000-8000-000000000002" }] };
+      }
       if (/SELECT DISTINCT org_id FROM brain_files/i.test(sql)) {
         return { rows: [{ org_id: ORG }, { org_id: "00000000-0000-4000-8000-000000000002" }] };
       }
@@ -191,6 +194,7 @@ test("sweepMeetTranscripts stops other orgs after a credit miss", async () => {
   };
   const summary = await sweepMeetTranscripts(db, {
     env: { OPENAI_API_KEY: "sk-test" },
+    syncDrive: async () => ({ ok: true }),
     client: {
       async getFile() { return { size: 1_000_000 }; },
       async downloadMedia() { return Buffer.from("ID3fake"); }
@@ -212,6 +216,31 @@ test("sweepMeetTranscripts stops other orgs after a credit miss", async () => {
 
 test("Meet word sweeper stays on a ten-minute keep-alive", () => {
   assert.equal(SWEEP_CRON, "*/10 * * * *");
+});
+
+test("applyMeetWords still stamps the sales call when Brain embed is down", async () => {
+  const updates = [];
+  const db = {
+    async query(sql, params) {
+      updates.push({ sql, params });
+      return { rows: [{ id: "co-1" }] };
+    }
+  };
+  const out = await applyMeetWords(db, {
+    orgId: ORG,
+    extracted: {
+      fileId: "drv-rec",
+      name: "Meet Recording - Jane.mp4",
+      webViewLink: "https://drive.google.com/file/d/rec",
+      clientId: CLIENT
+    },
+    text: "three thousand is a start",
+    upsert: async () => ({ ok: false, reason: "embed_failed" })
+  });
+  assert.equal(out.ok, true);
+  assert.equal(out.reason, "sales_words_saved_brain_embed_skipped");
+  assert.ok(updates.some((u) => /SET transcript/i.test(u.sql)));
+  assert.ok(updates.some((u) => /needs_transcription = false/i.test(u.sql)));
 });
 
 test("course videos are not whispered", async () => {

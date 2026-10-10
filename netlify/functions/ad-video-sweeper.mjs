@@ -16,6 +16,9 @@
 // Read netlify/functions/ad-video-worker-background.mjs for the real work.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
+
 /* Every five minutes, matching the SWEEP_CRON the workflow module documents.
 
    THE SCHEDULE IS DECLARED IN netlify.toml, NOT HERE — same reason as the other
@@ -35,7 +38,9 @@ export async function handler() {
        and a missing variable is not one — it is a thing to read in the log. */
     const why = !base ? "no site URL in the environment" : "AD_VIDEO_WORKER_SECRET is not set";
     console.error(`[ad-video-sweeper] did not start the worker: ${why}`);
-    return new Response(JSON.stringify({ ok: false, started: false, error: why }), {
+    const missed = { ok: false, started: false, error: why };
+    await noteScheduledRun(db, "ad-video-sweeper", missed);
+    return new Response(JSON.stringify(missed), {
       status: 200, headers: { "content-type": "application/json" }
     });
   }
@@ -57,7 +62,9 @@ export async function handler() {
   }
 
   if (error) console.error(`[ad-video-sweeper] ${error}`);
-  return new Response(JSON.stringify({ ok: !error, started, error }), {
+  const result = { ok: !error, started, error };
+  await noteScheduledRun(db, "ad-video-sweeper", result);
+  return new Response(JSON.stringify(result), {
     status: 200, headers: { "content-type": "application/json" }
   });
 }

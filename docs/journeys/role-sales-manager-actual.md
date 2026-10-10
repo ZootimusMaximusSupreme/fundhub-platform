@@ -20,7 +20,7 @@ flowchart TD
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 6 routes]
     CAN --> A_banking[banking — 6 routes]
-    CAN --> A_blueprint[blueprint — 1 route]
+    CAN --> A_blueprint[blueprint — 2 routes]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
@@ -35,7 +35,7 @@ flowchart TD
     CAN --> A_hiring[Hiring — 1 route]
     CAN --> A_journeys[journeys — 1 route]
     CAN --> A_merchant[merchant — 1 route]
-    CAN --> A_money[money — 15 routes]
+    CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 18 routes]
     CAN --> A_read[Reading data — 57 routes]
@@ -78,7 +78,7 @@ flowchart TD
 
 ## What they can reach
 
-**201 of 320 routes.**
+**204 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -97,11 +97,12 @@ flowchart TD
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/banking/link-exchange` | POST | owner, admin, sales_manager |
-| `/api/banking/link-token` | POST | owner, admin, sales_manager |
+| `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
-| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager |
-| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
+| `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
@@ -171,21 +172,23 @@ flowchart TD
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/money/accounts` | GET, POST | owner, admin, sales_manager |
-| `/api/money/banks` | GET, POST | owner, admin, sales_manager |
-| `/api/money/connections` | GET, POST | owner, admin, sales_manager |
-| `/api/money/credit` | GET | owner, admin, sales_manager |
-| `/api/money/fundability` | GET | owner, admin, sales_manager |
-| `/api/money/helper` | GET, POST | owner, admin, sales_manager |
-| `/api/money/overview` | GET | owner, admin, sales_manager |
-| `/api/money/payments` | GET, POST | owner, admin, sales_manager |
-| `/api/money/plan` | GET, POST | owner, admin, sales_manager |
-| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager |
-| `/api/money/setup` | GET, POST | owner, admin, sales_manager |
-| `/api/money/strategy` | GET, POST | owner, admin, sales_manager |
-| `/api/money/tasks` | GET, POST | owner, admin, sales_manager |
-| `/api/money/transfers` | GET, POST | owner, admin, sales_manager |
-| `/api/money/trends` | GET | owner, admin, sales_manager |
+| `/api/money/accounts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/alerts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/banks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/connections` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/credit` | GET | owner, admin, sales_manager, closer |
+| `/api/money/fundability` | GET | owner, admin, sales_manager, closer |
+| `/api/money/helper` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/overview` | GET | owner, admin, sales_manager, closer |
+| `/api/money/payments` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/plan` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/setup` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/strategy` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/tasks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/transfers` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/trends` | GET | owner, admin, sales_manager, closer |
+| `/api/money/vault` | GET, POST | owner, admin, sales_manager, closer |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | staff, client |
@@ -293,7 +296,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**119 of 320 routes.**
+**119 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

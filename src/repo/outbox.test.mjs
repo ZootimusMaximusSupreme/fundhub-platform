@@ -4,8 +4,12 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
-  enqueueRepoWrite, claimOutbox, classify, OutboxError, OUTBOX_LOCK_SQL, LEASE_MINUTES, MAX_TRIES
+  enqueueRepoWrite, claimOutbox, classify, OutboxError, OUTBOX_LOCK_SQL, LEASE_MINUTES, MAX_TRIES,
+  applyOutboxLocal
 } from "./outbox.mjs";
 import { RepoPathError } from "./allow-list.mjs";
 import { EditOpError } from "./edit-ops.mjs";
@@ -192,5 +196,63 @@ describe("wakeWorker (after the save commits)", () => {
     assert.match(down.reason, /could not be reached/);
     const noUrl = await wakeWorker({ MARKETING_WORKER_SECRET: "s" }, { fetchImpl: async () => ({ status: 202 }) });
     assert.equal(noUrl.skipped, "no_url");
+  });
+});
+
+describe("applyOutboxLocal", () => {
+  test("writes a waiting replace onto the checkout and leaves the row waiting", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "outbox-local-"));
+    const file = "marketing/ads/scripts/machine/on-demand/01-hello.md";
+    const calls = [];
+    const db = {
+      query: async (sql) => {
+        calls.push(String(sql));
+        return { rows: [{ id: "7", path: file, mode: "replace", content: "Say this line.\n", edit: null }] };
+      }
+    };
+    const out = await applyOutboxLocal(db, { root });
+    assert.deepEqual(out.written, [file]);
+    assert.equal(fs.readFileSync(path.join(root, file), "utf8"), "Say this line.\n");
+    assert.match(calls[0], /committed_sha IS NULL/);
+    assert.equal(calls.some((sql) => /UPDATE|INSERT|DELETE/i.test(sql)), false);
+    const again = await applyOutboxLocal(db, { root });
+    assert.deepEqual(again.unchanged, [file]);
+    assert.deepEqual(again.written, []);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test("an edit lands on the file already in the checkout", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "outbox-local-"));
+    const file = "marketing/ads/angles.json";
+    fs.mkdirSync(path.join(root, "marketing/ads"), { recursive: true });
+    fs.writeFileSync(path.join(root, file), "[]\n");
+    const db = {
+      query: async () => ({ rows: [{
+        id: 3, path: file, mode: "edit", content: null,
+        edit: { op: "angles_add", key: "broker-burn", name: "Broker Burn", notes: "one line" }
+      }] })
+    };
+    const out = await applyOutboxLocal(db, { root });
+    assert.deepEqual(out.written, [file]);
+    const doc = JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));
+    assert.equal(doc[0].key, "broker-burn");
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test("a path outside the allow-list is not written", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "outbox-local-"));
+    const db = {
+      query: async () => ({ rows: [{ id: 1, path: "netlify.toml", mode: "replace", content: "nope\n", edit: null }] })
+    };
+    const out = await applyOutboxLocal(db, { root });
+    assert.equal(out.written.length, 0);
+    assert.equal(out.rejected.length, 1);
+    assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test("nothing waiting", async () => {
+    const out = await applyOutboxLocal({ query: async () => ({ rows: [] }) }, { root: os.tmpdir() });
+    assert.equal(out.skipped, "empty");
   });
 });

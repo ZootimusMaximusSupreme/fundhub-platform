@@ -204,7 +204,7 @@ describe("/api/money/accounts — staff", () => {
   });
 
   test("a staff role outside FINANCE is refused", async () => {
-    const { res } = await call(staffPrincipal("closer"), { method: "GET", query: { client_id: MINE } });
+    const { res } = await call(staffPrincipal("setter"), { method: "GET", query: { client_id: MINE } });
     assert.equal(res.statusCode, 403);
   });
 

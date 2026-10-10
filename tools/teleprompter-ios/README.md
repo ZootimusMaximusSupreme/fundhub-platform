@@ -46,11 +46,10 @@ The iPad works the same way: plug it in, pick it at the top, click **Run**.
 
 | Choice | What it does | Why |
 |---|---|---|
-| Quality: **4K** or **1080p** | Picks the camera format with that exact size. Default 4K. | Owner law: VSLs, testimonials and portal videos are 4K (`.claude/rules/video-4k-unless-ad.md`). Ads may be 1080p. If the camera cannot give 4K, the screen says so in red ("This camera tops out at …"). It never upscales. |
-| **30** or **60** frames a second | Locks a fixed frame rate (`activeVideoMinFrameDuration` = `activeVideoMaxFrameDuration`). | Meta's ad specs ask for a fixed frame rate. Reels accept 24 to 60. |
-| Video format: **H.264** (default) or **HEVC** | Sets the codec on the recording. | Meta's ads guide names "H.264 compression". Reels also accept H.265 (HEVC). H.264 is the safe default for ads. |
-| Bitrate | 4K: 50 Mbit/s at 30 fps, 75 at 60. 1080p: 20 at 30, 30 at 60. HEVC uses two thirds of that. | Meta publishes no bitrate number and re-encodes every upload. This is our pick: well above Apple's default so Meta and the editor start from a clean master. Set only when the phone lists the key as allowed. |
-| **Record mirrored** (default on) | Saves the picture flipped like the preview. | Owner need. The pipeline's `flip_horizontal` setting flips it back (spec §8.1). |
+| Quality: **4K 60** or **1080p 60** | Picks that exact size at 60 fps. Default 4K. | Apple's iPhone 17 Pro Max front camera: 4K Dolby Vision at 24, 25, 30, or 60 fps, and 1080p Dolby Vision at 25, 30, or 60 fps (https://support.apple.com/en-us/125091). 4K is for VSLs and thank-you videos. 1080p is for ads. Slow motion (1080p at 120) is not used. If the camera cannot give the size, the screen says so in red. It never upscales. |
+| Frame rate | Locks 60 fps (`activeVideoMinFrameDuration` = `activeVideoMaxFrameDuration`). | 60 is the front camera's top normal rate. A format that can also do 120 is not chosen when a 60 fps format exists. |
+| Video format: **HEVC** (default) or **H.264** | Sets the codec only. No bitrate cap. | HEVC is the high-quality default (Dolby Vision when the format supports HDR). Apple publishes no bitrate, so the app does not invent one. The file is not re-encoded smaller. ProRes 4K60 needs an external drive, so the app does not ask for it. |
+| **Mirrored save** (always on) | The preview is a mirror, and the saved file stays that way. | Nothing flips the file after record. |
 | **Steady video**: Off, Normal, Extra smooth | Sets video stabilization. | Picks a format that supports it when it can. |
 | **Lock brightness** | Locks exposure at what the camera sees now. | Light the room first, then lock it. |
 | Take name | Each take is saved to Photos named from the server's `take_file_name` (`{Offer} Ad {n} — {angle} Take {k}.mp4`, `marketing/ads/NAMING.md`). | The camera writes `.mov`; the app copies it into an `.mp4` box with no re-encode (passthrough) so the name and the file agree. If that copy fails, it keeps the `.mov` with the same name. |
@@ -130,9 +129,9 @@ demo-only arguments for screenshots: `-FundhubDemoOpen` (open script 1),
 
 The simulator has no camera. These need the iPhone 17 Pro Max:
 
-- The front camera really gives 4K at 30 and 60 fps (the app says so in red if not).
-- The bitrate key is accepted (the summary line under the script name shows what the camera is set to).
-- Mirrored recording, steady video and the brightness lock look right in a take.
+- The front camera really gives 4K (3840×2160) at 60 fps and 1080p (1920×1080) at 60 fps (the app says so in red if the size is missing). It does not film the 120 fps slow-motion mode.
+- The summary line under the script name shows the size, 60 fps, HEVC, and mirrored. No bitrate number is set.
+- The saved take matches the mirror. Steady video and the brightness lock look right.
 - The take lands in Photos with its take name, as `.mp4`, with sound (AAC; Meta wants stereo 128 kbps+).
 - A real Bluetooth remote's buttons, and Learn remote.
 - The iPad behind beam-splitter glass reads correctly with Flip left-right on.

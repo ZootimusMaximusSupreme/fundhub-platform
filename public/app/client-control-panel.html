@@ -2563,7 +2563,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var role = "";
     try { role = String(localStorage.getItem("fh_role") || "").trim().toLowerCase(); }
     catch (e) { role = ""; }
-    var may = role === "owner" || role === "admin" || role === "sales_manager";
+    var may = role === "owner" || role === "admin" || role === "sales_manager" || role === "closer";
     if (!id || !may) { a.hidden = true; return; }
     var url = "financeos.html?client_id=" + encodeURIComponent(id);
     a.setAttribute("href", url);

@@ -2,15 +2,19 @@
 // POST /api/money/banks  { action, client_id, ... }
 //
 // FinanceOS bank strategy (wave 5, unit W2): banks near you to open an account
-// at, the card stacking order, the next funding round, and the bank
+// at, the card stacking order, the next funding sequence, and the bank
 // relationship tracker. The rules and their sources live in
 // src/finance/bank-strategy.mjs; this file gates, reads and writes.
+//
+// RESPONSE: the next funding sequence is `next_sequence`. It was `next_round`.
+// The old name is still sent, the same object, as an alias kept for ONE RELEASE
+// so the current screen keeps working. New readers use `next_sequence`.
 //
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
 //   * a signed-in CLIENT reads their own file only. client_id comes off the
 //     session; one in the query or body is never read on this branch. A client
 //     cannot POST — every action here is staff's.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) (owner / admin / sales_manager) +
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) (owner / admin / sales_manager) +
 //     requireClientInOrg on client_id. The role check is its own call;
 //     requireAuth drops a `roles` key (CLAUDE.md §12).
 //
@@ -20,7 +24,8 @@
 //   open_account         { relationship_id | bank + account_kind, opened_on, container_id? }
 //   record_deposit       { relationship_id, amount_cents, deposited_on, note? }
 //   set_state            { relationship_id, state: skipped | open }
-//   set_next_round_date  { ready_date }   — Next Funding Sequence, Blueprint buyers only
+//   set_next_sequence_date  { ready_date }  — the next funding sequence date, Blueprint buyers only
+//   set_next_round_date     { ready_date }  — the old name for the same action, kept for one release
 //
 // Nothing here moves money. "Record a deposit" writes down one staff saw land.
 import { db } from "../../src/db.mjs";
@@ -28,13 +33,14 @@ import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import {
-  bankStrategy, planBank, openAccount, recordDeposit, setRelationshipState, setNextRoundDate,
+  bankStrategy, planBank, openAccount, recordDeposit, setRelationshipState, setNextSequenceDate,
   BankStrategyInputError
 } from "../../src/finance/bank-strategy.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 
-const ACTIONS = new Set(["plan_bank", "open_account", "record_deposit", "set_state", "set_next_round_date"]);
+/* set_next_round_date is the old name of set_next_sequence_date, kept for one release. */
+const ACTIONS = new Set(["plan_bank", "open_account", "record_deposit", "set_state", "set_next_sequence_date", "set_next_round_date"]);
 
 /** Who is asking, and for which file. Returns { orgId, clientId, kind, staffId }
  *  or writes the refusal and returns null. */
@@ -54,7 +60,7 @@ async function scope(req, res, { database, gate, body }) {
   }
 
   const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
   const qid = body ? body.client_id : req.query && req.query.client_id;
   if (!isUuid(qid)) {
     res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });
@@ -67,6 +73,15 @@ async function scope(req, res, { database, gate, body }) {
 
 const NOT_FOUND_WORDS = "That bank is not on this client's plan. Reload and try again.";
 
+/* The file math's `flags` ("the staff date is before the day the file math says
+   ...") are commentary for staff. A client reads the same answer without them.
+   `next_round` is the same object as `next_sequence`, so one change covers both. */
+function withoutStaffFlags(payload) {
+  const s = payload && payload.next_sequence && payload.next_sequence.suggestion;
+  if (s && Array.isArray(s.flags)) s.flags = [];
+  return payload;
+}
+
 export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
   const gate = deps.requirePrincipal || requirePrincipal;
@@ -77,7 +92,7 @@ export default async function handler(req, res, deps = {}) {
     open: deps.openAccount || openAccount,
     deposit: deps.recordDeposit || recordDeposit,
     state: deps.setRelationshipState || setRelationshipState,
-    nextDate: deps.setNextRoundDate || setNextRoundDate
+    nextDate: deps.setNextSequenceDate || deps.setNextRoundDate || setNextSequenceDate
   };
 
   const method = req.method || "GET";
@@ -102,7 +117,7 @@ export default async function handler(req, res, deps = {}) {
     if (method === "GET") {
       const payload = await store.read(database, { orgId, clientId, asOf: now });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
-      return res.status(200).json(payload);
+      return res.status(200).json(who.kind === "client" ? withoutStaffFlags(payload) : payload);
     }
 
     if (who.kind !== "staff") {
@@ -123,10 +138,10 @@ export default async function handler(req, res, deps = {}) {
       if (error === "not_found") return res.status(404).json({ ok: false, error, message: NOT_FOUND_WORDS });
       if (error === "not_blueprint_buyer") {
         return res.status(403).json({ ok: false, error,
-          message: "The next-round date is part of the Capital Blueprint. This client has not bought it." });
+          message: "The next funding sequence date is part of the Capital Blueprint. This client has not bought it." });
       }
       if (error === "invalid_ready_date") {
-        return res.status(400).json({ ok: false, error, message: "The next-round date must be a date like 2026-12-01." });
+        return res.status(400).json({ ok: false, error, message: "The next funding sequence date must be a date like 2026-12-01." });
       }
       return res.status(400).json({ ok: false, error });
     }

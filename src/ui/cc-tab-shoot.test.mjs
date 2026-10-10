@@ -37,6 +37,15 @@ describe("the Shoot tab, pure", () => {
     assert.deepEqual(seen, ["shoot"]);
   });
 
+  test("the teleprompter link is the film key, and a strange path is ignored", () => {
+    const T = load().FundhubShootTab;
+    const key = "/app/teleprompter.html?k=abc.def";
+    assert.equal(T.filmHref({ film: { path: key } }), key);
+    assert.equal(T.filmHref({ film: { path: key } }, "root-1"), key + "&script=root-1");
+    assert.equal(T.filmHref({}), "/app/teleprompter.html");
+    assert.equal(T.filmHref({ film: { path: "https://evil.example/teleprompter.html?k=abc" } }), "/app/teleprompter.html");
+  });
+
   test("the headline counts scripts and minutes in plain words", () => {
     const T = load().FundhubShootTab;
     assert.deepEqual(plain(T.headline(PAGE)), { title: "Today's shoot: 2 scripts, about 5 minutes", sub: "At 150 words a minute, plus 2 minutes an ad for takes and resets." });

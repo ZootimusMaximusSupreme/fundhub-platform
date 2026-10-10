@@ -9,7 +9,7 @@
 // SAME TWO CALLERS AS api/money/overview.mjs, SAME GATE, COPIED.
 //   * A signed-in CLIENT sees and acts on their own file only. The client_id
 //     comes off the SESSION; a client_id in the query or body is never read.
-//   * STAFF: requireRole(ROLE_SETS.FINANCE) + requireClientInOrg on client_id
+//   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) + requireClientInOrg on client_id
 //     (query on GET, query or body on POST).
 //
 // NOTHING HERE CHARGES ANYONE OR PULLS CREDIT.
@@ -54,7 +54,7 @@ async function resolveScope(req, res, { database, gate }) {
   }
 
   const staff = principal.staff || { role: principal.role, org_id: principal.orgId };
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return null;
+  if (!requireRole(res, staff, ROLE_SETS.FINANCE_OS)) return null;
   const qid = (req.query && req.query.client_id) || (req.body && req.body.client_id);
   if (!isUuid(qid)) {
     res.status(400).json({ ok: false, error: "client_id is required and must be a uuid" });

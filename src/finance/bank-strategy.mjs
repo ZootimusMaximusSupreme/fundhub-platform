@@ -8,7 +8,14 @@
 //   location           the state(s) the bank match uses for this client
 //   recommended_banks  banks near you that want an account first, and the steps
 //   card_stacking      the order to apply for cards, spacing, what each pull costs
-//   next_round         the date, the estimated amount, and what is left to do
+//   next_sequence      the next funding sequence: the date staff set, the date the
+//                      file math suggests (and why), the estimated amount, and what
+//                      is left to do. NAMING: a funding sequence holds about six
+//                      rounds, and the push after it is "the next funding sequence".
+//                      The field used to be called `next_round`. It is still sent,
+//                      the same object under the old name, as an ALIAS KEPT FOR ONE
+//                      RELEASE so the current screen keeps working. New readers use
+//                      `next_sequence`; the alias goes when the screen has moved.
 //   relationships      the tracker: banks planned, opened, deposits, history
 //
 // THE RULE THIS FILE LIVES BY (board, ops/workflows/finance-os-wave5-2026-10-06.md):
@@ -30,7 +37,10 @@
 //                    prime personal → personal funding → companies (name + NAICS)
 //                    → lender list → apply forever. "Personal comes before business."
 //   Next Funding     src/blueprint/next-funding-sequence.mjs: the staff-set date
-//   Sequence         the file is ready for the next round (custom field).
+//   Sequence         the file is ready for the next funding sequence (custom
+//                    field), and src/blueprint/next-sequence-math.mjs: the date the
+//                    file math suggests from inquiry age, new-credit age and card
+//                    use, each window cited there. The staff date wins.
 //   UnderwriteIQ     the stored funding estimate (custom field total_funding_
 //                    estimate, then the newest pull's fundingEstimate — the
 //                    precedence matchForClient uses), the engine's fundable,
@@ -44,8 +54,9 @@
 //                    business_checking, db/migrations/362_waypoint_definitions_seed.sql).
 //
 // STAFF-SET, BECAUSE NO REPO RULE EXISTS: the day to open an account, how much to
-// deposit when the bank book lists no minimum, the next-round date, and the
-// number of days between card applications at two different banks.
+// deposit when the bank book lists no minimum, the next funding sequence date
+// (the file math only suggests one), and the number of days between card
+// applications at two different banks.
 //
 // ONE CONFLICT, NAMED: docs/legacy-strong/README.md calls the dollar field of
 // bank-datapoints-active-banks.md "limits"; the importer that filled
@@ -71,6 +82,7 @@ import {
   setNextFundingSequenceReadyDate
 } from "../blueprint/next-funding-sequence.mjs";
 import { updateBankRelationshipTodoState } from "../blueprint/bank-relationship.mjs";
+import { readSequenceFacts, planFromRows } from "../blueprint/next-sequence-facts.mjs";
 
 /* ------------------------------------------------------------------ *
  * Small readers
@@ -759,7 +771,7 @@ export async function readRelationships(db, { orgId, clientId, today }) {
 }
 
 /* ------------------------------------------------------------------ *
- * The next funding round
+ * The next funding sequence
  * ------------------------------------------------------------------ */
 
 /** A stored dollar figure → cents. "" / junk / negative → null. 0 is a real 0. */
@@ -793,19 +805,31 @@ export function fundingEstimate(customFields = {}, crsRows = []) {
   return { cents: null, source: null };
 }
 
-/** The next-round date staff set (Next Funding Sequence), or null. */
-export function nextRoundDate(customFields = {}) {
+/** The next funding sequence date staff set, or null. */
+export function nextSequenceDate(customFields = {}) {
   return parseReadyDate((customFields || {})[NEXT_SEQUENCE_READY_DATE_KEY]);
 }
+/** The old name. Kept for one release (the plan sources are moving to nextSequenceDate). */
+export const nextRoundDate = nextSequenceDate;
 
 /**
- * buildNextRound — pure. What is left before the next round, each with its source.
+ * buildNextSequence — pure. What is left before the next funding sequence, each
+ * with its source.
+ *
+ * `date` is the date STAFF set (null when none; the screen and the closer alert
+ * read it as they always have). `suggestion` is the file math's answer
+ * (src/blueprint/next-sequence-math.mjs planNextSequence), shown next to it. The
+ * staff date wins: `effective_date` is the staff date when set, else the
+ * suggested date, but only when that answer is "computed" AND nothing blocks it
+ * (no open application, no stale credit file, not unfundable, a funded round on
+ * file). A partial answer ("not before ...") or a blocked one is never promoted
+ * to the date; both still travel in `suggestion` with their reasons.
  */
-export function buildNextRound({
+export function buildNextSequence({
   today, customFields = {}, crsRows = [], underwrite = null, hasCreditFile = false,
-  businesses = [], matchStates = null, relationships = [], canSetDate = false
+  businesses = [], matchStates = null, relationships = [], canSetDate = false, suggestion = null
 } = {}) {
-  const date = nextRoundDate(customFields);
+  const date = nextSequenceDate(customFields);
   const est = fundingEstimate(customFields, crsRows);
   const walk = evaluateFundingSequence({ underwrite, businesses, matchStates });
   const gaps = [];
@@ -852,6 +876,9 @@ export function buildNextRound({
     }
   }
 
+  const suggested = suggestion && suggestion.confidence === "computed" &&
+    Array.isArray(suggestion.blockers) && suggestion.blockers.length === 0
+    ? suggestion.suggested_date : null;
   return {
     date,
     date_source: date ? SOURCES.nextSequence : null,
@@ -860,9 +887,15 @@ export function buildNextRound({
     amount_source: est.source,
     step: { id: walk.currentStepId, title: walk.currentStep ? walk.currentStep.title : null, source: SOURCES.walk },
     readiness_gaps: gaps,
-    ready: !!date && gaps.length === 0
+    ready: !!date && gaps.length === 0,
+    suggested_date: suggestion ? suggestion.suggested_date : null,
+    effective_date: date || suggested || null,
+    effective_source: date ? "staff" : suggested ? "suggested" : null,
+    suggestion: suggestion || null
   };
 }
+/** The old name. Kept for one release. */
+export const buildNextRound = buildNextSequence;
 
 /* ------------------------------------------------------------------ *
  * Plan pins (board contract, ops/workflows/finance-os-wave5-2026-10-06.md)
@@ -883,8 +916,8 @@ const KIND_WORD = { business: "business checking", personal: "checking" };
  * Dates come only from the plan, or from the bank's own rule applied to a date
  * staff set: the day staff planned to open it; the day it was opened; each
  * recorded deposit; the day the bank's seasoning period ends; and — when no
- * open day is planned but a next-round date is set — the last day to open so
- * the seasoning is done by that round. No date is made up.
+ * open day is planned but a staff-set next funding sequence date exists — the
+ * last day to open so the seasoning is done by then. No date is made up.
  */
 export function bankPins(relationships = [], { today, nextDate = null, from = null, to = null } = {}) {
   const pins = [];
@@ -919,7 +952,7 @@ export function bankPins(relationships = [], { today, nextDate = null, from = nu
       : "Builds your banking history there.";
     if (!date && nextDate && r.seasoning) {
       date = addDays(nextDate, -r.seasoning.days);
-      detail = `Last day to open so ${r.bank} has ${r.seasoning.days} days of seasoning by your next round on ${nextDate}.`;
+      detail = `Last day to open so ${r.bank} has ${r.seasoning.days} days of seasoning by your next funding sequence on ${nextDate}.`;
     }
     if (!date) continue;
     pins.push({ ...base, id: `bank-strategy:plan:${r.id}`, date, kind: "open_account",
@@ -930,11 +963,22 @@ export function bankPins(relationships = [], { today, nextDate = null, from = nu
 }
 
 /**
- * roundPins({ nextDate, estimateCents, rounds, today, clientId, from, to }) → pins.
- * The next round on the Next Funding Sequence date, and each past round on the
- * day it was opened. Amounts are what the file says; unknown is null.
+ * roundPins({ nextDate, estimateCents, rounds, today, clientId, from, to, suggestion }) → pins.
+ *
+ * The next funding sequence, and each past round on the day it was opened.
+ * Amounts are what the file says; unknown is null.
+ *
+ *   staff date set   one pin on that date. The staff date wins.
+ *   no staff date    one pin on the date the file math suggests, but only when that
+ *                    answer is "computed" with nothing blocking it and the client
+ *                    bought the Blueprint (the closer task is part of it). A date
+ *                    that has already passed pins on `today`: the file is ready
+ *                    now, and a pin in the past would read as missed. The id does
+ *                    not carry the date, so it stays the same pin as the date moves.
  */
-export function roundPins({ nextDate = null, estimateCents = null, rounds = [], today, clientId = "", from = null, to = null } = {}) {
+export function roundPins({
+  nextDate = null, estimateCents = null, rounds = [], today, clientId = "", from = null, to = null, suggestion = null
+} = {}) {
   const pins = [];
   const past = Array.isArray(rounds) ? rounds : [];
   for (const r of past) {
@@ -952,9 +996,17 @@ export function roundPins({ nextDate = null, estimateCents = null, rounds = [], 
     const reached = past.some((r) => isoDay(r.created_at) && isoDay(r.created_at) >= nextDate);
     const status = reached ? "done" : nextDate < today ? "missed" : "planned";
     pins.push({ id: `funding-rounds:next:${clientId}:${nextDate}`, date: nextDate, kind: "apply",
-      title: "Next funding round: your file is ready",
-      detail: "Date set by staff (Next Funding Sequence). Your closer gets a task that day.",
+      title: "Next funding sequence: your file is ready",
+      detail: "Date set by staff. Your closer gets a task that day.",
       amount_cents: estimateCents ?? null, bank: null, container_id: null, status, source: "funding-rounds" });
+  } else if (suggestion && suggestion.blueprint_buyer === true && suggestion.confidence === "computed" &&
+    Array.isArray(suggestion.blockers) && suggestion.blockers.length === 0 && suggestion.suggested_date) {
+    const date = suggestion.suggested_date < today ? today : suggestion.suggested_date;
+    pins.push({ id: `funding-rounds:next-suggested:${clientId}`, date, kind: "apply",
+      title: "Next funding sequence: your file should be ready",
+      detail: "This date comes from the file math, not from staff: hard inquiries, new credit and card use are all clear by then. " +
+        "Staff can set a different date. Your closer gets a task that day.",
+      amount_cents: estimateCents ?? null, bank: null, container_id: null, status: "planned", source: "funding-rounds" });
   }
   return pins.filter((p) => inRange(p.date, from, to));
 }
@@ -1010,12 +1062,14 @@ export function buildLocation(summary = {}, businessInfo = new Map(), containers
   };
 }
 
-const CRS_SQL = `SELECT id, result, outcome_tier, created_at FROM crs_results
+/* Exported so the next funding sequence planner reads the same rows
+   (src/blueprint/next-sequence-plan.mjs). */
+export const CRS_SQL = `SELECT id, result, outcome_tier, created_at FROM crs_results
   WHERE client_id = $1 AND org_id = $2 ORDER BY created_at DESC`;
-const TRADELINE_SQL = `SELECT * FROM tradelines WHERE client_id = $1 AND org_id = $2
+export const TRADELINE_SQL = `SELECT * FROM tradelines WHERE client_id = $1 AND org_id = $2
   ORDER BY apr ASC NULLS LAST, lender ASC`;
-const LIABILITY_SQL = `SELECT * FROM card_liabilities WHERE client_id = $1 AND org_id = $2 ORDER BY as_of DESC`;
-const BUSINESS_SQL = `SELECT id, name, age_months, entity_data, created_at FROM businesses
+export const LIABILITY_SQL = `SELECT * FROM card_liabilities WHERE client_id = $1 AND org_id = $2 ORDER BY as_of DESC`;
+export const BUSINESS_SQL = `SELECT id, name, age_months, entity_data, created_at FROM businesses
   WHERE client_id = $1 AND org_id = $2 ORDER BY created_at ASC`;
 
 /**
@@ -1034,7 +1088,7 @@ export async function bankStrategy(db, { orgId, clientId, asOf = new Date(), mat
   if (!client) return null;
   const cf = safeObject(client.custom_fields) || {};
 
-  const [matched, info, ents, rels, crs, lines, liabilities, businesses, blueprint] = await Promise.all([
+  const [matched, info, ents, rels, crs, lines, liabilities, businesses, blueprint, facts] = await Promise.all([
     match(db, { orgId, clientId }),
     listBusinessInfo(db, { orgId, clientId }),
     db.query(`SELECT id, kind, name FROM entities
@@ -1044,7 +1098,13 @@ export async function bankStrategy(db, { orgId, clientId, asOf = new Date(), mat
     db.query(TRADELINE_SQL, [clientId, orgId]),
     db.query(LIABILITY_SQL, [clientId, orgId]),
     db.query(BUSINESS_SQL, [clientId, orgId]),
-    isCapitalBlueprintBuyer(db, { orgId, clientId })
+    isCapitalBlueprintBuyer(db, { orgId, clientId }),
+    /* The suggestion is an extra on this page. If its reads fail, the page still
+       loads and the suggestion is simply absent. */
+    readSequenceFacts(db, { orgId, clientId }).catch((e) => {
+      console.error("banks: next funding sequence facts failed", e && e.message ? e.message : e);
+      return null;
+    })
   ]);
   const summary = (matched && matched.summary) || {};
   const rawMatches = (matched && matched.matches) || [];
@@ -1100,11 +1160,24 @@ export async function bankStrategy(db, { orgId, clientId, asOf = new Date(), mat
     needs_cleanup_source: SOURCES.inquiryFlag
   };
 
-  const nextRound = buildNextRound({
+  /* The file math's date, from the rows this read already holds plus the funding
+     rounds' own reads (src/blueprint/next-sequence-facts.mjs). */
+  let suggestion = null;
+  if (facts) {
+    try {
+      suggestion = {
+        ...planFromRows({ asOf, customFields: cf, crsRows: crs.rows, tradelineRows: lines.rows, underwrite, facts }),
+        blueprint_buyer: !!blueprint
+      };
+    } catch (e) {
+      console.error("banks: next funding sequence suggestion failed", e && e.message ? e.message : e);
+    }
+  }
+  const nextSequence = buildNextSequence({
     today, customFields: cf, crsRows: crs.rows, underwrite, hasCreditFile: hasFile,
     businesses: businesses.rows,
     matchStates: { home: summary.home_state || null, business: summary.business_state || null, states },
-    relationships: rels, canSetDate: blueprint
+    relationships: rels, canSetDate: blueprint, suggestion
   });
 
   const name = [client.first_name, client.last_name].map(text).filter(Boolean).join(" ") || null;
@@ -1117,17 +1190,26 @@ export async function bankStrategy(db, { orgId, clientId, asOf = new Date(), mat
     recommended_banks: banks,
     banks_left_out: leftOut,
     card_stacking: stacking,
-    next_round: nextRound,
+    next_sequence: nextSequence,
+    /* ALIAS, KEPT FOR ONE RELEASE: the same object under its old name, so the
+       screen that still reads `next_round` does not break. Remove it once the
+       screen reads `next_sequence`. */
+    next_round: nextSequence,
     relationships: rels,
-    not_set: notSetList({ nextRound, relationships: rels, stacking })
+    not_set: notSetList({ nextSequence, relationships: rels, stacking })
   };
 }
 
-/** The staff-set values that are still empty — said out loud, never filled in. */
-export function notSetList({ nextRound, relationships = [], stacking }) {
+/**
+ * The staff-set values that are still empty — said out loud, never filled in.
+ * `nextRound` is the old parameter name, still read for one release.
+ */
+export function notSetList({ nextSequence, nextRound = nextSequence, relationships = [], stacking }) {
   const out = [];
-  if (nextRound && !nextRound.date) out.push({ key: "next_round_date", text: "Next round date" });
-  if (nextRound && nextRound.estimated_amount_cents === null) out.push({ key: "funding_estimate", text: "Funding estimate (needs a credit pull)" });
+  const next = nextSequence || nextRound;
+  /* The key keeps its old spelling (the screen does not read it); the words are the new ones. */
+  if (next && !next.date) out.push({ key: "next_round_date", text: "Next funding sequence date" });
+  if (next && next.estimated_amount_cents === null) out.push({ key: "funding_estimate", text: "Funding estimate (needs a credit pull)" });
   for (const r of relationships) {
     if (r.status !== "planned") continue;
     if (!r.planned_open_on) out.push({ key: `open_date:${r.id}`, text: `Day to open at ${r.bank}` });
@@ -1315,9 +1397,11 @@ export async function setRelationshipState(db, { orgId, clientId, input = {} }) 
   return updateBankRelationshipTodoState(db, { orgId, todoId: row.id, state });
 }
 
-/** setNextRoundDate — the Next Funding Sequence date, through its own writer (Blueprint buyers only). */
-export async function setNextRoundDate(db, { orgId, clientId, input = {} }) {
+/** setNextSequenceDate — the next funding sequence date staff set, through its own writer (Blueprint buyers only). */
+export async function setNextSequenceDate(db, { orgId, clientId, input = {} }) {
   return setNextFundingSequenceReadyDate(db, { orgId, clientId, readyDate: input.ready_date });
 }
+/** The old name. Kept for one release (api/money/banks.mjs still accepts set_next_round_date). */
+export const setNextRoundDate = setNextSequenceDate;
 
 export default bankStrategy;

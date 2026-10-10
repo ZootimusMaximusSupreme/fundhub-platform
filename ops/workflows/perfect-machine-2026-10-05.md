@@ -877,3 +877,33 @@ Branch `release-2026-10-05`, **head `2ab65e50b`** (`2ab65e50b5278a944160bc0da67c
 **Still unproved:** the 5 files on real production data (the CI database was empty, so 407's backfill changed 0 rows); Postgres 17.6 (CI used 16); ship's own Supabase path (one request per file) — CI used the `migrate.mjs` path; the 2 skipped ad-number tests.
 
 - [V2 leftover card, not checked further] `src/http/ad-spine.pg.test.mjs` (changed by m4): "a signed-in role outside ROLE_SETS.STAFF is refused" got 200, expected 403, on the CI database.
+
+## D1 ship blocker
+
+**Status: done. The fix is on branch `d1-bundle-fix` (commit `7521baa1c`, one code commit on top of main `70ac8ba8e`; this board note is the commit after it). Not pushed, not merged, not shipped. The main session merges and ships.**
+
+**Root cause.** Netlify bundles every function that uses `export default` with **nft**, not esbuild. That covers api, ad-video-sweeper, ad-video-worker-background and 6 more (called "v2" functions). `node_bundler = "esbuild"` in netlify.toml does not apply to them. nft reads the code and works out any folder path it can calculate: `process.cwd()` plus fixed text. It even calculates `["credentials","hormozi-kb-work","whisper.cpp"].join("/")`. Then it grabs every file in that folder, and it hands every `.ts` file it grabs to esbuild as TypeScript. The whisper.cpp build folder has 58 CMake files named `compiler_depend.ts` that are not TypeScript. esbuild says `Syntax error " "` and the build fails.
+- How the code reaches the folder: `netlify/functions/api.mjs` → `src/workflows/ad-video-sweeper.mjs` → `src/ad-videos/merge-takes-step.mjs` → `src/ad-videos/merge-takes-media.mjs` → `src/company-brain/local-whisper.mjs` line 24 (`repoWhisperCliCandidates`). `ad-video-worker-background.mjs` reaches the same line: esbuild copies it into the bundle first, then nft reads it.
+- First error (real checkout, api): `credentials/hormozi-kb-work/whisper.cpp/build/CMakeFiles/NightlyUpdate.dir/compiler_depend.ts:1:1: ERROR: Syntax error " "`.
+- Why the two earlier tries did nothing: (1) nft calculates the array `.join("/")` anyway. (2) `"!credentials/**"` in `included_files` removes files **after** nft has already read them, so it cannot stop the read. Keep that line anyway: it still keeps `credentials/clarity-export-daily.json` out of the api zip.
+
+**Bisect.** Same ZISI 15.5.0 and esbuild 0.28.1 the Netlify CLI uses, `zipFunction` per function, netlify.toml settings:
+- `182a62d12` (just before the m6-join-takes merge): api PASS.
+- `5f6debd68` (the m6 merge): api FAIL.
+- main `70ac8ba8e`: api and ad-video-worker-background FAIL.
+
+**Fix.** One function in `src/company-brain/local-whisper.mjs`. The base folder is now a parameter: `repoWhisperCliCandidates(cwd = process.cwd())` → `path.join(cwd, "credentials/hormozi-kb-work/whisper.cpp")`. nft cannot calculate a parameter, so it leaves the folder alone. The Mac still finds the same `whisper-cli` as before (checked: the old and new lookups return the same path from the main checkout).
+
+**Proof**
+- Real main checkout with the real 22 GB `credentials/`, read-only, no fix: api FAIL and ad-video-worker-background FAIL, with the same error as the ship.
+- Real main checkout with the fixed file swapped in memory only (overlay on the nft read and the esbuild load, nothing written to main): **all 10 functions PASS**, 0 errors.
+- Worktree with a small stand-in `compiler_depend.ts` at the same path: main head has 2 FAIL; the fix branch has **10 of 10 PASS**.
+- Zip check on all 20 output zips (real tree and worktree): **0 entries** naming credentials, whisper.cpp, hormozi-kb-work or compiler_depend. Biggest zip: api at 36.1 MB.
+- `npm run lint` is clean (2409 files). `npx tsc --noEmit` exits 0.
+- `node --test 'src/ad-videos/**/*.test.mjs' src/workflows/ad-video-sweeper.test.mjs src/company-brain/meet-local-whisper.test.mjs`: 359 of 359 pass. That includes the "no ffmpeg here: the lead take waits" test, which covers the sweeper falling back to wait.
+- `node --test src/security/migrations-production-only.test.mjs src/http/routes.test.mjs`: 26 of 26 pass.
+- A symlinked `credentials/` does **not** reproduce the failure, because nft does not follow the link. A symlink run is a false green. Copying the real folder into the worktree was blocked, so the real-tree proof used the in-memory overlay instead.
+
+**Manifest:** the only file touched is `src/company-brain/local-whisper.mjs`. No routes, exports, journeys, env or database changed.
+
+- [D1 leftover card, not checked further] `src/company-brain/hormozi-kb.mjs` line 45, `DEFAULT_WORK_DIR = path.join(process.cwd(), "credentials/hormozi-kb-work")`, uses the same pattern. No function reaches it today. If one ever does, nft would grab the whole 22 GB folder.

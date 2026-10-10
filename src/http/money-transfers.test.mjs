@@ -118,7 +118,7 @@ describe("GET — who sees what", () => {
   });
   test("staff need FINANCE, a client_id, and that client in their org", async () => {
     const view = async () => ({ ok: true });
-    assert.equal((await call("GET", { principal: staffP("closer"), query: { client_id: MINE }, deps: { moneyTransfersView: view } })).statusCode, 403);
+    assert.equal((await call("GET", { principal: staffP("setter"), query: { client_id: MINE }, deps: { moneyTransfersView: view } })).statusCode, 403);
     assert.equal((await call("GET", { principal: staffP(), deps: { moneyTransfersView: view } })).statusCode, 400);
     assert.equal((await call("GET", { principal: staffP(), query: { client_id: OTHER }, deps: { moneyTransfersView: view } })).statusCode, 404);
     assert.equal((await call("GET", { principal: staffP(), query: { client_id: MINE }, deps: { moneyTransfersView: view } })).statusCode, 200);

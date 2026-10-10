@@ -93,7 +93,7 @@ describe("GET /api/money/banks", () => {
   });
 
   test("a staff role outside FINANCE is refused", async () => {
-    for (const role of ["closer", "funding_advisor", "csm", "setter"]) {
+    for (const role of ["setter", "funding_advisor", "csm", "setter"]) {
       const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.read, undefined);
@@ -107,6 +107,22 @@ describe("GET /api/money/banks", () => {
     assert.equal(put.res.headers.allow, "GET, POST");
   });
 
+  test("the file math's staff flags are for staff: a client's read carries none, a staff read keeps them", async () => {
+    const shared = () => {
+      const next = { date: null, suggestion: { flags: [{ id: "staff_date_before_suggestion", text: "x" }], confidence: "computed" } };
+      return { ok: true, client: { id: MINE }, next_sequence: next, next_round: next };
+    };
+    const asClient = await call({ method: "GET", query: {} }, clientP(), { s: spies({ bankStrategy: async () => shared() }) });
+    assert.deepEqual(asClient.res.body.next_sequence.suggestion.flags, []);
+    assert.deepEqual(asClient.res.body.next_round.suggestion.flags, [], "the alias is the same object");
+    assert.equal(asClient.res.body.next_sequence.suggestion.confidence, "computed", "the rest of the answer is untouched");
+    const asStaff = await call({ method: "GET", query: { client_id: MINE } }, staffP("admin"), { s: spies({ bankStrategy: async () => shared() }) });
+    assert.equal(asStaff.res.body.next_sequence.suggestion.flags.length, 1);
+    /* an answer with no suggestion (its reads failed) passes through as it is */
+    const none = await call({ method: "GET", query: {} }, clientP(), { s: spies({ bankStrategy: async () => ({ ok: true, next_sequence: { suggestion: null } }) }) });
+    assert.equal(none.res.statusCode, 200);
+  });
+
   test("a client the read cannot find is 404", async () => {
     const s = spies({ bankStrategy: async () => null });
     const { res } = await call({ method: "GET", query: {} }, clientP(), { s });
@@ -116,7 +132,7 @@ describe("GET /api/money/banks", () => {
 
 describe("POST /api/money/banks", () => {
   test("a client can never change the plan", async () => {
-    for (const action of ["plan_bank", "open_account", "record_deposit", "set_state", "set_next_round_date"]) {
+    for (const action of ["plan_bank", "open_account", "record_deposit", "set_state", "set_next_sequence_date", "set_next_round_date"]) {
       const { res, calls } = await call({ method: "POST", body: { action, client_id: MINE } }, clientP());
       assert.equal(res.statusCode, 403, action);
       assert.match(res.body.message, /Only Fundhub staff/);
@@ -173,10 +189,34 @@ describe("POST /api/money/banks", () => {
     assert.match(res.body.message, /not on this client's plan/);
   });
 
-  test("the next-round date is Blueprint only: a non-buyer is 403 in words", async () => {
+  test("the next funding sequence date is Blueprint only: a non-buyer is 403 in words", async () => {
     const s = spies({ setNextRoundDate: async () => ({ ok: false, error: "not_blueprint_buyer" }) });
-    const { res } = await call({ method: "POST", body: { action: "set_next_round_date", client_id: MINE, ready_date: "2026-12-01" } }, staffP("admin"), { s });
+    const { res } = await call({ method: "POST", body: { action: "set_next_sequence_date", client_id: MINE, ready_date: "2026-12-01" } }, staffP("admin"), { s });
     assert.equal(res.statusCode, 403);
-    assert.match(res.body.message, /Capital Blueprint/);
+    assert.match(res.body.message, /next funding sequence date is part of the Capital Blueprint/);
+    assert.doesNotMatch(res.body.message, /round/i);
+  });
+
+  test("a bad date is 400 in the new words", async () => {
+    const s = spies({ setNextRoundDate: async () => ({ ok: false, error: "invalid_ready_date" }) });
+    const { res } = await call({ method: "POST", body: { action: "set_next_sequence_date", client_id: MINE, ready_date: "soon" } }, staffP("admin"), { s });
+    assert.equal(res.statusCode, 400);
+    assert.match(res.body.message, /next funding sequence date must be a date like 2026-12-01/);
+  });
+
+  test("set_next_sequence_date and its old name set_next_round_date reach the same writer; the new dep name wins", async () => {
+    const neu = spies();
+    const a = await call({ method: "POST", body: { action: "set_next_sequence_date", client_id: MINE, ready_date: "2026-12-01" } }, staffP("admin"), { s: neu });
+    assert.equal(a.res.statusCode, 200);
+    assert.equal(a.res.body.action, "set_next_sequence_date");
+    assert.equal(neu.calls.nextDate[0].input.ready_date, "2026-12-01");
+    const old = spies();
+    const b = await call({ method: "POST", body: { action: "set_next_round_date", client_id: MINE, ready_date: "2026-12-02" } }, staffP("admin"), { s: old });
+    assert.equal(b.res.statusCode, 200);
+    assert.equal(b.res.body.action, "set_next_round_date");
+    assert.equal(old.calls.nextDate[0].input.ready_date, "2026-12-02");
+    const both = spies({ setNextSequenceDate: async (_db, args) => ({ ok: true, readyDate: args.input.ready_date, via: "new" }) });
+    const c = await call({ method: "POST", body: { action: "set_next_round_date", client_id: MINE, ready_date: "2026-12-03" } }, staffP("admin"), { s: both });
+    assert.equal(c.res.body.via, "new");
   });
 });
