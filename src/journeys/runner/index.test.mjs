@@ -172,8 +172,21 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 97 -> 98 the same day (Capital Blueprint B3) with
    document-vault-chase, the daily ask for the next missing application paper.
    A cron with no event trigger, so it sits in neverFired like every sweeper
-   here. */
-const REGISTERED = 98;
+   here.
+
+   Moved 98 -> 99 on 2026-10-07 with evening-brief (8cf8518a1, "Turn the
+   morning and evening briefs on"), the 9:00 p.m. Arizona brief that reuses
+   this morning's systems check. That commit named the id in
+   EXPECTED_WORKFLOW_IDS in src/workflows/index.test.mjs and did not move this
+   pin, so this file read one short from that day. A cron with no event
+   trigger, so it sits in neverFired like every sweeper here.
+
+   Moved 99 -> 100 the same day (eee0270dd) with pulse-instant-watch, the
+   five-minute watch over the critical doors that texts Chris when one is red.
+   A cron with no event trigger, so it sits in neverFired like every sweeper
+   here. It is exercised directly by src/pulse/instant-watch.test.mjs, not by
+   a walked journey. */
+const REGISTERED = 100;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);
