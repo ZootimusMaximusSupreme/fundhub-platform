@@ -75,7 +75,32 @@ export const TRIPWIRES = Object.freeze({
   // M2 repair, 2026-10-09: the push puts a built funnel live on apply.fundhub.ai, where it takes ad
   // traffic and shows on every affiliate's link list. The push proves its pages once. This lane
   // reads every live built funnel's pages again each morning and goes red on a dead or wrong page.
-  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] }
+  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] },
+  // Coverage batch W2 (money B), 2026-10-10: checkout links, the FinanceOS setup fee, money that fits no plan,
+  // past-due plans, stuck money moves, and what Meta says about our ad money. Each id is written in its lane
+  // file under src/pulse/coverage/ and was read on live data, read only, before it was listed.
+  "route:paid-services": { impact: "money", checks: ["checkout:paid-service"] },
+  "route:public/slo-repair-checkout": { impact: "money", checks: ["checkout:repair-price"] },
+  "route:public/funnel-checkout": { impact: "money", checks: ["checkout:funnel-door", "checkout:funnel-no-sale"] },
+  "route:money/setup": { impact: "money", checks: ["finance-os-setup:paid-turns-on", "finance-os-setup:price-set"] },
+  "desk:money-setup.html": { impact: "money", checks: ["finance-os-setup:paid-turns-on", "finance-os-setup:price-set"] },
+  "route:money/payments": {
+    impact: "money",
+    checks: ["payments-unmatched:receipt-waiting", "payments-unmatched:installment-late-no-flag"]
+  },
+  "desk:money-payments.html": {
+    impact: "money",
+    checks: ["payments-unmatched:receipt-waiting", "payments-unmatched:installment-late-no-flag"]
+  },
+  "route:money/transfers": { impact: "money", checks: ["money-moves:stuck"] },
+  "desk:money-transfers.html": { impact: "money", checks: ["money-moves:stuck"] },
+  "job:finance-os-money-transfers": { impact: "money", checks: ["money-moves:stuck"] },
+  "route:finance/subscriptions": { impact: "money", checks: ["subscriptions:past-due"] },
+  "route:finance/cards": { impact: "money", checks: ["subscriptions:past-due"] },
+  "job:subscription-billing-sweeper": { impact: "money", checks: ["subscriptions:past-due"] },
+  "route:partner-addons": { impact: "money", checks: ["subscriptions:addon-paid-no-plan", "subscriptions:past-due"] },
+  "route:campaigns/write": { impact: "money", checks: ["ads-meta:matches"] },
+  "desk:campaign-manager.html": { impact: "money", checks: ["ads-meta:matches", "ads-meta:load-jobs"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({

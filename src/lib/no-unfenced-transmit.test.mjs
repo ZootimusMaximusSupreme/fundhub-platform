@@ -291,6 +291,12 @@ const ALLOWED_RAW_FETCH = {
   "src/pulse/coverage/gap-staff.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-training.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-webhooks.mjs": PULSE_GAP_READS,
+  // ── Added 2026-10-10 (coverage batch W2, money B). Read before it was listed. ──
+  "src/pulse/coverage/money-reads.mjs":
+    "The one place the six money-B coverage lanes (gap-checkout, gap-ads-meta and the rest) reach the network. " +
+    "request() takes GET or HEAD and throws on any other method before a call goes out. It reads our own funnel " +
+    "till, a hosted checkout link's status, and Meta's campaign list with a Bearer header. Report only. Never " +
+    "POSTs, never sends, never reaches a client, never changes a vendor record. money-reads.test.mjs pins the refusal.",
 };
 
 /* Modules permitted to declare fence: INTERNAL. Pinned to an exact set, so a
