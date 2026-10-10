@@ -19,8 +19,11 @@
 //   * the login is real: a token, consent, a Plaid item id that is not mock:;
 //   * the client holds an active finance-os subscription or paid for the Capital
 //     Blueprint (the job's isNoticeAudience);
-//   * the client has a phone and has not opted out of SMS. Those two are the
-//     job's own refusals. A client who cannot be texted is not a missed text.
+//   * the client has not opted out of SMS (the job refuses an opted-out client
+//     and leaves the stamp empty for good), and has a phone (with no number
+//     there is nothing to text, and a message with no destination is the
+//     dispatcher's failure, which its own checks report). A client who cannot
+//     be texted is not a missed text.
 //
 // WHEN IT TURNS RED. The job queues the text in the same pass that finds the
 // break, then stamps plaid_items.reconnect_notified_at (migration 474). A login
