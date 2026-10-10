@@ -10,7 +10,7 @@ const ORG = "11111111-1111-4111-8111-111111111111";
 const SHOOT = "22222222-2222-4222-8222-222222222222";
 const NOW = () => Date.parse("2026-10-07T16:00:00.000Z");
 
-test("a film key names one shoot and lasts a week", () => {
+test("a film key names one shoot and does not expire for ten years", () => {
   const minted = mintFilmKey({ orgId: ORG, shootId: SHOOT, secret: SECRET, now: NOW });
   assert.equal(minted.path, "/app/teleprompter.html?k=" + minted.token);
   assert.equal(minted.expiresAt, Math.floor(NOW() / 1000) + FILM_TTL_SECONDS);
