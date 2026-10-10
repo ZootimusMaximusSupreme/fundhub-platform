@@ -20,6 +20,10 @@
 //   * owner copy laws the ad checker does not hold:
 //       - outcome first: the landing headline is about the buyer, never "We…",
 //         "Our…", "Fundhub…" or "Introducing…";
+//       - lead with funding (X4F, owner calls: never read as credit repair): the
+//         landing headline names funding before any word about credit, and no
+//         headline (nor the landing eyebrow) leads with fixing credit or a score
+//         (fundingLeadFailures);
 //       - no invented numbers: every dollar amount, percent, and number above 10
 //         must appear in the facts the model was given;
 //       - no testimonials and no quotes: there is no real quote in the facts,
@@ -145,6 +149,7 @@ export function buildPrompt({ offer, sources = {}, paths, fix = [] }) {
     "5. Never mention a Social Security number.",
     "6. Never write: credit repair, could, your number, no guarantees, leverage, seamless, unlock, journey, game-changer.",
     "7. No em dashes. Dollar amounts are numerals.",
+    "8. Lead with funding. Fundhub sells funding, never credit repair. The first page's headline names the funding the buyer is after (funding, funded, capital, approved), and says it before anything about credit. No headline on any page talks about fixing, repairing or cleaning up credit, or about a score. Credit work (inquiries cost fundability, so they come off) is a step on the way to funding: say it in the body, never as the promise.",
     "Answer in the JSON shape you are given. Words only: no HTML, no links, no emoji."
   ].join("\n");
   const parts = [offerFactsBlock(offer), ""];
@@ -193,6 +198,48 @@ export function numbersIn(text) {
 }
 
 const OUTCOME_FIRST_BAD = /^(we|we're|we've|our|fundhub|introducing|meet|welcome to)\b/i;
+
+/* Lead with funding (owner calls 2026-09-29, X4F 2026-10-06: "never read as credit
+   repair", "lead with funding"). FUNDING_WORD is what the landing headline must
+   name; CREDIT_WORD is where credit talk starts; CREDIT_FIX is a headline that
+   promises credit work instead of funding.
+
+   "Score" is credit talk only as a thing the buyer has ("your score", "the
+   score", "a score"; "credit score" is caught by the word credit). Used as a verb
+   ("Score $100,000 in business funding") it is a funding promise, so the bare word
+   is not refused. A credit limit or a credit line is funding, not credit work
+   ("Get funded and raise your credit limit"). Changed in the M2 repair, 2026-10-09,
+   after the bare word and "raise ... credit" refused both of those headlines. */
+const FUNDING_WORD = /\b(?:fund(?:ing|ed|able|ability)?|capital|approv(?:ed|al|als)|business loans?|credit lines?|lines? of credit)\b/i;
+const CREDIT_WORD = /\bcredit\b|\b(?:your|my|our|their|his|her|its|this|that|the|a)\s+scores?\b|\binquir(?:y|ies)\b/i;
+const CREDIT_FIX = /\b(?:fix(?:es|ed|ing)?|repair(?:s|ed|ing)?|clean(?:s|ed|ing)?(?:\s+up)?|rebuild(?:s|ing)?|restor(?:e|es|ed|ing)|boost(?:s|ed|ing)?|rais(?:e|es|ed|ing)|improv(?:e|es|ed|ing)|dispute(?:s|d)?)\b[^.!?]{0,40}\b(?:credit(?!\s+(?:limits?|lines?))|scores?|reports?|inquir(?:y|ies))\b|\bcredit\s+(?:repair|fix|scores?|clean[\s-]?up)\b|\b(?:your|my|our|their|his|her|its|this|that|the|a)\s+scores?\b/i;
+
+/**
+ * The lead-with-funding check, on the lines that lead a page: every headline and
+ * the landing eyebrow. Plain words for each failure; [] when it passes.
+ * @param {any} copy
+ */
+export function fundingLeadFailures(copy) {
+  const out = [];
+  const line = (role, key) => (copy && copy[role] && typeof copy[role][key] === "string" ? copy[role][key].trim() : "");
+  const head = line("landing", "headline");
+  if (head) {
+    const fund = FUNDING_WORD.exec(head);
+    const credit = CREDIT_WORD.exec(head);
+    if (!fund) {
+      out.push(`landing: the headline "${head}" does not name funding. Lead with the funding the buyer gets (funding, funded, capital, approved).`);
+    } else if (credit && credit.index < fund.index) {
+      out.push(`landing: the headline "${head}" puts credit before funding. Say the funding first; credit work comes after.`);
+    }
+  }
+  for (const [role, key] of [["landing", "eyebrow"], ["landing", "headline"], ["booking", "headline"], ["thank_you", "headline"]]) {
+    const text = line(role, key);
+    if (text && CREDIT_FIX.test(text)) {
+      out.push(`${role}: the ${key} "${text}" leads with fixing credit or a score. Fundhub sells funding, never credit repair.`);
+    }
+  }
+  return out;
+}
 const QUOTE_RE = /["“”][^"“”]{12,}["“”]/;
 const TESTIMONIAL_RE = /\btestimonials?\b|\breviews?\b|\b(?:five|5)[- ]stars?\b|\bclients? (?:say|said)\b|\bcustomers? (?:say|said)\b|★/i;
 const SSN_RE = /\bsocial security\b|\bssn\b|\bsocial\b(?= number)/i;
@@ -257,6 +304,7 @@ export function checkCopy(copy, { sourceText = "", priceCents = null } = {}) {
 
   const head = copy.landing && typeof copy.landing.headline === "string" ? copy.landing.headline.trim() : "";
   if (head && OUTCOME_FIRST_BAD.test(head)) failures.push(`landing: the headline "${head}" is about us. Lead with what the buyer gets.`);
+  failures.push(...fundingLeadFailures(copy));
 
   return { ok: failures.length === 0, failures: [...new Set(failures)] };
 }

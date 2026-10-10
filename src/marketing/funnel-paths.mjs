@@ -85,7 +85,9 @@ export function reservedPaths() {
   return out;
 }
 
-const RESERVED_PREFIXES = Object.freeze(["/roadmap", "/funding-book-call", "/schedule", "/fundhub-297", "/api", "/app", "/.well-known"]);
+/* "/fnl" is the ClickFunnels funnel's own address (/fnl-blueprint, see
+   src/marketing/funnel-push.mjs cfFunnelPath), so no page may take it. */
+const RESERVED_PREFIXES = Object.freeze(["/roadmap", "/funding-book-call", "/schedule", "/fundhub-297", "/api", "/app", "/.well-known", "/fnl"]);
 
 /** True when this one address can never be used. */
 export function isReserved(path, reserved = reservedPaths()) {
@@ -128,6 +130,11 @@ export function keyFor(base) {
 /** The funnel's tag for a key. Never changes once saved. "blueprint_2" -> "fnl-blueprint-2". */
 export function tagFor(key) {
   return `fnl-${String(key).replace(/_/g, "-")}`.slice(0, 64);
+}
+
+/** A tag the database takes (425 marketing_funnels_tag_ck): "fnl-" then words joined by single dashes, 64 at most. */
+export function isTag(tag) {
+  return typeof tag === "string" && tag.length <= 64 && /^fnl-[a-z0-9]+(-[a-z0-9]+)*$/.test(tag);
 }
 
 /** The full address of a path on the funnel host. */
@@ -194,6 +201,22 @@ export function pathsFromPages(pages = []) {
     add(page.current_path);
     if (page.show_page_step && typeof page.show_page_step === "object") add(page.show_page_step.current_path);
     if (typeof page.url === "string") add(pathOf(page.url));
+  }
+  return out;
+}
+
+/**
+ * Every address a list of ClickFunnels funnels already uses (GET
+ * /workspaces/{id}/funnels rows): a funnel's own current_path answers on its
+ * domain too (apply.fundhub.ai/vsl sends people on to /watch). Archived funnels
+ * count: nothing here proves their address is free. Lower case, no trailing slash.
+ */
+export function pathsFromFunnels(funnels = []) {
+  const out = new Set();
+  for (const f of Array.isArray(funnels) ? funnels : []) {
+    if (!f || typeof f !== "object" || typeof f.current_path !== "string") continue;
+    const clean = f.current_path.trim().toLowerCase().replace(/\/+$/, "");
+    if (clean.startsWith("/")) out.add(clean);
   }
   return out;
 }

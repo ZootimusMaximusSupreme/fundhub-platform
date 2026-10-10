@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkCopy, buildPrompt, offerFactsBlock, numbersIn, pageLines, COPY_SCHEMA, FUNNEL_MODEL } from "./funnel-copy.mjs";
+import { checkCopy, buildPrompt, offerFactsBlock, numbersIn, pageLines, fundingLeadFailures, COPY_SCHEMA, FUNNEL_MODEL } from "./funnel-copy.mjs";
 import { FUNNEL_OFFERS, pagePaths } from "./funnel-paths.mjs";
 import { OFFERS, formatCents } from "../config/offers.mjs";
 
@@ -72,6 +72,87 @@ describe("the copy check", () => {
     assert.match(check(c).failures.join("\n"), /about us/);
   });
 
+  test("lead with funding: the live test's headline is refused (credit before funding, fixing credit)", () => {
+    // The headline the writer made in the live test on 2026-10-06 (funnel fnl-blueprint).
+    const c = copy();
+    c.landing.headline = "Get a clear plan to fix your credit and find funding";
+    const f = check(c).failures.join("\n");
+    assert.match(f, /puts credit before funding/);
+    assert.match(f, /leads with fixing credit or a score\. Fundhub sells funding, never credit repair/);
+    assert.equal(check(c).ok, false);
+  });
+
+  test("lead with funding: the landing headline must name funding", () => {
+    const c = copy();
+    c.landing.headline = "Know exactly what stands between you and a plan";
+    assert.match(check(c).failures.join("\n"), /does not name funding/);
+    for (const ok of [
+      "Know exactly what stands between you and funding",
+      "Get funded for the most your file allows",
+      "Find the capital your business qualifies for",
+      "Get approved for the most, then clean up what holds you back"
+    ]) {
+      const g = copy();
+      g.landing.headline = ok;
+      assert.deepEqual(fundingLeadFailures(g), [], ok);
+    }
+  });
+
+  test("lead with funding: no headline and no landing eyebrow leads with fixing credit or a score", () => {
+    for (const [role, key, text] of [
+      ["landing", "eyebrow", "Credit repair plan"],
+      ["landing", "headline", "Funding starts when you raise your score"],
+      ["booking", "headline", "Book your credit fix call"],
+      ["thank_you", "headline", "Your dispute call is booked, credit cleanup next"]
+    ]) {
+      const c = copy();
+      c[role][key] = text;
+      assert.match(fundingLeadFailures(c).join("\n"), new RegExp(`${role}: the ${key} .* leads with fixing credit or a score`), text);
+    }
+    // Credit work in the body is fine: it is a step on the way to funding.
+    const body = copy();
+    body.landing.bullets[0].detail = "We clean up the inquiries that cost you fundability.";
+    assert.deepEqual(fundingLeadFailures(body), []);
+  });
+
+  test("lead with funding: 'score' as a verb and a credit limit are funding, not credit work (M2 repair)", () => {
+    for (const ok of [
+      "Score $100,000 in business funding",
+      "Score the funding your business qualifies for",
+      "Get funded and raise your credit limit",
+      "Get approved and boost your credit lines"
+    ]) {
+      const c = copy();
+      c.landing.headline = ok;
+      assert.deepEqual(fundingLeadFailures(c), [], ok);
+      // The whole check passes too (the $100,000 is in the facts it is given).
+      assert.equal(check(c, "The most a file can reach is $100,000 in business funding.").ok, true, ok);
+    }
+    // The same words on the other pages and the eyebrow pass too.
+    const c = copy();
+    c.landing.eyebrow = "Score the capital you need";
+    c.booking.headline = "Raise your credit limit on a call";
+    c.thank_you.headline = "Your funding call is booked";
+    assert.deepEqual(fundingLeadFailures(c), []);
+  });
+
+  test("lead with funding: a score the buyer has, and credit work, are still refused", () => {
+    for (const bad of [
+      "Know your score before you apply for funding",
+      "Improve your credit score and get funded",
+      "Raise your score, then get funding",
+      "Fix your credit, then get funded",
+      "Credit score too low? Funding starts here"
+    ]) {
+      const c = copy();
+      c.landing.headline = bad;
+      assert.notDeepEqual(fundingLeadFailures(c), [], bad);
+    }
+    const c = copy();
+    c.booking.headline = "Book your score check call";
+    assert.match(fundingLeadFailures(c).join("\n"), /booking: the headline .* leads with fixing credit or a score/);
+  });
+
   test("the ad checker's hook rule holds on the landing headline only", () => {
     const land = copy();
     land.landing.headline = "Book your call today";
@@ -120,6 +201,8 @@ describe("the prompt", () => {
     assert.match(system, /Fundhub/);
     assert.match(system, /Never invent a number/);
     assert.match(system, /Social Security/);
+    assert.match(system, /Lead with funding\. Fundhub sells funding, never credit repair/);
+    assert.match(system, /inquiries cost fundability/);
   });
 
   test("names the campaign files when there are some, and the failures to fix", () => {

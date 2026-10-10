@@ -11,7 +11,7 @@
 
 import { createHash } from "node:crypto";
 import {
-  FUNNEL_ROLES, FUNNEL_OFFERS, pagePaths, keyFor, tagFor, urlFor, refuseReason,
+  FUNNEL_ROLES, FUNNEL_OFFERS, pagePaths, keyFor, tagFor, isTag, urlFor, refuseReason,
   nextFreePath, reservedPaths
 } from "./funnel-paths.mjs";
 import { enqueueJob } from "./jobs.mjs";
@@ -104,6 +104,39 @@ export const PAGES_JSON_SQL = `COALESCE((
 /* ── create ───────────────────────────────────────────────────────────────── */
 
 /**
+ * Owner order 2026-10-05: "every time a funnel is made we tag it". A funnel
+ * mapped by hand before the builder existed (book_call /watch, roadmap_147
+ * /roadmap) gets its tag by the same rule as a built one, tagFor(key), the next
+ * time a funnel is made here (build unit X4F). It is a database tag only: the
+ * row's address, its live page and everything else stay as they are, and the
+ * row's updated_at is left alone so a Settings screen holding it can still save.
+ * A tag the rule cannot make (not a valid tag) or one already used is skipped.
+ * Runs inside the create's transaction, under its per-company lock.
+ * Returns [{ key, tag }] for every row it tagged.
+ * @param {Db} tx
+ * @param {string} orgId
+ */
+export async function backfillTags(tx, orgId) {
+  const r = await tx.query(`SELECT id, key, tag FROM marketing_funnels WHERE org_id = $1 ORDER BY key`, [orgId]);
+  const used = new Set(r.rows.map((row) => row.tag).filter(Boolean));
+  const tagged = [];
+  for (const row of r.rows) {
+    if (row.tag) continue;
+    const tag = tagFor(row.key);
+    if (!isTag(tag) || used.has(tag)) continue;
+    const u = await tx.query(
+      `UPDATE marketing_funnels SET tag = $2 WHERE id = $1 AND org_id = $3 AND tag IS NULL AND kind IS NULL RETURNING key, tag`,
+      [row.id, tag, orgId]
+    );
+    if (u.rows[0]) {
+      used.add(tag);
+      tagged.push({ key: u.rows[0].key, tag: u.rows[0].tag });
+    }
+  }
+  return tagged;
+}
+
+/**
  * Make a book-a-call funnel and its three empty pages, inside the caller's
  * transaction. The address is `base` when given (checked), else the first free
  * one from the offer's word. `liveTaken` is every address ClickFunnels already
@@ -118,6 +151,7 @@ export async function createBuiltFunnel(tx, input) {
   if (!offer) throw new InvalidError("offer_key", "That offer cannot get a book-a-call funnel.");
   // One create at a time per company, so two presses cannot pick the same address.
   await tx.query(`SELECT pg_advisory_xact_lock(hashtextextended('marketing_funnel_create:' || $1, 0))`, [input.orgId]);
+  await backfillTags(tx, input.orgId);
   const own = await ownTaken(tx, input.orgId);
   const taken = new Set([...own.taken, ...input.liveTaken]);
   const reserved = reservedPaths();
@@ -301,6 +335,23 @@ export async function markPagePushed(db, { pageId, cfPageId, publicId, liveUrl }
       WHERE id = $1 AND cf_page_id IS NULL
       RETURNING *`,
     [pageId, String(cfPageId), publicId, liveUrl]
+  );
+  return r.rows[0] || null;
+}
+
+/**
+ * A pushed page's address, once the push has read on ClickFunnels where the page
+ * really sits (a page the first push made on its own, now moved into the funnel).
+ * Only the address: the page id, path and HTML never change (425's trigger), and
+ * a proven page's address is never touched.
+ */
+export async function markPageAddress(db, { pageId, cfPageId, liveUrl }) {
+  const r = await db.query(
+    `UPDATE marketing_funnel_pages
+        SET live_url = $3
+      WHERE id = $1 AND cf_page_id = $2 AND proved_at IS NULL
+      RETURNING *`,
+    [pageId, String(cfPageId), liveUrl]
   );
   return r.rows[0] || null;
 }
