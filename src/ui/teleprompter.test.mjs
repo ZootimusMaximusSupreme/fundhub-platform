@@ -720,3 +720,29 @@ describe("teleprompter film look", () => {
     assert.match(SRC, /volumeKeyDir\(e\.key, e\.code\)/);
   });
 });
+
+describe("teleprompter, one fixed speed (owner call 2026-10-09)", () => {
+  test("script height divided by words per minute: same speed through words and blank gaps", () => {
+    const T = load();
+    // 300 words at 150 wpm is 120 seconds. 2400 px tall is 20 px per second.
+    const raw = [{ t: 0, y: 100 }, { t: 5, y: 300, blank: true }, { t: 90, y: 1000 }, { t: 200, y: 2500 }];
+    const out = plain(T.steadyPace(raw, 300, 150));
+    assert.equal(out.length, 2);
+    assert.equal(out[1].t, 120);
+    assert.equal((out[1].y - out[0].y) / (out[1].t - out[0].t), 20);
+  });
+  test("a faster wpm is a faster scroll; a script with no words does not move", () => {
+    const T = load();
+    const raw = [{ t: 0, y: 0 }, { t: 1, y: 1200 }];
+    const slow = plain(T.steadyPace(raw, 150, 100));
+    const fast = plain(T.steadyPace(raw, 150, 200));
+    assert.ok(fast[1].t < slow[1].t);
+    assert.equal(plain(T.steadyPace(raw, 0, 150)).length, 1);
+  });
+  test("sideways words are half size, the Save button shows only during a double-tap edit", () => {
+    assert.match(SRC, /Math\.round\(S\.font \/ 2\)/);
+    const CSS = fs.readFileSync(path.join(APP, "teleprompter.css"), "utf8");
+    assert.match(CSS, /body\.wording #b-script-save\s*\{\s*display:\s*block !important/);
+    assert.match(SRC, /syncCaretText\(true\);\s*\/\/ queue the change now/);
+  });
+});

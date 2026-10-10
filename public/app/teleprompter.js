@@ -653,6 +653,22 @@
   }
 
   /**
+   * One fixed scroll speed for the whole script, set by words per minute.
+   * speed (px per second) = script height in pixels / (words / wpm * 60).
+   * Blank gaps, paragraph breaks and long lines no longer change the speed.
+   * keys: [{t, y, blank}] in order. Only the first and last y matter. A script
+   * of one or no words stays where it is.
+   */
+  function steadyPace(keys, wordCount, wpm) {
+    var src = keys || [];
+    if (!src.length) return [];
+    var y0 = src[0].y, y1 = src[src.length - 1].y;
+    var secs = wordCount > 0 && wpm > 0 ? (wordCount / wpm) * 60 : 0;
+    if (!(secs > 0) || !(y1 > y0)) return [{ t: src[0].t, y: y0 }];
+    return [{ t: 0, y: y0 }, { t: secs, y: y1 }];
+  }
+
+  /**
    * The red line is the top reading point. The word sits on it.
    * safeTop is the phone clock band. This is not the middle of the page.
    */
@@ -813,7 +829,7 @@
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
     cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, stays4K: stays4K, cameraReport: cameraReport,
-    paceThroughBlanks: paceThroughBlanks, scrollTime: scrollTime,
+    paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
     storedWpm: storedWpm, rigQuery: rigQuery, rigLook: rigLook, rigTransform: rigTransform, nextRot: nextRot
@@ -1041,6 +1057,7 @@
     send: function (body) { return api("POST", "marketing/scripts/edit", body); },
     live: function (id) { return api("GET", "marketing/script?id=" + encodeURIComponent(id)); },
     requestId: requestId,
+    debounceMs: 300,
     onChange: onEditChange
   });
 
@@ -1256,12 +1273,13 @@
       else { L.right = Math.max(L.right, left + w); L.left = Math.min(L.left, left); }
       words[i].line = L; words[i].x = left;
     }
-    kf = []; var prevY = -1e9;
+    kf = []; var prevY = -1e9, wordY = [];
     function push(tt, y, blank) { y = Math.max(y, prevY); prevY = y; kf.push({ t: tt, y: y, blank: !!blank }); }
     for (var j = 0; j < words.length; j++) {
       var wd = words[j], LL = wd.line, span = Math.max(1, LL.right - LL.left);
       // The step into the first word of a new paragraph is the blank gap.
       push(times[j], LL.top + LL.h * ((wd.x - LL.left) / span), j > 0 && words[j - 1].last);
+      wordY[j] = prevY;
       if (wd.last) {
         var endT = times[j] + wd.dur;
         push(endT, LL.top + LL.h, false);
@@ -1269,9 +1287,10 @@
     }
     if (!kf.length) kf = [{ t: 0, y: 0 }];
     var rawKf = kf;
-    kf = paceThroughBlanks(rawKf);
-    for (var ti = 0; ti < times.length; ti++) times[ti] = scrollTime(rawKf, kf, times[ti]);
-    total = scrollTime(rawKf, kf, total);
+    kf = steadyPace(rawKf, words.length, S.wpm);
+    // Fixed speed: each word's time is where its line sits on that one straight scroll.
+    for (var ti = 0; ti < times.length; ti++) times[ti] = tAt(wordY[ti]);
+    total = kf[kf.length - 1].t;
     restore(keep); apply();
   }
   function seg(tt) { var lo = 0, hi = kf.length - 1; if (tt <= kf[0].t) return 0; if (tt >= kf[hi].t) return hi; while (hi - lo > 1) { var m = (lo + hi) >> 1; if (kf[m].t <= tt) lo = m; else hi = m; } return lo; }
@@ -1752,7 +1771,7 @@
   content.addEventListener("input", function (e) {
     if (!textEdit) return;
     if (e.target && e.target.id === "edit-box") return;
-    syncCaretText(false);
+    syncCaretText(true);   // queue the change now: the database follows within a blink
   });
   content.addEventListener("blur", function () {
     if (!textEdit) return;
@@ -2594,6 +2613,7 @@
     }
     edits.commit();
     pulse();
+    if (textEdit) leaveCaret(true);   // Save also puts the keyboard away
   }
 
   /* ── buttons ─────────────────────────────────────────────────────────── */
@@ -2702,8 +2722,14 @@
 
   /* ── settings ────────────────────────────────────────────────────────── */
 
+  /* Sideways, the words are half the size: the front-camera half of the screen is narrow. */
+  function isLandscape() {
+    try { return !!(root.matchMedia && root.matchMedia("(orientation: landscape)").matches); }
+    catch (e) { return false; }
+  }
+  function shownFont() { return isLandscape() ? Math.max(12, Math.round(S.font / 2)) : S.font; }
   function applyFont() {
-    content.style.fontSize = S.font + "px";
+    content.style.fontSize = shownFont() + "px";
     content.style.setProperty("--measure", S.measure + "ch");
     flip.classList.toggle("mirror-x", !!S.mirror);
     flip.classList.toggle("mirror-y", !!S.flipV);
@@ -2815,6 +2841,7 @@
     doc.body.classList.toggle("cam-side-left", side === "left");
     doc.body.classList.toggle("cam-side-right", side === "right");
     doc.body.classList.toggle("tp-portrait", side === "full");
+    applyFont();
     if (words.length) layout();
   }
   var rz = null;

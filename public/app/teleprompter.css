@@ -84,10 +84,18 @@ body {
 #controls {
   grid-template-columns: repeat(2, 1fr);
 }
-/* The word save and the video save are not buttons on the glass. */
+/* The video save is not a button on the glass. The word Save shows only
+   while a double-tap edit is open, next to the X. */
 #b-script-save,
 #b-save {
   display: none !important;
+}
+body.wording #b-script-save {
+  display: block !important;
+  right: 60px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
 }
 /* Double-tap edit: the two buttons go away until the keyboard does.
    X throws away this edit. It is not on screen while he is filming. */
