@@ -410,7 +410,10 @@ const STAMP_SITES = Object.freeze({
     "the handler answers 405 to anything else.",
   "src/pulse/coverage/gap-money-funding.mjs":
     "READS ONLY. The morning payout check (partners:payout-held) selects the column to say why a " +
-    "payout is held. Every statement in the file is a SELECT; it has no INSERT, UPDATE or DELETE."
+    "payout is held. Every statement in the file is a SELECT; it has no INSERT, UPDATE or DELETE.",
+  "src/pulse/coverage/gap-trip-partner.mjs":
+    "READS ONLY. The partner start-to-end check (trip:partner) selects the column to say whether a " +
+    "partner was waiting on the signed licence. Every statement is a SELECT; it has no INSERT, UPDATE or DELETE."
 });
 
 /** `//` line comments and `/* *\/` blocks removed, so a mention in prose is not
