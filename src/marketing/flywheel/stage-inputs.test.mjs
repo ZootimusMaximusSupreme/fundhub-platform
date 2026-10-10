@@ -23,8 +23,12 @@ const ORG = "33333333-3333-4333-8333-333333333333";
 const NO_TOKEN = Object.freeze({});
 const CARD = "\n## Review card\n\n**What this decided:** x\n";
 const dir = (c) => `marketing/flywheel/${c}`;
+/* A campaign folder with no committed files, for the probes that mean "nothing is on file
+   anywhere". capital-blueprint is no such folder any more: main committed its avatar and
+   notes into the built-in copy (commit ae3c014cd, 2026-10-08). */
+const NO_FILES = "no-committed-files";
 
-const NOTES = "# Capital Blueprint\n\nOffer key: UWIQ_DELIVERABLES\n\n## Notes\n";
+const NOTES ="# Capital Blueprint\n\nOffer key: UWIQ_DELIVERABLES\n\n## Notes\n";
 const AVATAR = stampStage({ stage: 1, version: 1, status: "draft", counts: { quotes: 30, languageEntries: 120 }, body: `# Buyer\nOwners a bank turned down.${CARD}` });
 const BANK = "# Market Language Bank\n- my file got declined\n";
 const RESEARCH = stampStage({ stage: 2, version: 1, status: "draft", inputs: { "01-avatar.md": hashOf(AVATAR) },
@@ -120,7 +124,7 @@ describe("the one stage reader", () => {
     const notes = await readStageFile(null, { path: `${dir("capital-blueprint")}/00-OWNER-NOTES.md`, env: NO_TOKEN, deps });
     assert.equal(notes.source, "outbox-pending");
     assert.match(notes.content, /lean on the business file/);
-    const none = await readStageFile(null, { path: `${dir("capital-blueprint")}/01-avatar/Service_Business_Foundation.md`, env: NO_TOKEN, deps });
+    const none = await readStageFile(null, { path: `${dir(NO_FILES)}/01-avatar/Service_Business_Foundation.md`, env: NO_TOKEN, deps });
     assert.deepEqual({ content: none.content, source: none.source }, { content: null, source: "missing" });
     const other = await readStageFile(null, { path: "marketing/flywheel/README.md", env: NO_TOKEN, deps });
     assert.equal(other.source, "bundle-fallback", "README is not a campaign file: the plain read");
@@ -129,7 +133,7 @@ describe("the one stage reader", () => {
 
   test("only this company's saves: with a database and no company id nothing is read from it", async () => {
     const db = { query: async () => { throw new Error("no company, no query"); } };
-    const r = await readStageInputs({ db, campaign: "capital-blueprint", files: ["01-avatar.md", "03-offer.md"], env: NO_TOKEN });
+    const r = await readStageInputs({ db, campaign: NO_FILES, files: ["01-avatar.md", "03-offer.md"], env: NO_TOKEN });
     assert.equal(r.files["01-avatar.md"].source, "missing");
   });
 });

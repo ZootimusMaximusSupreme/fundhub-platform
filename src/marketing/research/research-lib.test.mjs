@@ -262,7 +262,9 @@ describe("the repo read (GitHub at one commit, outbox saves on top, the bundle a
     assert.match(r.files.avatar, /^---\nstage: 1\nversion: 1\nstatus: approved\n/, "the Approve edit is laid on the save");
     assert.equal(r.avatar.body, "new avatar from the dashboard");
     assert.deepEqual(r.pending, ["marketing/flywheel/capital-blueprint/01-avatar.md"]);
-    const none = await readStageFiles({ query: async () => { throw new Error("no query without a company"); } }, "capital-blueprint", { env: {} });
+    // A folder with no committed files: capital-blueprint has some in the built-in copy since
+    // main's commit ae3c014cd (2026-10-08), so it would read those, not "nothing".
+    const none = await readStageFiles({ query: async () => { throw new Error("no query without a company"); } }, "no-committed-files", { env: {} });
     assert.equal(none.avatar, null);
   });
 });

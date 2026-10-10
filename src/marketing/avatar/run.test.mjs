@@ -437,7 +437,9 @@ describe("avatar run: caps and time", () => {
 describe("unit GL: step 1 with no GitHub token reads the owner notes from the company's waiting saves", () => {
   test("the notes save and the Tweak line laid on it reach the first step; the source is named", async () => {
     const db = fakeDb();
-    const base = "marketing/flywheel/capital-blueprint";
+    // A campaign folder with no committed files: capital-blueprint has some in the built-in
+    // copy since main's commit ae3c014cd (2026-10-08), so its foundation would read as on file.
+    const base = "marketing/flywheel/no-committed-files";
     db.st.outbox.push(
       { id: 1, org_id: ORG, op_id: "start", path: `${base}/00-OWNER-NOTES.md`, mode: "replace", content: "# Capital Blueprint\n\nOffer key: UWIQ_DELIVERABLES\n\n## Notes\n", edit: null },
       { id: 2, org_id: ORG, op_id: "tweak", path: `${base}/00-OWNER-NOTES.md`, mode: "edit", content: null,
@@ -445,7 +447,7 @@ describe("unit GL: step 1 with no GitHub token reads the owner notes from the co
       { id: 3, org_id: "00000000-0000-0000-0000-00000000a002", op_id: "other", path: `${base}/00-OWNER-NOTES.md`, mode: "replace", content: "## Notes\n\n2026-10-06 | stage 1 | ANOTHER COMPANY\n", edit: null }
     );
     db.st.nextOutboxId = 4;
-    db.st.job = newJob({ campaign: "capital-blueprint" });
+    db.st.job = newJob({ campaign: "no-committed-files" });
     db.st.job.status = "running";
     const model = fakeModel();
     const snapshot = JSON.parse(JSON.stringify(db.st.job));

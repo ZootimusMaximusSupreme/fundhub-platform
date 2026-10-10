@@ -62,6 +62,12 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
   let wakes = 0;
   const ENV = {};
   const wake = async () => { wakes++; return { ok: true, started: false }; };
+  // A site with no committed copy of the flywheel folder, for the tests that start the Capital
+  // Blueprint flywheel from nothing. capital-blueprint has committed files in this checkout since
+  // main's commit ae3c014cd (2026-10-08): without this the folder already exists for every company,
+  // "Start a flywheel" creates nothing, and a second company would read the first one's folder.
+  // The reader's own test hook (deps.reader.bundleRoots), not a stand-in reader.
+  const bare = { reader: { bundleRoots: ["/nonexistent/fundhub-flywheel-bundle"] } };
 
   async function call(handler, token, { method = "POST", body = {}, query = {}, deps = {} } = {}) {
     const r = res();
@@ -201,7 +207,7 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
     test("Start a flywheel for the Capital Blueprint: one owner-notes file queued with its offer line; once per request_id", async () => {
       const before = wakes;
       const id = rid("camp");
-      const r = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: "UWIQ_DELIVERABLES" } });
+      const r = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: "UWIQ_DELIVERABLES" }, deps: bare });
       assert.equal(r.code, 201, JSON.stringify(r.body));
       assert.equal(r.body.campaign, "capital-blueprint");
       assert.equal(r.body.campaign_words, "Capital Blueprint");
@@ -213,17 +219,17 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.match(rows[0].content, /\nOffer key: UWIQ_DELIVERABLES\n/);
       assert.match(rows[0].content, /\n## Notes\n$/);
 
-      const again = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: "UWIQ_DELIVERABLES" } });
+      const again = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: "UWIQ_DELIVERABLES" }, deps: bare });
       assert.deepEqual(again.body, r.body);
       assert.equal((await outbox(orgA, "marketing/flywheel/capital-blueprint/00-OWNER-NOTES.md")).length, 1);
 
-      const exists = await call(postCampaign, tokenOwnerA, { body: { request_id: rid("camp2"), key: "UWIQ_DELIVERABLES" } });
+      const exists = await call(postCampaign, tokenOwnerA, { body: { request_id: rid("camp2"), key: "UWIQ_DELIVERABLES" }, deps: bare });
       assert.equal(exists.code, 200);
       assert.equal(exists.body.created, false);
     });
 
     test("the new flywheel reads from its pending save for this company only", async () => {
-      const r = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: "capital-blueprint" } });
+      const r = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: "capital-blueprint" }, deps: bare });
       assert.equal(r.code, 200, JSON.stringify(r.body));
       assert.equal(r.body.campaign_words, "Capital Blueprint");
       assert.deepEqual(r.body.stages.map((s) => s.state), ["MISSING", "MISSING", "MISSING", "MISSING", "MISSING", "MISSING"]);
@@ -232,7 +238,7 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.deepEqual(r.body.stages[0].can_run, { ok: true, reason: null });
       assert.deepEqual(r.body.stages[1].can_run, { ok: true, reason: null });
       assert.equal(r.body.stages[2].can_run.ok, false, "the offer needs who we sell to first");
-      assert.equal((await call(getFlywheel, tokenOwnerB, { method: "GET", query: { campaign: "capital-blueprint" } })).code, 404);
+      assert.equal((await call(getFlywheel, tokenOwnerB, { method: "GET", query: { campaign: "capital-blueprint" }, deps: bare })).code, 404);
     });
 
     test("a key that is not an offer is refused by field", async () => {
