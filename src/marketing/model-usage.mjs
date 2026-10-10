@@ -26,10 +26,18 @@ const CACHE_WRITE_MULTIPLIER = 1.25;
 const price = (input, output, cacheRead) =>
   Object.freeze({ input, output, cache_read: cacheRead, cache_write: input * CACHE_WRITE_MULTIPLIER });
 
+/* 'claude-code' (added 2026-10-06): the Claude Code command line on Chris's Mac, run
+   by scripts/marketing-run-queue.mjs under his Claude subscription
+   (src/agents/claude-code.mjs). There is no bill per call, so it is $0 — a real zero,
+   not an unknown. Its web searches carry no fee either (FREE_MODELS below). */
 export const MODEL_PRICES = Object.freeze({
   "claude-opus-5-5": price(4, 20, 0.2),
-  "claude-sonnet-5-5": price(2, 10, 0.2)
+  "claude-sonnet-5-5": price(2, 10, 0.2),
+  "claude-code": price(0, 0, 0)
 });
+
+/** Models with no bill per call: their web searches cost nothing either. */
+export const FREE_MODELS = Object.freeze(["claude-code"]);
 
 const PER = 1_000_000;
 
@@ -116,7 +124,8 @@ export function costUsd(model, tokens) {
  */
 export function callCostUsd(model, tokens, webSearches = 0) {
   const t = costUsd(model, tokens);
-  return t == null ? null : round6(t + count(webSearches) * WEB_SEARCH_USD);
+  if (t == null) return null;
+  return FREE_MODELS.includes(String(model)) ? t : round6(t + count(webSearches) * WEB_SEARCH_USD);
 }
 
 /** worstCaseUsd(tokens) → what unpriced tokens count as for the cap: the highest known rate. */

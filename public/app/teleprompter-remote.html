@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fundhub">
+<title>Fundhub — Pocket remote</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+:root{color-scheme:dark;--ink:#fff;--muted:#a9abb0;--line:#2b2f36;--ok:#34c759;--face:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:#000;color:var(--ink);font-family:var(--face)}
+body{padding:16px 16px calc(24px + env(safe-area-inset-bottom,0px));display:grid;gap:12px;max-width:640px;margin:0 auto}
+h1{font-size:22px;margin:0}
+p{margin:0;color:var(--muted);font-size:16px;line-height:1.4}
+#gap{color:#ffb020}
+button,select,textarea,a.big{font:inherit;color:inherit}
+button,a.big{min-height:52px;border-radius:12px;border:1px solid var(--line);background:#17191d;font-size:18px;font-weight:700;cursor:pointer;text-decoration:none;display:grid;place-items:center}
+#remote-play{background:#ff3b30;border-color:#ff3b30;color:#fff}
+#remote-save{background:#000;border-color:var(--ok);color:#fff}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#remote-roll{min-height:28vh;max-height:36vh;overflow:auto;font-size:28px;line-height:1.35;padding:12px;border:1px solid var(--line);border-radius:12px}
+#remote-roll .now{color:#ff3b30;font-weight:700}
+textarea{width:100%;min-height:28vh;padding:12px;border-radius:12px;border:1px solid var(--line);background:#111;color:#fff;font-size:18px;line-height:1.4}
+select{min-height:48px;border-radius:12px;border:1px solid var(--line);background:#17191d;padding:8px 12px;font-size:16px}
+#remote-status{min-height:1.4em}
+</style>
+</head>
+<body>
+<h1 id="remote-title">Pocket remote</h1>
+<p>This phone uses the same film key as the iPad. Play and Pause move the words here. Save words sends the script through the same save the iPad uses.</p>
+<p id="gap">The recording phone still cannot pause the iPad or change the words.</p>
+<a class="big" id="remote-ipad" href="/app/teleprompter.html?mirror=1">Open the iPad page with the mirror on</a>
+<select id="remote-script" hidden aria-label="Script"></select>
+<div id="remote-roll" aria-label="Words"></div>
+<div class="row">
+  <button type="button" id="remote-play" aria-pressed="false">Play</button>
+  <button type="button" id="remote-save">Save words</button>
+</div>
+<label for="remote-body">Words</label>
+<textarea id="remote-body" aria-label="Words"></textarea>
+<p id="remote-status" role="status">Loading the shoot…</p>
+<script src="teleprompter-remote.js"></script>
+</body>
+</html>

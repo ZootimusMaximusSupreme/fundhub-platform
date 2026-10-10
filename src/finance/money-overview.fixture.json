@@ -1,0 +1,451 @@
+{
+  "ok": true,
+  "client": {
+    "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+    "name": "Test Test"
+  },
+  "as_of": "2026-10-06T22:59:08.732Z",
+  "sandbox": true,
+  "containers": [
+    {
+      "id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "kind": "business",
+      "name": "Fundhub LLC",
+      "accounts": 2
+    },
+    {
+      "id": "36b90655-f93d-4444-90a8-ccf713426e56",
+      "kind": "personal",
+      "name": "Chris (personal)",
+      "accounts": 2
+    },
+    {
+      "id": null,
+      "kind": "unknown",
+      "name": "Not sorted yet",
+      "accounts": 4
+    }
+  ],
+  "cash": {
+    "personal": {
+      "cents": 421055,
+      "is_floor": false,
+      "accounts": 1
+    },
+    "business": {
+      "cents": 1875000,
+      "is_floor": false,
+      "accounts": 1
+    },
+    "unknown": {
+      "cents": 2296055,
+      "is_floor": false,
+      "accounts": 2
+    }
+  },
+  "debt": {
+    "total_cents": 1344080,
+    "is_floor": false,
+    "by_kind": {
+      "personal": 132040,
+      "business": 540000,
+      "unknown": 672040
+    },
+    "by_container": [
+      {
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "name": "Fundhub LLC",
+        "kind": "business",
+        "owed_cents": 540000,
+        "is_floor": false
+      },
+      {
+        "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+        "name": "Chris (personal)",
+        "kind": "personal",
+        "owed_cents": 132040,
+        "is_floor": false
+      },
+      {
+        "container_id": null,
+        "name": "Not sorted yet",
+        "kind": "unknown",
+        "owed_cents": 672040,
+        "is_floor": false
+      }
+    ],
+    "cards": [
+      {
+        "account_id": "bca740a3-6536-4b95-8f5d-8ea6a0157d9e",
+        "name": "Business Amex",
+        "mask": "4404",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "kind": "business",
+        "balance_cents": 540000,
+        "limit_cents": 2500000,
+        "room_cents": 1960000,
+        "used_pct": 21.6,
+        "due_on": "2026-11-06",
+        "min_due_cents": 27000,
+        "past_due_cents": null
+      },
+      {
+        "account_id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "name": "Business Amex",
+        "mask": "4404",
+        "container_id": null,
+        "kind": "unknown",
+        "balance_cents": 540000,
+        "limit_cents": 2500000,
+        "room_cents": 1960000,
+        "used_pct": 21.6,
+        "due_on": null,
+        "min_due_cents": null,
+        "past_due_cents": null
+      },
+      {
+        "account_id": "35e79847-7091-4a95-afaa-d703d6effafa",
+        "name": "Personal Visa",
+        "mask": "3303",
+        "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+        "kind": "personal",
+        "balance_cents": 132040,
+        "limit_cents": 800000,
+        "room_cents": 667960,
+        "used_pct": 16.5,
+        "due_on": "2026-11-06",
+        "min_due_cents": 6602,
+        "past_due_cents": null
+      },
+      {
+        "account_id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "name": "Personal Visa",
+        "mask": "3303",
+        "container_id": null,
+        "kind": "unknown",
+        "balance_cents": 132040,
+        "limit_cents": 800000,
+        "room_cents": 667960,
+        "used_pct": 16.5,
+        "due_on": null,
+        "min_due_cents": null,
+        "past_due_cents": null
+      }
+    ],
+    "loans": []
+  },
+  "accounts": [
+    {
+      "id": "b0245d80-936e-485e-8371-666bd6127940",
+      "name": "Business Checking",
+      "mask": "2202",
+      "type": "depository",
+      "subtype": "checking",
+      "kind": "business",
+      "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 1875000,
+      "available_cents": 1873893,
+      "limit_cents": null,
+      "provider": "plaid"
+    },
+    {
+      "id": "c73daf51-36a8-4c25-a365-3b2281ae9fc7",
+      "name": "Business Checking",
+      "mask": "2202",
+      "type": "depository",
+      "subtype": "checking",
+      "kind": "unknown",
+      "container_id": null,
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 1875000,
+      "available_cents": 1875000,
+      "limit_cents": null,
+      "provider": "plaid"
+    },
+    {
+      "id": "3d9afef8-9644-4872-8049-087965036a2c",
+      "name": "Personal Checking",
+      "mask": "1101",
+      "type": "depository",
+      "subtype": "checking",
+      "kind": "unknown",
+      "container_id": null,
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 421055,
+      "available_cents": 421055,
+      "limit_cents": null,
+      "provider": "plaid"
+    },
+    {
+      "id": "9798cfb9-8fc0-41f2-88e4-ca43d2489991",
+      "name": "Personal Checking",
+      "mask": "1101",
+      "type": "depository",
+      "subtype": "checking",
+      "kind": "personal",
+      "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 421055,
+      "available_cents": 419196,
+      "limit_cents": null,
+      "provider": "plaid"
+    },
+    {
+      "id": "bca740a3-6536-4b95-8f5d-8ea6a0157d9e",
+      "name": "Business Amex",
+      "mask": "4404",
+      "type": "credit",
+      "subtype": "credit card",
+      "kind": "business",
+      "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 540000,
+      "available_cents": 1956770,
+      "limit_cents": 2500000,
+      "provider": "plaid"
+    },
+    {
+      "id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+      "name": "Business Amex",
+      "mask": "4404",
+      "type": "credit",
+      "subtype": "credit card",
+      "kind": "unknown",
+      "container_id": null,
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 540000,
+      "available_cents": 1960000,
+      "limit_cents": 2500000,
+      "provider": "plaid"
+    },
+    {
+      "id": "35e79847-7091-4a95-afaa-d703d6effafa",
+      "name": "Personal Visa",
+      "mask": "3303",
+      "type": "credit",
+      "subtype": "credit card",
+      "kind": "personal",
+      "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 132040,
+      "available_cents": 666665,
+      "limit_cents": 800000,
+      "provider": "plaid"
+    },
+    {
+      "id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+      "name": "Personal Visa",
+      "mask": "3303",
+      "type": "credit",
+      "subtype": "credit card",
+      "kind": "unknown",
+      "container_id": null,
+      "institution": "First Platypus Bank (Plaid sandbox — test data)",
+      "current_cents": 132040,
+      "available_cents": 667960,
+      "limit_cents": 800000,
+      "provider": "plaid"
+    }
+  ],
+  "cashflow": {
+    "has_transactions": true,
+    "months": [
+      {
+        "month": "2026-07",
+        "personal": {
+          "in_cents": null,
+          "out_cents": 288129
+        },
+        "business": {
+          "in_cents": null,
+          "out_cents": 302364
+        },
+        "unknown": {
+          "in_cents": 1391000,
+          "out_cents": 18000
+        }
+      },
+      {
+        "month": "2026-08",
+        "personal": {
+          "in_cents": 500000,
+          "out_cents": 154191
+        },
+        "business": {
+          "in_cents": 500000,
+          "out_cents": 495980
+        },
+        "unknown": {
+          "in_cents": 2494000,
+          "out_cents": 478000
+        }
+      },
+      {
+        "month": "2026-09",
+        "personal": {
+          "in_cents": 500000,
+          "out_cents": 247549
+        },
+        "business": {
+          "in_cents": 500000,
+          "out_cents": 352649
+        },
+        "unknown": {
+          "in_cents": 2200000,
+          "out_cents": 478000
+        }
+      },
+      {
+        "month": "2026-10",
+        "personal": {
+          "in_cents": 500000,
+          "out_cents": 75756
+        },
+        "business": {
+          "in_cents": 500000,
+          "out_cents": 17236
+        },
+        "unknown": {
+          "in_cents": 797000,
+          "out_cents": 460000
+        }
+      }
+    ]
+  },
+  "bills": [
+    {
+      "name": "Uber",
+      "amount_cents": 3400,
+      "cadence": "biweekly",
+      "next_on": "2026-10-08",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "Netflix",
+      "amount_cents": 1549,
+      "cadence": "monthly",
+      "next_on": "2026-10-10",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "Whole Foods",
+      "amount_cents": 8100,
+      "cadence": "weekly",
+      "next_on": "2026-10-11",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "GEICO",
+      "amount_cents": 18000,
+      "cadence": "monthly",
+      "next_on": "2026-10-13",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "Shell Gas Station",
+      "amount_cents": 4340,
+      "cadence": "biweekly",
+      "next_on": "2026-10-14",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "Staples Office Supplies",
+      "amount_cents": 12000,
+      "cadence": "monthly",
+      "next_on": "2026-10-21",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "Oakwood Apartments Rent",
+      "amount_cents": 250000,
+      "cadence": "monthly",
+      "next_on": "2026-11-02",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "AWS",
+      "amount_cents": 42000,
+      "cadence": "monthly",
+      "next_on": "2026-11-03",
+      "kind": "unknown",
+      "container_id": null
+    },
+    {
+      "name": "HubSpot Software Subscription",
+      "amount_cents": 30000,
+      "cadence": "monthly",
+      "next_on": "2026-11-04",
+      "kind": "unknown",
+      "container_id": null
+    }
+  ],
+  "upcoming": [
+    {
+      "type": "bill",
+      "name": "Uber",
+      "on": "2026-10-08",
+      "amount_cents": 3400
+    },
+    {
+      "type": "bill",
+      "name": "Netflix",
+      "on": "2026-10-10",
+      "amount_cents": 1549
+    },
+    {
+      "type": "bill",
+      "name": "Whole Foods",
+      "on": "2026-10-11",
+      "amount_cents": 8100
+    },
+    {
+      "type": "bill",
+      "name": "GEICO",
+      "on": "2026-10-13",
+      "amount_cents": 18000
+    },
+    {
+      "type": "bill",
+      "name": "Shell Gas Station",
+      "on": "2026-10-14",
+      "amount_cents": 4340
+    },
+    {
+      "type": "bill",
+      "name": "Staples Office Supplies",
+      "on": "2026-10-21",
+      "amount_cents": 12000
+    },
+    {
+      "type": "bill",
+      "name": "Oakwood Apartments Rent",
+      "on": "2026-11-02",
+      "amount_cents": 250000
+    },
+    {
+      "type": "bill",
+      "name": "AWS",
+      "on": "2026-11-03",
+      "amount_cents": 42000
+    },
+    {
+      "type": "bill",
+      "name": "HubSpot Software Subscription",
+      "on": "2026-11-04",
+      "amount_cents": 30000
+    }
+  ],
+  "billing": {
+    "containers": 2,
+    "price_per_container_cents": null
+  },
+  "tip": null
+}

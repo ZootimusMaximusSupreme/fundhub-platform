@@ -44,14 +44,15 @@ export class ReminderError extends Error {
 }
 
 /**
- * The two things a reminder can be about, and the five things it can say.
+ * The three things a reminder can be about (loan added by 451), and the five
+ * things it can say.
  *
  * Exported as frozen constants so a caller building a reminder and the CHECK
  * constraint that will reject it cannot drift apart on a spelling. These MUST
- * match db/migrations/087_cashflow_reminders.sql; the pg test asserts that they
+ * match db/migrations/087_cashflow_reminders.sql (+ 451); the pg test asserts that they
  * do, against the live constraint rather than against this list.
  */
-export const SUBJECT_KINDS = Object.freeze(["card_liability", "recurring_bill"]);
+export const SUBJECT_KINDS = Object.freeze(["card_liability", "recurring_bill", "loan"]); // loan: 451
 export const REMINDER_KINDS = Object.freeze([
   "payment_due",
   "statement_closed",

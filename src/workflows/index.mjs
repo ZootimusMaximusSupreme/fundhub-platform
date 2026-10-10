@@ -13,6 +13,7 @@ import { blakeLeadWatch } from './blake-lead-watch.mjs';
 import { bs01PrecallLauncher } from './bs-01-precall-launcher.mjs';
 import { contractChaser } from './contract-chaser.mjs';
 import { dailyPulse } from './daily-pulse.mjs';
+import { eveningBrief } from './evening-brief.mjs';
 import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { commasInboxDrain } from './commas-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
@@ -20,9 +21,17 @@ import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
 import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
+import { financeOsCardDueReminders } from './finance-os-card-due-reminders.mjs';
+import { financeOsMoneyAgent } from './finance-os-money-agent.mjs';
+import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
+import { merchantPullSweeper } from './merchant-pull-sweeper.mjs';
+import { financeOsTrendSnapshots } from './finance-os-trend-snapshots.mjs';
+import { financeOsMoneyTransfers } from './finance-os-money-transfers.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
+import { documentVaultChase } from './document-vault-chase.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
+import { pulseInstantWatch } from './pulse-instant-watch.mjs';
 import { affiliatePayoutRun } from './affiliate-payout-run.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
 import { metaCampaignSyncSweeper } from './meta-campaign-sync-sweeper.mjs';
@@ -113,9 +122,12 @@ export const functions = [
      The chaser also runs today WITHOUT Inngest, through
      /api/contracts { action: "run_reminders" } — see its header. */
   contractChaser,
-  /* Daily pulse — 7:00 a.m. America/Denver all year (cron TZ=America/Denver 0 7 * * *).
-     Audit only. Recon AG-07 runtime. Does not auto-fix. */
+  /* Daily pulse — 6:00 a.m. Arizona all year (cron TZ=America/Phoenix 0 6 * * *).
+     Audit only. Recon AG-07 runtime. Does not auto-fix. The morning brief
+     texts after this check. */
   dailyPulse,
+  /* Evening brief — 9:00 p.m. Arizona. Reuses this morning's systems check. */
+  eveningBrief,
 
   /* THE OUTBOUND DRAIN. Registered 2026-08-02, and it is the reason any client
      email leaves this platform at all — twenty-six workflows queue mail and
@@ -211,8 +223,47 @@ export const functions = [
   waypointNudgeSweeper,
   blueprintCloserReadySweeper,
   financeOsPullSweeper,
+  /* CARD DUE REMINDERS (Finance OS, 2026-10-06). Daily: reads card bills from
+     Plaid, then queues one text per card per due date, 0-3 days out, when no
+     payment is on file. Never moves money. Keyed in cashflow_reminders and in
+     messages.provider_ref so a retry cannot send twice. */
+  financeOsCardDueReminders,
+  /* MONEY HELPER (Finance OS wave 2, 2026-10-06). Daily, after the card due
+     texts: Clarity Payments (money owed to Fundhub, incl. BNPL) and card bills
+     already past due get one ladder step each — reminder, late check-in,
+     second check-in, then a CSM task and no more texts. Rules only, no AI
+     call. Claimed in money_agent_log before anything is queued. */
+  financeOsMoneyAgent,
+  /* Daily Plaid charges + deposits pull, then repeating-bill detection, for every
+     client with an active consented Plaid login. Reads only; does nothing when
+     Plaid is not configured. Finance OS build 2026-10-06, unit A. */
+  plaidTransactionsSweeper,
+  /* Daily merchant processing pull (Finance OS wave 4b, unit H5, 2026-10-06):
+     every client connection set to "Paste your API key" (Commas, Whop) is read
+     with the client's own key into merchant_events. GET only, behind the
+     ADAPTERS fence; moves no money and sends nothing to anyone. */
+  merchantPullSweeper,
+  /* TREND SNAPSHOTS (FinanceOS wave 4, H6, 2026-10-06). Daily at 07:30 UTC,
+     after the Plaid pull: one row per account per day and one rollup per
+     client per day (cash per kind, never added; debt; cards used %), plus
+     estimated past days for checking/savings rebuilt from bank_transactions.
+     Reads and records only. Feeds GET /api/money/trends. */
+  financeOsTrendSnapshots,
+  /* MONEY MOVES (FinanceOS wave 5, W7, 2026-10-06). Every 15 minutes: expire
+     stale proposals, send each move the CLIENT approved once its date comes
+     (Plaid Transfer — sandbox unless PLAID_ENV=production AND
+     FINANCE_OS_TRANSFERS_LIVE=1), read Plaid's transfer events, start credit
+     legs. Returns at once, with no query, while the transfer caps are unset. */
+  financeOsMoneyTransfers,
   blueprintNextFundingSequenceSweeper,
   blueprintFinanceOsAlerts,
+  /* DOCUMENT VAULT CHASE (Capital Blueprint B3, 2026-10-06). Daily at 16:45 UTC:
+     for every paid Blueprint buyer whose application papers are not all accepted,
+     ask for the next missing one — a text, then an email, then a text, then a CSM
+     task — one ask per client per three days, and nothing once the vault is
+     complete. Each ask is one money_agent_tasks row (source doc-vault) and one
+     queued message; the dispatcher sends. Kill switch: DOCUMENT_VAULT_CHASE=off. */
+  documentVaultChase,
 
   /* THE END OF A CHECKOUT INVITATION. Registered 2026-09-06, and it is the
      other half of the sweeper above.
@@ -238,6 +289,7 @@ export const functions = [
 
      COMPLIANCE REVIEW REQUIRED: payment rails and fee timing. */
   paidCheckoutExpirySweeper,
+  pulseInstantWatch,
 
   /* THE AFFILIATE PAYOUT RUN. Registered 2026-09-21, and it closes the second
      half of a feature that has been sold as whole since August.

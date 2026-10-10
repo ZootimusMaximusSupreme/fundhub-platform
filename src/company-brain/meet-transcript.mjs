@@ -5,6 +5,7 @@
 import { createDriveClientFromConfig } from "./drive-client.mjs";
 import { driveConfigFromEnv } from "./config.mjs";
 import { upsertExtractedFile } from "./store.mjs";
+import { syncDriveIncremental } from "./sync.mjs";
 import { stampCallTranscript } from "../sales/recordings.mjs";
 import {
   meetTitleStem,
@@ -21,6 +22,18 @@ import {
 } from "./transcribe.mjs";
 
 export { WHISPER_CREDITS_ERROR, WHISPER_RATE_LIMIT_ERROR };
+
+export const MEET_SWEEP_ORG_SQL = `
+SELECT org_id FROM brain_files WHERE needs_transcription = true
+UNION
+SELECT org_id FROM brain_drive_sync`;
+
+function isEmbedSkipReason(reason) {
+  const r = String(reason || "");
+  return r === "embed_failed"
+    || r.startsWith("embed_")
+    || r.startsWith("not_configured:OPENAI");
+}
 
 /** Newest pending A/V rows to size-check. Whisper at most one short file per pass.
  *  Window is wider than the old 8 so a pile of long calls does not hide a short one. */
@@ -87,7 +100,19 @@ export async function applyMeetWords(db, {
       transcript: words
     });
   }
-  return { ok: !!up.ok, reason: up.reason || null, fileId: up.fileId || null };
+  if (up.ok) return { ok: true, reason: up.reason || null, fileId: up.fileId || null };
+  // Company Brain embed is paused. Sales still needs the words on the call
+  // and the file off the pending-transcription queue.
+  if (isEmbedSkipReason(up.reason) && extracted.fileId) {
+    await db.query(
+      `UPDATE brain_files
+          SET needs_transcription = false, updated_at = now()
+        WHERE org_id = $1 AND drive_file_id = $2`,
+      [orgId, extracted.fileId]
+    );
+    return { ok: true, reason: "sales_words_saved_brain_embed_skipped", fileId: null };
+  }
+  return { ok: false, reason: up.reason || null, fileId: up.fileId || null };
 }
 
 /**
@@ -277,13 +302,21 @@ export async function sweepMeetTranscripts(db, {
   env = process.env,
   fetchImpl,
   upsert = upsertExtractedFile,
-  client: injectedClient = null
+  client: injectedClient = null,
+  syncDrive = syncDriveIncremental
 } = {}) {
-  const orgs = await db.query(
-    `SELECT DISTINCT org_id FROM brain_files WHERE needs_transcription = true`
-  );
-  const summary = { orgs: 0, paired: 0, whispered: 0, skipped: 0, reason: null };
+  const orgs = await db.query(MEET_SWEEP_ORG_SQL);
+  const summary = { orgs: 0, paired: 0, whispered: 0, skipped: 0, synced: 0, reason: null };
   for (const row of orgs.rows || []) {
+    if (typeof syncDrive === "function") {
+      const synced = await syncDrive(db, {
+        orgId: row.org_id,
+        env,
+        fetchImpl,
+        client: injectedClient
+      });
+      if (synced?.ok) summary.synced += 1;
+    }
     const out = await processOrgMeetWords(db, {
       orgId: row.org_id,
       env,

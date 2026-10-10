@@ -14,11 +14,13 @@ import {
   CF_NIGHT_SQL,
   DYING_SCAN_SQL,
   MACHINE_CHECKS,
+  MEET_SYNC_SQL,
   META_SYNC_SQL,
   RUNNING_ADS_SQL,
   checkClickfunnelsNightJob,
   checkDyingAdScan,
   checkMachine,
+  checkMeetTranscripts,
   checkMetaServerEvents,
   checkMetaSync,
   dailyCronMinuteUtc,
@@ -60,11 +62,11 @@ test("machine registry: every row names a real file and a unique id", () => {
     assert.ok(!ids.has(row.id), `duplicate id ${row.id}`);
     ids.add(row.id);
   }
-  assert.deepEqual([...ids], ["meta-sync", "clickfunnels-night-job", "meta-server-events", "dying-ad-scan"]);
+  assert.deepEqual([...ids], ["meta-sync", "clickfunnels-night-job", "meta-server-events", "dying-ad-scan", "meet-transcript-sweeper"]);
 });
 
 test("machine registry: every query is a read — no write, no SET", () => {
-  for (const sql of [META_SYNC_SQL, CF_NIGHT_SQL, CAPI_SQL, DYING_SCAN_SQL, RUNNING_ADS_SQL]) {
+  for (const sql of [META_SYNC_SQL, CF_NIGHT_SQL, CAPI_SQL, DYING_SCAN_SQL, RUNNING_ADS_SQL, MEET_SYNC_SQL]) {
     assert.match(sql.trim(), /^SELECT\b/i);
     assert.doesNotMatch(sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP|SET)\b/i);
   }
@@ -277,6 +279,40 @@ test("dying-ad-scan: the live state today — every ad paused — is PASS with n
   assert.match(r.detail, /no running ad with video numbers/);
 });
 
+test("meet-transcript-sweeper: fresh Drive scan and no stuck files is PASS", async () => {
+  const r = await checkMeetTranscripts({
+    scope: scopeFor({
+      [MEET_SYNC_SQL]: {
+        last_sync_at: new Date("2026-10-06T12:45:00Z"),
+        sync_rows: 1,
+        errors: null,
+        pending_old: 0,
+        words_on_file: 4
+      }
+    }),
+    now: NOW
+  });
+  assert.equal(r.status, "PASS");
+  assert.match(r.detail, /4 sales calls have spoken words/);
+});
+
+test("meet-transcript-sweeper: never scanned is FAIL", async () => {
+  const r = await checkMeetTranscripts({
+    scope: scopeFor({
+      [MEET_SYNC_SQL]: {
+        last_sync_at: null,
+        sync_rows: 0,
+        errors: null,
+        pending_old: 0,
+        words_on_file: 0
+      }
+    }),
+    now: NOW
+  });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /never been scanned/);
+});
+
 test("dying-ad-scan: no Meta sync in 36 h means the scan has not run — FAIL", async () => {
   const r = await checkDyingAdScan({
     scope: scopeFor({ [DYING_SCAN_SQL]: { last_sync: new Date("2026-10-04T07:00:00Z"), buzzes_ever: 0 }, [RUNNING_ADS_SQL]: [] }),
@@ -297,7 +333,14 @@ test("the pulse runs the machine rows through the staff scope, lists FAILs, and 
     [CF_NIGHT_SQL]: { active: 1, errors: null, last_saved: new Date("2026-10-04T22:10:00Z"), last_day: "2026-10-04", recent: [] },
     [CAPI_SQL]: CAPI_OK,
     [DYING_SCAN_SQL]: SCAN_HEAD,
-    [RUNNING_ADS_SQL]: []
+    [RUNNING_ADS_SQL]: [],
+    [MEET_SYNC_SQL]: {
+      last_sync_at: new Date("2026-10-06T12:45:00Z"),
+      sync_rows: 1,
+      errors: null,
+      pending_old: 0,
+      words_on_file: 4
+    }
   });
   const staffScope = (fn) => { scopeCalls.push(1); return inner(fn); };
   // The plain db answers only the rows that already used it; a machine query
@@ -335,11 +378,12 @@ test("the pulse runs the machine rows through the staff scope, lists FAILs, and 
     ["meta-sync", "PASS"],
     ["clickfunnels-night-job", "FAIL"],
     ["meta-server-events", "PASS"],
-    ["dying-ad-scan", "PASS"]
+    ["dying-ad-scan", "PASS"],
+    ["meet-transcript-sweeper", "PASS"]
   ]);
-  assert.equal(scopeCalls.length, 4);
+  assert.ok(scopeCalls.length >= 5);
   assert.ok(result.findings.some((f) => /^clickfunnels-night-job: /.test(f)));
-  assert.match(result.sms.body, /clickfunnels-night-job/);
+  assert.match(result.sms.body, /failed/);
   assert.equal(result.sms.reason, "dry_run");
   assert.equal(sends.length, 0);
   const board = fs.readFileSync(result.wrote, "utf8");

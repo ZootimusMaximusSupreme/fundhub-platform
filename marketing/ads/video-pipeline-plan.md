@@ -8,6 +8,8 @@ Settled: one ad number = one finished video. The pipeline ends when the finished
 Paul's shared Drive — Paul pushes to Meta, we never touch Meta. Paul gets the approved video, never
 raw takes. About 100 ads a month. Chris films and approves. Nothing else.
 
+> Superseded by docs/specs/marketing-machine-2026-10-04.md (owner-approved 2026-10-05): the approved video still lands in the finished-ads folder (paul-submagic), and spec v3 also loads it into Meta as a paused ad (§2 item 11, M4); only Chris turns ads on, pauses them or changes budgets (§2 item 6).
+
 ---
 
 ## 1. The picture, start to finish

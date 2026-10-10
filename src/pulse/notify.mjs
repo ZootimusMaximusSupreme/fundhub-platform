@@ -8,6 +8,11 @@
 
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
 import { send as sendWhatsApp } from "../messaging/providers/twilio-whatsapp.mjs";
+import { inTextWindow, HELD } from "./quiet-hours.mjs";
+
+/* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). textChris and textMorningBrief text
+   Chris's own number, so each one checks inTextWindow(now) right before the hand-off to Twilio. Outside
+   6 a.m. to 10 p.m. Arizona time nothing is sent and the answer says HELD ("held_quiet_hours"). */
 
 export const PULSE_SMS_TO_ENV = "PULSE_SMS_TO";
 export const CHRIS_PULSE_SMS_ENV = "CHRIS_PULSE_SMS";
@@ -83,7 +88,8 @@ export async function textChris({
   topFails,
   env = process.env,
   dryRun = true,
-  sendImpl = sendSms
+  sendImpl = sendSms,
+  now = new Date()
 } = {}) {
   const body = formatChrisSms({ date, pass, fail, skip, topFails });
   const to = chrisPulseSmsTo(env);
@@ -91,6 +97,7 @@ export async function textChris({
     return { sent: false, reason: `${PULSE_SMS_TO_ENV} unset`, body, to: null };
   }
   if (dryRun) return { sent: false, reason: "dry_run", body, to };
+  if (!inTextWindow(now)) return { sent: false, reason: HELD, body, to };
   const result = await sendImpl(
     { to, body, channel: "sms" },
     { env }
@@ -122,4 +129,45 @@ export async function ticketDarwin({
     { env }
   );
   return { ticket, sent: result?.status === "sent", reason: result?.error || null, to, result };
+}
+
+/* THE MORNING AND EVENING BRIEF TEXT. Same number as the pulse
+   (PULSE_SMS_TO, or CHRIS_PULSE_SMS). Same Twilio send. Only the last 4
+   digits of the number ever leave this function. The stored Netlify value
+   is used as-is. This function never invents a number. */
+export function last4(number) {
+  const digits = String(number || "").replace(/\D+/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+export async function textMorningBrief({
+  body,
+  env = process.env,
+  dryRun = true,
+  sendImpl = sendSms,
+  now = new Date()
+} = {}) {
+  const to = chrisPulseSmsTo(env);
+  if (!to) {
+    return {
+      delivery_status: "no_number",
+      sent_to_last4: null,
+      error: `${PULSE_SMS_TO_ENV} unset`,
+      provider_message_id: null
+    };
+  }
+  if (dryRun) {
+    return { delivery_status: "dry_run", sent_to_last4: last4(to), error: null, provider_message_id: null };
+  }
+  if (!inTextWindow(now)) {
+    return { delivery_status: HELD, sent_to_last4: last4(to), error: null, provider_message_id: null };
+  }
+  const result = await sendImpl({ to, body, channel: "sms" }, { env });
+  const sent = result?.status === "sent";
+  return {
+    delivery_status: sent ? "sent" : "failed",
+    sent_to_last4: last4(to),
+    error: sent ? null : String(result?.error || "send failed").slice(0, 300),
+    provider_message_id: sent ? (result?.providerMessageId || null) : null
+  };
 }

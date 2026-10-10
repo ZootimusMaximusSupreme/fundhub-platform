@@ -82,3 +82,9 @@ export async function checkJobKinds(registry = JOB_KINDS) {
   return problems;
 }
 JOB_KINDS.meta_load = { group: "loader", load: () => import("./meta-load.mjs") }; // U28: one approved video → one PAUSED Meta ad
+JOB_KINDS.start_batch = { group: "system", load: () => import("./batch-run.mjs").then((m) => ({ run: m.runStartBatch })) }; // U35: plan a batch, queue its write_slot jobs
+JOB_KINDS.finish_batch = { group: "system", load: () => import("./batch-run.mjs").then((m) => ({ run: m.runFinishBatch })) }; // U35: count a written batch, mark it ready
+JOB_KINDS.release_batch = { group: "system", load: () => import("./batch-run.mjs").then((m) => ({ run: m.runReleaseBatch })) }; // U35: release at release_at: files + one buzz
+JOB_KINDS.expire_drafts = { group: "system", load: () => import("./batch-run.mjs").then((m) => ({ run: m.runExpireDrafts })) }; // U35: old machine drafts → expired
+JOB_KINDS.voice_export = { group: "system", load: () => import("./voice-export.mjs") }; // U35: the week's voice pairs → VOICE.md
+JOB_KINDS.nightly_script_check = { group: "system", load: () => import("./nightly-script-check.mjs") }; // U35: repo files vs the database

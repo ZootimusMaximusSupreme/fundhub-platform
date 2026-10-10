@@ -53,6 +53,9 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     /* Added 2026-10-06 (marketing machine, plan unit U22). The 15-minute clock: reads,
        writes its heartbeat and wakes marketing-worker-background; no real work. */
     "marketing-clock",
+    /* Added 2026-10-09 (pulse v1). The hourly pulse: runs every beat read-only and texts Chris
+       on a break. With no DATABASE_URL (this test's child run) it does nothing at all. */
+    "pulse-hourly",
     "social-publish-sweeper",
     "staff-message-sweeper"
   ]);

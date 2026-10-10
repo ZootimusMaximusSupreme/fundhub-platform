@@ -53,6 +53,7 @@
 // queue time — and it is why a held message is re-gated rather than trusted.
 
 import { db } from "../../src/db.mjs";
+import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { dispatchDue, DEFAULT_BATCH } from "../../src/messaging/dispatch.mjs";
 
 /* Every five minutes. The quiet-hours window opens on the hour, and a text held
@@ -138,6 +139,7 @@ export async function handler() {
     console.log(`[staff-message-sweeper] released ${result.claimed} held message(s): ` +
       JSON.stringify(result.counts));
   }
+  await noteScheduledRun(db, "staff-message-sweeper", result);
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { "content-type": "application/json" }

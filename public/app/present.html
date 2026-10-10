@@ -104,6 +104,41 @@ input::placeholder{color:var(--gray2)}
 .toast{position:absolute;bottom:62px;right:12px;left:12px;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;padding:9px 11px;animation:fh-in 200ms ease}
 .gate{padding:28px 22px;max-width:520px}
 .fin{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-top:10px}
+/* 06 Blueprint: the Capital Blueprint + FinanceOS offer stack (owner ask
+   2026-10-06). Flat boxes in the deck's own look (.stat, .score): a hairline,
+   the soft fill, radius 10. Every size is at or over the 11px floor. On/off is
+   a filled box AND the word, never colour alone. */
+.stk-fill{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column}
+.stk-fill-in{margin:auto 0;max-width:1100px}
+.stk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;margin-top:12px;max-width:1100px}
+.stk-item,.stk-path li{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:9px 12px}
+.stk-item .n,.stk-path .n{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--gray2)}
+.stk-item .t,.stk-path .t{font-size:clamp(12px,1.2vw,14px);font-weight:650;color:var(--ink);margin-top:2px}
+.stk-item .d,.stk-path .d{font-size:clamp(11px,1vw,12.5px);color:var(--gray);margin-top:3px;line-height:1.4}
+.stk-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;max-width:760px}
+.stk-chip{font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--ink)}
+.stk-inc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;margin-top:10px;max-width:760px}
+.stk-inc.one{grid-template-columns:1fr;margin-top:6px}
+.stk-incl{display:flex;gap:8px;align-items:baseline;font-size:clamp(12px,1.15vw,14px);color:var(--ink);padding:4px 0;border-bottom:1px solid var(--line)}
+.stk-incl .ck{font-family:var(--mono);font-size:12px}
+.stk-none{font-family:var(--mono);font-size:12px;color:var(--gray2);margin-top:6px}
+.stk-price{margin-top:16px}
+.stk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px;max-width:760px}
+.stk-path{list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;max-width:900px}
+.stk-togs{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.stk-tog{display:flex;gap:8px;align-items:flex-start;text-align:left;width:100%;background:transparent;border:1px solid var(--line);padding:6px 8px;cursor:pointer;color:var(--ink)}
+.stk-tog.on{background:var(--paper)}
+.stk-tog .box{width:12px;height:12px;margin-top:2px;flex-shrink:0;border:1px solid var(--ink)}
+.stk-tog.on .box{background:var(--ink)}
+.stk-tog .txt{flex:1;min-width:0}
+.stk-tog .nm{display:block;font-size:11.5px;font-weight:650}
+.stk-tog .why{display:block;font-size:11px;color:var(--gray);margin-top:1px;line-height:1.35}
+.stk-tog .st{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.stk-acts{margin-top:6px;display:flex;flex-direction:column;gap:5px}
+.stk-demo{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.stk-demo a{display:block;text-decoration:none}
+.stk-why{font-size:11px;color:var(--gray);margin-top:5px;line-height:1.4}
+@media (max-width:900px){.stk-grid,.stk-inc,.stk-cols,.stk-path{grid-template-columns:1fr}}
 </style>
 </head>
 <body>

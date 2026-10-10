@@ -4,7 +4,7 @@
 // contract's own example (src/marketing/api-contract.mjs GET marketing/shoot).
 // No database, no session, nothing sent anywhere.
 //
-// It proves: the sign-in wall; the empty shoot; it opens on the first script
+// It proves: no sign-in wall; the empty shoot; it opens on the first script
 // with no Got it and shows its ad number, take and exact file name; mirror
 // (left-right and upside down) flips the reading area and not the controls;
 // v1's keys (Space plays, arrows change speed); at the end of a script Space
@@ -53,10 +53,33 @@ const state = (page) => page.evaluate(() => window.__fhtp.state());
 test.describe("teleprompter at 390px", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("no sign-in: the wall, with a sign-in link that comes back here", async ({ page }) => {
+  test("a film link sends the key, rolls the script, and never opens login", async ({ page }) => {
+    let seen = "";
+    await page.route("**/api/**", async (route) => {
+      const req = route.request();
+      if (new URL(req.url()).pathname.endsWith("/marketing/shoot")) seen = req.headers()["x-shoot-film"] || "";
+      if (req.method() === "GET" && new URL(req.url()).pathname.endsWith("/marketing/shoot")) {
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(SHOOT) });
+      }
+      return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+    });
+    await page.goto("/app/teleprompter.html?k=film-key-1");
+    await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
+    await expect(page.locator("#empty")).toBeHidden();
+    await expect(page.locator("#empty-plan")).toBeHidden();
+    expect(seen).toBe("film-key-1");
+    expect(page.url()).not.toContain("login.html");
+    await expect(page.getByText(/sign in/i)).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
+    expect(page.url()).not.toContain("login.html");
+  });
+
+  test("no sign-in: the shoot rolls and the sign-in wall stays hidden", async ({ page }) => {
     await open(page, { token: false });
-    await expect(page.getByText("Sign in to use the teleprompter.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login.html?next=/app/teleprompter.html");
+    await expect(page.locator("#wall")).toHaveCount(0);
+    await expect(page.getByText(/sign in/i)).toHaveCount(0);
+    await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
   });
 
   test("no shoot planned: says so and links to the Shoot tab", async ({ page }) => {
@@ -76,12 +99,43 @@ test.describe("teleprompter at 390px", () => {
     expect(w[0]).toBeLessThanOrEqual(w[1]);
     const small = await page.locator("#controls .btn").evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 44).length);
     expect(small).toBe(0);
+    await expect(page.locator("#controls .btn")).toHaveCount(2);
+    await expect(page.locator("#b-rec")).toHaveText("Record");
+    await expect(page.locator("#play")).toHaveText("Play");
+    await expect(page.locator("#b-stop")).toHaveCount(0);
+    await expect(page.locator("#b-script-save")).toBeHidden();
+    await expect(page.locator("#wpm-down")).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
+  test("a saved speed is still there after a reload", async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => localStorage.setItem("fhtp.wpm", JSON.stringify(180)));
+    await page.reload();
+    await expect(page.locator("#s-time")).toContainText("180 wpm");
+  });
+
+  test("Play becomes Pause while the words roll, and the buttons hide while the cursor is in the words", async ({ page }) => {
+    await open(page);
+    await expect(page.locator("#content")).toContainText("MOST lenders");
+    await page.locator("#play").click();
+    await expect(page.locator("#play")).toHaveText("Pause");
+    await page.locator("#play").click();
+    await expect(page.locator("#play")).toHaveText("Play");
+    await page.evaluate(() => {
+      document.body.classList.add("wording");
+    });
+    await expect(page.locator("#controls")).toBeHidden();
+    await page.evaluate(() => {
+      document.body.classList.remove("wording");
+    });
+    await expect(page.locator("#b-rec")).toBeVisible();
+    await expect(page.locator("#play")).toBeVisible();
   });
 
   test("mirror flips the reading area (text, line, progress, end card) and never the controls", async ({ page }) => {
     await open(page);
-    await page.locator("#b-set").click();
+    await page.evaluate(() => window.__fhtp.openSheet("set"));
     await page.getByLabel("Mirror left to right (beam-splitter glass)").check();
     const flip = () => page.locator("#flip").evaluate((el) => getComputedStyle(el).transform);
     expect(await flip()).toBe("matrix(-1, 0, 0, 1, 0, 0)");
@@ -96,6 +150,7 @@ test.describe("teleprompter at 390px", () => {
 
   test("v1's keys: the arrows change the speed, Space counts down then rolls, Space again pauses", async ({ page }) => {
     await open(page);
+    await expect(page.locator("#status .note")).toContainText("blank gap keeps that same speed");
     await expect(page.locator("#s-time")).toContainText("150 wpm");
     await page.keyboard.press("ArrowUp");
     await expect(page.locator("#s-time")).toContainText("155 wpm");
@@ -105,8 +160,17 @@ test.describe("teleprompter at 390px", () => {
     await page.keyboard.press(" ");
     await expect(page.locator("#count")).toBeVisible();
     await expect.poll(async () => (await state(page)).playing, { timeout: 5000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.body.classList.contains("rolling"))).toBe(true);
     await page.waitForTimeout(400);
     expect((await state(page)).t).toBeGreaterThan(0);
+    const mid = await state(page);
+    await page.keyboard.press("ArrowUp");
+    await expect.poll(async () => (await state(page)).wpm).toBe(mid.wpm + 5);
+    expect((await state(page)).playing).toBe(true);
+    await page.keyboard.press("ArrowDown");
+    await expect.poll(async () => (await state(page)).wpm).toBe(mid.wpm);
+    expect((await state(page)).playing).toBe(true);
+    await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
     await page.keyboard.press(" ");
     expect((await state(page)).playing).toBe(false);
   });
@@ -114,6 +178,42 @@ test.describe("teleprompter at 390px", () => {
 
 test.describe("teleprompter, the end of a script and the remote", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
+
+  test("double-tap the tiny name button opens the queue; one tap does nothing; a tap loads that script", async ({ page }) => {
+    const posts = [];
+    await open(page, { posts });
+    const chip = page.locator("#p-file");
+    await expect(chip).toHaveText("SLO Ad 93 — Your file is worth more Take 1.mp4");
+    await expect(chip).toBeVisible();
+    const flip = await page.locator("#flip").boundingBox();
+    const box = await chip.boundingBox();
+    expect(box.height).toBeLessThanOrEqual(28);
+    expect(box.width).toBeLessThanOrEqual(160);
+    expect(box.y).toBeGreaterThanOrEqual(flip.y + flip.height - 1);
+    await chip.click();
+    await page.waitForTimeout(400);
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    await expect(page.locator("#qmenu")).toBeHidden();
+    expect(posts).toHaveLength(0);
+    await chip.dblclick();
+    await expect(page.locator("#qmenu")).toBeVisible();
+    await expect(page.locator("#qmenu")).toContainText("Inquiries off first");
+    await expect(page.locator("#qmenu")).toContainText("Your file is worth more");
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    expect(posts).toHaveLength(0);
+    const list = page.locator("#qmenu-list");
+    const overflow = await list.evaluate((el) => getComputedStyle(el).overflowY);
+    expect(["auto", "scroll"]).toContain(overflow);
+    await page.locator("#qmenu").getByRole("button", { name: /Inquiries off first/ }).click();
+    await expect(page.locator("#qmenu")).toBeHidden();
+    await expect(page.locator("#s-title")).toHaveText("Inquiries off first");
+    await expect(page.locator("#content")).toContainText("Every hard pull");
+    await expect(chip).toHaveText("Inquiries off first");
+    expect(posts).toHaveLength(0);
+    await chip.dblclick();
+    await expect(page.locator("#qmenu")).toContainText("Your file is worth more");
+    await expect(page.locator("body")).not.toContainText("file-name word");
+  });
 
   test("Space at the end is Got it: one mark, then the next script with no Got it loads", async ({ page }) => {
     const posts = [];
@@ -127,7 +227,9 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     expect(posts[0].request_id).toMatch(/^[A-Za-z0-9._:-]{8,200}$/);
     await expect(page.locator("#toast")).toHaveText("Got it. Keep SLO Ad 93 — Your file is worth more Take 1.mp4.");
     await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
-    await expect(page.locator("#s-file")).toContainText("File name unknown");
+    await expect(page.locator("#s-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("#p-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("body")).not.toContainText("file-name word");
   });
 
   test("Page Up at the end is Another take: the take number moves on and it rolls again", async ({ page }) => {
@@ -156,7 +258,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
   test("Learn remote: a remote's button learned for Got it marks the take at the end", async ({ page }) => {
     const posts = [];
     await open(page, { posts });
-    await page.locator("#b-set").click();
+    await page.evaluate(() => window.__fhtp.openSheet("set"));
     await page.locator('[data-slot="got_it"]').click();
     await expect(page.locator('[data-slot="got_it"]')).toContainText("Press the button now");
     await page.keyboard.press("b");
@@ -175,7 +277,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     await open(page, { posts, markFails: () => down });
     await page.evaluate(() => window.__fhtp.finish());
     await page.keyboard.press(" ");
-    await expect(page.locator("#pending")).toBeVisible();
+    await expect(page.locator("#pending")).toBeHidden();
     await expect(page.locator("#pending")).toContainText("saved on this phone");
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("fhtp.queue")).length)).toBe(1);
     // The next script still loads; the shoot keeps going without a connection.

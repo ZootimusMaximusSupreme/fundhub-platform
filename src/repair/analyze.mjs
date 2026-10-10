@@ -42,6 +42,7 @@ import { loadClientReturnAddress } from "../inquiry-ops/call-scheduler.mjs";
 import { hasDisputeAuthorization, hasRepairAgreement } from "./dispute-auth.mjs";
 import { onRepairEvent } from "./handlers.mjs";
 import { persistGeneratedLetters } from "./persist-generated-letters.mjs";
+import { verifiedIdentity as readVerifiedIdentity } from "../identity/verified.mjs";
 
 const BUREAU_CODES = Object.freeze(["TU", "EX", "EQ"]);
 
@@ -57,6 +58,19 @@ const PRIOR_WINDOW = 5;
    agreement also counts, and counts first: a client who bought repair is on the
    repair path whatever the analyzer last stamped on their record. */
 const REPAIR_PATH_TIERS = new Set(["REPAIR_ONLY", "FUNDING_PLUS_REPAIR"]);
+
+/** An ACTIVE repair_programs row puts a client on the repair path. The row is
+ *  written when someone buys repair (src/repair/enroll.mjs). It is the only
+ *  signal here that is neither a credit-pull result nor a signature, so a repair
+ *  buyer whose file has not been graded REPAIR_ONLY yet still gets the full
+ *  repair letters. It is keyed to the program row and NOT to the
+ *  metro2-letter-pack entitlement: every Capital Blueprint buyer holds that
+ *  entitlement, and their letters must not change. A cancelled, complete or
+ *  upsell_pending program does not count.
+ *  @param {{ status?: string|null }|null|undefined} program loadRepairProgram()'s row */
+export function hasActiveRepairProgram(program) {
+  return String(program?.status || "") === "active";
+}
 
 /**
  * Group collection / debt-buyer claims by creditor name_norm for furnisher letters.
@@ -290,57 +304,25 @@ async function loadIdentity(db, { orgId, clientId }) {
  * person's name may not assert a name or an address on the strength of a typed
  * field.
  *
- * NOT YET BUILT IS A NORMAL ANSWER. src/identity/ is another lane's work and may
- * land after this. So the module is loaded dynamically, once, and every failure
- * — module missing, export missing, throw, malformed answer — resolves to null.
- * Null means UNKNOWN, and unknown makes no claim at all: the floor's name and
- * address claims drop out (../metro2/diy/personal-info-floor.mjs) and the
- * engine's consumer context stays notVisible (../metro2/diy/consumer-context.mjs),
- * which is exactly the behaviour this file had before any of it existed.
+ * A FAILED READ IS A NORMAL ANSWER. Every failure — a throw, a malformed
+ * answer — resolves to null. Null means UNKNOWN, and unknown makes no claim at
+ * all: the floor's name and address claims drop out
+ * (../metro2/diy/personal-info-floor.mjs) and the engine's consumer context stays
+ * notVisible (../metro2/diy/consumer-context.mjs).
  *
- * The candidate paths are tried in order and the first module that exports a
- * `verifiedIdentity` function wins.
+ * THE MODULE IS IMPORTED STATICALLY, ON PURPOSE (2026-10-09). This file used to
+ * find src/identity/verified.mjs with `import(path)` over a list of relative
+ * strings. That works from the source tree and FAILS ON THE SERVER: the Netlify
+ * bundler turns netlify/functions/api.mjs into one file, so a relative string
+ * resolves against netlify/, where no identity folder exists. Every candidate
+ * threw ERR_MODULE_NOT_FOUND, the resolver answered null, and the repair writer
+ * refused every client with identity_not_verified — while the same code passed
+ * on a laptop. A plain `import ... from` is inlined by the bundler. Proved from a
+ * built bundle (see the ZU-P manifest), not from the source tree.
  */
-/* MEASURED 2026-09-06, BY RUNNING IT: the identity lane landed at
-   `src/identity/verified.mjs`, and that file was on none of the three names
-   guessed here. All three `import()` calls threw ERR_MODULE_NOT_FOUND, the
-   resolver answered null, and every floor name and address claim was therefore
-   dropped on EVERY real client — the exact behaviour the comment above
-   describes as the not-yet-built case, arrived at while the module was in fact
-   built and exporting `verifiedIdentity` with the signature this file wants.
-   The real path leads the list now. The three guesses stay behind it: they cost
-   nothing, and removing them would be a second change to a list whose whole job
-   is to tolerate a file not being where it was expected. */
-const IDENTITY_MODULES = Object.freeze([
-  "../identity/verified.mjs",
-  "../identity/index.mjs",
-  "../identity/verified-identity.mjs",
-  "../identity/identity.mjs"
-]);
 
-let verifiedIdentityFnPromise = null;
-
-async function resolveVerifiedIdentityFn() {
-  if (!verifiedIdentityFnPromise) {
-    verifiedIdentityFnPromise = (async () => {
-      for (const path of IDENTITY_MODULES) {
-        try {
-          const mod = await import(path);
-          if (typeof mod?.verifiedIdentity === "function") return mod.verifiedIdentity;
-        } catch {
-          /* not there yet, or not loadable — try the next one */
-        }
-      }
-      return null;
-    })();
-  }
-  return verifiedIdentityFnPromise;
-}
-
-/** Exported for tests only — forget which module answered last. */
-export function resetVerifiedIdentityCache() {
-  verifiedIdentityFnPromise = null;
-}
+/** Kept so older tests that call it still run. Nothing is cached any more, so there is nothing to forget. */
+export function resetVerifiedIdentityCache() {}
 
 /**
  * `{ legalName, address, dateOfBirth, source, verifiedAt }` or NULL.
@@ -351,8 +333,7 @@ export function resetVerifiedIdentityCache() {
  * address claim, never an address borrowed from somewhere else.
  */
 export async function loadVerifiedIdentity(db, { orgId, clientId }, override = null) {
-  const fn = typeof override === "function" ? override : await resolveVerifiedIdentityFn();
-  if (!fn) return null;
+  const fn = typeof override === "function" ? override : readVerifiedIdentity;
   let got;
   try {
     got = await fn(db, { orgId, clientId });
@@ -517,10 +498,11 @@ async function existingFurnisherLetter(db, { orgId, clientId, furnisherAddressId
  * @param {{orgId, clientId, round?, staffId?, verifiedIdentity?}} opts
  *        `verifiedIdentity` overrides where the verified name and address are
  *        read from: `(db, {orgId, clientId}) => identity|null`. Left out — which
- *        is every production caller — it resolves src/identity/ dynamically, and
- *        answers null while that module does not exist yet. It is a seam, not a
- *        second source of truth: whatever supplies it must still be the read of
- *        the client's uploaded government ID and proof of address.
+ *        is every production caller — it uses `verifiedIdentity` from
+ *        src/identity/verified.mjs, imported statically so the server bundle
+ *        carries it. It is a seam, not a second source of truth: whatever
+ *        supplies it must still be the read of the client's uploaded government
+ *        ID and proof of address.
  */
 export async function analyzeAndGenerate(db, {
   orgId, clientId, round = "R1", staffId = null, verifiedIdentity = null,
@@ -592,7 +574,7 @@ export async function analyzeAndGenerate(db, {
      claims — see ../metro2/diy/derogatory.mjs for what they assert and why they
      are not Metro 2 rules — and ONLY for a client on the repair path. A client
      off that path gets exactly what they got before: engine findings or nothing. */
-  const onRepairPath = hasAgreement || REPAIR_PATH_TIERS.has(
+  const onRepairPath = hasAgreement || hasActiveRepairProgram(program) || REPAIR_PATH_TIERS.has(
     String(await clientOutcomeTier(db, clientId) || "")
   );
 

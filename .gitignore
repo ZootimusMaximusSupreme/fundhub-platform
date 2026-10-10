@@ -37,6 +37,9 @@ docs/jokes/
 .playwright-mcp/
 marketing/broll/out/
 
+# Original filmed takes on this Mac (scripts/receive-filmed-take.mjs). Not Drive. Not recompressed.
+marketing/ads/filmed/
+
 # Personal errands, local only (owner 2026-10-04)
 TODO-personal.md
 TODO-all-chats.md

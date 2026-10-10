@@ -7,7 +7,9 @@
 //         ?unclaimed=1                  — role queue only, nobody has picked it up
 //         → { ok, tasks: [{ id, client_id, client_name, title, body, due_at,
 //                           source_workflow, assignee_role, assignee_staff_id,
-//                           assignee_name, done, created_at }] }
+//                           assignee_name, meeting_url, detail, done, created_at }] }
+//         detail is a readable note (tasks.detail, migration 472) — for the Blueprint
+//         closing prep call and closer alert it is the document vault line. Null on most.
 //   PATCH { id, done } | { id, claim: true } | { id, assignee_staff_id }
 //
 // Auth: any staff session.
@@ -124,11 +126,17 @@ export default async function handler(req, res) {
     }
 
     params.push(limit);
-    const sql = `
+    /* tasks.detail (migration 472): a readable note. body is a dedupe key on many
+       tasks; detail is the sentence the person should read. Null when none.
+       The queue is how staff work, so it must not go down because a database has
+       not applied 472 yet (a deploy preview does not migrate): on "no such
+       column" the same read runs once more with detail as null. */
+    const listSql = (detailColumn) => `
       SELECT t.id, t.client_id, t.title, t.body, t.due_at,
              t.source_workflow, t.done, t.created_at,
              t.assignee_role, t.assignee_staff_id,
              t.meeting_url,
+             ${detailColumn} AS detail,
              s.name AS assignee_name,
              TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) AS client_name
         FROM tasks t
@@ -138,7 +146,14 @@ export default async function handler(req, res) {
        ORDER BY t.due_at ASC NULLS LAST, t.created_at DESC
        LIMIT $${params.length}`;
     try {
-      const { rows } = await db.query(sql, params);
+      let result;
+      try {
+        result = await db.query(listSql("t.detail"), params);
+      } catch (err) {
+        if (!err || err.code !== "42703") throw err;
+        result = await db.query(listSql("NULL::text"), params);
+      }
+      const { rows } = result;
       return res.status(200).json({ ok: true, count: rows.length, tasks: rows });
     } catch (err) {
       if (CLIENT_DATA_ERRORS.has(err && err.code)) {

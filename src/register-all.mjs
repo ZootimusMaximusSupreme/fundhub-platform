@@ -23,6 +23,7 @@ import { register as registerContractSigned } from "./handlers/contract-signed.m
 import { register as registerContractConsent } from "./handlers/contract-consent.mjs";
 import { register as registerAgentRuntime } from "./agents/runtime.mjs";
 import { register as registerMetaPurchase } from "./handlers/meta-purchase.mjs";
+import { register as registerClarityAutopay } from "./handlers/clarity-autopay.mjs";
 
 let _done = false;
 
@@ -65,6 +66,11 @@ export function registerAll() {
      already did and charges nothing — see the header of
      src/handlers/commas-subscriptions.mjs. */
   registerCommasSubscriptions();
+  /* A Commas payment to Fundhub → a Clarity Payment / BNPL installment marked
+     paid (src/finance/clarity-autopay.mjs). After the money chain so the
+     payment is on file first. It writes only its own rows and is idempotent
+     on the Commas payment id. */
+  registerClarityAutopay();
   /* Soft pull must run even when Inngest is off — same sync rule as card
      placement on entry.captured. After money-chain so the client/tx exist. */
   registerDiagnosticSoftPull();

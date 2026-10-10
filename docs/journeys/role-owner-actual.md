@@ -19,8 +19,8 @@ flowchart TD
     CAN --> A_adintel[adintel — 1 route]
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 13 routes]
-    CAN --> A_banking[banking — 3 routes]
-    CAN --> A_blueprint[blueprint — 1 route]
+    CAN --> A_banking[banking — 7 routes]
+    CAN --> A_blueprint[blueprint — 2 routes]
     CAN --> A_brand[brand — 1 route]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
@@ -33,11 +33,13 @@ flowchart TD
     CAN --> A_dashboard[The dashboard — 7 routes]
     CAN --> A_demo[demo — 2 routes]
     CAN --> A_documents[Documents — 1 route]
-    CAN --> A_finance[Finance — 12 routes]
+    CAN --> A_finance[Finance — 13 routes]
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 8 routes]
     CAN --> A_journeys[journeys — 2 routes]
     CAN --> A_marketing[marketing — 43 routes]
+    CAN --> A_merchant[merchant — 1 route]
+    CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
@@ -64,7 +66,7 @@ flowchart TD
 
 ## What they can reach
 
-**291 of 299 routes.**
+**315 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -92,8 +94,13 @@ flowchart TD
 | `/api/auth/staff-update` | POST | owner, admin |
 | `/api/auth/suspend` | POST | owner, admin |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
+| `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
+| `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
+| `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET | staff |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
@@ -153,6 +160,7 @@ flowchart TD
 | `/api/finance/bills` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/cards` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/cashflow` | GET, POST | owner, admin, sales_manager |
+| `/api/finance/containers` | GET, POST | owner, admin, sales_manager |
 | `/api/finance/crs-pull` | POST | owner, admin, closer, funding_advisor |
 | `/api/finance/entities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/liabilities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -223,9 +231,27 @@ flowchart TD
 | `/api/marketing/shoot` | GET, POST | owner, admin |
 | `/api/marketing/shoot/mark` | POST | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
+| `/api/merchant/events` | POST | anyone |
 | `/api/message-templates` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/messages` | POST | staff |
 | `/api/messages-outbound` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/money/accounts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/alerts` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/banks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/connections` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/credit` | GET | owner, admin, sales_manager, closer |
+| `/api/money/fundability` | GET | owner, admin, sales_manager, closer |
+| `/api/money/helper` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/overview` | GET | owner, admin, sales_manager, closer |
+| `/api/money/payments` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/plan` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/setup` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/strategy` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/tasks` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/transfers` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/trends` | GET | owner, admin, sales_manager, closer |
+| `/api/money/vault` | GET, POST | owner, admin, sales_manager, closer |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
@@ -364,12 +390,12 @@ flowchart TD
 
 - **1 route is open to any signed-in employee, whatever their role.** That is not a gate on this journey specifically — anyone who can sign in reaches it: `/api/staff/avatar`.
 - **7 routes also accept a shared secret instead of a sign-in** (`DASHBOARD_SECRET`), so a caller holding that value reaches them without being anybody in particular: `/api/dashboard/client`, `/api/dashboard/client-archive`, `/api/dashboard/clients`, `/api/dashboard/kpis`, `/api/dashboard/pipeline`, `/api/dashboard/pipeline-counts`, `/api/dashboard/seed`.
-- **29 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
+- **30 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
 - **6 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
-**8 of 299 routes.**
+**8 of 323 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

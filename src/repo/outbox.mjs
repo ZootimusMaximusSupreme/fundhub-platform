@@ -16,6 +16,10 @@
 //   drainOutbox(db, env, deps)   — the worker's pass (at most once a minute):
 //                                  claim, then one commit on GitHub with no lock
 //                                  and no transaction held across any call.
+//   applyOutboxLocal(db, {root}) — the Mac pass: write those same waiting rows
+//                                  onto this checkout. Does not claim them and
+//                                  does not set committed_sha (that stamp is the
+//                                  GitHub commit). No token.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // POOLER-SAFE: A LEASE, NOT A SESSION LOCK.
@@ -56,6 +60,9 @@
 //   no token             {skipped:'no_token'} before anything is claimed.
 
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { redact } from "../lib/outbound-fetch.mjs";
 import { assertAllowedRepoPath, isAllowedRepoPath } from "./allow-list.mjs";
@@ -463,4 +470,90 @@ export async function drainOutbox(db, env = process.env, deps = {}) {
     // after the lease; the trailer check stops a second commit of anything that landed.
     return { error: `the repo save stopped: ${clip(err)}`, ids: rows.map((r) => r.id) };
   }
+}
+
+/** This repo, when the Mac runner does not pass a root. */
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+/**
+ * Write waiting repo_outbox rows onto a checkout. Same rows drainOutbox would
+ * commit to GitHub. This does not claim them and does not set committed_sha.
+ *
+ * @param {any} db
+ * @param {{ root?: string, fsImpl?: { readFileSync: Function, writeFileSync: Function, mkdirSync: Function } }} [opts]
+ * @returns {Promise<{written?: string[], unchanged?: string[], rejected?: {id: number, error: string}[], skipped?: string, error?: string}>}
+ */
+export async function applyOutboxLocal(db, { root = REPO_ROOT, fsImpl = fs } = {}) {
+  if (!db || typeof db.query !== "function") return { skipped: "no_db", written: [] };
+  let rows;
+  try {
+    const r = await db.query(
+      `SELECT id, path, mode, content, edit
+         FROM repo_outbox
+        WHERE committed_sha IS NULL
+        ORDER BY id`
+    );
+    rows = (r.rows || []).map(normalizeRow).sort(byId);
+  } catch (err) {
+    return { error: `could not read the waiting saves: ${clip(err)}`, written: [] };
+  }
+  if (!rows.length) return { skipped: "empty", written: [] };
+
+  const byPath = new Map();
+  for (const row of rows) {
+    if (!byPath.has(row.path)) byPath.set(row.path, []);
+    byPath.get(row.path).push(row);
+  }
+
+  const rootAbs = path.resolve(root);
+  const written = [];
+  const unchanged = [];
+  const rejected = [];
+
+  for (const [repoPath, list] of byPath) {
+    if (!isAllowedRepoPath(repoPath)) {
+      rejected.push({ id: list[0].id, error: "that path is not one the app may write" });
+      continue;
+    }
+    const abs = path.resolve(rootAbs, repoPath);
+    if (abs !== rootAbs && !abs.startsWith(rootAbs + path.sep)) {
+      rejected.push({ id: list[0].id, error: "that path leaves the checkout" });
+      continue;
+    }
+
+    const firstReplace = list.findIndex((row) => row.mode === "replace");
+    const needsRead = list.slice(0, firstReplace < 0 ? list.length : firstReplace).some((row) => row.mode === "edit");
+    let content = null;
+    if (needsRead) {
+      try { content = fsImpl.readFileSync(abs, "utf8"); } catch { content = null; }
+    }
+
+    let applied = 0;
+    for (const row of list) {
+      try {
+        if (!isAllowedRepoPath(repoPath)) throw new Error("the path is no longer on the allow-list");
+        const edit = typeof row.edit === "string" ? JSON.parse(row.edit) : row.edit;
+        const next = row.mode === "replace" ? row.content : applyEdit(content, edit);
+        validateRepoFile(repoPath, next);
+        content = next;
+        applied += 1;
+      } catch (err) {
+        rejected.push({ id: row.id, error: clip(`could not apply ${describeRow(row)}: ${err?.message || err}`) });
+      }
+    }
+    if (!applied || typeof content !== "string") continue;
+
+    let current = null;
+    try { current = fsImpl.readFileSync(abs, "utf8"); } catch { current = null; }
+    if (current === content) {
+      unchanged.push(repoPath);
+      continue;
+    }
+    fsImpl.mkdirSync(path.dirname(abs), { recursive: true });
+    fsImpl.writeFileSync(abs, content);
+    written.push(repoPath);
+  }
+
+  if (!written.length && !unchanged.length && !rejected.length) return { skipped: "empty", written };
+  return { written, unchanged, rejected };
 }

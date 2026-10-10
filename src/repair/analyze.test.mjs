@@ -1,8 +1,10 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   addressFromBusinessEntity,
   analyzeAndGenerate,
+  hasActiveRepairProgram,
   loadVerifiedIdentity,
   resetVerifiedIdentityCache,
   verifiedAddressLabel
@@ -185,8 +187,12 @@ describe("derogatory items and the offer path", () => {
     }
   };
 
-  function dbFor(tier, { agreement = false, personalAddress = true } = {}) {
+  function dbFor(tier, { agreement = false, personalAddress = true, program = null, entitlement = false } = {}) {
     return fakeDb({
+      /* The writer never reads entitlements. This row is here so a test can
+         prove that: a client holding metro2-letter-pack (every Capital
+         Blueprint buyer does) must not become a repair-path client by it. */
+      "v_client_entitlements": entitlement ? [{ "?column?": 1 }] : [],
       // Order matters: the outcome_tier read must be matched before the
       // first_name/last_name read, and both are "FROM clients".
       "outcome_tier FROM clients": [{ outcome_tier: tier }],
@@ -200,7 +206,7 @@ describe("derogatory items and the offer path", () => {
       "FROM contracts": agreement ? [{ "?column?": 1 }] : [],
       "FROM client_consents": [{ is_valid: true }],
       "FROM dispute_letters dl": [],
-      "FROM repair_programs": [],
+      "FROM repair_programs": program ? [program] : [],
       "FROM crs_results": [{ result: DAMAGED_FILE }],
       "FROM dispute_cases dc": [],
       "INSERT INTO dispute_cases": [{
@@ -248,6 +254,81 @@ describe("derogatory items and the offer path", () => {
     const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
     assert.equal(r.ok, true, JSON.stringify(r));
     assert.equal(r.letters.length, 1);
+  });
+
+  /* ADDED 2026-10-09 (ZU-P). A repair buyer's file is not graded REPAIR_ONLY the
+     moment they pay, and they may not have signed the (placeholder) repair
+     agreement either. What they do have is an ACTIVE repair_programs row. The
+     measured case is the one paying repair client: with the row ignored his file
+     made 9 / 1 / 10 claims (TransUnion / Experian / Equifax); counted as the
+     repair path it makes 13 / 5 / 14. */
+  describe("an active repair program is a repair path", () => {
+    const ACTIVE = { program: "full", rounds_cap: 6, status: "active" };
+
+    test("PASS: an active program with no tier and no agreement gets the full repair letters", async () => {
+      const db = dbFor(null, { program: ACTIVE });
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, true, JSON.stringify(r));
+      assert.equal(r.letters.length, 1);
+      assert.deepEqual(
+        r.letters[0].ruleIds,
+        ["DEROG-COLLECTION", "PI-NAME-CONFIRM", "PI-ADDRESS-CONFIRM"]
+      );
+    });
+
+    test("PASS: an active trial program counts too", async () => {
+      const db = dbFor("FULL_FUNDING", { program: { program: "trial", rounds_cap: 2, status: "active" } });
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, true, JSON.stringify(r));
+      assert.equal(r.letters.length, 1);
+    });
+
+    test("FAIL twin: the same file with NO program row gets nothing", async () => {
+      const db = dbFor(null);
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "no_violations");
+    });
+
+    for (const status of ["cancelled", "complete", "upsell_pending"]) {
+      test(`FAIL twin: a ${status} program is not a repair path`, async () => {
+        const db = dbFor(null, { program: { program: "full", rounds_cap: 6, status } });
+        const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+        assert.equal(r.ok, false);
+        assert.equal(r.reason, "no_violations");
+      });
+    }
+
+    test("a Capital Blueprint buyer (entitlement, no program) is unchanged", async () => {
+      const db = dbFor("FULL_FUNDING", { entitlement: true });
+      const r = await analyzeAndGenerate(db, { orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "no_violations");
+      assert.ok(
+        !db.seen.some((c) => /v_client_entitlements|entitlement/i.test(c.sql)),
+        "the writer read entitlements; the repair path must be keyed to the program row"
+      );
+    });
+
+    test("the active program does not skip the identity wall", async () => {
+      // On the repair path with no verified name the writer still refuses.
+      const db = dbFor(null, { program: ACTIVE });
+      const r = await analyzeAndGenerate(db, {
+        orgId: ORG, clientId: CLIENT, round: "R1", verifiedIdentity: () => null
+      });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "identity_not_verified");
+    });
+
+    test("hasActiveRepairProgram reads the status and nothing else", () => {
+      assert.equal(hasActiveRepairProgram({ status: "active" }), true);
+      for (const status of ["cancelled", "complete", "upsell_pending", "", null, undefined]) {
+        assert.equal(hasActiveRepairProgram({ status }), false, String(status));
+      }
+      assert.equal(hasActiveRepairProgram(null), false);
+      assert.equal(hasActiveRepairProgram(undefined), false);
+      assert.equal(hasActiveRepairProgram({ program: "full" }), false);
+    });
   });
 });
 
@@ -782,7 +863,7 @@ describe("the verified identity is read from the module that actually exists", (
       }),
       { orgId: ORG, clientId: CLIENT }
     );
-    assert.ok(got, "null here means no identity module was found — check IDENTITY_MODULES");
+    assert.ok(got, "null here means no identity module was found — check the verifiedIdentity import at the top of analyze.mjs");
     assert.equal(got.legalName, "Sim Repair");
     assert.equal(verifiedAddressLabel(got.address), "412 Pecan St, Austin, TX, 78701");
   });
@@ -794,5 +875,91 @@ describe("the verified identity is read from the module that actually exists", (
        the floor reads as "no name and no address are known". Unknown, not
        empty, and certainly not clients.first_name. */
     assert.equal(got, null);
+  });
+});
+
+/* THE SERVER CANNOT FOLLOW A PATH THAT IS ONLY A STRING (ZU-P round 2, 2026-10-09).
+ *
+ * The test above passes from the source tree and it passed while the bug was
+ * live. Until 2026-10-09 analyze.mjs found the identity module with
+ * `import(path)` over a list of relative strings. The Netlify bundler folds
+ * netlify/functions/api.mjs into one file, so a relative string is resolved
+ * against netlify/, where there is no identity folder. All four paths threw,
+ * the resolver answered null, and on the server the writer answered
+ * `identity_not_verified` for the one paying repair client after he signed.
+ *
+ * Proved from a built bundle (esbuild, the layout of the shipped zip): the old
+ * file gave `identity_not_verified`; the file with a plain static import gave
+ * 3 letters. A unit test cannot build a bundle in the suite, so this guard holds
+ * the rule shut at the source: the files that run on the server may import()
+ * only a literal string, which the bundler can see and inline.
+ *
+ * Reading source here is a TEST-TIME read. The rule against reading repo files
+ * is for code that runs on the server. */
+
+/** Every `import(` whose argument is NOT a quoted string. Comments are removed first. */
+function nonLiteralDynamicImports(source) {
+  const noBlock = String(source).replace(/\/\*[\s\S]*?\*\//g, " ");
+  const noLine = noBlock.replace(/(^|\s)\/\/[^\n]*/g, "$1");
+  const hits = [];
+  const re = /\bimport\s*\(\s*([^)]{0,60})/g;
+  let m;
+  while ((m = re.exec(noLine))) {
+    if (!/^["']/.test(m[1])) hits.push(m[0].replace(/\s+/g, " "));
+  }
+  return hits;
+}
+
+describe("files that run on the server import only literal paths", () => {
+  const SERVER_FILES = [
+    "./analyze.mjs",
+    "./start-letters.mjs",
+    "./handlers.mjs",
+    "./read-repair-signals.mjs",
+    "../../api/consent/capture.mjs"
+  ];
+
+  for (const rel of SERVER_FILES) {
+    test(`${rel.replace("../../", "")} has no import() of a variable or template path`, () => {
+      const src = fs.readFileSync(new URL(rel, import.meta.url), "utf8");
+      assert.deepEqual(nonLiteralDynamicImports(src), []);
+    });
+  }
+
+  test("analyze.mjs gets the verified identity from a plain static import", () => {
+    const src = fs.readFileSync(new URL("./analyze.mjs", import.meta.url), "utf8");
+    assert.match(
+      src,
+      /^import \{ verifiedIdentity as readVerifiedIdentity \} from "\.\.\/identity\/verified\.mjs";$/m
+    );
+  });
+
+  /* The twins. The guard must go red on the shape that broke the server, and
+     stay quiet on the shapes that are fine. */
+  test("twin: the guard flags the shape that broke the server", () => {
+    const old = [
+      'const IDENTITY_MODULES = ["../identity/verified.mjs"];',
+      "for (const path of IDENTITY_MODULES) {",
+      "  const mod = await import(path);",
+      "}"
+    ].join("\n");
+    assert.equal(nonLiteralDynamicImports(old).length, 1);
+    assert.equal(nonLiteralDynamicImports("const m = await import(`./x-${n}.mjs`);").length, 1);
+    assert.equal(nonLiteralDynamicImports("const m = await import(pathToFileURL(p).href);").length, 1);
+  });
+
+  test("twin: the guard stays quiet on literal imports and on comments", () => {
+    const fine = [
+      'const a = (await import("./analyze.mjs")).analyzeAndGenerate;',
+      "const b = () => import('../documents/store.mjs');",
+      "// find it with import(path) over a list",
+      "/* never import(path) here */"
+    ].join("\n");
+    assert.deepEqual(nonLiteralDynamicImports(fine), []);
+  });
+
+  test("a throw inside the identity read is null, never a crash", async () => {
+    const angry = { query: async () => { throw new Error("pii_identity read timed out"); } };
+    assert.equal(await loadVerifiedIdentity(angry, { orgId: ORG, clientId: CLIENT }), null);
   });
 });

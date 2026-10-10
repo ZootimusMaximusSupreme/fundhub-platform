@@ -1,0 +1,128 @@
+/* Strategy section — FinanceOS.sections.strategy (money-strategy.js).
+   Every rule is under .fh-strategy, and the file carries every rule the section
+   needs (card, grid, type roles, table, skeleton), so it can sit inside the
+   combined FinanceOS page — or any page with .app on a wrapper — without
+   borrowing from its neighbours or reaching them. 8px spacing scale. No px font
+   sizes except the one chart-label escape hatch below (UI-STANDARDS §12.7). */
+
+.fh-strategy input,.fh-strategy select,.fh-strategy button{font:inherit;color:inherit}
+.fh-strategy .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.fh-strategy .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.fh-strategy .head .caption{max-width:72ch}
+
+/* The resting container (UI-STANDARDS §12.1) — the shadow is the token. */
+.fh-strategy .card{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0;margin-bottom:24px}
+.fh-strategy .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.fh-strategy .grid>.card{margin-bottom:0}
+.fh-strategy .tiles>*{grid-column:span 3}
+.fh-strategy .tile{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.fh-strategy .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim,var(--gray));margin-bottom:8px}
+.fh-strategy .caption{color:var(--text-dim,var(--gray))}
+.fh-strategy .big,.fh-strategy .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fh-strategy .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+.fh-strategy .num{font-weight:500;color:var(--ink)}
+.fh-strategy .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim,var(--gray))}
+.fh-strategy .debt-name{font-weight:600;color:var(--ink)}
+
+.fh-strategy .btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none}
+.fh-strategy .btn-primary:hover{background:var(--ink2)}
+.fh-strategy .btn-primary[disabled]{opacity:.6;cursor:default}
+.fh-strategy .btn-line{min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600}
+.fh-strategy .btn-line[disabled]{opacity:.6;cursor:default}
+
+/* ── the form ── */
+.fh-strategy .ctrl-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px 24px}
+.fh-strategy .f-amt{grid-column:span 6}
+.fh-strategy .f-method{grid-column:span 6}
+.fh-strategy .f-goal{grid-column:span 12}
+.fh-strategy .field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-strategy .label-like{color:var(--text-dim,var(--gray))}
+.fh-strategy .amt-row{display:flex;align-items:center;gap:16px}
+.fh-strategy .amt-row input[type="range"]{flex:1 1 auto;min-width:0;min-height:40px;accent-color:var(--ink)}
+.fh-strategy .amt-box{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);flex:0 0 auto}
+.fh-strategy .amt-box:focus-within{outline:2px solid var(--ink);outline-offset:1px}
+.fh-strategy .amt-sign{font-family:var(--mono);color:var(--text-dim,var(--gray))}
+.fh-strategy .amt-box input{width:9ch;border:0;background:transparent;font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);text-align:right;min-height:40px}
+.fh-strategy .amt-box input:focus{outline:none}
+/* The chosen method is a solid ink fill AND aria-pressed — never colour alone. */
+.fh-strategy .seg{display:flex;flex-wrap:wrap;gap:8px}
+.fh-strategy .seg-btn{min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface,#fff)}
+.fh-strategy .seg-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600}
+.fh-strategy .seg-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fh-strategy .goal-row{display:flex;flex-wrap:wrap;gap:8px}
+.fh-strategy .goal-row select,.fh-strategy .goal-row input{min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff)}
+.fh-strategy .goal-row input[hidden]{display:none}
+.fh-strategy [data-slot="goal-note"]{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.fh-strategy .goal-out{color:var(--ink)}
+.fh-strategy .save-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.fh-strategy .save-msg:empty{display:none}
+.fh-strategy .save-msg{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:8px;justify-content:flex-end}
+.fh-strategy .ok-word{font-weight:600;color:var(--ink)}
+
+/* WARNING WORDS — literal amber, not a brand variable, so they stay a warning
+   on a one-hue white-label tenant, and each one says what it is in words
+   (UI-STANDARDS §12.6, same escape valve as pipeline.html .c-needs-amount). */
+.fh-strategy .warn-word,.fh-strategy .big.status-over{display:inline-block;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:999px;padding:0 8px;font-weight:600}
+.fh-strategy .big.status-over{border-radius:8px;padding:0 16px}
+
+/* ── the chart ── */
+.fh-strategy .chart{display:block;width:100%;height:auto;margin:8px 0}
+.fh-strategy .chart .axis{stroke:var(--line);stroke-width:1}
+.fh-strategy .chart .target,.fh-strategy .key .target{stroke:var(--gray2,#9CA3AF);stroke-width:1;stroke-dasharray:4 4}
+.fh-strategy .chart .all-line,.fh-strategy .key .all-line{fill:none;stroke:var(--ink);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.fh-strategy .chart .card-line,.fh-strategy .key .card-line{fill:none;stroke:var(--ink2);stroke-width:1.5;stroke-linejoin:round}
+.fh-strategy .chart .cross{fill:var(--surface,#fff);stroke:var(--ink);stroke-width:2}
+.fh-strategy .chart .tick,.fh-strategy .chart .target-label{fill:var(--text-dim,var(--gray));font-family:var(--sans)}
+/* THIS SECTION'S ONE TYPE ESCAPE HATCH (UI-STANDARDS §12.7). The chart's labels
+   are SVG text. The brand file's `.app *{font-size:inherit !important}` would
+   hand them the 16px body size. The section draws the chart at the box's real
+   width (viewBox = pixels), so 11 here paints 11px — near caption size. */
+.fh-strategy .chart text{font-size:11px !important}
+.fh-strategy .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:8px}
+.fh-strategy .legend li{display:inline-flex;align-items:center;gap:8px}
+.fh-strategy .key{width:24px;height:8px;flex:0 0 auto}
+
+/* ── tables, lists, details ── */
+.fh-strategy .scroll-x{overflow-x:auto}
+.fh-strategy table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.fh-strategy th{text-align:left;font-weight:500;color:var(--text-dim,var(--gray));padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.fh-strategy td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+.fh-strategy th.r,.fh-strategy td.r{text-align:right}
+.fh-strategy .warnings{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.fh-strategy .warnings li{max-width:80ch}
+.fh-strategy .facts-list{display:flex;flex-direction:column;gap:8px;margin:8px 0;padding-left:16px;list-style:disc}
+.fh-strategy .facts-list li{max-width:90ch}
+.fh-strategy details>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;list-style:none}
+.fh-strategy details>summary::-webkit-details-marker{display:none}
+.fh-strategy details>summary::before{content:"+";font-family:var(--mono);font-weight:600;color:var(--ink);width:16px}
+.fh-strategy details[open]>summary::before{content:"−"}
+.fh-strategy details>summary .eyebrow{margin:0}
+.fh-strategy details .btn-line{margin-top:16px}
+.fh-strategy .tip{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin-bottom:24px;max-width:90ch}
+.fh-strategy .tip .eyebrow{display:inline;margin:0 8px 0 0}
+.fh-strategy .notice{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+
+/* ── four states ── */
+.fh-strategy .empty,.fh-strategy .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+.fh-strategy .empty p,.fh-strategy .error p{max-width:60ch}
+.fh-strategy .empty h2,.fh-strategy .error h2{font-weight:600;color:var(--ink)}
+.fh-strategy .skel{display:flex;flex-direction:column;gap:8px}
+.fh-strategy .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:fh-strategy-sk 1.2s ease-in-out infinite}
+.fh-strategy .sk-s{height:12px;width:40%}
+.fh-strategy .sk-m{height:16px;width:70%}
+.fh-strategy .sk-l{height:32px;width:60%}
+@keyframes fh-strategy-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.fh-strategy .sk{animation:none}}
+
+@media (max-width:1100px){
+  .fh-strategy .tiles>*{grid-column:span 6}
+}
+@media (max-width:760px){
+  .fh-strategy .card{padding:16px}
+  .fh-strategy .tiles>*{grid-column:span 12}
+  .fh-strategy .f-amt,.fh-strategy .f-method,.fh-strategy .f-goal{grid-column:span 12}
+  .fh-strategy .amt-row{flex-direction:column;align-items:stretch}
+  .fh-strategy .amt-box{align-self:flex-start}
+  .fh-strategy .save-row .btn-primary{width:100%}
+  .fh-strategy .save-msg{justify-content:flex-start}
+}

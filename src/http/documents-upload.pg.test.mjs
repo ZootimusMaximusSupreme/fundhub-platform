@@ -34,6 +34,7 @@ describe("POST /api/documents-upload", { skip: !HAVE_DB ? "no DATABASE_URL" : fa
     form.append("file", blob, opts.filename || "test.pdf");
     if (opts.clientId !== undefined) form.append("client_id", opts.clientId);
     if (opts.subtype) form.append("subtype", opts.subtype);
+    if (opts.entityId !== undefined) form.append("entity_id", opts.entityId);
     return form;
   };
 
@@ -175,6 +176,47 @@ describe("POST /api/documents-upload", { skip: !HAVE_DB ? "no DATABASE_URL" : fa
   test("staff cannot upload for a client in a different org", async () => {
     const r = await post(staffToken, uploadForm(PDF_BYTES, { clientId: otherClientId }));
     assert.equal(r.status, 404);
+  });
+
+  // ── the document vault (Capital Blueprint B3): which business is this paper for? ──
+
+  test("a business paper names its business container, and the document keeps it", async () => {
+    const biz = (await db.query(
+      `INSERT INTO entities (org_id, client_id, kind, name) VALUES ($1,$2,'business','Upload Fixture LLC') RETURNING id`,
+      [org, clientId])).rows[0].id;
+    const r = await post(clientToken, uploadForm(PDF_BYTES, { subtype: "business_bank_statement", entityId: biz, filename: "sept.pdf" }));
+    const body = await r.json();
+    assert.equal(r.status, 200, JSON.stringify(body));
+    assert.equal(body.documents[0].subtype, "business_bank_statement", "a vault subtype is a known subtype, not 'other'");
+    assert.equal(body.documents[0].metadata.entity_id, biz);
+    assert.equal(body.documents[0].metadata.original_filename, "sept.pdf");
+  });
+
+  test("a business id that is not this client's is refused, never silently dropped", async () => {
+    const theirs = (await db.query(
+      `INSERT INTO entities (org_id, client_id, kind, name) VALUES ($1,$2,'business','Other Org LLC') RETURNING id`,
+      [otherOrg, otherClientId])).rows[0].id;
+    const r = await post(clientToken, uploadForm(PDF_BYTES, { subtype: "business_bank_statement", entityId: theirs }));
+    assert.equal(r.status, 404);
+    assert.equal((await r.json()).error, "no such business");
+    const personal = (await db.query(
+      `INSERT INTO entities (org_id, client_id, kind, name) VALUES ($1,$2,'personal','Upload Fixture (personal)') RETURNING id`,
+      [org, clientId])).rows[0].id;
+    const asPersonal = await post(clientToken, uploadForm(PDF_BYTES, { entityId: personal }));
+    assert.equal(asPersonal.status, 404, "a personal container is not a business");
+    const archived = (await db.query(
+      `INSERT INTO entities (org_id, client_id, kind, name, archived_at) VALUES ($1,$2,'business','Archived LLC', now()) RETURNING id`,
+      [org, clientId])).rows[0].id;
+    assert.equal((await post(clientToken, uploadForm(PDF_BYTES, { entityId: archived }))).status, 404);
+  });
+
+  test("a malformed business id is a 400, and an upload with none is exactly what it was", async () => {
+    const bad = await post(clientToken, uploadForm(PDF_BYTES, { entityId: "not-a-uuid" }));
+    assert.equal(bad.status, 400);
+    const none = await post(clientToken, uploadForm(PDF_BYTES, { subtype: "id_document" }));
+    const body = await none.json();
+    assert.equal(none.status, 200, JSON.stringify(body));
+    assert.equal(Object.hasOwn(body.documents[0].metadata, "entity_id"), false);
   });
 
   test("an unknown subtype falls back to 'other' rather than failing", async () => {

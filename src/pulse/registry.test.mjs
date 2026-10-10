@@ -1,6 +1,6 @@
 // Pulse registry coverage — same idea as src/http/routes.test.mjs.
-// A new routed api/ handler or live public/app desk fails this until it is
-// in PULSE_REGISTRY or ALLOWED_UNMONITORED with a written reason.
+// A new routed api/ handler, live public/app desk, or public HTML page fails
+// this until it is in PULSE_REGISTRY or ALLOWED_UNMONITORED with a written reason.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,10 +11,12 @@ import { fileURLToPath } from "node:url";
 import {
   ALLOWED_UNMONITORED,
   PULSE_REGISTRY,
+  SEND_PATHS,
   checkRegistry,
   coverageKey,
   missingFromRegistry
 } from "./registry.mjs";
+import { JOBS } from "./heartbeats.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -27,7 +29,7 @@ function publicStaticFiles() {
     .readdirSync(PUBLIC_DIR, { recursive: true })
     .filter((name) => typeof name === "string" && name.endsWith(".html") && !name.startsWith("app/"))
     .map((name) => name.replace(/\\/g, "/"))
-    .filter((name) => name !== "index.html" && !name.startsWith("app/"))
+    .filter((name) => !name.startsWith("app/"))
     .sort();
 }
 
@@ -49,10 +51,11 @@ const KEYS = handlerKeys();
 const DESKS = deskFiles();
 const PUBLIC_STATICS = publicStaticFiles();
 
-test("registry: every routed api/ handler and live public/app desk is listed or explicitly unmonitored", () => {
+test("registry: every routed api handler, live desk, and public page is listed or explicitly unmonitored", () => {
   const missing = missingFromRegistry({
     handlerKeys: KEYS,
-    deskFiles: DESKS
+    deskFiles: DESKS,
+    publicFiles: PUBLIC_STATICS
   });
   assert.deepEqual(
     missing,
@@ -68,6 +71,7 @@ test("registry: omitting a known live route fails coverage", () => {
   const missing = missingFromRegistry({
     handlerKeys: KEYS,
     deskFiles: DESKS,
+    publicFiles: PUBLIC_STATICS,
     registry: truncated
   });
   assert.ok(
@@ -142,4 +146,63 @@ test("registry: a GET ping writes up or down and never auto-fixes", async () => 
   assert.equal(pipeline.status, "down");
   assert.match(pipeline.suggestedFix, /Do not auto-fix/);
   assert.ok(checks.every((c) => c.kind === "registry"));
+});
+
+const SEND_PROVIDERS = /messaging\/providers\/(?:twilio|twilio-whatsapp|resend|mailgun|mail-letter|web-push|ntfy)\.mjs$/;
+const ROOT = path.resolve(HERE, "../..");
+
+function filesThatSend(dir, out = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name === "providers") continue;
+    const abs = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      filesThatSend(abs, out);
+      continue;
+    }
+    if (!entry.name.endsWith(".mjs") || entry.name.endsWith(".test.mjs")) continue;
+    const rel = path.relative(ROOT, abs).split(path.sep).join("/");
+    if (rel.startsWith("src/messaging/providers/")) continue;
+    const src = fs.readFileSync(abs, "utf8");
+    if (fileImportsSend(src)) out.push(rel);
+  }
+  return out;
+}
+
+function fileImportsSend(src) {
+  const re = /import\s+([\s\S]*?)\s+from\s+["']([^"']+)["']/g;
+  let match;
+  while ((match = re.exec(src))) {
+    if (!SEND_PROVIDERS.test(match[2])) continue;
+    const clause = match[1];
+    if (clause.includes("*") || /\bsend\b/.test(clause) || /\bsendLetter\b/.test(clause)) return true;
+  }
+  return false;
+}
+
+test("registry: a live SMS, email, or mail send names a pulse row or a written skip", () => {
+  const found = [
+    ...filesThatSend(path.join(ROOT, "src")),
+    ...filesThatSend(path.join(ROOT, "api")),
+    ...filesThatSend(path.join(ROOT, "netlify"))
+  ].sort();
+  const listed = Object.keys(SEND_PATHS).sort();
+  assert.deepEqual(
+    found,
+    listed,
+    `send files missing from SEND_PATHS, or SEND_PATHS names a file that no longer sends:\n  scan: ${found.join(", ")}\n  list: ${listed.join(", ")}`
+  );
+  const watched = new Set([
+    ...PULSE_REGISTRY.map(coverageKey),
+    ...JOBS.map((row) => row.job)
+  ]);
+  for (const [file, row] of Object.entries(SEND_PATHS)) {
+    const watch = row && row.watch;
+    const reason = row && row.reason;
+    const hasWatch = typeof watch === "string" && watch.length > 0;
+    const hasReason = typeof reason === "string" && reason.trim().length >= 40;
+    assert.ok(hasWatch !== hasReason, `${file} needs a watch or a 40+ character reason, not both`);
+    if (hasWatch) {
+      assert.ok(watched.has(watch), `${file} watches "${watch}", which is not a registry key or a job`);
+    }
+  }
 });

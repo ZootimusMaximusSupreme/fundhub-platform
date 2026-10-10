@@ -1,0 +1,850 @@
+[
+ {
+  "scorecardId": "14-funding:f-01-funding-intake",
+  "workflowId": "f-01-funding-intake",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-02-portal-id-missing",
+  "workflowId": "f-02-portal-id-missing",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-03-round-submitted",
+  "workflowId": "f-03-round-submitted",
+  "eventShownOnRow": "round.submitted",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.submitted"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-04-round-approvals",
+  "workflowId": "f-04-round-approvals",
+  "eventShownOnRow": "round.approved",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.approved"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-05-inquiry-cleanup-gate",
+  "workflowId": "f-05-inquiry-cleanup-gate",
+  "eventShownOnRow": "round.approved",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.approved"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-06-funding-conditions-missing-docs",
+  "workflowId": "f-06-funding-conditions-missing-docs",
+  "eventShownOnRow": "mail.response + docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "mail.response",
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-07-funding-locked",
+  "workflowId": "f-07-funding-locked",
+  "eventShownOnRow": "round.funded",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.funded"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-08-post-funding-monitoring",
+  "workflowId": "f-08-post-funding-monitoring",
+  "eventShownOnRow": "round.funded",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.funded"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-09-funding-declined-no-path",
+  "workflowId": "f-09-funding-declined-no-path",
+  "eventShownOnRow": "mail.response",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "mail.response"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-10-client-funding-inbox-provisioner",
+  "workflowId": "f-10-client-funding-inbox-provisioner",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "14-funding:f-11-bank-email-event-router",
+  "workflowId": "f-11-bank-email-event-router",
+  "eventShownOnRow": "mail.response",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "mail.response"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:c-00-crs-soft-pull-request",
+  "workflowId": "c-00-crs-soft-pull-request",
+  "eventShownOnRow": "diagnostic.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "diagnostic.paid"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:c-02-inquiry-created",
+  "workflowId": "c-02-inquiry-created",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:c-02b-inquiry-removal-requested",
+  "workflowId": "c-02b-inquiry-removal-requested",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:c-03-inquiry-removed-resume-or-hold",
+  "workflowId": "c-03-inquiry-removed-resume-or-hold",
+  "eventShownOnRow": "inquiry.removed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "inquiry.removed"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:c-05-pre-funding-review",
+  "workflowId": "c-05-pre-funding-review",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:c-06-crs-results-router",
+  "workflowId": "c-06-crs-results-router",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:ds-01-repair-referral",
+  "workflowId": "ds-01-repair-referral",
+  "eventShownOnRow": "call.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "call.completed"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:ds-02-diy-letters",
+  "workflowId": "ds-02-diy-letters",
+  "eventShownOnRow": "payment.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "payment.received"
+  ]
+ },
+ {
+  "scorecardId": "15-repair:repair-bureau-response-reader",
+  "workflowId": "repair-bureau-response-reader",
+  "eventShownOnRow": "docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "16-nurture:n-04-post-funding-nurture",
+  "workflowId": "n-04-post-funding-nurture",
+  "eventShownOnRow": "round.closeout",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.closeout"
+  ]
+ },
+ {
+  "scorecardId": "16-nurture:n-06-renewal-second-wave",
+  "workflowId": "n-06-renewal-second-wave",
+  "eventShownOnRow": "round.funded",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.funded"
+  ]
+ },
+ {
+  "scorecardId": "17-affiliates:af-02-referral-ownership-capture",
+  "workflowId": "af-02-referral-ownership-capture",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured",
+   "diagnostic.paid",
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "19-slo:slo-no-reply-197",
+  "workflowId": "slo-no-reply-197",
+  "eventShownOnRow": "slo.contact_started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "slo.contact_started"
+  ]
+ },
+ {
+  "scorecardId": "19-slo:slo-genuine-followup",
+  "workflowId": "slo-genuine-followup",
+  "eventShownOnRow": "slo.contact_started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "slo.contact_started"
+  ]
+ },
+ {
+  "scorecardId": "19-slo:slo-paid-form-nudge",
+  "workflowId": "slo-paid-form-nudge",
+  "eventShownOnRow": "payment.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "payment.received"
+  ]
+ },
+ {
+  "scorecardId": "19-slo:slo-pack-delivery",
+  "workflowId": "slo-pack-delivery",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-00-welcome",
+  "workflowId": "s-00-welcome",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-01-new-lead-intake",
+  "workflowId": "s-01-new-lead-intake",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-02-incomplete-survey-nudge",
+  "workflowId": "s-02-incomplete-survey-nudge",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-04-call-booked",
+  "workflowId": "s-04-call-booked",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-04b-booking-reminders",
+  "workflowId": "s-04b-booking-reminders",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created",
+   "booking.rescheduled"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-04c-staff-booked-alert",
+  "workflowId": "s-04c-staff-booked-alert",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-portal-invite",
+  "workflowId": "s-portal-invite",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-nobook-chase",
+  "workflowId": "s-nobook-chase",
+  "eventShownOnRow": "survey.submitted",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "survey.submitted"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-05a-no-show-recovery",
+  "workflowId": "s-05a-no-show-recovery",
+  "eventShownOnRow": "booking.noshow",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.noshow"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-06-post-call-funding-purchased",
+  "workflowId": "s-06-post-call-funding-purchased",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-doc-collection",
+  "workflowId": "s-doc-collection",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-offer-bucket",
+  "workflowId": "s-offer-bucket",
+  "eventShownOnRow": "call.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "call.completed"
+  ]
+ },
+ {
+  "scorecardId": "20-sales:s-08-post-call-funding-declined",
+  "workflowId": "s-08-post-call-funding-declined",
+  "eventShownOnRow": "call.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "call.completed"
+  ]
+ },
+ {
+  "scorecardId": "21-underwrite:c-00-crs-soft-pull-request",
+  "workflowId": "c-00-crs-soft-pull-request",
+  "eventShownOnRow": "diagnostic.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "diagnostic.paid"
+  ]
+ },
+ {
+  "scorecardId": "21-underwrite:dpc-01-analyzer-lock",
+  "workflowId": "dpc-01-analyzer-lock",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "21-underwrite:u-03-crs-snapshot-sync",
+  "workflowId": "u-03-crs-snapshot-sync",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "21-underwrite:u-04-promote-crs-primary",
+  "workflowId": "u-04-promote-crs-primary",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:ai-set-01-josh-setter",
+  "workflowId": "ai-set-01-josh-setter",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:ai-set-03-no-answer-cadence",
+  "workflowId": "ai-set-03-no-answer-cadence",
+  "eventShownOnRow": "call.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "call.completed"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:ai-set-04-3way-handoff",
+  "workflowId": "ai-set-04-3way-handoff",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created",
+   "booking.rescheduled"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:bs-01-precall-launcher",
+  "workflowId": "bs-01-precall-launcher",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created",
+   "booking.rescheduled"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:ar-collections",
+  "workflowId": "ar-collections",
+  "eventShownOnRow": "invoice.sent",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "invoice.sent",
+   "payment.received"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:bc-01-customer-responsiveness",
+  "workflowId": "bc-01-customer-responsiveness",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "24-agents:bc-02-customer-friction",
+  "workflowId": "bc-02-customer-friction",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "25-rest:u-05-data-health-monitor",
+  "workflowId": "u-05-data-health-monitor",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:s-01-new-lead-intake",
+  "workflowId": "s-01-new-lead-intake",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:s-02-incomplete-survey-nudge",
+  "workflowId": "s-02-incomplete-survey-nudge",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:slo-paid-form-nudge",
+  "workflowId": "slo-paid-form-nudge",
+  "eventShownOnRow": "payment.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "payment.received"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:doc-check",
+  "workflowId": "doc-check",
+  "eventShownOnRow": "docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:s-doc-collection",
+  "workflowId": "s-doc-collection",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:f-01-funding-intake",
+  "workflowId": "f-01-funding-intake",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:f-03-round-submitted",
+  "workflowId": "f-03-round-submitted",
+  "eventShownOnRow": "round.submitted",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.submitted"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:f-04-round-approvals",
+  "workflowId": "f-04-round-approvals",
+  "eventShownOnRow": "round.approved",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.approved"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:f-06-funding-conditions-missing-docs",
+  "workflowId": "f-06-funding-conditions-missing-docs",
+  "eventShownOnRow": "mail.response + docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "mail.response",
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:c-00-crs-soft-pull-request",
+  "workflowId": "c-00-crs-soft-pull-request",
+  "eventShownOnRow": "diagnostic.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "diagnostic.paid"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:slo-pack-delivery",
+  "workflowId": "slo-pack-delivery",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "26-client-journey:c-05-pre-funding-review",
+  "workflowId": "c-05-pre-funding-review",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "27-closer:s-04-call-booked",
+  "workflowId": "s-04-call-booked",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "27-closer:s-05a-no-show-recovery",
+  "workflowId": "s-05a-no-show-recovery",
+  "eventShownOnRow": "booking.noshow",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.noshow"
+  ]
+ },
+ {
+  "scorecardId": "27-closer:s-offer-bucket",
+  "workflowId": "s-offer-bucket",
+  "eventShownOnRow": "call.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "call.completed"
+  ]
+ },
+ {
+  "scorecardId": "28-funding-advisor:f-07-funding-locked",
+  "workflowId": "f-07-funding-locked",
+  "eventShownOnRow": "round.funded",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.funded"
+  ]
+ },
+ {
+  "scorecardId": "29-inquiry-remover:c-02b-inquiry-removal-requested",
+  "workflowId": "c-02b-inquiry-removal-requested",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "29-inquiry-remover:ai-set-01-josh-setter",
+  "workflowId": "ai-set-01-josh-setter",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "29-inquiry-remover:ai-set-04-3way-handoff",
+  "workflowId": "ai-set-04-3way-handoff",
+  "eventShownOnRow": "booking.created + booking.rescheduled",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created",
+   "booking.rescheduled"
+  ]
+ },
+ {
+  "scorecardId": "29-inquiry-remover:ai-set-03-no-answer-cadence",
+  "workflowId": "ai-set-03-no-answer-cadence",
+  "eventShownOnRow": "call.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "call.completed"
+  ]
+ },
+ {
+  "scorecardId": "29-inquiry-remover:c-02-inquiry-created",
+  "workflowId": "c-02-inquiry-created",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "29-inquiry-remover:c-03-inquiry-removed-resume-or-hold",
+  "workflowId": "c-03-inquiry-removed-resume-or-hold",
+  "eventShownOnRow": "inquiry.removed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "inquiry.removed"
+  ]
+ },
+ {
+  "scorecardId": "31-affiliate-wl:af-02-referral-ownership-capture",
+  "workflowId": "af-02-referral-ownership-capture",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured",
+   "diagnostic.paid",
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:s-doc-collection",
+  "workflowId": "s-doc-collection",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:doc-check",
+  "workflowId": "doc-check",
+  "eventShownOnRow": "docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:f-06-funding-conditions-missing-docs",
+  "workflowId": "f-06-funding-conditions-missing-docs",
+  "eventShownOnRow": "mail.response + docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "mail.response",
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:repair.docs.complete",
+  "workflowId": "repair.docs.complete",
+  "eventShownOnRow": "repair.docs.complete",
+  "registeredInngestFunction": false,
+  "triggers": null
+ },
+ {
+  "scorecardId": "33-fulfillment:repair-bureau-response-reader",
+  "workflowId": "repair-bureau-response-reader",
+  "eventShownOnRow": "docs.received",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "docs.received"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:c-02-inquiry-created",
+  "workflowId": "c-02-inquiry-created",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:c-02b-inquiry-removal-requested",
+  "workflowId": "c-02b-inquiry-removal-requested",
+  "eventShownOnRow": "deposit.paid",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "deposit.paid"
+  ]
+ },
+ {
+  "scorecardId": "33-fulfillment:c-03-inquiry-removed-resume-or-hold",
+  "workflowId": "c-03-inquiry-removed-resume-or-hold",
+  "eventShownOnRow": "inquiry.removed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "inquiry.removed"
+  ]
+ },
+ {
+  "scorecardId": "40-more:at-01-first-touch-capture",
+  "workflowId": "at-01-first-touch-capture",
+  "eventShownOnRow": "entry.captured",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "entry.captured"
+  ]
+ },
+ {
+  "scorecardId": "40-more:dpc-02-call-outcome-enforcement",
+  "workflowId": "dpc-02-call-outcome-enforcement",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created",
+   "booking.rescheduled"
+  ]
+ },
+ {
+  "scorecardId": "40-more:dpc-03-inbound-reply-router",
+  "workflowId": "dpc-03-inbound-reply-router",
+  "eventShownOnRow": "message.inbound",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "message.inbound"
+  ]
+ },
+ {
+  "scorecardId": "40-more:dpc-05-no-progress-escalation",
+  "workflowId": "dpc-05-no-progress-escalation",
+  "eventShownOnRow": "booking.created",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "booking.created"
+  ]
+ },
+ {
+  "scorecardId": "40-more:round-started-client-notify",
+  "workflowId": "round-started-client-notify",
+  "eventShownOnRow": "round.started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.started"
+  ]
+ },
+ {
+  "scorecardId": "40-more:slo-genuine-checkout-sms",
+  "workflowId": "slo-genuine-checkout-sms",
+  "eventShownOnRow": "slo.checkout_started",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "slo.checkout_started"
+  ]
+ },
+ {
+  "scorecardId": "40-more:slo-genuine-reply",
+  "workflowId": "slo-genuine-reply",
+  "eventShownOnRow": "message.inbound",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "message.inbound"
+  ]
+ },
+ {
+  "scorecardId": "40-more:sys-01-client-value-calculator",
+  "workflowId": "sys-01-client-value-calculator",
+  "eventShownOnRow": "round.approved",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.approved"
+  ]
+ },
+ {
+  "scorecardId": "40-more:sys-01-ltv-calculator",
+  "workflowId": "sys-01-ltv-calculator",
+  "eventShownOnRow": "round.funded",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "round.funded"
+  ]
+ },
+ {
+  "scorecardId": "40-more:u-02-analyzer-complete-delivery",
+  "workflowId": "u-02-analyzer-complete-delivery",
+  "eventShownOnRow": "analysis.completed",
+  "registeredInngestFunction": true,
+  "triggers": [
+   "analysis.completed"
+  ]
+ }
+]

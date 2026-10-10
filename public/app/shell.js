@@ -216,6 +216,17 @@
      the row because they lost the data (owner decision 2026-08-17). */
   var ADVISOR_ONLY = ["lenders.html"];
 
+  /* The client's money pages (FinanceOS, 2026-10-06), for the staff who may
+     read a client's money: owner, admin, sales_manager — ROLE_SETS.FINANCE,
+     the gate on api/money/overview.mjs and api/money/setup.mjs. NOT in ALL on
+     purpose: no sidebar row opens them and they load no shell.js. This list
+     only stops gateLinks() hiding the portal's FinanceOS card from those three
+     when they open a client's portal. Navigation, not a gate. */
+  var STAFF_MONEY = ["financeos.html", "money.html", "money-accounts.html", "money-credit.html",
+    "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
+    "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
+    "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"];
+
   /* Consent desk — the credit-pull permission screen. api/consent/capture.mjs
      gates on CONSENT_ROLES = owner, admin, closer, funding_advisor, and that
      set has to stay identical to SOFT_PULL_ROLES in api/finance/soft-pull.mjs
@@ -400,7 +411,16 @@
        id, so they reach the screen and it tells them they are not enrolled —
        which is the state the screen is written to show. Nothing about what any
        client can READ changes by adding this line. */
-    client: ["client-portal.html", "affiliate.html"],
+    /* THE MONEY PAGES (Finance OS, 2026-10-06). The portal's FinanceOS card
+       links to financeos.html (the one page with tabs), and gateLinks() hides a
+       card whose link this list does not name. Same as affiliate.html above: NAVIGATION, NOT A GATE. The money
+       pages load no shell.js; each endpoint behind them pins a client session to
+       its own file (api/money/overview.mjs, api/money/setup.mjs). */
+    client: ["client-portal.html", "affiliate.html",
+      "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
+      "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
+      "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
+      "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"],
     affiliate: ["affiliate.html"],
     /* NO CAMPAIGNS ROW YET, AND THAT IS AN OPEN QUESTION, NOT AN OVERSIGHT.
        A partner cannot reach campaign-manager.html from any screen (proven live
@@ -492,13 +512,13 @@
   function allowedFor(role) {
     if (!role) return [];
     var m = ROLE_TABS[role];
-    if (m === "*") return ALL.slice();
+    if (m === "*") return ALL.concat(STAFF_MONEY);
     if (m === "admin") {
-      return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; });
+      return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; }).concat(STAFF_MONEY);
     }
-    if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY);
+    if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY).concat(STAFF_MONEY);
     if (m === "funding_advisor") return staffTabs().concat(ADVISOR_ONLY).concat(CONSENT_DESK_ONLY);
-    if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY);
+    if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY);
     if (m === "csm") return staffTabs().concat(CONSENT_DESK_ONLY);
     if (m === "staff" || !m) return staffTabs();
     return m.slice();

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — FinanceOS</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="stylesheet" href="money-connections.css">
+<link rel="stylesheet" href="money-payments.css">
+<link rel="stylesheet" href="money-next.css">
+<link rel="stylesheet" href="money-helper.css">
+<link rel="stylesheet" href="money-transfers.css">
+<link rel="stylesheet" href="money-plan.css">
+<link rel="stylesheet" href="money-banks.css">
+<link rel="stylesheet" href="money-strategy.css">
+<link rel="stylesheet" href="money-fundability.css">
+<link rel="stylesheet" href="money-declines.css">
+<link rel="stylesheet" href="money-alerts.css">
+<link rel="stylesheet" href="money-vault.css">
+<!-- ══ FINANCEOS — THE CLIENT'S ONE-PAGE CRM FOR MONEY ══════════════════════
+     Owner call 2026-10-06: "it all should be on 1 page — a one-page CRM for
+     finances, called FinanceOS." Direction: docs/finance/finance-os-direction-2026-10-06.md.
+     Board: ops/workflows/finance-os-pages-2026-10-06.md (unit P6).
+
+     ONE HEADER, ONE TAB BAR, SIX SECTIONS. Each tab is a section another file
+     owns, mounted with window.FinanceOS.sections.<key>.mount(el, ctx):
+       Overview    money.js              Accounts  money-accounts.js
+       Credit      money-credit.js       Connections money-connections.js
+       Payments    money-payments.js     Setup     money-setup.js
+     financeos.js owns the header, the tabs (state in the #hash), the lazy
+     mount, the shared api calls and the sign-in redirect. A tab whose section
+     is missing says "Coming soon" instead of breaking.
+
+     CLIENT-FACING, SO NO shell.js — same as money.html. The real gate is each
+     endpoint: a client session only ever gets its own file; staff need
+     ?client_id=, which this page passes to every section.
+
+     STYLES. Connections and Payments bring their own scoped files (linked
+     above). The other four sections' rules are copied from their standalone
+     pages and scoped under #fos-<tab>, so one section's .chart or .grid never
+     reaches another. The Payments base rules are scoped with :where() so they
+     keep their standalone weight under money-payments.css.
+
+     .app on the wrapper so fundhub-brand.css sizes the type to the four tokens
+     and gives .card the shared --panel-shadow. No px font sizes below, except
+     the two chart-label escape hatches copied from money.html and
+     money-credit.html (UI-STANDARDS §12.7). -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:#FFFFFF;
+  --text:var(--ink2);--text-dim:var(--gray);--text-faint:var(--gray2);
+}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+ol,ul{list-style:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* header — same dark bar as money.html */
+.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sub{color:var(--paper);font-weight:600;white-space:nowrap}
+.brand .who{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.brand .who:empty{display:none}
+.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
+
+/* The tab bar. The open tab is bold with a solid underline AND aria-selected —
+   a shape, not only a colour (UI-STANDARDS §12.6). On a phone it scrolls
+   sideways inside itself; the page never does (UI-STANDARDS §11). */
+.fos-tabs{display:flex;gap:0 24px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
+.fos-tabs a{display:inline-flex;align-items:center;min-height:44px;flex-shrink:0;color:var(--text-dim);text-decoration:none;border-bottom:2px solid transparent}
+.fos-tabs a:hover{color:var(--ink)}
+.fos-tabs a[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+.fos-tabs a:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+
+main{padding:24px 24px 64px}
+.fos-panel[hidden]{display:none}
+
+/* Sandbox banner — one for the whole page, from the overview read. Literal
+   amber so it stays a warning on every tenant, and it says so in words
+   (UI-STANDARDS §12.6). The Overview section paints the same words; with the
+   page banner up, that copy is hidden so it is said once. */
+.fos-sandbox{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+.fos-sandbox[hidden]{display:none}
+.fos-has-sandbox #fos-overview .sandbox{display:none}
+
+/* A tab whose section has not shipped yet. */
+.fos-soon{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--panel-shadow)}
+.fos-soon h2{font-weight:600;color:var(--ink)}
+.fos-soon p{color:var(--text-dim);max-width:60ch}
+
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ════ SECTION RULES, SCOPED ════════════════════════════════════════════ */
+/* ── overview — from money.html ── */
+#fos-overview .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+#fos-overview .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+#fos-overview .head-act{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+#fos-overview .act-msg:empty{display:none}
+#fos-overview .btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+#fos-overview .btn-primary:hover{background:var(--ink2)}
+#fos-overview .btn-primary[disabled]{opacity:.6;cursor:default}
+#fos-overview .sandbox{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+#fos-overview .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+#fos-overview .tiles>*{grid-column:span 3}
+#fos-overview .two>*{grid-column:span 6}
+#fos-overview .one>*,#fos-overview .boxes>*{grid-column:span 12}
+#fos-overview .debt>:first-child{grid-column:span 4}
+#fos-overview .debt>:last-child{grid-column:span 8}
+#fos-overview .debt-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+#fos-overview .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+#fos-overview .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+#fos-overview .caption{color:var(--text-dim)}
+#fos-overview .big,#fos-overview .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#fos-overview .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+#fos-overview .num{font-weight:500;color:var(--ink)}
+#fos-overview .mask{font-family:var(--mono);color:var(--text-dim)}
+#fos-overview .tile{display:flex;flex-direction:column;gap:8px}
+#fos-overview .cash-line{display:flex;flex-direction:column}
+#fos-overview .next-name{font-weight:600}
+#fos-overview .split li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+#fos-overview .split li:first-child{border-top:0}
+#fos-overview .total-line{margin-top:8px}
+#fos-overview .used-bar{display:block;width:100%;height:8px;margin-top:8px}
+#fos-overview .used-track{fill:var(--soft)}
+#fos-overview .used-fill{fill:var(--ink)}
+#fos-overview .tip{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin-bottom:24px}
+#fos-overview .tip .eyebrow{display:inline;margin:0 8px 0 0}
+#fos-overview .block{margin-bottom:48px}
+#fos-overview .block>h2{font-weight:600;color:var(--ink)}
+#fos-overview .block>.caption{margin-bottom:16px}
+#fos-overview .box-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+#fos-overview .box-name{font-weight:600;color:var(--ink)}
+#fos-overview .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim)}
+#fos-overview .acct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:16px 0;border-top:1px solid var(--line)}
+#fos-overview .acct:first-child{border-top:0}
+#fos-overview .acct-name{font-weight:600}
+#fos-overview .acct-num{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+#fos-overview .card-facts{grid-column:1 / -1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 16px}
+#fos-overview .card-facts dd{margin:0}
+#fos-overview .fact-used{grid-column:span 2}
+#fos-overview .fact-late dd{color:#92400E;font-weight:600}
+#fos-overview .rows .row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+#fos-overview .rows .row:first-child{border-top:0}
+#fos-overview .scroll-x{overflow-x:auto}
+#fos-overview table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+#fos-overview th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+#fos-overview td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+#fos-overview .r{text-align:right}
+#fos-overview table.cards .used-bar{width:64px;margin-left:auto}
+#fos-overview .chart{display:block;width:100%;height:auto;max-height:200px;margin:8px 0 16px}
+#fos-overview .chart-base{stroke:var(--line);stroke-width:1}
+#fos-overview .bar-in{fill:var(--ok);stroke:var(--ink);stroke-width:1}
+#fos-overview .bar-out{fill:var(--ink2)}
+#fos-overview .chart-label,#fos-overview .chart-dash{fill:var(--text-dim);font-family:var(--sans)}
+.app #fos-overview .chart text{font-size:11px !important}
+#fos-overview .legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#fos-overview .key{display:inline-block;width:16px;height:12px;border-radius:2px}
+#fos-overview .key-in{background:var(--ok);border:1px solid var(--ink)}
+#fos-overview .key-out{background:var(--ink2);margin-left:8px}
+#fos-overview .flow-none{font-weight:600;color:var(--ink);margin-bottom:8px}
+#fos-overview .empty,#fos-overview .error{max-width:none;display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+#fos-overview .empty p,#fos-overview .error p{max-width:60ch}
+#fos-overview .billing{margin-top:16px}
+#fos-overview .skel{display:flex;flex-direction:column;gap:8px}
+#fos-overview .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+#fos-overview .sk-s{height:12px;width:40%}
+#fos-overview .sk-m{height:16px;width:70%}
+#fos-overview .sk-l{height:32px;width:60%}
+@media (prefers-reduced-motion:reduce){
+  #fos-overview .sk{animation:none}
+}
+@media (max-width:1100px){
+  #fos-overview .tiles>*{grid-column:span 6}
+  #fos-overview .card-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #fos-overview .debt>:first-child,#fos-overview .debt>:last-child{grid-column:span 12}
+}
+@media (max-width:760px){
+  #fos-overview .tiles>*,#fos-overview .two>*{grid-column:span 12}
+  #fos-overview .card{padding:16px}
+  #fos-overview .card-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #fos-overview .fact-used{grid-column:span 2}
+}
+/* ── accounts — from money-accounts.html ── */
+#fos-accounts .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+#fos-accounts .head h2{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+#fos-accounts .head-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#fos-accounts .act-msg{flex-basis:100%}
+#fos-accounts .act-msg:empty{display:none}
+#fos-accounts .btn-primary,#fos-accounts .btn{min-height:44px;padding:8px 24px;border-radius:8px;font-weight:600}
+#fos-accounts .btn-primary{border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+#fos-accounts .btn-primary:hover{background:var(--ink2)}
+#fos-accounts .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+#fos-accounts .btn:hover{border-color:var(--ink)}
+#fos-accounts .btn-primary[disabled],#fos-accounts .btn[disabled]{opacity:.6;cursor:default}
+#fos-accounts .linkish{background:none;border:0;padding:0;min-height:40px;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+#fos-accounts .sandbox{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+#fos-accounts .block{margin-bottom:48px}
+#fos-accounts .block>h2{font-weight:600;color:var(--ink)}
+#fos-accounts .block>.caption{margin-bottom:16px}
+#fos-accounts .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+#fos-accounts .grid>*{grid-column:span 6}
+#fos-accounts .grid.one>*{grid-column:span 12}
+#fos-accounts .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+#fos-accounts .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+#fos-accounts .caption{color:var(--text-dim)}
+#fos-accounts .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink)}
+#fos-accounts .mask{font-family:var(--mono);color:var(--text-dim)}
+#fos-accounts .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--text-dim)}
+#fos-accounts .box-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:8px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#fos-accounts .box-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+#fos-accounts .info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;padding:16px 0;border-bottom:1px solid var(--line)}
+#fos-accounts .info dd{margin:0;overflow-wrap:anywhere}
+#fos-accounts .info-none{padding:16px 0;border-bottom:1px solid var(--line)}
+#fos-accounts .acct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:16px 0;border-top:1px solid var(--line);align-items:start}
+#fos-accounts .acct:first-child{border-top:0}
+#fos-accounts .acct-name{font-weight:600;overflow-wrap:anywhere}
+#fos-accounts .acct-num{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+#fos-accounts .acct-move{grid-column:1 / -1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#fos-accounts .acct-move select{min-height:40px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);max-width:100%}
+#fos-accounts .acct-none{padding:16px 0}
+#fos-accounts details.form{margin-top:16px}
+#fos-accounts details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
+#fos-accounts .fields{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
+#fos-accounts .f{display:flex;flex-direction:column;gap:8px;grid-column:span 4;min-width:0}
+#fos-accounts .f.wide{grid-column:span 8}
+#fos-accounts .f.full{grid-column:span 12}
+#fos-accounts .f input,#fos-accounts .f select{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);width:100%}
+#fos-accounts .f input:focus,#fos-accounts .f select:focus,#fos-accounts .acct-move select:focus{outline:2px solid var(--ink);outline-offset:1px}
+#fos-accounts .form-act{grid-column:span 12;display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:flex-end}
+#fos-accounts .form-act .act-msg{flex-basis:auto;flex:1 1 200px}
+#fos-accounts .only-card[hidden]{display:none}
+#fos-accounts .billing{margin-top:16px}
+#fos-accounts .empty,#fos-accounts .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+#fos-accounts .empty p,#fos-accounts .error p{max-width:60ch}
+#fos-accounts .skel{display:flex;flex-direction:column;gap:8px}
+#fos-accounts .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+#fos-accounts .sk-s{height:12px;width:40%}
+#fos-accounts .sk-m{height:16px;width:70%}
+#fos-accounts .sk-l{height:32px;width:60%}
+@media (prefers-reduced-motion:reduce){
+  #fos-accounts .sk{animation:none}
+}
+@media (max-width:1100px){
+  #fos-accounts .grid>*{grid-column:span 12}
+  #fos-accounts .info{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #fos-accounts .f{grid-column:span 6}
+  #fos-accounts .f.wide{grid-column:span 12}
+}
+@media (max-width:760px){
+  #fos-accounts .card{padding:16px}
+  #fos-accounts .info{grid-template-columns:minmax(0,1fr)}
+  #fos-accounts .f,#fos-accounts .f.wide{grid-column:span 12}
+  #fos-accounts .head-act{width:100%}
+  #fos-accounts .head-act .btn-primary,#fos-accounts .head-act .btn{flex:1 1 auto}
+}
+/* ── credit — from money-credit.html ── */
+#fos-credit .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+#fos-credit .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+#fos-credit .btn-primary{display:inline-flex;align-items:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none}
+#fos-credit .btn-primary:hover{background:var(--ink2)}
+#fos-credit .sample{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin-bottom:24px}
+#fos-credit .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+#fos-credit .tiles>*{grid-column:span 3}
+#fos-credit .two>*{grid-column:span 6}
+#fos-credit .one>*{grid-column:span 12}
+#fos-credit .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+#fos-credit .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+#fos-credit .caption{color:var(--text-dim)}
+#fos-credit .big,#fos-credit .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#fos-credit .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+#fos-credit .num{font-weight:500;color:var(--ink)}
+#fos-credit .tile{display:flex;flex-direction:column;gap:8px}
+#fos-credit .band-word{font-weight:600;color:var(--ink)}
+#fos-credit .gauge{display:block;width:100%;max-width:200px;height:auto}
+#fos-credit .gauge-track{fill:none;stroke:var(--soft);stroke-width:10;stroke-linecap:round}
+#fos-credit .gauge-fill{fill:none;stroke:var(--ink);stroke-width:10;stroke-linecap:round}
+#fos-credit .used-bar{display:block;width:100%;height:8px}
+#fos-credit .used-track{fill:var(--soft)}
+#fos-credit .used-fill{fill:var(--ink)}
+#fos-credit .block{margin-bottom:48px}
+#fos-credit .says li{padding:8px 0;border-top:1px solid var(--line)}
+#fos-credit .says li:first-child{border-top:0}
+#fos-credit .chart{display:block;width:100%;height:auto;max-height:220px;margin:8px 0}
+#fos-credit .chart-base{stroke:var(--line);stroke-width:1}
+#fos-credit .line{fill:none;stroke:var(--ink);stroke-width:2}
+#fos-credit .line-eq{stroke-dasharray:8 4}
+#fos-credit .line-tu{stroke-dasharray:2 4}
+#fos-credit .dot{fill:var(--ink)}
+#fos-credit .chart-label{fill:var(--text-dim);font-family:var(--sans)}
+.app #fos-credit .chart text{font-size:11px !important}
+#fos-credit .legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+#fos-credit .key{display:inline-block;width:24px;height:0;border-top:2px solid var(--ink);vertical-align:middle;margin-right:8px}
+#fos-credit .key-eq{border-top-style:dashed}
+#fos-credit .key-tu{border-top-style:dotted}
+#fos-credit .scroll-x{overflow-x:auto}
+#fos-credit table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+#fos-credit th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+#fos-credit td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+#fos-credit .r{text-align:right}
+#fos-credit td .used-bar{width:64px;margin-left:auto}
+#fos-credit .empty,#fos-credit .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+#fos-credit .empty p,#fos-credit .error p{max-width:60ch}
+#fos-credit .skel{display:flex;flex-direction:column;gap:8px}
+#fos-credit .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+#fos-credit .sk-s{height:12px;width:40%}
+#fos-credit .sk-m{height:16px;width:70%}
+#fos-credit .sk-l{height:32px;width:60%}
+@media (prefers-reduced-motion:reduce){
+  #fos-credit .sk{animation:none}
+}
+@media (max-width:1100px){
+  #fos-credit .tiles>*{grid-column:span 6}
+  #fos-credit .two>*{grid-column:span 12}
+}
+@media (max-width:760px){
+  #fos-credit .tiles>*{grid-column:span 12}
+  #fos-credit .card{padding:16px}
+}
+/* ── setup — from money-setup.html ── */
+#fos-setup .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+#fos-setup .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+#fos-setup .btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none}
+#fos-setup .btn-primary:hover{background:var(--ink2)}
+#fos-setup .btn-primary[disabled]{opacity:.6;cursor:default}
+#fos-setup .btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);font-weight:600;text-decoration:none}
+#fos-setup .btn-line:hover{background:var(--soft)}
+#fos-setup .btn-line[disabled]{opacity:.6;cursor:default}
+#fos-setup .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px;align-items:start}
+#fos-setup .grid>.steps-card{grid-column:span 8}
+#fos-setup .grid>.price-card{grid-column:span 4}
+#fos-setup .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+#fos-setup .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+#fos-setup .caption{color:var(--text-dim)}
+#fos-setup .big,#fos-setup .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#fos-setup .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+#fos-setup .num{font-weight:500;color:var(--ink)}
+#fos-setup .step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px 16px;padding:16px 0;border-top:1px solid var(--line)}
+#fos-setup .step:first-child{border-top:0}
+#fos-setup .mark{width:40px;height:40px;border-radius:999px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:500;color:var(--text-dim)}
+#fos-setup .step.done .mark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+#fos-setup .step.now .mark{border-color:var(--ink);color:var(--ink)}
+#fos-setup .step-body{display:flex;flex-direction:column;gap:8px;min-width:0}
+#fos-setup .step-title{font-weight:600;color:var(--ink)}
+#fos-setup .state{font-family:var(--mono);color:var(--text-dim)}
+#fos-setup .step.done .state{color:var(--ink)}
+#fos-setup .step-act{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+#fos-setup .act-msg:empty{display:none}
+#fos-setup .price-list li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--line)}
+#fos-setup .price-list li:first-child{border-top:0}
+#fos-setup .price-line{margin-top:16px}
+#fos-setup .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+#fos-setup .error p{max-width:60ch}
+#fos-setup .skel{display:flex;flex-direction:column;gap:8px}
+#fos-setup .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+#fos-setup .sk-s{height:12px;width:40%}
+#fos-setup .sk-m{height:16px;width:70%}
+#fos-setup .sk-l{height:32px;width:60%}
+@media (prefers-reduced-motion:reduce){
+  #fos-setup .sk{animation:none}
+}
+@media (max-width:1100px){
+  #fos-setup .grid>.steps-card,#fos-setup .grid>.price-card{grid-column:span 12}
+}
+@media (max-width:760px){
+  #fos-setup .card{padding:16px}
+}
+/* ── payments — from money-payments.html ── */
+:where(#fos-payments) .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+:where(#fos-payments) .head h1{font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+:where(#fos-payments) .btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+:where(#fos-payments) .btn-primary:hover{background:var(--ink2)}
+:where(#fos-payments) .btn-primary[disabled]{opacity:.6;cursor:default}
+:where(#fos-payments) .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+:where(#fos-payments) .two>*{grid-column:span 6}
+:where(#fos-payments) .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
+:where(#fos-payments) .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+:where(#fos-payments) .caption{color:var(--text-dim)}
+:where(#fos-payments) .big,:where(#fos-payments) .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+:where(#fos-payments) .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
+:where(#fos-payments) .num{font-weight:500;color:var(--ink)}
+:where(#fos-payments) .tile{display:flex;flex-direction:column;gap:8px}
+:where(#fos-payments) .block{margin-bottom:48px}
+:where(#fos-payments) .block>h2{font-weight:600;color:var(--ink)}
+:where(#fos-payments) .block>.caption{margin-bottom:16px}
+:where(#fos-payments) .scroll-x{overflow-x:auto}
+:where(#fos-payments) table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+:where(#fos-payments) th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+:where(#fos-payments) td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+:where(#fos-payments) .r{text-align:right}
+:where(#fos-payments) .empty,:where(#fos-payments) .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
+:where(#fos-payments) .empty p,:where(#fos-payments) .error p{max-width:60ch}
+:where(#fos-payments) .skel{display:flex;flex-direction:column;gap:8px}
+:where(#fos-payments) .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+:where(#fos-payments) .sk-s{height:12px;width:40%}
+:where(#fos-payments) .sk-m{height:16px;width:70%}
+:where(#fos-payments) .sk-l{height:32px;width:60%}
+@media (prefers-reduced-motion:reduce){
+  :where(#fos-payments) .sk{animation:none}
+}
+@media (max-width:760px){
+  :where(#fos-payments) .card{padding:16px}
+}
+/* ── trends — from money-trends.js (wave 4, H6). Overview's Trends area and
+   the sales line under Connections. The plot is a stretched SVG with
+   non-scaling strokes; the axis words are HTML captions, so they stay readable
+   at 375px. Series colours are literal (validated for colour-blind separation,
+   2026-10-06) so a one-hue tenant brand cannot wash them into one line, and
+   every series also carries a word in the legend and a dot shape (round or
+   square) — never colour alone (UI-STANDARDS §12.6). Personal is always blue,
+   business always orange. Estimated = dashed, said in words above the charts. */
+:is(#fos-overview,#fos-connections) .trends{margin-bottom:48px}
+:is(#fos-overview,#fos-connections) .trends>h2,:is(#fos-overview,#fos-connections) .thead h2{font-weight:600;color:var(--ink)}
+:is(#fos-overview,#fos-connections) .trends>.caption{color:var(--text-dim);margin-bottom:16px;max-width:80ch}
+:is(#fos-overview,#fos-connections) .thead{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin-bottom:8px}
+:is(#fos-overview,#fos-connections) .trange{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+:is(#fos-overview,#fos-connections) .trange-btn{min-height:40px;padding:0 16px;border:0;border-left:1px solid var(--line);background:var(--surface);color:var(--text-dim)}
+:is(#fos-overview,#fos-connections) .trange-btn:first-child{border-left:0}
+:is(#fos-overview,#fos-connections) .trange-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:600}
+:is(#fos-overview,#fos-connections) .trange-btn:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+:is(#fos-overview,#fos-connections) .trends .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:16px}
+:is(#fos-overview,#fos-connections) .trends .tgrid3>*{grid-column:span 4}
+:is(#fos-overview,#fos-connections) .trends .two>*{grid-column:span 6}
+:is(#fos-overview,#fos-connections) .trends .one>*{grid-column:span 12}
+:is(#fos-overview,#fos-connections) .trends .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0;margin:0}
+:is(#fos-overview,#fos-connections) .trends .eyebrow{display:block;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+:is(#fos-overview,#fos-connections) .trends .caption{color:var(--text-dim)}
+:is(#fos-overview,#fos-connections) .trends .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink)}
+:is(#fos-overview,#fos-connections) .tlegend{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:8px}
+:is(#fos-overview,#fos-connections) .tkey-item{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tkey{display:inline-block;width:10px;height:10px}
+:is(#fos-overview,#fos-connections) .tkey.rd{border-radius:999px}
+:is(#fos-overview,#fos-connections) .tkey.sq{border-radius:1px}
+:is(#fos-overview,#fos-connections) .tkey.s0{background:#18181B}
+:is(#fos-overview,#fos-connections) .tkey.s1{background:#2563EB}
+:is(#fos-overview,#fos-connections) .tkey.s2{background:#C2410C}
+:is(#fos-overview,#fos-connections) .tkey.s3{background:#0D9488}
+:is(#fos-overview,#fos-connections) .tplot{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:160px auto;gap:0 8px}
+:is(#fos-overview,#fos-connections) .ty{grid-column:1;grid-row:1;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+:is(#fos-overview,#fos-connections) .tsvg{grid-column:2;grid-row:1;display:block;width:100%;height:160px;overflow:visible}
+:is(#fos-overview,#fos-connections) .tx{grid-column:2;grid-row:2;display:flex;justify-content:space-between;gap:8px;padding-top:8px;white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tgrid{stroke:var(--line);stroke-width:1}
+:is(#fos-overview,#fos-connections) .tzero{stroke:var(--gray2);stroke-width:1}
+:is(#fos-overview,#fos-connections) .tline{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+:is(#fos-overview,#fos-connections) .tline.test{stroke-dasharray:6 5}
+:is(#fos-overview,#fos-connections) .tdot{fill:none;stroke-width:8}
+:is(#fos-overview,#fos-connections) .tdot.rd{stroke-linecap:round}
+:is(#fos-overview,#fos-connections) .tdot.sq{stroke-linecap:square}
+:is(#fos-overview,#fos-connections) .thit{fill:none;stroke:transparent;stroke-width:16;stroke-linecap:round;pointer-events:stroke}
+:is(#fos-overview,#fos-connections) .s0:is(.tline,.tdot){stroke:#18181B}
+:is(#fos-overview,#fos-connections) .s1:is(.tline,.tdot){stroke:#2563EB}
+:is(#fos-overview,#fos-connections) .s2:is(.tline,.tdot){stroke:#C2410C}
+:is(#fos-overview,#fos-connections) .s3:is(.tline,.tdot){stroke:#0D9488}
+:is(#fos-overview,#fos-connections) .tdata{margin-top:16px}
+:is(#fos-overview,#fos-connections) .tdata>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+:is(#fos-overview,#fos-connections) .tdata .scroll-x{overflow-x:auto;max-height:320px;overflow-y:auto}
+:is(#fos-overview,#fos-connections) .tdata table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+:is(#fos-overview,#fos-connections) .tdata th{text-align:left;font-weight:500;color:var(--text-dim);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tdata td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+:is(#fos-overview,#fos-connections) .tdata .r{text-align:right}
+:is(#fos-overview,#fos-connections) .tnone{padding:16px 0}
+:is(#fos-overview,#fos-connections) .trends .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+:is(#fos-overview,#fos-connections) .trends .btn-primary{min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+:is(#fos-overview,#fos-connections) .trends .skel{display:flex;flex-direction:column;gap:8px;min-height:200px}
+:is(#fos-overview,#fos-connections) .trends .sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s ease-in-out infinite}
+:is(#fos-overview,#fos-connections) .trends .sk-s{height:12px;width:40%}
+:is(#fos-overview,#fos-connections) .trends .sk-m{height:16px;width:70%}
+:is(#fos-overview,#fos-connections) .trends .sk-l{height:120px;width:100%}
+#fos-connections .fos-extra:empty{display:none}
+#fos-connections .fos-extra{margin-top:48px}
+@media (prefers-reduced-motion:reduce){
+  :is(#fos-overview,#fos-connections) .trends .sk{animation:none}
+}
+@media (max-width:1100px){
+  :is(#fos-overview,#fos-connections) .trends .tgrid3>*{grid-column:span 6}
+  :is(#fos-overview,#fos-connections) .trends .tgrid3>:last-child{grid-column:span 12}
+}
+@media (max-width:760px){
+  :is(#fos-overview,#fos-connections) .trends .tgrid3>*,:is(#fos-overview,#fos-connections) .trends .two>*{grid-column:span 12}
+  :is(#fos-overview,#fos-connections) .trends .card{padding:16px}
+  :is(#fos-overview,#fos-connections) .trange{width:100%}
+  :is(#fos-overview,#fos-connections) .trange-btn{flex:1 1 0;padding:0 8px}
+}
+/* Accounts' .grid has no bottom margin on its own page; keep it that way. */
+#fos-accounts .grid{margin-bottom:0}
+
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .mbar{padding:8px 16px}
+  .fos-tabs{padding:0 16px;gap:0 16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mbar">
+    <div class="brand">
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <span class="sub">FinanceOS</span>
+      <span class="who" id="fos-client"></span>
+    </div>
+    <a id="money-back" href="client-portal.html">Back to my portal</a>
+  </header>
+  <nav class="fos-tabs" role="tablist" aria-label="FinanceOS">
+    <a role="tab" id="tab-overview" href="#overview" aria-controls="fos-overview" aria-selected="true">Overview</a>
+    <a role="tab" id="tab-next" href="#next" aria-controls="fos-next" aria-selected="false" tabindex="-1">Next steps</a>
+    <a role="tab" id="tab-helper" href="#helper" aria-controls="fos-helper" aria-selected="false" tabindex="-1">Money helper</a>
+    <a role="tab" id="tab-transfers" href="#transfers" aria-controls="fos-transfers" aria-selected="false" tabindex="-1">Money moves</a>
+    <a role="tab" id="tab-plan" href="#plan" aria-controls="fos-plan" aria-selected="false" tabindex="-1">Plan</a>
+    <a role="tab" id="tab-banks" href="#banks" aria-controls="fos-banks" aria-selected="false" tabindex="-1">Banks</a>
+    <a role="tab" id="tab-strategy" href="#strategy" aria-controls="fos-strategy" aria-selected="false" tabindex="-1">Strategy</a>
+    <a role="tab" id="tab-fundability" href="#fundability" aria-controls="fos-fundability" aria-selected="false" tabindex="-1">Fundability</a>
+    <a role="tab" id="tab-declines" href="#declines" aria-controls="fos-declines" aria-selected="false" tabindex="-1">Applications</a>
+    <a role="tab" id="tab-alerts" href="#alerts" aria-controls="fos-alerts" aria-selected="false" tabindex="-1">Alerts</a>
+    <a role="tab" id="tab-vault" href="#vault" aria-controls="fos-vault" aria-selected="false" tabindex="-1">Funding papers</a>
+    <a role="tab" id="tab-accounts" href="#accounts" aria-controls="fos-accounts" aria-selected="false" tabindex="-1">Accounts</a>
+    <a role="tab" id="tab-credit" href="#credit" aria-controls="fos-credit" aria-selected="false" tabindex="-1">Credit</a>
+    <a role="tab" id="tab-connections" href="#connections" aria-controls="fos-connections" aria-selected="false" tabindex="-1">Connections</a>
+    <a role="tab" id="tab-payments" href="#payments" aria-controls="fos-payments" aria-selected="false" tabindex="-1">Payments</a>
+    <a role="tab" id="tab-setup" href="#setup" aria-controls="fos-setup" aria-selected="false" tabindex="-1">Setup</a>
+  </nav>
+  <main>
+    <div class="fos-sandbox" id="fos-sandbox" role="note" hidden><strong>Test data — Plaid sandbox</strong><span>These accounts are fake test accounts, not a real bank.</span></div>
+    <section class="fos-panel" id="fos-overview" role="tabpanel" aria-labelledby="tab-overview" aria-live="polite"></section>
+    <section class="fos-panel" id="fos-next" role="tabpanel" aria-labelledby="tab-next" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-helper" role="tabpanel" aria-labelledby="tab-helper" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-transfers" role="tabpanel" aria-labelledby="tab-transfers" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-plan" role="tabpanel" aria-labelledby="tab-plan" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-banks" role="tabpanel" aria-labelledby="tab-banks" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-strategy" role="tabpanel" aria-labelledby="tab-strategy" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-fundability" role="tabpanel" aria-labelledby="tab-fundability" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-declines" role="tabpanel" aria-labelledby="tab-declines" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-alerts" role="tabpanel" aria-labelledby="tab-alerts" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-vault" role="tabpanel" aria-labelledby="tab-vault" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-accounts" role="tabpanel" aria-labelledby="tab-accounts" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-credit" role="tabpanel" aria-labelledby="tab-credit" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-connections" role="tabpanel" aria-labelledby="tab-connections" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-payments" role="tabpanel" aria-labelledby="tab-payments" aria-live="polite" hidden></section>
+    <section class="fos-panel" id="fos-setup" role="tabpanel" aria-labelledby="tab-setup" aria-live="polite" hidden></section>
+  </main>
+</div>
+<script defer src="money.js"></script>
+<script defer src="money-trends.js"></script>
+<script defer src="money-next.js"></script>
+<script defer src="money-helper.js"></script>
+<script defer src="money-transfers.js"></script>
+<script defer src="money-plan.js"></script>
+<script defer src="money-banks.js"></script>
+<script defer src="money-strategy.js"></script>
+<script defer src="money-fundability.js"></script>
+<script defer src="money-declines.js"></script>
+<script defer src="money-alerts.js"></script>
+<script defer src="money-vault.js"></script>
+<script defer src="money-accounts.js"></script>
+<script defer src="money-credit.js"></script>
+<script defer src="money-connections.js"></script>
+<script defer src="money-payments.js"></script>
+<script defer src="money-setup.js"></script>
+<script defer src="financeos.js"></script>
+</body>
+</html>

@@ -34,6 +34,7 @@ import { createTask } from "../lib/create-task.mjs";
 import { FUNDING_DOC_HOLD } from "../inquiry-ops/doc-gate.mjs";
 import { SUBTYPE_TITLES } from "../documents/kinds.mjs";
 import { extractVerifiedIdentity, recordVerifiedIdentity } from "../identity/verified.mjs";
+import { VAULT_ONLY_SUBTYPES } from "../finance/document-vault-items.mjs";
 
 export const AGENT_CODE = "DOC-CHECK";
 export const WORKFLOW_ID = "doc-check";
@@ -54,6 +55,13 @@ export function shouldRunDocCheck(payload) {
   const p = payload || {};
   const hardKind = String(p.kind || "");
   if (hardKind === "inquiry_doc" || hardKind === "bureau_response") return false;
+  /* THE VAULT'S BUSINESS PAPERS ARE NOT THIS READER'S. A business bank statement, a
+     business tax return, an EIN letter, a certificate of good standing: this
+     agent's prompt knows ID, proof of address and Articles, and on anything else it
+     would text the client "documents approved, Round 1 shortly" or "one thing needs
+     fixing" about a paper it cannot judge. Staff accept these in the vault
+     (src/finance/document-vault.mjs). Every other upload is read as before. */
+  if (VAULT_ONLY_SUBTYPES.includes(String(p.subtype || ""))) return false;
   if (hardKind === "client_upload") return true;
   const names = [p.kind, p.subtype].filter(Boolean).map(String);
   return DOC_CHECK_TYPES.some((t) => names.includes(t));

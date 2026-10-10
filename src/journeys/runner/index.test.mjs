@@ -139,8 +139,41 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 90 -> 91 on 2026-10-05 (marketing machine M0 step 5) with
    meta-campaign-sync-hourly, the hourly 3-day Meta pull. A cron with no event
    trigger, so it sits in neverFired like every sweeper here; it shares its
-   module with meta-campaign-sync-sweeper and is told apart by `handles`. */
-const REGISTERED = 91;
+   module with meta-campaign-sync-sweeper and is told apart by `handles`.
+
+   Moved 91 -> 92 on 2026-10-06 (Finance OS unit C) with
+   finance-os-card-due-reminders, the daily card due text. A cron with no
+   event trigger, so it sits in neverFired like every sweeper here.
+
+   Moved 92 -> 93 the same day (Finance OS build, unit A) with
+   plaid-transactions-sweeper, the daily Plaid charges + deposits pull. A cron
+   with no event trigger, so it sits in neverFired like every sweeper here.
+
+   Moved 93 -> 94 the same day (Finance OS wave 2, unit P4) with
+   finance-os-money-agent, the daily money helper for Clarity Payments and
+   past-due cards. A cron with no event trigger, so it sits in neverFired
+   like every sweeper here.
+
+   Moved 94 -> 95 the same day (Finance OS wave 4b, unit H5) with
+   merchant-pull-sweeper, the daily read of each client's Commas / Whop
+   account with their own API key. A cron with no event trigger, so it sits
+   in neverFired like every sweeper here.
+
+   Moved 95 -> 96 the same day (FinanceOS wave 4, unit H6) with
+   finance-os-trend-snapshots, the daily balance history behind the Trends
+   line charts. A cron with no event trigger, so it sits in neverFired like
+   every sweeper here.
+
+   Moved 96 -> 97 the same day (FinanceOS wave 5, unit W7) with
+   finance-os-money-transfers, the 15-minute pass that sends client-approved
+   money moves through Plaid Transfer and reads their events back. A cron with
+   no event trigger, so it sits in neverFired like every sweeper here.
+
+   Moved 97 -> 98 the same day (Capital Blueprint B3) with
+   document-vault-chase, the daily ask for the next missing application paper.
+   A cron with no event trigger, so it sits in neverFired like every sweeper
+   here. */
+const REGISTERED = 98;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

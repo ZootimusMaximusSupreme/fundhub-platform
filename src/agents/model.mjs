@@ -16,6 +16,12 @@
 // this file behaves exactly as it did before (the old callers depend on it).
 //
 // No new npm dependency — raw fetch, same posture as src/messaging/providers/*.
+//
+// CLAUDE CODE (added 2026-10-06). `provider: "claude-code"` runs the Claude Code
+// command line on Chris's Mac instead (src/agents/claude-code.mjs), and the Mac queue
+// runner turns that on for every call in its own process. Nothing on Netlify does.
+
+import { callClaudeCode, claudeCodeRouting, CLAUDE_CODE } from "./claude-code.mjs";
 
 export const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
@@ -192,6 +198,9 @@ function pickProvider(env, mediaParts) {
  * Without `provider`, nothing about this function changed.
  */
 export async function callModel(args = {}) {
+  // provider 'claude-code', or the Mac runner's switch: the Claude Code command line
+  // (src/agents/claude-code.mjs). Only scripts/marketing-run-queue.mjs flips the switch.
+  if ((args && args.provider === CLAUDE_CODE) || claudeCodeRouting()) return callClaudeCode(args || {});
   if (args && args.provider != null) return callAnthropicForced(args);
   return callModelDefault(args);
 }

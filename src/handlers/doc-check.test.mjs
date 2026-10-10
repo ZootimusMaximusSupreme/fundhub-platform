@@ -43,6 +43,33 @@ test("shouldRunDocCheck: client_upload subtype matches, inquiry_doc does not", (
   assert.equal(shouldRunDocCheck({ kind: "client_upload", subtype: "articles_of_organization" }), true);
 });
 
+/* The application document vault (Capital Blueprint B3) adds business papers this
+   reader has no rules for. Reading them would text the client "documents approved,
+   Round 1 shortly" or "one thing needs fixing" about a paper it cannot judge, so
+   they are staff-accepted and never reach it. Everything else still does. */
+test("shouldRunDocCheck: the vault's business papers are never read by the identity agent", async () => {
+  const { VAULT_ONLY_SUBTYPES } = await import("../finance/document-vault-items.mjs");
+  assert.deepEqual([...VAULT_ONLY_SUBTYPES].sort(), [
+    "business_bank_statement", "business_license", "business_tax_return", "certificate_good_standing", "ein_letter"
+  ]);
+  for (const subtype of VAULT_ONLY_SUBTYPES) {
+    assert.equal(shouldRunDocCheck({ kind: "client_upload", subtype }), false, subtype);
+    assert.equal(shouldRunDocCheck({ subtype }), false, `${subtype} with no kind`);
+  }
+  // unchanged: what it read before it still reads
+  for (const subtype of ["id_document", "proof_of_address", "bank_statement", "tax_return", "ssn_card", "articles_of_organization", "other"]) {
+    assert.equal(shouldRunDocCheck({ kind: "client_upload", subtype }), true, subtype);
+  }
+});
+
+test("onDocsReceivedDocCheck: a business bank statement is skipped before anything is looked up", async () => {
+  const res = await onDocsReceivedDocCheck(null, event({
+    kind: "client_upload", subtype: "business_bank_statement", document_id: "doc-1"
+  }));
+  assert.equal(res.done, false);
+  assert.equal(res.reason, "not_doc_check_kind");
+});
+
 test("inquiry-docs handler and DOC-CHECK gate are different functions", () => {
   assert.notEqual(onDocsReceivedDocCheck, onDocsReceivedFlipInquiryGate);
   assert.equal(typeof onDocsReceivedFlipInquiryGate, "function");

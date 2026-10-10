@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Connections</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="stylesheet" href="money-connections.css">
+<!-- ══ CONNECTIONS — A CLIENT'S OWN MERCHANT PROCESSORS ══════════════════════
+     Board: ops/workflows/finance-os-pages-2026-10-06.md (unit P3). Direction:
+     docs/finance/finance-os-direction-2026-10-06.md — "Merchant integrations:
+     Commas, Whop, and an open API".
+
+     A THIN SHELL. The section itself lives in money-connections.js as
+     window.FinanceOS.sections.connections.mount(el, ctx) with its styles in
+     money-connections.css, so the one FinanceOS page can mount it in a tab.
+     This page only adds the header and the money nav, then mounts it into
+     #conn-root.
+
+     Same frame as money.html: client-facing, so NO shell.js and no staff menu.
+     .app on the wrapper so fundhub-brand.css sizes the type (UI-STANDARDS
+     §12.7) — no px font sizes below. -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--ink2);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+
+/* header — same dark bar as money.html */
+.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
+.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
+.brand .sub{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
+
+/* the shared money nav (board: same six links, same order, on every money page) */
+.mnav{background:#FFFFFF;border-bottom:1px solid var(--line);padding:0 24px;overflow-x:auto}
+.mnav ul{display:flex;gap:8px;white-space:nowrap;list-style:none}
+.mnav a{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;text-decoration:none;color:var(--gray);border-bottom:2px solid transparent}
+.mnav a:hover{color:var(--ink)}
+.mnav a[aria-current="page"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+
+main{padding:24px 24px 64px}
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .mbar,.mnav{padding-left:16px;padding-right:16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mbar">
+    <div class="brand">
+      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <div class="sub">Connections</div>
+    </div>
+    <a id="money-back" href="client-portal.html">Back to my portal</a>
+  </header>
+  <nav class="mnav" aria-label="Money">
+    <ul>
+      <li><a href="/app/financeos.html#overview">Money</a></li>
+      <li><a href="/app/financeos.html#accounts">Accounts</a></li>
+      <li><a href="/app/financeos.html#credit">Credit</a></li>
+      <li><a href="/app/financeos.html#connections" aria-current="page">Connections</a></li>
+      <li><a href="/app/financeos.html#payments">Payments</a></li>
+      <li><a href="/app/financeos.html#setup">Setup</a></li>
+    </ul>
+  </nav>
+  <main>
+    <div id="conn-root" class="fos-connections" aria-live="polite">
+      <div class="head"><div><h1>Connections</h1><p class="caption">Loading your connections…</p></div></div>
+    </div>
+  </main>
+</div>
+<script defer src="money-connections.js"></script>
+</body>
+</html>

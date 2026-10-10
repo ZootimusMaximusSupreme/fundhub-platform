@@ -348,6 +348,12 @@
       campaign: main ? main.campaign : null,
       stages: main ? main.stages : [],
       advice: main ? main.advice : "",
+      /* MARKETING_AI_RUNNER=local only: { waiting, running, line } for the AI jobs
+         the queue runner on Chris's Mac has not finished. null when not sent. */
+      macQueue: (function (m) {
+        if (!m || typeof m !== "object") return null;
+        return { waiting: num(first(m, ["waiting"])) || 0, running: num(first(m, ["running"])) || 0, line: str(first(m, ["line"])) };
+      })(first(b, ["macQueue"])),
       partsWaiting: arr(first(b, ["waiting"])).map(function (w) {
         w = obj(w);
         return { part: str(first(w, ["part"])), reason: str(first(w, ["reason"])) };
@@ -1162,6 +1168,10 @@
     for (var i = 0; i < jobs.length; i++) {
       if (jobId != null && str(obj(jobs[i]).job_id || obj(jobs[i]).id) === str(jobId)) { mine = jobs[i]; break; }
     }
+    if (!mine && num(body.waiting_for_mac) > 0) {
+      /* MARKETING_AI_RUNNER=local: the copy is written by the queue runner on Chris's Mac. */
+      return { tone: "wait", message: "Saved. Waiting for your Mac to run it. It shows under Latest ad copy when it is done.", pieces: [] };
+    }
     if (!mine) {
       return {
         tone: "wait",
@@ -1384,9 +1394,24 @@
       "</div></li>";
   }
 
-  /* waitingList — the rows, videos first (they have waited longest). */
+  /* macWait — MARKETING_AI_RUNNER=local: the AI jobs that wait for Chris's Mac, as one
+     row. null when none wait (or the Mac does not run them). */
+  function macWait(view) {
+    var m = view && view.macQueue;
+    if (!m || !(m.waiting > 0 || m.running > 0)) return null;
+    return {
+      kind: "mac",
+      what: m.waiting > 0 ? "Waiting for your Mac to run it" : "Your Mac is running it now",
+      why: m.line,
+      how: "The queue runner on your Mac picks these up while it is on."
+    };
+  }
+
+  /* waitingList — the rows: the Mac's queue, then videos (they have waited longest). */
   function waitingList(view, videos, nowMs) {
     var out = [];
+    var mac = view && view.loaded ? macWait(view) : null;
+    if (mac) out.push(mac);
     var v = videoWait(videos, nowMs);
     if (v) out.push(v);
     return out.concat(view && view.loaded ? deriveWaiting(view) : []);

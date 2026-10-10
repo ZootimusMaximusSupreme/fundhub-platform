@@ -276,6 +276,23 @@ describe("rotation: the walk over stored rows", () => {
     }
   });
 
+  test("a token sealed by Plaid Link (AAD = Plaid's item id) rotates and still opens with that id", async () => {
+    const env = envWith({ v2: key() });
+    const id = "55555555-5555-5555-5555-555555555555";
+    const plaidItemId = "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6";
+    const secret = "access-sandbox-linked-by-plaid-link";
+    // completeLink seals before the row exists, so the binding is Plaid's item id.
+    const db = fakeDb([{ id, plaid_item_id: plaidItemId, org_id: ORG, encrypted_access_token: encryptPlaidToken(secret, { itemId: plaidItemId, env }) }]);
+
+    const summary = await rotatePlaidTokens(db, { orgId: ORG, toKeyId: "v2", env });
+
+    assert.deepEqual(summary.failed, [], "the live convention must not fail a rotation");
+    assert.equal(summary.rotated, 1);
+    const row = db.rows[0];
+    assert.equal(plaidTokenKeyId(row.encrypted_access_token), "v2");
+    assert.equal(decryptPlaidToken(row.encrypted_access_token, { itemId: plaidItemId, env }), secret, "readers decrypt with plaid_item_id");
+  });
+
   test("*** NO PLAINTEXT IS EVER WRITTEN — not to a column, not to a temp column ***", async () => {
     const env = envWith({ v2: key() });
     const id = "44444444-4444-4444-4444-444444444444";

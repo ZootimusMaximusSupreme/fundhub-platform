@@ -1,0 +1,54 @@
+/* What to do next — FinanceOS.sections.next (money-next.js).
+   Every rule is under .fh-next so the section can sit inside the combined
+   FinanceOS page without touching its neighbours. The base pieces it relies on
+   (.card, .head, .eyebrow, .caption, .btn-primary, skeletons) are the same
+   rules money-payments.html carries. 8px spacing scale; no px font sizes
+   (UI-STANDARDS §12.7). Phone: one column, the page never scrolls sideways
+   (UI-STANDARDS §11). */
+
+.fh-next .nx-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start;margin-bottom:24px}
+.fh-next .nx-main{grid-column:span 8;min-width:0}
+.fh-next .nx-side{grid-column:span 4;display:flex;flex-direction:column;gap:16px;min-width:0}
+.fh-next .act-msg:empty{display:none}
+
+.fh-next .btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600;text-decoration:none;white-space:nowrap}
+.fh-next .btn-line[disabled]{opacity:.6;cursor:default}
+.fh-next .btn-text{display:inline-flex;align-items:center;min-height:40px;color:var(--text-dim);text-decoration:underline;text-underline-offset:3px}
+.fh-next .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--ink);font-weight:600}
+
+/* The steps. One row per step: what, when, where it came from, who can do it,
+   and the one control (or what was already done) on the right. */
+.fh-next .tasks{display:flex;flex-direction:column;gap:8px}
+.fh-next .task-list{display:flex;flex-direction:column}
+.fh-next .task{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,280px);gap:8px 24px;padding:16px 0;border-top:1px solid var(--line)}
+.fh-next .task:first-child{border-top:0;padding-top:8px}
+.fh-next .t-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fh-next .t-title{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-next .t-meta{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.fh-next .t-why{color:var(--text);overflow-wrap:anywhere}
+.fh-next .t-act{display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:0}
+.fh-next .t-status{color:var(--ink);max-width:100%}
+.fh-next .t-status:focus{outline:2px solid var(--ink);outline-offset:4px}
+/* LATE — literal amber, not a brand variable, so it stays a warning on every
+   tenant, and it says "Late" in words (UI-STANDARDS §12.6). Same as Payments. */
+.fh-next .late{display:inline-block;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:999px;padding:0 8px;font-weight:600}
+.fh-next .warn-note{border:1px solid #FCD34D;background:#FFFBEB;color:#92400E;border-radius:8px;padding:8px 16px}
+
+.fh-next .empty-t{font-weight:600;color:var(--ink)}
+.fh-next .empty{align-items:flex-start;gap:16px}
+
+/* The side: "Ready to get funded" and, when the client does not have it, the
+   Capital Blueprint card. */
+.fh-next .ready,.fh-next .upsell{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.fh-next .up-t{font-weight:600;color:var(--ink)}
+
+.fh-next .error{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+
+@media (max-width:1000px){
+  .fh-next .nx-main,.fh-next .nx-side{grid-column:span 12}
+}
+@media (max-width:600px){
+  .fh-next .task{grid-template-columns:minmax(0,1fr)}
+  .fh-next .t-act{align-items:stretch}
+  .fh-next .t-act .btn-line,.fh-next .ready .btn-primary,.fh-next .upsell .btn-line{width:100%}
+}

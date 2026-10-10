@@ -1,0 +1,566 @@
+{
+  "ok": true,
+  "client": {
+    "id": "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e",
+    "name": "Test Test"
+  },
+  "as_of": "2026-10-07",
+  "sandbox": true,
+  "tip": null,
+  "inputs": {
+    "as_of": "2026-10-07",
+    "debts": [
+      {
+        "id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "name": "Business Amex",
+        "type": "card",
+        "kind": "business",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "balance_cents": 540000,
+        "limit_cents": 2500000,
+        "apr_pct": 18.24,
+        "apr_source": "statement",
+        "min_cents": 13500,
+        "due_on": "2026-10-15"
+      },
+      {
+        "id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "name": "Personal Visa",
+        "type": "card",
+        "kind": "personal",
+        "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+        "balance_cents": 132040,
+        "limit_cents": 800000,
+        "apr_pct": 24.99,
+        "apr_source": "statement",
+        "min_cents": 4000,
+        "due_on": "2026-10-25"
+      },
+      {
+        "id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "name": "Sample Chase Ink",
+        "type": "card",
+        "kind": "business",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "balance_cents": 200000,
+        "limit_cents": 1000000,
+        "apr_pct": null,
+        "apr_source": null,
+        "min_cents": null,
+        "due_on": null
+      },
+      {
+        "id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+        "name": "SBA Loan",
+        "type": "loan",
+        "kind": "business",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "balance_cents": 4800000,
+        "limit_cents": null,
+        "apr_pct": null,
+        "apr_source": null,
+        "min_cents": 105000,
+        "due_on": "2026-11-01"
+      }
+    ],
+    "cash": {
+      "window": {
+        "from": "2026-10-07",
+        "to": "2026-11-06"
+      },
+      "by_kind": {
+        "business": {
+          "ok": true,
+          "safe_cents": 1845000,
+          "short_cents": 0,
+          "opening_cents": 1875000,
+          "bills_cents": 30000,
+          "floor_cents": 0,
+          "floor_source": "buffer-supplied",
+          "accounts": [
+            {
+              "name": "Business Checking",
+              "balance_cents": 1875000
+            }
+          ],
+          "bills": [
+            {
+              "name": "HubSpot Software Subscription",
+              "on": "2026-11-04",
+              "amount_cents": 30000,
+              "kind": "bill",
+              "certainty": "unconfirmed"
+            }
+          ],
+          "bills_left_out": 2,
+          "threshold_gaps": []
+        },
+        "personal": {
+          "ok": true,
+          "safe_cents": 153055,
+          "short_cents": 0,
+          "opening_cents": 421055,
+          "bills_cents": 268000,
+          "floor_cents": 0,
+          "floor_source": "buffer-supplied",
+          "accounts": [
+            {
+              "name": "Personal Checking",
+              "balance_cents": 421055
+            }
+          ],
+          "bills": [
+            {
+              "name": "GEICO",
+              "on": "2026-10-13",
+              "amount_cents": 18000,
+              "kind": "bill",
+              "certainty": "unconfirmed"
+            },
+            {
+              "name": "Oakwood Apartments Rent",
+              "on": "2026-11-02",
+              "amount_cents": 250000,
+              "kind": "bill",
+              "certainty": "unconfirmed"
+            }
+          ],
+          "bills_left_out": 0,
+          "threshold_gaps": []
+        }
+      }
+    }
+  },
+  "targets": [
+    {
+      "pct": 30,
+      "key": "util30",
+      "label": "30%",
+      "meaning": "UnderwriteIQ counts a file fundable only when card use is 30% or less.",
+      "source": "src/underwrite/vendor/underwriter.cjs (fundable needs utilization 30 or less; target_util_pct 30)"
+    },
+    {
+      "pct": 10,
+      "key": "util10",
+      "label": "10%",
+      "meaning": "UnderwriteIQ's target for every card and for the whole file: under 10%.",
+      "source": "vendor/underwriteiq-full/api/lite/crs/optimization-findings.js (\"Utilization target is always under 10%\"); src/deliverables/derive.mjs targetBal"
+    }
+  ],
+  "methods": {
+    "avalanche": {
+      "label": "Highest rate first",
+      "short": "Avalanche",
+      "detail": "Extra money goes to the debt with the highest APR. Saves the most interest.",
+      "source": "Owner direction 2026-10-06: avalanche = highest APR first"
+    },
+    "utilization": {
+      "label": "Card use first",
+      "short": "Utilization",
+      "detail": "Each card goes down to 10% of its limit, highest card use first. Then highest APR first.",
+      "source": "src/blueprint/paydown-simulator.mjs allocateCashToCards (highest utilization first, each card to its 10% target)"
+    },
+    "snowball": {
+      "label": "Smallest balance first",
+      "short": "Snowball",
+      "detail": "Extra money goes to the smallest balance. Closes debts sooner.",
+      "source": "Owner direction 2026-10-06: snowball = smallest balance first"
+    }
+  },
+  "sources": {
+    "debts": "src/finance/money-overview.mjs (the Overview tab's cards and loans); APR from account_statement_cycles",
+    "cash": "src/banking/cashflow.mjs project() + paymentWindow(), first month only, no money in modelled",
+    "targets": [
+      "src/underwrite/vendor/underwriter.cjs (fundable needs utilization 30 or less; target_util_pct 30)",
+      "vendor/underwriteiq-full/api/lite/crs/optimization-findings.js (\"Utilization target is always under 10%\"); src/deliverables/derive.mjs targetBal"
+    ],
+    "methods": {
+      "avalanche": "Owner direction 2026-10-06: avalanche = highest APR first",
+      "utilization": "src/blueprint/paydown-simulator.mjs allocateCashToCards (highest utilization first, each card to its 10% target)",
+      "snowball": "Owner direction 2026-10-06: snowball = smallest balance first"
+    }
+  },
+  "defaults": {
+    "method": "avalanche",
+    "monthly_cents": 122500,
+    "goal": null
+  },
+  "plan": {
+    "ok": true,
+    "reason": null,
+    "as_of": "2026-10-07",
+    "method": "avalanche",
+    "monthly_cents": 122500,
+    "debts": [
+      {
+        "id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "name": "Business Amex",
+        "type": "card",
+        "kind": "business",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "balance_cents": 540000,
+        "limit_cents": 2500000,
+        "limit_state": "known",
+        "apr_pct": 18.24,
+        "apr_bps": 1824,
+        "apr_source": "statement",
+        "min_cents": 13500,
+        "due_on": "2026-10-15"
+      },
+      {
+        "id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "name": "Personal Visa",
+        "type": "card",
+        "kind": "personal",
+        "container_id": "36b90655-f93d-4444-90a8-ccf713426e56",
+        "balance_cents": 132040,
+        "limit_cents": 800000,
+        "limit_state": "known",
+        "apr_pct": 24.99,
+        "apr_bps": 2499,
+        "apr_source": "statement",
+        "min_cents": 4000,
+        "due_on": "2026-10-25"
+      },
+      {
+        "id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "name": "Sample Chase Ink",
+        "type": "card",
+        "kind": "business",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "balance_cents": 200000,
+        "limit_cents": 1000000,
+        "limit_state": "known",
+        "apr_pct": null,
+        "apr_bps": null,
+        "apr_source": null,
+        "min_cents": null,
+        "due_on": null
+      },
+      {
+        "id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+        "name": "SBA Loan",
+        "type": "loan",
+        "kind": "business",
+        "container_id": "386c687a-167d-4d44-a000-8d50b5a80191",
+        "balance_cents": 4800000,
+        "limit_cents": null,
+        "limit_state": "unknown",
+        "apr_pct": null,
+        "apr_bps": null,
+        "apr_source": null,
+        "min_cents": 105000,
+        "due_on": "2026-11-01"
+      }
+    ],
+    "excluded": [],
+    "minimums_cents": 122500,
+    "payoff_all_cents": 5682998,
+    "warnings": [
+      {
+        "code": "apr_unknown",
+        "ids": [
+          "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+          "6af70e59-db5c-4220-95b7-69f6a4a87ff8"
+        ],
+        "names": [
+          "Sample Chase Ink",
+          "SBA Loan"
+        ]
+      },
+      {
+        "code": "minimum_unknown",
+        "ids": [
+          "b5b213fe-fe84-49fb-b50e-5b4491b8805e"
+        ],
+        "names": [
+          "Sample Chase Ink"
+        ]
+      }
+    ],
+    "order": [
+      {
+        "id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "floor_cents": 0,
+        "phase": "rate"
+      },
+      {
+        "id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "floor_cents": 0,
+        "phase": "rate"
+      },
+      {
+        "id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "floor_cents": 0,
+        "phase": "rate"
+      },
+      {
+        "id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+        "floor_cents": 0,
+        "phase": "rate"
+      }
+    ],
+    "debt_free": {
+      "month": 50,
+      "on": "2030-12-07",
+      "earliest": true
+    },
+    "never_paid_off": false,
+    "interest_cents": null,
+    "interest_known_cents": 365640,
+    "apr_unknown_ids": [
+      "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+      "6af70e59-db5c-4220-95b7-69f6a4a87ff8"
+    ],
+    "baseline": {
+      "ok": false,
+      "reason": {
+        "code": "minimum_unknown",
+        "ids": [
+          "b5b213fe-fe84-49fb-b50e-5b4491b8805e"
+        ]
+      },
+      "debt_free_month": null,
+      "debt_free_on": null,
+      "interest_cents": null,
+      "never_ids": []
+    },
+    "interest_saved_cents": null,
+    "interest_saved_reason": {
+      "code": "apr_unknown",
+      "ids": [
+        "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "6af70e59-db5c-4220-95b7-69f6a4a87ff8"
+      ]
+    },
+    "months_saved": null,
+    "util_start_pct": 20.3,
+    "crossings": [
+      {
+        "pct": 30,
+        "key": "util30",
+        "month": 0,
+        "on": "2026-10-07",
+        "already": true,
+        "earliest": false
+      },
+      {
+        "pct": 10,
+        "key": "util10",
+        "month": 46,
+        "on": "2030-08-07",
+        "already": false,
+        "earliest": true
+      }
+    ],
+    "per_debt": [
+      {
+        "id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "payoff_month": 48,
+        "payoff_on": "2030-10-07",
+        "earliest": true,
+        "interest_cents": 276396,
+        "start_util_pct": 21.6,
+        "cross": {
+          "util30": {
+            "target_cents": 750000,
+            "month": 0,
+            "on": "2026-10-07",
+            "already": true
+          },
+          "util10": {
+            "target_cents": 250000,
+            "month": 41,
+            "on": "2030-03-07",
+            "already": false
+          }
+        }
+      },
+      {
+        "id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "payoff_month": 47,
+        "payoff_on": "2030-09-07",
+        "earliest": true,
+        "interest_cents": 89244,
+        "start_util_pct": 16.5,
+        "cross": {
+          "util30": {
+            "target_cents": 240000,
+            "month": 0,
+            "on": "2026-10-07",
+            "already": true
+          },
+          "util10": {
+            "target_cents": 80000,
+            "month": 31,
+            "on": "2029-05-07",
+            "already": false
+          }
+        }
+      },
+      {
+        "id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "payoff_month": 50,
+        "payoff_on": "2030-12-07",
+        "earliest": true,
+        "interest_cents": null,
+        "start_util_pct": 20,
+        "cross": {
+          "util30": {
+            "target_cents": 300000,
+            "month": 0,
+            "on": "2026-10-07",
+            "already": true
+          },
+          "util10": {
+            "target_cents": 100000,
+            "month": 49,
+            "on": "2030-11-07",
+            "already": false
+          }
+        }
+      },
+      {
+        "id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+        "payoff_month": 46,
+        "payoff_on": "2030-08-07",
+        "earliest": true,
+        "interest_cents": null,
+        "start_util_pct": null,
+        "cross": {
+          "util30": null,
+          "util10": null
+        }
+      }
+    ],
+    "goal": null,
+    "cash": {
+      "status": "safe",
+      "by_kind": [
+        {
+          "kind": "personal",
+          "status": "safe",
+          "planned_cents": 4000,
+          "safe_cents": 153055,
+          "reason": null
+        },
+        {
+          "kind": "business",
+          "status": "safe",
+          "planned_cents": 118500,
+          "safe_cents": 1845000,
+          "reason": null
+        }
+      ],
+      "max_safe": {
+        "monthly_cents": 1979790,
+        "unlimited": false,
+        "binding_kind": "business",
+        "reason": null
+      }
+    },
+    "milestones": [
+      {
+        "key": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea:util10",
+        "kind": "pay_down",
+        "target_pct": 10,
+        "target_cents": 80000,
+        "month": 31,
+        "debt_id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "name": "Personal Visa",
+        "date": "2029-05-07",
+        "earliest": false
+      },
+      {
+        "key": "d6ce2c94-3632-4c63-af98-802fef41ac62:util10",
+        "kind": "pay_down",
+        "target_pct": 10,
+        "target_cents": 250000,
+        "month": 41,
+        "debt_id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "name": "Business Amex",
+        "date": "2030-03-07",
+        "earliest": false
+      },
+      {
+        "key": "6af70e59-db5c-4220-95b7-69f6a4a87ff8:payoff",
+        "kind": "pay_down",
+        "target_pct": null,
+        "target_cents": 0,
+        "month": 46,
+        "debt_id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+        "name": "SBA Loan",
+        "date": "2030-08-07",
+        "earliest": true
+      },
+      {
+        "key": "overall:util10",
+        "kind": "checkpoint",
+        "target_pct": 10,
+        "target_cents": null,
+        "month": 46,
+        "debt_id": null,
+        "name": null,
+        "date": "2030-08-07",
+        "earliest": true
+      },
+      {
+        "key": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea:payoff",
+        "kind": "pay_down",
+        "target_pct": null,
+        "target_cents": 0,
+        "month": 47,
+        "debt_id": "f26a03e9-698d-4e58-9ba7-4d2a3a9fc9ea",
+        "name": "Personal Visa",
+        "date": "2030-09-07",
+        "earliest": true
+      },
+      {
+        "key": "d6ce2c94-3632-4c63-af98-802fef41ac62:payoff",
+        "kind": "pay_down",
+        "target_pct": null,
+        "target_cents": 0,
+        "month": 48,
+        "debt_id": "d6ce2c94-3632-4c63-af98-802fef41ac62",
+        "name": "Business Amex",
+        "date": "2030-10-07",
+        "earliest": true
+      },
+      {
+        "key": "b5b213fe-fe84-49fb-b50e-5b4491b8805e:util10",
+        "kind": "pay_down",
+        "target_pct": 10,
+        "target_cents": 100000,
+        "month": 49,
+        "debt_id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "name": "Sample Chase Ink",
+        "date": "2030-11-07",
+        "earliest": true
+      },
+      {
+        "key": "b5b213fe-fe84-49fb-b50e-5b4491b8805e:payoff",
+        "kind": "pay_down",
+        "target_pct": null,
+        "target_cents": 0,
+        "month": 50,
+        "debt_id": "b5b213fe-fe84-49fb-b50e-5b4491b8805e",
+        "name": "Sample Chase Ink",
+        "date": "2030-12-07",
+        "earliest": true
+      },
+      {
+        "key": "debt_free",
+        "kind": "checkpoint",
+        "target_pct": null,
+        "target_cents": 0,
+        "debt_id": null,
+        "name": null,
+        "month": 50,
+        "date": "2030-12-07",
+        "earliest": true
+      }
+    ],
+    "month_count": 50
+  },
+  "saved": null
+}

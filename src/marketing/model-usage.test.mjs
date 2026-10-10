@@ -10,6 +10,7 @@ import {
   costUsd, worstCaseUsd, tokensOf, costTotals, logUsage, costStatus,
   callCostUsd, serverToolsOf, WEB_SEARCH_USD
 } from "./model-usage.mjs";
+import { callCostUsd as researchCallCostUsd } from "./research/usage.mjs";
 
 const T = (input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0) =>
   ({ input_tokens, output_tokens, cache_read_tokens, cache_write_tokens });
@@ -23,8 +24,17 @@ describe("MODEL_PRICES (US dollars per million tokens)", () => {
     assert.deepEqual({ ...MODEL_PRICES["claude-sonnet-5-5"] }, { input: 2, output: 10, cache_read: 0.2, cache_write: 2.5 });
   });
 
-  test("only those two models are priced", () => {
-    assert.deepEqual(Object.keys(MODEL_PRICES).sort(), ["claude-opus-5-5", "claude-sonnet-5-5"]);
+  test("only those two models are priced, plus claude-code at a real $0", () => {
+    assert.deepEqual(Object.keys(MODEL_PRICES).sort(), ["claude-code", "claude-opus-5-5", "claude-sonnet-5-5"]);
+    assert.deepEqual({ ...MODEL_PRICES["claude-code"] }, { input: 0, output: 0, cache_read: 0, cache_write: 0 });
+  });
+
+  test("claude-code (the Mac runner) costs $0, its searches included — never null, never a made-up dollar", () => {
+    assert.equal(costUsd("claude-code", T(1e6, 1e6, 1e6, 1e6)), 0);
+    assert.equal(callCostUsd("claude-code", T(1e6, 1e6, 0, 0), 25), 0);
+    assert.equal(researchCallCostUsd("claude-code", { input_tokens: 1e6, output_tokens: 1e6 }, 25), 0);
+    // A billed model still pays its search fee.
+    assert.equal(callCostUsd("claude-opus-5-5", T(0, 0, 0, 0), 3), 0.03);
   });
 
   test("the source is cited: the claude-api skill and its cache date", () => {

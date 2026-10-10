@@ -1,0 +1,311 @@
+/* Layout and darkness only. Scroll math and the play / record buttons stay in teleprompter.js. */
+
+/* The old file-name line is a tiny button under the words, on the left.
+   One tap does nothing. Double-tap opens the list of scripts still to film.
+   It does not sit on the script. */
+#p-file {
+  flex: none;
+  max-width: 9rem;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(12, 14, 18, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  touch-action: manipulation;
+}
+
+/* The ad line, the script title, the orange notes, and the Shoot tab
+   live in this bar. Take the whole bar off the screen so the words
+   start at the top. */
+#top {
+  display: none !important;
+}
+
+/* Three rows left: the words, the thin save line, the buttons. */
+#app {
+  grid-template-rows: minmax(0, 1fr) auto auto !important;
+  background: transparent;
+}
+
+html,
+body {
+  background: #000;
+}
+
+/* The how-to paragraph sits above the buttons. It is not the script.
+   The same words stay in Settings. */
+#status .note {
+  display: none !important;
+}
+
+/* A pop-up must not sit on the first lines. */
+#toast {
+  top: auto !important;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+#content {
+  top: 0;
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.85);
+}
+
+/* Line edits sit in the script. Same face as the words. */
+.edit-box {
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
+}
+
+/* The red line stays. It is the top reading point, not the middle. */
+#line {
+  top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+/* Record / Stop, Play / Pause, and the tiny speed taps: dark glass.
+   The camera shows through. Save stays off this bar. */
+#b-rec,
+#play,
+#wpm-tap button {
+  background: rgba(12, 14, 18, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #fff;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+#bar {
+  background: transparent;
+  border-top-color: transparent;
+}
+#controls {
+  grid-template-columns: repeat(2, 1fr);
+}
+/* The word save and the video save are not buttons on the glass. */
+#b-script-save,
+#b-save {
+  display: none !important;
+}
+/* Double-tap edit: the two buttons go away until the keyboard does.
+   X throws away this edit. It is not on screen while he is filming. */
+body.wording #controls {
+  display: none !important;
+}
+#b-cancel {
+  display: none;
+  position: fixed;
+  z-index: 8;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: rgba(12, 14, 18, 0.55);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  place-items: center;
+}
+body.wording #b-cancel {
+  display: grid;
+}
+#wpm-tap {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+#wpm-tap button {
+  width: 44px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+/* A paused double-tap opens a word box. The stage blocks selection, so the
+   box has to turn that back on or the phone will not let him type. */
+body.wording #stage,
+body.wording #content,
+.word-box {
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: none;
+}
+
+/* Sideways: words only on the front-camera half. The other half stays the camera. */
+body.cam-side-left #content,
+body.cam-side-left #line {
+  left: 0;
+  right: auto;
+  width: 50%;
+}
+body.cam-side-left #content {
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+}
+body.cam-side-right #content,
+body.cam-side-right #line {
+  left: auto;
+  right: 0;
+  width: 50%;
+}
+body.cam-side-right #content {
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+body.cam-side-left #wpm-tap { justify-content: flex-start; }
+body.cam-side-right #wpm-tap { justify-content: flex-end; }
+
+/* No per-word underline and no per-word dim. The red line is the only mark. */
+#content .w.read,
+#content p.cue .w.read {
+  color: inherit;
+}
+#content .w.start {
+  box-shadow: none;
+  text-decoration: none;
+}
+
+/* Portrait only: the bottom third goes gray and soft, then sharpens as it rolls up. */
+#script-fade {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 33%;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55));
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 60%);
+  mask-image: linear-gradient(to bottom, transparent, #000 60%);
+}
+body.tp-portrait #script-fade {
+  display: block;
+}
+body.cam-side-left #script-fade,
+body.cam-side-right #script-fade {
+  display: none;
+}
+
+#rows {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+#controls {
+  grid-column: 1 / -1;
+}
+/* Mirror and Turn sit beside the speed taps. They are not the Record / Play row. */
+#rig {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+#rig button,
+#b-remote {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(12, 14, 18, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #fff;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+#b-mirror[aria-pressed="true"] {
+  border-color: #ff3b30;
+}
+/* Dark glass over the mirrored front camera.
+   The black is see-through, so the face stays under the words.
+   It is not a flat empty black page. */
+/* The queue list. It opens above the thin line so a thumb can scroll it.
+   Glass, same as the buttons. A tap loads that script. */
+#qmenu {
+  position: fixed;
+  z-index: 8;
+  left: 8px;
+  right: auto;
+  top: auto;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100vw - 16px));
+  max-height: min(62vh, 520px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 12px 12px 16px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: rgba(12, 14, 18, 0.72);
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+#qmenu .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+#qmenu h2 {
+  margin: 0;
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 20px;
+}
+#qmenu .x {
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 8px;
+  min-height: 44px;
+}
+#qmenu-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  display: grid;
+  gap: 8px;
+  max-height: min(52vh, 440px);
+}
+#qmenu .item {
+  min-height: 56px;
+  background: rgba(12, 14, 18, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+}
+#qmenu .item .t {
+  font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  white-space: normal;
+}
+
+#cam-shade,
+#cam.glass #cam-shade {
+  background: rgba(0, 0, 0, 0.72) !important;
+  opacity: 1 !important;
+  -webkit-backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
+  backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
+}
