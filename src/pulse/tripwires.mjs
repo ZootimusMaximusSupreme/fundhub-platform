@@ -75,7 +75,21 @@ export const TRIPWIRES = Object.freeze({
   // M2 repair, 2026-10-09: the push puts a built funnel live on apply.fundhub.ai, where it takes ad
   // traffic and shows on every affiliate's link list. The push proves its pages once. This lane
   // reads every live built funnel's pages again each morning and goes red on a dead or wrong page.
-  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] }
+  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] },
+  // Coverage batch 2026-10-10, W1 Money A (src/pulse/coverage/gap-money-funding.mjs). Funding, fees and
+  // payouts. Each deep check reads what the money chain, the bank answers, the payout run or the
+  // commission screens actually left in the books, and goes red when it is wrong.
+  // W3 adds its own board check ids to route:pipeline-cards after this merges.
+  "route:pipeline-cards": { impact: "money", checks: ["funding:funded-no-bill"] },
+  "route:applications": { impact: "money", checks: ["funding:approved-no-amount", "funding:funded-no-bill"] },
+  "route:commissions": { impact: "money", checks: ["commissions:ledger"] },
+  "route:commission-rules": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
+  "route:slo-connections": { impact: "money", checks: ["commissions:slo-map"] },
+  "route:dashboard/seed": { impact: "money", checks: ["books:sample-rows"] },
+  "route:read/affiliates": { impact: "money", checks: ["partners:payout-held"] },
+  "desk:products-commissions.html": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
+  "desk:client-control-panel.html": { impact: "money", checks: ["funding:funded-no-bill", "funding:approved-no-amount"] },
+  "desk:affiliate.html": { impact: "money", checks: ["partners:payout-held"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
