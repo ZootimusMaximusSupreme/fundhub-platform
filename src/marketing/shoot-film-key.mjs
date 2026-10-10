@@ -12,8 +12,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const SCHEME = "f1";
-/** A film week. A staff session lasts longer. Closing the shoot kills the link sooner. */
-export const FILM_TTL_SECONDS = 60 * 60 * 24 * 7;
+/**
+ * Ten years: for Chris this link does not expire (owner call 2026-10-10: "why are you sending
+ * expiring links"). Closing the shoot still kills it, and a new secret kills every old one.
+ */
+export const FILM_TTL_SECONDS = 60 * 60 * 24 * 365 * 10;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,7 +48,7 @@ export function mintFilmKey({ orgId, shootId, ttlSeconds = FILM_TTL_SECONDS, sec
   const key = secret ?? secretFromEnv();
   const ttl = Number(ttlSeconds);
   if (!Number.isFinite(ttl) || ttl <= 0 || ttl > FILM_TTL_SECONDS) {
-    throw new Error("ttlSeconds must be from 1 second up to 7 days");
+    throw new Error("ttlSeconds must be from 1 second up to 10 years");
   }
   const exp = Math.floor(now() / 1000) + Math.floor(ttl);
   const sig = sign(key, orgId, shootId, String(exp));
