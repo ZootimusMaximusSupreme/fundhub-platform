@@ -17,11 +17,12 @@ import { bodyHash } from "../../scripts/flywheel/status.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const REGISTRY = fs.readFileSync(path.join(ROOT, "marketing", "ads", "registry.json"), "utf8");
 
-/* Ad numbers no real ad uses. The registry_add_ad tests add an ad to the LIVE
-   registry file, so a number typed in by hand breaks the day a real ad takes
-   it. 91 did on 2026-10-08 (ae3c014cd added ad 91, "The Conveyor Belt"), and
-   92 and 93 were next in line. These three are always one past the highest ad
-   in the file. */
+/* The registry_add_ad tests add an ad to a copy of the real registry file
+   (read into memory above; nothing is written back to disk). So the new number
+   must be one no real ad uses. A number typed in by hand breaks the day a real
+   ad takes it. 91 did on 2026-10-08 (ae3c014cd added ad 91, "The Conveyor
+   Belt"), and 92 and 93 were next in line. These are 1, 2 and 3 past the
+   highest ad in the file. */
 const NEW_ID = String(Math.max(...JSON.parse(REGISTRY).ads.map((a) => Number(a.id))) + 1);
 const NEW_ID_2 = String(Number(NEW_ID) + 1);
 const NEW_ID_3 = String(Number(NEW_ID) + 2);

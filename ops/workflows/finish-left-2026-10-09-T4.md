@@ -81,9 +81,10 @@ I have not touched the test or the page for #1.
 
 **Root cause: a stale test number, not a code bug.**
 
-The `registry_add_ad` tests add a "new" ad to the REAL
-`marketing/ads/registry.json` and typed in ad number `91`, `92` and `93` by
-hand. On 2026-10-08, commit `ae3c014cd` ("marketing: ad registry entries...")
+The `registry_add_ad` tests add a "new" ad to a copy of the real
+`marketing/ads/registry.json` (the test reads the file into memory and only
+changes the copy; nothing is written back to disk) and typed in ad number
+`91`, `92` and `93` by hand. On 2026-10-08, commit `ae3c014cd` ("marketing: ad registry entries...")
 put a real ad 91, "The Conveyor Belt", lane `sorting`, into that file. After
 that, the code did the right thing and refused:
 `ad 91 is already in marketing/ads/registry.json with a different lane or title`.
@@ -109,8 +110,8 @@ asserts. So the code is right and the test number is stale.
 
 One file: `src/repo/edit-ops.test.mjs`.
 
-- Three constants, `NEW_ID`, `NEW_ID_2`, `NEW_ID_3`, always one, two and three
-  past the highest ad number in the live file. A comment says why.
+- Three constants, `NEW_ID`, `NEW_ID_2`, `NEW_ID_3`, which are 1, 2 and 3
+  past the highest ad number in the file. A comment says why.
 - Every typed `"91"`, `"92"`, `"93"` in the `registry_add_ad` tests and in the
   "pure" test now uses them. The `"9a"` (bad id on purpose) is unchanged.
 - No assertion removed, skipped or loosened. Same checks, a number that cannot
@@ -139,6 +140,17 @@ No source file changed. No test deleted, skipped or weakened.
 
 None for #2 and #3 (test file only). For #1 nothing changed in the repo.
 
+## Type check (`npx tsc --noEmit`)
+
+It fails with 1 error. The error was there before T4 and T4 did not cause it:
+
+- `src/marketing/filmed-receive.mjs(159,75)` TS2345 ("(value: any) => void" is
+  not assignable to "() => void"). That file's last change is `f494f2d9a`
+  (2026-10-07, "Keep original phone takes on this Mac."). It is byte-for-byte
+  the same as on `main` at `e58704577`.
+- T4 touched only `src/repo/edit-ops.test.mjs` and this board file.
+- Not fixed under T4. It is a leftover card (item 4 below).
+
 ## Leftovers (seen, not touched)
 
 1. The same "States" table has an "Issuance" column that is all dashes today
@@ -157,8 +169,22 @@ None for #2 and #3 (test file only). For #1 nothing changed in the repo.
    `docs/ads/`). That file is not in the repo, and no commit ever added a
    file by that name. The ban list is in the intended journey doc instead, so
    I used that.
+4. `npx tsc --noEmit` fails with 1 error that was already there before T4:
+   `src/marketing/filmed-receive.mjs` line 159 (TS2345, the
+   `resolve` passed to `ws.once("drain", resolve)`). Not
+   caused by T4, not fixed under T4.
 
 ## Next
 
 Chris picks A or B for #1. If A: the marked draft, then push, then prove the
 live page.
+
+## Repair round 2 (checker findings, same day)
+
+Branch `fix/T4-2026-10-09-r2`, cut from `fix/T4-2026-10-09`.
+
+| Finding | Severity | What I did |
+|---|---|---|
+| Climate page test still red ("Approval Odds" column is live) | medium | NOT fixed, on purpose. The only fix is an edit to a live public page, which the page-edits law says needs a marked draft and Chris's pick first (A or B above). The checker agreed: "No agent should edit the page now." I re-ran the test and it is still red the same way. Test file and page untouched. It stays a blocker for Chris. |
+| `tsc --noEmit` fails, not in the manifest | low | Confirmed: 1 error, in a file T4 never touched. Written into "Type check" and Leftovers item 4 above. Not fixed. |
+| Test comment said the tests write the LIVE registry and that the numbers are all one past the top | low | Confirmed. The test has no file writes (grep for write/append/rename/unlink/mkdir found none) and the numbers are 1, 2 and 3 past the highest ad. Comment rewritten in `src/repo/edit-ops.test.mjs`, and the same wrong words fixed in this file. Comment only; no code line changed. |
