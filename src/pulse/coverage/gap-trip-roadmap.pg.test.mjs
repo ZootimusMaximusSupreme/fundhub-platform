@@ -20,7 +20,7 @@ const ago = (ms) => new Date(NOW.getTime() - ms).toISOString();
 
 const TABLES = [
   "clients", "payment_links", "crs_results", "messages", "events", "documents", "accounts",
-  "account_magic_links", "entitlements"
+  "account_magic_links", "entitlements", "client_consents"
 ];
 
 after(async () => {
@@ -99,6 +99,18 @@ test("SQL GREEN: the same buyer after a reminder went out", { skip }, async () =
   w.messages.rows.push({ org_id: ORG, client_id: c, template_key: NUDGE_KEYS[0], status: "delivered", created_at: ago(HOUR) });
   const { verdict } = await judge(w);
   assert.equal(verdict.status, "PASS");
+});
+
+test("SQL GREEN: a live soft-pull consent counts as a filled form; a revoked one does not", { skip }, async () => {
+  const w = world();
+  const live = addBuyer(w, {}, { paid_at: ago(3 * HOUR), updated_at: ago(3 * HOUR) });
+  const revoked = addBuyer(w, {}, { paid_at: ago(3 * HOUR), updated_at: ago(3 * HOUR) });
+  w.client_consents.rows.push({ org_id: ORG, client_id: live, kind: "soft_pull_consent", granted_at: ago(2 * HOUR), expires_at: null, revoked_at: null });
+  w.client_consents.rows.push({ org_id: ORG, client_id: revoked, kind: "soft_pull_consent", granted_at: ago(2 * HOUR), expires_at: null, revoked_at: ago(HOUR) });
+  const out = await runWorld(TRIP_SQL, w, tripParams(ORG, NOW));
+  const by = Object.fromEntries(out.rows.map((r) => [r.client_id, r]));
+  assert.ok(by[live].live_consent_at);
+  assert.equal(by[revoked].live_consent_at, null);
 });
 
 test("SQL RED: the reminder was only a message that failed", { skip }, async () => {

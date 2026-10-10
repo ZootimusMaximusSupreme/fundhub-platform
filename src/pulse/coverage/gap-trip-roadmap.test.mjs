@@ -29,7 +29,7 @@ const ORG = "11111111-1111-4111-8111-111111111111";
 function sqlRow(over = {}) {
   return {
     client_id: "ffffffff-ffff-4fff-8fff-ffffffffffff", client_code: "FH-000401", email: "buyer@gmail.com",
-    paid_at: null, form_filled_at: null, credit_file_at: null, nudge_at: null, pull_done_at: null,
+    paid_at: null, form_filled_at: null, credit_file_at: null, live_consent_at: null, nudge_at: null, pull_done_at: null,
     subtypes: null, first_at: null, last_at: null, empty_n: 0, short_n: 0, core_n: 0, email_path: false,
     tier: null, email_at: null, signed_in: false, access_since: null,
     ...over
@@ -163,6 +163,13 @@ test("GREEN: paid 2 days ago, the form is empty, and the reminder went out", () 
   const w = walkRow({ paid_at: ago(2 * DAY), nudge_at: ago(2 * DAY - 3 * HOUR) });
   assert.equal(w.state, "waiting");
   assert.equal(w.step.key, "pull_form_filled");
+});
+
+test("GREEN: a buyer with a live soft-pull consent counts as filled, as the soft-pull lane counts them", () => {
+  const w = walkRow({ paid_at: ago(5 * DAY), live_consent_at: ago(5 * DAY) });
+  assert.notEqual(w.state, "broken");
+  assert.equal(w.state, "waiting");
+  assert.equal(w.step.key, "pack_delivered");
 });
 
 test("GREEN: a buyer on a test or company address is never sent a reminder, so is never missed", () => {

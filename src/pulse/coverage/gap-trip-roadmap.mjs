@@ -35,10 +35,11 @@
 // READ ONLY. One SELECT. ctx.db is a shared pool: never BEGIN, COMMIT, ROLLBACK or SET here. No web
 // call, no text, no email, no credit pull, no AI call. A failed read is a skip with the reason.
 
+import { CONSENT_VALID_SQL } from "../../consent/index.mjs";
 import { LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { INTERNAL_CLIENT_EMAIL_RE, SIGN_IN_GRACE } from "./gap-portal.mjs";
 import {
-  AUTO_QUEUED_MINUTES, NUDGE_DEAD_STATUSES, NUDGE_KEYS, PAID_FORM_HOURS, PROCESSING_MINUTES
+  AUTO_QUEUED_MINUTES, NUDGE_DEAD_STATUSES, NUDGE_KEYS, PAID_FORM_HOURS, PROCESSING_MINUTES, READ_KIND
 } from "./gap-soft-pull.mjs";
 import {
   GRACE_MS, PACK_ANCHOR_SUBTYPES, PACK_EMAIL_PATHS, PACK_EMAIL_TEMPLATE, PACK_SETTLE_MS, PACK_SUBTYPES,
@@ -104,6 +105,7 @@ export const TRIP_SQL = `
          pl.paid_at                   AS paid_at,
          pl.identity_stored_at        AS form_filled_at,
          cf.at                        AS credit_file_at,
+         lc.at                        AS live_consent_at,
          nd.at                        AS nudge_at,
          pd.at                        AS pull_done_at,
          pk.subtypes                  AS subtypes,
@@ -129,6 +131,12 @@ ${PL_JOIN}
         FROM crs_results r
        WHERE r.org_id = $1::uuid AND r.client_id = t.id AND COALESCE(r.is_demo, false) = false
     ) cf ON true
+    LEFT JOIN LATERAL (
+      SELECT min(cc.granted_at) AS at
+        FROM client_consents cc
+       WHERE cc.org_id = $1::uuid AND cc.client_id = t.id AND cc.kind = '${READ_KIND}'
+         AND (${CONSENT_VALID_SQL})
+    ) lc ON true
     LEFT JOIN LATERAL (
       SELECT min(m.created_at) AS at
         FROM messages m
@@ -228,7 +236,8 @@ export function toTripRow(r, now = new Date()) {
   const paidMs = ms(r.paid_at);
 
   if (r.paid_at) facts.roadmap_paid = r.paid_at;
-  const formAt = r.form_filled_at || r.credit_file_at || null;
+  // gap-soft-pull.mjs judgePaidForm counts a live soft-pull consent or a credit file on record as "filled".
+  const formAt = r.form_filled_at || r.live_consent_at || r.credit_file_at || null;
   if (formAt) facts.pull_form_filled = formAt;
 
   // The reminder the form is owed after 2 hours (gap-soft-pull.mjs judgePaidForm). A buyer on a
