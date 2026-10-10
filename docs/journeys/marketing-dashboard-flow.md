@@ -1990,6 +1990,10 @@ flowchart LR
 - book_call (/watch) gets `fnl-book-call`; roadmap_147 (/roadmap) gets `fnl-roadmap-147`, at the
   next create. A database tag only: the row's address, live page, status, active and
   `updated_at` stay as they are. 425's trigger keeps a tag from ever changing after.
+- Added at the M2 merge (read from the live table on 2026-10-09, SELECT only): migration 473
+  put a third hand-mapped row on main after this branch was cut: `optimize` (credit repair,
+  `https://fundhub.ai/optimize`, live). The rule tags every untagged row, so the same create
+  also gives it `fnl-optimize`. Same rule, same limits: database only.
 
 ### Lead with funding — the page writer's check
 
