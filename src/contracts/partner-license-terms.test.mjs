@@ -413,7 +413,10 @@ const STAMP_SITES = Object.freeze({
     "payout is held. Every statement in the file is a SELECT; it has no INSERT, UPDATE or DELETE.",
   "src/pulse/coverage/gap-trip-partner.mjs":
     "READS ONLY. The partner start-to-end check (trip:partner) selects the column to say whether a " +
-    "partner was waiting on the signed licence. Every statement is a SELECT; it has no INSERT, UPDATE or DELETE."
+    "partner was waiting on the signed licence. Every statement is a SELECT; it has no INSERT, UPDATE or DELETE.",
+  "src/pulse/coverage/trip-test-kit.mjs":
+    "READS ONLY. A test helper for the trip lane SQL tests. It names the column in a made-up table " +
+    "shape so a typo fails; it runs one SELECT inside BEGIN READ ONLY and always rolls back. No write."
 });
 
 /** `//` line comments and `/* *\/` blocks removed, so a mention in prose is not
