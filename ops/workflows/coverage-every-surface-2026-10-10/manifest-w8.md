@@ -147,7 +147,7 @@ All run in this folder, 2026-10-10. Live reads were read only (`BEGIN READ ONLY`
 |---|---|
 | Unit tests, `trip-kit` + 5 lanes | **178 tests, 178 pass** (trip-kit 30, funding 36, repair 30, inquiry 24, partner 34, roadmap 24) |
 | Real-Postgres tests, shadow tables on live, read only | **89 of 89 pass** (funding 16, repair 15, inquiry 16, partner 26, roadmap 16). RED and GREEN for every check. Every shadow table selects its columns from the real table, so a column that is not on the schema fails. |
-| All pulse tests, `src/pulse/**` plus the fence and the daily-pulse workflow | 3,532 tests, 3,306 pass, 0 fail, 226 skipped (the `.pg.test.mjs` files with no database) |
+| All pulse tests, `src/pulse/**` plus the fence and the daily-pulse workflow | 3,519 tests, 3,293 pass, 0 fail, 226 skipped (the `.pg.test.mjs` files with no database) |
 | `src/lib/no-unfenced-transmit.test.mjs` | passes. The partner lane makes no raw call: it hands the web client to W5's `readPage`. |
 | `npm run lint` | 3,286 files parse clean |
 | `npx tsc --noEmit` | 1 error, in `src/marketing/filmed-receive.mjs`, not my file, same on `main` |
