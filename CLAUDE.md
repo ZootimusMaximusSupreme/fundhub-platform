@@ -127,7 +127,7 @@ Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` â€
 
 ### Teleprompter speed (owner-set 2026-10-10)
 
-The teleprompter runs from 130 to 220 words a minute and nowhere else, at one fixed scroll speed, in steps of 5. The volume buttons walk one ladder: back 220 to back 130, paused, forward 130 to forward 220. Same law: `.cursor/rules/teleprompter-speed.mdc` and `.claude/rules/teleprompter-speed.md`.
+The teleprompter runs from 130 to 260 words a minute and nowhere else, at one fixed scroll speed, in steps of 5. The volume buttons walk one ladder: back 260 to back 130, paused, forward 130 to forward 260. Same law: `.cursor/rules/teleprompter-speed.mdc` and `.claude/rules/teleprompter-speed.md`.
 
 ### GitHub ships main (owner-set 2026-10-09)
 
