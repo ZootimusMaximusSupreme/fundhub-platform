@@ -80,7 +80,7 @@ export const TRIPWIRES = Object.freeze({
   // payouts. Each deep check reads what the money chain, the bank answers, the payout run or the
   // commission screens actually left in the books, and goes red when it is wrong.
   // W3 adds its own board check ids to route:pipeline-cards after this merges.
-  "route:pipeline-cards": { impact: "money", checks: ["funding:funded-no-bill"] },
+  "route:pipeline-cards": { impact: "money", checks: ["funding:funded-no-bill", "pipeline:count-true", "pipeline:stage-vs-fact", "pipeline:nobody-lost"] },
   "route:applications": { impact: "money", checks: ["funding:approved-no-amount", "funding:funded-no-bill"] },
   "route:commissions": { impact: "money", checks: ["commissions:ledger"] },
   "route:commission-rules": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
@@ -114,7 +114,19 @@ export const TRIPWIRES = Object.freeze({
   "job:subscription-billing-sweeper": { impact: "money", checks: ["subscriptions:past-due"] },
   "route:partner-addons": { impact: "money", checks: ["subscriptions:addon-paid-no-plan", "subscriptions:past-due"] },
   "route:campaigns/write": { impact: "money", checks: ["ads-meta:matches"] },
-  "desk:campaign-manager.html": { impact: "money", checks: ["ads-meta:matches", "ads-meta:load-jobs"] }
+  "desk:campaign-manager.html": { impact: "money", checks: ["ads-meta:matches", "ads-meta:load-jobs"] },
+  // W3 Pipelines truth, 2026-10-10: a board is where a client's place in the company is kept. Each
+  // door and desk below reads or moves a card. The deep checks are in gap-pipeline-boards.mjs and
+  // gap-pipeline-facts.mjs. route:pipeline-cards is W1's line; its W3 ids are named in manifest-w3.md.
+  "desk:pipeline.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:stage-vs-fact", "pipeline:nobody-lost"] },
+  "route:dashboard/pipeline": { impact: "customer", checks: ["pipeline:count-true"] },
+  "route:dashboard/client-archive": { impact: "customer", checks: ["pipeline:nobody-lost"] },
+  "route:pipeline-clients": { impact: "customer", checks: ["pipeline:count-true", "pipeline:nobody-lost"] },
+  "route:inquiry-cases": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:dead-stage"] },
+  "desk:inquiry-remover.html": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:two-records"] },
+  "desk:hiring.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:dead-stage"] },
+  "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step"] },
+  "desk:sales-floor.html": { impact: "money", checks: ["sales-manager:totals", "pipeline:two-records"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
