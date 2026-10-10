@@ -1328,6 +1328,7 @@
     total = at;
   }
   function layout() {
+    readCache = null;   // the page may have changed size or font: measure the reading line again
     if (editing || textEdit) return;
     var keep = progress(); timeline();
     var lines = [], L = null;
@@ -1382,7 +1383,15 @@
     if (measureSafeTop.n == null) return measureSafeTop();
     return measureSafeTop.n;
   }
+  /* Where the reading line sits. Measured ONCE per layout and kept: measuring the page on every
+     frame made the phone redo its layout 60 times a second, and the words stuttered (2026-10-10). */
+  var readCache = null;
   function readPx() {
+    if (readCache != null) return readCache;
+    readCache = measureReadPx();
+    return readCache;
+  }
+  function measureReadPx() {
     var el0 = words[0] && words[0].el ? words[0].el : null;
     var h = el0 ? el0.offsetHeight : 0;
     var pitch = 0;
@@ -1395,12 +1404,23 @@
     var room = stage && stage.clientHeight ? stage.clientHeight * 0.5 : 0;
     return readingLineTop(safeTopPx(), h, pitch, room);
   }
-  function apply(force) {
+  /* A rolling frame writes ONE thing, the place of the words, to a hundredth of a pixel. The red
+     line moves only when its place changes. The time text and the progress bar are redrawn four
+     times a second while rolling, and at once for anything else (a tap, a drag, a speed change). */
+  var lineTopShown = "", uiAt = 0, UI_EVERY_MS = 250;
+  function apply(force, fromFrame) {
     if (editing || (textEdit && !force)) return;
     if (!kf.length) { content.style.transform = ""; return; }
-    var off = yAt(t) - readPx();
-    content.style.transform = "translate3d(0," + (-off).toFixed(1) + "px,0)";
-    line.style.top = readPx() + "px";
+    var read = readPx();
+    var off = yAt(t) - read;
+    content.style.transform = "translate3d(0," + (-off).toFixed(2) + "px,0)";
+    var top = read + "px";
+    if (top !== lineTopShown) { line.style.top = top; lineTopShown = top; }
+    if (fromFrame) {
+      var nowMs = root.performance.now();
+      if (nowMs - uiAt < UI_EVERY_MS) return;
+      uiAt = nowMs;
+    }
     $("progress-fill").style.width = (total > 0 ? Math.min(100, (t / total) * 100) : 0).toFixed(2) + "%";
     $("s-time").textContent = S.wpm + " wpm · " + clock(total - t) + " left";
   }
@@ -1411,8 +1431,8 @@
     if (reverse) {
       // Rolling back: reverse words a minute, on a clock laid out at S.wpm.
       t = Math.max(0, t - dt * (reverse / S.wpm));
-      apply();
-      if (t <= 0) { stop(); return; }
+      apply(false, true);
+      if (t <= 0) { stop(); apply(); return; }
       root.requestAnimationFrame(frame);
       return;
     }
@@ -1424,8 +1444,8 @@
         t = ht; apply(); hold(holds[h]); return;
       }
     }
-    t = next; apply();
-    if (t >= total) { finish(); return; }
+    t = next; apply(false, true);
+    if (t >= total) { apply(); finish(); return; }
     root.requestAnimationFrame(frame);
   }
 
@@ -1467,7 +1487,7 @@
     reverse = 0;
     t = pausePlace(t);
     cancelCount(); setPlayIcon(); rolling(false); stopFling();
-    if (was) edits.commit(); // a pause is a save point
+    if (was) { edits.commit(); apply(); } // a pause is a save point; show the exact time left
   }
   function hold(i) { holding = i; released[i] = true; playing = false; setPlayIcon(); $("cuehold").hidden = false; }
   function toggle() {

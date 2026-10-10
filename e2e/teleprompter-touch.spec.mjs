@@ -698,3 +698,44 @@ test.describe("volume buttons, no finger on the glass (owner call 2026-10-10)", 
     expect((await state(page)).wpm).toBe(220);
   });
 });
+
+test.describe("the roll is smooth (owner call 2026-10-10)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("a rolling frame only moves the words: it does not measure the page or redraw the time text", async ({ page }) => {
+    await open(page);
+    await roll(page);
+    const seen = await page.evaluate(() => new Promise((done) => {
+      const content = document.getElementById("content");
+      const time = document.getElementById("s-time");
+      let reads = 0, styles = 0, textWrites = 0, frames = 0;
+      const oh = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+      Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get() { reads++; return oh.get.call(this); } });
+      const gcs = window.getComputedStyle;
+      window.getComputedStyle = function (...a) { styles++; return gcs.apply(window, a); };
+      new MutationObserver((m) => { textWrites += m.length; }).observe(time, { childList: true, characterData: true, subtree: true });
+      const ys = [];
+      const t0 = performance.now();
+      function tick(now) {
+        frames++;
+        ys.push({ at: now, y: new DOMMatrix(getComputedStyleOrig(content)).m42 });
+        if (now - t0 < 1000) requestAnimationFrame(tick);
+        else {
+          Object.defineProperty(HTMLElement.prototype, "offsetHeight", oh);
+          window.getComputedStyle = gcs;
+          done({ reads, styles, textWrites, frames, ys });
+        }
+      }
+      function getComputedStyleOrig(el) { return gcs.call(window, el).transform; }
+      requestAnimationFrame(tick);
+    }));
+    expect(seen.frames).toBeGreaterThan(20);
+    // Before the fix: two page measurements and a time-text rewrite on every frame.
+    expect(seen.reads).toBeLessThanOrEqual(2);
+    expect(seen.styles).toBeLessThanOrEqual(2);
+    expect(seen.textWrites).toBeLessThanOrEqual(6);
+    // And the words keep moving the whole second, always up, never back.
+    const steps = seen.ys.slice(1).map((p, i) => p.y - seen.ys[i].y);
+    expect(steps.every((d) => d <= 0.0001)).toBe(true);
+    expect(seen.ys.at(-1).y).toBeLessThan(seen.ys[0].y - 20);
+  });
+});
