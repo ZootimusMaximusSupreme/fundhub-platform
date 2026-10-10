@@ -119,7 +119,6 @@
  "job:next-action-catch-up",
  "job:paid-checkout-expiry-sweeper",
  "job:partner-production-floor",
- "job:plaid-transactions-sweeper",
  "job:pulse-instant-watch",
  "job:repair-bureau-response-reader",
  "job:round-started-client-notify",

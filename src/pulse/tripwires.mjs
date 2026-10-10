@@ -71,7 +71,11 @@ export const TRIPWIRES = Object.freeze({
   "route:read/entitlements": { impact: "customer", checks: ["payments:paid-no-entitlement", "portal:paid-entitlement"] },
   "route:contracts/sign": { impact: "customer", checks: ["contracts:sent-unsignable", "contracts:signed-not-stored"] },
   "route:documents-upload": { impact: "customer", checks: ["documents:upload-store", "documents:stuck-processing"] },
-  "route:consent/capture": { impact: "customer", checks: ["consent:store", "consent:required"] }
+  "route:consent/capture": { impact: "customer", checks: ["consent:store", "consent:required"] },
+  // FinanceOS F2 (bank login repair): the client's way out of a broken login, and the one text that
+  // says to use it. A login in error means the money screen has no bank for that client.
+  "route:banking/relink": { impact: "customer", checks: ["banks-plaid-item-error", "bank-relink-error-login-not-told"] },
+  "job:plaid-transactions-sweeper": { impact: "customer", checks: ["banks-sync-stale", "bank-relink-error-login-not-told"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({

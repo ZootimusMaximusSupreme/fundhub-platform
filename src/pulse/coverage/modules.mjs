@@ -50,6 +50,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-ads.mjs", () => import("./gap-ads.mjs")],
   ["gap-ai-agents.mjs", () => import("./gap-ai-agents.mjs")],
   ["gap-auth.mjs", () => import("./gap-auth.mjs")],
+  ["gap-bank-relink.mjs", () => import("./gap-bank-relink.mjs")],
   ["gap-banks.mjs", () => import("./gap-banks.mjs")],
   ["gap-brain.mjs", () => import("./gap-brain.mjs")],
   ["gap-calls.mjs", () => import("./gap-calls.mjs")],
