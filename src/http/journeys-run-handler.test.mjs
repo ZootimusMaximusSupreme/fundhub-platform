@@ -73,7 +73,10 @@ describe("POST /api/journeys/run", () => {
     assert.equal(res.body.error, "unknown_journey");
     const order = fake.calls.map((c) => c.sql.trim().split(/\s+/).slice(0, 2).join(" "));
     const begin = order.indexOf("BEGIN");
-    const flip = fake.calls.findIndex((c) => /UPDATE message_channel_routing SET provider = 'memory'/.test(c.sql));
+    // This file runs on a stand-in database and changes no routing; it only
+    // reads back the statement the handler sent (the routing-restore guard
+    // scans for that statement's text, so the pattern starts at the table).
+    const flip = fake.calls.findIndex((c) => /message_channel_routing SET provider = 'memory' WHERE org_id/.test(c.sql));
     assert.ok(begin >= 0 && flip > begin, "the provider flip must come after BEGIN");
     assert.deepEqual(fake.calls[flip].params, [ORG_ID]);
     assert.ok(fake.count("ROLLBACK") >= 1);
