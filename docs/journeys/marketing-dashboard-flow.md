@@ -1978,6 +1978,28 @@ flowchart TD
   never deleted. Its row keeps that page id for good (425's trigger); the push moves it into the
   new funnel. The page made for its step is left on ClickFunnels, unlinked.
 
+### After it is live — the morning lane watches the pages
+
+```mermaid
+flowchart LR
+  A[6 a.m. pulse, lane gap-built-funnels] --> B[SELECT funnels with kind set and status live,<br/>with their three pages]
+  B --> C{any live built funnel?}
+  C -->|none, and the table has funnels| N[na: nothing to judge<br/>the audit re-reads the same SQL each morning]
+  C -->|none, and the table reads empty| S1[skip: a blind read is never none]
+  C -->|yes| D[GET each page's live_url with a cache-bust]
+  D --> E{200 and carries the fh-funnel-tag meta?}
+  E -->|every page| G[PASS]
+  E -->|a 404, a 200 with no tag,<br/>a page that cannot be reached,<br/>or a page missing on file| R[FAIL: names the page]
+  E -->|a page did not answer in time| S2[skip, unless another page is already red]
+```
+
+- Read only: SELECT and GET. It never calls ClickFunnels' API, never fixes. An agent fixes a red by
+  API (`docs/sops/clickfunnels-funnel-push-stops.md`). Check id `built-funnels:live-pages-answer`;
+  tripwire map entry `route:marketing/funnels/push-live`.
+- Added at the M2 repair (2026-10-09). Before it, nothing re-read a built funnel's pages after the
+  push proved them once, so a page that went dead weeks later (a step unlinked, the funnel archived)
+  stayed on every affiliate's link list and in ad traffic with no row going red.
+
 ### Tag on create — the funnels mapped by hand
 
 ```mermaid
@@ -2003,6 +2025,10 @@ flowchart LR
   approved, business loan, credit line); one that says credit before funding; any headline or
   the landing eyebrow that leads with fixing, repairing or cleaning up credit, or a score. The
   live test's headline ("Get a clear plan to fix your credit and find funding") fails it.
+- Narrowed at the M2 repair (2026-10-09): "score" counts as credit talk only as a thing the buyer
+  has ("your score", "the score"; "credit score" still fails on the word credit). "Score $100,000
+  in business funding" passes. A credit limit or credit line is funding, so "Get funded and raise
+  your credit limit" passes. "Raise your score" and "Fix your credit" still fail.
 
 ### Gaps (findings, not reconciled)
 
@@ -2012,7 +2038,10 @@ flowchart LR
   the funnel's domain; that `PUT /pages/{id}` with `funnel.show_page_step_id` takes a standalone
   page; that a new funnel's step path is not taken by the standalone page's own path (they live
   in different places: the subdomain and the domain). Each wrong answer stops the push with the
-  funnel a draft (tests: `src/marketing/funnel-push.test.mjs`).
+  funnel a draft (tests: `src/marketing/funnel-push.test.mjs`). The agent-run API steps that clear
+  each stop (funnel made without the domain, steps in the wrong order, a step refused at the old
+  page's path) and the checklist for watching the first live push are written in
+  `docs/sops/clickfunnels-funnel-push-stops.md`. Documented, not tried.
 - **The Push live button stays off for the live-test funnel.** `public/app/cc-tab-ideas.js`
   `funnelBlock` turns Push live off once any page is on ClickFunnels ("A page is already on
   ClickFunnels, so the address is fixed."). The thank-you page is, so the push can be started

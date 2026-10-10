@@ -202,10 +202,17 @@ const OUTCOME_FIRST_BAD = /^(we|we're|we've|our|fundhub|introducing|meet|welcome
 /* Lead with funding (owner calls 2026-09-29, X4F 2026-10-06: "never read as credit
    repair", "lead with funding"). FUNDING_WORD is what the landing headline must
    name; CREDIT_WORD is where credit talk starts; CREDIT_FIX is a headline that
-   promises credit work instead of funding. */
+   promises credit work instead of funding.
+
+   "Score" is credit talk only as a thing the buyer has ("your score", "the
+   score", "a score"; "credit score" is caught by the word credit). Used as a verb
+   ("Score $100,000 in business funding") it is a funding promise, so the bare word
+   is not refused. A credit limit or a credit line is funding, not credit work
+   ("Get funded and raise your credit limit"). Changed in the M2 repair, 2026-10-09,
+   after the bare word and "raise ... credit" refused both of those headlines. */
 const FUNDING_WORD = /\b(?:fund(?:ing|ed|able|ability)?|capital|approv(?:ed|al|als)|business loans?|credit lines?|lines? of credit)\b/i;
-const CREDIT_WORD = /\bcredit\b|\bscores?\b|\binquir(?:y|ies)\b/i;
-const CREDIT_FIX = /\b(?:fix(?:es|ed|ing)?|repair(?:s|ed|ing)?|clean(?:s|ed|ing)?(?:\s+up)?|rebuild(?:s|ing)?|restor(?:e|es|ed|ing)|boost(?:s|ed|ing)?|rais(?:e|es|ed|ing)|improv(?:e|es|ed|ing)|dispute(?:s|d)?)\b[^.!?]{0,40}\b(?:credit|scores?|reports?|inquir(?:y|ies))\b|\bcredit\s+(?:repair|fix|scores?|clean[\s-]?up)\b|\bscores?\b/i;
+const CREDIT_WORD = /\bcredit\b|\b(?:your|my|our|their|his|her|its|this|that|the|a)\s+scores?\b|\binquir(?:y|ies)\b/i;
+const CREDIT_FIX = /\b(?:fix(?:es|ed|ing)?|repair(?:s|ed|ing)?|clean(?:s|ed|ing)?(?:\s+up)?|rebuild(?:s|ing)?|restor(?:e|es|ed|ing)|boost(?:s|ed|ing)?|rais(?:e|es|ed|ing)|improv(?:e|es|ed|ing)|dispute(?:s|d)?)\b[^.!?]{0,40}\b(?:credit(?!\s+(?:limits?|lines?))|scores?|reports?|inquir(?:y|ies))\b|\bcredit\s+(?:repair|fix|scores?|clean[\s-]?up)\b|\b(?:your|my|our|their|his|her|its|this|that|the|a)\s+scores?\b/i;
 
 /**
  * The lead-with-funding check, on the lines that lead a page: every headline and

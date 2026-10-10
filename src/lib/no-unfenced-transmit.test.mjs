@@ -258,6 +258,7 @@ const ALLOWED_RAW_FETCH = {
     "Read-only key probes for the 6 a.m. pulse: GET the Twilio account record, GET the Resend domain list, " +
     "GET page 1 of Commas checkout transactions. Proves the live keys are accepted. Never sends, never " +
     "creates or changes a vendor record, never reaches a client. Read 2026-10-09 before it was listed.",
+  "src/pulse/coverage/gap-built-funnels.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-calls.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer-setup.mjs": PULSE_GAP_READS,

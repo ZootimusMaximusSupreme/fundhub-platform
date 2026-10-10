@@ -115,6 +115,44 @@ describe("the copy check", () => {
     assert.deepEqual(fundingLeadFailures(body), []);
   });
 
+  test("lead with funding: 'score' as a verb and a credit limit are funding, not credit work (M2 repair)", () => {
+    for (const ok of [
+      "Score $100,000 in business funding",
+      "Score the funding your business qualifies for",
+      "Get funded and raise your credit limit",
+      "Get approved and boost your credit lines"
+    ]) {
+      const c = copy();
+      c.landing.headline = ok;
+      assert.deepEqual(fundingLeadFailures(c), [], ok);
+      // The whole check passes too (the $100,000 is in the facts it is given).
+      assert.equal(check(c, "The most a file can reach is $100,000 in business funding.").ok, true, ok);
+    }
+    // The same words on the other pages and the eyebrow pass too.
+    const c = copy();
+    c.landing.eyebrow = "Score the capital you need";
+    c.booking.headline = "Raise your credit limit on a call";
+    c.thank_you.headline = "Your funding call is booked";
+    assert.deepEqual(fundingLeadFailures(c), []);
+  });
+
+  test("lead with funding: a score the buyer has, and credit work, are still refused", () => {
+    for (const bad of [
+      "Know your score before you apply for funding",
+      "Improve your credit score and get funded",
+      "Raise your score, then get funding",
+      "Fix your credit, then get funded",
+      "Credit score too low? Funding starts here"
+    ]) {
+      const c = copy();
+      c.landing.headline = bad;
+      assert.notDeepEqual(fundingLeadFailures(c), [], bad);
+    }
+    const c = copy();
+    c.booking.headline = "Book your score check call";
+    assert.match(fundingLeadFailures(c).join("\n"), /booking: the headline .* leads with fixing credit or a score/);
+  });
+
   test("the ad checker's hook rule holds on the landing headline only", () => {
     const land = copy();
     land.landing.headline = "Book your call today";

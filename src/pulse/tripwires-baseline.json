@@ -308,7 +308,6 @@
  "route:marketing/funnels",
  "route:marketing/funnels/build",
  "route:marketing/funnels/create",
- "route:marketing/funnels/push-live",
  "route:marketing/funnels/rename",
  "route:marketing/funnels/stats",
  "route:marketing/health",
