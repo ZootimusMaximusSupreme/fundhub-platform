@@ -37,6 +37,7 @@ import {
 import { TEST_ADDRESS_RE } from "./gap-sms.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
+const SKIP = HAS_DB ? false : "no DATABASE_URL";
 const ORG = crypto.randomUUID();
 const OTHER_ORG = crypto.randomUUID();
 const NOW = new Date("2026-10-10T13:00:00.000Z");
@@ -135,7 +136,7 @@ const BY_KEY = (list) => Object.fromEntries(list.map((r) => [r.template_key, r])
 
 // ── 1. blank spots ───────────────────────────────────────────────────────────
 
-test("blanks: each kind of blank is counted on its own template, and clean copy is not", async () => {
+test("blanks: each kind of blank is counted on its own template, and clean copy is not", { skip: SKIP }, async () => {
   const messages = [
     msg({ template_key: "T-DOLLAR", rendered_body: "Total funding secured: $" }),
     msg({ template_key: "T-DOLLAR-LINE", rendered_body: "Your approval: $\nNext step is a call." }),
@@ -163,7 +164,7 @@ test("blanks: each kind of blank is counted on its own template, and clean copy 
   assert.equal(got["T-DOLLAR"].spaces_n, 0, "one kind does not leak into another");
 });
 
-test("blanks: only mail that left or is about to, in the window, real, with a template, in this company", async () => {
+test("blanks: only mail that left or is about to, in the window, real, with a template, in this company", { skip: SKIP }, async () => {
   const blank = "Total funding secured: $";
   const messages = [
     msg({ template_key: "IN-DELIVERED", rendered_body: blank, status: "delivered" }),
@@ -191,7 +192,7 @@ test("blanks: only mail that left or is about to, in the window, real, with a te
 
 // ── 2. staff templates to a non-staff address ────────────────────────────────
 
-test("staff template: a staff key or staff copy that went to anyone but staff is counted; one that went to staff is not", async () => {
+test("staff template: a staff key or staff copy that went to anyone but staff is counted; one that went to staff is not", { skip: SKIP }, async () => {
   const staff = [{ org_id: ORG, email: "Closer@Fundhub.ai", phone: "+1 (602) 555-0100" }];
   const maria = client({ email: "maria@gmail.com", phone: "+16025550142" });
   const closerAsClient = client({ email: "closer@fundhub.ai", phone: "+16025550100" });
@@ -217,7 +218,7 @@ test("staff template: a staff key or staff copy that went to anyone but staff is
 
 // ── 4. per-template path ─────────────────────────────────────────────────────
 
-test("per-template path: each stage is counted per template, and a row younger than the grace is not 'aged'", async () => {
+test("per-template path: each stage is counted per template, and a row younger than the grace is not 'aged'", { skip: SKIP }, async () => {
   const messages = [
     msg({ template_key: "T-DEAD", status: "sent", created_at: ago(30 * H) }),
     msg({ template_key: "T-DEAD", status: "sent", created_at: ago(40 * H) }),
@@ -236,7 +237,7 @@ test("per-template path: each stage is counted per template, and a row younger t
   assert.equal(got["T-HELD"], undefined, "a message our gate held is not part of the path");
 });
 
-test("per-template path: an event with no email is counted, an event with one is not, and each guard of the step holds", async () => {
+test("per-template path: an event with no email is counted, an event with one is not, and each guard of the step holds", { skip: SKIP }, async () => {
   const maria = client({ email: "maria@gmail.com" });
   const welcomed = client({ email: "welcomed@gmail.com" });
   const demo = client({ is_demo: true });
@@ -277,7 +278,7 @@ test("per-template path: an event with no email is counted, an event with one is
 
 // ── 5. brakes ────────────────────────────────────────────────────────────────
 
-test("brakes: only a message that left after the pause began is counted, test traffic and other states are not", async () => {
+test("brakes: only a message that left after the pause began is counted, test traffic and other states are not", { skip: SKIP }, async () => {
   const since = ago(10 * H);
   const messages = [
     msg({ status: "sent", last_attempt_at: ago(5 * H) }),
@@ -292,7 +293,7 @@ test("brakes: only a message that left after the pause began is counted, test tr
   assert.equal(got.n, 3, "two stamped after the pause, plus one with no attempt time whose creation time is after it");
 });
 
-test("brakes: sends are counted per day on the day the app's own cap counts (created_at), left states only", async () => {
+test("brakes: sends are counted per day on the day the app's own cap counts (created_at), left states only", { skip: SKIP }, async () => {
   const messages = [
     ...Array.from({ length: 3 }, () => msg({ status: "sent", created_at: "2026-10-08T10:00:00Z" })),
     ...Array.from({ length: 2 }, () => msg({ status: "delivered", created_at: "2026-10-09T10:00:00Z" })),
@@ -304,7 +305,7 @@ test("brakes: sends are counted per day on the day the app's own cap counts (cre
   assert.deepEqual(got.map((r) => r.n), [3, 2]);
 });
 
-test("brakes: the same text to the same phone twice inside the window is counted, and each exemption holds", async () => {
+test("brakes: the same text to the same phone twice inside the window is counted, and each exemption holds", { skip: SKIP }, async () => {
   const p1 = "+16025550142";
   const base = { channel: "sms", template_key: "SMS-S00-WELCOME", status: "delivered" };
   const messages = [
@@ -339,7 +340,7 @@ test("brakes: the same text to the same phone twice inside the window is counted
 
 // ── 6. dead senders and the two held queues ──────────────────────────────────
 
-test("dead senders: only a queued message from a listed key, in the window, real, in this company", async () => {
+test("dead senders: only a queued message from a listed key, in the window, real, in this company", { skip: SKIP }, async () => {
   const keys = ["EMAIL-N01-COLD-NURTURE", "SMS-C06-DECLINE"];
   const messages = [
     msg({ template_key: "EMAIL-N01-COLD-NURTURE", status: "queued" }),
@@ -356,7 +357,7 @@ test("dead senders: only a queued message from a listed key, in the window, real
   assert.equal(got["EMAIL-S00-WELCOME"], undefined);
 });
 
-test("owner alerts: queued past the grace, or failed, is counted; fresh and sent are not", async () => {
+test("owner alerts: queued past the grace, or failed, is counted; fresh and sent are not", { skip: SKIP }, async () => {
   const owner_notifications = [
     { org_id: ORG, status: "queued", created_at: ago(3 * H) },
     { org_id: ORG, status: "queued", created_at: ago(10) },
@@ -369,7 +370,7 @@ test("owner alerts: queued past the grace, or failed, is counted; fresh and sent
   assert.deepEqual(by, { failed: 1, queued: 1 });
 });
 
-test("hiring outreach: blocked as recipient unknown, or stuck queued, is counted; a delivered one and other keys are not", async () => {
+test("hiring outreach: blocked as recipient unknown, or stuck queued, is counted; a delivered one and other keys are not", { skip: SKIP }, async () => {
   const messages = [
     msg({ template_key: "EMAIL-CANDIDATE-OUTREACH-1", status: "blocked", blocked_reason: "recipient_unknown" }),
     msg({ template_key: "SMS-CANDIDATE-OUTREACH-2", channel: "sms", status: "queued", created_at: ago(5 * H) }),
@@ -386,7 +387,7 @@ test("hiring outreach: blocked as recipient unknown, or stuck queued, is counted
 
 // ── 7. HELP ──────────────────────────────────────────────────────────────────
 
-test("help reply: an unanswered HELP is counted; an answered one, a failed answer, our own line and a sentence are each judged right", async () => {
+test("help reply: an unanswered HELP is counted; an answered one, a failed answer, our own line and a sentence are each judged right", { skip: SKIP }, async () => {
   const OUR = "+18005550100";
   const inbound = (from, body, minutesAgo, over = {}) => ev("message.inbound", minutesAgo, { from, to: OUR, body, channel: "sms" }, over);
   const events = [

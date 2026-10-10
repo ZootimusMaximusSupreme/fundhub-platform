@@ -7,9 +7,10 @@
 //   doc-source  "doc source copy for alias(es) ...; nothing sends this key itself": the document seed copy
 //   retired     "retired / dormant": the owner or the code turned it off, and no send site is left
 //
-// 158 keys: 118 no-sender, 23 doc-source, 17 retired. (The coverage board counted 141 and 51 by a wider rule that
-// also folded in templates which still have a sender but hold unfinished copy. Those are watched by
-// the bad-copy row of the gap-sms lane and are NOT here, so this list never calls a live template dead.)
+// 158 keys: 118 no-sender, 23 doc-source, 17 retired. That matches the board's own count of 158 dead message
+// templates. (The board's per-channel lines say 141 no-sender and 51 retired. That does not add up from the file's
+// trigger lines, so the list follows the trigger lines. A template that has a sender is never on this list; the
+// bad-copy row of the gap-sms lane watches the ones that hold unfinished copy.)
 //
 // WHAT THE LANE DOES WITH IT. gap-msg.mjs reads the messages table. If any key on this list has been queued
 // in the last 7 days, msg:dead-senders goes red and names the key: the claim "nothing sends this" is wrong,

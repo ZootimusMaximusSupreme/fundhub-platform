@@ -16,6 +16,7 @@ import { ALERT_TEXTS_SQL, CARD_CYCLES_SQL, CARD_TEXTS_SQL } from "./gap-alerts.m
 import { TEST_ADDRESS_RE } from "./gap-sms.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
+const SKIP = HAS_DB ? false : "no DATABASE_URL";
 const ORG = crypto.randomUUID();
 const OTHER_ORG = crypto.randomUUID();
 const NOW = new Date("2026-10-10T13:00:00.000Z");
@@ -85,7 +86,7 @@ async function rows(sql, params, fakes = {}) {
 
 const client = (over = {}) => ({ id: over.id || uuid(), org_id: ORG, email: over.email ?? "maria@gmail.com", custom_fields: over.custom_fields || {}, is_demo: over.is_demo ?? false });
 
-test("alert texts: the alerts that said a text was queued come back with their message, or with none when it is gone", async () => {
+test("alert texts: the alerts that said a text was queued come back with their message, or with none when it is gone", { skip: SKIP }, async () => {
   const maria = client();
   const demo = client({ is_demo: true });
   const m1 = { id: uuid(), org_id: ORG, status: "delivered", blocked_reason: null, created_at: ago(3), scheduled_at: null, last_attempt_at: ago(3), provider_ref: null };
@@ -106,7 +107,7 @@ test("alert texts: the alerts that said a text was queued come back with their m
   assert.equal(got.filter((r) => r.status === "delivered").length, 2);
 });
 
-test("card cycles: Plaid cards and any loan, for a Finance OS client who is entitled now; closed, manual cards, lapsed and demo are not", async () => {
+test("card cycles: Plaid cards and any loan, for a Finance OS client who is entitled now; closed, manual cards, lapsed and demo are not", { skip: SKIP }, async () => {
   const maria = client();
   const lapsed = client({ email: "lapsed@gmail.com" });
   const unpaid = client({ email: "unpaid@gmail.com" });
@@ -153,7 +154,7 @@ test("card cycles: Plaid cards and any loan, for a Finance OS client who is enti
   assert.equal(got.find((r) => r.name === "Business Amex").is_loan, false);
 });
 
-test("card texts: the job's own references are matched exactly, in this company only", async () => {
+test("card texts: the job's own references are matched exactly, in this company only", { skip: SKIP }, async () => {
   const ref = "workflow:SMS-FINANCE-OS-CARD-DUE:card-due:acct-1:2026-10-11";
   const messages = [
     { id: uuid(), org_id: ORG, status: "delivered", blocked_reason: null, created_at: ago(18), scheduled_at: null, last_attempt_at: ago(18), provider_ref: ref },
