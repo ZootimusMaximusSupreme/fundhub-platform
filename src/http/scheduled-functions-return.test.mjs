@@ -56,6 +56,9 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     /* Added 2026-10-09 (pulse v1). The hourly pulse: runs every beat read-only and texts Chris
        on a break. With no DATABASE_URL (this test's child run) it does nothing at all. */
     "pulse-hourly",
+    /* Added 2026-10-09 (outside watch). Every 5 minutes on Netlify's clock: runs the engine-alive beat
+       and texts Chris if the 5-minute alarms stopped. With no DATABASE_URL it does nothing at all. */
+    "pulse-outside-watch",
     "social-publish-sweeper",
     "staff-message-sweeper"
   ]);

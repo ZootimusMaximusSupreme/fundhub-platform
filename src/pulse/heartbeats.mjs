@@ -57,7 +57,8 @@ export const NETLIFY_JOBS = Object.freeze([
   ["ad-video-sweeper", "*/5 * * * *"],
   ["commas-inbox-sweeper", "* * * * *"],
   ["marketing-clock", "*/15 * * * *"],
-  ["pulse-hourly", "7 * * * *"]
+  ["pulse-hourly", "7 * * * *"],
+  ["pulse-outside-watch", "*/5 * * * *"]
 ]);
 
 export const JOBS = Object.freeze([

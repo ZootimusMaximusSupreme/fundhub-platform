@@ -211,6 +211,12 @@
 [functions."pulse-hourly"]
   schedule = "7 * * * *"
 
+# The outside watch: every 5 minutes, runs ONE beat (engine-alive) through the same runner and texts Chris
+# if the 5-minute alarms stopped. Netlify's clock keeps ticking when the workflow engine stalls.
+# SWEEP_CRON in netlify/functions/pulse-outside-watch.mjs must match.
+[functions."pulse-outside-watch"]
+  schedule = "*/5 * * * *"
+
 # The marketing worker reads the Hormozi vault for deep research ("Research it", design
 # docs/specs/command-center-design-2026-10-05.md §6 slice 10, unit X2): the 110 notes under
 # marketing/knowledge/hormozi/ (4.6 MB), read by src/marketing/research/vault.mjs. FOR THIS

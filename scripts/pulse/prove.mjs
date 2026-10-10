@@ -362,11 +362,14 @@ async function proveBeats() {
           with the same settings. Same bundler, same graph, so the code inside B is the code inside A. */
   const href = (dir, rel) => pathToFileURL(path.join(dir, rel)).href;
   let rootFn = REPO;
+  let rootWatch = REPO;
   let rootProof = REPO;
   let proofEntryFile = null;
   if (!FROM_REPO) {
     try {
       rootFn = buildBundle("netlify/functions/pulse-hourly.mjs");
+      // The 5-minute outside watch (one beat, the same runner) is a second function: build it the same way.
+      rootWatch = buildBundle("netlify/functions/pulse-outside-watch.mjs");
       // The entry sits inside the repo for the few seconds of the build (the bundler needs it under its base path)
       // and is removed in the finally below. A dot file in scripts/pulse is picked up by nothing.
       proofEntryFile = path.join(REPO, "scripts/pulse", `.prove-entry-${process.pid}.mjs`);
@@ -421,6 +424,24 @@ async function proveBeats() {
   if (unlisted.length) problems.push(`${unlisted.length} beat file(s) are on disk but not on the list, so they would ship nowhere: ${unlisted.join(", ")}`);
   if (entryModule && entryModule.SWEEP_CRON !== "7 * * * *") problems.push(`pulse-hourly SWEEP_CRON is ${entryModule.SWEEP_CRON}`);
   if (entryModule && typeof entryModule.default !== "function") problems.push("the bundled pulse-hourly has no default export");
+  // The outside watch: it must build, load from its own zip, tick every 5 minutes and run only a beat that is listed.
+  if (!FROM_REPO) {
+    const watchRel = "netlify/functions/pulse-outside-watch.mjs";
+    try {
+      if (!fs.existsSync(path.join(rootWatch, watchRel))) problems.push(`the outside-watch bundle does not hold ${watchRel}`);
+      else {
+        const watchModule = await import(href(rootWatch, watchRel));
+        if (watchModule.SWEEP_CRON !== "*/5 * * * *") problems.push(`pulse-outside-watch SWEEP_CRON is ${watchModule.SWEEP_CRON}`);
+        if (typeof watchModule.default !== "function") problems.push("the bundled pulse-outside-watch has no default export");
+        const ids = new Set(loadedBeats.map((b) => b.id));
+        for (const want of watchModule.BEATS || []) if (!ids.has(want)) problems.push(`pulse-outside-watch runs beat "${want}" but the bundle has no such beat`);
+        if (!(watchModule.BEATS || []).length) problems.push("pulse-outside-watch runs no beat");
+        console.log(`  outside watch: loads from its own bundle, every 5 minutes, runs ${(watchModule.BEATS || []).join(", ")}`);
+      }
+    } catch (err) {
+      problems.push(`the outside watch could not load from its bundle: ${clip(err && err.message, 200)}`);
+    }
+  }
   if (coldMs > COLD_LIMIT_MS) problems.push(`loading the function and the runner took ${(coldMs / 1000).toFixed(1)} s (limit ${COLD_LIMIT_MS / 1000} s)`);
   console.log(`  ${FROM_REPO ? "from this checkout" : `function bundle: ${rootFn}\n  proof bundle: ${rootProof}`}`);
   if (unlisted.length) console.log(`  ${unlisted.length} beat file(s) are on disk but not on the list, so they are not run here: ${unlisted.join(", ")}`);
