@@ -68,7 +68,8 @@
   /* ── pure helpers ───────────────────────────────────────────────────── */
 
   var NOT_CAPS = { LLC: 1, LLCS: 1, SBA: 1, FICO: 1, OPM: 1, ROI: 1, CEO: 1, NAICS: 1, USA: 1, US: 1, AI: 1, OK: 1, ID: 1, TV: 1, CTA: 1, VSL: 1, WPM: 1 };
-  var MIN_WPM = 80, MAX_WPM = 260;
+  /* Owner's hard limits, 2026-10-10: 130 is super slow, 220 is the top. Nothing goes outside them. */
+  var MIN_WPM = 130, MAX_WPM = 220;
 
   /** NAMING.md: `{Offer} Ad {n} — {angle} Take {k}.mp4`, or null when a part is missing. */
   function fileName(s, takeNo) {
@@ -727,6 +728,37 @@
     return 0;
   }
 
+  /**
+   * The volume buttons, with no finger on the glass (owner, 2026-10-10). One ladder:
+   *   back 220 … back 130 · paused · forward 130 … forward 220
+   * Volume down steps left, volume up steps right, 5 words a minute at a time.
+   * st: { mode: 'fwd' | 'paused' | 'rev', wpm, rev }. wpm is the forward speed, rev the backward one.
+   *   forward: down slows to MIN, then pauses. up speeds to MAX and stays.
+   *   paused:  down slows to MIN, then rolls BACK at MIN. up rolls forward at the speed it has.
+   *   back:    down speeds the backward roll to MAX and stays. up slows it to MIN, then pauses.
+   * Returns the next { mode, wpm, rev }. Pure.
+   */
+  function volumeLadder(st, dir) {
+    var mode = st && st.mode ? st.mode : "paused";
+    var wpm = Math.max(MIN_WPM, Math.min(MAX_WPM, Number(st && st.wpm) || MIN_WPM));
+    var rev = Math.max(MIN_WPM, Math.min(MAX_WPM, Number(st && st.rev) || MIN_WPM));
+    if (!dir) return { mode: mode, wpm: wpm, rev: rev };
+    if (mode === "fwd") {
+      if (dir > 0) wpm = Math.min(MAX_WPM, wpm + 5);
+      else if (wpm > MIN_WPM) wpm = Math.max(MIN_WPM, wpm - 5);
+      else mode = "paused";
+    } else if (mode === "rev") {
+      if (dir < 0) rev = Math.min(MAX_WPM, rev + 5);
+      else if (rev > MIN_WPM) rev = Math.max(MIN_WPM, rev - 5);
+      else mode = "paused";
+    } else {
+      if (dir > 0) mode = "fwd";
+      else if (wpm > MIN_WPM) wpm = Math.max(MIN_WPM, wpm - 5);
+      else { mode = "rev"; rev = MIN_WPM; }
+    }
+    return { mode: mode, wpm: wpm, rev: rev };
+  }
+
   /** A real volumechange on a media element. No step when the level did not move. */
   function volumeLevelDir(prev, next) {
     if (typeof prev !== "number" || typeof next !== "number") return 0;
@@ -851,7 +883,7 @@
     cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
-    cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir,
+    cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
     storedWpm: storedWpm, rigQuery: rigQuery, rigLook: rigLook, rigTransform: rigTransform, nextRot: nextRot, turnFor: turnFor
   };
 
@@ -895,7 +927,7 @@
 
   var $ = function (id) { return doc.getElementById(id); };
   var stage = $("stage"), flip = $("flip"), content = $("content"), line = $("line"), countEl = $("count");
-  var words = [], times = [], holds = [], kf = [], total = 0, t = 0, playing = false, last = 0, takeWord = 0, seeked = false, curIdx = -1;
+  var words = [], times = [], holds = [], kf = [], total = 0, t = 0, playing = false, reverse = 0, last = 0, takeWord = 0, seeked = false, curIdx = -1;
   var countTimer = null, dimTimer = null, wake = null, holding = -1, released = {};
   var data = null, scripts = [], cur = -1, atEnd = false, learning = null, pollTimer = null, signedOut = false;
   var scrollMode = false, flingRaf = 0, gest = gestureStart(), longTimer = null, tapSnap = null, editDrag = null, editMovedAt = 0;
@@ -1368,6 +1400,14 @@
     if (!playing) return;
     // The first frame's clock can read a few ms before go() set `last`: never roll backwards.
     var dt = (now - last) / 1000; last = now; if (dt > 0.25) dt = 0.25; if (dt < 0) dt = 0;
+    if (reverse) {
+      // Rolling back: reverse words a minute, on a clock laid out at S.wpm.
+      t = Math.max(0, t - dt * (reverse / S.wpm));
+      apply();
+      if (t <= 0) { stop(); return; }
+      root.requestAnimationFrame(frame);
+      return;
+    }
     var next = Math.min(total, t + dt);
     // Bullets mode: a cue holds on the reading line until the next press.
     for (var h = 0; h < holds.length; h++) {
@@ -1416,6 +1456,7 @@
   function stop() {
     var was = playing || !!countTimer;
     playing = false;
+    reverse = 0;
     t = pausePlace(t);
     cancelCount(); setPlayIcon(); rolling(false); stopFling();
     if (was) edits.commit(); // a pause is a save point
@@ -1589,6 +1630,26 @@
     if (playing) last = root.performance.now();
   }
   function save() { LS.set("settings", S); }
+
+  /* One press of a volume button: a step on the ladder in volumeLadder. No finger on the glass. */
+  function volumeStep(dir) {
+    if (!dir || !words.length || editing || textEdit || atEnd) return;
+    var isRolling = playing || !!countTimer;
+    var mode = reverse ? "rev" : (isRolling ? "fwd" : "paused");
+    var nx = volumeLadder({ mode: mode, wpm: S.wpm, rev: reverse || MIN_WPM }, dir);
+    if (nx.wpm !== S.wpm) setWpm(nx.wpm);
+    if (nx.mode === "paused") { if (isRolling) stop(); return; }
+    if (nx.mode === "rev") {
+      if (!reverse) { stop(); hideEnd(); setScroll(false); seeked = true; }
+      reverse = nx.rev;
+      if (!playing) { playing = true; last = root.performance.now(); root.requestAnimationFrame(frame); setPlayIcon(); rolling(true); lockScreen(); }
+      return;
+    }
+    // forward
+    if (mode === "paused") {
+      if (holding >= 0) go(); else start(false);
+    }
+  }
 
   /* ── touch: the gesture rules above, wired to the page ──────────────── */
 
@@ -2684,7 +2745,7 @@
     if (textEdit || (e.target && e.target.isContentEditable)) return;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     e.preventDefault();
-    setWpm(S.wpm + dir * 5);
+    volumeStep(dir);
   });
   (function armVideoVolume() {
     var video = $("cam-video");
@@ -2697,7 +2758,7 @@
       if (last == null) { last = v; return; }
       var dir = volumeLevelDir(last, v);
       last = v;
-      if (dir) setWpm(S.wpm + dir * 5);
+      if (dir) volumeStep(dir);
     });
   })();
   $("q-4k").onclick = function () { setCamMode("4k"); };
@@ -2950,7 +3011,7 @@
   root.__fhtp = {
     state: function () {
       return {
-        t: t, total: total, words: words.length, playing: playing, atEnd: atEnd, holding: holding, wpm: S.wpm, cur: cur,
+        t: t, total: total, words: words.length, playing: playing, reverse: reverse, atEnd: atEnd, holding: holding, wpm: S.wpm, cur: cur,
         queue: queue.length, script: scripts[cur] || null, mode: modeNow(), scrollMode: scrollMode, editing: !!editing,
         word: wordAt(t), edits: edits.status()
       };

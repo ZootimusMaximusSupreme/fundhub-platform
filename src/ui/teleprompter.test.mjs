@@ -703,8 +703,37 @@ describe("teleprompter film look", () => {
     assert.equal(T.storedWpm(180, 150), 180);
     assert.equal(T.storedWpm("165", 150), 165);
     assert.equal(T.storedWpm(153, 150), 155);
-    assert.equal(T.storedWpm(10, 150), 80);
-    assert.equal(T.storedWpm(9999, 150), 260);
+    // Owner's hard limits, 2026-10-10: nothing under 130, nothing over 220.
+    assert.equal(T.MIN_WPM, 130);
+    assert.equal(T.MAX_WPM, 220);
+    assert.equal(T.storedWpm(10, 150), 130);
+    assert.equal(T.storedWpm(9999, 150), 220);
+  });
+
+  test("the volume buttons walk one ladder: back 220 … back 130, paused, forward 130 … forward 220", () => {
+    const T = load();
+    const step = (st, dir) => plain(T.volumeLadder(st, dir));
+    // Rolling forward: down slows by 5, and at 130 one more press pauses.
+    assert.deepEqual(step({ mode: "fwd", wpm: 140, rev: 130 }, -1), { mode: "fwd", wpm: 135, rev: 130 });
+    assert.deepEqual(step({ mode: "fwd", wpm: 130, rev: 130 }, -1), { mode: "paused", wpm: 130, rev: 130 });
+    // Paused at 130: down again rolls back at 130.
+    assert.deepEqual(step({ mode: "paused", wpm: 130, rev: 130 }, -1), { mode: "rev", wpm: 130, rev: 130 });
+    // Rolling back: down speeds it up, and it stops at 220 and stays there.
+    assert.deepEqual(step({ mode: "rev", wpm: 130, rev: 130 }, -1), { mode: "rev", wpm: 130, rev: 135 });
+    assert.deepEqual(step({ mode: "rev", wpm: 130, rev: 220 }, -1), { mode: "rev", wpm: 130, rev: 220 });
+    // Rolling back: up slows it, then pauses, then rolls forward.
+    assert.deepEqual(step({ mode: "rev", wpm: 130, rev: 140 }, 1), { mode: "rev", wpm: 130, rev: 135 });
+    assert.deepEqual(step({ mode: "rev", wpm: 130, rev: 130 }, 1), { mode: "paused", wpm: 130, rev: 130 });
+    assert.deepEqual(step({ mode: "paused", wpm: 130, rev: 130 }, 1), { mode: "fwd", wpm: 130, rev: 130 });
+    // Rolling forward: up tops out at 220 and stays.
+    assert.deepEqual(step({ mode: "fwd", wpm: 215, rev: 130 }, 1), { mode: "fwd", wpm: 220, rev: 130 });
+    assert.deepEqual(step({ mode: "fwd", wpm: 220, rev: 130 }, 1), { mode: "fwd", wpm: 220, rev: 130 });
+    // Paused above the floor: down only slows it; it does not roll back yet.
+    assert.deepEqual(step({ mode: "paused", wpm: 180, rev: 130 }, -1), { mode: "paused", wpm: 175, rev: 130 });
+    // The whole walk down from 220 never leaves the limits.
+    let st = { mode: "fwd", wpm: 220, rev: 130 };
+    for (let i = 0; i < 80; i++) { st = step(st, -1); assert.ok(st.wpm >= 130 && st.wpm <= 220 && st.rev >= 130 && st.rev <= 220); }
+    assert.deepEqual(st, { mode: "rev", wpm: 130, rev: 220 });
   });
 
   test("no per-word underline, and the portrait bottom third fades", () => {

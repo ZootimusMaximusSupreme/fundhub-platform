@@ -642,3 +642,59 @@ test.describe("the script starts four lines down (owner call 2026-10-10)", () =>
     expect(m.line).toBeLessThanOrEqual(m.stageH * 0.5 + 1);
   });
 });
+
+test.describe("volume buttons, no finger on the glass (owner call 2026-10-10)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const vol = (page, key) => page.evaluate((k) => document.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })), key);
+
+  test("down to 130, then pause, then roll back; up slows the roll back, pauses, and rolls forward", async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => localStorage.setItem("fhtp.wpm", JSON.stringify(140)));
+    await page.reload();
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
+    await roll(page);
+    await page.waitForTimeout(1500);
+    await vol(page, "VolumeDown");
+    await vol(page, "VolumeDown");
+    let s = await state(page);
+    expect(s.wpm).toBe(130);
+    expect(s.playing).toBe(true);
+    await vol(page, "VolumeDown"); // at the floor: pause
+    s = await state(page);
+    expect(s.playing).toBe(false);
+    expect(s.wpm).toBe(130);
+    const pausedAt = s.t;
+    expect(pausedAt).toBeGreaterThan(0.5);
+    await vol(page, "VolumeDown"); // roll back at 130
+    s = await state(page);
+    expect(s.reverse).toBe(130);
+    expect(s.playing).toBe(true);
+    await expect.poll(async () => (await state(page)).t).toBeLessThan(pausedAt);
+    await vol(page, "VolumeDown");
+    expect((await state(page)).reverse).toBe(135);
+    for (let i = 0; i < 40; i++) await vol(page, "VolumeDown");
+    expect((await state(page)).reverse).toBe(220); // the top, and it stays
+    // It stops by itself at the first word.
+    await expect.poll(async () => (await state(page)).playing, { timeout: 8000 }).toBe(false);
+    s = await state(page);
+    expect(s.t).toBe(0);
+    expect(s.reverse).toBe(0);
+    await vol(page, "VolumeUp"); // paused: up rolls forward
+    await expect.poll(async () => (await state(page)).playing).toBe(true);
+    s = await state(page);
+    expect(s.reverse).toBe(0);
+    expect(s.wpm).toBe(130);
+    await expect.poll(async () => (await state(page)).t).toBeGreaterThan(0.2);
+    for (let i = 0; i < 40; i++) await vol(page, "VolumeUp");
+    expect((await state(page)).wpm).toBe(220);
+  });
+
+  test("the − and + buttons stop at 130 and 220", async ({ page }) => {
+    await open(page);
+    for (let i = 0; i < 30; i++) await page.locator("#wpm-down").tap();
+    expect((await state(page)).wpm).toBe(130);
+    expect((await state(page)).playing).toBe(false);
+    for (let i = 0; i < 30; i++) await page.locator("#wpm-up").tap();
+    expect((await state(page)).wpm).toBe(220);
+  });
+});
