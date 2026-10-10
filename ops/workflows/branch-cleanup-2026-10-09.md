@@ -58,3 +58,12 @@ Chris: "all branches on main, for GitHub and for local." Done the same day. `mai
 - 39 git stashes on this Mac (other sessions' unfinished edits). Not branches; nothing was dropped.
 - 7 work folders under `.claude/worktrees/` for the branches above.
 - Remote branch `claude/creator-incentive-program-6s4371` and the other `claude/*` branches were contained in `main` and are in the table.
+
+## Evening update, 2026-10-09 ~6:50 p.m. Arizona
+
+- **Merged and shipped:** the 4 test fixes (T1 generated docs, T2 workflow pins, T3 fence and pulse scope tests, T4 edit-ops tests) and X4F (funnel push, with a new morning lane `built-funnels:live-pages-answer`). Full suite: 19,863 pass, 1 fail (the climate page copy test, below). It was 12 fails this morning.
+- **Still open as draft pull requests, each brought up to date with main and tested:**
+  - #26 `mm-gl-blueprint-glue` and #22 `mm-u37-today-additions`: checked and merge-ready, held on purpose because they add model-cost buttons (owner rule 2026-10-06: no AI spend for now).
+  - #24 `finance-os-f2-bank-relink`: not merge-ready (Postgres tests never run, text held, owner pick pending). Customer-facing, so it waits.
+- **One failing test left:** `src/http/climate-match.test.mjs` (the live climate page still shows an "Approval Odds" column; the owner banned approval-odds words). Fix is a live page edit, so it needs a marked draft first (`ops/workflows/finish-left-2026-10-09-T4.md` has the exact strings).
+- GitHub now holds only `main` and those 3 pull-request branches. Local matches.
