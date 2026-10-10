@@ -1,0 +1,2552 @@
+[
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Open the page (client signed in, or staff with ?client_id=); 401 sends to /portal-login.html or /login.html?next=",
+  "kind": "page",
+  "calls": "GET /api/money/transfers[?client_id=]",
+  "tables": "money_transfers, money_transfer_events, money_agent_tasks, bank_accounts, plaid_items, entities, clients",
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "finance-os:transfers (src/pulse/coverage/gap-finance-os.mjs) runs api/money/transfers.mjs GET in process for a client with an active bank link and goes FAIL on a 400, a 500 or an error body (skips when no client has a link); reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; src/http/money-transfers.test.mjs (route, 401, client pinned to own file, staff need client_id in their org)"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Mode banner: Practice mode (Plaid sandbox) / Off with the reason / Live",
+  "kind": "read-panel",
+  "calls": "GET /api/money/transfers (mode block)",
+  "tables": "",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/finance/money-transfers.test.mjs 'transferMode - fail closed' and 'off means off'; src/http/money-transfers-screen.test.mjs sandbox and off banner renders (Node string render, no browser)"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Three tiles: Waiting for your OK, Moving now, Left to move today",
+  "kind": "read-panel",
+  "calls": "GET /api/money/transfers",
+  "tables": "money_transfers, money_transfer_events, money_agent_tasks, bank_accounts, plaid_items, entities, clients",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers-screen.test.mjs 'tiles: what waits, what moves, and the limits' and 'set for later, not moving now' (Node string render from a fixture)"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Waiting card: amount, who set it up, where it goes, date, why",
+  "kind": "read-panel",
+  "calls": "GET /api/money/transfers (waiting[])",
+  "tables": "money_agent_tasks, money_transfers",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers-screen.test.mjs 'client: the waiting deposit shows amount, where, when, who set it up'; src/finance/money-transfer-seam.test.mjs (proposals)"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "From account picker (select when 2 or more accounts, fixed text when 1)",
+  "kind": "select",
+  "calls": "none on change; value sent later as from_account_id",
+  "tables": "bank_accounts",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; markup asserted in src/http/money-transfers-screen.test.mjs but the value is read inside mount().onSubmit, which no test runs; the server refuses a from account that is not the client's own (src/finance/money-transfers.pg.test.mjs 'both accounts must be the client's own')"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Review this move (button, reveals the exact sentence and locks the picker)",
+  "kind": "button",
+  "calls": "no request (local reveal)",
+  "tables": "",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; render test 'the yes is a second press on the exact sentence, behind Review this move' asserts markup only; mount().onClick review/back is run by no test"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Go back (button, hides the sentence, unlocks the picker)",
+  "kind": "button",
+  "calls": "no request (local)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; markup only in src/http/money-transfers-screen.test.mjs; handler never run"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Yes, move $X (the one filled button, form submit)",
+  "kind": "button",
+  "calls": "POST /api/money/transfers {action:approve, proposal_id, amount_cents, from_account_id, to_account_id, scheduled_for}",
+  "tables": "money_transfers, money_transfer_events, money_agent_tasks, bank_accounts, plaid_items, entities, clients",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; render test 'one filled button per approvable move' checks the markup; the onSubmit that builds the body from data attributes is run by no test, so a wrong or missing field would only show at the server; no Playwright spec opens this page"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "approve (server): the client's yes starts the move; any changed amount, account or date is refused; staff and authorized representatives refused; off means nothing sent",
+  "kind": "api-action",
+  "calls": "POST /api/money/transfers approve -> approveTransfer, executeTransfer -> Plaid transfer (sandbox)",
+  "tables": "money_transfers, money_transfer_events, money_agent_tasks, bank_accounts, plaid_items, entities, clients",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers.test.mjs ('the client says yes', 'staff are refused, whatever the body says', 'an authorized representative is refused', 'a changed amount is refused', 'off: refused, nothing sent'); src/finance/money-transfers.test.mjs (approval, limits, off means off, statuses); src/finance/money-transfers.pg.test.mjs; NO deep tripwire for a move that stuck or sent wrong: job:finance-os-money-transfers is a ping only and is still in src/pulse/tripwires-baseline.json (unsorted)"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Not now (button on a waiting card, confirm dialog)",
+  "kind": "button",
+  "calls": "POST /api/money/transfers {action:cancel, proposal_id}",
+  "tables": "money_agent_tasks, money_transfers",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; markup only in the screen test; mount().onClick cancel + window.confirm run by no test"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Take it off the list (staff button on a waiting card, confirm dialog)",
+  "kind": "button",
+  "calls": "POST /api/money/transfers {action:cancel, client_id, proposal_id}",
+  "tables": "money_agent_tasks, money_transfers",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; render test 'staff: no approve control anywhere; they can take a move off the list'; click handler run by no test"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Stop this move (history row button, only while it has not reached the bank)",
+  "kind": "button",
+  "calls": "POST /api/money/transfers {action:cancel, proposal_id}",
+  "tables": "money_transfers, money_transfer_events",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; shown only when transfer.can_cancel; click handler run by no test"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "cancel (server): client or staff stops a proposal or a move that has not reached the bank",
+  "kind": "api-action",
+  "calls": "POST /api/money/transfers cancel -> cancelTransfer",
+  "tables": "money_agent_tasks, money_transfers, money_transfer_events",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers.test.mjs 'the client says not now', 'staff take it off the list', 'another client's proposal id is not found'; src/finance/money-transfers.test.mjs"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "History table: date, move, amount, status with three steps, who said yes",
+  "kind": "read-panel",
+  "calls": "GET /api/money/transfers (history[])",
+  "tables": "money_transfers, money_transfer_events",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers-screen.test.mjs 'history: the settled role-play, step by step, in words', 'status words for every state of a move', 'a stopped move marks its steps stopped'"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "What happened (details toggle: ledger events in words)",
+  "kind": "details",
+  "calls": "none (data already read)",
+  "tables": "money_transfer_events",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers-screen.test.mjs (eventWords exercised through the history render); src/finance/money-transfers.test.mjs 'the ledger is append-only'"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Set up this move (staff form: To, Suggested from, Amount, Date, What it is for)",
+  "kind": "form",
+  "calls": "POST /api/money/transfers {action:propose, to_kind, to_account_id, suggested_from_account_id, amount_cents, due_on, title, client_id}",
+  "tables": "money_agent_tasks, bank_accounts",
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; render test 'staff: ... set one up'; onSubmit (amount parse, body build) run by no test; propose is only shown when mode.enabled"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "propose (server): staff set up a move that waits for the client's yes; nothing moves",
+  "kind": "api-action",
+  "calls": "POST /api/money/transfers propose -> proposeTransfer (seam)",
+  "tables": "money_agent_tasks, bank_accounts",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/money-transfers.test.mjs 'staff set up a move: proposeTransfer gets a staff request and a move: task key', 'a client cannot propose', 'over the per-move cap, a past date, or a destination that cannot receive money is refused'; src/finance/money-transfer-seam.test.mjs"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "After the yes: the money moves on its date and its Plaid events are read back (every 15 minutes)",
+  "kind": "job",
+  "calls": "Inngest job finance-os-money-transfers -> Plaid transfer create/sync",
+  "tables": "money_transfers, money_transfer_events, money_agent_tasks, bank_accounts, plaid_items, entities, clients",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/workflows/finance-os-money-transfers.test.mjs; src/finance/money-transfers.test.mjs 'sending the debit leg', 'statuses from Plaid's events'; pulse: job:finance-os-money-transfers heartbeat ping only (src/pulse/heartbeats.mjs, red after 3 times 15 minutes), still unsorted in src/pulse/tripwires-baseline.json"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Try again (button on the error panel)",
+  "kind": "button",
+  "calls": "GET /api/money/transfers",
+  "tables": "money_transfers, money_transfer_events, money_agent_tasks, bank_accounts, plaid_items, entities, clients",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; error render asserted ('error: what failed in plain words'); handler not run"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Money nav: Money, Next steps, Plan, Accounts, Payments, Transfers, Setup (7 links to /app/financeos.html#tab)",
+  "kind": "nav-link",
+  "calls": "navigation to /app/financeos.html#overview|next|plan|accounts|payments|transfers|setup (client_id carried)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; every hash exists as a tab in public/app/financeos.html; src/http/financeos-staff-nav.test.mjs lists the money pages; link targets are not followed by any test"
+ },
+ {
+  "surface": "public/app/money-transfers.html",
+  "control": "Back to my portal / Back to Finance OS (header link)",
+  "kind": "link",
+  "calls": "navigation to client-portal.html or finance-os.html?client_id=",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-transfers (src/pulse/registry.mjs DESK_FILES), reg:money/transfers; href set in initPage(); not followed by any test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Open the page (client, or staff with ?client_id=); staff controls render only when a client id was passed AND the server says audience staff",
+  "kind": "page",
+  "calls": "GET /api/money/vault[?client_id=]",
+  "tables": "document_vault_items, document_vault_reviews, documents, document_versions, entities, businesses, clients, pii_identity, staff",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "finance-os:vault (src/pulse/coverage/gap-finance-os.mjs) runs api/money/vault.mjs GET for a linked client and fails on 400/500/error body (skips with no linked client); reg:money-vault, reg:money/vault; src/http/money-vault.test.mjs (GET as client, GET as staff, staff need client_id, 401/403/404)"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Progress card: X of Y papers ready, ready / we're checking / left to send counts, next paper",
+  "kind": "read-panel",
+  "calls": "GET /api/money/vault",
+  "tables": "document_vault_items, documents, document_vault_reviews",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault-screen.test.mjs 'full (the doc's example) ... from the real engine' and 'what is still missing comes first'; src/finance/document-vault.pg.test.mjs readVault"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "File complete banner (quotes the closer's own sentence)",
+  "kind": "read-panel",
+  "calls": "GET /api/money/vault (complete, summary)",
+  "tables": "document_vault_items",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault-screen.test.mjs 'file complete: the banner with the closer's own words' (holds closerLine and vaultLine in src/finance/document-vault.mjs together); document-vault.pg.test.mjs 'vaultComplete says not complete'"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Paper line list per person and per business (status mark and word: Missing, Sent, Accepted, Too old, Not accepted, Not needed)",
+  "kind": "read-panel",
+  "calls": "GET /api/money/vault (items[], scopes[])",
+  "tables": "document_vault_items, documents, businesses",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault-screen.test.mjs 'status is a word and a shape', 'staff-added paper', 'a file's name, a reason and a business name are escaped'; src/finance/document-vault-items.test.mjs"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Upload / Upload more / Upload a new copy / Upload a newer one (per paper; hidden multi-file input, PDF JPG PNG)",
+  "kind": "file-upload",
+  "calls": "POST /api/documents-upload multipart {kind, subtype, entity_id?, client_id?, file[]}",
+  "tables": "documents, document_versions, clients, entities",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault-screen.test.mjs 'an upload sends the line's exact fields' and 'the upload goes out as multipart to the existing endpoint, with the fields and the file, signed in' (uploadFields and sendUpload run in Node); the file-input change handler (onFiles) is run by no test; reg:money-vault, reg:money/vault"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "documents-upload (server): stores the file, one document per file, sniffs the bytes",
+  "kind": "api-action",
+  "calls": "POST /api/documents-upload",
+  "tables": "documents, document_versions, clients, entities + file store",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "TRIPWIRES route:documents-upload in src/pulse/tripwires.mjs -> documents:upload-store (HEAD on the file store) and documents:stuck-processing (src/pulse/coverage/gap-documents.mjs); src/http/documents-upload.pg.test.mjs; src/documents/upload-validate.test.mjs"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "View (link to the file; signed link lives 15 minutes, an expired one is replaced by a fresh read)",
+  "kind": "link",
+  "calls": "GET signed url from /api/money/vault -> /api/documents-download",
+  "tables": "documents, document_versions",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault.test.mjs 'signing links against this host'; src/http/documents-download.pg.test.mjs; the expiry refresh in mount().onView is run by no test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Staff: Accept (button on a file waiting for review; opens a form when the paper needs months or a date)",
+  "kind": "button",
+  "calls": "POST /api/money/vault {action:accept, document_id, covers?, period_end?, client_id}",
+  "tables": "document_vault_reviews, document_vault_items",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; render test 'staff review: Accept and Reject on each file waiting'; click wiring (onAccept, onAcceptSend, readDetails) run by no test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "accept (server): marks the file accepted with months/years covered and the date on the paper",
+  "kind": "api-action",
+  "calls": "POST /api/money/vault accept -> decideDocument",
+  "tables": "document_vault_reviews, document_vault_items",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault.test.mjs 'POST accept: staff id and the typed units and date reach the logic, and the fresh vault comes back'; src/finance/document-vault.pg.test.mjs 'decideDocument upserts one row per document'; closer line from vaultLine; document-vault-chase job reads this state"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Staff: Reject (opens the reject form) + reason field + Reject file (the client reads the reason)",
+  "kind": "form",
+  "calls": "POST /api/money/vault {action:reject, document_id, reason, client_id}",
+  "tables": "document_vault_reviews",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; render test 'every staff control is labelled'; reasonOf/onRejectSend run by no test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "reject (server): reason required, shown to the client",
+  "kind": "api-action",
+  "calls": "POST /api/money/vault reject -> decideDocument",
+  "tables": "document_vault_reviews",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault.test.mjs 'POST reject: the reason goes through as the client-visible words'; document-vault.pg.test.mjs 'the tables refuse a reject with no reason'"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Staff: Change (re-open the other decision on an already decided file)",
+  "kind": "button",
+  "calls": "no request until Accept file / Reject file is pressed",
+  "tables": "document_vault_reviews",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; render only; openForm run by no test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Staff: Cancel (closes an open accept/reject/sort form)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; markup only"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Staff: Files to sort - File and accept (pick which paper, months/years, date) and Reject (which paper it was meant to be, reason)",
+  "kind": "form",
+  "calls": "POST /api/money/vault {action:accept|reject, document_id, item_key, entity_id?, covers?, period_end?, reason?}",
+  "tables": "document_vault_reviews, document_vault_items, documents",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; src/finance/document-vault.pg.test.mjs 'an unlabelled upload is unfiled, and a person filing it under a line makes it count' covers the server half; sort-form wiring (onSortSend, syncLine) run by no test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Staff: Add a paper (title, whose paper, why the lender wants it, file type, how many files)",
+  "kind": "form",
+  "calls": "POST /api/money/vault {action:add_item, title, note?, entity_id?, subtype?, need?, client_id}",
+  "tables": "document_vault_items",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; render test 'staff review ... and Add a paper'; onAdd validation run by no test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "add_item (server): a staff-added line the client then sees and can send",
+  "kind": "api-action",
+  "calls": "POST /api/money/vault add_item -> addCustomItem",
+  "tables": "document_vault_items",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault.test.mjs 'POST add_item, retire_item, waive and unwaive each reach their own function'; document-vault.pg.test.mjs 'add, waive, unwaive and retire go through the real constraints'"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Other files you sent (client) / Files to sort (staff): files with no clear paper type, with a View link",
+  "kind": "read-panel",
+  "calls": "GET /api/money/vault (unfiled[])",
+  "tables": "documents",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-vault-screen.test.mjs (sort and other-files renders); document-vault.pg.test.mjs 'an unlabelled upload is unfiled'"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "The ask: daily sweeper texts and emails the client for missing papers (SMS-VAULT-ASK-1, EMAIL-VAULT-ASK-2, SMS-VAULT-ASK-3)",
+  "kind": "job",
+  "calls": "Inngest job document-vault-chase (16:45 UTC daily) -> sendTemplated",
+  "tables": "money_agent_tasks, messages, document_vault_items",
+  "impact": "customerMessage",
+  "coverage": "e2e",
+  "evidence": "src/finance/document-vault-chase.test.mjs; src/finance/document-vault.pg.test.mjs 'an ask is one money_agent_tasks row'; pulse: job:document-vault-chase heartbeat ping (src/pulse/heartbeats.mjs); documents:required-unchased (src/pulse/coverage/gap-documents.mjs) goes red on a required paper nobody chased, but only for the first-ask templates it lists"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Try again (button on the error panel)",
+  "kind": "button",
+  "calls": "GET /api/money/vault",
+  "tables": "document_vault_items, document_vault_reviews, documents, document_versions, entities, businesses, clients, pii_identity, staff",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; error render asserted ('error: what failed in the person's words'); handler not run"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Money nav: Money, Accounts, Credit, Applications, Funding papers (current), Connections, Payments, Setup (8 links)",
+  "kind": "nav-link",
+  "calls": "navigation to /app/financeos.html#overview|accounts|credit|declines|connections|payments|setup and /app/money-vault.html",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; src/http/money-vault-screen.test.mjs 'the shared money nav, with Funding papers as the one current page' (markup); every hash exists in public/app/financeos.html; targets not followed by any test"
+ },
+ {
+  "surface": "public/app/money-vault.html",
+  "control": "Back to my portal / Back to Finance OS (header link)",
+  "kind": "link",
+  "calls": "navigation",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money-vault, reg:money/vault; href set in initPage(); not followed by any test"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Open the page (client, or staff with ?client_id=)",
+  "kind": "page",
+  "calls": "GET /api/money/overview[?client_id=]",
+  "tables": "bank_accounts, bank_transactions, account_statement_cycles, card_liabilities, recurring_bills, tradelines, crs_results, plaid_items, entities, businesses, clients",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "banks-linked-not-on-screen (src/pulse/coverage/gap-banks.mjs) goes red when a bank is saved but the overview would not show it (accounts only, not the cash or debt figures); banks-plaid-item-error and banks-sync-stale; reg:money, reg:money/overview; src/http/money-screen.test.mjs; src/finance/money-overview.mjs unit tests; money/overview is still unsorted in src/pulse/tripwires-baseline.json"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Sandbox banner (Test data - Plaid sandbox)",
+  "kind": "read-panel",
+  "calls": "GET /api/money/overview (sandbox flag)",
+  "tables": "",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-screen.test.mjs 'the sandbox banner shows only when sandbox is true'"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Four tiles: personal cash, business cash, not-sure-yet cash, debt (cash never added across kinds; null is a dash; floor says at least)",
+  "kind": "read-panel",
+  "calls": "GET /api/money/overview",
+  "tables": "bank_accounts, bank_transactions, account_statement_cycles, card_liabilities, recurring_bills, tradelines, crs_results, plaid_items, entities, businesses, clients",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-screen.test.mjs 'cash paints personal and business apart and never adds them', 'money is cents formatted as dollars; null is a dash', 'a null anywhere renders as a dash'"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Upcoming payments, bills, containers with their accounts, debt with every card (limit, room, used, due), loans, cash-flow chart, billing line",
+  "kind": "read-panel",
+  "calls": "GET /api/money/overview",
+  "tables": "bank_accounts, bank_transactions, account_statement_cycles, card_liabilities, recurring_bills, tradelines, crs_results, plaid_items, entities, businesses, clients",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/money-screen.test.mjs ('debt shows the total, the split by kind, and every card', 'loans show in their own table', 'cashflow draws personal and business as two charts', 'containers list their own accounts', 'tip is printed verbatim, billing line says the count'); render in Node, no browser"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Connect a bank (header button, shown when accounts exist)",
+  "kind": "button",
+  "calls": "POST /api/banking/link-token -> Plaid Link window -> POST /api/banking/link-exchange {public_token, institution, client_id?}",
+  "tables": "plaid_items, bank_accounts",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money, reg:money/overview; render test 'empty: no accounts means one action, Connect a bank' is markup only; mount().connect (token, Plaid.create, exchange, reload) is run by no test"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Connect a bank (empty-state button when no accounts)",
+  "kind": "button",
+  "calls": "same as the header button",
+  "tables": "plaid_items, bank_accounts",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:money, reg:money/overview; markup asserted in src/http/money-screen.test.mjs 'empty'; click path run by no test"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "link-token (server): mints a Plaid Link token for the client's own file, or for staff on a client in their org",
+  "kind": "api-action",
+  "calls": "POST /api/banking/link-token",
+  "tables": "",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/plaid-link.test.mjs; reg:banking/link-token (POST-only, a GET ping answers 405 which counts as up)"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "link-exchange (server): trades the public token, stores the encrypted item, saves every account on it",
+  "kind": "api-action",
+  "calls": "POST /api/banking/link-exchange -> completeLink",
+  "tables": "plaid_items, bank_accounts",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/plaid-link.test.mjs; src/banking/account-link.pg.test.mjs; src/banking/plaid-link.test.mjs; deep: banks-plaid-item-error and banks-linked-not-on-screen read what it stored (gap-banks.mjs)"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Plaid Link script loaded from cdn.plaid.com when Connect is pressed",
+  "kind": "external-dependency",
+  "calls": "GET https://cdn.plaid.com/link/v2/stable/link-initialize.js",
+  "tables": "",
+  "impact": "customerData",
+  "coverage": "none",
+  "evidence": "nothing in src/ or src/pulse/ loads or probes that CDN file; failure path only has a message ('The bank sign-in window did not load') in public/app/money.js"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Trends line-graph slot (mounted from money-trends.js when the page loaded it)",
+  "kind": "read-panel",
+  "calls": "GET /api/money/trends via FinanceOS.trends.mount (not loaded here)",
+  "tables": "bank_transactions",
+  "impact": "customerData",
+  "coverage": "none",
+  "evidence": "public/app/money.html loads only money.js, so FinanceOS.trends is undefined and the slot stays an empty box; reg:money/trends pings the route only"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Try again (button on the error panel)",
+  "kind": "button",
+  "calls": "GET /api/money/overview",
+  "tables": "bank_accounts, bank_transactions, account_statement_cycles, card_liabilities, recurring_bills, tradelines, crs_results, plaid_items, entities, businesses, clients",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money, reg:money/overview; error render asserted in src/http/money-screen.test.mjs 'error and loading states say what is happening in words'; handler not run"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Money nav: Money (current), Accounts, Credit, Connections, Payments, Setup (6 links)",
+  "kind": "nav-link",
+  "calls": "navigation to /app/financeos.html#overview|accounts|credit|connections|payments|setup",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/money-screen.test.mjs 'the money nav: six links in the board's order, Money marked as the current page' (markup); every hash exists in public/app/financeos.html"
+ },
+ {
+  "surface": "public/app/money.html",
+  "control": "Back to my portal / Back to Finance OS (header link)",
+  "kind": "link",
+  "calls": "navigation",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:money, reg:money/overview; href set in init(); not followed by any test"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Open the brief from the link in Chris's text: ?date=YYYY-MM-DD&kind=morning|evening&k=<code> (no sign-in, code never stored)",
+  "kind": "page",
+  "calls": "GET /api/public/morning-brief?date&kind&k",
+  "tables": "morning_briefs, orgs",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "beat brief-link (src/pulse/beats/beat-brief-link.mjs, hourly): link-saved, page-opens (200 with data-brief-page), report-loads (200 ok:true brief for that date); e2e/morning-brief.spec.mjs (real 2026-10-09 brief at 3 viewports); src/http/morning-brief-page.test.mjs; reg:morning-brief; desk:morning-brief.html is in NOT_CUSTOMER_FACING (src/pulse/tripwires.mjs)"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Bad link, expired link, 404, 503 and network failure messages (one calm sentence, never the reason)",
+  "kind": "read-panel",
+  "calls": "GET /api/public/morning-brief",
+  "tables": "",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'a 404 shows one sentence and nothing else', 'a link with no code, a bad date or a bad kind never calls the route', 'a network failure says try again, never that a good link expired', 'a 503 ... says try again', 'an answer that is 200 but not a brief shows the same one sentence'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Systems section: Red / Green / Not checked tiles, list of red checks with what people see, what we saw, fix",
+  "kind": "read-panel",
+  "calls": "same GET (brief.systems)",
+  "tables": "pulse_scorecards, morning_briefs",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'the real 2026-10-09 morning brief draws, red checks first, no sign-in'; src/http/morning-brief.test.mjs and src/http/morning-brief-public.test.mjs"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Show all N red checks / Show only the first 5 (toggle button)",
+  "kind": "toggle",
+  "calls": "no request (local)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs line 161-164 clicks 'Show all 14 red checks'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Last 24 hours: cash collected, files funded, funded dollars",
+  "kind": "read-panel",
+  "calls": "same GET (brief.team.company_8)",
+  "tables": "transactions, funding_rounds",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'a busy evening: money as $1,234.56 ...'; src/http/morning-brief.test.mjs"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Team: calls held, sales, no-shows, each closer, late success-team tasks, unrecorded calls",
+  "kind": "read-panel",
+  "calls": "same GET (brief.team)",
+  "tables": "call_outcomes, tasks, staff",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'a busy evening'; 'a brief with missing and broken sections says so plainly'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Money: bank money in/out yesterday (or today so far), month to date, each account",
+  "kind": "read-panel",
+  "calls": "same GET (brief.money)",
+  "tables": "bank_transactions, bank_accounts, plaid_items",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'a busy evening' and 'an empty brief: every section says a plain sentence'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Ads and sales: spend, new people, booked, showed, sales, cash, cost per booked, return on ad spend, each offer and funnel",
+  "kind": "read-panel",
+  "calls": "same GET (brief.marketing)",
+  "tables": "ad_metrics_daily, call_outcomes, transactions",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'a busy evening: money as $1,234.56, closers, offers, a dying ad'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Dying ads: ads where most plays never reach a quarter and people are not tapping through",
+  "kind": "read-panel",
+  "calls": "same GET (brief.marketing.dying_ads)",
+  "tables": "ad_metrics_daily",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'a busy evening ... a dying ad'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Suggestions and Today sections",
+  "kind": "read-panel",
+  "calls": "same GET (brief.suggestions, brief.today)",
+  "tables": "morning_briefs, tasks",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/morning-brief.spec.mjs 'the real 2026-10-09 morning brief draws' and 'an empty brief'"
+ },
+ {
+  "surface": "public/app/morning-brief.html",
+  "control": "Feed: the brief row and its link are written and texted to Chris twice a day (6:00 a.m. and evening)",
+  "kind": "job",
+  "calls": "Inngest jobs daily-pulse (6:00 AZ) and evening-brief (04:00 UTC) -> morning_briefs row + owner text",
+  "tables": "morning_briefs",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "audit:briefs-sent in src/pulse/self-audit.mjs reads yesterday's morning_briefs row and goes red when the report did not go out; job:daily-pulse and job:evening-brief heartbeats (src/pulse/heartbeats.mjs); beat brief-link link-saved goes red when the newest sent row is over 36 hours old"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Open the page (closer sees own numbers; owner, admin, sales_manager may pass ?staff_id=)",
+  "kind": "page",
+  "calls": "GET /api/auth/session (shell + name chip); GET /api/read/my-numbers via FHData.read('my-numbers')",
+  "tables": "call_outcomes, staff, staff_targets, shifts, commission_ledger, clients, client_custom_fields, messages, events, products, sales, transactions, sale_payments",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "sales-manager:read-api (src/pulse/coverage/gap-sales-manager.mjs) runs closerMyNumbers in process for a staff row and goes FAIL when pace, month or team is missing (shape only, not the dollar values); e2e/sales-dashboards.spec.mjs 'my-numbers loads for a closer and shows honest empty call quality', 'my-numbers header is the session closer'; reg:my-numbers, reg:read/my-numbers; role gate: e2e/sidebar-roles.spec.mjs"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Cash collected this month, target, rank X of N, progress bar",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (pace)",
+  "tables": "call_outcomes, staff_targets, commission_ledger",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "sales-manager:read-api (shape only); src/sales/metrics.test.mjs 'closer deposit target is a count of 20, not $20'; paint code in public/app/my-numbers.js is only run with empty stubs by e2e/sales-dashboards.spec.mjs"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Offer stack table: product, units sold, amount sold, cash collected, totals, retired product, reason when unknown",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (offer_stack)",
+  "tables": "commission_ledger, sales, products, transactions, sale_payments",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/sales/offer-stack.test.mjs (the library); the table paint (paintOfferStack) is run by no test with real items"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "This month vs last month grid: deposits closed, close rate, show rate, downsells, deposit to funded, avg funded (always a dash), calls held, unlogged",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (month)",
+  "tables": "call_outcomes, shifts, events",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "sales-manager:read-api (shape only); src/sales/metrics.test.mjs; e2e/sales-dashboards.spec.mjs asserts 'Deposit -> funded' label and honest empty"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Money boxes: Paid out, Pending funding, At risk (always a dash: not computed)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (money)",
+  "tables": "commission_ledger",
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "sales-manager:read-api (shape only; does not check the cents); no unit test of commissionBuckets was found in src/"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Streak strip (always the sentence: daily close streak is not stored yet)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (streak)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:my-numbers, reg:read/my-numbers; static fallback text; nothing asserts it"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Team this month leaderboard (rank, name, deposits, cash, close rate; you highlighted)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (team)",
+  "tables": "call_outcomes, staff",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "sales-manager:read-api requires team to be an array; sales-manager:dropped-closer reads the manager rollup for closers with sales missing; src/sales/metrics.test.mjs 'closerRoster SQL is closers only'"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Call quality panel (reason text: call recording and transcription do not exist yet)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/my-numbers (call_quality)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sales-dashboards.spec.mjs asserts 'Call recording and transcription do not exist yet' is visible"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "Owed by you: unlogged calls and quiet deposits, each row a link to closer-dashboard.html?client_id=&task_id=",
+  "kind": "link",
+  "calls": "navigation to closer-dashboard.html?client_id=&task_id=; data from GET /api/read/my-numbers (owed[])",
+  "tables": "call_outcomes, tasks, clients",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:my-numbers, reg:read/my-numbers; src/http/closer-ui-honest.test.mjs only regex-checks my-numbers.js source; the link is built in paint() which no test runs with owed rows"
+ },
+ {
+  "surface": "public/app/my-numbers.html",
+  "control": "On shift / Off shift chip and staff name chip in the header",
+  "kind": "display",
+  "calls": "GET /api/read/my-numbers (shift); GET /api/auth/session",
+  "tables": "shifts, staff",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sales-dashboards.spec.mjs 'my-numbers header is the session closer, not Marcus or Elena'"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Open the page (owner and admin only: ops-admin.html is in OWNER_ADMIN_ONLY and NAV_HIDDEN in shell.js; other roles are bounced home)",
+  "kind": "page",
+  "calls": "GET /api/auth/session; then data reads below",
+  "tables": "",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/verification-roles.spec.mjs and e2e/sidebar-roles.spec.mjs (role gate); e2e/screens-smoke.spec.mjs (loads without a JS error); e2e/verification-security.spec.mjs 'owner can reach ops-admin APIs'; reg:ops-admin; gap:auth-session-read (gap-auth.mjs) is deep for the session read"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Period pill: Today / Last 7 Days / Last 30 Days / Quarter to Date (menu, Escape closes)",
+  "kind": "select",
+  "calls": "GET /api/dashboard/kpis?period=; GET /api/read/ops-pulse?period=",
+  "tables": "transactions, funding_rounds, ad_metrics_daily, call_outcomes, clients, staff_targets, tasks",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/ops-admin.spec.mjs 'period picker keeps em dash values across periods'; src/dashboard/kpis.test.mjs (daysForPeriod)"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Company KPI tiles: Cash Collected, Funded, Close Rate with show rate, Cost / Funded, New Clients",
+  "kind": "read-panel",
+  "calls": "GET /api/dashboard/kpis?period=",
+  "tables": "transactions, funding_rounds, ad_metrics_daily, call_outcomes, clients",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "src/dashboard/kpis.test.mjs (computeKpis funded rounds, dollars vs cents, demo rows left out); e2e/ops-admin.spec.mjs 'money KPI tiles start at em dash'; e2e/report-tieout.spec.mjs; no live pulse check reads computeKpis; reg:dashboard/kpis ping only"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Today's briefs card: CEO brief, Chris brief, discovery line, hire line with LinkedIn status, ad spend line, fire/raise/bonus line",
+  "kind": "read-panel",
+  "calls": "GET /api/read/ops-pulse?period=",
+  "tables": "staff_targets, call_outcomes, funding_rounds, ad_metrics_daily, tasks, hiring_job_postings",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "owner-tools:ops-admin (src/pulse/coverage/gap-owner-tools.mjs) runs computePulse for period today in process; e2e/ops-admin.spec.mjs 'today briefs paint gaps spend and no fire rule'; src/http/ops-pulse.test.mjs; reg:read/ops-pulse"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Write today's C-suite tasks (button, shown only when the calendar is packed, a gap is short, or ad spend is above zero)",
+  "kind": "button",
+  "calls": "POST /api/ops/hire-closer",
+  "tables": "tasks, hiring_roles, hiring_job_postings",
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "reg:ops-admin; e2e/ops-admin.spec.mjs only asserts the button is hidden or visible, never clicks it"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "hire-closer (server): writes hire / diagnose / ads-review tasks and, when LinkedIn is connected, posts the closer job on LinkedIn",
+  "kind": "api-action",
+  "calls": "POST /api/ops/hire-closer -> actOnBrain -> postJob (LinkedIn)",
+  "tables": "tasks, hiring_roles, hiring_job_postings, staff",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "src/ops/hire-closer.test.mjs; src/ops/csuite-tasks.test.mjs; src/http/ops-pulse.test.mjs; reg:ops/hire-closer (POST-only, 405 counts as up); posts a public LinkedIn job through src/hiring/linkedin.mjs"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "AR + Collections table: client, invoice INV-xxxx, amount owed, overdue, status (top 25, total line)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/invoices?status=open&limit=50",
+  "tables": "v_invoice_aging, v_invoice_balance, invoices, clients",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/invoices/ar-filter.test.mjs; src/invoices/invoices.pg.test.mjs; e2e/ops-admin.spec.mjs 'AR table shows empty note, not fake invoices'; payments:invoice-stuck (gap-payments.mjs) reads v_invoice_aging for a different question (invoices stuck), not this table"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "AR column header sort (click or Enter on Client, Invoice, Amount owed, Overdue, Status)",
+  "kind": "sort-control",
+  "calls": "none (client-side)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "handlers are attached once at page parse to the original header cells (public/app/ops-admin.html SORTABLE TABLES block); paintAr later replaces the whole table innerHTML, so the new header cells carry no handler (code reading, not run); no test clicks a sort header"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "AR row expand (terms, payment method, owner, outstanding, collection history)",
+  "kind": "row-expand",
+  "calls": "none (client-side)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "binds to tr[data-ar] at parse time; rows built by paintAr carry no data-ar attribute (code reading, not run); no test expands a row"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Compliance Gate table: messages it stopped (client, channel, reason, when; top 15)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/messages?status=blocked&limit=30",
+  "tables": "messages, staff",
+  "impact": "customerMessage",
+  "coverage": "e2e",
+  "evidence": "src/http/messages-read.pg.test.mjs (the read); paintCompliance is run by no test; reg:read/messages; the gate itself is tested in src/messaging tests, not here"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Failed events tile (appended to the KPI grid: N failed events awaiting retry)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/failed-events?status=pending&limit=200",
+  "tables": "failed_events",
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "reg:read/failed-events ping; no test of the endpoint or the tile was found; gap-jobs.mjs reads failed_events for a different question (the document reader handler)"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Outbound mail panel: waiting / sent today / failed / held by compliance, routes, invoices never emailed",
+  "kind": "read-panel",
+  "calls": "GET /api/messages-outbound",
+  "tables": "messages, messaging_settings, message_channel_routing, invoices",
+  "impact": "customerMessage",
+  "coverage": "e2e",
+  "evidence": "src/http/messages-outbound-read.test.mjs 'a GET answers the status and only reads' and 'ops-admin.html Outbound Mail panel - page load only reads' (runs the panel script in Node); src/messaging/outbox.pg.test.mjs 'outboxStatus'; the queue itself is a tripwire: job:message-dispatch-sweeper -> gap:sms-sending-stuck, email:sending-stuck, gap:msg-sent-no-receipt"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Send what is waiting (button, confirm dialog: goes to real clients, cannot be pulled back)",
+  "kind": "button",
+  "calls": "POST /api/messages-outbound {action:dispatch}",
+  "tables": "messages, message_channel_routing, messaging_settings",
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "reg:ops-admin; src/http/messages-outbound-read.test.mjs asserts page load makes no non-GET request and 'a closer cannot dispatch'; the click path is run by no test"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "dispatch (server): drains the queue now through the provider route and the compliance gate",
+  "kind": "api-action",
+  "calls": "POST /api/messages-outbound dispatch -> drain -> src/messaging/providers/*",
+  "tables": "messages, message_channel_routing, messaging_settings",
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "TRIPWIRES job:message-dispatch-sweeper (same drain on */5): gap:sms-sending-stuck, email:sending-stuck, gap:msg-sent-no-receipt; hourly beats text-path and email-path (src/pulse/beats/); src/messaging/outbox.pg.test.mjs 'A QUEUED MESSAGE ACTUALLY GOES OUT', 'draining twice does not send the same message twice'"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Pause sending / Turn sending on (button, confirm dialog)",
+  "kind": "button",
+  "calls": "POST /api/messages-outbound {action:settings, outbound_enabled}",
+  "tables": "messaging_settings",
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "reg:ops-admin; click path run by no test"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "settings (server): the company-wide send switch and daily cap",
+  "kind": "api-action",
+  "calls": "POST /api/messages-outbound settings -> setSettings",
+  "tables": "messaging_settings",
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "beats text-path and email-path read messaging_settings.outbound_enabled (src/pulse/beats/lib/send-path.mjs) and go red when the switch is off; src/messaging/outbox.pg.test.mjs 'PAUSING REALLY PAUSES', 'THE DAILY CAP STOPS A RUNAWAY', 'the switch records who changed it'"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Email unsent invoices (button, confirm dialog; shown only when invoices were never emailed)",
+  "kind": "button",
+  "calls": "POST /api/messages-outbound {action:email_invoice_backlog}",
+  "tables": "invoices, messages, message_templates",
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "reg:ops-admin; click path run by no test"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "email_invoice_backlog (server): emails every invoice the client was never told about, bounded to 200",
+  "kind": "api-action",
+  "calls": "POST /api/messages-outbound email_invoice_backlog -> emailOutstandingInvoices",
+  "tables": "invoices, messages, message_templates, clients",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/messaging/outbox.pg.test.mjs 'AN INVOICE ACTUALLY GETS EMAILED', 'the same invoice is not emailed twice', 'a voided invoice is never emailed', 'THE BACKLOG IS VISIBLE'; payments:invoice-stuck (gap-payments.mjs) is related, not the same question"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Zone tabs: Money / People",
+  "kind": "tab",
+  "calls": "none (client-side)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/ops-admin.spec.mjs 'People zone tab switches'"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Affiliates + Hiring drawer (summary row with 'Open Affiliates' link; body is fixed text: no affiliate data yet, no hiring pipeline data yet)",
+  "kind": "details",
+  "calls": "navigation to affiliate.html; no data call",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/ops-admin.spec.mjs 'affiliate summary line shows em dash counts'; nothing in the page fills it from data"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Staff & Comp table (name, role, comp and this week always a dash)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/staff?limit=200",
+  "tables": "staff, shifts, staff_events, tasks",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "e2e/ops-admin.spec.mjs 'staff comp This Week column shows em dash'; e2e/staff-teams.spec.mjs and e2e/crm-flows.spec.mjs exercise read/staff; reg:read/staff"
+ },
+ {
+  "surface": "public/app/ops-admin.html",
+  "control": "Staff Monitoring Consent table (Signed / Not yet signed, before names show on the Galaxy)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/staff?limit=200 (monitoring_consent_at)",
+  "tables": "staff",
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "reg:read/staff; the library is tested (src/shifts/monitoring-consent.test.mjs) but no test runs paintStaff for this table"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Open the page (partner home; PRINCIPAL_ONLY and NAV_HIDDEN in shell.js, owner reaches it, admin is bounced by ADMIN_BLOCKED)",
+  "kind": "page",
+  "calls": "GET /api/auth/session; GET /api/partner-pages; GET /api/read/partners; GET /api/read/partner-home-tiles",
+  "tables": "partners, partner_pages, partner_brand, partner_revenue",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/screens-smoke.spec.mjs (partner session loads without a JS error); e2e/verification-roles.spec.mjs (partner screens); live: e2e/live-white-label-onboard.spec.mjs opens it on fundhub.ai after a real partner login (live sweep, src/pulse/live-playwright-check.mjs); reg:partner-galaxy"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "'Your page' address in the header: live apply address as a link, or 'draft, not live yet - publish it in Brand Studio', or 'none made yet - open Brand Studio'",
+  "kind": "link",
+  "calls": "GET /api/auth/session then GET /api/partner-pages?partner_id=; link to the live address or brand-studio.html?partner_id=",
+  "tables": "partner_pages, partner_brand, partners",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/partner-galaxy-banner.test.mjs (runs the real inline script with stubs: live, draft, none, failed read, expired session, several pages); src/http/partner-pages-publish.pg.test.mjs; reg:partner-pages"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Partner census line in the header (N partners on file)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partners?limit=200",
+  "tables": "partners, v_partner_balance, orgs",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/partner-read-api.test.mjs; src/http/principal-reads.pg.test.mjs; the page callback that writes #census is run by no test; reg:read/partners"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Today's numbers tiles: Cash Collected Today, Funded Today, Cost / Funded Client (with yesterday or spend / count)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partner-home-tiles",
+  "tables": "partner_revenue, partners, v_partner_spend_vs_ceiling, funding_rounds",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/partner-home-tiles.test.mjs; src/http/partner-home-tiles.pg.test.mjs; src/http/partner-galaxy-tiles.test.mjs (every tile names its read, no invented numbers); reg:read/partner-home-tiles; not in TRIPWIRES (unsorted in tripwires-baseline.json)"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Message Blaster for Mac: Download button (locked gift, .dmg)",
+  "kind": "button",
+  "calls": "GET /api/gifts/message-blaster (blob download MessageBlaster.dmg; 'Sign in to download' with no token)",
+  "tables": "none (reads a file from the server disk)",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/message-blaster-gift.test.mjs (staff, affiliate and partner allowed; client and unsigned refused; missing file answers gift_unavailable; download wiring present); reg:gifts/message-blaster accepts 401 so it would not notice a missing .dmg on the server"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Sky canvas: click a cluster to zoom (5 static clusters: Fundhub fulfillment, Sales & Funding, Inquiry Removal, Client-Facing Agents, Ops Agents)",
+  "kind": "canvas",
+  "calls": "none (canvas only, no server call)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "src/http/partner-galaxy-tiles.test.mjs asserts the canvas asks the server for nothing and shows no money; no test or pulse check clicks a cluster"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Sky canvas: click a worker to open the detail panel (NODES, CLIENTS and ROUTES are empty arrays, so no worker exists to click)",
+  "kind": "canvas",
+  "calls": "none",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "public/app/partner-galaxy.html canvas script: var NODES = [], CLIENTS = [], ROUTES = []; the panel can never open from real data"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Sky canvas: click empty space or press Escape to pull back; panel close button (esc)",
+  "kind": "canvas",
+  "calls": "none",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test clicks it"
+ },
+ {
+  "surface": "public/app/partner-galaxy.html",
+  "control": "Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)",
+  "kind": "nav-link",
+  "calls": "navigation",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/live-white-label-onboard.spec.mjs asserts aside a[href*=brand-studio.html] count 1; e2e/verification-roles.spec.mjs lists the partner screens"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "Open the page (partner's own record; staff must pass ?partner_id=)",
+  "kind": "page",
+  "calls": "GET /api/read/partner-training[?partner_id=] (plain fetch so a 403 reason can be read)",
+  "tables": "partners, training_modules, training_gates, partner_training_progress",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "training:page, training:read-api (runs trainingViewFor in process for a no-partner id and checks modules and 4 gates come back), training:required-step (every module and gate has a title) in src/pulse/coverage/gap-training.mjs; e2e/partner-training.spec.mjs; src/http/partner-training-read.test.mjs; reg:partner-training, reg:read/partner-training; still unsorted in tripwires-baseline.json"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "Refusal panel: not entitled (reason in words), partner_id required (staff), signed out, load failure",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partner-training",
+  "tables": "partners",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/partner-training.spec.mjs 'a partner who is not entitled is told why, not told they are signed out'; src/http/partner-training-read.test.mjs; src/training/entitlement.mjs unit tests"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "'Where you stand' sentence: released to sell alone / supervised calls / may not sell, with gates still open",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partner-training (may_sell_unsupervised, may_sell_supervised, gates_outstanding)",
+  "tables": "partner_training_progress, training_gates",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/partner-training.spec.mjs 'an entitled partner sees their gates, their modules and what is next'; src/training/progress.mjs tests"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "Four gates cards (G1-G4): Passed / Not passed yet / Taken back / Not assessed",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partner-training (gates[])",
+  "tables": "training_gates, partner_training_progress",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/partner-training.spec.mjs; src/pulse/coverage/gap-training.mjs training:required-step for the gate titles"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "What is next: next module and next gate",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partner-training (next_module, next_gate)",
+  "tables": "training_modules, training_gates",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/partner-training.spec.mjs 'what is next'"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "Thirteen modules table: number, module, week, gate, status (Done / Sat, not finished / Not started; Certified marker)",
+  "kind": "read-panel",
+  "calls": "GET /api/read/partner-training (modules[])",
+  "tables": "training_modules, partner_training_progress",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "training:required-step (all 13 titles present) and training:read-api (src/pulse/coverage/gap-training.mjs); e2e/partner-training.spec.mjs"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "Back to Home (header chip link to partner-galaxy.html)",
+  "kind": "link",
+  "calls": "navigation",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:partner-training, reg:read/partner-training; static link; not followed by any test"
+ },
+ {
+  "surface": "public/app/partner-training.html",
+  "control": "No write control exists on purpose (a partner cannot mark their own training)",
+  "kind": "gate",
+  "calls": "none",
+  "tables": "",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/partner-training.spec.mjs 'the screen offers no way to mark your own training'"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "Open the page after checkout (?ref=<payment reference>&client_id=<uuid>; no sign-in needed to load)",
+  "kind": "page",
+  "calls": "none until the poll starts; then GET /api/read/entitlements",
+  "tables": "",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:payment-success; portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs) fetches /app/payment-success.html and fails when it is near-empty, has no closing html or no title; src/payments/commas-api.mjs sets this page as every minted checkout success_url (src/payments/commas-api.test.mjs); no test runs the page's own script"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "The bounded check: up to 6 reads, 3 seconds apart, then stops; baseline = what was already open",
+  "kind": "poll",
+  "calls": "GET /api/read/entitlements?limit=200[&client_id=]",
+  "tables": "v_client_entitlements",
+  "impact": "customerData",
+  "coverage": "none",
+  "evidence": "no test, spec or pulse check executes this inline script; the read behind it is guarded (next row)"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "State shown: Just opened on your account / Nothing new has opened yet / Nothing is open yet / cannot check (signed out) / cannot tell which account / could not reach your account",
+  "kind": "read-panel",
+  "calls": "GET /api/read/entitlements",
+  "tables": "v_client_entitlements",
+  "impact": "customerData",
+  "coverage": "none",
+  "evidence": "no test executes the state logic; the words say 'if you completed the payment ... do not pay again' (nothing verifies that the right state is shown)"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "The feed it reads: entitlements opened by a payment",
+  "kind": "feed",
+  "calls": "GET /api/read/entitlements",
+  "tables": "v_client_entitlements",
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "TRIPWIRES route:read/entitlements -> payments:paid-no-entitlement (gap-payments.mjs) and portal:paid-entitlement (gap-portal.mjs): red when a paid client has no entitlement; reg:read/entitlements"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "Check again (button after the 6 tries, starts one more round)",
+  "kind": "button",
+  "calls": "GET /api/read/entitlements",
+  "tables": "v_client_entitlements",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test clicks it"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "Back to your portal (link, carries client_id)",
+  "kind": "link",
+  "calls": "navigation to client-portal.html?client_id=",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:payment-success; the href is set by the inline script; not followed by any test"
+ },
+ {
+  "surface": "public/app/payment-success.html",
+  "control": "Payment reference line (shows ?ref= as text)",
+  "kind": "display",
+  "calls": "none",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test checks that the reference is shown"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Open the page (all staff roles; owner and admin land here; closers can open it)",
+  "kind": "page",
+  "calls": "GET /api/auth/session (shell); GET /api/dashboard/pipeline?key=sales on DOMContentLoaded",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline and crm-data:pipeline-cards (src/pulse/coverage/gap-crm-links.mjs) run copies of the board SQL read-only for the sales rail and for every rail (cards with no column or no person); e2e/pipeline.spec.mjs, e2e/pipeline-honest.spec.mjs, e2e/screens-smoke.spec.mjs 'closer can open the pipeline board'; live: e2e/live-creative-factory-marketing-menu.spec.mjs opens it on fundhub.ai; reg:pipeline, reg:dashboard/pipeline; still unsorted in tripwires-baseline.json"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-01 Sales",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=sales (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs and e2e/pipeline-honest.spec.mjs (sales board load on open); crm-data:pipeline reads this rail's columns and cards; crm-data:pipeline-cards; src/http/pipeline.pg.test.mjs one GET per rail key"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-02 Funding: Card Stacking",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline-cards (all rails: cards with no column or no person go red); crm-data:pipeline reads the sales rail only; src/http/pipeline.pg.test.mjs 'returns that pipeline's stages and cards' for this key (needs DATABASE_URL); src/http/pipeline-screen.test.mjs checks the rail-to-key map; no browser test clicks this tab"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-04 Optimization (Repair) Rounds",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline-cards (all rails: cards with no column or no person go red); crm-data:pipeline reads the sales rail only; src/http/pipeline.pg.test.mjs 'returns that pipeline's stages and cards' for this key (needs DATABASE_URL); src/http/pipeline-screen.test.mjs checks the rail-to-key map; no browser test clicks this tab"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-05 Inquiry Removal",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline-cards (all rails: cards with no column or no person go red); crm-data:pipeline reads the sales rail only; src/http/pipeline.pg.test.mjs 'returns that pipeline's stages and cards' for this key (needs DATABASE_URL); src/http/pipeline-screen.test.mjs checks the rail-to-key map; no browser test clicks this tab"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-06 AR / Collections",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=ar_collections (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline-cards (all rails: cards with no column or no person go red); crm-data:pipeline reads the sales rail only; src/http/pipeline.pg.test.mjs 'returns that pipeline's stages and cards' for this key (needs DATABASE_URL); src/http/pipeline-screen.test.mjs checks the rail-to-key map; no browser test clicks this tab"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-08 Affiliates + White Label",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline-cards (all rails: cards with no column or no person go red); crm-data:pipeline reads the sales rail only; src/http/pipeline.pg.test.mjs 'returns that pipeline's stages and cards' for this key (needs DATABASE_URL); src/http/pipeline-screen.test.mjs checks the rail-to-key map; no browser test clicks this tab"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail tab R-09 Hiring",
+  "kind": "tab",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (cached per key until a move)",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds",
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline-cards (all rails: cards with no column or no person go red); crm-data:pipeline reads the sales rail only; src/http/pipeline.pg.test.mjs 'returns that pipeline's stages and cards' for this key (needs DATABASE_URL); src/http/pipeline-screen.test.mjs checks the rail-to-key map; no browser test clicks this tab"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Headline: Waiting on us (big number, button that filters the board to cards someone here must move)",
+  "kind": "button",
+  "calls": "no request (counts the stages already read; sets #fWait)",
+  "tables": "cards, messages, conversations, applications",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline-waiting-on.spec.mjs 'the number counts the cards a person here has to move', 'clicking a counter filters the board to it'; src/http/pipeline-screen.test.mjs (one bucket per card)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Headline: Longest wait link (scrolls to that card and rings it; stops being a link when a filter hides the card)",
+  "kind": "link",
+  "calls": "no request (scrollIntoView)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline-waiting-on.spec.mjs 'the next action names one card, and clicking it goes to that card', 'the card it sends you to is RINGED', 'a filter that hides the card stops the jump being a control'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Headline counters: on a bank / on the client / nothing recorded (3 buttons, same filter as the select)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline-waiting-on.spec.mjs 'the counter and the select are one filter, not two'; src/http/pipeline-screen.test.mjs 'Round Submitted is a bank, Action Required is the client'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Board summary: cards count and funding est. total (hidden on non-funding rails)",
+  "kind": "read-panel",
+  "calls": "no request (summed from the stages read)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/pipeline-screen.test.mjs (FHPipelineSummary: sums every stage, unknown is not $0); e2e/report-tieout.spec.mjs 'a column with no funding estimate reads a dash, never $0'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Lens switch: Board / Fulfillment",
+  "kind": "toggle",
+  "calls": "first open of Fulfillment: GET /api/dashboard/clients?limit=200&fulfillment=1",
+  "tables": "clients, crs_results, messages, tasks, transactions, funding_rounds",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline, reg:dashboard/clients; src/http/pipeline-screen.test.mjs 'the lens hides the headline with the rest of the board-only chrome' matches source text and runs the FHFulfillmentLens helpers in Node; no browser test clicks the switch"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Search box (placeholder says name, phone, or email; the filter compares the card's name text only)",
+  "kind": "input",
+  "calls": "no request (hides cards on the page)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; no test types into the pipeline #q box; applyFilters in public/app/pipeline.html matches nameOf(card) only, so a phone or email typed here matches nothing (code reading)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Filter button (opens the panel; count of active filters)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline-waiting-on.spec.mjs opens the filter panel before selecting (Waiting on)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Filter: Waiting on (Anyone / Us / Us - an approval amount / A bank / The client / Nothing recorded)",
+  "kind": "select",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline-waiting-on.spec.mjs 'us - an approval amount' narrows to the approvals with no dollars'; src/http/pipeline-screen.test.mjs"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Filter: Owner (hidden until a card has an owner)",
+  "kind": "select",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; no browser test picks an owner; src/http/pipeline-screen.test.mjs only matches source text"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Filter: Age (Any / Over 1h / Over 1d / Over 3d in stage)",
+  "kind": "select",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs 'Over 3d in stage' keeps a stalled card and drops a just-moved one'; src/http/pipeline-screen.test.mjs 'ageMins prefers the timestamp'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first",
+  "kind": "select",
+  "calls": "no request (reorders cards in each column)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; src/http/pipeline-screen.test.mjs 'there is a sort that puts approvals with no amount first' only matches the source text; no test changes the select"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Clear all (button in the filter panel)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline-waiting-on.spec.mjs 'Clear all releases the Waiting on filter with everything else'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "The x on each active filter chip (clears that one filter)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; no test clicks a chip"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "New Client (button opens the modal: name, email, phone, product with 6 choices; Save / Cancel; same save as the apply form)",
+  "kind": "form",
+  "calls": "POST /api/pipeline-clients {name, email, phone, product}",
+  "tables": "clients, events",
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; src/http/pipeline-clients.test.mjs 'pipeline.html has New Client on the existing board' is a source check only; the modal and its save click are run by no browser test"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "pipeline-clients (server): creates or finds the client through the funnel door and emits entry.captured, which sends the welcome email and text and places the Sales card",
+  "kind": "api-action",
+  "calls": "POST /api/pipeline-clients -> resolveClient + emit entry.captured -> s-00-welcome, s-01-new-lead-intake, s-02-incomplete-survey-nudge (20 min)",
+  "tables": "clients, cards, messages, events",
+  "impact": "customerMessage",
+  "coverage": "e2e",
+  "evidence": "src/http/pipeline-clients.test.mjs ('emits entry.captured after resolveClient', 'unknown product does not emit', 'does not INSERT clients itself'); downstream deep: TRIPWIRES job:s-00-welcome (handoff:lead-first-touches-missing, gap:sms-journey-zero), job:s-01-new-lead-intake, job:s-02-incomplete-survey-nudge (handoff:lead-first-touches-missing)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Rail note on Sales: a payment does not move a card, somebody must move it to Closed Won",
+  "kind": "display",
+  "calls": "none",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test or pulse check mentions the note; src/workflows/dpc-03-inbound-reply-router.mjs is the only automatic move to Closed Won in the moveCardToStage call list (a 'yes' text)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'New Lead' (new_lead): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:new_lead, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only; entry.captured places the card here (src/handlers/client-lifecycle.mjs); TRIPWIRES job:s-01-new-lead-intake guards the intake"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Survey Complete' (survey_complete): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:survey_complete, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Booked' (booked): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:booked, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only; TRIPWIRES job:s-04-call-booked (handoff:booking-no-confirm, calls:booked-no-join-link) guards the booking, not this column"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Confirmed' (confirmed): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:confirmed, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Showed' (showed): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:showed, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only; dpc-02-call-outcome-enforcement moves a card here after the call outcome"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Diagnostic Paid' (diagnostic_paid): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:diagnostic_paid, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Decision Rendered' (decision_rendered): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:decision_rendered, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Closed Won (deposit)' (closed_won): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:closed_won, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only; a paid deposit does not move the card; dpc-03 moves it on a 'yes' reply (src/workflows/dpc-03-inbound-reply-router.mjs)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Downsell' (downsell): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:downsell, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only; dpc-03-inbound-reply-router moves a card here on a downsell reply"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Sales column 'Lost' (lost): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:lost, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "crm-data:pipeline reads the sales columns and cards (gap-crm-links.mjs); drag drop: e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move'; moveCardToStage emits no event on this rail, position only; dpc-02 moves a no-show here; the MOVE menu 'Mark Lost' also lands here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funding: Card Stacking column 'Apply Now' (apply_now): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:funding_card_stacking, stage_key:apply_now, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "drag drop: e2e/pipeline.spec.mjs and e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/http/pipeline-cards.test.mjs; crm-data:pipeline-cards (cards with no column go red); emits round.started -> f-01-funding-intake, f-02-portal-id-missing, f-10 inbox provisioner, round-started-client-notify (client text), c-05, bc-01, bc-02; purchase-routing also places new cards here on a purchase; funding:round-stuck (gap-funding.mjs) goes red when an open round sits still 72 hours"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funding: Card Stacking column 'Round Submitted' (round_submitted): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:funding_card_stacking, stage_key:round_submitted, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "drag drop: e2e/pipeline.spec.mjs and e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/http/pipeline-cards.test.mjs; crm-data:pipeline-cards (cards with no column go red); emits round.submitted -> f-03-round-submitted (client text and email); the headline counts this stage as 'on a bank'; funding:round-stuck and funding:submit-path (gap-funding.mjs)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funding: Card Stacking column 'Approved' (approved): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:funding_card_stacking, stage_key:approved, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "drag drop: e2e/pipeline.spec.mjs and e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/http/pipeline-cards.test.mjs; crm-data:pipeline-cards (cards with no column go red); emits round.approved -> f-04-round-approvals (client text and email), f-05-inquiry-cleanup-gate; f-11-bank-email-event-router also moves cards here; funding:round-stuck"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funding: Card Stacking column 'Action Required' (action_required): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:funding_card_stacking, stage_key:action_required, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop: e2e/pipeline.spec.mjs and e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/http/pipeline-cards.test.mjs; crm-data:pipeline-cards (cards with no column go red); no round event; the headline counts this stage as 'on the client'; allowed while a funding hold is on; funding:round-stuck"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funding: Card Stacking column 'Funded' (funded): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:funding_card_stacking, stage_key:funded, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "drag drop: e2e/pipeline.spec.mjs and e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/http/pipeline-cards.test.mjs; crm-data:pipeline-cards (cards with no column go red); emits round.funded; refused unless a funded amount is given and every bank yes has a dollar amount; money-chain then f-07-funding-locked raises the success-fee invoice; NO pulse check goes red when a funded round gets no invoice (payments:invoice-stuck only compares invoice state to money)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funding: Card Stacking column 'Closed' (closed): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:funding_card_stacking, stage_key:closed, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "drag drop: e2e/pipeline.spec.mjs and e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/http/pipeline-cards.test.mjs; crm-data:pipeline-cards (cards with no column go red); emits round.closeout -> n-04-post-funding-nurture (client text and email) and inquiry-gate cleanup; nurture:never-queued (gap-nurture.mjs) goes red when a closeout event never queued its message"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Intake' (intake): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:intake, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); purchase-routing places new cards here; fulfillment:next-action (gap-fulfillment.mjs) goes red past the 3 business day clock in src/repair/sla.mjs"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Awaiting Documents' (awaiting_documents): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:awaiting_documents, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action past the 14 day clock; inquiry docs workflows also use this key on the Inquiry rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Analysis' (analysis): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:analysis, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action past the 1 hour clock"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Letters Generated' (letters_generated): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:letters_generated, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action past the 30 minute clock; pipeline:repair (src/pulse/pipeline-motion.mjs) goes red when a file sits here too long"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Ready to Send' (ready_to_send): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:ready_to_send, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action past the 4 hour clock; pipeline:repair"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'In Transit' (in_transit): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:in_transit, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action past the 10 day clock"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Awaiting Response' (awaiting_response): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:awaiting_response, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action reads this stage against the bureau response due date plus 5 days"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Response Received' (response_received): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:response_received, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); fulfillment:next-action past the 24 hour clock; pipeline:repair"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Round Complete' (round_complete): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:round_complete, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Program Complete' (program_complete): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:program_complete, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'On Hold' (on_hold): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:on_hold, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Stalled' (stalled): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:stalled, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); pipeline:repair goes red when a file sits here too long"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Cancelled' (cancelled): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:cancelled, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Round Sent (legacy)' (round_sent): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:round_sent, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); retired stage kept in the table (db/migrations/161_optimization_repair_pipeline.sql); api/dashboard/pipeline.mjs does not filter it, so it paints as a column; the MOVE menu item 'Repair Rounds' targets this key"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Bureau Processing (legacy)' (bureau_processing): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:bureau_processing, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); retired stage kept in the table; paints as a column"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Portal Updated (legacy)' (portal_updated): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:portal_updated, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); retired stage kept in the table; paints as a column"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Optimization (Repair) Rounds column 'Upgrade Invite (legacy)' (upgrade_invite): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=optimization (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:optimization, stage_key:upgrade_invite, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); retired stage kept in the table; paints as a column"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Requested' (requested): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:requested, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); src/handlers/inquiry-gate.mjs moves the card here; the MOVE menu item 'Inquiry Removal' lands here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Specialist Assigned' (specialist_assigned): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:specialist_assigned, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); src/handlers/inquiry-gate.mjs and inquiry-docs.mjs move cards here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Awaiting Documents' (awaiting_documents): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:awaiting_documents, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); src/handlers/inquiry-gate.mjs moves cards here when documents are missing"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Letters Sent' (letters_sent): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:letters_sent, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); src/inquiry-ops/send.mjs moves cards here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Calls In Progress' (calls_in_progress): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:calls_in_progress, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); src/inquiry-ops/call-scheduler.mjs moves cards here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Removed' (removed): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:removed, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Resume Funding' (resume_funding): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:resume_funding, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); src/inquiry-ops/gate.mjs moves cards here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Inquiry Removal column 'Hold' (hold): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=inquiry_removal (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:inquiry_removal, stage_key:hold, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "AR / Collections column 'Invoice Sent' (invoice_sent): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=ar_collections (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:ar_collections, stage_key:invoice_sent, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); the MOVE menu item 'AR / Collections' lands here; no invoice is created by the move"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "AR / Collections column 'Reminder' (reminder): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=ar_collections (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:ar_collections, stage_key:reminder, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "AR / Collections column 'Escalation' (escalation): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=ar_collections (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:ar_collections, stage_key:escalation, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "AR / Collections column 'Paid' (paid): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=ar_collections (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:ar_collections, stage_key:paid, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "AR / Collections column 'Written Off' (written_off): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=ar_collections (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:ar_collections, stage_key:written_off, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Affiliates + White Label column 'Recruiting' (recruiting): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:affiliates_white_label, stage_key:recruiting, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); cards here come from partners (api/public/partner-apply.mjs writes cards with partner_id) and carry no client_id, so persistCardMove in pipeline.html keeps a drag only in sessionStorage and sends nothing to the server (code reading, not run); no card click opens a drawer for them"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Affiliates + White Label column 'Invited' (invited): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:affiliates_white_label, stage_key:invited, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Affiliates + White Label column 'Agreement Signed' (agreement_signed): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:affiliates_white_label, stage_key:agreement_signed, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Affiliates + White Label column 'Active' (active): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:affiliates_white_label, stage_key:active, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Affiliates + White Label column 'Paused' (paused): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:affiliates_white_label, stage_key:paused, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Applied' (applied): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:applied, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); candidates live in candidate_applications, not cards (db/migrations/051_hiring.sql header); no INSERT INTO cards or moveCardToStage call in src/ or api/ names pipeline 'hiring', so this rail has no cards to drop"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Screening' (screening): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:screening, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Group Interview' (group_interview): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:group_interview, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column '1:1 Interview' (one_on_one): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:one_on_one, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Offer' (offer): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:offer, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Hired' (hired): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:hired, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Onboarding' (onboarding): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:onboarding, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Ramp (60-day trial)' (ramp): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:ramp, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Performing' (performing): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:performing, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Not Moving Forward' (rejected): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:rejected, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Hiring column 'Withdrawn' (withdrawn): shows count and funding est.; accepts a dropped card",
+  "kind": "kanban-column",
+  "calls": "GET /api/dashboard/pipeline?key=hiring (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:hiring, stage_key:withdrawn, from_pipeline_key}",
+  "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "drag drop works the same on every rail (e2e/pipeline.spec.mjs, generic); moveCardToStage emits no event outside Card Stacking, so a move here is position only; crm-data:pipeline-cards (all rails: cards with no column or no person); same: no cards on this rail"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: click the card body (opens the right-hand client drawer)",
+  "kind": "card-action",
+  "calls": "GET /api/dashboard/client?id=; GET /api/read/ad-attribution?client_id=",
+  "tables": "clients, transactions, messages, crs_results, tradelines, businesses",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/launch-proof-live.spec.mjs 'Pipeline shows only the marked E2E card and opens its drawer without moving it' (live, run only by playwright.launch-proof.config.mjs; the default config and the live sweep ignore it); src/http/pipeline-drawer.test.mjs (survey rows, ad routing words); crm-data:client (gap-crm-links.mjs) reads the same client records"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: drag the card (pointer) to another column on the same rail",
+  "kind": "drag-drop",
+  "calls": "POST /api/pipeline-cards {action:move, client_id, pipeline_key, stage_key}",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs 'dropping a card onto another column posts a move' (drops onto the Booked column of the stub board); on a server refusal the page puts the card back and alerts (public/app/pipeline.html end(), code reading, not run)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "pipeline-cards move (server): staff move a client's card to a stage, owners exempt from the shift gate, other org is 404, a Funded move needs a dollar amount",
+  "kind": "api-action",
+  "calls": "POST /api/pipeline-cards -> moveCardToStage (+ round.* events on Card Stacking)",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/pipeline-cards.test.mjs ('owner is exempt from the shift gate', 'cross-rail move clears the card on the rail it left', 'refuses a client from another org', 'unknown stage returns 404'); src/funding/card-stacking-rounds.pg.test.mjs; src/funding/closeout.test.mjs; reg:pipeline-cards (POST only, 405 counts as up); still unsorted in tripwires-baseline.json"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: MOVE button (opens the route menu for that card)",
+  "kind": "card-action",
+  "calls": "no request until a destination is chosen",
+  "tables": "",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs 'MOVE posts a pipeline-cards move'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "MOVE menu: Card Stacking -> funding_card_stacking / apply_now (starts a funding round and texts the client)",
+  "kind": "menu-item",
+  "calls": "POST /api/pipeline-cards {action:move, pipeline_key:funding_card_stacking, stage_key:apply_now, from_pipeline_key}",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "customerMessage",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs 'MOVE posts a pipeline-cards move'; same server tests as the Apply Now column"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "MOVE menu: Repair Rounds -> optimization / round_sent",
+  "kind": "menu-item",
+  "calls": "POST /api/pipeline-cards {pipeline_key:optimization, stage_key:round_sent}",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs clicks only the first menu item (Card Stacking); the click handler is shared; target stage 'round_sent' is the retired legacy key (161 remapped its cards to in_transit but left the row); pipeline:repair does not list it"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "MOVE menu: Inquiry Removal -> inquiry_removal / requested",
+  "kind": "menu-item",
+  "calls": "POST /api/pipeline-cards {pipeline_key:inquiry_removal, stage_key:requested}",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs clicks only the first menu item (Card Stacking); the click handler is shared; gap-inquiry.mjs and the inquiry workflows read this rail afterward"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "MOVE menu: Mark Lost -> sales / lost",
+  "kind": "menu-item",
+  "calls": "POST /api/pipeline-cards {pipeline_key:sales, stage_key:lost}",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs clicks only the first menu item (Card Stacking); the click handler is shared; dpc-02-call-outcome-enforcement also moves no-shows here"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "MOVE menu: AR / Collections -> ar_collections / invoice_sent",
+  "kind": "menu-item",
+  "calls": "POST /api/pipeline-cards {pipeline_key:ar_collections, stage_key:invoice_sent}",
+  "tables": "cards (INSERT/UPDATE/DELETE), pipeline_stages, clients, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "e2e/pipeline.spec.mjs clicks only the first menu item (Card Stacking); the click handler is shared; no invoice is created by this move (position only)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)",
+  "kind": "prompt",
+  "calls": "no request until a valid dollar amount; then funded_amount in the same POST /api/pipeline-cards",
+  "tables": "funding_rounds",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "e2e/funded-amount.spec.mjs 'a typed amount reaches the request as funded_amount in dollars', 'CANCELLING THE BOX SENDS NOTHING', 'AN EMPTY BOX SENDS NOTHING', 'a move to any other column still needs no amount'; public/app/money-input.js parseAmount"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: DEL button then modal 'Archive this contact?' (type DELETE, Archive / Cancel)",
+  "kind": "modal",
+  "calls": "POST /api/dashboard/client-archive {client_id, confirm:'DELETE'}",
+  "tables": "cards (DELETE), clients (custom_fields.crm_archived_at)",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline, reg:dashboard/client-archive; the modal and its type-DELETE gate are run by no browser test"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "client-archive (server): removes every card and stamps crm_archived_at; payments and credit pulls stay",
+  "kind": "api-action",
+  "calls": "POST /api/dashboard/client-archive",
+  "tables": "cards (DELETE), clients",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/client-archive.test.mjs ('refuses confirm that is not exactly DELETE', 'scopes by org', 'archives: removes cards and stamps crm_archived_at', 'partner role is refused')"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: SMS and email lines (links to messaging.html?client_id=&channel=, red 1 badge when the client wrote last)",
+  "kind": "link",
+  "calls": "navigation to messaging.html?client_id=&channel=sms|email",
+  "tables": "conversations, messages",
+  "impact": "customerMessage",
+  "coverage": "e2e",
+  "evidence": "src/http/pipeline.pg.test.mjs 'pipeline cards mark sms/email needs_reply when that person wrote last'; the link is not followed by any test"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: hover tooltip (last activity from the card footer)",
+  "kind": "display",
+  "calls": "none",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test hovers a card"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Card: 'Amount needed' chip (approval with no dollar amount)",
+  "kind": "display",
+  "calls": "GET /api/dashboard/pipeline (approval_amount_missing)",
+  "tables": "applications, funding_rounds",
+  "impact": "money",
+  "coverage": "e2e",
+  "evidence": "src/http/pipeline.pg.test.mjs 'a card flags an approval that has no dollar amount, and a recorded amount clears it'; e2e/funded-amount.spec.mjs 'the card carries the flag when an approval has no dollar amount'"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Drawer: Contact, Call, Credit (three bureau scores, income estimates, business score), Businesses, Path, How they got here, Survey sections",
+  "kind": "read-panel",
+  "calls": "GET /api/dashboard/client?id=; GET /api/read/ad-attribution?client_id=",
+  "tables": "clients, transactions, messages, crs_results, tradelines, businesses",
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/pipeline-drawer.test.mjs; e2e/launch-proof-live.spec.mjs (live, separate config); crm-data:client (gap-crm-links.mjs) reads the same transactions and messages"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Drawer: Open full file link (client-control-panel.html?id=)",
+  "kind": "link",
+  "calls": "navigation",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; not followed by any test"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Drawer: Archive and Close buttons, Escape key",
+  "kind": "button",
+  "calls": "Archive -> same modal as DEL; Close and Escape close the drawer",
+  "tables": "cards, clients",
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; no browser test presses them"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Fulfillment lens: six tiles (Total clients, Needs Pull, Action Needed, Ready, Total Prequal, Total Approved)",
+  "kind": "read-panel",
+  "calls": "GET /api/dashboard/clients?limit=200&fulfillment=1",
+  "tables": "clients, crs_results, funding_rounds, applications, tasks",
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "fulfillment:api (gap-fulfillment.mjs) runs the per-file fulfillment read for every funding and repair file and goes FAIL when one throws or reads 'not worked out'; src/http/pipeline-screen.test.mjs (lens money is never invented); src/http/dashboard-next-action.test.mjs; crm-data:clients reads the client list"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Fulfillment lens: client rows with next-action chip, blocker pills and funding round line",
+  "kind": "read-panel",
+  "calls": "GET /api/dashboard/clients?fulfillment=1",
+  "tables": "clients, funding_rounds, applications",
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "fulfillment:api and fulfillment:next-action (gap-fulfillment.mjs); src/http/pipeline-screen.test.mjs (chipOf, blockersOf, roundText)"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Fulfillment lens: click a chip to show only that action; Show all clears it",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:pipeline, reg:dashboard/pipeline; helpers tested in src/http/pipeline-screen.test.mjs; the click handler is run by no browser test"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "Clock (Arizona time) and LIVE pill in the header",
+  "kind": "display",
+  "calls": "none",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test or check"
+ },
+ {
+  "surface": "public/app/pipeline.html",
+  "control": "proxy-apply.js (Oxylabs residential proxy door) is loaded on this page; nothing on pipeline.html calls FHProxyApply",
+  "kind": "external-dependency",
+  "calls": "none from this page (the script defines /api/proxy/launch and /api/proxy/end callers used elsewhere)",
+  "tables": "none",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/proxy-apply.spec.mjs covers it on the pages that call it; no element on pipeline.html invokes it"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Role gate: cached role bounces a role that may not open this page; session answer is authoritative; no session sends to the sign-in page",
+  "kind": "gate",
+  "calls": "GET /api/auth/session",
+  "tables": "sessions, staff",
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "gap:auth-session-read (src/pulse/coverage/gap-auth.mjs) reads sessions + staff with the app role and fails on a missing grant; e2e/sidebar-roles.spec.mjs, e2e/verification-roles.spec.mjs (who sees which row and screen); src/http/app-nav-reachability.test.mjs; src/http/app-nav-matches-shell.test.mjs"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Sales' header (fold/unfold) and its links: pipeline.html, closer-dashboard.html, my-numbers.html, sales-floor.html, calendar.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Funding' header (fold/unfold) and its links: lenders.html, client-control-panel.html, finance-os.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Client ops' header (fold/unfold) and its links: csm-queue.html, consent-capture.html, messaging.html, documents.html, inquiry-remover.html, company-brain.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Watch' header (fold/unfold) and its links: galaxy.html, ops-admin.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Automation' header (fold/unfold) and its links: agent-editor.html, automations.html, journeys.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Marketing' header (fold/unfold) and its links: marketing-command-center.html, campaign-manager.html, social-studio.html, creative-factory.html, content-admin.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping; live: e2e/live-creative-factory-marketing-menu.spec.mjs clicks Marketing then Creative Factory on fundhub.ai"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Admin' header (fold/unfold) and its links: staff-teams.html, hiring.html, products-commissions.html, contracts.html, brand-studio.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar group 'Portals' header (fold/unfold) and its links: client-portal.html, affiliate.html",
+  "kind": "nav-link",
+  "calls": "navigation to each desk; rows hidden by role (gateLinks) and by NAV_HIDDEN",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "e2e/sidebar-roles.spec.mjs ('section order matches the simplified shell structure', 'rail stays fixed and identical across page navigation', per-role rows); src/http/app-nav-matches-shell.test.mjs, src/http/app-nav-reachability.test.mjs; each target desk has a reg: ping"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Sidebar logo link (to pipeline.html) and collapse button (to icon strip; closes the drawer on a phone)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/mobile-shell.test.mjs; e2e/sidebar-roles.spec.mjs 'rail stays fixed'"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Menu button and scrim on a phone (opens and closes the off-canvas sidebar)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/mobile-shell.test.mjs"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Search button and overlay (Cmd or Ctrl K): type to search clients, contracts, documents, conversations, pipeline cards; hits are links",
+  "kind": "input",
+  "calls": "GET /api/read/search?q=",
+  "tables": "clients, contracts, documents, conversations, messages, cards, accounts, businesses, partners",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "src/http/search-read.test.mjs (every ROLE_SETS.STAFF role admitted, partner and client refused, binds the session org); src/http/search-screen.test.mjs (overlay, shortcut, groups); reg:read/search"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Account chip: add or change your photo (hidden file input, PNG or JPEG)",
+  "kind": "file-upload",
+  "calls": "POST /api/staff/avatar (multipart field 'photo'); then GET /api/auth/session",
+  "tables": "staff",
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "src/http/staff-avatar.pg.test.mjs; reg:staff/avatar"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Account chip: Sign out",
+  "kind": "button",
+  "calls": "POST /api/auth/logout (revokes the staff session and the account session; then clears fh_token, fh_demo, fh_demo_staff and goes to sign-in)",
+  "tables": "sessions, account_sessions",
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "reg:auth/logout (POST-only, 405 counts as up); gap:auth-session-read (src/pulse/coverage/gap-auth.mjs) probes that the app role holds the UPDATE on sessions that logout needs, but not that the token was revoked; no test calls api/auth/logout.mjs and no spec presses Sign out"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Account chip: x hide the bar and the small 'account' button that brings it back",
+  "kind": "button",
+  "calls": "no request (localStorage fh_chip_hidden)",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no test or check"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Account chip: backend badge (LIVE / NO DB / NO API / DEMO)",
+  "kind": "display",
+  "calls": "GET /api/health",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "reg:health (/api/health?strict=1) and beat doors-live; the badge logic itself has no test"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Brand paint: company colors and logo applied to the chrome",
+  "kind": "display",
+  "calls": "GET /api/org-brand",
+  "tables": "org_brand, v_org_brand_effective, partner_brand",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/http/org-brand-gate.test.mjs; src/http/org-brand-principal.pg.test.mjs; owner-tools:brand-studio (gap-owner-tools.mjs) reads v_org_brand_effective"
+ },
+ {
+  "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+  "control": "Beta banner with Dismiss (only for owner on pages listed in BETA_PAGES; the list is empty)",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "var BETA_PAGES = [] in public/app/shell.js, so the banner is never drawn on any page"
+ },
+ {
+  "surface": "public/app/chat-widget.js (mounted by shell.js on the same desks; skipped for partner and affiliate roles)",
+  "control": "Chat button (opens and closes the panel) and close x",
+  "kind": "button",
+  "calls": "no request",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "src/http/chat-widget-precall.test.mjs covers the portal pre-call pop-open and wiring; the staff panel open path is not run"
+ },
+ {
+  "surface": "public/app/chat-widget.js (mounted by shell.js on the same desks; skipped for partner and affiliate roles)",
+  "control": "Mode tabs: Ask system / Knowledge / Message",
+  "kind": "tab",
+  "calls": "no request until Send",
+  "tables": "",
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "src/http/chat-widget-precall.test.mjs ('portal modes do not include Company Brain ask') is about the client portal; staff tabs are markup"
+ },
+ {
+  "surface": "public/app/chat-widget.js (mounted by shell.js on the same desks; skipped for partner and affiliate roles)",
+  "control": "Ask system / Knowledge: type a question and press Ask or Enter",
+  "kind": "button",
+  "calls": "POST /api/chat/ask {mode, question} -> model call",
+  "tables": "",
+  "impact": "none",
+  "coverage": "e2e",
+  "evidence": "src/chat/staff-assistant.test.mjs (Claude answer, keyword fallback, empty question never calls the model, no markdown); src/http/chat-widget-precall.test.mjs '/api/chat/ask stays staff-gated'; reg:chat/ask"
+ },
+ {
+  "surface": "public/app/chat-widget.js (mounted by shell.js on the same desks; skipped for partner and affiliate roles)",
+  "control": "Message > Staff (internal): pick a teammate and send",
+  "kind": "button",
+  "calls": "GET /api/chat/peers; GET /api/chat/messages?kind=internal; POST /api/chat/messages {kind:internal, peer_staff_id, body}; polls every 4 s",
+  "tables": "staff, conversations, conversation_participants, messages",
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "reg:chat/peers, reg:chat/messages; no test imports api/chat/messages.mjs or api/chat/peers.mjs; src/http/chat-widget-precall.test.mjs 'staff Message loads the thread via existing GET' is a source check"
+ },
+ {
+  "surface": "public/app/chat-widget.js (mounted by shell.js on the same desks; skipped for partner and affiliate roles)",
+  "control": "Message > Client: paste a client id and send (goes through the compliance gate as a text)",
+  "kind": "button",
+  "calls": "POST /api/chat/messages {kind:client, client_id|conversation_id, channel:sms, body} -> composeAndSend",
+  "tables": "conversations, messages, clients",
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "reg:chat/messages (GET ping); the handler has no test of its own, but composeAndSend is tested in src/messaging/compose.test.mjs and compose.pg.test.mjs; hourly beat text-path watches the send path; this call is shift-gated (requireActiveShift)"
+ }
+]

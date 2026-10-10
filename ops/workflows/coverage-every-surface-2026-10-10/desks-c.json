@@ -1,0 +1,2802 @@
+[
+  {
+    "surface": "index.html",
+    "control": "Page entry: forwards each signed-in role to its own home desk (shell.js HOME map); no on-page controls",
+    "kind": "redirect",
+    "calls": "GET /api/auth/session (via shell.js)",
+    "tables": "sessions, staff",
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-staff.mjs role-desk reads shell.js HOME map and opens every role's home desk, red on non-2xx; reg:index ping; e2e/screens-smoke.spec.mjs loads /app/index.html; src/http/app-nav-reachability.test.mjs"
+  },
+  {
+    "surface": "index.html",
+    "control": "No session / unknown role: sends person to sign-in (login.html?next= or portal-login)",
+    "kind": "redirect",
+    "calls": "GET /api/auth/session",
+    "tables": "sessions",
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-auth.mjs gap:auth-session-read + gap:auth-staff-login read the sign-in path live; e2e/login.spec.mjs drives sign-in with stubbed backend"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Sidebar nav: links in 9 groups (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals), filtered per role and by NAV_HIDDEN (hiring, journeys, finance-os, consent-capture, galaxy, partner-galaxy, ops-admin, automations, brand-studio, affiliate, agent-editor, partner-training have no menu row)",
+    "kind": "link",
+    "calls": "navigates to other desks",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/sidebar-roles.spec.mjs (per-role link sets, retired rows absent, rail fixed across pages); src/http/app-nav-matches-shell.test.mjs; src/http/app-nav-reachability.test.mjs; gap-staff role-desk"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Sidebar group heads (collapse/expand), burger collapse, mobile menu button + scrim",
+    "kind": "toggle",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it: e2e/sidebar-roles.spec.mjs only reads link sets; page up via reg: desk pings"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Global Search button + overlay input (type to search clients, contracts, documents, conversations, cards)",
+    "kind": "input",
+    "calls": "GET /api/read/search?q=",
+    "tables": "clients, businesses, cards, contracts, documents, conversations, messages, accounts, partners, pipelines",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/search-screen.test.mjs, src/http/search-read.test.mjs; reg:read/search ping; no deep check"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Avatar photo upload (click avatar, choose image)",
+    "kind": "file upload",
+    "calls": "POST /api/staff/avatar",
+    "tables": "staff, documents store",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/staff-avatar.pg.test.mjs (handler); reg:staff/avatar ping; no UI-click test"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Sign out button",
+    "kind": "button",
+    "calls": "POST /api/auth/logout",
+    "tables": "sessions",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/auth/session.test.mjs; reg:auth/logout ping; e2e/login.spec.mjs covers sign-in only"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Top bar status chip: LIVE / NO API / DB DOWN word (reads /api/health on load)",
+    "kind": "stat tile",
+    "calls": "GET /api/health",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "beat-db-health.mjs step health-endpoint (hourly) + beat-doors-live.mjs door-health; reg:health ping; src/http/health.test.mjs"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Top bar chip: hide button and the small show pill",
+    "kind": "toggle",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Beta banner Dismiss button (owner only)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "BETA_PAGES in shell.js is an empty array, so the banner never renders on any desk; no test"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Brand paint (reads /api/org-brand, colours the chrome)",
+    "kind": "page",
+    "calls": "GET /api/org-brand",
+    "tables": "org_brand, partner_brand, v_org_brand_effective",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/org-brand-principal.pg.test.mjs; reg:org-brand ping; gap-owner-tools owner-tools:brand-studio reads the brand row"
+  },
+  {
+    "surface": "shell.js (shared chrome on every staff desk)",
+    "control": "Chat widget on every desk: Ask (AI answer), Knowledge, Message staff, Message a client",
+    "kind": "button",
+    "calls": "POST /api/chat/ask ; GET/POST /api/chat/messages ; GET /api/chat/peers",
+    "tables": "conversations, conversation_participants, messages, clients, staff",
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "reg:chat/ask, chat/messages, chat/peers pings only; src/chat/staff-assistant.test.mjs covers the Ask text; no handler test for api/chat/messages; client sends go through composeAndSend so text-path/email-path beats watch the sender"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Page gate: only owner and admin open Hiring; no sidebar row exists (NAV_HIDDEN), so it is reached only by typing /app/hiring.html or a link",
+    "kind": "gate",
+    "calls": "GET /api/auth/session; GET /api/hiring/* (HIRING role set)",
+    "tables": "sessions, staff",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/verification-roles.spec.mjs (closer, setter, csm, sales_manager forbidden hiring.html); src/hiring/hiring-endpoints.pg.test.mjs 'reads are gated to HIRING'; gap-staff.mjs role-gate only proves a bad cookie gets 401, not the role check"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Page load: fires demo/mode + candidates + postings + decisions + bench reads, paints tiles, board and tables",
+    "kind": "page",
+    "calls": "GET /api/demo/mode; GET /api/hiring/candidates?state=all&limit=200; GET /api/hiring/postings; GET /api/hiring/decisions; GET /api/hiring/bench",
+    "tables": "candidate_applications, candidates, hiring_roles, pipeline_stages, application_scores, hiring_job_postings, hiring_decisions, v_hiring_bench",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs load page with stubbed backend; src/hiring/hiring-endpoints.pg.test.mjs 'the SQL runs' for each read; reg:hiring + reg:hiring/* pings; no deep check reads real hiring data"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Reset filters button",
+    "kind": "button",
+    "calls": "none (client only; re-runs boot)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke + reg:hiring"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Summary tiles: SHORT BY, WAITING ON YOU, ON THE BENCH, OPEN APPLICATIONS + bench chip",
+    "kind": "stat tile",
+    "calls": "GET /api/hiring/bench; GET /api/hiring/candidates",
+    "tables": "v_hiring_bench, candidate_applications, hiring_roles",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs 'bench counts only candidates past the group interview'; tile arithmetic is page JS with no test; days-in-stage uses a hard-coded NOW of 2026-07-30 in the page"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags",
+    "kind": "table",
+    "calls": "GET /api/hiring/bench?limit=200",
+    "tables": "v_hiring_bench, candidate_applications, pipeline_stages, hiring_roles, staff",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs bench SQL runs; src/hiring/hiring.pg.test.mjs bench count + short-bench task"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Short-bench task opened daily by hiring-bench-sweeper (feeds SHORT BY)",
+    "kind": "job",
+    "calls": "Inngest cron 30 13 * * *",
+    "tables": "tasks, candidate_applications, hiring_roles",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "heartbeats.mjs JOBS hiring-bench-sweeper (red after 3x daily); slice-11-hiring.mjs itself reports the sweeper has no MACHINE_CHECKS row; src/workflows/hiring-bench-sweeper.pg.test.mjs"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Candidate outreach cadence job every 30 min (texts/emails to applicants; not a button on this desk)",
+    "kind": "job",
+    "calls": "Inngest cron */30 * * * *",
+    "tables": "candidate_outreach, candidates, messages, message_templates",
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "heartbeats.mjs JOBS hiring-outreach-cadence; slice-11 reports missing MACHINE_CHECKS row; src/hiring/outreach.pg.test.mjs; recipients are applicants, not clients"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Waiting-on-a-person table: click or Enter on a row opens the candidate drawer",
+    "kind": "table row",
+    "calls": "none (client only; opens drawer)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks a row; flag rules are a page copy of grading (src/hiring/grading.test.mjs tests the module, not the page)"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board filter: role select (all, closer, setter, sales_coordinator)",
+    "kind": "filter",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test drives it; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board filter: source select (referral, client_base, audience, social, job_board, ads, linkedin, recruiter, inbound)",
+    "kind": "filter",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test drives it; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board filter: 'flagged only' toggle",
+    "kind": "toggle",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test drives it; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Stage rail: 'all stages' button + one button per stage (filters the board, 11 buttons)",
+    "kind": "filter",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test drives it; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Applied (applied)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs test titled apply creates a candidate and an application in applied; src/hiring/apply-public.pg.test.mjs"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Screening (screening)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs 'advance moves the stage and logs the decision'"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Group Interview (group_interview)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs 'group interview: yes AND maybe both advance; no waits for a human'"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: 1:1 Interview (one_on_one)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs advance + bench tests"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Offer (offer)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs 'an offer requires a named human at the engine'"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Hired (hired)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs advance tests; closing on hired is enforced by pipeline.mjs, not separately asserted"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Onboarding (onboarding)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "no path from this desk; display only; reg:hiring/candidates ping; not a headcount per page note"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Ramp (60-day trial) (ramp)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "no path from this desk; ramp review is tested in src/hiring/hiring.pg.test.mjs but the column display is not"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Performing (performing)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "no path from this desk; display only; reg:hiring/candidates ping"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Not Moving Forward (rejected)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs three-layer 'no candidate is ever rejected by software' + proper human rejection"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board column: Withdrawn (withdrawn)",
+    "kind": "board column",
+    "calls": "GET /api/hiring/candidates (cards in this stage)",
+    "tables": "candidate_applications, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "page says nothing writes this stage yet; display only; reg:hiring/candidates ping"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Board card: click opens the application drawer (name, scores, flags, source, video/resume tags)",
+    "kind": "card action",
+    "calls": "GET /api/hiring/application?id=",
+    "tables": "candidate_applications, candidates, application_scores, hiring_decisions, hiring_interviews, hiring_interview_attendees, hiring_job_postings, hiring_roles, staff",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs 'application detail shows the FULL score history', 404 on unknown id, no protected column returned; card click itself untested; cards cannot be dragged (page says so)"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Drawer: stage select + Advance button (move to next stage up to hired, optional reason)",
+    "kind": "card action",
+    "calls": "POST /api/hiring/decide {action:'advance', to_stage, reason}",
+    "tables": "candidate_applications, hiring_decisions, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs advance/offer/group-interview tests; src/hiring/hiring-endpoints.pg.test.mjs decide shell (GET refused, unsigned refused, decided_by session-owned); button click and reload not driven by any browser test"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Drawer: Reject button + required reason box (asks confirm, no undo)",
+    "kind": "card action",
+    "calls": "POST /api/hiring/decide {action:'reject', reason}",
+    "tables": "candidate_applications, hiring_decisions, tasks",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs rejection needs staff id and reason at engine and DB; creates candidate-feedback task, sends nothing; button click not driven by a browser test"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Drawer close: X button, scrim click, Escape key",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Postings: state rail (all, draft, posted, paused, closed, failed) and channel rail (all, linkedin, facebook, job_board, internal)",
+    "kind": "filter",
+    "calls": "GET /api/hiring/postings?limit=200",
+    "tables": "hiring_job_postings, hiring_roles, candidate_applications",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "client filter, no test drives it; read SQL runs in src/hiring/hiring-endpoints.pg.test.mjs; page says LinkedIn is not connected and nothing creates a posting"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Postings table row: expand/collapse detail",
+    "kind": "table row",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Reports disclosure (summary toggle) holding the funnel and decisions tables",
+    "kind": "disclosure",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page load smoke only"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Funnel: role select + days select (30, 90, 180, 365, 730) -> where applications come from",
+    "kind": "filter",
+    "calls": "GET /api/hiring/funnel?days=&role=&limit=200",
+    "tables": "candidate_applications, candidates, hiring_roles, pipeline_stages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs funnel SQL runs; windows are computed from the page's hard-coded NOW (2026-07-30)"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Decisions log: role select, days select, decision-kind rail (advance, reject, offer, offer_accepted, offer_declined, withdraw, hold)",
+    "kind": "filter",
+    "calls": "GET /api/hiring/decisions?state=&days=&limit=200",
+    "tables": "hiring_decisions, staff, hiring_roles, candidates, candidate_applications, application_scores",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs 'decisions endpoint reports whether the human followed the machine'; four of seven kinds have no producing code path (page says so)"
+  },
+  {
+    "surface": "hiring.html",
+    "control": "Demo Mode rows: shown with a demo label when demo mode is on, counted nowhere; sample data when localStorage fh_demo=1",
+    "kind": "toggle",
+    "calls": "GET /api/demo/mode",
+    "tables": "orgs (demo flag)",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test drives the demo labels or the fh_demo sample session on this desk (e2e/demo-mode.spec.mjs only proves the banner is gone on other desks); reg:demo/mode ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Page gate: owner, admin, funding_advisor only (read + write endpoints return 403 to every other role)",
+    "kind": "gate",
+    "calls": "GET /api/read/lenders; POST /api/lenders",
+    "tables": "lenders",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders-role-gate.test.mjs (locked set, allowed vs blocked roles); e2e/sidebar-roles.spec.mjs (funding_advisor sees lenders); e2e/verification-roles.spec.mjs"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Page load: list read + mismatch-queue read; empty-book banner",
+    "kind": "page",
+    "calls": "GET /api/read/lenders; GET /api/read/lender-observations?mismatch_only=true&review_status=pending",
+    "tables": "lenders, lender_bureau_observations",
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-funding.mjs funding:lender-book goes red when the list is empty but the book CSV has rows; e2e/lenders.spec.mjs + e2e/lenders-inquiry-ops.spec.mjs (stubbed); reg:lenders-desk + reg:read/lenders"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Tab: Lender list",
+    "kind": "tab",
+    "calls": "GET /api/read/lenders",
+    "tables": "lenders",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/lenders.spec.mjs 'asks for the whole book and paints the placeholder tile'"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Tab: Bureau mismatch queue (with open-count badge)",
+    "kind": "tab",
+    "calls": "GET /api/read/lender-observations?mismatch_only=true&review_status=pending",
+    "tables": "lender_bureau_observations, lenders",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/lenders.spec.mjs 'can switch to mismatch review tab'"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Tab: AI bureau config",
+    "kind": "tab",
+    "calls": "GET /api/read/ai-bureau-config",
+    "tables": "ai_bureau_config",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/lenders-inquiry-ops.spec.mjs 'loads with list, mismatch, and AI bureau tabs' (clicks the tab, sees empty state)"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "List filter: Product table select (OnlineBizCC, InBranchBizCC, BizLOC_Stated, BizLOC_Documented, PersonalCC, PersonalLoans, PersonalLOC)",
+    "kind": "select",
+    "calls": "GET /api/read/lenders?(lender_table|bureau|priority_tier|active|state|q)=",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test sends a filter; e2e only asserts no row limit is sent; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "List filter: Bureau pulled input (EX / EQ / TU)",
+    "kind": "input",
+    "calls": "GET /api/read/lenders?(lender_table|bureau|priority_tier|active|state|q)=",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test sends this filter; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "List filter: Priority tier select (1, 2, 3)",
+    "kind": "select",
+    "calls": "GET /api/read/lenders?(lender_table|bureau|priority_tier|active|state|q)=",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test sends this filter; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "List filter: Status select (Active / Inactive)",
+    "kind": "select",
+    "calls": "GET /api/read/lenders?(lender_table|bureau|priority_tier|active|state|q)=",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test sends this filter; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "List filter: Eligible state input",
+    "kind": "input",
+    "calls": "GET /api/read/lenders?(lender_table|bureau|priority_tier|active|state|q)=",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test sends this filter; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "List filter: Name search input",
+    "kind": "input",
+    "calls": "GET /api/read/lenders?(lender_table|bureau|priority_tier|active|state|q)=",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test sends this filter; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Apply filters button",
+    "kind": "button",
+    "calls": "GET /api/read/lenders?...",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it with a filter set; reg:read/lenders ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Export CSV button (downloads lenders.csv for the current filters)",
+    "kind": "button",
+    "calls": "GET /api/read/lenders?format=csv",
+    "tables": "lenders",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/lenders/demo-gate.pg.test.mjs 'CSV export never carries a sample lender'; src/lenders/lenders.test.mjs CSV round-trip; e2e/lenders.spec.mjs asserts the button shows; click not driven"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Import CSV button (opens paste box) and Cancel button",
+    "kind": "toggle",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks them; e2e/lenders.spec.mjs asserts the Import button shows"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Import now button (paste CSV, creates and updates lender rows)",
+    "kind": "button",
+    "calls": "POST /api/lenders {action:'import', csv}",
+    "tables": "lenders",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders.pg.test.mjs describe group for the Import now button (empty refused, every row lands, re-import updates, bad line skipped, closer refused, caller's company only)"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Add blank row button (prompts for a lender name, creates one row)",
+    "kind": "button",
+    "calls": "POST /api/lenders {action:'create', lender_table, name}",
+    "tables": "lenders",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders.pg.test.mjs describe group for the Add blank row button (one real row, bad product refused, blank name refused, closer refused)"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Lender row inline cells: name, product table, bureaus, requirements, tier, status, eligible states (7 editable fields)",
+    "kind": "input",
+    "calls": "none until Save is pressed",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "client only; marks cell dirty; no test types into them"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Lender row Save button (writes the 7 fields, stamps last_updated_by)",
+    "kind": "button",
+    "calls": "POST /api/lenders {action:'save', id, patch}",
+    "tables": "lenders",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders.pg.test.mjs describe group for the per-row Save button (fields, dollars not cents, 404 on missing, other company refused, closer refused)"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Lender row Apply button (only on a client-scoped view ?client_id=; opens the bank page through the proxy)",
+    "kind": "button",
+    "calls": "POST /api/proxy/launch",
+    "tables": "proxy_sessions, applications, clients, businesses, lenders",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "beat-apply-links.mjs (hourly: every application_url still opens, covers desk:lenders.html); gap-fulfillment.mjs fulfillment:apply-blocked reads failed proxy_sessions; e2e/proxy-apply.spec.mjs; src/http/proxy-endpoints.test.mjs"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Apply dialog: Copy proxy string, End session, Close (manual fallback when the Chrome extension is absent)",
+    "kind": "modal",
+    "calls": "POST /api/proxy/end",
+    "tables": "proxy_sessions",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/proxy-apply.spec.mjs 'no-extension fallback with verified exit'; src/http/proxy-endpoints.test.mjs 'proxy/end refuses setter'; src/proxy/launch.test.mjs"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Mismatch queue row: Confirm button",
+    "kind": "button",
+    "calls": "POST /api/lender-observations {action:'review', review_status:'confirmed'}",
+    "tables": "lender_bureau_observations",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "src/http/lenders-role-gate.test.mjs only proves the role gate (empty body, 400); no test runs the review action or reviewObservation(); reg:lender-observations ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Mismatch queue row: Corrected button",
+    "kind": "button",
+    "calls": "POST /api/lender-observations {action:'review', review_status:'corrected'}",
+    "tables": "lender_bureau_observations",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "same as Confirm: role gate tested, review action untested; reg:lender-observations ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "Mismatch queue row: Dismiss button",
+    "kind": "button",
+    "calls": "POST /api/lender-observations {action:'review', review_status:'dismissed'}",
+    "tables": "lender_bureau_observations",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "same as Confirm: role gate tested, review action untested; reg:lender-observations ping"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "AI bureau config: Add bureau row button (adds an empty editable row)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; e2e only asserts the tab and empty state"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "AI bureau config row: 7 fields (code, name, service number, IVR version, menu path, hold minutes, active)",
+    "kind": "input",
+    "calls": "none until Save is pressed",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "client only"
+  },
+  {
+    "surface": "lenders.html",
+    "control": "AI bureau config row Save button (feeds the AI inquiry caller's dial number and IVR path)",
+    "kind": "button",
+    "calls": "POST /api/ai-bureau-config {action:'save'|'upsert'}",
+    "tables": "ai_bureau_config",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "no handler or store test for the write (only the read is org-scope checked in src/http/read-endpoints-org-scope.test.mjs); reg:ai-bureau-config ping; gap-inquiry.mjs call-due check reads cases, not this config"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Page load: inbox read (Needs-reply tab first), refreshes on a timer while the tab is visible",
+    "kind": "page",
+    "calls": "GET /api/read/inbox",
+    "tables": "conversations, messages, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs (renders real conversations, newest first, empty and error states); src/http/inbox-read.pg.test.mjs; reg:messaging + reg:read/inbox pings"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Tab: All",
+    "kind": "tab",
+    "calls": "GET /api/read/inbox?limit=200",
+    "tables": "conversations, messages",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs conversation list tests; reg:read/inbox ping"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Tab: Needs reply (client spoke last, nobody answered; server-side filter)",
+    "kind": "tab",
+    "calls": "GET /api/read/inbox?limit=200&needs_reply=1",
+    "tables": "conversations, messages",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs 'the Needs-reply tab asks the server for a filtered list', 'empty Needs-reply tab reads as good news'"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Search box: search people and messages (client-side filter; typing drops needs_reply=1 from the server query on the Needs-reply tab)",
+    "kind": "input",
+    "calls": "GET /api/read/inbox?limit=200 (no q param)",
+    "tables": "conversations, messages, clients",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs 'a search with no match says so'"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Conversation list row: click opens the thread",
+    "kind": "table row",
+    "calls": "GET /api/read/messages?conversation_id=&limit=200; GET /api/dashboard/client?id=; GET /api/read/conversations?client_id=",
+    "tables": "messages, staff, conversations, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs 'clicking a conversation opens its thread, both sides, oldest at the top', escaping of client text; src/http/messages-read.pg.test.mjs, conversations-read.pg.test.mjs"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Channel toggle: Email / Text buttons (open that client's other-channel conversation)",
+    "kind": "toggle",
+    "calls": "GET /api/read/conversations?client_id=",
+    "tables": "conversations",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks the toggle or the ?client_id=&channel= deep link; reg:read/conversations ping"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "'Send this one to' address box (applies to this one message only; never written back to the record)",
+    "kind": "input",
+    "calls": "none until Send (payload.to)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/messaging/compose.test.mjs T5-08..13 typed-destination rules; src/messaging/compose.pg.test.mjs asserts the typed number is used; no Playwright test types into it"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Compose box: type reply, Enter sends, Shift+Enter newline; texting-hours notice shown before typing",
+    "kind": "input",
+    "calls": "none until Send",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs 'compose box is dead until a conversation is open', 'during the day it states the rule', 'at eleven at night it warns', 'an email thread says nothing about texting hours'"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Send button (staff reply to a client by text or email; shift clock-in required)",
+    "kind": "button",
+    "calls": "POST /api/messages {conversation_id|client_id, channel, body, to?, idempotency_key}",
+    "tables": "messages, conversations, clients",
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "tripwire job:message-dispatch-sweeper (gap:sms-sending-stuck, email:sending-stuck, gap:msg-sent-no-receipt) + beat-text-path / beat-email-path hourly; src/messaging/compose.pg.test.mjs (sent, held for night, blocked, STOP respected, other company refused); src/http/messages-write.test.mjs; e2e/messaging-inbox.spec.mjs 'what is typed is what is sent', held, blocked"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Held-for-quiet-hours result: text deferred to the next window and the words stay in the box",
+    "kind": "state",
+    "calls": "POST /api/messages (outcome deferred)",
+    "tables": "messages",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs 'a text held for the night says so, and keeps the words'; src/messaging/compose.pg.test.mjs 'an overnight text is held'"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Blocked result: opt-out or restricted wording refused and a task raised for a human",
+    "kind": "state",
+    "calls": "POST /api/messages (outcome blocked)",
+    "tables": "messages, tasks",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/messaging-inbox.spec.mjs 'a blocked message says why'; src/messaging/compose.pg.test.mjs 'restricted wording is blocked and raises a task'; gap-opt-out.mjs reads opt-outs"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Right panel: 'Their other threads' list and 'Open elsewhere -> Their file' link",
+    "kind": "link",
+    "calls": "GET /api/read/conversations?client_id=; GET /api/dashboard/client?id=",
+    "tables": "conversations, clients",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks the link; reg:read/conversations + reg:dashboard/client pings"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Reference disclosure (who-sent-it colour key)",
+    "kind": "disclosure",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; reg:messaging ping"
+  },
+  {
+    "surface": "messaging.html",
+    "control": "Deep links: ?client_id=, ?channel=, ?conversation_id= open a thread straight from another desk",
+    "kind": "link",
+    "calls": "GET /api/read/conversations; GET /api/read/messages",
+    "tables": "conversations, messages",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test loads a deep link; client-control-panel and pipeline desks link here"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Page gate: owner and admin author journeys (PUT/ask/run answer 403 to others); no sidebar row exists (NAV_HIDDEN), reached only by URL or link",
+    "kind": "gate",
+    "calls": "GET/PUT /api/journeys; POST /api/journeys/ask; POST /api/journeys/run",
+    "tables": "journeys",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/sidebar-roles.spec.mjs lists journeys.html as RETIRED for non-owner rows; src/http/journeys.pg.test.mjs 'no credential at all is refused'; ping reg:journeys-desk"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Page load: reads saved journeys; falls back to seeded example trees if the table is empty",
+    "kind": "page",
+    "calls": "GET /api/journeys",
+    "tables": "journeys",
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-owner-tools.mjs owner-tools:journeys reads the saved journeys live; src/http/journeys.pg.test.mjs round-trip; e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs (journeys runner, loads); reg:journeys"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Journey list tab: Client",
+    "kind": "tab",
+    "calls": "none (client only; switches the canvas)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Journey list tab: Setter",
+    "kind": "tab",
+    "calls": "none (client only; switches the canvas)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Journey list tab: Closer",
+    "kind": "tab",
+    "calls": "none (client only; switches the canvas)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Journey list tab: Funding Advisor",
+    "kind": "tab",
+    "calls": "none (client only; switches the canvas)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Journey list tab: Affiliate",
+    "kind": "tab",
+    "calls": "none (client only; switches the canvas)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Journey list tab: White-Label Partner",
+    "kind": "tab",
+    "calls": "none (client only; switches the canvas)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Canvas: click a step to select it (opens Step panel)",
+    "kind": "card action",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Canvas: '+' between steps opens the add-step menu (10 types: text, email, wait, question, move card, assign, hand off, agent, take payment, save)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page load smoke only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Step panel fields: text body and timing (text), subject/body/timing (email), wait length + unit, question field + test, stage + pipeline, role, agent + note, payment amount + product, note",
+    "kind": "input",
+    "calls": "none (client only; edits the draft tree)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test types into them; single-brace tag rule is enforced server-side at save (src/http/journeys.pg.test.mjs)"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Step panel: Move up / Move down / Delete",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Step panel: 'Make the change' (AI rewrites one step) and canvas ask box 'Make the change' + example prompts",
+    "kind": "button",
+    "calls": "POST /api/journeys/ask -> api.anthropic.com",
+    "tables": "none",
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:journeys/ask ping only; no handler test (only fenced by src/lib/no-unfenced-transmit.test.mjs); spends AI credit per call"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Canvas: 'Keep it' / 'Throw it away' on an AI patch",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Step panel: 'Run from here' (plays the journey in the browser from this step)",
+    "kind": "button",
+    "calls": "none (browser timer only; no network)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page states nothing is sent"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Simulate tab: 'At a question' select + Run the journey / Stop",
+    "kind": "button",
+    "calls": "none (browser timer only; no network)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; page states no text or email leaves Fundhub"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "History tab: 'Roll back to this' (saved version) and 'Put it back' (single change)",
+    "kind": "button",
+    "calls": "none (client only; local versions)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; versions live only in the page session"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Header: Undo (also Cmd/Ctrl+Z)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Header: Save version",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test; named copy kept in the page only"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Header: Apply to code and bottom-bar Apply (saves every edited journey)",
+    "kind": "button",
+    "calls": "PUT /api/journeys {key, name, start, end, desc, nodes}",
+    "tables": "journeys",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/journeys.pg.test.mjs (single-brace tag refused in body and in a branch email subject, clean save round-trips); step-shape check (steps_not_set_up) has no test; saved rows are read only by the editor and the runner, not by a live workflow"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Bottom bar: Discard (revert unsaved edits)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Header: 'Test against the code' (walks every branch with throwaway clients inside a rolled-back transaction)",
+    "kind": "button",
+    "calls": "POST /api/journeys/run",
+    "tables": "journeys, message_channel_routing, clients, messages (inside a rolled-back transaction)",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/journeys/runner/index.test.mjs, diff.test.mjs, fake-step.test.mjs, registry.test.mjs run the walker; the api/journeys/run.mjs handler itself has no test; reg:journeys/run ping (GET answers 405/401)"
+  },
+  {
+    "surface": "journeys.html",
+    "control": "Run report panel: Close button",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Page gate: owner and admin only; a closer is sent to their own home",
+    "kind": "gate",
+    "calls": "GET /api/auth/session (shell.js)",
+    "tables": "sessions, staff",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'owner and admin only: a closer is sent to their own home'; reg:marketing-command-center ping"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Frame: tab strip (Today, Ideas, Scripts, Shoot, Launch, Numbers) with hash routing that keeps its place",
+    "kind": "tab",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'the frame: the strip shows only tabs that exist, in work order; Settings sits behind the gear'; 'the frame: a link to a tab with no module (#videos) lands on Today and the address says so'; src/ui/marketing-command-center.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Frame: gear button (opens Settings tab, Today comes back as it was)",
+    "kind": "link",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'the gear opens Settings, Today comes back as it was, and Back works'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Frame: cost sheet and two-tap confirm sheet drawn before every paid tap (Cancel / yes)",
+    "kind": "modal",
+    "calls": "GET /api/marketing/costs",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'a yes sends once, a no sends nothing'; e2e/marketing-cc-scripts.spec.mjs cost sheet before Fix and Write now; src/http/marketing-health.pg.test.mjs; reg:marketing/costs ping; the cost figures themselves have no live check"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Frame: 5-minute auto reload, reload on focus, footer 'as of' stamp",
+    "kind": "page",
+    "calls": "GET /api/marketing/today",
+    "tables": "ad_metrics_daily, ad_platform_connections, analytics_connections, creative_assets, generation_job_assets, generation_jobs, marketing_jobs, partner_ai_usage, partners",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'the footer clock, the 5-minute reload, the reload on focus, and a failed reload that keeps the numbers'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: spend tiles (7 days vs the 7 before, last 30 days) with the 'Old numbers' lead when the Meta pull is late",
+    "kind": "stat tile",
+    "calls": "GET /api/marketing/today",
+    "tables": "ad_metrics_daily, ad_platform_connections, analytics_connections, creative_assets, generation_job_assets, generation_jobs, marketing_jobs, partner_ai_usage, partners",
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-ads.mjs ads-meta-sync-stale, ads-spend-day-missing, ads-number-unmapped; machine.mjs meta-sync; e2e/marketing-command-center.spec.mjs test 'old numbers: a pull older than two days leads with ...'; src/http/marketing-today.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'What is turned on' tile and health list (Meta numbers, house account, offer and market files, copy writer)",
+    "kind": "stat tile",
+    "calls": "GET /api/marketing/today (ready.checks)",
+    "tables": "ad_metrics_daily, ad_platform_connections, analytics_connections, creative_assets, generation_job_assets, generation_jobs, marketing_jobs, partner_ai_usage, partners",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-today.test.mjs + marketing-today.pg.test.mjs; e2e/marketing-command-center.spec.mjs 'full at 1280'; reg:marketing/today ping"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Write ad copy' form: angle box, 'What are we selling' select (funding, credit cards, credit repair), submit",
+    "kind": "form",
+    "calls": "POST /api/creative/generate then POST /api/creative/run {max_jobs:1}",
+    "tables": "generation_jobs, generation_job_assets, creative_assets, partner_ai_usage, partners",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Write ad copy: generate, then run with max_jobs 1' and 'a refusal is a sentence'; reg:creative/generate + creative/run pings; spends model credit (cost line printed first)"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Write offer' button (starts an offer run and follows it until the card fills)",
+    "kind": "button",
+    "calls": "POST /api/marketing/offer/generate (polls GET with job id)",
+    "tables": "marketing_jobs, marketing_model_usage",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Write offer: starts a run and follows it'; src/http/marketing-offer-generate.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Waiting on you' list (Mac queue, videos awaiting approval, flywheel steps waiting)",
+    "kind": "table",
+    "calls": "GET /api/ad-videos?status=awaiting_approval; GET /api/marketing/today",
+    "tables": "ad_videos, marketing_jobs",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'error per part: the video list fails, the rest of the page stays'; reg:ad-videos ping; display only, rows have no buttons"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today flywheel step 1 (avatar, 'Who we sell to'): state chip + 'Read it' / 'Hide it' review card toggle",
+    "kind": "board column",
+    "calls": "GET /api/marketing/today (flywheel stages)",
+    "tables": "marketing_jobs, repo files via outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds the stage's review card on the page', 'a repaint keeps an open review card open'; src/marketing/flywheel-status.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today flywheel step 2 (ad-research, 'What the market sells'): state chip + 'Read it' / 'Hide it' review card toggle",
+    "kind": "board column",
+    "calls": "GET /api/marketing/today (flywheel stages)",
+    "tables": "marketing_jobs, repo files via outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds the stage's review card on the page', 'a repaint keeps an open review card open'; src/marketing/flywheel-status.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today flywheel step 3 (offer, 'Offer'): state chip + 'Read it' / 'Hide it' review card toggle",
+    "kind": "board column",
+    "calls": "GET /api/marketing/today (flywheel stages)",
+    "tables": "marketing_jobs, repo files via outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds the stage's review card on the page', 'a repaint keeps an open review card open'; src/marketing/flywheel-status.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today flywheel step 4 (copy, 'Ad copy'): state chip + 'Read it' / 'Hide it' review card toggle",
+    "kind": "board column",
+    "calls": "GET /api/marketing/today (flywheel stages)",
+    "tables": "marketing_jobs, repo files via outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds the stage's review card on the page', 'a repaint keeps an open review card open'; src/marketing/flywheel-status.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today flywheel step 5 (ad-strategy, 'Ad strategy'): state chip + 'Read it' / 'Hide it' review card toggle",
+    "kind": "board column",
+    "calls": "GET /api/marketing/today (flywheel stages)",
+    "tables": "marketing_jobs, repo files via outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds the stage's review card on the page', 'a repaint keeps an open review card open'; src/marketing/flywheel-status.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today flywheel step 6 (spend, 'Spend'): state chip + 'Read it' / 'Hide it' review card toggle",
+    "kind": "board column",
+    "calls": "GET /api/marketing/today (flywheel stages)",
+    "tables": "marketing_jobs, repo files via outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds the stage's review card on the page', 'a repaint keeps an open review card open'; src/marketing/flywheel-status.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Build the avatar' button on step 1 (cost sheet, run, live step words, Retry after a stop)",
+    "kind": "button",
+    "calls": "POST /api/marketing/flywheel/run; GET /api/marketing/flywheel/job?id= (polls 8 s); GET /api/marketing/costs",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain; e2e/marketing-avatar-row.spec.mjs (sheet, run, cap stop, Retry); src/http/marketing-flywheel-avatar.pg.test.mjs; spends model credit up to a run cap"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Show more' / 'Read it' text folds, link 'See every ad in Campaigns', link 'Open Creative Factory'",
+    "kind": "link",
+    "calls": "navigates to campaign-manager.html, creative-factory.html",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'Read it unfolds ... Show more opens long words'; links themselves unclicked; reg:campaign-manager + creative-factory desk pings"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: month spend meter (used of cap)",
+    "kind": "stat tile",
+    "calls": "GET /api/marketing/costs",
+    "tables": "marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'draws every card'; src/ui/cc-tab-ideas.test.mjs; reg:marketing/costs ping"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Drop an idea' form: idea box, format select (optional), funnel select (optional), Save idea",
+    "kind": "form",
+    "calls": "POST /api/marketing/ideas",
+    "tables": "ad_ideas, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Drop an idea saves it with the format and funnel'; src/http/marketing-ideas.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: idea row 'Write now from this idea' (writes one script; cost printed first)",
+    "kind": "button",
+    "calls": "POST /api/marketing/batches/write-now {count:1, idea_ids}",
+    "tables": "ad_ideas, marketing_batches, marketing_funnels, marketing_jobs",
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain; e2e/cc-tab-ideas.spec.mjs 'Write now from an idea shows the cost first'; src/http/marketing-batches.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: planner suggestions list: 'Accept' button on each of the 3 suggestions",
+    "kind": "button",
+    "calls": "GET /api/marketing/batches/next; POST /api/marketing/ideas",
+    "tables": "ad_ideas, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Accept a suggestion and Make more of an angle make ideas'; src/http/marketing-batches-next.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: angles list: 'Make more of this' button on each angle",
+    "kind": "button",
+    "calls": "GET /api/marketing/angles; POST /api/marketing/ideas",
+    "tables": "ad_ideas, marketing_batches, marketing_funnels, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs same test; src/http/marketing-angles.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: research form: question box, depth toggle (Quick look / Leave nothing unturned), 3 source checkboxes, belief input, 'Stop at $' cap, 'Research it'",
+    "kind": "form",
+    "calls": "POST /api/marketing/research",
+    "tables": "marketing_jobs, marketing_model_usage",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Deep research: stop amount first, cost from the server's limits, then the run' and 'search ceilings come from the server'; src/http/marketing-research.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: research card buttons: Read it / Hide it, Approve, Tweak (+ 'Run the tweak'), Redo, 'Save to the brain', Retry",
+    "kind": "card action",
+    "calls": "GET /api/marketing/research?id=; POST /api/marketing/research/approve | tweak | brain; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, repo_outbox, marketing_model_usage",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Research the market, Read it, Approve and Tweak a stage' + failed row Retry; src/http/marketing-research.pg.test.mjs imports approve, tweak, brain; src/http/marketing-jobs-retry.pg.test.mjs; approve/tweak/brain are not pinged (ALLOWED_UNMONITORED in registry.mjs)"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: flywheel 'Which offer' select (campaign) and 'Start a flywheel for' select + 'Start a flywheel' button",
+    "kind": "button",
+    "calls": "GET /api/marketing/flywheel; POST /api/marketing/flywheel/campaign",
+    "tables": "marketing_jobs, marketing_settings, repo files via outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Start a flywheel for any offer key'; src/http/marketing-flywheel.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas flywheel step 1 (avatar): run button 'Build the avatar', Read it, Approve, Tweak, Resume / Start over / Retry",
+    "kind": "board column",
+    "calls": "POST /api/marketing/flywheel/run | approve | tweak | spend-read; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Build the avatar', 'Research the market, Read it, Approve and Tweak a stage', 'Write the offer runs step 3 through the flywheel route; Read the spend is free' (steps 4 and 5 runs have no Playwright test); src/http/marketing-flywheel.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas flywheel step 2 (ad-research): run button 'Research the market', Read it, Approve, Tweak, Resume / Start over / Retry",
+    "kind": "board column",
+    "calls": "POST /api/marketing/flywheel/run | approve | tweak | spend-read; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Build the avatar', 'Research the market, Read it, Approve and Tweak a stage', 'Write the offer runs step 3 through the flywheel route; Read the spend is free' (steps 4 and 5 runs have no Playwright test); src/http/marketing-flywheel.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas flywheel step 3 (offer): run button 'Write the offer', Read it, Approve, Tweak, Resume / Start over / Retry",
+    "kind": "board column",
+    "calls": "POST /api/marketing/flywheel/run | approve | tweak | spend-read; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Build the avatar', 'Research the market, Read it, Approve and Tweak a stage', 'Write the offer runs step 3 through the flywheel route; Read the spend is free' (steps 4 and 5 runs have no Playwright test); src/http/marketing-flywheel.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas flywheel step 4 (copy): run button 'Write the copy; needs step 3 approved', Read it, Approve, Tweak, Resume / Start over / Retry",
+    "kind": "board column",
+    "calls": "POST /api/marketing/flywheel/run | approve | tweak | spend-read; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Build the avatar', 'Research the market, Read it, Approve and Tweak a stage', 'Write the offer runs step 3 through the flywheel route; Read the spend is free' (steps 4 and 5 runs have no Playwright test); src/http/marketing-flywheel.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas flywheel step 5 (ad-strategy): run button 'Pick the strategy; needs steps 3 and 4 approved', Read it, Approve, Tweak, Resume / Start over / Retry",
+    "kind": "board column",
+    "calls": "POST /api/marketing/flywheel/run | approve | tweak | spend-read; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Build the avatar', 'Research the market, Read it, Approve and Tweak a stage', 'Write the offer runs step 3 through the flywheel route; Read the spend is free' (steps 4 and 5 runs have no Playwright test); src/http/marketing-flywheel.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas flywheel step 6 (spend): run button 'Read the spend (free, no model)', Read it, Approve, Tweak, Resume / Start over / Retry",
+    "kind": "board column",
+    "calls": "POST /api/marketing/flywheel/run | approve | tweak | spend-read; POST /api/marketing/jobs/retry",
+    "tables": "marketing_jobs, marketing_model_usage, marketing_settings",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Build the avatar', 'Research the market, Read it, Approve and Tweak a stage', 'Write the offer runs step 3 through the flywheel route; Read the spend is free' (steps 4 and 5 runs have no Playwright test); src/http/marketing-flywheel.pg.test.mjs; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Go to step N' jump button",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; reg:marketing/flywheel ping"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas funnels: 'Make the funnel' form (what it sells select, optional own address) -> 3 draft pages",
+    "kind": "form",
+    "calls": "POST /api/marketing/funnels/create",
+    "tables": "marketing_funnels, marketing_funnel_pages, marketing_jobs",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Funnels: make one (automatic address)'; src/http/marketing-funnel-builder.pg.test.mjs 'create: ... three draft pages, a build job'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas funnels: 'Write the pages' / 'Write the pages again' (one model call, copy check)",
+    "kind": "button",
+    "calls": "POST /api/marketing/funnels/build",
+    "tables": "marketing_funnels, marketing_funnel_pages, marketing_jobs",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-funnel-builder.pg.test.mjs 'build: one model call, checked words, three pages'; e2e/cc-tab-ideas.spec.mjs funnel test; gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas funnels: 'Change the address' input + 'Save the address'",
+    "kind": "button",
+    "calls": "POST /api/marketing/funnels/rename",
+    "tables": "marketing_funnels, marketing_funnel_pages",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-funnel-builder.pg.test.mjs rename tests; e2e/cc-tab-ideas.spec.mjs rename assertion"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas funnels: 'See the pages' / 'Hide the pages' + preview role buttons (sandboxed page preview)",
+    "kind": "button",
+    "calls": "GET /api/marketing/funnel?id=",
+    "tables": "marketing_funnels, marketing_funnel_pages, marketing_jobs",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs funnel test (previews sandboxed, no scripts) and 'a funnel with no pages yet: See the pages is off'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas funnels: 'Push live' (two taps; second names the address; puts the funnel on apply.fundhub.ai where ad traffic lands)",
+    "kind": "button",
+    "calls": "POST /api/marketing/funnels/push-live {id, confirm_url}",
+    "tables": "marketing_funnels, marketing_funnel_pages, marketing_jobs",
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/pulse/tripwires.mjs TRIPWIRES route:marketing/funnels/push-live -> built-funnels:live-pages-answer (gap-built-funnels.mjs); e2e/cc-tab-ideas.spec.mjs 'push live in two taps'; src/http/marketing-funnel-builder.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Quick copy' form (angle, offer select, 'Write one piece')",
+    "kind": "form",
+    "calls": "POST /api/creative/generate then POST /api/creative/run {max_jobs:1}",
+    "tables": "generation_jobs, generation_job_assets, creative_assets",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'Quick copy: cost first, then one piece through the copy runner'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Try again' buttons on a failed card",
+    "kind": "button",
+    "calls": "re-runs the failed GET",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-ideas.spec.mjs 'a part that fails says so and the rest stays painted'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: filter chips: Drafts, Approved, Filmed, Rejected, All (with counts)",
+    "kind": "filter",
+    "calls": "none (client filter over GET /api/marketing/scripts)",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks a chip; e2e/marketing-cc-scripts.spec.mjs reads the same list; reg:marketing/scripts ping"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card 'Approve' button (locks the script, gives its ad number, moves to the next card)",
+    "kind": "button",
+    "calls": "POST /api/marketing/scripts/approve {request_id, id, version}",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'needs a look comes first; Approve gives the ad number and moves to the next card'; src/http/marketing-scripts.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card 'Edit' (one box per part) + 'Save new version' / Cancel",
+    "kind": "button",
+    "calls": "POST /api/marketing/scripts/edit {request_id, id, version, body, parts}",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'Edit: one box per part; the checker warns but never blocks', 'a stale Edit shows both texts'; src/http/marketing-scripts.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card 'Fix' (note + 'Make this a rule' + 'Rewrite it'; rewrite job returns a new version)",
+    "kind": "button",
+    "calls": "POST /api/marketing/scripts/fix {note, make_rule}",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain; e2e/marketing-cc-scripts.spec.mjs test 'Fix: a note and ... its cost printed first, the new version back within 5 seconds'; src/http/marketing-scripts.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card 'Reject' (two taps: 'Reject it' / 'Keep it')",
+    "kind": "button",
+    "calls": "POST /api/marketing/scripts/reject {request_id, id, version, reason}",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'Reject takes two taps, names what happens, and Keep it backs out'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: conflict banner: 'Use mine' / 'Use theirs' / 'Read the new version' (409 on a stale version)",
+    "kind": "button",
+    "calls": "POST /api/marketing/scripts/edit|approve (409 handling)",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'a stale Edit shows both texts; Use mine saves on the live version'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card Previous / Next buttons and swipe between drafts (never saves)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'a swipe moves between cards and never saves'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: film order: 'Film first', 'Up', 'Down' on each approved script",
+    "kind": "button",
+    "calls": "POST /api/marketing/scripts/order {request_id, order:[root ids]}",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'film order: Film first and the arrows send the root ids in order'; src/http/marketing-scripts.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: 'Write now' batch button (hidden while write_now_ready is false)",
+    "kind": "button",
+    "calls": "POST /api/marketing/batches/write-now {request_id}",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-marketing-queue.mjs marketing-queue:stuck-queued / failed-no-note / read-api + slice-03-marketing.mjs clock, worker, outbox_drain; e2e/marketing-cc-scripts.spec.mjs 'Write now is not drawn while write_now_ready is false' and 'Write now: a plain cost note ...'; src/http/marketing-batches.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: idea box: idea text, format, funnel, 'Save idea', 'Write it now', 'Show all N' / 'Show fewer', 'Open the script'",
+    "kind": "form",
+    "calls": "POST /api/marketing/ideas; POST /api/marketing/batches/write-now; GET /api/marketing/ideas",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'an idea: the big box, optional format and funnel, Save, and Write it now with its cost printed'; src/http/marketing-ideas.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: rules: 'Change' + 'Save the rule', 'Add the rule', 'Ban the phrase' (rule saved to the repo through the outbox)",
+    "kind": "form",
+    "calls": "POST /api/marketing/rules",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs test 'rules: Part 0, add a rule, and its repo state turns to ... within 5 seconds'; src/http/marketing-rules.pg.test.mjs; slice-03-marketing.mjs outbox_drain watches the repo outbox"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: 'Every version' fold: loads all versions and their checks",
+    "kind": "disclosure",
+    "calls": "GET /api/marketing/script?id=",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'every version and its checks unfold on the card'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: 'Try again' buttons on a failed part",
+    "kind": "button",
+    "calls": "re-runs the failed GET",
+    "tables": "ad_scripts, marketing_batches, voice_pairs, ad_ideas, marketing_jobs, repo_outbox",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-scripts.spec.mjs 'loading, an error in one part, and the empty inbox'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: 'Save the plan' (before a shoot; sends the film order)",
+    "kind": "button",
+    "calls": "POST /api/marketing/shoot",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-shoot.spec.mjs 'before a shoot: approved scripts in film order ... Save the plan sends the order'; src/http/marketing-shoot.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: plan row: include checkbox, Up / Down / 'Film first', 'Remove from shoot', 'Add to the end'",
+    "kind": "button",
+    "calls": "POST /api/marketing/shoot (new order)",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-shoot.spec.mjs same test plus 'with a shoot'; src/http/marketing-shoot.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: row marks: 'Got it' and 'Another take'",
+    "kind": "button",
+    "calls": "POST /api/marketing/shoot/mark",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-shoot.spec.mjs 'with a shoot: the teleprompter is the filled button, rows mark takes'; src/http/marketing-shoot.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: checklist: Rig set, Mirror on, Remote paired, Phone charged (4 checkboxes)",
+    "kind": "toggle",
+    "calls": "none (saved in this browser)",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test ticks them; saved in browser storage only"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: 'Open the teleprompter' link (carries the film key) and the SLO Ads Drive folder link",
+    "kind": "link",
+    "calls": "navigates to /app/teleprompter.html and the Drive folder",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-shoot.spec.mjs 'the teleprompter link carries the film key from the shoot'; e2e/teleprompter.spec.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: 'Close the shoot' (two taps: 'Close it' / 'Keep it open')",
+    "kind": "button",
+    "calls": "POST /api/marketing/shoot (close)",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-shoot.spec.mjs 'without the frame's confirm sheet, Close still takes two taps'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: 'Try again' on a failed read; refused-save message",
+    "kind": "button",
+    "calls": "GET /api/marketing/shoot?wpm=",
+    "tables": "marketing_shoots, ad_scripts, ad_ideas, ad_videos, marketing_batches, marketing_funnels",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-shoot.spec.mjs 'error: a failed read says so' and 'a refused save shows the server's words'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Launch: 'Load to Meta' per approved video, and 'Retry load' (creates the ad PAUSED, $0)",
+    "kind": "button",
+    "calls": "POST /api/marketing/meta/load {ad_video_id, request_id}",
+    "tables": "ad_videos, ads, ad_sets, campaigns, creative_assets, action_log, ad_platform_connections, marketing_jobs",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-launch.spec.mjs 'Load to Meta posts one video ... both are paused loads'; src/http/marketing-meta-load.pg.test.mjs; src/marketing/meta-load.test.mjs; NO pulse check reads meta_load rows (gap-marketing-queue.mjs skips that kind and says the ads lane has it; grep finds none)"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Launch: 'Load all approved' (asks first, then {all:true})",
+    "kind": "bulk action",
+    "calls": "POST /api/marketing/meta/load {all:true}",
+    "tables": "ad_videos, ads, ad_sets, campaigns, creative_assets, action_log, ad_platform_connections, marketing_jobs",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-launch.spec.mjs same test; same missing live check on meta_load rows"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Launch: 'Turn on' per loaded ad (two taps; names ad, ad set, daily budget, any pause above; disabled while budget unknown)",
+    "kind": "button",
+    "calls": "POST /api/campaigns/write {action:'resume_ad', ad_id, request_id}",
+    "tables": "ad_videos, ads, ad_sets, campaigns, creative_assets, action_log, ad_platform_connections, marketing_jobs",
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-launch.spec.mjs 'Turn on at 390px: two taps, the budget first, then ONLY resume_ad with our ads.id', 'Turn on: Cancel sends nothing; a 403 says Only Chris can turn ads on.', 'Turn on stays off with the reason when the budget is unknown'; src/http/campaigns-write-resume-ad.pg.test.mjs; gap-ads.mjs ads-running-no-metrics reads running ads but nothing reads the resume result"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Launch: load-state poll every 20 s (uploading, waiting for Meta, making the ad, saving) + ad-video list",
+    "kind": "page",
+    "calls": "GET /api/marketing/meta/load-status; GET /api/ad-videos?status=approved,delivered",
+    "tables": "ad_videos, ads, ad_sets, campaigns, creative_assets, action_log, ad_platform_connections, marketing_jobs",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-launch.spec.mjs 'full at <width>px: count top-left, one filled button, every ad with its state', 'one part fails: the approved list error is its own banner'; reg:marketing/meta/load-status + ad-videos pings"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Launch: links: 'Open Settings', 'Open Videos', 'Open Campaigns to pause a campaign or change its budget'",
+    "kind": "link",
+    "calls": "navigates (tab hash or campaign-manager.html)",
+    "tables": "ad_videos, ads, ad_sets, campaigns, creative_assets, action_log, ad_platform_connections, marketing_jobs",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-command-center.spec.mjs 'the frame: a link to a tab with no module (#videos) lands on Today and the address says so'; the Campaigns link is unclicked"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: view switch: Ads / Angles / Funnels (keeps its place in the URL)",
+    "kind": "tab",
+    "calls": "GET /api/marketing/ads | angles | funnels/stats",
+    "tables": "ad_metrics_daily, ads, ad_scripts, campaigns, marketing_funnels, events, v_ad_label_spine, ad_watch_curve_diagnoses",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'The view switch keeps its place in the URL and every view loads only its own numbers'; src/http/marketing-ads.pg.test.mjs, marketing-angles.pg.test.mjs, marketing-funnels-stats.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Ads filters: window select (7/14/30 days...), funnel select, format select, angle select, first-day and last-day inputs, 'Clear filters'",
+    "kind": "filter",
+    "calls": "GET /api/marketing/ads?from&to&funnel&format&angle",
+    "tables": "ad_metrics_daily, ads, ad_scripts, campaigns, marketing_funnels, events, v_ad_label_spine, ad_watch_curve_diagnoses",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'Ads: filters send the right question, and Clear filters brings every ad back'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Ads table: sortable column headers",
+    "kind": "filter",
+    "calls": "none (client sort)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'Ads: tapping a header sorts; unknown stays last'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Ads table: 'Ad N' row button opens the drawer (watch curve, day select, 'What to film next', Close)",
+    "kind": "table row",
+    "calls": "GET /api/marketing/ad?n=",
+    "tables": "ad_metrics_daily, ads, ad_scripts, campaigns, marketing_funnels, events, v_ad_label_spine, ad_watch_curve_diagnoses",
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-ads.mjs ads-number-unmapped + ads-running-no-metrics; e2e/cc-tab-numbers.spec.mjs 'Drawer: the watch curve is drawn by hand ... and it closes'; src/http/marketing-ads.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Unmapped spend: 'Link to a funnel' button (opens Settings at the funnel mapping)",
+    "kind": "link",
+    "calls": "navigates to #settings",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'Ads: the table, the as-of line, still maturing, unmapped spend with a Link button'; gap-ads.mjs ads-number-unmapped goes red on spend with no ad number"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Angles cards: 'Make more of this' -> idea box (text + Save idea / Cancel)",
+    "kind": "button",
+    "calls": "POST /api/marketing/ideas {raw_points, angle_key, source:'chris'}",
+    "tables": "ad_ideas, marketing_batches, marketing_funnels",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'Angles: ... Make more of this saves an idea', 'a failed save keeps the words and sends the same request_id again'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Funnels view: page views, click to page, page to lead, lead to call, call to sale, spend, ROAS per funnel; 'Open Settings' when none",
+    "kind": "stat tile",
+    "calls": "GET /api/marketing/funnels/stats; GET /api/marketing/funnels",
+    "tables": "ad_metrics_daily, ads, ad_scripts, campaigns, marketing_funnels, events, v_ad_label_spine, ad_watch_curve_diagnoses",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'Funnels: ... spend and ROAS', 'unknown spend is unknown, not $0'; src/ui/cc-tab-numbers.test.mjs; gap-funnels.mjs / gap-built-funnels.mjs read funnel pages"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: 'Try again' on a failed part",
+    "kind": "button",
+    "calls": "re-runs the failed GET",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/cc-tab-numbers.spec.mjs 'One part fails in plain words; Try again brings it back'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: weekly switch 'Write scripts every week' (two taps; second names the cost caps)",
+    "kind": "toggle",
+    "calls": "POST /api/marketing/settings {patch}",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'the weekly switch: off; turning it on takes two taps and names the caps; Not now sends nothing'; src/http/marketing-settings.pg.test.mjs; slice-03-marketing.mjs clock/worker watch the job it enables"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: schedule fields: drop day, drop time (Arizona), scripts a day, days in a batch, count rule (total / per funnel), style for each of 6 script kinds, drafts expiry",
+    "kind": "input",
+    "calls": "POST /api/marketing/settings {request_id, updated_at, patch}",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'Save sends only what changed, with a fresh request_id and the updated_at it read', 'a bad box is named in plain words and nothing is sent'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: quiet hours: start and end time inputs",
+    "kind": "input",
+    "calls": "POST /api/marketing/settings",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'full at 390: every dial in plain words'; src/http/marketing-settings.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: model spend caps: month cap and run caps (warns when under what is spent)",
+    "kind": "input",
+    "calls": "POST /api/marketing/settings",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'a month cap under what is already spent warns before it saves'; src/http/marketing-health.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: funnel card: name, landing page, lane select (funding600, premium, sorting, uwiq, wl, slo, unknown), ad button select, weight, Running checkbox, 'books a call' checkbox, mix of 6 script kinds",
+    "kind": "input",
+    "calls": "POST /api/marketing/funnels {funnel:{key, ..., updated_at}}",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'funnels: link a campaign, pick its ad set, Save sends that funnel's change only', 'a funnel's other boxes save in words'; src/http/marketing-funnels.pg.test.mjs"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: funnel card: Meta campaign checkboxes (links a campaign; another funnel's is disabled) and default ad set select",
+    "kind": "input",
+    "calls": "POST /api/marketing/funnels; GET /api/marketing/funnels",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'unticking a campaign clears its ad set', 'a campaign already on another funnel is disabled with the reason'; links decide which campaign spend counts to which funnel and which ad set a Load goes to"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: 'Save' button (one save for settings and every changed funnel)",
+    "kind": "button",
+    "calls": "POST /api/marketing/settings then POST /api/marketing/funnels",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'Save sends only what changed', 'a refused save says which funnel and why, in words; the rest still saves'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: 409 conflict: 'Keep mine' / 'Use the saved one'",
+    "kind": "button",
+    "calls": "POST /api/marketing/settings (retry over the saved version)",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'a 409 shows both versions; Keep mine saves over the newer one; Use the saved one drops mine'"
+  },
+  {
+    "surface": "marketing-command-center.html",
+    "control": "Settings: 'Try again' on a failed part",
+    "kind": "button",
+    "calls": "re-runs GET /api/marketing/settings|funnels|health",
+    "tables": "marketing_settings, marketing_funnels, ads, ad_sets, campaigns, ad_metrics_daily",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/marketing-cc-settings.spec.mjs 'a part that does not load says so in words'"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Page gate: a client sees only their own file; staff (owner, admin, sales_manager, closer) need ?client_id=; no session goes to sign-in",
+    "kind": "gate",
+    "calls": "GET/POST /api/money/accounts",
+    "tables": "sessions, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts.test.mjs ('a client manages only their own file', staff FINANCE role reads the named client, other roles refused, no session 401); reg:money-accounts + reg:money/accounts pings"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Page load: containers (businesses, personal), accounts, cards, loans, 'Not sorted yet' list",
+    "kind": "page",
+    "calls": "GET /api/money/accounts[?client_id=]",
+    "tables": "entities, bank_accounts, tradelines, recurring_bills, businesses, account_statement_cycles",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts-screen.test.mjs (four states, null shows a dash); src/finance/money-accounts.test.mjs + containers.test.mjs; no deep check reads the accounts read (gap-banks.mjs reads the overview screen, not this one)"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Header link 'Back to my portal' (staff with ?client_id= get 'Back to Finance OS')",
+    "kind": "link",
+    "calls": "navigates to client-portal.html / finance-os.html",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts-screen.test.mjs (page source assertions); src/http/financeos-staff-nav.test.mjs; link not clicked"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Money nav: Money, Accounts, Credit, Connections, Payments, Setup (carry ?client_id= for staff)",
+    "kind": "link",
+    "calls": "navigates to /app/financeos.html#tab",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts-screen.test.mjs 'carries the shared Money nav'; src/http/app-nav-matches-shell.test.mjs; src/http/financeos-staff-nav.test.mjs"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Head buttons: 'Add account' and 'Add a business' (open and focus their forms)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks them; render covered in node only; reg:money-accounts ping"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "'Add a business' form: business name + 13 info fields (legal name, DBA, EIN last 4, entity type, state formed, start month, industry, address, city, state, ZIP, phone, website) + 'Add business'",
+    "kind": "form",
+    "calls": "POST /api/money/accounts {action:'create_business', name, info}",
+    "tables": "entities, businesses",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts.test.mjs 'a client_id in the POST body is ignored: the new business lands on the session's client', full EIN or SSN refused; src/finance/business-info.test.mjs"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Business card 'Edit business info' / 'Add business info' form + 'Save business info'",
+    "kind": "form",
+    "calls": "POST /api/money/accounts {action:'save_business', container_id, info}",
+    "tables": "businesses, entities",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts.test.mjs 'cannot write business info onto another client's container', 'a full EIN ... is refused'; src/finance/business-info.test.mjs"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "'You' container: 'Add personal container' form (name) when none exists",
+    "kind": "form",
+    "calls": "POST /api/money/accounts {action:'create_personal', name}",
+    "tables": "entities",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/finance/containers.test.mjs createContainer personal; handler branch for create_personal not named in src/http/money-accounts.test.mjs"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Per-account 'Move to...' select (a business, you, or 'Not sorted yet'); credit-report accounts have no move control",
+    "kind": "select",
+    "calls": "POST /api/money/accounts {action:'assign'|'unassign', account_id, container_id}",
+    "tables": "bank_accounts, entities",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts.test.mjs (own account into own container works stamped client_stated; another client's account or container -> 404, nothing written); src/finance/containers.test.mjs"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "'Add account by hand' form: name, type (checking, savings, credit card, loan), belongs to, last 4, balance, limit (card), due day, minimum + 'Save account'",
+    "kind": "form",
+    "calls": "POST /api/money/accounts {action:'add_account', ...}",
+    "tables": "bank_accounts, account_statement_cycles, entities",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/finance/money-accounts.test.mjs (dollars to cents, last 4 only, due day and minimum, statement cycle row); src/http/money-accounts.test.mjs; hand-entered cards feed the file-protection texts"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "'Connect a bank' button (loads cdn.plaid.com link, then exchanges the public token)",
+    "kind": "button",
+    "calls": "POST /api/banking/link-token; POST /api/banking/link-exchange",
+    "tables": "plaid_items, bank_accounts",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-banks.mjs banks-plaid-item-error, banks-linked-not-on-screen, banks-sync-stale, banks-active-link-no-accounts; src/http/plaid-link.test.mjs; reg:banking/link-token + link-exchange pings; the Plaid script and sign-in window are not driven"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "Billing line: containers with accounts, price per container a month, total a month ('$X' when the price is unset)",
+    "kind": "stat tile",
+    "calls": "GET /api/money/accounts (billing)",
+    "tables": "entities",
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts-screen.test.mjs 'a null is a dash, never $0.00; unset price shows $X'; display only, nothing charges from this page"
+  },
+  {
+    "surface": "money-accounts.html",
+    "control": "'Try again' button on a load error",
+    "kind": "button",
+    "calls": "GET /api/money/accounts",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts-screen.test.mjs 'four states: loading, empty, error, full'; render only, click not driven"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Page gate: a client changes only their own alerts; staff (owner, admin, sales_manager, closer) need ?client_id=",
+    "kind": "gate",
+    "calls": "GET/POST /api/money/alerts",
+    "tables": "sessions, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs (client reads own file; client_id ignored; staff outside FINANCE refused; no login 401; PUT 405); reg:money-alerts + reg:money/alerts pings"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Page load: four protections, cards with next statement close and promo, two cash cushion verdicts, texts already sent",
+    "kind": "page",
+    "calls": "GET /api/money/alerts[?client_id=]",
+    "tables": "file_protection_settings, file_protection_alerts, account_statement_cycles, bank_accounts, entities, clarity_payments, crs_results, plaid_items",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts-screen.test.mjs (every state in node); src/finance/file-alerts/read.test.mjs + fixture; no live check reads the alerts read with real data"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Header link 'Back to my portal' and Money nav (adds an Alerts tab)",
+    "kind": "link",
+    "calls": "navigates to client-portal.html / financeos.html#tab",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts-screen.test.mjs 'the shared money nav with Alerts as the one current page'"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Switch: Pay before the statement closes (payment_timing)",
+    "kind": "toggle",
+    "calls": "POST /api/money/alerts {action:'set_alert', kind, enabled}",
+    "tables": "file_protection_settings",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a client switches a kind off on their own file; client_id in the body is ignored', 'a kind that does not exist ... is a 400'; src/finance/file-alerts/store.pg.test.mjs; daily job job:blueprint-finance-os-alerts (30 7 * * *) has a heartbeat ping only; nothing checks that the text went out"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Switch: Promo rate ending (60 / 30 / 7 days) (promo_end)",
+    "kind": "toggle",
+    "calls": "POST /api/money/alerts {action:'set_alert', kind, enabled}",
+    "tables": "file_protection_settings",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a client switches a kind off on their own file; client_id in the body is ignored', 'a kind that does not exist ... is a 400'; src/finance/file-alerts/store.pg.test.mjs; same daily job ping only"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Switch: Cash cushion (6 months of minimums, personal and business apart) (cash_reserve)",
+    "kind": "toggle",
+    "calls": "POST /api/money/alerts {action:'set_alert', kind, enabled}",
+    "tables": "file_protection_settings",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a client switches a kind off on their own file; client_id in the body is ignored', 'a kind that does not exist ... is a 400'; src/finance/file-alerts/store.pg.test.mjs; same daily job ping only"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Switch: New credit (new_credit)",
+    "kind": "toggle",
+    "calls": "POST /api/money/alerts {action:'set_alert', kind, enabled}",
+    "tables": "file_protection_settings",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a client switches a kind off on their own file; client_id in the body is ignored', 'a kind that does not exist ... is a 400'; src/finance/file-alerts/store.pg.test.mjs; same daily job ping only; opens a CSM task for Blueprint clients"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Card: 'Change day' (statement close day select 1-31) + Save + Cancel",
+    "kind": "form",
+    "calls": "POST /api/money/alerts {action:'set_statement_close_day', account_id, day}",
+    "tables": "account_statement_cycles, bank_accounts",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a day, or null to clear it', 'day 0, day 32, a word: a 400'; src/finance/file-alerts/store.pg.test.mjs; the pay-before-close text cannot go without this day"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Batch 'Save days' for several hand-entered cards at once",
+    "kind": "bulk action",
+    "calls": "POST /api/money/alerts {action:'set_statement_close_day'} x N",
+    "tables": "account_statement_cycles, bank_accounts",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs (same action); batch loop is page JS exercised by src/http/money-alerts-screen.test.mjs render only"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Card promo: 'Add promo' / 'Change promo' form (end date, APR %) + Save promo + Cancel",
+    "kind": "form",
+    "calls": "POST /api/money/alerts {action:'set_promo', account_id, ends_on, apr_pct}",
+    "tables": "account_statement_cycles, bank_accounts",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a client puts a promo on a card', 'a bad date or rate is a 400 that names the field', 'a card that is not theirs is a 404'; src/finance/file-alerts/promo.test.mjs"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Card promo: 'Remove this promo' then 'Yes, remove it' / 'Keep it'",
+    "kind": "button",
+    "calls": "POST /api/money/alerts {action:'set_promo', ends_on:null}",
+    "tables": "account_statement_cycles",
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs 'a null end date clears the promo'; two-tap flow is page JS, render tested only"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "'Show all N' / fewer texts list per protection",
+    "kind": "toggle",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; reg:money-alerts ping"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Jump links to Accounts and Setup ('Add the close day', 'Connect a bank')",
+    "kind": "link",
+    "calls": "navigates to /app/financeos.html#accounts | #setup",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks them"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "'Try again' button on a load error",
+    "kind": "button",
+    "calls": "GET /api/money/alerts",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts-screen.test.mjs error state; click not driven"
+  },
+  {
+    "surface": "money-alerts.html",
+    "control": "Daily alert run that actually sends the four texts (blueprint-finance-os-alerts; not a button here)",
+    "kind": "job",
+    "calls": "Inngest cron 30 7 * * *; sendTemplated",
+    "tables": "file_protection_alerts, messages, tasks, clients, bank_accounts, account_statement_cycles",
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "heartbeats.mjs JOBS blueprint-finance-os-alerts; slice-07-finance.mjs registryKeys money/alerts; src/finance/file-alerts/run.test.mjs, safety.test.mjs, src/workflows/blueprint-finance-os-alerts.test.mjs; no gap check reads file_protection_alerts or message receipts for these texts; texts to Chris stay inside texting hours but these go to clients"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Page gate: client reads own file; staff (owner, admin, sales_manager, closer) need ?client_id=; only staff see plan controls",
+    "kind": "gate",
+    "calls": "GET/POST /api/money/banks",
+    "tables": "sessions, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs (client own file, staff FINANCE, outside org 404, non-FINANCE refused, 'a client can never change the plan'); reg:money-banks + reg:money/banks pings"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Page load: tiles (next funding sequence date, estimated amount, bank relationships), banks near you, card stacking order, relationships table",
+    "kind": "page",
+    "calls": "GET /api/money/banks[?client_id=]",
+    "tables": "blueprint_bank_relationship_todos, bank_relationship_deposits, lenders, entities, clients, businesses, crs_results, tradelines, card_liabilities",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks-screen.test.mjs (render states); src/finance/bank-strategy.test.mjs; lender book empty is watched by gap-funding.mjs funding:lender-book; no live check reads this endpoint"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Header link 'Back to my portal' and Money nav (8 links incl. Plan and Banks)",
+    "kind": "link",
+    "calls": "navigates to client-portal.html / financeos.html#tab",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks-screen.test.mjs; src/http/financeos-staff-nav.test.mjs; src/http/app-nav-matches-shell.test.mjs"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Banks near you: per-bank 'Add to plan' form (staff): container, day to open, deposit ($, blank = book minimum)",
+    "kind": "form",
+    "calls": "POST /api/money/banks {action:'plan_bank', lender_id, bank, container_id, planned_open_on, deposit}",
+    "tables": "blueprint_bank_relationship_todos, lenders",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs 'staff plan a bank: the body goes through, pinned to the client in the body and the staff's org', 'a staff body for another org's client is 404 before any write'"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "'Add a bank to the plan' form (staff): bank name, kind (business/personal), container, day to open, deposit",
+    "kind": "form",
+    "calls": "POST /api/money/banks {action:'plan_bank'}",
+    "tables": "blueprint_bank_relationship_todos, entities",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs (same action); src/finance/bank-strategy.test.mjs refused-input sentences"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Relationship row (planned): 'Day opened' + 'Mark opened' form",
+    "kind": "form",
+    "calls": "POST /api/money/banks {action:'open_account', relationship_id, opened_on}",
+    "tables": "blueprint_bank_relationship_todos",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs 'open an account and record a deposit: today and the staff id travel with them'"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Relationship row: 'Skip this bank' button",
+    "kind": "button",
+    "calls": "POST /api/money/banks {action:'set_state', state:'skipped'}",
+    "tables": "blueprint_bank_relationship_todos",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "src/http/money-banks.test.mjs posts set_state only to prove a client is refused ('a client can never change the plan'); the staff skip path is never run, only a spy exists; src/finance/bank-strategy.test.mjs 'skipped banks never pin' covers plan math only"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Relationship row (opened): 'Add deposit' form (amount $, day)",
+    "kind": "form",
+    "calls": "POST /api/money/banks {action:'record_deposit', relationship_id, amount_cents, deposited_on}",
+    "tables": "bank_relationship_deposits, blueprint_bank_relationship_todos",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs 'open an account and record a deposit'; records a deposit staff saw, moves no money (page and handler header say so)"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Next funding sequence 'Save date' form (staff; Blueprint buyers only)",
+    "kind": "form",
+    "calls": "POST /api/money/banks {action:'set_next_sequence_date', ready_date}",
+    "tables": "clients (custom_fields)",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs 'the next funding sequence date is Blueprint only: a non-buyer is 403 in words', 'a bad date is 400', old name set_next_round_date; src/http/blueprint-staff-actions-next-sequence.test.mjs; sweeper blueprint-next-funding-sequence-sweeper (30 6 * * *) acts on this date and has a heartbeat ping only"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "Card stacking order and bank rules with their source tags (display)",
+    "kind": "stat tile",
+    "calls": "GET /api/money/banks",
+    "tables": "lenders, card_liabilities, tradelines, crs_results",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/finance/bank-strategy.test.mjs; src/http/money-banks-screen.test.mjs; each rule prints its source"
+  },
+  {
+    "surface": "money-banks.html",
+    "control": "'Try again' button on a load error",
+    "kind": "button",
+    "calls": "GET /api/money/banks",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks-screen.test.mjs error state; click not driven"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Page gate: inquiry_specialist, owner, admin, funding_advisor roles; setter/closer-only roles bounced",
+    "kind": "gate",
+    "calls": "GET /api/auth/session; GET /api/read/inquiry-cases | repair-cases (role gated)",
+    "tables": "sessions, staff",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/verification-roles.spec.mjs (inquiry_specialist screens: inquiry-remover.html); src/http/repair-desk-screen.test.mjs 'the screen's role lists are the server's role lists'; gap-staff.mjs role-desk"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Desk tabs: 'Inquiries' and 'Repair' (remembers the last pane in browser storage)",
+    "kind": "tab",
+    "calls": "none (client only); Repair loads on first open",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs opens the Repair pane and works it; src/http/repair-desk-screen.test.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Desk headline number + 'next' button (Ready to send / Need me; opens the next case or file)",
+    "kind": "button",
+    "calls": "none (client only; opens a row)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs 'three blocked cases are counted in words, not hidden behind a zero', 'with everything genuinely in the mail, it still says she is clear'; the next-button click itself is not driven"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case queue table: one row per inquiry removal case, oldest first (Client, Waiting, Bureau, Items, Status, Docs, Delivery, Call, Round)",
+    "kind": "table",
+    "calls": "GET /api/read/inquiry-cases?active_only=true&limit=500",
+    "tables": "inquiry_removal_cases, inquiry_log, inquiry_prep, clients",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-inquiry.mjs inquiry:case-stuck / inquiry:letter-round / inquiry:specialist-api / inquiry:upload-door; src/inquiry-ops/cases.test.mjs (oldest first, whole-queue count); src/http/inquiries-recent-letters.test.mjs; e2e/specialist-desk.spec.mjs; reg:read/inquiry-cases ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case statuses shown in the Status column: Queued, Scheduled, In Progress, Escalated, Blocked, Completed, Canceled",
+    "kind": "board column",
+    "calls": "GET /api/read/inquiry-cases",
+    "tables": "inquiry_removal_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-inquiry.mjs inquiry:case-stuck reds a case with no update for 72 hours in a worked status, and a call that came due and did not fire; inquiry:letter-round reds a round with open inquiries and no draft"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "'Show more' button under the case queue (25 rows a time)",
+    "kind": "button",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; reg:read/inquiry-cases ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case row: click or Enter expands the case drawer (items, letter draft, identity packet, send options)",
+    "kind": "table row",
+    "calls": "none (client only; data came with the list)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no Playwright test expands a case row; the list read is tested (src/inquiry-ops/cases.test.mjs)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Upload FTC or police report' (file input + button; attaches as additional_fraud_docs)",
+    "kind": "file upload",
+    "calls": "POST /api/documents-upload {client_id, subtype:'additional_fraud_docs'}",
+    "tables": "documents, clients, entities",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/tripwires.mjs TRIPWIRES route:documents-upload -> documents:upload-store, documents:stuck-processing; src/http/documents-upload.pg.test.mjs (handler); the button on this desk is not driven by a test"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Generate letters' button (writes inquiry items from the credit file; mails nothing)",
+    "kind": "button",
+    "calls": "POST /api/inquiry-cases {id, action:'generate'}",
+    "tables": "crs_results, inquiry_log, inquiry_removal_cases",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/generate-from-crs.test.mjs; src/inquiry-ops/extract-disputables.test.mjs; gap-inquiry.mjs inquiry:case-stuck / inquiry:letter-round / inquiry:specialist-api / inquiry:upload-door watches the draft round, not this button"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Open documents' link (documents.html?client_id=)",
+    "kind": "link",
+    "calls": "navigates",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; reg:documents desk ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer send options: 'Mail letter (PostGrid)' checkbox, 'Mail service' select (bureau default, first class, priority, priority express), Experian portal reference input, 'Upload to Experian portal' checkbox, 'Open Experian upload' link",
+    "kind": "form",
+    "calls": "none until Send",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/send.test.mjs (portal needs a confirmation number; portal is Experian-only; TU/EQ refused); client-side inputs not driven by a browser test"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Send' button (letter to the bureau by PostGrid mail and/or Experian portal; refused while the identity packet is short)",
+    "kind": "button",
+    "calls": "POST /api/inquiry-cases {action:'send', mail, portal, portalConfirmation, mailServiceLevel}",
+    "tables": "inquiry_removal_cases, inquiry_log, inquiry_prep, clients, documents, client_consents",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-inquiry.mjs inquiry:case-stuck / inquiry:letter-round / inquiry:specialist-api / inquiry:upload-door (case stuck, letter draft, call due); gap-webhooks.mjs webhooks:stuck-failed (postgrid letter delivery); gap-keys.mjs keys:launch-secrets-present (POSTGRID_API_KEY); src/inquiry-ops/send.pg.test.mjs + send.test.mjs; mailing and postage cost real money and carry the client's identity"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired)",
+    "kind": "button",
+    "calls": "POST /api/inquiry?action=launch {id}",
+    "tables": "inquiry_removal_cases, outbound_calls, clients, pii_identity, pii_access_log, inquiry_log",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/bureau-call.test.mjs (refuses closed cases, needs FUNDHUB_REP_NUMBER, places the call and stamps call_fired_at); api/inquiry.mjs handler itself has no test; reg:inquiry ping; gap-inquiry.mjs reds a due call that never fired"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Mark cleared' button (case Completed; emits inquiry.removed)",
+    "kind": "button",
+    "calls": "POST /api/inquiry-cases {action:'mark_cleared', id, case_status:'Completed'}",
+    "tables": "inquiry_removal_cases, inquiry_log, clients",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "no test drives the mark_cleared or close branch of api/inquiry-cases.mjs (src/http/inquiry-cases.pg.test.mjs covers clear_inquiry); reg:inquiry-cases ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Case drawer: 'Close' button (case Canceled)",
+    "kind": "button",
+    "calls": "POST /api/inquiry-cases {action:'close', id, case_status:'Canceled'}",
+    "tables": "inquiry_removal_cases",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "same untested branch as Mark cleared; reg:inquiry-cases ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Bureau chips: Equifax, TransUnion, Experian (filter the work queue; show open counts)",
+    "kind": "filter",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks a chip; counts come from the inquiry read"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Work queue table: one row per disputed inquiry line (Client, Bureau, Actual, Expected, Call state, Hold, Attempts, Status)",
+    "kind": "table",
+    "calls": "GET /api/read/inquiries?limit=200",
+    "tables": "inquiry_log, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs; src/http/inquiries-write.pg.test.mjs (GET /api/read/inquiries 'still works off the clock'); reg:read/inquiries ping; gap-inquiry.mjs inquiry:case-stuck / inquiry:letter-round / inquiry:specialist-api / inquiry:upload-door"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Stat tiles: Still open, Worked, Calls, Confirmed (move by the server's counts after each write)",
+    "kind": "stat tile",
+    "calls": "none (client counters)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs 'marking an inquiry confirmed writes the status into Status and the count into Attempts'"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Work row: click or Enter expands the work strip; loads attempt history and the masked identity line",
+    "kind": "table row",
+    "calls": "GET /api/inquiries?inquiry_id=; GET /api/pii?client_id=",
+    "tables": "inquiry_attempts, pii_identity, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-remover-view.test.mjs (attempts read is a GET, identity read masked); src/http/pii.pg.test.mjs; e2e/specialist-desk.spec.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Work strip: attempt kind select (call, letter, portal, note) + 'Log an attempt' button",
+    "kind": "button",
+    "calls": "POST /api/inquiries {action:'attempt', inquiry_id, kind}",
+    "tables": "inquiry_attempts, inquiry_log, staff_events",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiries-write.pg.test.mjs (attempt logs the call and attributes it; refused off the clock; kind letter writes letter_issued); src/http/inquiry-remover-view.test.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Work strip: 'Mark confirmed' button (confirms removal; sets confirmed_at)",
+    "kind": "button",
+    "calls": "POST /api/inquiries {action:'confirm', inquiry_id}",
+    "tables": "inquiry_log, inquiry_removal_cases, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs 'marking an inquiry confirmed writes the status into Status and the count into Attempts'; src/http/inquiries-write.pg.test.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Work strip: free-text status input + 'Set status' button",
+    "kind": "button",
+    "calls": "POST /api/inquiries {action:'status', status}",
+    "tables": "inquiry_log",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiries-write.pg.test.mjs (action status moves the status); src/http/inquiry-remover-view.test.mjs (blank refused)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Work strip: expected-name input + 'Save expected' button",
+    "kind": "button",
+    "calls": "POST /api/inquiries {action:'expected', expected_name}",
+    "tables": "inquiry_log",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiries/work.test.mjs; src/http/inquiry-remover-view.test.mjs buildExpectedRequest"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Identity line: reason input + 'Reveal SSN' / 'Hide' button (writes name and reason to the access log)",
+    "kind": "button",
+    "calls": "POST /api/pii {client_id, reason}",
+    "tables": "pii_identity, pii_access_log",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/pii.pg.test.mjs (reveal needs a real reason, logged verbatim, closer and setter 403, accessed_by not accepted from the body); src/http/inquiry-remover-view.test.mjs; no Playwright test clicks Reveal; reg:pii ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Recent Letters Issued list + 'All letters' link (documents.html)",
+    "kind": "link",
+    "calls": "GET /api/inquiries?recent=letters",
+    "tables": "inquiry_attempts, inquiry_log, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs ('a letters read that comes back empty does say so', 'the letters that exist are drawn', and the refused-read case); src/http/inquiries-recent-letters.pg.test.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair tile filters: Need me, Ready to send, Waiting on bureau, Stuck, Trial ending (press again to clear)",
+    "kind": "filter",
+    "calls": "none (client only over GET /api/read/repair-cases)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs 'the repair tile filters still work after a Send'; src/http/repair-desk-screen.test.mjs 'each tile is a pressable filter with aria-pressed'"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair queue table: Client, Program, Round, Stage, Needs chip, Due (need-me first, most overdue first)",
+    "kind": "table",
+    "calls": "GET /api/read/repair-cases",
+    "tables": "cards, clients, dispute_cases, dispute_items, dispute_letters, pipeline_stages, pipelines",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck / repair-letter-round + pipeline-motion.mjs pipeline:repair; src/http/repair-cases-read.test.mjs; e2e/specialist-desk.spec.mjs; reg:read/repair-cases ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: intake (SLA 3 business days -> chase_contract task)",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck reads intake files past their clock; src/repair/sla.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: awaiting_documents (SLA 14 days -> owner_contact_client)",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: analysis (SLA 1 hour -> engineering_engine_failure)",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-letter-round reds a file still in analysis past its hour or an open case with items and no letter"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: letters_generated (SLA 30 minutes -> generation_or_variance)",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline-motion.mjs pipeline:repair counts cards sitting here (any age)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: ready_to_send (SLA 4 hours -> dispatch_failure; shows as 'Ready')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline-motion.mjs pipeline:repair counts cards sitting here; fulfillment:next-action (gap-fulfillment.mjs)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: in_transit (SLA 10 days -> check_postgrid_tracking; shows as 'Waiting')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck; gap-webhooks.mjs webhooks:stuck-failed (postgrid delivery receipts)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: awaiting_response (bureau due date + 5 days -> bureau_deadline_breach; shows as 'Waiting')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: response_received (SLA 24 hours -> owner_reviews_parse; shows as 'Answer in')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline-motion.mjs pipeline:repair counts cards sitting here; the exceptions list below handles low-confidence parses"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: round_complete (no clock; chip 'Round done - next?')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "no stuck check for this stage; reg:read/repair-cases ping only"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: stalled (the human queue; shows as 'Stuck')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline-motion.mjs pipeline:repair; gap-repair.mjs repair-case-stuck reads cases the system marked stalled"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: program_complete (shows as 'Done')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "no stuck check; reg:read/repair-cases ping only"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair stage: cancelled (shows as 'Cancelled')",
+    "kind": "board column",
+    "calls": "GET /api/read/repair-cases (stage pill)",
+    "tables": "cards, pipeline_stages, pipelines, dispute_cases",
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "no stuck check; reg:read/repair-cases ping only"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button",
+    "kind": "button",
+    "calls": "GET /api/repair/exceptions; POST /api/repair/exceptions {action:'confirm_parse', responseId}",
+    "tables": "dispute_responses, dispute_cases, dispute_items, cards, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/metro2/inbound/inbound.test.mjs confirmParse; src/http/inquiry-remover-view.test.mjs builds the request; e2e/specialist-desk.spec.mjs does not click it; reg:repair/exceptions ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "'Retry' button when the queue fails to load",
+    "kind": "button",
+    "calls": "GET /api/read/repair-cases",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; e2e only asserts error copy in src/http/repair-desk-screen.test.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair row: click or Enter expands the file (items, letters this round, what is next, timeline)",
+    "kind": "table row",
+    "calls": "GET /api/read/repair-cases?client_id=",
+    "tables": "cards, clients, dispute_cases, dispute_items, dispute_letters, pipeline_stages, pipelines",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs (expands a row and finds [data-act=repair-send]); src/http/repair-cases-read.test.mjs"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Letter list item in an expanded row: opens the letter drawer (letter text, rules, signature); drawer Close buttons",
+    "kind": "table row",
+    "calls": "none (client only)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test opens the drawer; src/http/repair-desk-screen.test.mjs checks the drawer markup exists"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Letter drawer 'Send this one' button (mails one letter)",
+    "kind": "button",
+    "calls": "POST /api/repair/send {mail:true, client_id, letters:[1]}",
+    "tables": "dispute_letters, dispute_cases, furnisher_mail_addresses, clients",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck / repair-letter-round + pipeline-motion.mjs pipeline:repair; gap-webhooks.mjs webhooks:stuck-failed; src/http/repair-send.test.mjs (fails closed without mail=true, refusal gives the letter back, may-have-transmitted keeps it claimed); drawer button not driven"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Expanded row 'Send' button (mails every sendable letter; fails closed without mail=true)",
+    "kind": "button",
+    "calls": "POST /api/repair/send {mail:true, client_id, letters}",
+    "tables": "dispute_letters, dispute_cases, furnisher_mail_addresses, clients",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck / repair-letter-round + pipeline-motion.mjs pipeline:repair; gap-webhooks.mjs webhooks:stuck-failed; gap-keys.mjs keys:launch-secrets-present; src/http/repair-send.test.mjs; e2e/specialist-desk.spec.mjs 'tile filters still work after a Send'; real mail, real postage"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Expanded row 'Stage' button (generates the round's letters; mails nothing)",
+    "kind": "button",
+    "calls": "POST /api/repair/generate {client_id}",
+    "tables": "dispute_cases, dispute_items, dispute_letters, clients, crs_results, repair_programs",
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-repair.mjs repair-case-stuck / repair-letter-round + pipeline-motion.mjs pipeline:repair (a round that should have been written and was not); src/http/repair-generate.pg.test.mjs (authorization, no credit file, ID not read, pressing twice writes nothing twice, role gate)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Expanded row 'Soft pull' button (owner, admin, closer, funding_advisor only; opens the PULL modal)",
+    "kind": "button",
+    "calls": "none (client only; opens modal)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs 'the Specialist is not shown a Soft pull or Clean personal info button', 'the owner still gets both buttons'; src/http/repair-desk-screen.test.mjs role lists equal server lists"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "PULL modal: type PULL, Cancel, 'Pull' (three bureau pulls in a row; stops on the first refusal; Escape closes)",
+    "kind": "modal",
+    "calls": "POST /api/finance/crs-pull {client_id, bureau} x3 (EX, EQ, TU)",
+    "tables": "soft_pull_requests, crs_results, clients, pii_identity, businesses",
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-soft-pull.mjs softpull:request-failed-or-stuck (ledger); gap-keys.mjs keys:credit-pull-live-allowed; e2e/specialist-desk.spec.mjs 'a refused soft pull says so instead of closing in silence'; src/http/finance-crs-pull.test.mjs, src/finance/soft-pulls.pg.test.mjs; each pull is a paid UnderwriteIQ order"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Expanded row 'Clean personal info' button (owner and admin only; asks to confirm; cannot be undone)",
+    "kind": "button",
+    "calls": "POST /api/privacy/erasure {client_id, confirm_client_id, reason}",
+    "tables": "pii_identity, crs_results, tradelines, bank_accounts, bank_transactions, plaid_items, transactions, invoices, commission_ledger, soft_pull_requests, erasure_requests, pii_access_log, clients",
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/privacy-erasure.test.mjs, src/privacy/erasure.test.mjs, erasure.pg.test.mjs; e2e/specialist-desk.spec.mjs only checks who sees the button; no pulse check reads erasure_requests (reg:privacy/erasure ping only)"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Expanded row 'Enroll' button (puts the client in the trial program; sends price_total 200 and amount_paid 200)",
+    "kind": "button",
+    "calls": "POST /api/repair/enroll {client_id, program:'trial', price_total:200, amount_paid:200}",
+    "tables": "repair_programs, clients",
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-enroll.test.mjs (non-POST refused, setter refused, upsert); button click not driven; records a paid amount from the desk with no payment step; reg:repair/enroll ping"
+  },
+  {
+    "surface": "inquiry-remover.html",
+    "control": "Repair headline 'Open <client>' next button",
+    "kind": "button",
+    "calls": "none (client only; scrolls to and expands a row)",
+    "tables": "none",
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "no test clicks it; headline text is tested in e2e/specialist-desk.spec.mjs"
+  }
+]

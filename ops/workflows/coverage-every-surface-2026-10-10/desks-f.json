@@ -1,0 +1,2984 @@
+[
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Open the deck: reads the client file for ?contact= (also ?client_id, ?id, ?client)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/closer-deck?contact= (closer, sales_manager, owner, admin)"
+    ],
+    "tables": [
+      "clients",
+      "businesses",
+      "crs_results",
+      "soft_pull_requests",
+      "payment_links",
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-deck.test.mjs (missing client, no CRS, stored payload, survey labels, businesses, no invented numbers); e2e/ccp-present-param-aliases.spec.mjs (all 4 id aliases reach the API). No pulse check runs buildCloserDeck: reg:read/closer-deck and reg:present only ping"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Two walls: no client on the link ('Pick a client first') and refused account ('This account cannot open the client deck')",
+    "kind": "page-state",
+    "calls": [
+      "GET /api/read/closer-deck (401/403 shows the wall)"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test or pulse lane asserts either wall. reg:present only GETs the HTML (src/pulse/registry.mjs)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "present.js is served and wired (posts log_disposition, calls /api/closer-deck)",
+    "kind": "asset",
+    "calls": [
+      "GET /app/present.js"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-closer.mjs closer:desk-pages (src/pulse/coverage/gap-closer.mjs) GETs present.html and present.js and goes red if the script is missing or no longer posts log_disposition"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "contract-send.js and data.js are served (the deck needs both to send a contract and to read or write anything)",
+    "kind": "asset",
+    "calls": [
+      "GET /app/contract-send.js, GET /app/data.js"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "No ping or lane fetches either file live (closer:desk-pages names present.html and present.js only). src/http/contract-send.test.mjs runs contract-send.js in a vm, but nothing checks the deployed file"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Client screen only / Show cockpit toggle",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; no test clicks it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Back and Next screen buttons, ArrowLeft and ArrowRight keys (Next steps over the 06 Blueprint section, skips S-11..S-16 on the education route)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (Next/Back step over the stack, ArrowRight walks it, leave goes back to the slide it was opened from)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 01: 01 Intro (S-01..S-02)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (same phase: handler as phase:03, 05, 06, which are clicked)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 02: 02 Discovery (S-03..S-04)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (same phase: handler as phase:03, 05, 06, which are clicked)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 03: 03 Soft pull (S-05..S-07)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (clicks phase:03)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 04: 04 Pitch (S-08..S-16)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (same phase: handler as phase:03, 05, 06, which are clicked)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 05: 05 Commit (S-17..S-22)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (clicks phase:05)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 06: 06 Blueprint (B-01..B-06, the offer stack)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (clicks phase:06)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Phase strip button 07: 07 Close (S-23..S-24)",
+    "kind": "stage-button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (same phase: handler as phase:03, 05, 06, which are clicked)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Discovery: 7 belief checkboxes (Pain, Desire, Doubt, Cost, Support, Money, Trust)",
+    "kind": "checkbox",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; value only leaves the page as beliefs_count on log_disposition; no test clicks it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Discovery: 'Their monthly cost of inaction' text box",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; value only leaves the page as cost_of_inaction on log_disposition (cut to 80 characters server side); no test types in it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Discovery: 'Save month / year' per business (incorporation date, re-reads the deck so the pre-approval figure re-prices)",
+    "kind": "button",
+    "calls": [
+      "POST /api/soft-pull-approve {action: stamp_incorporated, client_id, business_name, incorporated_date}",
+      "GET /api/read/closer-deck?contact= (re-read)"
+    ],
+    "tables": [
+      "businesses",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "BROKEN AT HEAD: api/soft-pull-approve.mjs:279 calls stampIncorporatedAsStaff and no such function is declared or imported anywhere (the definition last appears in commit ddcd92d18 and is gone), so every staff POST throws ReferenceError. src/http/closer-deck-present.test.mjs and src/http/client-panel-screen.test.mjs only assert the string 'stamp_incorporated' exists. reg:soft-pull-approve GETs the signed-link branch and passes. npm run lint is syntax-only so it cannot see this. The Client Control Panel uses the same action"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Soft pull panel: consent / paid / pull-status lines (display)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "client_consents",
+      "payment_links",
+      "soft_pull_requests",
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-deck.test.mjs ('a stored credit result is a finished pull, whatever the request row says', 'with no credit result at all the pull status stays honest')"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Send soft pull ($32 + approval form)': mints the $32 pay link, emails and texts the approval form",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action: send_soft_pull, client_id, offer_key, ...}"
+    ],
+    "tables": [
+      "payment_links",
+      "messages",
+      "conversations",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/sales/closer-deck.test.mjs (sendDeckSoftPull fresh-file skip, stale file, no file); downstream deep: gap-soft-pull.mjs softpull:approve-click-no-pull and softpull:request-failed-or-stuck, gap-payments.mjs payments:pay-link-webhook, message-stuck checks (gap-sms.mjs, gap-email.mjs), beat-vendor-keys (Commas key). NOT checked: that the link was minted at $32 or that both messages went. The email says 'up to 5' businesses while the form allows 20 (src/finance/soft-pull-pricing.mjs)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'$ amount' e-book price box",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; page refuses under $1; server refuses outside $1 to $500,000 (sendDeckEbook) with no unit test"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Send e-book email': pay link at the typed price, with a placeholder PDF attached",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action: send_ebook, amount_cents}"
+    ],
+    "tables": [
+      "payment_links",
+      "messages",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/http/closer-deck-present.test.mjs only asserts source text (nothing is clicked); no unit test of sendDeckEbook; downstream deep: gap-payments.mjs payments:pay-link-webhook reads every payment_links row (any purpose) that was paid and never settled. The attached PDF is the 'ebook-placeholder' asset (page says so)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Route the call (S-07): FULL FUNDING / FUNDING PLUS REPAIR / REPAIR ONLY buttons",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it; it drives the same state from the payload tier (S-23 opens with the Blueprint chosen on every tier); src/sales/closer-deck.test.mjs selectedOfferKey; the buttons themselves are not clicked"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "EDUCATION PATH button (S-07)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it, including edu and checks S-23 opens with the Blueprint chosen"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "S-18 'Their number' 1 to 10 buttons",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; value only leaves the page as temperature on log_disposition; no test clicks it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "S-19 price ladder rung buttons (top rung first; step down only on a no)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it, including rung:2; src/sales/closer-deck.test.mjs selectedOfferKey (funding vs descent vs education)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Show the full Blueprint stack' (opens section 06 from S-19)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it, including stack-open and checks only the Blueprint rung offers it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'UnderwriteIQ package -> repair + funding' bridge button (S-19, repair route)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; sets the tier to FUNDING_PLUS_REPAIR and jumps to S-08; no test clicks it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "S-23 'Sale motion' select (Downsell / Upsell), shown for non-primary offers",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-deck.test.mjs ('first-sale offers skip the upsell gate; deliverables still require it' runs sendDeckPayLink); src/http/closer-deck-present.test.mjs (source text)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Send agreement + pay link': mints the pay link for the chosen offer, emails and texts it",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action: send_pay_link, offer_key, sale_motion, ...}"
+    ],
+    "tables": [
+      "payment_links",
+      "messages",
+      "conversations",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/sales/closer-deck.test.mjs (sendDeckPayLink gate, F48 text); src/http/launch-proof-chain.pg.test.mjs (deck chain); downstream deep: gap-payments.mjs payments:pay-link-webhook, payments:paid-no-entitlement, payments:card-declined-no-followup; beat-vendor-keys (Commas key); beat-text-path and beat-email-path (message engine). NOT checked: that the link amount equals the catalog price for the chosen offer"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Send deliverables package now' (education route): saves the 5 UnderwriteIQ files to the portal and emails the client",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action: generate_letters, edu: true}"
+    ],
+    "tables": [
+      "documents",
+      "document_versions",
+      "messages",
+      "clients"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/sales/closer-deck.test.mjs (F41: sends the funding pack, empty pack sends nothing); gap-underwrite.mjs uw-pack-files-incomplete and uw-pack-email-not-queued name generated_by 'closer-deck' (files saved but no email queued goes red)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Generate letters and email now' (offer allows letters, not education)",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action: generate_letters}"
+    ],
+    "tables": [
+      "documents",
+      "document_versions",
+      "messages",
+      "clients"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-deck.test.mjs (generateDeckLetters saves the repair pack, records a storage failure, refuses the qualified funding route). No pulse check reads the diy_status field this action stamps: gap-underwrite.mjs reads slo_pack_status, not diy_status"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Repair offers: 'Amount paid today' box (price_total and amount_paid on the repair program)",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-enroll.test.mjs (upsert returns the program); the typed number is not compared to transactions anywhere"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Repair offers: 'Stage letters' (enroll, then write round R1 letters)",
+    "kind": "button",
+    "calls": [
+      "POST /api/repair/enroll {client_id, program, price_total, amount_paid}",
+      "POST /api/repair/generate {client_id, round: R1}"
+    ],
+    "tables": [
+      "repair_programs",
+      "dispute_cases",
+      "dispute_items",
+      "dispute_letters",
+      "documents",
+      "clients",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/http/repair-enroll.test.mjs, src/http/repair-generate.pg.test.mjs (case, items and letters really written, double press writes nothing twice); gap-repair.mjs repair-letter-round (open case with items and no letter) and repair-case-stuck"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Repair offers: 'Send letters now' (mails the staged letters to the bureaus through PostGrid)",
+    "kind": "button",
+    "calls": [
+      "POST /api/repair/send {mail: true, client_id, letters}"
+    ],
+    "tables": [
+      "dispute_letters",
+      "dispute_cases",
+      "matches",
+      "furnisher_mail_addresses",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/http/repair-send.test.mjs, src/repair/send-double-mail.pg.test.mjs (a claimed letter is not mailed twice); src/pulse/pipeline-motion.mjs pipeline:repair (cards stuck in letters_generated or ready_to_send) and gap-repair.mjs; SEND_PATHS watches reg:repair/send. NOT checked: that PostGrid accepted the piece"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Other actions' open/close toggle (S-23)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; no test clicks it"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Invoice this client': reads the open invoice, emails it",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/invoices?client_id=&limit=5",
+      "POST /api/messages-outbound {action: email_invoice, invoice_id}"
+    ],
+    "tables": [
+      "invoices",
+      "payment_links",
+      "messages",
+      "message_templates",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "ROLE MISMATCH: Present is open to closer, sales_manager, owner, admin, but api/read/invoices.mjs is ROLE_SETS.FINANCE (owner, admin, sales_manager) and api/messages-outbound.mjs refuses email_invoice to anyone but owner or admin (403 'Only an owner or an admin can send mail'). A closer is refused at the first read, a sales manager at the send. No test or lane runs this pair under a closer session. src/messaging/outbox.pg.test.mjs tests emailInvoice itself; src/http/closer-deck-present.test.mjs only checks source text; reg:messages-outbound and reg:read/invoices ping. No pulse check reads invoices that were never emailed"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Send contract': picks the agreement that matches the offer, creates the draft, sends it, returns the sign link",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/contracts?view=templates&active_only=1",
+      "POST /api/contracts {action: create_draft, client_id, template_id}",
+      "POST /api/contracts {action: send, id}"
+    ],
+    "tables": [
+      "contract_templates",
+      "contracts",
+      "contract_signers",
+      "document_versions",
+      "documents",
+      "messages",
+      "clients"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/http/contract-send.test.mjs (vm: double press refused, failed send retryable); src/http/present-contract-pick.test.mjs (screen and server pick the same agreement); src/contracts/lifecycle.pg.test.mjs; gap-contracts.mjs contracts:sent-unsignable (sent but cannot be signed) and contracts:template-missing (an offer has no active agreement)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Copy the sign link' and the read-only sign-link box",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; the clipboard helper copyText has no test of its own"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Repair referral' checkbox (kept in page state, sent with the disposition)",
+    "kind": "checkbox",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/sales/call-outcomes.test.mjs (repairReferral on logCallOutcome), src/workflows/ds-01-repair-referral.test.mjs; the checkbox is not clicked in a browser"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "'Log disposition and close': writes the call outcome (deposit or downsell) and the offer",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action: log_disposition, offer_key, route, temperature, beliefs_count, cost_of_inaction, repair_referral}"
+    ],
+    "tables": [
+      "call_outcomes",
+      "tasks",
+      "clients",
+      "events",
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/http/launch-proof-chain.pg.test.mjs ('Present log_disposition marker crosses the whole chain'), src/sales/call-outcomes.test.mjs; gap-closer.mjs closer:held-disposition (deck used and no call_outcomes row, or disposition saved with no row); gap-handoff.mjs handoff:call-outcome-no-followup; gap-calls.mjs calls:booked-no-outcome"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Descent ladder, 6 buttons (Funding, Repair DFY, Repair trial, DIY letters, Funding Mastery, Education deliverables)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; the rung maths are in src/sales/closer-deck.test.mjs selectedOfferKey but the six buttons are not clicked"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Objections: 6 buttons (Think about it, $3K is a lot, What if it fails, Spouse, Burned before, DIY), Back, and the jump button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; script copy only; no test clicks them"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Reframing patterns button and Back",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; script copy only"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Section 06 stack: 13 on/off toggles (disputes, helper, money helper, pull, ready, paydown, FinanceOS, alerts, partner, banks, declines, vault, next sequence)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (file-driven defaults, toggles redraw the caller's stack, 'every dollar figure is the catalog's or $X')"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Section 06 'Reset to this file'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it, including stack-reset"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Section 06 B-04 'Yes: close the Blueprint' (sets Capital Blueprint as the offer, opens S-23)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it, including stack-close on every tier and the education route and checks S-23 opens with the Blueprint chosen"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Section 06 move buttons: 'Not ready: show FinanceOS', 'Ready later? Show the path up', 'Back to the Blueprint price', 'Back to FinanceOS'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only; stack-go:* is never clicked in a test"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Section 06 'Leave the stack: back to <slide>'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it, including stack-leave"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Section 06 FinanceOS demo links: 16 tabs open the sample client in a new tab (owner, admin, sales_manager, closer only)",
+    "kind": "link",
+    "calls": [
+      "GET /app/financeos.html?client_id=f1cb9c27-f858-4db1-b6bb-4eddc898bb8e#<tab> then /api/money/*"
+    ],
+    "tables": [
+      "clients",
+      "entities",
+      "bank_accounts",
+      "crs_results",
+      "tradelines"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (tab list equals financeos.js TABS, roles equal ROLE_SETS.FINANCE_OS, no link opens an error page). No pulse check reads that the sample client still exists"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Client-facing slides S-01..S-24 and B-01..B-06: prices, guarantees, scores, 'Sample scores' label",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/present-score-bars.test.mjs (bar colour follows the score), src/http/sample-score-labels.test.mjs, src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it (prices from the catalog, no promise words, guarantees word for word), src/http/closer-deck-present.test.mjs (prices from catalog, close script follows the offer)"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Cockpit script ('Say this', 'Watch for'): lines filtered by funding / repair / education route, [First Name] filled in, close wrap keyed to the offer actually chosen",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "src/http/closer-deck-present.test.mjs only asserts source text (nothing is clicked) (close script follows the offer, education promises no funding); src/http/present-blueprint-stack.test.mjs runs the real present.js in a vm and clicks it for the Blueprint section; the FUND / REPAIR / EDU line filter is never clicked"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Double-press guard on every send button ('Sending...', 4 second cooldown, 'Sent at' line, count of sends)",
+    "kind": "guard",
+    "calls": [],
+    "tables": [],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "src/http/closer-deck-present.test.mjs only asserts source text (nothing is clicked); sendLocked() is never exercised. src/http/contract-send.test.mjs does run the 8 second guard inside contract-send.js. reg:present pings the HTML only"
+  },
+  {
+    "surface": "present.html (+ present.js, contract-send.js)",
+    "control": "Error wall links: 'Back to Closer Dashboard' and 'Sign in as someone else'",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:present pings the HTML only"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Page open: product ladder",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/products?limit=200 (staff roles)"
+    ],
+    "tables": [
+      "products",
+      "commission_rules"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs and e2e/crm-flows.spec.mjs (mocked API); reg:read/products ping. No pulse check reads this"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/commissions?limit=200 (owner, admin, sales_manager)"
+    ],
+    "tables": [
+      "commission_ledger",
+      "staff"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:read/commissions ping; e2e/controls-persist.spec.mjs only mocks the read. No pulse check reads commission_ledger (gap-partners.mjs reads AFFILIATE commission, not staff commission)"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Page open: commission rules and versions",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/commission-rules (owner, admin, sales_manager)"
+    ],
+    "tables": [
+      "commission_rules",
+      "commission_rule_tiers",
+      "products",
+      "staff"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/simplify-implementation.test.mjs (handler: auth, finance role, session org on reads); e2e/controls-persist.spec.mjs (read failure is not painted as zero rules); reg:commission-rules ping"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Page open: who am I (shows the SLO connections tab for owner and admin only)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (src/pulse/coverage/gap-auth.mjs); reg:auth/session ping"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Stat tiles: PRODUCTS, ACTIVE RULES, ACCRUED, PAID MTD",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs (read failure shows a dash, not zero); src/http/crm-html.test.mjs. Nothing ties ACCRUED to the ledger rows beyond the page's own sum"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Products table 'Rails' column (always a dash: nothing records which funnels a product sits on)",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs ('rails column stays empty rather than inventing funnels')"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Tabs: Products, Commission rules, SLO connections (owner/admin only)",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs clicks 'Commission rules'; the SLO tab is not clicked in a test"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "'View payout ledger ->' and '<- Back to rules'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only; no test clicks them"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "'+ Add product' (opens the empty editor)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/crm-flows.spec.mjs ('products create posts action create')"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Product row click (opens the editor for that product)",
+    "kind": "table-row",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs ('Save posts to /api/products' opens a row first)"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Product editor fields: name, category, default price, Variable pricing switch, minimum, maximum (page refuses min > max and a default outside the band)",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/crm-flows.spec.mjs and e2e/controls-persist.spec.mjs fill name and save; the min/max refusals are not exercised"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Product editor 'Save': creates or updates a product (name, category, default price, band, variable flag)",
+    "kind": "button",
+    "calls": [
+      "POST /api/products {action: save|create, code?, name, category, default_price, min_price, max_price, price_is_variable}"
+    ],
+    "tables": [
+      "products"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/http/products-write.test.mjs (save updates defaults for the session org, create inserts, closer refused); e2e/controls-persist.spec.mjs; downstream deep: gap-payments.mjs payments:paid-product-unmapped (a paid order whose product name no longer resolves via resolve_product_id) and payments:paid-no-entitlement"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Product editor 'Cancel', close X, click outside",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Commission rule header click (expand a rule) and 'Rate history' disclosure",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs clicks .rule-hd and reads the tier box"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Commission rule 'Change rate' (opens the new-rate line)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only; e2e/controls-persist.spec.mjs only proves the button is absent on a tiered rule"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Commission rule 'Close v<N> - open v<N+1>': saves a new effective-dated rate and reason",
+    "kind": "button",
+    "calls": [
+      "POST /api/commission-rules {rule_id, effective_from, rate, reason}"
+    ],
+    "tables": [
+      "commission_rules",
+      "commission_rule_tiers"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/simplify-implementation.test.mjs ('commission changes close the live row and insert a dated replacement', fake db); src/commissions/sql.test.mjs; no real-database test and no pulse check reads commission_rules"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Commission rule 'Cancel' (closes the new-rate line)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Commission rule 'See these payouts ->' (opens the ledger filtered to the people the rule pays)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Tiered rules: read-only (no Change rate button, tier table shown)",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs ('tiered rules use API fields and do not show unsupported edit controls')"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Ledger filters: person select and status select (Accrued, Approved, Paid)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Ledger select-all checkbox and per-row checkboxes (Accrued and Approved rows only)",
+    "kind": "bulk-select",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "'Approve selected': moves Accrued rows to Approved",
+    "kind": "button",
+    "calls": [
+      "POST /api/commissions {action: approve, ledger_ids}"
+    ],
+    "tables": [
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/commissions/payout.test.mjs (refuses empty ids, updates earned rows, skips bad ids); src/commissions/payout.pg.test.mjs (approve then mark paid, cannot approve a paid row twice); reg:commissions ping. No pulse check reads commission_ledger"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "'Mark paid...': asks for the ACH / check / payroll id, marks Approved rows Paid (records only, moves no money)",
+    "kind": "button",
+    "calls": [
+      "POST /api/commissions {action: mark_paid, ledger_ids, payout_ref}"
+    ],
+    "tables": [
+      "commission_ledger",
+      "events"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/commissions/payout.test.mjs (payout_ref required, only approved rows move); src/commissions/payout.pg.test.mjs. The staff 'commission paid' email (src/staff/comp-alerts.mjs) is a SEND_PATHS entry with no ping or lane, so nothing says it went"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "Ledger table (date, person, client, product, rule version, basis, rate, payout, status)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "Client and Rule version columns are always a dash (ledgerFromApi hardcodes them). No pulse check; reg:read/commissions ping"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "SLO connections: table and live count (which ClickFunnels product maps to which Fundhub product)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/slo-connections?limit=200 (owner, admin)"
+    ],
+    "tables": [
+      "slo_connections",
+      "products"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/slo-connections.test.mjs; reg:read/slo-connections ping"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "SLO connections: 'Add connection', row click, name / funnel id / product id / Fundhub product fields, On switch",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only; the form is not exercised in a browser"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "SLO connections 'Save connection': maps a ClickFunnels funnel + product to a Fundhub product (a paid webhook then writes that product)",
+    "kind": "button",
+    "calls": [
+      "POST /api/slo-connections {id?, name, cf_funnel_id, cf_product_id, product_code, active}"
+    ],
+    "tables": [
+      "slo_connections",
+      "products"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/slo-connections.test.mjs (sales manager refused, owner can save); src/slo/purchase.test.mjs (map lookup). Nothing reads whether a paid ClickFunnels order found its map (webhooks:clickfunnels only checks the door answers)"
+  },
+  {
+    "surface": "products-commissions.html",
+    "control": "SLO connections 'Cancel'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:products-commissions pings the HTML only"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Page open: the whole floor (hero, funnel, roster, offer stack, beliefs, sources, recordings, cold deals, discipline). The read also attaches loose Drive recordings to calls and clients (a write on a GET)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/sales-floor (owner, admin, sales_manager)"
+    ],
+    "tables": [
+      "call_outcomes",
+      "clients",
+      "staff",
+      "client_custom_fields",
+      "staff_targets",
+      "shifts",
+      "events",
+      "funding_closeout",
+      "funding_rounds",
+      "messages",
+      "commission_ledger",
+      "brain_files",
+      "brain_drive_sync",
+      "customer_insights"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-sales-manager.mjs sales-manager:read-api and sales-manager:totals run salesFloor() in process on the real database (its write is held back) and go red if it throws or returns bad shapes; e2e/sales-dashboards.spec.mjs (mocked); src/sales/metrics.test.mjs. The totals check proves the numbers can be read, not that they tie to the ledger"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Closer is bounced and sees 'Forbidden' (403 from the read)",
+    "kind": "gate",
+    "calls": [
+      "GET /api/read/sales-floor"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/sales-dashboards.spec.mjs ('shell bounces a closer home', mocked 403). The server refusal is ROLE_SETS.FINANCE in api/read/sales-floor.mjs and has no handler test"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Hero: 'Today' deposits, booked and held, 'Funded, not just sold' rate and target bar",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals (gap-sales-manager.mjs) reads the same funnel numbers; src/sales/metrics.test.mjs (deposit target is a count of 20, not $20)"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Funnel column: Booked (this month)",
+    "kind": "stage-column",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "events",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals (gap-sales-manager.mjs) fails if the funnel numbers are not readable; src/sales/metrics.test.mjs. The Booked count is not tied to its source rows by any check"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Funnel column: Held (this month)",
+    "kind": "stage-column",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "events",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals (gap-sales-manager.mjs) fails if the funnel numbers are not readable; src/sales/metrics.test.mjs. The Held count is not tied to its source rows by any check"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Funnel column: Deposits (this month)",
+    "kind": "stage-column",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "events",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals (gap-sales-manager.mjs) fails if the funnel numbers are not readable; src/sales/metrics.test.mjs. The Deposits count is not tied to its source rows by any check"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Funnel column: Funded (this month)",
+    "kind": "stage-column",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "events",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals (gap-sales-manager.mjs) fails if the funnel numbers are not readable; src/sales/metrics.test.mjs. The Funded count is not tied to its source rows by any check"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Funnel column: Downsells (this month)",
+    "kind": "stage-column",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "events",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals (gap-sales-manager.mjs) fails if the funnel numbers are not readable; src/sales/metrics.test.mjs. The Downsells count is not tied to its source rows by any check"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "'Your closers' roster: calls, close rate, funded rate, cash, 'Do this' line (one row per closer)",
+    "kind": "table",
+    "calls": [],
+    "tables": [
+      "staff",
+      "call_outcomes",
+      "commission_ledger",
+      "shifts"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:dropped-closer (gap-sales-manager.mjs: a closer with sales who is missing from the rollup goes red); src/sales/metrics.test.mjs (closer board excludes owners and demo names)"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Roster row click and Enter/Space (selects that closer in the focus panel and scrolls to it)",
+    "kind": "table-row",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:sales-floor pings the HTML only; no test clicks it"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "'One closer at a time': previous and next arrows and one name button per closer",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:sales-floor pings the HTML only; no test clicks them"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Offer stack tables: everything the floor sold, per closer, plus 'Sold, but not credited to any closer'",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "sales",
+      "products",
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/offer-stack.test.mjs; src/sales/metrics.test.mjs. Unknowns print 'Not recorded' with the reason (page code)"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Panel 'Which belief failed' (this period vs last period)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "call_outcomes"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "sales-manager:read-api runs the same salesFloor() read; no test pins the belief counts"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Panel 'Where it is coming from' (lead source, held, close, desire)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "client_custom_fields"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "sales-manager:read-api runs the same salesFloor() read; no test pins the source cuts"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "'Flag <belief>' button: stores a belief x source row for marketing",
+    "kind": "button",
+    "calls": [
+      "POST /api/marketing-flags {belief, lead_source, setter_label, outcome_count, period_start, period_end, note}"
+    ],
+    "tables": [
+      "marketing_flags"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:marketing-flags ping. No test calls api/marketing-flags.mjs or createMarketingFlag; e2e/sales-dashboards.spec.mjs only mocks the route and never clicks the button. Nothing reads marketing_flags"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "'Today's recordings' jump button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:sales-floor pings the HTML only; scroll only"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "'Sync recordings from Drive': scans Drive, indexes Meet files, reloads the floor",
+    "kind": "button",
+    "calls": [
+      "POST /api/company-brain/sync {}"
+    ],
+    "tables": [
+      "brain_drive_sync",
+      "brain_files",
+      "brain_chunks",
+      "call_outcomes"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/http/company-brain-sync.test.mjs; src/pulse/machine.mjs meet-transcript-sweeper (Drive not scanned for 30 minutes, last scan failed, Meet files still without words) and gap-meet.mjs meet:recording-no-transcript"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Recording rows: name, client, 'Words ready / Waiting for words', 'Open in Drive' link (https drive.google.com or docs.google.com only)",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "brain_files",
+      "call_outcomes"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "machine.mjs meet-transcript-sweeper and gap-meet.mjs meet:recording-no-transcript; src/sales/recordings.test.mjs"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Panel 'Compliance' (call recording flags: shows the reason text only)",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:sales-floor pings the HTML only; the API sends a reason sentence, no flags exist"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Panel 'Deals going cold' (deposits 7+ days quiet, not funded)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "call_outcomes",
+      "clients",
+      "funding_closeout"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:read-api runs the cold-deal query inside salesFloor(); no test pins the 7 day rule"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Panel 'Floor discipline': calls not logged, calls not recorded, shifts late, follow-ups overdue, log lag",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "tasks",
+      "call_outcomes",
+      "shifts"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "sales-manager:read-api runs the discipline queries inside salesFloor(); src/sales/unrecorded.test.mjs; late shifts, overdue follow-ups and log lag print a dash (no source)"
+  },
+  {
+    "surface": "sales-floor.html (+ sales-floor.js)",
+    "control": "Header chips: 'N closers on shift' and the signed-in name",
+    "kind": "display",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (gap-auth.mjs); e2e/sales-dashboards.spec.mjs ('Your closers shows Chris, not sample names')"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Logo link (to pipeline.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Burger button: collapse and expand the rail",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "No test clicks #burger; the page it sits on is pinged (reg:<page>). shell.js toggles the 'mini' class"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "9 section head buttons (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals): fold and unfold",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "e2e/sidebar-roles.spec.mjs only reads the head names; nothing clicks a head"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Home > Home (partner-galaxy.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:partner-galaxy; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Sales > Pipeline (pipeline.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:pipeline; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Sales > Closer Dashboard (closer-dashboard.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:closer-dashboard; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Sales > My numbers (my-numbers.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:my-numbers; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Sales > Sales floor (sales-floor.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:sales-floor; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Sales > Calendar (calendar.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:calendar; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Funding > Lenders (lenders.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:lenders-desk; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Funding > Client Control Panel (client-control-panel.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:client-control-panel; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Funding > Finance OS (finance-os.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:finance-os; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Client ops > Client Success (csm-queue.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:csm-queue; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Client ops > Consent (consent-capture.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:consent-capture; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Client ops > Messaging (messaging.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:messaging; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Client ops > Documents (documents.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:documents; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Client ops > Specialist (inquiry-remover.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:inquiry-remover; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Client ops > Company Brain (company-brain.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:company-brain; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Watch > Galaxy (galaxy.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:galaxy; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Watch > Ops & Admin (ops-admin.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:ops-admin; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Automation > Agent Editor (agent-editor.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:agent-editor; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Automation > Workflows (automations.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:automations; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Automation > Journeys (journeys.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:journeys-desk; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Marketing > Command Center (marketing-command-center.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:marketing-command-center; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Marketing > Campaigns (campaign-manager.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:campaign-manager; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Marketing > Social Studio (social-studio.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:social-studio; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Marketing > Creative Factory (creative-factory.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:creative-factory; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Marketing > Content (content-admin.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:content-admin; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Admin > Staff & Teams (staff-teams.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:staff-teams; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Admin > Hiring (hiring.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:hiring; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Admin > Products & Commissions (products-commissions.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:products-commissions; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Admin > Contract templates (contracts.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:contracts-desk; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Admin > Brand Studio (brand-studio.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:brand-studio; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Portals > Client Portal (client-portal.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:client-portal; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "sidebar.fragment.html",
+    "control": "Nav link: Portals > Affiliate (affiliate.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (rows match shell.js, every screen reachable, no dead row); e2e/sidebar-roles.spec.mjs (per-role rail, navigation by real link); target is pinged as reg:affiliate; shell.js hides the row for roles that cannot open it (ROLE_TABS)"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Page open: partner list for the picker",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/partners?limit=200"
+    ],
+    "tables": [
+      "orgs",
+      "partners"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:read/partners ping; no test reads it for this screen, and no pulse check runs it"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Partner picker (select): reloads the page scoped to that partner (?partner_id=)",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; no test changes the picker"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Page open per partner: connected accounts, saved approval setting, post queue, writing allowance, send history (5 reads)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/social/channels?partner_id=&state=all",
+      "GET /api/social/settings?partner_id=",
+      "GET /api/social/posts?partner_id=",
+      "GET /api/partner-marketing/usage?partner_id=",
+      "GET /api/campaigns/action-log?partner_id=&target_type=social_post"
+    ],
+    "tables": [
+      "social_channels",
+      "partner_module_settings",
+      "partners",
+      "marketing_content_queue",
+      "partner_ai_usage",
+      "action_log"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-social.mjs social:studio-read runs the same SELECTs the screen runs on the staff scope (src/pulse/coverage/gap-social.mjs) for the channels, settings and queue reads only (the usage read and the send-history read are not run by any lane); src/http/social-channels.pg.test.mjs (accounts, settings, one partner cannot read another's); src/http/social-posts-write.pg.test.mjs (queue read scoped to one partner)"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Five tiles (Connected accounts, Waiting to post, Needs a rewrite, Could not be sent, Sent): switch the explanation strip",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; no test clicks a tile"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Write a post' button (top bar): scrolls to the writer",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Write 3 posts for me': asks the writing model for 3 funding posts, screens them, lands them in the waiting list",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/generate {partner_id, count: 3, offer_type: funding}"
+    ],
+    "tables": [
+      "marketing_content_queue",
+      "partner_brand",
+      "partner_ai_usage",
+      "partner_module_settings",
+      "compliance_screenings"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/social-generate.pg.test.mjs (suite off refused, no model saves nothing, a hung model call is stopped and saves nothing, 504); src/http/social-generate-writer.test.mjs; reg:social/generate ping. A paid model call per press; the monthly cap is the only guard (src/brand/meter.mjs)"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Connect Facebook / Connect Instagram / Connect LinkedIn buttons (+ LinkedIn organization ID box)",
+    "kind": "button",
+    "calls": [
+      "GET /api/social/oauth?action=start&channel=&partner_id=&external_account_id="
+    ],
+    "tables": [
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/social/oauth.test.mjs (signed state, auth URLs); e2e/integration-round.spec.mjs ('Connect buttons present and OAuth not_configured is honest', mocked route); reg:social/oauth ping. Returns not_configured until META_APP_ID / LINKEDIN_CLIENT_ID / AD_TOKEN_ENC_KEY are set"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/social/oauth?action=start (x3, nothing is stored)"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; the start action only signs a state and builds a URL"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "OAuth return: the provider redirects to the callback, which exchanges the code and stores the encrypted account tokens",
+    "kind": "system",
+    "calls": [
+      "GET /api/social/oauth?action=callback&channel="
+    ],
+    "tables": [
+      "social_channels",
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/social/oauth.test.mjs (state sign and verify); no test runs the callback against the database and no pulse check reads social_channels connection state (gap-social.mjs only reads YouTube and the studio queries)"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Writer: account select, topic select (Funding / Credit cards / Credit repair), 'What the post says' box",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; src/http/social-studio-screen.test.mjs asserts source text only"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Writer: picture/video select (disabled: attaching a picture is not built)",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; disabled in the HTML"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Writer: 'Send at (optional) - times are UTC' box",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "MISMATCH: the label says UTC and the queue's own time box reads UTC (utcFromBox), but the writer sends new Date(value).toISOString(), which reads the box as the browser's local time (a Phoenix browser is 7 hours off). No test covers the writer's time"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Check the wording' (live copy check beside the writer: rules held as a copy inside the page)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; the page's RULES array is a hand copy of the compliance rules and no test or lane compares it with the server's (the page itself says so). The answer that counts is the server's on save"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Queue post': screens the words on the server, saves the post as waiting (or blocked / held) with its send time",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/schedule {partner_id, channel_id, caption, offer_type, asset_id, scheduled_for}"
+    ],
+    "tables": [
+      "social_posts",
+      "compliance_screenings",
+      "social_channels",
+      "partner_module_settings"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/social/social.pg.test.mjs (clean post queued, banned copy stored blocked with reasons, held post lands awaiting_approval, cannot use another partner's channel); src/http/social-studio-screen.test.mjs (source text); reg:social/schedule ping. The post is written to social_posts, which no list on this page reads (the lists read marketing_content_queue), so after saving it appears in no lane here; the sweeper still sends it at its time. No pulse check reads post states"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Send anything due now': publishes every due waiting post for the partner to its connected accounts, in public (asks first)",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/publish {partner_id}"
+    ],
+    "tables": [
+      "social_posts",
+      "action_log",
+      "social_channels",
+      "tasks"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/social/social.pg.test.mjs (publishing writes an action_log row and stamps the post; a held post is not picked up; a failing post gives up after 3 and opens a task); src/social/publish-sweeper.test.mjs (schedule); job social-publish-sweeper has a ping row only (src/pulse/heartbeats.mjs). It sends social_posts rows only (composer-saved or handed to an account), never the generated queue rows the lists show. No lane reads posts stuck in 'posting' or overdue 'queued'"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Clear the form'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Tab 'Waiting' (draft, queued, scheduled, awaiting approval)",
+    "kind": "tab",
+    "calls": [],
+    "tables": [
+      "marketing_content_queue"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-social.mjs social:studio-read runs the same SELECTs the screen runs on the staff scope (src/pulse/coverage/gap-social.mjs); src/http/social-posts-write.pg.test.mjs"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Tab 'Needs a rewrite' (blocked by the copy check or refused by a person)",
+    "kind": "tab",
+    "calls": [],
+    "tables": [
+      "marketing_content_queue"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-social.mjs social:studio-read runs the same SELECTs the screen runs on the staff scope (src/pulse/coverage/gap-social.mjs); src/social/social.pg.test.mjs (blocked stored with reasons)"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Tab 'Could not be sent' (posts that gave up after 3 tries, plus the one open 'job to fix' strip)",
+    "kind": "tab",
+    "calls": [
+      "GET /api/social/posts?partner_id= (queue only)"
+    ],
+    "tables": [
+      "marketing_content_queue"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "THE LANE CAN NEVER FILL: the page's only post read selects marketing_content_queue (statuses draft, queued, scheduled, awaiting_approval, discarded, blocked), while failed and posted live in social_posts, which no read on this page touches (the page's own empty text says it 'cannot yet see posts that were actually sent'). TASKS and ACTION_LOG in the page are empty arrays that nothing ever fills, so the job strip cannot show either. src/social/social.pg.test.mjs proves a failing post gives up and opens a task, but no screen and no pulse check shows a failed post to a person"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Tab 'Sent' (posted, with the reference on the account)",
+    "kind": "tab",
+    "calls": [
+      "GET /api/social/posts?partner_id= (queue only)"
+    ],
+    "tables": [
+      "marketing_content_queue"
+    ],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "THE LANE CAN NEVER FILL, same reason: posted posts live in social_posts and this page never reads it (the page says 'This screen cannot yet see posts that went out'). No pulse check reads posted or stuck-in-posting social_posts"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Tab 'Send history' (one line per attempt, written before the attempt)",
+    "kind": "tab",
+    "calls": [
+      "GET /api/campaigns/action-log"
+    ],
+    "tables": [
+      "action_log"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/social/social.pg.test.mjs ('publishing writes an action_log row'); reg:campaigns/action-log ping; the send-history read itself is not run by gap-social.mjs"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Post states legend: Draft, Waiting, Sending now, Sent, Could not be sent, Needs a rewrite (plus Held for approval)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "marketing_content_queue",
+      "social_posts"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/walkthrough4-screen-truth.test.mjs ('failed and expired paint coral'); src/social/social.pg.test.mjs. The legend names six states but the list read can only return the queue's six (draft, queued, scheduled, awaiting_approval, discarded, blocked), so 'Sending now', 'Sent' and 'Could not be sent' are never shown; a post stuck in 'posting' ('something crashed') has no pulse check"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Filters: account select and topic select, and the 'N shown' count",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
+    "kind": "table-row",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only; no test expands a row"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Waiting row: 'Queue it' with its own time box (sets or keeps the send time, no account needed)",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/posts {partner_id, id, scheduled_for}"
+    ],
+    "tables": [
+      "marketing_content_queue",
+      "social_posts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/social-posts-write.pg.test.mjs (queue with no account, time set, emptied box cannot clear a saved time, cross-partner refused, 404 not 500); src/http/social-studio-screen.test.mjs (screen reports the server's saved time). THE POST NEVER REACHES THE SENDER: this call sends no channel_id, so api/social/posts.mjs only marks the queue row 'queued' with a time. Only a POST with channel_id hands a row to a social account (schedule() writes the social_posts row that publishDue and the 5 minute sweeper read), and nothing in public/, src/, api/ or scripts/ ever sends one. A 'Queued' post here is not picked up by 'Send anything due now' or the sweeper"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Waiting row: 'Throw it away' and row-detail 'Throw this post away' (asks first, marks discarded, never deletes)",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/posts {partner_id, id, action: discard}"
+    ],
+    "tables": [
+      "marketing_content_queue",
+      "social_posts"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/social-posts-write.pg.test.mjs ('throwing a post away works with no account', cross-partner refused); src/http/social-studio-screen.test.mjs"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Held row (owner and admin only): 'Approve it' (asks first; the post goes out at its time)",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/posts {partner_id, id, action: approve}"
+    ],
+    "tables": [
+      "marketing_content_queue",
+      "social_posts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/social-posts-approve.pg.test.mjs (owner approves; partner refused; closer refused; another company's owner refused); src/social/social.pg.test.mjs (held post not published until approved). A row can only be held after it was handed to an account (api/social/posts.mjs refuses approve with 'never handed to a social account'), and this page never hands one over"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Held row (owner and admin only): 'Refuse it' (asks first; the post will never go out)",
+    "kind": "button",
+    "calls": [
+      "POST /api/social/posts {partner_id, id, action: reject}"
+    ],
+    "tables": [
+      "marketing_content_queue",
+      "social_posts"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/social-posts-approve.pg.test.mjs (reject cases); who refused is not recorded anywhere"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Side drawer: close X, click outside, Escape",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:social-studio pings the HTML only"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Best times to post': account select and the saved posting times (UTC)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "social_channels"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/social/social.pg.test.mjs ('nextBestTime returns null rather than inventing a time'); src/http/social-channels.pg.test.mjs (best_times shape)"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "'Who approves posts' card (read-only: shows the saved approval switch, the safe default, or 'could not read')",
+    "kind": "display",
+    "calls": [
+      "GET /api/social/settings?partner_id="
+    ],
+    "tables": [
+      "partner_module_settings"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/social-channels.pg.test.mjs (settings say when nothing is saved and still give the safe answer; the switch writes and reads back). The switch cannot be changed from this screen"
+  },
+  {
+    "surface": "social-studio.html",
+    "control": "Connected accounts and 'Not connected yet' cards (display; no disconnect control)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "social_channels"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-social.mjs social:studio-read runs the same SELECTs the screen runs on the staff scope (src/pulse/coverage/gap-social.mjs); src/http/social-channels.pg.test.mjs (tokens never leave the server)"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Page open: verifies the signed link and reads the disclosure, price and contact (no staff login; HMAC org, client, exp, sig)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/soft-pull-approve?org=&client=&exp=&sig="
+    ],
+    "tables": [
+      "clients",
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "TRIPWIRES desk:soft-pull-approve.html and route:soft-pull-approve (src/pulse/tripwires.mjs); gap-soft-pull.mjs soft-pull:approve-page, soft-pull:approve-read, soft-pull:approve-signed-read (signs a real link and runs the real handler); src/consent/approve-token.test.mjs"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Link wall: 'This page needs a full link' / 'Link problem' (missing field, bad signature, expired link, no server)",
+    "kind": "page-state",
+    "calls": [
+      "GET /api/soft-pull-approve"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/consent/approve-token.test.mjs (forged and expired links refused); gap-soft-pull.mjs unsigned read shape; the page's own wall code is not run in a browser (no e2e spec for this page)"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Disclosure card: the soft-pull authorization words and version (server copy, never from the body)",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-soft-pull.mjs soft-pull:approve-signed-read checks the signed shape carries the words, a price, and the consent and contact blocks"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Form fields: full legal name, SSN, date of birth, street, city, state, ZIP",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:soft-pull-approve-desk pings the HTML. The POST handler's refusals (name, 9-digit SSN, DOB, address) are not exercised by any test; src/http/soft-pull-approve.test.mjs covers only the helper parsers; src/consent/consent.pg.test.mjs and src/http/consent-capture.test.mjs cover capture. No browser test of this page"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "'+ Add a business' (up to 20) and per-business 'Remove'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/soft-pull-approve.test.mjs (parseSoftPullBusinesses: required fields, 20 cap); src/finance/soft-pull-pricing.test.mjs. The page's own running total is not tested in a browser"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner",
+    "kind": "form",
+    "calls": [],
+    "tables": [
+      "businesses"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/soft-pull-approve.test.mjs (EIN format, incorporation date required, age months never defaulted, writes ein, incorporated_date and age_months)"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Running total line ('Total due: $32 + n x $10')",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:soft-pull-approve-desk pings the HTML. src/finance/soft-pull-pricing.test.mjs tests the server maths; the page recomputes the total in the browser from the server's pricing block and no test compares the two"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "'I agree - submit soft-pull approval': saves consent, SSN and DOB, businesses, a portal account and sign-in email, and mints the exact-total checkout",
+    "kind": "form-submit",
+    "calls": [
+      "POST /api/soft-pull-approve {org, client, exp, sig, granted_name, ssn, dob, address, businesses[]}"
+    ],
+    "tables": [
+      "clients",
+      "client_consents",
+      "pii_identity",
+      "businesses",
+      "accounts",
+      "payment_links",
+      "messages",
+      "magic_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "TRIPWIRES route:soft-pull-approve and desk:soft-pull-approve.html: softpull:approve-click-no-pull (paid and approved but no pull row 15 minutes later), softpull:request-failed-or-stuck, softpull:paid-form-not-filled-2h; gap-consent.mjs consent:store; src/http/soft-pull-approve.test.mjs ensureSoftPullCheckout reuses a matching open link"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "'Pay <total> assessment' link on the result screen (Commas checkout)",
+    "kind": "link",
+    "calls": [
+      "GET <checkout_url> (Commas)"
+    ],
+    "tables": [
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-payments.mjs payments:pay-link-webhook and payments:checkout-started-no-link; beat-pay-webhook (payment notices arriving); beat-vendor-keys (Commas key)"
+  },
+  {
+    "surface": "soft-pull-approve.html",
+    "control": "Result screen when no checkout came back ('Ask your advisor for the pay link')",
+    "kind": "page-state",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:soft-pull-approve-desk pings the HTML. api/soft-pull-approve.mjs returns checkout_error with the consent kept; no test asserts the screen text"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Page open: roster (name, email, role, status, consent, open shift, today's monitor events, hidden-seed count)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/staff?limit=200 (owner, admin, sales_manager)"
+    ],
+    "tables": [
+      "staff",
+      "tasks",
+      "staff_events",
+      "shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/staff-teams.spec.mjs and e2e/crm-flows.spec.mjs (mocked read paints names; dashes when clock has no source); src/http/staff-invite.test.mjs (hides seed furniture, source text); reg:read/staff ping. No test runs api/read/staff.mjs"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Page open: who am I (marks the 'you' row, owner-only consent buttons)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (gap-auth.mjs); reg:auth/session ping"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Page open: my open shift (so 'Clock in / Clock out' shows the true state)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/shifts"
+    ],
+    "tables": [
+      "shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/shifts.pg.test.mjs (clock_in opens one shift, second is 409, clock_out closes, GET after is null); reg:shifts ping"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Stat tiles: HEADCOUNT, ON SHIFT, CONSENT, PENDING and the 'N on shift' chip",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/staff-teams.spec.mjs (ON SHIFT and CONSENT show a dash from a live roster)"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "'Hidden from this list: N people (owner and seeded test logins)' line",
+    "kind": "display",
+    "calls": [],
+    "tables": [
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only; src/http/staff-invite.test.mjs asserts the hidden count in source text; no test runs api/read/staff.mjs"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Tabs: Roster, Permissions, Clock & consent, Telemetry",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/staff-teams.spec.mjs (permissions tab and telemetry tab switch)"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Permissions tab (static copy: says no permission list can be shown)",
+    "kind": "display",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/staff-teams.spec.mjs ('permission matrix tab switches'). The tab cannot change a role's rights"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "'Permissions ->' button on the roster header",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Roster filters: role select and name/code box",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only; no test filters"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Roster row click (opens that person in the editor)",
+    "kind": "table-row",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only; no test opens a row"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "'+ Add person' (opens the empty editor; 'No employee code is issued by this system')",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor fields: first name, last name, email, phone, role select, start date",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only; e2e does not fill them. The role list contains Owner and Affiliate, which the page refuses to log in"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor switch: 'Monitoring consent on file' (owner only)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only; the sender is src/staff/booked-call-alert.mjs (src/staff/booked-call-alert.test.mjs), not in SEND_PATHS and not on any lane"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Save' for a NEW person: creates the login, mails the invite, shows the 7 day link",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/invite {name, role, notify_email}"
+    ],
+    "tables": [
+      "staff",
+      "password_resets",
+      "staff_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/auth/invite.test.mjs and src/auth/auth.pg.test.mjs (invite, accept, expiry); src/http/staff-invite.test.mjs (owner/admin gates); gap-staff.mjs staff-invite-link (an invited person with no working set-password link goes red); SEND_PATHS src/auth/staff-mail.mjs watches reg:auth/invite"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Save' for an EXISTING person: name, email, phone, start date, booked-call text switch",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/staff-update {staff_id, name, email, phone, start_date, notify_booked_call_sms}"
+    ],
+    "tables": [
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/auth/invite.test.mjs (updateStaffProfile); src/http/staff-invite.test.mjs (owner/admin gate, source text); reg:auth/staff-update ping"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Save' with a changed role (what that person may do)",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/staff-role {staff_id, role}"
+    ],
+    "tables": [
+      "staff",
+      "staff_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/auth/invite.test.mjs (setStaffRole, unknown roles refused); gap-staff.mjs checkRoleDesk reads that each role's home desk opens, not that a change took"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Cancel', close X, click outside",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:staff-teams pings the HTML only"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Reset password': makes a 1 hour reset link and shows it in a prompt box to copy",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/admin-reset {email}"
+    ],
+    "tables": [
+      "staff",
+      "password_resets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:auth/admin-reset ping. requestPasswordReset is unit-tested (src/auth/invite.test.mjs) but no test calls api/auth/admin-reset.mjs and no lane reads password_resets for admin links"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Revoke login' (confirm): suspends the person and kills their sessions",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/suspend {staff_id}"
+    ],
+    "tables": [
+      "staff",
+      "sessions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/auth/auth.pg.test.mjs ('suspendStaff revokes every live session at once', a suspended member's session dies next request); src/http/staff-invite.test.mjs (gate)"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Editor 'Employment agreements' list and 'Open signed / Open' (downloads the PDF)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/contracts?view=contracts&staff_id=",
+      "GET /api/read/contracts?file=contract&id=&signed="
+    ],
+    "tables": [
+      "contracts",
+      "documents",
+      "document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/contracts-endpoints.pg.test.mjs and src/contracts/lifecycle.pg.test.mjs (contract file reads); the staff_id filter is not tested from this screen; reg:read/contracts ping"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Clock tab 'Clock in' / 'Clock out' (your own row only)",
+    "kind": "button",
+    "calls": [
+      "POST /api/shifts {action: clock_in|clock_out}"
+    ],
+    "tables": [
+      "shifts",
+      "staff_events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/shifts.pg.test.mjs (one open shift, second clock_in 409, somebody else's staff_id refused); reg:shifts ping. Nothing reads shift data"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Clock tab 'Record form' / 'Revoke' monitoring consent (owner only, asks first)",
+    "kind": "button",
+    "calls": [
+      "POST /api/staff/monitoring-consent {staff_id, action: grant|revoke}"
+    ],
+    "tables": [
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/shifts/monitoring-consent.test.mjs (grant sets the time, revoke clears to NULL); src/http/staff-monitoring.test.mjs (owner-only gate, source text); reg:staff/monitoring-consent ping"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Telemetry tab: person select, Refresh (consent, payable hours, activity average, shifts, monitor events)",
+    "kind": "button",
+    "calls": [
+      "GET /api/staff/telemetry?staff_id="
+    ],
+    "tables": [
+      "staff",
+      "shifts",
+      "staff_events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:staff/telemetry ping; src/http/staff-monitoring.test.mjs only asserts the FINANCE gate and the route entry as source text. telemetry-query.mjs has no test and no lane"
+  },
+  {
+    "surface": "staff-teams.html",
+    "control": "Monitor events and activity numbers shown on the Telemetry tab (system side: the Hubstaff poll writes them, skipping anyone without consent)",
+    "kind": "system",
+    "calls": [
+      "job hubstaff-poll-sweeper (*/10)"
+    ],
+    "tables": [
+      "staff_events",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "job heartbeat for hubstaff-poll-sweeper in src/pulse/heartbeats.mjs (late after 3 x 10 minutes); src/shifts/telemetry.test.mjs and src/adapters/hubstaff.test.mjs. No lane reads whether monitor events actually arrive for consented staff"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "Page open: reads the shoot with the film key (?k=) and shows the first script not marked Got it",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/marketing/shoot?wpm=150"
+    ],
+    "tables": [
+      "marketing_shoots",
+      "ad_scripts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-owner-tools.mjs owner-tools:teleprompter reads the same route; src/ui/teleprompter-rig.test.mjs (pure stepPlay, wordAtTime, editPayload, filmKeyFrom; source text of the page); no browser test of this page"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "No-key / closed-link / offline messages ('This link has no film key', 'did not open', 'No connection')",
+    "kind": "page-state",
+    "calls": [
+      "GET /api/marketing/shoot"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter-remote pings the HTML only; the message paths are not run in any test"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "Script select (shown with 2 or more scripts)",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter-remote pings the HTML only; not exercised"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "Play / Pause (moves the words on THIS phone only; the page says it cannot pause the iPad)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ui/teleprompter-rig.test.mjs (pure stepPlay, wordAtTime, editPayload, filmKeyFrom; source text of the page): stepPlay keeps time on pause and stops at the end"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "'Open the iPad page with the mirror on' link",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ui/teleprompter-rig.test.mjs (pure stepPlay, wordAtTime, editPayload, filmKeyFrom; source text of the page): filmPageHref keeps the key and adds mirror=1"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "'Words' text box (typing resets the play clock; focus pauses it)",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter-remote pings the HTML only; not exercised"
+  },
+  {
+    "surface": "teleprompter-remote.html (+ teleprompter-remote.js)",
+    "control": "'Save words': posts the words as a new script version through the same edit route the iPad uses",
+    "kind": "button",
+    "calls": [
+      "POST /api/marketing/scripts/edit {request_id, id, version, body}"
+    ],
+    "tables": [
+      "ad_scripts",
+      "voice_pairs",
+      "repo_outbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/ui/teleprompter-rig.test.mjs (pure stepPlay, wordAtTime, editPayload, filmKeyFrom; source text of the page); src/http/marketing-shoot.pg.test.mjs (a film link edits a script on its shoot); slice-03-marketing.mjs outbox_drain beat; reg:marketing/scripts/edit ping. A 409 tells the user to reload (no picker on this page)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Page open: reads the open shoot and its scripts (film key ?k=, a staff session, or open with no key)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/marketing/shoot?wpm="
+    ],
+    "tables": [
+      "marketing_shoots",
+      "ad_scripts",
+      "ad_videos",
+      "marketing_batches",
+      "marketing_funnels",
+      "ad_ideas"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-owner-tools.mjs owner-tools:teleprompter (GETs /api/marketing/shoot and goes red if a script in the open shoot has no teleprompter text); src/http/marketing-shoot.pg.test.mjs (open read, film link reads that shoot, another company sees none); e2e/teleprompter.spec.mjs ('a film link sends the key, rolls the script, and never opens login')"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Film key (?k=) rules: a key names one shoot and lasts a week; a forged, expired or swapped key is closed; no sign-in wall ever",
+    "kind": "gate",
+    "calls": [
+      "x-shoot-film header on /api/marketing/shoot, /shoot/mark, /shoot/take, /scripts/edit"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/marketing/shoot-film-key.test.mjs; src/http/marketing-shoot.pg.test.mjs ('a film link reads and marks that shoot, edits a script on it, and is not a staff login')"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Every 5 seconds while paused: re-reads the shoot and flushes waiting marks and edits",
+    "kind": "system",
+    "calls": [
+      "GET /api/marketing/shoot (poll)"
+    ],
+    "tables": [
+      "marketing_shoots",
+      "ad_scripts"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter pings the HTML only (teleprompter.js and teleprompter-edits.js are not fetched by any ping or lane); the poll itself is not timed in any test"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Empty and error states: 'No shoot is planned', 'Plan it on the Shoot tab' link, 'Try again'",
+    "kind": "page-state",
+    "calls": [
+      "GET /app/marketing-command-center.html#shoot"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs ('no shoot planned: says so and links to the Shoot tab')"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Play / Pause button and the 3-2-1 countdown",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs ('Play becomes Pause while the words roll', Space counts down then rolls); src/ui/teleprompter.test.mjs (clock and pace maths)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Speed minus and plus buttons (5 words a minute each), saved on the device",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs ('a saved speed is still there after a reload'); src/ui/teleprompter.test.mjs"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",
+    "kind": "gesture",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter-touch.spec.mjs (tap, double tap, hold, drag, scroll mode); src/ui/teleprompter.test.mjs (gestureStep rules)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Top edge of the phone: tap then scroll up or down swaps to the next or previous script still to film; a second tap marks it Got it",
+    "kind": "gesture",
+    "calls": [
+      "POST /api/marketing/shoot/mark (second tap)"
+    ],
+    "tables": [
+      "marketing_shoots"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/ui/teleprompter.test.mjs ('top edge changes the script': scroll up is next, scroll down previous, two taps mark it filmed, swap does not stop the camera)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Tiny file-name chip under the words: two taps open 'Still to film'; tap a script to load it",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs ('double-tap the tiny name button opens the queue; one tap does nothing')"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "'Still to film' sheet: one button per unfilmed script, Close",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit) and 'Save' (visible only while editing)",
+    "kind": "button",
+    "calls": [
+      "POST /api/marketing/scripts/edit; GET /api/marketing/script?id="
+    ],
+    "tables": [
+      "ad_scripts",
+      "voice_pairs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter-touch.spec.mjs (double-tap shows Save, typing reaches the server on its own, Save puts the keyboard away; history shows who changed what); src/ui/teleprompter-edits.test.mjs"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Script edits: autosave after a quiet moment, offline queue with one request id, 409 'two versions' picker (Keep mine / Keep theirs / Try again / Throw away)",
+    "kind": "system",
+    "calls": [
+      "POST /api/marketing/scripts/edit {request_id, id, version, body, parts?}"
+    ],
+    "tables": [
+      "ad_scripts",
+      "voice_pairs",
+      "repo_outbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/ui/teleprompter-edits.test.mjs (14 queue cases: debounce, offline reload, 409 both ways, 400 kept); e2e/teleprompter-touch.spec.mjs (offline, 409 both ways, history); slice-03-marketing.mjs outbox_drain beat (repo copy drain stalls red while repo_outbox waits)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "'Got it' and 'Another take' on the end card (Space, Enter, Page Down = Got it; Page Up = Another take): counts the take and names the next file",
+    "kind": "button",
+    "calls": [
+      "POST /api/marketing/shoot/mark {request_id, shoot_id, root_script_id, mark}"
+    ],
+    "tables": [
+      "marketing_shoots"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs (Space at the end is Got it: one mark, next script loads; Page Up is Another take; offline press goes once with the same request id); src/http/marketing-shoot.pg.test.mjs (mark a take counts and the next file name moves on); reg:marketing/shoot/mark ping"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Offline / signed-out queue: marks wait on the phone and go once when the film link reaches the shoot ('Your marks are saved on this phone' banner)",
+    "kind": "system",
+    "calls": [
+      "POST /api/marketing/shoot/mark (retry)"
+    ],
+    "tables": [
+      "marketing_shoots"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs (offline press waits then goes once). The banner sits inside the header #top, which teleprompter.css hides with display:none !important, so nobody sees it; the unsent count shows only in the small save line"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "'Shoot finished' card: 'Open SLO Ads' (Drive folder 13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ) and 'Back to the Shoot tab'",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs ('the last one says to share the clips')"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Mirror off/on button (flips words left to right for a beam-splitter rig) and Turn 0/90/180/270",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ui/teleprompter-rig.test.mjs (rigLook, rigTransform, nextRot); e2e/teleprompter.spec.mjs ('mirror flips the reading area and never the controls'); ?mirror=1 and ?rot= links"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "'Remote' link (to teleprompter-remote.html with the same film key)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ui/teleprompter-rig.test.mjs; e2e/teleprompter-touch.spec.mjs (control row)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Record / Stop (front camera, MediaRecorder; stops on page hide)",
+    "kind": "button",
+    "calls": [
+      "getUserMedia + MediaRecorder (browser)"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter pings the HTML only (teleprompter.js and teleprompter-edits.js are not fetched by any ping or lane); src/ui/teleprompter.test.mjs tests only the pure camera asks (front 4K at the highest rate, 1080p at 60, back camera steady 1080p, cameraReport) and the specs read the button label. Nothing starts a recording in a browser"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Camera quality rule: non-ad scripts stay 4K (3840x2160), ads may be 1080p",
+    "kind": "system",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ui/teleprompter.test.mjs (2160x3840 and 3840x2160 are 4K; stays4K; a smaller picture is never called 4K). The 4K and 1080p pills live inside the Settings sheet, which has no on-screen button (see that row)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Saving the take: on Stop the file goes up in chunks to the SLO Ads Drive folder; if it cannot, the phone's share/download opens",
+    "kind": "system",
+    "calls": [
+      "POST /api/marketing/shoot/take {name, bytes, content_type}",
+      "PUT /api/marketing/shoot/take (chunks, x-take-token, content-range)"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/marketing/take-upload.test.mjs (GET does not upload, bad key does not upload, no sign-in starts a save, bytes handed to Drive are the bytes from the phone); src/ui/teleprompter.test.mjs ('Save the video sends the original file'); reg:marketing/shoot/take ping (GET answers 405, counted up). The 'Save the video' button is display:none in the CSS, so a failed upload shows no retry button"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs and e2e/teleprompter-touch.spec.mjs open it with window.__fhtp.openSheet('set') (a test hook). NO ON-SCREEN BUTTON OPENS IT: teleprompter.js has no openSheet('set') call except the test hook, and teleprompter.html has no Settings button"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "'This shoot' script list sheet (tap a script to roll it)",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "Opened only by window.__fhtp.openSheet('lib') in a test; no on-screen button opens it (the 'Still to film' chip menu is the user path)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter pings the HTML only (teleprompter.js and teleprompter-edits.js are not fetched by any ping or lane); the whole #top bar is display:none !important in teleprompter.css, so none of these can be seen or pressed"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Keyboard and remote keys: Space / Enter / Page Down, Page Up, arrow keys, volume keys, learned buttons",
+    "kind": "keyboard",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter.spec.mjs (v1's keys, Learn remote marks the take at the end); src/ui/teleprompter.test.mjs (keyId, actionFor, volumeKeyDir)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Full screen on first tap (requestFullscreen)",
+    "kind": "system",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:teleprompter pings the HTML only (teleprompter.js and teleprompter-edits.js are not fetched by any ping or lane)"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Repo-copy health read: 'is the repo copy held' (GET marketing/health at most once a minute)",
+    "kind": "system",
+    "calls": [
+      "GET /api/marketing/health"
+    ],
+    "tables": [
+      "repo_outbox",
+      "marketing_jobs",
+      "marketing_batches"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "reg:marketing/health ping; slice-03-marketing.mjs reads the clock, worker and outbox_drain beats (marketing_heartbeats, repo_outbox); gap-marketing-queue.mjs reads marketing_jobs. None of them runs the health route itself"
+  },
+  {
+    "surface": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams)",
+    "control": "Role gate: shell.js bounces a role that may not open this screen and hides its sidebar rows (ROLE_TABS, readCachedRole then /api/auth/session)",
+    "kind": "gate",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-reachability.test.mjs and e2e/sidebar-roles.spec.mjs; e2e/sales-dashboards.spec.mjs (a closer is sent home from the sales floor); gap-staff.mjs role-desk reads each role's home desk"
+  },
+  {
+    "surface": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams)",
+    "control": "Account chip: name, role, backend source, 'Sign out' button, hide/show chip",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/logout"
+    ],
+    "tables": [
+      "sessions",
+      "account_sessions"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:auth/logout ping; no test clicks Sign out in the shell"
+  },
+  {
+    "surface": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams)",
+    "control": "Avatar upload in the account chip",
+    "kind": "file-input",
+    "calls": [
+      "POST /api/staff/avatar"
+    ],
+    "tables": [
+      "staff",
+      "documents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:staff/avatar ping; src/auth/session.test.mjs covers the session's avatar url only"
+  },
+  {
+    "surface": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams)",
+    "control": "Search button and Cmd/Ctrl+K: global CRM search (clients, contracts, documents, conversations, pipeline cards)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/search?q="
+    ],
+    "tables": [
+      "clients",
+      "contracts",
+      "documents",
+      "conversations",
+      "messages",
+      "cards",
+      "businesses",
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/search-read.test.mjs and src/http/search-screen.test.mjs; reg:read/search ping"
+  },
+  {
+    "surface": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams)",
+    "control": "Chat widget (staff modes: Ask the knowledge base; message a staff peer)",
+    "kind": "button",
+    "calls": [
+      "POST /api/chat/ask",
+      "GET /api/chat/peers",
+      "POST /api/chat/messages",
+      "GET /api/chat/messages?kind=internal"
+    ],
+    "tables": [
+      "conversations",
+      "conversation_participants",
+      "messages",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/chat/staff-assistant.test.mjs; src/http/chat-widget-precall.test.mjs; reg:chat/ask ping. Ask is a paid model call"
+  },
+  {
+    "surface": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams)",
+    "control": "Clock chip, health chip and brand paint (read-only chrome)",
+    "kind": "display",
+    "calls": [
+      "GET /api/health",
+      "GET /api/org-brand"
+    ],
+    "tables": [
+      "org_brand",
+      "orgs"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "reg:health ping; beat-db-health (hourly); gap-owner-tools.mjs owner-tools:brand-studio reads the brand row; src/http/org-brand-gate.test.mjs"
+  }
+]

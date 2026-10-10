@@ -1,0 +1,3871 @@
+[
+  {
+    "surface": "affiliate.html",
+    "control": "Page open: who am I (name chip, own affiliate id)",
+    "kind": "read",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "account_sessions",
+      "accounts",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (src/pulse/coverage/gap-auth.mjs); reg:auth/session ping"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Page open: affiliate figures (REFERRED, CONVERTED, OWED, PAID tiles, referral funnel, license banner, topbar chips)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliates?limit=200"
+    ],
+    "tables": [
+      "affiliates",
+      "affiliate_referrals",
+      "affiliate_payouts",
+      "affiliate_payout_lines",
+      "affiliate_link_clicks",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/affiliate-stats.pg.test.mjs; src/http/affiliates-self-read.test.mjs; reg:read/affiliates. No pulse check compares the tile to the ledger"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Page open: own portal read (offer links, code, rate, license gate, tax gate, referral rows, payout rows)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliate-portal"
+    ],
+    "tables": [
+      "affiliates",
+      "affiliate_commission_rules",
+      "affiliate_referrals",
+      "affiliate_payouts",
+      "affiliate_payout_lines",
+      "sales",
+      "products",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/affiliate-referral.pg.test.mjs; src/affiliates/payouts.pg.test.mjs; reg:read/affiliate-portal. partners:* checks (gap-partners.mjs) read the same ledger tables but not this read"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Copy link button (one per live offer)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "partners:referral-link (gap-partners.mjs) goes red when a click with a live code is credited to nobody; src/affiliates/share-link.test.mjs; e2e/live-affiliate-onboard.spec.mjs"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Copy code button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "partners:referral-link (gap-partners.mjs): active affiliate with no code goes red; src/affiliates/share-link.test.mjs"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Tab: Referred leads",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:affiliate ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load only"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Tab: Payouts",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:affiliate ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load only"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Tab: Terms (rate, attribution, qualifying products, payout schedule, clawback)",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:affiliate ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load only. Terms text is hard-coded copy, nothing compares it to affiliate_commission_rules"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Status filter select (All, Referred, Converted, Paid, Void)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/affiliate-commission.spec.mjs 'filtering still leaves every commission read from its own row'"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Business name filter input",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/affiliate-commission.spec.mjs filtering test"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Referred leads table: Commission column and Total shown",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliate-portal"
+    ],
+    "tables": [
+      "affiliate_referrals",
+      "affiliate_commission_rules"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/affiliate-commission.spec.mjs (5 tests: dash for null, never recomputed in the browser). partners:commission-payable only judges affiliates whose license and tax form are set, and no code sets either"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Payout history table (run date, period, clients, method, amount, status, hold reason)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliate-portal"
+    ],
+    "tables": [
+      "affiliate_payouts",
+      "affiliate_payout_lines"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "partners:payout-stuck (gap-partners.mjs) goes red on a run left in processing, not on a held or failed run; src/affiliates/payouts.pg.test.mjs; job:affiliate-payout-run heartbeat (src/pulse/heartbeats.mjs)"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Ask approved partner docs: Ask button / form submit",
+    "kind": "form",
+    "calls": [
+      "POST /api/read/company-brain-affiliate"
+    ],
+    "tables": [
+      "brain_chunks",
+      "brain_files",
+      "brain_affiliate_allowlist"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "brain:search-affiliate + brain:embed-key (gap-brain.mjs) run the real door; src/http/company-brain.test.mjs; reg:read/company-brain-affiliate"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Answer source 'Open' links (Drive webViewLink)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:read/company-brain-affiliate; link target is a Drive URL, nothing checks it resolves"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Download Message Blaster button",
+    "kind": "button",
+    "calls": [
+      "GET /api/gifts/message-blaster"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/message-blaster-gift.test.mjs; reg:gifts/message-blaster ping. Nothing checks the .dmg file is present in the bundle"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "'What you can see' details toggle",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:affiliate ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load only"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "License-unsigned banner and topbar chip (display, no button)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliate-portal"
+    ],
+    "tables": [
+      "affiliates"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/affiliate-referral.pg.test.mjs; src/affiliates/payouts.pg.test.mjs holds a payout when unsigned. FINDING: no src, api or scripts code writes affiliates.partner_license_signed_at (only the demo seed), so every real payout is held and nothing flags a held run"
+  },
+  {
+    "surface": "affiliate.html",
+    "control": "Tax-form-missing banner (display, no button)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliate-portal"
+    ],
+    "tables": [
+      "affiliates"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/affiliate-referral.pg.test.mjs; src/affiliates/payouts.pg.test.mjs. FINDING: no src, api or scripts code writes affiliates.tax_form_received_at, so the banner is true for everyone and the payout run holds every payout"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Page open: agent registry list (AGENTS, LIVE, SHADOW, BREACHES tiles, A/B list)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/agents?limit=200"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs 'loads the registry row'; e2e/crm-flows.spec.mjs empty registry; reg:read/agents; ai-agents:retired (gap-ai-agents.mjs) reads agents but not this read"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Page open: staff pickers for Owner and Escalate-to selects",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/staff?limit=200"
+    ],
+    "tables": [
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:read/staff; page smoke only"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Agent list row (click to open an agent, confirm discard of unsaved edits)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/agent-shadow-log?code="
+    ],
+    "tables": [
+      "agents",
+      "agent_shadow_log"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "select() runs on page load in every agent-editor spec but no spec clicks a row or the discard confirm; reg:read/agent-shadow-log; src/http/read-endpoints-org-scope.test.mjs for the log read"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "+ New agent button",
+    "kind": "button",
+    "calls": [
+      "POST /api/agents {action:create}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs 'New posts create and selects the new agent'; src/http/agents-write.test.mjs 'create inserts a draft agent'; reg:agents"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Save agent button",
+    "kind": "button",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs Save test; src/http/agents-write.pg.test.mjs 'Save stores the prompt and guardrails'. Nothing judges prompt or guardrail content"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Revert button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs two Revert tests (client-side snapshot restore)"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Promote to live button (saves first, then promotes, confirm dialog)",
+    "kind": "button",
+    "calls": [
+      "POST /api/agents {action:save}",
+      "POST /api/agents {action:promote}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs 'Promote saves then promotes' calls FHData.write itself and never clicks the button; src/http/agents-write.pg.test.mjs promotion gates + DB refuses live with no prompt. No live check on a promoted agent's behaviour"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Return to shadow button (demote, confirm dialog)",
+    "kind": "button",
+    "calls": [
+      "POST /api/agents {action:demote}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "reg:agents ping. Mock handler exists in e2e/agent-editor.spec.mjs but no test clicks it; src/http/agents-write.pg.test.mjs only checks demote on a retired agent is refused"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Promotion gate checklist (display: trigger, prompt 60+ chars, guardrail 20+ chars, escalation)",
+    "kind": "read",
+    "calls": [],
+    "tables": [],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs Promote test depends on it; server repeats the rule in api/agents.mjs, tested in src/http/agents-write.pg.test.mjs"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Guardrail text box (hard constraints block)",
+    "kind": "input",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs Save test; src/agents/runtime.test.mjs enforces guardrail flags at send time"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Guardrail switch: Never state a funding amount",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/agents/runtime.test.mjs 'noamount flag blocks promised approvals with dollar figures' (src/agents/guardrails.mjs); toggle itself not driven by a spec"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Guardrail switch: Never promise a score outcome",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "Enforced by regex in src/agents/guardrails.mjs checkOutbound (noscore); src/agents/runtime.test.mjs only uses the flag in a fixture, no test asserts the noscore refusal; reg:agents"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Guardrail switch: Stop on the word attorney",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "Engine (src/agents/guardrails.mjs) refuses OUTBOUND drafts that mention legal words (attorney_flag); inbound halts come from stop_words, not this switch. No test names attorney_flag; reg:agents"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Guardrail switch: Honor quiet hours",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/agents/gate-respect.test.mjs (reply path always goes through dispatchMessage and its quiet-hours gate, whatever this switch says)"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Authority: Max discount input (percent)",
+    "kind": "input",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/agents/runtime.test.mjs 'discount cap refuses over-authority offers' (src/agents/guardrails.mjs checkOutbound); text-reply runtime only, phone agents bypass"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Authority: Max messages per client per day input",
+    "kind": "input",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/agents/runtime.test.mjs 'msgcap is a hard daily limit' (src/agents/guardrails.mjs checkInbound)"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Authority switch: May take a payment",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "Enforced by a phrase regex in src/agents/guardrails.mjs checkOutbound (pay_authority); no test names pay_authority; reg:agents"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Authority switch: May send a contract for signature",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "Enforced by a phrase regex in src/agents/guardrails.mjs checkOutbound (contract_authority); no test names it; reg:agents"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Authority switch: May book on a closer's calendar",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "FINDING: src/agents/guardrails.mjs normalizes authority.book and no other file reads it, so this switch changes nothing. No test, no check"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Authority switch: May run a soft pull",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "Enforced by a phrase regex in src/agents/guardrails.mjs checkOutbound (pull_authority); no test names it; reg:agents. It blocks a draft that mentions a pull, it does not gate the pull itself"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Identity: Agent name input",
+    "kind": "input",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs Save test"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Identity: Channel select (SMS, Email, Voice, Internal)",
+    "kind": "select",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs Save test; src/agents/select.test.mjs picks the runtime by channel"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Identity: Class select (Client-facing, Ops)",
+    "kind": "select",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/agents-write.pg.test.mjs"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Identity: Owner select",
+    "kind": "select",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/agents-write.pg.test.mjs"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Trigger events: 13 event toggles (entry.captured, survey.submitted, payment.received, and 10 more)",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/agents-write.pg.test.mjs stores triggers; ai-agents:failed-runs (gap-ai-agents.mjs) reads runs that failed"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Prompt textarea",
+    "kind": "input",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/agent-editor.spec.mjs Revert/Save tests type into it; src/http/agents-write.pg.test.mjs"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Escalation: Escalate to select",
+    "kind": "select",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "FINDING: the select saves a person's name as escalation.path; src/agents/guardrails.mjs only halts when path === 'halt' (tested in src/agents/runtime.test.mjs), so a UI-saved agent never escalates by this rule. Promotion gate only checks it is non-empty"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Escalation: After no reply select (15 minutes, 1 hour, 4 hours, 24 hours, 48 hours)",
+    "kind": "select",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "FINDING: the options are times but src/agents/guardrails.mjs parseInt()s the value as a count of agent messages (1 hour reads as 1 message). src/agents/runtime.test.mjs tests counts only; reg:agents"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Escalation: Escalate immediately when input",
+    "kind": "input",
+    "calls": [
+      "POST /api/agents {action:save}"
+    ],
+    "tables": [
+      "agents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/agents/runtime.test.mjs escalation test uses escalation.when keywords (src/agents/guardrails.mjs); only fires when path is 'halt'"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Shadow log panel (what it would have sent)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/agent-shadow-log?code=&limit=40"
+    ],
+    "tables": [
+      "agent_shadow_log",
+      "agent_runs"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/read-endpoints-org-scope.test.mjs; src/agents/runtime.test.mjs writes shadow rows; reg:read/agent-shadow-log"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Closer drill: Send button and Enter key (OP-06 only)",
+    "kind": "button",
+    "calls": [
+      "POST /api/agents {action:run}"
+    ],
+    "tables": [
+      "agents",
+      "agent_runs",
+      "call_outcomes"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/agents/drill.test.mjs; src/http/agents-write.test.mjs 'run refuses Setter Josh'; no spec clicks Send"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Closer drill: New drill button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:agent-editor ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs page load"
+  },
+  {
+    "surface": "agent-editor.html",
+    "control": "Details/section toggles (Identity, Trigger events, Prompt, Escalation, Shadow log)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:agent-editor ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs page load"
+  },
+  {
+    "surface": "automations.html",
+    "control": "Page open: workflow registry read (Workflows, Can't Start, Start Signal Seen tiles, attention bar)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/workflows?limit=200"
+    ],
+    "tables": [
+      "events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/workflows/index.test.mjs (EVENT_EMITTERS map, statusOf); reg:read/workflows ping. The page cannot show whether a job ran, per its own copy"
+  },
+  {
+    "surface": "automations.html",
+    "control": "Rail filter select (All rails + one per category)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:automations ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs and e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "automations.html",
+    "control": "Workflow row expand (click or Enter: what would start this job, raw registry)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:automations ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs and e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "automations.html",
+    "control": "Per-row status badge (ON A TIMER, SIGNAL SEEN, NEVER STARTED, NOT CHECKED, NOTHING STARTS IT)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/workflows"
+    ],
+    "tables": [
+      "events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/workflows/index.test.mjs statusOf tests; run history is not mirrored to Postgres (run_records_available:false), so the page cannot go red on a dead job. Job lateness is job:* rows in src/pulse/heartbeats.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Page open: brand read (org mode or partner mode)",
+    "kind": "read",
+    "calls": [
+      "GET /api/org-brand",
+      "GET /api/partner-brand?partner_id="
+    ],
+    "tables": [
+      "org_brand",
+      "partner_brand",
+      "v_org_brand_effective",
+      "v_partner_brand_effective"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "owner-tools:brand-studio (gap-owner-tools.mjs) reads the company brand row; src/http/brand-studio-screen.test.mjs; org-brand-principal.pg.test.mjs; partner-brand-read-gate.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Page open: partner session adoption (redirect to ?partner_id=)",
+    "kind": "read",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "accounts"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (gap-auth.mjs); e2e/verification-roles.spec.mjs brand-studio partner view"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Reset button (discard unsaved local edits, confirm dialog)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:brand-studio ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Brand name input",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:brand-studio ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load; saved only through Save & apply"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Legal entity input (injected into every disclosure)",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs; src/http/brand-review.pg.test.mjs; a blank entity is refused in the browser and by the handler"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Business address input",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs round-trips entity_address"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Support email input",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Wordmark file input (SVG or PNG under 400 KB)",
+    "kind": "file-input",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs; src/http/org-brand-principal.pg.test.mjs. Logo is stored as a data URL in the row; no size check on the server side was found in tests"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Use text button (clear wordmark)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:brand-studio ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Ink colour picker and hex input",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-brand-crm.spec.mjs paints the partner's ink into the CRM chrome; src/http/partner-brand-roundtrip.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Paper colour picker and hex input",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-brand-crm.spec.mjs; src/http/partner-brand-roundtrip.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Accent ramp: six colour pickers",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-brand-crm.spec.mjs single-hue ramp keeps blocked/behind/healthy distinguishable"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Presets button (cycle six ramps)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:brand-studio ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Display face select",
+    "kind": "select",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Mono face select",
+    "kind": "select",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Copy voice select (plain, technical, warm)",
+    "kind": "select",
+    "calls": [
+      "PUT /api/partner-brand"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs. Nothing checks the voice actually changes any generated copy"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Domain input",
+    "kind": "input",
+    "calls": [
+      "PUT /api/partner-brand"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Verify button (DNS TXT check; owner and admin only)",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-brand/verify-domain"
+    ],
+    "tables": [
+      "partner_brand",
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:partner-brand/verify-domain ping only. No test file names verify-domain. Page itself says SSL is added by hand after DNS passes"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "DNS table copy buttons: CNAME, ALIAS/A, TXT",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:brand-studio ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Funnel cards (5): Application, Diagnostic, Education, Affiliate recruit, Booking (toggle selection)",
+    "kind": "toggle",
+    "calls": [
+      "PUT /api/partner-brand"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs stores selected_funnels; page comment records a renderFunnels bug fixed by hand, no spec drives the cards"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Create pages from selected funnels button",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-pages (one per funnel)"
+    ],
+    "tables": [
+      "partner_pages",
+      "partner_brand",
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-pages-publish.pg.test.mjs; reg:partner-pages; partner page rows are in no pulse lane (slice-22-partners.mjs only pings)"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Page row: Publish button",
+    "kind": "button",
+    "calls": [
+      "PATCH /api/partner-pages {status:published}"
+    ],
+    "tables": [
+      "partner_pages",
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-pages-publish.pg.test.mjs. A published page goes live at /sites/:partner_id/:slug; no check reads a published partner page"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Page row: Unpublish button",
+    "kind": "button",
+    "calls": [
+      "PATCH /api/partner-pages {status:draft}"
+    ],
+    "tables": [
+      "partner_pages"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-pages-publish.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Generation: Turn on for this partner (owner)",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-marketing/enable"
+    ],
+    "tables": [
+      "partners"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-marketing-enable.test.mjs; reg:partner-marketing/enable. Token cap per partner is read from usage"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Generation: Turn off (owner)",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-marketing/enable"
+    ],
+    "tables": [
+      "partners"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-marketing-enable.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Generation: Writing left and Pages live tiles",
+    "kind": "read",
+    "calls": [
+      "GET /api/partner-marketing/usage?partner_id="
+    ],
+    "tables": [
+      "partners",
+      "partner_pages"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:partner-marketing/usage ping. No test file names partner-marketing/usage"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Write page copy button (AI model call, locked legal blocks skipped)",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-marketing/generate-copy"
+    ],
+    "tables": [
+      "partner_pages",
+      "partner_brand"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:partner-marketing/generate-copy ping only. No test file names generate-copy. AI spend is on hold per owner (memory no-api-spend-for-now)"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Make a wordmark from the name button",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-marketing/generate-logo"
+    ],
+    "tables": [
+      "partner_brand",
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-marketing-logo.test.mjs; reg:partner-marketing/generate-logo"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Copy history: page select and section select",
+    "kind": "select",
+    "calls": [
+      "GET /api/partner-marketing/copy-history?page_id="
+    ],
+    "tables": [
+      "partner_pages"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:partner-marketing/copy-history ping. No test names copy-history"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Copy history: Use this version (restore) button",
+    "kind": "button",
+    "calls": [
+      "POST /api/partner-marketing/copy-history"
+    ],
+    "tables": [
+      "partner_pages"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:partner-marketing/copy-history ping only; restoring changes a page that may already be published"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Save & apply button",
+    "kind": "button",
+    "calls": [
+      "PUT /api/partner-brand | PUT /api/org-brand"
+    ],
+    "tables": [
+      "partner_brand",
+      "org_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-brand-roundtrip.pg.test.mjs; src/http/org-brand-principal.pg.test.mjs; src/http/org-brand-gate.test.mjs; src/http/partner-brand-gate.test.mjs. In org mode it repaints the CRM for every staff member"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Submit for approval button (partner mode)",
+    "kind": "button",
+    "calls": [
+      "POST /api/brand/review {action:submit}"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/brand-review.pg.test.mjs; reg:brand/review. Nothing alerts when a brand sits in review"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Approval chip (Draft, In review, Approved live; display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/partner-brand"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/brand-review.pg.test.mjs"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Compliance card BS-05 (locked list, no controls)",
+    "kind": "read",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Static text on the page. Nothing checks the master template renders these disclosures on a partner's published page"
+  },
+  {
+    "surface": "brand-studio.html",
+    "control": "Live preview panel (display)",
+    "kind": "read",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:brand-studio ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Page open: open tasks read",
+    "kind": "read",
+    "calls": [
+      "GET /api/tasks?done=false&limit=200"
+    ],
+    "tables": [
+      "tasks",
+      "clients",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'never paints a half-read schedule' (5 tests); src/http/tasks-write.pg.test.mjs; reg:tasks"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Page open: finished tasks read",
+    "kind": "read",
+    "calls": [
+      "GET /api/tasks?done=true&limit=200"
+    ],
+    "tables": [
+      "tasks",
+      "clients",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs half-read tests; reg:tasks"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Page open: Who's On Today coverage rail",
+    "kind": "read",
+    "calls": [
+      "GET /api/shifts?roster=1"
+    ],
+    "tables": [
+      "shifts",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/shifts.pg.test.mjs; reg:shifts. No spec asserts the rail rows"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Day / Week segmented control",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'week strip counts come from dated tasks'"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Previous day / week (‹) button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:calendar ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs; no spec clicks it"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Next day / week (›) button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'Today button returns to the real current day' clicks .navbtn nth(1)"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Today button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'Today button returns to the real current day'"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Week strip day picker (7 days, click or Enter)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'week strip counts come from dated tasks'"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Then row (click to load into Up Next)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'clicking a Then row loads that appointment in Up Next'"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Timeline event block (click to select)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs 'clicking a calendar event makes it Up Next'"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Join Call button (opens meeting_url in new tab)",
+    "kind": "button",
+    "calls": [],
+    "tables": [
+      "bookings",
+      "tasks"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "calls:booked-no-join-link (gap-calls.mjs) goes red when a booked call has no link; e2e/calendar.spec.mjs Join Call tests; e2e/controls-persist.spec.mjs"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Client file button (opens client-control-panel.html?client_id=)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'Client file navigates to the client control panel'"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Claim button (timeline rows and No-date rail)",
+    "kind": "button",
+    "calls": [
+      "PATCH /api/tasks {id, claim:true}"
+    ],
+    "tables": [
+      "tasks",
+      "shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/tasks-write.pg.test.mjs claim + 409 race + shift gate. No spec clicks the button. csm:overdue-unassigned (gap-csm.mjs) reads only client-success tasks"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Mark done button (timeline rows and No-date rail)",
+    "kind": "button",
+    "calls": [
+      "PATCH /api/tasks {id, done:true}"
+    ],
+    "tables": [
+      "tasks",
+      "shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/tasks-write.pg.test.mjs 'done:true closes the task'. No spec clicks the button. No live check reads done tasks"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Stat tiles: Booked, Done, Left today, No date (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/tasks"
+    ],
+    "tables": [
+      "tasks"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'week strip counts come from dated tasks' and half-read tests"
+  },
+  {
+    "surface": "calendar.html",
+    "control": "Up Next panel: countdown, client, briefing text (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/tasks"
+    ],
+    "tables": [
+      "tasks",
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/calendar.spec.mjs 'Before you dial shows the task title, never a UUID'"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Page open: partner picker list",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/partners?limit=200"
+    ],
+    "tables": [
+      "partners"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:read/partners; reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Partner select (changes whose ads every panel shows)",
+    "kind": "select",
+    "calls": [
+      "GET /api/campaigns/{spend,list,connections,action-log,fatigue}?partner_id="
+    ],
+    "tables": [
+      "campaigns",
+      "ads",
+      "ad_platform_connections",
+      "action_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'a staff session reaches all five once it names a partner_id'; src/http/partner-read-api.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Reload button",
+    "kind": "button",
+    "calls": [
+      "GET /api/campaigns/* (5 reads)"
+    ],
+    "tables": [
+      "campaigns",
+      "ad_sets",
+      "ads",
+      "ad_metrics_daily"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Spend vs ceilings panel (CM-03 rows, headroom, % of ceiling, flags)",
+    "kind": "read",
+    "calls": [
+      "GET /api/campaigns/spend?state=all"
+    ],
+    "tables": [
+      "v_partner_spend_vs_ceiling",
+      "campaigns"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'spend?state=all returns the ceiling view rows'; ads-spend-day-missing (gap-ads.mjs) reads spend rows, not this read; reg:campaigns/spend"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Spend rail filter (all, breached, ok)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Needs-attention tile: Daily limits already hit",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs (breached rows); reg:campaigns/spend"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Needs-attention tile: Changes that did not go through",
+    "kind": "button",
+    "calls": [],
+    "tables": [
+      "action_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'action-log?state=all&limit=200 returns the audit rows'"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Needs-attention tile: Connections that cannot go live",
+    "kind": "button",
+    "calls": [],
+    "tables": [
+      "ad_platform_connections"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'connections?state=all returns the connection'"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Needs-attention tile: Campaigns with an error on them",
+    "kind": "button",
+    "calls": [],
+    "tables": [
+      "campaigns"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Ad performance panel (CM-09: leads, booked calls, booked rate)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/ad-books?group_by="
+    ],
+    "tables": [
+      "client_ad_attribution",
+      "bookings"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-attribution.pg.test.mjs; src/ads/registry.test.mjs; reg:read/ad-books; ads-number-unmapped (gap-ads.mjs)"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Ad performance group-by rail (lane, ad_id, variant, gate, entry, primary_offer, secondary_offer)",
+    "kind": "filter",
+    "calls": [
+      "GET /api/read/ad-books?group_by="
+    ],
+    "tables": [
+      "client_ad_attribution"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-attribution.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Angle/hook panel (CM-11: spend, people arrived, booked, cost per booked, hook rate, hold rate)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/ad-spine?group_by=&days="
+    ],
+    "tables": [
+      "v_ad_label_spine",
+      "ad_labels",
+      "ad_metrics_daily",
+      "client_ad_attribution",
+      "bookings",
+      "ads"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-spine.pg.test.mjs; src/http/ad-spine.test.mjs; reg:read/ad-spine"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Angle/hook group-by rail (angle, hook, lane, offer, script_type)",
+    "kind": "filter",
+    "calls": [
+      "GET /api/read/ad-spine?group_by="
+    ],
+    "tables": [
+      "v_ad_label_spine"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-spine.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Angle/hook Window select (7, 14, 30, 90 days)",
+    "kind": "select",
+    "calls": [
+      "GET /api/read/ad-spine?days="
+    ],
+    "tables": [
+      "ad_metrics_daily"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-spine.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Funnel pages panel (CM-10: ClickFunnels views and conversions)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/funnel-pages"
+    ],
+    "tables": [
+      "funnel_page_stats",
+      "analytics_connections"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/analytics-clickfunnels.pg.test.mjs; reg:read/funnel-pages; funnel-pages lane gap-built-funnels.mjs reads built funnels, not this table"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Funnel pages: Sync now button",
+    "kind": "button",
+    "calls": [
+      "POST /api/analytics/clickfunnels-sync"
+    ],
+    "tables": [
+      "funnel_page_stats",
+      "analytics_connections"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/analytics-clickfunnels.pg.test.mjs; route is excused from ping in src/pulse/registry.mjs ALLOWED_UNMONITORED (monitored door is read/funnel-pages)"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign list panel (CM-04: approval state, strategy, budget, spend yesterday, ROAS, status)",
+    "kind": "read",
+    "calls": [
+      "GET /api/campaigns/list?state=all&limit=200"
+    ],
+    "tables": [
+      "campaigns",
+      "ad_sets",
+      "ads",
+      "ad_metrics_daily"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'list?state=all&limit=200 returns the campaign rows'; ads-running-no-metrics + ads-meta-sync-stale (gap-ads.mjs)"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign Platform select (all, meta, tiktok, google)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign Offer select (all, funding, credit cards, credit repair)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign Limit select (10, 25, 50, 200)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign approval-state rail (all, draft, awaiting_approval, approved, live, paused, archived)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign pager (prev, next)",
+    "kind": "pager",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Sync Meta now button",
+    "kind": "button",
+    "calls": [
+      "POST /api/campaigns/sync"
+    ],
+    "tables": [
+      "campaigns",
+      "ad_sets",
+      "ads",
+      "ad_metrics_daily",
+      "ad_platform_connections"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "ads-meta-sync-stale + ads-spend-day-missing + ads-running-no-metrics (gap-ads.mjs) read what it writes; src/http/campaigns-sync-*.test.mjs (7 files); job:meta-campaign-sync-hourly heartbeat"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Campaign row click (opens detail drawer)",
+    "kind": "button",
+    "calls": [
+      "GET /api/campaigns/detail?id=&days=30"
+    ],
+    "tables": [
+      "campaigns",
+      "ad_sets",
+      "ads",
+      "ad_metrics_daily",
+      "action_log"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'detail?id= returns the campaign with its series and ad sets'; reg:campaigns/detail"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Drawer: Stop spending button (pause on Meta, confirm dialog)",
+    "kind": "button",
+    "calls": [
+      "POST /api/campaigns/write {action:pause}"
+    ],
+    "tables": [
+      "campaigns",
+      "ads",
+      "ad_platform_connections",
+      "action_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaigns-write-resume-ad.pg.test.mjs 'a partner login still pauses its own campaign' (fake Meta). No spec clicks the drawer button"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Drawer: Start spending again button (resume on Meta, confirm dialog)",
+    "kind": "button",
+    "calls": [
+      "POST /api/campaigns/write {action:resume}"
+    ],
+    "tables": [
+      "campaigns",
+      "ad_platform_connections",
+      "action_log"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:campaigns/write ping (405 counts up). Only pause is exercised in src/http/campaigns-write-resume-ad.pg.test.mjs; src/adplatforms/meta-guards.test.mjs covers ad set guards"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Drawer: New daily budget input and Change daily budget button",
+    "kind": "button",
+    "calls": [
+      "POST /api/campaigns/write {action:update_budget}"
+    ],
+    "tables": [
+      "campaigns",
+      "ad_platform_connections",
+      "action_log"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "reg:campaigns/write ping. update_budget appears in src/http/campaigns-write-resume-ad.pg.test.mjs only as an allowed-actions list entry; no test performs it"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Drawer: Days select (7, 14, 30, 90, 180)",
+    "kind": "select",
+    "calls": [
+      "GET /api/campaigns/detail?days="
+    ],
+    "tables": [
+      "ad_metrics_daily"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Drawer: metric buttons (spend, impressions, clicks, conversions, and more)",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Drawer: close (✕, scrim click, Escape key)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Creative fatigue panel (CM-06: frequency, CTR, ROAS, recommendation, label)",
+    "kind": "read",
+    "calls": [
+      "GET /api/campaigns/fatigue?state=all&days=7"
+    ],
+    "tables": [
+      "ads",
+      "ad_metrics_daily",
+      "campaigns",
+      "optimization_rules"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'fatigue?state=all&days=7 returns the per-ad metrics with a recommendation'; reg:campaigns/fatigue"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Fatigue Window select (7, 14, 30 days)",
+    "kind": "select",
+    "calls": [
+      "GET /api/campaigns/fatigue?days="
+    ],
+    "tables": [
+      "ad_metrics_daily"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Fatigue state rail (all, refresh, queue, ok, unconfigured)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Fatigue row: Label button (opens link box)",
+    "kind": "button",
+    "calls": [
+      "GET /api/creative/library?limit=100"
+    ],
+    "tables": [
+      "creative_assets"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:creative/library; src/ui/label-chain-reachable.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Link box: Creative select",
+    "kind": "select",
+    "calls": [],
+    "tables": [
+      "creative_assets"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:creative/library"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Link box: Our ad number input",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-asset-link.pg.test.mjs refuses a Meta id or a slug in the number"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Link box: Save this link button",
+    "kind": "button",
+    "calls": [
+      "POST /api/campaigns/link-asset"
+    ],
+    "tables": [
+      "ads",
+      "creative_assets",
+      "v_ad_label_spine"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-asset-link.pg.test.mjs (20 tests: link, unlink, cross-partner refused); src/http/ad-number-sync.pg.test.mjs; ads-number-unmapped (gap-ads.mjs)"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Link box: Close button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Connections panel (CM-07: state, verification, token, can launch, blockers)",
+    "kind": "read",
+    "calls": [
+      "GET /api/campaigns/connections?state=all"
+    ],
+    "tables": [
+      "ad_platform_connections",
+      "campaigns",
+      "partner_onboarding_tasks"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'connections?state=all returns the connection, with no token material'; reg:campaigns/connections; src/http/campaigns-sync-gate.test.mjs"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Connections state rail (all, pending, active, expired, revoked, needs_verification)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Request Meta agency access: Business ID input, Ad account input, Request access button",
+    "kind": "form",
+    "calls": [
+      "POST /api/campaigns/meta-agency"
+    ],
+    "tables": [
+      "partners",
+      "ad_platform_connections"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/adplatforms/meta-agency.test.mjs (adapter only). api/campaigns/meta-agency.mjs has no test and the route is excused from ping in ALLOWED_UNMONITORED"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Connect ClickFunnels: API key input, Subdomain input, Connect button",
+    "kind": "form",
+    "calls": [
+      "POST /api/analytics/clickfunnels-connect",
+      "POST /api/analytics/clickfunnels-sync"
+    ],
+    "tables": [
+      "analytics_connections",
+      "funnel_page_stats"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/analytics-clickfunnels.pg.test.mjs; route excused from ping (it calls the real ClickFunnels API); monitored door is read/funnel-pages"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Action log panel (CM-08: actor, rule, reason, change, outcome, revertible)",
+    "kind": "read",
+    "calls": [
+      "GET /api/campaigns/action-log?state=all&limit=200"
+    ],
+    "tables": [
+      "action_log",
+      "accounts",
+      "agents"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs 'action-log returns the audit rows without undo_payload'; reg:campaigns/action-log"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Action log Target select (campaign, ad_set, ad, creative_asset, connection, social_post, autopilot)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Action log Rule select (scale winner, cost per sale too high, kill switch, and 5 more)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Action log state rail (all, agent, human, revertible, failed)",
+    "kind": "filter",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:campaign-manager ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs + e2e/crm-flows.spec.mjs page load"
+  },
+  {
+    "surface": "campaign-manager.html",
+    "control": "Ceiling chip and summary tiles (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/campaigns/spend",
+      "GET /api/campaigns/list"
+    ],
+    "tables": [
+      "v_partner_spend_vs_ceiling",
+      "campaigns"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Page open: client file read (name, status, tiles, next action, blockers, round, facts)",
+    "kind": "read",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "clients",
+      "transactions",
+      "messages",
+      "crs_results",
+      "funding_rounds"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "crm-data:client (gap-crm-links.mjs) reads the record the screen is drawn from; fulfillment:next-action (gap-fulfillment.mjs); e2e/ccp-first-paint.spec.mjs; src/http/client-panel-screen.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Client picker select (200 clients, navigates to ?id=)",
+    "kind": "select",
+    "calls": [
+      "GET /api/dashboard/clients?limit=200"
+    ],
+    "tables": [
+      "clients",
+      "crs_results",
+      "messages",
+      "tasks",
+      "transactions"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "crm-data:clients (gap-crm-links.mjs); src/http/client-panel-screen.test.mjs covers ccp-pick"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Do-this-next headline and why/note lines (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "documents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "fulfillment:next-action + fulfillment:apply-blocked (gap-fulfillment.mjs); src/http/client-panel-screen.test.mjs GATE A test"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Active blockers list and blocked-age (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "clients",
+      "inquiry_removal_cases",
+      "crs_results"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/client-panel-screen.test.mjs; src/fulfillment/next-action tests; e2e/ccp-first-paint.spec.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Funding round grid (round, finalized, status, approved amount, hold reason, opened)",
+    "kind": "read",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/client-panel-screen.test.mjs money() rule; e2e/ccp-headline.spec.mjs; funding:round-stuck (gap-funding.mjs) reads rounds that stopped moving"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Mark round submitted button",
+    "kind": "button",
+    "calls": [
+      "POST /api/pipeline-cards {action:move, stage:round_submitted}"
+    ],
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs 'Mark round submitted posts the board's own move'; e2e/pipeline.spec.mjs; crm-data:pipeline-cards (gap-crm-links.mjs)"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Mark funded… button, amount box, Save funded, Cancel",
+    "kind": "button",
+    "calls": [
+      "POST /api/pipeline-cards {action:move, stage:funded, funded_amount}"
+    ],
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "clients",
+      "applications"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs funded tests; e2e/funded-amount.spec.mjs; src/http/money-input.test.mjs. NOT FOUND: no pulse check goes red when a funded round has no success-fee invoice"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Close round button",
+    "kind": "button",
+    "calls": [
+      "POST /api/pipeline-cards {action:move, stage:closed}"
+    ],
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs 'Close round posts the closed stage'"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Funding Apply door: lender list (matches for this client)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/lender-matches?client_id="
+    ],
+    "tables": [
+      "lenders",
+      "crs_results",
+      "inquiry_log",
+      "lender_bureau_observations"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "crm-data:lender-matches + crm-data:lenders (gap-crm-links.mjs); funding:lender-book + funding:apply-door (gap-funding.mjs); e2e/proxy-apply.spec.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Lender row: Apply button (proxy launch, opens bank page)",
+    "kind": "button",
+    "calls": [
+      "POST /api/proxy/launch",
+      "POST /api/proxy/end"
+    ],
+    "tables": [
+      "proxy_sessions",
+      "lenders",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "beat apply-links (src/pulse/beats/beat-apply-links.mjs, hourly, covers desk:client-control-panel.html) GETs each bank application_url and goes red when a good link breaks; e2e/proxy-apply.spec.mjs; src/http/proxy-endpoints.test.mjs. Nothing live reads proxy_sessions, so a failed proxy launch is not seen"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Lender row: Approved $ amount input",
+    "kind": "input",
+    "calls": [
+      "POST /api/applications"
+    ],
+    "tables": [
+      "applications",
+      "application_decisions",
+      "funding_rounds"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs (no float drift, blank is never zero); src/http/money-input.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Lender row: Approved button",
+    "kind": "button",
+    "calls": [
+      "POST /api/applications {status:Approved, approved_amount}"
+    ],
+    "tables": [
+      "applications",
+      "application_decisions",
+      "funding_rounds",
+      "lenders"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs; e2e/ccp-headline.spec.mjs; src/applications/status.test.mjs; src/applications/approved-amount-optional.pg.test.mjs. NOT FOUND: no pulse check judges a bank yes with no dollar amount (approval_amount_missing is only read for the board flag)"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Lender row: Declined button",
+    "kind": "button",
+    "calls": [
+      "POST /api/applications {status:Denied}"
+    ],
+    "tables": [
+      "applications",
+      "application_decisions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs 'Declined still works and carries no amount'"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Lender row: Pending button",
+    "kind": "button",
+    "calls": [
+      "POST /api/applications {status:Applied}"
+    ],
+    "tables": [
+      "applications",
+      "application_decisions"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:applications ping; no spec found that clicks Pending"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)",
+    "kind": "button",
+    "calls": [
+      "POST /api/applications {action:exclude_approval|reinstate_approval}"
+    ],
+    "tables": [
+      "applications"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs 'an approval that does not count'; e2e/ccp-headline.spec.mjs; src/funding/success-fee.test.mjs + success-fee.pg.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Bank email amount suggestion buttons (one click fills the amount box)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/bank-inbox?client_id=&limit=50"
+    ],
+    "tables": [
+      "bank_inbox"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/bank-amount-suggestion.spec.mjs (9 tests); src/http/bank-amount-suggestion.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Waiting count headline (bank yes with no amount)",
+    "kind": "read",
+    "calls": [
+      "GET /api/applications?client_id="
+    ],
+    "tables": [
+      "applications",
+      "application_decisions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs (8 tests); src/funding/success-fee.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Consent state line and Record consent link",
+    "kind": "read",
+    "calls": [
+      "GET /api/consent/capture?client_id=&kind=soft_pull_consent"
+    ],
+    "tables": [
+      "client_consents",
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "consent:store + consent:required (src/pulse/tripwires.mjs route:consent/capture); e2e/ccp-headline.spec.mjs consent link tests"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Identity-on-file state line and client approval link box + Copy link",
+    "kind": "button",
+    "calls": [
+      "GET /api/consent/capture"
+    ],
+    "tables": [
+      "client_consents",
+      "pii_identity",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "softpull:approve-click-no-pull + soft-pull:approve-read (src/pulse/tripwires.mjs route:soft-pull-approve); src/consent/approve-token.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Pull TransUnion button",
+    "kind": "button",
+    "calls": [
+      "POST /api/finance/crs-pull {bureau:tu}"
+    ],
+    "tables": [
+      "soft_pull_requests",
+      "crs_results",
+      "pii_identity",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-crs-pull.test.mjs 'queues then runs CRS for TransUnion only'; softpull:request-failed-or-stuck (gap-soft-pull.mjs) reads person-requested pulls that fail or stall; keys:credit-pull-live-allowed (gap-keys.mjs). No spec clicks the button"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Pull Experian button",
+    "kind": "button",
+    "calls": [
+      "POST /api/finance/crs-pull {bureau:ex}"
+    ],
+    "tables": [
+      "soft_pull_requests",
+      "crs_results",
+      "pii_identity",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-crs-pull.test.mjs 'maps EX and EQ to a one-bureau run'; softpull:request-failed-or-stuck (gap-soft-pull.mjs)"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Pull Equifax button",
+    "kind": "button",
+    "calls": [
+      "POST /api/finance/crs-pull {bureau:eq}"
+    ],
+    "tables": [
+      "soft_pull_requests",
+      "crs_results",
+      "pii_identity",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-crs-pull.test.mjs; softpull:request-failed-or-stuck (gap-soft-pull.mjs)"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Issue Inquiry Removal button (opens a case, goes to Inquiry Remover)",
+    "kind": "button",
+    "calls": [
+      "POST /api/inquiry-cases {action:create}"
+    ],
+    "tables": [
+      "inquiry_removal_cases",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/cases.test.mjs; inquiry:case-stuck + inquiry:letter-round (gap-inquiry.mjs) read stuck cases; no spec clicks this button"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Send portal sign-in link button (owner/admin)",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/send-portal-link"
+    ],
+    "tables": [
+      "accounts",
+      "account_sessions",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap:auth-magic-link-dead + email:magic-link-unqueued (gap-auth.mjs, gap-email.mjs); src/http/client-panel-portal-link.test.mjs; route:auth/send-portal-link in TRIPWIRES"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Authorized rep: Add this person to the file button and Name/Email/Phone inputs (owner/admin)",
+    "kind": "form",
+    "calls": [
+      "POST /api/auth/authorized-rep"
+    ],
+    "tables": [
+      "client_authorized_reps",
+      "accounts",
+      "account_sessions"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/auth/authorized-rep.pg.test.mjs; src/http/authorized-rep-screen.test.mjs; email deep check email:magic-link-unqueued reads queued sign-in mail"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Authorized rep: Take them off this file button",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/authorized-rep {remove:true}"
+    ],
+    "tables": [
+      "client_authorized_reps",
+      "account_sessions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/auth/authorized-rep.pg.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Businesses cards: Save month/year button (stamp incorporation)",
+    "kind": "button",
+    "calls": [
+      "POST /api/soft-pull-approve {action:stamp_incorporated}"
+    ],
+    "tables": [
+      "businesses"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/closer-deck-present.test.mjs; src/http/client-panel-screen.test.mjs; reg:soft-pull-approve"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Need action list (other clients with open removal cases; link per client)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/inquiry-cases"
+    ],
+    "tables": [
+      "inquiry_removal_cases",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs; e2e/integration-round.spec.mjs; reg:read/inquiry-cases"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Inquiries on the credit file tile and bank-names note (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "crs_results",
+      "inquiry_log"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/client-panel-screen.test.mjs; e2e/report-tieout.spec.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Agent context toggle and pre block (what the AI sees)",
+    "kind": "toggle",
+    "calls": [
+      "GET /api/read/agent-context?client_id="
+    ],
+    "tables": [
+      "clients",
+      "messages",
+      "call_outcomes"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/agents/context.test.mjs; reg:read/agent-context"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Credit & Hold Status toggle (credit status, income estimates, hold reason)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-control-panel ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs page load"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Details toggle (email, phone, tier, path)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-control-panel ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs page load"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Notes textarea and Save notes button",
+    "kind": "button",
+    "calls": [
+      "POST /api/client-notes"
+    ],
+    "tables": [
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs 'Save notes writes the open client and the typed note'"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Documents toggle, drop zone, file input, drag and drop upload",
+    "kind": "drag-drop",
+    "calls": [
+      "POST /api/documents-upload"
+    ],
+    "tables": [
+      "documents",
+      "document_versions",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:upload-store + documents:stuck-processing (src/pulse/tripwires.mjs route:documents-upload); src/inquiry-ops/send.pg.test.mjs; no spec drops a file on this zone"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "src/http/app-nav-reachability.test.mjs only checks each href is a real page; no spec clicks them"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Open FinanceOS link (owner, admin, sales_manager only)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/client-panel-financeos-link.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "More menu: Open Funding Matrix link",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs 'Open Funding Matrix goes to the lender matrix with the client id'"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "More menu: Open Credit Snapshot link",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/crm-flows.spec.mjs 'CCP credit snapshot points at the deck for this client'; e2e/ccp-present-param-aliases.spec.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "More menu: Open Bank Inbox button",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/bank-inbox?client_id=&limit=100"
+    ],
+    "tables": [
+      "bank_inbox"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs 'Open Bank Inbox shows this client's bank messages'; e2e/crm-flows.spec.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Combined prequal read",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/blueprint-combined-approval?client_id="
+    ],
+    "tables": [
+      "clients",
+      "credit_partner_links",
+      "crs_results"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/combined-approval.test.mjs; reg:read/blueprint-combined-approval"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Add credit partner button and First/Last/Email/Phone inputs",
+    "kind": "form",
+    "calls": [
+      "POST /api/blueprint/staff-actions {action:create_credit_partner}"
+    ],
+    "tables": [
+      "clients",
+      "credit_partner_links"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:blueprint/staff-actions ping. src/http/blueprint-staff-actions-next-sequence.test.mjs covers only the next-sequence action"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Save ready date button",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/staff-actions {action:set_next_sequence_date}"
+    ],
+    "tables": [
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/blueprint-staff-actions-next-sequence.test.mjs; src/blueprint/next-sequence-math.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Offer bank tracker button",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/staff-actions {action:offer_bank_tracker}"
+    ],
+    "tables": [
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:blueprint/staff-actions ping only; no test found for offer_bank_tracker"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Take the offer back button",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/staff-actions {action:offer_bank_tracker, offered:false}"
+    ],
+    "tables": [
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:blueprint/staff-actions ping only"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs)",
+    "kind": "form",
+    "calls": [
+      "POST /api/blueprint/staff-actions {action:add_bank_todo}"
+    ],
+    "tables": [
+      "blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:blueprint/staff-actions ping only; no test found for add_bank_todo"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Capital Blueprint: Bank list state buttons",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/staff-actions {action:update_bank_todo_state}"
+    ],
+    "tables": [
+      "blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "reg:blueprint/staff-actions ping only"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Credit partner links: Open the partner's file, Record the partner's own consent",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-control-panel ping; links built from the combined-approval read, no spec clicks them"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Declines: Record decline and build the plan button (bank, product, date, bureaus, letter text)",
+    "kind": "form",
+    "calls": [
+      "POST /api/blueprint/declines {action:record}"
+    ],
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps",
+      "tasks",
+      "applications"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/decline-defense.pg.test.mjs; src/http/blueprint-declines.test.mjs; reg:blueprint/declines"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Declines: Use this email button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:blueprint/declines; ccp-declines.js client-side fill only"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Declines: Save and mark done / Skip / Open again step buttons",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/declines {action:step}"
+    ],
+    "tables": [
+      "blueprint_decline_steps"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/decline-defense.pg.test.mjs; src/blueprint/decline-defense.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Declines: Save call date button",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/declines {action:schedule}"
+    ],
+    "tables": [
+      "blueprint_declines",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/decline-defense.pg.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Declines: Save outcome button (approved amount, reapply date, notes)",
+    "kind": "button",
+    "calls": [
+      "POST /api/blueprint/declines {action:outcome}"
+    ],
+    "tables": [
+      "blueprint_declines",
+      "applications"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/decline-defense.pg.test.mjs"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Declines: Upload letter button",
+    "kind": "file-input",
+    "calls": [
+      "POST /api/documents-upload",
+      "POST /api/blueprint/declines {action:link_letter}"
+    ],
+    "tables": [
+      "documents",
+      "blueprint_declines"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/decline-defense.pg.test.mjs; documents:upload-store (route:documents-upload tripwire)"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "System Facts toggle (last pull, scores, round, funded)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-control-panel ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs page load"
+  },
+  {
+    "surface": "client-control-panel.html",
+    "control": "Blueprint group toggle",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-control-panel ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs page load"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Page open: session read (name, own client id, authorized-rep flag)",
+    "kind": "read",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "account_sessions",
+      "accounts",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (gap-auth.mjs); desk:client-portal.html is in TRIPWIRES (portal:page-scripts-load, portal:paid-entitlement, portal:next-step)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Page open: client file read (staff view ?id=)",
+    "kind": "read",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "clients",
+      "transactions",
+      "messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "crm-data:client (gap-crm-links.mjs); desk:client-portal.html is in TRIPWIRES (portal:page-scripts-load, portal:paid-entitlement, portal:next-step)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Page open: portal summary (payments, invoice due, bookings, files, letters, messages)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/portal-summary"
+    ],
+    "tables": [
+      "clients",
+      "transactions",
+      "invoices",
+      "v_invoice_aging",
+      "payment_links",
+      "contracts",
+      "documents",
+      "crs_results",
+      "inquiry_removal_cases",
+      "call_outcomes",
+      "events",
+      "staff"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "portal:summary (gap-portal.mjs, route:read/portal-summary tripwire); e2e/client-portal-ux.spec.mjs; e2e/w4b-portal-walk.spec.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Page open: entitlements read (which tiles are unlocked)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/entitlements"
+    ],
+    "tables": [
+      "v_client_entitlements"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "portal:paid-entitlement + payments:paid-no-entitlement (route:read/entitlements tripwire); e2e/client-portal-ux.spec.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Page open: portal contracts read (Agreements tab)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/portal-contracts"
+    ],
+    "tables": [
+      "contracts",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/portal-contracts.test.mjs; contracts:sent-unsignable (gap-contracts.mjs); reg:read/portal-contracts"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Welcome video player (signed URL, retry once on expiry)",
+    "kind": "read",
+    "calls": [
+      "GET /api/content/welcome-video"
+    ],
+    "tables": [
+      "documents"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:content/welcome-video ping; no test found for the player or the 15-minute link retry"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Sign to authorize dispute letters: legal name input",
+    "kind": "input",
+    "calls": [
+      "GET /api/consent/capture?client_id=&kind=dispute_authorization"
+    ],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/w4b-portal-walk.spec.mjs 14a-14d; src/http/consent-sign-pad-html.test.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Sign to authorize dispute letters: signature pad (draw)",
+    "kind": "drag-drop",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/consent-sign-pad-html.test.mjs checks the pad markup; no spec draws on it"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Sign to authorize dispute letters: Clear button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-portal ping"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Sign to authorize dispute letters: submit button",
+    "kind": "button",
+    "calls": [
+      "POST /api/consent/capture {action:grant, capture_method:signature}"
+    ],
+    "tables": [
+      "client_consents",
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "consent:store + consent:dispute-required (gap-consent.mjs, route:consent/capture tripwire); src/consent/dispute-consent.test.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Facebook wins group card (external link)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'facebook wins group is on the portal before the call'"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "FinanceOS card link (Open or Set up FinanceOS)",
+    "kind": "link",
+    "calls": [
+      "GET /api/money/ready-to-fund"
+    ],
+    "tables": [
+      "subscriptions",
+      "entitlements"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/money-ready-to-fund.test.mjs; reg:money/ready-to-fund; e2e/client-portal-ux.spec.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Upload door: ID and personal documents (type select, Upload button, file picker)",
+    "kind": "file-input",
+    "calls": [
+      "POST /api/documents-upload kind=client_upload"
+    ],
+    "tables": [
+      "documents",
+      "document_versions",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:upload-store + documents:stuck-processing (route:documents-upload tripwire); e2e/client-portal-ux.spec.mjs door tests"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Upload door: Inquiry documents (type select, Upload button, file picker)",
+    "kind": "file-input",
+    "calls": [
+      "POST /api/documents-upload kind=inquiry_doc"
+    ],
+    "tables": [
+      "documents",
+      "document_versions",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'Send through the inquiry door posts an inquiry_doc'; inquiry:upload-door (gap-inquiry.mjs); documents:upload-store"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Upload door: bureau response (type select, Upload button, file picker)",
+    "kind": "file-input",
+    "calls": [
+      "POST /api/documents-upload kind=bureau_response"
+    ],
+    "tables": [
+      "documents",
+      "document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:upload-store (route:documents-upload tripwire); no spec posts a bureau_response"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Unlock buttons (Soft pull, Funding DFY, Repair DFY, Repair trial, Deliverables, Funding Mastery; opens modal)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'unlock tiles hide list prices except the $32 soft pull', 'pay stays hidden when no checkout exists', 'included letter pack shows View status'"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Unlock modal: Unlock pay now button (goes to product checkoutUrl)",
+    "kind": "button",
+    "calls": [],
+    "tables": [
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'pay stays hidden when no checkout exists'; e2e/progress-page.spec.mjs refuses a javascript: link; payments:checkout-started-no-link (gap-payments.mjs)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Unlock modal: Ask an advisor / Talk to an advisor buttons (open chat with topic)",
+    "kind": "button",
+    "calls": [
+      "POST /api/chat/portal-message"
+    ],
+    "tables": [
+      "conversations",
+      "messages",
+      "clients"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'chat opens before the call'; reg:chat/portal-message; gap:msg-inbound-unmatched (gap-sms.mjs)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Course tiles: Open course and expand modules (Funding Mastery, Deliverables)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'unlocked deliverables tile opens course modules', 'unlocked Funding Mastery tile expands'"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "What You Own: Download link per file",
+    "kind": "link",
+    "calls": [
+      "GET documents-download signed URL"
+    ],
+    "tables": [
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:stuck-processing (gap-documents.mjs); portal:paid-entitlement; e2e/client-portal-ux.spec.mjs 'client files come from the client-safe portal summary'"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "What You Own: Open course button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs 'What You Own lists an owned course and Open course opens its card'"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Account drawer tabs: Payments, Agreements, Documents, Activity, Messages",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/w4b-portal-walk.spec.mjs 18 'Messages tab shows exactly one empty state'; e2e/progress-page.spec.mjs Activity tab tests"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Payments tab: Pay now link per open invoice",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "invoices",
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "payments:invoice-stuck + payments:pay-link-webhook (gap-payments.mjs); e2e/progress-page.spec.mjs checkout link guard"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Agreements tab: Review & sign link per contract",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "contracts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "contracts:sent-unsignable + contracts:signed-not-stored (gap-contracts.mjs, route:contracts/sign tripwire)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "See exactly where your file stands link (to /progress.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/progress-page.spec.mjs 'the portal link actually navigates to the progress page'"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Progress read (Activity tab and status block)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/client-progress"
+    ],
+    "tables": [
+      "clients",
+      "events",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "portal:progress-read-real-client (gap-portal.mjs, route:read/client-progress tripwire); e2e/progress-page.spec.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Refer a friend: Get my link button",
+    "kind": "button",
+    "calls": [
+      "POST /api/affiliates/refer"
+    ],
+    "tables": [
+      "affiliates",
+      "affiliate_referrals",
+      "accounts"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/portal-refer-a-friend.spec.mjs (8 tests); src/http/affiliate-referral.pg.test.mjs; reg:affiliates/refer; partners:referral-link (gap-partners.mjs)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Refer a friend: Copy button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/portal-refer-a-friend.spec.mjs"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Refer a friend: link and counts card (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/affiliate-portal"
+    ],
+    "tables": [
+      "affiliates",
+      "affiliate_referrals",
+      "affiliate_commission_rules"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/portal-refer-a-friend.spec.mjs counts and rates tests"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Turn on / off notifications button (web push subscribe)",
+    "kind": "button",
+    "calls": [
+      "GET /api/push/key",
+      "POST /api/push/subscribe",
+      "POST /api/push/unsubscribe"
+    ],
+    "tables": [
+      "client_push_subscriptions"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/push-endpoints.pg.test.mjs; src/push/service-worker.test.mjs; reg:push/subscribe + reg:push/key (unsubscribe excused). Nothing checks a push actually reaches a device"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Authorized-rep file switcher buttons (one per file)",
+    "kind": "button",
+    "calls": [
+      "GET /api/auth/authorized-rep-file",
+      "POST /api/auth/authorized-rep-file"
+    ],
+    "tables": [
+      "client_authorized_reps",
+      "account_sessions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/auth/authorized-rep.pg.test.mjs; reg:auth/authorized-rep-file; no spec clicks the switcher"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Chat button (floating widget from shell.js: send message to staff)",
+    "kind": "button",
+    "calls": [
+      "POST /api/chat/portal-message",
+      "GET /api/chat/messages"
+    ],
+    "tables": [
+      "conversations",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/client-portal-ux.spec.mjs chat open tests; gap:msg-inbound-unmatched (gap-sms.mjs)"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Staff view: Open this client in Documents link",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:client-portal ping"
+  },
+  {
+    "surface": "client-portal.html",
+    "control": "Demo portal (?demo=1: every card unlocked, sample data, no backend calls)",
+    "kind": "read",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/portal-demo-unlocked.test.mjs; e2e/demo-mode.spec.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Page open: session read (who chip: name, role)",
+    "kind": "read",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "sessions",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap:auth-session-read (gap-auth.mjs)"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Page open: next booked call lookup (when no client in the URL)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/closer-now"
+    ],
+    "tables": [
+      "tasks",
+      "clients",
+      "call_outcomes"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-now.test.mjs; e2e/closer-call-rhythm.spec.mjs; reg:read/closer-now"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Page open: call cockpit read (who, call time, bands, credit facts, deal, up next)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/closer-call?client_id="
+    ],
+    "tables": [
+      "clients",
+      "tasks",
+      "crs_results",
+      "tradelines",
+      "cards",
+      "card_liabilities",
+      "transactions",
+      "call_outcomes",
+      "funding_rounds",
+      "funding_closeout",
+      "applications",
+      "businesses",
+      "shifts",
+      "messages"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs (rhythm, money, credit-pull tests); src/sales/cockpit-*.test.mjs (6 files); crm-data:client (gap-crm-links.mjs) reads the same client record; reg:read/closer-call"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Ad lines block: Gate, Entry, Primary, Secondary (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/ad-attribution?client_id="
+    ],
+    "tables": [
+      "clients",
+      "client_ad_attribution"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-ad-lines.spec.mjs (3 tests); ads-number-unmapped (gap-ads.mjs)"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Join call button (opens the booked call link)",
+    "kind": "button",
+    "calls": [],
+    "tables": [
+      "bookings",
+      "tasks"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "calls:booked-no-join-link (gap-calls.mjs) goes red when a booked call has no link; e2e/closer-call-rhythm.spec.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Present button (opens present.html?contact= in a new tab)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "e2e/conveyor-ui-times.spec.mjs clicks #fh-present; src/http/closer-deck-present.test.mjs; closer:desk-pages (gap-closer.mjs) reads present.js; reg:present"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Send contract button (opens panel)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/contracts?view=templates&active_only=1"
+    ],
+    "tables": [
+      "contract_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "src/http/contract-send.test.mjs and present-contract-pick.test.mjs read the source text only, no spec clicks the button; contracts:template-missing (gap-contracts.mjs) reads templates; reg:contracts"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Contract panel: wording select and blank-field inputs",
+    "kind": "select",
+    "calls": [],
+    "tables": [
+      "contract_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "src/http/contract-send.test.mjs (source text: Closer Dashboard Send fills company, days, and email blanks); no spec drives it"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Contract panel: Send button",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:create_draft}",
+      "POST /api/contracts {action:send}"
+    ],
+    "tables": [
+      "contracts",
+      "clients",
+      "documents",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "contracts:sent-unsignable + contracts:signed-not-stored (gap-contracts.mjs) read the result; server write tested by src/http/contracts-endpoints.pg.test.mjs; the button itself is covered only by source-text tests in src/http/contract-send.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Contract panel: Copy link button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "src/http/contract-send.test.mjs asserts the helper returns a copyable link (source text); no spec clicks it"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Send pay link button (opens panel; closers only)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs 'the pay link is sent from this screen, through the deck's own write path'"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Pay link panel: offer select and downsell/upsell select",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs; src/sales/closer-deck.test.mjs (alternate ladder needs a motion)"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Pay link panel: Send pay link button (mints a checkout link, emails and texts the client)",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action:send_pay_link}"
+    ],
+    "tables": [
+      "payment_links",
+      "clients",
+      "businesses",
+      "crs_results",
+      "soft_pull_requests",
+      "messages"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs pay link test; src/sales/closer-deck.test.mjs; src/http/closer-deck-endpoints.test.mjs. Downstream: payments:pay-link-webhook + payments:checkout-started-no-link (gap-payments.mjs). Closer-deck route is unsorted in tripwires-baseline"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Payment watch note (polls closer-call every 20 s for 5 min after a pay link)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/closer-call?client_id="
+    ],
+    "tables": [
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs 'real money paints as money' and watching-note test; payments:paid-no-entitlement (gap-payments.mjs)"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "What they can get bands: Conservative, Realistic, Stacked (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/closer-call"
+    ],
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "businesses"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs 'no credit pull shows a dash', 'a pull that computes to nothing'; src/sales/cockpit-one-funding-number.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Where they stand and The deal tables (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/closer-call"
+    ],
+    "tables": [
+      "crs_results",
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/cockpit-credit.test.mjs; src/sales/cockpit-honest-money.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Pre-call context block (wants, for, guessed FICO, last message, 'said:')",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/agent-context?client_id="
+    ],
+    "tables": [
+      "clients",
+      "messages",
+      "call_outcomes"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/agents/context.test.mjs; reg:read/agent-context"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Payment Calculator details toggle",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:closer-dashboard ping + closer:desk-pages (gap-closer.mjs) reads the page; e2e/screens-smoke.spec.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: Draw amount input",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/tradelines?client_id=&draw="
+    ],
+    "tables": [
+      "tradelines",
+      "clients",
+      "crs_results",
+      "inquiry_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/calculators/deal-funding.test.mjs tests the math; src/http/closer-dashboard-view.test.mjs lists the input ids; no spec types into the input; crm-data:tradelines (gap-crm-links.mjs) reads tradelines"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: draw slider",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/tradelines"
+    ],
+    "tables": [
+      "tradelines"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/closer-dashboard-view.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: utilization guard % input",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/tradelines"
+    ],
+    "tables": [
+      "tradelines"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/closer-dashboard-view.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: Deposit input",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/deal-math"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/deal-math.test.mjs; reg:read/deal-math"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: Success fee % input",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/deal-math"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/deal-math.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: Debts to clear input",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/deal-math"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/deal-math.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal calculator: Minimum payment % input",
+    "kind": "input",
+    "calls": [
+      "GET /api/read/deal-math"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/deal-math.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Lender matches count tile (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/lender-matches?client_id="
+    ],
+    "tables": [
+      "lenders",
+      "lender_bureau_observations"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "crm-data:lender-matches (gap-crm-links.mjs); src/sales/cockpit-lender-gate.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Deal breakdown details toggle",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:closer-dashboard ping + closer:desk-pages (gap-closer.mjs) reads the page; e2e/screens-smoke.spec.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Before you close: 5 compliance checkboxes (recorded, guarantee, month-14 cliff, bank decides, incorporation verified)",
+    "kind": "checkbox",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/sales/call-outcomes.test.mjs 'checklist is stored'; e2e/closer-call-rhythm.spec.mjs checklist layout. Sent only when Save is pressed"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Up next list (display)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/closer-call"
+    ],
+    "tables": [
+      "tasks",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/sales/cockpit-up-next.test.mjs; e2e/closer-call-rhythm.spec.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Outcome buttons 1-5: Deposit, Downsell, Callback, No show, Not a fit (also keys 1-5)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/closer-call-rhythm.spec.mjs 'Save · next call' test clicks Deposit; src/sales/call-outcomes.test.mjs"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Belief failed buttons (pain, doubt, cost, desire, money, support, trust, none)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/sales/call-outcomes.test.mjs (belief_failed stored)"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Repair referral checkbox",
+    "kind": "checkbox",
+    "calls": [],
+    "tables": [
+      "marketing_flags"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/sales/call-outcomes.test.mjs; src/sales/call-outcomes.mjs writes marketing_flags"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Save · next call button",
+    "kind": "button",
+    "calls": [
+      "POST /api/call-outcomes"
+    ],
+    "tables": [
+      "call_outcomes",
+      "tasks",
+      "transactions",
+      "marketing_flags",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "calls:booked-no-outcome + handoff:call-outcome-no-followup (gap-calls.mjs, gap-handoff.mjs); closer:held-disposition (gap-closer.mjs) for the deck path; e2e/closer-call-rhythm.spec.mjs; src/sales/call-outcomes.test.mjs; reg:call-outcomes"
+  },
+  {
+    "surface": "closer-dashboard.html",
+    "control": "Logbar footer note (cash comes from the payment record)",
+    "kind": "read",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:closer-dashboard ping + closer:desk-pages (gap-closer.mjs) reads the page; e2e/screens-smoke.spec.mjs"
+  },
+  {
+    "surface": "closer-call.html",
+    "control": "Redirect page: open Closer Dashboard link and auto-redirect script",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:closer-call ping (src/pulse/registry.mjs DESK_FILES); e2e/screens-smoke.spec.mjs loads /app/closer-call.html. The redirect keeps ?query and #hash; no test asserts it"
+  },
+  {
+    "surface": "shell.js chrome (mounted on all 10 desks)",
+    "control": "Sidebar: 9 group header buttons (fold) + collapse burger + 32 links (one inline copy per desk file)",
+    "kind": "nav",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/app-nav-reachability.test.mjs; e2e/sidebar-roles.spec.mjs; src/http/crm-html.test.mjs; crm-links:pages (gap-crm-links.mjs) reads what the screens link to"
+  },
+  {
+    "surface": "shell.js chrome (mounted on all 10 desks)",
+    "control": "Global search button and overlay (types a name, opens a hit)",
+    "kind": "form",
+    "calls": [
+      "GET /api/read/search?q="
+    ],
+    "tables": [
+      "clients",
+      "businesses",
+      "contracts",
+      "documents",
+      "conversations",
+      "messages"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/search-read.test.mjs; src/http/search-screen.test.mjs; e2e/live-run4-pass.spec.mjs; reg:read/search"
+  },
+  {
+    "surface": "shell.js chrome (mounted on all 10 desks)",
+    "control": "Account chip: sign out",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/logout"
+    ],
+    "tables": [
+      "sessions",
+      "account_sessions"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:auth/logout ping; gap:auth-staff-login covers sign-in not sign-out. No test file names logout beyond the gap-auth check list"
+  },
+  {
+    "surface": "shell.js chrome (mounted on all 10 desks)",
+    "control": "Account chip: avatar upload",
+    "kind": "file-input",
+    "calls": [
+      "POST /api/staff/avatar"
+    ],
+    "tables": [
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/staff-avatar.pg.test.mjs; reg:staff/avatar"
+  },
+  {
+    "surface": "shell.js chrome (mounted on all 10 desks)",
+    "control": "Org brand paint (CRM chrome colours and wordmark)",
+    "kind": "read",
+    "calls": [
+      "GET /api/org-brand"
+    ],
+    "tables": [
+      "org_brand",
+      "v_org_brand_effective"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "owner-tools:brand-studio (gap-owner-tools.mjs); e2e/partner-brand-crm.spec.mjs"
+  },
+  {
+    "surface": "shell.js chrome (mounted on all 10 desks)",
+    "control": "System pill (health: LIVE, NO API, DB DOWN)",
+    "kind": "read",
+    "calls": [
+      "GET /api/health"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "health + outside:health-down-text (gap-outside-inngest.mjs); beat-db-health + beat-doors-live (src/pulse/beats)"
+  }
+]

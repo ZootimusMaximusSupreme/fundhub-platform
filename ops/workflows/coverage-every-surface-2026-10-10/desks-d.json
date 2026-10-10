@@ -1,0 +1,2042 @@
+[
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Page shell (header, loads money-connections.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-connections.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-connections.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-connections-screen.test.mjs:27 asserts the frame; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#overview|#accounts|#credit|#connections|#payments|#setup",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:34 asserts six links in board order; staff ?client_id= rewrite in standalone() untested"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; the staff href swap in standalone() is never run (only financeos-screen.test.mjs covers financeos.html)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Connections read on page load (loading skeleton, then data)",
+    "kind": "display",
+    "calls": "GET /api/money/connections[?client_id]",
+    "tables": [
+      "merchant_connections",
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-connections.test.mjs:61,69,76 (own file, staff FINANCE only, other org 404, 405) + src/http/money-connections-screen.test.mjs:106 mount asks the right path; handler test runs on src/merchant/memory-db.mjs, never real Postgres; no pg.test.mjs for merchant_*; reg:money/connections (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); no gap-*.mjs reads it (gap-webhooks.mjs:87 says client processors are 'not watched here'); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Four tiles: Sales / Refunds / Fees / Paid out this month, with vs-last-month",
+    "kind": "display",
+    "calls": "GET /api/money/connections",
+    "tables": [
+      "merchant_connections",
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:46,76 (dash not $0 when nothing connected); math: src/merchant/store.test.mjs:108 (net = sales - refunds - fees)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Provider card x3 (Commas, Whop, Open API) status word",
+    "kind": "display",
+    "calls": "GET /api/money/connections",
+    "tables": [
+      "merchant_connections",
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:46,61 (Connected / Waiting for secret or API key / Turned off in words)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "'Which business is this for?' select (one per provider)",
+    "kind": "select",
+    "calls": "none (client-side; value sent with Connect)",
+    "tables": [
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:46 options come from containers; change itself not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "'How should sales come in?' select (API key or webhook; Commas, Whop only)",
+    "kind": "select",
+    "calls": "none (client-side; value sent with Connect)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:159 (Commas and Whop offer both, Open API does not)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Connect Commas / Connect Whop / Connect Open API",
+    "kind": "button",
+    "calls": "POST /api/money/connections {action:create, provider, entity_id, mode}",
+    "tables": [
+      "merchant_connections",
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-connections.test.mjs:82 (open API key shown once), :133 (Whop webhook), :213 (create pull), :254 (refusals), src/merchant/store.test.mjs:52,67,73; click and body-building not driven; handler test runs on src/merchant/memory-db.mjs, never real Postgres; no pg.test.mjs for merchant_*"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "One-time API key reveal box (shown only right after create)",
+    "kind": "display",
+    "calls": "POST /api/money/connections (create) answer",
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:67; handler test src/http/money-connections.test.mjs:82 proves the key is returned once and never read back; store.test.mjs:52"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Copy key / Copy address buttons (key reveal, webhook address, open API address)",
+    "kind": "button",
+    "calls": "none (navigator.clipboard)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "src/http/money-connections-screen.test.mjs:67 asserts the button markup only; the clipboard click handler is never run"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Signing-secret password box + Save secret (push mode, Commas/Whop)",
+    "kind": "form",
+    "calls": "POST /api/money/connections {action:secret, connection_id, secret}",
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler test: src/http/money-connections.test.mjs:133 (Whop: secret then signed delivery); store.test.mjs:73,160,175; needs MERCHANT_SECRET_ENC_KEY, which no pulse check watches (not in LAUNCH_SECRETS, gap-keys.mjs); click not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "API-key password box + Save key (pull mode, Commas/Whop)",
+    "kind": "form",
+    "calls": "POST /api/money/connections {action:api_key, connection_id, api_key}; outbound GET to Commas/Whop API",
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-connections.test.mjs:213,243 (key saved encrypted, one pull runs, bad key says why); src/merchant/sync.test.mjs:48,118; providers.test.mjs uses a stand-in fetch, never the live processor; click not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Sync now",
+    "kind": "button",
+    "calls": "POST /api/money/connections {action:sync, connection_id}; outbound GET to Commas/Whop API (3 pages)",
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-connections.test.mjs:213,272; src/merchant/sync.test.mjs:80,103,201; daily sibling job:merchant-pull-sweeper is a ping only (src/pulse/heartbeats.mjs JOBS); click not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Turn off (confirm dialog)",
+    "kind": "button",
+    "calls": "POST /api/money/connections {action:disable, connection_id}",
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-connections.test.mjs:272; store.test.mjs:87 (disable stops the key, history stays); confirm() path not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Connection status lines (last sale or payout, event count, last synced, last sync error, still-reading note)",
+    "kind": "display",
+    "calls": "GET /api/money/connections",
+    "tables": [
+      "merchant_connections",
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:167,179,189 (failed or partway sync said in words)"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Month over month tables (per business + All businesses)",
+    "kind": "display",
+    "calls": "GET /api/money/connections",
+    "tables": [
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:46; math: store.test.mjs:108,132"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Empty state: Add a business link",
+    "kind": "link",
+    "calls": "navigate /app/money-accounts.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-connections-screen.test.mjs:86"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Error state with Try again",
+    "kind": "button",
+    "calls": "GET /api/money/connections (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-connections-screen.test.mjs:96; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Processor API reachability (Commas, Whop) for pull connections",
+    "kind": "dependency",
+    "calls": "outbound GET to processor APIs on Save key / Sync now / daily sweep",
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "no live probe anywhere: providers.test.mjs uses a stand-in fetch; src/pulse has no merchant check beyond the sweeper ping"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Page shell (inline styles, loads money-credit.js)",
+    "kind": "page",
+    "calls": "GET /app/money-credit.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-credit.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-credit-screen.test.mjs:28; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#...",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:37 (board order, Credit current); staff ?client_id= rewrite in init() untested"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; init() href swap never run"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Credit read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/credit[?client_id]",
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities",
+      "businesses",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "finance-os:credit in src/pulse/coverage/gap-finance-os.mjs: gap-finance-os.mjs door runs the real handler on one live client with an active Plaid link as a staff owner; red on non-2xx, error body or throw; cannot see a wrong number; skip when no such client; client-session branch not exercised; plus handler tests src/http/money-credit.test.mjs:49-143 and reg:money/credit (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Sample report banner (scores from a sample file)",
+    "kind": "display",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities",
+      "businesses",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:55"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Score tiles x3 (Experian, Equifax, TransUnion): score, band, change since last pull, pulled date",
+    "kind": "display",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:55,85 (null is a dash); src/finance/credit-overview.test.mjs; numbers are the pull's, the pulse cannot see a wrong one"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Business score tile (Experian Intelliscore, financial stability)",
+    "kind": "display",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "businesses",
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:67 (dash with words when nothing stored)"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Facts tiles x4: Cards used %, Open accounts, Hard inquiries per bureau, Negative items",
+    "kind": "display",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "card_liabilities",
+      "tradelines",
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:77,85"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "'What to work on' UnderwriteIQ sentences",
+    "kind": "display",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "crs_results",
+      "tradelines"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:99 (verbatim, escaped); src/finance/credit-overview.test.mjs"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Scores over time chart (needs 2+ pulls)",
+    "kind": "chart",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:107"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Accounts on your credit report table",
+    "kind": "display",
+    "calls": "GET /api/money/credit",
+    "tables": [
+      "tradelines",
+      "card_liabilities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:122"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Empty state: Set up a soft pull link",
+    "kind": "link",
+    "calls": "navigate /app/money-setup.html[?client_id]",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-credit-screen.test.mjs:130,135-137"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Error state with Try again",
+    "kind": "button",
+    "calls": "GET /api/money/credit (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-credit-screen.test.mjs:143; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Page shell (loads money-declines.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-declines.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-declines.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-declines-screen.test.mjs:44; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Applications, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#... and /app/money-declines.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:54; nav scroll-into-view and staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Applications and declines read on page load",
+    "kind": "display",
+    "calls": "GET /api/blueprint/declines[?client_id]",
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps",
+      "applications",
+      "bank_inbox",
+      "transactions",
+      "products",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "finance-os:declines in gap-finance-os.mjs: gap-finance-os.mjs door runs the real handler on one live client with an active Plaid link as a staff owner; red on non-2xx, error body or throw; cannot see a wrong number; skip when no such client; client-session branch not exercised (staff payload, not the client view); handler tests src/http/blueprint-declines.test.mjs:65-93,164-259; reg:blueprint/declines (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Declines we are working on: one card per decline (bank, status word + shape, reasons with the letter's own quote, person-will-read box, When lines)",
+    "kind": "display",
+    "calls": "GET /api/blueprint/declines",
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:109,129,139 (no sources, no lender book to a client),205 (escaped); src/blueprint/decline-analyze.test.mjs"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Your steps list + Fundhub's steps expander (done / skipped / not done yet)",
+    "kind": "display",
+    "calls": "GET /api/blueprint/declines",
+    "tables": [
+      "blueprint_decline_steps"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:109,129; read-only for a client, step changes are staff-only (src/http/blueprint-declines.test.mjs:114)"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Your bank applications list",
+    "kind": "display",
+    "calls": "GET /api/blueprint/declines",
+    "tables": [
+      "applications"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:146,157"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "'Which bank sent it?' select (applications with no decline yet + Another bank)",
+    "kind": "select",
+    "calls": "none (client-side; value sent with paste)",
+    "tables": [
+      "applications"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:146; the change handler that reveals the bank-name box is never run"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Bank name text box (shown for Another bank)",
+    "kind": "input",
+    "calls": "none (client-side; value sent with paste)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "onChange toggle and the 'tell us which bank' guard in paste() are never driven by any test"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Paste the bank's letter or email textarea (20-20,000 chars, SSN-like numbers masked on save)",
+    "kind": "input",
+    "calls": "none (client-side; value sent with paste)",
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/blueprint-declines.test.mjs:122 (empty is 400),137 (input problem keeps its words); masking in src/blueprint/decline-defense.pg.test.mjs:133 (CI Postgres only)"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Read my decline",
+    "kind": "button",
+    "calls": "POST /api/blueprint/declines {action:paste, text, bank|application_id, client_id?}",
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps",
+      "tasks",
+      "applications",
+      "lenders",
+      "transactions",
+      "products"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/blueprint-declines.test.mjs:93,108,129,145,155; pg (CI only, skips without DATABASE_URL): src/blueprint/decline-defense.pg.test.mjs:117,126; message words src/http/money-declines-screen.test.mjs:188,196; click and body not driven; nothing checks that a paste produced its funding-advisor task"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Paste locked panel (not a Capital Blueprint buyer)",
+    "kind": "display",
+    "calls": "GET /api/blueprint/declines",
+    "tables": [
+      "blueprint_declines"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:165; handler src/http/blueprint-declines.test.mjs:129 (403 not_blueprint_buyer)"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Paste answer line (flash, duplicate, too many pastes, problem words)",
+    "kind": "display",
+    "calls": "POST /api/blueprint/declines answer",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:188,196"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Empty state (no applications, no declines)",
+    "kind": "display",
+    "calls": "GET /api/blueprint/declines",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-declines-screen.test.mjs:157"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Error state with Try again",
+    "kind": "button",
+    "calls": "GET /api/blueprint/declines (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-declines-screen.test.mjs:171,182; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Page shell (loads money-fundability.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-fundability.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-fundability.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-fundability-screen.test.mjs:70; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Fundability, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#... and /app/money-fundability.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:81; nav scroll and staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Fundability read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/fundability[?client_id]",
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities",
+      "businesses",
+      "entities",
+      "client_waypoints",
+      "dispute_items",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-fundability.test.mjs:49-172 (own file, FINANCE, other org 404, 405, db down 503); src/http/money-fundability-screen.test.mjs:271,288; reg:money/fundability (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); NOT one of the seven gap-finance-os doors; not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Tile: Fundability now (x of 6 UnderwriteIQ checks, tier)",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities",
+      "businesses",
+      "entities",
+      "client_waypoints",
+      "dispute_items",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:136,224; src/finance/fundability.test.mjs"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Tile: Funding estimate (dollar figure, 'not a bank's yes')",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [
+      "tradelines",
+      "card_liabilities",
+      "crs_results"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:136,224 (null is a dash); src/finance/fundability.test.mjs; pulse cannot see a wrong estimate"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Tile: In N months (plan projection, 'if removed' line)",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [
+      "client_waypoints",
+      "dispute_items"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:136,185; src/finance/fundability.test.mjs"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "What drives it: six checks, each Pass / Not yet / Not on file",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:147"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Now and later chart: date column buttons (Today + 3 dates), click / hover / focus shows assumptions",
+    "kind": "chart",
+    "calls": "none (client-side; renderDetail)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:168,185 asserts renderChart and renderDetail output; src/http/money-fundability-screen.test.mjs:283 only asserts the click, mouseover, focusin listeners exist, none are fired"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "What moves it most (UnderwriteIQ sentences, tagged with the check)",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:160"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "What this cannot look ahead on",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:237"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Business card per container (score, tier, estimate, six checks, projection table)",
+    "kind": "display",
+    "calls": "GET /api/money/fundability",
+    "tables": [
+      "entities",
+      "businesses",
+      "client_waypoints"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:198 (never added together),224"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Add business details / Add a business links",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#accounts",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:198,219"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Empty state: Run your soft pull link",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#setup",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-fundability-screen.test.mjs:244,255"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Error state with Try again",
+    "kind": "button",
+    "calls": "GET /api/money/fundability (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-fundability-screen.test.mjs:260; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Page shell (loads money-helper.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-helper.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-helper.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-helper-screen.test.mjs:35; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Money nav bar (Money, Plan, Helper, Accounts, Credit, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#...",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:44 (one current page); staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Thread read on page load (turns, answers, what the helper did, which brain)",
+    "kind": "display",
+    "calls": "GET /api/money/helper[?client_id]",
+    "tables": [
+      "money_helper_turns",
+      "money_helper_threads",
+      "money_agent_tasks",
+      "money_agent_pins",
+      "agent_bridge_heartbeats",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "finance-os:helper in gap-finance-os.mjs: gap-finance-os.mjs door runs the real handler on one live client with an active Plaid link as a staff owner; red on non-2xx, error body or throw; cannot see a wrong number; skip when no such client; client-session branch not exercised; it swaps in readOnlyHelperPayload, so the real GET's answerOrphans write path is NOT run; handler tests src/http/money-helper.test.mjs:75-160; reg:money/helper (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Helper status tags (Texts off, AI on / AI off / Rules helper only)",
+    "kind": "display",
+    "calls": "GET /api/money/helper",
+    "tables": [
+      "agent_bridge_heartbeats"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:88"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Banner: helper stopped / not switched on",
+    "kind": "display",
+    "calls": "GET /api/money/helper",
+    "tables": [
+      "money_helper_threads"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:121"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Chat bubbles: your message, the helper's answer, brain label (AI or Rules) with reason, time",
+    "kind": "display",
+    "calls": "GET /api/money/helper",
+    "tables": [
+      "money_helper_turns"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:64,73,149"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Action cards: Reminder set / Added to your plan / A person will reach out / Marked in progress / Transfer proposal (Needs your approval) / Decline saved / Helper stopped",
+    "kind": "display",
+    "calls": "GET /api/money/helper",
+    "tables": [
+      "money_agent_pins",
+      "money_agent_tasks",
+      "money_helper_turns"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:80 (a transfer always says nothing moves until approved),143; writes: src/finance/money-helper.test.mjs"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Suggestion buttons x3 (What is due this week? / Which card should I pay first? / Got declined? Paste the letter here)",
+    "kind": "button",
+    "calls": "POST /api/money/helper {action:send, message}",
+    "tables": [
+      "money_helper_turns",
+      "money_helper_threads",
+      "money_agent_tasks",
+      "money_agent_pins",
+      "agent_bridge_heartbeats",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:112; send path via handle.send src/http/money-helper-screen.test.mjs:167; the click itself not driven"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Message box + Send (Enter sends, Shift+Enter new line)",
+    "kind": "form",
+    "calls": "POST /api/money/helper {action:send, message, client_id?}; model call (AI or rules)",
+    "tables": [
+      "money_helper_turns",
+      "money_helper_threads",
+      "money_agent_pins",
+      "money_agent_tasks",
+      "money_agent_log",
+      "tasks",
+      "blueprint_declines"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-helper.test.mjs:103,111,119,160; mount+send test src/http/money-helper-screen.test.mjs:167,189 (refused send keeps the words); the form submit and Enter key handlers are never fired; helper actions can create a transfer proposal (needs the client's yes) and a decline record"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Thinking... poll every 3 s (up to 100 polls) and Check again button",
+    "kind": "poll",
+    "calls": "GET /api/money/helper (repeat)",
+    "tables": [
+      "money_helper_turns"
+    ],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "render of the thinking state src/http/money-helper-screen.test.mjs:103; the poll timer, MAX_POLLS and 'stuck' + Check again path are never run; nothing in src/pulse reads money_helper_turns for stuck queued/running turns"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Empty thread state",
+    "kind": "display",
+    "calls": "GET /api/money/helper",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-helper-screen.test.mjs:112"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Error state with Try again",
+    "kind": "button",
+    "calls": "GET /api/money/helper (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-helper-screen.test.mjs:133; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Helper brain: Mac bridge heartbeat / model runner (AI answers vs rules fallback)",
+    "kind": "dependency",
+    "calls": "agent_bridge_heartbeats read on every GET",
+    "tables": [
+      "agent_bridge_heartbeats"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "gap-finance-os helper door only needs a 2xx; no beat or gap reads bridge_on or stuck queued turns, so a dead bridge shows as 'AI off right now' to clients with no alert"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Page shell (loads money-next.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-next.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-next.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-next-screen.test.mjs:38; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup; no current-page marker)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#...",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test asserts this page's nav (src/http/money-next-screen.test.mjs:38 checks script, style, root id, no shell.js only); staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Next steps read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/tasks[?client_id]",
+    "tables": [
+      "money_agent_tasks",
+      "money_agent_log",
+      "client_waypoints",
+      "clarity_payments",
+      "clarity_payment_installments",
+      "card_liabilities",
+      "payment_strategy_plans",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-tasks.test.mjs:57-111 (own file, staff FINANCE, closer refused, 404, plan pins); src/http/money-next-screen.test.mjs:164; reg:money/tasks (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not a gap-finance-os door; not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Ready-to-fund status read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/ready-to-fund[?client_id]",
+    "tables": [
+      "tasks",
+      "clients",
+      "subscriptions",
+      "transactions",
+      "products"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-ready-to-fund.test.mjs:62,99,106; src/http/money-next-screen.test.mjs:164; reg:money/ready-to-fund (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Step list rows (title, due or Late N days, who can do it, why, from)",
+    "kind": "display",
+    "calls": "GET /api/money/tasks",
+    "tables": [
+      "money_agent_tasks",
+      "money_agent_log",
+      "client_waypoints",
+      "clarity_payments",
+      "clarity_payment_installments",
+      "card_liabilities",
+      "payment_strategy_plans",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-next-screen.test.mjs:48 (late said in words),156,140 (a failed source is said, not hidden)"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Do task (per step the money helper or a person can do)",
+    "kind": "button",
+    "calls": "POST /api/money/tasks {action:do_task, task_id, client_id?}",
+    "tables": [
+      "money_agent_tasks",
+      "money_agent_log",
+      "tasks",
+      "bank_accounts"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-tasks.test.mjs:119,131,139 (never takes title or amount from the body),145; mount+click test src/http/money-next-screen.test.mjs:188 (posts only the task id, repaints from the server copy); pg: src/finance/money-agent-tasks.pg.test.mjs (CI only); pay-down steps create a transfer PROPOSAL that waits for the client's yes; no pulse reads money_agent_tasks for stuck or failed rows (gap-documents.mjs reads it for vault asks only)"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Assignment status line (needs your yes / approved / working on it / done / failed / stopped)",
+    "kind": "display",
+    "calls": "GET /api/money/tasks",
+    "tables": [
+      "money_agent_tasks"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-next-screen.test.mjs:70,92,286 (never says money moved)"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Open your checklist link (steps only the client can do)",
+    "kind": "link",
+    "calls": "navigate /progress.html[?client_id]",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-next-screen.test.mjs:80"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Check your accounts link (empty state)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#accounts",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-next-screen.test.mjs:128,135"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "I'm ready to get funded (the one primary button)",
+    "kind": "button",
+    "calls": "POST /api/money/ready-to-fund {client_id?}",
+    "tables": [
+      "tasks",
+      "money_agent_log",
+      "clients",
+      "subscriptions",
+      "transactions",
+      "products"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-ready-to-fund.test.mjs:73,84 (client press, staff press, refusals); render test src/http/money-next-screen.test.mjs:63,101; click not driven (only Do task is driven); nothing checks that a press produced its CSM prep-call task (blueprint-csm-prep) or that the CSM reached out"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Ready card states (none / sent to our team / a person has it / prep call done)",
+    "kind": "display",
+    "calls": "GET /api/money/ready-to-fund",
+    "tables": [
+      "tasks",
+      "money_agent_log"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-next-screen.test.mjs:101"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Capital Blueprint card: Book a call link (only for clients without it)",
+    "kind": "link",
+    "calls": "navigate external BOOK_CALL_URL (new tab)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-next-screen.test.mjs:116; the call-booking page itself is not probed by any beat or gap for this link"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Try again buttons (steps) and (ready card)",
+    "kind": "button",
+    "calls": "GET /api/money/tasks and /api/money/ready-to-fund (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-next-screen.test.mjs:101,146 (error keeps the side card); retry clicks not driven"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Page shell (loads money-payments.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-payments.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-payments.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-payments-screen.test.mjs:26; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#...",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:33; staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Payments read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/payments[?client_id]",
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments",
+      "money_agent_log",
+      "clients",
+      "entities",
+      "businesses",
+      "tradelines",
+      "card_liabilities",
+      "recurring_bills",
+      "plaid_items",
+      "bank_accounts",
+      "bank_transactions",
+      "account_statement_cycles",
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "finance-os:payments in gap-finance-os.mjs: gap-finance-os.mjs door runs the real handler on one live client with an active Plaid link as a staff owner; red on non-2xx, error body or throw; cannot see a wrong number; skip when no such client; client-session branch not exercised; handler tests src/http/money-payments.test.mjs:65-171; reg:money/payments (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Tile: You owe Fundhub (left to pay, open plans)",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:40; src/finance/clarity-payments.test.mjs"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Tile: Late now (amount, Late N days, plans)",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [
+      "clarity_payment_installments"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:40; src/http/money-payments.test.mjs:171"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Tile: Next payment (date, amount, plan)",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [
+      "clarity_payment_installments"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:40; src/http/money-payments.test.mjs:171"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Payment plan card: left to pay, paid so far, next payment, progress bar, schedule table (Paid / Late / Due soon / Coming up)",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:40,65 (Paid via Commas); src/finance/clarity-payments.test.mjs"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Coming up list (next 30 days: payments to Fundhub, card payments, bills)",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [
+      "clarity_payment_installments",
+      "card_liabilities",
+      "recurring_bills"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:40; src/http/money-payments.test.mjs:171 (late stays on the plan, next unpaid goes in Coming up)"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "What your money helper did (log sentences; never claims a text went out when it did not)",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [
+      "money_agent_log"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:139; src/http/money-payments-screen.test.mjs:40"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Talk to a person",
+    "kind": "button",
+    "calls": "POST /api/money/payments {action:ask_for_person}",
+    "tables": [
+      "tasks",
+      "money_agent_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler test: src/http/money-payments.test.mjs:115 (client, own file only); click not driven; nothing checks the CSM task was picked up"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Staff only: Record payment (amount box + submit)",
+    "kind": "form",
+    "calls": "POST /api/money/payments {action:record_payment, plan_id, amount_cents, client_id}",
+    "tables": [
+      "clarity_payment_installments",
+      "clarity_payments",
+      "money_agent_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-payments.test.mjs:122 (client refused),139 (cents),153; toCents: src/http/money-payments-screen.test.mjs:102; form submit not driven; no pulse reads clarity_payments"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Staff only: Mark settled (confirm dialog)",
+    "kind": "button",
+    "calls": "POST /api/money/payments {action:mark_settled, plan_id, client_id}",
+    "tables": [
+      "clarity_payments",
+      "money_agent_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-payments.test.mjs:146,153; confirm() and click not driven"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Staff only: Add a payment plan (Kind, Owed to, Name the client sees, Payments textarea 'date, amount' per line)",
+    "kind": "form",
+    "calls": "POST /api/money/payments {action:add_plan, kind, owed_to, label, installments[], client_id}",
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments",
+      "money_agent_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "handler tests: src/http/money-payments.test.mjs:122,130,164 (schedule must add up: DB check 23514); parseSchedule: src/http/money-payments-screen.test.mjs:102; form submit not driven"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Staff only: Commas payments not matched to a plan",
+    "kind": "display",
+    "calls": "GET /api/money/payments (unmatched_payments)",
+    "tables": [
+      "money_agent_log"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:70; handler test src/http/money-payments.test.mjs:88; no pulse check counts action='payment_unmatched' rows, so money received and not applied alerts nobody"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Commas payment auto-applied to an installment (shows as 'Paid via Commas')",
+    "kind": "effect",
+    "calls": "Commas webhook -> src/finance/clarity-autopay.mjs",
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments",
+      "money_agent_log"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/finance/clarity-autopay.test.mjs, src/handlers/clarity-autopay.test.mjs; generic payments:pay-link-webhook (gap-payments.mjs) sees an unsettled link, not an unapplied installment"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Empty state ('You do not owe Fundhub anything right now') and Error state with Try again",
+    "kind": "display",
+    "calls": "GET /api/money/payments",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-payments-screen.test.mjs:87,96; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Page shell (loads money-plan.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-plan.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-plan.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-plan-screen.test.mjs:38; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Money nav bar (Money, Plan, Accounts, Credit, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#...",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:47; staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Plan month read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/plan[?month=YYYY-MM][&client_id]",
+    "tables": [
+      "client_waypoints",
+      "card_liabilities",
+      "clarity_payments",
+      "clarity_payment_installments",
+      "payment_strategy_plans",
+      "money_agent_pins",
+      "funding_rounds",
+      "entities",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "finance-os:plan in gap-finance-os.mjs: gap-finance-os.mjs door runs the real handler on one live client with an active Plaid link as a staff owner; red on non-2xx, error body or throw; cannot see a wrong number; skip when no such client; client-session branch not exercised; handler tests src/http/money-plan.test.mjs:55-170; reg:money/plan (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Tiles: Next up / This month / Missed",
+    "kind": "display",
+    "calls": "GET /api/money/plan",
+    "tables": [
+      "client_waypoints"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:129"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Month bar: Previous month / Today / Next month",
+    "kind": "button",
+    "calls": "GET /api/money/plan?month=YYYY-MM",
+    "tables": [
+      "client_waypoints",
+      "card_liabilities",
+      "clarity_payments",
+      "clarity_payment_installments",
+      "payment_strategy_plans",
+      "money_agent_pins",
+      "funding_rounds",
+      "entities",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "mount+click test: src/http/money-plan-screen.test.mjs:257 (moves to 2026-11, reload keeps the month),136; handler src/http/money-plan.test.mjs:83 (bad month is 400)"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Mon-Sun calendar grid (today ring, pins per day, status shapes)",
+    "kind": "display",
+    "calls": "GET /api/money/plan",
+    "tables": [
+      "client_waypoints",
+      "card_liabilities",
+      "clarity_payments",
+      "clarity_payment_installments",
+      "payment_strategy_plans",
+      "money_agent_pins",
+      "funding_rounds",
+      "entities",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:70,79,88,95,105"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Pin button in a calendar cell / row in the day list (opens the detail panel)",
+    "kind": "button",
+    "calls": "none (client-side open)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "mount+click test: src/http/money-plan-screen.test.mjs:293 (pin opens the drawer),121 (list)"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "+N more (day with more pins than a cell shows)",
+    "kind": "button",
+    "calls": "none (scrolls to that day in the list)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "act === 'day' branch is never driven; only the markup of the list is asserted"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Detail panel: Close button and click outside the panel",
+    "kind": "button",
+    "calls": "none (client-side)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "mount+click test: src/http/money-plan-screen.test.mjs:293 (close removes the drawer); the scrim uses the same data-act"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Detail panel: Esc to close and Tab focus trap; focus returns to the pin",
+    "kind": "input",
+    "calls": "none (keyboard, client-side)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "onKey and the focus-return in close() are never driven"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Detail panel facts (what, when, amount, status in words, why, source, See it on Payments link)",
+    "kind": "display",
+    "calls": "GET /api/money/plan",
+    "tables": [
+      "client_waypoints",
+      "clarity_payments"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:156,168,173,183"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Staff only: Mark done",
+    "kind": "button",
+    "calls": "POST /api/money/plan {action:mark, source, pin_id, status:done, client_id}",
+    "tables": [
+      "client_waypoints"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "mount+click test: src/http/money-plan-screen.test.mjs:293 (posts the pin to its own source); handler tests src/http/money-plan.test.mjs:114,120,131,141 (client refused, proof rules 409); confirm() branch skipped in the test sandbox"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Staff only: Mark missed",
+    "kind": "button",
+    "calls": "POST /api/money/plan {action:mark, source, pin_id, status:missed, client_id}",
+    "tables": [
+      "client_waypoints"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-plan.test.mjs:120,141; render src/http/money-plan-screen.test.mjs:188 asserts only Mark done; the missed click is never driven"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "'Part of your plan did not load' banner + Try again",
+    "kind": "button",
+    "calls": "GET /api/money/plan (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:231; src/http/money-plan-screen.test.mjs:281 (all sources failing is an error, not an empty month)"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Empty state: Add an account link",
+    "kind": "link",
+    "calls": "navigate money-accounts.html[?client_id]",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:209,217"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Error state with Try again",
+    "kind": "button",
+    "calls": "GET /api/money/plan (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-plan-screen.test.mjs:220; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Page shell (inline styles, loads money-setup.js)",
+    "kind": "page",
+    "calls": "GET /app/money-setup.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-setup.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-setup-screen.test.mjs:42; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#...",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:42 (six links in order, Setup current)"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; init() href swap never run"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Setup status read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/setup[?client_id]",
+    "tables": [
+      "payment_links",
+      "soft_pull_requests",
+      "crs_results",
+      "subscriptions",
+      "entities",
+      "clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-setup.test.mjs:72-123 (own file, staff FINANCE, 405); src/finance/money-setup.test.mjs:50-121; reg:money/setup (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); not a gap-finance-os door; not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Header 'N of 4 steps done' and step markers (Done / now / later)",
+    "kind": "display",
+    "calls": "GET /api/money/setup",
+    "tables": [
+      "payment_links",
+      "soft_pull_requests",
+      "subscriptions"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:89,106; src/finance/money-setup.test.mjs:121"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Step 1: Pay $X setup",
+    "kind": "button",
+    "calls": "POST /api/money/setup {action:start_checkout}; outbound Commas checkout-session create; then redirect to Commas hosted checkout",
+    "tables": [
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-setup.test.mjs:134 (no price: 409, nothing minted),145,163 (reuse, no second link),176,188 (503); render src/http/money-setup-screen.test.mjs:55,70; click and redirect not driven; vendor key health: keys:checkout-key-read (gap-keys.mjs) reads the same key the mint uses; price env FINANCE_OS_SETUP_FEE_CENTS is not watched"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Step 1: Finish paying link (open checkout)",
+    "kind": "link",
+    "calls": "navigate external Commas checkout URL",
+    "tables": [
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:82"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Setup payment lands (Commas webhook) and settles the link",
+    "kind": "effect",
+    "calls": "Commas webhook -> src/handlers/payment-links.mjs",
+    "tables": [
+      "payment_links",
+      "commas_inbox",
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "payments:pay-link-webhook in gap-payments.mjs reads every payment_links row (any purpose, so the setup link too) and goes red when money reached an unsettled link; handlers/payment-links.test.mjs"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Paid setup turns Finance OS on (one finance-os subscription, once per link)",
+    "kind": "effect",
+    "calls": "src/finance/money-setup.mjs ensureFinanceOsForSetupPayment",
+    "tables": [
+      "subscriptions",
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/finance/money-setup.test.mjs:165,180,187,194,209; src/handlers/payment-links.test.mjs:220,232; no pulse check asks 'paid setup link but no finance-os subscription' (payments:paid-no-entitlement reads transactions + product_entitlements only)"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Step 2: Run soft pull",
+    "kind": "button",
+    "calls": "POST /api/money/setup {action:request_soft_pull}; redirect to the signed approval form (no write, no charge)",
+    "tables": [
+      "soft_pull_requests"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-setup.test.mjs:200,212 (real signer),226 (503 without DOCUMENT_URL_SECRET); render src/http/money-setup-screen.test.mjs:55,106; click and redirect not driven; the form it opens IS deep-checked (TRIPWIRES desk:soft-pull-approve.html, route:soft-pull-approve); DOCUMENT_URL_SECRET is not in LAUNCH_SECRETS"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Step 2: See my credit link (after a pull)",
+    "kind": "link",
+    "calls": "navigate money-credit.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:89"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Step 3: Add businesses and accounts / Add more link",
+    "kind": "link",
+    "calls": "navigate money-accounts.html",
+    "tables": [
+      "entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:55,89"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Step 4: Open Money link (when live)",
+    "kind": "link",
+    "calls": "navigate money.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:89"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Your price card (setup fee, per container per month, containers; $X when not set)",
+    "kind": "display",
+    "calls": "GET /api/money/setup",
+    "tables": [
+      "subscriptions",
+      "entities"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:55,70; src/http/money-setup.test.mjs:134; env prices FINANCE_OS_SETUP_FEE_CENTS / per-container price are not read by any pulse check, so '$X' would show to a paying client with no alert"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Loading and error states with Try again",
+    "kind": "button",
+    "calls": "GET /api/money/setup (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-setup-screen.test.mjs:114; actWords answers (409, 502, 503): src/http/money-setup.test.mjs:134,188,226; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Page shell (loads money-strategy.js/css)",
+    "kind": "page",
+    "calls": "GET /app/money-strategy.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:money-strategy.html (DESK_FILES, src/pulse/registry.mjs) + slice-23-pages.mjs; checks the page answers, not what it paints; src/http/money-strategy-screen.test.mjs:38; same money-*.js/css are fetched live via /app/financeos.html by portal:page-scripts-load (src/pulse/coverage/gap-portal.mjs)"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup, Strategy)",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#... and /app/money-strategy.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:50; staff ?client_id= rewrite in initPage() untested"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Back to my portal / Back to Finance OS (staff)",
+    "kind": "link",
+    "calls": "navigate client-portal.html or finance-os.html?client_id=",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test names #money-back for this page; initPage() href swap never run"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Sample data banner (shown when the read says Plaid sandbox)",
+    "kind": "display",
+    "calls": "GET /api/money/strategy (sandbox flag)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "initPage() onData callback that unhides #money-sandbox is never run by any test"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Strategy read on page load",
+    "kind": "display",
+    "calls": "GET /api/money/strategy[?client_id]",
+    "tables": [
+      "payment_strategy_plans",
+      "account_statement_cycles",
+      "clients",
+      "entities",
+      "businesses",
+      "tradelines",
+      "card_liabilities",
+      "recurring_bills",
+      "plaid_items",
+      "bank_accounts",
+      "bank_transactions",
+      "account_statement_cycles",
+      "crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-strategy.test.mjs:60-144; src/http/money-strategy-screen.test.mjs:281; reg:money/strategy (PULSE_REGISTRY; an unsigned GET answers 401, so it proves the door is routed, not that the read works); NOT one of the seven gap-finance-os doors; not in src/pulse/tripwires.mjs TRIPWIRES (sits unsorted in tripwires-baseline.json)"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Shared math file /app/money-strategy-math.js (dynamic import in the browser)",
+    "kind": "dependency",
+    "calls": "GET /app/money-strategy-math.js",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "the math is tested (payment-strategy-math.test.mjs, strategy-screen:149) but nothing fetches the file live: it is not a <script> tag in financeos.html, so portal:page-scripts-load skips it; page paints 'math did not load' if it fails"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Slider and amount box: money toward debt each month (recomputes the plan live)",
+    "kind": "input",
+    "calls": "none (client-side buildPlan on every move)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "math: src/http/money-strategy-screen.test.mjs:149 (server plan = browser recompute),189,244,254; src/finance/payment-strategy-math.test.mjs; input handlers not driven (src/http/money-strategy-screen.test.mjs:306 only asserts listeners exist)"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "How extra money is used: Highest rate first / Card use first / Smallest balance first",
+    "kind": "button",
+    "calls": "none (client-side buildPlan)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + math: src/http/money-strategy-screen.test.mjs:95,161; click handler not driven"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Goal select (No goal / Debt-free by / Card use under 30% by / under 10% by) and goal date",
+    "kind": "select",
+    "calls": "none (client-side buildPlan)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + math: src/http/money-strategy-screen.test.mjs:168,176,181; change/input handlers not driven"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Use $X buttons (goal need, safe cash maximum, minimums, after a refused save)",
+    "kind": "button",
+    "calls": "none (client-side setAmount)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:168,189,244; setAmount click not driven"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Save this plan",
+    "kind": "button",
+    "calls": "POST /api/money/strategy {action:save_plan, method, monthly_cents, goal?, client_id?}",
+    "tables": [
+      "payment_strategy_plans"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "handler tests src/http/money-strategy.test.mjs:105,115,123,128,137 (409 over the safe amount); pg (CI only): src/finance/payment-strategy.pg.test.mjs:88,109,128,132,138; click not driven; no pulse reads payment_strategy_plans"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Four tiles: Debt-free by / Interest saved vs minimums / Card use / Cash this month",
+    "kind": "display",
+    "calls": "GET /api/money/strategy",
+    "tables": [
+      "card_liabilities",
+      "tradelines",
+      "bank_accounts",
+      "account_statement_cycles"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:88,200,210"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Debts table (order the plan pays them, balance, APR, minimum, paid off by, interest) + missing-data warnings",
+    "kind": "display",
+    "calls": "GET /api/money/strategy",
+    "tables": [
+      "card_liabilities",
+      "tradelines"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:107,210"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Card use month-by-month chart + legend (30% and 10% lines)",
+    "kind": "chart",
+    "calls": "none (client-side from the read)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:116; window-resize redraw not tested"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Month by month expander + Show N more months",
+    "kind": "button",
+    "calls": "none (client-side)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:128; button click not driven"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "How the cash check works / How this is worked out expanders (staff see sources)",
+    "kind": "details",
+    "calls": "none",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:136,143"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Empty state (no card or loan with a balance): Add an account link",
+    "kind": "link",
+    "calls": "navigate /app/financeos.html#accounts",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:235"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Less-than-minimums / no-amount notice",
+    "kind": "display",
+    "calls": "none (client-side)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render test: src/http/money-strategy-screen.test.mjs:244"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Loading and error states with Try again (incl. 'math did not load')",
+    "kind": "button",
+    "calls": "GET /api/money/strategy (reload)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "render + classify test: src/http/money-strategy-screen.test.mjs:223,228,266; retry click not driven"
+  },
+  {
+    "surface": "public/app/money-connections.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections-screen.test.mjs:102,129 (classify = signin, onSignIn called); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-credit.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-credit-screen.test.mjs:148,151 (classify = signin, JS names /portal-login.html); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-declines.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-declines-screen.test.mjs:177 (classify only); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-fundability.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-fundability-screen.test.mjs:266,288 (classify, host handed the sign-in); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-helper.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-helper-screen.test.mjs:139 (classify only; the 401 on Send is not tested); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-next.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test sends a 401 through money-next.js (classify and leave() untested); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-payments.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test sends a 401 through money-payments.js (classify untested); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-plan.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-plan-screen.test.mjs:226 (classify only); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-setup.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-setup-screen.test.mjs:119 (classify only); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  },
+  {
+    "surface": "public/app/money-strategy.html",
+    "control": "Signed-out redirect (read answers 401)",
+    "kind": "redirect",
+    "calls": "navigate /login.html?next=... or /portal-login.html",
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-strategy-screen.test.mjs:267 (classify only); a 401 sends staff to /login.html?next= and a client to /portal-login.html (signInUrl); the location change itself is never executed in a test"
+  }
+]

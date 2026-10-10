@@ -1,0 +1,3654 @@
+[
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Page shell: rail tabs, headline, filter bar, board",
+    "kind": "page",
+    "calls": "GET /app/pipeline.html",
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:pipeline.html desk row (src/pulse/registry.mjs); crm-links:pages reads its links (gap-crm-links.mjs). Every in-app link and script on it is fetched once a morning; what it paints is not judged by the page ping."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-01 Sales (default rail, loads on page open)",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=sales",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "crm-data:pipeline (src/pulse/coverage/gap-crm-links.mjs BOARD_STAGES_SQL/BOARD_CARDS_SQL, copy of api/dashboard/pipeline.mjs; red if no columns); e2e/pipeline.spec.mjs; src/http/pipeline.pg.test.mjs. UNNOTICED: read stops at LIMIT 500 (cap 2000) and a column count is the cards returned, not the database count; a card whose stage_id is not on the rail is dropped (api/dashboard/pipeline.mjs byStage)."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-02 Funding: Card Stacking",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=funding_card_stacking",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:dashboard/pipeline door ping (src/pulse/registry.mjs); crm-data:pipeline-cards goes red for any card with no column or no person on every rail (gap-crm-links.mjs) but the per-rail board read is only run for Sales (BOARD_KEY=sales); e2e/pipeline-honest.spec.mjs and src/http/pipeline-screen.test.mjs use the generic loader."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-04 Optimization (Repair) Rounds",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=optimization",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:dashboard/pipeline door ping (src/pulse/registry.mjs); crm-data:pipeline-cards goes red for any card with no column or no person on every rail (gap-crm-links.mjs) but the per-rail board read is only run for Sales (BOARD_KEY=sales); e2e/pipeline-honest.spec.mjs and src/http/pipeline-screen.test.mjs use the generic loader. Board also paints the 4 retired legacy columns (Round Sent/Bureau Processing/Portal Updated/Upgrade Invite, sort_order 900+): STAGES_SQL does not filter them (migration 161 only renumbered)."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-05 Inquiry Removal",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=inquiry_removal",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:dashboard/pipeline door ping (src/pulse/registry.mjs); crm-data:pipeline-cards goes red for any card with no column or no person on every rail (gap-crm-links.mjs) but the per-rail board read is only run for Sales (BOARD_KEY=sales); e2e/pipeline-honest.spec.mjs and src/http/pipeline-screen.test.mjs use the generic loader."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-06 AR / Collections",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=ar_collections",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:dashboard/pipeline door ping (src/pulse/registry.mjs); crm-data:pipeline-cards goes red for any card with no column or no person on every rail (gap-crm-links.mjs) but the per-rail board read is only run for Sales (BOARD_KEY=sales); e2e/pipeline-honest.spec.mjs and src/http/pipeline-screen.test.mjs use the generic loader. Rail is always empty: nothing in src/ or api/ places a card on ar_collections (real AR lives in invoices.status)."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-08 Affiliates + White Label",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=affiliates_white_label",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:dashboard/pipeline door ping (src/pulse/registry.mjs); crm-data:pipeline-cards goes red for any card with no column or no person on every rail (gap-crm-links.mjs) but the per-rail board read is only run for Sales (BOARD_KEY=sales); e2e/pipeline-honest.spec.mjs and src/http/pipeline-screen.test.mjs use the generic loader. Cards are partners (cards.partner_id), placed only by api/public/partner-apply.mjs and the 274 backfill."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-09 Hiring",
+    "kind": "rail",
+    "calls": "GET /api/dashboard/pipeline?key=hiring",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards",
+      "clients",
+      "conversations",
+      "messages",
+      "applications",
+      "funding_rounds",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:dashboard/pipeline door ping (src/pulse/registry.mjs); crm-data:pipeline-cards goes red for any card with no column or no person on every rail (gap-crm-links.mjs) but the per-rail board read is only run for Sales (BOARD_KEY=sales); e2e/pipeline-honest.spec.mjs and src/http/pipeline-screen.test.mjs use the generic loader. Rail is always empty: candidate_applications carries its own stage_id (051_hiring.sql) and no code inserts a hiring card; the real board is public/app/hiring.html."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab R-03 Funding: Alt-Fin (Lendflow) — tab removed 2026-08-25",
+    "kind": "gap",
+    "calls": "none (tab absent; PIPELINE_KEYS still maps R-03 to funding_altfin)",
+    "tables": [
+      "pipelines",
+      "pipeline_stages",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "db/seed/002_pipelines.sql has pipeline funding_altfin with 7 stages; src/adapters/lendflow.mjs STAGE_TABLE maps Lendflow tokens to those stage keys and emits round.* events, but no code calls moveCardToStage for funding_altfin (grep src api). Schema + adapter with no screen and no card mover. Parked on purpose; nothing checks it stays parked."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Rail tab counts (card count per rail)",
+    "kind": "gap",
+    "calls": "GET /api/dashboard/pipeline-counts (no caller)",
+    "tables": [
+      "pipelines",
+      "cards",
+      "pipeline_stages",
+      "clients",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "api/dashboard/pipeline-counts.mjs answers the true total per rail but no screen calls it: FHData.pipelineCounts exists in public/app/data.js and src/http/pipeline-screen.test.mjs:399 asserts the page does NOT use it. crm-data:pipeline-counts (gap-crm-links.mjs) still checks the read each morning. Endpoint with no screen; the tabs show no counts."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Headline: Waiting on us / on a bank / on the client / nothing recorded + Longest wait link",
+    "kind": "display",
+    "calls": "none (client-side from the board read)",
+    "tables": [
+      "cards",
+      "conversations",
+      "messages",
+      "applications"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/pipeline-waiting-on.spec.mjs; src/http/pipeline-screen.test.mjs (FHPipelineWaiting). UNNOTICED: only round_submitted->bank and action_required->client are known owners of a move; every other stage reads 'nothing recorded', so on 6 of 7 rails the headline says nothing is waiting even when work is."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Search box (placeholder says name, phone, or email)",
+    "kind": "input",
+    "calls": "none (client-side)",
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "applyFilters() in public/app/pipeline.html filters on nameOf(card) only; typing a phone or email matches nothing although the placeholder promises it. No test types a phone or email into #q (e2e/pipeline.spec.mjs does not)."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Filter panel: Waiting on / Age (1h,1d,3d in stage) / Sort / Clear all",
+    "kind": "select",
+    "calls": "none (client-side)",
+    "tables": [
+      "cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/pipeline.spec.mjs ('Over 3d in stage' keeps a stalled card and drops a just-moved one); e2e/pipeline-waiting-on.spec.mjs filter tests; cards.entered_at kept honest by db/migrations/271 trigger (src/workflows/cards-entered-at.pg.test.mjs)."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Filter: Owner (hidden select)",
+    "kind": "gap",
+    "calls": "none",
+    "tables": [
+      "cards"
+    ],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "cards.owner is never written by production code (only demo seeds), so the select is hidden by rebuildOwnerOptions(); every card reads 'unassigned'. Column exists in schema, control hidden, no writer, no check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Board / Fulfillment lens switch",
+    "kind": "control",
+    "calls": "GET /api/dashboard/clients?limit=200&fulfillment=true (first open only)",
+    "tables": [
+      "clients",
+      "transactions",
+      "crs_results",
+      "tasks",
+      "messages",
+      "funding_rounds",
+      "applications",
+      "inquiry_removal_cases"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "crm-data:clients (gap-crm-links.mjs CLIENTS_LIST_SQL) + fulfillment:api and fulfillment:next-action (src/pulse/coverage/gap-fulfillment.mjs); src/http/pipeline-screen.test.mjs (FHFulfillmentLens). UNNOTICED: one page of 200 clients; tile 'Total clients' counts everyone and says 'list shows N of M' only when they differ."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens tile: Total clients",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "crs_results",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-screen.test.mjs rollupText; counts every client in the org; the list under it is one page of 200. Not reconciled against the Pipeline board counts by any check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens tile: Needs Pull",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "crs_results",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-screen.test.mjs rollupText; paid, no real credit report, and written permission live; clients waiting on permission are in a sentence, not a tile. Not reconciled against the Pipeline board counts by any check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens tile: Action Needed",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "crs_results",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-screen.test.mjs rollupText; clients with an active blocker or a step that is not 'none applies'. Not reconciled against the Pipeline board counts by any check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens tile: Ready",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "crs_results",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "No source exists for this tile: a tile with no data behind it (read-signals.mjs ready: null); always a dash: rollups.ready is hard-coded null in src/fulfillment/read-signals.mjs ('no honest source'). Not reconciled against the Pipeline board counts by any check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens tile: Total Prequal",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "crs_results",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-screen.test.mjs rollupText; sum of custom_fields.total_funding_estimate; says it is not a company total. Not reconciled against the Pipeline board counts by any check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens tile: Total Approved",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "crs_results",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-screen.test.mjs rollupText; bank yes amounts on rounds; dash until one approval has an amount. Not reconciled against the Pipeline board counts by any check."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Fulfillment lens: next-step chip per client (12 keys) + click-to-filter + Show all",
+    "kind": "display",
+    "calls": "GET /api/dashboard/clients?fulfillment=true",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "inquiry_removal_cases",
+      "dispute_cases"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "fulfillment:next-action reads the step the panel shows for late repair files (gap-fulfillment.mjs); src/fulfillment/next-action.mjs chips: clear_fraud_alert, get_consent, pull_crs, send_letters, remove_inquiries, collect_documents, review_disputes, review_funding_file, prepare_next_round, apply_for_funding, collect_payment, ready_to_fund; job:next-action-catch-up keeps the saved step in line. UNNOTICED: a chip with no 'applies' answer reads 'Not worked out yet.'"
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Card click -> right drawer (contact, call, credit scores, businesses, path, source, survey)",
+    "kind": "control",
+    "calls": "GET /api/dashboard/client?id= ; GET /api/read/ad-attribution?client_id=",
+    "tables": [
+      "clients",
+      "crs_results",
+      "bookings",
+      "businesses",
+      "client_ad_attribution"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "crm-data:client (gap-crm-links.mjs reads the same record the drawer reads); src/http/pipeline-drawer.test.mjs; e2e/pipeline.spec.mjs card render."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Card phone/email links -> messaging.html?client_id=&channel=",
+    "kind": "link",
+    "calls": "navigate /app/messaging.html",
+    "tables": [
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "crm-links:pages extracts links from pipeline.html and checks the target page answers; the client_id/channel query is not checked."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Drag a card to another column (any rail)",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards {action:move,client_id,pipeline_key,stage_key,from_pipeline_key}",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "pipelines",
+      "clients",
+      "funding_rounds",
+      "applications",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/pipeline.spec.mjs ('dropping a card onto another column posts a move'); src/http/pipeline-cards.test.mjs; src/workflows/cards.test.mjs; reg:pipeline-cards ping. UNNOTICED: ROLE_SETS.STAFF (8 roles incl. setter, csm, inquiry_specialist) on an open shift (owner exempt) may drop any card on ANY stage of ANY rail, forward or back; moveCardToStage fires NO event except on funding_card_stacking (round.*), so a manual drag on Sales/Repair/Inquiry starts no automation."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Drag/MOVE a card onto Funded (asks 'how much FUNDED' box)",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards stage_key=funded funded_amount -> emits round.funded",
+    "tables": [
+      "cards",
+      "funding_rounds",
+      "applications",
+      "funding_closeout",
+      "commission_ledger",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/funding/approval-amount-guard.pg.test.mjs; guard refuses amount<=0 and any unpriced bank yes. No live check that a Funded card produced its funding_closeout row and success-fee invoice; a dead-lettered handler would show only via gap-jobs:failed-events."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "MOVE menu -> Funding: Card Stacking / Apply Now",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards -> emits round.started; then DELETE FROM cards on the source rail",
+    "tables": [
+      "cards",
+      "funding_rounds",
+      "events"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/pipeline.spec.mjs ('MOVE posts a pipeline-cards move'). UNNOTICED: the cross-rail hand-off hard-deletes the client's card on the source rail (api/pipeline-cards.mjs clearedFrom) with no event and no history row; round.started notifies the client and assigns the advisor."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "MOVE menu -> Optimization / Round Sent (legacy)",
+    "kind": "gap",
+    "calls": "POST /api/pipeline-cards pipeline_key=optimization stage_key=round_sent",
+    "tables": [
+      "cards",
+      "pipeline_stages"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "public/app/pipeline.html route-menu item data-stage-key=round_sent; db/migrations/161 retired that key (remapped to in_transit, sort_order 900+). The menu still sends clients there: the card lands in a column labelled 'Round Sent (legacy)', with no repair enrolment, no repair.* event, no letters. No test or check names this item."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "MOVE menu -> Inquiry Removal / Requested",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards pipeline_key=inquiry_removal stage_key=requested",
+    "tables": [
+      "cards",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-cards.test.mjs (generic move). UNNOTICED: moves the card only; no inquiry_removal_cases row, no documents request, no call is created (cases are created by src/handlers/inquiry-gate.mjs or CCP Issue Inquiry Removal), so a hand-moved card has no case behind it."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "MOVE menu -> Mark Lost (Sales / Lost)",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards pipeline_key=sales stage_key=lost",
+    "tables": [
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-cards.test.mjs; no event fired, nurture tags are not cleared (compare DPC-03 close which removes them)."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "MOVE menu -> AR / Collections / Invoice Sent",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards pipeline_key=ar_collections stage_key=invoice_sent",
+    "tables": [
+      "cards"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-cards.test.mjs (generic). UNNOTICED: puts a client on the AR rail with no invoice; AR dunning is driven by invoices.status and src/workflows/ar-collections.mjs, never by this card."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "DEL on a card / Archive in drawer (type DELETE)",
+    "kind": "control",
+    "calls": "POST /api/dashboard/client-archive {client_id,confirm:'DELETE'}",
+    "tables": [
+      "cards",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/client-archive.test.mjs. UNNOTICED: not shift-gated (any STAFF role); deletes the client's cards on EVERY rail and stamps custom_fields.crm_archived_at; both board reads hide archived clients, so an archived client who later pays gets a card placed by purchase-routing that no board or count ever shows."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "New Client button (name, email, phone, product)",
+    "kind": "form",
+    "calls": "POST /api/pipeline-clients -> resolveClient + emit entry.captured",
+    "tables": [
+      "clients",
+      "events",
+      "tasks",
+      "messages",
+      "client_custom_fields",
+      "cards"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/http/pipeline-clients.test.mjs; handoff:lead-first-touches-missing reads every entry.captured (including source 'pipeline') for the welcome email and nudges (gap-handoff.mjs); reg:pipeline-clients ping. UNNOTICED: idempotencyKey is org+email, so a second New Client for the same email emits nothing new and the card stays where it was."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Sales rail note: 'A payment does not move a card' (railNote)",
+    "kind": "gap",
+    "calls": "none",
+    "tables": [
+      "cards"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "RAIL_NOTES.sales in pipeline.html states the hole in words: payment.received/deposit.paid stamp custom_fields only (client-lifecycle.mjs onDepositPaid) and no handler moves Sales to Closed Won. A documented gap, with no check that a paid client's card has moved."
+  },
+  {
+    "surface": "public/app/pipeline.html",
+    "control": "Footer status bar / live pill / clock",
+    "kind": "display",
+    "calls": "none",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "static page chrome; clock ticks from the browser; LIVE pill is not tied to any read (no test reads it)."
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage new_lead (New Lead, sort 0)",
+    "kind": "stage",
+    "calls": "entry.captured -> onEntryCaptured + S-01 (advanceCardToStage); POST /api/pipeline-clients",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs; src/workflows/s-01-new-lead-intake.test.mjs; wf:s-01-new-lead-intake receipt row. UNNOTICED: no live check that every entry.captured has a Sales card (gap-leads/handoff read events and messages, not cards). || MOVERS: in: entry.captured (src/handlers/client-lifecycle.mjs onEntryCaptured + src/workflows/s-01-new-lead-intake.mjs, advance-only), api/public/education-enroll.mjs, New Client button, manual drag. out: later advance or a drag. event on move: none. people: any STAFF role on shift for manual. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage survey_complete (Survey Complete, sort 1)",
+    "kind": "stage",
+    "calls": "survey.submitted -> onSurveySubmitted (advanceCardToStage)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs. UNNOTICED: a survey missing the last question never reaches this stage and nothing says so. || MOVERS: in: survey.submitted only when custom field cf_svy_available_capital is present (client-lifecycle.mjs). out: advance/drag. event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage booked (Booked, sort 2)",
+    "kind": "stage",
+    "calls": "booking.created -> S-04 + comms.mjs mirror (advanceCardToStage)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/s-04-call-booked.test.mjs (asserts the card moves); src/handlers/comms.mjs mirror has no card assertion in comms.test.mjs; handoff:booking-no-confirm (confirm email) reads bookings. || MOVERS: in: booking.created via S-04 workflow and a synchronous mirror in src/handlers/comms.mjs (advance-only). out: DPC-02 (showed/lost), drag. event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage confirmed (Confirmed, sort 3)",
+    "kind": "stage",
+    "calls": "none (drag/MOVE only via POST /api/pipeline-cards)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "grep src api: no code writes stageKey 'confirmed'. A stage with no mover; the customer's confirmation never reaches the board. || MOVERS: in: nobody. A 'YES' text while call_outcome=booked only sets custom_fields.call_confirmed (src/workflows/dpc-03-inbound-reply-router.mjs). Manual drag only. event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage showed (Showed, sort 4)",
+    "kind": "stage",
+    "calls": "booking.created/rescheduled -> DPC-02 (moveCardToStage)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-02-call-outcome-enforcement.test.mjs. UNNOTICED: uses moveCardToStage, so it can pull a card BACKWARD from diagnostic_paid/decision_rendered; and logCallOutcome emits call.completed for no_show too, which DPC-02 reads as 'call happened' (callHappened() ignores outcome). || MOVERS: in: DPC-02 5 min after booking end if any call.completed exists for the client (moveCardToStage, not advance), drag. event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage diagnostic_paid (Diagnostic Paid, sort 5)",
+    "kind": "stage",
+    "calls": "diagnostic.paid -> onDiagnosticPaid (advanceCardToStage)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs; payments:paid-no-entitlement (gap-payments.mjs) is about entitlement, not the card. || MOVERS: in: diagnostic.paid (client-lifecycle.mjs onDiagnosticPaid, advance-only). out: decision.rendered. event: none new. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage decision_rendered (Decision Rendered, sort 6)",
+    "kind": "stage",
+    "calls": "decision.rendered -> onDecisionRendered (advanceCardToStage)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs; src/crs/*.test. UNNOTICED: a card stays here when the closer logs a deposit; nothing moves it. || MOVERS: in: decision.rendered (client-lifecycle.mjs onDecisionRendered, advance-only) also stamps outcome_tier + estimate. event: none new. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage closed_won (Closed Won (deposit), sort 7)",
+    "kind": "stage",
+    "calls": "message.inbound -> DPC-03 yes (moveCardToStage); POST /api/pipeline-cards",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-03-inbound-reply-router.test.mjs. UNNOTICED: a YES text moves to Closed Won with no money in; a payment moves nothing, so Closed Won (deposit) can hold unpaid clients and miss paid ones (railNote admits it). || MOVERS: in: DPC-03 when the client texts YES (moveCardToStage) and manual drag. NOT in: deposit.paid / payment.received / sale.closed (they set flags only). event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage downsell (Downsell, sort 8)",
+    "kind": "stage",
+    "calls": "message.inbound -> DPC-03 close (moveCardToStage); POST /api/pipeline-cards",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-03-inbound-reply-router.test.mjs. UNNOTICED: stage name says downsell but a file-close text lands here; a logged call_outcome 'downsell' moves no card. || MOVERS: in: DPC-03 when the client texts CLOSE (file closed, nurture tags removed) and manual drag. event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "stage lost (Lost, sort 9)",
+    "kind": "stage",
+    "calls": "booking.created -> DPC-02 no-show (moveCardToStage); POST /api/pipeline-cards",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-02-call-outcome-enforcement.test.mjs. UNNOTICED: a not_a_fit call outcome moves no card; a late no-show can drag a Closed Won card back to Lost. || MOVERS: in: DPC-02 no-show (moveCardToStage) and manual drag / MOVE Mark Lost. event: booking.noshow emitted by DPC-02 (not by the move). || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition entry.captured -> new_lead",
+    "kind": "transition",
+    "calls": "client-lifecycle.mjs onEntryCaptured + s-01 (advance)",
+    "tables": [
+      "cards",
+      "clients",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs; src/workflows/s-01-new-lead-intake.test.mjs"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition survey.submitted -> survey_complete",
+    "kind": "transition",
+    "calls": "client-lifecycle.mjs onSurveySubmitted (advance)",
+    "tables": [
+      "cards",
+      "clients",
+      "client_custom_fields"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition booking.created -> booked",
+    "kind": "transition",
+    "calls": "S-04 workflow + comms.mjs mirror (advance)",
+    "tables": [
+      "cards",
+      "bookings",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/s-04-call-booked.test.mjs; job:s-04-call-booked is in TRIPWIRES (src/pulse/tripwires.mjs) mapped to handoff:booking-no-confirm and calls:booked-no-join-link, which read bookings and messages, not the card"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition booking end +5 min -> showed or lost",
+    "kind": "transition",
+    "calls": "DPC-02 (moveCardToStage; sleeps until end+5min; cancelOn cancel/reschedule)",
+    "tables": [
+      "cards",
+      "events",
+      "bookings"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-02-call-outcome-enforcement.test.mjs; wf:dpc-02-call-outcome-enforcement receipt row (src/pulse/workflow-runs.mjs). src/pulse/coverage/INDEX.md lists dpc-02 'not in a slice yet'; calls:booked-no-outcome (gap-calls.mjs) reads bookings with no outcome"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition diagnostic.paid -> diagnostic_paid",
+    "kind": "transition",
+    "calls": "client-lifecycle.mjs onDiagnosticPaid (advance)",
+    "tables": [
+      "cards",
+      "transactions",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition decision.rendered -> decision_rendered",
+    "kind": "transition",
+    "calls": "client-lifecycle.mjs onDecisionRendered (advance)",
+    "tables": [
+      "cards",
+      "clients",
+      "crs_results"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/client-lifecycle.test.mjs"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition client text 'yes' (call not booked) -> closed_won",
+    "kind": "transition",
+    "calls": "DPC-03 inbound reply router (moveCardToStage)",
+    "tables": [
+      "cards",
+      "tasks",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-03-inbound-reply-router.test.mjs; wf:dpc-03-inbound-reply-router receipt row; INDEX.md lists dpc-03 'not in a slice yet'"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition client text 'close' -> downsell",
+    "kind": "transition",
+    "calls": "DPC-03 (moveCardToStage + remove nurture tags)",
+    "tables": [
+      "cards",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/dpc-03-inbound-reply-router.test.mjs"
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition call outcome logged (deposit/downsell/callback/no_show/not_a_fit) -> NO card move",
+    "kind": "transition",
+    "calls": "POST /api/call-outcomes -> call_outcomes row + emit call.completed",
+    "tables": [
+      "call_outcomes",
+      "tasks",
+      "events"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/call-outcomes.mjs; src/pulse/coverage/gap-closer.mjs closer:held-disposition. UNNOTICED: a deposit outcome does not move the Sales card; the funnel on Sales floor (call_outcomes) and the Pipeline board (cards) are two separate counts that no check reconciles."
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "stage apply_now (Apply Now)",
+    "kind": "stage",
+    "calls": "moveCardToStage / emitCardStackingRoundTransition",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/handlers/purchase-routing.pg.test.mjs; funding:advisor-queue + funding:round-stuck (src/pulse/coverage/gap-funding.mjs: file here 72h+ with no next step); job:round-started-client-notify. UNNOTICED: a late payment on a client already past apply_now is refused by design; a paid client with no card relies on the failed_events dead letter (gap-jobs:failed-events). || MOVERS: in: purchase-routing on deposit.paid/sale.closed/payment.received for a funding-category sale (src/handlers/purchase-routing.mjs placeCard, only when no card exists), MOVE menu, drag. out: staff drag. event: round.started (moveCardToStage -> emitCardStackingRoundTransition). || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "stage round_submitted (Round Submitted)",
+    "kind": "stage",
+    "calls": "moveCardToStage / emitCardStackingRoundTransition",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "e2e/ccp-headline.spec.mjs ('Mark round submitted posts the board's own move'); funding:advisor-queue / funding:round-stuck. UNNOTICED: nothing moves it when applications are logged as applied. || MOVERS: in: CCP 'Mark round submitted' or drag only (no automatic mover). event: round.submitted (F-03). people: any STAFF role on shift. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "stage approved (Approved)",
+    "kind": "stage",
+    "calls": "moveCardToStage / emitCardStackingRoundTransition",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/workflows/f-11-bank-email-event-router.test.mjs; funding:advisor-queue. UNNOTICED: a bank yes logged by staff in the Client Control Panel (POST /api/applications) moves NO card and fires no round.approved; a COUNTEROFFER email lands in Approved although schema comment says Counteroffer = Action Required. || MOVERS: in: F-11 bank-email router on APPROVED or COUNTEROFFER (src/workflows/f-11-bank-email-event-router.mjs) and drag. event: round.approved (F-04, F-05 inquiry cleanup, SYS-01 LTV). || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "stage action_required (Action Required)",
+    "kind": "stage",
+    "calls": "moveCardToStage / emitCardStackingRoundTransition",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "funding:advisor-queue reads files parked here 72h+ (gap-funding.mjs WAITING_STAGE_KEYS). UNNOTICED: the client portal stepper counts action_required as 'approved' (src/portal/stepper.mjs FUNDING_STAGE_APPROVED), so a lender asking for something marks the client's 'round approved' step as reached. || MOVERS: in: nobody automatic (STAGE_TO_EVENT action_required -> null; F-11 MISSING_DOCS/ACTION_REQUIRED only create tasks). Manual drag only. allowed while a funding hold is open. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "stage funded (Funded)",
+    "kind": "stage",
+    "calls": "moveCardToStage / emitCardStackingRoundTransition",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs; src/funding/card-stacking-rounds.pg.test.mjs; src/funding/closeout.test.mjs; src/funding/billed-fee-check.mjs flags drift after the fact. UNNOTICED: no pulse check that a Funded card has its funding_closeout row and invoice. || MOVERS: in: CCP 'Mark funded...' or drag with funded_amount > 0, every bank yes priced or excluded, >=1 priced yes (src/funding/card-stacking-rounds.mjs guardFundedAmount). event: round.funded -> money-chain (funding_rounds.status='funded', commissions, success-fee closeout invoice), CSM results-call task. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "stage closed (Closed)",
+    "kind": "stage",
+    "calls": "moveCardToStage / emitCardStackingRoundTransition",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "e2e/ccp-headline.spec.mjs ('Close round posts the closed stage'); nurture:never-queued (src/pulse/coverage/gap-nurture.mjs reads round.closeout events vs messages). UNNOTICED: funding_rounds.status is never set to 'closed' by code, yet gap-funding treats 'closed' as terminal; a round closed without funding stays 'started' and funding:round-stuck keeps counting it. || MOVERS: in: CCP 'Close round' or drag (engagement complete). event: round.closeout -> N-04 post-funding nurture + inquiry gate (between-round cleanup). allowed while held. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "transition any stage -> any stage (no ladder, backward allowed)",
+    "kind": "transition",
+    "calls": "src/workflows/cards.mjs moveCardToStage (plain UPDATE; advanceCardToStage is advance-only but only lifecycle handlers use it)",
+    "tables": [
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/cards.test.mjs ('moveCardToStage still demotes (escape hatch for staff tools)'). The funding-hold gate refuses every stage except apply_now/action_required/closed while round_hold_reason is blocking; no other rule. UNNOTICED: round events are idempotent per client+round+stage (card_stacking:<client>:<round>:<stage>:<event>), so dragging a card back and forward inside one round fires nothing the second time; and because funding_rounds.status never becomes 'closed', re-entering apply_now after a round that never funded reuses the same round number."
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "funding hold gate on later stages (funding_gate_closed)",
+    "kind": "control",
+    "calls": "moveCardToStage -> isBlockingFundingHold (src/inquiry-ops/doc-gate.mjs)",
+    "tables": [
+      "clients",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/cards.test.mjs ('funding gate still blocks later stages when documents are pending'); fulfillment:apply-blocked reads stuck apply steps (gap-fulfillment.mjs)."
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "funding_rounds.status vs card stage (two records of one fact)",
+    "kind": "gap",
+    "calls": "money-chain ensureFundingRound / onRoundFundedMoney; applications/status.mjs",
+    "tables": [
+      "funding_rounds",
+      "cards"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "funding_rounds.status is only ever written 'started', 'open' (status.mjs round bootstrap) or 'funded' (money-chain.mjs); submitted/approved/closed never reach the row. src/portal/stepper.mjs reads both sets; no check compares funding_rounds.status with the card stage. UNNOTICED: card says Approved while the round row says started."
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "applications.status ladder (Apply, Applied, Approved, Denied, Missing Docs, Action Required)",
+    "kind": "enum",
+    "calls": "POST /api/applications -> src/applications/status.mjs setApplicationStatus (+ application_decisions audit row)",
+    "tables": [
+      "applications",
+      "application_decisions",
+      "funding_rounds"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "db/migrations/138_lenders.sql applications_status_ck; e2e/funded-amount.spec.mjs; src/funding/approval-amount-guard.pg.test.mjs; funding:apply-door (gap-funding.mjs); fulfillment:apply-blocked. UNNOTICED: an Approved yes with no amount is allowed on purpose and is counted by CCP headline and the board chip (approval_amount_missing) but no pulse check goes red for it."
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "Approval excluded / reinstated (not counting)",
+    "kind": "control",
+    "calls": "POST /api/applications action=exclude_approval|reinstate_approval",
+    "tables": [
+      "applications",
+      "application_decisions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs ('client control panel — an approval that does not count'); e2e/ccp-headline.spec.mjs ('an approval marked as not counting drops out of the count'); src/applications/status.mjs setApprovalExclusion; flagBilledFeeDrift (src/funding/billed-fee-check.mjs). UNNOTICED: an excluded approval silently leaves the success-fee basis; drift is flagged only after a bill exists."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage app_created (App Created)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> round.started",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "adapter row exists (event round.started) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/app_created (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage docs_stips (Docs/Stips)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> stage move only",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "adapter row exists (event none) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/docs_stips (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage underwriting (Underwriting)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> round.submitted",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "adapter row exists (event round.submitted) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/underwriting (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage offers (Offers)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> round.approved",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "adapter row exists (event round.approved) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/offers (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage offer_accepted (Offer Accepted)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> stage move only",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "adapter row exists (event none) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/offer_accepted (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage funded (Funded)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> round.funded",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "adapter row exists (event round.funded) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/funded (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "stage closed (Closed)",
+    "kind": "stage",
+    "calls": "src/adapters/lendflow.mjs STAGE_TABLE -> stage move only",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "funding_rounds"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "adapter row exists (event none) and src/adapters/lendflow.test.mjs maps tokens, but no code moves a card to funding_altfin/closed (grep moveCardToStage). Rail tab parked 2026-08-25; purchase-routing comment says 'cards move there only from Lendflow webhooks', which the adapter does not do. Webhook route is not in gap-webhooks ids."
+  },
+  {
+    "surface": "pipeline:funding_altfin",
+    "control": "Lendflow webhook -> round.* events (declines emit nothing)",
+    "kind": "transition",
+    "calls": "POST /api/webhooks/lendflow -> src/adapters/lendflow.mjs handleLendflowWebhook",
+    "tables": [
+      "events",
+      "funding_rounds"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/adapters/lendflow.test.mjs; src/http/router.mjs registers lendflow. UNNOTICED: decline/withdrawn tokens move to 'closed' with no event (round.declined not canonical); webhook secret LENDFLOW_WEBHOOK_SECRET unverified live; no pulse door row."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage intake (Intake, sort 0)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "repair-case-stuck (src/pulse/coverage/gap-repair.mjs WAITING_STAGES) + fulfillment:next-action; src/repair/enroll.test.mjs; src/handlers/purchase-routing.pg.test.mjs || MOVERS: in: repair.enrolled (purchase-routing -> ensureRepairEnrollment, src/repair/enroll.mjs), Repair desk 'Enroll', drag. out: repair.docs.needed. event: repair.enrolled -> welcome email. clock: 3 business days (src/repair/sla.mjs). || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage awaiting_documents (Awaiting Documents, sort 1)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "repair-case-stuck; documents:required-unchased (gap-documents.mjs); src/repair/doc-stage.test.mjs || MOVERS: in: repair.docs.needed (announceRepairDocState from enrolment). out: repair.docs.complete when ID + proof of address land (onRepairDocsReceived on docs.received). event: docs-needed email. clock: 14 days. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage analysis (Analysis, sort 2)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "repair-letter-round (gap-repair.mjs: file still in analysis past its hour, or open case with items and no letter); src/repair/start-letters.test.mjs || MOVERS: in: repair.docs.complete or repair.round.escalated (src/metro2/inbound/confirm.mjs). out: repair.analysis.complete (analyze.mjs). clock: 1 hour. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage letters_generated (Letters Generated, sort 3)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline:repair (src/pulse/pipeline-motion.mjs reds ANY card in this stage, no age needed) + repair-letter-round || MOVERS: in: repair.analysis.complete (src/repair/analyze.mjs). out: repair.letters.ready. clock: 30 minutes. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage ready_to_send (Ready to Send, sort 4)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline:repair reds any card here; e2e/specialist-desk.spec.mjs; src/http/repair-send.test.mjs; src/repair/send-double-mail.pg.test.mjs || MOVERS: in: repair.letters.ready (analyze.mjs). out: Repair desk Send -> repair.letters.sent. clock: 4 hours. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage in_transit (In Transit, sort 5)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "repair-case-stuck; src/repair/send.test.mjs. UNNOTICED: letters.delivered depends on one provider webhook; if it never fires the card sits here until the 10-day clock. || MOVERS: in: repair.letters.sent (src/repair/send.mjs; letters-sent email). out: repair.letters.delivered from the mail provider webhook (src/http/router.mjs). clock: 10 days. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage awaiting_response (Awaiting Response, sort 6)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "repair-case-stuck (daysAfterDue); src/repair/response-agent.test.mjs || MOVERS: in: repair.letters.delivered. out: repair.response.received (client upload or inbound mail, src/repair/response-agent.mjs). clock: response_due_at + 5 days. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage response_received (Response Received, sort 7)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline:repair reds any card here; /api/repair/exceptions 'Needs a human read' panel; src/repair/parse-loop.mjs tests || MOVERS: in: repair.response.received or repair.parse.low_confidence. out: confirmed parse (repair.response.parsed). clock: 24 hours. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage round_complete (Round Complete, sort 8)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "no clock in STAGE_SLA and no pulse row; repair.round.complete has no emitter (only the EVENT_STAGE map). UNNOTICED: a card can sit in Round Complete forever with no next-round letters. || MOVERS: in: repair.response.parsed (confirm.mjs/parse-loop). out: repair.round.escalated moves it back to analysis, or repair.program.complete. event: results email. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage program_complete (Program Complete, sort 9)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "src/metro2/rounds/rounds.test.mjs; no pulse check on the reassessment or the upsell email. || MOVERS: in: repair.program.complete (src/metro2/rounds/program-cap.mjs) -> requests a fresh reassessment + trial-complete upsell email. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage on_hold (On Hold, sort 100)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "no writer, no clock, no check; the Repair desk chip dictionary (src/repair/lens.mjs) has no 'on hold' chip. || MOVERS: in: nobody. EVENT_STAGE has no event mapped to on_hold (src/repair/pipeline.mjs); manual drag only. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage stalled (Stalled, sort 101)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "pipeline:repair reds any card here (src/pulse/pipeline-motion.mjs) + STALLED_CASES_SQL (gap-repair.mjs); /api/repair/exceptions lists stalled cards. UNNOTICED: stage is only reachable by hand. || MOVERS: in: repair.stalled / repair.analysis.empty via stallRepairCard (src/repair/handlers.mjs) — neither event has an emitter in code; the SLA clock never moves a card here (gap-repair.mjs header says so); manual drag. out: staff. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage cancelled (Cancelled, sort 102)",
+    "kind": "stage",
+    "calls": "src/repair/handlers.mjs onRepairEvent -> moveRepairCard",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "dispute_cases",
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "no emitter, no check. || MOVERS: in: nobody. repair.cancelled is mapped in EVENT_STAGE but nothing emits it; manual drag only. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage round_sent (legacy alias, sort 90x)",
+    "kind": "gap",
+    "calls": "none (retired by migration 161; cards remapped)",
+    "tables": [
+      "pipeline_stages",
+      "cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "db/seed/002_pipelines.sql keeps the row; STAGES_SQL has no sort_order filter so the column still paints on R-04, and the pipeline MOVE menu still targets round_sent. A stage in schema that should have no screen but has one."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage bureau_processing (legacy alias, sort 90x)",
+    "kind": "gap",
+    "calls": "none (retired by migration 161; cards remapped)",
+    "tables": [
+      "pipeline_stages",
+      "cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "db/seed/002_pipelines.sql keeps the row; STAGES_SQL has no sort_order filter so the column still paints on R-04, and the pipeline MOVE menu still targets round_sent. A stage in schema that should have no screen but has one."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage portal_updated (legacy alias, sort 90x)",
+    "kind": "gap",
+    "calls": "none (retired by migration 161; cards remapped)",
+    "tables": [
+      "pipeline_stages",
+      "cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "db/seed/002_pipelines.sql keeps the row; STAGES_SQL has no sort_order filter so the column still paints on R-04, and the pipeline MOVE menu still targets round_sent. A stage in schema that should have no screen but has one."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "stage upgrade_invite (legacy alias, sort 90x)",
+    "kind": "gap",
+    "calls": "none (retired by migration 161; cards remapped)",
+    "tables": [
+      "pipeline_stages",
+      "cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "db/seed/002_pipelines.sql keeps the row; STAGES_SQL has no sort_order filter so the column still paints on R-04, and the pipeline MOVE menu still targets round_sent. A stage in schema that should have no screen but has one."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "transition SLA clock breach (intake 3bd, docs 14d, analysis 1h, letters 30m, ready 4h, transit 10d, response due+5d, parsed 24h)",
+    "kind": "transition",
+    "calls": "src/repair/sla.mjs isBreached (read only)",
+    "tables": [
+      "cards",
+      "dispute_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Repair desk 'Stuck' chip + tile (src/repair/read-repair-signals.mjs); repair-case-stuck and pipeline:repair (pulse). UNNOTICED: nothing moves a card or creates a task when a clock expires; STAGE_SLA task names (chase_contract, dispatch_failure...) are labels only, no creator."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "transition dispute_cases.status open -> awaiting_response (only transition ever written)",
+    "kind": "transition",
+    "calls": "src/repair/send.mjs UPDATE dispute_cases (first mail)",
+    "tables": [
+      "dispute_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/repair/send-double-mail.pg.test.mjs. db/migrations/160 allows round_complete, closed, stalled, cancelled but no code writes them (only one UPDATE dispute_cases in src; caseStatusFromItems is computed in memory by src/metro2/rounds/advance.mjs and never saved). gap-repair STALLED_CASES_SQL looks for status='stalled', which nothing sets."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "dispute_items.status (open,sent,verified,deleted,updated,unaddressed,closed,escalated)",
+    "kind": "enum",
+    "calls": "src/repair/parse-loop.mjs UPDATE dispute_items; src/metro2/rounds/program-cap.mjs",
+    "tables": [
+      "dispute_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/repair/parse-loop.mjs tests; src/metro2/rounds/rounds.test.mjs; human gate before R4 (state.mjs applyItemOutcome). No pulse reads item outcomes."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "dispute_letters.status (generated, variance_failed, ready, sent, delivered, failed)",
+    "kind": "enum",
+    "calls": "src/repair/persist-generated-letters.mjs, src/repair/send.mjs",
+    "tables": [
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "repair-letter-round (gap-repair.mjs) goes red when a case has items and no letter row; src/repair/persist-generated-letters.test.mjs. variance_failed/failed letters have no check."
+  },
+  {
+    "surface": "pipeline:optimization",
+    "control": "repair_programs.status (active, complete, upsell_pending, cancelled)",
+    "kind": "enum",
+    "calls": "src/metro2/rounds/program-cap.mjs UPDATE repair_programs",
+    "tables": [
+      "repair_programs"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "db/migrations/250_repair_programs.sql; src/metro2/rounds/rounds.test.mjs. upsell_pending has an email but no board and no check that an upsell was offered."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Repair tab: table of enrolled clients (Client, Program, Round, Stage, Needs, Due)",
+    "kind": "read",
+    "calls": "GET /api/read/repair-cases",
+    "tables": [
+      "dispute_cases",
+      "cards",
+      "dispute_letters",
+      "dispute_responses",
+      "repair_programs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/http/repair-cases-read.test.mjs; src/http/repair-desk-screen.test.mjs; reg:read/repair-cases ping; pipeline:repair + repair-case-stuck read the same stages. e2e/specialist-desk.spec.mjs."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Tiles: Need me / Ready to send / Waiting on bureau / Stuck / Trial ending (press to filter)",
+    "kind": "control",
+    "calls": "none (client-side filter of the same read)",
+    "tables": [
+      "cards",
+      "dispute_cases"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/repair/lens.test.mjs (TILE_FILTERS, deriveChip); e2e/specialist-desk.spec.mjs ('the repair tile filters still work after a Send')."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Row action: Send (mail letters to the bureau)",
+    "kind": "control",
+    "calls": "POST /api/repair/send -> mailer (PostGrid) + repair.letters.sent",
+    "tables": [
+      "dispute_letters",
+      "dispute_cases",
+      "cards",
+      "events",
+      "messages"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-send.test.mjs; src/repair/send-double-mail.pg.test.mjs; src/repair/send.test.mjs; e2e/specialist-desk.spec.mjs. ROLES: owner, admin, closer, inquiry_specialist only for generate/enroll; send uses ROLE_SETS.STAFF."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Row action: Stage (generate letters)",
+    "kind": "control",
+    "calls": "POST /api/repair/generate {client_id, round}",
+    "tables": [
+      "dispute_cases",
+      "dispute_items",
+      "dispute_letters",
+      "documents",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-generate.pg.test.mjs; src/repair/analyze.test.mjs. repair-letter-round pulse reads the result."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Row action: Enroll",
+    "kind": "control",
+    "calls": "POST /api/repair/enroll",
+    "tables": [
+      "repair_programs",
+      "cards",
+      "tasks",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-enroll.test.mjs; src/repair/enroll.test.mjs; also fired by purchase-routing ensureRepairEnrollment. CROA intake gate needs the contract content keys (src/repair/croa.mjs; the 3-business-day hold was removed 2026-08-21)."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Row action: Soft pull (type PULL)",
+    "kind": "control",
+    "calls": "POST /api/finance/crs-pull {client_id, bureau}",
+    "tables": [
+      "crs_results",
+      "soft_pull_requests",
+      "consent"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-soft-pull.mjs softpull:request-failed-or-stuck; gap-consent consent:required; e2e/specialist-desk.spec.mjs ('a refused soft pull says so'). Hidden from inquiry_specialist (mayPullCredit)."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Row action: Clean personal info (erase)",
+    "kind": "control",
+    "calls": "POST /api/privacy/erasure",
+    "tables": [
+      "erasure_requests",
+      "pii_identity",
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs ('the Specialist is not shown ... Clean personal info'); src/privacy/erasure.mjs tests. No pulse row reads erasure_requests (none)."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "Letter drawer: Send this one",
+    "kind": "control",
+    "calls": "POST /api/repair/send {letter_id}",
+    "tables": [
+      "dispute_letters"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-send.test.mjs; e2e/specialist-desk.spec.mjs."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Repair pane)",
+    "control": "'Needs a human read': Mark as checked (confirm held parse)",
+    "kind": "control",
+    "calls": "GET/POST /api/repair/exceptions action=confirm_parse",
+    "tables": [
+      "dispute_responses",
+      "dispute_items",
+      "cards"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-desk-screen.test.mjs; src/repair/parse-loop.mjs confirmHeldParse. Held R4 escalations need a human (state.mjs). No pulse check counts held parses waiting."
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage requested (Requested, sort 0)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/inquiry-gate.pg.test.mjs; wf/handler dead-letters surface via gap-jobs:failed-events. UNNOTICED: gate only fires on deposit.paid / round.closeout, never on a staff-issued case. || MOVERS: in: inquiry gate on deposit.paid or round.closeout (src/handlers/inquiry-gate.mjs, one case per bureau with items), MOVE menu, drag. event: inquiry.gate.raised. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage awaiting_documents (Awaiting Documents, sort 2)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/handlers/inquiry-docs.test.mjs; documents:required-unchased (gap-documents.mjs) || MOVERS: in: inquiry gate when the doc packet (ID, proof of address, consent) is incomplete. out: docs.received flips Blocked -> Queued (src/handlers/inquiry-docs.mjs). event: inquiry.docs.needed -> client email. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage specialist_assigned (Specialist Assigned, sort 1)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/inquiry-gate.pg.test.mjs. UNNOTICED: board order (migration 155) is requested, specialist_assigned, awaiting_documents, but the flow is requested -> awaiting_documents -> specialist_assigned, so a card jumps back one column when documents arrive. || MOVERS: in: inquiry gate when packet complete, or inquiry-docs once documents arrive. event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage letters_sent (Letters Sent, sort 3)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/inquiry-ops/send.pg.test.mjs; inquiry:case-stuck (gap-inquiry.mjs: case In Progress with no call scheduled and no movement in 72h); inquiry:letter-round reads the draft before this stage, not the send || MOVERS: in: Specialist Send (src/inquiry-ops/send.mjs sendCase, mail and/or portal). event: none (case_status -> In Progress). || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage calls_in_progress (Calls In Progress, sort 4)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/inquiry-ops/call-scheduler.pg.test.mjs; inquiry:case-stuck (call due, sweeper had 3 runs, not fired); job:inquiry-call-sweeper heartbeat || MOVERS: in: call scheduler after first delivery (src/inquiry-ops/call-scheduler.mjs). out: bureau call result. event: none. clock: inquiry-call-sweeper every 15 min. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage removed (Removed, sort 5)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "src/workflows/c-03 test; no check. UNNOTICED: a Completed case leaves its card at Calls In Progress. || MOVERS: in: nobody automatic. inquiry.removed (from mark_cleared / clear_inquiry) runs C-03 which tags and creates a task but does NOT move the card; manual drag only. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage resume_funding (Resume Funding, sort 6)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/gate.test.mjs; no pulse reads the card. || MOVERS: in: inquiry gate attachGateToRound when no hot bureaus remain and the client ever had a case (src/inquiry-ops/gate.mjs). event: none. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "stage hold (Hold, sort 7)",
+    "kind": "stage",
+    "calls": "moveCardToStage (no event on move)",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "no writer, no check. || MOVERS: in: nobody. C-03 fraud-alert branch sets round_hold_reason='Fraud Alert' and a task but does not move the card; manual drag only. || PEOPLE: any of the 8 STAFF roles (owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm) by drag/MOVE (and the Client Control Panel round buttons on the funding rail) with an open shift (owner exempt); no per-rail or per-stage permission; automatic movers run as the system"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state Queued",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "inquiry:case-stuck (gap-inquiry.mjs: Queued/Scheduled/In Progress with no call and untouched 72h) || MOVERS: default on create; Blocked -> Queued on docs (inquiry-docs.mjs, send.mjs); IRA webhook 'Open'/'Queued' || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state Scheduled",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "inquiry:case-stuck includes it; no native code sets Scheduled || MOVERS: only the IRA inbound webhook bridge (src/inquiry-removal/cases.mjs mapCaseStatus) or a manual update patch || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state In Progress",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "inquiry:case-stuck || MOVERS: send.mjs on first send, call-scheduler.mjs on first delivery; webhook 'Calling'/'Awaiting Remover' || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state Escalated",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "inquiry:case-stuck reds Escalated untouched 72h; src/inquiry-ops/bureau-call.mjs refuses Canceled/Completed || MOVERS: only IRA webhook 'Call Failed'/'Escalated' or a manual update patch; nothing native escalates || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state Blocked",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:required-unchased; inquiry:case-stuck excludes Blocked (documents lane) || MOVERS: send.mjs when the doc packet is incomplete; cleared by inquiry-docs.mjs || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state Completed",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-cases.pg.test.mjs. UNNOTICED: action=update with case_status='Completed' sets the status with NO closed_at and NO inquiry.removed event (updateCase writable list), so C-03 never runs. || MOVERS: POST /api/inquiry-cases mark_cleared|close (case_status Completed) or clear_inquiry; emits inquiry.removed || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.case_status",
+    "control": "state Canceled",
+    "kind": "stage",
+    "calls": "api/inquiry-cases.mjs / src/inquiry-ops/*.mjs / src/adapters/inquiry-removal.mjs",
+    "tables": [
+      "inquiry_removal_cases"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-cases.pg.test.mjs; a Canceled case leaves its board card where it was. || MOVERS: Specialist 'Close' button posts action=close case_status=Canceled (no event, no card move) || PEOPLE: STAFF role set on api/inquiry-cases (no shift gate); AI bureau call: inquiry_specialist or admin; bureau gate override: owner only"
+  },
+  {
+    "surface": "inquiry_removal_cases.master_call_state",
+    "control": "inquiry_call_state enum (not_started, queued, dialing, navigating_ivr, on_hold, talking_to_rep, transferred_to_human, completed, failed, canceled, retry_scheduled)",
+    "kind": "enum",
+    "calls": "src/inquiry-ops/bureau-call.mjs + Bland adapter + IRA webhook",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/bureau-call.test.mjs; calls:ai-dial-no-failure (gap-calls.mjs). Business status (inquiry_log.status free text) and phone-work state are separate by design (140_inquiry_ops.sql)."
+  },
+  {
+    "surface": "inquiry_log.status",
+    "control": "free-text status (removed/confirmed/deleted/cleared, no answer, filed/sent/progress/pending, new/queued)",
+    "kind": "enum",
+    "calls": "POST /api/inquiries action=status|confirm|attempt",
+    "tables": [
+      "inquiry_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-remover-view.mjs pill(); src/inquiries/work.mjs; e2e/specialist-desk.spec.mjs. UNNOTICED: no CHECK on the column (055 declined); an unrecognised word is shown on a neutral pill and only counted into a banner."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Inquiry removal cases queue (oldest first, 25 rows then 'more')",
+    "kind": "read",
+    "calls": "GET /api/read/inquiry-cases?active_only=true&limit=500",
+    "tables": [
+      "inquiry_removal_cases",
+      "clients",
+      "inquiry_log",
+      "documents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "inquiry:specialist-api (gap-inquiry.mjs DESK_CASES_SQL, same select); reg:read/inquiry-cases ping; e2e/specialist-desk.spec.mjs; src/http/inquiry-remover-view.test.mjs. UNNOTICED: status filter active_only hides Completed/Canceled so a closed case vanishes with no 'closed today' list."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Case drawer: Upload FTC / police report",
+    "kind": "control",
+    "calls": "POST /api/documents-upload subtype=additional_fraud_docs",
+    "tables": [
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:upload-store + documents:stuck-processing (gap-documents.mjs); inquiry:upload-door reads the portal side (gap-inquiry.mjs); e2e/hole17-inquiry-upload.prove.mjs."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Case drawer: Generate letters (writes inquiry items; mails nothing)",
+    "kind": "control",
+    "calls": "POST /api/inquiry-cases action=generate",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log",
+      "dispute_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/generate-from-crs.test.mjs; src/http/inquiry-cases.pg.test.mjs; inquiry:letter-round pulse reads the outcome."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Case drawer: Send (mail and/or portal, mail service level)",
+    "kind": "control",
+    "calls": "POST /api/inquiry-cases action=send -> PostGrid mailBureauLetter",
+    "tables": [
+      "inquiry_removal_cases",
+      "documents",
+      "cards",
+      "inquiry_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/send.test.mjs; src/inquiry-ops/send.pg.test.mjs. Doc gate refuses an incomplete packet (SendGateError). Not shift-gated; STAFF role set."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Case drawer: Call bureau (launch AI call)",
+    "kind": "control",
+    "calls": "POST /api/inquiry?action=launch",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "inquiry:case-stuck call-due branch + job:inquiry-call-sweeper heartbeat; src/inquiry-ops/bureau-call.test.mjs. Role: inquiry_specialist or admin only (owner via super-role)."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Case drawer: Mark cleared / Close",
+    "kind": "control",
+    "calls": "POST /api/inquiry-cases action=mark_cleared|close",
+    "tables": [
+      "inquiry_removal_cases",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-cases.pg.test.mjs; mark_cleared emits inquiry.removed (idempotency key per case); Close is Canceled with no event. Neither moves the board card."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Gate override (bureau gate)",
+    "kind": "control",
+    "calls": "POST /api/inquiry-cases action=gate_override",
+    "tables": [
+      "inquiry_removal_cases",
+      "funding_rounds"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/gate.test.mjs; overrideBureauGate refuses any role but owner (src/inquiry-ops/gate.mjs:60). No button on the Specialist page calls it (grep public/app finds no gate_override): api-only control."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Work queue row: Log an attempt / Mark confirmed / Set status / Save expected / Reveal SSN",
+    "kind": "control",
+    "calls": "POST /api/inquiries {attempt|confirm|status|expected}; GET /api/pii",
+    "tables": [
+      "inquiry_log",
+      "pii_access_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs ('marking an inquiry confirmed writes the status...'); src/http/inquiry-remover-view.test.mjs; every SSN reveal writes pii_access_log with a reason."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Bureau chips EQ/TU/EX filter + stat tiles (Still open, Worked, Calls, Confirmed)",
+    "kind": "control",
+    "calls": "none (client-side over GET /api/inquiries)",
+    "tables": [
+      "inquiry_log"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-remover-view.test.mjs; e2e/specialist-desk.spec.mjs ('three blocked cases are counted in words')."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Recent Letters Issued list",
+    "kind": "read",
+    "calls": "GET /api/inquiries?recent=letters",
+    "tables": [
+      "documents",
+      "inquiry_log"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/specialist-desk.spec.mjs ('the letters that exist are drawn', 'a refused letters read does not leave No letters issued yet')."
+  },
+  {
+    "surface": "public/app/inquiry-remover.html (Inquiries pane)",
+    "control": "Desk header: Ready to send / next case / Who",
+    "kind": "display",
+    "calls": "GET /api/auth/session",
+    "tables": [
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:auth/session (gap-auth.mjs gap:auth-session-read deep for the session read itself)."
+  },
+  {
+    "surface": "pipeline:ar_collections",
+    "control": "stage invoice_sent (Invoice Sent, sort 0)",
+    "kind": "stage",
+    "calls": "none",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "no code moves a card to ar_collections (grep moveCardToStage/INSERT INTO cards); MOVE menu 'AR / Collections' is manual only. The same facts live in invoices.status (draft, sent, reminded, escalated, paid, partially_paid, written_off, void; db/migrations/031) driven by src/workflows/ar-collections.mjs. Schema stage with no mover."
+  },
+  {
+    "surface": "pipeline:ar_collections",
+    "control": "stage reminder (Reminder, sort 1)",
+    "kind": "stage",
+    "calls": "none",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "no code moves a card to ar_collections (grep moveCardToStage/INSERT INTO cards); MOVE menu 'AR / Collections' is manual only. The same facts live in invoices.status (draft, sent, reminded, escalated, paid, partially_paid, written_off, void; db/migrations/031) driven by src/workflows/ar-collections.mjs. Schema stage with no mover."
+  },
+  {
+    "surface": "pipeline:ar_collections",
+    "control": "stage escalation (Escalation, sort 2)",
+    "kind": "stage",
+    "calls": "none",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "no code moves a card to ar_collections (grep moveCardToStage/INSERT INTO cards); MOVE menu 'AR / Collections' is manual only. The same facts live in invoices.status (draft, sent, reminded, escalated, paid, partially_paid, written_off, void; db/migrations/031) driven by src/workflows/ar-collections.mjs. Schema stage with no mover."
+  },
+  {
+    "surface": "pipeline:ar_collections",
+    "control": "stage paid (Paid, sort 3)",
+    "kind": "stage",
+    "calls": "none",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "no code moves a card to ar_collections (grep moveCardToStage/INSERT INTO cards); MOVE menu 'AR / Collections' is manual only. The same facts live in invoices.status (draft, sent, reminded, escalated, paid, partially_paid, written_off, void; db/migrations/031) driven by src/workflows/ar-collections.mjs. Schema stage with no mover."
+  },
+  {
+    "surface": "pipeline:ar_collections",
+    "control": "stage written_off (Written Off, sort 4)",
+    "kind": "stage",
+    "calls": "none",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "no code moves a card to ar_collections (grep moveCardToStage/INSERT INTO cards); MOVE menu 'AR / Collections' is manual only. The same facts live in invoices.status (draft, sent, reminded, escalated, paid, partially_paid, written_off, void; db/migrations/031) driven by src/workflows/ar-collections.mjs. Schema stage with no mover."
+  },
+  {
+    "surface": "invoices.status",
+    "control": "AR ladder draft -> sent -> reminded -> escalated -> paid | partially_paid | written_off | void (db trigger: figure locked once past draft, void is terminal)",
+    "kind": "enum",
+    "calls": "src/invoices/index.mjs; src/workflows/ar-collections.mjs (AR-01 now, AR-02 +7d, AR-03 +14d, AR-04 task); src/invoices/allocate.mjs",
+    "tables": [
+      "invoices",
+      "invoice_payments",
+      "payment_links",
+      "tasks",
+      "messages"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "payments:invoice-stuck (src/pulse/coverage/gap-payments.mjs INVOICE_STUCK_SQL: v_invoice_aging status_reconciled=false, or a paid link on an unpaid invoice); src/invoices/invoices.pg.test.mjs; src/workflows/invoice-workflows.pg.test.mjs; reg:read/invoices ping. UNNOTICED: no board shows invoices by dunning state; CSM queue shows only the oldest unpaid."
+  },
+  {
+    "surface": "public/app/csm-queue.html",
+    "control": "Money chip 'Owes $X · N invoices · bill N days late' per row",
+    "kind": "display",
+    "calls": "GET /api/read/csm-queue (v_invoice_aging)",
+    "tables": [
+      "v_invoice_aging",
+      "tasks",
+      "clients",
+      "v_client_entitlements"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/csm-queue.pg.test.mjs; null balance renders 'Owes —' not $0. csm:queue-api runs the same read (gap-csm.mjs)."
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage applied (Applied, sort 0)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs; src/hiring/apply-public.pg.test.mjs; src/hiring/grading.test.mjs || MOVERS: in: POST /api/hiring/apply -> src/hiring/pipeline.mjs apply() (scored by the grader, task to the hiring owner). out: decide advance|reject. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage screening (Screening, sort 1)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs || MOVERS: in: advance (Owner/Admin only, POST /api/hiring/decide). hiring_decisions row on every move. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage group_interview (Group Interview, sort 2)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/booking.pg.test.mjs; src/hiring/hiring.pg.test.mjs. UNNOTICED: interviews cannot be booked or recorded from any screen or route, so this stage is a label a person sets by hand. || MOVERS: in: advance in the drawer (owner/admin). out: advance or reject. bookInterview/joinInterview (src/hiring/booking.mjs) and recordGroupInterview (pipeline.mjs, which would auto-advance yes/maybe) have no caller in api, src, netlify or public. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage one_on_one (1:1 Interview, sort 3)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs || MOVERS: in: advance / group-interview yes|maybe. counts toward bench. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage offer (Offer, sort 4)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs || MOVERS: in: advance (decision recorded as 'offer'). counts toward bench. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage hired (Hired, sort 5)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs. UNNOTICED: nothing creates a staff account, shift or onboarding task from a hire. || MOVERS: in: advance to hired sets status='hired', closing the application. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage onboarding (Onboarding, sort 6)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "schema + STAGES list; no working transition and no other tracker in repo. || MOVERS: in: unreachable. advance() requires an open application and hired is not open; hiring.html says it cannot be set from the screen. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage ramp (Ramp (60-day trial), sort 7)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "schema only. || MOVERS: in: unreachable (same reason). || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage performing (Performing, sort 8)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "schema only. || MOVERS: in: unreachable (same reason). || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage rejected (Not Moving Forward, sort 9)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring.pg.test.mjs; src/hiring/hiring-endpoints.pg.test.mjs. UNNOTICED: the feedback is a task for a person; nothing sends or tracks it. || MOVERS: in: reject() — needs a named human and a written reason (DB CHECK + trigger). creates a candidate-feedback task. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "stage withdrawn (Withdrawn, sort 10)",
+    "kind": "stage",
+    "calls": "src/hiring/pipeline.mjs advance()/reject() via POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "hiring_decisions",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "schema + read filters only. || MOVERS: in: no code path. hiring_decisions allows 'withdraw' and the page filters on it but nothing writes it. || PEOPLE: owner and admin only (POST /api/hiring/decide uses requireRole owner/admin; hiring.html is owner/admin only); applicants file themselves"
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Page shell + role gate (owner, admin only)",
+    "kind": "page",
+    "calls": "GET /app/hiring.html",
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring.html desk row; shell.js HIRING_ONLY; e2e/crm-flows.spec.mjs ('hiring ... is interactive without throwing')."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Stat row: SHORT BY / WAITING ON YOU / ON THE BENCH / OPEN APPLICATIONS",
+    "kind": "display",
+    "calls": "GET /api/hiring/bench ; GET /api/hiring/candidates",
+    "tables": [
+      "v_hiring_bench",
+      "candidate_applications",
+      "hiring_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/bench and reg:hiring/candidates door pings; src/hiring/bench.mjs tests; job:hiring-bench-sweeper heartbeat. No morning check reads the bench numbers."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Bench table (role, bench, short by, open, awaiting screen / group interview, hiring manager, flags)",
+    "kind": "read",
+    "calls": "GET /api/hiring/bench",
+    "tables": [
+      "v_hiring_bench",
+      "hiring_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/bench; slice-11-hiring.mjs reports the two sweepers as 'gaps' because neither has a MACHINE_CHECKS row (src/pulse/machine.mjs lists only 5)."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Waiting on a person table (flagged or unscored applications)",
+    "kind": "read",
+    "calls": "GET /api/hiring/candidates?state=all&limit=200",
+    "tables": [
+      "candidate_applications",
+      "application_scores"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/candidates; src/hiring/hiring-endpoints.pg.test.mjs. UNNOTICED: limit 200 candidates; nothing reds when an application sits unscored."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Everyone-by-stage board (role/source filters, flagged only, stage rail, pager) — cards cannot be dragged",
+    "kind": "read",
+    "calls": "GET /api/hiring/candidates",
+    "tables": [
+      "candidate_applications",
+      "pipeline_stages",
+      "candidates"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/candidates; src/hiring/hiring-endpoints.pg.test.mjs. The CRM Pipeline R-09 tab is NOT this board."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Candidate drawer: Advance (move to stage) + Reject (reason required, confirm box)",
+    "kind": "control",
+    "calls": "POST /api/hiring/decide",
+    "tables": [
+      "candidate_applications",
+      "hiring_decisions",
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs (decided_by from session, reason required); src/hiring/hiring.pg.test.mjs; reg:hiring/decide ping. Demo rows refuse decisions."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Job postings table (state + channel rails)",
+    "kind": "read",
+    "calls": "GET /api/hiring/postings",
+    "tables": [
+      "hiring_job_postings"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/postings. Screen says LinkedIn is not connected and nothing on it creates a posting. hiring_job_postings.status (draft, posted, paused, closed, failed) is written only by src/ops/hire-closer.mjs (a LinkedIn post that cannot succeed without partner access, so it lands failed) and src/hiring/zoho.mjs, which no route or job calls."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Reports: where applications come from (role, days)",
+    "kind": "read",
+    "calls": "GET /api/hiring/funnel?days=&role=",
+    "tables": [
+      "v_hiring_funnel",
+      "candidate_applications"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/funnel; counts where people stand now, not conversion."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Reports: every decision made (role, days, rail)",
+    "kind": "read",
+    "calls": "GET /api/hiring/decisions",
+    "tables": [
+      "hiring_decisions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:hiring/decisions; bias-audit reads v_eeo_aggregate through /api/read/eeo-aggregate (ROLE_SETS.COMPLIANCE)."
+  },
+  {
+    "surface": "public/app/hiring.html",
+    "control": "Reset filters / bench chip",
+    "kind": "control",
+    "calls": "none (client-side)",
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "no test clicks #resetBtn or #benchChip."
+  },
+  {
+    "surface": "job:hiring-outreach-cadence",
+    "control": "Candidate outreach cadence sweeper (every 30 min; candidate_outreach active/stopped)",
+    "kind": "job",
+    "calls": "Inngest cron */30 -> src/hiring/outreach.mjs",
+    "tables": [
+      "candidate_outreach",
+      "messages",
+      "hiring_interviews"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "job:hiring-outreach-cadence heartbeat (src/pulse/heartbeats.mjs, red after 3 runs); src/hiring/outreach.pg.test.mjs. Texts/emails candidates, so a wrong send reaches a person; no deep check."
+  },
+  {
+    "surface": "job:hiring-bench-sweeper",
+    "control": "Bench sweeper (daily 13:30 UTC; target bench 4 per role)",
+    "kind": "job",
+    "calls": "Inngest cron 30 13 * * *",
+    "tables": [
+      "v_hiring_bench",
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "job:hiring-bench-sweeper heartbeat; src/workflows/hiring-bench-sweeper.pg.test.mjs."
+  },
+  {
+    "surface": "hiring_interviews.status",
+    "control": "scheduled, held, cancelled, no_show",
+    "kind": "enum",
+    "calls": "src/hiring/booking.mjs bookInterview (scheduled) + pipeline.mjs recordGroupInterview (held)",
+    "tables": [
+      "hiring_interviews"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/booking.pg.test.mjs. Neither writer has a caller in api, src, netlify or public; cancelled and no_show have no writer at all. Table and CHECK exist; no screen lists interviews and no pulse check."
+  },
+  {
+    "surface": "src/hiring/booking.mjs",
+    "control": "Interview booking and join (host calendar conflict check, Meet link)",
+    "kind": "gap",
+    "calls": "none (no route, job or screen imports bookInterview / joinInterview / listOpenInterviews)",
+    "tables": [
+      "hiring_interviews",
+      "hiring_interview_attendees"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/hiring/booking.pg.test.mjs and src/hiring/calendar-freebusy.test.mjs exercise the module; grep finds no production caller. Built and tested, no door. gap-calls.mjs notes only hiring interviews read this module."
+  },
+  {
+    "surface": "api/ops/hire-closer.mjs",
+    "control": "POST /api/ops/hire-closer (packed closer calendar -> hire task + LinkedIn job post attempt)",
+    "kind": "gap",
+    "calls": "POST /api/ops/hire-closer -> src/ops/pulse.mjs actOnBrain -> src/hiring/linkedin.mjs postJob",
+    "tables": [
+      "tasks",
+      "hiring_job_postings",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/ops/hire-closer.test.mjs; src/http/ops-pulse.test.mjs; reg:ops/hire-closer ping. No screen button calls it (grep public/app: none); hiring-bench-sweeper.mjs header says the LinkedIn call 'cannot succeed' (no partner access), so each use writes a posting row that fails."
+  },
+  {
+    "surface": "src/hiring/zoho.mjs",
+    "control": "Zoho Recruit bridge: jobs out, applicants in (owner-set 2026-09-05 ATS decision)",
+    "kind": "gap",
+    "calls": "none (no route, job or workflow imports it)",
+    "tables": [
+      "hiring_job_postings",
+      "candidates",
+      "candidate_applications",
+      "hiring_zoho_candidate_links"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/zoho.test.mjs; src/hiring/zoho.pg.test.mjs exercise the module; grep src api netlify finds no caller. Built and tested, never run in production: the front door for applicants from LinkedIn is not open. apply() is the only candidate writer (api/hiring/apply.mjs)."
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "stage recruiting (Recruiting, sort 0)",
+    "kind": "stage",
+    "calls": "api/public/partner-apply.mjs placeWhiteLabelRailCard / api/partners/approve.mjs",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "no writer; the partners.status column (invited, active, paused) is the real state and no check compares it to the card stage. || MOVERS: in: nobody. 115 migration flags it as 'the one stage that is a guess'; no code places a card here. || PEOPLE: applicants file themselves (public); approve is owner/admin only; STAFF may also drag the card"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "stage invited (Invited, sort 1)",
+    "kind": "stage",
+    "calls": "api/public/partner-apply.mjs placeWhiteLabelRailCard / api/partners/approve.mjs",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-apply-success.spec.mjs; e2e/live-white-label-onboard.spec.mjs; partners:payout-stuck/commission-payable in gap-partners.mjs read partners, not cards. || MOVERS: in: api/public/partner-apply.mjs placeWhiteLabelRailCard(stageKey=invited) when an application is filed (partners.status='invited'). out: approve. || PEOPLE: applicants file themselves (public); approve is owner/admin only; STAFF may also drag the card"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "stage agreement_signed (Agreement Signed, sort 2)",
+    "kind": "stage",
+    "calls": "api/public/partner-apply.mjs placeWhiteLabelRailCard / api/partners/approve.mjs",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "no writer; the partners.status column (invited, active, paused) is the real state and no check compares it to the card stage. || MOVERS: in: nobody. partners.agreement_signed_at is stamped (src/trials/conversion.mjs stampPartnerAgreement) but no code moves the card. || PEOPLE: applicants file themselves (public); approve is owner/admin only; STAFF may also drag the card"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "stage active (Active, sort 3)",
+    "kind": "stage",
+    "calls": "api/public/partner-apply.mjs placeWhiteLabelRailCard / api/partners/approve.mjs",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-apply-success.spec.mjs; e2e/live-white-label-onboard.spec.mjs; partners:payout-stuck/commission-payable in gap-partners.mjs read partners, not cards. || MOVERS: in: POST /api/partners/approve -> approvePartnerApplication places the card at 'active' (owner/admin only); 274 backfill. event: partner.approved. NOT moved by trial conversion (src/trials/conversion.mjs sets status='active' only). || PEOPLE: applicants file themselves (public); approve is owner/admin only; STAFF may also drag the card"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "stage paused (Paused, sort 4)",
+    "kind": "stage",
+    "calls": "api/public/partner-apply.mjs placeWhiteLabelRailCard / api/partners/approve.mjs",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "no writer; the partners.status column (invited, active, paused) is the real state and no check compares it to the card stage. || MOVERS: in: nobody. Trial decline sets partners.status='paused' (src/trials/conversion.mjs) but the card stays on its old stage. || PEOPLE: applicants file themselves (public); approve is owner/admin only; STAFF may also drag the card"
+  },
+  {
+    "surface": "partners.status",
+    "control": "invited, active, paused (+ agreement_signed_at payout gate)",
+    "kind": "enum",
+    "calls": "api/partners/approve.mjs; src/trials/conversion.mjs",
+    "tables": [
+      "partners",
+      "partner_payouts",
+      "cards"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "db/migrations/042_partners.sql CHECK; partners:payout-stuck, partners:commission-payable (gap-partners.mjs); src/training/entitlement.mjs reads it. UNNOTICED: card stage and status can disagree after a trial convert or decline."
+  },
+  {
+    "surface": "affiliate_payouts.status / partner_payouts.status",
+    "control": "pending -> held -> processing -> paid | void (DB trigger forward-only; license hold)",
+    "kind": "enum",
+    "calls": "src/affiliates/payouts.mjs; job:affiliate-payout-run (monthly)",
+    "tables": [
+      "affiliate_payouts",
+      "partner_payouts",
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "db/migrations/033 affiliate_payouts_guard trigger; partners:payout-stuck (gap-partners.mjs); job:affiliate-payout-run heartbeat; src/affiliates/payouts tests."
+  },
+  {
+    "surface": "affiliate_referrals.status",
+    "control": "attributed, converted, paid, void",
+    "kind": "enum",
+    "calls": "src/affiliates/*.mjs; api/public/affiliate-click",
+    "tables": [
+      "affiliate_referrals",
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "partners:referral-link + partners:commission-payable (gap-partners.mjs); e2e/affiliate-commission.spec.mjs."
+  },
+  {
+    "surface": "commission_ledger.status",
+    "control": "earned, approved, paid, void",
+    "kind": "enum",
+    "calls": "src/commissions/payout.mjs; src/commissions/sql.mjs",
+    "tables": [
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "db/migrations/014_commission_ledger.sql; src/commissions tests; e2e/affiliate-commission.spec.mjs. No pulse lane names commission_ledger (grep of gap-*.mjs)."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Page shell + role gate (owner, admin, sales_manager)",
+    "kind": "page",
+    "calls": "GET /app/sales-floor.html",
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:sales-floor.html; e2e/sales-dashboards.spec.mjs ('sales-floor loads for sales_manager and shell bounces a closer home')."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Hero: Today deposits + Booked/Held; Funded-not-just-sold ratio",
+    "kind": "read",
+    "calls": "GET /api/read/sales-floor",
+    "tables": [
+      "call_outcomes",
+      "events",
+      "funding_rounds",
+      "staff_targets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "sales-manager:read-api and sales-manager:totals (src/pulse/coverage/gap-sales-manager.mjs runs salesFloor() in process); src/sales/metrics.test.mjs."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Funnel tiles: Booked, Held, Deposits, Funded, Downsells (this month)",
+    "kind": "read",
+    "calls": "GET /api/read/sales-floor",
+    "tables": [
+      "events",
+      "call_outcomes",
+      "funding_rounds"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals; src/sales/metrics.mjs. UNNOTICED: counted from call_outcomes + events (booking.created), NOT from Sales cards, so Funnel and the Pipeline Sales rail are two numbers that no check ties together (and 'held' = outcome <> no_show)."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Roster: closer rows (calls, close rate, funded rate, cash, 'Do this') + 'One closer at a time' picker / arrows",
+    "kind": "read",
+    "calls": "GET /api/read/sales-floor",
+    "tables": [
+      "staff",
+      "shifts",
+      "call_outcomes",
+      "commission_ledger"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "sales-manager:dropped-closer (a closer who sold this month missing from the floor); e2e/sales-dashboards.spec.mjs ('Your closers shows Chris, not sample names')."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Offer stack (every offer sold, collected) + 'Sold but not credited to any closer'",
+    "kind": "read",
+    "calls": "GET /api/read/sales-floor",
+    "tables": [
+      "sales",
+      "sale_payments",
+      "products"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "sales-manager:totals; src/sales/offer-stack.test.mjs. Unknown money prints 'Not recorded', never 0."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Which belief failed (objection bars) + Where it is coming from (source cuts) + Flag a belief x source to marketing",
+    "kind": "control",
+    "calls": "GET /api/read/sales-floor; POST /api/marketing-flags",
+    "tables": [
+      "call_outcomes",
+      "marketing_flags"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/sales/metrics.test.mjs; api/marketing-flags.mjs; writes a row only, nothing is sent. No test posts a flag from the screen."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Today's recordings list (Meet recordings from Drive, last 7 days)",
+    "kind": "read",
+    "calls": "GET /api/read/sales-floor (recordings)",
+    "tables": [
+      "call_outcomes",
+      "customer_insights",
+      "brain_files"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "meet:recording-no-transcript + meet:transcript-unreadable (gap-meet.mjs); MACHINE_CHECKS meet-transcript-sweeper (src/pulse/machine.mjs: Drive scanned N min ago, N calls with words on file); src/sales/recordings.test.mjs."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "'Sync recordings from Drive' button",
+    "kind": "control",
+    "calls": "POST /api/company-brain/sync",
+    "tables": [
+      "brain_files"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:company-brain/sync door ping; gap-brain.mjs (brain:embed-key, brain:search-*) checks the brain, not this sync. The button syncs the company brain, not the Meet scan the list is read from."
+  },
+  {
+    "surface": "public/app/sales-floor.html",
+    "control": "Deals going cold (deposit 7+ days quiet, not funded) / Floor discipline / Compliance panel",
+    "kind": "read",
+    "calls": "GET /api/read/sales-floor",
+    "tables": [
+      "call_outcomes",
+      "shifts",
+      "call_compliance_flags"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/sales/metrics.test.mjs; call_compliance_flags is 'schema-only until call recording exists' (147_call_outcomes.sql): a panel with a table and no writer."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Page shell (opens on the closer's next booked call, or ?client_id=)",
+    "kind": "page",
+    "calls": "GET /app/closer-dashboard.html",
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "closer:desk-pages (gap-closer.mjs reads the page for the controls the desk needs) + reg:closer-dashboard; e2e/sales-dashboards.spec.mjs."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Next call resolver (closer-now / up next) and Join call button",
+    "kind": "read",
+    "calls": "GET /api/read/closer-now ; GET /api/read/closer-call?client_id=",
+    "tables": [
+      "tasks",
+      "bookings",
+      "clients",
+      "funding_rounds"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-now.test.mjs; src/sales/cockpit-next-call.pg.test.mjs; e2e/closer-call-rhythm.spec.mjs; e2e/sales-dashboards.spec.mjs; calls:booked-no-join-link (gap-calls.mjs)."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Disposition hotkeys 1-5 + Save outcome / next call (deposit, downsell, callback, no_show, not_a_fit; belief failed; checklist; repair referral)",
+    "kind": "control",
+    "calls": "POST /api/call-outcomes -> call_outcomes row, task done, emit call.completed",
+    "tables": [
+      "call_outcomes",
+      "tasks",
+      "transactions",
+      "events"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "closer:held-disposition (gap-closer.mjs: held call with no disposition row); handoff:call-outcome-no-followup (gap-handoff.mjs); src/sales/call-outcomes.test.mjs; e2e/closer-call-rhythm.spec.mjs. UNNOTICED: cash is read from a payment inside a 48h window, never typed; no card moves (see Sales transitions)."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Send pay link (offer, motion)",
+    "kind": "control",
+    "calls": "POST /api/closer-deck action=send_pay_link -> Commas link + SMS/email",
+    "tables": [
+      "payment_links",
+      "messages",
+      "sales"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "payments:pay-link-webhook + payments:checkout-started-no-link (gap-payments.mjs); keys:checkout-key-read; src/sales/closer-deck.test.mjs; e2e/closer-call-rhythm.spec.mjs ('the pay link is sent from this screen')."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Send contract (template, blanks, copy link)",
+    "kind": "control",
+    "calls": "POST /api/contracts create_draft then {action:send}",
+    "tables": [
+      "contracts",
+      "contract_templates",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "contracts:sent-unsignable + contracts:signed-not-stored + contracts:template-missing (gap-contracts.mjs); e2e/crm-flows.spec.mjs (contracts screen)."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Present (opens present.html deck: soft pull $32, ebook, repair enroll/generate/send)",
+    "kind": "control",
+    "calls": "POST /api/closer-deck send_soft_pull|send_ebook|generate_letters|log_disposition ; POST /api/repair/{enroll,generate,send}",
+    "tables": [
+      "payment_links",
+      "soft_pull_requests",
+      "dispute_letters",
+      "call_outcomes"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/sales/closer-deck.test.mjs; src/http/closer-deck-endpoints.test.mjs; src/http/closer-deck-present.test.mjs; reg:present + reg:closer-deck. Roles: closer, sales_manager, owner, admin; closer deck writes are not shift-gated."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Deal calculators (draw, utilisation guard, success fee, monthly)",
+    "kind": "display",
+    "calls": "GET /api/read/tradelines ; GET /api/read/deal-math ; GET /api/read/lender-matches",
+    "tables": [
+      "tradelines",
+      "crs_results",
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/sales/deal-math.test.mjs; src/calculators tests; crm-data:tradelines + crm-data:lender-matches (gap-crm-links.mjs) read the same records; e2e/bank-amount-suggestion.spec.mjs."
+  },
+  {
+    "surface": "public/app/closer-dashboard.html",
+    "control": "Compliance checklist d1-d5 (call recorded, personal guarantee, month-14 cliff, bank decides, incorporation verified)",
+    "kind": "control",
+    "calls": "saved inside POST /api/call-outcomes checklist",
+    "tables": [
+      "call_outcomes"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/sales/call-outcomes.test.mjs normalizeChecklist; stored as text in call_outcomes.notes ('checklist:{...}'), so it cannot be queried or reported by a check."
+  },
+  {
+    "surface": "public/app/csm-queue.html",
+    "control": "Queue list (open CSM tasks: halfway accountability call, results call, Capital Blueprint exceptions + prep calls)",
+    "kind": "read",
+    "calls": "GET /api/read/csm-queue",
+    "tables": [
+      "tasks",
+      "clients",
+      "v_invoice_aging",
+      "v_client_entitlements",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "csm:queue-api, csm:overdue-unassigned, csm:missing-step (src/pulse/coverage/gap-csm.mjs: paid/funded client with no accountability task); src/http/csm-queue.pg.test.mjs."
+  },
+  {
+    "surface": "public/app/csm-queue.html",
+    "control": "Start shift / End shift",
+    "kind": "control",
+    "calls": "POST /api/shifts {action:clock_in|clock_out}",
+    "tables": [
+      "shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "api/shifts.mjs tests (staff_id/org_id refused from body); csm-queue error text 'no_active_shift'; shifts feed the Sales floor 'on shift' chip."
+  },
+  {
+    "surface": "public/app/csm-queue.html",
+    "control": "Claim this call",
+    "kind": "control",
+    "calls": "PATCH /api/tasks {id, claim:true}",
+    "tables": [
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/tasks-write.pg.test.mjs ('already_claimed' conditional update); shift-gated, owner exempt. csm:overdue-unassigned reds a task due 24h+ ago with no assignee."
+  },
+  {
+    "surface": "public/app/csm-queue.html",
+    "control": "Write down their answers (MID / POST interview form) + Save",
+    "kind": "form",
+    "calls": "POST /api/customer-insights {client_id, task_id, stage, channel, answers}",
+    "tables": [
+      "customer_insights",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/customer-insights tests; src/insights tests; src/http/csm-queue.pg.test.mjs. UNNOTICED: saving does not mark the task done (done is a separate PATCH)."
+  },
+  {
+    "surface": "public/app/csm-queue.html",
+    "control": "Booking link + client name link to Client Control Panel",
+    "kind": "link",
+    "calls": "navigate meeting_url / client-control-panel.html?client_id=",
+    "tables": [
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "crm-links:pages (name link target only); meeting_url is not checked."
+  },
+  {
+    "surface": "tasks",
+    "control": "tasks.done lifecycle (open -> done) as a queue for every role",
+    "kind": "enum",
+    "calls": "api/tasks.mjs PATCH done|claim|assignee_staff_id; createTask (src/lib/create-task.mjs)",
+    "tables": [
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "csm:overdue-unassigned (CSM only); calls:booked-no-outcome; handoff:*; documents:required-unchased. No generic 'any task overdue 24h+ with no assignee' check for closer/setter/funding_advisor/inquiry_specialist roles."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Main Status badge (Funded / lifecycle_status / Sale closed / Deposit paid / Diagnostic paid)",
+    "kind": "display",
+    "calls": "GET /api/dashboard/client?id=",
+    "tables": [
+      "clients",
+      "client_custom_fields"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/client-panel-screen.test.mjs (FHCP.displayStatus). UNNOTICED: custom_fields.lifecycle_status is only ever written 'New Lead', 'Survey Complete' or 'Funding Client' (client-lifecycle.mjs, s-01, f-01, s-06) and wins over the later flags, so a client who paid a deposit still reads New Lead / Survey Complete; only funded=true overrides it."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Do this next + Why it hasn't happened + Active blockers",
+    "kind": "display",
+    "calls": "GET /api/dashboard/client?id= (fulfillment next-action + blockers)",
+    "tables": [
+      "clients",
+      "funding_rounds",
+      "applications",
+      "inquiry_removal_cases",
+      "dispute_cases",
+      "consent"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "fulfillment:next-action + fulfillment:api (gap-fulfillment.mjs); e2e/ccp-headline.spec.mjs; src/fulfillment/next-action tests."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Round panel: number, finalized, status, approved this round, on hold because, opened",
+    "kind": "display",
+    "calls": "GET /api/dashboard/client?id=",
+    "tables": [
+      "funding_rounds",
+      "applications"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/client-panel-screen.test.mjs; e2e/ccp-headline.spec.mjs. UNNOTICED: 'Status' prints funding_rounds.status which never leaves started/open/funded."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Mark round submitted",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards stage_key=round_submitted -> round.submitted",
+    "tables": [
+      "cards",
+      "funding_rounds",
+      "events"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs ('Mark round submitted posts the board's own move'); shift-gated; same writer as the board drag."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Mark funded... (amount box) + Save funded",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards stage_key=funded funded_amount -> round.funded",
+    "tables": [
+      "cards",
+      "funding_rounds",
+      "applications",
+      "funding_closeout",
+      "invoices",
+      "commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs (blank/junk refused; refusal names the banks); e2e/funded-amount.spec.mjs; src/funding/approval-amount-guard.pg.test.mjs."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Close round",
+    "kind": "control",
+    "calls": "POST /api/pipeline-cards stage_key=closed -> round.closeout",
+    "tables": [
+      "cards",
+      "funding_rounds"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-headline.spec.mjs ('Close round posts the closed stage'). Starts the post-funding nurture and the next inquiry gate."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Bank yes / Bank no per lender (approved amount optional) + 'amount needed' flag",
+    "kind": "control",
+    "calls": "POST /api/applications {lender_id|application_id, status, approved_amount, play_name}",
+    "tables": [
+      "applications",
+      "application_decisions",
+      "funding_rounds",
+      "lenders"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "e2e/funded-amount.spec.mjs; e2e/bank-amount-suggestion.spec.mjs; src/applications tests. UNNOTICED: logging a yes moves no card and fires no round.approved (see funding Approved stage)."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Pull TransUnion / Experian / Equifax",
+    "kind": "control",
+    "calls": "POST /api/finance/crs-pull {client_id, bureau}",
+    "tables": [
+      "crs_results",
+      "soft_pull_requests",
+      "consent",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "softpull:request-failed-or-stuck (gap-soft-pull.mjs); consent:required (gap-consent.mjs); keys:credit-pull-live-allowed (gap-keys.mjs); src/finance/soft-pulls tests; shift-gated."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Issue Inquiry Removal",
+    "kind": "control",
+    "calls": "POST /api/inquiry-cases action=create",
+    "tables": [
+      "inquiry_removal_cases",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/inquiry-cases.pg.test.mjs; inquiry:case-stuck reads the case afterwards. Creates a case without moving the board card to Requested."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Send portal sign-in link",
+    "kind": "control",
+    "calls": "POST /api/auth/send-portal-link {client_id}",
+    "tables": [
+      "account_magic_links",
+      "messages",
+      "accounts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap:auth-magic-link-dead + email:magic-link-unqueued (gap-auth.mjs, gap-email.mjs); portal:paid-client-never-signed-in (gap-portal.mjs); src/http/client-panel-portal-link.test.mjs."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Authorized rep: add / remove",
+    "kind": "control",
+    "calls": "POST /api/auth/authorized-rep",
+    "tables": [
+      "accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/auth/authorized-rep tests; e2e/controls-persist.spec.mjs. No pulse row."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Save notes",
+    "kind": "control",
+    "calls": "POST /api/client-notes {client_id, notes}",
+    "tables": [
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs ('Save notes writes the open client and the typed note')."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Soft-pull approval link (copy)",
+    "kind": "control",
+    "calls": "POST /api/soft-pull-approve",
+    "tables": [
+      "soft_pull_requests",
+      "payment_links"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "softpull:approve-click-no-pull + soft-pull:approve-read (gap-soft-pull.mjs)."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Bank tracker (add bank to the list, relationship to-dos, combined approval)",
+    "kind": "control",
+    "calls": "POST /api/blueprint/* (act add_bank_todo)",
+    "tables": [
+      "blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint tests; bank_relationship_todos.state open/done/skipped; job:blueprint-next-funding-sequence-sweeper heartbeat only."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Bank Inbox / Open Funding Matrix links",
+    "kind": "control",
+    "calls": "GET /api/read/bank-inbox?client_id=; navigate lenders.html",
+    "tables": [
+      "bank_inbox",
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/controls-persist.spec.mjs ('Open Bank Inbox shows this client's bank messages'; 'Open Funding Matrix goes to the lender matrix'); beat apply-links covers the lender links."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Client picker (?id= vs ?client_id= alias) + 'No client open' state",
+    "kind": "control",
+    "calls": "GET /api/dashboard/clients",
+    "tables": [
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/ccp-first-paint.spec.mjs; e2e/ccp-present-param-aliases.spec.mjs; crm-data:clients."
+  },
+  {
+    "surface": "public/app/journeys.html",
+    "control": "Journey list + step editor (sms, email, wait, condition, stage, assign, handoff, agent, payment, record)",
+    "kind": "read",
+    "calls": "GET /api/journeys",
+    "tables": [
+      "journeys"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "owner-tools:journeys reads the saved journeys (gap-owner-tools.mjs JOURNEYS_SQL); src/http/journeys.pg.test.mjs; e2e/crm-flows.spec.mjs ('journeys runner loads'). Owner/admin only."
+  },
+  {
+    "surface": "public/app/journeys.html",
+    "control": "Save all journeys (PUT)",
+    "kind": "control",
+    "calls": "PUT /api/journeys {key,name,start,end,desc,nodes}",
+    "tables": [
+      "journeys"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/journeys.pg.test.mjs (findBadSteps refuses a stage step with no pipeline/stage, a wait with no length, a condition with no paths). UNNOTICED: no production code runs the saved steps — only api/read/message-templates.mjs reads journeys.nodes (template catalogue) and src/journeys/runner is a test harness — so editing a journey changes no live automation."
+  },
+  {
+    "surface": "public/app/journeys.html",
+    "control": "'Stage' step type (names pipeline + stage)",
+    "kind": "gap",
+    "calls": "none at run time",
+    "tables": [
+      "journeys",
+      "pipeline_stages"
+    ],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "api/journeys.mjs validates cfg.stage/cfg.pipeline are non-blank but not that they exist in pipeline_stages; nothing executes a stage step. A screen with a stage vocabulary and no link to the schema or the movers."
+  },
+  {
+    "surface": "public/app/journeys.html",
+    "control": "Test against the code (walk every branch, fire real handlers, memory provider)",
+    "kind": "control",
+    "calls": "POST /api/journeys/run",
+    "tables": [
+      "journeys",
+      "events"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/journeys/runner/*.test.mjs; src/http/journeys.pg.test.mjs. Six keys (client, setter, closer, advisor, affiliate, partner) vs docs/journeys eight (role-owner and role-inquiry-remover have no tree)."
+  },
+  {
+    "surface": "public/app/journeys.html",
+    "control": "Ask Claude (AI step suggestions)",
+    "kind": "control",
+    "calls": "POST /api/journeys/ask (holds the model key)",
+    "tables": [
+      "journeys"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:journeys/ask door ping; no test or check calls the model path (and the AI spend is paused per owner memory)."
+  },
+  {
+    "surface": "public/app/client-portal.html",
+    "control": "Portal stepper (8 ticks: booked, diagnostic paid, docs, round started/submitted/approved/funded, finalized; repair letter ticks)",
+    "kind": "display",
+    "calls": "GET /api/read/client-progress ; GET /api/read/portal-summary (src/portal/stepper.mjs)",
+    "tables": [
+      "bookings",
+      "events",
+      "cards",
+      "funding_rounds",
+      "transactions",
+      "payment_links"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "portal:next-step, portal:progress-read-real-client, portal:summary (gap-portal.mjs). UNNOTICED: a tick can come from any of events, cards, funding_rounds.status or a product-name LIKE '%diagnostic%' transaction, so four sources can disagree; action_required reads as approved."
+  },
+  {
+    "surface": "client_waypoints.state",
+    "control": "not_started, in_progress, blocked, done, skipped (owner client|fundhub, due, paid alternative)",
+    "kind": "enum",
+    "calls": "src/waypoints/store.mjs; evaluateWaypoints on analysis.completed/docs.received; src/nudge/regulator.mjs",
+    "tables": [
+      "client_waypoints"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "portal:next-step (gap-portal.mjs); src/waypoints/*.pg.test.mjs; job:waypoint-nudge-sweeper heartbeat; nudges only on rows the client owns."
+  },
+  {
+    "surface": "soft_pull_requests.status",
+    "control": "queued, fulfilled, failed, cancelled",
+    "kind": "enum",
+    "calls": "src/finance/soft-pulls.mjs",
+    "tables": [
+      "soft_pull_requests",
+      "crs_results"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "softpull:request-failed-or-stuck (gap-soft-pull.mjs); src/finance tests. No 'sent' state exists because nothing transmits (077 header)."
+  },
+  {
+    "surface": "paid_service_requests.status",
+    "control": "quoted, awaiting_payment, paid, staged, fulfilled, failed, cancelled, refunded",
+    "kind": "enum",
+    "calls": "src/paid-services/{round,checkout,expire}.mjs; src/handlers/paid-service-payment.mjs; job:paid-checkout-expiry-sweeper",
+    "tables": [
+      "paid_service_requests",
+      "payment_links",
+      "client_waypoints"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "job:paid-checkout-expiry-sweeper heartbeat (src/pulse/heartbeats.mjs); src/paid-services tests; no pulse lane names paid_service_requests (grep gap-*.mjs). A paid request stuck at 'paid' or 'staged' is not checked."
+  },
+  {
+    "surface": "contracts.status",
+    "control": "draft, sent, viewed, signed, void (+ esign: pending, sent, viewed, signed, declined)",
+    "kind": "enum",
+    "calls": "src/contracts/{send,sign}.mjs",
+    "tables": [
+      "contracts",
+      "contract_signers"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "contracts:sent-unsignable, contracts:signed-not-stored (gap-contracts.mjs); job:contract-chaser heartbeat; e2e/crm-flows.spec.mjs."
+  },
+  {
+    "surface": "payment_links.status",
+    "control": "created, sent, paid, expired, void",
+    "kind": "enum",
+    "calls": "src/payment-links/index.mjs; money-chain; job:paid-checkout-expiry-sweeper",
+    "tables": [
+      "payment_links",
+      "invoices",
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "payments:pay-link-webhook, payments:checkout-started-no-link (gap-payments.mjs); beat pay-webhook (src/pulse/beats/beat-pay-webhook.mjs)."
+  },
+  {
+    "surface": "live_trials.status",
+    "control": "pending_eligibility, held_start, provisioned, running, ended, converted, declined, refunded",
+    "kind": "enum",
+    "calls": "src/trials/{store,conversion,provision}.mjs",
+    "tables": [
+      "live_trials",
+      "partners",
+      "affiliates"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "db/migrations/280_live_trials.sql; src/trials tests; e2e/live-white-label-onboard.spec.mjs. No pulse lane reads live_trials (none); a trial that never ends has no clock check."
+  },
+  {
+    "surface": "subscriptions.status / billing attempts",
+    "control": "active, past_due, cancelled; attempts in_flight, succeeded, failed, abandoned",
+    "kind": "enum",
+    "calls": "src/subscriptions/billing-store.mjs; job:subscription-billing-sweeper (hourly :17)",
+    "tables": [
+      "subscriptions",
+      "subscription_charges"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "job:subscription-billing-sweeper heartbeat; src/subscriptions tests; no deep check that a past_due subscription was retried or told."
+  },
+  {
+    "surface": "funding_closeout.status",
+    "control": "open (default; closeout.mjs updates totals)",
+    "kind": "enum",
+    "calls": "src/funding/closeout.mjs",
+    "tables": [
+      "funding_closeout",
+      "funding_closeout_items",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/funding/closeout.test.mjs; billed-fee-check.mjs. No second status value is ever written; 'open' stays 'open' after the invoice is paid (read invoices.status for settlement)."
+  },
+  {
+    "surface": "alerts.state / failed_events.status",
+    "control": "alerts: open, acknowledged, resolved, dismissed; failed_events: pending, exhausted, resolved, ignored",
+    "kind": "enum",
+    "calls": "src/alerts/store.mjs; src/events/bus.mjs dead letter",
+    "tables": [
+      "alerts",
+      "failed_events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-jobs:failed-events (stuck dead-letter rows, gap-jobs.mjs); webhooks:stuck-failed (gap-webhooks.mjs); the pulse itself writes pulse_incidents (src/pulse/records.mjs)."
+  },
+  {
+    "surface": "bookings.status",
+    "control": "booked, rescheduled, cancelled, noshow, completed (text, no CHECK)",
+    "kind": "enum",
+    "calls": "src/bookings/store.mjs recordBooking; DPC-02 marks noshow",
+    "tables": [
+      "bookings",
+      "tasks"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "calls:booked-no-outcome, calls:booking-webhook, webhooks:calendar-booking (gap-calls.mjs, gap-webhooks.mjs); src/bookings tests. No CHECK on the column."
+  },
+  {
+    "surface": "ad_videos.status",
+    "control": "scripted, filming, raw_landed, staged, transcribed, matched, editing, rendered, awaiting_approval, approved, delivered, rejected, failed (13 states)",
+    "kind": "enum",
+    "calls": "src/ad-videos/pipeline.mjs NEXT_STEP table run by job:ad-video-sweeper (every 5 min)",
+    "tables": [
+      "ad_videos"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ad-videos/pipeline.pg.test.mjs; src/ad-videos/transitions-match-the-pipeline.test.mjs; job:ad-video-sweeper heartbeat (ping only); db CHECK refuses approved/delivered non-ad under 4K. No pulse reads a stuck ad_videos row."
+  },
+  {
+    "surface": "marketing_batches / marketing_ideas / ad_scripts / marketing_shoots / marketing_jobs .status",
+    "control": "batches: planned, writing, ready, released, failed; ideas: new, writing, written, failed, dropped; scripts: draft, locked, rejected, filmed, superseded, expired; shoots: planned, filming, uploaded, done; jobs: queued, running, done, failed",
+    "kind": "enum",
+    "calls": "src/marketing/{clock,batch-run,scripts-store,shoot-store,run-queue}.mjs; job:marketing-clock (every 15 min)",
+    "tables": [
+      "marketing_batches",
+      "marketing_ideas",
+      "ad_scripts",
+      "marketing_shoots",
+      "marketing_jobs"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "marketing-queue:stuck-queued, marketing-queue:failed-no-note, marketing-queue:read-api (gap-marketing-queue.mjs) read marketing_jobs only; batches, ideas, scripts and shoots have no pulse check (only job:marketing-clock ping)."
+  },
+  {
+    "surface": "social_posts.status",
+    "control": "draft, awaiting_approval, queued, posting, posted, failed, blocked",
+    "kind": "enum",
+    "calls": "src/social/scheduler.mjs; api/social/posts.mjs; job:social-publish-sweeper (every 5 min)",
+    "tables": [
+      "social_posts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "social:studio-read, social:youtube-last-error, social:video-stats-stale (gap-social.mjs); job:social-publish-sweeper heartbeat. A post stuck 'posting' or 'queued' is not read by id."
+  },
+  {
+    "surface": "next steps in Capital Blueprint: blueprint_decline_steps / next funding sequence",
+    "control": "open, done, skipped (state/status)",
+    "kind": "enum",
+    "calls": "src/blueprint/decline-defense.mjs; job:blueprint-next-funding-sequence-sweeper",
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps",
+      "blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "job:blueprint-next-funding-sequence-sweeper + job:blueprint-closer-ready-sweeper heartbeats; src/blueprint tests; INDEX.md lists both 'not in a slice yet'."
+  },
+  {
+    "surface": "money_agent_tasks.status / money_transfers.status",
+    "control": "agent tasks: queued, needs_approval, approved, claimed, done, failed, cancelled; transfers: approved, authorized, submitted, settled, ... (debit/credit sub-statuses)",
+    "kind": "enum",
+    "calls": "src/finance/money-agent-tasks.mjs; src/finance/money-transfers-store.mjs; jobs finance-os-money-agent, finance-os-money-transfers",
+    "tables": [
+      "money_agent_tasks",
+      "money_transfers"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "job:finance-os-money-agent and job:finance-os-money-transfers heartbeats; src/finance tests; gap-finance-os.mjs checks the pages' reads, not stuck transfers."
+  },
+  {
+    "surface": "pulse:pipeline-motion",
+    "control": "pipeline:repair / pipeline:clients / pipeline:outbound (the three 'pipeline' checks)",
+    "kind": "check",
+    "calls": "src/pulse/pipeline-motion.mjs (SELECT only)",
+    "tables": [
+      "cards",
+      "clients",
+      "messages"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "pipeline:repair = any card in stalled/letters_generated/ready_to_send/response_received (no age; red on first sight); pipeline:clients = client-tagged files with no progress 72h+ (only files tagged client:funding, client:repair-referral or client:diy-letters are judged; DPC-05's header says the old blanket client:repair tag was dropped, so a client with none of the three is never judged); pipeline:outbound = queued message older than 30 min. No check reads Sales, Funding, Inquiry, Hiring or AR card age."
+  },
+  {
+    "surface": "pulse:crm-data",
+    "control": "crm-data:pipeline-cards (cards with no column or no person, every rail)",
+    "kind": "check",
+    "calls": "src/pulse/coverage/gap-crm-links.mjs PIPELINE_CARDS_SQL",
+    "tables": [
+      "cards",
+      "pipeline_stages",
+      "clients",
+      "partners"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "red if the sales rail row is missing, has no stages, or any card cannot show. It does not count archived clients' cards, nor legacy-stage cards, nor a card on a stage the rail should not have."
+  },
+  {
+    "surface": "pulse:stage-vs-fact",
+    "control": "Is the card in the stage the facts say? (paid -> Closed Won, booked -> Booked, funded -> Funded, case closed -> Removed)",
+    "kind": "gap",
+    "calls": "none",
+    "tables": [
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "no check compares cards.stage_id with the facts it should follow (transactions, bookings, funding_rounds, inquiry_removal_cases, dispute_cases). Every board is judged by its read working, never by its cards being right."
+  },
+  {
+    "surface": "inquiry_prep.prep_state",
+    "control": "staging, Ready for Cleanup, promoted, discarded",
+    "kind": "gap",
+    "calls": "src/handlers/inquiry-gate.mjs createPrep (staging); src/inquiry-ops/send.mjs promotes to inquiry_log",
+    "tables": [
+      "inquiry_prep",
+      "inquiry_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/inquiry-ops/send.pg.test.mjs. Enum in schema with no screen: nothing writes 'Ready for Cleanup' or 'discarded' (send.mjs promotes from staging directly) and no endpoint lists prep rows."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Capital Blueprint group: create credit partner file",
+    "kind": "control",
+    "calls": "POST /api/blueprint/staff-actions action=create_credit_partner",
+    "tables": [
+      "clients",
+      "partners",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/credit-partner.mjs; reg:blueprint/staff-actions ping (src/pulse/registry.mjs). No pulse check reads the created file."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Capital Blueprint group: set next funding sequence date (ready_date)",
+    "kind": "control",
+    "calls": "POST /api/blueprint/staff-actions action=set_next_sequence_date",
+    "tables": [
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/blueprint-staff-actions-next-sequence.test.mjs; src/blueprint/next-sequence-math.test.mjs; job:blueprint-next-funding-sequence-sweeper heartbeat (ping) reads the date daily."
+  },
+  {
+    "surface": "public/app/client-control-panel.html",
+    "control": "Capital Blueprint group: offer bank tracker + bank to-do state (open, done, skipped)",
+    "kind": "control",
+    "calls": "POST /api/blueprint/staff-actions action=offer_bank_tracker|add_bank_todo|update_bank_todo_state",
+    "tables": [
+      "blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/blueprint/bank-relationship.mjs; unique (client, bank, kind) index. No test drives the screen buttons; no pulse check."
+  },
+  {
+    "surface": "pipeline:sales",
+    "control": "transition 72h no progress -> task + email/SMS escalation (DPC-05)",
+    "kind": "transition",
+    "calls": "booking.created -> sleep 72h -> src/workflows/dpc-05-no-progress-escalation.mjs",
+    "tables": [
+      "clients",
+      "tasks",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/workflows/dpc-05-no-progress-escalation.test.mjs; pipeline:clients (src/pulse/pipeline-motion.mjs) reds files past 72h not yet escalated; wf receipt row. UNNOTICED: moves no card; judged only for the three client tags."
+  },
+  {
+    "surface": "pipeline:purchase-routing",
+    "control": "transition payment (deposit.paid | sale.closed | payment.received) -> card on Funding Apply Now and/or Repair Intake, then repair enrolment",
+    "kind": "transition",
+    "calls": "src/handlers/purchase-routing.mjs onPurchaseRoute (event bus handler; places a card only when none exists)",
+    "tables": [
+      "sales",
+      "products",
+      "cards",
+      "funding_rounds",
+      "clients",
+      "repair_programs",
+      "tasks"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/handlers/purchase-routing.pg.test.mjs; failures dead-letter to failed_events (gap-jobs:failed-events); payments:paid-no-entitlement and payments:paid-product-unmapped (gap-payments.mjs) read entitlements and product names, not cards. UNNOTICED: the bail paths (no_org, no_client, no_product_path) only console.warn 'Money was recorded; no card was placed' (NO_ROUTE); a paid client whose product is in neither the funding nor the repair category reaches no board and nothing counts them. || PEOPLE: system (bus handler), no staff action"
+  },
+  {
+    "surface": "pipeline:funding_card_stacking",
+    "control": "transition bank email classified APPROVED | COUNTEROFFER -> Approved (F-11)",
+    "kind": "transition",
+    "calls": "mail.response -> src/workflows/f-11-bank-email-event-router.mjs (moveCardToStage -> round.approved)",
+    "tables": [
+      "cards",
+      "tasks",
+      "bank_inbox",
+      "clients"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/workflows/f-11-bank-email-event-router.test.mjs; wf:f-11-bank-email-event-router receipt row (src/pulse/workflow-runs.mjs); webhooks:* checks the mail doors. UNNOTICED: DENIED, MISSING_DOCS, ACTION_REQUIRED and APP_RECEIVED only create a task (F-09/F-06 add follow-ups); the card does not move and Action Required is never entered automatically. || PEOPLE: system (inbound bank mail)"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "transition deposit.paid | round.closeout -> inquiry gate: one case per bureau with items, card to Requested then Awaiting Documents or Specialist Assigned",
+    "kind": "transition",
+    "calls": "src/handlers/inquiry-gate.mjs (event bus handler); emits inquiry.gate.raised / inquiry.docs.needed",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log",
+      "inquiry_prep",
+      "cards",
+      "funding_rounds"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/handlers/inquiry-gate.pg.test.mjs; src/inquiry-ops/gate.test.mjs; inquiry:letter-round (gap-inquiry.mjs: a round that should have a draft letter has none). || PEOPLE: system"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "transition docs.received -> case Blocked -> Queued and card to Specialist Assigned",
+    "kind": "transition",
+    "calls": "src/handlers/inquiry-docs.mjs onDocsReceivedFlipInquiryGate",
+    "tables": [
+      "inquiry_removal_cases",
+      "documents",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/handlers/inquiry-docs.test.mjs; documents:required-unchased and documents:stuck-processing (gap-documents.mjs). || PEOPLE: system (client upload)"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "transition Specialist Send -> case In Progress, card Letters Sent, inquiry_log rows promoted from prep, call scheduled",
+    "kind": "transition",
+    "calls": "api/inquiry-cases action=send -> src/inquiry-ops/send.mjs sendCase -> call-scheduler.mjs",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log",
+      "inquiry_prep",
+      "documents",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/inquiry-ops/send.pg.test.mjs; src/inquiry-ops/call-scheduler.pg.test.mjs; inquiry:case-stuck (gap-inquiry.mjs). || PEOPLE: STAFF role set, doc gate refuses an incomplete packet"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "transition call due -> AI bureau call (sweeper every 15 min) -> Calls In Progress / master_call_state",
+    "kind": "transition",
+    "calls": "job:inquiry-call-sweeper -> src/inquiry-ops/call-scheduler.mjs fireDueCalls -> bureau-call.mjs",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log",
+      "ai_bureau_config"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "inquiry:case-stuck third branch (call due, sweeper had 3 runs, not fired); job:inquiry-call-sweeper heartbeat; calls:ai-dial-no-failure (gap-calls.mjs). || PEOPLE: system; Bland adapter"
+  },
+  {
+    "surface": "pipeline:inquiry_removal",
+    "control": "transition mark_cleared | clear_inquiry -> case Completed + inquiry.removed -> C-03 (tags, task, fraud hold) — card NOT moved",
+    "kind": "transition",
+    "calls": "api/inquiry-cases -> emit inquiry.removed -> src/workflows/c-03-inquiry-removed-resume-or-hold.mjs",
+    "tables": [
+      "inquiry_removal_cases",
+      "inquiry_log",
+      "tasks",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/workflows/c-03-inquiry-removed-resume-or-hold.test.mjs; src/http/inquiry-cases.pg.test.mjs. UNNOTICED: the Removed and Hold columns have no mover, so a cleared case's card stays at Calls In Progress; a fraud alert sets round_hold_reason='Fraud Alert' but never the Hold stage. || PEOPLE: STAFF role set"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "transition public application -> candidate + application (Applied) + rubric score + owner task",
+    "kind": "transition",
+    "calls": "POST /api/hiring/apply -> src/hiring/pipeline.mjs apply()",
+    "tables": [
+      "candidates",
+      "candidate_applications",
+      "application_scores",
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/apply-public.pg.test.mjs; src/hiring/hiring.pg.test.mjs; reg:hiring/apply ping. Protected fields are stripped, not stored. || PEOPLE: applicants (public door)"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "transition group interview result: yes | maybe -> 1:1 Interview (auto); no -> human task, no auto-reject",
+    "kind": "transition",
+    "calls": "src/hiring/pipeline.mjs recordGroupInterview",
+    "tables": [
+      "hiring_interview_attendees",
+      "hiring_interviews",
+      "candidate_applications",
+      "hiring_decisions",
+      "tasks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/booking.pg.test.mjs; src/hiring/hiring.pg.test.mjs. UNNOTICED: no screen, route or job calls recordGroupInterview (grep api src netlify public), so results can only arrive through code and the 'no' review task never opens. || PEOPLE: owner/admin"
+  },
+  {
+    "surface": "pipeline:hiring",
+    "control": "transition outreach cadence: queued email/text to the applicant until booked or cold; never rejects",
+    "kind": "transition",
+    "calls": "job:hiring-outreach-cadence (every 30 min) -> src/hiring/outreach.mjs (messages rows, client_id NULL)",
+    "tables": [
+      "candidate_outreach",
+      "messages",
+      "candidates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "job:hiring-outreach-cadence heartbeat; src/hiring/outreach.pg.test.mjs. Candidate messages ride the same dispatcher as client texts (message-dispatch-sweeper) so gap-sms checks see them only as queued rows. || PEOPLE: system"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "transition partner application -> partners row 'invited' + card Invited + welcome path",
+    "kind": "transition",
+    "calls": "POST /api/public/partner-apply -> placeWhiteLabelRailCard(invited)",
+    "tables": [
+      "partners",
+      "cards",
+      "accounts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-apply-success.spec.mjs; e2e/live-white-label-onboard.spec.mjs; reg:public/partner-apply ping. || PEOPLE: applicant (public)"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "transition approve -> status active, login, brand row, published page, welcome mail, card Active, partner.approved",
+    "kind": "transition",
+    "calls": "POST /api/partners/approve -> approvePartnerApplication (api/public/partner-apply.mjs)",
+    "tables": [
+      "partners",
+      "cards",
+      "accounts",
+      "partner_pages",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "e2e/partner-apply-success.spec.mjs; src/training/entitlement.mjs reads status+agreement. Does NOT stamp agreement_signed_at (payout stays blocked until signed). || PEOPLE: owner/admin only"
+  },
+  {
+    "surface": "pipeline:affiliates_white_label",
+    "control": "transition trial convert / decline -> partners.status active / paused, card NOT moved",
+    "kind": "gap",
+    "calls": "src/trials/conversion.mjs (UPDATE partners SET status)",
+    "tables": [
+      "partners",
+      "cards",
+      "live_trials"
+    ],
+    "impact": "money",
+    "coverage": "none",
+    "evidence": "src/trials tests cover the status change; no code touches the card, so R-08 shows the old stage; no check compares partners.status with the card."
+  },
+  {
+    "surface": "public/app/agent-editor.html",
+    "control": "Promote to live / Return to shadow (agents.status draft -> shadow -> live -> retired)",
+    "kind": "control",
+    "calls": "POST /api/agents action=promote|demote|save|create|run",
+    "tables": [
+      "agents",
+      "agent_runs"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "e2e/agent-editor.spec.mjs ('Promote saves then promotes'); ai-agents:retired and ai-agents:failed-runs (gap-ai-agents.mjs). UNNOTICED: no 'retire' action exists in api/agents.mjs; only setStatus() in src/agents/registry.mjs can set retired; a promote with no runtime records runtime='internal'."
+  },
+  {
+    "surface": "documents.delivery_status",
+    "control": "not_delivered, pending, sent, delivered, failed, bounced (+ signature fields)",
+    "kind": "enum",
+    "calls": "src/documents/register.mjs; src/contracts/send.mjs; src/handlers/contract-signed.mjs",
+    "tables": [
+      "documents",
+      "document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "documents:stuck-processing (gap-documents.mjs reads delivery_status='pending' past its age); e2e/crm-flows.spec.mjs ('age counts from the last state change'). failed/bounced have no check."
+  },
+  {
+    "surface": "generation_jobs.status",
+    "control": "queued, running, succeeded, failed (creative factory)",
+    "kind": "enum",
+    "calls": "src/creative/generate.mjs; job:creative-job-runner (every 2 min)",
+    "tables": [
+      "generation_jobs"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "owner-tools:creative-factory reads the jobs list (gap-owner-tools.mjs); job:creative-job-runner heartbeat; src/creative tests. No check on a job stuck running."
+  },
+  {
+    "surface": "morning_briefs.delivery_status",
+    "control": "dry_run, sent, failed, no_number, held_quiet_hours",
+    "kind": "enum",
+    "calls": "src/ops/morning-brief.mjs; job:evening-brief; job:daily-pulse",
+    "tables": [
+      "morning_briefs"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "beat-brief-link (src/pulse/beats/beat-brief-link.mjs) tests the link of the last sent brief; self-audit.mjs checks yesterday's brief went out; texting-hours law (src/pulse/quiet-hours.mjs)."
+  },
+  {
+    "surface": "erasure_requests.status",
+    "control": "requested, completed, failed",
+    "kind": "enum",
+    "calls": "src/privacy/erasure.mjs; src/banking/revoke.mjs",
+    "tables": [
+      "erasure_requests",
+      "pii_identity",
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/privacy/erasure.test.mjs; src/privacy/erasure.pg.test.mjs; e2e/specialist-desk.spec.mjs gates the button by role. No pulse row; a failed erasure is not reported."
+  },
+  {
+    "surface": "ops_suggestions.status",
+    "control": "open, taken, passed (+ quiet_until)",
+    "kind": "enum",
+    "calls": "src/ops/suggestions.mjs",
+    "tables": [
+      "ops_suggestions"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/ops/suggestions.test.mjs; no pulse check; owner advice list."
+  }
+]

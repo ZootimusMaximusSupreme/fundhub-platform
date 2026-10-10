@@ -1,0 +1,1956 @@
+[
+  {
+    "surface": "public/app/money.js (money.html, financeos.html#overview)",
+    "control": "Connect a bank button (header, and the empty state)",
+    "kind": "button",
+    "calls": [
+      "POST /api/banking/link-token",
+      "GET https://cdn.plaid.com/link/v2/stable/link-initialize.js",
+      "POST /api/banking/link-exchange"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-screen.test.mjs (button renders once); src/http/plaid-link.test.mjs (both handlers, Plaid stubbed). The Plaid window itself is only walked by hand with scripts/plaid-sandbox-link.mjs. reg:money (desk ping of /app/money.html) is a status ping only."
+  },
+  {
+    "surface": "public/app/money-accounts.js (money-accounts.html, financeos.html#accounts)",
+    "control": "Connect a bank button (same Plaid Link flow as the Overview)",
+    "kind": "button",
+    "calls": [
+      "POST /api/banking/link-token",
+      "GET https://cdn.plaid.com/link/v2/stable/link-initialize.js",
+      "POST /api/banking/link-exchange"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts-screen.test.mjs (data-act=connect and the /api/banking/link-token string); same handler tests as the Overview button."
+  },
+  {
+    "surface": "Plaid bank link / Plaid Link script",
+    "control": "Plaid Link script load from cdn.plaid.com when Connect is pressed (error words: bank sign-in window did not load)",
+    "kind": "dependency",
+    "calls": [
+      "GET https://cdn.plaid.com/link/v2/stable/link-initialize.js"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "loadPlaid() in public/app/money.js and money-accounts.js only shows words on failure. No pulse lane, beat or test fetches the Plaid script (gap-funnels reads funnel scripts only)."
+  },
+  {
+    "surface": "api/banking/link-token.mjs",
+    "control": "POST /api/banking/link-token: client (own file, id off the session) or staff FINANCE_OS (client_id in body) mints a Plaid Link token",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/banking/link-token",
+      "Plaid POST /link/token/create"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/plaid-link.test.mjs (405, 403, 404, 503 not_configured, 200, client pinned to own file, affiliate 403). reg:banking/link-token ping (405 counts up). route:banking/link-token sits in src/pulse/tripwires-baseline.json, unsorted. No gap check."
+  },
+  {
+    "surface": "api/banking/link-exchange.mjs",
+    "control": "POST /api/banking/link-exchange: public_token traded for an encrypted item, accounts saved",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/banking/link-exchange",
+      "Plaid POST /item/public_token/exchange",
+      "Plaid POST /accounts/get"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Result is read by gap-banks.mjs banks-active-link-no-accounts and banks-linked-not-on-screen (a saved login with no open account, or an account the money screen would not return, goes red). Handler tests stub completeLink (src/http/plaid-link.test.mjs); no test runs the real completeLink. Real runs are by hand: scripts/plaid-sandbox-link.mjs, scripts/finance-os-sample-v3.mjs."
+  },
+  {
+    "surface": "src/banking/plaid-link.mjs completeLink",
+    "control": "Consent stamp: consent_granted_at set when Link finishes, scope [accounts]; every reader filters it IS NOT NULL",
+    "kind": "effect",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "The stamp is written only inside completeLink's INSERT, and no test runs completeLink (handler tests stub it). The reading side filter is tested (src/banking/plaid-refresh.test.mjs:489). The click is the only consent record: no row in the consent capture flow."
+  },
+  {
+    "surface": "src/banking/plaid-link.mjs, src/finance/money-overview.mjs",
+    "control": "Sandbox label: institution name gets (Plaid sandbox - test data) when linked on the sandbox host; screens show a Test data banner",
+    "kind": "effect",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "Banner side tested: src/finance/money-overview.test.mjs (sandbox true) and src/http/money-screen.test.mjs. Label stamping sits in completeLink, which no test runs. src/ops/morning-brief.mjs plaidLive() reports Money not connected unless PLAID_ENV=production (live today: sandbox only)."
+  },
+  {
+    "surface": "src/banking/plaid.mjs plaidConfigFromEnv",
+    "control": "Config gate: PLAID_CLIENT_ID, PLAID_SECRET, PLAID_TOKEN_ENC_KEY (32 bytes base64), PLAID_ENV in sandbox|development|production; unset answers 503 not_configured, sweeper returns skipped quietly",
+    "kind": "config",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/banking/plaid.test.mjs; src/http/plaid-link.test.mjs (503 names missing keys). Sweeper skip is silent: src/workflows/plaid-transactions-sweeper.test.mjs."
+  },
+  {
+    "surface": "Plaid keys on Netlify",
+    "control": "Are PLAID_CLIENT_ID / PLAID_SECRET still accepted by Plaid, and is PLAID_TOKEN_ENC_KEY set and unchanged",
+    "kind": "dependency",
+    "calls": [
+      "Plaid /link/token/create (only when a client presses Connect)"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Not in gap-keys.mjs LAUNCH_SECRETS, not in beat-vendor-keys.mjs (Twilio, Resend, Commas only), not in any gap lane. A dead or changed key shows up only as banks-sync-stale 3 days later, and only if a live login exists. PLAID_ENV was not production in the 2026-10-09 morning brief (e2e/fixtures/morning-brief-2026-10-09.json)."
+  },
+  {
+    "surface": "src/banking/plaid.mjs encryptPlaidToken / decryptPlaidToken",
+    "control": "Access token encrypted AES-256-GCM, bound to the plaid_items row (item id is AAD); copy into another client's row fails to decrypt",
+    "kind": "effect",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/banking/plaid.test.mjs; src/banking/key-rotation.test.mjs. A changed PLAID_TOKEN_ENC_KEY makes every stored token unreadable (token_decrypt_failed in the refresh, token_unreadable in transfers) with no pulse check on the key itself."
+  },
+  {
+    "surface": "src/banking/plaid.mjs rotatePlaidTokens",
+    "control": "Re-encrypt every stored token under PLAID_TOKEN_ENC_KEY_V2 (no downtime; half-rotated table is normal)",
+    "kind": "script",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/banking/key-rotation.test.mjs, key-rotation.pg.test.mjs. No caller anywhere (grep of src, api, scripts, netlify): it can only be run by hand."
+  },
+  {
+    "surface": "src/banking/plaid-refresh.mjs / plaid-transactions.mjs",
+    "control": "A login Plaid says needs the client to sign in again (ITEM_ERROR) is set link_state=error; every reader then skips it",
+    "kind": "effect",
+    "calls": [],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-banks.mjs banks-plaid-item-error (red when any login is in error, names last_error_code). Staff-only: nothing tells the client. Tests: src/banking/plaid-refresh.test.mjs (ITEM_LOGIN_REQUIRED marks relink, next login still runs)."
+  },
+  {
+    "surface": "Plaid bank link / relink",
+    "control": "Re-link a login that is in error (Plaid Link update mode, or any button that does it)",
+    "kind": "absent",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "NOT FOUND. createLinkToken (src/banking/providers/plaid-http.mjs) sends no access_token, so no update mode. money.js and money-accounts.js have only Connect a bank. Linking again makes a new item and no code retires the old one: link_state is only ever set to active or error, so banks-plaid-item-error keeps counting the old login."
+  },
+  {
+    "surface": "api/money/overview.mjs, public/app/money.js",
+    "control": "Balance freshness shown to the client: header says as of <date> but that date is the time of the page read, balance_as_of is not selected",
+    "kind": "display",
+    "calls": [
+      "GET /api/money/overview"
+    ],
+    "tables": [
+      "bank_accounts",
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "src/finance/money-overview.mjs sets as_of = asOfIso (now) and ACCOUNT_SQL does not select balance_as_of; money.js renderHead prints it. A login stuck for days looks current. Only staff pulse banks-sync-stale sees the age."
+  },
+  {
+    "surface": "Plaid bank link / webhooks",
+    "control": "Plaid webhooks (login required, pending expiration, new transactions)",
+    "kind": "absent",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "NOT FOUND. api/webhooks/[provider].mjs and src/http/router.mjs list no plaid provider, and the link token sends no webhook url. The system learns of a broken login only by polling once a day."
+  },
+  {
+    "surface": "Plaid bank link / OAuth banks",
+    "control": "Link token carries no redirect_uri (OAuth institutions)",
+    "kind": "absent",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "createLinkToken payload (src/banking/providers/plaid-http.mjs:346) is client_name, language, country_codes, user, products only. Plaid's own rule that OAuth banks need a redirect_uri is a vendor fact, not read in this repo. Live walks are sandbox only."
+  },
+  {
+    "surface": "src/workflows/plaid-transactions-sweeper.mjs",
+    "control": "Daily 07:00 UTC pass: for each client with an active login, refresh accounts and balances (never closes or deletes an account)",
+    "kind": "job",
+    "calls": [
+      "Plaid /accounts/get",
+      "Plaid /accounts/balance/get (only if PLAID_REALTIME_BALANCES=1)"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "job:plaid-transactions-sweeper heartbeat (red after 3 days); machine row via slice-08-banks.mjs; gap-banks.mjs banks-sync-stale reads each live login's older stamp and goes red past 3 days. Tests: src/banking/plaid-refresh.test.mjs, src/workflows/plaid-transactions-sweeper.test.mjs."
+  },
+  {
+    "surface": "src/workflows/plaid-transactions-sweeper.mjs",
+    "control": "Daily transactions sync (cursor) then repeating-bill detector",
+    "kind": "job",
+    "calls": [
+      "Plaid /transactions/sync"
+    ],
+    "tables": [
+      "bank_transactions",
+      "recurring_bills",
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Same checks as the account refresh: job:plaid-transactions-sweeper and banks-sync-stale (reads transactions_synced_at). Tests: src/banking/plaid-transactions.test.mjs, src/banking/recurring.test.mjs, src/banking/recurring.pg.test.mjs."
+  },
+  {
+    "surface": "src/banking/plaid-refresh.mjs",
+    "control": "An account Plaid stops listing is only reported as vanished and left as it was",
+    "kind": "effect",
+    "calls": [],
+    "tables": [
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Tally only (refreshClientAccounts totals.vanished). No screen, no pulse row, no board reads it; closed accounts never get closed_at from sync. Tests prove the report: src/banking/plaid-refresh.test.mjs."
+  },
+  {
+    "surface": "api/banking/sync-accounts.mjs",
+    "control": "POST /api/banking/sync-accounts: staff FINANCE re-reads one client's accounts (provider is required: plaid or mock; item_id narrows)",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/banking/sync-accounts",
+      "Plaid /accounts/get"
+    ],
+    "tables": [
+      "bank_accounts",
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/sync-accounts.test.mjs; src/banking/accounts-sync.test.mjs. reg:banking/sync-accounts ping and slice-08-banks door. No screen calls it (no hit in public/)."
+  },
+  {
+    "surface": "src/banking/provider.mjs, mock.mjs",
+    "control": "Mock bank provider: needs BANKING_MOCK_PROVIDER=1; unknown provider value refuses instead of falling back",
+    "kind": "config",
+    "calls": [],
+    "tables": [
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/banking/provider.test.mjs, src/banking/accounts-sync.test.mjs. Rows from the mock carry provider=mock and screens warn. No live check that mock rows are absent from production."
+  },
+  {
+    "surface": "api/banking/sync-liabilities.mjs",
+    "control": "POST /api/banking/sync-liabilities: staff reads card due dates and minimums from Plaid onto statement cycles",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/banking/sync-liabilities",
+      "Plaid /liabilities/get"
+    ],
+    "tables": [
+      "account_statement_cycles",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/sync-liabilities.test.mjs; src/banking/plaid-liabilities.test.mjs. reg:banking/sync-liabilities ping. No screen calls it."
+  },
+  {
+    "surface": "api/banking/sync-transactions.mjs",
+    "control": "POST /api/banking/sync-transactions: staff pulls one client's charges and deposits now",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/banking/sync-transactions",
+      "Plaid /transactions/sync"
+    ],
+    "tables": [
+      "bank_transactions",
+      "recurring_bills"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/plaid-sync-transactions.test.mjs; src/banking/plaid-transactions.test.mjs. reg:banking/sync-transactions ping. No screen calls it."
+  },
+  {
+    "surface": "api/banking/revoke.mjs",
+    "control": "GET /api/banking/revoke?client_id=: list a client's bank logins with account counts (owner, admin)",
+    "kind": "api-action",
+    "calls": [
+      "GET /api/banking/revoke"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/banking-revoke.test.mjs; reg:banking/revoke ping. No screen calls it (no hit in public/)."
+  },
+  {
+    "surface": "api/banking/revoke.mjs",
+    "control": "POST /api/banking/revoke {item_id, reason}: removes OUR stored credential and the login's account rows; keeps transactions; writes audit row",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/banking/revoke"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts",
+      "erasure_requests"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/banking-revoke.test.mjs; src/banking/revoke.test.mjs, revoke.pg.test.mjs. Response says provider_revoked=false on every call. No screen has the control."
+  },
+  {
+    "surface": "Plaid bank link / disconnect",
+    "control": "Tell Plaid to drop the item (/item/remove) when a login is revoked",
+    "kind": "absent",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "NOT FOUND. grep of src, api, scripts finds no /item/remove call; src/banking/revoke.mjs names the seam and leaves it empty. After a revoke the item and its token stay live at Plaid."
+  },
+  {
+    "surface": "Plaid bank link / disconnect",
+    "control": "A client-facing control to disconnect their own bank",
+    "kind": "absent",
+    "calls": [],
+    "tables": [
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "NOT FOUND. api/banking/revoke is owner/admin only and nothing in public/ calls it; money.js, money-accounts.js and money-connections.js have no disconnect button for a Plaid login."
+  },
+  {
+    "surface": "api/banking/accounts.mjs",
+    "control": "Hand-entered accounts: GET list; POST create_account, set_cycle, replace_holdings (deletes rows), import",
+    "kind": "api-action",
+    "calls": [
+      "GET /api/banking/accounts",
+      "POST /api/banking/accounts"
+    ],
+    "tables": [
+      "bank_accounts",
+      "account_statement_cycles"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/banking-accounts.test.mjs; reg:banking/accounts ping. No screen calls this route (finance/bank-accounts and money/accounts are the screen doors)."
+  },
+  {
+    "surface": "api/finance/bank-accounts.mjs, public/app/finance-os.html",
+    "control": "Add by hand, classify personal/business/unknown, close an account",
+    "kind": "api-action",
+    "calls": [
+      "GET/POST /api/finance/bank-accounts"
+    ],
+    "tables": [
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/bank-accounts-endpoints.test.mjs, bank-accounts-endpoints.pg.test.mjs; reg:finance/bank-accounts ping; route in tripwires-baseline.json unsorted."
+  },
+  {
+    "surface": "src/privacy/erasure.mjs",
+    "control": "Client erasure removes plaid_items and cascades bank_accounts; hand-entered accounts scrubbed",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/privacy/erasure"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts",
+      "erasure_requests"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/privacy/erasure.test.mjs, erasure.pg.test.mjs, src/http/privacy-erasure.test.mjs; reg:privacy/erasure ping. Provider token at Plaid is not removed (see disconnect row)."
+  },
+  {
+    "surface": "api/money/overview.mjs",
+    "control": "GET /api/money/overview: client balances, debt, accounts, bills (what the client sees)",
+    "kind": "read",
+    "calls": [
+      "GET /api/money/overview"
+    ],
+    "tables": [
+      "bank_accounts",
+      "plaid_items",
+      "bank_transactions",
+      "recurring_bills"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-banks.mjs banks-linked-not-on-screen mirrors this read's WHERE and goes red when an open linked account would be dropped. Handler tests src/http/money-overview.test.mjs; reg:money/overview ping. Not read by gap-finance-os (its doors are credit, plan, declines, vault, transfers, payments, helper)."
+  },
+  {
+    "surface": "api/read/banking-surface.mjs",
+    "control": "GET /api/read/banking-surface: accounts split personal / business / unknown (owner, admin)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/banking-surface"
+    ],
+    "tables": [
+      "bank_accounts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/banking-surface-gate.test.mjs, src/finance/banking-surface.test.mjs; reg:read/banking-surface ping; scripts/smoke-banking-surface.mjs is a by-hand browser smoke."
+  },
+  {
+    "surface": "api/read/money-map.mjs",
+    "control": "GET /api/read/money-map: due dates, recurring bills, cash in and out, utilization",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/money-map"
+    ],
+    "tables": [
+      "tradelines",
+      "card_liabilities",
+      "bank_accounts",
+      "recurring_bills",
+      "cashflow_reminders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/money-map.test.mjs, src/finance/money-map.test.mjs; reg:read/money-map ping."
+  },
+  {
+    "surface": "api/read/transactions.mjs",
+    "control": "GET /api/read/transactions: one client's bank_transactions, newest first",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/transactions"
+    ],
+    "tables": [
+      "bank_transactions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/transactions.test.mjs; reg:read/transactions ping."
+  },
+  {
+    "surface": "api/money/accounts.mjs, public/app/money-accounts.js",
+    "control": "Accounts page: containers (businesses, personal), Add account by hand, Move to container, Not sorted yet",
+    "kind": "form",
+    "calls": [
+      "GET /api/money/accounts",
+      "POST /api/money/accounts"
+    ],
+    "tables": [
+      "bank_accounts",
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-accounts.test.mjs, money-accounts-screen.test.mjs; reg:money/accounts and reg:money-accounts ping; route in tripwires-baseline.json unsorted."
+  },
+  {
+    "surface": "src/workflows/finance-os-trend-snapshots.mjs",
+    "control": "Daily 07:30 UTC balance snapshots per account, rollups, estimated backfill from transactions",
+    "kind": "job",
+    "calls": [],
+    "tables": [
+      "finance_account_daily",
+      "finance_client_daily",
+      "bank_accounts",
+      "bank_transactions"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "job:finance-os-trend-snapshots heartbeat (src/pulse/heartbeats.mjs, red after 3 days). Tests src/workflows/finance-os-trend-snapshots.test.mjs. Nothing reads whether today's snapshot rows exist."
+  },
+  {
+    "surface": "api/money/trends.mjs, public/app/money-trends.js",
+    "control": "GET /api/money/trends: line charts of balances over time",
+    "kind": "read",
+    "calls": [
+      "GET /api/money/trends"
+    ],
+    "tables": [
+      "finance_account_daily",
+      "finance_client_daily"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/finance/money-trends.test.mjs; reg:money/trends ping."
+  },
+  {
+    "surface": "src/workflows/finance-os-card-due-reminders.mjs",
+    "control": "Daily 16:00 UTC: reads fresh card bills from Plaid, queues one text per card per due date (0 to 3 days out, no payment on file); loans too",
+    "kind": "job",
+    "calls": [
+      "Plaid /liabilities/get"
+    ],
+    "tables": [
+      "account_statement_cycles",
+      "cashflow_reminders",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "job:finance-os-card-due-reminders heartbeat (red after 3 days); tests src/banking/card-due-reminders.test.mjs, src/workflows/finance-os-card-due-reminders.test.mjs. Queue then runs through the shared send path beats. Nothing asks whether a due card got its text. Baseline-unsorted in tripwires."
+  },
+  {
+    "surface": "src/workflows/blueprint-finance-os-alerts.mjs, src/finance/file-alerts/",
+    "control": "Daily 07:30 UTC file-protection alerts: payment timing, promo end, cash cushion, new credit (texts, plus a CSM task on a Blueprint file)",
+    "kind": "job",
+    "calls": [],
+    "tables": [
+      "file_protection_alerts",
+      "bank_accounts",
+      "messages",
+      "tasks"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "job:blueprint-finance-os-alerts heartbeat; slice-07-finance.mjs; tests src/workflows/blueprint-finance-os-alerts.test.mjs and src/finance/file-alerts/*.test.mjs. Alerts read bank_accounts as it stands, so a login stuck in error feeds them old balances. Baseline-unsorted."
+  },
+  {
+    "surface": "src/workflows/finance-os-money-agent.mjs",
+    "control": "Daily 16:30 UTC money helper: one ladder step per late item (reminder, check-in, CSM task); can propose a money move",
+    "kind": "job",
+    "calls": [],
+    "tables": [
+      "money_agent_tasks",
+      "money_agent_log",
+      "messages",
+      "tasks"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "job:finance-os-money-agent heartbeat; src/finance/money-agent.test.mjs, money-agent-tasks.pg.test.mjs. Baseline-unsorted. No deep check on proposals or texts."
+  },
+  {
+    "surface": "api/money/alerts.mjs, public/app/money-alerts.js",
+    "control": "Alerts page: set alert, set promo, set statement close day",
+    "kind": "form",
+    "calls": [
+      "GET /api/money/alerts",
+      "POST /api/money/alerts"
+    ],
+    "tables": [
+      "file_protection_alerts",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs, money-alerts-screen.test.mjs; reg:money/alerts ping."
+  },
+  {
+    "surface": "api/money/transfers.mjs, public/app/money-transfers.js",
+    "control": "GET /api/money/transfers: moves waiting for the client's yes, history, limits, practice or live mode",
+    "kind": "read",
+    "calls": [
+      "GET /api/money/transfers"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_agent_tasks",
+      "bank_accounts"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-finance-os.mjs finance-os:transfers runs the real GET handler for a client with a live link and goes red on 400, 500 or a throw. Tests src/http/money-transfers.test.mjs, money-transfers-screen.test.mjs. Route is baseline-unsorted. Reads the list only, not whether moves are stuck."
+  },
+  {
+    "surface": "api/money/transfers.mjs",
+    "control": "POST propose (staff only): writes a proposal; nothing moves",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/money/transfers"
+    ],
+    "tables": [
+      "money_agent_tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-transfers.test.mjs; src/finance/money-transfer-seam.test.mjs. reg:money/transfers is GET only; POSTs never pinged."
+  },
+  {
+    "surface": "api/money/transfers.mjs, public/app/money-transfers.js",
+    "control": "POST approve (client account owner only): exact from, to, amount, date echoed back; a move dated today is sent at once",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/transfers",
+      "Plaid POST /transfer/authorization/create",
+      "Plaid POST /transfer/create"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_agent_tasks"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/money-transfers.test.mjs (owner only, amount_changed, limits); src/finance/money-transfers.test.mjs, money-transfers.pg.test.mjs; manual script scripts/finance-os-sandbox-transfer.mjs. No pulse lane reads money_transfers (grep of src/pulse)."
+  },
+  {
+    "surface": "api/money/transfers.mjs",
+    "control": "POST cancel (client or staff): Not now, Take it off the list, Stop this move (refused once it reached the bank)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/transfers",
+      "Plaid /transfer/cancel"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_agent_tasks"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/money-transfers.test.mjs; src/finance/money-transfers.test.mjs."
+  },
+  {
+    "surface": "src/workflows/finance-os-money-transfers.mjs",
+    "control": "Every 15 minutes: expire stale proposals (3 days), send approved moves due, read Plaid transfer events, start the credit leg when the debit is available",
+    "kind": "job",
+    "calls": [
+      "Plaid /transfer/authorization/create",
+      "Plaid /transfer/create",
+      "Plaid /transfer/event/sync",
+      "Plaid /transfer/ledger/get"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_transfer_events",
+      "money_transfer_sync_cursors",
+      "money_agent_tasks"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "job:finance-os-money-transfers heartbeat (red after 45 minutes); src/workflows/finance-os-money-transfers.test.mjs, src/finance/money-transfers.test.mjs. Off unless FINANCE_OS_TRANSFER_MAX_CENTS and DAILY_MAX are set. A stuck, failed or returned move is not read by any check. Baseline-unsorted."
+  },
+  {
+    "surface": "src/finance/money-transfers.mjs transferMode",
+    "control": "Gate: sandbox host unless PLAID_ENV=production AND FINANCE_OS_TRANSFERS_LIVE=1; per-move and per-day limits in cents; unset means off",
+    "kind": "config",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/finance/money-transfers.test.mjs (transferMode reasons); src/banking/plaid-transfer.test.mjs. Banner text is on the page (public/app/money-transfers.js). No pulse row says which mode is live."
+  },
+  {
+    "surface": "src/banking/plaid-transfer.mjs",
+    "control": "Plaid Transfer provider: debit leg then credit leg, ACH class by account kind, idempotency key on authorize and create",
+    "kind": "dependency",
+    "calls": [
+      "Plaid Transfer API"
+    ],
+    "tables": [
+      "money_transfers",
+      "plaid_items"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/banking/plaid-transfer.test.mjs; src/finance/money-transfers.pg.test.mjs. Plaid's own limit (no transfers between two accounts of the same person) is in the file header; sandbox only today."
+  },
+  {
+    "surface": "src/finance/money-transfers.mjs",
+    "control": "Late ACH return watch: keeps listening 70 days after a move ends; a return fails the leg and closes the task",
+    "kind": "effect",
+    "calls": [
+      "Plaid /transfer/event/sync"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_transfer_events"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/finance/money-transfers.test.mjs. Runs inside the 15 minute job, so it has the same ping only: job:finance-os-money-transfers."
+  },
+  {
+    "surface": "api/money/connections.mjs, public/app/money-connections.js",
+    "control": "GET connections: the client's own merchant processors (Commas, Whop, open API), containers, open_api_url",
+    "kind": "read",
+    "calls": [
+      "GET /api/money/connections"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections.test.mjs, money-connections-screen.test.mjs; reg:money/connections ping. No gap lane reads merchant_connections."
+  },
+  {
+    "surface": "api/money/connections.mjs",
+    "control": "Connect Commas / Whop / API: create connection (push mode shows webhook url and signing secret slot; open API shows its key once)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:create}"
+    ],
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections.test.mjs; src/merchant/store.test.mjs. Key shown once, only sha256 stored."
+  },
+  {
+    "surface": "api/money/connections.mjs",
+    "control": "Save API key (pull mode): encrypted, one short pull runs at once so a bad key shows now",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:api_key}",
+      "GET client's processor API"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections.test.mjs; src/merchant/sync.test.mjs; src/merchant/providers/providers.test.mjs."
+  },
+  {
+    "surface": "api/money/connections.mjs",
+    "control": "Sync now (3 pages) and Disable",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:sync|disable}"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections.test.mjs; src/merchant/sync.test.mjs."
+  },
+  {
+    "surface": "src/http/router.mjs merchant webhooks",
+    "control": "Per-connection webhook url /api/webhooks/merchant-whop|commas/<connection id> (client pastes it into their processor); signature checked per connection",
+    "kind": "link",
+    "calls": [
+      "POST /api/webhooks/merchant-<provider>/<connection id>"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections.test.mjs (Whop: webhook url and secret, then a signed delivery). Not pinged: a GET answers 405 by design (registry reason under merchant/events)."
+  },
+  {
+    "surface": "api/merchant/events.mjs",
+    "control": "Open API: POST /api/merchant/events with a per-connection Bearer key",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/merchant/events"
+    ],
+    "tables": [
+      "merchant_events",
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-connections.test.mjs (open API: key once, events in, idempotent); src/merchant/normalize.test.mjs. ALLOWED_UNMONITORED in registry (POST only); route:merchant/events baseline-unsorted."
+  },
+  {
+    "surface": "src/workflows/merchant-pull-sweeper.mjs",
+    "control": "Daily 07:30 UTC: read every live pull connection with the client's own key",
+    "kind": "job",
+    "calls": [
+      "GET each client's processor API"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "job:merchant-pull-sweeper heartbeat; src/merchant/sync.test.mjs. Failure is written to last_sync_error on the row, and no pulse lane reads that column."
+  },
+  {
+    "surface": "api/money/banks.mjs, public/app/money-banks.js",
+    "control": "Bank strategy: plan a bank, open account, record deposit, skip a bank, set next funding sequence date (staff writes; client reads)",
+    "kind": "form",
+    "calls": [
+      "GET/POST /api/money/banks"
+    ],
+    "tables": [
+      "blueprint_bank_relationship_todos",
+      "bank_relationship_deposits",
+      "bank_accounts",
+      "lenders"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-banks.test.mjs, money-banks-screen.test.mjs; src/finance/bank-strategy.test.mjs; reg:money/banks ping."
+  },
+  {
+    "surface": "src/adapters/lendflow.mjs",
+    "control": "Lendflow alt-fin: submit application POST and signed webhook",
+    "kind": "api-action",
+    "calls": [
+      "POST https://api.lendflow.com/api/v1/applications",
+      "POST /api/webhooks/lendflow"
+    ],
+    "tables": [
+      "applications"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/adapters/lendflow.test.mjs. gap-keys.mjs says no caller and both LENDFLOW keys are absent on Netlify; the file header marks the field paths and signature header as unverified."
+  },
+  {
+    "surface": "src/handlers/comms.mjs, src/workflows/f-11-bank-email-event-router.mjs",
+    "control": "Bank decision emails (Mailgun inbound): classified into bank_inbox, then task and approval or counter stage move",
+    "kind": "job",
+    "calls": [
+      "POST /api/webhooks/mailgun"
+    ],
+    "tables": [
+      "bank_inbox",
+      "tasks",
+      "cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/handlers/comms.test.mjs, src/workflows/f-11-bank-email-event-router.test.mjs; gap-webhooks.mjs names the mailgun door and its receipts. job:f-11-bank-email-event-router is baseline-unsorted. Nothing asks whether a bank approval email became a task."
+  },
+  {
+    "surface": "api/read/bank-inbox.mjs",
+    "control": "GET /api/read/bank-inbox?client_id=: bank messages and amount candidates for one client",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/bank-inbox"
+    ],
+    "tables": [
+      "bank_inbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/bank-amount-suggestion.test.mjs; e2e/bank-amount-suggestion.spec.mjs; reg:read/bank-inbox ping."
+  },
+  {
+    "surface": "public/app/lenders.html",
+    "control": "Lender list: filters, Apply filters, list tabs (lender list, bureau mismatch queue, AI bureau config)",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/lenders"
+    ],
+    "tables": [
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-crm-links.mjs crm-data:lenders (book count and list read through the real library; red on empty or a failed read); e2e/lenders.spec.mjs, e2e/integration-round.spec.mjs; reg:read/lenders and reg:lenders-desk pings."
+  },
+  {
+    "surface": "public/app/lenders.html",
+    "control": "Row Save (inline edit of Name, Apply URL, bureaus, tier, active) and Add blank row",
+    "kind": "button",
+    "calls": [
+      "POST /api/lenders {action:save|create}"
+    ],
+    "tables": [
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders.pg.test.mjs, lenders-role-gate.test.mjs, src/lenders/lenders.test.mjs; reg:lenders ping (POST answers 405 to GET). A typed bad Apply URL is caught only later by the apply-links beat."
+  },
+  {
+    "surface": "public/app/lenders.html",
+    "control": "Import CSV and Export CSV",
+    "kind": "button",
+    "calls": [
+      "POST /api/lenders {action:import}",
+      "GET /api/read/lenders?format=csv"
+    ],
+    "tables": [
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/lenders/csv.test.mjs, src/http/lenders.pg.test.mjs. Import blanks a field when the cell is empty (loader script header says so)."
+  },
+  {
+    "surface": "public/app/lenders.html",
+    "control": "Bureau mismatch queue: Confirm, Corrected, Dismiss; log an observation",
+    "kind": "button",
+    "calls": [
+      "POST /api/lender-observations",
+      "GET /api/read/lender-observations"
+    ],
+    "tables": [
+      "lender_bureau_observations"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/lenders/lenders.test.mjs and src/http/lenders.pg.test.mjs; e2e/lenders.spec.mjs (tab switch); reg:lender-observations and reg:read/lender-observations pings."
+  },
+  {
+    "surface": "api/read/lender-matches.mjs, public/app/client-control-panel.html",
+    "control": "Lenders that fit this client (state, inquiry sensitivity, bureau rotation): the Funding Apply door list",
+    "kind": "read",
+    "calls": [
+      "GET /api/read/lender-matches?client_id="
+    ],
+    "tables": [
+      "lenders",
+      "clients",
+      "crs_results"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-crm-links.mjs crm-data:lender-matches runs matchForClient for a real client and goes red if the book is on file but the match read says empty; src/lenders/match.test.mjs; reg:read/lender-matches ping."
+  },
+  {
+    "surface": "public/assets/lenders/*",
+    "control": "Bank logo tiles (lenders.logo_path, placeholder.svg fallback)",
+    "kind": "display",
+    "calls": [
+      "HEAD /assets/lenders/<file>"
+    ],
+    "tables": [
+      "lenders"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-crm-links.mjs crm-links:bank-logos (newest 10 plus a rotating 40 a day, HEAD over HTTP; red on a missing file or bad path); src/lenders/resolve-logo.test.mjs."
+  },
+  {
+    "surface": "docs/legacy-strong/lenders-legacy-strong.csv, scripts/lenders-import-alec.mjs",
+    "control": "Loaders: dry run default, --confirm writes, refuses partial sheet, lists what it would blank; other loaders lenders-import-carl-barton, lenders-add-personal-loans, lenders-personal-apply-urls, lenders-cleanup-dedupe",
+    "kind": "script",
+    "calls": [],
+    "tables": [
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "Run by hand, no test file for the scripts. The legacy CSV holds 306 data rows today, 122 with an application_url, 306 with a Notion lender_row_url (CLAUDE.md quoted 313). The live table is bigger (beat doc: about 987 distinct apply addresses)."
+  },
+  {
+    "surface": "src/pulse/beats/beat-apply-links.mjs",
+    "control": "Apply link health, hourly: up to 40 stored application_url addresses per run (suspects first), classified OK / WALL / HARD / SLOW / BAD_URL; a once-good address that fails twice in one run goes red",
+    "kind": "probe",
+    "calls": [
+      "GET each lender application_url"
+    ],
+    "tables": [
+      "lenders",
+      "pulse_bank_links"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "beat-apply-links.mjs (damp 2, covers route:lenders, desk:lenders.html, desk:client-control-panel.html); src/pulse/beats/lib/bank-classify.test.mjs. Limits stated in its header: 200 on a dead link id for mycommunitycc.com reads OK; a bank bot wall never goes red."
+  },
+  {
+    "surface": "public/app/client-control-panel.html, public/app/proxy-apply.js",
+    "control": "Lender row Apply button: launches a geo-matched proxy session, opens the bank's application page, shows the client's own email for the bank form",
+    "kind": "button",
+    "calls": [
+      "POST /api/proxy/launch",
+      "POST /api/proxy/end"
+    ],
+    "tables": [
+      "proxy_sessions",
+      "applications",
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-fulfillment.mjs fulfillment:apply-blocked (a failed proxy session with no reason, or one stuck verifying over 10 minutes, goes red); src/proxy/launch.test.mjs, sessions.test.mjs, bank-form-email.test.mjs; src/adapters/oxylabs.test.mjs. No check that Oxylabs credentials still work."
+  },
+  {
+    "surface": "api/proxy/launch.mjs",
+    "control": "POST /api/proxy/launch (owner, funding advisor): needs application_url on the lender row, client city or state, Oxylabs login; verifies the exit location",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/proxy/launch",
+      "Oxylabs pr.oxylabs.io:7777",
+      "GET https://ip.oxylabs.io/location"
+    ],
+    "tables": [
+      "proxy_sessions",
+      "lenders",
+      "applications",
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/proxy/launch.test.mjs, src/proxy/launch-limits.test.mjs; reg:proxy/launch ping (POST only, 405); route in tripwires-baseline.json unsorted. OXYLABS_* keys are not in any key check."
+  },
+  {
+    "surface": "api/proxy/end.mjs",
+    "control": "POST /api/proxy/end: end the Apply session (owner any, advisor own)",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/proxy/end"
+    ],
+    "tables": [
+      "proxy_sessions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/proxy/sessions.test.mjs; reg:proxy/end ping."
+  },
+  {
+    "surface": "extension/ (Chrome extension), src/proxy/extension-manifest.test.mjs",
+    "control": "Chrome extension that routes the browser through the proxy for the Apply session",
+    "kind": "script",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/proxy/extension-manifest.test.mjs checks the manifest only. When the extension is missing the screen falls back to a manual proxy modal (public/app/proxy-apply.js)."
+  },
+  {
+    "surface": "lenders.lender_row_url",
+    "control": "Notion row link stored for every legacy lender (306 of 306 on app.notion.com)",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "Not read by the apply-links beat (only application_url), the logo check or any test; a Notion move or permission change would break the link silently."
+  },
+  {
+    "surface": "public/climate/index.html, api/public/climate-match.mjs, api/climate.mjs",
+    "control": "Lending climate lead magnet: map data carries each lender's application_url; POST files a lead through the homepage survey path",
+    "kind": "page",
+    "calls": [
+      "GET /api/climate",
+      "GET/POST /api/public/climate-match"
+    ],
+    "tables": [
+      "lenders",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/climate-match.test.mjs, src/climate/engine.test.mjs; reg:climate-index and reg:public/climate-match pings. Whether the page shows a visitor an Apply link was not confirmed from the built chunk; link health comes from the apply-links beat."
+  },
+  {
+    "surface": "api/auth/magic-link.mjs, public/portal-login.html",
+    "control": "Request a sign-in link: client types email, uniform 200, 15 minute single-use link, 3 per email and 15 per IP per 15 minutes",
+    "kind": "form",
+    "calls": [
+      "POST /api/auth/magic-link"
+    ],
+    "tables": [
+      "account_magic_links",
+      "messages",
+      "message_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-auth.mjs gap:auth-magic-link-dead (issued link with no email queued) and gap:auth-magic-link-template; gap-email.mjs email:magic-link-unqueued; beat-doors-live.mjs door-portal-login and door-magic-link; src/auth/magic-link.test.mjs, src/http/magic-link-endpoints.pg.test.mjs; e2e/login.spec.mjs. Tripwire: route:auth/magic-link."
+  },
+  {
+    "surface": "public/portal-login.html (?t=token), api/auth/magic-link-verify.mjs",
+    "control": "Click the emailed link: page POSTs the token once, strips it from the address, makes the account and session",
+    "kind": "link",
+    "calls": [
+      "POST /api/auth/magic-link-verify"
+    ],
+    "tables": [
+      "account_magic_links",
+      "accounts",
+      "account_sessions"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-auth.mjs gap:auth-signin-no-session (link spent, no session made) and gap:auth-session-read; src/auth/magic-link.test.mjs, magic-link.pg.test.mjs. Expiry (15 minutes) and one-use are by design; a scanner opening the static page spends nothing."
+  },
+  {
+    "surface": "src/auth/magic-link.mjs issuePortalLinkForClient, api/auth/send-portal-link.mjs",
+    "control": "Staff button Send portal link (owner, admin) in client control panel: mints a link, queues the email, returns the url to read aloud",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/send-portal-link"
+    ],
+    "tables": [
+      "account_magic_links",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "src/http/client-panel-portal-link.test.mjs; gap:auth-magic-link-dead; tripwire route:auth/send-portal-link."
+  },
+  {
+    "surface": "src/auth/magic-link.mjs (booking confirm)",
+    "control": "Booking-confirm portal link: same single-use link but 365 days (BOOKING_CONFIRM_LINK_TTL_MINUTES) inside S-04B confirm and reminder emails",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "account_magic_links",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-handoff.mjs handoff:booking-no-confirm and handoff:reminder-missing (a booking with no confirm or reminder email); src/workflows/s-04b-booking-reminders.test.mjs (asserts no empty href)."
+  },
+  {
+    "surface": "src/auth/magic-link.mjs portalLoginUrl, src/workflows/messaging.mjs clientContext",
+    "control": "Tokenless fallback and merge tags portal_url, portal_login_url, CLIENT_PORTAL_URL, custom_values.portal_link",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "clients",
+      "message_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/workflows/messaging.test.mjs; src/workflows/s-04b-booking-reminders.test.mjs. Host comes from APP_BASE_URL then URL then fundhub.ai (see host row). No pulse reads sent bodies."
+  },
+  {
+    "surface": "api/auth/invite.mjs, public/login.html, public/app/staff-teams.html",
+    "control": "Staff invite link: single use, 7 days, mailed through Resend (not the message queue)",
+    "kind": "link",
+    "calls": [
+      "POST /api/auth/invite",
+      "POST /api/auth/reset"
+    ],
+    "tables": [
+      "password_resets",
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-staff.mjs (invited staff with no unused unexpired invite link goes red); src/auth/invite.test.mjs, src/http/staff-invite.test.mjs; reg:auth/invite ping; baseline-unsorted route:auth/invite."
+  },
+  {
+    "surface": "api/auth/reset.mjs, api/auth/admin-reset.mjs, public/reset-password.html",
+    "control": "Password reset link: 1 hour, single use; staff admin-reset returns the link to read aloud",
+    "kind": "link",
+    "calls": [
+      "POST /api/auth/reset",
+      "POST /api/auth/admin-reset"
+    ],
+    "tables": [
+      "password_resets",
+      "staff",
+      "accounts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-auth.mjs gap:auth-reset-mail (reset table works, Resend keys present, Resend sent something in 7 days); src/auth/invite.test.mjs; reg:auth/reset and reg:auth/admin-reset pings; reg:reset-password page ping."
+  },
+  {
+    "surface": "api/auth/authorized-rep.mjs, src/auth/authorized-rep.mjs",
+    "control": "Authorized representative: staff add or replace; a magic link is minted and shown; texts and emails for that file go to the rep with portal links pointed at the rep's email",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/authorized-rep"
+    ],
+    "tables": [
+      "client_authorized_reps",
+      "accounts",
+      "account_magic_links"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/auth/authorized-rep.pg.test.mjs, src/http/authorized-rep-screen.test.mjs; reg:auth/authorized-rep ping. The rep-pointing of message links is only unit tested."
+  },
+  {
+    "surface": "api/payment-links.mjs",
+    "control": "Create a payment link (Commas checkout session or built url) for a named client and reason",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/payment-links {action:create}",
+      "Commas POST /checkout-sessions"
+    ],
+    "tables": [
+      "payment_links",
+      "invoices"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-payments.mjs payments:checkout-started-no-link, payments:pay-link-webhook, payments:paid-no-entitlement; src/http/payment-links-endpoints.test.mjs, src/payment-links/index.test.mjs; tripwire route:payment-links; keys:checkout-key-read."
+  },
+  {
+    "surface": "api/payment-links.mjs",
+    "control": "Send a payment link (SMS with payment_link.url) and Expire a link",
+    "kind": "button",
+    "calls": [
+      "POST /api/payment-links {action:send|expire}"
+    ],
+    "tables": [
+      "payment_links",
+      "messages"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/payment-links-endpoints.test.mjs; template seed db/seed/007_payment_link_template.sql; link stays created if the template is not approved."
+  },
+  {
+    "surface": "src/sales/closer-deck.mjs, public/app/present.js, closer-call.js, closer-dashboard.html",
+    "control": "Closer buttons: send pay link, send soft pull approval link, send ebook",
+    "kind": "button",
+    "calls": [
+      "POST /api/closer-deck {action:send_pay_link|send_soft_pull|send_ebook}"
+    ],
+    "tables": [
+      "payment_links",
+      "messages",
+      "soft_pull_requests"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/closer-deck-endpoints.test.mjs, closer-deck-present.test.mjs, src/sales/closer-deck.test.mjs; reg:closer-deck ping. Ebook attachment is a placeholder asset (closer-deck.mjs:721)."
+  },
+  {
+    "surface": "src/workflows/slo-infinite-drip.mjs, slo-no-reply-197.mjs, slo-genuine-followup.mjs",
+    "control": "{{pay_url}} in roadmap follow-up texts and emails (checkout url or discounted checkout url built from a ref)",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "messages",
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-email.mjs email:drip-step-no-email; gap-handoff.mjs handoff:contact-no-followup; tripwires job:slo-infinite-drip, job:slo-no-reply-197, job:slo-genuine-followup. Wrong or empty pay_url inside a sent body is not read."
+  },
+  {
+    "surface": "public/roadmap/pay.html, api/public/slo-checkout.mjs",
+    "control": "Roadmap checkout page: card box and price from the till (GET price, POST mints the Commas link)",
+    "kind": "page",
+    "calls": [
+      "GET/POST /api/public/slo-checkout",
+      "Commas"
+    ],
+    "tables": [
+      "payment_links",
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs offer:roadmap-pay and funnel:order-price-matches-till; beat-doors-live.mjs door-pay-page and door-slo-checkout; gap-payments.mjs payments:checkout-started-no-link; tripwires page:roadmap/pay.html and route:public/slo-checkout."
+  },
+  {
+    "surface": "public/app/payment-success.html, src/payments/commas-api.mjs",
+    "control": "Return page after paying (success url from PUBLIC_BASE_URL)",
+    "kind": "redirect",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "reg:payment-success ping only (desk file list); baseline-unsorted desk:payment-success.html. Success url is built from PUBLIC_BASE_URL (src/payments/commas-api.mjs:360)."
+  },
+  {
+    "surface": "api/webhooks/[provider].mjs (commas)",
+    "control": "The URL Commas calls with payment receipts",
+    "kind": "link",
+    "calls": [
+      "POST /api/webhooks/commas"
+    ],
+    "tables": [
+      "commas_inbox",
+      "transactions"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "beat-pay-webhook.mjs (secret present, door mounted 405, sweeper alive, inbox not stuck; hourly); gap-payments.mjs payments:commas-webhook-route; gap-webhooks.mjs. Cannot prove Commas still sends (header says so)."
+  },
+  {
+    "surface": "src/documents/signed-url.mjs, api/documents/[id].mjs",
+    "control": "Document signed url /api/documents/<id>?v&exp&sig: 15 minutes default, 7 days max; secret DOCUMENT_URL_SECRET",
+    "kind": "link",
+    "calls": [
+      "GET /api/documents/<id>"
+    ],
+    "tables": [
+      "documents",
+      "document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-documents.mjs documents:cannot-open (HEAD of stored files for document rows) and documents:upload-store; src/documents/signed-url.test.mjs, src/http/documents-html-guard.pg.test.mjs, download-route.pg.test.mjs. Route excused in registry ALLOWED_UNMONITORED."
+  },
+  {
+    "surface": "api/documents-download.mjs, public/progress.html, public/app/documents.html",
+    "control": "Fresh link mint for a signed-in caller (the Download control)",
+    "kind": "button",
+    "calls": [
+      "GET /api/documents-download?id="
+    ],
+    "tables": [
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/documents-download.pg.test.mjs; reg:documents-download ping (401 counts up); route in tripwires-baseline.json unsorted."
+  },
+  {
+    "surface": "src/contracts/signed-link.mjs, public/contract.html, api/contracts/sign.mjs",
+    "control": "Contract signing link /contract.html?id&exp&sig: 30 days, no session; CONTRACT_URL_SECRET or DOCUMENT_URL_SECRET",
+    "kind": "link",
+    "calls": [
+      "GET/POST /api/contracts/sign"
+    ],
+    "tables": [
+      "contracts",
+      "contract_signers",
+      "document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-contracts.mjs contracts:sent-unsignable, contracts:sign-route (forged link must answer 404, not 503), contracts:signed-not-stored; src/contracts/signed-link.test.mjs, src/http/contracts-endpoints.pg.test.mjs; e2e/crm-flows.spec.mjs; tripwire route:contracts/sign. Bare GET excused on purpose."
+  },
+  {
+    "surface": "api/contracts.mjs, src/contracts/send.mjs",
+    "control": "Staff send a contract: emails the signing link",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts"
+    ],
+    "tables": [
+      "contracts",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-contracts.mjs contracts:sent-unsignable; src/http/contract-send.test.mjs, src/contracts/notify.pg.test.mjs; job:contract-chaser heartbeat."
+  },
+  {
+    "surface": "src/consent/approve-token.mjs, public/app/soft-pull-approve.html, api/soft-pull-approve.mjs",
+    "control": "Soft pull approval link (6 hours, 24 hour cap, DOCUMENT_URL_SECRET): client grants consent and enters identity on the call",
+    "kind": "link",
+    "calls": [
+      "GET/POST /api/soft-pull-approve"
+    ],
+    "tables": [
+      "soft_pull_requests",
+      "client_consents",
+      "pii_identity"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-soft-pull.mjs soft-pull:approve-page, approve-read, approve-signed-read (signs a link for a real client and runs the real handler read), softpull:approve-click-no-pull; src/consent/approve-token.test.mjs, src/http/soft-pull-approve.test.mjs; tripwire route:soft-pull-approve."
+  },
+  {
+    "surface": "public/roadmap/pull.html, api/public/slo-pull.mjs, api/public/slo-status.mjs",
+    "control": "Paid-buyer pull form (ref + client_id pair is the credential) and status poll",
+    "kind": "page",
+    "calls": [
+      "POST /api/public/slo-pull",
+      "GET /api/public/slo-status"
+    ],
+    "tables": [
+      "soft_pull_requests",
+      "payment_links"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs offer:roadmap-pull; gap-soft-pull.mjs softpull:paid-form-not-filled-2h and softpull:request-failed-or-stuck; tripwires page:roadmap/pull.html, route:public/slo-pull; reg:public/slo-status ping."
+  },
+  {
+    "surface": "src/workflows/slo-pack-delivery.mjs, src/slo/deliver.mjs",
+    "control": "Pack delivery email: saves letter files, then queues the funding delivery email pointing at the portal library",
+    "kind": "job",
+    "calls": [],
+    "tables": [
+      "documents",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-underwrite.mjs uw-paid-roadmap-no-pack, uw-pack-files-incomplete, uw-pack-email-not-queued; tripwire job:slo-pack-delivery; src/slo/deliver.test.mjs."
+  },
+  {
+    "surface": "public/progress.html (client progress page)",
+    "control": "Client progress page: score, checklist, next step, document download links, share link",
+    "kind": "page",
+    "calls": [
+      "GET /api/read/client-progress",
+      "GET /api/documents-download"
+    ],
+    "tables": [
+      "clients",
+      "documents",
+      "affiliates"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-portal.mjs portal:progress-read-real-client; tripwire page:progress.html; src/http/documents-download.pg.test.mjs; e2e/progress-page.spec.mjs."
+  },
+  {
+    "surface": "src/storage/r2-sign.mjs",
+    "control": "Signed Cloudflare R2 links (ad video bucket): signed GET 24 hours for Submagic and Meta, signed PUT for the video worker",
+    "kind": "link",
+    "calls": [
+      "Cloudflare R2 presigned GET/PUT"
+    ],
+    "tables": [
+      "ad_videos"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/storage/r2-sign.test.mjs (reproduces the AWS worked example); pipeline tests src/ad-videos/pipeline.test.mjs. Dead R2 keys show only as a stuck ad video."
+  },
+  {
+    "surface": "api/public/decline-autopsy-report.mjs, src/autopsy/link.mjs",
+    "control": "Signed report link for the $27 Decline Autopsy (SHELVED 2026-08-31, route commented out)",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "decline_autopsy_uploads",
+      "decline_autopsy_rows"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Shelved by the owner: registry ALLOWED_UNMONITORED explains the 404 is by design. src/autopsy/*.test.mjs test the parser and scorer, not the routed door (not routed)."
+  },
+  {
+    "surface": "src/messaging/unsubscribe.mjs, src/workflows/messaging.mjs, src/messaging/dispatch.mjs",
+    "control": "Unsubscribe link in every client email footer and in List-Unsubscribe one-click headers (src/messaging/providers/resend.mjs:218): HMAC, scheme unsub-v1, 1 year, channel signed; UNSUBSCRIBE_TOKEN_SECRET or DOCUMENT_URL_SECRET (32+ chars); mail still sends with no link if the secret is bad",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "messages",
+      "message_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-opt-out.mjs opt-out:unsubscribe-link (signs, puts in a footer, verifies, refuses a forged one; no database); beat-email-path.mjs unsubscribe-secret step; src/messaging/unsubscribe.test.mjs, dispatch.test.mjs. Does not read a real sent footer."
+  },
+  {
+    "surface": "public/unsubscribe.html, api/public/unsubscribe.mjs",
+    "control": "Unsubscribe page: GET reports state, POST records the opt-out (GET never changes anything)",
+    "kind": "page",
+    "calls": [
+      "GET/POST /api/public/unsubscribe"
+    ],
+    "tables": [
+      "opt_outs"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/unsubscribe-public.pg.test.mjs, src/messaging/unsubscribe.test.mjs; reg:unsubscribe page and reg:public/unsubscribe pings (400 counts up). gap-opt-out reads signer and table, not the page. Baseline-unsorted route:public/unsubscribe, page:unsubscribe.html."
+  },
+  {
+    "surface": "src/lib/render-template.mjs, src/workflows/messaging.mjs sendTemplated",
+    "control": "Link merge tags in any template ({{pay_url}}, {{magic_link.url}}, {{custom_values.booking_link}}, {{survey_link}}, {{contract.link}}, {{affiliate_link}}...): an unknown or null tag renders as an empty string with a console warning and the message still sends",
+    "kind": "effect",
+    "calls": [],
+    "tables": [
+      "messages",
+      "message_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "Blocked at send only for lorem ipsum and [DRAFT] (src/messaging/dispatch.mjs, draft-guard.mjs; gap-sms.mjs gap:msg-approved-template-bad-copy). No check scans queued or sent rendered_body for an empty href or a missing link. Only magic-link fallback has a test (s-04b-booking-reminders)."
+  },
+  {
+    "surface": "api/message-templates.mjs, src/messaging/merge-tags-registry.mjs",
+    "control": "Template copy save and approve (the editor screen template-editor.html was deleted 2026-08-21; the API stays): a save that introduces an unknown merge tag is refused, saving clears the compliance flag",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/message-templates"
+    ],
+    "tables": [
+      "message_templates"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:message-templates ping only. No test file imports api/message-templates.mjs or merge-tags-registry.mjs. Nothing re-checks live templates against the tags the senders really supply."
+  },
+  {
+    "surface": "src/ops/hire-closer.mjs, api/ops/hire-closer.mjs",
+    "control": "Closer job post apply link: points at the staff hiring desk /app/hiring.html (PUBLIC_BASE_URL or APP_BASE_URL), not at the public careers.html",
+    "kind": "link",
+    "calls": [
+      "POST /api/ops/hire-closer",
+      "LinkedIn postJob"
+    ],
+    "tables": [
+      "hiring_job_postings"
+    ],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "src/ops/hire-closer.mjs applyUrl(); src/ops/hire-closer.test.mjs does not assert the link. public/app pages load shell.js, which bounces anyone with no session. The LinkedIn post itself cannot succeed today (no partner access, per src/workflows/hiring-bench-sweeper.mjs header), so nothing is sent yet."
+  },
+  {
+    "surface": "src/hiring/eeo-selfid.mjs, db/migrations/300_eeo_invite_template_and_submit_outcome.sql",
+    "control": "EEO self-ID invite email to a job candidate: link is https://fundhub.ai/eeo-survey.html?token=<token>",
+    "kind": "link",
+    "calls": [
+      "GET /eeo-survey.html",
+      "GET/POST /api/public/eeo-survey"
+    ],
+    "tables": [
+      "eeo_survey_invites",
+      "candidate_applications",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "NOT FOUND: no eeo-survey.html file exists in public/ or anywhere tracked (find and grep of the whole repo), and netlify.toml has no rule for it, so the emailed page address has nothing behind it. Only the API door is pinged (reg:public/eeo-survey, 400 counts up). No test covers the invite link or the survey door (src/hiring/apply-public.pg.test.mjs only keeps EEO fields out of the application)."
+  },
+  {
+    "surface": "api/banking/sync-accounts.mjs (response field next)",
+    "control": "Staff answer after a sync tells them to open /app/money-map.html?client_id=...",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "api/banking/sync-accounts.mjs:213. public/app/money-map.html no longer exists (public/app/shell.js says the Finance OS screens were folded into finance-os.html) and nothing redirects it."
+  },
+  {
+    "surface": "Base address for every emailed link (src/workflows/messaging.mjs, src/messaging/dispatch.mjs, src/auth/magic-link.mjs, src/sales/closer-deck.mjs, api/contracts.mjs, src/affiliates/share-link.mjs, src/ops/brief-link.mjs)",
+    "control": "Which host an emailed link points at: four env chains (APP_BASE_URL, PUBLIC_BASE_URL, PORTAL_BASE_URL/DEPLOY_PRIME_URL, PUBLIC_SITE_URL) then URL then fundhub.ai",
+    "kind": "config",
+    "calls": [],
+    "tables": [
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "none",
+    "evidence": "api/consent/capture.mjs header calls the duplication a board item. No lane, beat or test reads the host inside a queued message; a preview or wrong host in one chain would send customers off-site."
+  },
+  {
+    "surface": "DOCUMENT_URL_SECRET",
+    "control": "One secret is the signing key for document links and soft pull approval links, and the fallback for contract, unsubscribe and film links; changing it kills every outstanding link",
+    "kind": "config",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-soft-pull.mjs soft-pull:approve-signed-read and gap-opt-out.mjs opt-out:unsubscribe-link and gap-contracts.mjs contracts:sign-route each fail when it is missing or short. Nothing notices a rotated value (old links just 404 by design)."
+  },
+  {
+    "surface": "src/workflows/messaging.mjs clientContext, ClickFunnels /funding-book-call",
+    "control": "Booking and reschedule link in templates ({{custom_values.booking_link}}, {{reschedule_link}}): client custom field, else SALES_MEET_BOOKING_URL, else apply.fundhub.ai/funding-book-call",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "clients",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:funding-book-call (calendar picker and form present on the live page); gap-calls.mjs calls:calendar and calls:booking-webhook; gap-handoff.mjs handoff:booking-no-confirm."
+  },
+  {
+    "surface": "Booked call join link (Meet url) in confirm and reminder emails",
+    "control": "Does a booked customer have a way to join the call",
+    "kind": "link",
+    "calls": [],
+    "tables": [
+      "bookings",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "gap-calls.mjs calls:booked-no-join-link (reads booking events, bookings.meeting_url and tasks); tripwire job:s-04-call-booked."
+  },
+  {
+    "surface": "src/affiliates/share-link.mjs, api/affiliates/refer.mjs, public/app/affiliate.html, public/progress.html",
+    "control": "Affiliate share link fundhub.ai/start.html?ref=<code> and one link per live offer (a1 and ref on each marketing_funnels landing_url)",
+    "kind": "link",
+    "calls": [
+      "POST /api/affiliates/refer"
+    ],
+    "tables": [
+      "affiliates",
+      "marketing_funnels"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-partners.mjs partners:referral-link (click with a live code credited to nobody goes red); src/affiliates/share-link.test.mjs, src/http/affiliate-referral.pg.test.mjs; e2e/live-affiliate-onboard.spec.mjs; reg:affiliates/refer ping."
+  },
+  {
+    "surface": "public/start.html, api/public/affiliate-click.mjs",
+    "control": "Referral hop: stores fh_ref, POSTs the click (no raw IP, hashes only when CLICK_HASH_SALT set), forwards to apply.fundhub.ai/watch with a1 and ref",
+    "kind": "link",
+    "calls": [
+      "POST /api/public/affiliate-click",
+      "GET https://apply.fundhub.ai/watch"
+    ],
+    "tables": [
+      "affiliate_link_clicks"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs offer:start (page still points at /watch); gap-partners.mjs partners:referral-link; src/http/affiliate-click.pg.test.mjs; reg:public/affiliate-click ping."
+  },
+  {
+    "surface": "src/marketing/url-tags.mjs, src/ads/ad-number.mjs",
+    "control": "Ad destination tags: utm_source=fb, utm_medium=paid, utm_campaign=<lane>, utm_content=<ad number>, utm_term=<variant> (in Meta url_tags, not the link)",
+    "kind": "link",
+    "calls": [
+      "Meta ad creative url_tags"
+    ],
+    "tables": [
+      "ads",
+      "clients"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-pixels.mjs utm-capture-route and ad-click-stored (Meta clicks against stored visits); src/marketing/url-tags.test.mjs, src/ads/ad-number.test.mjs. A wrong lane value makes a lead lane unknown silently (file header)."
+  },
+  {
+    "surface": "apply.fundhub.ai/roadmap (marketing/landing-pages/slo/slo-01-sales.html)",
+    "control": "The $297 roadmap sales page: checkout anchor fh-order, offer copy, till hook, price",
+    "kind": "page",
+    "calls": [
+      "GET https://apply.fundhub.ai/roadmap",
+      "POST /api/public/slo-checkout"
+    ],
+    "tables": [
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "src/pulse/funnel-doors.mjs checkFunnelRoadmapSales (daily); gap-funnels.mjs funnel:roadmap-checkout; beat-doors-live.mjs door-roadmap (hourly canonical block); tripwires page:roadmap/index.html; src/http/roadmap-canonical.test.mjs."
+  },
+  {
+    "surface": "fundhub.ai/roadmap and /roadmap/ and /roadmap/index.html (netlify.toml 301 to apply.fundhub.ai/roadmap)",
+    "control": "Old roadmap address redirects to the funnel sales page (ads and texts still use it)",
+    "kind": "redirect",
+    "calls": [
+      "GET https://fundhub.ai/roadmap"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "beat-doors-live.mjs door-roadmap follows the redirect by hand every hour and checks the canonical block on the page it lands on; src/http/roadmap-canonical.test.mjs."
+  },
+  {
+    "surface": "netlify.toml redirects: /slo and /slo/*, /roadmap.html, /lender-climate, /optimize.com, /partner/autopsy/*, /app and /app.html",
+    "control": "Other redirects (/slo to the roadmap page, /roadmap.html to /optimize-plan, /lender-climate to /climate/, /partner/autopsy/* to the menu)",
+    "kind": "redirect",
+    "calls": [
+      "GET /slo",
+      "GET /roadmap.html",
+      "GET /lender-climate"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No probe follows them. Registry ALLOWED_UNMONITORED explains partner/autopsy and roadmap/index.html only. A removed rule would 404 an old ad or text link with nothing red."
+  },
+  {
+    "surface": "apply.fundhub.ai/watch (marketing/landing-pages/01-vsl.html + footer scripts)",
+    "control": "VSL page: Get Started, watch lede, proof block, tracking scripts",
+    "kind": "page",
+    "calls": [
+      "GET https://apply.fundhub.ai/watch"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:watch (markers), funnel:sales-videos-play; gap-pixels.mjs pixel-on-funnel-page, clarity-snippet; scripts/cf-push-custom-html.mjs proves a push once."
+  },
+  {
+    "surface": "apply.fundhub.ai/apply (marketing/landing-pages/apply-survey.html)",
+    "control": "Apply survey: custom survey replaces the native one; posts to /api/webhooks/clickfunnels with an ingest header",
+    "kind": "form",
+    "calls": [
+      "POST /api/webhooks/clickfunnels"
+    ],
+    "tables": [
+      "clients",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:apply-form (survey field, webhook post and POST method present on the live page); gap-leads.mjs lead:pipe-cut-with-traffic, lead:clickfunnels-posts-silent; src/http/apply-survey-webhook.test.mjs; marketing/landing-pages/tests/apply-survey.spec.mjs."
+  },
+  {
+    "surface": "apply.fundhub.ai/funding-book-call and /roadmap-book",
+    "control": "Booking page: calendar picker and booking form, booking frame, booking-accepted stamp in footer",
+    "kind": "page",
+    "calls": [
+      "GET https://apply.fundhub.ai/funding-book-call",
+      "GET /roadmap-book"
+    ],
+    "tables": [
+      "bookings"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:funding-book-call and funnel:roadmap-book; gap-calls.mjs calls:calendar and calls:booking-webhook; tripwire route:bookings."
+  },
+  {
+    "surface": "apply.fundhub.ai/schedule/phonecall (Book a call link on optimize pages, pack emails, pull-failed page)",
+    "control": "Book a call: Cronofy calendar box, access token and availability query on the live page",
+    "kind": "link",
+    "calls": [
+      "GET https://apply.fundhub.ai/schedule/phonecall"
+    ],
+    "tables": [
+      "bookings"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:book-and-order-pages-live (calendar box, token and availability query present; it cannot see open times, which load from Cronofy in the browser). Linked from public/optimize.html, public/optimize-plan.html, api/public/optimize.mjs, src/optimize-page/roadmap.mjs."
+  },
+  {
+    "surface": "apply.fundhub.ai/order (marketing/landing-pages/slo/slo-02-order.html, old native checkout)",
+    "control": "Old order page: red while it is a working checkout at another price than the till",
+    "kind": "page",
+    "calls": [
+      "GET https://apply.fundhub.ai/order"
+    ],
+    "tables": [
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:order-price-matches-till; nothing links to it any more (header of checkBookAndOrder)."
+  },
+  {
+    "surface": "apply.fundhub.ai/thank-you and /roadmap-thank-you",
+    "control": "Thank-you pages: next-step block, thankyou-sort.js booking check",
+    "kind": "page",
+    "calls": [
+      "GET https://apply.fundhub.ai/thank-you"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:thank-you and funnel:roadmap-thank-you (copy and script markers)."
+  },
+  {
+    "surface": "public/index.html + public/js/homepage-survey.js",
+    "control": "Homepage survey: appform posts to /api/public/survey-submit",
+    "kind": "form",
+    "calls": [
+      "POST /api/public/survey-submit"
+    ],
+    "tables": [
+      "clients",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs offer:home-survey; beat-doors-live.mjs door-survey-submit; tripwire route:public/survey-submit (lead:pipe-cut-with-traffic, handoff:lead-first-touches-missing)."
+  },
+  {
+    "surface": "public/partner/*, public/education/*, public/affiliates/index.html, public/optimize*.html",
+    "control": "Offer pages: partner menu, trial, board, education enroll, affiliates apply, optimize and plan (price hooks and form posts)",
+    "kind": "page",
+    "calls": [
+      "POST /api/public/funnel-checkout",
+      "POST /api/public/education-enroll",
+      "POST /api/public/partner-apply",
+      "POST /api/public/optimize"
+    ],
+    "tables": [
+      "partners",
+      "payment_links"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs offer:partner, offer:partner-menu, offer:partner-trial, offer:partner-board, offer:partner-checkout-script, offer:education, offer:education-enroll, offer:affiliates, offer:optimize, offer:optimize-plan; src/http/funnel-checkout.test.mjs, education-enroll.test.mjs."
+  },
+  {
+    "surface": "marketing_funnels live pages (dashboard-built funnels on apply.fundhub.ai)",
+    "control": "Every live built funnel's pages (landing, booking, thank you) with their fh-funnel-tag",
+    "kind": "page",
+    "calls": [
+      "GET each marketing_funnel_pages.live_url"
+    ],
+    "tables": [
+      "marketing_funnels",
+      "marketing_funnel_pages"
+    ],
+    "impact": "money",
+    "coverage": "deep",
+    "evidence": "gap-built-funnels.mjs built-funnels:live-pages-answer (low-traffic na when none live); tripwire route:marketing/funnels/push-live; src/http/marketing-funnels.pg.test.mjs."
+  },
+  {
+    "surface": "scripts/cf-push-custom-html.mjs, marketing/landing-pages/tracking-manifest.mjs",
+    "control": "Push page HTML and tracking to ClickFunnels by API (apply-watch, apply-survey, apply-book, funnel head pixel); proof once at push time",
+    "kind": "script",
+    "calls": [
+      "ClickFunnels Custom HTML Pages API"
+    ],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/roadmap-canonical.test.mjs and marketing/landing-pages/tests/*.spec.mjs; live result is then read by gap-funnels. A push that is never re-run is not detected stale: only content markers are read."
+  },
+  {
+    "surface": "public/funnel/fh-attribution.js, fh-events.js, vsl-watch-beacon.js, js/clarity.js",
+    "control": "Tracking scripts the funnel pages load from fundhub.ai",
+    "kind": "dependency",
+    "calls": [
+      "GET https://fundhub.ai/funnel/*.js"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-funnels.mjs funnel:roadmap-tracking-scripts; gap-pixels.mjs tracking-scripts-live, clarity-snippet, pixel-on-funnel-page, pixel-on-own-pages."
+  },
+  {
+    "surface": "api/public/vsl-watch.mjs",
+    "control": "VSL watch beacon POST (drop-off curve)",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/public/vsl-watch"
+    ],
+    "tables": [
+      "vsl_watch_sessions"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "gap-pixels.mjs vsl-watch-route (GET must answer 405); registry excuses the POST (a ping would file a viewing)."
+  },
+  {
+    "surface": "public/climate/*, public/consulting/*, public/education/*, public/privacy, public/terms, public/careers.html, public/crm.html, public/login.html",
+    "control": "Other public static pages (legal, careers, consulting, climate, education learn and legal)",
+    "kind": "page",
+    "calls": [
+      "GET each page"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "PUBLIC_STATIC_FILES in src/pulse/registry.mjs (200 only, no content marker); registry.test.mjs fails if a file is missing from the list."
+  },
+  {
+    "surface": "netlify/functions/partner-site.mjs, src/brand/partner-site.mjs",
+    "control": "White-label page link /sites/<partnerId>/<slug> (and verified custom domain): published pages only, same bytes on every miss",
+    "kind": "link",
+    "calls": [
+      "GET /sites/<partner id>/<slug>"
+    ],
+    "tables": [
+      "partner_pages",
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/brand/partner-site.test.mjs, src/http/partner-site-function.test.mjs, src/http/partner-pages-publish.pg.test.mjs. reg:public/partner-page pings the JSON door (400 counts up), not the served page. Baseline-unsorted route:public/partner-page."
+  },
+  {
+    "surface": "api/partner-brand/verify-domain.mjs, src/brand/domain-verify.mjs",
+    "control": "Partner custom domain: DNS TXT check before the domain serves their pages",
+    "kind": "api-action",
+    "calls": [
+      "POST /api/partner-brand/verify-domain",
+      "DNS TXT"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/brand/domain-verify.test.mjs; reg:partner-brand/verify-domain ping. Nothing re-checks a verified domain later."
+  },
+  {
+    "surface": "src/ops/brief-link.mjs, public/app/morning-brief.html, api/public/morning-brief.mjs",
+    "control": "Full report link in Chris's morning and evening text: k=HMAC code, 14 days, BRIEF_LINK_SECRET 32+ chars; same 404 for any bad code",
+    "kind": "link",
+    "calls": [
+      "GET /app/morning-brief.html",
+      "GET /api/public/morning-brief"
+    ],
+    "tables": [
+      "morning_briefs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "beat-brief-link.mjs (hourly: newest sent text has a tokened link, page opens, report loads); src/ops/brief-link.test.mjs, src/http/morning-brief-public.test.mjs, e2e/morning-brief.spec.mjs."
+  },
+  {
+    "surface": "src/ad-videos/decision-page.mjs, api/public/ad-video-approve.mjs",
+    "control": "Ad video approve / reject link in the phone notification: one-time token, same answer for unknown, expired or spent",
+    "kind": "link",
+    "calls": [
+      "GET/POST /api/public/ad-video-approve"
+    ],
+    "tables": [
+      "ad_videos"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-video-approve.pg.test.mjs, src/ad-videos/token.test.mjs, decision-page.test.mjs. Registry excuses the door; reg:ad-videos pings the staff queue, not the token page."
+  },
+  {
+    "surface": "src/marketing/shoot-film-key.mjs, public/app/teleprompter.html",
+    "control": "Teleprompter film link ?k=<token>: 7 days, FILM_URL_SECRET or DOCUMENT_URL_SECRET, dies when the shoot closes",
+    "kind": "link",
+    "calls": [
+      "GET /app/teleprompter.html?k="
+    ],
+    "tables": [
+      "marketing_shoots"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-owner-tools.mjs owner-tools:teleprompter (reads the open shoot and its scripts); e2e/teleprompter.spec.mjs; src/marketing/shoot-film-key.test.mjs; reg:teleprompter ping."
+  },
+  {
+    "surface": "netlify/functions/teleprompter-live-text.mjs",
+    "control": "One-shot POST text to Chris's phone (nonce in the url, TELEPROMPTER_TEXT_NONCE, texting hours apply)",
+    "kind": "api-action",
+    "calls": [
+      "POST /.netlify/functions/teleprompter-live-text?n="
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/teleprompter-live-text.test.mjs; SEND_PATHS reason in registry (no ping can be honest)."
+  },
+  {
+    "surface": "public/app/*.html internal links between CRM screens",
+    "control": "Links on pipeline, client control panel, closer dashboard and sales floor to other /app pages and scripts",
+    "kind": "link",
+    "calls": [
+      "GET /app/<page>.html"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "gap-crm-links.mjs crm-links:pages (reads screens over HTTP, fetches any link to a page not on the desk list; red on dead link or dead script)."
+  }
+]

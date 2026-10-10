@@ -1,0 +1,3061 @@
+[
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Sidebar navigation: 32 static links in each desk, replaced at load by the role-filtered copy in shell.js",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[real browser, backend mocked] e2e/sidebar-roles.spec.mjs, e2e/verification-roles.spec.mjs (which links each role sees); src/http/app-nav-matches-shell.test.mjs and src/http/app-nav-reachability.test.mjs (inline copy equals shell copy, every row reachable). Click path of one link is not exercised."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Sidebar group headers (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals) collapse and expand",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Inline script in each desk toggles a CSS class; no test clicks it. Searched e2e/ and src/**/*.test.mjs for navhead: only string checks on the sidebar markup."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Sidebar burger (collapse to icon rail)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Inline script in each desk; no test clicks it (searched e2e/ and src/)."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Global search button and overlay (type, results, open a client)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/search?q="
+    ],
+    "tables": [
+      "clients",
+      "contracts",
+      "documents",
+      "conversations",
+      "messages",
+      "partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/search-read.test.mjs and src/http/search-screen.test.mjs; ping reg:read/search. Skipped for client, affiliate and partner roles by SEARCH_SKIP_ROLES."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Account chip: Sign out",
+    "kind": "button",
+    "calls": [
+      "POST /api/auth/logout"
+    ],
+    "tables": [
+      "account_sessions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/auth/session.test.mjs references auth/logout; ping reg:auth/logout. No browser test clicks the chip."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Account chip: hide (x) and 'account' show button",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "localStorage-only convenience in shell.js; no test."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Account chip: add or change your photo (file picker)",
+    "kind": "button",
+    "calls": [
+      "POST /api/staff/avatar (multipart)"
+    ],
+    "tables": [
+      "staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/staff-avatar.pg.test.mjs; ping reg:staff/avatar."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Session check on every page load (decides which links and desks this role may see; signs out when no real or demo session)",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/auth/session",
+      "GET /api/health",
+      "GET /api/org-brand"
+    ],
+    "tables": [
+      "account_sessions",
+      "staff",
+      "org brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/auth-session.test.mjs, src/http/org-brand-gate.test.mjs, src/http/org-brand-principal.pg.test.mjs; pings reg:auth/session, reg:health, reg:org-brand."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Chat widget launcher and its modes (Ask, Knowledge, Message: a teammate, or an SMS to a client by id)",
+    "kind": "button",
+    "calls": [
+      "POST /api/chat/ask",
+      "GET|POST /api/chat/messages (kind internal or client, channel sms)",
+      "GET /api/chat/peers"
+    ],
+    "tables": [
+      "brain_chunks",
+      "brain_files",
+      "conversations",
+      "conversation_participants",
+      "messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/chat/staff-assistant.test.mjs, src/http/chat-widget-precall.test.mjs; pings reg:chat/ask, reg:chat/messages, reg:chat/peers. Skipped for affiliate and partner roles. No browser test opens the widget or sends from it."
+  },
+  {
+    "surface": "shell.js shared chrome (on every desk here except financeos.html)",
+    "control": "Owner-only beta banner and demo-mode banner mounted by shell.js",
+    "kind": "panel",
+    "calls": [
+      "GET /api/demo/mode (owner/admin)"
+    ],
+    "tables": [
+      "demo flags"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "ping reg:demo/mode; no test of the banner itself."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Page itself: staff-only chat screen loads (shell, ramp-quizzes.js, data.js)",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/company-brain.html"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:company-brain; src/http/company-brain-screen.test.mjs only asserts strings in the HTML; e2e/verification-roles.spec.mjs checks the nav entry. Not in e2e/screens-smoke.spec.mjs list."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Role badge (reads fh_role from localStorage; shows 'owner' or 'staff' and decides whether approval controls draw)",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "src/http/company-brain-screen.test.mjs asserts the page text mentions fh_role and data-decide=approve (string check only; nothing runs the badge logic)."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Send question (Send button, Enter key; Shift+Enter makes a line)",
+    "kind": "button",
+    "calls": [
+      "POST /api/read/company-brain {question, thread_id}",
+      "OpenAI embeddings call",
+      "model call (OpenAI first, Claude fallback via src/agents/model.mjs)"
+    ],
+    "tables": [
+      "brain_chunks",
+      "brain_files",
+      "brain_threads",
+      "brain_messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-brain.mjs: brain:search-staff runs the real door code and search SQL read-only with a stub vector, brain:embed-key checks the embed key is not a row of asterisks; src/http/company-brain.test.mjs (role from session, empty question, history writes, thread ownership). Composer wiring is string-asserted only. Page is named in tripwires-baseline.json (not sorted)."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "New chat button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Local state reset only. Only string assertion that the composer exists (src/http/company-brain-screen.test.mjs)."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Past chats list: click a chat to reopen it",
+    "kind": "card-action",
+    "calls": [
+      "GET /api/company-brain/threads",
+      "GET /api/company-brain/threads?thread_id="
+    ],
+    "tables": [
+      "brain_threads",
+      "brain_messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/company-brain-threads.test.mjs (own threads only, other member's thread 404, malformed id 400); ping reg:company-brain/threads."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Past chats rail toggle (hamburger, narrow screens)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "CSS class toggle; no test."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Documents button (opens right-hand panel) and its Close button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "CSS class toggle; no test."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Add a document: '+' button then file picker (PDF, Word, Excel, PowerPoint, text; 25 MB cap)",
+    "kind": "button",
+    "calls": [
+      "POST /api/company-brain/upload (multipart)",
+      "OpenAI embeddings call"
+    ],
+    "tables": [
+      "brain_files",
+      "brain_chunks",
+      "brain_classification_reviews"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/company-brain-upload.test.mjs (no file, empty, too big, renamed executable, role, no org, embed failure, lands pending), src/company-brain/upload-gate.test.mjs (pending upload excluded from retrieval for every role); e2e/company-brain-chat.paused.spec.mjs does upload then approve then ask against the deployed site (named paused, not in live-*.spec config). No pulse check on the upload path (gap-brain checks search only)."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Files you added: list and Refresh button",
+    "kind": "button",
+    "calls": [
+      "GET /api/company-brain/upload"
+    ],
+    "tables": [
+      "brain_files"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/company-brain-upload.test.mjs ('GET returns the org's uploads and the pending count'); ping reg:company-brain/upload."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "'N waiting' pending badges (two)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/company-brain/upload (pendingCount)"
+    ],
+    "tables": [
+      "brain_files"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/company-brain-upload.test.mjs (pending count)."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Owner: Approve a waiting file (button on the file row and in the review list)",
+    "kind": "card-action",
+    "calls": [
+      "POST /api/company-brain/reviews {review_id, decision:approve}"
+    ],
+    "tables": [
+      "brain_classification_reviews",
+      "brain_files",
+      "brain_chunks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/company-brain/upload-gate.test.mjs ('approve sets approval_status and the approved tier on file AND all chunks', owner only, admin refused); src/http/company-brain.test.mjs (reviews POST approve requires owner); ping reg:company-brain/reviews. Approval decides which tier (up to affiliate-visible) can see the file."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Owner: Turn down a waiting file",
+    "kind": "card-action",
+    "calls": [
+      "POST /api/company-brain/reviews {review_id, decision:reject}"
+    ],
+    "tables": [
+      "brain_classification_reviews",
+      "brain_files",
+      "brain_chunks"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/company-brain/upload-gate.test.mjs ('reject leaves the tier at owner and the document unanswerable')."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Owner: 'Waiting for your approval' panel and its Refresh button",
+    "kind": "button",
+    "calls": [
+      "GET /api/company-brain/reviews"
+    ],
+    "tables": [
+      "brain_classification_reviews",
+      "brain_files"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/company-brain.test.mjs ('reviews GET is owner-only'); src/company-brain/upload-gate.test.mjs (admin refused on GET and POST)."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Answer source list: 'Open in Drive' link and 'Client record' link",
+    "kind": "link",
+    "calls": [
+      "navigates to Drive webViewLink",
+      "navigates to client-control-panel.html?client_id="
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test follows these links."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Class quiz: 'Which quiz' picker",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "src/training/ramp-quizzes.test.mjs (quizzes per role, closer sees only closer quizzes); the select itself is not clicked by any test."
+  },
+  {
+    "surface": "company-brain.html",
+    "control": "Class quiz: answer boxes and 'Check answers' (scored in the browser, nothing saved)",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page or scoring code run in a sandbox, no click] src/training/ramp-quizzes.test.mjs scores yes/no and day-5 must-miss-zero; form wiring is string-asserted in src/http/company-brain-screen.test.mjs. Nothing is stored, so a pass is not recorded anywhere."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Page itself loads with ?client_id= (and ?kind=)",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/consent-capture.html"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-consent.mjs consent:page (page still talks to /api/consent/capture); reg:consent-capture; e2e/screens-smoke.spec.mjs and e2e/consent-capture-kinds.spec.mjs (asks for the right kind, falls back to soft_pull_consent on junk)."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Consent wording, version badge and current status banner (read from the server, never typed in the page)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/consent/capture?client_id=&kind="
+    ],
+    "tables": [
+      "client_consents",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[real browser, backend mocked] src/http/consent-capture.test.mjs ('GET returns the disclosure so the screen never holds its own copy', org scoping); src/consent/consent.pg.test.mjs (validity against the database clock); e2e/consent-capture-kinds.spec.mjs."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Back link (to Client Control Panel, or to Client Portal for dispute_authorization)",
+    "kind": "link",
+    "calls": [
+      "navigates"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "src/ui/consent-kind-copy.test.mjs reads the page text only."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "How did they agree: 'They typed their name' / 'They ticked a box' / 'They signed' buttons",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Page-source string checks only (src/http/consent-sign-pad-html.test.mjs). No test clicks a method."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Name box, Expires date box",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Server rejects a typed capture with no name (src/http/consent-capture.test.mjs); the form boxes are not exercised."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Signature pad (draw) and its Clear button; empty pad refused",
+    "kind": "drag",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "src/http/consent-sign-pad-html.test.mjs asserts canvas#ccSignPad, #ccSignClear and canvasHasInk exist in the HTML text. Nothing draws on it."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Record consent: soft_pull_consent (the key to a paid credit pull)",
+    "kind": "button",
+    "calls": [
+      "POST /api/consent/capture {action:grant, kind:soft_pull_consent}"
+    ],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-consent.mjs consent:required (paid client with no live consent), consent:store (signed paper with no stored row), consent:slo-store; src/http/consent-capture.test.mjs; src/consent/consent.pg.test.mjs (revoked consent stops the next pull). tripwires.mjs TRIPWIRES lists route:consent/capture and page:roadmap/pull.html; desk:consent-capture.html is still unsorted in tripwires-baseline.json."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Record consent: dispute_authorization (signature; lets letters be prepared)",
+    "kind": "button",
+    "calls": [
+      "POST /api/consent/capture {action:grant, kind:dispute_authorization, capture_method:signature}"
+    ],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-consent.mjs consent:dispute-required (repair client with neither a live authorization nor a signed agreement); src/http/consent-capture.test.mjs; src/consent/dispute-consent.test.mjs."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Record consent: call_recording",
+    "kind": "button",
+    "calls": [
+      "POST /api/consent/capture {action:grant, kind:call_recording}"
+    ],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/consent-capture.test.mjs ('a csm may capture a call_recording consent'); src/ui/consent-kind-copy.test.mjs; e2e/consent-capture-kinds.spec.mjs. gap-consent.mjs has no check for this kind."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "Record consent: marketing_use (permission to use what the client said in ads)",
+    "kind": "button",
+    "calls": [
+      "POST /api/consent/capture {action:grant, kind:marketing_use}"
+    ],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/consent-capture.test.mjs; src/ui/consent-kind-copy.test.mjs; e2e/consent-capture-kinds.spec.mjs. gap-consent.mjs has no check for this kind."
+  },
+  {
+    "surface": "consent-capture.html",
+    "control": "History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)",
+    "kind": "button",
+    "calls": [
+      "POST /api/consent/capture {action:revoke, consent_id, reason}"
+    ],
+    "tables": [
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/consent-capture.test.mjs ('a revoke with no reason is refused', org scoping); src/consent/consent.pg.test.mjs (revocation stops the gate, cannot be undone). The prompt and the button are not clicked by any test."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Page itself loads; reads tiles, welcome videos, tier map and products",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/content/tiles"
+    ],
+    "tables": [
+      "entitlement_catalog",
+      "content_videos",
+      "content_tier_map",
+      "products"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-owner-tools.mjs owner-tools:content-admin reads the same four SELECTs and goes red on a failed read; reg:content-admin; reg:content/tiles; src/http/content-tiles.test.mjs. Not in e2e/screens-smoke.spec.mjs."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Summary tiles: videos in library, tiers mapped, locked tiles on, last upload",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Computed in the page from the one read; no test."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Save changes button (saves tiles and the tier-to-video map)",
+    "kind": "button",
+    "calls": [
+      "POST /api/content/tiles {action:save, tiles, map}"
+    ],
+    "tables": [
+      "entitlement_catalog",
+      "content_tier_map"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/content-tiles.test.mjs (owner/admin only, unknown tile code refused, map a video of this org, failed map not reported as success, committed save not reported as failed); ping reg:content/tiles. Saved copy and price show on every client portal ('Unlock More'). Button click is not exercised."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [
+      "entitlement_catalog"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] Persisted by Save changes; src/http/content-tiles.test.mjs covers the save, not the switch. Warning row fires over 3 tiles on or 0 on: no test."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Locked tile editor: client-facing name box",
+    "kind": "input",
+    "calls": [],
+    "tables": [
+      "entitlement_catalog"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] Persisted by Save changes (src/http/content-tiles.test.mjs 'save updates an existing catalog row')."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Locked tile editor: outcome copy box (one line shown to the client)",
+    "kind": "input",
+    "calls": [],
+    "tables": [
+      "entitlement_catalog"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] Persisted by Save changes (src/http/content-tiles.test.mjs)."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Locked tile editor: price shown box",
+    "kind": "input",
+    "calls": [],
+    "tables": [
+      "entitlement_catalog"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] Persisted as display_price_cents by Save changes; src/http/content-tiles.test.mjs ('a refused price read is surfaced'). Display price only; nothing here charges."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Tier assignment: one welcome-video select per product tier and one for Default",
+    "kind": "select",
+    "calls": [],
+    "tables": [
+      "content_tier_map"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] Persisted by Save changes; src/http/content-tiles.test.mjs ('save maps a video that belongs to the org', unmap failure not reported as success). Client playback: src/http/content-tiles.test.mjs /api/content/welcome-video tests."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Upload welcome video: Choose file button and drag-and-drop box",
+    "kind": "drag",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Drop zone wiring has no test; server side is tested under Upload."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Upload welcome video: Title, Duration, Assign to tier",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "No test fills these boxes."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Upload welcome video: Upload button (then saves the tier map)",
+    "kind": "button",
+    "calls": [
+      "POST /api/content/upload (multipart)",
+      "POST /api/content/tiles {action:save, map}"
+    ],
+    "tables": [
+      "content_videos",
+      "content_tier_map"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/content-upload.test.mjs (closer refused, non-video refused, stores an MP4 and returns the library row); src/http/content-tiles.test.mjs; ping reg:content/upload."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Upload welcome video: Clear button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Local reset; no test."
+  },
+  {
+    "surface": "content-admin.html",
+    "control": "Preview: tier switch buttons and the client-portal preview (not live)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Local preview only; no test."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Page itself loads; lists contract wordings",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/contracts?view=templates"
+    ],
+    "tables": [
+      "contract_templates"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[real browser, backend mocked] e2e/screens-smoke.spec.mjs and e2e/crm-flows.spec.mjs load it with mocked reads (no clicks); src/http/contracts-screen.test.mjs (string checks); src/http/contracts-endpoints.pg.test.mjs (library read); ping reg:contracts-desk and reg:read/contracts. Nav entry is owner/admin only (e2e/sidebar-roles.spec.mjs)."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Wording list: click a row to edit it",
+    "kind": "card-action",
+    "calls": [
+      "GET /api/read/contracts?file=template&template_id= (PDF rows)"
+    ],
+    "tables": [
+      "contract_templates",
+      "document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs ('the file comes back for the editor, and never a storage key', other company refused)."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "New wording button and editor boxes: short name, name, type, filing label, the words, signature sentence",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Page-source checks only (src/http/contracts-screen.test.mjs: 'it can author wording without a developer'). No test fills the form."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Editor: 'Blanks you fill in when sending' rows (key, label, needed) and Add a blank / x",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "No test."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Save (create a new wording)",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:create_template}"
+    ],
+    "tables": [
+      "contract_templates"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs ('an owner may, and an admin may'; setter and closer may not); ping reg:contracts. Click not exercised."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Save (edit an existing wording)",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:save_template, id}"
+    ],
+    "tables": [
+      "contract_templates"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs; src/contracts/templates.test.mjs; sent contracts stay frozen (src/contracts/lifecycle.pg.test.mjs)."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Archive / Turn back on",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:archive_template, id, active}"
+    ],
+    "tables": [
+      "contract_templates"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-contracts.mjs contracts:template-missing goes red when a template an offer needs is missing or inactive; src/http/contracts-endpoints.pg.test.mjs (owner/admin gate)."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Cancel button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Local; no test."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Upload a PDF: button, file picker, name prompt",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:upload_template, template_key, filename, file(base64)}"
+    ],
+    "tables": [
+      "contract_templates",
+      "documents",
+      "document_versions",
+      "clients (first upload creates one placeholder row '[Contract Templates]', contract-templates@internal.fundhub, that any client list can show)"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs ('an owner can upload a PDF and the endpoint reports its pages', 'a non-PDF is refused'); src/contracts/pdf.test.mjs; string check in src/http/contracts-screen.test.mjs. The placeholder client row is created by ensureTemplateClient in src/contracts/upload.mjs; no other file in src/, api/, public/, db/ or netlify/ names that email (searched), so no list or count filters it out by name."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "PDF editor: drag on a page to draw a box; click a box to select; drag to move; drag corner to resize",
+    "kind": "drag",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Boxes are stored as page fractions (string-asserted in src/http/contracts-screen.test.mjs). No browser test drags anything. src/contracts/fields.test.mjs covers server-side field rules."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "PDF editor: field type chips (Text, Date, Tick box, Signature, Initials), Belongs to, Filled from, selected-box name / kind / signer / source / must-fill / Remove",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "No test; signature auto-fill refusal is string-asserted (src/http/contracts-screen.test.mjs) and enforced by the server (src/contracts/fields.test.mjs)."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "PDF editor: Add a signer",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/contracts/signers.test.mjs and src/http/contracts-endpoints.pg.test.mjs ('sending to several people, in order'); the button itself is string-checked only."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "PDF editor: Save boxes",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:save_fields, id, fields, signer_roles}"
+    ],
+    "tables": [
+      "contract_templates",
+      "contract_signers"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs ('placing boxes is owner/admin too', 'a box off the page is refused'); src/contracts/fields.test.mjs."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "PDF viewer (pdf.js, vendored)",
+    "kind": "panel",
+    "calls": [
+      "GET /vendor/pdfjs/pdf.min.mjs"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-screen.test.mjs ('the files are actually in the repository', legacy 4.x build, not loaded from a CDN)."
+  },
+  {
+    "surface": "contracts.html",
+    "control": "Link: 'Documents' (see contracts already sent)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test follows the link; src/http/contracts-screen.test.mjs asserts it exists."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Page itself loads (partner or owner/admin; staff roles may use the script card)",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/creative-factory.html"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:creative-factory; e2e/screens-smoke.spec.mjs and e2e/crm-flows.spec.mjs (load, one benign click on a tab if present); e2e/live-creative-factory-marketing-menu.spec.mjs (live only, not in the default run: owner reaches it from Marketing menu, no JS error). shell.js lists it as owner/admin-only for staff and in the partner tab list (e2e/verification-roles.spec.mjs lists it for the partner role)."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Partner picker (select) and ?partner_id= preselect",
+    "kind": "select",
+    "calls": [
+      "GET /api/read/partners?limit=200",
+      "then re-reads the 5 creative reads and the allowance"
+    ],
+    "tables": [
+      "partners",
+      "v_partner_balance"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/read-endpoints-org-scope.test.mjs and src/http/principal-reads.pg.test.mjs cover read/partners; ping reg:read/partners. Picker change is not exercised."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Summary tiles: jobs in flight, failed jobs, awaiting review, library assets, active brand kits",
+    "kind": "panel",
+    "calls": [
+      "GET /api/creative/jobs",
+      "GET /api/creative/library",
+      "GET /api/creative/approvals",
+      "GET /api/creative/brand-kits"
+    ],
+    "tables": [
+      "generation_jobs",
+      "creative_assets",
+      "brand_kits",
+      "compliance_screenings",
+      "campaigns",
+      "partner_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-endpoints.pg.test.mjs (each read's SQL runs, returns nothing for a partner who owns none, never selects a storage key, jobs surface failure reason but never vendor cost); counts are computed in the page, no test. Pulse: gap-owner-tools.mjs owner-tools:creative-factory reads the jobs list."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Monthly writing allowance panel (on/off, used, left, limit) and its enable note",
+    "kind": "panel",
+    "calls": [
+      "GET /api/partner-marketing/usage?partner_id="
+    ],
+    "tables": [
+      "partner_module_settings",
+      "partner_ai_usage"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "ping reg:partner-marketing/usage; no test file references this route (searched src/ and e2e/). It also decides whether Enqueue and Approve controls are enabled."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Write a script and label it: words box, name, kind, angle, hook, offer (suggestion lists) and lane picker",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/ui/label-chain-reachable.test.mjs reads the page text (form carries five labels, blank field left out, lane picker has exactly the five lanes); src/http/scripts-write.pg.test.mjs covers the endpoint. Boxes are not filled by any browser test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Save this script button",
+    "kind": "button",
+    "calls": [
+      "POST /api/scripts/write"
+    ],
+    "tables": [
+      "ad_scripts",
+      "ad_labels (label dictionary)"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/scripts-write.pg.test.mjs (saves with five labels, rewrite archives parent in one transaction, stale 409, bad lane refused, non-staff 403); Route is on ALLOWED_UNMONITORED in registry.mjs (no ping; monitored door is read/ad-spine). No tripwire (route:scripts/write unsorted in tripwires-baseline.json)."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Script picker list on the Generate form (rebuilt from saved scripts)",
+    "kind": "select",
+    "calls": [
+      "GET /api/scripts/list?partner_id=&limit=200"
+    ],
+    "tables": [
+      "ad_scripts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/scripts-list.pg.test.mjs (written script comes back, other partner's hidden, staff naming no partner refused); ping reg:scripts/list; src/ui/label-chain-reachable.test.mjs."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Generate form: Kind (static / copy / video), What is being sold, What to make, Name this batch",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-generate.pg.test.mjs refuses a batch with no name and a prompt with no offer_type server-side; the form boxes are not filled by a browser test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Enqueue generation button (disabled until the allowance loads and is on)",
+    "kind": "button",
+    "calls": [
+      "POST /api/creative/generate {partner_id, asset_kind, idempotency_key, prompt, spec}"
+    ],
+    "tables": [
+      "generation_jobs",
+      "partner_ai_usage",
+      "partner_module_settings",
+      "creative_assets",
+      "compliance_screenings"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-generate.pg.test.mjs (owner enqueue accepted, same batch name makes one job, answer says whether anything can run, unauthenticated refused); ping reg:creative/generate. Vendor spend per generation is counted, not charged (page says so). Click is not exercised."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Run queued jobs now button",
+    "kind": "button",
+    "calls": [
+      "POST /api/creative/run {partner_id, max_jobs:3}",
+      "creative vendor calls (none switched on per the page's own config table)"
+    ],
+    "tables": [
+      "generation_jobs",
+      "creative_assets",
+      "generation_job_assets",
+      "compliance_screenings",
+      "marketing_jobs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-run.test.mjs (max_jobs, GET refused, checker verdict on copy); src/creative/runner.pg.test.mjs, src/creative/runner-cron.test.mjs; heartbeat job:creative-job-runner (ping, every 2 minutes, red after 6); ping reg:creative/run."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Decide on one creative: creative picker (select)",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "Built from the already-read library; no test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Approve button (asks to confirm; marks the creative approved and CLEARS its blocked reasons)",
+    "kind": "button",
+    "calls": [
+      "POST /api/creative/actions {partner_id, asset_id, action:approve}"
+    ],
+    "tables": [
+      "creative_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "No test references api/creative/actions.mjs (searched src/, e2e/, scripts/); only reg:creative/actions ping and the ROUTES map. The handler sets compliance_state='approved' and blocked_reasons='[]' with no compliance re-screen."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Reject button (asks to confirm; marks the creative blocked)",
+    "kind": "button",
+    "calls": [
+      "POST /api/creative/actions {action:reject}"
+    ],
+    "tables": [
+      "creative_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "Same as Approve: no test; ping reg:creative/actions only."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Archive button (asks to confirm; hides the creative)",
+    "kind": "button",
+    "calls": [
+      "POST /api/creative/actions {action:archive}"
+    ],
+    "tables": [
+      "creative_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "Same as Approve: no test; ping reg:creative/actions only."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Generation jobs: state filter chips (all, queued, running, succeeded, failed; several at once)",
+    "kind": "filter",
+    "calls": [
+      "GET /api/creative/jobs?partner_id=&state=all&limit=200 (filtered in the page)"
+    ],
+    "tables": [
+      "generation_jobs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-endpoints.pg.test.mjs for the read; chip filtering is in-page and untested. Pulse: owner-tools:creative-factory."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Generation jobs: row click expands job detail (what went wrong, kit, times)",
+    "kind": "card-action",
+    "calls": [],
+    "tables": [
+      "generation_jobs",
+      "generation_job_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Generation jobs: 'show' size select and prev / next pager",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Creative library: state chips, kind chips, format chips, brand kit select, include archived select, 'show' size select",
+    "kind": "filter",
+    "calls": [
+      "GET /api/creative/library?partner_id=&state=all&include_archived=1&limit=200 (filtered in the page)"
+    ],
+    "tables": [
+      "creative_assets",
+      "brand_kits"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-endpoints.pg.test.mjs ('the library returns copy_text for both a passed and a blocked copy asset', never selects a storage key); filtering is in-page and untested."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Creative library: asset card click opens the detail drawer; prev / next pager",
+    "kind": "card-action",
+    "calls": [],
+    "tables": [
+      "creative_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "In-page only; no test. No previews are ever drawn (file never reaches the screen), so a missing file would not show here."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Review queue: state chips (all, blocked, pending, awaiting_approval), 'show' size select, prev / next, row expand",
+    "kind": "filter",
+    "calls": [
+      "GET /api/creative/approvals?partner_id=&state=all&limit=200"
+    ],
+    "tables": [
+      "creative_assets",
+      "campaigns",
+      "compliance_screenings",
+      "partner_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-endpoints.pg.test.mjs ('the blocked asset reaches the approval queue with its reasons', 'a brand sent for review reaches the approval queue', 'does not reach another partner's queue')."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Review queue: 'Open the full creative' button on a row",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Review queue (brand row): reason box and 'Approve this brand' button (owner/admin only)",
+    "kind": "button",
+    "calls": [
+      "POST /api/brand/review {partner_id, action:approve}"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/brand-review.pg.test.mjs (owner approves and approved_at moves; partner cannot approve; other company refused); ping reg:brand/review. Draws only for owner/admin."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Review queue (brand row): 'Send it back' button with required reason",
+    "kind": "button",
+    "calls": [
+      "POST /api/brand/review {partner_id, action:reject, note}"
+    ],
+    "tables": [
+      "partner_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/brand-review.pg.test.mjs ('a rejection with no reason is refused', admin sends back with reason). The reason is stored but never shown to the partner (page says so)."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Brand kits: state chips, kit card click opens drawer, prev / next",
+    "kind": "filter",
+    "calls": [
+      "GET /api/creative/brand-kits?partner_id=&state=all&limit=200"
+    ],
+    "tables": [
+      "brand_kits",
+      "creative_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/creative-endpoints.pg.test.mjs (brand-kits read SQL, scoped to partner)."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Video performance table (YouTube views, watch time per video per day) and connection badge",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/video-stats"
+    ],
+    "tables": [
+      "analytics_connections",
+      "video_watch_stats"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-social.mjs social:video-stats-stale (no new snapshot in 3 days) and social:youtube-last-error (verified N/A when not connected); src/http/analytics-youtube.pg.test.mjs; ping reg:read/video-stats."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Video performance: Client ID, Client secret, Refresh token boxes and Connect button",
+    "kind": "form",
+    "calls": [
+      "POST /api/analytics/youtube-connect",
+      "Google OAuth token exchange",
+      "then POST /api/analytics/youtube-sync"
+    ],
+    "tables": [
+      "analytics_connections",
+      "video_watch_stats"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/http/analytics-youtube.pg.test.mjs (bad credentials refused and nothing saved, good credentials stored encrypted, non-staff 403); src/pulse/coverage/gap-social.mjs goes red on a connection in error or expired state. Route is ALLOWED_UNMONITORED in registry.mjs (a ping would spend a Google call). Secrets are typed into the page and sent once."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Video performance: Sync now button",
+    "kind": "button",
+    "calls": [
+      "POST /api/analytics/youtube-sync",
+      "YouTube Analytics API call"
+    ],
+    "tables": [
+      "analytics_connections",
+      "video_watch_stats"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/http/analytics-youtube.pg.test.mjs (sync upserts rows and never writes a fake 0 for an absent video); src/pulse/coverage/gap-social.mjs social:video-stats-stale (the sync only runs when someone presses this button, so red after 3 days means a hole in the trend line)."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Reference section (4 closed panels: job states, AI labels, why creative gets stopped, engine settings table)",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Static tables in the page. The 'engine settings' table is hard-coded and does not read the running system (page says so); the 29-reason list is a hand-copied catalogue with no test tying it to src/compliance/screen.mjs."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Detail drawer: close button, scrim click, Esc key",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "creative-factory.html",
+    "control": "Link: 'Brand Studio' (inside the allowance note when the suite is off)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test follows the link."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Page itself loads: 'My queue' for the client success role",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/csm-queue.html"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:csm-queue; slice-30-csm-owner.mjs lists the doors; src/http/csm-queue.pg.test.mjs covers the read, not the page. Not in e2e/screens-smoke.spec.mjs and no e2e spec opens it."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Queue list: one card per waiting call (client, call title, due time, late chip, balance owed chip, owned products)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/csm-queue"
+    ],
+    "tables": [
+      "tasks",
+      "clients",
+      "invoices",
+      "v_invoice_aging",
+      "v_client_entitlements"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-csm.mjs csm:queue-api (runs the real read), csm:overdue-unassigned, csm:missing-step (paid or funded client with no accountability-call task); src/http/csm-queue.pg.test.mjs (own tasks only, balance in cents, no invoice is NULL not 0); ping reg:read/csm-queue."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Headline count 'N calls waiting' and 'N calls past due' line",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Computed in the page from the one read; no test."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Start shift / End shift button",
+    "kind": "button",
+    "calls": [
+      "GET /api/shifts",
+      "POST /api/shifts {action:clock_in|clock_out}"
+    ],
+    "tables": [
+      "shifts",
+      "staff_events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/shifts.pg.test.mjs (one open shift, second clock_in 409, clock_out with nothing open 409, body staff_id refused); ping reg:shifts. No pulse check on shifts. Claim is refused without an open shift (src/http/tasks-write.pg.test.mjs)."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Claim this call button",
+    "kind": "button",
+    "calls": [
+      "PATCH /api/tasks {id, claim:true}"
+    ],
+    "tables": [
+      "tasks",
+      "shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/tasks-write.pg.test.mjs (claim refused with no open shift, claim assigns the caller, claim race answers 409); ping reg:tasks. Click is not exercised."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Write down their answers button (opens the interview form; 'Hide answers' closes it)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/customer-insights?limit=1 (question bank)"
+    ],
+    "tables": [
+      "customer_insights"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/customer-insights-endpoints.test.mjs ('returns items plus the question banks'); ping reg:read/customer-insights. Only shown for the mid and post workflows."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Interview form: 'How did you speak to them' select, one answer box per question, 'Anything else' notes box",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "No test fills the form."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Save these answers button (needs at least one answer)",
+    "kind": "button",
+    "calls": [
+      "POST /api/customer-insights {client_id, task_id, stage, channel, answers, notes}"
+    ],
+    "tables": [
+      "customer_insights",
+      "tasks",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/customer-insights-endpoints.test.mjs (unsigned 401, affiliate refused, funding advisor can save a post interview, bad stage 400); ping reg:customer-insights. csm:missing-step in gap-csm.mjs proves the TASK appears, nothing proves the saved ANSWERS landed."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Client name link (to Client Control Panel) and the footer / empty-state links",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test follows these links."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Booking link button (when the task carries a meeting url)",
+    "kind": "link",
+    "calls": [
+      "navigates to row.meeting_url"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test."
+  },
+  {
+    "surface": "csm-queue.html",
+    "control": "Banner area (success and error messages for shift, claim, save)",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/documents?limit=200[&client_id=]",
+      "GET /api/demo/mode (demo-client-bootstrap.js, owner/admin)"
+    ],
+    "tables": [
+      "documents",
+      "clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[real browser, backend mocked] e2e/crm-flows.spec.mjs ('age counts from the last state change' loads the page with a mocked read and checks the age text and stale chip); e2e/screens-smoke.spec.mjs; src/http/documents-screen.test.mjs; ping reg:documents, reg:read/documents; ping reg:demo/mode. The demo redirect has no test."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Summary tiles: total, awaiting signature, undelivered; and the 'N past 14 days' stale chip",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[real browser, backend mocked] e2e/crm-flows.spec.mjs asserts #staleTxt for one case; tile arithmetic otherwise untested."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Class cards (5: soft-pull authorizations, contracts, invoices, UnderwriteIQ deliverables, uploads): click to filter, click again to clear",
+    "kind": "card-action",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page filter; no test clicks it (src/http/documents-screen.test.mjs only asserts the named classes exist)."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Class tabs (All plus the 5 classes)",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page filter; no test."
+  },
+  {
+    "surface": "documents.html",
+    "control": "'Pending only' toggle button",
+    "kind": "toggle",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page filter; no test."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Status filter select (not generated, generation failed, not delivered, bounced, awaiting signature, signature expired)",
+    "kind": "select",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page filter; no test. Delivery 'opened' is never shown because no column records an open (comment in the page)."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Filter box (client or document name)",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page filter; no test."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Column header sort (7 sortable columns)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page sort; no test."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Document table rows: generated / delivered / signature badges and age pending",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/documents"
+    ],
+    "tables": [
+      "documents",
+      "document_versions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-documents.mjs documents:stuck-processing, documents:required-unchased, documents:upload-store, documents:cannot-open (reads the stored file back); src/http/documents-screen.test.mjs."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Download button on a document row (mints a 15-minute signed link, opens a new tab)",
+    "kind": "button",
+    "calls": [
+      "GET /api/documents-download?id="
+    ],
+    "tables": [
+      "documents",
+      "document_versions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/http/documents-download.pg.test.mjs; src/pulse/coverage/gap-documents.mjs documents:cannot-open; ping reg:documents-download. Click is string-asserted in src/http/documents-screen.test.mjs."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Contract cell: status badge (draft, sent, opened, signed, void)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/contracts?view=contracts&document_id=<chunks of 200>"
+    ],
+    "tables": [
+      "contracts",
+      "contract_signers",
+      "documents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-contracts.mjs contracts:sent-unsignable, contracts:signed-not-stored; src/http/contracts-endpoints.pg.test.mjs ('finding the contract behind a document row', other company gets nothing)."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Contract cell: Open PDF button (signed copy when one exists)",
+    "kind": "button",
+    "calls": [
+      "GET /api/read/contracts?file=contract&id=&signed="
+    ],
+    "tables": [
+      "contracts",
+      "document_versions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs (file served through the same signature check, never a storage key); click string-asserted only."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Contract cell: Remind button (re-sends the signing request to one signer)",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:remind, id}"
+    ],
+    "tables": [
+      "contracts",
+      "contract_signers",
+      "messages",
+      "message_templates"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs ('reminding one contract': ordinary staff may, a draft has nobody, a voided contract is never chased, gives up after the cap); src/contracts/notify.pg.test.mjs. The reminder is a queued messages row sent by the dispatcher (job:message-dispatch-sweeper, deep checks gap:sms-sending-stuck, email:sending-stuck)."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Contract cell: Void button (asks for a reason in a prompt; owner/admin only)",
+    "kind": "button",
+    "calls": [
+      "POST /api/contracts {action:void, id, reason}"
+    ],
+    "tables": [
+      "contracts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/contracts-endpoints.pg.test.mjs ('voiding is owner/admin, and a refused void changes nothing'); src/contracts/lifecycle.pg.test.mjs. The Void button only draws for owner/admin (role read from /api/auth/session)."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Role lookup that decides whether Void is drawn",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/auth/session"
+    ],
+    "tables": [
+      "account_sessions",
+      "staff"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/auth-session.test.mjs; src/http/documents-screen.test.mjs ('void is offered only to an owner or admin')."
+  },
+  {
+    "surface": "documents.html",
+    "control": "Result strip under the table (server's own words after Remind, Void, Open, Download)",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/finance-os.html",
+      "GET /api/demo/mode (demo-client-bootstrap.js, owner/admin)"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:finance-os; e2e/screens-smoke.spec.mjs and e2e/crm-flows.spec.mjs open it with a client id and assert only that the body is visible (the crm-flows mocks name old endpoints the page no longer calls); src/http/app-client-carry.test.mjs; src/http/financeos-closer-access.test.mjs. Demo redirect has no test."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Find a client box (filters the list as you type)",
+    "kind": "input",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page filter; no test."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Client picker select (up to 500 clients)",
+    "kind": "select",
+    "calls": [
+      "GET /api/dashboard/clients?limit=500"
+    ],
+    "tables": [
+      "clients",
+      "client_consents",
+      "crs_results",
+      "transactions",
+      "pipeline_stages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/dashboard-role-gate.test.mjs (partner session refused 403 on /api/dashboard/clients and /client), src/http/cross-org-guard.test.mjs, src/http/dashboard-secret-in-url.test.mjs; ping reg:dashboard/clients. The picker box and list are not exercised and nothing checks the list is complete."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Open this client button (reloads with ?client_id=)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page navigation; no test."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Close this client button (forgets fh_client in localStorage, reloads bare)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Hero: 'available credit' figure and its sentence",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/finance-os?client_id="
+    ],
+    "tables": [
+      "tradelines",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/finance-os-endpoints.test.mjs (grid, 400 on missing or malformed client_id, scoped to caller's org); src/finance/os-grid.test.mjs; slice-07-finance.mjs lists reg:read/finance-os; ping reg:read/finance-os. No deep check goes red on a wrong figure."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Credit picture panel (seven server-computed rows: limit, balance, available, utilization, APR, cheapest money)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/finance-os?client_id="
+    ],
+    "tables": [
+      "tradelines"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/finance-os-endpoints.test.mjs; src/finance/os-grid.test.mjs."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Money in panel ('Paid so far' counts only paid rows) and Invoiced panel (billed, paid, still owed)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/dashboard/client?id="
+    ],
+    "tables": [
+      "transactions",
+      "v_invoice_balance",
+      "clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[page or scoring code run in a sandbox, no click] src/http/finance-os-money-in.test.mjs runs the page's own moneyInPanel in a sandbox (refunded and failed payments not counted); the Invoiced panel arithmetic has no test; src/http/dashboard-role-gate.test.mjs gates the read; ping reg:dashboard/client."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Bank accounts panels: Personal, Business, Investment, Not classified; and the hand-typed-balances note",
+    "kind": "panel",
+    "calls": [
+      "GET /api/finance/bank-accounts?client_id="
+    ],
+    "tables": [
+      "bank_accounts",
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/bank-accounts-endpoints.test.mjs and bank-accounts-endpoints.pg.test.mjs; src/http/banking-surface-gate.test.mjs; ping reg:finance/bank-accounts. Pulse gap-banks.mjs reads Plaid items in error, linked-but-hidden accounts and stale syncs (banks-plaid-item-error, banks-linked-not-on-screen, banks-sync-stale, banks-active-link-no-accounts); it does not check the figures shown."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Repeating charges panel",
+    "kind": "panel",
+    "calls": [
+      "GET /api/finance/bills?client_id="
+    ],
+    "tables": [
+      "recurring_bills",
+      "recurring_bill_transactions",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/bills-cashflow-endpoints.test.mjs and bills-cashflow-endpoints.pg.test.mjs; ping reg:finance/bills."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Optimize your accounts panel (suggestions, 'checked, not a factor', not-entitled state)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/read/finance-os-suggestions?client_id="
+    ],
+    "tables": [
+      "crs_results",
+      "subscriptions",
+      "client_cards",
+      "dispute_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/finance-os-suggestions.test.mjs (405, 400, wrong org 404, 403 entitled:false with no read of crs_results, no pull, real pull); ping reg:read/finance-os-suggestions; src/finance/finance-os-entitlement.test.mjs."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Promo tracking panel (labelled NOT LIVE; nothing stored)",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Static text; page says no table stores promo end dates for the cards a client holds."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Paydown simulator: Cash on hand box and Split this cash button",
+    "kind": "form",
+    "calls": [
+      "POST /api/finance/paydown-simulator {client_id, cash_on_hand}"
+    ],
+    "tables": [
+      "crs_results",
+      "subscriptions",
+      "client_cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "ping reg:finance/paydown-simulator. src/blueprint/paydown-simulator.test.mjs tests only the pure split math; no test drives the handler (entitlement gate, org scope) and none clicks the button."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Paydown simulator result block (pre-approval today vs estimate after, per-card split)",
+    "kind": "panel",
+    "calls": [
+      "POST /api/finance/paydown-simulator"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/blueprint/paydown-simulator.test.mjs (allocation and projected pre-approval math); the result rendering in the page is untested."
+  },
+  {
+    "surface": "finance-os.html",
+    "control": "Header text 'no client open' / client name",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Page itself loads (full-screen canvas, clock, census, LIVE / WAITING pill)",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/galaxy.html"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "reg:galaxy; e2e/screens-smoke.spec.mjs and e2e/crm-flows.spec.mjs (load and, in one case, a mocked agents read, body visible only); src/http/galaxy-no-invented-money.test.mjs reads the page text to prove the dice-rolled dollar events are gone; e2e/verification-roles.spec.mjs for nav."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Live feed on load: workers, clients, routes and numbers for the sky",
+    "kind": "page-load",
+    "calls": [
+      "GET /api/read/company-activity"
+    ],
+    "tables": [
+      "staff_events",
+      "shifts",
+      "staff",
+      "agents",
+      "clients",
+      "call_outcomes"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-owner-tools.mjs owner-tools:galaxy runs the real companyActivity read under the staff scope and goes red when it cannot read; src/galaxy/company-activity.test.mjs and company-activity.pg.test.mjs; ping reg:read/company-activity. Loaded once at page open, never refreshed."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Sky: click a cluster (team) to zoom in, click a worker to open the day panel, click empty space to pull back; hover shows the pointer",
+    "kind": "drag",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test clicks the canvas. Layer logic (goCluster, goWorker, goOut) is untested."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Escape key (zoom out) and the panel's 'esc' close button",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Worker day panel: pace, 'Right now', presence, 'Output today' rows, 'Total events', today timeline, files touched (client names)",
+    "kind": "panel",
+    "calls": [
+      "(from the one live read)"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "The feed gives each worker a canned list of activity lines per team (ROLE_POOL in src/galaxy/company-activity.mjs, for example 'On a client call'); the page picks one at random as 'Right now', writes it into the timeline with the current time, and adds a random 1 to 3 to 'Total events' each time (evActivity). So these lines and this count are not read from what the person did. src/http/galaxy-no-invented-money.test.mjs only forbids the dollar events; nothing checks this panel."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Rail pulses (six rails: Sales, Card Stacking, Optimization Rounds, Inquiry Removal, AR + Collections, Affiliates + Hiring) and hand-off threads",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Animation: the stage on a rail is chosen by dice (evMove), carries no client name and no money (src/http/galaxy-no-invented-money.test.mjs). Not a pipeline board: the columns are decorative."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Notice bar ('Sign in required', 'Activity feed failed', 'No workers yet', 'Live')",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page only; no test. Live feed needs a real token: a demo token shows 'Sign in required' and nothing else."
+  },
+  {
+    "surface": "galaxy.html",
+    "control": "Legend strip (size, brightness, pace colors)",
+    "kind": "panel",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "Static text."
+  },
+  {
+    "surface": "financeos.html (frame)",
+    "control": "Page itself loads (static HTML, 17 section scripts, then financeos.js)",
+    "kind": "page-load",
+    "calls": [
+      "GET /app/financeos.html",
+      "GET /app/money*.js, financeos.js, money-*.css"
+    ],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-portal.mjs portal:page-scripts-load fetches this page and every script and stylesheet it names and goes red on a dead file; reg:financeos; src/http/financeos-screen.test.mjs (tabs in order, scripts load with financeos.js last). Not in e2e/screens-smoke.spec.mjs. desk:financeos.html is unsorted in tripwires-baseline.json."
+  },
+  {
+    "surface": "financeos.html (frame)",
+    "control": "Header: client name, and the 'Test data - Plaid sandbox' banner (from the one overview read)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/overview"
+    ],
+    "tables": [
+      "clients",
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/financeos-screen.test.mjs ('the header shows the client name and the sandbox banner from one overview read')."
+  },
+  {
+    "surface": "financeos.html (frame)",
+    "control": "Back link ('Back to my portal' for a client, 'Back to Finance OS' for staff with ?client_id=)",
+    "kind": "link",
+    "calls": [
+      "navigates to client-portal.html or finance-os.html?client_id="
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/financeos-screen.test.mjs ('staff: ?client_id= rides to every section and the back link goes to Finance OS'); src/http/client-panel-financeos-link.test.mjs."
+  },
+  {
+    "surface": "financeos.html (frame)",
+    "control": "Tab bar: 16 tabs (Overview, Next steps, Money helper, Money moves, Plan, Banks, Strategy, Fundability, Applications, Alerts, Funding papers, Accounts, Credit, Connections, Payments, Setup); Left/Right/Home/End keys; #hash opens a tab",
+    "kind": "tab",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/financeos-screen.test.mjs (every tab opens its own panel, hash routing, only the open tab mounts, a missing section says Coming soon). Run in a fake page, not a browser."
+  },
+  {
+    "surface": "financeos.html (frame)",
+    "control": "Sign-in redirect on any 401 (client to /portal-login.html, staff to /login.html, back to the same tab)",
+    "kind": "page-load",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/financeos-screen.test.mjs ('a 401 sends a client ... back to the same tab')."
+  },
+  {
+    "surface": "financeos.html (frame)",
+    "control": "Staff view: who may open this page and which client is carried",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/financeos-staff-nav.test.mjs (owner, admin, sales_manager only), src/http/financeos-closer-access.test.mjs, src/http/client-panel-financeos-link.test.mjs."
+  },
+  {
+    "surface": "financeos.html#overview",
+    "control": "Overview read: 'What you have' (personal, business, not sure yet, never added together), 'What you owe', 'Cards used', 'Next due'",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/overview"
+    ],
+    "tables": [
+      "bank_accounts",
+      "bank_transactions",
+      "card_liabilities",
+      "recurring_bills",
+      "account_statement_cycles",
+      "entities",
+      "businesses",
+      "tradelines",
+      "plaid_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-overview.test.mjs, src/http/money-screen.test.mjs (render against a fixture), src/http/financeos-screen.test.mjs (no element sums personal and business cash), src/finance/money-overview.test.mjs; ping reg:money/overview. Pulse gap-banks.mjs (banks-linked-not-on-screen) reads rows the overview would hide; nothing re-adds the figures."
+  },
+  {
+    "surface": "financeos.html#overview",
+    "control": "Overview read: Tip, Coming up, Repeating bills, Containers, Debt (by container, by card, by loan), Cashflow charts, plan billing line",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/overview"
+    ],
+    "tables": [
+      "bank_accounts",
+      "card_liabilities",
+      "recurring_bills",
+      "bank_transactions",
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-screen.test.mjs; src/http/financeos-screen.test.mjs (loan table renders). The billing line shows '$X per container' when no price is set."
+  },
+  {
+    "surface": "financeos.html#overview",
+    "control": "Connect a bank button (header, and again in the empty state) - opens Plaid Link",
+    "kind": "button",
+    "calls": [
+      "POST /api/banking/link-token",
+      "https://cdn.plaid.com/link/v2/stable/link-initialize.js",
+      "POST /api/banking/link-exchange"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/plaid-link.test.mjs (link-token 403 outside FINANCE, 404 other org, 503 when Plaid is not configured, 200; exchange 400 without a public_token); src/http/banking-accounts.test.mjs; pings reg:banking/link-token, reg:banking/link-exchange; gap-banks.mjs banks-plaid-item-error. The button wiring is not exercised."
+  },
+  {
+    "surface": "financeos.html#overview",
+    "control": "Try again button (overview failed to load)",
+    "kind": "button",
+    "calls": [
+      "GET /api/money/overview"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test clicks it."
+  },
+  {
+    "surface": "financeos.html#overview",
+    "control": "Trends: 30 days / 90 days / 12 months buttons (choice kept in sessionStorage) and Try again",
+    "kind": "button",
+    "calls": [
+      "GET /api/money/trends?range=30d|90d|12m"
+    ],
+    "tables": [
+      "finance_client_daily",
+      "finance_account_daily",
+      "bank_transactions",
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-trends.test.mjs, src/http/money-trends-screen.test.mjs (line chart, gaps are gaps not zeros); src/finance/money-trends.test.mjs; job:finance-os-trend-snapshots heartbeat (ping, daily); ping reg:money/trends. Buttons are not clicked."
+  },
+  {
+    "surface": "financeos.html#next",
+    "control": "Next steps list: each task with status, due date, who can do it (agent, person, self)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/tasks"
+    ],
+    "tables": [
+      "money_agent_tasks",
+      "money_agent_pins",
+      "money_agent_log",
+      "client_waypoints",
+      "tasks",
+      "clarity_payments",
+      "clarity_payment_installments"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-tasks.test.mjs, src/http/money-next-screen.test.mjs, src/finance/money-tasks.test.mjs, src/finance/money-agent-tasks.pg.test.mjs; ping reg:money/tasks. No deep check on the list (gap-finance-os.mjs doors do not include money/tasks)."
+  },
+  {
+    "surface": "financeos.html#next",
+    "control": "'Do task' button on a step the helper or a person can do",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/tasks {action:do_task, task_id, client_id?}"
+    ],
+    "tables": [
+      "money_agent_tasks",
+      "money_agent_log",
+      "tasks",
+      "money_agent_pins"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-next-screen.test.mjs ('Do task posts only the task id (and client_id for staff), then repaints the row from the server's copy') clicks it in a fake page; src/http/money-tasks.test.mjs ('a client presses Do task on their own file; client_id in the body is ignored'). A task can become a money-moving proposal that still needs the client's yes."
+  },
+  {
+    "surface": "financeos.html#next",
+    "control": "'I'm ready to get funded' button (opens the Capital Blueprint closing-prep call task)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/ready-to-fund {client_id?}"
+    ],
+    "tables": [
+      "tasks",
+      "money_agent_log",
+      "client_waypoints",
+      "subscriptions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-ready-to-fund.test.mjs (client press on own file, staff FINANCE may press, others refused), src/finance/ready-to-fund.test.mjs; ping reg:money/ready-to-fund. The csm-queue desk then shows the task (gap-csm.mjs csm:queue-api)."
+  },
+  {
+    "surface": "financeos.html#next",
+    "control": "Links: 'Open your checklist', 'Check your accounts', 'Book a call'",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test follows these links."
+  },
+  {
+    "surface": "financeos.html#next",
+    "control": "Try again buttons (tasks, ready-to-fund)",
+    "kind": "button",
+    "calls": [
+      "GET /api/money/tasks",
+      "GET /api/money/ready-to-fund"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test clicks them."
+  },
+  {
+    "surface": "financeos.html#helper",
+    "control": "Thread: each message, the helper's answer, which brain answered, and cards for what it did; polls the read every 3 seconds while a turn is queued",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/helper (polled)"
+    ],
+    "tables": [
+      "money_helper_threads",
+      "money_helper_turns",
+      "money_agent_log",
+      "money_agent_tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:helper runs the real door read for a linked client; src/http/money-helper.test.mjs, src/http/money-helper-screen.test.mjs, src/finance/money-helper.test.mjs, money-helper-runner.test.mjs; ping reg:money/helper; job:finance-os-money-agent heartbeat (ping)."
+  },
+  {
+    "surface": "financeos.html#helper",
+    "control": "Send: message box, Send button, Enter key (20,000 character cap)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/helper {action:send, message, client_id?}",
+      "model call (AI or rules fallback)"
+    ],
+    "tables": [
+      "money_helper_turns",
+      "money_helper_threads",
+      "money_agent_log",
+      "money_agent_tasks",
+      "money_agent_pins",
+      "blueprint_declines",
+      "opt_outs",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-helper.test.mjs ('a client's message goes to the router as the client's', 'a refused send keeps the words', staff role-play recorded as staff); src/http/money-helper-screen.test.mjs (mount, send, refused send); src/finance/money-agent-ai.test.mjs. The helper is shadow: it never texts (page says so). A 'stop' halts it."
+  },
+  {
+    "surface": "financeos.html#helper",
+    "control": "Suggestion buttons (3: due this week, which card first, got declined paste the letter)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/helper {action:send}"
+    ],
+    "tables": [
+      "money_helper_turns"
+    ],
+    "impact": "customerData",
+    "coverage": "none",
+    "evidence": "Page text only; no test clicks a suggestion."
+  },
+  {
+    "surface": "financeos.html#helper",
+    "control": "'Check again' button (when a turn looks stuck) and Try again",
+    "kind": "button",
+    "calls": [
+      "GET /api/money/helper"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test."
+  },
+  {
+    "surface": "financeos.html#transfers",
+    "control": "Waiting-for-your-OK list and History table (status in words, who said yes)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/transfers"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_transfer_events",
+      "money_agent_tasks",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:transfers runs the real door read; src/http/money-transfers.test.mjs, src/finance/money-transfers.test.mjs and money-transfers.pg.test.mjs; job:finance-os-money-transfers heartbeat (ping, every 15 minutes); ping reg:money/transfers."
+  },
+  {
+    "surface": "financeos.html#transfers",
+    "control": "Review this move, then 'Yes, move $X' (the client's approval, with the From account select)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/transfers {action:approve, proposal_id, amount_cents, from_account_id, to_account_id, scheduled_for}"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_transfer_events",
+      "money_agent_tasks",
+      "plaid_items"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-transfers.test.mjs ('the client says yes: approved, sent at once because it is dated today', 'staff are refused, whatever the body says'); src/finance/money-transfers.pg.test.mjs; the database refuses an approved money row with no approved_at or from_account (money_agent_tasks_money_needs_ok_ck). Review/confirm click path is not exercised; money-transfers-screen.test.mjs renders only. In the sandbox no real money moves (page says so). No tripwire."
+  },
+  {
+    "surface": "financeos.html#transfers",
+    "control": "Go back (cancels the review step)",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test."
+  },
+  {
+    "surface": "financeos.html#transfers",
+    "control": "'Not now' / 'Stop this move' / 'Take it off the list' (cancel a proposal; asks to confirm)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/transfers {action:cancel, proposal_id}"
+    ],
+    "tables": [
+      "money_transfers",
+      "money_agent_tasks"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-transfers.test.mjs ('cancel - client or staff'), src/finance/money-transfers.test.mjs; button click not exercised."
+  },
+  {
+    "surface": "financeos.html#transfers",
+    "control": "Staff only: 'Set up this move' form (to, suggested from, amount, date, what it is for)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/transfers {action:propose, to_kind, amount_cents, due_on, title}"
+    ],
+    "tables": [
+      "money_agent_tasks",
+      "money_transfers"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/finance/money-transfer-seam.test.mjs (proposeTransfer writes a needs_approval row, never moves money), src/http/money-transfers.test.mjs. Form not exercised."
+  },
+  {
+    "surface": "financeos.html#plan",
+    "control": "Month calendar and list of dated pins (open accounts, deposits, card and loan due dates, payments owed to Fundhub)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/plan?month="
+    ],
+    "tables": [
+      "money_agent_pins",
+      "client_waypoints",
+      "funding_rounds",
+      "clarity_payments",
+      "card_liabilities",
+      "bank_relationship_deposits"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:plan runs the real door read; src/http/money-plan.test.mjs, src/http/money-plan-screen.test.mjs (mount, move months, open pin, every source failing is an error not an empty month), src/finance/money-plan.test.mjs, plan-sources tests; ping reg:money/plan."
+  },
+  {
+    "surface": "financeos.html#plan",
+    "control": "Previous month / Next month / Today buttons",
+    "kind": "button",
+    "calls": [
+      "GET /api/money/plan?month="
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-plan-screen.test.mjs ('paints into el through ctx.apiGet ... and moves months')."
+  },
+  {
+    "surface": "financeos.html#plan",
+    "control": "A pin (calendar chip or list row) opens its detail panel; '+N more'; Close; Esc; Tab stays inside",
+    "kind": "card-action",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-plan-screen.test.mjs ('a pin opens its panel')."
+  },
+  {
+    "surface": "financeos.html#plan",
+    "control": "Staff only: 'Mark done' and 'Mark missed' (asks to confirm; client sees it on their plan)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/plan {action:mark, source, pin_id, status}"
+    ],
+    "tables": [
+      "money_agent_pins",
+      "client_waypoints"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-plan-screen.test.mjs ('staff Mark done posts the pin to its own source'); src/http/money-plan.test.mjs ('a client can never mark', 'staff mark goes to markPin ... checked against their org')."
+  },
+  {
+    "surface": "financeos.html#plan",
+    "control": "Link: 'Add an account' (empty state), 'See it on Payments'",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "No test follows these links."
+  },
+  {
+    "surface": "financeos.html#banks",
+    "control": "Banks near you, Card stacking order, Next funding sequence date, Your bank relationships (each rule with its source)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/banks"
+    ],
+    "tables": [
+      "lenders",
+      "bank_relationship_deposits",
+      "blueprint_bank_relationship_todos",
+      "blueprint_declines",
+      "funding_rounds",
+      "crs_results",
+      "tradelines",
+      "inquiry_log",
+      "applications"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-banks.test.mjs, src/http/money-banks-screen.test.mjs, src/finance/bank-strategy.test.mjs; ping reg:money/banks. No deep check on this door."
+  },
+  {
+    "surface": "financeos.html#banks",
+    "control": "Staff only: 'Add to plan' on a bank card and 'Add bank to plan' form (bank, kind, container, day to open, deposit)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/banks {action:plan_bank}"
+    ],
+    "tables": [
+      "bank_relationship_deposits",
+      "blueprint_bank_relationship_todos",
+      "lenders",
+      "businesses"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-banks.test.mjs (staff plan_bank writes and is scoped to the client's org; 'a client can never change the plan'); forms not exercised (money-banks-screen.test.mjs mounts and renders only)."
+  },
+  {
+    "surface": "financeos.html#banks",
+    "control": "Staff only: 'Mark opened' / 'Save the day opened'",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/banks {action:open_account, relationship_id, opened_on}"
+    ],
+    "tables": [
+      "blueprint_bank_relationship_todos",
+      "bank_relationship_deposits"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-banks.test.mjs (staff open_account, other org refused); form not exercised."
+  },
+  {
+    "surface": "financeos.html#banks",
+    "control": "Staff only: 'Add deposit' (amount, day)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/banks {action:record_deposit, relationship_id, amount_cents, deposited_on}"
+    ],
+    "tables": [
+      "bank_relationship_deposits"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-banks.test.mjs (staff record_deposit, missing fields refused); form not exercised. Records a deposit somebody saw; moves nothing."
+  },
+  {
+    "surface": "financeos.html#banks",
+    "control": "Staff only: 'Skip this bank'",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/banks {action:set_state, relationship_id, state:skipped}"
+    ],
+    "tables": [
+      "blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-banks.test.mjs (set_state is in the staff-only action list); not clicked."
+  },
+  {
+    "surface": "financeos.html#banks",
+    "control": "Staff only: 'Save date' for the next funding sequence ready date",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/banks {action:set_next_sequence_date, ready_date}"
+    ],
+    "tables": [
+      "funding_rounds",
+      "lender_bureau_observations"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-banks.test.mjs; src/http/blueprint-staff-actions-next-sequence.test.mjs; form not exercised."
+  },
+  {
+    "surface": "financeos.html#strategy",
+    "control": "Payoff plan read (every card and loan, safe amount each month) and the live math",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/strategy",
+      "GET /app/money-strategy-math.js"
+    ],
+    "tables": [
+      "card_liabilities",
+      "bank_accounts",
+      "recurring_bills",
+      "payment_strategy_plans",
+      "cashflow_settings",
+      "bank_transactions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-strategy.test.mjs, src/http/money-strategy-screen.test.mjs (mount, shared math runs in the page), src/finance/payment-strategy.test.mjs, payment-strategy-math.test.mjs, payment-strategy.pg.test.mjs; ping reg:money/strategy."
+  },
+  {
+    "surface": "financeos.html#strategy",
+    "control": "Method buttons (highest rate first, card use first, smallest balance first), monthly amount slider and box, goal select and date, 'Use $X' buttons, 'Show more months'",
+    "kind": "form",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; src/http/money-strategy-screen.test.mjs renders states and runs the math but no control is clicked."
+  },
+  {
+    "surface": "financeos.html#strategy",
+    "control": "'Save this plan' button",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/strategy {action:save_plan, method, monthly_cents, goal?}"
+    ],
+    "tables": [
+      "payment_strategy_plans"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-strategy.test.mjs ('a client saves their own plan', 'FINANCE staff save for a client in their org', 'a closer cannot save'); src/finance/payment-strategy.pg.test.mjs. Moves no money."
+  },
+  {
+    "surface": "financeos.html#fundability",
+    "control": "Fundability picture (score path, what to fix) read only",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/fundability"
+    ],
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities",
+      "client_waypoints",
+      "dispute_items",
+      "waypoint_definitions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-fundability.test.mjs, src/http/money-fundability-screen.test.mjs, src/finance/fundability.test.mjs; ping reg:money/fundability. No deep check."
+  },
+  {
+    "surface": "financeos.html#fundability",
+    "control": "Chart columns (hover or focus shows a month) and Try again",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-fundability-screen.test.mjs ('mount ... paints', 401 hands off to sign-in); hover not exercised."
+  },
+  {
+    "surface": "financeos.html#declines",
+    "control": "Applications list: past declines with reasons, quotes and next steps",
+    "kind": "panel",
+    "calls": [
+      "GET /api/blueprint/declines"
+    ],
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:declines runs the real door read; src/http/blueprint-declines.test.mjs, src/http/money-declines-screen.test.mjs, src/blueprint/decline-analyze.test.mjs; ping reg:blueprint/declines."
+  },
+  {
+    "surface": "financeos.html#declines",
+    "control": "Paste a decline letter: bank select, bank name box, letter box, 'Read my decline' button",
+    "kind": "form",
+    "calls": [
+      "POST /api/blueprint/declines {action:paste, text, bank}"
+    ],
+    "tables": [
+      "blueprint_declines",
+      "blueprint_decline_steps"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/blueprint-declines.test.mjs, src/blueprint/decline-analyze.test.mjs; the form is not exercised (money-declines-screen.test.mjs renders only)."
+  },
+  {
+    "surface": "financeos.html#alerts",
+    "control": "File protection alerts read: what each of four texts watches, when it texts next, what already went out",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/alerts"
+    ],
+    "tables": [
+      "file_protection_alerts",
+      "file_protection_settings",
+      "account_statement_cycles",
+      "bank_accounts",
+      "crs_results",
+      "clarity_payments",
+      "opt_outs",
+      "subscriptions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-alerts.test.mjs, src/http/money-alerts-screen.test.mjs (42 tests, many drive mount and click in a fake page), src/finance/file-alerts/payment-timing.test.mjs, cash-reserve.test.mjs, new-credit.test.mjs; ping reg:money/alerts; job:blueprint-finance-os-alerts heartbeat (ping, daily 7:30). No deep check that a due text was actually sent."
+  },
+  {
+    "surface": "financeos.html#alerts",
+    "control": "On/off switch for each of the four alerts (payment timing, promo ending, cash cushion, new credit)",
+    "kind": "toggle",
+    "calls": [
+      "POST /api/money/alerts {action:set_alert, kind, enabled}"
+    ],
+    "tables": [
+      "file_protection_settings"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-alerts-screen.test.mjs ('a switch posts set_alert with its kind and the flipped value', 'a switch that fails stays as it was'); src/http/money-alerts.test.mjs (client switches off on own file, staff stamped 'staff')."
+  },
+  {
+    "surface": "financeos.html#alerts",
+    "control": "Statement close day: 'Change day' / 'Save day' / 'Cancel' per card and 'Save days' (batch)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/alerts {action:set_statement_close_day, account_id, day}"
+    ],
+    "tables": [
+      "account_statement_cycles",
+      "bank_accounts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-alerts-screen.test.mjs ('Save day posts set_statement_close_day with the day picked, then reads the file again', 'Save day with no day picked sends nothing')."
+  },
+  {
+    "surface": "financeos.html#alerts",
+    "control": "Promo: 'Edit promo' / 'Save promo' (end date, APR) / 'Remove this promo' (asks first) / 'Keep it'",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/alerts {action:set_promo, account_id, ends_on, apr_pct}"
+    ],
+    "tables": [
+      "account_statement_cycles",
+      "bank_accounts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-alerts-screen.test.mjs ('Save promo: a past date is stopped before sending; a good one posts set_promo', 'Remove promo asks first ... posts ends_on null')."
+  },
+  {
+    "surface": "financeos.html#alerts",
+    "control": "'Show all' on the texts-sent list, jump links, Try again",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "[page code run in a fake page, click or paint exercised] src/http/money-alerts-screen.test.mjs ('the texts-sent list shows three, then Show all')."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Papers list: progress, two groups, each paper's status in words, 'View' link (15-minute signed link)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/vault"
+    ],
+    "tables": [
+      "document_vault_items",
+      "document_vault_reviews",
+      "documents",
+      "businesses",
+      "pii_identity"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:vault runs the real door read; src/http/money-vault.test.mjs, src/http/money-vault-screen.test.mjs (24 tests, render only), src/finance/document-vault*.test.mjs; ping reg:money/vault; job:document-vault-chase heartbeat; gap-documents.mjs documents:required-unchased."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Client: 'Send' / pick-file button on a paper (one or many files)",
+    "kind": "button",
+    "calls": [
+      "POST /api/documents-upload (multipart: file, subtype, entity_id, item fields)"
+    ],
+    "tables": [
+      "documents",
+      "document_versions",
+      "client_consents",
+      "events"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-documents.mjs documents:upload-store, documents:stuck-processing, documents:cannot-open; src/http/documents-upload.pg.test.mjs; src/http/money-vault-screen.test.mjs ('the upload goes out as multipart to the existing endpoint'); tripwires.mjs lists route:documents-upload."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Staff only: 'Accept' (asks months or end date when the paper needs it) and 'Accept file'",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/vault {action:accept, document_id, covers?, period_end?}"
+    ],
+    "tables": [
+      "document_vault_items",
+      "document_vault_reviews",
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-vault.test.mjs ('POST accept: staff id and the typed units and date reach the logic', 'a client cannot POST'); src/finance/document-vault.pg.test.mjs."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Staff only: 'Reject' with a reason the client reads, then 'Reject file'",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/vault {action:reject, document_id, reason}"
+    ],
+    "tables": [
+      "document_vault_reviews",
+      "documents"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-vault.test.mjs ('POST reject: the reason goes through as the client-visible words'). The client sees the typed reason on their own vault."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Staff only: 'Change' (flip an accepted file to rejected or back), 'Cancel'",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-vault-screen.test.mjs ('Change on decided ones') renders it; no click."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Staff only: files to sort - 'File and accept' / 'Reject' with the paper picker",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/vault {action:accept|reject, document_id, item_key, entity_id}"
+    ],
+    "tables": [
+      "document_vault_items",
+      "document_vault_reviews",
+      "documents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-vault.test.mjs; src/finance/document-vault.test.mjs."
+  },
+  {
+    "surface": "financeos.html#vault",
+    "control": "Staff only: 'Add a paper' form (name, whose paper, why the lender wants it, file type, how many files)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/vault {action:add_item, title, note, entity_id, subtype, need}"
+    ],
+    "tables": [
+      "document_vault_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-vault.test.mjs ('POST add_item, retire_item, waive and unwaive each reach their own function'). The client reads the 'why' line."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "Containers and accounts read (businesses with their info, 'you', 'Not sorted yet', a 'Move to...' on every bank row)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/accounts"
+    ],
+    "tables": [
+      "entities",
+      "businesses",
+      "bank_accounts",
+      "investment_holdings",
+      "recurring_bills",
+      "account_statement_cycles"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-accounts.test.mjs, src/http/money-accounts-screen.test.mjs, src/finance/money-accounts.test.mjs, src/finance/containers.test.mjs; ping reg:money/accounts; gap-banks.mjs."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "Connect a bank button (Plaid Link; same flow as Overview)",
+    "kind": "button",
+    "calls": [
+      "POST /api/banking/link-token",
+      "Plaid Link script",
+      "POST /api/banking/link-exchange"
+    ],
+    "tables": [
+      "plaid_items",
+      "bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/plaid-link.test.mjs; gap-banks.mjs banks-plaid-item-error, banks-sync-stale; button not clicked."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "'Add account' and 'Add a business' buttons that open the forms",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "Add account form (name, type: checking, savings, credit card, loan; last 4 only; due day and minimum for loans)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/accounts {action:add_account, name, type, ...}"
+    ],
+    "tables": [
+      "bank_accounts",
+      "account_statement_cycles"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-accounts.test.mjs ('own account into own container works, stamped client_stated'; cannot add into another client's container); src/http/money-accounts-screen.test.mjs ('forms ask for last 4 only')."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "Add a business form and 'Save business info' (name, entity type, EIN last 4, etc.)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/accounts {action:create_business|save_business, name, info}"
+    ],
+    "tables": [
+      "entities",
+      "businesses",
+      "entity_data"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-accounts.test.mjs ('the new business lands on the session's client', cannot write business info onto another client's container)."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "'Add personal container' form",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/accounts {action:create_personal, name}"
+    ],
+    "tables": [
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-accounts.test.mjs."
+  },
+  {
+    "surface": "financeos.html#accounts",
+    "control": "'Move to...' select on each account (assign or unassign a container)",
+    "kind": "select",
+    "calls": [
+      "POST /api/money/accounts {action:assign|unassign, account_id, container_id}"
+    ],
+    "tables": [
+      "bank_accounts",
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-accounts.test.mjs (cannot move another client's account, cannot unassign another client's account, nothing written)."
+  },
+  {
+    "surface": "financeos.html#credit",
+    "control": "Credit page read (score per bureau, history line from two or more pulls, UnderwriteIQ sentences, sample-report warning)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/credit"
+    ],
+    "tables": [
+      "crs_results",
+      "tradelines",
+      "card_liabilities",
+      "businesses"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:credit runs the real door read; src/http/money-credit.test.mjs, src/http/money-credit-screen.test.mjs, src/finance/credit-overview.test.mjs; ping reg:money/credit."
+  },
+  {
+    "surface": "financeos.html#credit",
+    "control": "Try again; link to Setup",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test."
+  },
+  {
+    "surface": "financeos.html#connections",
+    "control": "Connections read: tiles, three processor cards (Commas, Whop, open API), month table per container, sales line under the section",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/connections",
+      "GET /api/money/trends?range=12m (sales line)"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events",
+      "entities"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-connections.test.mjs, src/http/money-connections-screen.test.mjs, src/http/money-trends-screen.test.mjs (sales line); ping reg:money/connections; job:merchant-pull-sweeper heartbeat (ping, daily). merchant/events is ALLOWED_UNMONITORED in registry.mjs."
+  },
+  {
+    "surface": "financeos.html#connections",
+    "control": "Connect Commas / Connect Whop / Connect open API (entity select and mode select: paste a key or webhook)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:create, provider, entity_id}"
+    ],
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-connections.test.mjs ('create pull ... paste key ... Sync now', 'open API: key once', 'bad input answers in words'). The open-API key is shown once."
+  },
+  {
+    "surface": "financeos.html#connections",
+    "control": "'Save key' (client pastes their processor API key; cleared as soon as sent)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:api_key, connection_id, api_key}",
+      "processor API call (Commas or Whop)"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-connections.test.mjs ('the key is never read back')."
+  },
+  {
+    "surface": "financeos.html#connections",
+    "control": "'Sync now' button",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:sync, connection_id}",
+      "processor API call"
+    ],
+    "tables": [
+      "merchant_connections",
+      "merchant_events"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-connections.test.mjs; src/merchant/sync.test.mjs, src/merchant/store.test.mjs."
+  },
+  {
+    "surface": "financeos.html#connections",
+    "control": "'Save secret' (webhook secret) and 'Disable' (asks first)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/connections {action:secret|disable, connection_id}"
+    ],
+    "tables": [
+      "merchant_connections"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-connections.test.mjs ('Whop: webhook URL + secret, then a signed delivery')."
+  },
+  {
+    "surface": "financeos.html#connections",
+    "control": "Copy address / Copy key buttons",
+    "kind": "button",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page clipboard; no test."
+  },
+  {
+    "surface": "financeos.html#payments",
+    "control": "Payments read: what is owed (Clarity Payments, buy-now-pay-later, other), schedule, coming up, helper's log, unmatched Commas payments (staff only)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/payments"
+    ],
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments",
+      "money_agent_log",
+      "messages",
+      "tasks",
+      "client_escalations",
+      "bank_transactions",
+      "card_liabilities"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "src/pulse/coverage/gap-finance-os.mjs finance-os:payments runs the real door read; src/http/money-payments.test.mjs, src/http/money-payments-screen.test.mjs, src/finance/clarity-payments.test.mjs, clarity-autopay.test.mjs; ping reg:money/payments."
+  },
+  {
+    "surface": "financeos.html#payments",
+    "control": "'Talk to a person' button",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/payments {action:ask_for_person}"
+    ],
+    "tables": [
+      "client_escalations",
+      "tasks"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-payments.test.mjs ('a client can ask for a person - for their own file only')."
+  },
+  {
+    "surface": "financeos.html#payments",
+    "control": "Staff only: 'Record payment' (amount) and 'Mark settled'",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/payments {action:record_payment|mark_settled, plan_id, amount_cents}"
+    ],
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-payments.test.mjs (staff FINANCE only; a client can never); forms not exercised."
+  },
+  {
+    "surface": "financeos.html#payments",
+    "control": "Staff only: 'Add payment plan' (kind, owed to, name the client sees, dated schedule)",
+    "kind": "form",
+    "calls": [
+      "POST /api/money/payments {action:add_plan, kind, owed_to, label, schedule}"
+    ],
+    "tables": [
+      "clarity_payments",
+      "clarity_payment_installments"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-payments.test.mjs; form not exercised."
+  },
+  {
+    "surface": "financeos.html#setup",
+    "control": "Setup steps read (pay setup fee, run soft pull, add businesses and accounts, you're live)",
+    "kind": "panel",
+    "calls": [
+      "GET /api/money/setup"
+    ],
+    "tables": [
+      "subscriptions",
+      "payment_links",
+      "soft_pull_requests",
+      "client_cards",
+      "entities",
+      "bank_accounts",
+      "crs_results",
+      "products"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-setup.test.mjs, src/http/money-setup-screen.test.mjs, src/finance/money-setup.test.mjs; ping reg:money/setup."
+  },
+  {
+    "surface": "financeos.html#setup",
+    "control": "'Pay $X setup' button (mints a hosted Commas checkout link; no price set means no button)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/setup {action:start_checkout}",
+      "Commas createPaymentLink"
+    ],
+    "tables": [
+      "payment_links",
+      "subscriptions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-setup.test.mjs ('no setup price -> 409 price_not_set, nothing minted', 'a price set -> mints through createPaymentLink'); no pulse check names the Finance OS setup link (src/pulse/coverage/gap-payments.mjs mentions neither finance nor setup); button not clicked."
+  },
+  {
+    "surface": "financeos.html#setup",
+    "control": "'Run soft pull' button (hands back the signed soft-pull approval form)",
+    "kind": "button",
+    "calls": [
+      "POST /api/money/setup {action:request_soft_pull}"
+    ],
+    "tables": [
+      "soft_pull_requests",
+      "client_consents"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "[server handler tested, page click not exercised] src/http/money-setup.test.mjs; src/consent/approve-token.test.mjs. The pull runs only after consent and the soft-pull payment (soft-pull-approve page; gap-soft-pull.mjs, gap-consent.mjs)."
+  },
+  {
+    "surface": "financeos.html#setup",
+    "control": "Try again button",
+    "kind": "button",
+    "calls": [
+      "GET /api/money/setup"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "none",
+    "evidence": "In-page; no test."
+  }
+]

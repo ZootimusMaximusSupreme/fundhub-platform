@@ -1,0 +1,2657 @@
+[
+  {
+    "surface": "route:ad-videos",
+    "control": "List filmed ad takes and where each is stuck (awaiting_approval, editing, rendered ...). Reads only; approval is a different door.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:ad_videos"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-videos.pg.test.mjs runs the handler on real Postgres. No pulse check reads ad_videos state; only job:ad-video-sweeper heartbeat (src/pulse/heartbeats.mjs). Ping row: reg:ad-videos (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "ad-videos",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.OPS)"
+  },
+  {
+    "surface": "route:agent-call",
+    "control": "action=check: asks whether a live registry agent could phone one client. Never dials.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "r:agents",
+      "r:clients",
+      "r:opt_outs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/agent-call.pg.test.mjs drives the handler for check (auth, consent, DND, org refusals). Ping row: reg:agent-call (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "agent-call",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager, closer, setter, inquiry_specialist"
+  },
+  {
+    "surface": "route:agent-call",
+    "control": "action=call: places a real Bland phone call to a client with the agent prompt, after 5 gates; MESSAGING_DRY_RUN holds it unless switched off.",
+    "kind": "api-write",
+    "calls": [
+      "Bland voice API via src/messaging/providers/bland-voice.mjs placeCall",
+      "messaging gate"
+    ],
+    "tables": [
+      "w:outbound_calls",
+      "r:agents",
+      "r:clients"
+    ],
+    "impact": "customerMessage",
+    "coverage": "ping",
+    "evidence": "src/http/agent-call.pg.test.mjs has no test that places a call through the handler (only check and refusals); src/messaging/providers/bland-voice.test.mjs unit-tests placeCall. src/pulse/coverage/gap-ai-agents.mjs watches agent retired/failed runs, not this route. Ping row: reg:agent-call (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "agent-call",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager, closer, setter, inquiry_specialist"
+  },
+  {
+    "surface": "route:analytics/clickfunnels-connect",
+    "control": "Save a ClickFunnels API key + subdomain after proving them with a live listFunnels call.",
+    "kind": "api-write",
+    "calls": [
+      "ClickFunnels API listFunnels"
+    ],
+    "tables": [
+      "w:analytics_connections"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: clickfunnels-night-job in src/pulse/machine.mjs reads analytics_connections (active, last_error) and funnel_page_stats and goes red with no active connection. Test: src/http/analytics-clickfunnels.pg.test.mjs. No ping row on this route (ALLOWED_UNMONITORED in src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "analytics/clickfunnels-connect",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF (org-wide)"
+  },
+  {
+    "surface": "route:analytics/youtube-sync",
+    "control": "Manual 'Sync now': refresh Google OAuth token, list channel videos, pull watch stats, upsert one snapshot per video per day.",
+    "kind": "api-write",
+    "calls": [
+      "Google OAuth token refresh",
+      "YouTube Analytics API"
+    ],
+    "tables": [
+      "w:video_watch_stats",
+      "w:analytics_connections"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: social:youtube-last-error and social:video-stats-stale in src/pulse/coverage/gap-social.mjs read analytics_connections (red after 3 days quiet). Test: src/http/analytics-youtube.pg.test.mjs. Not on any schedule: only runs when a person presses Sync. No ping row on this route (ALLOWED_UNMONITORED in src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "analytics/youtube-sync",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF (org-wide)"
+  },
+  {
+    "surface": "route:auth/authorized-rep",
+    "control": "Read who the authorized representative on a client file is (name, email, phone).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:client_authorized_reps",
+      "r:accounts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "Handler is never invoked by any test (src/pulse/coverage/gap-email.test.mjs only mentions the path). Module tests: src/auth/authorized-rep.pg.test.mjs. Ping row: reg:auth/authorized-rep (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/authorized-rep",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:auth/authorized-rep",
+    "control": "Add or replace the authorized representative on a client file: makes a login for them and emails them a sign-in link.",
+    "kind": "api-write",
+    "calls": [
+      "magic-link email queued (EMAIL-PORTAL-MAGIC-LINK)"
+    ],
+    "tables": [
+      "w:accounts",
+      "w:client_authorized_reps",
+      "w:account_sessions",
+      "w:account_magic_links",
+      "w:messages"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "Partial deep: gap:auth-magic-link-dead in src/pulse/coverage/gap-auth.mjs goes red when an issued link has no EMAIL-PORTAL-MAGIC-LINK message within 10 minutes (route:auth/magic-link family is in TRIPWIRES). No test invokes this handler; module tests src/auth/authorized-rep.pg.test.mjs and src/auth/magic-link.pg.test.mjs. Ping row: reg:auth/authorized-rep (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/authorized-rep",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:auth/authorized-rep",
+    "control": "Remove the authorized representative from a client file (ends their sessions).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:client_authorized_reps",
+      "w:account_sessions"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "Handler never invoked by a test; module tests src/auth/authorized-rep.pg.test.mjs. Nothing reads client_authorized_reps in src/pulse. Ping row: reg:auth/authorized-rep (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/authorized-rep",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:auth/login",
+    "control": "GET: returns the demo-login roster and demo password when the demo switch is on, else {enabled:false}.",
+    "kind": "api-public-read",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/demo-logins.test.mjs imports the handler. Live: reg:auth/login GETs it every morning (200 with the demo roster state); e2e/live-run4-pass.spec.mjs asserts demo off (manual sweep). daily-pulse checkLogin loads /login.html, not this API. Ping row: reg:auth/login (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/login",
+    "methods": [
+      "GET"
+    ],
+    "who": "public"
+  },
+  {
+    "surface": "route:auth/login",
+    "control": "Sign in: staff first, then client / affiliate / partner accounts; sets the fundhub_session cookie, writes attempt log, upgrades password hash.",
+    "kind": "api-auth",
+    "calls": [],
+    "tables": [
+      "w:auth_attempts",
+      "w:staff",
+      "w:account_sessions",
+      "w:accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Deep: gap:auth-staff-login (login storm, nobody succeeding), gap:auth-signin-no-session and gap:auth-session-read in src/pulse/coverage/gap-auth.mjs. Tests: src/auth/login.test.mjs, src/http/magic-link-endpoints.pg.test.mjs, src/http/demo-logins.test.mjs; live e2e/live-run4-pass.spec.mjs (bad password 401, staff session) via manual sweep. Ping row: reg:auth/login (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/login",
+    "methods": [
+      "POST"
+    ],
+    "who": "public (email + password)"
+  },
+  {
+    "surface": "route:auth/magic-link-verify",
+    "control": "Exchange an emailed one-time link token for a portal session; spends the link, mints session, stamps account.",
+    "kind": "api-auth",
+    "calls": [],
+    "tables": [
+      "w:account_magic_links",
+      "w:account_sessions",
+      "w:accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Deep: TRIPWIRES route:auth/magic-link-verify -> gap:auth-magic-link-dead + gap:auth-signin-no-session (src/pulse/tripwires.mjs, src/pulse/coverage/gap-auth.mjs). Test: src/http/magic-link-endpoints.pg.test.mjs. Ping row: reg:auth/magic-link-verify (src/pulse/registry.mjs). Tripwire map: in TRIPWIRES.",
+    "route": "auth/magic-link-verify",
+    "methods": [
+      "POST"
+    ],
+    "who": "public (token is the credential)"
+  },
+  {
+    "surface": "route:auth/session",
+    "control": "Who am I: returns the signed-in staff, client, affiliate or partner principal (and had_call for clients).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:sessions",
+      "r:account_sessions",
+      "r:accounts"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "Deep: gap:auth-session-read in src/pulse/coverage/gap-auth.mjs runs the same session SELECTs and checks grants. Tests: src/http/auth-session.test.mjs (handler), e2e/live-run4-pass.spec.mjs (anon 401, manual). Ping row: reg:auth/session (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/session",
+    "methods": [
+      "GET"
+    ],
+    "who": "any signed-in principal"
+  },
+  {
+    "surface": "route:auth/suspend",
+    "control": "Turn off a staff login and revoke its sessions. Cannot suspend yourself.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:staff",
+      "w:sessions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "src/http/staff-invite.test.mjs only reads the file text; handler never invoked. Module tests src/auth/invite.test.mjs; door listed in src/pulse/coverage/slice-01-auth.mjs. Ping row: reg:auth/suspend (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "auth/suspend",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:banking/link-token",
+    "control": "Open Plaid Link: mints a Plaid link token for one client (staff on a client, or the client on their own file).",
+    "kind": "api-vendor-call",
+    "calls": [
+      "Plaid /link/token/create"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/plaid-link.test.mjs imports the handler (fake Plaid). No live check; gap-banks.mjs reads plaid_items after link, not the token door. Ping row: reg:banking/link-token (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "banking/link-token",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager, closer (FINANCE_OS) or client (own file)"
+  },
+  {
+    "surface": "route:banking/sync-liabilities",
+    "control": "Pull card bills (due date, minimum, last statement) from Plaid for every linked login of a client and write statement cycles. Moves no money.",
+    "kind": "api-vendor-call",
+    "calls": [
+      "Plaid /liabilities/get"
+    ],
+    "tables": [
+      "w:account_statement_cycles",
+      "r:plaid_items",
+      "r:bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/sync-liabilities.test.mjs imports the handler with fakes; src/banking/plaid-liabilities.test.mjs. Nothing in src/pulse reads account_statement_cycles. Ping row: reg:banking/sync-liabilities (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "banking/sync-liabilities",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager, closer (FINANCE_OS)"
+  },
+  {
+    "surface": "route:blueprint/staff-actions",
+    "control": "get_next_sequence_plan (read) and set_next_sequence_date: shows or sets the date a Capital Blueprint client is ready for the next funding sequence.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:clients (custom_fields next-sequence date)",
+      "r:funding_rounds"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/blueprint-staff-actions-next-sequence.test.mjs imports the handler and posts both actions; src/blueprint/next-sequence-plan.test.mjs. No live check. Ping row: reg:blueprint/staff-actions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "blueprint/staff-actions",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:blueprint/staff-actions",
+    "control": "create_credit_partner: creates a second client file linked to a Blueprint buyer (credit partner).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:clients",
+      "w:credit_partner_links"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "No test calls this action (blueprint-staff-actions-next-sequence.test.mjs covers only the sequence actions); src/blueprint/credit-partner.mjs has no test file. Ping only. Ping row: reg:blueprint/staff-actions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "blueprint/staff-actions",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:blueprint/staff-actions",
+    "control": "offer_bank_tracker, add_bank_todo, list_bank_todos, update_bank_todo_state: bank-relationship checklist for a Blueprint client.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:blueprint_bank_relationship_todos"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "No test calls these actions and src/blueprint/bank-relationship.mjs has no test file. Ping only. Ping row: reg:blueprint/staff-actions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "blueprint/staff-actions",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:call-outcomes",
+    "control": "Closer logs a call disposition (hotkeys 1-5): writes the outcome, completes the task, emits call.completed that starts the follow-up emails. Cash comes from the payment record, never the body.",
+    "kind": "api-write",
+    "calls": [
+      "event call.completed (starts offer / no-show / declined follow-ups)"
+    ],
+    "tables": [
+      "w:call_outcomes",
+      "w:tasks",
+      "w:marketing_flags",
+      "w:events"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "Deep: closer:held-disposition in src/pulse/coverage/gap-closer.mjs (disposition saved, no call_outcomes row); handoff:call-outcome-no-followup and offer-email checks in src/pulse/coverage/gap-handoff.mjs. Tests: src/http/launch-proof-chain.pg.test.mjs (handler), src/sales/call-outcomes.test.mjs. Ping row: reg:call-outcomes (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "call-outcomes",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: closer, sales_manager, owner, admin"
+  },
+  {
+    "surface": "route:campaigns/detail",
+    "control": "One campaign with ad sets, 30-day metric series and recent actions.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:campaigns",
+      "r:ad_sets",
+      "r:ads",
+      "r:ad_metrics_daily",
+      "r:action_log"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs and src/http/creative-endpoints.pg.test.mjs run the handler. gap-ads.mjs checks the sync that feeds it, not this read. Ping row: reg:campaigns/detail (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "campaigns/detail",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own rows via RLS) or staff naming partner_id"
+  },
+  {
+    "surface": "route:campaigns/list",
+    "control": "Campaign list with yesterday's spend and 7-day ROAS.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:campaigns",
+      "r:ad_sets",
+      "r:ads",
+      "r:ad_metrics_daily"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/campaign-endpoints.pg.test.mjs runs the handler; src/http/report-ad-day.test.mjs runs fetchRows. No live read check. Ping row: reg:campaigns/list (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "campaigns/list",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own rows via RLS) or staff naming partner_id"
+  },
+  {
+    "surface": "route:campaigns/sync",
+    "control": "Pull Meta campaigns, ad sets, ads and daily insights for one partner connection into local tables; promotes a pending connection; sends the dying-ad buzz to the owner.",
+    "kind": "api-vendor-call",
+    "calls": [
+      "Meta Graph API reads",
+      "owner ntfy buzz via src/ops/watch-curve.mjs"
+    ],
+    "tables": [
+      "w:campaigns",
+      "w:ad_sets",
+      "w:ads",
+      "w:ad_metrics_daily",
+      "w:ad_platform_connections",
+      "w:ad_watch_curve_alerts",
+      "w:client_ad_attribution"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: ads-meta-sync-stale, ads-spend-day-missing, ads-number-unmapped, ads-running-no-metrics in src/pulse/coverage/gap-ads.mjs; meta ad numbers check in src/pulse/machine.mjs. Tests: src/http/campaigns-sync-*.test.mjs, src/http/ad-number-sync.pg.test.mjs. Ping row: reg:campaigns/sync (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "campaigns/sync",
+    "methods": [
+      "POST"
+    ],
+    "who": "partner or staff (requirePrincipal partner, staff)"
+  },
+  {
+    "surface": "route:chat/messages",
+    "control": "Staff chat widget: list internal threads and messages, send staff-to-staff internal messages.",
+    "kind": "api-read+write",
+    "calls": [],
+    "tables": [
+      "w:conversations",
+      "w:conversation_participants",
+      "w:messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "Handler never invoked by a test; src/chat/internal.mjs has no test file. Ping only. Ping row: reg:chat/messages (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "chat/messages",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "staff (requirePrincipal staff)"
+  },
+  {
+    "surface": "route:chat/messages",
+    "control": "kind=client: staff sends an SMS or email to a client through composeAndSend (compliance gate, shift required).",
+    "kind": "api-write",
+    "calls": [
+      "messaging gate",
+      "messages queue -> dispatcher -> Twilio / Resend"
+    ],
+    "tables": [
+      "w:messages",
+      "w:conversations"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "Deep at the queue level: gap:sms-queued-stuck / sms-sending-stuck / gap:msg-* in src/pulse/coverage/gap-sms.mjs, email:sending-stuck in src/pulse/coverage/gap-email.mjs, pipeline:outbound in src/pulse/pipeline-motion.mjs, TRIPWIRES job:message-dispatch-sweeper. This handler is never invoked by a test; src/messaging/compose.test.mjs and compose.pg.test.mjs cover the service. Ping row: reg:chat/messages (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "chat/messages",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff on an open shift (owner/admin exempt)"
+  },
+  {
+    "surface": "route:client-notes",
+    "control": "Save staff-only notes on one client file (custom_fields.notes, 20,000 characters max).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:clients"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/simplify-implementation.test.mjs calls the handler; mocked UI e2e/controls-persist.spec.mjs. No live check. Ping row: reg:client-notes (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "client-notes",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:climate/geocode",
+    "control": "Turn a typed address into a state / county for the lending-climate map (no lenders read, no record).",
+    "kind": "api-public-vendor-call",
+    "calls": [
+      "Google Geocoding API (if key set)",
+      "US Census geocoder"
+    ],
+    "tables": [],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "No test invokes the handler (src/climate/verify-address.test.mjs and engine.test.mjs cover the module). e2e/live-climate.spec.mjs hits /api/climate and /api/public/climate-match, not this door. Ping row: reg:climate/geocode (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "climate/geocode",
+    "methods": [
+      "POST",
+      "OPTIONS"
+    ],
+    "who": "public (CORS *)"
+  },
+  {
+    "surface": "route:commissions",
+    "control": "action=approve: moves staff commission ledger rows from pending to approved.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "Handler never invoked by any test. Module tests src/commissions/payout.test.mjs and payout.pg.test.mjs cover approveCommissions. No pulse check reads commission_ledger (gap-partners.mjs reads affiliate commission, not this ledger). Ping row: reg:commissions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "commissions",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:commissions",
+    "control": "action=mark_paid: stamps commission ledger rows paid with a payout ref (records a payout, sends no money).",
+    "kind": "api-write",
+    "calls": [
+      "commission.paid event consumers (src/staff/comp-alerts.mjs)"
+    ],
+    "tables": [
+      "w:commission_ledger"
+    ],
+    "impact": "money",
+    "coverage": "ping",
+    "evidence": "Handler never invoked by any test; module tests src/commissions/payout.test.mjs and payout.pg.test.mjs. No pulse check reads commission_ledger. Ping row: reg:commissions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "commissions",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:company-brain/threads",
+    "control": "Company Brain chat history: list your threads, open one, start one.",
+    "kind": "api-read+write",
+    "calls": [],
+    "tables": [
+      "w:brain_threads",
+      "r:brain_messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/company-brain-threads.test.mjs imports the handler. Search doors have a live check in src/pulse/coverage/gap-brain.mjs; this thread store does not. Ping row: reg:company-brain/threads (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "company-brain/threads",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF with brain access"
+  },
+  {
+    "surface": "route:content/tiles",
+    "control": "Content screen read: locked-tile copy and prices, welcome videos, tier-to-video map, products.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:entitlement_catalog",
+      "r:content_videos",
+      "r:content_tier_map",
+      "r:products"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: owner-tools:content-admin in src/pulse/coverage/gap-owner-tools.mjs runs the same SELECTs on live data and goes red with no tiles. Test: src/http/content-tiles.test.mjs. Ping row: reg:content/tiles (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "content/tiles",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.OPS)"
+  },
+  {
+    "surface": "route:content/tiles",
+    "control": "Content screen save: changes locked-tile name, copy, on/off and the display price clients see, and the tier-to-video map.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:entitlement_catalog",
+      "w:content_tier_map"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/content-tiles.test.mjs posts action=save through the handler. Display price only (not the charge). No live check of the write. Ping row: reg:content/tiles (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "content/tiles",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.OPS)"
+  },
+  {
+    "surface": "route:contracts",
+    "control": "Template authoring: create / save / archive / upload contract templates and fields (the words clients sign).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:contract_templates"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/contracts-endpoints.pg.test.mjs exercises create_template, save_template, upload_template, save_fields, archive_template. Adjacent live check contracts:template-missing in src/pulse/coverage/gap-contracts.mjs covers only a missing or inactive live template. Ping row: reg:contracts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "contracts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (inside handler)"
+  },
+  {
+    "surface": "route:contracts",
+    "control": "Drafts: create_client (inserts a client), create_draft, save_draft, preview against a client's values.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:clients",
+      "w:contracts",
+      "w:contract_signers"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/contracts-endpoints.pg.test.mjs covers create_client, create_draft, save_draft, preview. Ping row: reg:contracts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "contracts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:contracts",
+    "control": "send: freezes the words, registers the document, returns the signed link for staff to pass on (no email from here).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:contracts",
+      "w:documents",
+      "w:document_versions"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Deep: contracts:sent-unsignable and contracts:signed-not-stored in src/pulse/coverage/gap-contracts.mjs read sent contracts and go red when the client cannot sign. Test: src/http/contracts-endpoints.pg.test.mjs (send). Ping row: reg:contracts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "contracts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:contracts",
+    "control": "remind (one contract) and run_reminders (org-wide chase of every unsigned contract): queue reminder emails to signers who have not signed (max chases).",
+    "kind": "api-write",
+    "calls": [
+      "email via messages queue (contract reminder template)",
+      "src/workflows/contract-chaser.mjs runChase"
+    ],
+    "tables": [
+      "w:messages",
+      "w:contracts"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/contracts-endpoints.pg.test.mjs covers remind and run_reminders. Queue-level email checks (email:sending-stuck) are generic; no check says a reminder was due and not sent. Ping row: reg:contracts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "contracts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF for remind; owner, admin for run_reminders"
+  },
+  {
+    "surface": "route:contracts",
+    "control": "void: voids a contract (owner/admin) so it can no longer be signed.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:contracts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/contracts-endpoints.pg.test.mjs covers void. Ping row: reg:contracts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "contracts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (inside handler)"
+  },
+  {
+    "surface": "route:creative/approvals",
+    "control": "Approval queue: blocked or pending creative assets, campaigns awaiting approval, partner brands sent for review.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:creative_assets",
+      "r:campaigns",
+      "r:compliance_screenings",
+      "r:partner_brand"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/creative-endpoints.pg.test.mjs runs the handler. No live check. Ping row: reg:creative/approvals (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "creative/approvals",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own) or staff naming partner_id"
+  },
+  {
+    "surface": "route:creative/jobs",
+    "control": "Creative generation job status list (queued, running, succeeded, failed).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:generation_jobs",
+      "r:generation_job_assets"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: owner-tools:creative-factory in src/pulse/coverage/gap-owner-tools.mjs runs this handler's fetchRows on live data. Test: src/http/creative-endpoints.pg.test.mjs. Ping row: reg:creative/jobs (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "creative/jobs",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own) or staff naming partner_id"
+  },
+  {
+    "surface": "route:customer-insights",
+    "control": "Staff save a mid check-in or post-funding customer interview (answers may later feed ads).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:customer_insights"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/customer-insights-endpoints.test.mjs imports the handler; src/insights/store.test.mjs. No live check reads customer_insights. Ping row: reg:customer-insights (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "customer-insights",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:dashboard/clients",
+    "control": "CRM client list with transactions, call, task and message rollups; optional fulfillment next-action.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:clients",
+      "r:transactions",
+      "r:crs_results",
+      "r:tasks",
+      "r:messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: crm-data:clients in src/pulse/coverage/gap-crm-links.mjs runs a copy of this SELECT on live data (test fails if the copy drifts). Tests: src/http/dashboard-role-gate.test.mjs, src/http/dashboard-next-action.test.mjs. Live sweep e2e/live-run4-pass.spec.mjs only checks anonymous 401. Ping row: reg:dashboard/clients (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "dashboard/clients",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF (requireDashboardAccess)"
+  },
+  {
+    "surface": "route:dashboard/pipeline-counts",
+    "control": "One count per pipeline rail (cards that can show on the board).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:pipelines",
+      "r:cards",
+      "r:pipeline_stages",
+      "r:clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: crm-data:pipeline-counts and crm-data:pipeline-cards in src/pulse/coverage/gap-crm-links.mjs run the same joins on live data. Test: src/http/pipeline-counts.test.mjs. Ping row: reg:dashboard/pipeline-counts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "dashboard/pipeline-counts",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF (requireDashboardAccess)"
+  },
+  {
+    "surface": "route:demo/simulate",
+    "control": "POST: loads one simulated demo client (CRS file, tradelines, card, bank account) for the demo.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:clients (is_demo)",
+      "w:crs_results",
+      "w:tradelines",
+      "w:card_liabilities",
+      "w:cards",
+      "w:bank_accounts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/demo-simulate.pg.test.mjs runs the handler on real Postgres; src/demo/simulate-client.pg.test.mjs. Ping row: reg:demo/simulate (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "demo/simulate",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:demo/simulate",
+    "control": "DELETE: tears down simulated clients (one or all demo clients in the org). Deletes rows.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:clients (DELETE demo)",
+      "w:crs_results",
+      "w:tradelines"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/demo-simulate.pg.test.mjs exercises teardown. Ping row: reg:demo/simulate (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "demo/simulate",
+    "methods": [
+      "DELETE"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:finance/alerts",
+    "control": "Read the raised-alert queue, one client's alert history, or the trigger configuration.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:alerts",
+      "r:upsell_triggers"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-alerts.test.mjs and finance-alerts.pg.test.mjs import the handler. No pulse check reads alerts or upsell_triggers. Ping row: reg:finance/alerts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/alerts",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:finance/alerts",
+    "control": "evaluate / acknowledge / resolve / dismiss: run the rules for a client and raise alerts (owner notification rows), or change an alert's state.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:alerts",
+      "w:owner_notifications"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-alerts.pg.test.mjs covers evaluate, acknowledge, resolve, dismiss. No live check. Ping row: reg:finance/alerts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/alerts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:finance/alerts",
+    "control": "set_trigger: turns an alert rule on or off and sets its threshold for the whole book.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:upsell_triggers"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-alerts.pg.test.mjs covers set_trigger. Ping row: reg:finance/alerts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/alerts",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:finance/cards",
+    "control": "List the payment instruments (tokens only) on a client's file.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:client_cards"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/subscriptions-endpoints.test.mjs and subscriptions-endpoints.pg.test.mjs import the handler. Ping row: reg:finance/cards (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/cards",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:finance/cards",
+    "control": "add / attach / remove a payment-instrument token on a client's file and point the live subscription at it. Stores no card number; charges nothing.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:client_cards",
+      "w:subscriptions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/subscriptions-endpoints.pg.test.mjs covers add, attach, remove. No pulse check reads client_cards or subscriptions. Ping row: reg:finance/cards (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/cards",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:finance/crs-pull",
+    "control": "Staff order a real credit-bureau pull (TU, EX or EQ) for one client: queues a soft-pull row then runs CRS. simulate=true rehearses without a bureau.",
+    "kind": "api-vendor-call",
+    "calls": [
+      "CRS credit-bureau pull (src/finance/crs-pull.mjs)"
+    ],
+    "tables": [
+      "w:soft_pull_requests",
+      "w:crs_results",
+      "w:clients"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Partial deep: softpull:request-failed-or-stuck in src/pulse/coverage/gap-soft-pull.mjs reads every failed or stuck soft_pull_requests row (ledger only, not score correctness). Tests: src/http/finance-crs-pull.test.mjs (handler), src/finance/crs-pull.test.mjs. Ping row: reg:finance/crs-pull (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/crs-pull",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, closer, funding_advisor"
+  },
+  {
+    "surface": "route:finance/model",
+    "control": "Deal model: net cash, fee split, monthly obligation and the funding waterfall for a client. Computes only; writes nothing.",
+    "kind": "api-compute",
+    "calls": [],
+    "tables": [
+      "r:tradelines",
+      "r:upsell_triggers"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/deal-model-endpoints.test.mjs imports the handler; src/calculators/deal-math.test.mjs. Prices a deal (fee, net cash) but moves nothing. No live check. Ping row: reg:finance/model (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/model",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:finance/subscriptions",
+    "control": "Read the plan a client is on and its version history.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:subscriptions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/subscriptions-endpoints.test.mjs and .pg.test.mjs import the handler. Ping row: reg:finance/subscriptions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/subscriptions",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:finance/subscriptions",
+    "control": "start / change / cancel: records the plan, tier and price a client is on (versioned). Records only; no processor charge.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:subscriptions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/subscriptions-endpoints.pg.test.mjs covers start, change, cancel. No pulse check reads subscriptions. Ping row: reg:finance/subscriptions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "finance/subscriptions",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:hiring/application",
+    "control": "One job application in full: answers, every score with rubric version, interviews, decision history (applicant PII).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:candidate_applications",
+      "r:candidates",
+      "r:application_scores",
+      "r:hiring_interviews",
+      "r:hiring_decisions",
+      "r:hiring_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs loads the handler. Ping row: reg:hiring/application (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "hiring/application",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.HIRING)"
+  },
+  {
+    "surface": "route:hiring/candidates",
+    "control": "Hiring pipeline board with scores and flags (applicant PII).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:candidate_applications",
+      "r:candidates",
+      "r:application_scores",
+      "r:hiring_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs; role matrix in src/verification/journeys/security.mjs (npm run verify:e2e, scratch DB, manual). Live gate probe with a bad cookie in src/pulse/coverage/gap-staff.mjs checks no 500 only. Ping row: reg:hiring/candidates (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "hiring/candidates",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.HIRING)"
+  },
+  {
+    "surface": "route:hiring/funnel",
+    "control": "Hiring conversion by stage and by source.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:candidate_applications",
+      "r:hiring_roles"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/hiring/hiring-endpoints.pg.test.mjs loads the handler. Ping row: reg:hiring/funnel (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "hiring/funnel",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.HIRING)"
+  },
+  {
+    "surface": "route:inquiry",
+    "control": "GET action=cases or status: open inquiry-removal cases for the Specialist desk, or one outbound call row.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:inquiry_removal_cases",
+      "r:outbound_calls"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: inquiry:specialist-api in src/pulse/coverage/gap-inquiry.mjs runs the desk-cases SELECT on live data; inquiry:case-stuck reads stalled cases. No test invokes the handler. Ping row: reg:inquiry (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "inquiry",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: inquiry_specialist, admin (owner passes)"
+  },
+  {
+    "surface": "route:inquiry",
+    "control": "POST action=launch: places a Bland phone call to a credit bureau's dispute line for one inquiry case.",
+    "kind": "api-write",
+    "calls": [
+      "Bland voice API via src/messaging/providers/bland-voice.mjs"
+    ],
+    "tables": [
+      "w:inquiry_removal_cases",
+      "w:outbound_calls"
+    ],
+    "impact": "customerData",
+    "coverage": "ping",
+    "evidence": "Handler never invoked by a test (src/pulse/coverage/gap-inquiry.test.mjs only reads the file text). Module tests src/inquiry-ops/bureau-call.test.mjs. No live check of a launch. Ping row: reg:inquiry (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "inquiry",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: inquiry_specialist, admin (owner passes)"
+  },
+  {
+    "surface": "route:journeys/ask",
+    "control": "Server-side proxy to Claude for the Journeys editor: sends the staff member's system and user text to Anthropic and returns the text.",
+    "kind": "api-vendor-call",
+    "calls": [
+      "Anthropic Messages API (claude-sonnet-4-5)"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "No test invokes the handler (src/lib/no-unfenced-transmit.test.mjs lists the fetch as allowed). Paid model call. Ping row: reg:journeys/ask (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "journeys/ask",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:lenders",
+    "control": "Lender book maintenance: save one lender, create one, or import a CSV.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:lenders",
+      "w:lender_bureau_observations"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders.pg.test.mjs and src/http/lenders-role-gate.test.mjs run the handler (save, create, import). Adjacent live: apply-links beat in src/pulse/beats/beat-apply-links.mjs and crm-data:lenders in src/pulse/coverage/gap-crm-links.mjs read the rows (link validity, non-empty book), not the save. Ping row: reg:lenders (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "lenders",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, funding_advisor (ROLE_SETS.LENDERS)"
+  },
+  {
+    "surface": "route:marketing/ads",
+    "control": "Marketing Ads view: one row per ad number with spend, watch numbers and what its leads did.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:ads",
+      "r:ad_metrics_daily",
+      "r:ad_scripts",
+      "r:campaigns",
+      "r:client_ad_attribution",
+      "r:clients",
+      "r:bookings",
+      "r:call_outcomes",
+      "r:transactions",
+      "r:events",
+      "w:marketing_requests"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-ads.pg.test.mjs runs the handler; src/ui/cc-tab-numbers.test.mjs. Ping row: reg:marketing/ads (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/ads",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/batches/next",
+    "control": "Next weekly ad batch plan (live preview) and Chris's one-time overrides for it.",
+    "kind": "api-read+write",
+    "calls": [],
+    "tables": [
+      "w:marketing_settings",
+      "r:marketing_batches",
+      "r:ad_ideas"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-batches-next.pg.test.mjs runs the handler; src/marketing/planner.test.mjs. Ping row: reg:marketing/batches/next (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/batches/next",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/flywheel",
+    "control": "Ideas tab flywheel card: every campaign and its six steps in plain words; reads repo files and saved rows. Free.",
+    "kind": "api-read",
+    "calls": [
+      "GitHub contents read"
+    ],
+    "tables": [
+      "r:marketing_jobs",
+      "r:marketing_requests"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-flywheel.pg.test.mjs and marketing-flywheel-avatar.pg.test.mjs run the handler. Mocked UI e2e/marketing-avatar-row.spec.mjs. Ping row: reg:marketing/flywheel (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/flywheel",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/flywheel/job",
+    "control": "Poll one flywheel run step by step (status, cost so far, sentence).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:marketing_jobs",
+      "r:marketing_model_usage"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-flywheel-avatar.pg.test.mjs runs the handler. Ping row: reg:marketing/flywheel/job (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/flywheel/job",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/flywheel/tweak",
+    "control": "Tweak a flywheel row: appends a dated line to the owner notes (git outbox) and re-runs that step; the re-run is a paid model call.",
+    "kind": "api-write",
+    "calls": [
+      "paid model run (src/agents/model.mjs)",
+      "repo outbox -> GitHub commit"
+    ],
+    "tables": [
+      "w:marketing_jobs",
+      "w:repo_outbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-flywheel.pg.test.mjs and marketing-flywheel-avatar.pg.test.mjs run the handler. gap-marketing-queue.mjs reads stuck jobs generically. Ping row: reg:marketing/flywheel/tweak (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/flywheel/tweak",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/funnels/build",
+    "control": "Queue a job that writes (or re-writes) a draft funnel's three pages. Refused when the funnel is live.",
+    "kind": "api-write",
+    "calls": [
+      "paid model call via marketing job worker"
+    ],
+    "tables": [
+      "w:marketing_funnels",
+      "w:marketing_funnel_pages",
+      "w:marketing_jobs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-funnel-builder.pg.test.mjs runs the handler. Live pages are checked by gap-built-funnels.mjs after push-live, not the draft build. Ping row: reg:marketing/funnels/build (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/funnels/build",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/funnels/rename",
+    "control": "Rename a draft funnel's address (path); reads the live ClickFunnels workspace to refuse a taken address.",
+    "kind": "api-write",
+    "calls": [
+      "ClickFunnels API read"
+    ],
+    "tables": [
+      "w:marketing_funnels",
+      "w:marketing_funnel_pages",
+      "w:marketing_settings"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-funnel-builder.pg.test.mjs runs the handler. Ping row: reg:marketing/funnels/rename (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/funnels/rename",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/ideas",
+    "control": "Ideas inbox: list ideas; POST saves an idea and may queue a one-idea batch (write_now = paid model run).",
+    "kind": "api-read+write",
+    "calls": [
+      "paid model run when write_now",
+      "repo outbox -> GitHub commit"
+    ],
+    "tables": [
+      "w:ad_ideas",
+      "w:marketing_batches",
+      "w:marketing_jobs",
+      "w:repo_outbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-ideas.pg.test.mjs runs the handler. Ping row: reg:marketing/ideas (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/ideas",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/meta/load-status",
+    "control": "How each ad video's Meta load is doing (waiting, loading, loaded, refused, failed).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:ad_videos",
+      "r:ads",
+      "r:marketing_jobs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-meta-load.pg.test.mjs runs the handler. gap-marketing-queue.mjs excludes meta_load jobs (the ads lane owns them). Ping row: reg:marketing/meta/load-status (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/meta/load-status",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/research/approve",
+    "control": "Approve a finished deep-research report (stamps who and when; re-saves the report file via the repo outbox).",
+    "kind": "api-write",
+    "calls": [
+      "repo outbox -> GitHub commit"
+    ],
+    "tables": [
+      "w:marketing_jobs",
+      "w:repo_outbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-research.pg.test.mjs runs the handler. No ping row on this route (ALLOWED_UNMONITORED in src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/research/approve",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/rules",
+    "control": "Copy rules screen: read Part 0 rules, banned phrases and recent changes; POST queues an add / edit / ban through the repo outbox.",
+    "kind": "api-read+write",
+    "calls": [
+      "GitHub contents read",
+      "repo outbox -> GitHub commit"
+    ],
+    "tables": [
+      "w:repo_outbox"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-rules.pg.test.mjs runs the handler. Ping row: reg:marketing/rules (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/rules",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/scripts/approve",
+    "control": "Approve and lock an ad script; assigns its ad number once (next_ad_number) and queues the repo file and registry edit.",
+    "kind": "api-write",
+    "calls": [
+      "repo outbox -> GitHub commit"
+    ],
+    "tables": [
+      "w:ad_scripts",
+      "w:repo_outbox",
+      "w:voice_pairs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-scripts.pg.test.mjs runs the handler. Ping row: reg:marketing/scripts/approve (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/scripts/approve",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/scripts/order",
+    "control": "Set the film order of approved scripts for Shoot Day.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:ad_scripts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-scripts.pg.test.mjs runs the handler. Ping row: reg:marketing/scripts/order (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/scripts/order",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/shoot",
+    "control": "GET: Shoot Day read (what to film, order, file names, teleprompter text). Open to an unsigned GET for the teleprompter (default org) or a signed film link.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:marketing_shoots",
+      "r:ad_scripts",
+      "r:orgs"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "Deep: owner-tools:teleprompter in src/pulse/coverage/gap-owner-tools.mjs GETs this door live, checks the body shape and flags scripts with no teleprompter text. Test: src/http/marketing-shoot.pg.test.mjs. Ping row: reg:marketing/shoot (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/shoot",
+    "methods": [
+      "GET"
+    ],
+    "who": "public GET (default org) / film-key link / staff"
+  },
+  {
+    "surface": "route:marketing/shoot",
+    "control": "POST: save Shoot Day moves (open or reorder a shoot, plan scripts).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:marketing_shoots"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-shoot.pg.test.mjs runs the handler (write path). Ping row: reg:marketing/shoot (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/shoot",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:marketing/today",
+    "control": "Marketing Command Center Today tab: flywheel steps, ad numbers (today, 7, 30 days), spend by funnel, flow, stuck jobs. Read only.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:ad_metrics_daily",
+      "r:ad_platform_connections",
+      "r:analytics_connections",
+      "r:marketing_jobs",
+      "r:partner_ai_usage",
+      "r:generation_jobs",
+      "r:ads",
+      "r:client_ad_attribution",
+      "r:call_outcomes",
+      "r:transactions",
+      "r:events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/marketing-today.pg.test.mjs and marketing-today.test.mjs run the handler. gap-marketing-queue.mjs imports readLastSync from this file only. Ping row: reg:marketing/today (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "marketing/today",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.MARKETING)"
+  },
+  {
+    "surface": "route:messages",
+    "control": "Staff write to a client (SMS or email): reply in a thread or start one; queued through the compliance gate; shift required.",
+    "kind": "api-write",
+    "calls": [
+      "messaging gate",
+      "messages queue -> dispatcher -> Twilio / Resend"
+    ],
+    "tables": [
+      "w:messages",
+      "w:conversations"
+    ],
+    "impact": "customerMessage",
+    "coverage": "deep",
+    "evidence": "Deep at the queue level: gap:sms-* and gap:msg-* in src/pulse/coverage/gap-sms.mjs, email:sending-stuck in src/pulse/coverage/gap-email.mjs, pipeline:outbound in src/pulse/pipeline-motion.mjs, TRIPWIRES job:message-dispatch-sweeper; text and email beats in src/pulse/beats. Tests: src/http/messages-write.test.mjs (handler), src/messaging/compose.pg.test.mjs. Mocked UI e2e/messaging-inbox.spec.mjs. Ping row: reg:messages (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "messages",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff on an open shift (owner/admin exempt)"
+  },
+  {
+    "surface": "route:money/alerts",
+    "control": "File-protection alerts read: settings, each card's next statement close and promo, cash-cushion verdicts, alerts already sent.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:file_protection_settings",
+      "r:file_protection_alerts",
+      "r:bank_accounts",
+      "r:clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs imports the handler. Ping row: reg:money/alerts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/alerts",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own file) or staff: owner, admin, sales_manager, closer (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/alerts",
+    "control": "set_alert / set_promo / set_statement_close_day: change which file-protection alerts are on, a card's promo end and the statement close day. The daily job later texts from these.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:file_protection_settings",
+      "w:account_statement_cycles",
+      "w:file_protection_alerts"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-alerts.test.mjs covers the three actions. Nothing in src/pulse reads file_protection_alerts or file_protection_settings, so a text that should have gone out and did not is unwatched (job heartbeat for blueprint-finance-os-alerts only). Ping row: reg:money/alerts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/alerts",
+    "methods": [
+      "POST"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/credit",
+    "control": "Client credit page: three personal scores and dates, business score, utilization, inquiries, negative items, score over time, UnderwriteIQ sentences. Read only; never runs a pull.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:crs_results",
+      "r:tradelines",
+      "r:card_liabilities",
+      "r:businesses"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "Deep: finance-os:credit in src/pulse/coverage/gap-finance-os.mjs runs this handler in process on a real client and goes red on 400/500/error body. Test: src/http/money-credit.test.mjs. Ping row: reg:money/credit (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/credit",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/overview",
+    "control": "Client Finance OS dashboard: cash by kind, debt, accounts, cashflow, bills, what is due next, one UnderwriteIQ sentence.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:tradelines",
+      "r:card_liabilities",
+      "r:crs_results",
+      "r:businesses",
+      "r:bank_accounts",
+      "r:plaid_items",
+      "r:bank_transactions",
+      "r:recurring_bills",
+      "r:account_statement_cycles",
+      "r:entities"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-overview.test.mjs imports the handler; blueprint-declines.test.mjs and money-fundability.test.mjs call it through the router. Adjacent: banks-linked-not-on-screen in src/pulse/coverage/gap-banks.mjs mirrors only the account filter. Ping row: reg:money/overview (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/overview",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own file) or staff: owner, admin, sales_manager, closer (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/ready-to-fund",
+    "control": "GET: status of the 'Ready to get funded' request (none, requested, csm_assigned, done) and which offers the client owns.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:tasks",
+      "r:money_agent_log"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-ready-to-fund.test.mjs imports the handler. Ping row: reg:money/ready-to-fund (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/ready-to-fund",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/ready-to-fund",
+    "control": "POST: press 'Ready to get funded': creates the Capital Blueprint CSM closing-prep call task (once while one is open). Texts nobody.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:tasks",
+      "w:money_agent_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-ready-to-fund.test.mjs covers the press. A task nobody picks up is read by gap-csm.mjs only for CSM tasks. Ping row: reg:money/ready-to-fund (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/ready-to-fund",
+    "methods": [
+      "POST"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/tasks",
+    "control": "GET: the client's next steps (payments due, checklist steps, UnderwriteIQ tip, plan pins) with who can do each.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:money_agent_tasks",
+      "r:tasks",
+      "r:client_waypoints"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/money-tasks.test.mjs imports the handler. Ping row: reg:money/tasks (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/tasks",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/tasks",
+    "control": "POST do_task: hands one step to the money agent or a CSM. A payment becomes a transfer proposal that waits for the client's yes; nothing moves here.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:money_agent_tasks",
+      "w:money_agent_log"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-tasks.test.mjs covers do_task. No pulse check reads money_agent_log; money/transfers is a different route. Ping row: reg:money/tasks (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/tasks",
+    "methods": [
+      "POST"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/vault",
+    "control": "Application document vault read: the papers a lender asks for, what is on file against each, what is missing, 'file complete'.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:document_vault_items",
+      "r:document_vault_reviews",
+      "r:documents",
+      "r:entities"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "Deep: finance-os:vault in src/pulse/coverage/gap-finance-os.mjs runs this handler in process on live data. Test: src/http/money-vault.test.mjs. Ping row: reg:money/vault (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/vault",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own file) or staff (FINANCE_OS)"
+  },
+  {
+    "surface": "route:money/vault",
+    "control": "accept / reject / waive / unwaive / add_item / retire_item: staff rule on a client's uploaded papers (the reject reason is shown to the client).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:document_vault_reviews",
+      "w:document_vault_items"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/money-vault.test.mjs covers every action. The live finance-os:vault door check covers the read, not these writes. Ping row: reg:money/vault (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "money/vault",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff only (FINANCE_OS); a client cannot POST"
+  },
+  {
+    "surface": "route:ops/weekly-brief",
+    "control": "Generate this week's ops brief with a model call and file it into Company Brain (owner tier), so it can be asked about in chat.",
+    "kind": "api-vendor-call",
+    "calls": [
+      "paid model call (src/agents/model.mjs)",
+      "Company Brain ingest"
+    ],
+    "tables": [
+      "w:brain_files",
+      "w:brain_chunks",
+      "r:analytics_connections",
+      "r:funnel_page_stats",
+      "r:video_watch_stats"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/ops-weekly-brief.pg.test.mjs runs the handler. No ping (ALLOWED_UNMONITORED: POST-only; a ping would spend a model call). Not on any schedule. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "ops/weekly-brief",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF (any employee role)"
+  },
+  {
+    "surface": "route:partner-addons",
+    "control": "Read a partner's add-on catalog, current plan, history and orders.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:subscriptions",
+      "r:payment_links",
+      "r:partners"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-addons.pg.test.mjs runs the handler. Ping row: reg:partner-addons (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partner-addons",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:partner-addons",
+    "control": "buy: mints a Commas hosted-checkout link for a partner add-on ($99 per unit) and records the ask. The subscription appears when the payment webhook lands.",
+    "kind": "api-write",
+    "calls": [
+      "Commas checkout link (URL build, no card)"
+    ],
+    "tables": [
+      "w:payment_links"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-addons.pg.test.mjs covers buy. gap-payments.mjs reads payment_links generally (a link that settled with no entitlement) but does not name partner add-ons. Ping row: reg:partner-addons (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partner-addons",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:partner-addons",
+    "control": "cancel: ends a partner add-on subscription at a date.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:subscriptions"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-addons.pg.test.mjs covers cancel. Ping row: reg:partner-addons (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partner-addons",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:partner-addons",
+    "control": "activate: manual reconcile of a paid payment link whose webhook never came back; refuses anything not already marked paid.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:subscriptions",
+      "w:payment_links"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-addons.pg.test.mjs covers activate. Ping row: reg:partner-addons (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partner-addons",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:partner-marketing/copy-history",
+    "control": "GET: version history of a partner page section. POST: restore an earlier version of the copy.",
+    "kind": "api-read+write",
+    "calls": [],
+    "tables": [
+      "w:partner_page_section_versions",
+      "w:partner_pages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "No test invokes the handler; module tests src/brand/copy-generate.test.mjs and src/brand/meter.test.mjs. Ping only. Ping row: reg:partner-marketing/copy-history (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partner-marketing/copy-history",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "partner (own) or staff"
+  },
+  {
+    "surface": "route:partner-marketing/generate-logo",
+    "control": "Draws a typographic wordmark from the partner's brand name and saves it on the brand row; metered as usage.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:partner_brand",
+      "w:partner_ai_usage"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-marketing-logo.test.mjs runs the handler; src/brand/wordmark.test.mjs. Ping row: reg:partner-marketing/generate-logo (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partner-marketing/generate-logo",
+    "methods": [
+      "POST"
+    ],
+    "who": "partner (own) or staff; suite must be enabled for that partner"
+  },
+  {
+    "surface": "route:partners/approve",
+    "control": "Approve a white-label applicant: creates the partner login, brand row, published page at /sites/{id}, sets status active, sends the welcome email (and a text only if the applicant ticked consent); emits partner.approved.",
+    "kind": "api-write",
+    "calls": [
+      "welcome email (and SMS if consent)",
+      "event partner.approved"
+    ],
+    "tables": [
+      "w:partners",
+      "w:partner_brand",
+      "w:partner_pages",
+      "w:accounts",
+      "w:cards (white-label rail card)",
+      "w:messages (welcome email, SMS only with consent)",
+      "w:events"
+    ],
+    "impact": "customerMessage",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-approve-payout-gate.pg.test.mjs calls the handler via ROUTES; src/http/partner-approve-consent.test.mjs. Adjacent: partner login door check in src/pulse/coverage/gap-partners.mjs. No check that the welcome mail went. Ping row: reg:partners/approve (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "partners/approve",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.OPS)"
+  },
+  {
+    "surface": "route:pipeline-cards",
+    "control": "Kanban board move: puts a client card on a stage of a pipeline. Moving onto Funded needs a funded amount (the basis a client is billed from) and emits round.* events that start the money chain.",
+    "kind": "api-write",
+    "calls": [
+      "events round.* (card stacking money chain)"
+    ],
+    "tables": [
+      "w:cards",
+      "w:events",
+      "r:funding_rounds",
+      "r:clients"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/pipeline-cards.test.mjs runs the handler (funded-amount refusals); mocked UI e2e/pipeline.spec.mjs and funded-amount.spec.mjs stub the API. Adjacent live: crm-data:pipeline-cards (cards with no column or no person) in src/pulse/coverage/gap-crm-links.mjs and pipeline:clients in src/pulse/pipeline-motion.mjs. Nothing checks that a move persisted or fired its events. Ping row: reg:pipeline-cards (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "pipeline-cards",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff on an open shift: ROLE_SETS.STAFF (owner/admin exempt)"
+  },
+  {
+    "surface": "route:products",
+    "control": "Product ladder edits: save or create a product's default price, min and max price, success-fee percent.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:products"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/products-write.test.mjs runs the handler (save, create). Live sweep reads /api/read/products only. Pulse reads products as a join target, never a price check. Ping row: reg:products (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "products",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:public/ad-video-approve",
+    "control": "GET shows the filmed take; POST is the decision: Chris taps Approve or Reject from a phone notification (token in the link is the credential).",
+    "kind": "api-public-write",
+    "calls": [],
+    "tables": [
+      "w:ad_videos"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-video-approve.pg.test.mjs runs the handler. No ping (ALLOWED_UNMONITORED: any GET without a token is 404 by design). No pulse check reads ad_videos state. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "public/ad-video-approve",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "who": "public (single-use approval token)"
+  },
+  {
+    "surface": "route:public/education-enroll",
+    "control": "The /education/enroll/ form: saves an enrollment, resolves or creates the client, drops a Sales / new_lead card. No email, no event.",
+    "kind": "api-public-write",
+    "calls": [],
+    "tables": [
+      "w:education_enrollments",
+      "w:clients",
+      "w:cards"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/education-enroll.pg.test.mjs and education-enroll.test.mjs run the handler. offer:education-enroll in src/pulse/coverage/gap-funnels.mjs only checks the page still posts here. No pulse check reads education_enrollments. Ping row: reg:public/education-enroll (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "public/education-enroll",
+    "methods": [
+      "POST"
+    ],
+    "who": "public"
+  },
+  {
+    "surface": "route:public/morning-brief",
+    "control": "Data behind the 'Full report' link in Chris's morning and evening text; secret code per org, kind and day; same 404 for every failure.",
+    "kind": "api-public-read",
+    "calls": [],
+    "tables": [
+      "r:morning_briefs"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: brief-link beat in src/pulse/beats/beat-brief-link.mjs follows the newest text's real link every hour (page opens, report loads). Marked NOT_CUSTOMER_FACING in src/pulse/tripwires.mjs. Tests: src/http/morning-brief-public.test.mjs. No ping row on this route (ALLOWED_UNMONITORED in src/pulse/registry.mjs). Tripwire map: in TRIPWIRES.",
+    "route": "public/morning-brief",
+    "methods": [
+      "GET"
+    ],
+    "who": "public with exact secret code"
+  },
+  {
+    "surface": "route:public/partner-page",
+    "control": "JSON for a published white-label partner page (partner_id plus slug or domain).",
+    "kind": "api-public-read",
+    "calls": [],
+    "tables": [
+      "r:partner_pages",
+      "r:partner_brand"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "No test invokes the handler (src/brand/partner-site.test.mjs covers the module). Live sweep e2e/live-white-label-onboard.spec.mjs checks the 400 and 404 shapes only (manual). Ping row: reg:public/partner-page (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "public/partner-page",
+    "methods": [
+      "GET"
+    ],
+    "who": "public"
+  },
+  {
+    "surface": "route:public/slo-interest",
+    "control": "/roadmap widget step 1: saves a lead's name, email, phone once per email per day, funnel tracking events and engagement, copies the contact to ClickFunnels, sends Meta server events. Creates no client, takes no money.",
+    "kind": "api-public-write",
+    "calls": [
+      "ClickFunnels contact upsert (src/slo/cf-contact.mjs)",
+      "Meta Conversions API (when enabled)"
+    ],
+    "tables": [
+      "w:events"
+    ],
+    "impact": "customerData",
+    "coverage": "deep",
+    "evidence": "Deep: TRIPWIRES route:public/slo-interest -> lead:pipe-cut-with-traffic, handoff:contact-no-followup (src/pulse/tripwires.mjs); beat doors-live in src/pulse/beats/beat-doors-live.mjs; meta-server-events in src/pulse/machine.mjs. Tests: src/http/slo-interest.test.mjs, src/http/roadmap-preview-tracking.pg.test.mjs. Ping row: reg:public/slo-interest (src/pulse/registry.mjs). Tripwire map: in TRIPWIRES.",
+    "route": "public/slo-interest",
+    "methods": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ],
+    "who": "public (stranger from an ad)"
+  },
+  {
+    "surface": "route:public/slo-status",
+    "control": "Where the buyer's soft pull stands (running, done, failed, bucket, pre-approval dollars, per-bureau status words) for the /roadmap widget.",
+    "kind": "api-public-read",
+    "calls": [],
+    "tables": [
+      "r:payment_links",
+      "r:clients",
+      "r:soft_pull_requests",
+      "r:crs_results"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/slo-status.test.mjs and slo-status.pg.test.mjs run the handler. Live: funnel:widget-cross-site-call in src/pulse/coverage/gap-funnels.mjs checks the cross-site headers only, never the status body. Ping row: reg:public/slo-status (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "public/slo-status",
+    "methods": [
+      "GET",
+      "OPTIONS"
+    ],
+    "who": "public (ref + client_id of one paid order)"
+  },
+  {
+    "surface": "route:public/vsl-watch",
+    "control": "VSL player beacon: stores watch sessions and position samples (rate limited by visitor and site-wide).",
+    "kind": "api-public-write",
+    "calls": [],
+    "tables": [
+      "w:vsl_watch_sessions",
+      "w:vsl_watch_positions"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/vsl-watch.pg.test.mjs and src/vsl/vsl-funnels.pg.test.mjs run the handler. Live: vsl-watch-route in src/pulse/coverage/gap-pixels.mjs only does a GET that expects 405 (route is there). No ping row (ALLOWED_UNMONITORED); nothing reads vsl_watch_sessions. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "public/vsl-watch",
+    "methods": [
+      "POST",
+      "OPTIONS"
+    ],
+    "who": "public (stranger watching a sales video)"
+  },
+  {
+    "surface": "route:push/unsubscribe",
+    "control": "Client turns this device's (or every device's) push notifications off; row is retired not deleted.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:client_push_subscriptions"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/push-endpoints.pg.test.mjs runs the handler. No ping (ALLOWED_UNMONITORED; sibling push/subscribe is pinged). Nothing reads client_push_subscriptions. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "push/unsubscribe",
+    "methods": [
+      "POST",
+      "DELETE"
+    ],
+    "who": "client (own file only)"
+  },
+  {
+    "surface": "route:read/ad-spine",
+    "control": "Label spine read: one row per ad with angle, hook, lane, offer, script type; group_by turns it into counts.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:v_ad_label_spine",
+      "r:ad_labels"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/ad-spine.pg.test.mjs and ad-spine.test.mjs run the handler. Ping row: reg:read/ad-spine (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/ad-spine",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/agent-context",
+    "control": "View of exactly what the agent runtime injects into a prompt for one client (Agent context card).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:clients",
+      "r:conversations",
+      "r:messages",
+      "r:cards",
+      "r:funding_rounds",
+      "r:customer_insights",
+      "r:call_outcomes"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/launch-proof-chain.pg.test.mjs runs the handler (exported run). src/agents/context.test.mjs. Ping row: reg:read/agent-context (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/agent-context",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/ai-bureau-config",
+    "control": "AI bureau IVR routing table (empty until edited).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:ai_bureau_config"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "No test invokes the handler; src/inquiry-ops/ai-bureau-config.mjs has no test file; only mocked UI e2e/integration-round.spec.mjs touches it. Ping row: reg:read/ai-bureau-config (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/ai-bureau-config",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/blueprint-combined-approval",
+    "control": "Capital Blueprint primary buyer plus credit partner: prequal per file and the combined sum.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:credit_partner_links",
+      "r:clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "No test invokes the handler; src/blueprint/combined-approval.test.mjs and src/http/portal-prequal.test.mjs cover the module. Ping row: reg:read/blueprint-combined-approval (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/blueprint-combined-approval",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/closer-call",
+    "control": "Closer Dashboard live-call payload for one client: cockpit, offers, ad lines, funding numbers.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:clients",
+      "r:businesses",
+      "r:call_outcomes",
+      "r:cards",
+      "r:crs_results",
+      "r:tradelines",
+      "r:card_liabilities",
+      "r:funding_rounds",
+      "r:funding_closeout",
+      "r:conversations",
+      "r:messages",
+      "r:applications",
+      "r:transactions",
+      "r:tasks",
+      "r:shifts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "Handler never invoked by a test (mocked UI e2e/closer-call-rhythm.spec.mjs stubs /api). buildCockpit is unit tested in src/sales/cockpit-*.test.mjs and src/sales/cockpit-next-call.pg.test.mjs. Ping row: reg:read/closer-call (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/closer-call",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/commissions",
+    "control": "Staff commission ledger: who earned what and whether it is settled (demo rows excluded).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:commission_ledger",
+      "r:staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/handlers/money-chain.pg.test.mjs reads the written ledger row through the router; src/http/principal-reads.pg.test.mjs (client refused); role matrix src/verification/journeys/security.mjs (verify:e2e, scratch DB, manual); live e2e/live-run4-pass.spec.mjs checks status below 500 (manual sweep). Ping row: reg:read/commissions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/commissions",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin, sales_manager (FINANCE)"
+  },
+  {
+    "surface": "route:read/company-brain-affiliate",
+    "control": "Affiliate and partner Company Brain Q&A: retrieves allowlisted chunks and writes a short cited answer; refuses staff.",
+    "kind": "api-vendor-call",
+    "calls": [
+      "OpenAI embeddings (src/company-brain/embed.mjs)",
+      "answer model (src/agents/model.mjs)"
+    ],
+    "tables": [
+      "r:brain_chunks",
+      "r:brain_affiliate_allowlist"
+    ],
+    "impact": "none",
+    "coverage": "deep",
+    "evidence": "Deep: brain:search-affiliate and brain:embed-key in src/pulse/coverage/gap-brain.mjs run the real door code in process (stub vector) and read the embed key state. Tests: src/http/company-brain.test.mjs. Ping row: reg:read/company-brain-affiliate (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/company-brain-affiliate",
+    "methods": [
+      "POST"
+    ],
+    "who": "affiliate or partner principal"
+  },
+  {
+    "surface": "route:read/csm-queue",
+    "control": "The CSM's day: clients to talk to today, what they owe (open balance next to the name), and what they do not already have.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:v_invoice_aging",
+      "r:v_client_entitlements",
+      "r:tasks",
+      "r:clients",
+      "r:staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: gap-csm.mjs imports and runs this handler's read on live data and goes red when it fails. Test: src/http/csm-queue.pg.test.mjs (through the router). Ping row: reg:read/csm-queue (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/csm-queue",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/documents",
+    "control": "Document metadata list (storage key stripped) for a client or the org.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:documents",
+      "r:clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/principal-reads.pg.test.mjs (client refused, through the router); role matrix in src/verification/journeys/security.mjs (verify:e2e, manual); e2e/hole17-inquiry-upload.prove.mjs is a one-off live prove. gap-documents.mjs reads document rows, not this list. Ping row: reg:read/documents (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/documents",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/failed-events",
+    "control": "Dead-letter queue: which event handler failed, when, and the payload shape.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:failed_events"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "Role matrix src/verification/journeys/security.mjs (verify:e2e, scratch DB, manual) is the only run of the handler. Adjacent: failed-events row in src/pulse/coverage/gap-jobs.mjs reads the same table directly. Ping row: reg:read/failed-events (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/failed-events",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin (ROLE_SETS.OPS)"
+  },
+  {
+    "surface": "route:read/finance-os",
+    "control": "Finance OS grid: seven revolving-credit numbers for one client computed server-side from tradelines.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:tradelines"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/finance-os-endpoints.test.mjs, client-scope.pg.test.mjs and tradelines-org-scope.test.mjs import the handler. Ping row: reg:read/finance-os (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/finance-os",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/funnel-pages",
+    "control": "ClickFunnels page performance for the org (views, conversions) for the funnels report.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:analytics_connections",
+      "r:funnel_page_stats"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/analytics-clickfunnels.pg.test.mjs runs the handler. Adjacent: clickfunnels-night-job in src/pulse/machine.mjs reads funnel_page_stats. Report-tieout spec e2e/report-tieout.spec.mjs feeds the screen canned data. Ping row: reg:read/funnel-pages (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/funnel-pages",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/inquiry-cases",
+    "control": "Active inquiry-removal case queue with document packets for the Specialist desk.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:inquiry_removal_cases",
+      "r:documents"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: inquiry:specialist-api in src/pulse/coverage/gap-inquiry.mjs runs listCases and loadDocPackets (this route's reads) on live data. No test invokes the handler; mocked UI specs e2e/specialist-desk.spec.mjs stub it. Ping row: reg:read/inquiry-cases (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/inquiry-cases",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin, inquiry_specialist, funding_advisor (SPECIALIST_DESK)"
+  },
+  {
+    "surface": "route:read/lender-observations",
+    "control": "Bureau mismatch review queue (which bureau each lender pulls, observed vs recorded).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:lender_bureau_observations",
+      "r:lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/lenders-role-gate.test.mjs imports the handler. Ping row: reg:read/lender-observations (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/lender-observations",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, admin, funding_advisor (ROLE_SETS.LENDERS)"
+  },
+  {
+    "surface": "route:read/messages",
+    "control": "One conversation's messages in both directions, or the org's blocked messages (status=blocked).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:messages"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/messages-read.pg.test.mjs and src/messaging/reply-inbox-acceptance.pg.test.mjs run the handler. Ping row: reg:read/messages (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/messages",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/my-numbers",
+    "control": "Closer's own performance (calls, show rate, close rate, cash); finance roles may view another closer.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:call_outcomes",
+      "r:funding_rounds",
+      "r:funding_closeout",
+      "r:commission_ledger",
+      "r:staff_targets",
+      "r:shifts",
+      "r:events",
+      "r:messages",
+      "r:clients"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: gap-sales-manager.mjs runs closerMyNumbers (this route's read) on live data. No test invokes the handler; mocked UI specs stub it. Ping row: reg:read/my-numbers (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/my-numbers",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF (own); owner, admin, sales_manager may pass staff_id"
+  },
+  {
+    "surface": "route:read/partner-production",
+    "control": "Where a partner stands against the monthly production floor: live window, latest verdict, history, next review date.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:partners",
+      "r:partner_production_reviews",
+      "r:clients"
+    ],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/http/partner-production-read.test.mjs runs fetchRows; src/partners/floors.pg.test.mjs. Handler gate itself is shared partnerReadHandler. Ping row: reg:read/partner-production (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/partner-production",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own) or staff naming partner_id"
+  },
+  {
+    "surface": "route:read/portal-contracts",
+    "control": "Agreements on the signed-in client's file: sent, viewed, signed, and a fresh sign link when they still owe a signature.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:contracts",
+      "r:contract_signers",
+      "r:documents"
+    ],
+    "impact": "none",
+    "coverage": "ping",
+    "evidence": "src/http/portal-contracts.test.mjs only reads source text. The sign door itself is TRIPWIRES route:contracts/sign, but this list is not. Ping row: reg:read/portal-contracts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/portal-contracts",
+    "methods": [
+      "GET"
+    ],
+    "who": "client (own) or staff naming client_id"
+  },
+  {
+    "surface": "route:read/proxy-sessions",
+    "control": "List Oxylabs Apply (proxy browser) audit rows or one session.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:proxy_sessions"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/proxy-endpoints.test.mjs imports the handler; role matrix in src/verification/journeys/security.mjs (verify:e2e, manual). Ping row: reg:read/proxy-sessions (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/proxy-sessions",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: owner, funding_advisor"
+  },
+  {
+    "surface": "route:read/search",
+    "control": "Global CRM search across clients, contracts, documents, conversations and pipeline cards for the session's org.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:clients",
+      "r:businesses",
+      "r:contracts",
+      "r:documents",
+      "r:messages",
+      "r:conversations",
+      "r:cards",
+      "r:partners",
+      "r:accounts"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/search-read.test.mjs and src/http/partner-signup.pg.test.mjs run the handler; live e2e/live-run4-pass.spec.mjs finds a seeded test client through it (manual sweep run, scripts/live-playwright-sweep.mjs). Ping row: reg:read/search (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/search",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/tradelines",
+    "control": "A client's stored credit cards and the funding calculator's waterfall for them (Closer Dashboard card table).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:tradelines",
+      "r:lenders"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/tradelines-org-scope.test.mjs, client-scope.pg.test.mjs and deal-model-endpoints.test.mjs run the handler; role matrix in src/verification/journeys/security.mjs (manual). crm-data:tradelines in gap-crm-links.mjs reads listTradelines. Ping row: reg:read/tradelines (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/tradelines",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:read/unrecorded-calls",
+    "control": "Held sales calls with no recording or transcript (closers see their own, finance sees the floor).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:call_outcomes",
+      "r:clients",
+      "r:brain_drive_sync"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: checkUnrecorded in src/pulse/daily-pulse.mjs runs the same listUnrecordedCalls every morning and goes red on any. Test: src/http/unrecorded-calls.test.mjs. Ping row: reg:read/unrecorded-calls (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "read/unrecorded-calls",
+    "methods": [
+      "GET"
+    ],
+    "who": "staff: ROLE_SETS.STAFF; owner, admin, sales_manager see the floor"
+  },
+  {
+    "surface": "route:repair/enroll",
+    "control": "Enroll a client in the credit-repair program (trial or full): records price and amount paid, grants the letter-pack entitlement, emits repair.enrolled, moves the card, queues the welcome email.",
+    "kind": "api-write",
+    "calls": [
+      "event repair.enrolled",
+      "welcome email via messages queue"
+    ],
+    "tables": [
+      "w:repair_programs",
+      "w:entitlements",
+      "w:events",
+      "w:cards",
+      "w:messages"
+    ],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-enroll.test.mjs runs the handler; src/repair/enroll.test.mjs. Adjacent: gap-repair.mjs (stuck files), paid-no-entitlement in gap-payments.mjs. Nothing says the welcome email went. Ping row: reg:repair/enroll (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "repair/enroll",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, closer, inquiry_specialist"
+  },
+  {
+    "surface": "route:repair/inbound-mail",
+    "control": "Process a bureau response (pasted text or an uploaded document): parses it, updates dispute items and responses, advances the repair file.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:dispute_items",
+      "w:dispute_responses"
+    ],
+    "impact": "customerData",
+    "coverage": "e2e",
+    "evidence": "src/http/repair-inbound-mail.test.mjs runs the handler; src/repair/response-agent.test.mjs. gap-repair.mjs reads dispute_items stuck states. Ping row: reg:repair/inbound-mail (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "repair/inbound-mail",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin, closer, inquiry_specialist"
+  },
+  {
+    "surface": "route:scripts/write",
+    "control": "Save an ad script (a rewrite is a new row pointing at its parent) and its labels so the ad spine can read them.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:ad_scripts",
+      "w:ad_labels"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/scripts-write.pg.test.mjs and scripts-list.pg.test.mjs run the handler. No ping (ALLOWED_UNMONITORED; read/ad-spine is the monitored door). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "scripts/write",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: ROLE_SETS.STAFF"
+  },
+  {
+    "surface": "route:social/channels",
+    "control": "Social Studio: a partner's connected social channels (tokens redacted, can_post flag).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:social_channels"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: social:studio-read in src/pulse/coverage/gap-social.mjs runs this handler's fetchRows on live data. Test: src/http/social-channels.pg.test.mjs. Ping row: reg:social/channels (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "social/channels",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own) or staff naming partner_id"
+  },
+  {
+    "surface": "route:social/posts",
+    "control": "Social Studio queue read: the partner's queued, held, scheduled posts with blocked reasons.",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:marketing_content_queue"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: social:studio-read in src/pulse/coverage/gap-social.mjs runs the same SELECT list on live data. Tests: src/http/social-posts-write.pg.test.mjs. Ping row: reg:social/posts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "social/posts",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own) or staff naming partner_id"
+  },
+  {
+    "surface": "route:social/posts",
+    "control": "queue / schedule / approve / reject / discard a social post. Approve and reject are owner or admin staff only; a post goes public when scheduled.",
+    "kind": "api-write",
+    "calls": [
+      "social scheduler -> public post on a connected channel"
+    ],
+    "tables": [
+      "w:marketing_content_queue",
+      "w:social_posts",
+      "w:compliance_screenings",
+      "w:action_log"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/social-posts-write.pg.test.mjs and social-posts-approve.pg.test.mjs run the handler (approve, reject, discard). Nothing reads social_posts to see a scheduled post actually published. Ping row: reg:social/posts (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "social/posts",
+    "methods": [
+      "POST"
+    ],
+    "who": "partner (queue, schedule, discard own) or staff: owner, admin (approve, reject)"
+  },
+  {
+    "surface": "route:social/settings",
+    "control": "Partner marketing module settings read (approve-before-launch, caps, autopilot, suite on/off).",
+    "kind": "api-read",
+    "calls": [],
+    "tables": [
+      "r:partner_module_settings"
+    ],
+    "impact": "staffOnly",
+    "coverage": "deep",
+    "evidence": "Deep: social:studio-read in src/pulse/coverage/gap-social.mjs runs readSettings on live data. Test: src/http/social-channels.pg.test.mjs. Ping row: reg:social/settings (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "social/settings",
+    "methods": [
+      "GET"
+    ],
+    "who": "partner (own) or staff naming partner_id"
+  },
+  {
+    "surface": "route:social/settings",
+    "control": "Owner flips approve_before_launch (whether a person must read every social post before it goes out).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:partner_module_settings"
+    ],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "src/http/social-channels.pg.test.mjs covers the write; gap-social.mjs does not. Ping row: reg:social/settings (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "social/settings",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner only"
+  },
+  {
+    "surface": "route:staff/monitoring-consent",
+    "control": "Owner records or revokes an employee's consent to activity monitoring (form version stamped).",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:staff"
+    ],
+    "impact": "staffOnly",
+    "coverage": "ping",
+    "evidence": "src/http/staff-monitoring.test.mjs reads source text only; handler never invoked. Module tests src/shifts/monitoring-consent.test.mjs. Ping row: reg:staff/monitoring-consent (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "staff/monitoring-consent",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner only"
+  },
+  {
+    "surface": "route:training-progress",
+    "control": "Record a partner's training: one module attended or complete, or one compliance gate passed, failed or revoked. There is no partner write path.",
+    "kind": "api-write",
+    "calls": [],
+    "tables": [
+      "w:partner_training_progress",
+      "w:partner_training_gates"
+    ],
+    "impact": "staffOnly",
+    "coverage": "none",
+    "evidence": "Handler never invoked by a test (src/http/partner-training-read.test.mjs checks the ROUTES entry and source text). Module logic: src/training/training.pg.test.mjs. No ping (ALLOWED_UNMONITORED: POST-only; read/partner-training is the monitored door). gap-training.mjs checks the read. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "training-progress",
+    "methods": [
+      "POST"
+    ],
+    "who": "staff: owner, admin"
+  },
+  {
+    "surface": "route:trials/eligibility",
+    "control": "Live Trial eligibility gate in front of the $297 pay button: decides sellable or held, returns terms, price, guarantee words. Computes only.",
+    "kind": "api-public-compute",
+    "calls": [],
+    "tables": [],
+    "impact": "money",
+    "coverage": "e2e",
+    "evidence": "src/http/trials-live.pg.test.mjs runs the handler; src/trials/eligibility.test.mjs. Gate only; no live check. Ping row: reg:trials/eligibility (src/pulse/registry.mjs). Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+    "route": "trials/eligibility",
+    "methods": [
+      "POST"
+    ],
+    "who": "public"
+  }
+]
