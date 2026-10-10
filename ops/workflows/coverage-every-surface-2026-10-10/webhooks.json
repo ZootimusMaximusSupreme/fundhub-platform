@@ -1,0 +1,528 @@
+[
+ {
+  "surface": "webhook:POST /api/webhooks/commas",
+  "control": "Commas payment receipts. Verifies HMAC-SHA256 of the raw body (header x-webhook-signature, fallback x-commas-signature, secret COMMAS_WEBHOOK_SECRET; a second key SIM_WEBHOOK_SECRET is accepted only for bodies marked simulated). Writes the exact bytes to commas_inbox and answers 200 at once (Commas never retries); the Netlify commas-inbox-sweeper and the Inngest commas-inbox-drain then turn it into events and the money chain.",
+  "kind": "webhook",
+  "calls": [
+   "emits payment events through the bus after the inbox drain"
+  ],
+  "tables": [
+   "commas_inbox",
+   "events",
+   "transactions",
+   "payment_links",
+   "entitlements"
+  ],
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "webhooks:commas and webhooks:stuck-failed (gap-webhooks.mjs: door mounted; commas_inbox rows failed at the retry limit or stuck mid-claim); beat-pay-webhook.mjs hourly (secret present, verifier accepts a signed probe, inbox moving); gap-payments.mjs payments:commas-webhook-route, payments:pay-link-webhook, payments:commas-inbox-waiting; keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server. Tests: src/adapters/commas.test.mjs and src/payments/commas-inbox.pg.test.mjs.",
+  "secret": "COMMAS_WEBHOOK_SECRET",
+  "signature": "HMAC-SHA256 hex over raw body",
+  "header": "x-webhook-signature | x-commas-signature",
+  "door": "/api/webhooks/commas"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/clickfunnels",
+  "control": "ClickFunnels leads, survey answers and bookings. Verifies HMAC-SHA256 of `<timestamp>.<rawBody>` (headers X-Webhook-ClickFunnels-Signature and -Timestamp, within 600 seconds; legacy x-clickfunnels-signature without a timestamp; secret CLICKFUNNELS_WEBHOOK_SECRET; CLICKFUNNELS_APPLY_SURVEY_INGEST_SECRET is a second accepted secret for the apply survey). Emits entry.captured, survey.submitted and booking events; updates bookings and tasks; keeps a raw copy only when CF_CAPTURE_MODE=1.",
+  "kind": "webhook",
+  "calls": [
+   "emits entry.captured, survey.submitted, booking.created, booking.rescheduled"
+  ],
+  "tables": [
+   "events",
+   "bookings",
+   "tasks",
+   "clients",
+   "webhook_captures"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "webhooks:clickfunnels and webhooks:calendar-booking (gap-webhooks.mjs door probes; calendar bookings arrive on this same door); gap-leads.mjs lead:clickfunnels-posts-silent and lead:pipe-cut-with-traffic; gap-calls.mjs calls:booking-webhook; keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server. Tests: src/adapters/clickfunnels.test.mjs.",
+  "secret": "CLICKFUNNELS_WEBHOOK_SECRET (+ CLICKFUNNELS_APPLY_SURVEY_INGEST_SECRET)",
+  "signature": "HMAC-SHA256 hex over timestamp.rawBody",
+  "header": "x-webhook-clickfunnels-signature + x-webhook-clickfunnels-timestamp",
+  "door": "/api/webhooks/clickfunnels"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/bland",
+  "control": "Bland AI call results (the setter and the bureau callers). Verifies HMAC-SHA256 of the raw body, hex (header x-bland-signature, secret BLAND_WEBHOOK_SECRET). Finds the call by id in outbound_calls and emits the call event. A not-yet-completed call answers ignored.",
+  "kind": "webhook",
+  "calls": [
+   "emits call events"
+  ],
+  "tables": [
+   "outbound_calls",
+   "events"
+  ],
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not); keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server. Door mounted and secret present only: no lane reads what a call result wrote. gap-calls.mjs calls:ai-dial-no-failure reads dial runs, not results. The Bland webhook answers only 200, 400 or 401 and the router stores a receipt only for 200, so a 500 leaves no row for any lane to see. Tests: src/adapters/bland.test.mjs.",
+  "secret": "BLAND_WEBHOOK_SECRET",
+  "signature": "HMAC-SHA256 hex over raw body",
+  "header": "x-bland-signature",
+  "door": "/api/webhooks/bland"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/lendflow",
+  "control": "Lendflow alt-fin stage changes. Verifies a signature in header x-lendflow-signature with LENDFLOW_WEBHOOK_SECRET (the scheme and the stage words are marked UNVERIFIED in the adapter: no real payload was ever read). It is the only emitter of round.started, round.submitted, round.approved and round.funded.",
+  "kind": "webhook",
+  "calls": [
+   "emits round.started, round.submitted, round.approved, round.funded"
+  ],
+  "tables": [
+   "events"
+  ],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not); keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server (LENDFLOW_WEBHOOK_SECRET was added to the launch list by W5). Door mounted and secret present only: no lane reads that a stage change moved a round. A decline fires nothing. Tests: src/adapters/lendflow.test.mjs.",
+  "secret": "LENDFLOW_WEBHOOK_SECRET",
+  "signature": "unverified scheme (adapter says CONFIRM)",
+  "header": "x-lendflow-signature",
+  "door": "/api/webhooks/lendflow"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/inquiry-removal",
+  "control": "Inquiry Removal AI runtime to platform bridge. Verifies HMAC-SHA256 (header x-inquiry-removal-signature, secret INQUIRY_REMOVAL_WEBHOOK_SECRET). Writes inquiry_removal_cases and inquiry_log; emits inquiry.removed when a case clears. Event types case.created, call_state.changed, inquiry.cleared, case.closed.",
+  "kind": "webhook",
+  "calls": [
+   "emits inquiry.removed"
+  ],
+  "tables": [
+   "inquiry_removal_cases",
+   "inquiry_log",
+   "events"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not); keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server; pipeline:stage-vs-fact (gap-pipeline-facts.mjs) reads cases against cards. Tests: src/adapters/inquiry-removal.test.mjs.",
+  "secret": "INQUIRY_REMOVAL_WEBHOOK_SECRET",
+  "signature": "HMAC-SHA256 hex over raw body",
+  "header": "x-inquiry-removal-signature",
+  "door": "/api/webhooks/inquiry-removal"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/twilio",
+  "control": "Inbound text messages from clients. Verifies X-Twilio-Signature (HMAC-SHA1 of the full URL plus the sorted form fields, key TWILIO_AUTH_TOKEN). Emits message.inbound for a MessageSid; a voice POST gets TwiML. STOP words are handled downstream.",
+  "kind": "webhook",
+  "calls": [
+   "emits message.inbound"
+  ],
+  "tables": [
+   "events",
+   "messages",
+   "opt_outs",
+   "conversations"
+  ],
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not); keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server (TWILIO_AUTH_TOKEN added by W5); gap-opt-out.mjs opt-out:stop-did-not-stick reads that a STOP reached opt_outs. Tests: src/adapters/twilio.test.mjs.",
+  "secret": "TWILIO_AUTH_TOKEN",
+  "signature": "HMAC-SHA1 base64 over URL + sorted params",
+  "header": "x-twilio-signature",
+  "door": "/api/webhooks/twilio"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/twilio-status",
+  "control": "Twilio delivery receipts for texts we sent. Same signature as the inbound door. Updates messages.status by MessageSid (queued, sent, delivered, undelivered, failed) and the error text. Creates nothing.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "messages"
+  ],
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "webhooks:twilio-status (gap-webhooks.mjs door probe); webhooks:receipts-silent-after-sends (gap-webhooks.mjs) reads messages and webhook_captures for a send with no receipt; sms-provider-failed and sms-sending-stuck (gap-sms.mjs). Tests: src/http/webhooks-status.pg.test.mjs.",
+  "secret": "TWILIO_AUTH_TOKEN",
+  "signature": "HMAC-SHA1 base64 over URL + sorted params",
+  "header": "x-twilio-signature",
+  "door": "/api/webhooks/twilio-status"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/resend",
+  "control": "Resend email delivery events (delivered, bounced, complained). Verifies the Svix signature over `<svix-id>.<svix-timestamp>.<rawBody>` (headers svix-id, svix-timestamp, svix-signature; secret RESEND_WEBHOOK_SECRET). Updates messages by provider id; a complaint or bounce can opt a client out of email.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "messages",
+   "opt_outs"
+  ],
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not); webhooks:receipts-silent-after-sends (gap-webhooks.mjs) reads messages and webhook_captures for a send with no receipt; keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server (RESEND_WEBHOOK_SECRET added by W5). The adapter header says this secret was once set nowhere. Tests: src/adapters/resend-events.test.mjs.",
+  "secret": "RESEND_WEBHOOK_SECRET",
+  "signature": "Svix HMAC over id.timestamp.rawBody",
+  "header": "svix-id, svix-timestamp, svix-signature",
+  "door": "/api/webhooks/resend"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/mailgun",
+  "control": "Inbound bank email through Mailgun. Verifies HMAC-SHA256 of timestamp+token with MAILGUN_SIGNING_KEY (fields in body.signature). Classifies APPROVED, COUNTEROFFER, DENIED, MISSING_DOCS, ACTION_REQUIRED, APP_RECEIVED or NOISE; writes bank_inbox and emits mail.response.",
+  "kind": "webhook",
+  "calls": [
+   "emits mail.response"
+  ],
+  "tables": [
+   "bank_inbox",
+   "events"
+  ],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not). No lane reads that a bank email became a bank_inbox row or moved a card; MAILGUN_SIGNING_KEY is read by no key lane. Tests: src/adapters/mailgun.test.mjs.",
+  "secret": "MAILGUN_SIGNING_KEY",
+  "signature": "HMAC-SHA256 hex over timestamp+token",
+  "header": "body.signature.{timestamp,token,signature}",
+  "door": "/api/webhooks/mailgun"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/mailgun-events",
+  "control": "Mailgun delivery events for mail we sent through Mailgun (matched on the bracketed Message-ID). Same signing key and scheme as the inbound door.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "messages"
+  ],
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not). Outbound email goes through Resend, not Mailgun, so this door has no live sender behind it today. MAILGUN_SIGNING_KEY is read by no key lane.",
+  "secret": "MAILGUN_SIGNING_KEY",
+  "signature": "HMAC-SHA256 hex over timestamp+token",
+  "header": "body.signature.{timestamp,token,signature}",
+  "door": "/api/webhooks/mailgun-events"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/postgrid",
+  "control": "PostGrid paper-letter delivery receipts. Verifies HMAC-SHA256 of the raw body, hex (header postgrid-signature or x-postgrid-signature, secret POSTGRID_WEBHOOK_SECRET). A delivered letter starts the inquiry call clock (onMailDelivered) or, for a repair letter, emits repair.letters.delivered. Other events answer ignored.",
+  "kind": "webhook",
+  "calls": [
+   "emits repair.letters.delivered"
+  ],
+  "tables": [
+   "dispute_letters",
+   "dispute_cases",
+   "inquiry_removal_cases"
+  ],
+  "impact": "customerMessage",
+  "coverage": "ping",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not); keys:launch-secrets-present (gap-keys.mjs) reads the secret name on the server. Door mounted and secret present only: gap-repair.mjs repair-letter-round reads letters made, not letters delivered, so a lost receipt shows nowhere. Tests: src/messaging/providers/mail-letter.test.mjs.",
+  "secret": "POSTGRID_WEBHOOK_SECRET",
+  "signature": "HMAC-SHA256 hex over raw body",
+  "header": "postgrid-signature | x-postgrid-signature",
+  "door": "/api/webhooks/postgrid"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/submagic",
+  "control": "Submagic project-finished pings for ad videos. NO signature exists (Submagic documents none): the body is trusted only for 'go look at this project', then we ask Submagic directly with our own key. Always 200 when the body parses. A forged ping costs one read.",
+  "kind": "webhook",
+  "calls": [
+   "GET to Submagic (verify the project)"
+  ],
+  "tables": [
+   "ad_videos"
+  ],
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "webhooks:inbound-doors-mounted (gap-webhooks.mjs) asks the router in process whether the door is mounted (401 mounted, 404 not). The 5-minute ad-video-sweeper polls the same project, so no ping is load-bearing. Tests: src/ad-videos/pipeline.pg.test.mjs.",
+  "secret": "none (SUBMAGIC_API_KEY is used for the read-back)",
+  "signature": "none",
+  "header": "none",
+  "door": "/api/webhooks/submagic"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/merchant-whop/<connection id>",
+  "control": "A client's own Whop sales, refunds, fees and payouts into their Finance OS. The connection id in the path picks the client's signing secret (stored encrypted with MERCHANT_SECRET_ENC_KEY). Every refusal answers 401 bad_signature so ids cannot be probed. Writes merchant_events; no copy in webhook_captures.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "merchant_events",
+   "merchant_connections"
+  ],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "no lane watches this door: it is not on gap-webhooks.mjs DOORS and not pinged (a POST-only path with a per-client secret). gap-bank-links.mjs banks:merchant-sync reads pull-mode connections only. Tests: src/http/money-connections.test.mjs and src/merchant/store.test.mjs (stand-in database, not Postgres).",
+  "secret": "per-connection secret (encrypted by MERCHANT_SECRET_ENC_KEY)",
+  "signature": "per-provider HMAC",
+  "header": "per provider",
+  "door": "/api/webhooks/merchant-whop/<id>"
+ },
+ {
+  "surface": "webhook:POST /api/webhooks/merchant-commas/<connection id>",
+  "control": "A client's own Commas account sales and payouts into their Finance OS. Same rules as merchant-whop: connection id picks the secret, one 401 for every refusal.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "merchant_events",
+   "merchant_connections"
+  ],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "no lane watches this door (see merchant-whop). Tests: src/http/money-connections.test.mjs.",
+  "secret": "per-connection secret (encrypted by MERCHANT_SECRET_ENC_KEY)",
+  "signature": "per-provider HMAC",
+  "header": "per provider",
+  "door": "/api/webhooks/merchant-commas/<id>"
+ },
+ {
+  "surface": "webhook:POST /api/merchant/events",
+  "control": "The open merchant API: any processor or a client's own system sends sales, refunds, fees and payouts into that client's Finance OS. Credential is `Authorization: Bearer fhm_...` (shown once; only sha256 stored). Idempotent on (connection, id); bad events listed by index and never stored.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "merchant_events",
+   "merchant_connections"
+  ],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "reg: ping not possible (listed in ALLOWED_UNMONITORED with a reason; its read sibling money/connections is pinged). No lane reads merchant_events written through this door. Tests: src/http/money-connections.test.mjs and src/merchant/sync.test.mjs.",
+  "secret": "per-connection Bearer key (sha256 stored)",
+  "signature": "Bearer key",
+  "header": "Authorization",
+  "door": "/api/merchant/events"
+ },
+ {
+  "surface": "webhook:GET|POST /api/public/rb2b-webhook",
+  "control": "RB2B identified-visitor pushes. Shared secret in the query string (?secret=...), compared with RB2B_WEBHOOK_SECRET; no signature exists. Stores one events row per email (rb2b.visitor_identified); no client, no mail, no text.",
+  "kind": "webhook",
+  "calls": [
+   "emits rb2b.visitor_identified into events"
+  ],
+  "tables": [
+   "events"
+  ],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "reg:public/rb2b-webhook (a GET answers 200 and writes nothing). RB2B_WEBHOOK_SECRET is read by no key lane. No lane reads rb2b rows. Tests: src/http/rb2b-webhook.test.mjs.",
+  "secret": "RB2B_WEBHOOK_SECRET",
+  "signature": "shared secret in query string",
+  "header": "none (?secret=)",
+  "door": "/api/public/rb2b-webhook"
+ },
+ {
+  "surface": "webhook:POST /api/public/vsl-watch",
+  "control": "The VSL player's own watch beacon. Open on purpose (no account exists); POST only; allowed origins list (VSL_BEACON_ORIGINS adds more); writes vsl_watch_sessions and positions.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "vsl_watch_sessions",
+   "vsl_watch_positions"
+  ],
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "gap-pixels.mjs vsl-watch-route (reads that the route is mounted, never posts); listed in ALLOWED_UNMONITORED (a GET answers 405 by design). No lane reads vsl_watch_sessions for rows. Tests: src/vsl/watch-beacon.test.mjs and src/http/vsl-watch.pg.test.mjs.",
+  "secret": "none (origin allow-list)",
+  "signature": "none",
+  "header": "origin",
+  "door": "/api/public/vsl-watch"
+ },
+ {
+  "surface": "webhook:POST /api/ops/notify-owner",
+  "control": "An agent on the Mac texts Chris through the live site. Needs header x-ops-notify-secret equal to OPS_NOTIFY_SECRET (32 or more characters). Only ever texts the owner pulse number; texting hours apply (202 held_quiet_hours outside 6 a.m. to 10 p.m. Arizona).",
+  "kind": "webhook",
+  "calls": [
+   "owner text (Chris)"
+  ],
+  "tables": [],
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "reg:ops/notify-owner (a GET answers 405). OPS_NOTIFY_SECRET is read by no key lane. src/pulse/quiet-hours.test.mjs fails the build if this path stops calling inTextWindow. Tests: src/http/notify-owner.test.mjs.",
+  "secret": "OPS_NOTIFY_SECRET",
+  "signature": "shared secret header",
+  "header": "x-ops-notify-secret",
+  "door": "/api/ops/notify-owner"
+ },
+ {
+  "surface": "webhook:POST|PUT|GET /api/inngest",
+  "control": "The Inngest sync and execute door: the workflow engine registers the app and calls each workflow here. The engine's own request signing (INNGEST_SIGNING_KEY) is the credential.",
+  "kind": "webhook",
+  "calls": [
+   "runs every registered workflow"
+  ],
+  "tables": [
+   "workflow_runs",
+   "events"
+  ],
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "keys:inngest-event-key (gap-keys.mjs reads both Inngest keys); beat-engine-alive.mjs hourly and pulse-outside-watch every 5 minutes read the job heartbeats the engine writes; self-audit.mjs audit:workflow-coverage; listed in ALLOWED_UNMONITORED (not a GET uptime door).",
+  "secret": "INNGEST_SIGNING_KEY",
+  "signature": "Inngest request signing",
+  "header": "x-inngest-signature",
+  "door": "/api/inngest"
+ },
+ {
+  "surface": "webhook:GET|POST /api/contracts/sign",
+  "control": "The contract signing link a client opens with no session: id, expiry and HMAC in the URL are the whole credential. GET shows the words and records the view; POST records the typed signature, tick, time and IP; refused if the words changed since sending. No secret means 503.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "contracts",
+   "contract_signers",
+   "document_versions"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-contracts.mjs contracts:sign-route, contracts:sent-unsignable and contracts:signed-not-stored; listed in ALLOWED_UNMONITORED (a GET without a signature answers 404 on purpose). Tests: src/contracts/*.test.mjs.",
+  "secret": "CONTRACT_URL_SECRET (fallback DOCUMENT_URL_SECRET)",
+  "signature": "HMAC over id and expiry",
+  "header": "query id, exp, sig",
+  "door": "/api/contracts/sign"
+ },
+ {
+  "surface": "webhook:GET|POST /api/public/ad-video-approve",
+  "control": "The approval link in Chris's phone notification for a filmed take. The token is the whole credential; a bad, spent or expired token answers the same 404. A POST is the approve or reject decision.",
+  "kind": "webhook",
+  "calls": [
+   "moves an ad video to approved or rejected"
+  ],
+  "tables": [
+   "ad_videos"
+  ],
+  "impact": "staffOnly",
+  "coverage": "ping",
+  "evidence": "listed in ALLOWED_UNMONITORED with a reason; the staff queue door ad-videos is the pinged sibling. No lane tests a real token. Tests: src/http/ad-video-approve.pg.test.mjs.",
+  "secret": "per-take approval token",
+  "signature": "opaque token",
+  "header": "path or query token",
+  "door": "/api/public/ad-video-approve"
+ },
+ {
+  "surface": "webhook:GET /api/public/morning-brief",
+  "control": "Chris's morning and evening report page data. The secret link code in his text is the whole credential; a wrong code, old date or missing brief all answer the same 404.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "morning_briefs"
+  ],
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "beat-brief-link.mjs follows the real link from the newest text every hour and goes red if the page or this route stops answering (reads morning_briefs and the saved link); listed in ALLOWED_UNMONITORED.",
+  "secret": "BRIEF_LINK_SECRET",
+  "signature": "HMAC link code",
+  "header": "query date, kind, code",
+  "door": "/api/public/morning-brief"
+ },
+ {
+  "surface": "webhook:POST /api/public/survey-submit",
+  "control": "The homepage survey form post: emits entry.captured and survey.submitted and returns the redirect the classifier picks. Open to the public.",
+  "kind": "webhook",
+  "calls": [
+   "emits entry.captured, survey.submitted"
+  ],
+  "tables": [
+   "events",
+   "clients"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "reg:public/survey-submit (a GET answers 405); beat-doors-live.mjs door-survey-submit hourly; gap-funnels.mjs offer:home-survey checks the homepage form and its post; gap-handoff.mjs handoff:lead-first-touches-missing reads the follow-ups. Tests: src/http/survey-submit.test.mjs.",
+  "secret": "none (open form post)",
+  "signature": "none",
+  "header": "none",
+  "door": "/api/public/survey-submit"
+ },
+ {
+  "surface": "webhook:GET|POST /api/public/slo-interest",
+  "control": "The /roadmap widget's step 1 (name, email, phone) saved as the visitor types; one slo.contact_started row per email per day; the contact is copied to ClickFunnels. Creates no client, mints no card page, sends no mail.",
+  "kind": "webhook",
+  "calls": [
+   "emits slo.contact_started",
+   "ClickFunnels contact upsert"
+  ],
+  "tables": [
+   "events"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "reg:public/slo-interest (GET answers 200 and writes nothing); beat-doors-live.mjs door-slo-interest hourly; gap-leads.mjs lead:slo-contact-not-in-clickfunnels; gap-handoff.mjs handoff:contact-no-followup. Tests: src/http/slo-interest.test.mjs and src/http/slo-interest-track.pg.test.mjs.",
+  "secret": "none (open form post)",
+  "signature": "none",
+  "header": "none",
+  "door": "/api/public/slo-interest"
+ },
+ {
+  "surface": "webhook:GET|POST /api/consent/capture",
+  "control": "The consent link a client opens with no session: an HMAC in the URL is the whole credential. Records what the person agreed to (soft pull, recording, marketing).",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "client_consents"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-consent.mjs consent:page, consent:store, consent:required and consent:slo-store; gap-records.mjs consent:recording-and-ads. Tests: src/http/consent-capture.test.mjs.",
+  "secret": "DOCUMENT_URL_SECRET",
+  "signature": "HMAC link",
+  "header": "query signature",
+  "door": "/api/consent/capture"
+ },
+ {
+  "surface": "webhook:GET /api/documents/[id]",
+  "control": "Signed document links (letters, packs, approvals) opened with no session: the HMAC and expiry are the credential; no secret means no links.",
+  "kind": "webhook",
+  "calls": [],
+  "tables": [
+   "documents",
+   "document_versions"
+  ],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-documents.mjs documents:cannot-open reads back the newest saved files from the store; listed in ALLOWED_UNMONITORED (a per-document GET needs a real id). Tests: src/http/documents-download.pg.test.mjs.",
+  "secret": "DOCUMENT_URL_SECRET",
+  "signature": "HMAC over id and expiry",
+  "header": "query exp, sig",
+  "door": "/api/documents/[id]"
+ },
+ {
+  "surface": "webhook:POST netlify/functions/teleprompter-live-text",
+  "control": "One text to Chris from the live site where the Twilio keys are real. POST sends only when the nonce matches; GET does nothing; texting hours apply (202 held_quiet_hours).",
+  "kind": "webhook",
+  "calls": [
+   "owner text (Chris)"
+  ],
+  "tables": [],
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "listed in SEND_PATHS (src/pulse/registry.mjs) with a reason instead of a ping; TELEPROMPTER_TEXT_NONCE is read by no key lane. Tests: src/http/teleprompter-live-text.test.mjs.",
+  "secret": "TELEPROMPTER_TEXT_NONCE",
+  "signature": "shared nonce",
+  "header": "body nonce",
+  "door": "/.netlify/functions/teleprompter-live-text"
+ },
+ {
+  "surface": "webhook:POST netlify/functions/ad-video-worker-background",
+  "control": "Starts a whole ad-video pass (15 minutes). Only the ad-video-sweeper holds the secret: header x-fundhub-worker must equal AD_VIDEO_WORKER_SECRET, otherwise nothing runs. Spends Submagic minutes.",
+  "kind": "webhook",
+  "calls": [
+   "Submagic upload"
+  ],
+  "tables": [
+   "ad_videos"
+  ],
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "AD_VIDEO_WORKER_SECRET is read by no key lane; no lane reads whether a started pass finished. Tests: src/http/ad-video-worker-guard.test.mjs.",
+  "secret": "AD_VIDEO_WORKER_SECRET",
+  "signature": "shared secret header",
+  "header": "x-fundhub-worker",
+  "door": "/.netlify/functions/ad-video-worker-background"
+ },
+ {
+  "surface": "webhook:POST netlify/functions/marketing-worker-background",
+  "control": "Runs a marketing machine pass (15 minutes) only when header x-fundhub-worker equals MARKETING_WORKER_SECRET. No secret set means a closed door (404) and nothing queued ever runs.",
+  "kind": "webhook",
+  "calls": [
+   "model calls",
+   "repo outbox commit"
+  ],
+  "tables": [
+   "marketing_jobs",
+   "repo_outbox"
+  ],
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "gap-marketing-queue.mjs marketing-queue:stuck-queued and marketing-queue:failed-no-note read marketing_jobs, so a closed door shows as a stuck queue; MARKETING_WORKER_SECRET is read by no key lane. Tests: src/marketing/worker.test.mjs.",
+  "secret": "MARKETING_WORKER_SECRET",
+  "signature": "shared secret header",
+  "header": "x-fundhub-worker",
+  "door": "/.netlify/functions/marketing-worker-background"
+ }
+]

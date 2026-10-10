@@ -1,0 +1,2193 @@
+[
+ {
+  "surface": "page:404.html",
+  "control": "Page /404.html (Fundhub — Not found): loads",
+  "kind": "page",
+  "calls": [
+   "GET /404.html"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no ping row on purpose: listed in ALLOWED_UNMONITORED (src/pulse/registry.mjs) with a reason",
+  "file": "public/404.html"
+ },
+ {
+  "surface": "link:404.html -> /",
+  "control": "Link 'Back to fundhub.ai the public site' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/404.html"
+ },
+ {
+  "surface": "link:404.html -> /app/",
+  "control": "Link 'The CRM sign-in required' to /app/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /app/: the CRM sign-in; /app/index.html is pinged; the link text is not read by anything",
+  "page": "public/404.html"
+ },
+ {
+  "surface": "link:404.html -> /login.html",
+  "control": "Link 'Sign in staff and demo access' to /login.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /login.html: public page pinged by reg:login; the link text is not read by anything",
+  "page": "public/404.html"
+ },
+ {
+  "surface": "form:affiliates/index.html#pform",
+  "control": "Partner application form: name, email, phone, company, track, audience, SMS consent. Posts to /api/public/partner-apply, which makes an affiliate or partner application row and queues the partner welcome.",
+  "kind": "form",
+  "calls": [
+   "/api/public/partner-apply"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:affiliates fetches the live page and goes red when the affiliate form or its post to partner-apply is gone (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/affiliates/index.html",
+  "fields": [
+   "p-name",
+   "p-email",
+   "p-phone",
+   "p-co",
+   "p-track",
+   "p-aud",
+   "p-sms"
+  ]
+ },
+ {
+  "surface": "button:affiliates/index.html#rerun",
+  "control": "'run' replay button for the page's reveal animation. Changes nothing.",
+  "kind": "button",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:affiliates-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only) (nothing presses the button)",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /affiliates/",
+  "control": "Link '(image or logo)' to /affiliates/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /affiliates/: public page pinged by reg:affiliates-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /",
+  "control": "Link 'Funding' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /login.html",
+  "control": "Link 'Log in' to /login.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /login.html: public page pinged by reg:login; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /partner/menu/",
+  "control": "Link 'SEE EVERY WAY IN →' to /partner/menu/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /partner/menu/: public page pinged by reg:partner-menu-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /partner/",
+  "control": "Link 'See the white-label offer' to /partner/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /partner/: public page pinged by reg:partner-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /terms/",
+  "control": "Link 'Terms' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> /terms/#sms",
+  "control": "Link 'SMS Terms' to /terms/#sms",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "link:affiliates/index.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/affiliates/index.html"
+ },
+ {
+  "surface": "page:aniso-face/logo-6k/index.html",
+  "control": "Page /aniso-face/logo-6k/ (Fundhub ASCII): loads",
+  "kind": "page",
+  "calls": [
+   "GET /aniso-face/logo-6k/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no ping row on purpose: listed in ALLOWED_UNMONITORED (src/pulse/registry.mjs) with a reason",
+  "file": "public/aniso-face/logo-6k/index.html"
+ },
+ {
+  "surface": "page:aniso-face/logo-6k/preview.html",
+  "control": "Page /aniso-face/logo-6k/preview.html (Fundhub ASCII 6K): loads",
+  "kind": "page",
+  "calls": [
+   "GET /aniso-face/logo-6k/preview.html"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no ping row on purpose: listed in ALLOWED_UNMONITORED (src/pulse/registry.mjs) with a reason",
+  "file": "public/aniso-face/logo-6k/preview.html"
+ },
+ {
+  "surface": "form:careers.html#apply-form",
+  "control": "Job application form: role, name, email, phone, LinkedIn, how heard, website (a hidden trap field). Posts to /api/hiring/apply and starts the applicant follow-up cadence.",
+  "kind": "form",
+  "calls": [
+   "/api/hiring/apply"
+  ],
+  "tables": [],
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "gap-staff.mjs checkHiringApply GETs /api/hiring/apply and goes red when the open-roles door fails (the POST is never pinged) (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/careers.html",
+  "fields": [
+   "role",
+   "name",
+   "email",
+   "phone",
+   "linkedin",
+   "how_heard",
+   "website"
+  ]
+ },
+ {
+  "surface": "button:careers.html#retry",
+  "control": "Try loading them again: reloads the open roles after a failed read of /api/hiring/apply.",
+  "kind": "button",
+  "calls": [
+   "/api/hiring/apply"
+  ],
+  "tables": [],
+  "impact": "staffOnly",
+  "coverage": "deep",
+  "evidence": "gap-staff.mjs checkHiringApply GETs /api/hiring/apply and goes red when the open-roles door fails (the POST is never pinged)",
+  "page": "public/careers.html"
+ },
+ {
+  "surface": "link:careers.html -> /",
+  "control": "Link '(image or logo)' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/careers.html"
+ },
+ {
+  "surface": "link:careers.html -> mailto:careers@fundhub.ai",
+  "control": "Mail link 'careers@fundhub.ai' (mailto:careers@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/careers.html"
+ },
+ {
+  "surface": "link:careers.html -> /terms/",
+  "control": "Link 'Terms' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/careers.html"
+ },
+ {
+  "surface": "link:careers.html -> /privacy/",
+  "control": "Link 'Privacy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/careers.html"
+ },
+ {
+  "surface": "page:climate/404.html",
+  "control": "Page /climate/404.html (404: This page could not be found.FundHub Lending Climate Dashboard): loads (static export of the lending-climate dashboard; the controls are drawn by bundled scripts, listed below from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "page",
+  "calls": [
+   "GET /climate/404.html"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no ping row on purpose: listed in ALLOWED_UNMONITORED (src/pulse/registry.mjs) with a reason",
+  "file": "public/climate/404.html"
+ },
+ {
+  "surface": "page:climate/404/index.html",
+  "control": "Page /climate/404/ (404: This page could not be found.FundHub Lending Climate Dashboard): loads (static export of the lending-climate dashboard; the controls are drawn by bundled scripts, listed below from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "page",
+  "calls": [
+   "GET /climate/404/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no ping row on purpose: listed in ALLOWED_UNMONITORED (src/pulse/registry.mjs) with a reason",
+  "file": "public/climate/404/index.html"
+ },
+ {
+  "surface": "page:climate/lender-climate/index.html",
+  "control": "Page /climate/lender-climate/ (FundHub Lending Climate Dashboard): loads (static export of the lending-climate dashboard; the controls are drawn by bundled scripts, listed below from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "page",
+  "calls": [
+   "GET /climate/lender-climate/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:climate-lender-climate-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/climate/lender-climate/index.html"
+ },
+ {
+  "surface": "form:consulting/index.html#consult-form",
+  "control": "Consult request form: name, email, agency, help, note. It takes no card and saves nothing here: it opens an email to the support mailbox.",
+  "kind": "form",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:consulting-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only). The form only opens a mail draft.",
+  "page": "public/consulting/index.html",
+  "fields": [
+   "name",
+   "email",
+   "agency",
+   "help",
+   "note"
+  ]
+ },
+ {
+  "surface": "link:consulting/index.html -> /consulting/",
+  "control": "Link 'FH Consulting' to /consulting/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/: public page pinged by reg:consulting-index; the link text is not read by anything",
+  "page": "public/consulting/index.html"
+ },
+ {
+  "surface": "link:consulting/index.html -> /consulting/refund/",
+  "control": "Link 'Refund Policy' to /consulting/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/refund/: public page pinged by reg:consulting-refund-index; the link text is not read by anything",
+  "page": "public/consulting/index.html"
+ },
+ {
+  "surface": "link:consulting/index.html -> mailto:support@fhconsulting.online",
+  "control": "Mail link 'support@fhconsulting.online' (mailto:support@fhconsulting.online)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/consulting/index.html"
+ },
+ {
+  "surface": "link:consulting/index.html -> /consulting/terms/",
+  "control": "Link 'Terms' to /consulting/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/terms/: public page pinged by reg:consulting-terms-index; the link text is not read by anything",
+  "page": "public/consulting/index.html"
+ },
+ {
+  "surface": "link:consulting/index.html -> /consulting/privacy/",
+  "control": "Link 'Privacy' to /consulting/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/privacy/: public page pinged by reg:consulting-privacy-index; the link text is not read by anything",
+  "page": "public/consulting/index.html"
+ },
+ {
+  "surface": "page:consulting/privacy/index.html",
+  "control": "Page /consulting/privacy/ (Privacy Policy | FH Consulting): loads",
+  "kind": "page",
+  "calls": [
+   "GET /consulting/privacy/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:consulting-privacy-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/consulting/privacy/index.html"
+ },
+ {
+  "surface": "link:consulting/privacy/index.html -> /consulting/",
+  "control": "Link 'FH Consulting' to /consulting/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/: public page pinged by reg:consulting-index; the link text is not read by anything",
+  "page": "public/consulting/privacy/index.html"
+ },
+ {
+  "surface": "link:consulting/privacy/index.html -> mailto:support@fhconsulting.online",
+  "control": "Mail link 'support@fhconsulting.online' (mailto:support@fhconsulting.online)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/consulting/privacy/index.html"
+ },
+ {
+  "surface": "page:consulting/refund/index.html",
+  "control": "Page /consulting/refund/ (Refund Policy | FH Consulting): loads",
+  "kind": "page",
+  "calls": [
+   "GET /consulting/refund/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:consulting-refund-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/consulting/refund/index.html"
+ },
+ {
+  "surface": "link:consulting/refund/index.html -> /consulting/",
+  "control": "Link 'FH Consulting' to /consulting/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/: public page pinged by reg:consulting-index; the link text is not read by anything",
+  "page": "public/consulting/refund/index.html"
+ },
+ {
+  "surface": "link:consulting/refund/index.html -> mailto:support@fhconsulting.online",
+  "control": "Mail link 'support@fhconsulting.online' (mailto:support@fhconsulting.online)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/consulting/refund/index.html"
+ },
+ {
+  "surface": "page:consulting/terms/index.html",
+  "control": "Page /consulting/terms/ (Terms of Service | FH Consulting): loads",
+  "kind": "page",
+  "calls": [
+   "GET /consulting/terms/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:consulting-terms-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/consulting/terms/index.html"
+ },
+ {
+  "surface": "link:consulting/terms/index.html -> /consulting/",
+  "control": "Link 'FH Consulting' to /consulting/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/: public page pinged by reg:consulting-index; the link text is not read by anything",
+  "page": "public/consulting/terms/index.html"
+ },
+ {
+  "surface": "link:consulting/terms/index.html -> /consulting/refund/",
+  "control": "Link 'Refund Policy' to /consulting/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /consulting/refund/: public page pinged by reg:consulting-refund-index; the link text is not read by anything",
+  "page": "public/consulting/terms/index.html"
+ },
+ {
+  "surface": "link:consulting/terms/index.html -> mailto:support@fhconsulting.online",
+  "control": "Mail link 'support@fhconsulting.online' (mailto:support@fhconsulting.online)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/consulting/terms/index.html"
+ },
+ {
+  "surface": "button:contract.html#go",
+  "control": "Sign: posts the typed name and tick to /api/contracts/sign (the signature, time and IP).",
+  "kind": "button",
+  "calls": [
+   "/api/contracts/sign"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-contracts.mjs reads the signing route and contracts sent with an unsignable link or signed and not stored",
+  "page": "public/contract.html"
+ },
+ {
+  "surface": "button:contract.html#dlBtn",
+  "control": "Download a copy of the signed document.",
+  "kind": "button",
+  "calls": [
+   "/api/contracts/sign"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:contract; no lane reads the download copy",
+  "page": "public/contract.html"
+ },
+ {
+  "surface": "button:contract.html#barGo",
+  "control": "Sign (sticky bar copy of the same button).",
+  "kind": "button",
+  "calls": [
+   "/api/contracts/sign"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-contracts.mjs reads the signing route and contracts sent with an unsignable link or signed and not stored",
+  "page": "public/contract.html"
+ },
+ {
+  "surface": "link:crm.html -> /app/",
+  "control": "Link 'Continue to Fundhub' to /app/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /app/: the CRM sign-in; /app/index.html is pinged; the link text is not read by anything",
+  "page": "public/crm.html"
+ },
+ {
+  "surface": "page:education/enroll/index.html",
+  "control": "Page /education/enroll/ (Enroll | Fundhub Education): loads",
+  "kind": "page",
+  "calls": [
+   "GET /education/enroll/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "ping: reg:education-enroll-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); gap-funnels.mjs offer:education-enroll goes red when the enroll form or its POST to education-enroll is gone",
+  "file": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "form:education/enroll/index.html#enroll-form",
+  "control": "Enrollment application: program, name, email, phone, SMS consent. Posts to /api/public/education-enroll, which saves an education_enrollments row. No card is taken.",
+  "kind": "form",
+  "calls": [
+   "/api/public/education-enroll"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:education-enroll goes red when the enroll form or its POST to education-enroll is gone (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/education/enroll/index.html",
+  "fields": [
+   "program",
+   "name",
+   "email",
+   "phone",
+   "sms_consent"
+  ]
+ },
+ {
+  "surface": "link:education/enroll/index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "link:education/enroll/index.html -> /education/refund/",
+  "control": "Link 'Refund policy' to /education/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/refund/: public page pinged by reg:education-refund-index; the link text is not read by anything",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "link:education/enroll/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "link:education/enroll/index.html -> /terms/",
+  "control": "Link 'Terms' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "link:education/enroll/index.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "link:education/enroll/index.html -> /education/terms/",
+  "control": "Link 'Terms' to /education/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/terms/: public page pinged by reg:education-terms-index; the link text is not read by anything",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "link:education/enroll/index.html -> /education/privacy/",
+  "control": "Link 'Privacy' to /education/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/privacy/: public page pinged by reg:education-privacy-index; the link text is not read by anything",
+  "page": "public/education/enroll/index.html"
+ },
+ {
+  "surface": "button:education/index.html#rerun",
+  "control": "'run' replay button for the page's reveal animation. Changes nothing.",
+  "kind": "button",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:education-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only) (nothing presses the button)",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /",
+  "control": "Link 'Education' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /affiliates/",
+  "control": "Link 'Affiliates' to /affiliates/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /affiliates/: public page pinged by reg:affiliates-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /login.html",
+  "control": "Link 'Log in' to /login.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /login.html: public page pinged by reg:login; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /education/enroll/?program=credit-mastery",
+  "control": "Link 'Enroll in Credit Mastery' to /education/enroll/?program=credit-mastery",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /education/enroll/: public page pinged by reg:education-enroll-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /education/refund/",
+  "control": "Link 'Refund Policy' to /education/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/refund/: public page pinged by reg:education-refund-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /education/enroll/?program=capital-strategy",
+  "control": "Link 'Enroll in Capital Strategy' to /education/enroll/?program=capital-strategy",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /education/enroll/: public page pinged by reg:education-enroll-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /education/terms/",
+  "control": "Link 'Terms of Service' to /education/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/terms/: public page pinged by reg:education-terms-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /education/privacy/",
+  "control": "Link 'Privacy Policy' to /education/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/privacy/: public page pinged by reg:education-privacy-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> /education/learn/",
+  "control": "Link 'Course status' to /education/learn/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/learn/: public page pinged by reg:education-learn-index; the link text is not read by anything",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "link:education/index.html -> mailto:support@fundhubeducation.com",
+  "control": "Mail link 'support@fundhubeducation.com' (mailto:support@fundhubeducation.com)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/education/index.html"
+ },
+ {
+  "surface": "page:education/learn/index.html",
+  "control": "Page /education/learn/ (Course access | Fundhub Education): loads",
+  "kind": "page",
+  "calls": [
+   "GET /education/learn/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:education-learn-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/education/learn/index.html"
+ },
+ {
+  "surface": "link:education/learn/index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/education/learn/index.html"
+ },
+ {
+  "surface": "link:education/learn/index.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/education/learn/index.html"
+ },
+ {
+  "surface": "link:education/learn/index.html -> /education/terms/",
+  "control": "Link 'Terms' to /education/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/terms/: public page pinged by reg:education-terms-index; the link text is not read by anything",
+  "page": "public/education/learn/index.html"
+ },
+ {
+  "surface": "link:education/learn/index.html -> /education/privacy/",
+  "control": "Link 'Privacy' to /education/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/privacy/: public page pinged by reg:education-privacy-index; the link text is not read by anything",
+  "page": "public/education/learn/index.html"
+ },
+ {
+  "surface": "link:education/learn/index.html -> /education/refund/",
+  "control": "Link 'Refunds' to /education/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/refund/: public page pinged by reg:education-refund-index; the link text is not read by anything",
+  "page": "public/education/learn/index.html"
+ },
+ {
+  "surface": "page:education/privacy/index.html",
+  "control": "Page /education/privacy/ (Privacy Policy | Fundhub Education): loads",
+  "kind": "page",
+  "calls": [
+   "GET /education/privacy/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:education-privacy-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/education/privacy/index.html"
+ },
+ {
+  "surface": "link:education/privacy/index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/education/privacy/index.html"
+ },
+ {
+  "surface": "link:education/privacy/index.html -> mailto:support@fundhubeducation.com",
+  "control": "Mail link 'support@fundhubeducation.com' (mailto:support@fundhubeducation.com)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/education/privacy/index.html"
+ },
+ {
+  "surface": "link:education/privacy/index.html -> /education/terms/",
+  "control": "Link 'Terms' to /education/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/terms/: public page pinged by reg:education-terms-index; the link text is not read by anything",
+  "page": "public/education/privacy/index.html"
+ },
+ {
+  "surface": "link:education/privacy/index.html -> /education/privacy/",
+  "control": "Link 'Privacy' to /education/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/privacy/: public page pinged by reg:education-privacy-index; the link text is not read by anything",
+  "page": "public/education/privacy/index.html"
+ },
+ {
+  "surface": "link:education/privacy/index.html -> /education/refund/",
+  "control": "Link 'Refunds' to /education/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/refund/: public page pinged by reg:education-refund-index; the link text is not read by anything",
+  "page": "public/education/privacy/index.html"
+ },
+ {
+  "surface": "page:education/refund/index.html",
+  "control": "Page /education/refund/ (Refund Policy | Fundhub Education): loads",
+  "kind": "page",
+  "calls": [
+   "GET /education/refund/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:education-refund-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/education/refund/index.html"
+ },
+ {
+  "surface": "link:education/refund/index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/education/refund/index.html"
+ },
+ {
+  "surface": "link:education/refund/index.html -> mailto:support@fundhubeducation.com",
+  "control": "Mail link 'support@fundhubeducation.com' (mailto:support@fundhubeducation.com)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/education/refund/index.html"
+ },
+ {
+  "surface": "link:education/refund/index.html -> /education/terms/",
+  "control": "Link 'Terms' to /education/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/terms/: public page pinged by reg:education-terms-index; the link text is not read by anything",
+  "page": "public/education/refund/index.html"
+ },
+ {
+  "surface": "link:education/refund/index.html -> /education/privacy/",
+  "control": "Link 'Privacy' to /education/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/privacy/: public page pinged by reg:education-privacy-index; the link text is not read by anything",
+  "page": "public/education/refund/index.html"
+ },
+ {
+  "surface": "link:education/refund/index.html -> /education/refund/",
+  "control": "Link 'Refunds' to /education/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/refund/: public page pinged by reg:education-refund-index; the link text is not read by anything",
+  "page": "public/education/refund/index.html"
+ },
+ {
+  "surface": "page:education/terms/index.html",
+  "control": "Page /education/terms/ (Terms of Service | Fundhub Education): loads",
+  "kind": "page",
+  "calls": [
+   "GET /education/terms/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:education-terms-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/education/terms/index.html"
+ },
+ {
+  "surface": "link:education/terms/index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/education/terms/index.html"
+ },
+ {
+  "surface": "link:education/terms/index.html -> /education/refund/",
+  "control": "Link 'Refund Policy' to /education/refund/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/refund/: public page pinged by reg:education-refund-index; the link text is not read by anything",
+  "page": "public/education/terms/index.html"
+ },
+ {
+  "surface": "link:education/terms/index.html -> mailto:support@fundhubeducation.com",
+  "control": "Mail link 'support@fundhubeducation.com' (mailto:support@fundhubeducation.com)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/education/terms/index.html"
+ },
+ {
+  "surface": "link:education/terms/index.html -> /education/terms/",
+  "control": "Link 'Terms' to /education/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/terms/: public page pinged by reg:education-terms-index; the link text is not read by anything",
+  "page": "public/education/terms/index.html"
+ },
+ {
+  "surface": "link:education/terms/index.html -> /education/privacy/",
+  "control": "Link 'Privacy' to /education/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/privacy/: public page pinged by reg:education-privacy-index; the link text is not read by anything",
+  "page": "public/education/terms/index.html"
+ },
+ {
+  "surface": "form:index.html#appform",
+  "control": "Homepage survey: a multi-step form drawn by homepage-survey.js; the last step posts to /api/public/survey-submit, which emits entry.captured and survey.submitted and returns the redirect.",
+  "kind": "form",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:home-survey fetches the live page and goes red when the survey form or homepage-survey.js is gone (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/index.html",
+  "fields": []
+ },
+ {
+  "surface": "button:index.html#rerun",
+  "control": "'run' replay button for the page's reveal animation. Changes nothing.",
+  "kind": "button",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:home (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only) (nothing presses the button)",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /",
+  "control": "Link '(image or logo)' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /education/",
+  "control": "Link 'Education' to /education/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /education/: public page pinged by reg:education-index; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /affiliates/",
+  "control": "Link 'Affiliates' to /affiliates/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /affiliates/: public page pinged by reg:affiliates-index; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /login.html",
+  "control": "Link 'Log in' to /login.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /login.html: public page pinged by reg:login; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /terms/#sms",
+  "control": "Link 'SMS Terms' to /terms/#sms",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "link:index.html -> /privacy/#rights",
+  "control": "Link 'Do Not Sell or Share My Info' to /privacy/#rights",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/index.html"
+ },
+ {
+  "surface": "page:leads/<32-hex>/index.html",
+  "control": "Private leads list page (noindex, secret folder name): a local table with Name, Number, Follow up date, Response, Status. Edits save in the browser only; nothing is sent from the page.",
+  "kind": "page",
+  "calls": [
+   "GET /leads/<32-hex>/"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "ping: reg:leads-<32-hex>-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); git-ignored file (.git/info/exclude): exists only in the main folder, not in a fresh checkout, so registry.test.mjs fails there (known trap)",
+  "file": "public/leads/<32-hex>/index.html"
+ },
+ {
+  "surface": "button:leads/<32-hex>/index.html#reset",
+  "control": "Button 'Reset my edits'",
+  "kind": "button",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:leads-<32-hex>-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only) (nothing presses the button)",
+  "page": "public/leads/<32-hex>/index.html"
+ },
+ {
+  "surface": "form:login.html#f",
+  "control": "Staff and demo sign-in: email and password. Posts to /api/auth/login and sets the session cookie.",
+  "kind": "form",
+  "calls": [
+   "/api/auth/login",
+   "/api/auth/reset"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-auth.mjs gap:auth-staff-login reads sign-in attempts against real staff; gap-staff.mjs reads invited staff with no usable link (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/login.html",
+  "fields": [
+   "email",
+   "pw"
+  ]
+ },
+ {
+  "surface": "button:login.html#fh-forgot-go",
+  "control": "Send reset link: posts the typed email to /api/auth/reset for a reset mail (same answer for every address).",
+  "kind": "button",
+  "calls": [
+   "/api/auth/login",
+   "/api/auth/reset"
+  ],
+  "tables": [],
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "gap-auth.mjs gap:auth-reset-mail reads reset emails that were asked for and never queued",
+  "page": "public/login.html"
+ },
+ {
+  "surface": "link:login.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/login.html"
+ },
+ {
+  "surface": "link:login.html -> /",
+  "control": "Link '← Back to fundhub.ai' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/login.html"
+ },
+ {
+  "surface": "page:optimize-plan.html",
+  "control": "Page /optimize-plan.html (Your roadmap | Fundhub Credit Solutions LLC): loads",
+  "kind": "page",
+  "calls": [
+   "GET /optimize-plan.html"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "ping: reg:optimize-plan (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); gap-funnels.mjs offer:optimize-plan goes red when the plan form or the optimize hook is gone",
+  "file": "public/optimize-plan.html"
+ },
+ {
+  "surface": "form:optimize-plan.html#intake",
+  "control": "Roadmap intake: first name, last name, email, goal. Calls /api/public/optimize?view=roadmap to build the Audit roadmap on the page.",
+  "kind": "form",
+  "calls": [
+   "/api/public/optimize",
+   "/api/public/optimize?view=roadmap"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:optimize-plan goes red when the plan form or the optimize hook is gone (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/optimize-plan.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "email",
+   "goal"
+  ]
+ },
+ {
+  "surface": "link:optimize-plan.html -> https://apply.fundhub.ai/schedule/phonecall",
+  "control": "Link 'Book my call' to https://apply.fundhub.ai/schedule/phonecall",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerMessage",
+  "coverage": "none",
+  "evidence": "external address: no lane or beat opens it (apply.fundhub.ai)",
+  "page": "public/optimize-plan.html"
+ },
+ {
+  "surface": "page:optimize.html",
+  "control": "Page /optimize.html (Your credit report | Fundhub Credit Solutions LLC): loads",
+  "kind": "page",
+  "calls": [
+   "GET /optimize.html"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "ping: reg:optimize (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); gap-funnels.mjs offer:optimize goes red when the optimize form or the /api/public/optimize hook is gone",
+  "file": "public/optimize.html"
+ },
+ {
+  "surface": "form:optimize.html#opt",
+  "control": "Audit intake and Pay for Audit: first name, last name, email, phone, SMS consent. Posts to /api/public/optimize, which mints a Commas checkout on the Consulting Services Assessment title.",
+  "kind": "form",
+  "calls": [
+   "/api/public/optimize"
+  ],
+  "tables": [],
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:optimize goes red when the optimize form or the /api/public/optimize hook is gone (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/optimize.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "email",
+   "phone",
+   "sms_consent"
+  ]
+ },
+ {
+  "surface": "link:optimize.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/optimize.html"
+ },
+ {
+  "surface": "link:optimize.html -> /terms/",
+  "control": "Link 'Terms' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/optimize.html"
+ },
+ {
+  "surface": "link:optimize.html -> https://smartcredit.com/cblp/?PID=29056",
+  "control": "Link 'Get My Credit Report' to https://smartcredit.com/cblp/?PID=29056",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "none",
+  "evidence": "external address: no lane or beat opens it (smartcredit.com)",
+  "page": "public/optimize.html"
+ },
+ {
+  "surface": "link:optimize.html -> /optimize-plan",
+  "control": "Link 'See my roadmap' to /optimize-plan",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "target /optimize-plan: target not on the registry; nothing opens this address",
+  "page": "public/optimize.html"
+ },
+ {
+  "surface": "link:optimize.html -> https://apply.fundhub.ai/schedule/phonecall",
+  "control": "Link 'Or book a call first' to https://apply.fundhub.ai/schedule/phonecall",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerMessage",
+  "coverage": "none",
+  "evidence": "external address: no lane or beat opens it (apply.fundhub.ai)",
+  "page": "public/optimize.html"
+ },
+ {
+  "surface": "page:partner/autopsy/index.html",
+  "control": "Decline Autopsy sales page (SHELVED 2026-08-31): netlify.toml sends /partner/autopsy/* to the menu, so the file is not reachable; its routes are commented out in netlify/functions/api.mjs.",
+  "kind": "page",
+  "calls": [
+   "GET /partner/autopsy/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "no ping row on purpose: listed in ALLOWED_UNMONITORED (src/pulse/registry.mjs) with a reason",
+  "file": "public/partner/autopsy/index.html"
+ },
+ {
+  "surface": "form:partner/autopsy/index.html#buy",
+  "control": "Decline Autopsy buy form (first name, last name, email). The offer is SHELVED (2026-08-31): its routes are commented out and netlify.toml sends /partner/autopsy/* to the menu, so this file is not reachable.",
+  "kind": "form",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "none",
+  "evidence": "page is shelved and not reachable; no ping (ALLOWED_UNMONITORED), no check",
+  "page": "public/partner/autopsy/index.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "email"
+  ]
+ },
+ {
+  "surface": "link:partner/autopsy/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/partner/autopsy/index.html"
+ },
+ {
+  "surface": "link:partner/autopsy/index.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/partner/autopsy/index.html"
+ },
+ {
+  "surface": "page:partner/board/index.html",
+  "control": "Page /partner/board/ (Winner's Board — See What's Actually Running in Funding): loads",
+  "kind": "page",
+  "calls": [
+   "GET /partner/board/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "ping: reg:partner-board-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); gap-funnels.mjs offer:partner-board goes red when the checkout form or funnel.js is gone; gap-checkout.mjs checkout:funnel-door reads the till behind it",
+  "file": "public/partner/board/index.html"
+ },
+ {
+  "surface": "form:partner/board/index.html#buy",
+  "control": "Winner's Board buy form (first name, last name, email). funnel.js posts to /api/public/funnel-checkout, which mints the hosted checkout link.",
+  "kind": "form",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:partner-board goes red when the checkout form or funnel.js is gone; gap-checkout.mjs checkout:funnel-door reads the till behind it (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/partner/board/index.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "email"
+  ]
+ },
+ {
+  "surface": "link:partner/board/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/partner/board/index.html"
+ },
+ {
+  "surface": "link:partner/board/index.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/partner/board/index.html"
+ },
+ {
+  "surface": "page:partner/board/live/index.html",
+  "control": "Page /partner/board/live/ (Winner's Board — Live): loads",
+  "kind": "page",
+  "calls": [
+   "GET /partner/board/live/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:partner-board-live-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/partner/board/live/index.html"
+ },
+ {
+  "surface": "button:partner/board/live/index.html#This week's movers",
+  "control": "Tab 'This week's movers': switches the Winner's Board view (calls /api/adintel/board?view=...)",
+  "kind": "button",
+  "calls": [
+   "/api/adintel/board"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:partner-board-live-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); reg:adintel/board answers the data door; src/http/adintel-board.pg.test.mjs runs every view query; e2e/winners-board-live.spec.mjs is a mocked browser spec",
+  "page": "public/partner/board/live/index.html"
+ },
+ {
+  "surface": "button:partner/board/live/index.html#Death watch",
+  "control": "Tab 'Death watch': switches the Winner's Board view (calls /api/adintel/board?view=...)",
+  "kind": "button",
+  "calls": [
+   "/api/adintel/board"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:partner-board-live-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); reg:adintel/board answers the data door; src/http/adintel-board.pg.test.mjs runs every view query; e2e/winners-board-live.spec.mjs is a mocked browser spec",
+  "page": "public/partner/board/live/index.html"
+ },
+ {
+  "surface": "button:partner/board/live/index.html#Saturation map",
+  "control": "Tab 'Saturation map': switches the Winner's Board view (calls /api/adintel/board?view=...)",
+  "kind": "button",
+  "calls": [
+   "/api/adintel/board"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:partner-board-live-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); reg:adintel/board answers the data door; src/http/adintel-board.pg.test.mjs runs every view query; e2e/winners-board-live.spec.mjs is a mocked browser spec",
+  "page": "public/partner/board/live/index.html"
+ },
+ {
+  "surface": "button:partner/board/live/index.html#New entrants",
+  "control": "Tab 'New entrants': switches the Winner's Board view (calls /api/adintel/board?view=...)",
+  "kind": "button",
+  "calls": [
+   "/api/adintel/board"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:partner-board-live-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); reg:adintel/board answers the data door; src/http/adintel-board.pg.test.mjs runs every view query; e2e/winners-board-live.spec.mjs is a mocked browser spec",
+  "page": "public/partner/board/live/index.html"
+ },
+ {
+  "surface": "link:partner/index.html -> /affiliates/?track=white_label",
+  "control": "Link 'Apply for a Review Call' to /affiliates/?track=white_label",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /affiliates/: public page pinged by reg:affiliates-index; the link text is not read by anything",
+  "page": "public/partner/index.html"
+ },
+ {
+  "surface": "link:partner/index.html -> /affiliates/?track=affiliate",
+  "control": "Link 'See the Affiliate Track' to /affiliates/?track=affiliate",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /affiliates/: public page pinged by reg:affiliates-index; the link text is not read by anything",
+  "page": "public/partner/index.html"
+ },
+ {
+  "surface": "link:partner/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/partner/index.html"
+ },
+ {
+  "surface": "link:partner/index.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/partner/index.html"
+ },
+ {
+  "surface": "page:partner/menu/index.html",
+  "control": "Page /partner/menu/ (Every Way to Work With FundHub): loads",
+  "kind": "page",
+  "calls": [
+   "GET /partner/menu/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "ping: reg:partner-menu-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); gap-funnels.mjs offer:partner-menu goes red when the menu offer copy, price label or funnel.js is gone",
+  "file": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "link:partner/menu/index.html -> /partner/board/",
+  "control": "Link 'See the Winner's Board →' to /partner/board/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /partner/board/: public page pinged by reg:partner-board-index; the link text is not read by anything",
+  "page": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "link:partner/menu/index.html -> /partner/trial/",
+  "control": "Link 'See the Live Trial →' to /partner/trial/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /partner/trial/: public page pinged by reg:partner-trial-index; the link text is not read by anything",
+  "page": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "link:partner/menu/index.html -> /partner/",
+  "control": "Link 'See the Partnership →' to /partner/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /partner/: public page pinged by reg:partner-index; the link text is not read by anything",
+  "page": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "link:partner/menu/index.html -> /affiliates/?track=affiliate",
+  "control": "Link 'See the Affiliate Track' to /affiliates/?track=affiliate",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /affiliates/: public page pinged by reg:affiliates-index; the link text is not read by anything",
+  "page": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "link:partner/menu/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "link:partner/menu/index.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/partner/menu/index.html"
+ },
+ {
+  "surface": "page:partner/trial/index.html",
+  "control": "Page /partner/trial/ (Live Trial — Seven Days With Your Name on It): loads",
+  "kind": "page",
+  "calls": [
+   "GET /partner/trial/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "deep",
+  "evidence": "ping: reg:partner-trial-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only); gap-funnels.mjs offer:partner-trial goes red when the checkout form or funnel.js is gone; gap-checkout.mjs checkout:funnel-door reads the till behind it",
+  "file": "public/partner/trial/index.html"
+ },
+ {
+  "surface": "form:partner/trial/index.html#buy",
+  "control": "Live Trial buy form (first name, last name, email). funnel.js posts to /api/public/funnel-checkout, which mints the hosted checkout link.",
+  "kind": "form",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:partner-trial goes red when the checkout form or funnel.js is gone; gap-checkout.mjs checkout:funnel-door reads the till behind it (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/partner/trial/index.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "email"
+  ]
+ },
+ {
+  "surface": "link:partner/trial/index.html -> /partner/",
+  "control": "Link 'Skip This — Go Straight to the Partnership' to /partner/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /partner/: public page pinged by reg:partner-index; the link text is not read by anything",
+  "page": "public/partner/trial/index.html"
+ },
+ {
+  "surface": "link:partner/trial/index.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/partner/trial/index.html"
+ },
+ {
+  "surface": "link:partner/trial/index.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/partner/trial/index.html"
+ },
+ {
+  "surface": "page:partner/trial/live/index.html",
+  "control": "Page /partner/trial/live/ (Your Live Trial): loads",
+  "kind": "page",
+  "calls": [
+   "GET /partner/trial/live/"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping: reg:partner-trial-live-index (PUBLIC_STATIC_FILES in src/pulse/registry.mjs, status 200 only)",
+  "file": "public/partner/trial/live/index.html"
+ },
+ {
+  "surface": "form:portal-login.html#f",
+  "control": "Client portal sign-in: email only. Posts to /api/auth/magic-link, which mails a 15 minute single-use link (always the same answer).",
+  "kind": "form",
+  "calls": [
+   "/api/auth/magic-link",
+   "/api/auth/magic-link-verify"
+  ],
+  "tables": [],
+  "impact": "customerMessage",
+  "coverage": "deep",
+  "evidence": "gap-auth.mjs gap:auth-magic-link-dead reads links issued with no email queued; beat-doors-live.mjs door-portal-login reads the page markers; gap-portal.mjs CUSTOMER_PAGES needs the sign-in form and the email box (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/portal-login.html",
+  "fields": [
+   "email"
+  ]
+ },
+ {
+  "surface": "link:portal-login.html -> /",
+  "control": "Link '← Back to fundhub.ai' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/portal-login.html"
+ },
+ {
+  "surface": "link:privacy/index.html -> /",
+  "control": "Link '(image or logo)' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/privacy/index.html"
+ },
+ {
+  "surface": "link:privacy/index.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/privacy/index.html"
+ },
+ {
+  "surface": "link:privacy/index.html -> /privacy/",
+  "control": "Link 'Privacy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/privacy/index.html"
+ },
+ {
+  "surface": "link:privacy/index.html -> /terms/",
+  "control": "Link 'Terms' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/privacy/index.html"
+ },
+ {
+  "surface": "link:privacy/index.html -> /terms/#sms",
+  "control": "Link 'SMS Terms' to /terms/#sms",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/privacy/index.html"
+ },
+ {
+  "surface": "link:progress.html -> /app/client-portal.html",
+  "control": "Link '← Back to your portal' to /app/client-portal.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /app/client-portal.html: desk pinged by reg row for /app/client-portal.html; the link text is not read by anything",
+  "page": "public/progress.html"
+ },
+ {
+  "surface": "form:reset-password.html#f",
+  "control": "Set a password from a reset or invite link: two password boxes. Posts to /api/auth/reset with the one-shot token from the address.",
+  "kind": "form",
+  "calls": [
+   "/api/auth/reset"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-auth.mjs gap:auth-reset-mail reads reset emails; gap-portal.mjs CUSTOMER_PAGES needs the form and the password fields (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/reset-password.html",
+  "fields": [
+   "pw1",
+   "pw2"
+  ]
+ },
+ {
+  "surface": "link:reset-password.html -> /login.html",
+  "control": "Link 'Sign in now →' to /login.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "target /login.html: public page pinged by reg:login; the link text is not read by anything",
+  "page": "public/reset-password.html"
+ },
+ {
+  "surface": "link:roadmap/index.html -> /roadmap/pay.html",
+  "control": "Link 'Show Me What I Qualify For —' to /roadmap/pay.html",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "target /roadmap/pay.html: public page pinged by reg:roadmap-pay; the link text is not read by anything",
+  "page": "public/roadmap/index.html"
+ },
+ {
+  "surface": "link:roadmap/index.html -> https://fundhub.ai/privacy/",
+  "control": "Link 'Privacy Policy' to https://fundhub.ai/privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/roadmap/index.html"
+ },
+ {
+  "surface": "link:roadmap/index.html -> https://fundhub.ai/terms/",
+  "control": "Link 'Terms & Conditions' to https://fundhub.ai/terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/roadmap/index.html"
+ },
+ {
+  "surface": "form:roadmap/pay.html#pay",
+  "control": "Roadmap checkout: first name, last name, email. Posts to /api/public/slo-checkout, which mints the Commas card page for the $297 diagnostic and redirects.",
+  "kind": "form",
+  "calls": [
+   "/api/public/slo-checkout"
+  ],
+  "tables": [],
+  "impact": "money",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:roadmap-pay goes red when the pay form or slo-checkout hook is gone; gap-payments.mjs payments:checkout-started-no-link reads buyers who pressed pay and got no link (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/roadmap/pay.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "email"
+  ]
+ },
+ {
+  "surface": "link:roadmap/pay.html -> /roadmap/",
+  "control": "Link 'Back to the diagnostic' to /roadmap/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "target /roadmap/: target not on the registry; nothing opens this address",
+  "page": "public/roadmap/pay.html"
+ },
+ {
+  "surface": "link:roadmap/pay.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/roadmap/pay.html"
+ },
+ {
+  "surface": "link:roadmap/pay.html -> tel:+15613048368",
+  "control": "Phone link '(561) 304-8368' (tel:+15613048368)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "phone number: nothing can check it",
+  "page": "public/roadmap/pay.html"
+ },
+ {
+  "surface": "link:roadmap/pay.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/roadmap/pay.html"
+ },
+ {
+  "surface": "link:roadmap/pay.html -> /terms/",
+  "control": "Link 'Terms & Conditions' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/roadmap/pay.html"
+ },
+ {
+  "surface": "form:roadmap/pull.html#pull",
+  "control": "Pull form after paying: name, date of birth, SSN, address, soft-pull consent. Posts to /api/public/slo-pull, which stores identity against the paid file and emits diagnostic.paid.",
+  "kind": "form",
+  "calls": [
+   "/api/public/slo-checkout",
+   "/api/public/slo-pull"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "deep",
+  "evidence": "gap-funnels.mjs offer:roadmap-pull goes red when the pull form or its post to slo-pull is gone; gap-soft-pull.mjs reads paid buyers with an empty form (it reads that the form and its post target are on the live page; it does not submit the form)",
+  "page": "public/roadmap/pull.html",
+  "fields": [
+   "first_name",
+   "last_name",
+   "dob",
+   "ssn",
+   "address",
+   "city",
+   "state",
+   "zip",
+   "soft_pull_consent"
+  ]
+ },
+ {
+  "surface": "link:roadmap/pull.html -> /privacy/",
+  "control": "Link 'Privacy Policy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/roadmap/pull.html"
+ },
+ {
+  "surface": "link:roadmap/pull.html -> /terms/",
+  "control": "Link 'Terms of Service' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/roadmap/pull.html"
+ },
+ {
+  "surface": "link:start.html -> https://apply.fundhub.ai/watch",
+  "control": "Link 'Go to apply' to https://apply.fundhub.ai/watch",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "external address: no lane or beat opens it (apply.fundhub.ai)",
+  "page": "public/start.html"
+ },
+ {
+  "surface": "link:terms/index.html -> /",
+  "control": "Link '(image or logo)' to /",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /: public page pinged by reg:home; the link text is not read by anything",
+  "page": "public/terms/index.html"
+ },
+ {
+  "surface": "link:terms/index.html -> mailto:support@fundhub.ai",
+  "control": "Mail link 'support@fundhub.ai' (mailto:support@fundhub.ai)",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "none",
+  "evidence": "mail address: nothing can check that mail reaches it",
+  "page": "public/terms/index.html"
+ },
+ {
+  "surface": "link:terms/index.html -> /privacy/",
+  "control": "Link 'Privacy' to /privacy/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /privacy/: public page pinged by reg:privacy-index; the link text is not read by anything",
+  "page": "public/terms/index.html"
+ },
+ {
+  "surface": "link:terms/index.html -> /terms/",
+  "control": "Link 'Terms' to /terms/",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/terms/index.html"
+ },
+ {
+  "surface": "link:terms/index.html -> /terms/#sms",
+  "control": "Link 'SMS Terms' to /terms/#sms",
+  "kind": "link",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "target /terms/: public page pinged by reg:terms-index; the link text is not read by anything",
+  "page": "public/terms/index.html"
+ },
+ {
+  "surface": "button:unsubscribe.html#go",
+  "control": "Unsubscribe me: posts to /api/public/unsubscribe, which records the opt-out (a GET only reports state).",
+  "kind": "button",
+  "calls": [
+   "/api/public/unsubscribe",
+   "/api/public/unsubscribe?"
+  ],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "e2e",
+  "evidence": "src/http/unsubscribe-public.pg.test.mjs and src/messaging/unsubscribe.test.mjs run the door; gap-opt-out.mjs opt-out:unsubscribe-link signs and verifies a link but does not open this page",
+  "page": "public/unsubscribe.html"
+ },
+ {
+  "surface": "button:climate/index.html#See how many banks in our bo",
+  "control": "See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "button",
+  "calls": [],
+  "tables": [],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "ping only: reg:climate-index (page 200), reg:public/climate-match (GET answers the book size), reg:climate and reg:climate/config. No lane reads the count or the saved lead. Tests: src/http/climate-match.test.mjs (no approval odds, no dollar amounts).",
+  "page": "public/climate/index.html"
+ },
+ {
+  "surface": "read:climate/index.html#Map and national number: GET",
+  "control": "Map and national number: GET /api/climate paints 51 states and the national score (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "read",
+  "calls": [
+   "GET /api/climate"
+  ],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:climate-index (page 200), reg:public/climate-match (GET answers the book size), reg:climate and reg:climate/config. No lane reads the count or the saved lead. Tests: src/http/climate-match.test.mjs (no approval odds, no dollar amounts).",
+  "page": "public/climate/index.html"
+ },
+ {
+  "surface": "button:climate/index.html#Click a state: shows its sco",
+  "control": "Click a state: shows its score and a plain sentence (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "button",
+  "calls": [],
+  "tables": [],
+  "impact": "none",
+  "coverage": "ping",
+  "evidence": "ping only: reg:climate-index (page 200), reg:public/climate-match (GET answers the book size), reg:climate and reg:climate/config. No lane reads the count or the saved lead. Tests: src/http/climate-match.test.mjs (no approval odds, no dollar amounts).",
+  "page": "public/climate/index.html"
+ },
+ {
+  "surface": "form:climate/index.html#Four answers (home state req",
+  "control": "Four answers (home state required, business state, do you have a business, your credit guess) plus name, email, phone: POST /api/public/climate-match returns the count, lane counts and five bank names, and saves the lead (clients row, entry.captured, survey.submitted) (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "form",
+  "calls": [
+   "POST /api/public/climate-match"
+  ],
+  "tables": [
+   "clients",
+   "events"
+  ],
+  "impact": "customerData",
+  "coverage": "ping",
+  "evidence": "ping only: reg:climate-index (page 200), reg:public/climate-match (GET answers the book size), reg:climate and reg:climate/config. No lane reads the count or the saved lead. Tests: src/http/climate-match.test.mjs (no approval odds, no dollar amounts).",
+  "page": "public/climate/index.html"
+ },
+ {
+  "surface": "button:climate/index.html#Gate button: unlock the full",
+  "control": "Gate button: unlock the full list with the $32 assessment (POST /api/public/optimize returns the Commas checkout) (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+  "kind": "button",
+  "calls": [
+   "POST /api/public/optimize"
+  ],
+  "tables": [],
+  "impact": "money",
+  "coverage": "ping",
+  "evidence": "ping only: reg:climate-index (page 200), reg:public/climate-match (GET answers the book size), reg:climate and reg:climate/config. No lane reads the count or the saved lead. Tests: src/http/climate-match.test.mjs (no approval odds, no dollar amounts).",
+  "page": "public/climate/index.html"
+ }
+]
