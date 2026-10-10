@@ -36,6 +36,10 @@ Conflict and merge:
 - `docs/journeys/CHANGELOG.md`: auto-merged, but the three GL lines landed above main's newer
   2026-10-09 lines. Moved them into date order, at the top of the 2026-10-06 block (newest at top).
 - Migrations: the branch has none. `db/expected-migrations.mjs` is untouched (main's copy).
+- Main moved once during the session (`3e739e046`, teleprompter files only). Merged it too, no
+  conflict. After it: lint clean, and the marketing, ui and marketing-http tests 1594 of 1594 pass.
+  The full `npm test` numbers below were taken one commit earlier; that commit touches no file this
+  branch changed.
 
 Test fixes (code under test is unchanged; the behavior is the branch's design):
 
