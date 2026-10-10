@@ -434,6 +434,43 @@ export const NA_CONDITIONS = Object.freeze({
       return null;
     },
     verify: "lane"
+  }),
+
+  /* A board stage that no code moves a card to. True while no card sits on any of the named
+     "board/stage" keys. The lane that made the row (gap-pipeline-boards) re-reads the cards with
+     the same SQL and the same keys, so this file copies nothing. Goes red the day a card lands. */
+  "no-card-on-stage": Object.freeze({
+    say(args = {}) {
+      const n = Array.isArray(args.stages) ? args.stages.filter(isText).length : 0;
+      return `${n ? `${n} stages have` : "These stages have"} no automatic mover and no card. Judged the day a card lands.`;
+    },
+    claim() {
+      return "No card sits on a stage that no code moves a card to.";
+    },
+    problem(args) {
+      return Array.isArray(args.stages) && args.stages.length > 0 && args.stages.every(isText)
+        ? null
+        : "stages is not a list of board/stage keys";
+    },
+    verify: "lane"
+  }),
+
+  /* A board with no stage time limit written. True while the named setting for each named board is
+     still off. The lane that made the row (gap-pipeline-boards) answers; it reads its own setting. */
+  "no-limit-set": Object.freeze({
+    say(args = {}) {
+      const n = Array.isArray(args.boards) ? args.boards.filter(isText).length : 0;
+      return `${n ? `${n} boards have` : "These boards have"} no stage time limit written. Judged the day Chris sets one.`;
+    },
+    claim() {
+      return "No stage time limit is set for these boards.";
+    },
+    problem(args) {
+      return Array.isArray(args.boards) && args.boards.length > 0 && args.boards.every(isText)
+        ? null
+        : "boards is not a list of board keys";
+    },
+    verify: "lane"
   })
 });
 

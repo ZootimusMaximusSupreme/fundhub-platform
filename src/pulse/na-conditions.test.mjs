@@ -25,9 +25,9 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these nine", () => {
+test("the list of codes is closed: exactly these eleven", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "low-traffic", "monthly-not-due", "no-demand", "no-real-lead",
+    "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
     "no-running-ad", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
@@ -41,7 +41,7 @@ test("the four core codes verify here; the four lane codes say \"lane\"", () => 
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -56,7 +56,9 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "no-running-ad": {},
     "low-traffic": { count: 0, min: 360, what: "ad clicks", days: 2 },
     "no-real-lead": { days: 3 },
-    "not-connected": { what: "YouTube" }
+    "not-connected": { what: "YouTube" },
+    "no-card-on-stage": { stages: ["sales/confirmed", "hiring/ramp"] },
+    "no-limit-set": { boards: ["sales", "hiring"] }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);

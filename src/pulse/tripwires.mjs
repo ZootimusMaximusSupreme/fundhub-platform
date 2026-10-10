@@ -75,7 +75,19 @@ export const TRIPWIRES = Object.freeze({
   // M2 repair, 2026-10-09: the push puts a built funnel live on apply.fundhub.ai, where it takes ad
   // traffic and shows on every affiliate's link list. The push proves its pages once. This lane
   // reads every live built funnel's pages again each morning and goes red on a dead or wrong page.
-  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] }
+  "route:marketing/funnels/push-live": { impact: "money", checks: ["built-funnels:live-pages-answer"] },
+  // W3 Pipelines truth, 2026-10-10: a board is where a client's place in the company is kept. Each
+  // door and desk below reads or moves a card. The deep checks are in gap-pipeline-boards.mjs and
+  // gap-pipeline-facts.mjs. route:pipeline-cards is W1's line; its W3 ids are named in manifest-w3.md.
+  "desk:pipeline.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:stage-vs-fact", "pipeline:nobody-lost"] },
+  "route:dashboard/pipeline": { impact: "customer", checks: ["pipeline:count-true"] },
+  "route:dashboard/client-archive": { impact: "customer", checks: ["pipeline:nobody-lost"] },
+  "route:pipeline-clients": { impact: "customer", checks: ["pipeline:count-true", "pipeline:nobody-lost"] },
+  "route:inquiry-cases": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:dead-stage"] },
+  "desk:inquiry-remover.html": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:two-records"] },
+  "desk:hiring.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:dead-stage"] },
+  "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step"] },
+  "desk:sales-floor.html": { impact: "money", checks: ["sales-manager:totals", "pipeline:two-records"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
