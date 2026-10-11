@@ -514,14 +514,17 @@ describe("top edge changes the script", () => {
     assert.match(HTML, /id="qmenu-list"/);
   });
 
-  test("a swap from the top does not stop the camera", () => {
+  test("a swap keeps recording; Complete confirms before marking and ending the take", () => {
     const openFn = SRC.slice(SRC.indexOf("function open(i, keepCamera)"), SRC.indexOf("function redraw("));
     assert.match(openFn, /if \(!keepCamera\) endRec\(\)/);
     assert.match(SRC, /open\(n, true\)/);
     const swapFn = SRC.slice(SRC.indexOf("function swapQueued"), SRC.indexOf("function completeFromTop"));
     const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
     assert.doesNotMatch(swapFn, /endRec\(/);
-    assert.doesNotMatch(doneFn, /endRec\(/);
+    assert.match(doneFn, /if \(!root\.confirm\([\s\S]*?\)\) return;/);
+    assert.ok(doneFn.indexOf("root.confirm") < doneFn.indexOf("markThis"));
+    assert.match(doneFn, /endRec\(\)/);
+    assert.match(HTML, /id="q-complete">Complete/);
   });
 });
 
@@ -694,8 +697,9 @@ describe("teleprompter film look", () => {
     assert.doesNotMatch(CSS, /#b-stop/);
     assert.match(CSS, /backdrop-filter:\s*blur\(16px\)/);
     assert.match(CSS, /rgba\(12,\s*14,\s*18,\s*0\.28\)/);
-    // Owner call 2026-10-10: the dark glass over the camera is 10 points less black (was 0.72).
-    assert.match(CSS, /rgba\(0,\s*0,\s*0,\s*0\.62\)/);
+    // Owner call 2026-10-11: 10% lighter than 0.62, so 0.62 * 0.9 = 0.558.
+    assert.match(CSS, /rgba\(0,\s*0,\s*0,\s*0\.558\)/);
+    assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.62\)/);
     assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.72\)/);
     assert.doesNotMatch(CSS, /rgba\(0,\s*0,\s*0,\s*0\.8\)/);
     assert.match(CSS, /#b-script-save,\s*#b-save \{\s*display: none !important;/);

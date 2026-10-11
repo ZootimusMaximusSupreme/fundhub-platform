@@ -235,6 +235,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
   test("Page Up at the end is Another take: the take number moves on and it rolls again", async ({ page }) => {
     const posts = [];
     await open(page, { posts });
+    await expect(page.locator("#s-file")).toHaveText("SLO Ad 93 — Your file is worth more Take 1.mp4");
     await page.evaluate(() => window.__fhtp.finish());
     await page.keyboard.press("PageUp");
     await expect.poll(() => posts.length).toBe(1);

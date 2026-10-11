@@ -258,7 +258,7 @@ body.cam-side-right #script-fade {
   width: min(420px, calc(100vw - 16px));
   max-height: min(62vh, 520px);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   margin: 0;
   padding: 12px 12px 16px;
@@ -310,9 +310,35 @@ body.cam-side-right #script-fade {
   white-space: normal;
 }
 
+#take-save {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 16px;
+  background: #101114;
+  color: #fff;
+}
+#take-save::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+#take-save h2 {
+  margin-top: 0;
+}
+#take-save-name {
+  overflow-wrap: anywhere;
+}
+.take-save-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
 #cam-shade,
 #cam.glass #cam-shade {
-  background: rgba(0, 0, 0, 0.62) !important;
+  background: rgba(0, 0, 0, 0.558) !important;
   opacity: 1 !important;
   -webkit-backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
   backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
