@@ -1,6 +1,6 @@
 ---
 ad: 103
-version: 2
+version: 3
 status: locked
 offer: funding_dfy
 funnel: null
@@ -9,9 +9,9 @@ style: null
 angle: null
 batch: null
 updated_by: null
-updated_at: 2026-10-11T21:01:52.595Z
+updated_at: 2026-10-11T21:01:55.274Z
 ---
-The condition of your credit decides whether you walk away with $10,000, $20,000, $30,000, $40,000, $50,0 vs 00 in funding, or you walk away with $100,000, $200,000, $300,000, $400,000, even a million dollars in funding across multiple businesses, and maybe even a couple hundred grand in personal funding if you want. Your credit score is only part of it. There are small details in your file, like your personal data and your business codes, that most people never think about, and even with an 800 credit score they can hold you back from the maximum amount of funding. There's also one step most people miss that makes the biggest difference, and I'll show you what it is in a couple of minutes.
+The condition of your credit decides whether you walk away with $10,000, $20,000, $30,000 in funding, or you walk away with $200,000, $300,000, $400,000, even a million dollars in funding across multiple businesses, and maybe even a couple hundred grand in personal funding if you want. Your credit score is only part of it. There are small details in your file, like your personal data and your business codes, that most people never think about, and even with an 800 credit score they can hold you back from the maximum amount of funding. There's also one step most people miss that makes the biggest difference, and I'll show you what it is in a couple of minutes.
 
 I'm Chris, I run Fundhub. I learned the funding game ten years ago, and since then I've funded a little over a million dollars for myself.
 
