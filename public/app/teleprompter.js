@@ -68,8 +68,9 @@
   /* ── pure helpers ───────────────────────────────────────────────────── */
 
   var NOT_CAPS = { LLC: 1, LLCS: 1, SBA: 1, FICO: 1, OPM: 1, ROI: 1, CEO: 1, NAICS: 1, USA: 1, US: 1, AI: 1, OK: 1, ID: 1, TV: 1, CTA: 1, VSL: 1, WPM: 1 };
-  /* Owner's hard limits, 2026-10-10: 130 is super slow, 220 is the top. Nothing goes outside them. */
-  var MIN_WPM = 130, MAX_WPM = 220;
+  /* Owner's hard limits, 2026-10-10: 130 is super slow, 320 is the top (raised from 220, then 260, the same day:
+     too slow sideways). Nothing goes outside them. */
+  var MIN_WPM = 130, MAX_WPM = 320;
 
   /**
    * NAMING.md, the same rule as takeFileName in src/marketing/shoot-plan.mjs:
@@ -81,7 +82,12 @@
     if (!s || !s.offer_word) return null;
     if (!(takeNo >= 1) || Math.floor(takeNo) !== takeNo) return null;
     var kind = s.stack_kind === "vsl" || s.stack_kind === "thank_you" ? s.stack_kind : "ad";
-    if (kind === "thank_you") return s.offer_word + " Thank You Take " + takeNo + ".mp4";
+    if (kind === "thank_you") {
+      // A thank-you variant carries its number, and its angle when it has one.
+      var tn = s.stack_no != null ? String(s.stack_no) : "";
+      if (tn && !/^(0|[1-9][0-9]{0,8})$/.test(tn)) return null;
+      return s.offer_word + " Thank You" + (tn ? " " + tn : "") + (s.angle_name ? " — " + s.angle_name : "") + " Take " + takeNo + ".mp4";
+    }
     if (!s.angle_name) return null;
     var n = s.stack_no != null ? String(s.stack_no) : (kind === "ad" && s.ad_id != null ? String(s.ad_id) : "");
     if (!/^(0|[1-9][0-9]{0,8})$/.test(n)) return null;
@@ -738,7 +744,7 @@
 
   /**
    * The volume buttons, with no finger on the glass (owner, 2026-10-10). One ladder:
-   *   back 220 … back 130 · paused · forward 130 … forward 220
+   *   back 320 … back 130 · paused · forward 130 … forward 320
    * Volume down steps left, volume up steps right, 5 words a minute at a time.
    * st: { mode: 'fwd' | 'paused' | 'rev', wpm, rev }. wpm is the forward speed, rev the backward one.
    *   forward: down slows to MIN, then pauses. up speeds to MAX and stays.

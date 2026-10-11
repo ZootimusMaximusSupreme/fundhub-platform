@@ -124,6 +124,27 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     assert.match(bare.take_name_problem, /no number in its offer/);
   });
 
+  test("VSL variants and thank-you variants, for any offer (owner, 2026-10-10)", () => {
+    const film = (row) => planFields({ ...SCRIPT, lane: null, offer_key: "funding_dfy", ...row });
+    assert.equal(film({ ad_id: "200", title: "x", stack_kind: "vsl", stack_no: 2, angle_name: "Short cut" }).take_file_name,
+      "Direct Book VSL 2 — Short cut Take 1.mp4");
+    assert.equal(film({ ad_id: "201", title: "x", stack_kind: "thank_you", stack_no: 2, angle_name: "After the call" }).take_file_name,
+      "Direct Book Thank You 2 — After the call Take 1.mp4");
+    assert.equal(film({ ad_id: "202", title: "x", stack_kind: "thank_you", stack_no: 3, angle_name: null }).take_file_name,
+      "Direct Book Thank You 3 Take 1.mp4");
+    // The one thank-you video keeps its plain name: its title is a label, not an angle.
+    const plain = film({ ad_id: "104", title: "/watch thank-you video", stack_kind: "thank_you", stack_no: null, angle_name: null });
+    assert.equal(plain.take_file_name, "Direct Book Thank You Take 1.mp4");
+    assert.equal(plain.angle_name, null);
+    // Another offer gets the same shapes from its own word.
+    assert.equal(planFields({ ...SCRIPT, ad_id: "210", lane: null, offer_key: "slo_roadmap", stack_kind: "vsl", stack_no: 1, angle_name: "Sales page" }).take_file_name,
+      "SLO VSL 1 — Sales page Take 1.mp4");
+    // Every name made here reads back through the cutting step's parser.
+    for (const n of ["Direct Book VSL 2 — Short cut Take 1.mp4", "Direct Book Thank You 2 — After the call Take 1.mp4", "Direct Book Thank You 3 Take 1.mp4", "Direct Book Thank You Take 1.mp4", "SLO VSL 1 — Sales page Take 1.mp4"]) {
+      assert.ok(parseTakeName(n), n);
+    }
+  });
+
   test("a slash never reaches a file name", () => {
     assert.equal(angleNameFor({ title: "/watch VSL (book-a-call)" }), "watch VSL (book-a-call)");
     assert.equal(angleNameFor({ title: "x", angle_name: " Watch  page " }), "Watch page");

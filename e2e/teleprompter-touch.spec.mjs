@@ -673,8 +673,8 @@ test.describe("volume buttons, no finger on the glass (owner call 2026-10-10)", 
     await expect.poll(async () => (await state(page)).t).toBeLessThan(pausedAt);
     await vol(page, "VolumeDown");
     expect((await state(page)).reverse).toBe(135);
-    for (let i = 0; i < 40; i++) await vol(page, "VolumeDown");
-    expect((await state(page)).reverse).toBe(220); // the top, and it stays
+    for (let i = 0; i < 50; i++) await vol(page, "VolumeDown");
+    expect((await state(page)).reverse).toBe(320); // the top, and it stays
     // It stops by itself at the first word.
     await expect.poll(async () => (await state(page)).playing, { timeout: 8000 }).toBe(false);
     s = await state(page);
@@ -686,17 +686,17 @@ test.describe("volume buttons, no finger on the glass (owner call 2026-10-10)", 
     expect(s.reverse).toBe(0);
     expect(s.wpm).toBe(130);
     await expect.poll(async () => (await state(page)).t).toBeGreaterThan(0.2);
-    for (let i = 0; i < 40; i++) await vol(page, "VolumeUp");
-    expect((await state(page)).wpm).toBe(220);
+    for (let i = 0; i < 50; i++) await vol(page, "VolumeUp");
+    expect((await state(page)).wpm).toBe(320);
   });
 
-  test("the − and + buttons stop at 130 and 220", async ({ page }) => {
+  test("the − and + buttons stop at 130 and 320", async ({ page }) => {
     await open(page);
-    for (let i = 0; i < 30; i++) await page.locator("#wpm-down").tap();
+    for (let i = 0; i < 50; i++) await page.locator("#wpm-down").tap();
     expect((await state(page)).wpm).toBe(130);
     expect((await state(page)).playing).toBe(false);
-    for (let i = 0; i < 30; i++) await page.locator("#wpm-up").tap();
-    expect((await state(page)).wpm).toBe(220);
+    for (let i = 0; i < 50; i++) await page.locator("#wpm-up").tap();
+    expect((await state(page)).wpm).toBe(320);
   });
 });
 

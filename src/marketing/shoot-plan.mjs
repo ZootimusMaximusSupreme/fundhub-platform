@@ -114,7 +114,13 @@ export function stackPlaceFor(s) {
 export function takeFileName({ offerWord, adId, angle, takeNo, kind = "ad" }) {
   if (!offerWord) return null;
   if (!Number.isInteger(takeNo) || takeNo < 1) return null;
-  if (kind === "thank_you") return `${offerWord} Thank You Take ${takeNo}.mp4`;
+  if (kind === "thank_you") {
+    /* A variant carries its number, and its angle when it has one:
+       "Direct Book Thank You 2 — After the call Take 1.mp4". */
+    const n = adId == null || adId === "" ? "" : String(adId);
+    if (n && !AD_RE.test(n)) return null;
+    return `${offerWord} Thank You${n ? ` ${n}` : ""}${angle ? ` — ${angle}` : ""} Take ${takeNo}.mp4`;
+  }
   if (!angle) return null;
   const ad = adId == null ? "" : String(adId);
   if (!AD_RE.test(ad)) return null;
@@ -257,8 +263,9 @@ export function planFields(s, { wpm = DEFAULT_WPM, priorTake = 0, mark = null } 
   const takes = mark && Number.isInteger(mark.takes) && mark.takes > 0 ? mark.takes : 0;
   const base = Number.isInteger(priorTake) && priorTake > 0 ? priorTake : 0;
   const offerWord = offerWordFor(s);
-  const angle = angleNameFor(s);
   const place = stackPlaceFor(s);
+  /* A thank-you video has an angle only when one is on file: its title is a label, not an angle. */
+  const angle = place.kind === "thank_you" ? angleNameFor({ angle_name: s.angle_name }) : angleNameFor(s);
   const nextTake = base + takes + 1;
   const text = teleprompterText(s);
   const name = (takeNo) => takeFileName({ offerWord, adId: place.no, angle, takeNo, kind: place.kind });
