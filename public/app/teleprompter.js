@@ -943,6 +943,8 @@
   var stage = $("stage"), flip = $("flip"), content = $("content"), line = $("line"), countEl = $("count");
   var words = [], times = [], holds = [], kf = [], total = 0, t = 0, playing = false, reverse = 0, last = 0, takeWord = 0, seeked = false, curIdx = -1;
   var countTimer = null, dimTimer = null, wake = null, holding = -1, released = {};
+  // The 3-2-1 shows only the first time a script rolls. A pause, a scroll up, or a resume never brings it back.
+  var counted = false;
   var data = null, scripts = [], cur = -1, atEnd = false, learning = null, pollTimer = null, signedOut = false;
   var scrollMode = false, flingRaf = 0, gest = gestureStart(), longTimer = null, tapSnap = null, editDrag = null, editMovedAt = 0;
   var editing = null, textEdit = null, repoHeld = false, healthAt = 0, shownParas = "";
@@ -1271,7 +1273,7 @@
     if (!s) return;
     header();
     render(paragraphsFor(s));
-    takeWord = 0; t = 0; seeked = false; released = {}; holding = -1;
+    takeWord = 0; t = 0; seeked = false; released = {}; holding = -1; counted = false;
     markStart(); apply();
     showFace();
     ensureCamera();
@@ -1469,7 +1471,7 @@
   }
   function go() {
     setScroll(false);
-    playing = true; holding = -1; $("cuehold").hidden = true;
+    playing = true; holding = -1; $("cuehold").hidden = true; counted = true;
     last = root.performance.now(); root.requestAnimationFrame(frame);
     setPlayIcon(); rolling(true); lockScreen();
   }
@@ -1480,7 +1482,8 @@
     if (seeked) { takeWord = Math.max(0, wordAt(t)); t = times[takeWord] || 0; seeked = false; released = {}; markStart(); apply(); }
     if (t >= total) { t = times[takeWord] || 0; released = {}; apply(); }
     fadeSoon();
-    if (withCount && S.countdown) {
+    if (withCount && S.countdown && !counted) {
+      counted = true;
       var n = 3; countEl.textContent = n; countEl.hidden = false; setPlayIcon(); rolling(true);
       countTimer = setInterval(function () { n--; if (n <= 0) { cancelCount(); go(); } else countEl.textContent = n; }, 800);
       setPlayIcon();

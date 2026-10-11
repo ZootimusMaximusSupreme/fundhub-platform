@@ -803,3 +803,20 @@ describe("teleprompter, one fixed speed (owner call 2026-10-09)", () => {
     assert.match(SRC, /syncCaretText\(true\);\s*\/\/ queue the change now/);
   });
 });
+
+describe("the 3-2-1 countdown (owner call 2026-10-11)", () => {
+  test("it shows only the first time a script plays, never after a pause, a scroll up, or a resume", () => {
+    // One flag per script. It is cleared when a script opens and set the moment the script rolls.
+    assert.match(SRC, /var counted = false;/);
+    const openFn = SRC.slice(SRC.indexOf("function open(i, keepCamera)"), SRC.indexOf("function redraw("));
+    assert.match(openFn, /counted = false;/);
+    const goFn = SRC.slice(SRC.indexOf("function go()"), SRC.indexOf("function start(withCount)"));
+    assert.match(goFn, /counted = true;/);
+    const startFn = SRC.slice(SRC.indexOf("function start(withCount)"), SRC.indexOf("function cancelCount("));
+    assert.match(startFn, /if \(withCount && S\.countdown && !counted\) \{\s*counted = true;/);
+    // Pause, resume and manual scroll never clear it.
+    const stopFn = SRC.slice(SRC.indexOf("function stop()"), SRC.indexOf("function hold("));
+    assert.doesNotMatch(stopFn, /counted = false/);
+    assert.doesNotMatch(SRC.slice(SRC.indexOf("function moveBy("), SRC.indexOf("function stopFling(")), /counted = false/);
+  });
+});
