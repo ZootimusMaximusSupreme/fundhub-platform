@@ -2,6 +2,12 @@
 
 Owner order (Chris, 2026-10-10): "pause, save this until Tuesday at 10am MST." Do not continue this batch before then unless Chris says so. Nothing is running. The live heartbeat itself is NOT paused: it keeps ticking by itself.
 
+## Owner update (Chris, 2026-10-10, later): Tuesday is the BIG WIRING DAY
+
+Chris: "Tuesday is the big wiring day, we just need to ensure that the code is really clean on the heartbeat and checking, we have about 250k lines of code that are maintenance for the company." Nothing to do before then.
+
+So on Tuesday, after the 10 a.m. read-out, the work is the wiring round: finish the checks for what has none, run the money checks hourly, recount the older rows. The priority rule for all of it is CLEAN code in the heartbeat and the checks: small, read only, one idea per file, honest status, tests both ways, nothing the 250k lines of maintenance code has to carry that it does not need. Ask Chris for the go, then split the work per CLAUDE.md section 0.
+
 ## Where it stands (main = GitHub, one branch, nothing left in a work folder)
 
 - Heartbeat: 1,077 checks across 63 lanes. The self-audit says all of them show up (`audit:expected-present`).
