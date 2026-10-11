@@ -82,6 +82,12 @@ jobs:
             test -z "$(git status --porcelain)"
           fi
 
+      - name: Load the existing production database connection
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: node scripts/ship-env-from-netlify.mjs
+
       - name: Ship
         env:
           CI: "true"

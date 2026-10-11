@@ -290,8 +290,9 @@ async function main() {
 
   say("\n→ database");
   let applied = 0;
-  if (process.env.MIGRATION_DATABASE_URL && !process.env.MIGRATION_DATABASE_URL.includes("*")) {
-    say("  owner connection found in the environment — using db/migrate.mjs");
+  const migrationConnection = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
+  if (migrationConnection && !migrationConnection.includes("*")) {
+    say("  database connection found in the environment — using db/migrate.mjs");
     if (DRY) say("  (dry run: not running it)");
     else if (!run("node", ["db/migrate.mjs"]).ok) fail("db/migrate.mjs failed. Nothing was deployed.");
   } else {
