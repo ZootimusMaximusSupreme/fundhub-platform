@@ -41,6 +41,8 @@
  * nothing, so a recording is not wrecked. Two taps open the list of scripts
  * still to film. He scrolls that list and taps one. That script loads. The
  * one he left stays in the list. The camera keeps recording.
+ * Complete in that list asks for confirmation before marking the current
+ * script. Each finished recording asks Yes or No before saving its video.
  *
  * KEYS (v1's, kept): Space, Enter, PageDown play and pause; the arrows change
  * the speed; PageUp restarts the take. At the END of a script: Space, Enter,
@@ -1476,7 +1478,7 @@
     setPlayIcon(); rolling(true); lockScreen();
   }
   function start(withCount) {
-    if (!words.length || editing || textEdit) return;
+    if (!words.length || editing || textEdit || cam.pending.length) return;
     hideEnd();
     setScroll(false);
     if (seeked) { takeWord = Math.max(0, wordAt(t)); t = times[takeWord] || 0; seeked = false; released = {}; markStart(); apply(); }
@@ -1580,10 +1582,14 @@
   function completeFromTop() {
     if (editing || textEdit) return;
     var s = scripts[cur];
-    if (s && !s.got_it) {
-      markThis("got_it");
-      say("Got it.");
-    }
+    if (!s || s.got_it) return;
+    var title = s.angle_name || s.title || ("Ad " + (s.ad_id || "?"));
+    if (!root.confirm('Mark "' + title + '" as complete?')) return;
+    closeSheets();
+    stop();
+    endRec();
+    markThis("got_it");
+    say("Complete.");
     var n = nextUnfilmed(scripts, cur);
     if (n < 0) {
       stop();
@@ -1604,6 +1610,8 @@
   function drawQueue() {
     var list = $("qmenu-list");
     if (!list) return;
+    var complete = $("q-complete");
+    if (complete) complete.hidden = !scripts[cur] || !!scripts[cur].got_it;
     list.innerHTML = "";
     var q = filmQueue(scripts);
     q.forEach(function (i) {
@@ -2165,8 +2173,9 @@
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
 
-  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4" };
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4" };
   var wantRec = false;
+  var takeDialog = $("take-save");
 
   function activeMode() {
     if (stays4K(scripts[cur])) return "4k";
@@ -2228,19 +2237,33 @@
     a.click();
     a.remove();
   }
-  function keepFile(chunks) {
+  function keepFile(chunks, then) {
     try {
       var type = cam.mime || (chunks[0] && chunks[0].type) || "video/mp4";
       var name = cam.fileName || "Take.mp4";
       if (type.indexOf("webm") >= 0) name = name.replace(/\.mp4$/i, ".webm");
       var file = new root.File(chunks, name, { type: type });
-      cam.file = file;
-      var btn = $("b-save");
-      if (btn) btn.hidden = true;
-      saveClick();
+      cam.pending.push({ file: file, then: then });
+      askToSaveTake();
     } catch (e) {
       camLine("The take did not save. The words still roll.", true);
+      if (then) then();
     }
+  }
+  function askToSaveTake() {
+    if (!cam.pending.length || takeDialog.open) return;
+    stop();
+    $("take-save-name").textContent = cam.pending[0].file.name;
+    takeDialog.showModal();
+  }
+  function chooseTakeSave(yes) {
+    if (!takeDialog.open || !cam.pending.length) return;
+    var take = cam.pending.shift();
+    takeDialog.close();
+    if (yes) queueVideoSave(take.file);
+    else say("Video discarded.");
+    if (take.then) take.then();
+    askToSaveTake();
   }
   function tickRec() {
     if (!cam.rec || cam.rec.state !== "recording") return;
@@ -2336,10 +2359,13 @@
     cam.after = null;
     var again = cam.again;
     cam.again = false;
-    if (chunks.length) keepFile(chunks);
-    if (again) { wantRec = true; beginRec(); }
-    else if (next) next();
-    ensureCamera();
+    function resume() {
+      if (again) { wantRec = true; beginRec(); }
+      else if (next) next();
+      ensureCamera();
+    }
+    if (chunks.length) keepFile(chunks, resume);
+    else resume();
   }
   function endRec(then) {
     wantRec = false;
@@ -2578,18 +2604,33 @@
   }
   function saveClick() {
     var file = cam.file;
-    if (!file || cam.saving) return;
+    if (file) queueVideoSave(file);
+  }
+  function queueVideoSave(file) {
+    if (cam.uploads.indexOf(file) < 0) cam.uploads.push(file);
+    saveNextVideo();
+  }
+  function saveNextVideo() {
+    if (!cam.uploads.length || cam.saving) return;
+    var file = cam.uploads[0];
     cam.saving = true;
     say("Saving the video…");
+    function settled() {
+      cam.uploads.shift();
+      cam.saving = false;
+      saveNextVideo();
+    }
     sendOriginal(file).then(function () {
-      cam.saving = false;
+      if (cam.file === file) cam.file = null;
       say("Saved " + (file.name || "the video"));
+      settled();
     }, function () {
-      cam.saving = false;
+      cam.file = file;
       shareOrDownload(file);
       var btn = $("b-save");
       if (btn) btn.hidden = false;
       say("The video is on this phone. Drive did not get it.");
+      settled();
     });
   }
 
@@ -2753,7 +2794,7 @@
     btn.setAttribute("aria-label", word);
   }
   function recordClick() {
-    if (editing || textEdit) return;
+    if (editing || textEdit || cam.pending.length) return;
     ensureCamera();
     ensureRecording();
     setRecLabel();
@@ -2795,6 +2836,7 @@
   doc.addEventListener("keydown", function (e) {
     var dir = volumeKeyDir(e.key, e.code);
     if (!dir) return;
+    if (takeDialog.open) return;
     var tag = (e.target && e.target.tagName) || "";
     if (textEdit || (e.target && e.target.isContentEditable)) return;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
@@ -2819,6 +2861,10 @@
   $("q-1080").onclick = function () { setCamMode("1080p"); };
   $("cam-corner").onclick = function (e) { e.preventDefault(); e.stopPropagation(); showFace(); };
   $("b-save").onclick = saveClick;
+  $("take-save-yes").onclick = function () { chooseTakeSave(true); };
+  $("take-save-no").onclick = function () { chooseTakeSave(false); };
+  takeDialog.addEventListener("cancel", function (e) { e.preventDefault(); });
+  $("q-complete").onclick = completeFromTop;
   $("e-done").onclick = endEdit;
   $("e-back").onclick = putBack;
   $("e-hist").onclick = function () { openHistory(); };
@@ -2976,6 +3022,7 @@
   doc.addEventListener("keydown", function (e) {
     var tag = (e.target && e.target.tagName) || "";
     var id = keyId(e);
+    if (takeDialog.open) return;
     if (learning) {
       if (e.key === "Escape") { learning = null; drawKeys(); return; }
       e.preventDefault();
@@ -3046,7 +3093,7 @@
   function poll() {
     clearTimeout(pollTimer);
     pollTimer = setTimeout(function () {
-      if (doc.visibilityState === "visible" && !playing && !countTimer && holding < 0 && !editing && !textEdit) {
+      if (doc.visibilityState === "visible" && !playing && !countTimer && holding < 0 && !editing && !textEdit && !cam.pending.length) {
         flush();
         if (!signedOut) load(false).then(poll, poll); else poll();
       } else poll();

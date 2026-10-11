@@ -105,7 +105,15 @@ flowchart TD
 
 ### 4d. The tiny script button
 
-The button on the thin line under the words (`#p-file`, left side). One tap does nothing. Two taps open `#qmenu`: the scripts still to film (`filmQueue`, no Got it). The list scrolls. A tap on a title loads that script with the camera still recording (`open(i, true)`). Opening the list does not call `markThis`. The script he left stays in the queue. Got it still happens only from the end card, Space at the end, or a second tap on the top edge.
+The button on the thin line under the words (`#p-file`, left side). One tap does nothing. Two taps open `#qmenu`: the scripts still to film (`filmQueue`, no Got it). The list scrolls. A tap on a title loads that script with the camera still recording (`open(i, true)`). Opening the list does not call `markThis`. The script he left stays in the queue.
+
+Owner change, 2026-10-11: the list also has **Complete** for the current script (`#q-complete`, `completeFromTop`). It asks "Mark [script title] as complete?" Cancel leaves the script and recording alone. Confirm stops the words and recording, queues one `got_it` mark, and opens the next unfinished script (or the shoot-done card).
+
+### 4e. The video decision after each recorded take
+
+`onRecStop` collects the original recording bytes into a named File (`keepFile`) and opens the modal `#take-save`. The modal shows the captured take name and asks **Save this video? Yes / No**. No drops that video's pending File without an upload or download. Yes queues the File for `sendOriginal`, the existing POST/PUT `/api/marketing/shoot/take` route. Uploads run one at a time; accepting a second take while the first saves keeps both Files in order. A restart callback waits for the decision. A pause or an edit still keeps the camera recording and opens no video decision.
+
+The existing `counted` flag from merged PR #27 still limits 3-2-1 to the first play of an opened script. Pause, seek and resume do not reset it. `steadyPace`, cached reading-line measurements, and fractional `translate3d` scrolling are unchanged; checks now cover 200, 205, 210 and 215 WPM. The camera shade is `rgba(0, 0, 0, 0.558)`, 10% lighter than 0.62. These changes remain **UNVERIFIED on production** until deployed.
 
 ## 5. The film link (no login on the teleprompter)
 
