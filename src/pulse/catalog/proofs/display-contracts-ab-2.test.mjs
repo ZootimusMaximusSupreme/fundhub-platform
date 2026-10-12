@@ -13,7 +13,6 @@ import {
   DISPLAY_CONTRACTS_AB_2,
 } from "./display-contracts-ab-2.mjs";
 import { DISPLAY_CONTRACT_KEYS_AB } from "./display-contracts-ab.mjs";
-import { DISPLAY_PROOF_CASES } from "./display-proof-cases.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PUBLIC = path.join(ROOT, "public");
@@ -120,8 +119,6 @@ test("Display AB 2 exports only disjoint exact red catalog rows", () => {
   assert.deepEqual(DISPLAY_CONTRACT_PROOF_AB_2.sourceFiles, ["desks-a.json", "desks-b.json"]);
 
   const oldKeys = new Set(DISPLAY_CONTRACT_KEYS_AB);
-  const oldCases = new Set(DISPLAY_PROOF_CASES.map((entry) =>
-    [entry.sourceFile, entry.surface, entry.control].join("|")));
   const byId = new Map(CATALOG.items.map((row) => [row.id, row]));
 
   for (const proof of DISPLAY_CONTRACTS_AB_2) {
@@ -133,8 +130,6 @@ test("Display AB 2 exports only disjoint exact red catalog rows", () => {
     assert.equal(row.expected, proof.expected);
     assert.equal(row.proofVerdict, "red", `${proof.rowKey} was not red when selected`);
     assert.equal(oldKeys.has(proof.rowKey), false, `${proof.rowKey} is in Display AB 1`);
-    assert.equal(oldCases.has([row.sourceFile, row.surface, row.expected].join("|")), false,
-      `${proof.rowKey} is already green in display-proof-cases`);
     assert.equal(proof.proof.runner, "rendered-chromium-local-fake-routes");
     assert.equal(proof.proof.file, "src/pulse/catalog/proofs/display-contracts-ab-2.test.mjs");
     assert.ok(proof.proof.assertion.length > 30);

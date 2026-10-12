@@ -6,6 +6,7 @@ import {
   needsJourneyGapMonitor,
   needsMessageGapMonitor,
 } from "./flow-gap-cases.mjs";
+import { flowReadContractProof } from "./flow-read-contracts.mjs";
 
 const TEST_FILE_RE = /\b(?:src|api|scripts|e2e)\/[A-Za-z0-9_./-]+\.test\.mjs\b/g;
 
@@ -219,6 +220,8 @@ function messageProof(row) {
 }
 
 export function proofForFlowRow(sourceFile, row) {
+  const plugIn = flowReadContractProof(sourceFile, row);
+  if (plugIn) return plugIn;
   const file = basename(sourceFile);
   if (file === "messages.json") {
     return messageProof(row) || (needsMessageGapMonitor(row) ? exactGapProof(row) : undefined);

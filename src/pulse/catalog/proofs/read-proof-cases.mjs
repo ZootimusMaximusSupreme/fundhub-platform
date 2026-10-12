@@ -2,6 +2,10 @@ import {
   READ_GAPS,
   sourceFileForReadSurface,
 } from "../../coverage/gap-catalog-reads.mjs";
+import { DISPLAY_CONTRACTS_AB } from "./display-contracts-ab.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
+import { FLOW_READ_CONTRACTS } from "./flow-read-contracts.mjs";
 
 function group(sourceFile, surface, tests, controls) {
   const evidence = tests.join(" ");
@@ -175,12 +179,40 @@ const GAPS = READ_GAPS.map((item) => Object.freeze({
   tests: Object.freeze(["src/pulse/coverage/gap-catalog-reads.test.mjs"]),
 }));
 
-export const READ_PROOF_CASES = Object.freeze([...PROVED, ...GAPS]);
+function proofKey(entry) {
+  return `${entry.sourceFile}\0${entry.surface}\0${entry.control}`;
+}
 
-const BY_KEY = new Map(READ_PROOF_CASES.map((entry) => [
-  `${entry.sourceFile}\0${entry.surface}\0${entry.control}`,
-  entry,
-]));
+function pluginReadCase(entry) {
+  const proof = entry.proof || entry;
+  const testFile = entry.proof
+    ? proof.file || proof.evidence || entry.evidence
+    : entry.evidence || proof.file;
+  return Object.freeze({
+    sourceFile: entry.sourceFile,
+    surface: entry.surface,
+    control: entry.control || entry.expected,
+    depth: "deep",
+    evidence: testFile,
+    tests: Object.freeze(entry.tests ? [...entry.tests] : [testFile]),
+  });
+}
+
+const BASE_READ_PROOF_CASES = [...PROVED, ...GAPS];
+const BASE_READ_KEYS = new Set(BASE_READ_PROOF_CASES.map(proofKey));
+const PLUGIN_READ_PROOF_CASES = [
+  ...DISPLAY_CONTRACTS_AB,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
+  ...FLOW_READ_CONTRACTS.filter((entry) => entry.family === "read"),
+]
+  .map(pluginReadCase)
+  .filter((entry) => BASE_READ_KEYS.has(proofKey(entry)));
+
+const BY_KEY = new Map(BASE_READ_PROOF_CASES.map((entry) => [proofKey(entry), entry]));
+for (const entry of PLUGIN_READ_PROOF_CASES) BY_KEY.set(proofKey(entry), entry);
+
+export const READ_PROOF_CASES = Object.freeze([...BY_KEY.values()]);
 
 if (BY_KEY.size !== READ_PROOF_CASES.length) {
   throw new Error("Catalog read proof cases must be unique.");

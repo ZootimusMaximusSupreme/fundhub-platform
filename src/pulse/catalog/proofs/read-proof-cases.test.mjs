@@ -65,14 +65,14 @@ test("every named proof target exists and every known missing result uses the ex
       assert.equal(item.verdict, undefined);
     }
   }
-  assert.equal(gapCount, 27);
+  assert.equal(gapCount, 14);
 });
 
-test("the 51 proved read rows run their real focused result tests", () => {
+test("the 64 proved read rows run their real focused result tests", () => {
   const files = [...new Set(READ_PROOF_CASES
     .filter((item) => !item.evidence.includes("gap-catalog-reads.mjs"))
     .flatMap((item) => item.tests))].sort();
-  assert.equal(READ_PROOF_CASES.length - 27, 51);
+  assert.equal(READ_PROOF_CASES.length - 14, 64);
   assert.ok(files.length >= 20);
 
   const env = { ...process.env, NODE_ENV: "test" };

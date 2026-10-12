@@ -111,3 +111,16 @@ Owner direction: keep going until every catalog row has real result proof. Each 
 | Door 23 | `routes-2.json`, `routes-3.json`, seven red jobs | pending |
 
 Shard rule: create a disjoint proof-key module and its real result test. Do not edit the shared aggregator. Integration imports reviewed shards after all five return.
+
+## Wave 3 and 4 strict result
+
+- Fresh review accepted 30 Display AB, 32 Display CD, 44 Display EF/Public, 12 Flow/Read, 4 Door 01, and 8 Door 23 contracts.
+- Second wave accepted 25 more Display AB, 23 more Display EF/Public, and 10 more Door 01 contracts.
+- Seven second-wave Display claims were rejected and returned to red. The unfinished Display CD second shard failed its browser result and was removed.
+- Plug-in wiring now overlays an exact row key only. A missing plug-in stays on the existing red monitor.
+- Current honest red count before the catalog rebuild: Display 1,095; Door 323; Flow 121; Read 14; total 1,553.
+- Total strict gain from the original 1,762 red rows: 209. This batch added 185 on top of the earlier 24.
+- Focused green checks: AB wave 2 27/27; EF/Public wave 2 8/8; Door 01 wave 2 11/11; Display catalog guards 2/2; Door aggregate 989/989; Flow aggregate 9/9; Read executable proof run 2/3 with the metadata guard corrected and rerun green.
+- The combined Display mega-run was stopped after its child launched every browser proof at once and did not exit. Individual browser shards and the exact catalog guards are green.
+- Remaining 1,553 rows stay red. They were not renamed, hidden, or inferred green.
+- Next: rebuild the generated catalog, run the six-lane pulse, commit, merge current `origin/main`, push, and check the GitHub ship.
