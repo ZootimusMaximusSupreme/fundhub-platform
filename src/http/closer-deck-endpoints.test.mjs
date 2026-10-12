@@ -225,14 +225,14 @@ describe("POST /api/closer-deck", () => {
     }
   });
 
-  test("ebook without amount is 400", async () => {
-    process.env.COMMAS_CHECKOUT_BASE_URL = "https://pay.example/checkout";
+  test("retired ebook action is refused", async () => {
     const res = await post({
       action: "send_ebook",
       client_id: CID
     });
     assert.equal(res.statusCode, 400);
-    assert.equal(res.body.error, "bad_ebook_amount");
+    assert.equal(res.body.error, "unknown_action");
+    assert.doesNotMatch(res.body.message, /send_ebook/);
   });
 
   test("a setter cannot fire cockpit actions", async () => {

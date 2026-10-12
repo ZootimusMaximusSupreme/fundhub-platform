@@ -18,7 +18,7 @@
 // Admitting `closer` is not a widening of FINANCE and it is not a new
 // decision: a closer already mints payment links today through
 // api/closer-deck.mjs (CLOSER_DECK_ROLES = {closer, sales_manager, owner,
-// admin}, whose send_soft_pull / send_ebook / send_pay_link actions all call
+// admin}, whose send_soft_pull / send_pay_link actions all call
 // the same createPaymentLink via src/sales/closer-deck.mjs). The 403 here only
 // meant the one person whose job is taking payment on the call could use the
 // deck button and not the CRM's own. ROLE_SETS.FINANCE itself is untouched —

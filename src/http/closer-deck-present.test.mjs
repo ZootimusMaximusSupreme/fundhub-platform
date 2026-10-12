@@ -54,12 +54,13 @@ test("send contract lives on Closer Dashboard and Present, not the wording page"
   assert.ok(presentJs.includes("sendToClient"));
 });
 
-test("present cockpit can send soft pull and variable-price e-book", () => {
+test("present cockpit can send soft pull and has no retired e-book control", () => {
   assert.ok(presentJs.includes("send_soft_pull"));
-  assert.ok(presentJs.includes("send_ebook"));
   assert.ok(presentJs.includes("Send soft pull"));
-  assert.ok(presentJs.includes("ebookDollars"));
-  assert.ok(presentJs.includes("amount_cents"));
+  assert.ok(!presentJs.includes("send_ebook"));
+  assert.ok(!presentJs.includes("ebookDollars"));
+  assert.ok(!presentJs.includes("fh-ebook"));
+  assert.ok(!presentJs.includes("No-pay downsell"));
 });
 
 test("disposition UI has an explicit repair-referral control", () => {
@@ -135,7 +136,7 @@ test("every send control shows it was pressed, locks, and keeps the sent time", 
   assert.ok(presentJs.includes("Sent at "), "the sent time must stay on the button");
   assert.ok(presentJs.includes("if (sendLocked(a)) return;"),
     "a locked control must refuse the click, not just look disabled");
-  for (const act of ["pay", "contract", "letters", "softpull", "ebook", "invoice", "send-letters"]) {
+  for (const act of ["pay", "contract", "letters", "softpull", "invoice", "send-letters"]) {
     assert.ok(
       presentJs.includes('sendBtn("') && presentJs.includes('"' + act + '"'),
       act + " has no send-control state"

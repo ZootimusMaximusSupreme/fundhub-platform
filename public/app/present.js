@@ -188,7 +188,7 @@
     idx: 0, tier: null, edu: false, forceRepair: false, rung: 0, temp: 0,
     checks: {}, costNum: "", obj: null, showRef: false, toast: "", clientOnly: false,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
-    offers: [], softPull: null, ebookDollars: "", saleMotion: "", loaded: false, error: null,
+    offers: [], softPull: null, saleMotion: "", loaded: false, error: null,
     contractLink: "", contractMsg: "",
     /* One entry per send control: whether it is in flight, when it last went
        out, and how many times. F24 — see sendBtn below. */
@@ -1241,11 +1241,6 @@
         html += ckBtn("Send soft pull ($32 + approval form)", "softpull", true);
         html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">Catalog price $32. Live prove may use $1. Stay on the Meet.</div></div>';
 
-        html += '<div><span class="mono">No-pay downsell — e-book</span>';
-        html += '<div style="margin-top:6px;display:flex;gap:6px;align-items:center">';
-        html += '<input id="fh-ebook" value="' + esc(state.ebookDollars) + '" placeholder="$ amount" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--mono);font-size:11px;padding:7px 9px;outline:none">';
-        html += ckBtn("Send e-book email", "ebook", false);
-        html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">You set the price. Empty PDF attached until the real file is ready.</div></div>';
       }
 
       if (code() === "S-07") {
@@ -1468,11 +1463,6 @@
       var inc = document.getElementById("fh-inc-" + i);
       if (inc) inc.addEventListener("keydown", function (e) { e.stopPropagation(); });
     });
-    var ebook = document.getElementById("fh-ebook");
-    if (ebook) {
-      ebook.addEventListener("input", function (e) { state.ebookDollars = e.target.value; });
-      ebook.addEventListener("keydown", function (e) { e.stopPropagation(); });
-    }
     var saleMotion = document.getElementById("fh-sale-motion");
     if (saleMotion) {
       saleMotion.addEventListener("change", function (e) { state.saleMotion = e.target.value; });
@@ -1773,7 +1763,6 @@
     }
     if (act) markSent(act, true);
     if (action === "send_soft_pull") toast("Soft pull emailed — pay link + approval form.");
-    else if (action === "send_ebook") toast("E-book email sent with PDF attached.");
     else if (action === "send_pay_link") toast("Agreement and pay link sent.");
     else toast("Disposition written to contact record.");
   }
@@ -1851,12 +1840,6 @@
     if (a.indexOf("obj-jump:") === 0) { jumpTo(a.slice(9)); return; }
     if (a === "more") { state.moreOpen = !state.moreOpen; render(); return; }
     if (a === "softpull") { fire("send_soft_pull", null, "softpull"); return; }
-    if (a === "ebook") {
-      var dollars = state.ebookDollars || (document.getElementById("fh-ebook") && document.getElementById("fh-ebook").value) || "";
-      var cents = Math.round(parseFloat(String(dollars).replace(/[^0-9.]/g, "")) * 100);
-      if (!Number.isFinite(cents) || cents < 100) { toast("Enter an e-book price first."); return; }
-      fire("send_ebook", { amount_cents: cents }, "ebook"); return;
-    }
     if (a === "pay") { fire("send_pay_link", null, "pay"); return; }
     if (a === "invoice") { invoiceThisClient(); return; }
     if (a === "contract") { sendContractNow(); return; }
