@@ -211,7 +211,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css">
+<link rel="stylesheet" href="teleprompter.css?v=20261012-phone5">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -402,8 +402,13 @@ body.wording #flip{transform:none !important}
 
 <div id="cam" hidden>
   <video id="cam-video" playsinline autoplay muted></video>
+  <canvas id="cam-hold" hidden aria-hidden="true"></canvas>
   <div id="cam-shade"></div>
   <button type="button" id="cam-corner" aria-label="Show the camera"></button>
+</div>
+<div id="camera-status" role="status" aria-live="polite">
+  <span id="camera-status-text">Starting front camera…</span>
+  <button type="button" id="camera-retry" hidden>Retry camera</button>
 </div>
 <button type="button" id="b-camera-flip" aria-label="Use back camera" title="Use back camera">↺</button>
 <div id="rec" hidden><span id="rec-dot"></span><span id="rec-time">0:00</span></div>
@@ -417,6 +422,6 @@ body.wording #flip{transform:none !important}
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="teleprompter-edits.js"></script>
-<script src="teleprompter.js?v=20261012-phone4"></script>
+<script src="teleprompter.js?v=20261012-phone5"></script>
 </body>
 </html>

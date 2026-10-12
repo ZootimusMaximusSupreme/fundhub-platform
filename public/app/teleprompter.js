@@ -1310,7 +1310,7 @@
 
   function open(i, keepCamera) {
     if (textEdit) leaveCaret(false);
-    if (!keepCamera) endRec();
+    /* Script navigation never starts or stops the one continuous take. */
     stop();
     hideEnd();
     setScroll(false);
@@ -1558,7 +1558,7 @@
     if (editing) return;
     stop(); hideEnd(); seeked = false; released = {}; holding = -1; $("cuehold").hidden = true;
     t = times[takeWord] || 0; apply();
-    endRec(function () { start(true); });
+    start(true);
   }
   function markStart() { /* The red line is the only mark. No per-word underline. */ }
   function rolling(on) {
@@ -1578,7 +1578,6 @@
 
   function finish() {
     stop();
-    endRec();
     atEnd = true;
     $("end").hidden = false;
     $("cuehold").hidden = true;
@@ -1631,7 +1630,6 @@
     if (!root.confirm('Mark "' + queueLabel(s) + " — " + title + '" as complete?')) return;
     closeSheets();
     stop();
-    endRec();
     markThis("got_it");
     say("Complete.");
     var n = nextUnfilmed(scripts, cur);
@@ -2224,7 +2222,7 @@
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
 
-  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, startAfterOpen: false, pumpTimer: 0, pumpVideoFrame: 0 };
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, startAfterOpen: false, previewReady: false, recordStream: null, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
   var cameraTapUntil = 0;
   var takeDialog = $("take-save");
@@ -2254,6 +2252,30 @@
     el.style.color = bad ? "var(--tally)" : "";
     var now = $("cam-now");
     if (now && text) now.textContent = text;
+  }
+  function cameraMessage(message, retry) {
+    var box = $("camera-status");
+    if (!box) return;
+    box.hidden = !message;
+    $("camera-status-text").textContent = message || "";
+    $("camera-retry").hidden = !retry;
+  }
+  /* Hold the last real camera frame while Safari releases one lens and opens
+     the other. Never put an empty video element in front of the filmmaker. */
+  function holdPreview() {
+    var video = $("cam-video"), still = $("cam-hold");
+    if (!video || !still || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+    try {
+      still.width = video.videoWidth;
+      still.height = video.videoHeight;
+      still.getContext("2d").drawImage(video, 0, 0, still.width, still.height);
+      still.style.transform = cam.facing === "environment" ? "none" : "scaleX(-1)";
+      still.hidden = false;
+    } catch (e) { /* real camera can still recover without the held frame */ }
+  }
+  function clearHeldPreview() {
+    var still = $("cam-hold");
+    if (still) still.hidden = true;
   }
   function showFace() {
     var box = $("cam");
@@ -2340,54 +2362,49 @@
     }
     cam.pumpVideoFrame = 0;
   }
-  /* The preview is flipped with CSS. The file is not, so the saved take is
-     drawn onto a canvas the same way a mirror looks, then recorded from that. */
-  function mirroredRecordStream(stream) {
+  /* One stable canvas video track per take. iPhone Safari ends a MediaRecorder
+     if its recorded camera track is replaced or stopped. Capture the canvas
+     once, keep its track unchanged, and draw whichever lens is currently live.
+     The source camera can switch repeatedly without splitting the take.
+     1080p/24fps on iPhone avoids the old 4K canvas jank during word scrolling. */
+  function continuousRecordStream(stream) {
     var video = $("cam-video");
-    if (!video || !stream) return stream;
+    if (!video || !stream) return null;
     var canvas = cam.canvas || doc.createElement("canvas");
     cam.canvas = canvas;
-    if (!canvas.captureStream) return stream;
+    if (!canvas.captureStream) return null;
     var track = stream.getVideoTracks()[0];
     var st = track && track.getSettings ? track.getSettings() : {};
     var w = video.videoWidth || st.width || 1280;
     var h = video.videoHeight || st.height || 720;
-    canvas.width = w;
-    canvas.height = h;
+    var scale = Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
+    canvas.width = Math.max(2, Math.round(w * scale));
+    canvas.height = Math.max(2, Math.round(h * scale));
     var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) return stream;
-    var fps = Math.min(30, Math.round(st.frameRate || 30) || 30);
-    var every = 1000 / Math.max(1, fps);
-    var drewAt = -every;
-    function schedule() {
+    if (!ctx) return null;
+    var fps = isPhone() ? 24 : 30;
+    function draw() {
       if (!cam.pumping) return;
-      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(draw);
-      else cam.pumpTimer = root.setTimeout(function () { draw(root.performance.now()); }, every);
-    }
-    function draw(now) {
-      if (!cam.pumping) return;
-      cam.pumpVideoFrame = 0;
-      cam.pumpTimer = 0;
-      if (!(now >= 0)) now = root.performance.now();
-      if (now - drewAt >= every - 1) {
-        drewAt = now;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (cam.facing === "environment") ctx.setTransform(1, 0, 0, 1, 0, 0);
-        else ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
-        try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { /* frame not ready */ }
+      if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0) {
+        try {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          if (cam.facing !== "environment") ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch (e) { /* retain the last frame during a lens transition */ }
       }
-      schedule();
+      cam.pumpTimer = root.setTimeout(draw, 1000 / fps);
     }
     stopMirrorPump();
     cam.pumping = true;
-    schedule();
+    draw();
     var out;
-    try { out = canvas.captureStream(Math.max(1, fps)); }
-    catch (e) { stopMirrorPump(); return stream; }
-    var audios = stream.getAudioTracks();
-    for (var i = 0; i < audios.length; i++) {
-      try { out.addTrack(audios[i]); } catch (err) { /* keep the picture if the sound track will not join */ }
+    try { out = canvas.captureStream(fps); }
+    catch (e) { stopMirrorPump(); return null; }
+    var audio = cam.audioTrack || stream.getAudioTracks()[0];
+    if (audio && audio.readyState === "live") {
+      try { out.addTrack(audio); } catch (e) { /* video can still be saved silent */ }
     }
     return out;
   }
@@ -2407,14 +2424,26 @@
     /* iPhone has one graphics lane for the live camera, the page, and canvas.
        Copying every camera frame into a 4K canvas makes the words shake. Let
        MediaRecorder use the camera's own hardware stream on that phone. */
-    var recStream = isPhone() ? cam.stream : mirroredRecordStream(cam.stream);
+    var recStream = continuousRecordStream(cam.stream);
+    if (!recStream) {
+      wantRec = false; cam.startAfterOpen = false; setRecLabel();
+      camLine("This browser cannot record a continuous camera-switching video.", true);
+      return;
+    }
+    opts.videoBitsPerSecond = Math.min(opts.videoBitsPerSecond, isPhone() ? 12000000 : 22000000);
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
-      if (recStream !== cam.stream) stopMirrorPump();
-      try { rec = new root.MediaRecorder(cam.stream); }
-      catch (e2) { stopMirrorPump(); camLine("This phone cannot save a video file. The words still roll.", true); return; }
+      try { rec = new root.MediaRecorder(recStream); }
+      catch (e2) {
+        stopMirrorPump();
+        recStream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+        wantRec = false; cam.startAfterOpen = false; setRecLabel();
+        camLine("Recording could not open. Check Safari camera permissions.", true);
+        return;
+      }
     }
+    cam.recordStream = recStream;
     cam.rec = rec;
     var s = scripts[cur];
     cam.fileName = (s && s.take_file_name) ? s.take_file_name : "Take.mp4";
@@ -2422,7 +2451,13 @@
     rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) cam.chunks.push(ev.data); };
     rec.onstop = function () { onRecStop(); };
     try { rec.start(1000); }
-    catch (e3) { camLine("The recording did not start. The words still roll.", true); return; }
+    catch (e3) {
+      cam.rec = null; cam.recordStream = null; stopMirrorPump();
+      recStream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+      wantRec = false; cam.startAfterOpen = false; setRecLabel();
+      camLine("The recording did not start. The camera preview stays live.", true);
+      return;
+    }
     setRecLabel();
     var dot = $("rec");
     if (dot) dot.hidden = false;
@@ -2433,6 +2468,13 @@
   }
   function onRecStop() {
     stopMirrorPump();
+    if (cam.recordStream && cam.recordStream !== cam.stream) {
+      cam.recordStream.getVideoTracks().forEach(function (track) {
+        try { track.stop(); } catch (e) { /* recorder is already stopping */ }
+      });
+    }
+    cam.recordStream = null;
+    cam.rec = null;
     cam.stopping = false;
     var dot = $("rec");
     if (dot) dot.hidden = true;
@@ -2464,48 +2506,60 @@
   }
   function ensureRecording() {
     wantRec = true;
-    if (!cam.stream || cam.opening) { cam.startAfterOpen = true; return; }
+    if (!cam.stream || cam.opening || !cam.previewReady) { cam.startAfterOpen = true; return; }
     cam.startAfterOpen = false;
     beginRec();
   }
+  /* A resolved play() does not prove Safari has drawn a camera frame.
+     Accept only loaded video pixels; otherwise retry or recover the old lens. */
   function playPreview(video, stream, ready, failed) {
-    var done = false;
-    var tries = 0;
-    function pass() {
-      if (done) return;
-      done = true;
-      video.removeEventListener("loadedmetadata", tryPlay);
-      video.removeEventListener("canplay", tryPlay);
-      ready();
+    var done = false, attempts = 0, timer = null, timeout = null;
+    function cleanup() {
+      root.clearTimeout(timer); root.clearTimeout(timeout);
+      video.removeEventListener("loadeddata", check);
+      video.removeEventListener("playing", check);
+      video.removeEventListener("canplay", check);
+      video.removeEventListener("resize", check);
     }
-    function fail() {
+    function finish(ok) {
       if (done) return;
-      if (tries < 3) { root.setTimeout(tryPlay, 80); return; }
-      /* Safari can reject play() while it is still attaching a new camera,
-         then start the muted autoplay itself. Keep the real rear stream. */
-      pass();
+      done = true; cleanup();
+      if (ok) ready(); else failed();
+    }
+    function check() {
+      if (done) return;
+      if (video.srcObject !== stream) { done = true; cleanup(); return; }
+      var tracks = stream.getVideoTracks();
+      if (tracks.length && tracks[0].readyState === "live" &&
+          video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) finish(true);
     }
     function tryPlay() {
       if (done || video.srcObject !== stream) return;
-      tries++;
       var p;
-      try { p = video.play(); } catch (e) { fail(); return; }
-      if (p && p.then) p.then(pass, fail);
-      else pass();
+      try { p = video.play(); } catch (e) { return; }
+      if (p && p.then) p.then(check, function () { /* retry until a frame or timeout */ });
     }
-    video.addEventListener("loadedmetadata", tryPlay);
-    video.addEventListener("canplay", tryPlay);
-    tryPlay();
+    function step() {
+      if (done) return;
+      check();
+      if (done) return;
+      if (attempts++ % 3 === 0) tryPlay();
+      timer = root.setTimeout(step, 150);
+    }
+    ["loadeddata", "playing", "canplay", "resize"].forEach(function (event) { video.addEventListener(event, check); });
+    timeout = root.setTimeout(function () { if (video.srcObject === stream) finish(false); }, 6500);
+    step();
   }
   function attachStream(stream, mode, noMic, requestedFacing) {
+    var gen = cam.gen;
     var old = cam.stream;
     var freshAudio = stream.getAudioTracks()[0] || null;
     if (!cam.audioTrack || cam.audioTrack.readyState === "ended") cam.audioTrack = freshAudio;
     else if (freshAudio && freshAudio !== cam.audioTrack) {
-      try { freshAudio.stop(); } catch (e) { /* already stopped */ }
+      try { freshAudio.stop(); } catch (e) { /* keep the original microphone */ }
     }
     if (cam.audioTrack && stream.getAudioTracks().indexOf(cam.audioTrack) < 0 && stream.addTrack) {
-      try { stream.addTrack(cam.audioTrack); } catch (e) { /* preview can still switch */ }
+      try { stream.addTrack(cam.audioTrack); } catch (e) { /* the live view still switches */ }
     }
     var video = $("cam-video");
     var track = stream.getVideoTracks()[0];
@@ -2519,14 +2573,18 @@
       });
     }
     function ready() {
+      if (gen !== cam.gen) return;
       stopOld();
       cam.stream = stream;
       cam.applied = mode;
       cam.facing = facing;
       cam.wantedFacing = facing;
       cam.opening = "";
+      cam.previewReady = true;
       var box = $("cam");
       if (box) box.hidden = false;
+      clearHeldPreview();
+      cameraMessage("", false);
       showFace();
       var rep = cameraReport(got, mode === "1080p" ? "1080p" : "4k");
       var who = cam.facing === "environment" ? "Back camera" : "Front camera";
@@ -2542,17 +2600,36 @@
       }
     }
     function failed() {
-      stream.getTracks().forEach(function (t) { if (t !== cam.audioTrack) try { t.stop(); } catch (e) { /* already stopped */ } });
-      if (video && old) {
-        video.srcObject = old;
-        var again = video.play();
-        if (again && again.catch) again.catch(function () { /* the old picture stays selected */ });
-      }
+      if (gen !== cam.gen) return;
+      stream.getTracks().forEach(function (t) { if (t !== cam.audioTrack) try { t.stop(); } catch (e) {} });
       cam.opening = "";
-      camLine("The back camera did not show. The front camera is still on.", true);
-      paintCameraFlip();
+      cam.previewReady = false;
+      cam.applied = "";
+      var oldTrack = old && old.getVideoTracks()[0];
+      if (video && oldTrack && oldTrack.readyState === "live") {
+        video.srcObject = old;
+        video.style.transform = cam.facing === "environment" ? "none" : "scaleX(-1)";
+        playPreview(video, old, function () {
+          cam.previewReady = true;
+          clearHeldPreview();
+          cameraMessage("", false);
+          camLine("New camera unavailable. Previous camera restored.", true);
+          paintCameraFlip();
+        }, function () {
+          cameraMessage("Camera preview stopped. Tap Retry camera.", true);
+        });
+      } else {
+        /* iOS may require stopping the old lens before opening the new one.
+           If the replacement fails, automatically restore the last lens. */
+        cam.stream = null;
+        cam.wantedFacing = cam.facing;
+        cameraMessage("Reopening your previous camera…", false);
+        openCamera();
+      }
     }
     if (video) {
+      holdPreview();
+      cam.previewReady = false;
       video.srcObject = stream;
       video.muted = true;
       video.style.transform = facing === "environment" ? "none" : "scaleX(-1)";
@@ -2565,7 +2642,11 @@
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) return;
     var mode = activeMode();
-    if (cam.stream && cam.applied === mode && cam.facing === cam.wantedFacing) { paintPicks(); return; }
+    if (cam.stream && cam.applied === mode && cam.facing === cam.wantedFacing) {
+      var track = cam.stream.getVideoTracks()[0];
+      if (track && track.readyState === "live") { paintPicks(); return; }
+      cam.stream = null; cam.applied = ""; cam.previewReady = false;
+    }
     if (cam.opening === mode + ":" + cam.wantedFacing) return;
     openCamera();
   }
@@ -2578,6 +2659,7 @@
       var wanted = cam.wantedFacing === "environment" ? "environment" : "user";
       cam.opening = mode + ":" + wanted;
       camLine("Asking the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
+      if (!cam.previewReady) cameraMessage("Starting " + (wanted === "environment" ? "back" : "front") + " camera…", false);
       paintPicks();
       var steps = [];
       var exactId = cam.deviceIds[wanted];
@@ -2601,7 +2683,9 @@
       function fail() {
         if (gen !== cam.gen) return;
         cam.opening = "";
-        camLine("The camera did not start. Allow the camera, then reload. The words still roll.", true);
+        cam.previewReady = false;
+        cameraMessage("Camera unavailable. Allow camera access in Safari, then tap Retry camera.", true);
+        camLine("Camera failed to open. Retry camera.", true);
       }
       function finish(stream, noMic, requestedFacing) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
@@ -2669,16 +2753,16 @@
       run();
     } catch (e) {
       cam.opening = "";
-      camLine("The camera did not start. The words still roll.", true);
+      cam.previewReady = false;
+      cameraMessage("Camera unavailable. Tap Retry camera.", true);
+      camLine("Camera could not open. Retry camera.", true);
     }
   }
   function switchCamera() {
     if (cam.opening) return;
-    if (wantRec || cam.stopping || (cam.rec && cam.rec.state === "recording")) {
-      camLine("Stop recording before switching cameras.", true);
-      return;
-    }
-    cam.startAfterOpen = false;
+    /* Switching the lens never changes wantRec, recorder state, or clip count.
+       The stable recorder canvas continues with its last frame until the new
+       live camera is actually drawing. */
     cam.wantedFacing = cam.facing === "environment" ? "user" : "environment";
     cam.applied = "";
     if (!cam.stream) { openCamera(); return; }
@@ -2690,6 +2774,8 @@
       var md = root.navigator.mediaDevices;
       var mode = activeMode();
       var gen = ++cam.gen;
+      holdPreview();
+      cam.previewReady = false;
       cam.opening = mode + ":" + wanted;
       camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
@@ -2712,7 +2798,11 @@
         if (gen !== cam.gen) return;
         if (at >= asks.length) {
           cam.opening = "";
-          camLine("The " + (wanted === "environment" ? "back" : "front") + " camera did not open.", true);
+          camLine("The " + (wanted === "environment" ? "back" : "front") + " camera did not open. Restoring previous camera.", true);
+          cam.stream = null; cam.applied = "";
+          cam.wantedFacing = cam.facing;
+          cameraMessage("Restoring previous camera…", false);
+          openCamera();
           return;
         }
         md.getUserMedia({ audio: false, video: asks[at++] }).then(function (stream) {
@@ -2739,7 +2829,8 @@
     camLine("Switching to the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
     function reopen() {
       cam.opening = "";
-      try { track.stop(); } catch (e) { /* release the iPhone lens before opening the other one */ }
+      holdPreview(); cam.previewReady = false;
+      try { track.stop(); } catch (e) { /* release lens before opening replacement */ }
       openCamera();
     }
     track.applyConstraints(ask).then(function () {
@@ -2757,9 +2848,12 @@
       if (video) {
         video.style.transform = wanted === "environment" ? "none" : "scaleX(-1)";
         var p = video.play();
-        if (p && p.catch) p.catch(function () { /* the stream is already live */ });
+        if (p && p.catch) p.catch(function () { /* a frame-ready check follows */ });
       }
       camLine((wanted === "environment" ? "Back" : "Front") + " camera", false);
+      cam.previewReady = true;
+      clearHeldPreview();
+      cameraMessage("", false);
       paintCameraFlip();
       showFace();
     }, reopen);
@@ -3147,6 +3241,15 @@
     });
   })();
   $("b-save").onclick = saveClick;
+  var cameraRetry = $("camera-retry");
+  if (cameraRetry) cameraRetry.onclick = function (e) {
+    e.preventDefault(); e.stopPropagation();
+    if (cam.opening) return;
+    cam.applied = ""; cam.wantedFacing = cam.facing;
+    cam.previewReady = false;
+    cameraMessage("Reopening camera…", false);
+    openCamera();
+  };
   $("take-save-yes").onclick = function () { chooseTakeSave(true); };
   $("take-save-no").onclick = function () { chooseTakeSave(false); };
   takeDialog.addEventListener("cancel", function (e) { e.preventDefault(); });

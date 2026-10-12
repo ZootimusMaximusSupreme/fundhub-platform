@@ -531,17 +531,22 @@ describe("top edge changes the script", () => {
     assert.match(HTML, /id="qmenu-list"/);
   });
 
-  test("a swap keeps recording; Complete confirms before marking and ending the take", () => {
+  test("script navigation and Complete never stop a running take", () => {
     const openFn = SRC.slice(SRC.indexOf("function open(i, keepCamera)"), SRC.indexOf("function redraw("));
-    assert.match(openFn, /if \(!keepCamera\) endRec\(\)/);
+    assert.doesNotMatch(openFn, /endRec\(/);
     assert.match(SRC, /open\(n, true\)/);
     const swapFn = SRC.slice(SRC.indexOf("function swapQueued"), SRC.indexOf("function completeFromTop"));
     const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
-    assert.doesNotMatch(swapFn, /endRec\(/);
+    const finishFn = SRC.slice(SRC.indexOf("function finish()"), SRC.indexOf("function hideEnd"));
+    const restartFn = SRC.slice(SRC.indexOf("function restart()"), SRC.indexOf("function markStart"));
+    for (const fn of [swapFn, doneFn, finishFn, restartFn]) assert.doesNotMatch(fn, /endRec\(/);
     assert.match(doneFn, /if \(!root\.confirm\([\s\S]*?\)\) return;/);
     assert.ok(doneFn.indexOf("root.confirm") < doneFn.indexOf("markThis"));
-    assert.match(doneFn, /endRec\(\)/);
     assert.match(HTML, /id="q-complete">Complete/);
+    const switchFn = SRC.slice(SRC.indexOf("function switchCamera()"), SRC.indexOf("function setCamMode"));
+    assert.doesNotMatch(switchFn, /endRec\(|beginRec\(|ensureRecording\(|stop recording before switching/i);
+    assert.match(SRC, /function continuousRecordStream\(/);
+    assert.match(SRC, /canvas\.captureStream\(fps\)/);
   });
 });
 
