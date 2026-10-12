@@ -2210,7 +2210,7 @@
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
 
-  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null };
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
   var takeDialog = $("take-save");
 
@@ -2318,6 +2318,12 @@
   function stopMirrorPump() {
     cam.pumping = false;
     if (cam.pumpRaf) { root.cancelAnimationFrame(cam.pumpRaf); cam.pumpRaf = 0; }
+    if (cam.pumpTimer) { root.clearTimeout(cam.pumpTimer); cam.pumpTimer = 0; }
+    var video = $("cam-video");
+    if (cam.pumpVideoFrame && video && video.cancelVideoFrameCallback) {
+      try { video.cancelVideoFrameCallback(cam.pumpVideoFrame); } catch (e) { /* already stopped */ }
+    }
+    cam.pumpVideoFrame = 0;
   }
   /* The preview is flipped with CSS. The file is not, so the saved take is
      drawn onto a canvas the same way a mirror looks, then recorded from that. */
@@ -2333,21 +2339,34 @@
     var h = video.videoHeight || st.height || 720;
     canvas.width = w;
     canvas.height = h;
-    var ctx = canvas.getContext("2d");
+    var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) return stream;
-    function draw() {
+    var fps = Math.min(30, Math.round(st.frameRate || 30) || 30);
+    var every = 1000 / Math.max(1, fps);
+    var drewAt = -every;
+    function schedule() {
       if (!cam.pumping) return;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (cam.facing === "environment") ctx.setTransform(1, 0, 0, 1, 0, 0);
-      else ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
-      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { /* frame not ready */ }
-      cam.pumpRaf = root.requestAnimationFrame(draw);
+      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(draw);
+      else cam.pumpTimer = root.setTimeout(function () { draw(root.performance.now()); }, every);
+    }
+    function draw(now) {
+      if (!cam.pumping) return;
+      cam.pumpVideoFrame = 0;
+      cam.pumpTimer = 0;
+      if (!(now >= 0)) now = root.performance.now();
+      if (now - drewAt >= every - 1) {
+        drewAt = now;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (cam.facing === "environment") ctx.setTransform(1, 0, 0, 1, 0, 0);
+        else ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
+        try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { /* frame not ready */ }
+      }
+      schedule();
     }
     stopMirrorPump();
     cam.pumping = true;
-    draw();
-    var fps = Math.round(st.frameRate || 30) || 30;
+    schedule();
     var out;
     try { out = canvas.captureStream(Math.max(1, fps)); }
     catch (e) { stopMirrorPump(); return stream; }
@@ -2429,12 +2448,7 @@
     beginRec();
   }
   function attachStream(stream, mode, noMic, requestedFacing) {
-    if (cam.stream && cam.stream !== stream) {
-      cam.stream.getTracks().forEach(function (t) {
-        if (t === cam.audioTrack) return;
-        try { t.stop(); } catch (e) { /* already stopped */ }
-      });
-    }
+    var old = cam.stream;
     var freshAudio = stream.getAudioTracks()[0] || null;
     if (!cam.audioTrack || cam.audioTrack.readyState === "ended") cam.audioTrack = freshAudio;
     else if (freshAudio && freshAudio !== cam.audioTrack) {
@@ -2443,32 +2457,58 @@
     if (cam.audioTrack && stream.getAudioTracks().indexOf(cam.audioTrack) < 0 && stream.addTrack) {
       try { stream.addTrack(cam.audioTrack); } catch (e) { /* preview can still switch */ }
     }
-    cam.stream = stream;
-    cam.applied = mode;
     var video = $("cam-video");
     var track = stream.getVideoTracks()[0];
     var got = track && track.getSettings ? track.getSettings() : {};
-    cam.facing = cameraFacing(got, requestedFacing);
-    cam.wantedFacing = cam.facing;
+    var facing = cameraFacing(got, requestedFacing);
+    function stopOld() {
+      if (!old || old === stream) return;
+      old.getTracks().forEach(function (t) {
+        if (t === cam.audioTrack) return;
+        try { t.stop(); } catch (e) { /* already stopped */ }
+      });
+    }
+    function ready() {
+      stopOld();
+      cam.stream = stream;
+      cam.applied = mode;
+      cam.facing = facing;
+      cam.wantedFacing = facing;
+      cam.opening = "";
+      var box = $("cam");
+      if (box) box.hidden = false;
+      showFace();
+      var rep = cameraReport(got, mode === "1080p" ? "1080p" : "4k");
+      var who = cam.facing === "environment" ? "Back camera" : "Front camera";
+      var text = who + " · " + (rep.short || rep.line);
+      if (!rep.short && activeMode() === "4k" && rep.line.indexOf("4K") !== 0) text += ". It is not 4K.";
+      if (noMic) text += " · no sound";
+      camLine(text, !!rep.short);
+      paintCameraFlip();
+      paintPicks();
+      if (wantRec) beginRec();
+    }
+    function failed() {
+      stream.getTracks().forEach(function (t) { if (t !== cam.audioTrack) try { t.stop(); } catch (e) { /* already stopped */ } });
+      if (video && old) {
+        video.srcObject = old;
+        var again = video.play();
+        if (again && again.catch) again.catch(function () { /* the old picture stays selected */ });
+      }
+      cam.opening = "";
+      camLine("The back camera did not show. The front camera is still on.", true);
+      paintCameraFlip();
+    }
     if (video) {
       video.srcObject = stream;
       video.muted = true;
-      video.style.transform = cam.facing === "environment" ? "none" : "scaleX(-1)";
+      video.style.transform = facing === "environment" ? "none" : "scaleX(-1)";
       var p = video.play();
-      if (p && p.catch) p.catch(function () { /* a tap may be required before the picture shows */ });
+      if (p && p.then) p.then(ready, failed);
+      else ready();
+      return;
     }
-    var box = $("cam");
-    if (box) box.hidden = false;
-    showFace();
-    var rep = cameraReport(got, mode === "1080p" ? "1080p" : "4k");
-    var who = cam.facing === "environment" ? "Back camera" : "Front camera";
-    var text = who + " · " + (rep.short || rep.line);
-    if (!rep.short && activeMode() === "4k" && rep.line.indexOf("4K") !== 0) text += ". It is not 4K.";
-    if (noMic) text += " · no sound";
-    camLine(text, !!rep.short);
-    paintCameraFlip();
-    paintPicks();
-    if (wantRec) beginRec();
+    ready();
   }
   function ensureCamera() {
     if (cam.rec && cam.rec.state === "recording") return;
@@ -2521,7 +2561,6 @@
           : Promise.resolve();
         apply.then(function () {
           if (gen !== cam.gen) { stopTracks(stream); return; }
-          cam.opening = "";
           attachStream(stream, mode, noMic, facing);
         });
       }
@@ -2578,12 +2617,35 @@
     if (cam.opening) return;
     cam.wantedFacing = cam.facing === "environment" ? "user" : "environment";
     cam.applied = "";
-    if (cam.stream) {
-      if (!cam.audioTrack) cam.audioTrack = cam.stream.getAudioTracks()[0] || null;
-      cam.stream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* already stopped */ } });
-      cam.stream = null;
-    }
-    openCamera();
+    if (!cam.stream) { openCamera(); return; }
+    if (!cam.audioTrack) cam.audioTrack = cam.stream.getAudioTracks()[0] || null;
+    var track = cam.stream.getVideoTracks()[0];
+    if (!track || !track.applyConstraints) { openCamera(); return; }
+    var wanted = cam.wantedFacing;
+    var ask = cameraAsk(wanted, 30, "wide", false, activeMode());
+    ask.facingMode = { exact: wanted };
+    cam.opening = activeMode() + ":" + wanted;
+    camLine("Switching to the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
+    track.applyConstraints(ask).then(function () {
+      var got = track.getSettings ? track.getSettings() : {};
+      if (got.facingMode && got.facingMode !== wanted) throw new Error("wrong camera");
+      cam.facing = wanted;
+      cam.wantedFacing = wanted;
+      cam.applied = activeMode();
+      cam.opening = "";
+      var video = $("cam-video");
+      if (video) {
+        video.style.transform = wanted === "environment" ? "none" : "scaleX(-1)";
+        var p = video.play();
+        if (p && p.catch) p.catch(function () { /* the stream is already live */ });
+      }
+      camLine((wanted === "environment" ? "Back" : "Front") + " camera", false);
+      paintCameraFlip();
+      showFace();
+    }, function () {
+      cam.opening = "";
+      openCamera();
+    });
   }
   function setCamMode(mode) {
     if (mode === "1080p" && stays4K(scripts[cur])) { say("This one films at 1080p. It is not 4K."); paintPicks(); return; }

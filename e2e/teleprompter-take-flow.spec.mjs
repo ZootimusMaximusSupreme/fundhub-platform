@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, cameraDevices = [] } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, cameraDevices = [] } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,21 +24,32 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, cameraDevices }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (!camera) return;
     // A real MediaStream for the preview, with a deterministic recorder. Each
     // camera request gets a fresh track so front/rear switching is testable.
     window.__cameraRequests = [];
+    window.__cameraAsks = [];
     const makeStream = (facing, deviceId) => {
       const canvas = document.createElement("canvas");
       canvas.width = 32; canvas.height = 32;
       canvas.getContext("2d").fillRect(0, 0, 32, 32);
       const stream = canvas.captureStream(30);
       const track = stream.getVideoTracks()[0];
-      track.getSettings = () => ({ width: 32, height: 32, frameRate: 30, deviceId, ...(omitFacingSetting ? {} : { facingMode: facing }) });
-      track.applyConstraints = () => Promise.resolve();
+      let liveFacing = facing;
+      let liveDevice = deviceId;
+      track.getSettings = () => ({ width: 32, height: 32, frameRate: 30, deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
+      track.applyConstraints = (next = {}) => {
+        const exactFacing = next.facingMode && next.facingMode.exact;
+        if (exactFacing && exactFacing !== liveFacing && rejectTrackSwitch) return Promise.reject(new Error("track switch rejected"));
+        if (exactFacing) {
+          liveFacing = exactFacing;
+          liveDevice = exactFacing === "environment" ? "rear" : "front";
+        }
+        return Promise.resolve();
+      };
       return stream;
     };
     navigator.mediaDevices.getUserMedia = (ask) => {
@@ -48,6 +59,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       const facing = exactId === "rear" || (!ignoreIdealFacing && fm && (fm.exact || fm.ideal) === "environment") ? "environment" : "user";
       const deviceId = exactId || (facing === "environment" ? "rear" : "front");
       window.__cameraRequests.push(facing);
+      window.__cameraAsks.push({ facing, audio: !!ask.audio });
       return Promise.resolve(makeStream(facing, deviceId));
     };
     navigator.mediaDevices.enumerateDevices = () => Promise.resolve(cameraDevices);
@@ -64,7 +76,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, cameraDevices });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -180,13 +192,16 @@ test("camera button switches front and rear, then switches back during one recor
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  expect(await page.locator("#cam-video").evaluate((el) => el.srcObject.getVideoTracks()[0].getSettings().facingMode)).toBe("environment");
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("matrix(-1, 0, 0, 1, 0, 0)");
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user", "environment", "user"]);
+  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user"]);
+  expect(await page.evaluate(() => window.__cameraAsks.filter((ask) => ask.audio).length)).toBe(1);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
   await page.locator("#take-save-no").tap();
@@ -204,7 +219,8 @@ test("camera button keeps the rear lens when Safari omits facingMode", async ({ 
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
-  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user", "environment"]);
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user"]);
   expect(server.errors).toEqual([]);
 });
 
@@ -213,7 +229,7 @@ test("camera button uses the exact rear device when Safari ignores the ideal rea
     { kind: "videoinput", deviceId: "front", label: "Front Camera" },
     { kind: "videoinput", deviceId: "rear", label: "Back Camera" }
   ];
-  const { server } = await open(page, { ignoreIdealFacing: true, cameraDevices });
+  const { server } = await open(page, { ignoreIdealFacing: true, rejectTrackSwitch: true, cameraDevices });
   const flip = page.locator("#b-camera-flip");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
@@ -322,3 +338,30 @@ for (const wpm of [200, 205, 210, 215]) {
     expect(server.errors).toEqual([]);
   });
 }
+
+test("recording does not add a competing animation-frame loop to smooth scrolling", async ({ page }) => {
+  const { server } = await open(page, { wpm: 200 });
+  await page.locator("#play").tap();
+  await page.waitForTimeout(250);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const points = await page.evaluate(() => new Promise((resolve) => {
+    const el = document.getElementById("content");
+    const points = [];
+    const started = performance.now();
+    function tick(at) {
+      points.push({ at, y: new DOMMatrix(el.style.transform).m42 });
+      if (at - started < 1000) requestAnimationFrame(tick);
+      else resolve(points);
+    }
+    requestAnimationFrame(tick);
+  }));
+  expect(points.length).toBeGreaterThan(20);
+  const speeds = points.slice(1).map((p, i) => (points[i].y - p.y) / ((p.at - points[i].at) / 1000));
+  expect(speeds.every((speed) => speed > 0)).toBe(true);
+  const average = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
+  expect(Math.max(...speeds) - Math.min(...speeds)).toBeLessThan(average * 0.08);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});

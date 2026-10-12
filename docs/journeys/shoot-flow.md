@@ -122,6 +122,8 @@ The 44 px top-left camera button switches from the mirrored front camera to the 
 
 When iPhone Safari grants a requested lens but leaves `MediaTrackSettings.facingMode` blank, the page keeps the requested front/rear direction. It does not mistake the rear lens for the front lens and reopen the front camera.
 
+The switch first asks the live video track to change lenses. A phone that supports that path uses the camera grant it already has and does not make a second camera request. If the phone needs a new stream, the working preview stays selected until the new preview starts playing; only then does the old video track stop. Recording paints the mirrored file from camera-frame callbacks at no more than 30 frames a second, so it does not add a second full-speed animation-frame loop beside the word scroller. The word speed and word position do not change when Record starts.
+
 The existing `counted` flag from merged PR #27 still limits 3-2-1 to the first play of an opened script. Pause, seek and resume do not reset it. `steadyPace`, cached reading-line measurements, and fractional `translate3d` scrolling are unchanged; checks now cover 200, 205, 210 and 215 WPM. The camera shade is `rgba(0, 0, 0, 0.558)`, 10% lighter than 0.62. These changes remain **UNVERIFIED on production** until deployed.
 
 ## 5. The film link (no login on the teleprompter)
