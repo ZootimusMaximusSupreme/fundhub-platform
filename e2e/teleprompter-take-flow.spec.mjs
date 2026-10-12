@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, cameraDevices = [] } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, cameraDevices = [], iphone = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,14 +24,16 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices, iphone }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
+    if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
     if (!camera) return;
     // A real MediaStream for the preview, with a deterministic recorder. Each
     // camera request gets a fresh track so front/rear switching is testable.
     window.__cameraRequests = [];
     window.__cameraAsks = [];
+    window.__cameraStreams = [];
     const makeStream = (facing, deviceId) => {
       const canvas = document.createElement("canvas");
       canvas.width = 32; canvas.height = 32;
@@ -50,6 +52,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }
         return Promise.resolve();
       };
+      window.__cameraStreams.push(stream);
       return stream;
     };
     navigator.mediaDevices.getUserMedia = (ask) => {
@@ -66,7 +69,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     let take = 0;
     window.MediaRecorder = class {
       static isTypeSupported() { return true; }
-      constructor() { this.state = "inactive"; }
+      constructor(stream) { this.state = "inactive"; window.__recorderUsedCameraStream = window.__cameraStreams.includes(stream); }
       start() { this.state = "recording"; this.take = ++take; }
       stop() {
         this.state = "inactive";
@@ -76,7 +79,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices, iphone });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -234,7 +237,18 @@ test("camera button uses the exact rear device when Safari ignores the ideal rea
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
-  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user", "user", "environment"]);
+  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user", "environment"]);
+  expect(server.errors).toEqual([]);
+});
+
+test("iPhone records the hardware camera stream so recording cannot shake the words", async ({ page }) => {
+  const { server } = await open(page, { iphone: true });
+  await page.locator("#play").tap();
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => window.__recorderUsedCameraStream)).toBe(true);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });
 

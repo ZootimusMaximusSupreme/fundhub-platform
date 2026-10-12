@@ -27,3 +27,7 @@
 - `docs/journeys/CHANGELOG.md`: records why the shoot journey changed.
 
 Proof: 50 teleprompter unit tests and 15 teleprompter browser tests pass. Lint passed across 3,380 files and inline scripts. The existing unrelated TypeScript error remains in `src/marketing/filmed-receive.mjs:159`. Netlify deploy `6acd32cee6660aed5b24f744` is ready with 16 functions and 9 schedules. The live teleprompter JavaScript SHA-256 equals the tested local file: `0d9ccca20d80ec7acd1e2190634b8e6d06ee703db4247b23c135284751fcc3bc`. The page returns HTTP 200. Local and GitHub main matched at `ccfc5e80cb6f8b8eb948e186f1575c2fdf1290e9` before this final board-only commit.
+
+### Phone repair pass
+
+Chris tested the first live repair on iPhone and the same problems remained. Live headers and source proved the phone URL was receiving the new file, so this was code behavior rather than an old deploy. The new pass removes the recording canvas from iPhone entirely, detects a lens switch that resolves without changing lenses, and opens the cached exact rear device first. Five focused browser tests pass, including an iPhone user-agent check that proves MediaRecorder receives the original camera stream.

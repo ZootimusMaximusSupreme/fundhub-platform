@@ -626,6 +626,13 @@
     return requested === "environment" ? "environment" : "user";
   }
 
+  function cameraLabelFacing(track) {
+    var label = String(track && track.label || "").toLowerCase();
+    if (/back|rear|environment/.test(label)) return "environment";
+    if (/front|facetime|truedepth|user/.test(label)) return "user";
+    return "";
+  }
+
   /** VSLs and thank-you videos stay 4K. Ads may use the 1080p choice. */
   function stays4K(s) {
     if (!s) return false;
@@ -2210,7 +2217,7 @@
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
 
-  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, pumpTimer: 0, pumpVideoFrame: 0 };
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
   var takeDialog = $("take-save");
 
@@ -2389,7 +2396,10 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
-    var recStream = mirroredRecordStream(cam.stream);
+    /* iPhone has one graphics lane for the live camera, the page, and canvas.
+       Copying every camera frame into a 4K canvas makes the words shake. Let
+       MediaRecorder use the camera's own hardware stream on that phone. */
+    var recStream = isPhone() ? cam.stream : mirroredRecordStream(cam.stream);
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
@@ -2529,6 +2539,13 @@
       camLine("Asking the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       paintPicks();
       var steps = [];
+      var exactId = cam.deviceIds[wanted];
+      if (exactId) {
+        var exactVideo = cameraAsk(wanted, 60, "wide", false, mode);
+        exactVideo.deviceId = { exact: exactId };
+        delete exactVideo.facingMode;
+        steps.push({ video: exactVideo, audio: false, facing: wanted });
+      }
       [wanted, wanted === "environment" ? "user" : "environment"].forEach(function (facing) {
         cameraTries(facing, mode).forEach(function (video) {
           if (!cam.audioTrack || cam.audioTrack.readyState === "ended") steps.push({ video: video, audio: true, facing: facing });
@@ -2578,6 +2595,10 @@
         md.enumerateDevices().then(function (devs) {
           if (gen !== cam.gen) { stopTracks(stream); return; }
           var id = pickVideoDevice(devs, requested);
+          var frontId = pickVideoDevice(devs, "user");
+          var rearId = pickVideoDevice(devs, "environment");
+          if (frontId) cam.deviceIds.user = frontId;
+          if (rearId) cam.deviceIds.environment = rearId;
           if (!id || settings.deviceId === id) {
             if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
             finish(stream, noMic, facing);
@@ -2626,9 +2647,18 @@
     ask.facingMode = { exact: wanted };
     cam.opening = activeMode() + ":" + wanted;
     camLine("Switching to the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
+    function reopen() {
+      cam.opening = "";
+      try { track.stop(); } catch (e) { /* release the iPhone lens before opening the other one */ }
+      openCamera();
+    }
     track.applyConstraints(ask).then(function () {
       var got = track.getSettings ? track.getSettings() : {};
-      if (got.facingMode && got.facingMode !== wanted) throw new Error("wrong camera");
+      var labelFacing = cameraLabelFacing(track);
+      var wantedId = cam.deviceIds[wanted];
+      var wrongId = wantedId && got.deviceId && got.deviceId !== wantedId;
+      var wrongLabel = !got.facingMode && !got.deviceId && labelFacing && labelFacing !== wanted;
+      if ((got.facingMode && got.facingMode !== wanted) || wrongId || wrongLabel) { reopen(); return; }
       cam.facing = wanted;
       cam.wantedFacing = wanted;
       cam.applied = activeMode();
@@ -2642,10 +2672,7 @@
       camLine((wanted === "environment" ? "Back" : "Front") + " camera", false);
       paintCameraFlip();
       showFace();
-    }, function () {
-      cam.opening = "";
-      openCamera();
-    });
+    }, reopen);
   }
   function setCamMode(mode) {
     if (mode === "1080p" && stays4K(scripts[cur])) { say("This one films at 1080p. It is not 4K."); paintPicks(); return; }
