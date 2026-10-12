@@ -57,6 +57,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-brain.mjs", () => import("./gap-brain.mjs")],
   ["gap-built-funnels.mjs", () => import("./gap-built-funnels.mjs")],
   ["gap-calls.mjs", () => import("./gap-calls.mjs")],
+  ["gap-catalog-data.mjs", () => import("./gap-catalog-data.mjs")],
   ["gap-catalog.mjs", () => import("./gap-catalog.mjs")],
   ["gap-checkout.mjs", () => import("./gap-checkout.mjs")],
   ["gap-closer-setup.mjs", () => import("./gap-closer-setup.mjs")],

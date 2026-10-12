@@ -1,4 +1,5 @@
 import { dataControlProofFor } from './data-control-proof.mjs';
+import { DATA_DIRECT_RESULT_CASES, directDataResultProofFor } from './data-direct-results.mjs';
 import { sharedDataProofFor } from './data-shared-targets.mjs';
 
 function caseKey(sourceFile, surface, control) {
@@ -99,6 +100,7 @@ export const DATA_PROOF_CASES = Object.freeze([
       asserts: 'The read-only machine check fails when saved funnel page stats are missing or stale.',
     },
   },
+  ...DATA_DIRECT_RESULT_CASES,
 ]);
 
 const PROOFS = new Map(DATA_PROOF_CASES.map((entry) => [
@@ -115,6 +117,7 @@ export function dataProofFor(sourceFile, row) {
   return proof
     ? { ...proof }
     : sharedDataProofFor(sourceFile, row)
+      || directDataResultProofFor(sourceFile, row)
       || dataControlProofFor(sourceFile, row)
       || null;
 }

@@ -30,8 +30,8 @@ async function provedRows() {
   return out;
 }
 
-test('the ten hand-written data cases still name one exact source row', async () => {
-  assert.equal(DATA_PROOF_CASES.length, 10);
+test('the 28 hand-written data cases still name one exact source row', async () => {
+  assert.equal(DATA_PROOF_CASES.length, 28);
   const rowsByFile = new Map();
 
   for (const entry of DATA_PROOF_CASES) {
@@ -48,7 +48,7 @@ test('the ten hand-written data cases still name one exact source row', async ()
 
 test('every data proof names a real focused check at the required depth', async () => {
   const proved = await provedRows();
-  assert.equal(proved.length, 223);
+  assert.equal(proved.length, 307);
 
   for (const { sourceFile, row, proof } of proved) {
     assert.equal(['e2e', 'deep'].includes(proof.depth), true, `${sourceFile}: ${row.surface}`);
@@ -59,7 +59,7 @@ test('every data proof names a real focused check at the required depth', async 
       assert.equal(proof.depth, 'deep', `${sourceFile}: ${row.surface}`);
       assert.match(
         proof.evidence,
-        /src\/pulse\/(?:coverage\/gap-|beats\/beat-)[A-Za-z0-9_./-]+\.mjs\b/,
+        /src\/pulse\/(?:coverage\/gap-[A-Za-z0-9_./-]+\.mjs\b|beats\/beat-[A-Za-z0-9_./-]+\.mjs\b|catalog\/proofs\/data-direct-results\.test\.mjs\b)/,
         `${sourceFile}: ${row.surface}`,
       );
     }

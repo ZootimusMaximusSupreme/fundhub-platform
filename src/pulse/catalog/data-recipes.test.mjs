@@ -56,7 +56,10 @@ test('money and customer rows below deep coverage stay red without a real result
       if (recipe.proof) {
         assert.equal(recipe.mode, 'test', `${sourceFile}: ${row.surface}`);
         assert.equal(recipe.proof.depth, 'deep', `${sourceFile}: ${row.surface}`);
-        assert.match(recipe.proof.evidence, /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/);
+        assert.match(
+          recipe.proof.evidence,
+          /src\/pulse\/(?:coverage\/gap-|beats\/beat-|catalog\/proofs\/data-direct-results\.test\.mjs)/,
+        );
         assert.match(recipe.proof.evidence, /\.test\.mjs\b/);
       } else {
         assert.equal(recipe.mode, 'manual-red', `${sourceFile}: ${row.surface}`);
@@ -81,8 +84,8 @@ test('data proof is attached only where a focused executable check runs', async 
     }
   }
 
-  assert.equal(DATA_PROOF_CASES.length, 10);
-  assert.equal(proved, 223);
+  assert.equal(DATA_PROOF_CASES.length, 28);
+  assert.equal(proved, 307);
 });
 
 test('representative source fields survive recipe compilation', async () => {

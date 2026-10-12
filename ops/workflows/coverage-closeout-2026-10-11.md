@@ -19,7 +19,7 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 | Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 2 | all manifests |
 | Doors | Agent | keys, routes, jobs, webhooks | done for batch 2 | shared ground |
 | Display | Agent | buttons, forms, screens, links | done for batch 2 | shared ground |
-| Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 2 | shared ground |
+| Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 3 | shared ground |
 | Flow | Agent | messages, journeys, agents | done for batch 2 | shared ground |
 
 ## Change manifests
@@ -41,6 +41,8 @@ Batch 2 complete in this commit. Added one safe local browser contract that real
 Done in `acea73f8f`. Added 10 honest deep data proofs. Focused tests passed. Remaining pipeline, table, bank, and link gaps stay red.
 
 Batch 2 complete in this commit. Added shared deep result proof for pipeline and bank targets, plus shared control proof for non-customer rows. Focused Data tests passed. Exact gain: 213 rows changed from red to wired. Data red fell from 297 to 84. The 84 left are 66 money/customer table rows with no real final-result gap lane and 18 rows with no executable result proof. Files changed: `src/pulse/catalog/data-recipes.mjs`, `src/pulse/catalog/data-recipes.test.mjs`, and `src/pulse/catalog/proofs/data-*.mjs`. `generated.json` was not edited.
+
+Batch 3 complete in this commit. Added one shared read-only `gap-catalog-data` judge for the exact 66 sensitive table rows. It checks saved business result fields in six batched reads; an empty table is verified `na`, a missing saved result is `FAIL`, and a read error stays unchecked. Added executable fake-data and source-result proof for the other exact 18 rows. Exact gain: 84 Data rows changed from red to wired. Data wired rose from 585 to 669, and Data red fell from 84 to 0. Focused Data tests: 21 passed, 0 failed, 0 skipped. Files changed: `src/pulse/catalog/data-recipes.test.mjs`, `src/pulse/catalog/proofs/data-*.mjs`, `src/pulse/coverage/gap-catalog-data.mjs`, its test, and `src/pulse/coverage/modules.mjs`. `generated.json` was not edited.
 
 ### Flow
 

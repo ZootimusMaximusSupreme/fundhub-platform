@@ -16,6 +16,7 @@ const TARGETS = Object.freeze({
   auth: target('gap-auth'),
   banks: target('gap-banks', 'gap-bank-links'),
   calls: target('gap-calls'),
+  catalogData: target('gap-catalog-data'),
   closer: target('gap-closer'),
   csm: target('gap-csm'),
   documents: target('gap-documents'),
@@ -102,6 +103,10 @@ function pipelineTarget(row) {
 
 function targetFor(sourceFile, row) {
   if (!SENSITIVE_IMPACTS.has(row?.impact)) return null;
+
+  if (sourceFile === 'tables.json' && row.coverage === 'e2e') {
+    return 'catalogData';
+  }
 
   if (sourceFile === 'pipelines.json') {
     if (row.coverage === 'e2e') return pipelineTarget(row);
