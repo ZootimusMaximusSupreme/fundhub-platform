@@ -211,7 +211,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css?v=20261012-phone5">
+<link rel="stylesheet" href="teleprompter.css?v=20261012-mic1">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -411,6 +411,11 @@ body.wording #flip{transform:none !important}
   <button type="button" id="camera-retry" hidden>Retry camera</button>
 </div>
 <button type="button" id="b-camera-flip" aria-label="Use back camera" title="Use back camera">↺</button>
+<div id="mic-monitor" role="status" aria-live="off" data-state="checking" aria-label="Microphone status">
+  <span id="mic-dot" aria-hidden="true"></span>
+  <span id="mic-name">Checking mic</span>
+  <span id="mic-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+</div>
 <div id="rec" hidden><span id="rec-dot"></span><span id="rec-time">0:00</span></div>
 <button type="button" class="mini" id="b-save" hidden>Save the video</button>
 
@@ -422,6 +427,6 @@ body.wording #flip{transform:none !important}
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="teleprompter-edits.js"></script>
-<script src="teleprompter.js?v=20261012-phone5"></script>
+<script src="teleprompter.js?v=20261012-mic1"></script>
 </body>
 </html>
