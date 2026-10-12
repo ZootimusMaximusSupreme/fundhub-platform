@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, cameraDevices = [], iphone = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices, iphone }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -34,6 +34,18 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     window.__cameraRequests = [];
     window.__cameraAsks = [];
     window.__cameraStreams = [];
+    if (rearPlayRejectOnce) {
+      const nativePlay = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        const track = this.srcObject && this.srcObject.getVideoTracks && this.srcObject.getVideoTracks()[0];
+        const facing = track && track.getSettings ? track.getSettings().facingMode : "";
+        if (facing === "environment" && !window.__rearPlayRejected) {
+          window.__rearPlayRejected = true;
+          return Promise.reject(new Error("rear metadata was not ready"));
+        }
+        return nativePlay.call(this);
+      };
+    }
     const makeStream = (facing, deviceId) => {
       const canvas = document.createElement("canvas");
       canvas.width = 32; canvas.height = 32;
@@ -79,7 +91,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, cameraDevices, iphone });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -187,7 +199,7 @@ test("a failed video upload stays in the small top status and leaves the file on
   expect(server.errors).toEqual([]);
 });
 
-test("camera button switches front and rear, then switches back during one recording", async ({ page }) => {
+test("camera button changes only the live view and never starts or changes recording", async ({ page }) => {
   const { server } = await open(page);
   const flip = page.locator("#b-camera-flip");
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
@@ -197,17 +209,37 @@ test("camera button switches front and rear, then switches back during one recor
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
   expect(await page.locator("#cam-video").evaluate((el) => el.srcObject.getVideoTracks()[0].getSettings().facingMode)).toBe("environment");
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+  await expect(page.locator("#b-rec")).toHaveText("Record");
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
-  await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("matrix(-1, 0, 0, 1, 0, 0)");
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user"]);
   expect(await page.evaluate(() => window.__cameraAsks.filter((ask) => ask.audio).length)).toBe(1);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
   await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("iPhone opens the exact rear live view, retries preview start, and stays idle", async ({ page }) => {
+  const cameraDevices = [
+    { kind: "videoinput", deviceId: "front", label: "Front Camera" },
+    { kind: "videoinput", deviceId: "rear", label: "Back Camera" }
+  ];
+  const { server } = await open(page, { iphone: true, rearPlayRejectOnce: true, cameraDevices });
+  const flip = page.locator("#b-camera-flip");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.srcObject.getVideoTracks()[0].getSettings().facingMode)).toBe("environment");
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  expect(await page.evaluate(() => window.__rearPlayRejected)).toBe(true);
+  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user", "environment"]);
   expect(server.errors).toEqual([]);
 });
 

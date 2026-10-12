@@ -33,3 +33,7 @@ Proof: 50 teleprompter unit tests and 15 teleprompter browser tests pass. Lint p
 Chris tested the first live repair on iPhone and the same problems remained. Live headers and source proved the phone URL was receiving the new file, so this was code behavior rather than an old deploy. The new pass removes the recording canvas from iPhone entirely, detects a lens switch that resolves without changing lenses, and opens the cached exact rear device first. Five focused browser tests pass, including an iPhone user-agent check that proves MediaRecorder receives the original camera stream.
 
 Final phone build: 50 unit tests and 16 browser tests pass. Netlify deploy `6acd3624cb09d5a28608ceb1` is ready with 16 functions and 9 schedules. The live HTML forces `teleprompter.js?v=20261012-phone2`. The live JavaScript SHA-256 matches local: `3f314e970db237cb6a832c3eb4d39069e0ce5a68fcd53ea3c75ab4a077686b88`. The page returns HTTP 200. Local and GitHub main matched at `e96ce14581e35019bc66db538036c8934ccfa64d` before this final board-only commit.
+
+### Rear live-view repair
+
+The camera button now changes only the live preview. It never starts recording and is blocked while a take is recording. iPhone skips track switching and opens the saved exact rear/front device. Preview start retries while iPhone camera metadata arrives, so one early play rejection does not discard the rear stream. The rear camera stays behind the same words and black glass. Four focused browser tests pass.

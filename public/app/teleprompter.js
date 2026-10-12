@@ -617,6 +617,13 @@
     return "";
   }
 
+  function rememberVideoDevices(devices) {
+    var front = pickVideoDevice(devices, "user");
+    var rear = pickVideoDevice(devices, "environment");
+    if (front) cam.deviceIds.user = front;
+    if (rear) cam.deviceIds.environment = rear;
+  }
+
   /* iPhone Safari can grant the requested lens but omit facingMode from
      getSettings(). Keep the lens we asked for instead of treating a blank
      setting as the front camera and immediately opening the front lens. */
@@ -2217,7 +2224,7 @@
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
 
-  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, pumpTimer: 0, pumpVideoFrame: 0 };
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, startAfterOpen: false, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
   var takeDialog = $("take-save");
 
@@ -2445,6 +2452,7 @@
   }
   function endRec(then) {
     wantRec = false;
+    cam.startAfterOpen = false;
     setRecLabel();
     var rec = cam.rec;
     if (!rec || rec.state === "inactive") { if (then) then(); return; }
@@ -2455,7 +2463,39 @@
   }
   function ensureRecording() {
     wantRec = true;
+    if (!cam.stream || cam.opening) { cam.startAfterOpen = true; return; }
+    cam.startAfterOpen = false;
     beginRec();
+  }
+  function playPreview(video, stream, ready, failed) {
+    var done = false;
+    var tries = 0;
+    function pass() {
+      if (done) return;
+      done = true;
+      video.removeEventListener("loadedmetadata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+      ready();
+    }
+    function fail() {
+      if (done) return;
+      if (tries < 3) { root.setTimeout(tryPlay, 80); return; }
+      done = true;
+      video.removeEventListener("loadedmetadata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+      failed();
+    }
+    function tryPlay() {
+      if (done || video.srcObject !== stream) return;
+      tries++;
+      var p;
+      try { p = video.play(); } catch (e) { fail(); return; }
+      if (p && p.then) p.then(pass, fail);
+      else pass();
+    }
+    video.addEventListener("loadedmetadata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+    tryPlay();
   }
   function attachStream(stream, mode, noMic, requestedFacing) {
     var old = cam.stream;
@@ -2496,7 +2536,10 @@
       camLine(text, !!rep.short);
       paintCameraFlip();
       paintPicks();
-      if (wantRec) beginRec();
+      if (cam.startAfterOpen && wantRec) {
+        cam.startAfterOpen = false;
+        beginRec();
+      }
     }
     function failed() {
       stream.getTracks().forEach(function (t) { if (t !== cam.audioTrack) try { t.stop(); } catch (e) { /* already stopped */ } });
@@ -2513,9 +2556,7 @@
       video.srcObject = stream;
       video.muted = true;
       video.style.transform = facing === "environment" ? "none" : "scaleX(-1)";
-      var p = video.play();
-      if (p && p.then) p.then(ready, failed);
-      else ready();
+      playPreview(video, stream, ready, failed);
       return;
     }
     ready();
@@ -2595,10 +2636,7 @@
         md.enumerateDevices().then(function (devs) {
           if (gen !== cam.gen) { stopTracks(stream); return; }
           var id = pickVideoDevice(devs, requested);
-          var frontId = pickVideoDevice(devs, "user");
-          var rearId = pickVideoDevice(devs, "environment");
-          if (frontId) cam.deviceIds.user = frontId;
-          if (rearId) cam.deviceIds.environment = rearId;
+          rememberVideoDevices(devs);
           if (!id || settings.deviceId === id) {
             if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
             finish(stream, noMic, facing);
@@ -2636,6 +2674,11 @@
   }
   function switchCamera() {
     if (cam.opening) return;
+    if (wantRec || cam.stopping || (cam.rec && cam.rec.state === "recording")) {
+      camLine("Stop recording before switching cameras.", true);
+      return;
+    }
+    cam.startAfterOpen = false;
     cam.wantedFacing = cam.facing === "environment" ? "user" : "environment";
     cam.applied = "";
     if (!cam.stream) { openCamera(); return; }
@@ -2643,6 +2686,20 @@
     var track = cam.stream.getVideoTracks()[0];
     if (!track || !track.applyConstraints) { openCamera(); return; }
     var wanted = cam.wantedFacing;
+    if (isPhone()) {
+      var md = root.navigator.mediaDevices;
+      cam.opening = activeMode() + ":" + wanted;
+      camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
+      function openPhoneLens() {
+        cam.opening = "";
+        try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
+        openCamera();
+      }
+      if (!cam.deviceIds[wanted] && md && md.enumerateDevices) {
+        md.enumerateDevices().then(function (devices) { rememberVideoDevices(devices); openPhoneLens(); }, openPhoneLens);
+      } else openPhoneLens();
+      return;
+    }
     var ask = cameraAsk(wanted, 30, "wide", false, activeMode());
     ask.facingMode = { exact: wanted };
     cam.opening = activeMode() + ":" + wanted;
