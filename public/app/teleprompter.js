@@ -420,7 +420,7 @@
    *   {do:'resume'}     one tap while paused or in scroll mode, after the wait
    *   {do:'caret', x, y} two quick taps, in any mode: pause the words and put the
    *                     cursor there. The camera keeps recording.
-   *   {do:'grab'}       a finger started dragging: stop the auto-scroll
+   *   {do:'grab'}       a finger started dragging: keep autoplay rolling
    *   {do:'drag', dy}   the finger moved dy pixels (down is positive). scriptDelta
    *                     rolls the words up when the thumb moves up.
    *   {do:'fling', v}   in scroll mode, let go fast: keep moving at v px/ms
@@ -1891,8 +1891,12 @@
   }
   function moveBy(dy) {
     if (!kf.length) return;
+    // Hand movement adjusts the current reading position. It must never
+    // pause the automatic scroll or recording. A paused seek is remembered
+    // for the next Play; an active scroll continues from its new position.
     t = tAt(yAt(t) + scriptDelta(dy, S.flipV));
-    seeked = true;
+    seeked = !(playing || countTimer);
+    if (playing) last = root.performance.now();
     apply(!!textEdit);
   }
   function stopFling() { if (flingRaf) { root.cancelAnimationFrame(flingRaf); flingRaf = 0; } }
@@ -1984,7 +1988,8 @@
     } else if (a.do === "scroll-off") {
       stop(); unsnap(tapSnap); setScroll(false);
     } else if (a.do === "grab") {
-      stopFling(); stop(); hideEnd();
+      // Only Play/Pause and an intentional edit can stop the words.
+      stopFling(); hideEnd();
     } else if (a.do === "drag") {
       moveBy(a.dy);
     } else if (a.do === "fling") {
@@ -2095,7 +2100,7 @@
       moveBy(e.deltaY);
       return;
     }
-    e.preventDefault(); stop(); hideEnd();
+    e.preventDefault(); hideEnd();
     moveBy(e.deltaY);
   }, { passive: false });
   content.addEventListener("input", function (e) {
