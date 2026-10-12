@@ -612,8 +612,12 @@
     }
     var hd = mode === "4k" ? "1080p" : mode;
     if (portraitPhone) {
-      push(30, "tall", false, false, hd);
+      // Prefer true 60 FPS portrait video at full 1080p on iPhone 17 Pro Max.
+      // Locked first, then ideal; fall back to 30 only if 60 is unavailable.
+      push(60, "tall", true, false, hd);
       push(60, "tall", false, false, hd);
+      push(30, "tall", true, false, hd);
+      push(30, "tall", false, false, hd);
     }
     if (back) {
       push(60, "wide", true, true, hd);
@@ -1040,7 +1044,7 @@
   if (!savedSettings || typeof savedSettings !== "object") savedSettings = {};
   var rememberedWpm = LS.get("wpm", null);
   if (rememberedWpm == null && savedSettings.wpm != null) rememberedWpm = savedSettings.wpm;
-  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k", rot: 0 }, savedSettings);
+  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "1080p", rot: 0 }, savedSettings);
   S.wpm = storedWpm(rememberedWpm, 150);
   LS.set("wpm", S.wpm);
   var rigQ = rigQuery((function () { try { return new URL(root.location.href).search; } catch (e) { return ""; } })());
@@ -2455,8 +2459,9 @@
   var takeDialog = $("take-save");
 
   function activeMode() {
-    if (stays4K(scripts[cur])) return "4k";
-    return S.cam === "1080p" ? "1080p" : "4k";
+    // Ads are high-quality 1080p; VSLs and thank-you videos follow their
+    // separate 4K rule. Old saved settings must not turn an ad into 4K.
+    return stays4K(scripts[cur]) ? "4k" : "1080p";
   }
   function paintPicks() {
     var mode = activeMode();
@@ -2647,8 +2652,8 @@
       camLine("Camera quality is only " + layout.width + "×" + layout.height +
         ". This browser cannot supply sharper video at this angle.", true);
     }
-    // 30 fps is standard for smooth social videos. Do not force 24 fps on iPhone.
-    var fps = Math.min(30, Math.max(24, Math.round(st.frameRate || 30)));
+    // Use the actual camera FPS, up to 60; never force 24 or pretend 30 is 60.
+    var fps = Math.min(60, Math.max(1, Math.round(st.frameRate || 30)));
     function draw() {
       if (!cam.pumping) return;
       if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -3141,7 +3146,8 @@
     }, reopen);
   }
   function setCamMode(mode) {
-    if (mode === "1080p" && stays4K(scripts[cur])) { say("This one films at 1080p. It is not 4K."); paintPicks(); return; }
+    if (mode === "1080p" && stays4K(scripts[cur])) { say("VSLs and thank-you videos require 4K."); paintPicks(); return; }
+    if (mode === "4k" && !stays4K(scripts[cur])) { say("Ads record at maximum 1080p."); paintPicks(); return; }
     S.cam = mode === "1080p" ? "1080p" : "4k";
     save();
     paintPicks();
