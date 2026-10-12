@@ -94,3 +94,9 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed two Blueprint rows proven complete by shipped closer-deck code and tests.
 - Result: 441 unfinished items remain.
 - Verification: `rg -c '^- \[ \] ' TODO.md` returns 441; no checked items remain; `git diff --check` is clean.
+
+## Pulse-red reconciliation — 2026-10-11
+
+- A later commit `edd148f5d` added 14 current owner-handled pulse reds to `TODO.md`.
+- Those rows were checked against `ops/workflows/coverage-closeout-2026-10-11.md`; they describe current failures or owner actions and remain.
+- Current count: 455 unchecked items. No checked items remain.
