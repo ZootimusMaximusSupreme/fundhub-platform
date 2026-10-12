@@ -126,7 +126,7 @@ describe("teleprompter, pure", () => {
   test("switching front/rear retains 60 fps and portrait camera requests", () => {
     const source = SRC.slice(SRC.indexOf("function switchCamera()"), SRC.indexOf("function setCamMode"));
     assert.match(source, /for \(var askFps of \[60, 30\]\)/);
-    assert.match(source, /cameraAsk\(wanted, askFps, faceShape, false, mode\)/);
+    assert.match(source, /cameraAsk\(wanted, askFps, faceShape, askFps === 60, mode\)/);
     assert.match(source, /cameraAsk\(wanted, 60, recordingIsPortrait\(\) \? "tall" : "wide", false, activeMode\(\)\)/);
     const open = SRC.slice(SRC.indexOf("function openCamera()"), SRC.indexOf("function switchCamera()"));
     assert.match(open, /cameraAsk\(facing, fps, recordingIsPortrait\(\) \? "tall" : "wide", true, mode\)/);
