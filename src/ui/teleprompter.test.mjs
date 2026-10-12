@@ -587,6 +587,27 @@ describe("top edge changes the script", () => {
   });
 });
 
+describe("signed filming link recovery", () => {
+  test("accepts only a correctly signed, shoot-scoped filming link from the dashboard", () => {
+    const T = load();
+    const shootId = "11111111-1111-4111-8111-111111111111";
+    const orgId = "22222222-2222-4222-8222-222222222222";
+    const key = orgId + "." + shootId + ".1999999999." + "a".repeat(64);
+    const page = { shoot: { id: shootId }, film: { path: "/app/teleprompter.html?k=" + key } };
+    assert.deepEqual(plain(T.filmAccessFromPage(page)), { shootId, key });
+    assert.equal(T.filmAccessFromPage({ shoot: { id: "33333333-3333-4333-8333-333333333333" }, film: page.film }), null);
+    assert.equal(T.filmAccessFromPage({ shoot: { id: shootId }, film: { path: "https://evil.com/app/teleprompter.html?k=" + key } }), null);
+    assert.equal(T.filmAccessFromPage({ shoot: { id: shootId }, film: { path: "/app/teleprompter.html?k=" + key.slice(0, -3) } }), null);
+    assert.equal(T.filmAccessFromPage({ shoot: { id: shootId } }), null);
+    const api = SRC.slice(SRC.indexOf("function api(method, path, body)"), SRC.indexOf("function fetchShoot(bare)"));
+    assert.match(api, /rejectedBearer = tk/);
+    assert.match(api, /request\("", ""\)/);
+    assert.match(SRC, /rememberFilmAccess\(r\.data\)/);
+    assert.match(SRC, /root\.addEventListener\("focus", function \(\) \{ flush\(\)/);
+    assert.match(SRC, /doc\.addEventListener\("visibilitychange"/);
+  });
+});
+
 describe("offer folder UI", () => {
   test("the script list shows a descriptive name and opening words", () => {
     const T = load();
