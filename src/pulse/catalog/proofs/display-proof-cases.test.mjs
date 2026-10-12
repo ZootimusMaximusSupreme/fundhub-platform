@@ -6,7 +6,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DISPLAY_PROOF_CASES, displayProofFor } from "./display-proof-cases.mjs";
-import { DISPLAY_RESULT_LANE } from "./display-saved-result.mjs";
+import {
+  DISPLAY_RESULT_LANE,
+  isTrackedDisplayControl,
+} from "./display-saved-result.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../../..");
@@ -15,6 +18,11 @@ const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10
 function rowsFor(sourceFile) {
   return JSON.parse(fs.readFileSync(path.join(MAP_DIR, sourceFile), "utf8"));
 }
+
+const DISPLAY_MAPS = [
+  "desks-a.json", "desks-b.json", "desks-c.json", "desks-d.json",
+  "desks-e.json", "desks-f.json", "public-pages.json",
+];
 
 test("every display proof case names one exact map row and real executable tests", () => {
   const keys = new Set();
@@ -46,6 +54,28 @@ test("every display proof case names one exact map row and real executable tests
     assert.equal(proof.asserts, matches[0].control);
     if (proof.verdict !== undefined) assert.equal(proof.verdict, "red");
   }
+});
+
+test("unmapped display rows stay red instead of trusting test names in map evidence", () => {
+  const exactKeys = new Set(DISPLAY_PROOF_CASES.map(
+    (entry) => `${entry.sourceFile}\0${entry.surface}\0${entry.control}`,
+  ));
+  let redCount = 0;
+
+  for (const sourceFile of DISPLAY_MAPS) {
+    for (const row of rowsFor(sourceFile)) {
+      if (row.repeats_row_in || !isTrackedDisplayControl(row)) continue;
+      const proof = displayProofFor(sourceFile, row);
+      if (proof?.verdict === "red") redCount += 1;
+
+      const key = `${sourceFile}\0${row.surface}\0${row.control}`;
+      if (exactKeys.has(key)) continue;
+      assert.equal(proof?.verdict, "red", `${key}: unmapped evidence must stay red`);
+      assert.equal(proof?.evidence, DISPLAY_RESULT_LANE, `${key}: wrong red proof lane`);
+    }
+  }
+
+  assert.equal(redCount, 1_243, "Display red count changed; inspect every new exact proof");
 });
 
 test("the focused proof test runs every executable test named by every case", () => {

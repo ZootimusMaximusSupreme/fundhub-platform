@@ -6,7 +6,6 @@ import {
   displaySavedResultContract,
   isTrackedDisplayControl,
 } from "./display-saved-result.mjs";
-import { displayEvidenceResultProof } from "./display-evidence-result.mjs";
 
 function proofCase(sourceFile, surface, control, tests, depth = "deep") {
   return Object.freeze({
@@ -357,8 +356,6 @@ export function displayProofFor(sourceFile, row) {
   const found = CASES_BY_KEY.get(`${sourceFile}\0${row?.surface || ""}\0${row?.control || ""}`);
   if (!found) {
     if (!isTrackedDisplayControl(row)) return null;
-    const evidenced = displayEvidenceResultProof(row);
-    if (evidenced) return evidenced;
     const deep = ["money", "customerData", "customerMessage"].includes(row?.impact);
     return {
       depth: deep ? "deep" : "e2e",
