@@ -319,6 +319,37 @@ export async function listNewVideos({
   return { ok: true, retryable: false, files, skipped: (v.body?.files || []).length - files.length };
 }
 
+/* Enumerate folders under the marketing-video parent. The sweeper filters
+   these by registered offers before reading any video files. */
+export async function listOfferVideoFolders({
+  parentId, env = process.env, fetchImpl, timeoutMs, signal
+} = {}) {
+  const parent = String(parentId || "").trim();
+  if (!parent) return { ok: false, retryable: false, error: "listOfferVideoFolders needs a parentId", folders: [] };
+  const tok = await driveAccessToken({ env, fetchImpl });
+  if (!tok.ok) return { ...tok, folders: [] };
+  const folders = [];
+  let pageToken = null;
+  for (let page = 0; page < 5; page++) {
+    const url = DRIVE_API + "/files?" + qs({
+      q: "'" + parent.replace(/'/g, "\\'") + "' in parents and mimeType = '" + FOLDER_MIME + "' and trashed = false",
+      fields: "nextPageToken,files(id,name,mimeType)",
+      pageSize: 100,
+      pageToken,
+      ...SHARED
+    });
+    const res = await driveCall("GET", url, {
+      token: tok.accessToken, env, fetchImpl, timeoutMs, signal, what: "drive list offer video folders"
+    });
+    const verdict = verdictOf(res, "drive list offer video folders");
+    if (!verdict.ok) return { ...verdict, folders: [] };
+    folders.push(...(verdict.body?.files || []).filter((f) => f.id && f.name && f.mimeType === FOLDER_MIME));
+    pageToken = verdict.body?.nextPageToken || null;
+    if (!pageToken) return { ok: true, folders };
+  }
+  return { ok: false, retryable: true, error: "too many offer video folders to scan safely", folders: [] };
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    listBrollClips — the B-roll library, in priority order.
 
@@ -818,6 +849,6 @@ export async function send(message = {}, options = {}) {
 export default {
   PROVIDER, CHANNELS, ADDRESS_FIELD, ENABLED, TRANSMITS, send,
   driveAccessToken, resetTokenCache, grantsWrite,
-  listNewVideos, getFileMeta, renameFile, ensureFolder, uploadTextFile,
+  listNewVideos, listOfferVideoFolders, getFileMeta, renameFile, ensureFolder, uploadTextFile,
   downloadFile, uploadVideo, openVideoSession, putVideoChunk, driveSessionUrl
 };
