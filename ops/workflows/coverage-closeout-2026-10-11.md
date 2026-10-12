@@ -100,3 +100,5 @@ Batch 3 core: integration rejected weak green claims from Display and Flow. Mone
 - Catalog freshness passed. Lint passed across 3,358 files and inline scripts.
 - The focused integration run stopped on the same local Playwright server twice. An orphan `e2e/static-server.mjs` process held port 43117; it was stopped and no third attempt was made under the stuck rule. The agent's earlier focused Display run passed 9 checks with no skips.
 - Type check still has the older unrelated error at `src/marketing/filmed-receive.mjs:159` (`TS2345`). This batch did not touch that file.
+- The first GitHub live ship found four Batch 3 pulse faults: empty catalog tables used an unknown nothing-to-judge reason, and the three proof-only door lanes returned no rows. Empty tables now use a closed, rechecked reason and share the pulse's six batched reads. The door lanes now answer with honest red rows instead of disappearing.
+- The repaired full local bundle reached only three older self-audit timeouts: `checkout:funnel-no-sale`, `msg:dead-senders`, and `social:video-stats-stale`. Two full retries gave the same result, so the stuck rule stopped more changes to those older lanes.

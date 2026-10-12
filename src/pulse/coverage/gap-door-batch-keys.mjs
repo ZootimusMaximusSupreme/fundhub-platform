@@ -5,6 +5,8 @@ export const KEY_HEALTH_EVIDENCE =
   "src/pulse/coverage/gap-door-batch-keys.mjs " +
   "src/pulse/catalog/proofs/door-batch-key-health.test.mjs";
 
+export const CHECK_IDS = Object.freeze(["door-batch:keys-live-proof"]);
+
 function valueShape(name, value) {
   if (/(?:^|_)(?:URL|URI|ORIGIN)$/.test(name)) {
     try {
@@ -68,5 +70,10 @@ export function keyHealthProof(row) {
 }
 
 export async function gapChecks() {
-  return [];
+  return [{
+    id: CHECK_IDS[0],
+    status: "FAIL",
+    detail: "The shared key batch proves key rules with fake values, but it does not read every live value.",
+    suggestedFix: "Add safe live checks for the keys that matter. Never print a secret value.",
+  }];
 }

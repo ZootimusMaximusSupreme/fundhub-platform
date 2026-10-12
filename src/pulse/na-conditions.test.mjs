@@ -25,9 +25,9 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these twelve", () => {
+test("the list of codes is closed: exactly these thirteen", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
+    "catalog-data-empty", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
     "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
@@ -37,11 +37,11 @@ test("the list of codes is closed: exactly these twelve", () => {
   assert.equal(isNaCode("toString"), false, "an inherited property is not a code");
 });
 
-test("the five core codes verify here; the seven lane codes say \"lane\"", () => {
+test("the five core codes verify here; the eight lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });

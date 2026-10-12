@@ -10,6 +10,8 @@ export const JOB_RESULT_EVIDENCE =
   "src/pulse/coverage/gap-door-batch-jobs.mjs " +
   "src/pulse/catalog/proofs/door-batch-job-result.test.mjs";
 
+export const CHECK_IDS = Object.freeze(["door-batch:jobs-live-proof"]);
+
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort();
 }
@@ -91,5 +93,10 @@ export function jobResultProof(row) {
 }
 
 export async function gapChecks() {
-  return [];
+  return [{
+    id: CHECK_IDS[0],
+    status: "FAIL",
+    detail: "The shared job batch proves code and trigger rules, but it does not replace each job's live run receipt.",
+    suggestedFix: "Keep each job's own heartbeat or workflow receipt green. Do not treat this code proof as a live run.",
+  }];
 }

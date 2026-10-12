@@ -473,6 +473,21 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  /* A catalog table with no rows. The catalog-data lane re-runs the same
+     read before this may stay "nothing to judge". */
+  "catalog-data-empty": Object.freeze({
+    say(args = {}) {
+      return `${isText(args.table) ? args.table : "This table"} has no saved rows to judge.`;
+    },
+    claim(args = {}) {
+      return `${isText(args.table) ? args.table : "The table"} still has no rows.`;
+    },
+    problem(args) {
+      return isText(args.table) ? null : "table is missing";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row

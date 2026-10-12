@@ -138,6 +138,24 @@ function reader(ctx) {
   return null;
 }
 
+const EMPTY_VERIFY_CACHE = new WeakMap();
+
+async function verificationStats(ctx = {}) {
+  const run = reader(ctx);
+  const key = typeof ctx.scope === 'function' ? ctx.scope : ctx.db;
+  if (!run || (typeof key !== 'object' && typeof key !== 'function')) return null;
+  const orgId = ctx.orgId || null;
+  const cached = EMPTY_VERIFY_CACHE.get(key);
+  if (cached && cached.orgId === orgId && Date.now() - cached.at < 60_000) return cached.promise;
+
+  const promise = Promise.all(SQL_BATCHES.map((sql) => run((db) => db.query(sql, [orgId]))))
+    .then((answers) => new Map(answers.flatMap((answer) => answer?.rows || [])
+      .map((row) => [String(row.table_name), row])));
+  EMPTY_VERIFY_CACHE.set(key, { orgId, at: Date.now(), promise });
+  promise.catch(() => EMPTY_VERIFY_CACHE.delete(key));
+  return promise;
+}
+
 export async function gapChecks(ctx = {}) {
   const run = reader(ctx);
   if (!run) return TABLE_NAMES.map((table) => skip(table, 'no database in this run'));
@@ -153,6 +171,15 @@ export async function gapChecks(ctx = {}) {
     }
   }
 
+  const cacheKey = typeof ctx.scope === 'function' ? ctx.scope : ctx.db;
+  if (cacheKey && (typeof cacheKey === 'object' || typeof cacheKey === 'function')) {
+    EMPTY_VERIFY_CACHE.set(cacheKey, {
+      orgId: ctx.orgId || null,
+      at: Date.now(),
+      promise: Promise.resolve(byTable),
+    });
+  }
+
   return TABLE_NAMES.map((table) => {
     const stats = byTable.get(table);
     if (!stats) return skip(table, 'the batch returned no result');
@@ -160,3 +187,13 @@ export async function gapChecks(ctx = {}) {
     return judgeTableResult(table, stats);
   });
 }
+
+export const naVerify = Object.freeze({
+  'catalog-data-empty': async (args, ctx = {}) => {
+    const table = String(args?.table || '');
+    const rule = TABLE_RULES[table];
+    if (!rule) return false;
+    const stats = (await verificationStats(ctx))?.get(table);
+    return Number(stats?.row_count || 0) === 0;
+  },
+});

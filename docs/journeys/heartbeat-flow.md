@@ -33,6 +33,8 @@ The catalog does not fake 3,941 green checks. Today, 2,496 items link to proof a
 
 `npm run pulse:catalog:prove` is the cheap batch proof. By default it compares the working catalog with the committed catalog, runs only proof targets that changed, and runs each shared test, browser spec, lane, or beat once. Node tests and Playwright browser specs use their own runners. `--all` proves every wired row. `--report` only prints the grouped red count.
 
+A proof helper may not vanish from the morning pulse. Empty tables use a closed, rechecked `catalog-data-empty` reason. Shared code-only door proof lanes return an honest red row until a live key check, job receipt, or provider receipt proves the live result.
+
 ## The picture
 
 ```mermaid

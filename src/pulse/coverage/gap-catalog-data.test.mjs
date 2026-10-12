@@ -9,6 +9,7 @@ import {
   TABLE_RULES,
   gapChecks,
   judgeTableResult,
+  naVerify,
 } from './gap-catalog-data.mjs';
 import { GAP_FILES } from './modules.mjs';
 
@@ -75,6 +76,8 @@ test('fake saved results pass only when every row has its business result', asyn
   assert.ok(rows.every((row) => row.status === 'PASS'));
   assert.equal(db.calls.length, 6);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
+  assert.equal(await naVerify['catalog-data-empty']({ table: 'bank_transactions' }, { db, orgId: ORG }), false);
+  assert.equal(db.calls.length, 6, 'the audit reuses this pulse run instead of repeating the same six reads');
 
   const bad = await gapChecks({
     db: fakeDb({ bank_transactions: { row_count: 4, complete_count: 2 } }),
@@ -91,6 +94,16 @@ test('an empty table is verified nothing to judge, never a fake pass', () => {
   assert.equal(row.status, 'na');
   assert.deepEqual(row.na, { code: 'catalog-data-empty', args: { table: 'bank_transactions' } });
   assert.equal(row.suggestedFix, null);
+});
+
+test('the audit re-reads an empty catalog table before keeping nothing to judge', async () => {
+  const empty = fakeDb({ bank_transactions: { row_count: 0, complete_count: 0 } });
+  assert.equal(await naVerify['catalog-data-empty']({ table: 'bank_transactions' }, { db: empty, orgId: ORG }), true);
+  assert.equal(await naVerify['catalog-data-empty']({ table: 'alerts' }, { db: empty, orgId: ORG }), false);
+  assert.equal(empty.calls.length, 6, 'all empty-table reasons share six batched reads');
+  const filled = fakeDb();
+  assert.equal(await naVerify['catalog-data-empty']({ table: 'bank_transactions' }, { db: filled, orgId: ORG }), false);
+  assert.equal(await naVerify['catalog-data-empty']({ table: 'not_a_table' }, { db: empty, orgId: ORG }), false);
 });
 
 test('a failed batch stays unchecked and the lane is on the shipped module list', async () => {

@@ -14,6 +14,8 @@ export const WEBHOOK_RESULT_EVIDENCE =
   "src/pulse/coverage/gap-door-batch-webhooks.mjs " +
   "src/pulse/catalog/proofs/door-batch-webhook-result.test.mjs";
 
+export const CHECK_IDS = Object.freeze(["door-batch:webhooks-live-proof"]);
+
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort();
 }
@@ -133,5 +135,10 @@ export function webhookResultProof(row) {
 }
 
 export async function gapChecks() {
-  return [];
+  return [{
+    id: CHECK_IDS[0],
+    status: "FAIL",
+    detail: "The shared webhook batch proves safe fake requests, but it does not prove every provider reached the live door.",
+    suggestedFix: "Keep each provider's live webhook receipt or beat green. Do not send a real webhook from the pulse.",
+  }];
 }
