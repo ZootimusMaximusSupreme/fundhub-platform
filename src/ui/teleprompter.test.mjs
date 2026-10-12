@@ -677,7 +677,7 @@ describe("teleprompter page", () => {
     // The change pulse, the edit bar and the controls are NOT read through the glass.
     for (const id of ["pulse", "p-save", "editbar", "b-edit", "b-hist", "b-next"]) assert.ok(!flip.includes(`id="${id}"`), id);
     // The edit file loads first: teleprompter.js reads window.FundhubTeleprompterEdits.
-    assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js?v='));
+    assert.ok(HTML.indexOf('src="teleprompter-edits.js?v=') < HTML.indexOf('src="teleprompter.js?v='));
     // Editing turns the glass flip off so the words read the right way round.
     assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
     assert.match(HTML, /Play rolls the words/);
@@ -759,9 +759,41 @@ describe("teleprompter page", () => {
     assert.match(SRC, /file\.slice\(at, end\)/);
     assert.match(SRC, /x-shoot-film/);
     assert.match(SRC, /\$\("b-save"\)\.onclick = saveClick/);
-    assert.match(SRC, /setTransform\(-1/);
+    assert.match(SRC, /ctx\.translate\(canvas\.width, 0\)/);
+    assert.match(SRC, /ctx\.scale\(-1, 1\)/);
     assert.doesNotMatch(SRC, /8787/);
     assert.doesNotMatch(SRC, /ffmpeg/);
+  });
+});
+
+describe("recorded camera frame quality", () => {
+  test("portrait video remains tall, sharp, and mirrored only on the front camera", () => {
+    const T = load();
+    const vertical = T.recordFrameBox(1080, 1920, true, false);
+    assert.deepEqual(plain([vertical.width, vertical.height, vertical.sx, vertical.sy]), [1080, 1920, 0, 0]);
+    assert.equal(vertical.needsBetterCamera, false);
+    const horizontal = T.recordFrameBox(1920, 1080, true, false);
+    assert.ok(horizontal.height > horizontal.width, "portrait recording is not sideways");
+    assert.ok(horizontal.width < 1080, "do not invent source pixels after cropping");
+    assert.ok(horizontal.sx > 0, "center crop, never stretch a horizontal feed to portrait");
+    assert.equal(horizontal.needsBetterCamera, true);
+    const wide = T.recordFrameBox(1920, 1080, false, false);
+    assert.deepEqual(plain([wide.width, wide.height]), [1920, 1080]);
+    const full = T.recordFrameBox(2160, 3840, true, true);
+    assert.deepEqual(plain([full.width, full.height]), [2160, 3840]);
+    assert.equal(full.needsBetterCamera, false);
+    assert.equal(T.recordFrameBox(0, 0, true, false), null);
+    const recorder = SRC.slice(SRC.indexOf("function continuousRecordStream(stream)"), SRC.indexOf("function beginRec()"));
+    assert.match(recorder, /if \(cam\.facing !== "environment"\)/);
+    assert.match(recorder, /ctx\.translate\(canvas\.width, 0\)/);
+    assert.match(recorder, /ctx\.scale\(-1, 1\)/);
+    assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
+    assert.match(recorder, /canvas\.captureStream\(fps\)/);
+    assert.match(recorder, /Math\.min\(30, Math\.max\(24,/);
+    assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
+    const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));
+    assert.match(begin, /savedWidth >= 3840 \? 48000000/);
+    assert.match(begin, /savedWidth >= 1920 \? 24000000/);
   });
 });
 
