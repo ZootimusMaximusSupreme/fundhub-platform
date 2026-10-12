@@ -131,7 +131,6 @@ test("known partial checks stay red", () => {
     ["jobs.json", "function:ad-video-worker-background", /background function/],
     ["webhooks.json", "webhook:POST /api/webhooks/lendflow", /Lendflow/],
     ["webhooks.json", "webhook:POST netlify\/functions\/ad-video-worker-background", /whole ad-video pass/],
-    ["keys.json", "env:AD_TOKEN_ENC_KEY", /encrypts ad-platform/],
   ];
   for (const [sourceFile, surface, control] of samples) {
     const row = rowsFor(sourceFile).find((item) => item.surface === surface && control.test(item.control));
@@ -151,8 +150,8 @@ test("door proof totals are deliberate", () => {
     "routes-1.json": 33,
     "routes-2.json": 29,
     "routes-3.json": 6,
-    "jobs.json": 36,
-    "webhooks.json": 14,
-    "keys.json": 314,
+    "jobs.json": 70,
+    "webhooks.json": 23,
+    "keys.json": 428,
   });
 });

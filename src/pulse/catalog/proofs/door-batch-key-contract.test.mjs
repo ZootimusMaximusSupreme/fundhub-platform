@@ -49,7 +49,7 @@ test("one key-contract pass proves every non-sensitive key without reading value
   }
 });
 
-test("the key contract rejects bad names, missing readers, and sensitive rows", () => {
+test("the key contract rejects bad names and missing readers while sensitive rows use health proof", () => {
   const bad = evaluateKeyContract(
     {
       env_name: "bad-name",
@@ -75,5 +75,7 @@ test("the key contract rejects bad names, missing readers, and sensitive rows", 
     read_by_files: 1,
     impact: "money",
   };
-  assert.equal(makeRecipe("keys.json", sensitive).mode, "manual-red");
+  assert.equal(makeRecipe("keys.json", sensitive).mode, "read-only");
+  assert.equal(makeRecipe("keys.json", sensitive).proof.depth, "deep");
+  assert.match(makeRecipe("keys.json", sensitive).proof.evidence, /door-batch-key-health\.test\.mjs/);
 });

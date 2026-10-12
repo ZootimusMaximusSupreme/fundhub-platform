@@ -1,5 +1,8 @@
 import { keyContractProof } from "./door-batch-key-contract.mjs";
 import { routeContractProof } from "./door-batch-route-contract.mjs";
+import { keyHealthProof } from "../../coverage/gap-door-batch-keys.mjs";
+import { jobResultProof } from "../../coverage/gap-door-batch-jobs.mjs";
+import { webhookResultProof } from "../../coverage/gap-door-batch-webhooks.mjs";
 
 const FILE_RE = /\b(?:(?:src|api|netlify|scripts|e2e)\/)?[A-Za-z0-9_./[\]-]+\.mjs\b/g;
 
@@ -114,6 +117,7 @@ const DENIED_MAP_PROOFS = [
   ["routes-3.json", "route:lender-observations", /^POST /],
   ["jobs.json", "function:ad-video-worker-background", /.*/],
   ["jobs.json", "function:hubstaff-poll-sweeper", /.*/],
+  ["webhooks.json", "webhook:POST netlify/functions/ad-video-worker-background", /whole ad-video pass/],
 ];
 
 function unique(values) {
@@ -187,23 +191,35 @@ function keyProof(row) {
       return { depth: "deep", evidence: executable.join(" "), asserts: row.control };
     }
   }
+  const health = keyHealthProof(row);
+  if (health) return health;
   return keyContractProof(row);
 }
 
 function webhookProof(row) {
-  if (FAILED_FOCUSED_WEBHOOKS.has(row?.surface)) return null;
-  const proof = WEBHOOK_PROOFS.get(row?.surface);
-  if (!proof) return null;
-  const evidence = proofReferences(proof.evidence)
-    .filter((reference) => !reference.endsWith(".pg.test.mjs") && !failedFocusedTest(reference))
-    .join(" ");
-  return { ...proof, evidence, asserts: row.control };
+  const proof = FAILED_FOCUSED_WEBHOOKS.has(row?.surface) ? null : WEBHOOK_PROOFS.get(row?.surface);
+  if (proof) {
+    const evidence = proofReferences(proof.evidence)
+      .filter((reference) => !reference.endsWith(".pg.test.mjs") && !failedFocusedTest(reference))
+      .join(" ");
+    return { ...proof, evidence, asserts: row.control };
+  }
+  return webhookResultProof(row);
 }
 
 export function proofForDoor(sourceFile, row) {
   const name = String(sourceFile || "").split(/[\\/]/).at(-1);
   if (name === "keys.json") return keyProof(row);
-  if (name === "webhooks.json") return webhookProof(row);
+  if (name === "webhooks.json") {
+    if (isDeniedMapProof(sourceFile, row)) return null;
+    return webhookProof(row);
+  }
+  if (name === "jobs.json") {
+    if (isDeniedMapProof(sourceFile, row)) return null;
+    const result = jobResultProof(row);
+    if (result) return result;
+    return auditedMapProof(row);
+  }
   if (name === "jobs.json" || /^routes-[0-3]\.json$/.test(name)) {
     const contract = routeContractProof(row);
     if (contract) return contract;

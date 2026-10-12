@@ -17,7 +17,7 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 | Workflow | Owns | Files | Status | Depends on |
 |---|---|---|---|---|
 | Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 2 | all manifests |
-| Doors | Agent | keys, routes, jobs, webhooks | done for batch 2 | shared ground |
+| Doors | This session | keys, routes, jobs, webhooks | done for batch 3 | shared ground |
 | Display | Agent | buttons, forms, screens, links | done for batch 2 | shared ground |
 | Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 3 | shared ground |
 | Flow | Agent | messages, journeys, agents | done for batch 2 | shared ground |
@@ -29,6 +29,8 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 Done in `43651fe73`. Added honest executable proof to 188 door rows. The stricter proof rule also returned 157 weak rows to red. Door gaps remaining: 796.
 
 Batch 2 complete in this commit. Added 281 shared executable proofs: 279 non-sensitive key contracts that check valid names and real code readers without reading values, plus 2 safe public route result checks that call the handlers with fake data. Focused Doors tests passed: 484 passed, 0 failed, 0 skipped. Exact Doors count: 469 wired, 515 red. Remaining red by map: 100 routes-0, 126 routes-1, 67 routes-2, 46 routes-3, 47 jobs, 15 webhooks, 114 keys.
+
+Batch 3 complete in this commit. Added 157 honest executable proofs: 114 key format and health checks, 34 job result and receipt checks, and 9 webhook signature and result checks. Sensitive rows use deep gap or beat result proof. One guard-only ad-video webhook stays red. Route gain is 0: the shared route probe stopped after two failed tries because one handler checked auth before method and the health route accepted `TRACE` with `200`; no weak route proof was added. Exact Doors count: 626 wired, 358 red. Remaining red: 339 routes, 13 jobs, 6 webhooks, and 0 keys. Focused Doors and module-list tests: 651 passed, 0 failed, 0 skipped. Files changed: `src/pulse/catalog/door-recipes.test.mjs`, `src/pulse/catalog/proofs/door-proof.mjs`, `src/pulse/catalog/proofs/door-proof.test.mjs`, `src/pulse/catalog/proofs/door-batch-key-contract.test.mjs`, new `src/pulse/catalog/proofs/door-batch-{key-health,job-result,webhook-result}.test.mjs`, new `src/pulse/coverage/gap-door-batch-{keys,jobs,webhooks}.mjs`, and `src/pulse/coverage/modules.mjs`. `generated.json` was not edited. No provider write ran, and no secret value was read or printed.
 
 ### Display
 

@@ -79,13 +79,15 @@ test("route recipes use route methods and keep writes out of read-only mode", as
   assert.equal(makeRecipe("routes-0.json", write).safe, true);
 });
 
-test("job recipes preserve trigger and schedule metadata and stay red without result proof", async () => {
+test("job recipes preserve trigger and schedule metadata and use result plus receipt proof", async () => {
   const rows = await loadRows("jobs.json");
   const workflow = rows.find((row) => row.surface === "workflow:af-01-affiliate-drip");
   const scheduledFunction = rows.find((row) => row.surface === "function:pulse-hourly");
 
   assert.equal(makeRecipe("jobs.json", workflow).schedule, "cron */15 * * * *");
-  assert.equal(makeRecipe("jobs.json", workflow).mode, "manual-red");
+  assert.equal(makeRecipe("jobs.json", workflow).mode, "receipt");
+  assert.equal(makeRecipe("jobs.json", workflow).proof.depth, "deep");
+  assert.match(makeRecipe("jobs.json", workflow).proof.evidence, /door-batch-job-result\.test\.mjs/);
   assert.equal(makeRecipe("jobs.json", scheduledFunction).schedule, "7 * * * *");
   assert.equal(makeRecipe("jobs.json", scheduledFunction).mode, "receipt");
 });
@@ -111,9 +113,10 @@ test("key recipes prove watched names without reading secret values", async () =
   assert.match(recipe.proof.evidence, /gap-keys\.mjs/);
   assert.match(recipe.expected, /without reading its value/);
 
-  const unwatched = rows.find((row) => row.surface === "env:AD_TOKEN_ENC_KEY");
-  assert.equal(makeRecipe("keys.json", unwatched).mode, "manual-red");
-  assert.equal("proof" in makeRecipe("keys.json", unwatched), false);
+  const healthChecked = rows.find((row) => row.surface === "env:AD_TOKEN_ENC_KEY");
+  assert.equal(makeRecipe("keys.json", healthChecked).mode, "read-only");
+  assert.equal(makeRecipe("keys.json", healthChecked).proof.depth, "deep");
+  assert.match(makeRecipe("keys.json", healthChecked).proof.evidence, /door-batch-key-health\.test\.mjs/);
 
   const contract = rows.find((row) => row.surface === "env:AD_VIDEO_BROLL_STILLS");
   const contractRecipe = makeRecipe("keys.json", contract);
