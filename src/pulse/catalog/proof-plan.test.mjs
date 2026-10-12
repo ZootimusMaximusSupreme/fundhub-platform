@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { changedWiredItems, proofPlan, redByFamily } from "./proof-plan.mjs";
+import { changedWiredItems, proofPlan, redByFamily, splitTestTargets } from "./proof-plan.mjs";
 
 test("changed proof rows are selected once and targets are deduplicated", () => {
   const old = { items: [
@@ -32,4 +32,15 @@ test("red report groups failures without running them", () => {
     { state: "red", family: "button" },
     { state: "red", family: "route" },
   ] }), [["route", 2], ["button", 1]]);
+});
+
+test("Playwright specs never go to Node's test runner", () => {
+  assert.deepEqual(splitTestTargets([
+    "src/a.test.mjs",
+    "e2e/a.spec.mjs",
+    "src/b.pg.test.mjs",
+  ]), {
+    node: ["src/a.test.mjs", "src/b.pg.test.mjs"],
+    browser: ["e2e/a.spec.mjs"],
+  });
 });

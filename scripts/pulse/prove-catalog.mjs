@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { changedWiredItems, proofPlan, redByFamily } from "../../src/pulse/catalog/proof-plan.mjs";
+import { changedWiredItems, proofPlan, redByFamily, splitTestTargets } from "../../src/pulse/catalog/proof-plan.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const CATALOG = path.join(ROOT, "src/pulse/catalog/generated.json");
@@ -17,6 +17,12 @@ function readJson(text, fallback = { items: [] }) {
 
 function run(args) {
   const result = spawnSync(process.execPath, args, { cwd: ROOT, stdio: "inherit", env: process.env });
+  return result.status === 0;
+}
+
+function runBrowser(files) {
+  const command = path.join(ROOT, "node_modules", ".bin", "playwright");
+  const result = spawnSync(command, ["test", "--reporter=dot", ...files], { cwd: ROOT, stdio: "inherit", env: process.env });
   return result.status === 0;
 }
 
@@ -36,22 +42,24 @@ const selected = all
   ? catalog.items.filter((item) => item.state === "wired")
   : changedWiredItems(catalog, prior);
 const plan = proofPlan(selected);
+const testTargets = splitTestTargets(plan.tests);
 
-console.log(`catalog proof: ${plan.rows} ${all ? "wired" : "changed"} row(s); ${plan.tests.length} test file(s), ${plan.lanes.length} lane(s), ${plan.beats.length} beat(s)`);
+console.log(`catalog proof: ${plan.rows} ${all ? "wired" : "changed"} row(s); ${testTargets.node.length} Node test file(s), ${testTargets.browser.length} browser spec(s), ${plan.lanes.length} lane(s), ${plan.beats.length} beat(s)`);
 console.log(`catalog red: ${catalog.counts?.red || 0} — ${redByFamily(catalog).map(([family, count]) => `${family} ${count}`).join(", ")}`);
 
 if (reportOnly || plan.rows === 0) process.exit(0);
 
 let ok = true;
-if (plan.tests.length) {
+if (testTargets.node.length) {
   const envFile = fs.existsSync(path.join(ROOT, ".env")) ? ["--env-file=.env"] : [];
-  ok = run([...envFile, "--test", ...plan.tests]) && ok;
+  ok = run([...envFile, "--test", "--test-force-exit", "--test-reporter=dot", ...testTargets.node]) && ok;
 }
-if (plan.lanes.length) {
+if (ok && testTargets.browser.length) ok = runBrowser(testTargets.browser);
+if (ok && plan.lanes.length) {
   const names = plan.lanes.map((file) => path.basename(file, ".mjs"));
   ok = run(["scripts/pulse/prove.mjs", "--repo", `--lanes=${names.join(",")}`]) && ok;
 }
-for (const file of plan.beats) {
+for (const file of ok ? plan.beats : []) {
   const name = path.basename(file, ".mjs").replace(/^beat-/, "");
   ok = run(["scripts/pulse/run-beat.mjs", name]) && ok;
 }

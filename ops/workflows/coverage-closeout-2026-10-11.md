@@ -16,11 +16,11 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 
 | Workflow | Owns | Files | Status | Depends on |
 |---|---|---|---|---|
-| Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 1 | all manifests |
-| Doors | Agent | keys, routes, jobs, webhooks | done for batch 1 | shared ground |
+| Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 2 | all manifests |
+| Doors | Agent | keys, routes, jobs, webhooks | done for batch 2 | shared ground |
 | Display | Agent | buttons, forms, screens, links | done for batch 2 | shared ground |
 | Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 2 | shared ground |
-| Flow | Agent | messages, journeys, agents | done for batch 1 | shared ground |
+| Flow | Agent | messages, journeys, agents | done for batch 2 | shared ground |
 
 ## Change manifests
 
@@ -68,3 +68,12 @@ Batch 2 core: `npm run pulse:catalog:prove` now compares the working catalog wit
 - 2,348 red.
 - Focused integration pass: 22 passed, 0 failed.
 - Next pass starts from grouped red targets. Shared tests run once per target.
+
+## Batch 2 result
+
+- 3,941 unique items.
+- 2,222 wired.
+- 1,719 red.
+- Net gain: 629 honestly wired rows.
+- Focused catalog proof passed with 505 checks and no skips.
+- The first combined target run found that Playwright specs were being sent to Node. The runner now separates Node and browser tests and forces Node to close leaked handles. The broad target run also exposed existing target-test failures, so it was stopped and those targets stay work for the next batch.

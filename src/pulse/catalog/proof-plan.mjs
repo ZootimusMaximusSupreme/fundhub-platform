@@ -21,6 +21,13 @@ export function proofPlan(items) {
   };
 }
 
+export function splitTestTargets(tests) {
+  return {
+    node: tests.filter((file) => !file.endsWith(".spec.mjs")),
+    browser: tests.filter((file) => file.endsWith(".spec.mjs")),
+  };
+}
+
 export function redByFamily(catalog) {
   return Object.entries((catalog.items || [])
     .filter((item) => item.state === "red")
