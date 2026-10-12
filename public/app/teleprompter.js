@@ -604,16 +604,16 @@
     }
     if (!back && mode === "4k") {
       if (portraitPhone) {
-        push(30, "tall", false, false, "4k");
         push(60, "tall", false, false, "4k");
+        push(30, "tall", false, false, "4k");
       }
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
     var hd = mode === "4k" ? "1080p" : mode;
     if (portraitPhone) {
-      push(30, "tall", false, false, hd);
       push(60, "tall", false, false, hd);
+      push(30, "tall", false, false, hd);
     }
     if (back) {
       push(60, "wide", true, true, hd);
@@ -2519,7 +2519,11 @@
   }
   function pickMime() {
     if (!root.MediaRecorder || !root.MediaRecorder.isTypeSupported) return "";
-    var list = ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    // HEVC can preserve more detail per MB on newer iPhones (Safari 18.4+).
+    // Only pick it when the actual browser reports recording support.
+    // Plain MP4/H.264 remains the reliable fallback for older Safari.
+    var list = ["video/mp4;codecs=hvc1,mp4a.40.2", "video/mp4",
+      "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
     for (var i = 0; i < list.length; i++) if (root.MediaRecorder.isTypeSupported(list[i])) return list[i];
     return "";
   }
@@ -2632,7 +2636,9 @@
     var st = track && track.getSettings ? track.getSettings() : {};
     var w = video.videoWidth || st.width || 0;
     var h = video.videoHeight || st.height || 0;
-    var requires4K = stays4K(scripts[cur]);
+    // The quality setting applies to every video, not only VSLs. Previously
+    // the iPhone camera could be 4K while an ad was silently saved at 1080p.
+    var requires4K = activeMode() === "4k" || stays4K(scripts[cur]);
     var portrait = recordingIsPortrait();
     var layout = recordFrameBox(w, h, portrait, requires4K);
     if (!layout) {
@@ -2647,8 +2653,11 @@
       camLine("Camera quality is only " + layout.width + "×" + layout.height +
         ". This browser cannot supply sharper video at this angle.", true);
     }
-    // 30 fps is standard for smooth social videos. Do not force 24 fps on iPhone.
-    var fps = Math.min(30, Math.max(24, Math.round(st.frameRate || 30)));
+    // Follow the real camera's frame rate (up to Apple's front camera 4K60).
+    // Safari may expose only 30fps; never label a 30fps stream as 60fps.
+    var fps = Math.min(60, Math.max(1, Math.round(st.frameRate || 30)));
+    cam.recordTargetFps = fps;
+    cam.recordFrameSize = canvas.width + "×" + canvas.height;
     function draw() {
       if (!cam.pumping) return;
       if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -2694,30 +2703,38 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
-    /* The fixed capture canvas keeps one take alive through camera flips.
-       Ads use the smaller faster canvas. Long-form videos retain the source
-       resolution, subject to on-device performance and real camera support. */
+    /* One fixed capture stream keeps the take alive through lens flips.
+       Every 4K-selected take, including ads, keeps the full source detail
+       when Safari provides it. Do not claim native HDR or ProRes from a page. */
     var recStream = continuousRecordStream(cam.stream);
     if (!recStream) {
       wantRec = false; cam.startAfterOpen = false; setRecLabel();
       camLine("This browser cannot record a continuous camera-switching video.", true);
       return;
     }
-    // Safari's previous 12 Mbps cap made 4K and active movement muddy.
-    // Use the actual saved canvas size, not the camera's different orientation.
+    // Request the highest practical high-quality bitrate for the actual
+    // recorded canvas and frame rate, not the preview or source orientation.
+    // 4K60: 75 Mbps; 4K30: 50 Mbps; 1080p60: 30 Mbps.
     var savedWidth = cam.canvas ? Math.max(cam.canvas.width, cam.canvas.height) : (st.width || 0);
-    opts.videoBitsPerSecond = savedWidth >= 3840 ? 48000000 :
-      savedWidth >= 1920 ? 24000000 : 14000000;
+    opts.videoBitsPerSecond = videoBits(savedWidth, cam.recordTargetFps || st.frameRate || 30);
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
-      try { rec = new root.MediaRecorder(recStream); }
+      // Codec negotiation can fail even after isTypeSupported says yes.
+      // Retry plain MP4 with the SAME high bitrate before removing options.
+      try { rec = new root.MediaRecorder(recStream, { mimeType: "video/mp4", videoBitsPerSecond: opts.videoBitsPerSecond }); cam.mime = "video/mp4"; }
       catch (e2) {
-        stopMirrorPump();
-        recStream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
-        wantRec = false; cam.startAfterOpen = false; setRecLabel();
-        camLine("Recording could not open. Check Safari camera permissions.", true);
-        return;
+        try { rec = new root.MediaRecorder(recStream, { videoBitsPerSecond: opts.videoBitsPerSecond }); cam.mime = rec.mimeType || "video/mp4"; }
+        catch (e3) {
+          try { rec = new root.MediaRecorder(recStream); cam.mime = rec.mimeType || "video/mp4"; }
+          catch (e4) {
+            stopMirrorPump();
+            recStream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+            wantRec = false; cam.startAfterOpen = false; setRecLabel();
+            camLine("Recording could not open. Check Safari camera permissions.", true);
+            return;
+          }
+        }
       }
     }
     cam.recordStream = recStream;
@@ -2737,6 +2754,13 @@
       camLine("The recording did not start. The camera preview stays live.", true);
       return;
     }
+    var actualFrame = cam.recordFrameSize || "unknown size";
+    var fpsRequested = cam.recordTargetFps || 30;
+    var sizeReady = savedWidth >= (activeMode() === "4k" ? 3840 : 1920);
+    camLine("Recording requested: " + actualFrame + " · up to " + fpsRequested +
+      " fps · " + Math.round(opts.videoBitsPerSecond / 1000000) + " Mbps" +
+      (cam.facing === "user" ? " · mirrored" : "") +
+      (!sizeReady ? " · below selected quality" : ""), !sizeReady);
     setRecLabel();
     var dot = $("rec");
     if (dot) dot.hidden = false;
