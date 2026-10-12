@@ -15,7 +15,7 @@ import { openVideoSession, putVideoChunk } from "../messaging/providers/google-d
 export const SLO_ADS_FOLDER_ID = "13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ";
 
 /** One piece. A multiple of 256 KB, and under the live site's body cap. */
-export const TAKE_CHUNK_BYTES = 1024 * 1024;
+export const TAKE_CHUNK_BYTES = 2 * 1024 * 1024;
 
 /** A piece bigger than this is refused. It is not trimmed. */
 export const MAX_CHUNK_BYTES = 4 * 1024 * 1024;
