@@ -78,5 +78,6 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - `TODO.md` now contains only unique unchecked `- [ ]` items.
 - Repaired the earlier flattening so multiline checklist entries are full items again.
 - Removed the two repo-sync items proven complete: GitHub home and push main.
-- Result: 477 unfinished items remain.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 477; no checked items remain; `git diff --check` is clean.
+- Removed one more item proven complete: the animation templates were found under `marketing/broll`.
+- Result: 476 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 476; no checked items remain; `git diff --check` is clean.
