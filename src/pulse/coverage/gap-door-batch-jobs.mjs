@@ -1,3 +1,5 @@
+import jobs from "../../../ops/workflows/coverage-every-surface-2026-10-10/jobs.json" with { type: "json" };
+
 const FILE_RE = /\b(?:(?:src|api|netlify|scripts|e2e)\/)?[A-Za-z0-9_./[\]-]+\.test\.mjs\b/g;
 const FAILED = new Set([
   "content-tiles.test.mjs",
@@ -29,7 +31,22 @@ const FINAL_JOB_SURFACES = new Set([
   "function:ad-video-worker-background",
 ]);
 
-export const CHECK_IDS = Object.freeze(["door-batch:ad-video-worker-result"]);
+export const FINAL_JOB_GAP_ROWS = Object.freeze(jobs
+  .filter((row) => FINAL_JOB_SURFACES.has(row.surface))
+  .map((row) => Object.freeze({
+    id: `catalog-job:jobs.json:${row.surface}:${row.control}`,
+    surface: row.surface,
+    control: row.control,
+  })));
+
+if (FINAL_JOB_GAP_ROWS.length !== FINAL_JOB_SURFACES.size) {
+  throw new Error(`Final job gap monitor drifted: expected ${FINAL_JOB_SURFACES.size} rows, found ${FINAL_JOB_GAP_ROWS.length}.`);
+}
+
+export const CHECK_IDS = Object.freeze([
+  "door-batch:ad-video-worker-result",
+  ...FINAL_JOB_GAP_ROWS.map((row) => row.id),
+]);
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort();
@@ -37,7 +54,6 @@ function unique(values) {
 
 export function jobResultTests(row) {
   const mapped = String(row?.evidence || "").match(FILE_RE) || [];
-  if (FINAL_JOB_SURFACES.has(row?.surface)) mapped.push(FINAL_JOB_RESULT_TEST);
   return unique(mapped).filter((file) => {
     const base = file.split("/").at(-1);
     return !file.endsWith(".pg.test.mjs") && !FAILED.has(base);
@@ -103,20 +119,20 @@ export function evaluateJobReceipt(row, loaded) {
 }
 
 export function jobResultProof(row) {
+  if (FINAL_JOB_SURFACES.has(row?.surface)) {
+    return {
+      depth: "e2e",
+      verdict: "red",
+      evidence: `src/pulse/coverage/gap-door-batch-jobs.mjs ${FINAL_JOB_RESULT_TEST}`,
+      asserts: `${row.control} — the exact job monitor stays red until a non-empty fake-data run judges this named final result`,
+    };
+  }
   const tests = jobResultTests(row);
   if (!String(row?.file || "").trim() || tests.length === 0) return null;
   const sensitive = ["money", "customerMessage", "customerData"].includes(row?.impact);
-  const evidence = FINAL_JOB_SURFACES.has(row?.surface)
-    ? [
-        ...(row.surface === "function:ad-video-worker-background"
-          ? ["src/pulse/coverage/gap-door-batch-jobs.mjs"]
-          : []),
-        ...tests,
-      ]
-    : [JOB_RESULT_EVIDENCE, ...tests];
   return {
     depth: sensitive ? "deep" : "e2e",
-    evidence: unique(evidence).join(" "),
+    evidence: unique([JOB_RESULT_EVIDENCE, ...tests]).join(" "),
     asserts: row.control,
   };
 }
@@ -154,25 +170,41 @@ export function judgeAdVideoWorker(row = {}) {
   };
 }
 
+export function judgeFinalJobGap(row) {
+  return {
+    id: row.id,
+    status: "FAIL",
+    detail: `${row.surface} — ${row.control}: trigger receipts and empty-work runs do not prove this job's named final result, so this job stays red.`,
+    suggestedFix: `Add a non-empty fake-data run for ${row.surface} that judges this exact final result.`,
+  };
+}
+
+function databaseRunner(ctx) {
+  if (typeof ctx?.scope === "function") return ctx.scope;
+  if (ctx?.db && typeof ctx.db.query === "function") return (fn) => fn(ctx.db);
+  return typeof ctx?.run === "function" ? ctx.run : null;
+}
+
 export async function gapChecks(ctx = {}) {
-  const run = ctx?.scope?.run || ctx?.run;
+  const jobGaps = FINAL_JOB_GAP_ROWS.map((row) => judgeFinalJobGap(row));
+  const run = databaseRunner(ctx);
   if (typeof run !== "function") {
     return [{
       id: CHECK_IDS[0],
       status: "FAIL",
       detail: "The ad-video worker result could not be read because this pulse has no database reader.",
       suggestedFix: "Run the pulse with its normal read-only database scope.",
-    }];
+    }, ...jobGaps];
   }
   try {
     const result = await run((tx) => tx.query(AD_VIDEO_WORKER_SQL));
-    return [judgeAdVideoWorker(result?.rows?.[0] || {})];
+    return [judgeAdVideoWorker(result?.rows?.[0] || {}), ...jobGaps];
   } catch (error) {
     return [{
       id: CHECK_IDS[0],
       status: "FAIL",
       detail: "The ad-video worker result read failed: " + String(error?.message || error).slice(0, 180),
       suggestedFix: "Restore the read-only ad_videos check.",
-    }];
+    }, ...jobGaps];
   }
 }
