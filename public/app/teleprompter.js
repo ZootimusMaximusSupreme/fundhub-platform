@@ -617,6 +617,15 @@
     return "";
   }
 
+  /* iPhone Safari can grant the requested lens but omit facingMode from
+     getSettings(). Keep the lens we asked for instead of treating a blank
+     setting as the front camera and immediately opening the front lens. */
+  function cameraFacing(settings, requested) {
+    var got = settings && settings.facingMode;
+    if (got === "environment" || got === "user") return got;
+    return requested === "environment" ? "environment" : "user";
+  }
+
   /** VSLs and thank-you videos stay 4K. Ads may use the 1080p choice. */
   function stays4K(s) {
     if (!s) return false;
@@ -907,7 +916,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, stays4K: stays4K, cameraReport: cameraReport,
+    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -2419,7 +2428,7 @@
     wantRec = true;
     beginRec();
   }
-  function attachStream(stream, mode, noMic) {
+  function attachStream(stream, mode, noMic, requestedFacing) {
     if (cam.stream && cam.stream !== stream) {
       cam.stream.getTracks().forEach(function (t) {
         if (t === cam.audioTrack) return;
@@ -2439,7 +2448,7 @@
     var video = $("cam-video");
     var track = stream.getVideoTracks()[0];
     var got = track && track.getSettings ? track.getSettings() : {};
-    cam.facing = got.facingMode === "environment" ? "environment" : "user";
+    cam.facing = cameraFacing(got, requestedFacing);
     cam.wantedFacing = cam.facing;
     if (video) {
       video.srcObject = stream;
@@ -2496,11 +2505,11 @@
         cam.opening = "";
         camLine("The camera did not start. Allow the camera, then reload. The words still roll.", true);
       }
-      function finish(stream, noMic) {
+      function finish(stream, noMic, requestedFacing) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
         var track = stream.getVideoTracks()[0];
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
-        var facing = (track.getSettings && track.getSettings().facingMode) === "environment" ? "environment" : "user";
+        var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
         function locked(fps) {
           var ask = cameraAsk(facing, fps, "wide", true, mode);
           return { width: ask.width, height: ask.height, frameRate: ask.frameRate };
@@ -2513,27 +2522,42 @@
         apply.then(function () {
           if (gen !== cam.gen) { stopTracks(stream); return; }
           cam.opening = "";
-          attachStream(stream, mode, noMic);
+          attachStream(stream, mode, noMic, facing);
         });
       }
-      function afterOpen(stream, noMic) {
+      function afterOpen(stream, noMic, requestedFacing) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
         var track = stream.getVideoTracks()[0];
         var settings = track && track.getSettings ? track.getSettings() : {};
-        var facing = settings.facingMode === "environment" ? "environment" : "user";
-        if (!md.enumerateDevices) { finish(stream, noMic); return; }
+        var facing = cameraFacing(settings, requestedFacing);
+        var requested = requestedFacing === "environment" ? "environment" : "user";
+        if (!md.enumerateDevices) {
+          if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
+          finish(stream, noMic, facing);
+          return;
+        }
         md.enumerateDevices().then(function (devs) {
           if (gen !== cam.gen) { stopTracks(stream); return; }
-          var id = pickVideoDevice(devs, facing);
-          if (!id || settings.deviceId === id) { finish(stream, noMic); return; }
-          var video = cameraAsk(facing, 60, "wide", true, mode);
+          var id = pickVideoDevice(devs, requested);
+          if (!id || settings.deviceId === id) {
+            if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
+            finish(stream, noMic, facing);
+            return;
+          }
+          var video = cameraAsk(requested, 60, "wide", true, mode);
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
             stopTracks(stream);
-            finish(s2, noMic);
-          }, function () { finish(stream, noMic); });
-        }, function () { finish(stream, noMic); });
+            finish(s2, noMic, requested);
+          }, function () {
+            if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
+            finish(stream, noMic, facing);
+          });
+        }, function () {
+          if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
+          finish(stream, noMic, facing);
+        });
       }
       function run() {
         if (gen !== cam.gen) return;
@@ -2541,7 +2565,7 @@
         var cur = steps[step++];
         if (cur.facing === "environment" && cur.audio) camLine("Asking the back camera for 1080p.", false);
         md.getUserMedia({ audio: cur.audio, video: cur.video }).then(function (s) {
-          afterOpen(s, !cur.audio);
+          afterOpen(s, !cur.audio, cur.facing);
         }, function () { run(); });
       }
       run();

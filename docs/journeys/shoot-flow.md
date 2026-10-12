@@ -120,6 +120,8 @@ Video upload state now uses the small top-right `#video-save-status` chip. It sa
 
 The 44 px top-left camera button switches from the mirrored front camera to the normal rear camera, then back. The recording uses one canvas stream for both directions. During a switch the microphone track and the same recorder stay alive, so the take remains one file and the words keep rolling. The recording clock moves beside the camera button.
 
+When iPhone Safari grants a requested lens but leaves `MediaTrackSettings.facingMode` blank, the page keeps the requested front/rear direction. It does not mistake the rear lens for the front lens and reopen the front camera.
+
 The existing `counted` flag from merged PR #27 still limits 3-2-1 to the first play of an opened script. Pause, seek and resume do not reset it. `steadyPace`, cached reading-line measurements, and fractional `translate3d` scrolling are unchanged; checks now cover 200, 205, 210 and 215 WPM. The camera shade is `rgba(0, 0, 0, 0.558)`, 10% lighter than 0.62. These changes remain **UNVERIFIED on production** until deployed.
 
 ## 5. The film link (no login on the teleprompter)

@@ -114,6 +114,15 @@ describe("teleprompter, pure", () => {
     assert.equal(T.pickVideoDevice([{ kind: "videoinput", deviceId: "x", label: "" }], "environment"), "");
   });
 
+  test("Safari keeps the requested rear lens when getSettings omits facingMode", () => {
+    const T = load();
+    assert.equal(T.cameraFacing({}, "environment"), "environment");
+    assert.equal(T.cameraFacing({ facingMode: undefined }, "environment"), "environment");
+    assert.equal(T.cameraFacing({}, "user"), "user");
+    assert.equal(T.cameraFacing({ facingMode: "user" }, "environment"), "user");
+    assert.equal(T.cameraFacing({ facingMode: "environment" }, "user"), "environment");
+  });
+
   test("the file name is the server's NAMING.md name, letter for letter", () => {
     const T = load();
     for (const n of [1, 2, 3, 12]) {
