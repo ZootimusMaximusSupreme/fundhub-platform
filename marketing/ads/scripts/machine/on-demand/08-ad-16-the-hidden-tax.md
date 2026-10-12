@@ -1,6 +1,6 @@
 ---
 ad: 97
-version: 3
+version: 5
 status: locked
 offer: funding_dfy
 funnel: null
@@ -9,7 +9,7 @@ style: null
 angle: null
 batch: null
 updated_by: null
-updated_at: 2026-10-12T21:36:46.449Z
+updated_at: 2026-10-12T21:36:48.960Z
 ---
 Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding.
 
@@ -21,7 +21,7 @@ Number two is having a credit card and not using it. Let an old card sit in a dr
 
 Number three is paying for growth out of your own savings.
 
-Ad spend, inventory, equipment, and new hires all come straight out of your bank account, when the banks will lend you that same money at low interest to zero percent inteee
+Ad spend, inventory, equipment, and new hires all come straight out of your bank account, when the banks will lend you that same money at low interest to zero percent interest.
 
 Then when your merchant processor freezes your funds or you take a loss, you have no fallback, because the cash you would have leaned on already went into the business. Eighty-two percent of businesses that fail go under because of cash flow problems. Use the banks' money instead, and your cash stays in your account as your safety net while the business grows.
 
