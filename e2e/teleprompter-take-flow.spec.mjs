@@ -166,8 +166,14 @@ test("two accepted takes save in order even while the first upload is waiting", 
   await stopTake(page);
   await page.locator("#take-save-yes").tap();
   await expect.poll(() => server.chunks.length).toBe(1);
+  // An upload in progress does not prevent the next take, hide the camera,
+  // or discard the first finished file from device storage.
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(1);
   await stopTake(page);
   await page.locator("#take-save-yes").tap();
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(2);
   expect(server.uploads).toHaveLength(1);
   server.release();
   await expect.poll(() => server.uploads.length).toBe(2);
@@ -198,8 +204,34 @@ test("a failed video upload stays in the small top status and leaves the file on
   await page.locator("#take-save-yes").tap();
   await expect(page.locator("#video-save-status")).toBeVisible();
   await expect(page.locator("#video-save-status")).toHaveAttribute("data-state", "failed");
-  await expect(page.locator("#video-save-text")).toHaveText("On phone · Drive failed");
+  await expect(page.locator("#video-save-text")).toHaveText("Upload paused · saved on device");
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(1);
   await expect(page.locator("#toast")).toBeHidden();
+  expect(server.errors).toEqual([]);
+});
+
+test("an upload survives reopening the app and retries from the device-saved take", async ({ page }) => {
+  const { server } = await open(page, { holdUpload: true });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(1);
+  await expect.poll(() => server.chunks.length).toBe(1);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  await expect.poll(() => server.uploads.length).toBeGreaterThanOrEqual(2);
+  server.release();
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(0);
+  expect(server.errors).toEqual([]);
+});
+
+test("the phone UI has an independent input-level display", async ({ page }) => {
+  const { server } = await open(page);
+  const meter = page.locator("#mic-monitor");
+  await expect(meter).toBeVisible();
+  await expect(page.locator("#mic-name")).toHaveText("No mic audio");
+  await expect(meter).toHaveAttribute("data-state", "unavailable");
+  await expect(page.locator("#b-rec")).toHaveText("Record");
   expect(server.errors).toEqual([]);
 });
 
