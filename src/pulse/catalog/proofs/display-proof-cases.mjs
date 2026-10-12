@@ -1,4 +1,5 @@
 import { PUBLIC_UI_PROOF_CASES } from "./display-batch-public-ui.mjs";
+import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
 
 function proofCase(sourceFile, surface, control, tests, depth = "deep") {
   return Object.freeze({
@@ -334,6 +335,7 @@ export const DISPLAY_PROOF_CASES = Object.freeze([
     ["src/http/partner-marketing-logo.test.mjs"],
   ),
   ...PUBLIC_UI_PROOF_CASES,
+  ...STAFF_UI_PROOF_CASES,
 ]);
 
 const CASES_BY_KEY = new Map(

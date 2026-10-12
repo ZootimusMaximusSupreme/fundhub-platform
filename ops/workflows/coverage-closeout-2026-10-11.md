@@ -36,6 +36,8 @@ Done in `91b8b1b42`. Added 40 honest executable display proofs: 27 screens, 12 b
 
 Batch 2 complete in this commit. Added one safe local browser contract that really clicks 104 public links and checks each resolved destination. It also triggers 3 replay buttons and checks their changed terminal display, then clicks 4 Winner's Board tabs and checks the selected tab, fake API read, and rendered result. Net gain: 111 wired Display rows. Focused Display tests: 9 passed, 0 failed. Remaining Display gaps: 735 total — 285 buttons, 205 forms, 177 screens, and 68 links.
 
+Batch 3 complete in this commit. Added one shared local browser batch across 28 staff-page groups. It runs 27 fake-API Playwright specs once. Every mapped button or form is triggered and its visible or API result is checked. Every mapped screen checks the data shown. All 100 money/customer rows check the final visible or API result. Exact gain: 117 Display rows — 55 buttons, 40 forms, and 22 screens. Focused Display tests: 9 passed, 0 failed, 0 skipped. Remaining Display gaps: 618 total — 230 buttons, 165 forms, 155 screens, and 68 links. Files changed: `src/pulse/catalog/proofs/display-proof-cases.mjs` and `src/pulse/catalog/proofs/display-batch-staff-ui*.mjs`. `generated.json` was not edited. No live writes ran.
+
 ### Data
 
 Done in `acea73f8f`. Added 10 honest deep data proofs. Focused tests passed. Remaining pipeline, table, bank, and link gaps stay red.
