@@ -266,7 +266,14 @@ async function main() {
   if (!run("node", ["--test", "src/security/migrations-production-only.test.mjs", "src/http/routes.test.mjs"], { quiet: true }).ok) {
     fail("a guard test failed: run node --test src/security/migrations-production-only.test.mjs src/http/routes.test.mjs");
   }
-  if (!run("node", ["--test", ...PULSE_SHIP_GUARDS], { quiet: true }).ok) {
+  const pulseGuards = run("node", ["--test", ...PULSE_SHIP_GUARDS], { quiet: true });
+  if (!pulseGuards.ok) {
+    // The command used to swallow the failed assertion and only print the list
+    // of tests. Print the actual failure so a deploy can be repaired, not bypassed.
+    const failures = pulseGuards.out.split("\n").filter((line) =>
+      /^\s*(?:not ok\b|# (?:fail|failure|error|ERR_)\b|error:|Error:|\s+at |\s+failureType:|\s+error:)/i.test(line)
+    ).join("\n");
+    console.error("Pulse coverage failures:\n" + redact((failures || pulseGuards.out.slice(-12000)).slice(0, 12000)));
     fail(`a pulse coverage guard failed: run node --test ${PULSE_SHIP_GUARDS.join(" ")}`);
   }
   if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok) {
