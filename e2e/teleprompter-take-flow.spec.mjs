@@ -365,6 +365,36 @@ test("double-tap the script, Complete, then confirm; cancellation keeps it queue
   expect(server.errors).toEqual([]);
 });
 
+test("last script word keeps one take recording for two full seconds before automatic Stop", async ({ page }) => {
+  const { server } = await open(page);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => window.__fhtp.finish());
+  await expect(page.locator("#end")).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  await expect.poll(() => page.evaluate(() => window.__recorderStops), { timeout: 2500 }).toBe(1);
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await expect(page.getByRole("dialog", { name: "Save this video?" })).toBeVisible();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("moving to another script cancels the pending end tail without splitting the take", async ({ page }) => {
+  const { server } = await open(page);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => window.__fhtp.finish());
+  await page.evaluate(() => window.__fhtp.next());
+  await page.waitForTimeout(2150);
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.locator("#b-rec").tap();
+  await expect(page.getByRole("dialog", { name: "Save this video?" })).toBeVisible();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
 test("countdown appears on first play and never on pause, seek, or resume", async ({ page }) => {
   const { server } = await open(page, { countdown: true, camera: false });
   await page.locator("#play").tap();
