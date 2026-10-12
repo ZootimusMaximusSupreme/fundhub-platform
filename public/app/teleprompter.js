@@ -2460,7 +2460,7 @@
       var name = cam.fileName || "Take.mp4";
       if (type.indexOf("webm") >= 0) name = name.replace(/\.mp4$/i, ".webm");
       var file = new root.File(chunks, name, { type: type });
-      cam.pending.push({ file: file, then: then });
+      cam.pending.push({ file: file, then: then, offerKey: cam.fileOfferKey || "", funnelTag: cam.fileFunnelTag || "" });
       askToSaveTake();
     } catch (e) {
       camLine("The take did not save. The words still roll.", true);
@@ -2477,7 +2477,7 @@
     if (!takeDialog.open || !cam.pending.length) return;
     var take = cam.pending.shift();
     takeDialog.close();
-    if (yes) queueVideoSave(take.file);
+    if (yes) queueVideoSave(take.file, take.offerKey, take.funnelTag);
     else say("Video discarded.");
     if (take.then) take.then();
     askToSaveTake();
@@ -2583,6 +2583,8 @@
     cam.rec = rec;
     var s = scripts[cur];
     cam.fileName = (s && s.take_file_name) ? s.take_file_name : "Take.mp4";
+    cam.fileOfferKey = s && s.offer_key ? String(s.offer_key) : "";
+    cam.fileFunnelTag = s && s.funnel_tag ? String(s.funnel_tag) : "";
     cam.started = Date.now();
     rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) cam.chunks.push(ev.data); };
     rec.onstop = function () { onRecStop(); };
@@ -3031,7 +3033,7 @@
   function uploadCreds(mode) {
     return mode === "session" ? "same-origin" : "omit";
   }
-  function startTake(file, mode, savedName) {
+  function startTake(file, mode, savedName, offerKey, funnelTag) {
     var h = uploadModeHeaders(mode);
     h["content-type"] = "application/json";
     return root.fetch("/api/marketing/shoot/take", {
@@ -3040,12 +3042,14 @@
       headers: h,
       body: JSON.stringify({
         name: savedName || file.name || "Take.mp4",
+        offer_key: offerKey || null,
+        funnel_tag: funnelTag || null,
         bytes: file.size,
         content_type: file.type || "video/mp4"
       })
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
-        return { status: r.status, ok: !!(r.ok && d && d.ok && d.token), token: d && d.token, chunk: d && d.chunk_bytes };
+        return { status: r.status, ok: !!(r.ok && d && d.ok && d.token), token: d && d.token, chunk: d && d.chunk_bytes, offerKey: d && d.offer_key, folderUrl: d && d.folder_url };
       });
     }, function () { return { status: 0, ok: false }; });
   }
@@ -3085,11 +3089,21 @@
     }
     return step(0);
   }
-  function sendOriginal(file, savedName) {
+  function sendOriginal(file, savedName, offerKey, funnelTag) {
     var mode = filmKey() ? "film" : "session";
-    return startTake(file, mode, savedName).then(function (started) {
+    function rememberFolder(started) {
+      if (started.ok && started.offerKey && started.folderUrl &&
+          /^https:\/\/drive\.google\.com\/drive\/folders\/[a-zA-Z0-9_-]+$/.test(started.folderUrl)) {
+        var known = LS.get("videoFolders", {});
+        known[started.offerKey] = started.folderUrl;
+        LS.set("videoFolders", known);
+        if (scripts[cur] && scripts[cur].offer_key === started.offerKey) header();
+      }
+      return started;
+    }
+    return startTake(file, mode, savedName, offerKey, funnelTag).then(rememberFolder).then(function (started) {
       if (!started.ok && mode === "session" && (started.status === 401 || started.status === 403)) {
-        return startTake(file, "open", savedName).then(function (again) {
+        return startTake(file, "open", savedName, offerKey, funnelTag).then(rememberFolder).then(function (again) {
           if (!again.ok) throw new Error("start");
           return putChunks(file, again.token, again.chunk, "open");
         });
@@ -3108,7 +3122,7 @@
     var file = cam.file;
     if (file) queueVideoSave(file);
   }
-  function queueVideoSave(file) {
+  function queueVideoSave(file, offerKey, funnelTag) {
     if (!file) return;
     if (!takeStore) {
       cam.file = file;
@@ -3116,7 +3130,8 @@
       shareOrDownload(file);
       return;
     }
-    var entry = { id: takeStore.id(), file: file, name: file.name || "Take.mp4", createdAt: Date.now(), attempts: 0 };
+    var entry = { id: takeStore.id(), file: file, name: file.name || "Take.mp4",
+      offerKey: offerKey || "", funnelTag: funnelTag || "", createdAt: Date.now(), attempts: 0 };
     videoSaveStatus("Saving on device", "saving", true);
     takeStore.put(entry).then(function () {
       if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
@@ -3160,7 +3175,7 @@
       cam.saving = false;
       saveNextVideo();
     }
-    sendOriginal(item.file, item.name).then(function () {
+    sendOriginal(item.file, item.name, item.offerKey, item.funnelTag).then(function () {
       // The server acknowledged Drive before deleting this device copy.
       return takeStore.remove(item.id).then(function () {
         if (cam.file === item.file) cam.file = null;
