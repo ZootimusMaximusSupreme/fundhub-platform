@@ -2552,16 +2552,22 @@
     var targetWidth = portrait ? (requires4K ? 2160 : 1080) : (requires4K ? 3840 : 1920);
     var targetHeight = portrait ? (requires4K ? 3840 : 1920) : (requires4K ? 2160 : 1080);
     var ar = targetWidth / targetHeight;
-    var cutW = Math.min(w, h * ar);
-    var cutH = Math.min(h, w / ar);
-    // Never invent resolution from a lower quality camera source.
+    // iPhone Safari may report a sideways buffer even while the phone is
+    // upright. Rotate those pixels; cropping would discard most of the image.
+    var rotate90 = !!(portrait ? w > h : h > w);
+    var orientedW = rotate90 ? h : w;
+    var orientedH = rotate90 ? w : h;
+    var cutW = Math.min(orientedW, orientedH * ar);
+    var cutH = Math.min(orientedH, orientedW / ar);
+    var srcW = rotate90 ? cutH : cutW;
+    var srcH = rotate90 ? cutW : cutH;
     var factor = Math.min(1, targetWidth / cutW, targetHeight / cutH);
     var outW = Math.max(2, Math.floor(cutW * factor / 2) * 2);
     var outH = Math.max(2, Math.floor(cutH * factor / 2) * 2);
     return {
       width: outW, height: outH,
-      sx: Math.max(0, (w - cutW) / 2), sy: Math.max(0, (h - cutH) / 2),
-      sw: cutW, sh: cutH,
+      sx: Math.max(0, (w - srcW) / 2), sy: Math.max(0, (h - srcH) / 2),
+      sw: srcW, sh: srcH, rotate90: rotate90,
       portrait: !!portrait, needsBetterCamera: cutW < targetWidth || cutH < targetHeight
     };
   }
@@ -2679,8 +2685,13 @@
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
+          if (box.rotate90) {
+            ctx.translate(canvas.width, 0);
+            ctx.rotate(Math.PI / 2);
+          }
           ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
-            0, 0, canvas.width, canvas.height);
+            0, 0, box.rotate90 ? canvas.height : canvas.width,
+            box.rotate90 ? canvas.width : canvas.height);
           ctx.restore();
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
@@ -3006,7 +3017,7 @@
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
         var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
         function locked(fps) {
-          var ask = cameraAsk(facing, fps, "wide", true, mode);
+          var ask = cameraAsk(facing, fps, recordingIsPortrait() ? "tall" : "wide", true, mode);
           return { width: ask.width, height: ask.height, frameRate: ask.frameRate };
         }
         var apply = track.applyConstraints
@@ -3039,7 +3050,7 @@
             finish(stream, noMic, facing);
             return;
           }
-          var video = cameraAsk(requested, 60, "wide", true, mode);
+          var video = cameraAsk(requested, 60, recordingIsPortrait() ? "tall" : "wide", true, mode);
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
@@ -3094,19 +3105,23 @@
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
       var asks = [];
       var faceShape = recordingIsPortrait() ? "tall" : "wide";
-      var direct = cameraAsk(wanted, 30, faceShape, false, mode);
-      direct.facingMode = { exact: wanted };
-      asks.push(direct);
-      var exactId = cam.deviceIds[wanted];
-      if (exactId) {
-        var exact = cameraAsk(wanted, 30, faceShape, false, mode);
-        exact.deviceId = { exact: exactId };
-        delete exact.facingMode;
-        asks.push(exact);
+      // A lens flip must not downgrade a genuine 60 fps take to 30 fps.
+      // Safari still has a 30 fps fallback if all 60 fps requests fail.
+      for (var askFps of [60, 30]) {
+        var direct = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
+        direct.facingMode = { exact: wanted };
+        asks.push(direct);
+        var exactId = cam.deviceIds[wanted];
+        if (exactId) {
+          var exact = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
+          exact.deviceId = { exact: exactId };
+          delete exact.facingMode;
+          asks.push(exact);
+        }
+        var loose = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
+        loose.facingMode = { ideal: wanted };
+        asks.push(loose);
       }
-      var loose = cameraAsk(wanted, 30, faceShape, false, mode);
-      loose.facingMode = { ideal: wanted };
-      asks.push(loose);
       var at = 0;
       function next() {
         if (gen !== cam.gen) return;
@@ -3137,7 +3152,7 @@
       next();
       return;
     }
-    var ask = cameraAsk(wanted, 30, "wide", false, activeMode());
+    var ask = cameraAsk(wanted, 60, recordingIsPortrait() ? "tall" : "wide", false, activeMode());
     ask.facingMode = { exact: wanted };
     cam.opening = activeMode() + ":" + wanted;
     camLine("Switching to the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
