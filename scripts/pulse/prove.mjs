@@ -35,6 +35,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DB_SETTINGS_SQL } from "../../src/pulse/beats/readbox.mjs";
+import { isRunnerOnlyNotChecked } from "./prove-policy.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
@@ -131,7 +132,6 @@ console.log(`steps ${prod.steps.length}, rows ${prod.rows.length}: PASS ${count(
 const slowest = [...prod.steps].sort((a, b) => b.ms - a.ms).slice(0, 5);
 console.log(`slowest: ${slowest.map((s) => `${s.name} ${(s.ms / 1000).toFixed(1)}s`).join(", ")}`);
 for (const r of prod.rows.filter((x) => x.status === "FAIL")) console.log(`  RED  ${r.id}: ${clip(r.detail, 160)}`);
-const LAPTOP_ONLY = /not the live server|row of asterisks|is a mask|oauth is not set|empty or masked|laptop copy/i;
 const EXPECTED_OPEN_UNTIL_RECEIPTS = /^wf:/;
 let finalCounts = null;
 let laptopOnly = [];
@@ -147,10 +147,11 @@ if (full) {
   /* This laptop is not the live server: its copies of the secret keys are masks, it has no Gmail login, and it is not on
      Netlify. Those rows are green on the live server (this morning's stored card says so). They are printed apart and
      are never counted green. */
-  laptopOnly = notCheckedAll.filter((n) => LAPTOP_ONLY.test(n.why));
+  const runnerOnly = (row) => isRunnerOnlyNotChecked(row, { ci: process.env.CI === "true" });
+  laptopOnly = notCheckedAll.filter(runnerOnly);
   /* Until the run receipts ship, a workflow that was handed an event cannot show it ran. Closed list, printed by name. */
-  waitingOnReceipts = notCheckedAll.filter((n) => !LAPTOP_ONLY.test(n.why) && EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id));
-  notChecked = notCheckedAll.filter((n) => !LAPTOP_ONLY.test(n.why) && !EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id)).map((n) => `${n.id}: ${n.why}`);
+  waitingOnReceipts = notCheckedAll.filter((n) => !runnerOnly(n) && EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id));
+  notChecked = notCheckedAll.filter((n) => !runnerOnly(n) && !EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id)).map((n) => `${n.id}: ${n.why}`);
   for (const f of final) if (String(f.row.id).startsWith("audit:")) auditRows.push(`${f.row.status.padEnd(11)} ${f.row.id}: ${clip(f.row.proof || f.row.reason || f.raw.detail, 150)}`);
 }
 if (full) {

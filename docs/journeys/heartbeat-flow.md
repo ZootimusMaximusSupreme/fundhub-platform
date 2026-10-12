@@ -35,6 +35,8 @@ The catalog does not fake 3,941 green checks. Today, 2,496 items link to proof a
 
 A proof helper may not vanish from the morning pulse. Empty tables use a closed, rechecked `catalog-data-empty` reason. Shared code-only door proof lanes return an honest red row until a live key check, job receipt, or provider receipt proves the live result.
 
+GitHub's pre-deploy proof receives the real Meta and Commas read keys through Actions secrets. Twilio and Resend stay only on the live server when GitHub has no full copy: that CI row is named as runner-only, is never counted green, and a real vendor refusal still stays red in the live pulse.
+
 ## The picture
 
 ```mermaid

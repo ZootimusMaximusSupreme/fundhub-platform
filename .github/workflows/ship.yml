@@ -12,7 +12,9 @@
 #
 # Secrets (Settings -> Secrets and variables -> Actions): NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID,
 # SUPABASE_ACCESS_TOKEN, SHIP_GITHUB_TOKEN (the repo token ship uses to push the ship log back),
-# PRIVATE_LEADS_PAGE_B64 (the one page kept out of git; see the step below).
+# PRIVATE_LEADS_PAGE_B64 (the one page kept out of git; see the step below), plus the read-only
+# pulse proof keys listed on the Ship step. Those vendor keys let the pre-deploy pulse verify the
+# same live doors without sending a message, moving money, or changing provider data.
 # Nothing here prints them; GitHub masks them in logs.
 
 name: Ship to live
@@ -95,6 +97,12 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.SHIP_GITHUB_TOKEN }}
+          AD_TOKEN_ENC_KEY: ${{ secrets.AD_TOKEN_ENC_KEY }}
+          TWILIO_SEND_ACCOUNT_SID: ${{ secrets.TWILIO_SEND_ACCOUNT_SID }}
+          TWILIO_SEND_AUTH_TOKEN: ${{ secrets.TWILIO_SEND_AUTH_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CORTANA_COMMAS_API_KEY: ${{ secrets.CORTANA_COMMAS_API_KEY }}
+          FANBASIS_CHECKOUT_API_KEY: ${{ secrets.FANBASIS_CHECKOUT_API_KEY }}
           DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry }}
         run: |
           if [ "$DRY" = "true" ]; then npm run ship -- --dry; else npm run ship; fi
