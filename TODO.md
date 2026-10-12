@@ -1,5 +1,22 @@
 # TODO — unfinished work
 
+## Owner-handled pulse reds — added 2026-10-11
+
+- [ ] Replace the masked `OPENAI_API_KEY` and prove Company Brain search returns an answer instead of 502.
+- [ ] Record outcomes for the two booked calls that ended with no saved outcome.
+- [ ] Restore meeting links on new bookings; the newest five real bookings have no join link.
+- [ ] Close the 2,407 catalog rows that still lack proof at their required level. The coverage build owns the code; keep this row until its final proof is green.
+- [ ] Add Justice Nikkel and Sarah Blankstein as booking-page hosts; both are past due.
+- [ ] Give repair file `64212914-1e0d-4ec1-bd6e-07fa156108b8` a real next step; it is stuck in Analysis.
+- [ ] Resolve failed delivery for `SMS-AISET04-HANDOFF` and `SMS-S05A-NOSHOW-RECOVER`.
+- [ ] Set a valid `UNSUBSCRIBE_TOKEN_SECRET` and prove email unsubscribe links work.
+- [ ] Move the overdue Repair Analysis pipeline card forward or record the correct next action.
+- [ ] Help the paying client who has held portal access for more than 72 hours sign in.
+- [ ] Fill the Experian, Equifax, and TransUnion service numbers and menu paths in the AI bureau config.
+- [ ] Create the overdue repair letters for file `64212914-1e0d-4ec1-bd6e-07fa156108b8`.
+- [ ] Resolve the six customer texts that failed at the phone company in the last seven days.
+- [ ] Move client `FH-000507` forward from “round 1 letters made” and clear the stuck repair trip.
+
 This file contains only unchecked items. Items stay here until current evidence proves they are complete.
 
 - [ ] Review all the copy before launch (owner 2026-10-09). Everything a customer reads: the message templates (325 in the database today: 232 email and 93 text approved; the 15 placeholder emails were just turned off), the sales and checkout pages, the drip and nudge texts, and the ads. Includes the 12 repair pre-call emails (BS-REPAIR-*) that nobody has written yet. The $197 "30% off" drip text still says more than the $147 price.
