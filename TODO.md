@@ -363,7 +363,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Triage TODO.md into Today, This week and Next 30 days (10/4)
 - [ ] Write the voice file (VOICE-CHRIS.md) from your own phrasing (10/4)
 - [ ] Make the ad-creation system faster (10/3)
-- [ ] Consolidate the lenders list into one CSV (8/15, 9/19)
 - [ ] Your three numbers: cash on hand, monthly burn, monthly collected revenue. Then set kill criteria for each offer. (9/4)
 - [ ] Plan the investor buyout (9/4)
 - [ ] Claude organization agent for your desktop files and Google Drive (8/15)

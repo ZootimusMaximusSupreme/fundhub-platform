@@ -88,5 +88,6 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed 14 clear duplicate rows; fuller or more specific copies remain.
 - Removed one pointer row proven satisfied: the green-screen talking-points file exists in the repo.
 - Removed one row proven complete: `marketing/ads/VOICE.md` exists and has recent update commits.
-- Result: 446 unfinished items remain.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 446; no checked items remain; `git diff --check` is clean.
+- Removed one row proven complete: the lender source is already one canonical CSV used to generate the buyer list.
+- Result: 445 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 445; no checked items remain; `git diff --check` is clean.
