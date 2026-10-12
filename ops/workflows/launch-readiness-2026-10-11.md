@@ -62,3 +62,13 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 ## Blockers and open questions
 
 - The worktree still has pre-existing untracked files and 39 stashes. They were intentionally left alone because they are outside this workflow's scope.
+
+## TODO consolidation — 2026-10-11
+
+- Status: done.
+- Canonical document: `TODO.md`.
+- Merged in full: `TODO-all-chats.md`, `TODO-personal.md`, `ops/workflows/priority-slim-2026-10-07.md`, and `ops/workflows/LEFTOVER-unrecorded-sales-calls.md`.
+- Removed those four source files after verifying their full contents were present in `TODO.md`.
+- Removed the now-unused `.gitignore` entries for the two root source files.
+- Preserved the old worktree and evidence copies because they are historical copies, not canonical lists.
+- Historical workflow notes that mention the old filenames were not rewritten.
