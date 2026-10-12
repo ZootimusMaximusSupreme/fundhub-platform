@@ -61,6 +61,28 @@ describe("teleprompter, pure", () => {
     assert.notEqual(tries[0].facingMode.ideal, "environment");
   });
 
+  test("iPhone 17 Pro Max portrait first asks for true front-camera 4K60, then 4K30", () => {
+    const ctx = createContext({
+      console,
+      navigator: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15" },
+      innerWidth: 390,
+      innerHeight: 844
+    });
+    runInContext(SRC, ctx);
+    const T = ctx.FundhubTeleprompter;
+    const tries = T.cameraTries("user", "4k");
+    assert.deepEqual(plain([
+      tries[0].width.ideal, tries[0].height.ideal, tries[0].frameRate.ideal,
+      tries[1].width.ideal, tries[1].height.ideal, tries[1].frameRate.ideal
+    ]), [2160, 3840, 60, 2160, 3840, 30]);
+    assert.equal(tries[0].aspectRatio.ideal, 9 / 16);
+    assert.equal(tries[0].facingMode.ideal, "user");
+    assert.match(SRC, /opts\.videoBitsPerSecond = videoBits\(savedWidth, cam\.recordTargetFps/);
+    assert.equal(T.recordFrameBox(2160, 3840, true, true).height, 3840);
+    assert.equal(T.recordFrameBox(2160, 3840, true, true).width, 2160);
+    assert.match(SRC, /var list = \["video\/mp4;codecs=hvc1,mp4a\.40\.2", "video\/mp4"/);
+  });
+
   test("settings 1080p asks for 1920x1080 at 60 fps", () => {
     const T = load();
     const tries = T.cameraTries("user", "1080p");
@@ -789,11 +811,12 @@ describe("recorded camera frame quality", () => {
     assert.match(recorder, /ctx\.scale\(-1, 1\)/);
     assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
-    assert.match(recorder, /Math\.min\(30, Math\.max\(24,/);
+    assert.match(recorder, /Math\.min\(60, Math\.max\(1,/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
+    assert.match(recorder, /activeMode\(\) === "4k" \|\| stays4K\(scripts\[cur\]\)/);
     const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));
-    assert.match(begin, /savedWidth >= 3840 \? 48000000/);
-    assert.match(begin, /savedWidth >= 1920 \? 24000000/);
+    assert.match(begin, /opts\.videoBitsPerSecond = videoBits\(savedWidth, cam\.recordTargetFps/);
+    assert.match(begin, /Recording requested:/);
   });
 });
 
