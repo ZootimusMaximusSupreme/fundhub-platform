@@ -70,7 +70,8 @@ describe("the file", () => {
       "../../src/db.mjs",
       "../../src/lib/outbound-fetch.mjs",
       "../../src/pulse/heartbeats.mjs",
-      "../../src/pulse/runner.mjs"
+      "../../src/pulse/runner.mjs",
+      "../../src/pulse/scheduled-shell.mjs"
     ]);
   });
 });
