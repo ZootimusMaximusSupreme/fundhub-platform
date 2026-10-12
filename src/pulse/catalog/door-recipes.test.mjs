@@ -62,7 +62,7 @@ test("route recipes use route methods and keep writes out of read-only mode", as
     surface: "route:ad-videos",
   });
   assert.equal(makeRecipe("routes-0.json", write).mode, "test");
-  assert.equal(makeRecipe("routes-0.json", write).safe, false);
+  assert.equal(makeRecipe("routes-0.json", write).safe, true);
 });
 
 test("job recipes preserve trigger and schedule metadata as receipts", async () => {

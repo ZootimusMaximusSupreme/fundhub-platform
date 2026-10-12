@@ -10,13 +10,46 @@ import { inTextWindow, HELD } from "./quiet-hours.mjs";
 
 export const INSTANT_AGENT_CODE = "pulse-instant";
 export const INSTANT_COOLDOWN_MS = 60 * 60 * 1000;
+export const PULSE_RUNNER_JOB = "pulse-hourly";
+export const PULSE_RUNNER_STALE_MS = 3 * 60 * 60 * 1000;
 export const CRITICAL_CHECK_IDS = Object.freeze([
   "health",
   "login",
   "apply",
   "funnel:roadmap-sales",
-  "pipeline:outbound"
+  "pipeline:outbound",
+  "pulse:runner-stale"
 ]);
+
+export async function checkPulseRunnerReceipt(db, { now = new Date() } = {}) {
+  if (!db || typeof db.query !== "function") return null;
+  const { rows } = await db.query(
+    `SELECT max(finished_at) AS last_at
+       FROM job_heartbeats
+      WHERE job = $1`,
+    [PULSE_RUNNER_JOB]
+  );
+  const raw = rows?.[0]?.last_at;
+  if (!raw) return null; // Before the first hourly pulse has ever shipped, there is no circuit to judge.
+  const lastAt = raw instanceof Date ? raw : new Date(raw);
+  if (!Number.isFinite(lastAt.getTime())) throw new Error("pulse-hourly has an invalid finished_at receipt");
+  const ageMs = Math.max(0, now.getTime() - lastAt.getTime());
+  if (ageMs > PULSE_RUNNER_STALE_MS) {
+    const hours = Math.max(1, Math.floor(ageMs / (60 * 60 * 1000)));
+    return {
+      id: "pulse:runner-stale",
+      status: "FAIL",
+      detail: `The hourly pulse has not run for ${hours} h. The backup pulse circuit did not close.`,
+      suggestedFix: "Check the pulse-hourly function log on Netlify."
+    };
+  }
+  return {
+    id: "pulse:runner-stale",
+    status: "PASS",
+    detail: "The hourly pulse left a fresh receipt, so the backup pulse circuit closed.",
+    suggestedFix: null
+  };
+}
 
 export function formatInstantSms(failures = []) {
   const lines = failures.map((f) => `${f.id}: ${String(f.detail || "").slice(0, 120)}`);
@@ -86,7 +119,10 @@ export async function runInstantWatch({
     try {
       orgId = await defaultOrgId(db);
       if (orgId) {
-        const motion = await readPipelineMotionCounts(db, { orgId, now });
+        const [motion, pulseRunner] = await Promise.all([
+          readPipelineMotionCounts(db, { orgId, now }),
+          checkPulseRunnerReceipt(db, { now })
+        ]);
         if (motion.outbound_stuck > 0) {
           checks.push({
             id: "pipeline:outbound",
@@ -95,6 +131,7 @@ export async function runInstantWatch({
             suggestedFix: "Check message dispatch."
           });
         }
+        if (pulseRunner) checks.push(pulseRunner);
       }
     } catch (err) {
       dbDown = true;

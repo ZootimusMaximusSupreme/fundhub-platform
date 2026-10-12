@@ -50,7 +50,9 @@
     "money:roleplay": "node scripts/money-agent-roleplay.mjs",
     "marketing:data:health": "node scripts/marketing-data-health.mjs",
     "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs",
-    "pulse:prove": "node scripts/pulse/prove.mjs"
+    "pulse:prove": "node scripts/pulse/prove.mjs",
+    "pulse:catalog": "node scripts/pulse/compile-catalog.mjs",
+    "pulse:surface": "node scripts/pulse/run-surface.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.11",

@@ -2,6 +2,7 @@
 
 This file contains unfinished items only. Completed items, old audits, notes, and history are not kept here.
 
+- [ ] Full-company refactor after the heartbeat build ships (owner 2026-10-11). Refactor the roughly 250,000-line codebase in small safe parts. Remove repeat code, use shared helpers and clear variables, keep live behavior the same, and require the heartbeat, tripwires, tests, and live proof to stay green or clearly red during every part.
 - [ ] Review all the copy before launch (owner 2026-10-09). Everything a customer reads: the message templates (325 in the database today: 232 email and 93 text approved; the 15 placeholder emails were just turned off), the sales and checkout pages, the drip and nudge texts, and the ads. Includes the 12 repair pre-call emails (BS-REPAIR-) that nobody has written yet. The $197 "30% off" drip text still says more than the $147 price.
 - [ ] Tomorrow: work on Blueprint. Map the whole client journey end to end so it pops at launch.
 - [ ] Load Blueprint into the presentation part (the closer deck / sales presentation).

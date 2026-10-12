@@ -77,7 +77,14 @@ export const PULSE_SHIP_GUARDS = Object.freeze([
   "src/pulse/heartbeats.test.mjs",
   "src/pulse/tripwires.test.mjs",
   "src/pulse/coverage/modules.test.mjs",
-  "src/pulse/beats/beats.test.mjs"
+  "src/pulse/beats/beats.test.mjs",
+  "src/pulse/catalog/compiler.test.mjs",
+  "src/pulse/catalog/door-recipes.test.mjs",
+  "src/pulse/catalog/display-recipes.test.mjs",
+  "src/pulse/catalog/data-recipes.test.mjs",
+  "src/pulse/catalog/flow-recipes.test.mjs",
+  "src/pulse/coverage/gap-catalog.test.mjs",
+  "src/pulse/instant-watch.test.mjs"
 ]);
 
 const say = (s) => console.log(s);
@@ -262,10 +269,13 @@ async function main() {
   if (!run("node", ["--test", ...PULSE_SHIP_GUARDS], { quiet: true }).ok) {
     fail(`a pulse coverage guard failed: run node --test ${PULSE_SHIP_GUARDS.join(" ")}`);
   }
-  if (!run("node", ["scripts/pulse/prove.mjs", "--beats"], { quiet: true }).ok) {
+  if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok) {
+    fail("coverage catalog is stale: run npm run pulse:catalog");
+  }
+  if (!run("node", ["scripts/pulse/prove.mjs", "--beats"]).ok) {
     fail("hourly pulse bundle proof failed: run npm run pulse:prove -- --beats");
   }
-  if (!run("node", ["scripts/pulse/prove.mjs"], { quiet: true }).ok) {
+  if (!run("node", ["scripts/pulse/prove.mjs"]).ok) {
     fail("morning pulse bundle proof failed: run npm run pulse:prove");
   }
   const { EXPECTED_MIGRATIONS } = await import(pathToFileURL(path.join(ROOT, "db/expected-migrations.mjs")).href);
@@ -277,7 +287,7 @@ async function main() {
   }
   const unlisted = onDisk.filter((k) => !EXPECTED_MIGRATIONS.includes(k));
   if (unlisted.length) fail(`db files missing from db/expected-migrations.mjs (run npm run migrations:manifest): ${unlisted.join(", ")}`);
-  say("  lint, route guards, pulse coverage guards, and both bundle proofs pass");
+  say("  lint, route guards, coverage catalog, pulse guards, and both bundle proofs pass");
 
   // ── 5. database changes ─────────────────────────────────────────────────────
   // The key is set for Claude's shell by .claude/settings.local.json (gitignored), not for

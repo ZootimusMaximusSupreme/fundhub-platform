@@ -1,12 +1,12 @@
 # Heartbeat — how a tripwire gets from code to Chris's phone
 
-Traced from code on 2026-10-09: `src/workflows/daily-pulse.mjs`, `src/pulse/daily-pulse.mjs`, `src/pulse/coverage/run-slices.mjs`, `src/pulse/coverage/modules.mjs`, `src/pulse/instant-watch.mjs`, `src/ops/morning-brief.mjs`. The law is `.claude/rules/heartbeat-on-every-build.md`.
+Traced from code on 2026-10-11: `src/workflows/daily-pulse.mjs`, `src/pulse/daily-pulse.mjs`, `src/pulse/coverage/run-slices.mjs`, `src/pulse/coverage/modules.mjs`, `src/pulse/catalog/compiler.mjs`, `src/pulse/instant-watch.mjs`, `src/ops/morning-brief.mjs`. The law is `.claude/rules/heartbeat-on-every-build.md`.
 
 ## In plain words
 
 - A **check** asks one yes-or-no question about the company. "Does the login page answer?" "Did every paid client get the portal?"
 - A **tripwire** is a check that goes red before a customer hits the break.
-- Every morning at **6:00 a.m. Arizona**, one job runs about 970 checks. Every red one goes in the text to Chris.
+- Every morning at **6:00 a.m. Arizona**, one job runs more than 1,000 checks. Every red one goes in the text to Chris.
 - Every **5 minutes**, a small watch runs 5 checks (health, login, apply page, roadmap sales page, outbound sends). If one breaks, Chris gets a text right away. At most one text an hour for the same break.
 - Most checks only run at 6 a.m. A break at noon shows up in the next morning's text, unless it is one of the 5.
 - The pulse **only reports**. It never fixes anything. Chris, or an agent he asks, fixes reds.
@@ -25,11 +25,18 @@ A person's setup step (for example "connect your calendar so booked calls land o
 
 The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and send is sorted: money or customer names its deep check, the rest says why it is not customer-facing. A new one fails the tests until it is sorted. That is what sews the tripwires into every build.
 
+## Whole-company catalog
+
+Claude's 20 map files hold 3,974 rows. Thirty-three rows clearly name another row they repeat, leaving 3,941 unique company items. The compiler gives every item one stable id and one recipe. It links existing tests, deep lanes, hourly beats and pings. A money or customer item needs deep proof. A staff-only item needs an end-to-end test. A claim with no executable proof stays red.
+
+The catalog does not fake 3,941 green checks. Today, 1,534 items link to proof at the needed level and 2,407 stay red or unproved. The morning pulse reports that count through `gap-catalog.mjs`. The full item list is in `src/pulse/catalog/generated.json`. `npm run pulse:surface -- <id>` runs the proof for one item. Every ship rebuilds the catalog in memory and stops if the saved copy is stale, the map shrank, a row has no recipe owner, or ids repeat.
+
 ## The picture
 
 ```mermaid
 flowchart TD
     BUILD["Agent builds a page, route, job or send"] --> PING["Ping row in the same change<br/>registry.mjs · heartbeats.mjs · SEND_PATHS"]
+    BUILD --> CATALOG["Whole-company catalog recipe<br/>one stable item id"]
     BUILD --> MONEY{"Touches money or<br/>a paying customer?"}
     MONEY -->|Yes| DEEP["Deep check<br/>src/pulse/coverage/gap-lane.mjs<br/>PASS test + FAIL test"]
     DEEP --> MAP["Named in the tripwire map<br/>src/pulse/tripwires.mjs"]
@@ -39,6 +46,7 @@ flowchart TD
     MONEY -->|No| TESTS
     DEEP --> LIST["On the literal list<br/>src/pulse/coverage/modules.mjs"]
     PING --> TESTS["Tests fail the build if a row is missing<br/>registry.test · heartbeats.test · modules.test · tripwires.test"]
+    CATALOG --> TESTS
     LIST --> TESTS
     TESTS --> PROVE["npm run pulse:prove<br/>builds the real bundle, runs every step,<br/>read-only, on live data"]
     PROVE -->|OK| SHIP["npm run ship"]
@@ -57,9 +65,11 @@ flowchart TD
 
     LANES -.->|a lane that dies| SKIP["One skip row, the text still goes"]
 
-    FIVE["Every 5 minutes<br/>instant watch"] --> CRIT{"health, login, apply,<br/>roadmap sales, outbound<br/>still OK?"}
+    FIVE["Every 5 minutes<br/>instant watch"] --> CRIT{"health, login, apply,<br/>roadmap sales, outbound,<br/>hourly pulse receipt still OK?"}
     CRIT -->|No| NOW["Text Chris now<br/>at most once an hour per break"]
 ```
+
+The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute workflow clock is alive. The 5-minute instant watch reads the newest `pulse-hourly` receipt. If the hourly pulse has not returned a receipt for more than three hours, `pulse:runner-stale` goes red and uses the instant watch's owner alert. Before the first hourly receipt ever exists, it waits instead of inventing a pass or a break.
 
 ## The hourly pulse (added 2026-10-09)
 

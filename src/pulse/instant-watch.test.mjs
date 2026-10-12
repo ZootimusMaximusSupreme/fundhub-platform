@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatInstantSms, runInstantWatch, recentInstantAlert } from "./instant-watch.mjs";
+import {
+  PULSE_RUNNER_STALE_MS,
+  checkPulseRunnerReceipt,
+  formatInstantSms,
+  runInstantWatch,
+  recentInstantAlert
+} from "./instant-watch.mjs";
 
 test("formatInstantSms names each failure", () => {
   const s = formatInstantSms([{ id: "health", detail: "strict health answered 503" }]);
@@ -77,6 +83,57 @@ test("with the database down it texts at most twice an hour (first 5 minutes of 
   assert.equal(await runAt("2026-10-09T13:10:00Z"), 0);
   assert.equal(await runAt("2026-10-09T13:31:00Z"), 1);
   assert.equal(await runAt("2026-10-09T13:45:00Z"), 0);
+});
+
+function pulseRunnerDb(lastAt) {
+  return {
+    query: async (sql) => {
+      if (/FROM orgs/.test(sql)) return { rows: [{ id: "11111111-1111-4111-8111-111111111111" }] };
+      if (/FROM job_heartbeats/.test(sql)) return { rows: [{ last_at: lastAt }] };
+      if (/FROM clients/.test(sql)) return { rows: [] };
+      if (/FROM (cards|messages)/.test(sql)) return { rows: [{ n: 0 }] };
+      if (/FROM agent_runs/.test(sql)) return { rows: [] };
+      if (/INSERT INTO agent_runs/.test(sql)) return { rows: [] };
+      throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+    }
+  };
+}
+
+const allDoorsPass = async () => ({ status: 200, text: "Sign in password Generate Apps Apply door roadmap $147" });
+
+test("backup pulse circuit passes when pulse-hourly left a fresh receipt", async () => {
+  const now = new Date("2026-10-09T19:00:00.000Z");
+  const row = await checkPulseRunnerReceipt(
+    pulseRunnerDb(new Date(now.getTime() - PULSE_RUNNER_STALE_MS + 1)),
+    { now }
+  );
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /circuit closed/);
+
+  const result = await runInstantWatch({
+    db: pulseRunnerDb(new Date(now.getTime() - 60 * 60 * 1000)),
+    now,
+    env: {},
+    fetchImpl: allDoorsPass
+  });
+  assert.equal(result.failures.some((item) => item.id === "pulse:runner-stale"), false);
+});
+
+test("backup pulse circuit goes red when pulse-hourly does not return", async () => {
+  const now = new Date("2026-10-09T19:00:00.000Z");
+  const sent = [];
+  const result = await runInstantWatch({
+    db: pulseRunnerDb(new Date(now.getTime() - PULSE_RUNNER_STALE_MS - 1)),
+    now,
+    env: { PULSE_SMS_TO: "+16025551234" },
+    fetchImpl: allDoorsPass,
+    sendImpl: async (message) => { sent.push(message.body); return { ok: true, status: "sent" }; }
+  });
+  const red = result.failures.find((item) => item.id === "pulse:runner-stale");
+  assert.equal(red?.status, "FAIL");
+  assert.match(red?.detail || "", /circuit did not close/);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0], /pulse:runner-stale/);
 });
 
 /* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). The 5-minute watch texts Chris's own

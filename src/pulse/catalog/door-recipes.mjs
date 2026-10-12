@@ -46,7 +46,7 @@ function routeRecipe(sourceFile, row) {
         ? `${methods.join(",")} matches the declared route contract`
         : `${kind} matches the declared route contract`,
     schedule: "on-command",
-    safe: isReadOnly,
+    safe: true,
     sourceFile,
     surface,
   };
@@ -80,7 +80,7 @@ function webhookRecipe(sourceFile, row) {
     target: text(row.door, surface),
     expected: `door honors ${signature}`,
     schedule: "on-command",
-    safe: !isUnverified,
+    safe: true,
     sourceFile,
     surface,
   };

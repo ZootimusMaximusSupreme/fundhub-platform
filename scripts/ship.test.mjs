@@ -373,16 +373,24 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort â
       "src/pulse/heartbeats.test.mjs",
       "src/pulse/tripwires.test.mjs",
       "src/pulse/coverage/modules.test.mjs",
-      "src/pulse/beats/beats.test.mjs"
+      "src/pulse/beats/beats.test.mjs",
+      "src/pulse/catalog/compiler.test.mjs",
+      "src/pulse/catalog/door-recipes.test.mjs",
+      "src/pulse/catalog/display-recipes.test.mjs",
+      "src/pulse/catalog/data-recipes.test.mjs",
+      "src/pulse/catalog/flow-recipes.test.mjs",
+      "src/pulse/coverage/gap-catalog.test.mjs",
+      "src/pulse/instant-watch.test.mjs"
     ];
     assert.deepEqual(PULSE_SHIP_GUARDS, required);
     const main = SRC.slice(SRC.indexOf("async function main()"));
     const guard = main.indexOf('run("node", ["--test", ...PULSE_SHIP_GUARDS]');
+    const catalog = main.indexOf('run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]');
     const hourly = main.indexOf('run("node", ["scripts/pulse/prove.mjs", "--beats"]');
     const morning = main.indexOf('run("node", ["scripts/pulse/prove.mjs"]');
     const deploy = main.indexOf('run("netlify", ["deploy", "--prod"');
-    assert.ok(guard > 0 && hourly > guard && morning > hourly && deploy > morning,
-      "pulse guards and both bundle proofs must block the deploy");
+    assert.ok(guard > 0 && catalog > guard && hourly > catalog && morning > hourly && deploy > morning,
+      "pulse guards, catalog freshness, and both bundle proofs must block the deploy");
   });
 
   test("ship.mjs: between the pull and the deploy, the pull can stop the ship only when the folder was left mid-pull", () => {
