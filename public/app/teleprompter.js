@@ -556,13 +556,13 @@
     var front = facing !== "environment";
     var rate = fps === 30 ? 30 : 60;
     var tall = shape === "tall";
-    var four = mode === "4k" && front;
+    var four = mode === "4k";
     var frame = four
       ? { ideal: rate }
       : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
     if (four) {
       return {
-        facingMode: { ideal: "user" },
+        facingMode: { ideal: front ? "user" : "environment" },
         width: { ideal: tall ? 2160 : 3840 },
         height: { ideal: tall ? 3840 : 2160 },
         aspectRatio: { ideal: tall ? (9 / 16) : (16 / 9) },
@@ -602,18 +602,21 @@
       }
       list.push(video);
     }
-    if (!back && mode === "4k") {
-      if (portraitPhone) {
-        push(30, "tall", false, false, "4k");
-        push(60, "tall", false, false, "4k");
-      }
+    // Always request 60 fps FIRST, on both lenses, at the phone's real
+    // portrait dimensions. A 30 fps source is a fallback, never the default.
+    // The iPhone 17 Pro Max supports 4K/60 natively, but Safari must actually
+    // return a working track at those settings before we can use it.
+    if (mode === "4k") {
+      if (portraitPhone) push(60, "tall", false, false, "4k");
       push(60, "wide", false, false, "4k");
+      if (portraitPhone) push(30, "tall", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
     var hd = mode === "4k" ? "1080p" : mode;
     if (portraitPhone) {
-      push(30, "tall", false, false, hd);
+      push(60, "tall", true, false, hd);
       push(60, "tall", false, false, hd);
+      push(30, "tall", false, false, hd);
     }
     if (back) {
       push(60, "wide", true, true, hd);
@@ -2647,8 +2650,9 @@
       camLine("Camera quality is only " + layout.width + "×" + layout.height +
         ". This browser cannot supply sharper video at this angle.", true);
     }
-    // 30 fps is standard for smooth social videos. Do not force 24 fps on iPhone.
-    var fps = Math.min(30, Math.max(24, Math.round(st.frameRate || 30)));
+    // The 17 Pro Max supports 60 fps. The saved canvas must not cap a genuine
+    // 60 fps camera feed to 30. When Safari only supplies 30, be transparent.
+    var fps = Math.min(60, Math.max(1, Math.round(st.frameRate || 60)));
     function draw() {
       if (!cam.pumping) return;
       if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -2703,11 +2707,15 @@
       camLine("This browser cannot record a continuous camera-switching video.", true);
       return;
     }
-    // Safari's previous 12 Mbps cap made 4K and active movement muddy.
-    // Use the actual saved canvas size, not the camera's different orientation.
+    // No artificial quality cap. Use the SAVED video size and actual camera
+    // FPS: up to 75 Mbps for 4K60, 30 Mbps for 1080p60. Safari may still
+    // negotiate a lower rate; we do not label that as Apple native ProRes.
     var savedWidth = cam.canvas ? Math.max(cam.canvas.width, cam.canvas.height) : (st.width || 0);
-    opts.videoBitsPerSecond = savedWidth >= 3840 ? 48000000 :
-      savedWidth >= 1920 ? 24000000 : 14000000;
+    var savedFps = Math.min(60, Math.max(1, Math.round(st.frameRate || 60)));
+    opts.videoBitsPerSecond = videoBits(savedWidth, savedFps);
+    if (st.frameRate && st.frameRate < 59.5) {
+      camLine("Camera supplied " + Math.round(st.frameRate) + " fps, not 60. Saving the real supported frame rate.", true);
+    }
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
@@ -2974,7 +2982,7 @@
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
         var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
         function locked(fps) {
-          var ask = cameraAsk(facing, fps, "wide", true, mode);
+          var ask = cameraAsk(facing, fps, recordingIsPortrait() ? "tall" : "wide", true, mode);
           return { width: ask.width, height: ask.height, frameRate: ask.frameRate };
         }
         var apply = track.applyConstraints
@@ -3007,7 +3015,7 @@
             finish(stream, noMic, facing);
             return;
           }
-          var video = cameraAsk(requested, 60, "wide", true, mode);
+          var video = cameraAsk(requested, 60, recordingIsPortrait() ? "tall" : "wide", true, mode);
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
@@ -3062,19 +3070,23 @@
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
       var asks = [];
       var faceShape = recordingIsPortrait() ? "tall" : "wide";
-      var direct = cameraAsk(wanted, 30, faceShape, false, mode);
-      direct.facingMode = { exact: wanted };
-      asks.push(direct);
-      var exactId = cam.deviceIds[wanted];
-      if (exactId) {
-        var exact = cameraAsk(wanted, 30, faceShape, false, mode);
-        exact.deviceId = { exact: exactId };
-        delete exact.facingMode;
-        asks.push(exact);
+      // Keep the continuous recording at 60 fps after a lens flip as well.
+      // The 30 fps requests are only used if Safari refuses all 60 fps asks.
+      for (var askFps of [60, 30]) {
+        var direct = cameraAsk(wanted, askFps, faceShape, false, mode);
+        direct.facingMode = { exact: wanted };
+        asks.push(direct);
+        var exactId = cam.deviceIds[wanted];
+        if (exactId) {
+          var exact = cameraAsk(wanted, askFps, faceShape, false, mode);
+          exact.deviceId = { exact: exactId };
+          delete exact.facingMode;
+          asks.push(exact);
+        }
+        var loose = cameraAsk(wanted, askFps, faceShape, false, mode);
+        loose.facingMode = { ideal: wanted };
+        asks.push(loose);
       }
-      var loose = cameraAsk(wanted, 30, faceShape, false, mode);
-      loose.facingMode = { ideal: wanted };
-      asks.push(loose);
       var at = 0;
       function next() {
         if (gen !== cam.gen) return;
@@ -3105,7 +3117,7 @@
       next();
       return;
     }
-    var ask = cameraAsk(wanted, 30, "wide", false, activeMode());
+    var ask = cameraAsk(wanted, 60, recordingIsPortrait() ? "tall" : "wide", false, activeMode());
     ask.facingMode = { exact: wanted };
     cam.opening = activeMode() + ":" + wanted;
     camLine("Switching to the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
