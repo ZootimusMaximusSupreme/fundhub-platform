@@ -2226,6 +2226,7 @@
 
   var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, startAfterOpen: false, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
+  var cameraTapUntil = 0;
   var takeDialog = $("take-save");
 
   function activeMode() {
@@ -2480,10 +2481,9 @@
     function fail() {
       if (done) return;
       if (tries < 3) { root.setTimeout(tryPlay, 80); return; }
-      done = true;
-      video.removeEventListener("loadedmetadata", tryPlay);
-      video.removeEventListener("canplay", tryPlay);
-      failed();
+      /* Safari can reject play() while it is still attaching a new camera,
+         then start the muted autoplay itself. Keep the real rear stream. */
+      pass();
     }
     function tryPlay() {
       if (done || video.srcObject !== stream) return;
@@ -2688,16 +2688,49 @@
     var wanted = cam.wantedFacing;
     if (isPhone()) {
       var md = root.navigator.mediaDevices;
-      cam.opening = activeMode() + ":" + wanted;
+      var mode = activeMode();
+      var gen = ++cam.gen;
+      cam.opening = mode + ":" + wanted;
       camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
-      function openPhoneLens() {
-        cam.opening = "";
-        try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
-        openCamera();
+      try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
+      var asks = [];
+      var direct = cameraAsk(wanted, 30, "wide", false, mode);
+      direct.facingMode = { exact: wanted };
+      asks.push(direct);
+      var exactId = cam.deviceIds[wanted];
+      if (exactId) {
+        var exact = cameraAsk(wanted, 30, "wide", false, mode);
+        exact.deviceId = { exact: exactId };
+        delete exact.facingMode;
+        asks.push(exact);
       }
-      if (!cam.deviceIds[wanted] && md && md.enumerateDevices) {
-        md.enumerateDevices().then(function (devices) { rememberVideoDevices(devices); openPhoneLens(); }, openPhoneLens);
-      } else openPhoneLens();
+      var loose = cameraAsk(wanted, 30, "wide", false, mode);
+      loose.facingMode = { ideal: wanted };
+      asks.push(loose);
+      var at = 0;
+      function next() {
+        if (gen !== cam.gen) return;
+        if (at >= asks.length) {
+          cam.opening = "";
+          camLine("The " + (wanted === "environment" ? "back" : "front") + " camera did not open.", true);
+          return;
+        }
+        md.getUserMedia({ audio: false, video: asks[at++] }).then(function (stream) {
+          if (gen !== cam.gen) {
+            stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* old request */ } });
+            return;
+          }
+          var gotTrack = stream.getVideoTracks()[0];
+          var got = gotTrack && gotTrack.getSettings ? gotTrack.getSettings() : {};
+          if (got.facingMode && got.facingMode !== wanted) {
+            stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* wrong lens */ } });
+            next();
+            return;
+          }
+          attachStream(stream, mode, !cam.audioTrack || cam.audioTrack.readyState === "ended", wanted);
+        }, next);
+      }
+      next();
       return;
     }
     var ask = cameraAsk(wanted, 30, "wide", false, activeMode());
@@ -3033,7 +3066,11 @@
   function stopRecClick() {
     endRec();
   }
-  function recordToggle() {
+  function recordToggle(e) {
+    if (Date.now() < cameraTapUntil) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
     if (editing || textEdit) return;
     if (wantRec) stopRecClick();
     else recordClick();
@@ -3091,7 +3128,24 @@
   $("q-4k").onclick = function () { setCamMode("4k"); };
   $("q-1080").onclick = function () { setCamMode("1080p"); };
   $("cam-corner").onclick = function (e) { e.preventDefault(); e.stopPropagation(); showFace(); };
-  $("b-camera-flip").onclick = function (e) { e.preventDefault(); e.stopPropagation(); switchCamera(); };
+  (function armCameraFlip() {
+    var flip = $("b-camera-flip");
+    if (!flip) return;
+    function press(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      cameraTapUntil = Date.now() + 500;
+      switchCamera();
+    }
+    if (root.PointerEvent) flip.addEventListener("pointerdown", press);
+    else flip.addEventListener("touchstart", press, { passive: false });
+    flip.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    });
+  })();
   $("b-save").onclick = saveClick;
   $("take-save-yes").onclick = function () { chooseTakeSave(true); };
   $("take-save-no").onclick = function () { chooseTakeSave(false); };

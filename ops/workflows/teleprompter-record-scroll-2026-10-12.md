@@ -37,3 +37,7 @@ Final phone build: 50 unit tests and 16 browser tests pass. Netlify deploy `6acd
 ### Rear live-view repair
 
 The camera button now changes only the live preview. It never starts recording and is blocked while a take is recording. iPhone skips track switching and opens the saved exact rear/front device. Preview start retries while iPhone camera metadata arrives, so one early play rejection does not discard the rear stream. The rear camera stays behind the same words and black glass. Four focused browser tests pass.
+
+### iPhone touch and preview repair
+
+The live phone3 build still auto-recorded and lost the rear feed. The control now switches on pointer-down, swallows the later click, and puts a 500 ms guard on Record against iPhone ghost clicks. The phone asks for exact rear facing before device-id fallbacks. A rejected early `video.play()` no longer stops and discards a valid rear stream. Four focused browser tests pass, including a simulated ghost Record click and a rejected first rear-preview play.

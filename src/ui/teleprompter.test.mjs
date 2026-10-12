@@ -594,7 +594,7 @@ describe("teleprompter page", () => {
     assert.doesNotMatch(HTML, /body\.rolling #bar,body\.rolling #top\{opacity:0/);
     assert.match(HTML, /body\.rolling #top,body\.rolling #status,body\.rolling #tools\{opacity:0;pointer-events:none\}/);
     assert.match(SRC, /\$\("b-rec"\)\.onclick = recordToggle/);
-    assert.match(SRC, /function recordToggle\(\) \{[\s\S]*?if \(wantRec\) stopRecClick\(\);\s*else recordClick\(\)/);
+    assert.match(SRC, /function recordToggle\(e\) \{[\s\S]*?if \(wantRec\) stopRecClick\(\);\s*else recordClick\(\)/);
     assert.match(SRC, /scriptSave\.onclick = saveScript/);
     assert.match(SRC, /on \? "Pause" : "Play"/);
     assert.doesNotMatch(SRC, /label\.textContent = "Play"/);

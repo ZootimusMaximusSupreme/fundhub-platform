@@ -213,6 +213,9 @@ test("camera button changes only the live view and never starts or changes recor
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
   await expect(page.locator("#b-rec")).toHaveText("Record");
+  await page.locator("#b-rec").dispatchEvent("click");
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await page.waitForTimeout(550);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   await flip.tap();
@@ -220,6 +223,7 @@ test("camera button changes only the live view and never starts or changes recor
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user"]);
   expect(await page.evaluate(() => window.__cameraAsks.filter((ask) => ask.audio).length)).toBe(1);
+  await page.waitForTimeout(550);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
   await page.locator("#take-save-no").tap();
