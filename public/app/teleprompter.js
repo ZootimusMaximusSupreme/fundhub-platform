@@ -3005,7 +3005,7 @@
   function uploadCreds(mode) {
     return mode === "session" ? "same-origin" : "omit";
   }
-  function startTake(file, mode) {
+  function startTake(file, mode, savedName) {
     var h = uploadModeHeaders(mode);
     h["content-type"] = "application/json";
     return root.fetch("/api/marketing/shoot/take", {
@@ -3013,7 +3013,7 @@
       credentials: uploadCreds(mode),
       headers: h,
       body: JSON.stringify({
-        name: file.name || "Take.mp4",
+        name: savedName || file.name || "Take.mp4",
         bytes: file.size,
         content_type: file.type || "video/mp4"
       })
@@ -3059,11 +3059,11 @@
     }
     return step(0);
   }
-  function sendOriginal(file) {
+  function sendOriginal(file, savedName) {
     var mode = filmKey() ? "film" : "session";
-    return startTake(file, mode).then(function (started) {
+    return startTake(file, mode, savedName).then(function (started) {
       if (!started.ok && mode === "session" && (started.status === 401 || started.status === 403)) {
-        return startTake(file, "open").then(function (again) {
+        return startTake(file, "open", savedName).then(function (again) {
           if (!again.ok) throw new Error("start");
           return putChunks(file, again.token, again.chunk, "open");
         });
@@ -3090,7 +3090,7 @@
       shareOrDownload(file);
       return;
     }
-    var entry = { id: takeStore.id(), file: file, createdAt: Date.now(), attempts: 0 };
+    var entry = { id: takeStore.id(), file: file, name: file.name || "Take.mp4", createdAt: Date.now(), attempts: 0 };
     videoSaveStatus("Saving on device", "saving", true);
     takeStore.put(entry).then(function () {
       if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
@@ -3134,7 +3134,7 @@
       cam.saving = false;
       saveNextVideo();
     }
-    sendOriginal(item.file).then(function () {
+    sendOriginal(item.file, item.name).then(function () {
       // The server acknowledged Drive before deleting this device copy.
       return takeStore.remove(item.id).then(function () {
         if (cam.file === item.file) cam.file = null;
