@@ -97,6 +97,11 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Result: 446 unfinished items remain, including the 14 current pulse-red rows added by `edd148f5d`.
 - Verification: `rg -c '^- \[ \] ' TODO.md` returns 446; no checked items remain; `git diff --check` is clean.
 
+## TODO structural pass — current
+
+- Checked all 446 checklist rows mechanically: 0 empty rows, 0 exact duplicate rows, and 0 checked rows.
+- This validates list shape only; semantic completion proof is still required for each row.
+
 ## Pulse-red reconciliation — 2026-10-11
 
 - A later commit `edd148f5d` added 14 current owner-handled pulse reds to `TODO.md`.
