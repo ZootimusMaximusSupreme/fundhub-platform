@@ -91,5 +91,6 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed one row proven complete: the lender source is already one canonical CSV used to generate the buyer list.
 - Removed one exact duplicate company-brain row; the fuller copy remains.
 - Removed one old PR row proven complete: PR #327 is merged.
-- Result: 443 unfinished items remain.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 443; no checked items remain; `git diff --check` is clean.
+- Removed two Blueprint rows proven complete by shipped closer-deck code and tests.
+- Result: 441 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 441; no checked items remain; `git diff --check` is clean.

@@ -4,11 +4,9 @@ This file contains only unchecked items. Items stay here until current evidence 
 
 - [ ] Review all the copy before launch (owner 2026-10-09). Everything a customer reads: the message templates (325 in the database today: 232 email and 93 text approved; the 15 placeholder emails were just turned off), the sales and checkout pages, the drip and nudge texts, and the ads. Includes the 12 repair pre-call emails (BS-REPAIR-*) that nobody has written yet. The $197 "30% off" drip text still says more than the $147 price.
 - [ ] Tomorrow: work on Blueprint. Map the whole client journey end to end so it pops at launch.
-- [ ] Load Blueprint into the presentation part (the closer deck / sales presentation).
 - [ ] Blueprint gets its own payment webhook instead of Commas.
 - [ ] Set up Whop for multiple items (Chris said "WOP"; earlier in the same chat he used "WAP" for Whop).
 - [ ] Add tests and quizzes to Blueprint (owner idea 2026-10-06 — funding courses use them).
-- [ ] Offer stack for sales calls: every Blueprint + FinanceOS item goes into the offer stack, so it shows up in the client presentation. When a client hops on a call with a rep, the presentation has a whole section with buttons and logic for these items. (Owner 2026-10-06: strip it down, do it tomorrow.)
 - [ ] Welcome kit (mailed package) — not now. Owner 2026-10-06: it's a whole project; later.
 - [ ] Follow-up texts: the no-reply drip (`src/workflows/slo-no-reply-197.mjs`, live) still offers the roadmap for $197, which is now $50 more than the $147 page price. Lower the offer or turn that text off. - Checked 10/5: still $197 (`src/slo/discount-197.mjs` `DISCOUNT_CENTS = 19700`; page `SLO_PRICE_CENTS = 14700`). Last sent: email 10/3, text 10/2; none since the $147 change. Chris decides (yes/no on `ops/workflows/finish-builds-2026-10-05.md`).
 - [ ] Financing approval (expected 10/4) - Checked 10/5: nothing about it in the repo. Chris only.
