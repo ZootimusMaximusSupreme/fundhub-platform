@@ -94,3 +94,12 @@ Before calling a unit done: focused PASS and FAIL tests, lint, type check, full 
 - `npm test` exited 0, but the database group skipped 1,005 tests because this shell has no `DATABASE_URL`; do not call that a full database pass.
 - Post-change morning proof exited 0: all 1,077 expected checks appeared, all 63 gap lanes answered, 13.8-second morning run under the 20-second cap, no SQL error, write, or real send. Final rows: 712 green, 16 red, 65 verified N/A, 7 laptop-only NOT CHECKED. Reds include real customer-path breaks; this is code proof, not a claim that the business is all green.
 - Open verification limits: pre-existing type-check failure and database suite skipped without a safe test `DATABASE_URL`.
+
+### Final ship proof — 2026-10-11
+
+- Catalog proof: 3,974 mapped rows, 33 declared repeats, 3,941 unique company items, 1,534 wired at the required proof level, and 2,407 honestly red or unproved. No wired item lacks an executable proof link.
+- Closed backup circuit: a fresh `pulse-hourly` receipt is green; a receipt older than three hours is red. Focused heartbeat and catalog result: 39 passed, 0 failed, 0 skipped. Lint parsed 3,321 files cleanly.
+- Full read-only morning proof: all 1,079 expected checks appeared, all 64 lanes answered, no step threw, no SQL error occurred, and nothing tried to write. The proof reported 14 real red rows and 7 laptop-only checks instead of hiding them.
+- Production deploy `6acc5f6877f56491516e1e4f` is live at `https://fundhub.ai`. Live health returned app up, database up, and 0 pending migrations. Inngest accepted the live build and re-registered its jobs.
+- The saved `SUPABASE_ACCESS_TOKEN` is invalid. It did not affect this release because it has no database changes; Netlify confirmed every migration was already applied. A fresh Supabase login/token is still needed before a future release that adds a migration.
+- Type check still has the pre-existing `src/marketing/filmed-receive.mjs:159` TS2345 error. This heartbeat change does not touch that file.
