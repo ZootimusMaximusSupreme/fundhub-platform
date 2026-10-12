@@ -28,6 +28,7 @@ import {
   redact,
   reasonLine,
   GIT_NO_PROMPT,
+  PULSE_SHIP_GUARDS,
   PULL_TIMEOUT_MS,
   PUSH_TIMEOUT_MS
 } from "./ship.mjs";
@@ -364,6 +365,24 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort â
     assert.ok(clean > 0 && pull > clean, "pull comes after the main + clean-tree check");
     assert.ok(head > pull, "the shipped commit is read after the pull");
     assert.ok(skip > pull && lint > skip && deploy > lint, "pull, then skip check, then checks, then deploy");
+  });
+
+  test("ship.mjs: pulse guards and both bundle proofs run before a live deploy", () => {
+    const required = [
+      "src/pulse/registry.test.mjs",
+      "src/pulse/heartbeats.test.mjs",
+      "src/pulse/tripwires.test.mjs",
+      "src/pulse/coverage/modules.test.mjs",
+      "src/pulse/beats/beats.test.mjs"
+    ];
+    assert.deepEqual(PULSE_SHIP_GUARDS, required);
+    const main = SRC.slice(SRC.indexOf("async function main()"));
+    const guard = main.indexOf('run("node", ["--test", ...PULSE_SHIP_GUARDS]');
+    const hourly = main.indexOf('run("node", ["scripts/pulse/prove.mjs", "--beats"]');
+    const morning = main.indexOf('run("node", ["scripts/pulse/prove.mjs"]');
+    const deploy = main.indexOf('run("netlify", ["deploy", "--prod"');
+    assert.ok(guard > 0 && hourly > guard && morning > hourly && deploy > morning,
+      "pulse guards and both bundle proofs must block the deploy");
   });
 
   test("ship.mjs: between the pull and the deploy, the pull can stop the ship only when the folder was left mid-pull", () => {

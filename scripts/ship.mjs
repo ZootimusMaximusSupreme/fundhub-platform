@@ -71,6 +71,14 @@ export const PULL_TIMEOUT_MS = 90_000;
 export const PUSH_TIMEOUT_MS = 10 * 60_000;
 /** Git must never wait for a person: no password prompt, no editor. */
 export const GIT_NO_PROMPT = Object.freeze({ GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", GIT_EDITOR: "true" });
+/** New live surfaces must carry their pulse row, tripwire, and beat before ship. */
+export const PULSE_SHIP_GUARDS = Object.freeze([
+  "src/pulse/registry.test.mjs",
+  "src/pulse/heartbeats.test.mjs",
+  "src/pulse/tripwires.test.mjs",
+  "src/pulse/coverage/modules.test.mjs",
+  "src/pulse/beats/beats.test.mjs"
+]);
 
 const say = (s) => console.log(s);
 function fail(msg) {
@@ -251,6 +259,15 @@ async function main() {
   if (!run("node", ["--test", "src/security/migrations-production-only.test.mjs", "src/http/routes.test.mjs"], { quiet: true }).ok) {
     fail("a guard test failed: run node --test src/security/migrations-production-only.test.mjs src/http/routes.test.mjs");
   }
+  if (!run("node", ["--test", ...PULSE_SHIP_GUARDS], { quiet: true }).ok) {
+    fail(`a pulse coverage guard failed: run node --test ${PULSE_SHIP_GUARDS.join(" ")}`);
+  }
+  if (!run("node", ["scripts/pulse/prove.mjs", "--beats"], { quiet: true }).ok) {
+    fail("hourly pulse bundle proof failed: run npm run pulse:prove -- --beats");
+  }
+  if (!run("node", ["scripts/pulse/prove.mjs"], { quiet: true }).ok) {
+    fail("morning pulse bundle proof failed: run npm run pulse:prove");
+  }
   const { EXPECTED_MIGRATIONS } = await import(pathToFileURL(path.join(ROOT, "db/expected-migrations.mjs")).href);
   const onDisk = [];
   for (const d of ["schema", "migrations", "seed"]) {
@@ -260,7 +277,7 @@ async function main() {
   }
   const unlisted = onDisk.filter((k) => !EXPECTED_MIGRATIONS.includes(k));
   if (unlisted.length) fail(`db files missing from db/expected-migrations.mjs (run npm run migrations:manifest): ${unlisted.join(", ")}`);
-  say("  lint and guards pass");
+  say("  lint, route guards, pulse coverage guards, and both bundle proofs pass");
 
   // ── 5. database changes ─────────────────────────────────────────────────────
   // The key is set for Claude's shell by .claude/settings.local.json (gitignored), not for

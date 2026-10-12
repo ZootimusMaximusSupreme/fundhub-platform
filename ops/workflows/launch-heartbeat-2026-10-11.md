@@ -5,8 +5,10 @@
 | Unit | Owner | Status | Depends on |
 |---|---|---|---|
 | Architecture and ground brief | This session | done | none |
-| Inventory recount and coverage audit | This session | done | ground brief |
+| Inventory recount and coverage audit | Agent + this session | claimed | ground brief |
 | Shared heartbeat refactor | This session | done with open verification limits | ground brief |
+| Live launch proof | Agent + this session | done with reds | none |
+| Future-change ship guard | This session | done with limits | existing guard tests |
 | Priority coverage build | This session | pending | audit and proven refactor |
 
 ## Ground brief
@@ -32,10 +34,29 @@ Before calling a unit done: focused PASS and FAIL tests, lint, type check, full 
 
 ## Change manifests
 
+### Owner-set price, 2026-10-11
+
+- Chris set the one-time FinanceOS setup price to $497. Netlify `FINANCE_OS_SETUP_FEE_CENTS=49700` is now set in production, deploy-preview, and branch-deploy; `.env` has the same full value. Netlify says a redeploy is required, so the live Setup Pay path is **not yet proven fixed**. No secret was committed.
+
+### Future-change guard
+
+- Owner requirement: every new live surface must ship with its heartbeat, and money/customer surfaces also need a deep tripwire and hourly beat. Machine gates on each ship enforce registration and proof without re-scoring all old inventory rows each time.
+- Ship now runs the existing registry, heartbeat, tripwire, coverage-module, and beat guard tests plus both read-only bundle proofs before deploy (`scripts/ship.mjs`). `scripts/ship.test.mjs` proves their order. The new `src/pulse/beats/legacy-unbeaten-tripwires.json` pins the 111 existing tripwire surfaces without an hourly beat; a new tripwire cannot join that backlog unnoticed. The list may only shrink.
+- This gate catches newly registered surfaces and broken pulse code. It does **not** prove that every changed business rule has the right semantic check; that still needs a domain-specific test/tripwire in the same change. The 111 old not-hourly surfaces remain a backlog, not green coverage.
+- Focused ship and pulse-guard tests pass with no skips; the new beat baseline test passes. Lint parses 3,305 files; `git diff --check` passes. Type check remains red only on the pre-existing `src/marketing/filmed-receive.mjs:159` TS2345, outside this pulse change.
+
 ### Inventory recount and coverage audit
 
 - Read the 20 existing JSON inventory files; 3,974 rows total. Old scores are not proof of current coverage. Of 1,866 money/customer rows, 219 still carry `none`, but they must be re-matched against W1–W5 before selecting new checks.
 - No inventory, check, or customer data changed. The priority coverage build remains pending this re-match. Do not claim all 3,974 rows watched.
+- An exact-key join produced 52 possible additional deep rows, but the map can overclaim: do not publish 653 as a confirmed score. Agent code tracing flagged five launch-risk candidates for parent validation: lost unmapped ClickFunnels orders, active due subscriptions with no charge attempt, merchant money doors without event-result checks, bank-approval inbound mail without result checks, and Lendflow callbacks without round-result checks. Two existing tripwire mappings may be false (`soft-pull-approve`, `banking/sync-liabilities`). These are not fixed or marked covered.
+
+### Live launch proof
+
+- Live health and database are green; no migrations pending. Netlify schedules hourly pulse at minute 7 and outside watch every five minutes. Recent receipts match those clocks. Forty-two scheduled jobs are current and two monthly jobs are not due.
+- Latest saved morning card: 720 green, 15 red, 65 verified N/A, zero unchecked. The live hourly pulse had two open reds: `brief-link` (newest sent brief 37 h old, limit 36) and `vendor-keys` (Twilio HTTP 401).
+- Local credentials match Netlify production and a separate read-only Twilio account GET with the same sending SID/token returned HTTP 401. The alternative account SID/token and API key/secret pairs in `.env` also returned 401 on that read-only account GET. No fresh credential was found in `credentials/env.full.snapshot`. No real text was sent.
+- Live deployment was `d9ffeaf5` during the audit; refactor commit `99c4a95` had been pushed but its ship was in progress. The $497 FinanceOS price needs a new deployment and live Pay-path proof.
 
 ### Shared heartbeat refactor
 

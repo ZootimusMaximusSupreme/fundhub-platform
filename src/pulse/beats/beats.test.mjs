@@ -20,11 +20,13 @@ import {
 import { makeFakeCtx } from "./ctx.mjs";
 import { makeFixtureBeat } from "../fake-sinks.mjs";
 import { JOBS } from "../heartbeats.mjs";
+import { TRIPWIRES } from "../tripwires.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../..");
 const LIB = path.join(HERE, "lib");
 const read = (file) => fs.readFileSync(file, "utf8");
+const LEGACY_UNBEATEN = JSON.parse(read(path.join(HERE, "legacy-unbeaten-tripwires.json")));
 
 const beatFilesOnDisk = () => fs.readdirSync(HERE)
   .filter((n) => /^beat-.+\.mjs$/.test(n) && !n.endsWith(".test.mjs")).sort();
@@ -119,6 +121,14 @@ test("Guard 2.2: covers must be a real surface key (a typo is caught)", async ()
   assert.ok(validateBeat(makeFixtureBeat({ covers: ["route:lenders"] }), { surfaces: surf }).length === 0);
   assert.ok(validateBeat(makeFixtureBeat({ covers: ["route:lendrs"] }), { surfaces: surf }).some((p) => p.includes("route:lendrs")));
   assert.ok(validateBeat(makeFixtureBeat({ covers: ["job:no-such-job"] }), { surfaces: surf }).some((p) => p.includes("job:no-such-job")));
+});
+
+test("Guard 2.2: every new money or customer tripwire also has an hourly beat", async () => {
+  const covered = new Set((await loadBeats()).flatMap((beat) => beat.covers));
+  const stillUnbeaten = Object.keys(TRIPWIRES).filter((key) => !covered.has(key)).sort();
+  assert.ok(LEGACY_UNBEATEN.length <= 111, "the old not-hourly list may shrink, never grow");
+  assert.deepEqual(stillUnbeaten, LEGACY_UNBEATEN,
+    "a new money/customer surface needs an hourly beat in the same change; remove old keys from the baseline once a beat covers them");
 });
 
 /* ---------------- 3. every beat can go red ---------------- */
