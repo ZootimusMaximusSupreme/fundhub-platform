@@ -979,6 +979,12 @@
   var stage = $("stage"), flip = $("flip"), content = $("content"), line = $("line"), countEl = $("count");
   var words = [], times = [], holds = [], kf = [], total = 0, t = 0, playing = false, reverse = 0, last = 0, takeWord = 0, seeked = false, curIdx = -1;
   var countTimer = null, dimTimer = null, wake = null, holding = -1, released = {};
+  var END_TAIL_MS = 2000;
+  var endTailTimer = null;
+  function cancelEndTail() {
+    if (endTailTimer != null) root.clearTimeout(endTailTimer);
+    endTailTimer = null;
+  }
   // The 3-2-1 shows only the first time a script rolls. A pause, a scroll up, or a resume never brings it back.
   var counted = false;
   var data = null, scripts = [], cur = -1, atEnd = false, learning = null, pollTimer = null, signedOut = false;
@@ -1309,6 +1315,7 @@
   }
 
   function open(i, keepCamera) {
+    cancelEndTail();
     if (textEdit) leaveCaret(false);
     /* Script navigation never starts or stops the one continuous take. */
     stop();
@@ -1537,6 +1544,7 @@
   }
   function cancelCount() { if (countTimer) { clearInterval(countTimer); countTimer = null; } countEl.hidden = true; setPlayIcon(); }
   function stop() {
+    cancelEndTail();
     var was = playing || !!countTimer;
     playing = false;
     reverse = 0;
@@ -1581,8 +1589,18 @@
     atEnd = true;
     $("end").hidden = false;
     $("cuehold").hidden = true;
+    /* Give the speaker two COMPLETE seconds after the last word before
+       ending the current video. Only a real active take is stopped, and
+       navigation, restart, and a manual Stop cancel this pending action. */
+    if (wantRec) {
+      var endedScript = cur;
+      endTailTimer = root.setTimeout(function () {
+        endTailTimer = null;
+        if (atEnd && cur === endedScript && wantRec) endRec();
+      }, END_TAIL_MS);
+    }
   }
-  function hideEnd() { atEnd = false; $("end").hidden = true; }
+  function hideEnd() { cancelEndTail(); atEnd = false; $("end").hidden = true; }
 
   function markThis(mark) {
     var s = scripts[cur];
@@ -2494,6 +2512,7 @@
     else resume();
   }
   function endRec(then) {
+    cancelEndTail();
     wantRec = false;
     cam.startAfterOpen = false;
     setRecLabel();
