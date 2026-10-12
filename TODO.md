@@ -372,7 +372,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Update the repo rules that still say GitLab
 - [ ] Remove the blocks that stop Claude from shipping on its own: open the network allowlist (ClickFunnels, Netlify, Supabase, Inngest), give the cloud repo access, and put deploy keys in cloud secrets (10/4)
 - [ ] Permanent cloud access to the repo (10/2)
-- [ ] Consolidate the conflicting rules across CLAUDE.md and the notes (10/3)
 - [ ] Triage TODO.md into Today, This week and Next 30 days (10/4)
 - [ ] Write the voice file (VOICE-CHRIS.md) from your own phrasing (10/4)
 - [ ] Make the ad-creation system faster (10/3)
