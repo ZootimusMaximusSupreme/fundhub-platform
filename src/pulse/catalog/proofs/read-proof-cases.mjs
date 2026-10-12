@@ -2,6 +2,10 @@ import {
   READ_GAPS,
   sourceFileForReadSurface,
 } from "../../coverage/gap-catalog-reads.mjs";
+import { DISPLAY_CONTRACTS_AB } from "./display-contracts-ab.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
+import { FLOW_READ_CONTRACTS } from "./flow-read-contracts.mjs";
 
 function group(sourceFile, surface, tests, controls) {
   const evidence = tests.join(" ");
@@ -16,18 +20,8 @@ function group(sourceFile, surface, tests, controls) {
 }
 
 const PROVED = [
-  ...group("desks-a.json", "agent-editor.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "Page open: staff pickers for Owner and Escalate-to selects",
-    "Promotion gate checklist (display: trigger, prompt 60+ chars, guardrail 20+ chars, escalation)",
-  ]),
-  ...group("desks-a.json", "client-control-panel.html", ["src/http/client-panel-screen.test.mjs"], [
+  ...group("desks-a.json", "client-control-panel.html", ["src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs"], [
     "Waiting count headline (bank yes with no amount)",
-  ]),
-  ...group("desks-a.json", "client-portal.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "Page open: portal contracts read (Agreements tab)",
-  ]),
-  ...group("desks-d.json", "public/app/money-helper.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "Thinking... poll every 3 s (up to 100 polls) and Check again button",
   ]),
   ...group("desks-d.json", "public/app/money-helper.html", [
     "src/finance/money-helper.test.mjs",
@@ -35,43 +29,33 @@ const PROVED = [
   ], [
     "Helper brain: Mac bridge heartbeat / model runner (AI answers vs rules fallback)",
   ]),
-  ...group("desks-e.json", "public/app/money.html", ["src/http/money-trends-screen.test.mjs"], [
-    "Trends line-graph slot (mounted from money-trends.js when the page loaded it)",
-  ]),
-  ...group("desks-e.json", "public/app/my-numbers.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "Offer stack table: product, units sold, amount sold, cash collected, totals, retired product, reason when unknown",
-    "Money boxes: Paid out, Pending funding, At risk (always a dash: not computed)",
-    "Streak strip (always the sentence: daily close streak is not stored yet)",
-  ]),
-  ...group("desks-e.json", "public/app/ops-admin.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "AR + Collections table: client, invoice INV-xxxx, amount owed, overdue, status (top 25, total line)",
-    "Compliance Gate table: messages it stopped (client, channel, reason, when; top 15)",
-    "Failed events tile (appended to the KPI grid: N failed events awaiting retry)",
-    "Staff Monitoring Consent table (Signed / Not yet signed, before names show on the Galaxy)",
-  ]),
-  ...group("desks-e.json", "public/app/payment-success.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "The bounded check: up to 6 reads, 3 seconds apart, then stops; baseline = what was already open",
-    "State shown: Just opened on your account / Nothing new has opened yet / Nothing is open yet / cannot check (signed out) / cannot tell which account / could not reach your account",
-  ]),
-  ...group("desks-f.json", "present.html (+ present.js, contract-send.js)", [
-    "src/pulse/catalog/proofs/read-result-probes.test.mjs",
-    "src/http/closer-deck-present.test.mjs",
-    "src/http/contract-send.test.mjs",
-  ], [
-    "Double-press guard on every send button ('Sending...', 4 second cooldown, 'Sent at' line, count of sends)",
-  ]),
-  ...group("desks-f.json", "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
-    "Every 5 seconds while paused: re-reads the shoot and flushes waiting marks and edits",
-    "Full screen on first tap (requestFullscreen)",
+  ...group("desks-a.json", "client-portal.html", ["src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs"], [
+    "Refer a friend: link and counts card (display)",
   ]),
   ...group("desks-a.json", "affiliate.html", ["src/http/affiliate-screen.test.mjs"], [
     "Referred leads table: Commission column and Total shown",
   ]),
+  ...group("desks-a.json", "affiliate.html", ["src/pulse/catalog/proofs/read-second-pass-browser.test.mjs"], [
+    "Page open: affiliate figures (REFERRED, CONVERTED, OWED, PAID tiles, referral funnel, license banner, topbar chips)",
+    "Page open: own portal read (offer links, code, rate, license gate, tax gate, referral rows, payout rows)",
+  ]),
   ...group("desks-a.json", "brand-studio.html", ["src/http/partner-marketing-usage-handler.test.mjs"], [
     "Generation: Writing left and Pages live tiles",
   ]),
+  ...group("desks-a.json", "brand-studio.html", ["src/pulse/catalog/proofs/read-second-pass-browser.test.mjs"], [
+    "Compliance card BS-05 (locked list, no controls)",
+    "Live preview panel (display)",
+  ]),
   ...group("desks-a.json", "campaign-manager.html", ["src/http/ad-spine.test.mjs", "src/ops/meta-marketing.test.mjs"], [
     "Angle/hook panel (CM-11: spend, people arrived, booked, cost per booked, hook rate, hold rate)",
+  ]),
+  ...group("desks-a.json", "campaign-manager.html", ["src/pulse/catalog/proofs/read-second-pass-browser.test.mjs"], [
+    "Page open: partner picker list",
+    "Spend vs ceilings panel (CM-03 rows, headroom, % of ceiling, flags)",
+    "Ad performance panel (CM-09: leads, booked calls, booked rate)",
+    "Campaign list panel (CM-04: approval state, strategy, budget, spend yesterday, ROAS, status)",
+    "Action log panel (CM-08: actor, rule, reason, change, outcome, revertible)",
+    "Ceiling chip and summary tiles (display)",
   ]),
   ...group("desks-a.json", "client-control-panel.html", ["src/http/client-panel-screen.test.mjs"], [
     "Funding round grid (round, finalized, status, approved amount, hold reason, opened)",
@@ -195,12 +179,40 @@ const GAPS = READ_GAPS.map((item) => Object.freeze({
   tests: Object.freeze(["src/pulse/coverage/gap-catalog-reads.test.mjs"]),
 }));
 
-export const READ_PROOF_CASES = Object.freeze([...PROVED, ...GAPS]);
+function proofKey(entry) {
+  return `${entry.sourceFile}\0${entry.surface}\0${entry.control}`;
+}
 
-const BY_KEY = new Map(READ_PROOF_CASES.map((entry) => [
-  `${entry.sourceFile}\0${entry.surface}\0${entry.control}`,
-  entry,
-]));
+function pluginReadCase(entry) {
+  const proof = entry.proof || entry;
+  const testFile = entry.proof
+    ? proof.file || proof.evidence || entry.evidence
+    : entry.evidence || proof.file;
+  return Object.freeze({
+    sourceFile: entry.sourceFile,
+    surface: entry.surface,
+    control: entry.control || entry.expected,
+    depth: "deep",
+    evidence: testFile,
+    tests: Object.freeze(entry.tests ? [...entry.tests] : [testFile]),
+  });
+}
+
+const BASE_READ_PROOF_CASES = [...PROVED, ...GAPS];
+const BASE_READ_KEYS = new Set(BASE_READ_PROOF_CASES.map(proofKey));
+const PLUGIN_READ_PROOF_CASES = [
+  ...DISPLAY_CONTRACTS_AB,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
+  ...FLOW_READ_CONTRACTS.filter((entry) => entry.family === "read"),
+]
+  .map(pluginReadCase)
+  .filter((entry) => BASE_READ_KEYS.has(proofKey(entry)));
+
+const BY_KEY = new Map(BASE_READ_PROOF_CASES.map((entry) => [proofKey(entry), entry]));
+for (const entry of PLUGIN_READ_PROOF_CASES) BY_KEY.set(proofKey(entry), entry);
+
+export const READ_PROOF_CASES = Object.freeze([...BY_KEY.values()]);
 
 if (BY_KEY.size !== READ_PROOF_CASES.length) {
   throw new Error("Catalog read proof cases must be unique.");

@@ -102,10 +102,18 @@ test("route counts never prove signed-in role access", () => {
   }
 });
 
-test("HTML text scans never prove the five rejected journey results", () => {
-  const surfaces = [
+test("rendered contracts prove two journey results while the three text-only rows stay red", () => {
+  for (const surface of [
     "journey:slo-connections-intended#1-open-tab",
     "journey:optimize-intended#2-book-without-form",
+  ]) {
+    const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
+    const proof = proofForFlowRow("journeys.json", row);
+    assert.equal(proof.verdict, undefined, surface);
+    assert.match(proof.evidence, /flow-read-contracts\.test\.mjs/, surface);
+  }
+
+  const surfaces = [
     "journey:soft-pull-multi-biz-intended-draft#2-authorize-first",
     "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page",
     "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",

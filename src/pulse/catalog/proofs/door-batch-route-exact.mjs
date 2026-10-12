@@ -3,10 +3,6 @@ export const ROUTE_EXACT_EVIDENCE =
 
 const ASSERTIONS = new Map([
   [
-    "route:climate/geocode",
-    "Turn a typed address into a state / county for the lending-climate map (no lenders read, no record).",
-  ],
-  [
     "route:public/rb2b-webhook",
     "POST ?secret= store one identified website visitor as an events row rb2b.visitor_identified (upsert by email; no client, no mail, no workflow)",
   ],

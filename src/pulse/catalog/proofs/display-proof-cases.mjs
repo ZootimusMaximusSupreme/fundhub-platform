@@ -1,5 +1,10 @@
 import { PUBLIC_UI_PROOF_CASES } from "./display-batch-public-ui.mjs";
 import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
+import { DISPLAY_CONTRACTS_AB } from "./display-contracts-ab.mjs";
+import { DISPLAY_CONTRACTS_AB_2 } from "./display-contracts-ab-2.mjs";
+import { DISPLAY_CONTRACTS_CD_PROOFS } from "./display-contracts-cd.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
 import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
 import {
   DISPLAY_RESULT_LANE,
@@ -52,7 +57,7 @@ const MONEY_PAYMENTS_TESTS = [
   "src/finance/clarity-payments.test.mjs",
 ];
 
-export const DISPLAY_PROOF_CASES = Object.freeze([
+const BASE_DISPLAY_PROOF_CASES = Object.freeze([
   proofCase(
     "desks-b.json",
     "financeos.html (frame)",
@@ -345,12 +350,40 @@ export const DISPLAY_PROOF_CASES = Object.freeze([
   ...STAFF_UI_PROOF_CASES,
 ]);
 
-const CASES_BY_KEY = new Map(
-  DISPLAY_PROOF_CASES.map((entry) => [
-    `${entry.sourceFile}\0${entry.surface}\0${entry.control}`,
-    entry,
-  ]),
-);
+function proofKey(entry) {
+  return `${entry.sourceFile}\0${entry.surface}\0${entry.control}`;
+}
+
+function pluginDisplayCase(entry) {
+  const proof = entry.proof || entry;
+  const testFile = entry.proof
+    ? proof.file || proof.evidence || entry.evidence
+    : entry.evidence || proof.file;
+  return Object.freeze({
+    sourceFile: entry.sourceFile,
+    surface: entry.surface,
+    control: entry.control || entry.expected,
+    depth: proof.depth || entry.depth || "e2e",
+    evidence: testFile,
+    tests: Object.freeze(entry.tests ? [...entry.tests] : [testFile]),
+  });
+}
+
+const READ_PROOF_KEYS = new Set(READ_PROOF_CASES.map(proofKey));
+const PLUGIN_DISPLAY_PROOF_CASES = [
+  ...DISPLAY_CONTRACTS_AB,
+  ...DISPLAY_CONTRACTS_AB_2,
+  ...DISPLAY_CONTRACTS_CD_PROOFS,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
+]
+  .map(pluginDisplayCase)
+  .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));
+
+const CASES_BY_KEY = new Map(BASE_DISPLAY_PROOF_CASES.map((entry) => [proofKey(entry), entry]));
+for (const entry of PLUGIN_DISPLAY_PROOF_CASES) CASES_BY_KEY.set(proofKey(entry), entry);
+
+export const DISPLAY_PROOF_CASES = Object.freeze([...CASES_BY_KEY.values()]);
 
 export function displayProofFor(sourceFile, row) {
   const found = CASES_BY_KEY.get(`${sourceFile}\0${row?.surface || ""}\0${row?.control || ""}`);

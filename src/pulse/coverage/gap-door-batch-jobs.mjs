@@ -129,9 +129,12 @@ export function evaluateJobReceipt(row, loaded) {
 
 export function jobResultProof(row) {
   if (PROVED_FINAL_JOB_SURFACES.has(row?.surface)) {
+    const evidence = row.surface === "workflow:blueprint-next-funding-sequence-sweeper"
+      ? `${FINAL_JOB_RESULT_TEST} src/blueprint/next-sequence-plan.test.mjs`
+      : FINAL_JOB_RESULT_TEST;
     return {
       depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
-      evidence: FINAL_JOB_RESULT_TEST,
+      evidence,
       asserts: row.control,
     };
   }
