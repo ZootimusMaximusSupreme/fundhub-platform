@@ -1,7 +1,7 @@
 # VSL Stacking Theory — Research Board
 
 Date: 2026-10-11
-Status: in progress
+Status: done
 
 ## Tasks
 
@@ -11,7 +11,7 @@ Status: in progress
 | Funnel map | current session | done |
 | Examples and evidence | current session | done |
 | Critical review | current session | done |
-| Final synthesis | current session | pending |
+| Final synthesis | current session | done |
 
 ## Shared context
 
@@ -70,3 +70,12 @@ Sources supplied by user:
 - Source notes added for Asset Academy, Skyline Social, Inflo Partners, Google Analytics Funnel exploration and Events, YouTube retention, Wistia Audience Analytics, Vimeo video measurement, Unbounce's large landing-page analysis, and the PMC randomized clinical-recruitment landing-page experiment.
 - Measurement recommendation: pair video events (`play`, retention milestones, CTA click) with the intended downstream event (`lead_submit`, `calendar_booked`, `showed`, `checkout_started`, `purchase`, `onboarding_started`) and judge the video by the transition it is meant to improve.
 - Important evidence limit: no independent controlled study was found that tests the complete VSL-stacking sequence from ad click through onboarding. Public lift numbers should not be used as benchmarks.
+
+## Final synthesis manifest
+
+- Status: done
+- Final report: `reports/VSL Stacking Theory.md`
+- Scope covered: plain-English definition; origin and documentation limits; end-to-end funnel map; micro-VSL jobs; example sequence; offer-type differences; evidence table; single-VSL comparison; metrics and testing plan; production and tracking requirements; failure modes; minimum viable test; decision framework.
+- Evidence posture: Hamilton’s framework and lift figures are labeled as practitioner claims. Adjacent studies and platform documentation are labeled as indirect or stronger evidence. No direct public head-to-head VSL-stack versus single-VSL study was found.
+- Files changed: `reports/VSL Stacking Theory.md`; `ops/workflows/vsl-stacking-theory-2026-10-11.md`
+- No code, product, funnel, or live marketing asset was changed.
