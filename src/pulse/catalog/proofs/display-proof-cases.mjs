@@ -1,5 +1,6 @@
 import { PUBLIC_UI_PROOF_CASES } from "./display-batch-public-ui.mjs";
 import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
+import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
 import {
   DISPLAY_RESULT_LANE,
   isTrackedDisplayControl,
@@ -338,6 +339,7 @@ export const DISPLAY_PROOF_CASES = Object.freeze([
     "Make a wordmark from the name button",
     ["src/http/partner-marketing-logo.test.mjs"],
   ),
+  ...READ_PROOF_CASES,
   ...PUBLIC_UI_PROOF_CASES,
   ...STAFF_UI_PROOF_CASES,
 ]);
