@@ -405,8 +405,14 @@ body.wording #flip{transform:none !important}
   <div id="cam-shade"></div>
   <button type="button" id="cam-corner" aria-label="Show the camera"></button>
 </div>
+<button type="button" id="b-camera-flip" aria-label="Use back camera" title="Use back camera">↺</button>
 <div id="rec" hidden><span id="rec-dot"></span><span id="rec-time">0:00</span></div>
 <button type="button" class="mini" id="b-save" hidden>Save the video</button>
+
+<div id="video-save-status" role="status" aria-live="polite" data-state="idle" hidden>
+  <span class="video-save-dot" aria-hidden="true"></span>
+  <span id="video-save-text"></span>
+</div>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 

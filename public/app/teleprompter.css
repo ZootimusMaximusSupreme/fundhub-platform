@@ -305,9 +305,82 @@ body.cam-side-right #script-fade {
   background: rgba(12, 14, 18, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.38);
 }
+#qmenu .item.on {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: #ff3b30;
+  box-shadow: inset 4px 0 0 #ff3b30;
+}
 #qmenu .item .t {
   font-family: Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
   white-space: normal;
+}
+
+/* Camera direction is always in the top-left. The recording clock moves over
+   so both controls stay readable while a take is running. */
+#b-camera-flip {
+  position: fixed;
+  z-index: 6;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: 8px;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(12, 14, 18, 0.55);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+#rec {
+  left: 60px !important;
+}
+
+/* Video uploads answer in one small corner chip. They never use the large
+   filming toast at the bottom of the screen. */
+#video-save-status {
+  position: fixed;
+  z-index: 9;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 8px;
+  max-width: min(240px, calc(100vw - 76px));
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(12, 14, 18, 0.72);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+#video-save-status[hidden] {
+  display: none;
+}
+.video-save-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #ffd60a;
+}
+#video-save-status[data-state="saved"] .video-save-dot {
+  background: #30d158;
+}
+#video-save-status[data-state="failed"] .video-save-dot {
+  background: #ff453a;
 }
 
 #take-save {

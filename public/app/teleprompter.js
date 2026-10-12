@@ -179,6 +179,17 @@
     return title || "Next";
   }
 
+  /** The script's place in its offer stack. VSL and thank-you rows must never
+   * be mislabeled as ads. */
+  function queueLabel(s) {
+    if (!s) return "Script";
+    var kind = s.stack_kind === "vsl" || s.stack_kind === "thank_you" ? s.stack_kind : "ad";
+    var n = s.stack_no != null ? s.stack_no : (kind === "ad" ? s.ad_id : null);
+    var label = kind === "vsl" ? "VSL" : (kind === "thank_you" ? "Thank You" : "Ad");
+    var offer = s.offer_word == null ? "" : String(s.offer_word).replace(/\s+/g, " ").trim();
+    return (offer ? offer + " " : "") + label + (n != null && String(n).trim() ? " " + String(n).trim() : "");
+  }
+
   function chipStart() { return { last: null }; }
 
   /**
@@ -892,7 +903,7 @@
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
-    chipLabel: chipLabel, chipStart: chipStart, chipStep: chipStep,
+    chipLabel: chipLabel, queueLabel: queueLabel, chipStart: chipStart, chipStep: chipStep,
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
@@ -1236,6 +1247,16 @@
     clearTimeout(sayTimer);
     sayTimer = setTimeout(function () { el.hidden = true; }, 4200);
   }
+  var videoSaveTimer = null;
+  function videoSaveStatus(msg, state, stay, delay) {
+    var box = $("video-save-status"), text = $("video-save-text");
+    if (!box || !text) return;
+    clearTimeout(videoSaveTimer);
+    text.textContent = msg;
+    box.dataset.state = state || "saving";
+    box.hidden = false;
+    if (!stay) videoSaveTimer = setTimeout(function () { box.hidden = true; }, delay || 2600);
+  }
 
   /* ── one script ─────────────────────────────────────────────────────── */
 
@@ -1243,7 +1264,7 @@
     var s = scripts[cur];
     if (!s) return;
     var take = s.take_no > 0 ? s.take_no : 1;
-    $("s-ad").textContent = "Ad " + (s.ad_id || "?") + " · Take " + take + " · " + (cur + 1) + " of " + scripts.length +
+    $("s-ad").textContent = queueLabel(s) + " · Take " + take + " · " + (cur + 1) + " of " + scripts.length +
       (s.first_line_only ? " · first line only" : s.needs_retake ? " · retake" : "");
     $("s-title").textContent = s.angle_name || s.title || "Untitled script";
     var label = chipLabel(s);
@@ -1583,8 +1604,8 @@
     if (editing || textEdit) return;
     var s = scripts[cur];
     if (!s || s.got_it) return;
-    var title = s.angle_name || s.title || ("Ad " + (s.ad_id || "?"));
-    if (!root.confirm('Mark "' + title + '" as complete?')) return;
+    var title = s.angle_name || s.title || "Untitled script";
+    if (!root.confirm('Mark "' + queueLabel(s) + " — " + title + '" as complete?')) return;
     closeSheets();
     stop();
     endRec();
@@ -1611,7 +1632,13 @@
     var list = $("qmenu-list");
     if (!list) return;
     var complete = $("q-complete");
-    if (complete) complete.hidden = !scripts[cur] || !!scripts[cur].got_it;
+    if (complete) {
+      complete.hidden = !scripts[cur] || !!scripts[cur].got_it;
+      if (!complete.hidden) {
+        var currentTitle = scripts[cur].angle_name || scripts[cur].title || "Untitled script";
+        complete.textContent = "Complete current: " + queueLabel(scripts[cur]) + " — " + currentTitle;
+      }
+    }
     list.innerHTML = "";
     var q = filmQueue(scripts);
     q.forEach(function (i) {
@@ -1622,9 +1649,10 @@
       var b = doc.createElement("button");
       b.type = "button";
       b.className = "item" + (i === cur ? " on" : "");
+      if (i === cur) b.setAttribute("aria-current", "true");
       b.innerHTML = '<span class="t"></span><span class="m"></span>';
       b.querySelector(".t").textContent = title;
-      b.querySelector(".m").textContent = "Ad " + (s.ad_id || "?");
+      b.querySelector(".m").textContent = (i === cur ? "Current · " : "") + queueLabel(s);
       b.onclick = function () { pickQueued(i); };
       list.appendChild(b);
     });
@@ -2173,7 +2201,7 @@
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
 
-  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4" };
+  var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null };
   var wantRec = false;
   var takeDialog = $("take-save");
 
@@ -2186,6 +2214,13 @@
     var a = $("q-4k"), b = $("q-1080");
     if (a) a.classList.toggle("on", mode === "4k");
     if (b) b.classList.toggle("on", mode === "1080p");
+  }
+  function paintCameraFlip() {
+    var btn = $("b-camera-flip");
+    if (!btn) return;
+    var next = cam.facing === "environment" ? "front" : "back";
+    btn.setAttribute("aria-label", "Use " + next + " camera");
+    btn.title = "Use " + next + " camera";
   }
   function camLine(text, bad) {
     var el = $("cam-line");
@@ -2293,7 +2328,10 @@
     if (!ctx) return stream;
     function draw() {
       if (!cam.pumping) return;
-      ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (cam.facing === "environment") ctx.setTransform(1, 0, 0, 1, 0, 0);
+      else ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
       try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { /* frame not ready */ }
       cam.pumpRaf = root.requestAnimationFrame(draw);
     }
@@ -2323,7 +2361,7 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
-    var recStream = cam.facing === "environment" ? cam.stream : mirroredRecordStream(cam.stream);
+    var recStream = mirroredRecordStream(cam.stream);
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
@@ -2383,7 +2421,18 @@
   }
   function attachStream(stream, mode, noMic) {
     if (cam.stream && cam.stream !== stream) {
-      cam.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* already stopped */ } });
+      cam.stream.getTracks().forEach(function (t) {
+        if (t === cam.audioTrack) return;
+        try { t.stop(); } catch (e) { /* already stopped */ }
+      });
+    }
+    var freshAudio = stream.getAudioTracks()[0] || null;
+    if (!cam.audioTrack || cam.audioTrack.readyState === "ended") cam.audioTrack = freshAudio;
+    else if (freshAudio && freshAudio !== cam.audioTrack) {
+      try { freshAudio.stop(); } catch (e) { /* already stopped */ }
+    }
+    if (cam.audioTrack && stream.getAudioTracks().indexOf(cam.audioTrack) < 0 && stream.addTrack) {
+      try { stream.addTrack(cam.audioTrack); } catch (e) { /* preview can still switch */ }
     }
     cam.stream = stream;
     cam.applied = mode;
@@ -2391,6 +2440,7 @@
     var track = stream.getVideoTracks()[0];
     var got = track && track.getSettings ? track.getSettings() : {};
     cam.facing = got.facingMode === "environment" ? "environment" : "user";
+    cam.wantedFacing = cam.facing;
     if (video) {
       video.srcObject = stream;
       video.muted = true;
@@ -2407,6 +2457,7 @@
     if (!rep.short && activeMode() === "4k" && rep.line.indexOf("4K") !== 0) text += ". It is not 4K.";
     if (noMic) text += " · no sound";
     camLine(text, !!rep.short);
+    paintCameraFlip();
     paintPicks();
     if (wantRec) beginRec();
   }
@@ -2414,8 +2465,8 @@
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) return;
     var mode = activeMode();
-    if (cam.stream && cam.applied === mode) { paintPicks(); return; }
-    if (cam.opening === mode) return;
+    if (cam.stream && cam.applied === mode && cam.facing === cam.wantedFacing) { paintPicks(); return; }
+    if (cam.opening === mode + ":" + cam.wantedFacing) return;
     openCamera();
   }
   function openCamera() {
@@ -2424,15 +2475,14 @@
       if (!md || !md.getUserMedia) { camLine("This browser cannot use the camera. The words still roll.", true); return; }
       var gen = ++cam.gen;
       var mode = activeMode();
-      cam.opening = mode;
-      camLine(mode === "1080p"
-        ? "Asking the front camera for 1080p at 60 frames a second."
-        : "Asking the front camera for 4K at the highest frame rate.", false);
+      var wanted = cam.wantedFacing === "environment" ? "environment" : "user";
+      cam.opening = mode + ":" + wanted;
+      camLine("Asking the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       paintPicks();
       var steps = [];
-      ["user", "environment"].forEach(function (facing) {
+      [wanted, wanted === "environment" ? "user" : "environment"].forEach(function (facing) {
         cameraTries(facing, mode).forEach(function (video) {
-          steps.push({ video: video, audio: true, facing: facing });
+          if (!cam.audioTrack || cam.audioTrack.readyState === "ended") steps.push({ video: video, audio: true, facing: facing });
           steps.push({ video: video, audio: false, facing: facing });
         });
       });
@@ -2499,6 +2549,17 @@
       cam.opening = "";
       camLine("The camera did not start. The words still roll.", true);
     }
+  }
+  function switchCamera() {
+    if (cam.opening) return;
+    cam.wantedFacing = cam.facing === "environment" ? "user" : "environment";
+    cam.applied = "";
+    if (cam.stream) {
+      if (!cam.audioTrack) cam.audioTrack = cam.stream.getAudioTracks()[0] || null;
+      cam.stream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* already stopped */ } });
+      cam.stream = null;
+    }
+    openCamera();
   }
   function setCamMode(mode) {
     if (mode === "1080p" && stays4K(scripts[cur])) { say("This one films at 1080p. It is not 4K."); paintPicks(); return; }
@@ -2577,7 +2638,7 @@
             if (d.done) return;
             var next = typeof d.received === "number" && d.received > at ? d.received : end;
             if (next <= at || next > file.size) throw new Error("stuck");
-            say("Saving the video… " + Math.min(99, Math.round(next / file.size * 100)) + "%");
+            videoSaveStatus("Saving " + Math.min(99, Math.round(next / file.size * 100)) + "%", "saving", true);
             return step(next);
           });
         }, function () {
@@ -2614,7 +2675,7 @@
     if (!cam.uploads.length || cam.saving) return;
     var file = cam.uploads[0];
     cam.saving = true;
-    say("Saving the video…");
+    videoSaveStatus("Saving video", "saving", true);
     function settled() {
       cam.uploads.shift();
       cam.saving = false;
@@ -2622,14 +2683,14 @@
     }
     sendOriginal(file).then(function () {
       if (cam.file === file) cam.file = null;
-      say("Saved " + (file.name || "the video"));
+      videoSaveStatus("Video saved", "saved", false);
       settled();
     }, function () {
       cam.file = file;
       shareOrDownload(file);
       var btn = $("b-save");
       if (btn) btn.hidden = false;
-      say("The video is on this phone. Drive did not get it.");
+      videoSaveStatus("On phone · Drive failed", "failed", false, 4200);
       settled();
     });
   }
@@ -2860,6 +2921,7 @@
   $("q-4k").onclick = function () { setCamMode("4k"); };
   $("q-1080").onclick = function () { setCamMode("1080p"); };
   $("cam-corner").onclick = function (e) { e.preventDefault(); e.stopPropagation(); showFace(); };
+  $("b-camera-flip").onclick = function (e) { e.preventDefault(); e.stopPropagation(); switchCamera(); };
   $("b-save").onclick = saveClick;
   $("take-save-yes").onclick = function () { chooseTakeSave(true); };
   $("take-save-no").onclick = function () { chooseTakeSave(false); };

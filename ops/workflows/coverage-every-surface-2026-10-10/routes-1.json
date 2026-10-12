@@ -1657,7 +1657,7 @@
   ],
   "impact": "staffOnly",
   "coverage": "e2e",
-  "evidence": "src/http/marketing-scripts.pg.test.mjs and marketing-shoot.pg.test.mjs (film key); reg:marketing/scripts/edit ping; a stale version answers 409 and is asserted there. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
+  "evidence": "src/http/marketing-scripts.pg.test.mjs (Ad, Ad variant, VSL, VSL variant, Thank You and Thank You variant all save a new database version and reload) and marketing-shoot.pg.test.mjs (film key); reg:marketing/scripts/edit ping; a stale version answers 409 and is asserted there. Tripwire map: unsorted, still on src/pulse/tripwires-baseline.json.",
   "route": "marketing/scripts/edit",
   "methods": [
    "POST"

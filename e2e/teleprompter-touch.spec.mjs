@@ -76,7 +76,13 @@ function fakeServer() {
     },
     versions
   };
-  function pick(v) { return { id: v.id, version: v.version, body: v.body, parts: v.parts, source: v.source }; }
+  function pick(v) {
+    return {
+      id: v.id, version: v.version, body: v.body, parts: v.parts, source: v.source,
+      script_format: v.script_format, stack_kind: v.stack_kind, stack_no: v.stack_no,
+      angle_name: v.angle_name, title: v.title, offer_word: v.offer_word, ad_id: v.ad_id
+    };
+  }
   return server;
 }
 
@@ -348,6 +354,41 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
     });
   });
 }
+
+test.describe("saved words reload for every filming text type", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  const shapes = [
+    ["Ad", { stack_kind: "ad", stack_no: 1, script_format: "standard" }],
+    ["Ad variant", { stack_kind: "ad", stack_no: 2, script_format: "standard" }],
+    ["VSL", { stack_kind: "vsl", stack_no: 1, script_format: "vsl" }],
+    ["VSL variant", { stack_kind: "vsl", stack_no: 2, script_format: "vsl" }],
+    ["Thank You", { stack_kind: "thank_you", stack_no: null, script_format: "standard" }],
+    ["Thank You variant", { stack_kind: "thank_you", stack_no: 2, script_format: "standard" }]
+  ];
+
+  for (const [name, shape] of shapes) {
+    test(`${name}: save, reload, and read the new version`, async ({ page }) => {
+      const server = fakeServer();
+      Object.assign(server.versions[THREE.root_script_id][0], shape);
+      await open(page, { server });
+      const changed = `${NEW_HOOK} ${name}.`;
+      await editHook(page, changed);
+      await page.locator("#e-done").tap();
+      await expect.poll(() => server.posts.length).toBe(1);
+      const live = server.versions[THREE.root_script_id][0];
+      expect(live.body).toContain(changed);
+      expect(live.version).toBe(2);
+      await page.reload();
+      await expect(page.locator("#content")).toContainText(changed);
+      const reopened = await state(page);
+      expect(reopened.script.id).toBe(live.id);
+      expect(reopened.script.version).toBe(2);
+      expect(reopened.script.stack_kind).toBe(shape.stack_kind);
+      expect(reopened.script.stack_no).toBe(shape.stack_no);
+    });
+  }
+});
 
 test.describe("teleprompter on an iPad: the rig", () => {
   test.use({ viewport: { width: 1024, height: 1366 }, hasTouch: true, isMobile: true });

@@ -137,6 +137,14 @@ describe("teleprompter, pure", () => {
     assert.equal(T.fileName(ONE, 0), null);
   });
 
+  test("the film list uses the offer stack number and kind, not the tracking ad id", () => {
+    const T = load();
+    assert.equal(T.queueLabel({ offer_word: "Direct Book", stack_kind: "ad", stack_no: 2, ad_id: "93" }), "Direct Book Ad 2");
+    assert.equal(T.queueLabel({ offer_word: "Direct Book", stack_kind: "vsl", stack_no: 1, ad_id: "103" }), "Direct Book VSL 1");
+    assert.equal(T.queueLabel({ offer_word: "Direct Book", stack_kind: "thank_you", stack_no: null, ad_id: "104" }), "Direct Book Thank You");
+    assert.equal(T.queueLabel({ offer_word: "Direct Book", stack_kind: "thank_you", stack_no: 2, ad_id: "201" }), "Direct Book Thank You 2");
+  });
+
   test("a press counts the take the way the server does (applyMark), so the next name is right offline", () => {
     const T = load();
     const fresh = { ...ONE, takes: 0, got_it: false, take_no: 1, take_file_name: T.fileName(ONE, 1) };

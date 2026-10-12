@@ -2681,13 +2681,13 @@
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
-    "control": "'Still to film' sheet: one button per unfilmed script, Close",
+    "control": "'Still to film' sheet: real offer-stack labels, current row highlight, tap a script, clear Complete target, Close",
     "kind": "button",
     "calls": [],
     "tables": [],
     "impact": "none",
     "coverage": "e2e",
-    "evidence": "e2e/teleprompter.spec.mjs"
+    "evidence": "e2e/teleprompter-take-flow.spec.mjs (real offer-stack labels, current row and exact Complete target); e2e/teleprompter.spec.mjs (tap a script, Close)"
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
@@ -2718,7 +2718,7 @@
     ],
     "impact": "staffOnly",
     "coverage": "deep",
-    "evidence": "src/ui/teleprompter-edits.test.mjs (14 queue cases: debounce, offline reload, 409 both ways, 400 kept); e2e/teleprompter-touch.spec.mjs (offline, 409 both ways, history); slice-03-marketing.mjs outbox_drain beat (repo copy drain stalls red while repo_outbox waits)"
+    "evidence": "src/ui/teleprompter-edits.test.mjs (14 queue cases: debounce, offline reload, 409 both ways, 400 kept); e2e/teleprompter-touch.spec.mjs (offline, 409 both ways, history, and save/reload for Ad, Ad variant, VSL, VSL variant, Thank You, Thank You variant); src/http/marketing-scripts.pg.test.mjs (the same six shapes create a new database version and reload it); slice-03-marketing.mjs outbox_drain beat (repo copy drain stalls red while repo_outbox waits)"
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
@@ -2780,15 +2780,27 @@
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
-    "control": "Record / Stop (front camera, MediaRecorder; stops on page hide)",
+    "control": "Record / Stop (MediaRecorder; one file while the camera changes; stops on page hide)",
     "kind": "button",
     "calls": [
       "getUserMedia + MediaRecorder (browser)"
     ],
     "tables": [],
     "impact": "staffOnly",
-    "coverage": "ping",
-    "evidence": "reg:teleprompter pings the HTML only (teleprompter.js and teleprompter-edits.js are not fetched by any ping or lane); src/ui/teleprompter.test.mjs tests only the pure camera asks (front 4K at the highest rate, 1080p at 60, back camera steady 1080p, cameraReport) and the specs read the button label. Nothing starts a recording in a browser"
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter-take-flow.spec.mjs starts and stops MediaRecorder, switches cameras during one recording, and gets one final take dialog; src/ui/teleprompter.test.mjs checks the camera requests; reg:teleprompter pings the page"
+  },
+  {
+    "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
+    "control": "Top-left camera flip button: front to rear and back during one recording",
+    "kind": "button",
+    "calls": [
+      "getUserMedia facingMode user/environment (browser)"
+    ],
+    "tables": [],
+    "impact": "staffOnly",
+    "coverage": "e2e",
+    "evidence": "e2e/teleprompter-take-flow.spec.mjs (front to rear, rear to front during one MediaRecorder take; 44px button and camera labels)"
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
@@ -2802,7 +2814,7 @@
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",
-    "control": "Saving the take: on Stop the file goes up in chunks to the SLO Ads Drive folder; if it cannot, the phone's share/download opens",
+    "control": "Saving the take: a small top-right chip shows saving, saved, or Drive failed; the original goes to SLO Ads and a failed file stays on the phone",
     "kind": "system",
     "calls": [
       "POST /api/marketing/shoot/take {name, bytes, content_type}",
@@ -2811,7 +2823,7 @@
     "tables": [],
     "impact": "staffOnly",
     "coverage": "e2e",
-    "evidence": "src/marketing/take-upload.test.mjs (GET does not upload, bad key does not upload, no sign-in starts a save, bytes handed to Drive are the bytes from the phone); src/ui/teleprompter.test.mjs ('Save the video sends the original file'); reg:marketing/shoot/take ping (GET answers 405, counted up). The 'Save the video' button is display:none in the CSS, so a failed upload shows no retry button"
+    "evidence": "e2e/teleprompter-take-flow.spec.mjs (small top-right saving, saved and failed states; bottom toast stays clear; failed file stays on the phone); src/marketing/take-upload.test.mjs (GET does not upload, bad key does not upload, no sign-in starts a save, bytes handed to Drive are the bytes from the phone); src/ui/teleprompter.test.mjs ('Save the video sends the original file'); reg:marketing/shoot/take ping (GET answers 405, counted up)"
   },
   {
     "surface": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)",

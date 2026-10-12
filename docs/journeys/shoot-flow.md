@@ -93,6 +93,7 @@ flowchart TD
 ```
 
 - The database version is the memory. The repo file follows through the outbox, which is held until `GITHUB_REPO_TOKEN` exists; the pulse says so.
+- The save path does not filter by title or kind. Ads, VSLs, thank-you videos, and their variants all create the same next `ad_scripts` version and keep their stack fields.
 - History (the History button, or tap the pulse): `GET marketing/script?id=` — every version newest first, who (from `source`: Chris, The machine, An agent, Imported), when, the words out (red) and in (green), and "In the repo." / "Not in the repo yet." Edits still on this phone show on top.
 - The 5-second shoot poll never redraws under the edit box, and an edit still waiting on this phone wins over what the server sends. Words changed elsewhere redraw only while nothing rolls, keeping the place.
 
@@ -107,11 +108,17 @@ flowchart TD
 
 The button on the thin line under the words (`#p-file`, left side). One tap does nothing. Two taps open `#qmenu`: the scripts still to film (`filmQueue`, no Got it). The list scrolls. A tap on a title loads that script with the camera still recording (`open(i, true)`). Opening the list does not call `markThis`. The script he left stays in the queue.
 
-Owner change, 2026-10-11: the list also has **Complete** for the current script (`#q-complete`, `completeFromTop`). It asks "Mark [script title] as complete?" Cancel leaves the script and recording alone. Confirm stops the words and recording, queues one `got_it` mark, and opens the next unfinished script (or the shoot-done card).
+Owner change, 2026-10-12: each row uses the offer-stack label from `offer_word`, `stack_kind`, and `stack_no` (for example, `Direct Book VSL 1`) instead of the tracking ad id. The current row has a red inset mark, `Current` text, and `aria-current`. **Complete** names that exact current label and angle before the confirmation. Cancel leaves the script and recording alone. Confirm stops the words and recording, queues one `got_it` mark, and opens the next unfinished script (or the shoot-done card).
 
 ### 4e. The video decision after each recorded take
 
 `onRecStop` collects the original recording bytes into a named File (`keepFile`) and opens the modal `#take-save`. The modal shows the captured take name and asks **Save this video? Yes / No**. No drops that video's pending File without an upload or download. Yes queues the File for `sendOriginal`, the existing POST/PUT `/api/marketing/shoot/take` route. Uploads run one at a time; accepting a second take while the first saves keeps both Files in order. A restart callback waits for the decision. A pause or an edit still keeps the camera recording and opens no video decision.
+
+Video upload state now uses the small top-right `#video-save-status` chip. It says saving, saved, or that Drive failed while the file remains on the phone. It does not use the large bottom filming toast.
+
+### 4f. Front and rear camera
+
+The 44 px top-left camera button switches from the mirrored front camera to the normal rear camera, then back. The recording uses one canvas stream for both directions. During a switch the microphone track and the same recorder stay alive, so the take remains one file and the words keep rolling. The recording clock moves beside the camera button.
 
 The existing `counted` flag from merged PR #27 still limits 3-2-1 to the first play of an opened script. Pause, seek and resume do not reset it. `steadyPace`, cached reading-line measurements, and fractional `translate3d` scrolling are unchanged; checks now cover 200, 205, 210 and 215 WPM. The camera shade is `rgba(0, 0, 0, 0.558)`, 10% lighter than 0.62. These changes remain **UNVERIFIED on production** until deployed.
 
@@ -133,5 +140,5 @@ The key is an HMAC (`f1|org|shoot|exp`) over `DOCUMENT_URL_SECRET` (or `FILM_URL
 8. **The Shoot tab is not on the page yet.** `public/app/cc-tab-shoot.js` registers with `window.FundhubCC` (the tab contract, `docs/specs/command-center-tabs.md`); the integrator adds its `<script>` tag when the frame (U34) lands.
 9. **Past shoots show no loaded count** (design §3.4 item 7). Date, planned, Got it and finished are shown; loaded waits for a loaded state in `ad_videos` (same cause as gap 3). No number is made up.
 10. **Another device hears a saved edit late.** The Shoot and Scripts tabs read again at once only in the same browser. On another device they read again when the tab is shown, when the page comes back after a minute away, or on the 5-minute reload. There is no server push.
-11. **Camera** (requirements doc: front camera, mirrored, a preview that fades) is not on the web page. It is the native app's job (`tools/teleprompter-ios/`, spec §8.5); a web page camera may also cap below 4K on iPhone.
+11. **Real iPhone camera proof.** The web page has the front camera, rear-camera switch, mirrored-front recording canvas, preview fade, and 4K request. Browser tests prove the switch and one-recorder flow. A real iPhone still decides the size and frame rate it grants, so that device proof remains open.
 12. **Long press opens the keyboard on finger-up.** iPhone Safari opens the keyboard only inside a touch, so the edit box shows at once and the keyboard opens when the finger lifts (tapping the box also opens it). Not yet tried on a real iPhone.

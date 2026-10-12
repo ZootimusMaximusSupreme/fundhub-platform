@@ -91,7 +91,7 @@ test.describe("teleprompter at 390px", () => {
   test("opens on the first script with no Got it, with its ad number, take and exact file name; one column, big taps", async ({ page }) => {
     const errors = await open(page);
     await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
-    await expect(page.locator("#s-ad")).toHaveText("Ad 93 · Take 1 · 2 of 3");
+    await expect(page.locator("#s-ad")).toHaveText("SLO Ad 93 · Take 1 · 2 of 3");
     await expect(page.locator("#s-file")).toHaveText("SLO Ad 93 — Your file is worth more Take 1.mp4");
     await expect(page.locator("#content")).toContainText("MOST lenders read TWO files before they say yes.");
     await expect(page.locator("#content .w.caps").first()).toHaveText("MOST");
@@ -240,7 +240,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     await page.keyboard.press("PageUp");
     await expect.poll(() => posts.length).toBe(1);
     expect(posts[0].mark).toBe("another_take");
-    await expect(page.locator("#s-ad")).toHaveText("Ad 93 · Take 2 · 2 of 3");
+    await expect(page.locator("#s-ad")).toHaveText("SLO Ad 93 · Take 2 · 2 of 3");
     await expect(page.locator("#s-file")).toHaveText("SLO Ad 93 — Your file is worth more Take 2.mp4");
     await expect(page.locator("#count")).toBeVisible();
   });

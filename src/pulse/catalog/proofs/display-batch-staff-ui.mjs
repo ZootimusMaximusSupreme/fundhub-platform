@@ -250,6 +250,16 @@ export const STAFF_UI_GROUPS = Object.freeze([
   ], [
     "'Permissions ->' button on the roster header",
   ]),
+  group("desks-f.json", "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)", [
+    "e2e/teleprompter-take-flow.spec.mjs",
+    "e2e/teleprompter-touch.spec.mjs",
+  ], [
+    "'Still to film' sheet: real offer-stack labels, current row highlight, tap a script, clear Complete target, Close",
+    "Script edits: autosave after a quiet moment, offline queue with one request id, 409 'two versions' picker (Keep mine / Keep theirs / Try again / Throw away)",
+    "Record / Stop (MediaRecorder; one file while the camera changes; stops on page hide)",
+    "Top-left camera flip button: front to rear and back during one recording",
+    "Saving the take: a small top-right chip shows saving, saved, or Drive failed; the original goes to SLO Ads and a failed file stays on the phone",
+  ]),
   group("desks-f.json", "teleprompter-remote.html (+ teleprompter-remote.js)", [
     "e2e/teleprompter-remote-clicks.spec.mjs",
   ], [

@@ -450,6 +450,50 @@ describe("marketing script actions (U25)", { skip: !HAS_DB ? "no DATABASE_URL" :
     assert.equal(pairs3.length, 0, "Chris changing his own line teaches the voice file nothing");
   });
 
+  test("edit: Ads, VSLs, thank-you videos, and their variants all persist and reload", async () => {
+    const shapes = [
+      { name: "Ad", stack_kind: "ad", stack_no: 1, script_format: "standard", angle_name: "Ad angle" },
+      { name: "Ad variant", stack_kind: "ad", stack_no: 2, script_format: "standard", angle_name: "Ad variant angle" },
+      { name: "VSL", stack_kind: "vsl", stack_no: 1, script_format: "vsl", angle_name: "VSL angle" },
+      { name: "VSL variant", stack_kind: "vsl", stack_no: 2, script_format: "vsl", angle_name: "VSL variant angle" },
+      { name: "Thank You", stack_kind: "thank_you", stack_no: null, script_format: "standard", angle_name: null },
+      { name: "Thank You variant", stack_kind: "thank_you", stack_no: 2, script_format: "standard", angle_name: "Thank-you variant angle" }
+    ];
+
+    for (let i = 0; i < shapes.length; i += 1) {
+      const shape = shapes[i];
+      const original = await mkScript({
+        title: `Persistence ${shape.name}`,
+        status: "locked",
+        ad_id: String(701 + i),
+        stack_kind: shape.stack_kind,
+        stack_no: shape.stack_no,
+        script_format: shape.script_format,
+        angle_name: shape.angle_name
+      });
+      const savedBody = `${shape.name} saved words ${rid("body")}.`;
+      const saved = await post(editHandler, ownerA.token, {
+        request_id: rid(`shape-${i}`), id: original.id, version: 1, body: savedBody
+      });
+      assert.equal(saved.code, 200, `${shape.name}: ${JSON.stringify(saved.body)}`);
+      assert.equal(saved.body.script.body, savedBody, `${shape.name}: route answer`);
+      assert.equal(saved.body.script.version, 2, `${shape.name}: new version`);
+
+      const row = await scriptRow(saved.body.script.id);
+      assert.equal(row.body, savedBody, `${shape.name}: database body`);
+      assert.equal(row.stack_kind, shape.stack_kind, `${shape.name}: kind kept`);
+      assert.equal(row.stack_no, shape.stack_no, `${shape.name}: stack number kept`);
+      assert.equal(row.script_format, shape.script_format, `${shape.name}: format kept`);
+      assert.equal(row.angle_name, shape.angle_name, `${shape.name}: name kept`);
+      assert.equal((await scriptRow(original.id)).status, "superseded", `${shape.name}: old row retired`);
+
+      const reopened = await call(oneHandler, ownerA.token, { query: { id: saved.body.script.id } });
+      assert.equal(reopened.code, 200, `${shape.name}: reload status`);
+      assert.equal(reopened.body.script.body, savedBody, `${shape.name}: reload body`);
+      assert.equal(reopened.body.script.id, saved.body.script.id, `${shape.name}: reload version`);
+    }
+  });
+
   test("edit: a draft stays a draft; words-only edits clear stale parts with a warning; bad input is 400", async () => {
     const s = await mkScript({ title: "Draft to edit" });
     const e = await post(editHandler, ownerA.token, {

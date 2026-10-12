@@ -7,12 +7,19 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false } = {}) {
-  const scripts = sample.shoot.scripts.map((s, i) => ({
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [] } = {}) {
+  const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
+  const bases = Array.from({ length: count }, (_, i) => {
+    if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
+    const id = `00000000-0000-4000-8000-${String(390 + i).padStart(12, "0")}`;
+    return { ...sample.shoot.scripts[0], id, root_script_id: id, ad_id: String(90 + i) };
+  });
+  const scripts = bases.map((s, i) => ({
     ...copy(s), got_it: false, takes: 0, take_no: 1, style: "words",
     body: ("These are the words for a steady camera take. ").repeat(40),
     teleprompter_text: ("These are the words for a steady camera take. ").repeat(40),
-    take_file_name: `SLO Ad ${s.ad_id} — Script ${i + 1} Take 1.mp4`
+    take_file_name: `SLO Ad ${s.ad_id} — Script ${i + 1} Take 1.mp4`,
+    ...(scriptShapes[i] || {})
   }));
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
@@ -21,15 +28,25 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (!camera) return;
-    // A real MediaStream for the preview, with a deterministic recorder. No device or upload.
-    const canvas = document.createElement("canvas");
-    canvas.width = 32; canvas.height = 32;
-    canvas.getContext("2d").fillRect(0, 0, 32, 32);
-    const stream = canvas.captureStream(30);
-    const track = stream.getVideoTracks()[0];
-    track.getSettings = () => ({ width: 32, height: 32, frameRate: 30, facingMode: "user" });
-    track.applyConstraints = () => Promise.resolve();
-    navigator.mediaDevices.getUserMedia = () => Promise.resolve(stream);
+    // A real MediaStream for the preview, with a deterministic recorder. Each
+    // camera request gets a fresh track so front/rear switching is testable.
+    window.__cameraRequests = [];
+    const makeStream = (facing) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 32; canvas.height = 32;
+      canvas.getContext("2d").fillRect(0, 0, 32, 32);
+      const stream = canvas.captureStream(30);
+      const track = stream.getVideoTracks()[0];
+      track.getSettings = () => ({ width: 32, height: 32, frameRate: 30, facingMode: facing });
+      track.applyConstraints = () => Promise.resolve();
+      return stream;
+    };
+    navigator.mediaDevices.getUserMedia = (ask) => {
+      const fm = ask && ask.video && ask.video.facingMode;
+      const facing = fm && (fm.exact || fm.ideal) === "environment" ? "environment" : "user";
+      window.__cameraRequests.push(facing);
+      return Promise.resolve(makeStream(facing));
+    };
     navigator.mediaDevices.enumerateDevices = () => Promise.resolve([]);
     let take = 0;
     window.MediaRecorder = class {
@@ -68,6 +85,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     if (p === "/api/marketing/shoot/take" && req.method() === "PUT") {
       server.chunks.push(req.postData());
       await uploadGate;
+      if (failUpload) return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
       return json({ ok: true, done: true });
     }
     return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
@@ -122,6 +140,77 @@ test("two accepted takes save in order even while the first upload is waiting", 
   await expect.poll(() => server.chunks.length).toBe(2);
   expect(server.chunks).toEqual(["take-1", "take-2"]);
   expect(server.errors).toEqual([]);
+});
+
+test("video saving uses a small top-right status and leaves the filming toast clear", async ({ page }) => {
+  const { server } = await open(page, { holdUpload: true });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect(page.locator("#video-save-status")).toBeVisible();
+  await expect(page.locator("#video-save-text")).toContainText("Saving");
+  await expect(page.locator("#toast")).toBeHidden();
+  const box = await page.locator("#video-save-status").boundingBox();
+  expect(box.y).toBeLessThan(80);
+  expect(box.width).toBeLessThanOrEqual(240);
+  expect(box.x + box.width).toBeGreaterThan(380);
+  server.release();
+  await expect(page.locator("#video-save-text")).toHaveText("Video saved");
+  expect(server.errors).toEqual([]);
+});
+
+test("a failed video upload stays in the small top status and leaves the file on the phone", async ({ page }) => {
+  const { server } = await open(page, { failUpload: true });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect(page.locator("#video-save-status")).toBeVisible();
+  await expect(page.locator("#video-save-status")).toHaveAttribute("data-state", "failed");
+  await expect(page.locator("#video-save-text")).toHaveText("On phone · Drive failed");
+  await expect(page.locator("#toast")).toBeHidden();
+  expect(server.errors).toEqual([]);
+});
+
+test("camera button switches front and rear, then switches back during one recording", async ({ page }) => {
+  const { server } = await open(page);
+  const flip = page.locator("#b-camera-flip");
+  await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+  expect(await flip.evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(44);
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("matrix(-1, 0, 0, 1, 0, 0)");
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user", "environment", "user"]);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("Still to film uses offer-stack names and clearly marks the Complete target", async ({ page }) => {
+  const shapes = [
+    { offer_word: "Direct Book", stack_kind: "ad", stack_no: 2, ad_id: "93", angle_name: "Over and over" },
+    { offer_word: "Direct Book", stack_kind: "vsl", stack_no: 1, ad_id: "94", angle_name: "Why lenders say no" },
+    { offer_word: "Direct Book", stack_kind: "thank_you", stack_no: null, ad_id: "95", angle_name: "Next steps" }
+  ];
+  await open(page, { scriptShapes: shapes });
+  await page.locator("#p-file").dblclick();
+  const rows = page.locator("#qmenu-list .item");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0).locator(".t")).toHaveText("Over and over");
+  await expect(rows.nth(0).locator(".m")).toHaveText("Current · Direct Book Ad 2");
+  await expect(rows.nth(0)).toHaveAttribute("aria-current", "true");
+  await expect(rows.nth(1).locator(".m")).toHaveText("Direct Book VSL 1");
+  await expect(rows.nth(2).locator(".m")).toHaveText("Direct Book Thank You");
+  await expect(page.locator("#qmenu")).not.toContainText("Ad 93");
+  await expect(page.locator("#q-complete")).toHaveText("Complete current: Direct Book Ad 2 — Over and over");
+  await rows.nth(1).tap();
+  await page.locator("#p-file").dblclick();
+  await expect(page.locator("#qmenu-list .item").nth(1).locator(".m")).toHaveText("Current · Direct Book VSL 1");
+  await expect(page.locator("#q-complete")).toHaveText("Complete current: Direct Book VSL 1 — Why lenders say no");
 });
 
 test("double-tap the script, Complete, then confirm; cancellation keeps it queued", async ({ page }) => {
