@@ -58,7 +58,7 @@ export function offerWordFor(s) {
   if (key) {
     const facts = offerFacts(key);
     if (facts && facts.label) {
-      const word = String(facts.label).replace(/[\\/]+/g, " ").replace(/\\s+/g, " ").trim().slice(0, 90);
+      const word = String(facts.label).replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
       if (word) return word;
     }
   }
