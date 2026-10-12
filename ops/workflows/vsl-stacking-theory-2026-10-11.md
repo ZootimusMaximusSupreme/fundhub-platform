@@ -48,5 +48,5 @@ Sources supplied by user:
 - Exact first use and creator of the phrase remain unconfirmed.
 - Supplied Instagram reels could not be fetched by the research web tool.
 - No public head-to-head experiment comparing a VSL stack with one long VSL was found.
-- Need the other workflows to complete funnel examples, evidence review, and critical review before final synthesis.
+- Other workflows remain pending for funnel examples and the final synthesis.
 - Critical-review gap: no reliable public randomized study was found that directly compares one VSL with a multi-micro-VSL stack while holding offer, traffic, and message constant.
