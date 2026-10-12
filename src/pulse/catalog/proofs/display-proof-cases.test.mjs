@@ -39,6 +39,7 @@ test("every display proof case names one exact map row and real executable tests
     assert.deepEqual(displayProofFor(proofCase.sourceFile, matches[0]), {
       depth: "deep",
       evidence: proofCase.evidence,
+      asserts: matches[0].control,
     });
   }
 });

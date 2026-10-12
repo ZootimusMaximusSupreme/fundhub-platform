@@ -343,5 +343,5 @@ const CASES_BY_KEY = new Map(
 export function displayProofFor(sourceFile, row) {
   const found = CASES_BY_KEY.get(`${sourceFile}\0${row?.surface || ""}\0${row?.control || ""}`);
   if (!found) return null;
-  return { depth: found.depth, evidence: found.evidence };
+  return { depth: found.depth, evidence: found.evidence, asserts: row.control };
 }

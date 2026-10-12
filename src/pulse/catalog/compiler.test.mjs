@@ -40,11 +40,71 @@ test("a declared level without an executable target stays red", () => {
   const row = { ...base, surface: "button:x", evidence: "someone said this was tested" };
   const out = compileCatalog([{ sourceFile: "x.json", rows: [row] }], [recipe]);
   assert.equal(out.items[0].state, "red");
-  assert.match(out.items[0].reason, /names no executable proof target/);
+  assert.match(out.items[0].reason, /names no executable test, gap check, or beat/);
+});
+
+test("a status ping alone never counts as e2e or deep proof", () => {
+  const row = { ...base, surface: "button:x", evidence: "job:button-x" };
+  const out = compileCatalog([{ sourceFile: "x.json", rows: [row] }], [recipe]);
+  assert.equal(out.items[0].state, "red");
+  assert.match(out.items[0].reason, /status ping alone/);
 });
 
 test("a row must have exactly one recipe owner", () => {
   const source = [{ sourceFile: "x.json", rows: [{ ...base, surface: "button:x" }] }];
   assert.throws(() => compileCatalog(source, []), /found 0/);
   assert.throws(() => compileCatalog(source, [recipe, recipe]), /found 2/);
+});
+
+test("a safe recipe can raise coverage only with its own executable proof", () => {
+  const deepRecipe = {
+    supports: () => true,
+    makeRecipe: (sourceFile, row) => ({
+      family: "test", mode: "test", target: row.surface, expected: "works", schedule: "on-command",
+      safe: true, sourceFile, surface: row.surface,
+      proof: {
+        depth: "deep",
+        evidence: "src/catalog-result.test.mjs",
+        asserts: "the final customer result is correct"
+      }
+    })
+  };
+  const out = compileCatalog(
+    [{ sourceFile: "x.json", rows: [{ ...base, surface: "x:money", impact: "money", coverage: "none", evidence: "old.test.mjs" }] }],
+    [deepRecipe],
+    { resolve: (reference) => reference === "src/catalog-result.test.mjs" ? [reference] : [] }
+  );
+  assert.equal(out.items[0].state, "wired");
+  assert.equal(out.items[0].proofDepth, "deep");
+  assert.equal(out.items[0].proofAsserts, "the final customer result is correct");
+  assert.deepEqual(out.items[0].proof.tests, ["src/catalog-result.test.mjs"]);
+});
+
+test("recipe proof stays red when its own target cannot be resolved", () => {
+  const deepRecipe = {
+    supports: () => true,
+    makeRecipe: (sourceFile, row) => ({
+      family: "test", mode: "test", target: row.surface, expected: "works", schedule: "on-command",
+      safe: true, sourceFile, surface: row.surface,
+      proof: { depth: "deep", evidence: "missing.test.mjs", asserts: "the result is correct" }
+    })
+  };
+  const out = compileCatalog([{ sourceFile: "x.json", rows: [{ ...base, surface: "x:money", impact: "money" }] }], [deepRecipe], { resolve: () => [] });
+  assert.equal(out.items[0].state, "red");
+  assert.match(out.items[0].reason, /recipe claims proof/);
+});
+
+test("recipe proof needs a depth, executable evidence, assertion, and safe runner", () => {
+  const source = [{ sourceFile: "x.json", rows: [{ ...base, surface: "button:x" }] }];
+  for (const proof of [
+    { depth: "ping", evidence: "x.test.mjs", asserts: "works" },
+    { depth: "deep", evidence: "", asserts: "works" },
+    { depth: "deep", evidence: "x.test.mjs", asserts: "" }
+  ]) {
+    const bad = { ...recipe, makeRecipe: (sourceFile, row) => ({
+      family: "test", mode: "test", target: row.surface, expected: "works", schedule: "on-command",
+      safe: true, sourceFile, surface: row.surface, proof
+    }) };
+    assert.throws(() => compileCatalog(source, [bad]), /bad recipe/);
+  }
 });

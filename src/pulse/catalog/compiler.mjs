@@ -28,14 +28,23 @@ export function compileCatalog(sources, recipeModules, { resolve = (reference) =
         throw new Error(`${source.sourceFile} ${row.surface}: expected one recipe owner, found ${matches.length}`);
       }
       const recipe = validateRecipe(matches[0].makeRecipe(source.sourceFile, row), source.sourceFile, row);
-      const proof = proofTargets(row.evidence, resolve);
-      const status = mappedState(row, recipe, proof);
+      const mappedProof = proofTargets(row.evidence, resolve);
+      const recipeProof = proofTargets(recipe?.proof?.evidence, resolve);
+      const proof = Object.fromEntries(Object.keys(mappedProof).map((key) => [
+        key,
+        [...new Set([...(mappedProof[key] || []), ...(recipeProof[key] || [])])].sort()
+      ]));
+      const status = mappedState(row, recipe, proof, recipeProof);
       items.push({
         id: idFor(source.sourceFile, row),
         surface: row.surface,
         sourceFile: source.sourceFile,
         impact: row.impact,
         coverage: row.coverage,
+        ...(recipe?.proof ? {
+          proofDepth: recipe.proof.depth,
+          proofAsserts: recipe.proof.asserts
+        } : {}),
         family: recipe.family,
         mode: recipe.mode,
         target: recipe.target,

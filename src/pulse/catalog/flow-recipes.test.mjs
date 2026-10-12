@@ -12,7 +12,7 @@ const MAPS = Object.freeze([
 
 const MODES = new Set(["read-only", "test", "receipt", "manual-red"]);
 const RECIPE_KEYS = ["expected", "family", "mode", "safe", "schedule", "sourceFile", "surface", "target"];
-const PROOF_KEYS = ["depth", "evidence"];
+const PROOF_KEYS = ["asserts", "depth", "evidence"];
 
 function load(relativePath) {
   return JSON.parse(fs.readFileSync(new URL(relativePath, import.meta.url), "utf8"));
@@ -42,6 +42,7 @@ test("every flow map row gets one valid safe recipe", () => {
         assert.deepEqual(Object.keys(recipe.proof).sort(), PROOF_KEYS, row.surface);
         assert.equal(["e2e", "deep"].includes(recipe.proof.depth), true, row.surface);
         assert.match(recipe.proof.evidence, /\.test\.mjs\b/, row.surface);
+        assert.equal(recipe.proof.asserts, row.control, row.surface);
       }
       total += 1;
     }

@@ -54,9 +54,10 @@ test("all seven display maps produce one valid recipe per row", () => {
       const { proof, ...baseRecipe } = recipe;
       assert.deepEqual(Object.keys(baseRecipe).sort(), BASE_RECIPE_KEYS);
       if (proof) {
-        assert.deepEqual(Object.keys(proof).sort(), ["depth", "evidence"]);
+        assert.deepEqual(Object.keys(proof).sort(), ["asserts", "depth", "evidence"]);
         assert.ok(["deep", "e2e"].includes(proof.depth));
         assert.match(proof.evidence, /\.test\.mjs\b/);
+        assert.equal(proof.asserts, row.control);
       }
       assert.ok(FAMILIES.has(recipe.family), `${row.surface} has invalid family ${recipe.family}`);
       assert.ok(MODES.has(recipe.mode), `${row.surface} has invalid mode ${recipe.mode}`);
@@ -122,6 +123,7 @@ test("only exact display proof cases receive deep executable proof", () => {
     assert.deepEqual(recipe.proof, {
       depth: "deep",
       evidence: proofCase.evidence,
+      asserts: row.control,
     });
   }
 });

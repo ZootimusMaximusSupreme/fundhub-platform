@@ -146,7 +146,7 @@ export function makeRecipe(sourceFile, row) {
     target: String(targetFor(row)),
     expected: String(row.control),
     schedule: mode === "test" ? "on-demand" : "daily",
-    safe: mode !== "test",
+    safe: proof ? true : mode !== "test",
     sourceFile: baseName(sourceFile),
     surface: String(row.surface),
   };

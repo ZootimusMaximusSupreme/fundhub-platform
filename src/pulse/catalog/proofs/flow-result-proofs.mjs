@@ -76,6 +76,7 @@ function checkedProof(depth, files, row) {
   return {
     depth,
     evidence: `Executable final-result tests: ${unique(files).join(", ")}`,
+    asserts: row.control,
   };
 }
 
@@ -93,6 +94,7 @@ function messageProof(row) {
   return {
     depth: sensitive ? "deep" : "e2e",
     evidence: `Executable final-result tests: ${unique([...sourceTests, ...deliveryTests]).join(", ")}`,
+    asserts: row.control,
   };
 }
 

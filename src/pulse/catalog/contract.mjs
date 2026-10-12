@@ -27,27 +27,44 @@ export function validateRecipe(recipe, sourceFile, row) {
   }
   if (!RECIPE_MODES.includes(recipe?.mode)) problems.push(`unknown mode ${String(recipe?.mode)}`);
   if (typeof recipe?.safe !== "boolean") problems.push("safe must be true or false");
+  if (recipe?.proof !== undefined) {
+    if (!recipe.proof || typeof recipe.proof !== "object" || Array.isArray(recipe.proof)) {
+      problems.push("proof must be an object");
+    } else {
+      if (!["e2e", "deep"].includes(recipe.proof.depth)) problems.push("proof depth must be e2e or deep");
+      if (!String(recipe.proof.evidence || "").trim()) problems.push("proof evidence is empty");
+      if (!String(recipe.proof.asserts || "").trim()) problems.push("proof assertion is empty");
+      if (recipe.safe !== true) problems.push("executable proof must be safe");
+    }
+  }
   if (recipe?.surface !== row?.surface) problems.push("surface does not match the map row");
   if (recipe?.sourceFile !== sourceFile) problems.push("sourceFile does not match the map file");
   if (problems.length) throw new TypeError(`${sourceFile} ${row?.surface}: bad recipe: ${problems.join(", ")}`);
   return recipe;
 }
 
-export function mappedState(row, recipe, proofTargets = {}) {
-  const have = COVERAGE_DEPTH[row.coverage];
+export function mappedState(row, recipe, proofTargets = {}, recipeProofTargets = {}) {
   const need = requiredDepth(row);
   if (recipe.mode === "manual-red") {
     return { state: "red", reason: `No executable ${need === 3 ? "result" : "control"} proof is mapped yet.` };
   }
+  const recipeTargets = [
+    ...(recipeProofTargets.tests || []),
+    ...(recipeProofTargets.lanes || []),
+    ...(recipeProofTargets.beats || [])
+  ];
+  if (recipe.proof && !recipeTargets.length) {
+    return { state: "red", reason: "The recipe claims proof, but its evidence names no executable target." };
+  }
+  const have = Math.max(COVERAGE_DEPTH[row.coverage], COVERAGE_DEPTH[recipe?.proof?.depth] || 0);
   if (have < need) {
-    return { state: "red", reason: `${row.coverage} coverage is below required level L${need}.` };
+    return { state: "red", reason: `Best executable coverage is L${have}, below required level L${need}.` };
   }
   const targets = [
     ...(proofTargets.tests || []),
     ...(proofTargets.lanes || []),
-    ...(proofTargets.beats || []),
-    ...(proofTargets.pings || [])
+    ...(proofTargets.beats || [])
   ];
-  if (!targets.length) return { state: "red", reason: `The map says ${row.coverage}, but names no executable proof target.` };
+  if (!targets.length) return { state: "red", reason: `The map says ${row.coverage}, but names no executable test, gap check, or beat. A status ping alone is not result proof.` };
   return { state: "wired", reason: `Mapped to ${targets.length} executable proof target${targets.length === 1 ? "" : "s"}.` };
 }
