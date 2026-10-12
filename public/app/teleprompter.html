@@ -211,7 +211,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css?v=20261012-mic1">
+<link rel="stylesheet" href="teleprompter.css?v=20261012-full-edit1">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -366,6 +366,31 @@ body.wording #flip{transform:none !important}
   </div>
 </dialog>
 
+<!-- Double-tap on the words opens the COMPLETE script, not the one visible
+     paragraph. The camera keeps recording and the original remains unchanged
+     until Save. One-tap Play/Pause is separate from this full-screen editor. -->
+<dialog id="whole-editor" aria-labelledby="whole-editor-title" aria-modal="true">
+  <div class="whole-editor-head">
+    <h2 id="whole-editor-title">Edit entire script</h2>
+    <button type="button" id="whole-cancel" aria-label="Cancel script editing">Cancel</button>
+  </div>
+  <p id="whole-editor-name"></p>
+  <p class="whole-editor-tip">Every word is here. Copy everything to Claude or paste your edited script here.</p>
+  <div class="whole-editor-tools">
+    <button type="button" id="whole-copy">Copy Entire Script</button>
+    <button type="button" id="whole-export">Save .txt</button>
+    <button type="button" id="whole-paste">Paste from Clipboard</button>
+  </div>
+  <label class="whole-editor-label" for="whole-text">Full script</label>
+  <textarea id="whole-text" spellcheck="false" autocorrect="off" autocapitalize="sentences"
+    aria-label="Full script text, all words" enterkeyhint="done"></textarea>
+  <div class="whole-editor-footer">
+    <span id="whole-count" aria-live="polite"></span>
+    <span id="whole-message" role="status" aria-live="polite"></span>
+    <button type="button" id="whole-save">Save Changes</button>
+  </div>
+</dialog>
+
 <section class="sheet" id="lib" hidden aria-label="Scripts on this shoot">
   <div class="row"><h2>This shoot</h2><button type="button" class="x" data-close>Close</button></div>
   <div class="list" id="list"></div>
@@ -438,6 +463,6 @@ body.wording #flip{transform:none !important}
 
 <script src="teleprompter-edits.js?v=20261012-reconnect2"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-<script src="teleprompter.js?v=20261012-touch2"></script>
+<script src="teleprompter.js?v=20261012-full-edit1"></script>
 </body>
 </html>
