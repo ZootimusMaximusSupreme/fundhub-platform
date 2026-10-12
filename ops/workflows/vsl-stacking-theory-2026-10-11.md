@@ -10,7 +10,7 @@ Status: in progress
 | Theory and origin research | current session | done |
 | Funnel map | research agent | pending |
 | Examples and evidence | research agent | pending |
-| Critical review | research agent | pending |
+| Critical review | current session | done |
 | Final synthesis | current session | pending |
 
 ## Shared context
@@ -38,6 +38,10 @@ Sources supplied by user:
 - Added `research_notes/VSL Stacking Theory/theory-and-origin.md`.
 - Updated this board with the theory/origin findings and marked that workflow done.
 - No code, product, funnel, or marketing asset was changed.
+- Added `research_notes/VSL Stacking Theory/critical-review.md`.
+- Covered assumptions, failure modes, production cost, tracking, attribution, fatigue, privacy/platform constraints, fair testing, minimum useful test, and keep/change/remove rules.
+- Separated sourced conclusions from reasoned inference.
+- No code, product, funnel, or marketing asset was changed.
 
 ## Blockers and open questions
 
@@ -45,3 +49,4 @@ Sources supplied by user:
 - Supplied Instagram reels could not be fetched by the research web tool.
 - No public head-to-head experiment comparing a VSL stack with one long VSL was found.
 - Need the other workflows to complete funnel examples, evidence review, and critical review before final synthesis.
+- Critical-review gap: no reliable public randomized study was found that directly compares one VSL with a multi-micro-VSL stack while holding offer, traffic, and message constant.
