@@ -556,16 +556,16 @@
     var front = facing !== "environment";
     var rate = fps === 30 ? 30 : 60;
     var tall = shape === "tall";
-    var four = mode === "4k" && front && !tall;
+    var four = mode === "4k" && front;
     var frame = four
       ? { ideal: rate }
       : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
     if (four) {
       return {
         facingMode: { ideal: "user" },
-        width: { ideal: 3840 },
-        height: { ideal: 2160 },
-        aspectRatio: { ideal: 16 / 9 },
+        width: { ideal: tall ? 2160 : 3840 },
+        height: { ideal: tall ? 3840 : 2160 },
+        aspectRatio: { ideal: tall ? (9 / 16) : (16 / 9) },
         frameRate: frame
       };
     }
@@ -590,6 +590,10 @@
   function cameraTries(facing, mode) {
     var back = facing === "environment";
     var list = [];
+    // A portrait iPhone should request a portrait feed FIRST, avoiding a
+    // drastic center-crop of a landscape 4K feed before it can be recorded.
+    var portraitPhone = !!(root.navigator && /iPhone|iPad|iPod/i.test(root.navigator.userAgent || "") &&
+      (root.innerHeight || 0) > (root.innerWidth || 0));
     function push(fps, shape, lockRate, steady, askMode) {
       var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate, askMode == null ? mode : askMode);
       if (steady) {
@@ -599,10 +603,18 @@
       list.push(video);
     }
     if (!back && mode === "4k") {
+      if (portraitPhone) {
+        push(30, "tall", false, false, "4k");
+        push(60, "tall", false, false, "4k");
+      }
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
     var hd = mode === "4k" ? "1080p" : mode;
+    if (portraitPhone) {
+      push(30, "tall", false, false, hd);
+      push(60, "tall", false, false, hd);
+    }
     if (back) {
       push(60, "wide", true, true, hd);
       push(30, "wide", true, true, hd);
@@ -3049,17 +3061,18 @@
       camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
       var asks = [];
-      var direct = cameraAsk(wanted, 30, "wide", false, mode);
+      var faceShape = recordingIsPortrait() ? "tall" : "wide";
+      var direct = cameraAsk(wanted, 30, faceShape, false, mode);
       direct.facingMode = { exact: wanted };
       asks.push(direct);
       var exactId = cam.deviceIds[wanted];
       if (exactId) {
-        var exact = cameraAsk(wanted, 30, "wide", false, mode);
+        var exact = cameraAsk(wanted, 30, faceShape, false, mode);
         exact.deviceId = { exact: exactId };
         delete exact.facingMode;
         asks.push(exact);
       }
-      var loose = cameraAsk(wanted, 30, "wide", false, mode);
+      var loose = cameraAsk(wanted, 30, faceShape, false, mode);
       loose.facingMode = { ideal: wanted };
       asks.push(loose);
       var at = 0;
