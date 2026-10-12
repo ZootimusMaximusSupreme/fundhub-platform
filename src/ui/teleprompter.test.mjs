@@ -896,6 +896,11 @@ describe("teleprompter film look", () => {
     assert.match(SRC, /tp-portrait/);
   });
 
+  test("portrait camera preview shows the whole frame without zoom crop", () => {
+    assert.match(CSS, /body\.tp-portrait #cam-video,\s*body\.tp-portrait #cam-hold\s*\{\s*object-fit:\s*contain;/);
+    assert.match(CSS, /#cam-hold[\s\S]*object-fit:\s*cover;/);
+  });
+
   test("the two film buttons are glass, the shade is a little lighter, and speed is a tiny control", () => {
     assert.match(HTML, /id="wpm-down"/);
     assert.match(HTML, /id="wpm-up"/);

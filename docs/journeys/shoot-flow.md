@@ -118,7 +118,7 @@ Video upload state now uses the small top-right `#video-save-status` chip. It sa
 
 ### 4f. Front and rear camera
 
-The 44 px top-left camera button switches the live preview from the mirrored front camera to the normal rear camera, then back. It never starts recording. A take that is already recording keeps one stable canvas recording stream while the physical camera changes, so a front/rear/front take stays one file. The recording clock moves beside the camera button.
+The 44 px top-left camera button switches the live preview from the mirrored front camera to the normal rear camera, then back. It never starts recording. A take that is already recording keeps one stable canvas recording stream while the physical camera changes, so a front/rear/front take stays one file. The recording clock moves beside the camera button. In portrait, the preview shows the whole camera frame instead of enlarging and center-cropping a wide iPhone feed; the black glass fills any spare space.
 
 When iPhone Safari grants a requested lens but leaves `MediaTrackSettings.facingMode` blank, the page keeps the requested front/rear direction. It does not mistake the rear lens for the front lens and reopen the front camera.
 

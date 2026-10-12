@@ -491,6 +491,13 @@ body:not(.wording) #content {
   object-fit:cover;
   pointer-events:none;
 }
+/* A wide iPhone camera feed must not be blown up and center-cropped on a
+   tall phone. Show the whole live frame in portrait; the black glass fills
+   any spare space. Sideways filming still fills the screen. */
+body.tp-portrait #cam-video,
+body.tp-portrait #cam-hold {
+  object-fit: contain;
+}
 #camera-status{
   position:fixed;
   z-index:3;
