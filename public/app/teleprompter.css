@@ -512,3 +512,44 @@ body:not(.wording) #content {
   color:#fff;
   touch-action:manipulation;
 }
+
+
+/* The live camera stays slightly soft for reading, not hidden by a full-page
+   blur overlay. This affects only the preview, never the recorded source. */
+#cam-video { filter: blur(1.6px); }
+
+/* Always visible above the script without stealing camera/record touches. */
+#mic-monitor {
+  position:fixed;
+  z-index:6;
+  top:calc(62px + env(safe-area-inset-top, 0px));
+  left:8px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  max-width:min(230px, 68vw);
+  padding:5px 8px;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;
+  background:rgba(0,0,0,.6);
+  color:#fff;
+  font:600 10px/1.2 system-ui,-apple-system,sans-serif;
+  pointer-events:none;
+}
+#mic-dot {
+  flex:none;
+  width:6px;
+  height:6px;
+  background:#f0bd45;
+  border-radius:50%;
+}
+#mic-monitor[data-state="live"] #mic-dot { background:#34c759; }
+#mic-monitor[data-state="unavailable"] #mic-dot { background:#ff594f; }
+#mic-name { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+#mic-bars {flex:none;display:flex;align-items:flex-end;gap:2px;height:12px;}
+#mic-bars i {display:block;width:3px;height:3px;background:#8b9196;border-radius:2px;transition:height 120ms linear,background 120ms linear;}
+#mic-monitor[data-state="live"] #mic-bars i {background:#35d169;}
+#mic-monitor[data-level="1"] #mic-bars i:nth-child(1) {height:7px;}
+#mic-monitor[data-level="2"] #mic-bars i:nth-child(-n+2) {height:9px;}
+#mic-monitor[data-level="3"] #mic-bars i:nth-child(-n+3) {height:11px;}
+#mic-monitor[data-level="4"] #mic-bars i:nth-child(-n+4) {height:12px;}
