@@ -71,3 +71,10 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed the old source-copy sections. No `## Source:` blocks remain.
 - Removed the four old source files and the now-unused `.gitignore` entries for the two root files.
 - Preserved the old worktree and evidence copies because they are historical copies, not canonical lists.
+
+## Unfinished-only TODO rewrite — 2026-10-11
+
+- Status: done.
+- `TODO.md` now contains only unique unchecked `- [ ]` items.
+- Removed completed items, source labels, audit notes, and history from the working TODO.
+- Result: 480 unfinished items remain.
