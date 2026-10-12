@@ -4,6 +4,8 @@
 
 This file governs agent behavior. It is not product documentation.
 
+**Owner rule, 2026-10-12:** Read `AGENTS.md` before starting. If something blocks the task, find a practical way forward instead of waiting. Speak in fifth-grade English. Get the work onto GitHub; if shipping is blocked, offer a simple manual path rather than giving up. Divide tasks into parallel agents when available, but never claim an agent is running without proof.
+
 Domain facts, business rules, and architecture live in `docs/`. Read them when a task touches them. Do not restate them here.
 
 ## 0. STOP — split the work first
