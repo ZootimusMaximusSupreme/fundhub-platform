@@ -71,6 +71,14 @@ Batch 3 core: integration rejected weak green claims from Display and Flow. Mone
 - Final catalog target: 3,941 unique, 3,941 wired, 0 red or unproved.
 - Then run lint, type check, catalog freshness, hourly proof, full morning proof, ship, live health, and Inngest registration.
 
+## Ship closeout — 2026-10-12
+
+- **Funnel timeouts — done:** live reads are capped at eight at once. The same checks remain. Focused tests passed 72/72. The live read-only lane finished in 3.2 seconds with no skipped rows, and both role runs agreed. Commit `56a8e38be`.
+- **CRM links time — done:** page, logo, and pipeline checks now start together. The same checks and row order remain. Focused tests passed 46/46. Commit `d1cb9de4c`.
+- **GitHub proof keys — done:** full Meta and Commas keys were saved as GitHub Actions secrets and mapped into the ship job. Secret values were not printed or committed.
+- **Twilio and Resend in GitHub — named runner limit:** this repo only has masked local copies. GitHub names this row as live-only and never counts it green. A real live provider refusal still stays red for Chris to fix.
+- **Integration — ship running:** focused proof passed 121/121, lint passed, and catalog freshness passed. The bundled live read put CRM links at 5.0 seconds, funnel checks below the slowest-five list, and the whole morning at 18.5 seconds. The exact eight GitHub blockers from run `38237925288` are gone locally. The old 2.5-second nothing-to-judge recheck timed out again on 43 rows; they stayed named as not checked and were not turned green. Push `main` and watch the GitHub live ship next.
+
 ## Batch 1 result
 
 - 3,941 unique items.

@@ -37,6 +37,8 @@ A proof helper may not vanish from the morning pulse. Empty tables use a closed,
 
 GitHub's pre-deploy proof receives the real Meta and Commas read keys through Actions secrets. Twilio and Resend stay only on the live server when GitHub has no full copy: that CI row is named as runner-only, is never counted green, and a real vendor refusal still stays red in the live pulse.
 
+The funnel lane limits live reads to eight at once, so one host cannot stall the whole 15-second lane. The CRM-link lane starts its page, logo, and pipeline checks together. Both changes keep the same rows and checks; they only remove needless waiting.
+
 ## The picture
 
 ```mermaid
