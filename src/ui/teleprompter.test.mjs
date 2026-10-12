@@ -567,6 +567,23 @@ describe("top edge changes the script", () => {
   });
 });
 
+describe("offer folder UI", () => {
+  test("the script list shows a descriptive name and opening words", () => {
+    const T = load();
+    const script = {
+      offer_word: "Direct Book", offer_key: "funding_dfy", stack_kind: "ad",
+      stack_no: 5, angle_name: "Paying for speed",
+      body: "You can spend the next year learning how credit turns into money."
+    };
+    assert.equal(T.queueLabel(script), "Direct Book Ad 5");
+    assert.match(T.queueHook(script), /^You can spend the next year/);
+    assert.match(T.driveUrlForScript(script), /drive\.google\.com\/drive\/folders\//);
+    assert.match(HTML, /id="b-drive"/);
+    assert.match(SRC, /var driveGest = chipStart\(\)/);
+    assert.match(SRC, /if \(step\.go && !driveBtn\.hidden && driveBtn\.href\)/);
+  });
+});
+
 describe("teleprompter upload continuity", () => {
   test("every accepted take is stored before uploading and restored after reopen", () => {
     const store = fs.readFileSync(path.join(APP, "teleprompter-take-store.js"), "utf8");
