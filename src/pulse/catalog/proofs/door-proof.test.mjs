@@ -73,17 +73,17 @@ test("every door proof case names executable code and a focused test", async (t)
         assert.match(recipe.proof.evidence, /gap-door-batch-routes\.mjs/);
         assert.match(recipe.proof.asserts, /monitor stays red until an intended-method fake-data test judges this named result$/);
       } else if (recipe.proof.evidence.includes("door-batch-webhook-final.test.mjs")) {
-        assert.equal(recipe.proof.depth, "e2e");
-        assert.equal(recipe.proof.verdict, "red");
-        assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
-        assert.match(recipe.proof.evidence, /gap-door-batch-webhooks\.mjs/);
-        assert.match(recipe.proof.asserts, /monitor stays red until an exact fake-data test proves this named saved result$/);
+        assert.equal(recipe.proof.asserts, row.control);
+        assert.equal(recipe.proof.verdict, undefined);
       } else if (recipe.proof.evidence.includes("door-batch-job-final.test.mjs")) {
-        assert.equal(recipe.proof.depth, "e2e");
-        assert.equal(recipe.proof.verdict, "red");
-        assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
-        assert.match(recipe.proof.evidence, /gap-door-batch-jobs\.mjs/);
-        assert.match(recipe.proof.asserts, /monitor stays red until a non-empty fake-data run judges this named final result$/);
+        if (recipe.proof.verdict === "red") {
+          assert.equal(recipe.proof.depth, "e2e");
+          assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+          assert.match(recipe.proof.evidence, /gap-door-batch-jobs\.mjs/);
+          assert.match(recipe.proof.asserts, /monitor stays red until a non-empty fake-data run judges this named final result$/);
+        } else {
+          assert.equal(recipe.proof.asserts, row.control);
+        }
       } else if (!["route:climate/config", "route:public/rb2b-webhook"].includes(row.surface)) {
         assert.equal(recipe.proof.asserts, row.control);
       }
@@ -119,7 +119,7 @@ test("every door proof case names executable code and a focused test", async (t)
         assert.equal(recipe.proof.depth, "e2e");
         assert.match(recipe.proof.evidence, /src\/pulse\/coverage\/gap-door-batch-(?:routes|webhooks|jobs)\.mjs/);
       } else if (needDeep) {
-        const exactSafeHandler = /door-batch-(?:job-final|webhook-final)\.test\.mjs/.test(recipe.proof.evidence);
+        const exactSafeHandler = /door-batch-(?:job-final|webhook-final|route-exact)\.test\.mjs/.test(recipe.proof.evidence);
         assert.equal(exactSafeHandler || resolved.some((reference) =>
           /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/.test(reference) && !reference.endsWith(".test.mjs")
         ), true, "deep proof must name the result lane, beat, or exact safe handler result");

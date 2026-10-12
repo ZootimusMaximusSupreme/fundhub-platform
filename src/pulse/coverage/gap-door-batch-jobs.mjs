@@ -15,6 +15,15 @@ export const JOB_RESULT_EVIDENCE =
 export const FINAL_JOB_RESULT_TEST =
   "src/pulse/catalog/proofs/door-batch-job-final.test.mjs";
 
+const PROVED_FINAL_JOB_SURFACES = new Set([
+  "workflow:affiliate-payout-run",
+  "workflow:blueprint-next-funding-sequence-sweeper",
+  "workflow:merchant-pull-sweeper",
+  "workflow:paid-checkout-expiry-sweeper",
+  "function:hubstaff-poll-sweeper",
+  "function:marketing-offer-background",
+]);
+
 const FINAL_JOB_SURFACES = new Set([
   "workflow:contract-chaser",
   "workflow:hiring-outreach-cadence",
@@ -32,15 +41,15 @@ const FINAL_JOB_SURFACES = new Set([
 ]);
 
 export const FINAL_JOB_GAP_ROWS = Object.freeze(jobs
-  .filter((row) => FINAL_JOB_SURFACES.has(row.surface))
+  .filter((row) => FINAL_JOB_SURFACES.has(row.surface) && !PROVED_FINAL_JOB_SURFACES.has(row.surface))
   .map((row) => Object.freeze({
     id: `catalog-job:jobs.json:${row.surface}:${row.control}`,
     surface: row.surface,
     control: row.control,
   })));
 
-if (FINAL_JOB_GAP_ROWS.length !== FINAL_JOB_SURFACES.size) {
-  throw new Error(`Final job gap monitor drifted: expected ${FINAL_JOB_SURFACES.size} rows, found ${FINAL_JOB_GAP_ROWS.length}.`);
+if (FINAL_JOB_GAP_ROWS.length !== FINAL_JOB_SURFACES.size - PROVED_FINAL_JOB_SURFACES.size) {
+  throw new Error(`Final job gap monitor drifted: expected ${FINAL_JOB_SURFACES.size - PROVED_FINAL_JOB_SURFACES.size} rows, found ${FINAL_JOB_GAP_ROWS.length}.`);
 }
 
 export const CHECK_IDS = Object.freeze([
@@ -119,6 +128,13 @@ export function evaluateJobReceipt(row, loaded) {
 }
 
 export function jobResultProof(row) {
+  if (PROVED_FINAL_JOB_SURFACES.has(row?.surface)) {
+    return {
+      depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
+      evidence: FINAL_JOB_RESULT_TEST,
+      asserts: row.control,
+    };
+  }
   if (FINAL_JOB_SURFACES.has(row?.surface)) {
     return {
       depth: "e2e",

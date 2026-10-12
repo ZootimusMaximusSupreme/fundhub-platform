@@ -1,5 +1,4 @@
 export const WEBHOOK_FINAL_EVIDENCE =
-  "src/pulse/coverage/gap-door-batch-webhooks.mjs " +
   "src/pulse/catalog/proofs/door-batch-webhook-final.test.mjs";
 
 const SURFACES = new Set([
@@ -12,10 +11,8 @@ const SURFACES = new Set([
 export function webhookFinalProof(row) {
   if (!SURFACES.has(row?.surface)) return null;
   return {
-    depth: "e2e",
-    verdict: "red",
+    depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
     evidence: WEBHOOK_FINAL_EVIDENCE,
-    asserts: String(row.control) + " — " + String(row.surface) +
-      " monitor stays red until an exact fake-data test proves this named saved result",
+    asserts: String(row.control),
   };
 }

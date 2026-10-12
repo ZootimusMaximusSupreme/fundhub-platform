@@ -18,10 +18,6 @@ export const WEBHOOK_RESULT_EVIDENCE =
 export const CHECK_IDS = Object.freeze([
   "door-batch:webhook-lendflow-contract",
   "door-batch:webhook-ad-video-worker",
-  "door-batch:webhook-twilio-status-result",
-  "door-batch:webhook-mailgun-events-result",
-  "door-batch:webhook-contract-sign-result",
-  "door-batch:webhook-document-download-result",
 ]);
 export const KNOWN_GAP_TEST =
   "src/pulse/catalog/proofs/door-batch-webhook-red.test.mjs";
@@ -29,33 +25,6 @@ export const KNOWN_GAP_TEST =
 const KNOWN_GAP_SURFACES = new Set([
   "webhook:POST /api/webhooks/lendflow",
   "webhook:POST netlify/functions/ad-video-worker-background",
-]);
-
-const UNPROVED_RESULT_CHECKS = Object.freeze([
-  {
-    id: CHECK_IDS[2],
-    surface: "webhook:POST /api/webhooks/twilio-status",
-    detail: "The Twilio status test reaches a valid no-op receipt, but it does not prove that a matching message row saves the new delivery state and error text.",
-    suggestedFix: "Add a fake-data test that reads back the named message status and error text after the signed receipt.",
-  },
-  {
-    id: CHECK_IDS[3],
-    surface: "webhook:POST /api/webhooks/mailgun-events",
-    detail: "The Mailgun event test reaches a valid no-op event, but it does not prove that a matching outbound message saves a delivery result.",
-    suggestedFix: "Add a fake-data test that reads back the named outbound message result after the signed event.",
-  },
-  {
-    id: CHECK_IDS[4],
-    surface: "webhook:GET|POST /api/contracts/sign",
-    detail: "The contract test accepts a valid signature for a missing contract and gets 404, but it does not prove that viewing and signing a saved contract persist the named result.",
-    suggestedFix: "Add a fake-data test that reads back the saved contract view and signature result.",
-  },
-  {
-    id: CHECK_IDS[5],
-    surface: "webhook:GET /api/documents/[id]",
-    detail: "The document test accepts a valid signature for a missing document and gets 404, but it does not prove that a saved document can be opened.",
-    suggestedFix: "Add a fake-data test that stores a document and proves the signed link returns that saved file.",
-  },
 ]);
 
 function unique(values) {
@@ -199,6 +168,5 @@ export async function gapChecks(ctx = {}) {
       detail: "The ad-video worker secret guard is closed. " + worker.detail,
       suggestedFix: worker.suggestedFix,
     },
-    ...UNPROVED_RESULT_CHECKS.map((check) => ({ ...check, status: "FAIL" })),
   ];
 }

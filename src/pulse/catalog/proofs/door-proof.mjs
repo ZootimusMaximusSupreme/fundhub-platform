@@ -1,5 +1,6 @@
 import { keyContractProof } from "./door-batch-key-contract.mjs";
 import { routeContractProof } from "./door-batch-route-contract.mjs";
+import { routeExactProof } from "./door-batch-route-exact.mjs";
 import { routeResultProof } from "./door-batch-route-result.mjs";
 import { webhookFinalProof } from "./door-batch-webhook-final.mjs";
 import { keyHealthProof } from "../../coverage/gap-door-batch-keys.mjs";
@@ -222,6 +223,8 @@ export function proofForDoor(sourceFile, row) {
     return auditedMapProof(row);
   }
   if (name === "jobs.json" || /^routes-[0-3]\.json$/.test(name)) {
+    const exact = routeExactProof(row);
+    if (exact) return exact;
     const contract = routeContractProof(row);
     if (contract) return contract;
     if (/^routes-[0-3]\.json$/.test(name)) {
