@@ -345,7 +345,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Next-funding-sequence planner
 - [ ] Finance OS: 12 months included, then monthly
 - [ ] White label recruiting (parked): pitches for credit optimization companies and high-ticket coaches, a Google Ads inbound page, and mailer copy (8/31)
-- [ ] Confirm Lead and Schedule fire in Test Events (10/3)
 - [ ] Custom "ShowedCall" event for calls that show (10/1)
 - [ ] Fix the buy box and get Meta purchase tracking live before you scale the Notes ads (10/2)
 - [ ] Clarity tracking check (9/30)

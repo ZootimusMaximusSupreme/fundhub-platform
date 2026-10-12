@@ -83,5 +83,6 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed one row proven complete: the dated TODO sections were already triaged into the single canonical list.
 - Removed one row proven complete: avatar work exists under `marketing/avatars/partner/`.
 - Removed 9 duplicate unfinished rows; the fuller copy of each task remains.
-- Result: 464 unfinished items remain.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 464; no checked items remain; `git diff --check` is clean.
+- Removed one duplicate Meta Test Events row; the detailed row remains.
+- Result: 463 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 463; no checked items remain; `git diff --check` is clean.
