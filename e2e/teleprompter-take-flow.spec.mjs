@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30 } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -37,6 +37,12 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     window.__recorderStarts = 0;
     window.__recorderStops = 0;
     window.__recordStream = null;
+    window.__captureRates = [];
+    const captureCanvas = HTMLCanvasElement.prototype.captureStream;
+    HTMLCanvasElement.prototype.captureStream = function (fps) {
+      window.__captureRates.push(fps);
+      return captureCanvas.call(this, fps);
+    };
     if (rearPlayRejectOnce) {
       const nativePlay = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function () {
@@ -57,7 +63,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       const track = stream.getVideoTracks()[0];
       let liveFacing = facing;
       let liveDevice = deviceId;
-      track.getSettings = () => ({ width: 32, height: 32, frameRate: 30, deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
+      track.getSettings = () => ({ width: 32, height: 32, frameRate: cameraFps, deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
       track.applyConstraints = (next = {}) => {
         const exactFacing = next.facingMode && next.facingMode.exact;
         if (exactFacing && exactFacing !== liveFacing && rejectTrackSwitch) return Promise.reject(new Error("track switch rejected"));
@@ -95,7 +101,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -345,6 +351,23 @@ test("drag words while recording stays one take; only a tap changes playback and
   await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
   expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("iPhone at 60 fps records into a 60 fps canvas on both lenses", async ({ page }) => {
+  const { server } = await open(page, { iphone: true, cameraFps: 60 });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(60);
+  const flip = page.locator("#b-camera-flip");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  await page.waitForTimeout(550);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });
