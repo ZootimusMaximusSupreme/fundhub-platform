@@ -68,25 +68,55 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("only exact intended role-access rows use the shared live-gate result proof", () => {
+test("all 17 outbound message leftovers stay red without a final provider receipt", () => {
+  const rows = loadRows("messages.json")
+    .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
+    .filter(({ proof }) => proof?.verdict === "red");
+
+  assert.equal(rows.length, 17);
+  for (const { row, proof } of rows) {
+    assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
+  }
+});
+
+test("the journeys proxy stays red without a fixed live prompt and judged runtime", () => {
+  const rows = loadRows("agents.json")
+    .map((row) => ({ row, proof: proofForFlowRow("agents.json", row) }))
+    .filter(({ proof }) => proof?.verdict === "red");
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].row.surface, "ai-caller:api/journeys/ask.mjs");
+  assert.deepEqual(proofTestFiles(rows[0].proof), [FLOW_GAP_TEST]);
+});
+
+test("route counts never prove signed-in role access", () => {
   const rows = loadRows("journeys.json").filter((row) => (
     /#(?:reach-.+|stays-blocked)$/.test(String(row.surface || ""))
   ));
   assert.equal(rows.length, 90);
-  let proved = 0;
   for (const row of rows) {
     const proof = proofForFlowRow("journeys.json", row);
     assert.ok(proof, row.surface);
-    if (proof.verdict === "red") {
-      assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
-      continue;
-    }
-    proved += 1;
-    assert.deepEqual(proofTestFiles(proof), [
-      "src/pulse/catalog/proofs/flow-batch-role-access-results.test.mjs",
-    ], row.surface);
+    assert.equal(proof.verdict, "red", row.surface);
+    assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
   }
-  assert.equal(proved, 40);
+});
+
+test("HTML text scans never prove the five rejected journey results", () => {
+  const surfaces = [
+    "journey:slo-connections-intended#1-open-tab",
+    "journey:optimize-intended#2-book-without-form",
+    "journey:soft-pull-multi-biz-intended-draft#2-authorize-first",
+    "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page",
+    "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",
+  ];
+  for (const surface of surfaces) {
+    const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
+    assert.ok(row, surface);
+    const proof = proofForFlowRow("journeys.json", row);
+    assert.equal(proof.verdict, "red", surface);
+    assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], surface);
+  }
 });
 
 test("verified inactive templates use the exact monitor without a red verdict", () => {
