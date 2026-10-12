@@ -34,6 +34,9 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     window.__cameraRequests = [];
     window.__cameraAsks = [];
     window.__cameraStreams = [];
+    window.__recorderStarts = 0;
+    window.__recorderStops = 0;
+    window.__recordStream = null;
     if (rearPlayRejectOnce) {
       const nativePlay = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function () {
@@ -81,10 +84,11 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     let take = 0;
     window.MediaRecorder = class {
       static isTypeSupported() { return true; }
-      constructor(stream) { this.state = "inactive"; window.__recorderUsedCameraStream = window.__cameraStreams.includes(stream); }
-      start() { this.state = "recording"; this.take = ++take; }
+      constructor(stream) { this.state = "inactive"; window.__recordStream = stream; window.__recorderUsedCameraStream = window.__cameraStreams.includes(stream); }
+      start() { this.state = "recording"; this.take = ++take; window.__recorderStarts++; }
       stop() {
         this.state = "inactive";
+        window.__recorderStops++;
         setTimeout(() => {
           this.ondataavailable({ data: new Blob([`take-${this.take}`], { type: "video/mp4" }) });
           this.onstop();
@@ -199,33 +203,35 @@ test("a failed video upload stays in the small top status and leaves the file on
   expect(server.errors).toEqual([]);
 });
 
-test("camera button changes only the live view and never starts or changes recording", async ({ page }) => {
+test("camera flip is live, and one recording continues front/rear/front until Record/Stop", async ({ page }) => {
   const { server } = await open(page);
   const flip = page.locator("#b-camera-flip");
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
-  expect(await flip.evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(44);
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  expect(await page.evaluate(() => window.__recorderStarts)).toBe(0);
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
-  await expect.poll(() => page.locator("#cam-video").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
   await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
-  expect(await page.locator("#cam-video").evaluate((el) => el.srcObject.getVideoTracks()[0].getSettings().facingMode)).toBe("environment");
   await expect(page.locator("#b-rec")).toHaveText("Record");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
-  await expect(page.locator("#b-rec")).toHaveText("Record");
-  await page.locator("#b-rec").dispatchEvent("click");
-  await expect(page.locator("#b-rec")).toHaveText("Record");
-  await page.waitForTimeout(550);
+  expect(await page.evaluate(() => window.__recorderStarts)).toBe(0);
+  await page.waitForTimeout(550); // ignore iPhone ghost clicks after flip
   await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use front camera");
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__cameraRequests)).toEqual(["user"]);
-  expect(await page.evaluate(() => window.__cameraAsks.filter((ask) => ask.audio).length)).toBe(1);
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  expect(await page.evaluate(() => window.__recordStream.getVideoTracks().length)).toBe(1);
   await page.waitForTimeout(550);
   await page.locator("#b-rec").tap();
-  await expect(page.locator("#take-save")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Save this video?" })).toBeVisible();
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
+  expect(server.uploads).toHaveLength(0);
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });
@@ -277,14 +283,28 @@ test("camera button uses the exact rear device when Safari ignores the ideal rea
   expect(server.errors).toEqual([]);
 });
 
-test("iPhone records the hardware camera stream so recording cannot shake the words", async ({ page }) => {
-  const { server } = await open(page, { iphone: true });
+test("iPhone records one stable canvas stream even as physical lenses change", async ({ page }) => {
+  const { server } = await open(page, { iphone: true, cameraDevices: [
+    { kind: "videoinput", deviceId: "front", label: "Front Camera" },
+    { kind: "videoinput", deviceId: "rear", label: "Back Camera" }
+  ] });
   await page.locator("#play").tap();
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__recorderUsedCameraStream)).toBe(true);
+  expect(await page.evaluate(() => window.__recorderUsedCameraStream)).toBe(false);
+  const flip = page.locator("#b-camera-flip");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await flip.tap();
+  await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  await page.waitForTimeout(550);
   await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
   await page.locator("#take-save-no").tap();
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
   expect(server.errors).toEqual([]);
 });
 
@@ -335,9 +355,11 @@ test("double-tap the script, Complete, then confirm; cancellation keeps it queue
   await expect.poll(() => server.marks.length).toBe(1);
   expect(server.marks[0].mark).toBe("got_it");
   expect(server.marks[0].root_script_id).toBe(scripts[0].root_script_id);
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(server.uploads).toHaveLength(0);
+  await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
   await expect(page.locator("#take-save-name")).toHaveText(scripts[0].take_file_name);
-  expect(server.uploads).toHaveLength(0);
   await page.locator("#take-save-no").tap();
   expect((await state(page)).script.root_script_id).toBe(scripts[1].root_script_id);
   expect(server.errors).toEqual([]);
