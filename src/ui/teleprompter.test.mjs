@@ -567,6 +567,35 @@ describe("top edge changes the script", () => {
   });
 });
 
+describe("teleprompter upload continuity", () => {
+  test("every accepted take is stored before uploading and restored after reopen", () => {
+    const store = fs.readFileSync(path.join(APP, "teleprompter-take-store.js"), "utf8");
+    assert.match(HTML, /src="teleprompter-take-store\.js/);
+    assert.ok(HTML.indexOf("teleprompter-take-store.js") < HTML.indexOf('src="teleprompter.js'));
+    assert.match(store, /indexedDB\.open\(NAME, 1\)/);
+    assert.match(store, /tx\.oncomplete = function \(\) \{ resolve\(value\)/);
+    assert.match(SRC, /takeStore\.put\(entry\)\.then\(function \(\) \{/);
+    assert.match(SRC, /function restoreQueuedVideos\(\) \{/);
+    assert.match(SRC, /restoreQueuedVideos\(\);/);
+    assert.match(SRC, /takeStore\.remove\(item\.id\)\.then\(function \(\) \{/);
+    assert.match(SRC, /root\.addEventListener\("online"/);
+    assert.match(SRC, /videoSaveStatus\("Upload paused · saved on device"/);
+    assert.match(SRC, /function saveNextVideo\(\) \{\s*if \(!cam\.uploads\.length \|\| cam\.saving \|\| uploadRetryTimer\) return/);
+  });
+
+  test("microphone level display uses the same live input track without asking again", () => {
+    assert.match(HTML, /id="mic-monitor"/);
+    assert.match(HTML, /id="mic-name"/);
+    assert.match(HTML, /id="mic-bars"/);
+    const meter = SRC.slice(SRC.indexOf("function syncMicMeter()"), SRC.indexOf("doc.addEventListener(\\"pointerdown\\", resumeMicMeter"));
+    assert.match(meter, /cam\.audioTrack && cam\.audioTrack\.readyState === "live"/);
+    assert.match(meter, /createMediaStreamSource\(new root\.MediaStream\(\[track\]\)\)/);
+    assert.match(meter, /getByteTimeDomainData\(sample\)/);
+    assert.doesNotMatch(meter, /getUserMedia\(/);
+    assert.match(SRC, /syncMicMeter\(\);\s*var box = \$\("cam"\)/);
+  });
+});
+
 describe("teleprompter page", () => {
   test("the page: no shell, no sign-in, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
