@@ -77,7 +77,7 @@ Batch 3 core: integration rejected weak green claims from Display and Flow. Mone
 - **CRM links time — done:** page, logo, and pipeline checks now start together. The same checks and row order remain. Focused tests passed 46/46. Commit `d1cb9de4c`.
 - **GitHub proof keys — done:** full Meta and Commas keys were saved as GitHub Actions secrets and mapped into the ship job. Secret values were not printed or committed.
 - **Twilio and Resend in GitHub — named runner limit:** this repo only has masked local copies. GitHub names this row as live-only and never counts it green. A real live provider refusal still stays red for Chris to fix.
-- **Integration — ship running:** focused proof passed 121/121, lint passed, and catalog freshness passed. The bundled live read put CRM links at 5.0 seconds, funnel checks below the slowest-five list, and the whole morning at 18.5 seconds. The exact eight GitHub blockers from run `38237925288` are gone locally. The old 2.5-second nothing-to-judge recheck timed out again on 43 rows; they stayed named as not checked and were not turned green. Push `main` and watch the GitHub live ship next.
+- **Integration — second ship pass:** focused proof passed 121/121, lint passed, and catalog freshness passed. GitHub run `38276256446` proved the funnel and key fixes, but the slower runner exposed one more CRM wait: a dead static file could use 15 seconds twice, taking the lane to 52.3 seconds. That retry is now five seconds per try; the same live lane finished in 4.9 seconds. The old 2.5-second nothing-to-judge recheck still names its timeouts and does not turn them green.
 
 ## Batch 1 result
 

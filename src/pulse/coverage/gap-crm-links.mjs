@@ -88,6 +88,10 @@ export const LOGO_PLACEHOLDER = "/assets/lenders/placeholder.svg";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// One dead static file gets one retry, but it may not hold this whole lane for
+// 30 seconds. Two five-second attempts leave room for the database proof too.
+export const CRM_FETCH_TIMEOUT_MS = 5000;
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const LINK_TOKEN = /(?:href\s*=\s*|location\.href\s*=\s*|\.href\s*=\s*|window\.open\(\s*)["']([^"']+)["']/gi;
@@ -279,7 +283,7 @@ async function getText(fetchImpl, url, method = "GET") {
   const send = () => fetchImpl(url, {
     method,
     headers: { accept: "text/html,application/javascript,*/*" },
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(CRM_FETCH_TIMEOUT_MS)
   });
   // One retry when the request itself throws (a dropped connection). A status code is never retried.
   let res;
