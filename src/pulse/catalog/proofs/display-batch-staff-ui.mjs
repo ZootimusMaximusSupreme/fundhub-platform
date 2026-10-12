@@ -2,6 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  DISPLAY_RESULT_LANE,
+  needsDeepDisplayResult,
+} from "./display-saved-result.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
 const TEST_FILE = "src/pulse/catalog/proofs/display-batch-staff-ui.test.mjs";
@@ -270,12 +275,14 @@ export const STAFF_UI_PROOF_CASES = Object.freeze(STAFF_UI_GROUPS.flatMap((entry
     if (matches.length !== 1) {
       throw new Error(`Expected one staff display row for ${entry.sourceFile} / ${entry.surface} / ${control}, found ${matches.length}`);
     }
+    const row = matches[0];
+    const deep = needsDeepDisplayResult(row);
     return Object.freeze({
       sourceFile: entry.sourceFile,
       surface: entry.surface,
       control,
-      depth: "e2e",
-      evidence: `${TEST_FILE} (runs ${entry.specs.join(", ")})`,
+      depth: deep ? "deep" : "e2e",
+      evidence: `${TEST_FILE} (runs ${entry.specs.join(", ")})${deep ? `; ${DISPLAY_RESULT_LANE}` : ""}`,
       tests: Object.freeze([TEST_FILE]),
     });
   }),

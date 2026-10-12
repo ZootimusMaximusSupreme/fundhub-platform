@@ -24,8 +24,11 @@ test("staff display batch maps exact rows to one safe local browser run", () => 
     const key = `${proofCase.sourceFile}\0${proofCase.surface}\0${proofCase.control}`;
     assert.equal(keys.has(key), false, `duplicate staff display proof: ${key}`);
     keys.add(key);
-    assert.equal(proofCase.depth, "e2e");
+    assert.ok(["e2e", "deep"].includes(proofCase.depth));
     assert.deepEqual(proofCase.tests, ["src/pulse/catalog/proofs/display-batch-staff-ui.test.mjs"]);
+    if (proofCase.depth === "deep") {
+      assert.match(proofCase.evidence, /src\/pulse\/coverage\/gap-catalog-display\.mjs/);
+    }
   }
 
   for (const spec of STAFF_UI_SPECS) {
@@ -45,7 +48,11 @@ test("staff display batch presses every mapped control and checks its result", (
   ], {
     cwd: ROOT,
     encoding: "utf8",
-    env: { ...process.env, CI: "1" },
+    env: {
+      ...process.env,
+      CI: "1",
+      E2E_PORT: String(45_000 + (process.pid % 10_000)),
+    },
     maxBuffer: 16 * 1024 * 1024,
   });
 

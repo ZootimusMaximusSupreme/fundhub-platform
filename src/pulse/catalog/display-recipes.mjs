@@ -94,6 +94,7 @@ function modeFor(row, family, proof) {
   const coverage = String(row.coverage || "").toLowerCase();
   const kind = normalizedKind(row);
 
+  if (proof && family === "screen" && PAGE_KINDS.has(kind)) return "read-only";
   if (proof && (coverage === "none" || coverage === "ping")) return "test";
   if (coverage === "none") return "manual-red";
   if (hasReceiptProof(row)) return "receipt";

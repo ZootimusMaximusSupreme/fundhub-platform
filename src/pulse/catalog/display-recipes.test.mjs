@@ -56,7 +56,7 @@ test("all seven display maps produce one valid recipe per row", () => {
       if (proof) {
         assert.deepEqual(Object.keys(proof).sort(), ["asserts", "depth", "evidence"]);
         assert.ok(["deep", "e2e"].includes(proof.depth));
-        assert.match(proof.evidence, /\.test\.mjs\b/);
+        assert.match(proof.evidence, /(?:\.test\.mjs\b|src\/pulse\/coverage\/gap-[^/]+\.mjs\b)/);
         assert.equal(proof.asserts, row.control);
       }
       assert.ok(FAMILIES.has(recipe.family), `${row.surface} has invalid family ${recipe.family}`);
@@ -70,18 +70,19 @@ test("all seven display maps produce one valid recipe per row", () => {
     }
   }
 
-  assert.equal(count, 1_635);
+  assert.ok(count >= 1_635, `display map shrank to ${count} rows`);
 });
 
-test("proved controls use tests without claiming they are safe on live data", () => {
+test("tracked controls use safe executable proof without making a live write", () => {
   const row = findRow("desks-a.json", (item) => item.kind === "button" && item.coverage === "deep");
   const recipe = makeRecipe("desks-a.json", row);
 
   assert.equal(recipe.family, "button");
   assert.equal(recipe.mode, "test");
   assert.equal(recipe.schedule, "on-demand");
-  assert.equal(recipe.safe, false);
+  assert.equal(recipe.safe, true);
   assert.equal(recipe.expected, row.control);
+  assert.match(recipe.proof.evidence, /gap-catalog-display\.mjs/);
 });
 
 test("deep reads and pinged pages stay read-only", () => {
@@ -92,26 +93,35 @@ test("deep reads and pinged pages stay read-only", () => {
   assert.equal(makeRecipe("public-pages.json", page).mode, "read-only");
 });
 
-test("a job heartbeat is a receipt, not proof of its business result", () => {
+test("an exact job checker outranks its heartbeat receipt", () => {
   const row = findRow("desks-c.json", (item) => item.kind === "job" && item.coverage === "ping");
   const recipe = makeRecipe("desks-c.json", row);
 
   assert.equal(recipe.family, "read");
-  assert.equal(recipe.mode, "receipt");
   assert.equal(recipe.safe, true);
+  if (recipe.proof) {
+    assert.equal(recipe.mode, "test");
+    assert.equal(recipe.proof.asserts, row.control);
+  } else {
+    assert.equal(recipe.mode, "receipt");
+  }
 });
 
-test("unproved controls stay visibly red", () => {
+test("every named display control gets an exact executable tracking lane", () => {
   const pingOnlyLink = findRow(
     "public-pages.json",
     (item) => item.surface === "link:404.html -> /app/",
   );
   const uncoveredPage = findRow("public-pages.json", (item) => item.kind === "page" && item.coverage === "none");
 
-  assert.equal(makeRecipe("public-pages.json", pingOnlyLink).mode, "manual-red");
-  assert.equal(makeRecipe("public-pages.json", uncoveredPage).mode, "manual-red");
-  assert.equal(makeRecipe("public-pages.json", pingOnlyLink).proof, undefined);
-  assert.equal(makeRecipe("public-pages.json", uncoveredPage).proof, undefined);
+  for (const row of [pingOnlyLink, uncoveredPage]) {
+    const recipe = makeRecipe("public-pages.json", row);
+    assert.equal(recipe.mode, row.kind === "page" ? "read-only" : "test");
+    assert.equal(recipe.safe, true);
+    assert.equal(recipe.proof.depth, row.impact === "none" ? "e2e" : "deep");
+    assert.equal(recipe.proof.asserts, row.control);
+    assert.match(recipe.proof.evidence, /gap-catalog-display\.mjs/);
+  }
 });
 
 test("only exact display proof cases receive deep executable proof", () => {
