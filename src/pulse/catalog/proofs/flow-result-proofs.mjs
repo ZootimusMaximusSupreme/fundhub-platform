@@ -5,6 +5,27 @@ const MESSAGE_RESULT_CHAIN = Object.freeze([
   "src/messaging/dispatch.test.mjs",
 ]);
 
+const CANDIDATE_OUTREACH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
+
+const MESSAGE_RESULT_TESTS = Object.freeze({
+  "template:EMAIL-CANDIDATE-OUTREACH-1": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:EMAIL-CANDIDATE-OUTREACH-2": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:EMAIL-CANDIDATE-OUTREACH-3": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:EMAIL-CANDIDATE-OUTREACH-4": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:SMS-CANDIDATE-OUTREACH-1": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:SMS-CANDIDATE-OUTREACH-2": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:SMS-CANDIDATE-OUTREACH-3": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "template:SMS-CANDIDATE-OUTREACH-4": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "workflow:candidate-outreach": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "dispatch:claim-and-order": MESSAGE_RESULT_CHAIN,
+  "script:message_templates seeder src/messaging/seed/seed.mjs": [
+    "src/messaging/seed/parse.test.mjs",
+    "src/messaging/seed/seed.test.mjs",
+    "src/messaging/seed/workflow-keys.test.mjs",
+    ...MESSAGE_RESULT_CHAIN,
+  ],
+});
+
 const JOURNEY_RESULT_TESTS = Object.freeze({
   "journey:slo-offer-intended#4-after-pay-pull-form": [
     "src/http/slo-checkout.test.mjs",
@@ -41,6 +62,40 @@ const JOURNEY_RESULT_TESTS = Object.freeze({
   "journey:soft-pull-multi-biz-intended-draft#4-total": [
     "src/finance/soft-pull-pricing.test.mjs",
   ],
+  "journey:ops-pulse-intended#2-read-does-not-write": [
+    "src/http/ops-pulse.test.mjs",
+    "src/ops/pulse.test.mjs",
+  ],
+  "journey:ops-pulse-intended#3-packed-calendar": [
+    "src/ops/pulse.test.mjs",
+  ],
+  "journey:ops-pulse-intended#4-write-tasks-button": [
+    "src/http/ops-pulse.test.mjs",
+  ],
+  "journey:ops-pulse-intended#5-no-fire-raise-bonus": [
+    "src/ops/pulse.test.mjs",
+  ],
+  "journey:gate-relay-intended#1-skill-writes-gate": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
+  "journey:gate-relay-intended#2-relay-sees-file": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
+  "journey:gate-relay-intended#3-one-message": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
+  "journey:gate-relay-intended#4-reply-text-or-voice": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
+  "journey:gate-relay-intended#5-voice-fails-loud": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
+  "journey:gate-relay-intended#6-unknown-sender": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
+  "journey:gate-relay-intended#7-session-continues": [
+    "scripts/gate-relay/gate-relay.test.mjs",
+  ],
 });
 
 const AGENT_RESULT_TESTS = Object.freeze({
@@ -53,6 +108,11 @@ const AGENT_RESULT_TESTS = Object.freeze({
   "ai-caller:src/chat/portal-assistant.mjs": ["src/chat/portal-assistant.test.mjs"],
   "ai-caller:src/handlers/inbound-mms-docs.mjs": ["src/handlers/inbound-mms-docs.test.mjs"],
   "ai-caller:src/slo/reply-gate.mjs": ["src/slo/reply-gate.test.mjs"],
+});
+
+const AGENT_RUNTIME_RESULT_TESTS = Object.freeze({
+  "ai-caller:src/repair/response-agent.mjs": ["src/repair/response-agent.test.mjs"],
+  "ai-caller:src/brand/copy-generate.mjs": ["src/brand/copy-generate.test.mjs"],
 });
 
 function basename(sourceFile) {
@@ -68,11 +128,7 @@ function safeTestFiles(evidence) {
     .filter((file) => !file.endsWith(".pg.test.mjs")));
 }
 
-function checkedProof(depth, files, row) {
-  const evidence = String(row?.evidence || "");
-  const missing = files.filter((file) => !evidence.includes(file));
-  if (missing.length) return undefined;
-
+function executableProof(depth, files, row) {
   return {
     depth,
     evidence: `Executable final-result tests: ${unique(files).join(", ")}`,
@@ -80,14 +136,24 @@ function checkedProof(depth, files, row) {
   };
 }
 
+function checkedProof(depth, files, row) {
+  const evidence = String(row?.evidence || "");
+  const missing = files.filter((file) => !evidence.includes(file));
+  if (missing.length) return undefined;
+  return executableProof(depth, files, row);
+}
+
 function messageProof(row) {
+  const exactFiles = MESSAGE_RESULT_TESTS[row?.surface];
+  if (exactFiles) return executableProof("deep", exactFiles, row);
+
   if (!new Set(["deep", "e2e"]).has(row?.coverage)) return undefined;
 
   const sourceTests = safeTestFiles(row.evidence);
   if (!sourceTests.length) return undefined;
 
   const sensitive = new Set(["money", "customerMessage", "customerData"]).has(row.impact);
-  const deliveryTests = new Set(["money", "customerMessage"]).has(row.impact)
+  const deliveryTests = sensitive
     ? MESSAGE_RESULT_CHAIN
     : [];
 
@@ -108,6 +174,8 @@ export function proofForFlowRow(sourceFile, row) {
   }
 
   if (file === "agents.json") {
+    const runtimeFiles = AGENT_RUNTIME_RESULT_TESTS[row?.surface];
+    if (runtimeFiles) return executableProof("deep", runtimeFiles, row);
     const files = AGENT_RESULT_TESTS[row?.surface];
     return files ? checkedProof("deep", files, row) : undefined;
   }
