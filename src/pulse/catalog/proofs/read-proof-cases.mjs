@@ -16,6 +16,54 @@ function group(sourceFile, surface, tests, controls) {
 }
 
 const PROVED = [
+  ...group("desks-a.json", "agent-editor.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "Page open: staff pickers for Owner and Escalate-to selects",
+    "Promotion gate checklist (display: trigger, prompt 60+ chars, guardrail 20+ chars, escalation)",
+  ]),
+  ...group("desks-a.json", "client-control-panel.html", ["src/http/client-panel-screen.test.mjs"], [
+    "Waiting count headline (bank yes with no amount)",
+  ]),
+  ...group("desks-a.json", "client-portal.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "Page open: portal contracts read (Agreements tab)",
+  ]),
+  ...group("desks-d.json", "public/app/money-helper.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "Thinking... poll every 3 s (up to 100 polls) and Check again button",
+  ]),
+  ...group("desks-d.json", "public/app/money-helper.html", [
+    "src/finance/money-helper.test.mjs",
+    "src/finance/money-helper-runner.test.mjs",
+  ], [
+    "Helper brain: Mac bridge heartbeat / model runner (AI answers vs rules fallback)",
+  ]),
+  ...group("desks-e.json", "public/app/money.html", ["src/http/money-trends-screen.test.mjs"], [
+    "Trends line-graph slot (mounted from money-trends.js when the page loaded it)",
+  ]),
+  ...group("desks-e.json", "public/app/my-numbers.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "Offer stack table: product, units sold, amount sold, cash collected, totals, retired product, reason when unknown",
+    "Money boxes: Paid out, Pending funding, At risk (always a dash: not computed)",
+    "Streak strip (always the sentence: daily close streak is not stored yet)",
+  ]),
+  ...group("desks-e.json", "public/app/ops-admin.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "AR + Collections table: client, invoice INV-xxxx, amount owed, overdue, status (top 25, total line)",
+    "Compliance Gate table: messages it stopped (client, channel, reason, when; top 15)",
+    "Failed events tile (appended to the KPI grid: N failed events awaiting retry)",
+    "Staff Monitoring Consent table (Signed / Not yet signed, before names show on the Galaxy)",
+  ]),
+  ...group("desks-e.json", "public/app/payment-success.html", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "The bounded check: up to 6 reads, 3 seconds apart, then stops; baseline = what was already open",
+    "State shown: Just opened on your account / Nothing new has opened yet / Nothing is open yet / cannot check (signed out) / cannot tell which account / could not reach your account",
+  ]),
+  ...group("desks-f.json", "present.html (+ present.js, contract-send.js)", [
+    "src/pulse/catalog/proofs/read-result-probes.test.mjs",
+    "src/http/closer-deck-present.test.mjs",
+    "src/http/contract-send.test.mjs",
+  ], [
+    "Double-press guard on every send button ('Sending...', 4 second cooldown, 'Sent at' line, count of sends)",
+  ]),
+  ...group("desks-f.json", "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)", ["src/pulse/catalog/proofs/read-result-probes.test.mjs"], [
+    "Every 5 seconds while paused: re-reads the shoot and flushes waiting marks and edits",
+    "Full screen on first tap (requestFullscreen)",
+  ]),
   ...group("desks-a.json", "affiliate.html", ["src/http/affiliate-screen.test.mjs"], [
     "Referred leads table: Commission column and Total shown",
   ]),
