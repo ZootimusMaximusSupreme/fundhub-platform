@@ -16,7 +16,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Launch book-a-call at $250/day once those events show - Spending money: Chris only. Waits on the Schedule proof above.
 - [ ] Compare /roadmap conversion for one week at $147 against the last week at $297, at the same daily spend - Checked 10/5: cannot run yet. $147 went live 10/4 15:07 Arizona, so the week ends 10/11 15:07. $297 week on record: ad spend 9/28–10/4 = $707.24, 0 paid orders, 2 real Meta checkouts started (10/1, 10/2); per-visit /roadmap counts only exist from 10/2. Watch: /roadmap had 1 tracked visit on 10/5 (Arizona) against 32 on 10/4, while /home had 187, so the spend may not be the same on both sides.
 - [ ] Film 3 canal ads and 2 ads at home
-- [ ] Green screen ads: talking points are in `marketing/ads/scripts/book-a-call-final-2026-10-03.md` sections 7 and 8 (branch `all-scripts-2026-10-03`)
 - [ ] Edit
 - [ ] Mastermind the offer
 - [ ] Scrape courses
