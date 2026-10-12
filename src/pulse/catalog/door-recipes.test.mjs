@@ -62,11 +62,18 @@ test("every mapped door gets a complete recipe", async () => {
           assert.equal(recipe.proof.verdict, undefined);
           assert.equal(recipe.proof.asserts, row.control);
         } else if (recipe.proof.evidence.includes("door-batch-job-final.test.mjs")) {
-          assert.equal(recipe.proof.depth, "e2e");
-          assert.equal(recipe.proof.verdict, "red");
-          assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
-          assert.match(recipe.proof.evidence, /gap-door-batch-jobs\.mjs/);
-          assert.match(recipe.proof.asserts, /monitor stays red until a non-empty fake-data run judges this named final result$/);
+          if (recipe.proof.verdict === "red") {
+            assert.equal(recipe.proof.depth, "e2e");
+            assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+            assert.match(recipe.proof.evidence, /gap-door-batch-jobs\.mjs/);
+            assert.match(recipe.proof.asserts, /monitor stays red until a non-empty fake-data run judges this named final result$/);
+          } else {
+            // The six fake-data jobs now prove final results. Keep their deep
+            // verdicts where money or customer data is involved.
+            const required = ["money", "customerMessage", "customerData"].includes(row.impact) ? "deep" : "e2e";
+            assert.equal(recipe.proof.depth, required);
+            assert.equal(recipe.proof.asserts, row.control);
+          }
         } else if (!["route:climate/config", "route:public/rb2b-webhook"].includes(row.surface)) {
           assert.equal(recipe.proof.asserts, row.control);
         }
