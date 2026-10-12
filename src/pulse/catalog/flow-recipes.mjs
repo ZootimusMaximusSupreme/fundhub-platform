@@ -1,3 +1,5 @@
+import { proofForFlowRow } from "./proofs/flow-result-proofs.mjs";
+
 const SOURCE_FAMILIES = Object.freeze({
   "messages.json": "message",
   "journeys.json": "journey",
@@ -23,9 +25,11 @@ export function supports(sourceFile, row) {
   return Boolean(SOURCE_FAMILIES[basename(sourceFile)] && isRow(row));
 }
 
-function modeFor(sourceFile, row) {
+function modeFor(sourceFile, row, proof) {
+  if (proof) return "test";
+
   if (sourceFile === "messages.json") {
-    return row.coverage === "deep" ? "receipt" : "manual-red";
+    return "manual-red";
   }
 
   if (sourceFile === "journeys.json") {
@@ -50,9 +54,10 @@ export function makeRecipe(sourceFile, row) {
   }
 
   const family = SOURCE_FAMILIES[file];
-  const mode = modeFor(file, row);
+  const proof = proofForFlowRow(file, row);
+  const mode = modeFor(file, row, proof);
 
-  return {
+  const recipe = {
     family,
     mode,
     target: row.surface,
@@ -62,4 +67,7 @@ export function makeRecipe(sourceFile, row) {
     sourceFile: file,
     surface: row.surface,
   };
+
+  if (proof) recipe.proof = proof;
+  return recipe;
 }

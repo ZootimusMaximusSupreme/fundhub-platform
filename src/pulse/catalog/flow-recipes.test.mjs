@@ -12,6 +12,7 @@ const MAPS = Object.freeze([
 
 const MODES = new Set(["read-only", "test", "receipt", "manual-red"]);
 const RECIPE_KEYS = ["expected", "family", "mode", "safe", "schedule", "sourceFile", "surface", "target"];
+const PROOF_KEYS = ["depth", "evidence"];
 
 function load(relativePath) {
   return JSON.parse(fs.readFileSync(new URL(relativePath, import.meta.url), "utf8"));
@@ -26,7 +27,8 @@ test("every flow map row gets one valid safe recipe", () => {
       assert.equal(supports(sourceFile, row), true, `${sourceFile}: ${row.surface}`);
 
       const recipe = makeRecipe(sourceFile, row);
-      assert.deepEqual(Object.keys(recipe).sort(), RECIPE_KEYS, `${sourceFile}: ${row.surface}`);
+      const expectedKeys = recipe.proof ? [...RECIPE_KEYS, "proof"].sort() : RECIPE_KEYS;
+      assert.deepEqual(Object.keys(recipe).sort(), expectedKeys, `${sourceFile}: ${row.surface}`);
       assert.equal(typeof recipe.family, "string");
       assert.equal(MODES.has(recipe.mode), true, `${sourceFile}: ${row.surface}`);
       assert.equal(recipe.target, row.surface);
@@ -36,6 +38,11 @@ test("every flow map row gets one valid safe recipe", () => {
       assert.equal(recipe.safe, true);
       assert.equal(recipe.sourceFile, sourceFile);
       assert.equal(recipe.surface, row.surface);
+      if (recipe.proof) {
+        assert.deepEqual(Object.keys(recipe.proof).sort(), PROOF_KEYS, row.surface);
+        assert.equal(["e2e", "deep"].includes(recipe.proof.depth), true, row.surface);
+        assert.match(recipe.proof.evidence, /\.test\.mjs\b/, row.surface);
+      }
       total += 1;
     }
   }
@@ -43,17 +50,25 @@ test("every flow map row gets one valid safe recipe", () => {
   assert.equal(total, 653);
 });
 
-test("message rows below deep stay visibly red", () => {
+test("message rows without executable result proof stay visibly red", () => {
   const rows = load(MAPS[0][1]);
-  for (const row of rows.filter((candidate) => candidate.coverage !== "deep")) {
-    assert.equal(makeRecipe("messages.json", row).mode, "manual-red", row.surface);
+  for (const row of rows) {
+    const recipe = makeRecipe("messages.json", row);
+    if (!recipe.proof) {
+      assert.equal(recipe.mode, "manual-red", row.surface);
+      assert.equal("proof" in recipe, false, row.surface);
+    }
   }
 });
 
 test("journey steps below deep stay visibly red", () => {
   const rows = load(MAPS[1][1]);
   for (const row of rows.filter((candidate) => candidate.coverage !== "deep")) {
-    assert.equal(makeRecipe("journeys.json", row).mode, "manual-red", row.surface);
+    const recipe = makeRecipe("journeys.json", row);
+    if (!recipe.proof) {
+      assert.equal(recipe.mode, "manual-red", row.surface);
+      assert.equal("proof" in recipe, false, row.surface);
+    }
   }
 });
 
@@ -63,7 +78,7 @@ test("agent modes never claim receipt proof", () => {
 
   for (const row of rows) {
     const recipe = makeRecipe("agents.json", row);
-    assert.equal(recipe.mode, expectedModes[row.coverage], row.surface);
+    assert.equal(recipe.mode, recipe.proof ? "test" : expectedModes[row.coverage], row.surface);
     assert.notEqual(recipe.mode, "receipt", row.surface);
   }
 });
