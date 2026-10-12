@@ -55,11 +55,12 @@ test("every mapped door gets a complete recipe", async () => {
           assert.match(recipe.proof.evidence, /gap-door-batch-routes\.mjs/);
           assert.match(recipe.proof.asserts, /monitor stays red until an intended-method fake-data test judges this named result$/);
         } else if (recipe.proof.evidence.includes("door-batch-webhook-final.test.mjs")) {
-          assert.equal(recipe.proof.depth, "e2e");
-          assert.equal(recipe.proof.verdict, "red");
-          assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
-          assert.match(recipe.proof.evidence, /gap-door-batch-webhooks\.mjs/);
-          assert.match(recipe.proof.asserts, /monitor stays red until an exact fake-data test proves this named saved result$/);
+          // The four fake-data webhook checks now prove their saved result.
+          // Keep the deep proof (including contracts and message receipts)
+          // rather than requiring the old monitoring-only red placeholder.
+          assert.equal(recipe.proof.depth, "deep");
+          assert.equal(recipe.proof.verdict, undefined);
+          assert.equal(recipe.proof.asserts, row.control);
         } else if (recipe.proof.evidence.includes("door-batch-job-final.test.mjs")) {
           assert.equal(recipe.proof.depth, "e2e");
           assert.equal(recipe.proof.verdict, "red");
