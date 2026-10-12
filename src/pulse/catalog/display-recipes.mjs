@@ -90,10 +90,11 @@ function hasReceiptProof(row) {
   return /\bheartbeat|\bjob:/i.test(String(row?.evidence || ""));
 }
 
-function modeFor(row, family) {
+function modeFor(row, family, proof) {
   const coverage = String(row.coverage || "").toLowerCase();
   const kind = normalizedKind(row);
 
+  if (proof && (coverage === "none" || coverage === "ping")) return "test";
   if (coverage === "none") return "manual-red";
   if (hasReceiptProof(row)) return "receipt";
 
@@ -137,8 +138,8 @@ export function makeRecipe(sourceFile, row) {
   }
 
   const family = FAMILY_BY_KIND.get(normalizedKind(row));
-  const mode = modeFor(row, family);
   const proof = displayProofFor(baseName(sourceFile), row);
+  const mode = modeFor(row, family, proof);
 
   const recipe = {
     family,

@@ -27,7 +27,7 @@ test("every display proof case names one exact map row and real executable tests
       (row) => row.surface === proofCase.surface && row.control === proofCase.control,
     );
     assert.equal(matches.length, 1, `display proof case must match one row: ${key}`);
-    assert.equal(proofCase.depth, "deep");
+    assert.ok(["deep", "e2e"].includes(proofCase.depth));
     assert.ok(proofCase.tests.length > 0, `${key} has no executable test`);
 
     for (const file of proofCase.tests) {
@@ -37,7 +37,7 @@ test("every display proof case names one exact map row and real executable tests
     }
 
     assert.deepEqual(displayProofFor(proofCase.sourceFile, matches[0]), {
-      depth: "deep",
+      depth: proofCase.depth,
       evidence: proofCase.evidence,
       asserts: matches[0].control,
     });

@@ -18,7 +18,7 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 |---|---|---|---|---|
 | Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 1 | all manifests |
 | Doors | Agent | keys, routes, jobs, webhooks | done for batch 1 | shared ground |
-| Display | Agent | buttons, forms, screens, links | done for batch 1 | shared ground |
+| Display | Agent | buttons, forms, screens, links | done for batch 2 | shared ground |
 | Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 1 | shared ground |
 | Flow | Agent | messages, journeys, agents | done for batch 1 | shared ground |
 
@@ -34,6 +34,8 @@ Batch 2 complete in this commit. Added 281 shared executable proofs: 279 non-sen
 
 Done in `91b8b1b42`. Added 40 honest executable display proofs: 27 screens, 12 buttons, and 1 link. Focused tests passed. Remaining display gaps stay red.
 
+Batch 2 complete in this commit. Added one safe local browser contract that really clicks 104 public links and checks each resolved destination. It also triggers 3 replay buttons and checks their changed terminal display, then clicks 4 Winner's Board tabs and checks the selected tab, fake API read, and rendered result. Net gain: 111 wired Display rows. Focused Display tests: 9 passed, 0 failed. Remaining Display gaps: 735 total — 285 buttons, 205 forms, 177 screens, and 68 links.
+
 ### Data
 
 Done in `acea73f8f`. Added 10 honest deep data proofs. Focused tests passed. Remaining pipeline, table, bank, and link gaps stay red.
@@ -41,6 +43,8 @@ Done in `acea73f8f`. Added 10 honest deep data proofs. Focused tests passed. Rem
 ### Flow
 
 Done in `82375bda4`. Added 135 executable flow links, while the stronger ping rule removed 5 weak greens. Net gain: 130 wired rows. Focused linked tests passed. Remaining message, journey, and agent gaps stay red.
+
+Batch 2 Flow complete in `957f5de7`. Added 24 honest executable proofs: 11 messages, 11 journeys, and 2 agents. The candidate-outreach batch queues all eight real cadence templates with fake data, then runs the real gate and dispatcher to the final blocked result. Shared journey tests cover the four Ops pulse steps and seven gate-relay steps. The two agent rows run their real repair-reader and brand-copy behavior tests. Focused Flow result: 9 passed, 0 failed, 0 skipped. Exact Flow count after integration: 346 wired and 307 red — 182 messages, 111 journeys, and 14 agents. Files changed: `src/pulse/catalog/proofs/flow-result-proofs.mjs`, its test, and new `src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs`.
 
 ### Core and integration
 

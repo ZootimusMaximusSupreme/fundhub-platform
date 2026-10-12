@@ -102,7 +102,10 @@ test("a job heartbeat is a receipt, not proof of its business result", () => {
 });
 
 test("unproved controls stay visibly red", () => {
-  const pingOnlyLink = findRow("public-pages.json", (item) => item.kind === "link" && item.coverage === "ping");
+  const pingOnlyLink = findRow(
+    "public-pages.json",
+    (item) => item.surface === "link:404.html -> /app/",
+  );
   const uncoveredPage = findRow("public-pages.json", (item) => item.kind === "page" && item.coverage === "none");
 
   assert.equal(makeRecipe("public-pages.json", pingOnlyLink).mode, "manual-red");
@@ -121,7 +124,7 @@ test("only exact display proof cases receive deep executable proof", () => {
 
     assert.notEqual(recipe.mode, "manual-red", `${proofCase.surface}: ${proofCase.control}`);
     assert.deepEqual(recipe.proof, {
-      depth: "deep",
+      depth: proofCase.depth,
       evidence: proofCase.evidence,
       asserts: row.control,
     });
