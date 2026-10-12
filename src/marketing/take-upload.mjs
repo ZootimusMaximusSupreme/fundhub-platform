@@ -1,18 +1,30 @@
-// Save the video from the teleprompter into the one SLO Ads Drive folder.
+// Save videos to their own offer's Google Drive folder, never to another offer.
 //
 // The phone cannot reach the Mac when Chris is away. It sends the original
 // file to this route in pieces. Each piece is small enough for the live site
 // to accept. The server forwards those same bytes to Drive. Nothing is
 // re-encoded, compressed, or flipped.
 //
-// The folder is the filmed folder in .cursor/rules/slo-one-filmed-folder.mdc.
-// DRIVE_RAW_FOLDER_ID is that same folder. The id is fixed here so a wrong
-// env value cannot send a take somewhere else.
+// Direct Book ads do NOT belong in the SLO folder. Folder selection comes
+// from the validated NAMING.md filename, never an arbitrary client folder id.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { openVideoSession, putVideoChunk } from "../messaging/providers/google-drive-write.mjs";
+import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 
 export const SLO_ADS_FOLDER_ID = "13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ";
+export const DIRECT_BOOK_ADS_FOLDER_ID = "1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry";
+
+/** An explicitly permitted offer, derived from the full NAMING.md take name.
+ * An unidentified file cannot accidentally land in the unrelated SLO folder.
+ * New offers require an explicit destination before their takes can upload. */
+export function takeFolderForName(name) {
+  const parsed = parseTakeName(name);
+  if (!parsed) return null;
+  if (parsed.offer === "DIRECT BOOK") return DIRECT_BOOK_ADS_FOLDER_ID;
+  if (parsed.offer === "SLO") return SLO_ADS_FOLDER_ID;
+  return null;
+}
 
 /** One piece. A multiple of 256 KB, and under the live site's body cap. */
 export const TAKE_CHUNK_BYTES = 2 * 1024 * 1024;
@@ -143,10 +155,17 @@ export async function beginTake(body, deps) {
   if (!Number.isInteger(total) || total < 1 || total > MAX_TAKE_BYTES) {
     return { status: 400, body: { ok: false, error: "invalid", message: "That video has no size this site can store." } };
   }
+  const folderId = takeFolderForName(name);
+  if (!folderId) {
+    return { status: 400, body: {
+      ok: false, error: "unknown_offer",
+      message: "This video needs a valid offer, ad or VSL name, title, and take number before uploading."
+    } };
+  }
   const contentType = takeContentType(body?.content_type, name);
   const open = deps.openVideoSession ?? openVideoSession;
   const started = await open({
-    parentId: SLO_ADS_FOLDER_ID,
+    parentId: folderId,
     name,
     totalBytes: total,
     contentType,
