@@ -1,6 +1,7 @@
 import {
   FLOW_GAP_LANE,
   FLOW_GAP_TEST,
+  PROVEN_ROLE_ACCESS_SURFACES,
   isInactiveTemplateRow,
   needsAgentGapMonitor,
   needsJourneyGapMonitor,
@@ -20,6 +21,8 @@ const FAILED_FOCUSED_TESTS = new Set([
 const CANDIDATE_OUTREACH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
 const ACTIVE_MESSAGE_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-active-message-results.test.mjs";
 const JOURNEY_BATCH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-journey-results.test.mjs";
+const ROLE_ACCESS_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-role-access-results.test.mjs";
+const JOURNEY_UI_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-journey-ui-results.test.mjs";
 const AGENT_BATCH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-agent-runtime.test.mjs";
 const AI_GATEKEEPER_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-ai-gatekeeper.test.mjs";
 
@@ -50,6 +53,20 @@ const MESSAGE_RESULT_TESTS = Object.freeze({
 });
 
 const JOURNEY_RESULT_TESTS = Object.freeze({
+  "journey:slo-connections-intended#1-open-tab": [JOURNEY_UI_RESULT_TEST],
+  "journey:optimize-intended#2-book-without-form": [JOURNEY_UI_RESULT_TEST],
+  "journey:soft-pull-multi-biz-intended-draft#2-authorize-first": [
+    JOURNEY_UI_RESULT_TEST,
+    "src/http/soft-pull-approve.test.mjs",
+  ],
+  "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page": [
+    JOURNEY_UI_RESULT_TEST,
+    "src/http/soft-pull-approve.test.mjs",
+  ],
+  "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files": [
+    JOURNEY_UI_RESULT_TEST,
+    "src/http/client-detail.test.mjs",
+  ],
   "journey:authorized-rep-intended#1-staff-add-rep": [JOURNEY_BATCH_RESULT_TEST],
   "journey:authorized-rep-intended#2-link-second-file": [JOURNEY_BATCH_RESULT_TEST],
   "journey:authorized-rep-intended#4-portal-opens-first-file": [JOURNEY_BATCH_RESULT_TEST],
@@ -225,9 +242,12 @@ export function proofForFlowRow(sourceFile, row) {
   }
 
   if (file === "journeys.json") {
+    if (PROVEN_ROLE_ACCESS_SURFACES.has(row?.surface)) {
+      return executableProof("deep", [ROLE_ACCESS_RESULT_TEST], row);
+    }
     const files = JOURNEY_RESULT_TESTS[row?.surface];
     if (!files) return needsJourneyGapMonitor(row) ? exactGapProof(row) : undefined;
-    return files.includes(JOURNEY_BATCH_RESULT_TEST)
+    return files.includes(JOURNEY_BATCH_RESULT_TEST) || files.includes(JOURNEY_UI_RESULT_TEST)
       ? executableProof("deep", files, row)
       : checkedProof("deep", files, row);
   }

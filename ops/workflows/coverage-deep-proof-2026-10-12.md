@@ -18,7 +18,7 @@ Owner approved the full build. This batch upgrades the 1,762 honest red catalog 
 |---|---|---:|---|
 | Display proof | Agent 1 | 427 buttons, 385 screens, 259 forms, 172 links | pending |
 | Door proof | Agent 2 | 339 routes, 13 jobs, 4 webhooks | pending |
-| Flow proof | Agent 3 | 105 journeys, 17 messages, 1 agent | pending |
+| Flow proof | Agent 3 | 105 journeys, 17 messages, 1 agent | done |
 | Read proof | Agent 4 | 40 reads | pending |
 | Integration and ship | This session | review, combine, full proof, commit, push, live check | claimed |
 
@@ -44,7 +44,16 @@ Pending.
 
 ### Flow proof
 
-Pending.
+Done. Serena was called first. Its TypeScript server could not see Node, so this lane used normal repo search/read tools as the documented fallback.
+
+- Before: 123 honest red rows — 105 journeys, 17 messages, 1 agent.
+- After: 78 honest red rows — 60 journeys, 17 messages, 1 agent.
+- Upgraded: 45 rows — 40 role-access rows whose intended access count exactly matches the live route gates, plus 5 exact UI/result journeys for SLO connections, Optimize booking, and the multi-business soft-pull flow.
+- Proof code: `src/pulse/catalog/proofs/flow-gap-cases.mjs`, `src/pulse/catalog/proofs/flow-result-proofs.mjs`, `src/pulse/catalog/proofs/flow-result-proofs.test.mjs`, `src/pulse/catalog/proofs/flow-batch-role-access-results.test.mjs`, `src/pulse/catalog/proofs/flow-batch-journey-ui-results.test.mjs`, and `src/pulse/coverage/gap-catalog-flow.test.mjs`.
+- Focused proof: `node --test --test-force-exit src/pulse/catalog/proofs/flow-result-proofs.test.mjs src/pulse/catalog/proofs/flow-batch-role-access-results.test.mjs src/pulse/catalog/proofs/flow-batch-journey-ui-results.test.mjs src/pulse/coverage/gap-catalog-flow.test.mjs` — 20 passed, 0 failed, 0 skipped.
+- Honest leftovers: 50 role-access rows have stale intended counts that do not match live route gates; 5 Climate rows no longer match the deployed Darwin page; 5 FH Consulting rows have no matching live result; all 17 message rows lack final delivery/result proof; the one AI caller accepts caller-supplied prompts and has no fixed live prompt plus judged runtime result.
+- Message proof stop: the payment-link fake-provider proof hit the same auth seam twice and returned `503 {"ok":false,"error":"auth_unavailable","db":"down"}`. Per the stuck rule, no third attempt was made and both rows stayed red.
+- Safety: no live client, message, call, charge, provider send, or production write ran. No intended or actual journey file changed.
 
 ### Read proof
 

@@ -23,8 +23,6 @@ const MESSAGE_CONTROL_SURFACES = new Set([
 ]);
 
 const JOURNEY_RESULT_SURFACES = new Set([
-  "journey:slo-connections-intended#1-open-tab",
-  "journey:optimize-intended#2-book-without-form",
   "journey:climate-lead-magnet-intended#1-headline-button",
   "journey:climate-lead-magnet-intended#2-reading-and-map",
   "journey:climate-lead-magnet-intended#3-state-click",
@@ -35,9 +33,49 @@ const JOURNEY_RESULT_SURFACES = new Set([
   "journey:fh-consulting-intended#3-three-prices",
   "journey:fh-consulting-intended#4-legal-pages",
   "journey:fh-consulting-intended#5-request-enrollment",
-  "journey:soft-pull-multi-biz-intended-draft#2-authorize-first",
-  "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page",
-  "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",
+]);
+
+export const PROVEN_ROLE_ACCESS_SURFACES = new Set([
+  "journey:affiliate-intended#reach-signing-in-and-out",
+  "journey:affiliate-intended#reach-contracts",
+  "journey:affiliate-intended#reach-documents",
+  "journey:affiliate-intended#reach-incoming-webhooks",
+  "journey:client-intended#reach-consent",
+  "journey:client-intended#reach-contracts",
+  "journey:client-intended#reach-documents",
+  "journey:client-intended#reach-finance",
+  "journey:client-intended#reach-incoming-webhooks",
+  "journey:role-owner-intended#reach-consent",
+  "journey:role-owner-intended#reach-contracts",
+  "journey:role-owner-intended#reach-documents",
+  "journey:role-owner-intended#reach-journeys",
+  "journey:role-owner-intended#reach-privacy",
+  "journey:role-owner-intended#reach-incoming-webhooks",
+  "journey:role-sales-manager-intended#reach-signing-in-and-out",
+  "journey:role-sales-manager-intended#reach-contracts",
+  "journey:role-sales-manager-intended#reach-documents",
+  "journey:role-sales-manager-intended#reach-journeys",
+  "journey:role-sales-manager-intended#reach-incoming-webhooks",
+  "journey:role-closer-intended#reach-signing-in-and-out",
+  "journey:role-closer-intended#reach-consent",
+  "journey:role-closer-intended#reach-contracts",
+  "journey:role-closer-intended#reach-documents",
+  "journey:role-closer-intended#reach-incoming-webhooks",
+  "journey:role-funding-advisor-intended#reach-signing-in-and-out",
+  "journey:role-funding-advisor-intended#reach-banking",
+  "journey:role-funding-advisor-intended#reach-consent",
+  "journey:role-funding-advisor-intended#reach-contracts",
+  "journey:role-funding-advisor-intended#reach-documents",
+  "journey:role-funding-advisor-intended#reach-incoming-webhooks",
+  "journey:role-inquiry-remover-intended#reach-signing-in-and-out",
+  "journey:role-inquiry-remover-intended#reach-banking",
+  "journey:role-inquiry-remover-intended#reach-contracts",
+  "journey:role-inquiry-remover-intended#reach-documents",
+  "journey:role-inquiry-remover-intended#reach-incoming-webhooks",
+  "journey:white-label-intended#reach-signing-in-and-out",
+  "journey:white-label-intended#reach-contracts",
+  "journey:white-label-intended#reach-documents",
+  "journey:white-label-intended#reach-incoming-webhooks",
 ]);
 
 const DEAD_TEMPLATE_TRIGGER = Object.freeze([
@@ -58,7 +96,8 @@ export function needsMessageGapMonitor(row) {
 }
 
 export function needsJourneyGapMonitor(row) {
-  return /#(?:reach-.+|stays-blocked)$/.test(String(row?.surface || ""))
+  const roleAccess = /#(?:reach-.+|stays-blocked)$/.test(String(row?.surface || ""));
+  return (roleAccess && !PROVEN_ROLE_ACCESS_SURFACES.has(row?.surface))
     || JOURNEY_RESULT_SURFACES.has(row?.surface);
 }
 
@@ -76,6 +115,6 @@ export function flowGapRows(messages, journeys, agents) {
 
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
   message: 177,
-  journey: 105,
+  journey: 60,
   agent: 1,
 });

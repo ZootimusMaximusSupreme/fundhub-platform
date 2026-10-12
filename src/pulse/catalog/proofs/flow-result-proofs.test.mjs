@@ -52,8 +52,8 @@ test("flow proofs name only real, runnable result tests", () => {
 test("known flow gaps map to the exact executable red monitor", () => {
   const cases = [
     ["messages.json", "dispatch:sms-duplicate-guard-NOT-WIRED"],
-    ["journeys.json", "journey:optimize-intended#2-book-without-form"],
-    ["journeys.json", "journey:soft-pull-multi-biz-intended-draft#2-authorize-first"],
+    ["journeys.json", "journey:climate-lead-magnet-intended#2-reading-and-map"],
+    ["journeys.json", "journey:fh-consulting-intended#3-three-prices"],
     ["agents.json", "ai-caller:api/journeys/ask.mjs"],
   ];
 
@@ -66,6 +66,27 @@ test("known flow gaps map to the exact executable red monitor", () => {
     assert.equal(proof.verdict, "red", surface);
     assert.equal(proof.asserts, row.control, surface);
   }
+});
+
+test("only exact intended role-access rows use the shared live-gate result proof", () => {
+  const rows = loadRows("journeys.json").filter((row) => (
+    /#(?:reach-.+|stays-blocked)$/.test(String(row.surface || ""))
+  ));
+  assert.equal(rows.length, 90);
+  let proved = 0;
+  for (const row of rows) {
+    const proof = proofForFlowRow("journeys.json", row);
+    assert.ok(proof, row.surface);
+    if (proof.verdict === "red") {
+      assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
+      continue;
+    }
+    proved += 1;
+    assert.deepEqual(proofTestFiles(proof), [
+      "src/pulse/catalog/proofs/flow-batch-role-access-results.test.mjs",
+    ], row.surface);
+  }
+  assert.equal(proved, 40);
 });
 
 test("verified inactive templates use the exact monitor without a red verdict", () => {
