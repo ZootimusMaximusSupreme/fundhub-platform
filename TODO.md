@@ -1,5 +1,13 @@
 # TODO — unfinished work
 
+## Urgent — iPhone teleprompter recording safety and uninterrupted production (2026-10-12)
+
+- [ ] **Durable recording save before upload:** Once a take stops, immediately save the finished video in persistent device storage (IndexedDB), verify it can be read back, then let the user close/reopen the page without losing the saved take; automatically recover and retry pending uploads on reopening. Handle storage limits/private mode, detect failed saves, and offer a device Files/Photos backup. Do NOT imply a live, unfinished iPhone browser recording can be guaranteed to survive app closure; investigate native iOS recording if that is a hard requirement.
+- [ ] **Nonblocking queued uploads:** After Yes to save, immediately return to the always-on front/back camera preview and permit the next recording while earlier takes upload. Use a persistent FIFO upload queue with clear progress, retry, offline recovery, and no duplicate sends; never blank or disable the preview while uploading. Only the actual Record/Stop control starts or manually stops a take.
+- [ ] **Clear leave/saving states:** Distinguish Recording, Saving locally, Safe on device/Queued, Uploading, Uploaded, and Failed. Prevent accidental exits with a visible warning while recording or while an unsaved blob is at risk; do not rely on an iPhone browser close event to save anything. Do not label "Video saved" until the server acknowledges success, nor "Safe on device" until local persistence succeeds.
+- [ ] **Complete and ship camera + script-end fixes:** PR #29 (continuous recording and front/rear camera recovery) is merged but the 2026-10-12 production ship was blocked by pulse coverage guards; PR #30 (two-second ending grace after the last word) is open. Fix the unrelated ship guard failure without bypassing it, merge/test the 2-second tail, and verify the exact deployed JS/CSS and iPhone Safari behavior.
+- [ ] **Acceptance proof on real iPhone:** Start with a visible front-camera preview, switch to rear and front repeatedly (including while actively recording) without any additional start/stop or black screen; reach the script end and retain two full seconds on camera before automatic Stop; accept take A for upload and record take B immediately; reload while A is queued and confirm A persists/retries; verify A and B each appear exactly once and failed/offline uploads recover. Verify reopening after a saved take works, but do not claim safety for a force-quit mid-take until native-level proof exists.
+
 ## Owner-handled pulse reds — added 2026-10-11
 
 - [ ] Replace the masked `OPENAI_API_KEY` and prove Company Brain search returns an answer instead of 502.
