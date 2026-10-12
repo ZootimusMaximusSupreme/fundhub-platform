@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { makeRecipe, supports } from './data-recipes.mjs';
+import { DATA_PROOF_CASES } from './proofs/data-proof-cases.mjs';
 
 const MAP_ROOT = new URL(
   '../../../ops/workflows/coverage-every-surface-2026-10-10/',
@@ -51,13 +52,40 @@ test('money and customer rows below deep coverage stay visibly red', async () =>
 
     assert.ok(weakRows.length > 0, `${sourceFile} should contain weak sensitive rows`);
     for (const row of weakRows) {
+      const recipe = makeRecipe(sourceFile, row);
       assert.equal(
-        makeRecipe(sourceFile, row).mode,
+        recipe.mode,
         'manual-red',
         `${sourceFile}: ${row.surface}`,
       );
+      assert.equal('proof' in recipe, false, `${sourceFile}: ${row.surface}`);
     }
   }
+});
+
+test('deep proof is attached only to the ten exact rows whose checks run', async () => {
+  const expected = new Set(DATA_PROOF_CASES.map((entry) => (
+    `${entry.sourceFile}\0${entry.surface}\0${entry.control}`
+  )));
+  let proved = 0;
+
+  for (const sourceFile of SOURCE_FILES) {
+    const rows = await loadRows(sourceFile);
+    for (const row of rows) {
+      const recipe = makeRecipe(sourceFile, row);
+      const key = `${sourceFile}\0${row.surface}\0${row.control}`;
+      if (expected.has(key)) {
+        proved += 1;
+        assert.equal(recipe.proof.depth, 'deep', key);
+        assert.match(recipe.proof.evidence, /\.test\.mjs\b/, key);
+        assert.ok(recipe.proof.asserts.length > 0, key);
+      } else {
+        assert.equal('proof' in recipe, false, key);
+      }
+    }
+  }
+
+  assert.equal(proved, 10);
 });
 
 test('representative source fields survive recipe compilation', async () => {

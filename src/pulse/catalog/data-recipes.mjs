@@ -1,3 +1,5 @@
+import { dataProofFor } from './proofs/data-proof-cases.mjs';
+
 const SUPPORTED_FILES = new Set([
   'pipelines.json',
   'tables.json',
@@ -74,6 +76,7 @@ export function makeRecipe(sourceFile, row) {
   }
 
   const mode = modeFor(row);
+  const proof = dataProofFor(fileName(sourceFile), row);
 
   return {
     family: 'data',
@@ -88,5 +91,6 @@ export function makeRecipe(sourceFile, row) {
     safe: true,
     sourceFile,
     surface: row.surface,
+    ...(proof ? { proof } : {}),
   };
 }
