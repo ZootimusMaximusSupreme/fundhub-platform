@@ -96,6 +96,25 @@
     return s.offer_word + (kind === "vsl" ? " VSL " : " Ad ") + n + " — " + s.angle_name + " Take " + takeNo + ".mp4";
   }
 
+  /* The Shoot tab issues a signed, single-shoot filming link. It already
+     authorizes script edits and marks even when a staff login expires. Only
+     remember links minted by the server for this same shoot. */
+  function filmAccessFromPage(page) {
+    var id = page && page.shoot && page.shoot.id;
+    var path = page && page.film && page.film.path;
+    if (!id || typeof path !== "string") return null;
+    var m = /^\/app\/teleprompter\.html\?k=([^&#]+)(?:&.*)?$/.exec(path);
+    if (!m) return null;
+    var k;
+    try { k = decodeURIComponent(m[1]); } catch (e) { return null; }
+    var parts = k.split(".");
+    var uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+    if (parts.length !== 4 || !uuid.test(parts[0]) || !uuid.test(parts[1]) ||
+        parts[1] !== id || !/^[0-9]{1,12}$/.test(parts[2]) ||
+        !/^[0-9a-f]{64}$/i.test(parts[3])) return null;
+    return { shootId: id, key: k };
+  }
+
   /** CAPS words go bold, except the acronyms v1 lets through. */
   function isCaps(tok) {
     var w = String(tok).replace(/[^A-Za-z]/g, "");
@@ -949,7 +968,7 @@
   }
 
   root.FundhubTeleprompter = {
-    fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
+    fileName: fileName, filmAccessFromPage: filmAccessFromPage, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
@@ -975,9 +994,31 @@
     set: function (k, v) { try { root.localStorage.setItem("fhtp." + k, JSON.stringify(v)); } catch (e) { /* private mode */ } }
   };
   function token() { try { return root.localStorage.getItem("fh_token") || ""; } catch (e) { return ""; } }
-  function filmKey() {
+  function explicitFilmKey() {
     try { return new URL(root.location.href).searchParams.get("k") || ""; } catch (e) { return ""; }
   }
+  function rememberFilmAccess(page) {
+    var record = filmAccessFromPage(page);
+    if (!record && explicitFilmKey() && page && page.shoot && page.shoot.id) {
+      var key = explicitFilmKey().split(".");
+      if (key.length === 4 && key[1] === page.shoot.id) record = { shootId: page.shoot.id, key: explicitFilmKey() };
+    }
+    if (!record) return false;
+    LS.set("filmAccess", record);
+    return true;
+  }
+  function filmKey() {
+    var inLink = explicitFilmKey();
+    if (inLink) return inLink;
+    var access = LS.get("filmAccess", null);
+    var active = data && data.shoot && data.shoot.id;
+    if (!active) { var last = LS.get("cache", null); active = last && last.shoot && last.shoot.id; }
+    if (!access || !active || access.shootId !== active || typeof access.key !== "string") return "";
+    var parts = access.key.split(".");
+    return parts.length === 4 && parts[1] === active && Number(parts[2]) * 1000 > Date.now() ? access.key : "";
+  }
+  var rejectedBearer = "";
+
 
   /* A tablet gets bigger words by default (read from the camera distance). */
   var bigScreen = false;
@@ -1021,25 +1062,36 @@
   /* ── talking to the server ──────────────────────────────────────────── */
 
   function api(method, path, body) {
-    var h = { accept: "application/json" };
+    function request(k, tk) {
+      var h = { accept: "application/json" }, opts = { method: method, headers: h };
+      if (k) {
+        h["x-shoot-film"] = k;
+        opts.credentials = "omit";
+      } else {
+        if (tk) h.authorization = "Bearer " + tk;
+        opts.credentials = "same-origin";
+      }
+      if (body) {
+        h["content-type"] = "application/json";
+        opts.body = JSON.stringify(body);
+      }
+      return root.fetch("/api/" + path, opts)
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
+        }, function () { return { status: 0, data: null }; });
+    }
     var k = filmKey();
-    var opts = { method: method, headers: h };
-    if (k) {
-      h["x-shoot-film"] = k;
-      opts.credentials = "omit";
-    } else {
-      var tk = token();
-      if (tk) h.authorization = "Bearer " + tk;
-      opts.credentials = "same-origin";
-    }
-    if (body) {
-      h["content-type"] = "application/json";
-      opts.body = JSON.stringify(body);
-    }
-    return root.fetch("/api/" + path, opts)
-      .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
-      }, function () { return { status: 0, data: null }; });
+    var tk = k ? "" : token();
+    if (tk && tk === rejectedBearer) tk = "";
+    return request(k, tk).then(function (r) {
+      if (r.status !== 401 || k || !tk) return r;
+      // An old bearer token overrides a good Safari session cookie. Stop
+      // sending it and try the existing cookie once, without asking Chris.
+      rejectedBearer = tk;
+      return request("", "").then(function (cookieResult) {
+        return cookieResult.status === 200 ? cookieResult : r;
+      });
+    });
   }
 
   function fetchShoot(bare) {
@@ -1069,6 +1121,7 @@
         return;
       }
       if (r.status === 200 && r.data) {
+        rememberFilmAccess(r.data);
         LS.set("cache", r.data);
         $("offline").hidden = true;
         take(r.data, first);
@@ -1190,6 +1243,12 @@
     });
   }
   root.addEventListener("online", flush);
+  // iOS Safari suspends background timers. Retry the stored edits promptly
+  // on foreground instead of waiting for a timer that was never allowed to run.
+  root.addEventListener("focus", function () { flush(); });
+  doc.addEventListener("visibilitychange", function () {
+    if (doc.visibilityState === "visible") flush();
+  });
 
   /* ── the edits: one store, the shipped edit route ───────────────────── */
 
