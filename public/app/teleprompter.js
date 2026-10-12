@@ -2543,16 +2543,23 @@
     var targetWidth = portrait ? (requires4K ? 2160 : 1080) : (requires4K ? 3840 : 1920);
     var targetHeight = portrait ? (requires4K ? 3840 : 1920) : (requires4K ? 2160 : 1080);
     var ar = targetWidth / targetHeight;
-    var cutW = Math.min(w, h * ar);
-    var cutH = Math.min(h, w / ar);
-    // Never invent resolution from a lower quality camera source.
+    // Safari sometimes reports a landscape camera buffer on a portrait
+    // phone. Rotate that frame instead of throwing away two thirds of it
+    // in a center crop. Never stretch or invent missing source pixels.
+    var rotate90 = !!(portrait ? w > h : h > w);
+    var orientedW = rotate90 ? h : w;
+    var orientedH = rotate90 ? w : h;
+    var cutW = Math.min(orientedW, orientedH * ar);
+    var cutH = Math.min(orientedH, orientedW / ar);
+    var srcW = rotate90 ? cutH : cutW;
+    var srcH = rotate90 ? cutW : cutH;
     var factor = Math.min(1, targetWidth / cutW, targetHeight / cutH);
     var outW = Math.max(2, Math.floor(cutW * factor / 2) * 2);
     var outH = Math.max(2, Math.floor(cutH * factor / 2) * 2);
     return {
       width: outW, height: outH,
-      sx: Math.max(0, (w - cutW) / 2), sy: Math.max(0, (h - cutH) / 2),
-      sw: cutW, sh: cutH,
+      sx: Math.max(0, (w - srcW) / 2), sy: Math.max(0, (h - srcH) / 2),
+      sw: srcW, sh: srcH, rotate90: rotate90,
       portrait: !!portrait, needsBetterCamera: cutW < targetWidth || cutH < targetHeight
     };
   }
@@ -2666,8 +2673,13 @@
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
+          if (box.rotate90) {
+            ctx.translate(canvas.width, 0);
+            ctx.rotate(Math.PI / 2);
+          }
           ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
-            0, 0, canvas.width, canvas.height);
+            0, 0, box.rotate90 ? canvas.height : canvas.width,
+            box.rotate90 ? canvas.width : canvas.height);
           ctx.restore();
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
