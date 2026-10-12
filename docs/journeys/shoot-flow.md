@@ -120,7 +120,7 @@ Video upload state now uses the small top-right `#video-save-status` chip. It sa
 
 The 44 px top-left camera button switches the live preview from the mirrored front camera to the normal rear camera, then back. It never starts recording. A take that is already recording keeps one stable canvas recording stream while the physical camera changes, so a front/rear/front take stays one file. The recording clock moves beside the camera button. In portrait, the preview shows the whole camera frame instead of enlarging and center-cropping a wide iPhone feed; the black glass fills any spare space.
 
-The live camera view and the saved canvas follow the phone's orientation angle: upright is tall and sideways is wide. If Safari supplies a sideways camera buffer, the live pixels turn inside the camera layer while the words and buttons stay put. The saved canvas chooses its shape at Record, even if the Home Screen page still reports its old viewport shape.
+Safari displays the live camera in screen orientation, so the camera layer stays unrotated on both lenses even when the reported camera frame is wide. The words and buttons stay in their normal positions. The saved canvas separately chooses a tall or wide file from the phone's orientation angle at Record, even if the Home Screen page still reports its old viewport shape.
 
 When iPhone Safari grants a requested lens but leaves `MediaTrackSettings.facingMode` blank, the page keeps the requested front/rear direction. It does not mistake the rear lens for the front lens and reopen the front camera.
 

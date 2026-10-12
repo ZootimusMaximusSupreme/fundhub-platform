@@ -372,7 +372,7 @@ test("iPhone 60fps front camera saves a 60fps track across lens changes", async 
   expect(server.errors).toEqual([]);
 });
 
-test("live view and saved video follow the phone turn", async ({ page }) => {
+test("live camera stays unrotated while saved video follows the phone turn", async ({ page }) => {
   const { server } = await open(page, { iphone: true, sourceWidth: 64, sourceHeight: 36 });
   await page.evaluate(() => {
     window.__phoneAngle = 0;
@@ -381,19 +381,18 @@ test("live view and saved video follow the phone turn", async ({ page }) => {
       get: () => window.__phoneAngle
     });
   });
-  await expect(page.locator("#cam")).toHaveClass(/cam-feed-front/);
-  await expect.poll(() => page.locator("#cam-feed").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).b)).toBeLessThan(0);
+  await expect(page.locator("#cam-feed")).toHaveCSS("transform", "none");
   await page.locator("#b-camera-flip").tap();
   await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use front camera");
-  await expect.poll(() => page.locator("#cam-feed").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).b)).toBeGreaterThan(0);
+  await expect(page.locator("#cam-feed")).toHaveCSS("transform", "none");
   await page.waitForTimeout(550);
   await page.locator("#b-camera-flip").tap();
   await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use back camera");
-  await expect.poll(() => page.locator("#cam-feed").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).b)).toBeLessThan(0);
+  await expect(page.locator("#cam-feed")).toHaveCSS("transform", "none");
   await page.waitForTimeout(550);
   async function recordShape(angle) {
     await page.evaluate((next) => { window.__phoneAngle = next; }, angle);
-    await expect.poll(() => page.locator("#cam").evaluate((el) => el.classList.contains("cam-feed-rotated"))).toBe(angle === 0);
+    await expect(page.locator("#cam-feed")).toHaveCSS("transform", "none");
     const screen = page.viewportSize();
     const feed = await page.locator("#cam-feed").boundingBox();
     expect(Math.abs(feed.width - screen.width)).toBeLessThan(2);
@@ -419,14 +418,14 @@ test("live view and saved video follow the phone turn", async ({ page }) => {
   expect(server.errors).toEqual([]);
 });
 
-test("sideways phone turns a tall Safari camera buffer into a wide view and file", async ({ page }) => {
+test("sideways phone keeps Safari preview unrotated and saves a wide file", async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const { server } = await open(page, { iphone: true, sourceWidth: 36, sourceHeight: 64 });
   await page.evaluate(() => {
     Object.defineProperty(window, "orientation", { configurable: true, value: 90 });
     window.dispatchEvent(new Event("orientationchange"));
   });
-  await expect(page.locator("#cam")).toHaveClass(/cam-feed-rotated/);
+  await expect(page.locator("#cam-feed")).toHaveCSS("transform", "none");
   const feed = await page.locator("#cam-feed").boundingBox();
   expect(Math.abs(feed.width - 844)).toBeLessThan(2);
   expect(Math.abs(feed.height - 390)).toBeLessThan(2);

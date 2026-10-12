@@ -2501,14 +2501,6 @@
     $("camera-status-text").textContent = message || "";
     $("camera-retry").hidden = !retry;
   }
-  function syncPreviewOrientation() {
-    var box = $("cam"), video = $("cam-video");
-    if (!box || !video || !video.videoWidth || !video.videoHeight) return;
-    var portrait = recordingIsPortrait();
-    box.classList.toggle("cam-feed-front", cam.facing !== "environment");
-    box.classList.toggle("cam-feed-rotated",
-      portrait ? video.videoWidth > video.videoHeight : video.videoHeight > video.videoWidth);
-  }
   /* Hold the last real camera frame while Safari releases one lens and opens
      the other. Never put an empty video element in front of the filmmaker. */
   function holdPreview() {
@@ -2928,7 +2920,6 @@
       cam.wantedFacing = facing;
       cam.opening = "";
       cam.previewReady = true;
-      syncPreviewOrientation();
       syncMicMeter();
       var box = $("cam");
       if (box) box.hidden = false;
@@ -3960,14 +3951,12 @@
     doc.body.classList.toggle("cam-side-left", side === "left");
     doc.body.classList.toggle("cam-side-right", side === "right");
     doc.body.classList.toggle("tp-portrait", side === "full");
-    syncPreviewOrientation();
     applyFont();
     if (words.length) layout();
   }
   var rz = null;
   root.addEventListener("resize", function () { measureSafeTop.n = null; clearTimeout(rz); rz = setTimeout(function () { applyCameraSide(); }, 120); });
   root.addEventListener("orientationchange", applyCameraSide);
-  $("cam-video").addEventListener("resize", syncPreviewOrientation);
   try {
     var landQ = root.matchMedia && root.matchMedia("(orientation: landscape)");
     if (landQ && landQ.addEventListener) landQ.addEventListener("change", applyCameraSide);
