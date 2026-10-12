@@ -325,6 +325,8 @@ function failDetail(door, url, status, missing, till = []) {
 const TIMEOUT_MS = 8000;
 /** Whole lane budget. A row still waiting at this point becomes a skip, so the step ends in time. */
 const DEADLINE_MS = 15000;
+/** Keep the live host from stalling when every funnel check starts at once. */
+const MAX_IN_FLIGHT_READS = 8;
 
 /** Reads one response header by name, whatever shape the response carries. Null when absent. */
 function headerReader(res) {
@@ -351,10 +353,27 @@ function headerReader(res) {
  */
 function makeGetter(fetchImpl) {
   const seen = new Map();
+  let inFlight = 0;
+  const waiting = [];
+
+  async function withReadSlot(run) {
+    if (inFlight >= MAX_IN_FLIGHT_READS) {
+      await new Promise((resolve) => waiting.push(resolve));
+    }
+    inFlight += 1;
+    try {
+      return await run();
+    } finally {
+      inFlight -= 1;
+      const next = waiting.shift();
+      if (next) next();
+    }
+  }
+
   function request(method, url, accept, origin) {
     const key = `${method}|${url}|${accept || ""}|${origin || ""}`;
     if (!seen.has(key)) {
-      seen.set(key, (async () => {
+      seen.set(key, withReadSlot(async () => {
         const headers = { accept: accept || (method === "HEAD" ? "*/*" : "text/html") };
         if (origin) headers.origin = origin;
         const init = { method, redirect: "follow", headers };
@@ -365,7 +384,7 @@ function makeGetter(fetchImpl) {
         const text = method !== "HEAD" && typeof res.text === "function" ? await res.text() : "";
         // url is where the call ended after any redirect; "" when the fetch does not say.
         return { status: Number(res.status), text: String(text || ""), header: headerReader(res), url: String((res && res.url) || "") };
-      })());
+      }));
     }
     return seen.get(key);
   }

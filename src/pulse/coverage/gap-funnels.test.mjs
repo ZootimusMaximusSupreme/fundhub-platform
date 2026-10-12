@@ -197,6 +197,28 @@ test("gap funnels: every live door passes when markers are present", async () =>
   assert.equal(new Set(calls.map((c) => c.url)).size, calls.length);
 });
 
+test("gap funnels: live reads stay bounded so roadmap pull and optimize finish", async () => {
+  const baseFetch = fakeFetch(GOOD, []);
+  let active = 0;
+  let mostActive = 0;
+  const fetchImpl = async (...args) => {
+    active += 1;
+    mostActive = Math.max(mostActive, active);
+    try {
+      if (active > 8) throw new Error("live host overloaded");
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      return await baseFetch(...args);
+    } finally {
+      active -= 1;
+    }
+  };
+  const rows = await gapChecks({ fetchImpl, funnelBaseUrl: FUNNEL, appBaseUrl: APP });
+  assert.equal(byId(rows, "offer:roadmap-pull").status, "PASS");
+  assert.equal(byId(rows, "offer:optimize").status, "PASS");
+  assert.ok(mostActive > 1);
+  assert.ok(mostActive <= 8);
+});
+
 test("gap funnels: the ids do not repeat Recon's funnel:roadmap-sales", () => {
   const ids = GAP_DOORS.map((door) => door.id);
   assert.ok(!ids.includes("funnel:roadmap-sales"));
@@ -399,7 +421,7 @@ test("gap funnels: the pulse's names work (fetch, baseUrl, env.FUNNEL_URL) and f
   assert.deepEqual([...hosts].sort(), ["cdn.embedded.fanbasis.io", "funnel.example.test", "preview.example.test"]);
 });
 
-test("gap funnels: doors are read at the same time, not one after another", async () => {
+test("gap funnels: doors are read in a bounded group, not one at a time or all at once", async () => {
   let inFlight = 0;
   let peak = 0;
   const inner = fakeFetch(GOOD, []);
@@ -414,7 +436,8 @@ test("gap funnels: doors are read at the same time, not one after another", asyn
     }
   };
   await gapChecks({ fetchImpl, funnelBaseUrl: FUNNEL, appBaseUrl: APP });
-  assert.ok(peak >= 10, `peak in flight was ${peak}`);
+  assert.ok(peak > 1, `peak in flight was ${peak}`);
+  assert.ok(peak <= 8, `peak in flight was ${peak}`);
 });
 
 // ---------------------------------------------------------------------------
