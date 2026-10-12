@@ -539,7 +539,13 @@ describe("top edge changes the script", () => {
     const doneFn = SRC.slice(SRC.indexOf("function completeFromTop"), SRC.indexOf("function applyTop"));
     const finishFn = SRC.slice(SRC.indexOf("function finish()"), SRC.indexOf("function hideEnd"));
     const restartFn = SRC.slice(SRC.indexOf("function restart()"), SRC.indexOf("function markStart"));
-    for (const fn of [swapFn, doneFn, finishFn, restartFn]) assert.doesNotMatch(fn, /endRec\(/);
+    for (const fn of [swapFn, doneFn, restartFn]) assert.doesNotMatch(fn, /endRec\(/);
+    assert.match(finishFn, /endTailTimer = root\.setTimeout/);
+    assert.match(finishFn, /if \(atEnd && cur === endedScript && wantRec\) endRec\(\)/);
+    assert.match(SRC, /var END_TAIL_MS = 2000/);
+    assert.match(SRC, /function stop\(\) \{\s*cancelEndTail\(\)/);
+    assert.match(SRC, /function open\(i, keepCamera\) \{\s*cancelEndTail\(\)/);
+    assert.match(SRC, /function endRec\(then\) \{\s*cancelEndTail\(\)/);
     assert.match(doneFn, /if \(!root\.confirm\([\s\S]*?\)\) return;/);
     assert.ok(doneFn.indexOf("root.confirm") < doneFn.indexOf("markThis"));
     assert.match(HTML, /id="q-complete">Complete/);
