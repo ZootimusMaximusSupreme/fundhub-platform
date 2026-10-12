@@ -19,7 +19,7 @@ import {
   PROVIDER, ENABLED, TRANSMITS, FOLDER_MIME,
   DRIVE_WRITE_SCOPE, MAX_TEXT_UPLOAD_BYTES, MAX_VIDEO_BYTES,
   grantsWrite, resetTokenCache,
-  listNewVideos, getFileMeta, renameFile, ensureFolder, uploadTextFile,
+  listNewVideos, listOfferVideoFolders, getFileMeta, renameFile, ensureFolder, uploadTextFile,
   downloadFile, uploadVideo, openVideoSession, putVideoChunk
 } from "./google-drive-write.mjs";
 
@@ -136,6 +136,29 @@ describe("finding new takes", () => {
     const res = await listNewVideos({ env: envWith(), fetchImpl: impl });
     assert.equal(res.ok, false);
     assert.equal(impl.calls.length, 0);
+  });
+});
+
+describe("registered video folder discovery", () => {
+  test("paginates and reads only direct child folders under the marketing parent", async () => {
+    const impl = fakeFetch({ responses: [
+      { status: 200, body: { files: [
+        { id: "direct", name: "Direct Book Ads", mimeType: FOLDER_MIME },
+        { id: "text", name: "Loose notes", mimeType: "text/plain" }
+      ], nextPageToken: "nextpage" } },
+      { status: 200, body: { files: [
+        { id: "blueprint", name: "Capital Blueprint Ads", mimeType: FOLDER_MIME }
+      ] } }
+    ] });
+    const result = await listOfferVideoFolders({ parentId: "marketing", env: envWith(), fetchImpl: impl });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.folders.map((f) => f.id), ["direct", "blueprint"]);
+    assert.equal(impl.drive().length, 2);
+    const first = decodeURIComponent(impl.drive()[0].url);
+    const second = decodeURIComponent(impl.drive()[1].url);
+    assert.match(first, /'marketing' in parents/);
+    assert.match(first, /mimeType = 'application\/vnd.google-apps.folder'/);
+    assert.match(second, /pageToken=nextpage/);
   });
 });
 
