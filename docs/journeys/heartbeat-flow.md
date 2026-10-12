@@ -31,6 +31,8 @@ Claude's 20 map files hold 3,974 rows. Thirty-three rows clearly name another ro
 
 The catalog does not fake 3,941 green checks. Today, 1,593 items link to proof at the needed level and 2,348 stay red or unproved. A recipe may raise a row to deep or end-to-end proof only when it names a real executable test, gap lane, or hourly beat, states the exact result it checks, and uses a safe runner. A status ping alone never counts as result proof. The morning pulse reports the count through `gap-catalog.mjs`. The full item list is in `src/pulse/catalog/generated.json`. `npm run pulse:surface -- <id>` runs the proof for one item. Every ship rebuilds the catalog in memory and stops if the saved copy is stale, the map shrank, a row has no recipe owner, or ids repeat.
 
+`npm run pulse:catalog:prove` is the cheap batch proof. By default it compares the working catalog with the committed catalog, runs only proof targets that changed, and runs each shared test, lane, or beat once. `--all` proves every wired row. `--report` only prints the grouped red count.
+
 ## The picture
 
 ```mermaid

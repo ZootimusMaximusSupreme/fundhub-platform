@@ -44,6 +44,8 @@ Done in `82375bda4`. Added 135 executable flow links, while the stronger ping ru
 
 Batch 1 complete. The compiler now accepts recipe-level proof only when it has a real executable target, a stated result, and a safe runner. Status pings cannot claim e2e or deep proof. Two integration gaps found by the first pulse were fixed in the display and flow proof declarations.
 
+Batch 2 core: `npm run pulse:catalog:prove` now compares the working catalog with HEAD, deduplicates shared proof targets, runs only changed proof by default, and prints the remaining red families. `--all` runs every wired proof; `--report` does not execute targets.
+
 ## Verification
 
 - Each recipe module runs focused PASS and FAIL tests.

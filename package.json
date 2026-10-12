@@ -52,6 +52,7 @@
     "marketing:data:bootstrap": "node scripts/marketing-data-bootstrap.mjs",
     "pulse:prove": "node scripts/pulse/prove.mjs",
     "pulse:catalog": "node scripts/pulse/compile-catalog.mjs",
+    "pulse:catalog:prove": "node scripts/pulse/prove-catalog.mjs",
     "pulse:surface": "node scripts/pulse/run-surface.mjs"
   },
   "dependencies": {
