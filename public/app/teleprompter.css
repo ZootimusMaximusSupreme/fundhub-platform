@@ -413,8 +413,9 @@ body.cam-side-right #script-fade {
 #cam.glass #cam-shade {
   background: rgba(0, 0, 0, 0.558) !important;
   opacity: 1 !important;
-  -webkit-backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
-  backdrop-filter: blur(8px) saturate(0.7) brightness(0.88);
+  /* Blurring a hardware camera layer can turn it black on iPhone Safari. */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Outside a double-tap edit there is never a text cursor. A single tap is play and pause only. */
@@ -471,4 +472,43 @@ body:not(.wording) #content {
   #pulse {
     min-height: 26px;
   }
+}
+
+
+/* Keep the previous visible frame over Safari's blank video element while
+   the next camera opens. This is display-only; recording uses its own canvas. */
+#cam-hold{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  pointer-events:none;
+}
+#camera-status{
+  position:fixed;
+  z-index:3;
+  left:50%;
+  top:46%;
+  transform:translate(-50%,-50%);
+  padding:12px 16px;
+  max-width:min(320px, calc(100vw - 32px));
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.4);
+  background:rgba(0,0,0,.82);
+  text-align:center;
+  color:#fff;
+  font-size:14px;
+  display:grid;
+  justify-items:center;
+  gap:12px;
+}
+#camera-retry{
+  min-height:44px;
+  padding:8px 16px;
+  border-radius:10px;
+  border:1px solid #fff;
+  background:#252525;
+  color:#fff;
+  touch-action:manipulation;
 }
