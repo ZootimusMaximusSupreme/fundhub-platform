@@ -123,6 +123,16 @@ describe("teleprompter, pure", () => {
     assert.equal(T.cameraFacing({ facingMode: "environment" }, "user"), "environment");
   });
 
+  test("mic status names RØDE only when Safari exposes that device name", () => {
+    assert.equal(T.micLabel(""), "Mic · source unknown");
+    assert.equal(T.micLabel("Default"), "Mic · source unknown");
+    assert.equal(T.micLabel("RØDE Wireless GO II"), "RØDE mic");
+    assert.equal(T.micLabel("RODE Wireless ME"), "RØDE mic");
+    assert.equal(T.micLabel("iPhone Microphone"), "iPhone mic");
+    assert.equal(T.micLabel("External Microphone"), "External Microphone");
+    assert.equal(T.micLabel("Microphone"), "Mic · source unknown");
+  });
+
   test("the file name is the server's NAMING.md name, letter for letter", () => {
     const T = load();
     for (const n of [1, 2, 3, 12]) {
