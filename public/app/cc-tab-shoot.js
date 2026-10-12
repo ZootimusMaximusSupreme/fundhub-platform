@@ -145,6 +145,19 @@
     var path = TELEPROMPTER;
     var given = page && page.film && page.film.path;
     if (typeof given === "string" && given.indexOf("/app/teleprompter.html?k=") === 0 && given.indexOf(" ") < 0) path = given;
+    // This key is minted by the signed-in Shoot tab for ONE shoot. Keep it
+    // on the same device, so the teleprompter can save edits after the
+    // dashboard's ordinary staff session expires.
+    if (path !== TELEPROMPTER && page && page.shoot && page.shoot.id) {
+      try {
+        var encoded = /^\/app\/teleprompter\.html\?k=([^&#]+)/.exec(path);
+        var key = encoded ? decodeURIComponent(encoded[1]) : "";
+        var fields = key.split(".");
+        if (fields.length === 4 && fields[1] === page.shoot.id && /^[0-9a-f]{64}$/i.test(fields[3])) {
+          root.localStorage.setItem("fhtp.filmAccess", JSON.stringify({ shootId: page.shoot.id, key: key }));
+        }
+      } catch (e) { /* private browsing: the film link itself still works */ }
+    }
     if (!scriptId) return path;
     return path + (path.indexOf("?") >= 0 ? "&" : "?") + "script=" + encodeURIComponent(scriptId);
   }
