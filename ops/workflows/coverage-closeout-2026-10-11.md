@@ -16,11 +16,11 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 
 | Workflow | Owns | Files | Status | Depends on |
 |---|---|---|---|---|
-| Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 2 | all manifests |
+| Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 3 | all manifests |
 | Doors | This session | keys, routes, jobs, webhooks | done for batch 3 | shared ground |
-| Display | Agent | buttons, forms, screens, links | done for batch 2 | shared ground |
+| Display | Agent | buttons, forms, screens, links | done for batch 3 | shared ground |
 | Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 3 | shared ground |
-| Flow | Agent | messages, journeys, agents | done for batch 2 | shared ground |
+| Flow | Agent | messages, journeys, agents | done for batch 3 | shared ground |
 
 ## Change manifests
 
@@ -38,7 +38,7 @@ Done in `91b8b1b42`. Added 40 honest executable display proofs: 27 screens, 12 b
 
 Batch 2 complete in this commit. Added one safe local browser contract that really clicks 104 public links and checks each resolved destination. It also triggers 3 replay buttons and checks their changed terminal display, then clicks 4 Winner's Board tabs and checks the selected tab, fake API read, and rendered result. Net gain: 111 wired Display rows. Focused Display tests: 9 passed, 0 failed. Remaining Display gaps: 735 total — 285 buttons, 205 forms, 177 screens, and 68 links.
 
-Batch 3 complete in this commit. Added one shared local browser batch across 28 staff-page groups. It runs 27 fake-API Playwright specs once. Every mapped button or form is triggered and its visible or API result is checked. Every mapped screen checks the data shown. All 100 money/customer rows check the final visible or API result. Exact gain: 117 Display rows — 55 buttons, 40 forms, and 22 screens. Focused Display tests: 9 passed, 0 failed, 0 skipped. Remaining Display gaps: 618 total — 230 buttons, 165 forms, 155 screens, and 68 links. Files changed: `src/pulse/catalog/proofs/display-proof-cases.mjs` and `src/pulse/catalog/proofs/display-batch-staff-ui*.mjs`. `generated.json` was not edited. No live writes ran.
+Batch 3 integration accepted 17 new Display rows. The shared local browser batch runs 27 fake-API Playwright specs once, but 100 money/customer rows still have browser proof only. They stay red until a deep result lane checks the saved customer or money result. Remaining Display gaps: 718 total — 278 buttons, 200 forms, 172 screens, and 68 links. Files changed: `src/pulse/catalog/proofs/display-proof-cases.mjs` and `src/pulse/catalog/proofs/display-batch-staff-ui*.mjs`. No live writes ran.
 
 ### Data
 
@@ -54,13 +54,15 @@ Done in `82375bda4`. Added 135 executable flow links, while the stronger ping ru
 
 Batch 2 Flow complete in `957f5de7`. Added 24 honest executable proofs: 11 messages, 11 journeys, and 2 agents. The candidate-outreach batch queues all eight real cadence templates with fake data, then runs the real gate and dispatcher to the final blocked result. Shared journey tests cover the four Ops pulse steps and seven gate-relay steps. The two agent rows run their real repair-reader and brand-copy behavior tests. Focused Flow result: 9 passed, 0 failed, 0 skipped. Exact Flow count after integration: 346 wired and 307 red — 182 messages, 111 journeys, and 14 agents. Files changed: `src/pulse/catalog/proofs/flow-result-proofs.mjs`, its test, and new `src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs`.
 
-Batch 3 Flow complete in this commit. Added 180 honest executable proofs: 162 messages, 6 journeys, and 12 agents. One fake-data batch sends all 332 catalog template keys through the real gate and dispatcher, proves a final saved block, and proves no provider is reached. The journey batch drives authorized-representative add/replace, first-file and switch rules, final email/SMS delivery through the non-transmitting memory provider, and the Action Required no-event result. The agent batch proves ten draft/retired rows finish with no model, network, or send and leave run receipts; it also drives the inquiry voice path to a fake final delivered call. Social writer behavior uses its existing fake-provider result test. Focused Flow tests: 16 passed, 0 failed, 0 skipped. Exact Flow gain: 180 wired. Flow reds fell from 307 to 127 — 20 messages, 105 journeys, and 2 agents. The stale role-route steps and two agent paths without full runtime proof stay red. Files changed: `src/pulse/catalog/proofs/flow-result-proofs.mjs`, its test, new `src/pulse/catalog/proofs/flow-batch-template-gates.test.mjs`, new `src/pulse/catalog/proofs/flow-batch-journey-results.test.mjs`, and new `src/pulse/catalog/proofs/flow-batch-agent-runtime.test.mjs`. `generated.json` was not edited.
+Batch 3 integration accepted 16 new Flow rows: 6 journeys and 12 agents, while 2 payment-link message rows returned to red because their focused endpoint test fails. The generic template-gate batch did not prove each template's own trigger, copy, and placeholders, so it cannot turn 159 message rows green. Exact Flow state: 362 wired and 291 red — 184 messages, 105 journeys, and 2 agents. The journey and agent batches use fake providers and leave final results or run receipts. No provider was reached. Files changed: `src/pulse/catalog/proofs/flow-result-proofs.mjs`, its test, `src/pulse/catalog/proofs/flow-batch-template-gates.test.mjs`, `src/pulse/catalog/proofs/flow-batch-journey-results.test.mjs`, and `src/pulse/catalog/proofs/flow-batch-agent-runtime.test.mjs`.
 
 ### Core and integration
 
 Batch 1 complete. The compiler now accepts recipe-level proof only when it has a real executable target, a stated result, and a safe runner. Status pings cannot claim e2e or deep proof. Two integration gaps found by the first pulse were fixed in the display and flow proof declarations.
 
 Batch 2 core: `npm run pulse:catalog:prove` now compares the working catalog with HEAD, deduplicates shared proof targets, runs only changed proof by default, and prints the remaining red families. `--all` runs every wired proof; `--report` does not execute targets.
+
+Batch 3 core: integration rejected weak green claims from Display and Flow. Money/customer browser checks remain red without deep saved-result proof. Generic template blocking remains red without template-specific result proof. The one real failing payment-link target is excluded from proof and its two rows stay red.
 
 ## Verification
 
@@ -85,3 +87,16 @@ Batch 2 core: `npm run pulse:catalog:prove` now compares the working catalog wit
 - Net gain: 629 honestly wired rows.
 - Focused catalog proof passed with 505 checks and no skips.
 - The first combined target run found that Playwright specs were being sent to Node. The runner now separates Node and browser tests and forces Node to close leaked handles. The broad target run also exposed existing target-test failures, so it was stopped and those targets stay work for the next batch.
+
+## Batch 3 result
+
+- 3,941 unique items.
+- 2,496 wired.
+- 1,445 red.
+- Net gain: 274 honestly wired rows.
+- Data and keys now have 0 red rows.
+- Remaining red: 339 routes, 278 buttons, 200 forms, 184 messages, 172 screens, 105 journeys, 78 reads, 68 links, 13 jobs, 6 webhooks, and 2 agents.
+- No live customer write, money move, text, email, or phone call ran.
+- Catalog freshness passed. Lint passed across 3,358 files and inline scripts.
+- The focused integration run stopped on the same local Playwright server twice. An orphan `e2e/static-server.mjs` process held port 43117; it was stopped and no third attempt was made under the stuck rule. The agent's earlier focused Display run passed 9 checks with no skips.
+- Type check still has the older unrelated error at `src/marketing/filmed-receive.mjs:159` (`TS2345`). This batch did not touch that file.

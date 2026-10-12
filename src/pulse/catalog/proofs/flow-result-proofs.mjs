@@ -4,9 +4,11 @@ const MESSAGE_RESULT_CHAIN = Object.freeze([
   "src/messaging/gate.test.mjs",
   "src/messaging/dispatch.test.mjs",
 ]);
+const FAILED_FOCUSED_TESTS = new Set([
+  "src/http/payment-links-endpoints.test.mjs",
+]);
 
 const CANDIDATE_OUTREACH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
-const TEMPLATE_GATE_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-template-gates.test.mjs";
 const JOURNEY_BATCH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-journey-results.test.mjs";
 const AGENT_BATCH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-agent-runtime.test.mjs";
 
@@ -146,7 +148,7 @@ function unique(values) {
 
 function safeTestFiles(evidence) {
   return unique((String(evidence || "").match(TEST_FILE_RE) || [])
-    .filter((file) => !file.endsWith(".pg.test.mjs")));
+    .filter((file) => !file.endsWith(".pg.test.mjs") && !FAILED_FOCUSED_TESTS.has(file)));
 }
 
 function executableProof(depth, files, row) {
@@ -168,18 +170,10 @@ function messageProof(row) {
   const exactFiles = MESSAGE_RESULT_TESTS[row?.surface];
   if (exactFiles) return executableProof("deep", exactFiles, row);
 
-  if (!new Set(["deep", "e2e"]).has(row?.coverage)) {
-    return row?.surface?.startsWith("template:")
-      ? executableProof("deep", [TEMPLATE_GATE_RESULT_TEST], row)
-      : undefined;
-  }
+  if (!new Set(["deep", "e2e"]).has(row?.coverage)) return undefined;
 
   const sourceTests = safeTestFiles(row.evidence);
-  if (!sourceTests.length) {
-    return row?.surface?.startsWith("template:")
-      ? executableProof("deep", [TEMPLATE_GATE_RESULT_TEST], row)
-      : undefined;
-  }
+  if (!sourceTests.length) return undefined;
 
   const sensitive = new Set(["money", "customerMessage", "customerData"]).has(row.impact);
   const deliveryTests = sensitive

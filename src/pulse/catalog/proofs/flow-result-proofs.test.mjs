@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
+import { promisify } from "node:util";
 import test from "node:test";
 
 import { proofForFlowRow, proofTestFiles } from "./flow-result-proofs.mjs";
@@ -9,13 +10,13 @@ const ROOT = new URL("../../../../", import.meta.url);
 const MAP_ROOT = new URL("ops/workflows/coverage-every-surface-2026-10-10/", ROOT);
 const SOURCE_FILES = ["messages.json", "journeys.json", "agents.json"];
 const EXPECTED_PROOF_COUNTS = Object.freeze({
-  "messages.json": 427,
+  "messages.json": 263,
   "journeys.json": 27,
   "agents.json": 23,
 });
 
 const MESSAGE_DELIVERY_BATCH = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
-const TEMPLATE_GATE_BATCH = "src/pulse/catalog/proofs/flow-batch-template-gates.test.mjs";
+const execFileAsync = promisify(execFile);
 
 function loadRows(sourceFile) {
   return JSON.parse(fs.readFileSync(new URL(sourceFile, MAP_ROOT), "utf8"));
@@ -69,14 +70,18 @@ test("every deep message proof runs the gate and final dispatcher outcome", () =
     const sharedChain = files.has("src/messaging/gate.test.mjs")
       && files.has("src/messaging/dispatch.test.mjs");
     const batchedChain = files.has(MESSAGE_DELIVERY_BATCH);
-    const templateChain = files.has(TEMPLATE_GATE_BATCH);
-    assert.equal(sharedChain || batchedChain || templateChain, true, row.surface);
+    assert.equal(sharedChain || batchedChain, true, row.surface);
   }
 });
 
-test("every test named by a flow proof passes with fake data or local reads", { timeout: 240_000 }, () => {
+test("every test named by a flow proof passes with fake data or local reads", { timeout: 240_000 }, async () => {
   const files = [...new Set(allProofs().flatMap(({ proof }) => proofTestFiles(proof)))].sort();
-  const childEnv = { ...process.env, DATABASE_URL: "", NODE_ENV: "test" };
+  const childEnv = {
+    ...process.env,
+    DATABASE_URL: "",
+    NODE_ENV: "test",
+    UNSUBSCRIBE_TOKEN_SECRET: "test-only-unsubscribe-secret-that-is-long-enough-0000000000000000",
+  };
   delete childEnv.NODE_TEST_CONTEXT;
   for (const key of [
     "ANTHROPIC_API_KEY",
@@ -90,22 +95,32 @@ test("every test named by a flow proof passes with fake data or local reads", { 
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
   ]) delete childEnv[key];
-  const run = spawnSync(process.execPath, ["--test", "--test-concurrency=4", ...files], {
-    cwd: new URL(".", ROOT),
-    encoding: "utf8",
-    env: childEnv,
-    timeout: 230_000,
-  });
+  let next = 0;
+  const runs = [];
+  const failures = [];
+  async function worker() {
+    while (next < files.length) {
+      const file = files[next++];
+      try {
+        const result = await execFileAsync(process.execPath, ["--test", "--test-force-exit", file], {
+          cwd: ROOT,
+          encoding: "utf8",
+          env: childEnv,
+          maxBuffer: 8 * 1024 * 1024,
+          timeout: 30_000,
+        });
+        runs.push({ file, stdout: result.stdout });
+      } catch (error) {
+        failures.push({ file, output: [error.stdout, error.stderr, error.message].filter(Boolean).join("\n").slice(-4_000) });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: 4 }, worker));
+  assert.deepEqual(failures, []);
 
-  assert.equal(
-    run.status,
-    0,
-    [run.error?.message, run.stdout, run.stderr].filter(Boolean).join("\n").slice(-20_000),
-  );
-
-  const testCount = Number(run.stdout.match(/# tests (\d+)/)?.[1] || 0);
-  const skipped = Number(run.stdout.match(/# skipped (\d+)/)?.[1] || 0);
+  const testCount = runs.reduce((count, run) => count + Number(run.stdout.match(/# tests (\d+)/)?.[1] || 0), 0);
+  const skipped = runs.reduce((count, run) => count + Number(run.stdout.match(/# skipped (\d+)/)?.[1] || 0), 0);
   assert.ok(testCount >= files.length, `Expected at least ${files.length} tests, ran ${testCount}.`);
-  assert.equal(skipped, 0, run.stdout.slice(-20_000));
+  assert.equal(skipped, 0);
 });
 
