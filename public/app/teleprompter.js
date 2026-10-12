@@ -1013,6 +1013,7 @@
     var access = LS.get("filmAccess", null);
     var active = data && data.shoot && data.shoot.id;
     if (!active) { var last = LS.get("cache", null); active = last && last.shoot && last.shoot.id; }
+    if (!active && access) active = access.shootId;
     if (!access || !active || access.shootId !== active || typeof access.key !== "string") return "";
     var parts = access.key.split(".");
     return parts.length === 4 && parts[1] === active && Number(parts[2]) * 1000 > Date.now() ? access.key : "";
@@ -1094,6 +1095,14 @@
     });
   }
 
+  function resetExpiredFilmAccess() {
+    // Only a remembered key can be discarded automatically. An explicit
+    // filming link must fail closed rather than silently changing shoots.
+    if (explicitFilmKey()) return false;
+    LS.set("filmAccess", null);
+    return true;
+  }
+
   function fetchShoot(bare) {
     if (!bare) return api("GET", "marketing/shoot?wpm=" + S.wpm);
     // No token and no cookie. The server already serves this read with no
@@ -1109,6 +1118,12 @@
   function load(first) {
     var k = filmKey();
     return fetchShoot(false).then(function (r) {
+      if (k && r.status === 404 && resetExpiredFilmAccess()) {
+        // A shoot can be closed or a key rotated. Do not strand the
+        // teleprompter on an old saved link; show the current read-only
+        // shoot and keep all unsent changes intact.
+        return fetchShoot(true);
+      }
       if (!k && (r.status === 401 || r.status === 403)) return fetchShoot(true);
       return r;
     }).then(function (r) {
