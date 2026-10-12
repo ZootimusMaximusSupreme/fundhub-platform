@@ -264,8 +264,23 @@ describe("the waiting list (autosave queue)", () => {
     const r = rig({ answers: [{ status: 401, data: { error: "unauthorized" } }] });
     r.q.edit("root-1", BASE, "Words.", null);
     await r.q.commit();
-    assert.equal(r.E.statusText(r.q.status()), "Signed out — 1 edit waiting");
+    assert.equal(r.E.statusText(r.q.status()), "1 edit on phone · reconnecting");
     assert.ok(r.q.item("root-1").sent, "kept, request_id and all");
+  });
+
+  test("queued edit reconnects automatically with its original save request id", async () => {
+    const r = rig({ answers: [{ status: 401, data: { error: "unauthorized" } }, ok("v4", 4, "New words.")] });
+    r.q.edit("root-1", BASE, "New words.", null);
+    await r.q.commit();
+    assert.equal(r.q.status().net, "signedout");
+    assert.equal(r.q.status().waiting, 1);
+    await r.q.flush();
+    assert.equal(r.q.item("root-1"), null, "the offline words reach the server without retyping them");
+    assert.equal(r.sent.length, 2);
+    assert.equal(r.sent[0].request_id, r.sent[1].request_id, "the same queued save is retried, not duplicated");
+    assert.equal(r.q.status().net, "ok");
+    assert.equal(r.q.status().waiting, 0);
+    assert.match(r.E.statusText(r.q.status()), /^Saved/);
   });
 
   test("409, someone else saved: two versions, then Chris keeps his — sent on top of theirs", async () => {
