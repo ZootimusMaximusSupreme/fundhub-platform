@@ -587,7 +587,7 @@ describe("teleprompter upload continuity", () => {
     assert.match(HTML, /id="mic-monitor"/);
     assert.match(HTML, /id="mic-name"/);
     assert.match(HTML, /id="mic-bars"/);
-    const meter = SRC.slice(SRC.indexOf("function syncMicMeter()"), SRC.indexOf("doc.addEventListener(\\"pointerdown\\", resumeMicMeter"));
+    const meter = SRC.slice(SRC.indexOf("function syncMicMeter()"), SRC.indexOf("  var takeDialog"));
     assert.match(meter, /cam\.audioTrack && cam\.audioTrack\.readyState === "live"/);
     assert.match(meter, /createMediaStreamSource\(new root\.MediaStream\(\[track\]\)\)/);
     assert.match(meter, /getByteTimeDomainData\(sample\)/);
