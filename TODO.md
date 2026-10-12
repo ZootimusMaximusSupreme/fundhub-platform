@@ -58,7 +58,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Set it as the ad's thumbnail / cover in Meta
 - [ ] Keep the strong spoken opening as is
 - [ ] Compare hook rate against the same ad with the default thumbnail
-- [ ] Voice file from Chris's own words, so scripts sound like him. `marketing/ads/VOICE.md` already exists, so update it rather than starting a new file.
 - [ ] Pull his voice-dictated messages from the Claude chats
 - [ ] List his go-to phrases and how he builds a sentence
 - [ ] Fold them into `marketing/ads/VOICE.md`
