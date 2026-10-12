@@ -22,14 +22,15 @@ function hasReceiptProof(row) {
   return /\breceipts?\b/i.test(String(row.evidence || ''));
 }
 
-function modeFor(row) {
+function modeFor(row, proof) {
   const coverage = String(row.coverage || '').toLowerCase();
   const sensitive = CUSTOMER_OR_MONEY.has(row.impact);
 
+  if (hasReceiptProof(row)) return 'receipt';
+  if (proof) return 'test';
   if ((sensitive && BELOW_DEPTH.has(coverage)) || coverage === 'none') {
     return 'manual-red';
   }
-  if (hasReceiptProof(row)) return 'receipt';
   if (coverage === 'e2e') return 'test';
   if (coverage === 'deep' || coverage === 'ping') return 'read-only';
   return 'manual-red';
@@ -75,8 +76,8 @@ export function makeRecipe(sourceFile, row) {
     throw new TypeError(`Unsupported data coverage row from ${fileName(sourceFile) || 'unknown source'}`);
   }
 
-  const mode = modeFor(row);
   const proof = dataProofFor(fileName(sourceFile), row);
+  const mode = modeFor(row, proof);
 
   return {
     family: 'data',

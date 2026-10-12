@@ -1,8 +1,13 @@
+import { dataControlProofFor } from './data-control-proof.mjs';
+import { sharedDataProofFor } from './data-shared-targets.mjs';
+
 function caseKey(sourceFile, surface, control) {
   return `${sourceFile}\0${surface}\0${control}`;
 }
 
 const PIPELINE_MOTION_EVIDENCE = [
+  'src/pulse/coverage/gap-repair.mjs',
+  'src/pulse/coverage/gap-repair.test.mjs',
   'src/pulse/pipeline-motion.mjs',
   'src/pulse/catalog/proofs/data-pipeline-motion.test.mjs',
 ].join(' ');
@@ -107,5 +112,9 @@ if (PROOFS.size !== DATA_PROOF_CASES.length) {
 
 export function dataProofFor(sourceFile, row) {
   const proof = PROOFS.get(caseKey(sourceFile, row?.surface, row?.control));
-  return proof ? { ...proof } : null;
+  return proof
+    ? { ...proof }
+    : sharedDataProofFor(sourceFile, row)
+      || dataControlProofFor(sourceFile, row)
+      || null;
 }

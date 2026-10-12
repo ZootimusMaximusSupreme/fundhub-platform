@@ -19,7 +19,7 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 | Core and integration | This session | compiler, contract, evidence, generated catalog, gap lane, ship proof, board | done for batch 1 | all manifests |
 | Doors | Agent | keys, routes, jobs, webhooks | done for batch 1 | shared ground |
 | Display | Agent | buttons, forms, screens, links | done for batch 2 | shared ground |
-| Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 1 | shared ground |
+| Data | Agent | data, reads, pipelines, tables, money/customer data | done for batch 2 | shared ground |
 | Flow | Agent | messages, journeys, agents | done for batch 1 | shared ground |
 
 ## Change manifests
@@ -39,6 +39,8 @@ Batch 2 complete in this commit. Added one safe local browser contract that real
 ### Data
 
 Done in `acea73f8f`. Added 10 honest deep data proofs. Focused tests passed. Remaining pipeline, table, bank, and link gaps stay red.
+
+Batch 2 complete in this commit. Added shared deep result proof for pipeline and bank targets, plus shared control proof for non-customer rows. Focused Data tests passed. Exact gain: 213 rows changed from red to wired. Data red fell from 297 to 84. The 84 left are 66 money/customer table rows with no real final-result gap lane and 18 rows with no executable result proof. Files changed: `src/pulse/catalog/data-recipes.mjs`, `src/pulse/catalog/data-recipes.test.mjs`, and `src/pulse/catalog/proofs/data-*.mjs`. `generated.json` was not edited.
 
 ### Flow
 

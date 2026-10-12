@@ -42,7 +42,7 @@ test('all data map rows compile into valid safe recipes', async () => {
   assert.equal(rowCount, 669);
 });
 
-test('money and customer rows below deep coverage stay visibly red', async () => {
+test('money and customer rows below deep coverage stay red without a real result proof', async () => {
   for (const sourceFile of SOURCE_FILES) {
     const rows = await loadRows(sourceFile);
     const weakRows = rows.filter((row) => (
@@ -53,39 +53,36 @@ test('money and customer rows below deep coverage stay visibly red', async () =>
     assert.ok(weakRows.length > 0, `${sourceFile} should contain weak sensitive rows`);
     for (const row of weakRows) {
       const recipe = makeRecipe(sourceFile, row);
-      assert.equal(
-        recipe.mode,
-        'manual-red',
-        `${sourceFile}: ${row.surface}`,
-      );
-      assert.equal('proof' in recipe, false, `${sourceFile}: ${row.surface}`);
+      if (recipe.proof) {
+        assert.equal(recipe.mode, 'test', `${sourceFile}: ${row.surface}`);
+        assert.equal(recipe.proof.depth, 'deep', `${sourceFile}: ${row.surface}`);
+        assert.match(recipe.proof.evidence, /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/);
+        assert.match(recipe.proof.evidence, /\.test\.mjs\b/);
+      } else {
+        assert.equal(recipe.mode, 'manual-red', `${sourceFile}: ${row.surface}`);
+      }
     }
   }
 });
 
-test('deep proof is attached only to the ten exact rows whose checks run', async () => {
-  const expected = new Set(DATA_PROOF_CASES.map((entry) => (
-    `${entry.sourceFile}\0${entry.surface}\0${entry.control}`
-  )));
+test('data proof is attached only where a focused executable check runs', async () => {
   let proved = 0;
 
   for (const sourceFile of SOURCE_FILES) {
     const rows = await loadRows(sourceFile);
     for (const row of rows) {
       const recipe = makeRecipe(sourceFile, row);
-      const key = `${sourceFile}\0${row.surface}\0${row.control}`;
-      if (expected.has(key)) {
+      if (recipe.proof) {
         proved += 1;
-        assert.equal(recipe.proof.depth, 'deep', key);
-        assert.match(recipe.proof.evidence, /\.test\.mjs\b/, key);
-        assert.ok(recipe.proof.asserts.length > 0, key);
-      } else {
-        assert.equal('proof' in recipe, false, key);
+        assert.equal(['e2e', 'deep'].includes(recipe.proof.depth), true, row.surface);
+        assert.match(recipe.proof.evidence, /\.test\.mjs\b/, row.surface);
+        assert.ok(recipe.proof.asserts.length > 0, row.surface);
       }
     }
   }
 
-  assert.equal(proved, 10);
+  assert.equal(DATA_PROOF_CASES.length, 10);
+  assert.equal(proved, 223);
 });
 
 test('representative source fields survive recipe compilation', async () => {
