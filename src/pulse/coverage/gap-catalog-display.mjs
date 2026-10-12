@@ -1,9 +1,8 @@
-// Read-only saved-result judge for display controls. Browser contracts prove
-// the action. This lane checks the stored result fields promised by that action.
+// Exact read-only saved-result judges for display controls. Browser contracts
+// prove the click. This lane proves the named durable result, or stays red.
 
 import {
-  DISPLAY_RESULT_TABLE_RULES,
-  displaySavedResultTable,
+  displaySavedResultContract,
   isTrackedDisplayControl,
 } from "../catalog/proofs/display-saved-result.mjs";
 import { DISPLAY_PROOF_CASES } from "../catalog/proofs/display-proof-cases.mjs";
@@ -41,15 +40,17 @@ export const DISPLAY_RESULT_CASES = Object.freeze(STAFF_UI_PROOF_CASES
   .filter((proofCase) => proofCase.depth === "deep")
   .map((proofCase) => {
     const row = exactRow(proofCase);
+    const contract = displaySavedResultContract(row);
+    if (!contract) return null;
     return Object.freeze({
       id: `catalog-display:${proofCase.sourceFile}:${proofCase.surface}:${proofCase.control}`,
       sourceFile: proofCase.sourceFile,
       surface: proofCase.surface,
       control: proofCase.control,
-      table: displaySavedResultTable(row),
+      contract,
     });
   })
-  .filter((entry) => entry.table));
+  .filter(Boolean));
 
 const RESULT_CASES_BY_KEY = new Map(DISPLAY_RESULT_CASES.map(
   (entry) => [`${entry.sourceFile}\0${entry.surface}\0${entry.control}`, entry],
@@ -77,7 +78,7 @@ export const DISPLAY_TRACKING_CASES = Object.freeze([
             surface: row.surface,
             control: row.control,
             expected: row.control,
-            table: saved?.table || null,
+            contract: saved?.contract || null,
             retired: isRetiredAutopsy(row),
           })];
         }))
@@ -86,70 +87,60 @@ export const DISPLAY_TRACKING_CASES = Object.freeze([
 ]);
 
 export const CHECK_IDS = Object.freeze(DISPLAY_TRACKING_CASES.map((entry) => entry.id));
-export const TABLE_NAMES = Object.freeze([...new Set(DISPLAY_TRACKING_CASES.map((entry) => entry.table).filter(Boolean))].sort());
-const BATCH_SIZE = 10;
-
-function present(field) {
-  return `NULLIF(BTRIM(COALESCE(to_jsonb(t)->>'${field}', '')), '') IS NOT NULL`;
-}
-
-function completeCondition(rule) {
-  const all = rule.all.map(present);
-  const any = (rule.any || []).map(present);
-  return [...all, ...(any.length ? [`(${any.join(" OR ")})`] : [])].join(" AND ");
-}
-
-function selectFor(table) {
-  const quoted = `"${table.replaceAll('"', '""')}"`;
-  return `SELECT '${table}'::text AS table_name, count(*)::int AS row_count, `
-    + `count(*) FILTER (WHERE ${completeCondition(DISPLAY_RESULT_TABLE_RULES[table])})::int AS complete_count `
-    + `FROM ${quoted} t `
-    + `WHERE ($1::text IS NULL OR NOT (to_jsonb(t) ? 'org_id') OR to_jsonb(t)->>'org_id' = $1::text)`;
-}
-
-export const SQL_BATCHES = Object.freeze(Array.from(
-  { length: Math.ceil(TABLE_NAMES.length / BATCH_SIZE) },
-  (_, index) => TABLE_NAMES.slice(index * BATCH_SIZE, (index + 1) * BATCH_SIZE)
-    .map(selectFor)
-    .join("\nUNION ALL\n"),
-));
+export const PASS_CAPABLE_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").length;
+export const ALWAYS_RED_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "always-red").length;
+export const SQL_BATCHES = Object.freeze([
+  ...new Set(DISPLAY_RESULT_CASES
+    .filter((entry) => entry.contract.mode === "query")
+    .map((entry) => entry.contract.sql)),
+]);
 
 function result(id, status, detail, suggestedFix = null, na = undefined) {
   return { id, status, detail, suggestedFix, ...(na ? { na } : {}) };
 }
 
-export function judgeDisplayResult(entry, stats = {}) {
+export function judgeDisplayResult(entry, stats = null) {
   if (entry.retired) {
     return result(entry.id, "na", `${entry.control}: the Decline Autopsy page is retired and redirected to the active offer menu.`, null, {
       code: "catalog-display-retired-autopsy",
       args: { sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control },
     });
   }
-  if (!entry.table) {
+  if (!entry.contract) {
     return result(
       entry.id,
       "FAIL",
-      `${entry.surface} — ${entry.control}: no safe executable action/result contract is attached yet.`,
-      `Add a local browser action that exercises this exact control and checks its named result. Do not auto-fix. Chris fixes reds.`,
+      `${entry.surface} — ${entry.control}: no exact safe action/result contract is attached yet.`,
+      `Add a receipt that links this exact control's input to its saved result. Do not auto-fix. Chris fixes reds.`,
     );
   }
-  const rows = Number(stats.row_count || 0);
-  const complete = Number(stats.complete_count || 0);
-  if (rows === 0) {
-    return result(entry.id, "na", `${entry.table} has no saved display result to judge.`, null, {
-      code: "catalog-display-empty",
-      args: { table: entry.table },
-    });
+  if (entry.contract.mode === "always-red") {
+    return result(
+      entry.id,
+      "FAIL",
+      `${entry.surface} — ${entry.control}: ${entry.contract.requirement}`,
+      `Add the missing exact input-to-result receipt for this control. Do not auto-fix. Chris fixes reds.`,
+    );
   }
-  if (complete === rows) {
-    return result(entry.id, "PASS", `${entry.control}: all ${rows} saved ${entry.table} result row${rows === 1 ? "" : "s"} carry the promised result fields.`);
+
+  const samples = Number(stats?.sample_count || 0);
+  const bad = Number(stats?.bad_count || 0);
+  if (samples === 0) {
+    return result(
+      entry.id,
+      "FAIL",
+      `${entry.control}: no saved receipt or linked result exists for this exact check. Required: ${entry.contract.requirement}`,
+      `Create one real result through the named control, then let the read-only pulse judge it. Do not auto-fix. Chris fixes reds.`,
+    );
   }
-  const bad = Math.max(0, rows - complete);
+  if (bad === 0) {
+    return result(entry.id, "PASS", `${entry.control}: ${samples} saved result${samples === 1 ? "" : "s"} passed the exact check. ${entry.contract.requirement}`);
+  }
   return result(
     entry.id,
     "FAIL",
-    `${entry.control}: ${bad} of ${rows} saved ${entry.table} result row${rows === 1 ? " is" : "s are"} missing a promised result.`,
-    `Open the ${entry.table} rows counted by the display result check and finish the missing result. Do not auto-fix. Chris fixes reds.`,
+    `${entry.control}: ${bad} of ${samples} saved result${samples === 1 ? "" : "s"} failed the exact check. Required: ${entry.contract.requirement}`,
+    `Open the named result rows and fix the broken link or value. Do not auto-fix. Chris fixes reds.`,
   );
 }
 
@@ -161,49 +152,36 @@ function reader(ctx) {
 
 function skipped(entry, error) {
   const message = String(error?.message || error || "unknown read error").replace(/\s+/g, " ").slice(0, 160);
-  return result(entry.id, "skip", `${entry.table} was not read: ${message}.`);
+  return result(entry.id, "skip", `${entry.control} was not read: ${message}.`);
 }
 
 export async function gapChecks(ctx = {}) {
   const run = reader(ctx);
   if (!run) {
     return DISPLAY_TRACKING_CASES.map((entry) => (
-      entry.table ? skipped(entry, "no database in this run") : judgeDisplayResult(entry)
+      entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judgeDisplayResult(entry)
     ));
   }
 
-  const byTable = new Map();
-  for (let index = 0; index < SQL_BATCHES.length; index += 1) {
-    const tables = TABLE_NAMES.slice(index * BATCH_SIZE, (index + 1) * BATCH_SIZE);
+  const bySql = new Map();
+  for (const sql of SQL_BATCHES) {
     try {
-      const answer = await run((db) => db.query(SQL_BATCHES[index], [ctx.orgId || null]));
-      for (const row of answer?.rows || []) byTable.set(String(row.table_name), row);
+      const answer = await run((db) => db.query(sql, [ctx.orgId || null]));
+      bySql.set(sql, answer?.rows?.[0] || { sample_count: 0, bad_count: 0 });
     } catch (error) {
-      for (const table of tables) byTable.set(table, { error });
+      bySql.set(sql, { error });
     }
   }
 
   return DISPLAY_TRACKING_CASES.map((entry) => {
-    if (!entry.table) return judgeDisplayResult(entry);
-    const stats = byTable.get(entry.table);
-    if (!stats) return skipped(entry, "the batch returned no result");
-    if (stats.error) return skipped(entry, stats.error);
+    if (entry.contract?.mode !== "query") return judgeDisplayResult(entry);
+    const stats = bySql.get(entry.contract.sql);
+    if (stats?.error) return skipped(entry, stats.error);
     return judgeDisplayResult(entry, stats);
   });
 }
 
-async function tableStats(table, ctx = {}) {
-  const run = reader(ctx);
-  if (!run || !TABLE_NAMES.includes(table)) return null;
-  const answer = await run((db) => db.query(selectFor(table), [ctx.orgId || null]));
-  return answer?.rows?.[0] || null;
-}
-
 export const naVerify = Object.freeze({
-  "catalog-display-empty": async (args, ctx = {}) => {
-    const stats = await tableStats(String(args?.table || ""), ctx);
-    return Number(stats?.row_count || 0) === 0;
-  },
   "catalog-display-retired-autopsy": async (args) => {
     if (String(args?.sourceFile || "") !== "public-pages.json") return false;
     if (!String(args?.surface || "").includes("partner/autopsy/index.html")) return false;
