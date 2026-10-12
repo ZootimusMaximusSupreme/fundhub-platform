@@ -340,7 +340,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Welcome kit
 - [ ] Letter mailing as a per-letter upsell
 - [ ] White label recruiting (parked): pitches for credit optimization companies and high-ticket coaches, a Google Ads inbound page, and mailer copy (8/31)
-- [ ] Fix the buy box and get Meta purchase tracking live before you scale the Notes ads (10/2)
 - [ ] Clarity tracking check (9/30)
 - [ ] UnderwriteIQ: make the funding math match your rule (highest limit × 5.5 for personal, about double that for business). The client-facing number runs about 3x too big. (10/4)
 - [ ] UnderwriteIQ: post-funding inquiry log, backfilled from client files (9/11)

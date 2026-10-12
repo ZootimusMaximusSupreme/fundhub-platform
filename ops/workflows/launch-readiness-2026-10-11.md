@@ -93,8 +93,9 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed one old PR row proven complete: PR #327 is merged.
 - Removed two Blueprint rows proven complete by shipped closer-deck code and tests.
 - Removed 8 Blueprint build rows proven complete by current `main` code and tests; live-launch rows remain.
-- Result: 447 unfinished items remain, including the 14 current pulse-red rows added by `edd148f5d`.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 447; no checked items remain; `git diff --check` is clean.
+- Removed one row proven complete by the live journey changelog: buy box v2 and Meta Purchase tracking are live.
+- Result: 446 unfinished items remain, including the 14 current pulse-red rows added by `edd148f5d`.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 446; no checked items remain; `git diff --check` is clean.
 
 ## Pulse-red reconciliation — 2026-10-11
 
