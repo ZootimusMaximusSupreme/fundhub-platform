@@ -553,3 +553,50 @@ body:not(.wording) #content {
 #mic-monitor[data-level="2"] #mic-bars i:nth-child(-n+2) {height:9px;}
 #mic-monitor[data-level="3"] #mic-bars i:nth-child(-n+3) {height:11px;}
 #mic-monitor[data-level="4"] #mic-bars i:nth-child(-n+4) {height:12px;}
+
+
+/* Tiny Drive shortcut beside the file name. A single tap does nothing,
+   a double-tap opens the current offer's own folder. */
+#b-drive {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 30px;
+  width:30px;
+  height:26px;
+  padding:0;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:9px;
+  background:rgba(0,0,0,.45);
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  text-decoration:none;
+}
+#b-drive svg { display:block; }
+#b-drive:focus-visible { outline:2px solid var(--cue);outline-offset:2px; }
+
+/* Show the complete offer/ad name and the first spoken words. The script
+   title alone ("The bank") is not enough to identify a filming take. */
+#qmenu-list .item {
+  grid-template-columns:minmax(0, 1fr);
+  gap:4px;
+  align-items:start;
+}
+#qmenu-list .item .t {
+  font-size:15px;
+  font-weight:700;
+  line-height:1.32;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+#qmenu-list .item .m {
+  font:600 11px/1.25 ui-monospace,Menlo,monospace;
+  color:rgba(255,255,255,.8);
+}
+#qmenu-list .item .hook {
+  font-size:12px;
+  line-height:1.38;
+  color:rgba(255,255,255,.68);
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
