@@ -39,6 +39,14 @@ test("every mapped door gets a complete recipe", async () => {
       assert.equal(typeof recipe.schedule, "string");
       assert.ok(recipe.schedule.length > 0, `${row.surface}: schedule`);
       assert.equal(typeof recipe.safe, "boolean");
+      if (recipe.proof) {
+        assert.equal(["e2e", "deep"].includes(recipe.proof.depth), true);
+        assert.equal(typeof recipe.proof.evidence, "string");
+        assert.ok(recipe.proof.evidence.length > 0);
+        assert.equal(recipe.proof.asserts, row.control);
+      } else {
+        assert.equal(recipe.mode, "manual-red", `${sourceFile}: ${row.surface}`);
+      }
       recipeCount += 1;
     }
   }
@@ -48,31 +56,31 @@ test("every mapped door gets a complete recipe", async () => {
 
 test("route recipes use route methods and keep writes out of read-only mode", async () => {
   const rows = await loadRows("routes-0.json");
-  const read = rows.find((row) => row.surface === "route:ad-videos");
-  const write = rows.find((row) => row.methods?.includes("POST"));
+  const read = rows.find((row) => row.surface === "route:auth/login" && row.methods?.includes("GET"));
+  const failedFocusedProof = rows.find((row) => row.surface === "route:ad-videos");
+  const write = rows.find((row) => row.surface === "route:auth/login" && row.methods?.includes("POST"));
 
-  assert.deepEqual(makeRecipe("routes-0.json", read), {
-    family: "route",
-    mode: "read-only",
-    target: "ad-videos",
-    expected: "GET matches the declared route contract",
-    schedule: "on-command",
-    safe: true,
-    sourceFile: "routes-0.json",
-    surface: "route:ad-videos",
-  });
+  const readRecipe = makeRecipe("routes-0.json", read);
+  assert.equal(readRecipe.family, "route");
+  assert.equal(readRecipe.mode, "read-only");
+  assert.equal(readRecipe.target, "auth/login");
+  assert.equal(readRecipe.expected, "GET matches the declared route contract");
+  assert.equal(readRecipe.proof.depth, "e2e");
+  assert.match(readRecipe.proof.evidence, /src\/http\/demo-logins\.test\.mjs/);
+  assert.equal(makeRecipe("routes-0.json", failedFocusedProof).mode, "manual-red");
   assert.equal(makeRecipe("routes-0.json", write).mode, "test");
   assert.equal(makeRecipe("routes-0.json", write).safe, true);
 });
 
-test("job recipes preserve trigger and schedule metadata as receipts", async () => {
+test("job recipes preserve trigger and schedule metadata and stay red without result proof", async () => {
   const rows = await loadRows("jobs.json");
   const workflow = rows.find((row) => row.surface === "workflow:af-01-affiliate-drip");
   const scheduledFunction = rows.find((row) => row.surface === "function:pulse-hourly");
 
   assert.equal(makeRecipe("jobs.json", workflow).schedule, "cron */15 * * * *");
-  assert.equal(makeRecipe("jobs.json", workflow).mode, "receipt");
+  assert.equal(makeRecipe("jobs.json", workflow).mode, "manual-red");
   assert.equal(makeRecipe("jobs.json", scheduledFunction).schedule, "7 * * * *");
+  assert.equal(makeRecipe("jobs.json", scheduledFunction).mode, "receipt");
 });
 
 test("webhooks use door and signature metadata without touching a provider", async () => {
@@ -85,14 +93,20 @@ test("webhooks use door and signature metadata without touching a provider", asy
   assert.equal(makeRecipe("webhooks.json", lendflow).mode, "manual-red");
 });
 
-test("key recipes use names only and never claim secret proof", async () => {
+test("key recipes prove watched names without reading secret values", async () => {
   const rows = await loadRows("keys.json");
   const key = rows.find((row) => row.surface === "env:ADAPTERS_DRY_RUN");
   const recipe = makeRecipe("keys.json", key);
 
   assert.equal(recipe.target, "ADAPTERS_DRY_RUN");
-  assert.equal(recipe.mode, "manual-red");
+  assert.equal(recipe.mode, "read-only");
+  assert.equal(recipe.proof.depth, "deep");
+  assert.match(recipe.proof.evidence, /gap-keys\.mjs/);
   assert.match(recipe.expected, /without reading its value/);
+
+  const unwatched = rows.find((row) => row.surface === "env:AD_TOKEN_ENC_KEY");
+  assert.equal(makeRecipe("keys.json", unwatched).mode, "manual-red");
+  assert.equal("proof" in makeRecipe("keys.json", unwatched), false);
 });
 
 test("unrelated maps are not supported", () => {

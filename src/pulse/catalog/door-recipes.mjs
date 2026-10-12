@@ -1,3 +1,5 @@
+import { proofForDoor } from "./proofs/door-proof.mjs";
+
 const ROUTE_FILES = new Set([
   "routes-0.json",
   "routes-1.json",
@@ -36,10 +38,11 @@ function routeRecipe(sourceFile, row) {
       ? methods.every((method) => ["GET", "HEAD", "OPTIONS"].includes(method))
       : /(?:^|-)read$/.test(kind);
   const hasKnownContract = methods.length > 0 || kind !== "unknown-route";
+  const proof = proofForDoor(sourceFile, row);
 
   return {
     family: "route",
-    mode: !hasKnownContract ? "manual-red" : isReadOnly ? "read-only" : "test",
+    mode: proof && hasKnownContract ? (isReadOnly ? "read-only" : "test") : "manual-red",
     target,
     expected:
       methods.length > 0
@@ -49,6 +52,7 @@ function routeRecipe(sourceFile, row) {
     safe: true,
     sourceFile,
     surface,
+    ...(proof ? { proof } : {}),
   };
 }
 
@@ -56,49 +60,54 @@ function jobRecipe(sourceFile, row) {
   const surface = surfaceOf(row);
   const trigger = text(row.trigger, "");
   const schedule = text(row.schedule, trigger || "on-demand");
+  const proof = proofForDoor(sourceFile, row);
 
   return {
     family: "job",
-    mode: "receipt",
+    mode: proof ? "receipt" : "manual-red",
     target: text(row.file, surface),
     expected: trigger ? `run receipt after ${trigger}` : "run receipt after invocation",
     schedule,
     safe: true,
     sourceFile,
     surface,
+    ...(proof ? { proof } : {}),
   };
 }
 
 function webhookRecipe(sourceFile, row) {
   const surface = surfaceOf(row);
   const signature = text(row.signature, "unknown signature");
-  const isUnverified = /unverified|unknown/i.test(signature);
+  const proof = proofForDoor(sourceFile, row);
 
   return {
     family: "webhook",
-    mode: isUnverified ? "manual-red" : "test",
+    mode: proof ? "test" : "manual-red",
     target: text(row.door, surface),
     expected: `door honors ${signature}`,
     schedule: "on-command",
     safe: true,
     sourceFile,
     surface,
+    ...(proof ? { proof } : {}),
   };
 }
 
 function keyRecipe(sourceFile, row) {
   const surface = surfaceOf(row);
   const keyName = text(row.env_name, surface.replace(/^env:/, ""));
+  const proof = proofForDoor(sourceFile, row);
 
   return {
     family: "key",
-    mode: "manual-red",
+    mode: proof ? "read-only" : "manual-red",
     target: keyName,
     expected: `${keyName} must be proved without reading its value`,
     schedule: "on-change",
     safe: true,
     sourceFile,
     surface,
+    ...(proof ? { proof } : {}),
   };
 }
 
