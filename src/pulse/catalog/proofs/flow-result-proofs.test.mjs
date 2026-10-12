@@ -10,12 +10,13 @@ const ROOT = new URL("../../../../", import.meta.url);
 const MAP_ROOT = new URL("ops/workflows/coverage-every-surface-2026-10-10/", ROOT);
 const SOURCE_FILES = ["messages.json", "journeys.json", "agents.json"];
 const EXPECTED_PROOF_COUNTS = Object.freeze({
-  "messages.json": 263,
+  "messages.json": 270,
   "journeys.json": 27,
-  "agents.json": 23,
+  "agents.json": 24,
 });
 
 const MESSAGE_DELIVERY_BATCH = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
+const ACTIVE_MESSAGE_BATCH = "src/pulse/catalog/proofs/flow-batch-active-message-results.test.mjs";
 const execFileAsync = promisify(execFile);
 
 function loadRows(sourceFile) {
@@ -52,7 +53,7 @@ test("known unproved flow gaps stay without proof", () => {
     ["messages.json", "dispatch:sms-duplicate-guard-NOT-WIRED"],
     ["journeys.json", "journey:optimize-intended#2-book-without-form"],
     ["journeys.json", "journey:soft-pull-multi-biz-intended-draft#2-authorize-first"],
-    ["agents.json", "ai-caller:vendor/underwriteiq-full/api/lite/ai-gatekeeper.js"],
+    ["agents.json", "ai-caller:api/journeys/ask.mjs"],
   ];
 
   for (const [sourceFile, surface] of cases) {
@@ -69,7 +70,7 @@ test("every deep message proof runs the gate and final dispatcher outcome", () =
     const files = new Set(proofTestFiles(proof));
     const sharedChain = files.has("src/messaging/gate.test.mjs")
       && files.has("src/messaging/dispatch.test.mjs");
-    const batchedChain = files.has(MESSAGE_DELIVERY_BATCH);
+    const batchedChain = files.has(MESSAGE_DELIVERY_BATCH) || files.has(ACTIVE_MESSAGE_BATCH);
     assert.equal(sharedChain || batchedChain, true, row.surface);
   }
 });

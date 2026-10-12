@@ -9,10 +9,16 @@ const FAILED_FOCUSED_TESTS = new Set([
 ]);
 
 const CANDIDATE_OUTREACH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
+const ACTIVE_MESSAGE_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-active-message-results.test.mjs";
 const JOURNEY_BATCH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-journey-results.test.mjs";
 const AGENT_BATCH_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-agent-runtime.test.mjs";
+const AI_GATEKEEPER_RESULT_TEST = "src/pulse/catalog/proofs/flow-batch-ai-gatekeeper.test.mjs";
 
 const MESSAGE_RESULT_TESTS = Object.freeze({
+  "template:CONTRACT-REMIND-EMAIL": [ACTIVE_MESSAGE_RESULT_TEST],
+  "template:CONTRACT-SEND-EMAIL": [ACTIVE_MESSAGE_RESULT_TEST],
+  "template:EMAIL-CANDIDATE-EEO-INVITE": [ACTIVE_MESSAGE_RESULT_TEST],
+  "template:INVOICE-SENT-EMAIL": [ACTIVE_MESSAGE_RESULT_TEST],
   "template:EMAIL-CANDIDATE-OUTREACH-1": [CANDIDATE_OUTREACH_RESULT_TEST],
   "template:EMAIL-CANDIDATE-OUTREACH-2": [CANDIDATE_OUTREACH_RESULT_TEST],
   "template:EMAIL-CANDIDATE-OUTREACH-3": [CANDIDATE_OUTREACH_RESULT_TEST],
@@ -22,6 +28,9 @@ const MESSAGE_RESULT_TESTS = Object.freeze({
   "template:SMS-CANDIDATE-OUTREACH-3": [CANDIDATE_OUTREACH_RESULT_TEST],
   "template:SMS-CANDIDATE-OUTREACH-4": [CANDIDATE_OUTREACH_RESULT_TEST],
   "workflow:candidate-outreach": [CANDIDATE_OUTREACH_RESULT_TEST],
+  "api-action:contract-send-and-chase": [ACTIVE_MESSAGE_RESULT_TEST],
+  "api-action:eeo-invite": [ACTIVE_MESSAGE_RESULT_TEST],
+  "api-action:invoice-email": [ACTIVE_MESSAGE_RESULT_TEST],
   "dispatch:claim-and-order": MESSAGE_RESULT_CHAIN,
   "script:message_templates seeder src/messaging/seed/seed.mjs": [
     "src/messaging/seed/parse.test.mjs",
@@ -136,6 +145,7 @@ const AGENT_RUNTIME_RESULT_TESTS = Object.freeze({
   "ai-caller:api/social/generate.mjs": ["src/http/social-generate-writer.test.mjs"],
   "ai-caller:src/repair/response-agent.mjs": ["src/repair/response-agent.test.mjs"],
   "ai-caller:src/brand/copy-generate.mjs": ["src/brand/copy-generate.test.mjs"],
+  "ai-caller:vendor/underwriteiq-full/api/lite/ai-gatekeeper.js": [AI_GATEKEEPER_RESULT_TEST],
 });
 
 function basename(sourceFile) {
