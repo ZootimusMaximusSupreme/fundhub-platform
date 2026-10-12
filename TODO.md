@@ -1243,66 +1243,39 @@ Also from the walk: Walk2 and Walk3 need enrolling by hand (Present deck, not th
 
 ---
 
-# Consolidated source lists
+## Additional chat items
 
-This section preserves the full contents of the other TODO and work-list files that were merged here on 2026-10-11. This `TODO.md` file is now the single canonical list. The source labels below are part of the record; duplicate items are kept so no chat item is silently lost.
-
-## Source: TODO-all-chats.md
-
-# Every to-do from your Claude chats
-
-Pulled 10/4/2026 from your Claude chats (Aug 15 to Oct 4) plus today's session. The date after each item is the chat it came from. The last section holds August items that are probably done, so check them off or delete them.
-
----
-
-## Do first
+These items came from the chat sweep and were not already in the main business list. They are now part of this one list.
 
 - [ ] Have Cursor run `npm run ship`. The server hasn't been deployed since 10/2, so checkout still charges $297 while /roadmap shows $147. (10/4)
 - [ ] Fix the follow-up texts. They still offer a $197 "discount," which is now higher than the $147 price, so lower it or turn it off. (10/4)
 - [ ] Check whether the old /order checkout (ClickFunnels product at $297) still gets traffic. If it does, change the product price. (10/4)
 - [ ] Financing approval (expected today). (10/3)
 - [ ] Launch book-a-call at $250/day once Lead and Schedule fire in Test Events. (10/3)
-
----
-
-## Filming
-
 - [ ] Today's shoot (10/4)
-  - [x] 2 VSLs
-  - [x] Bank ad
-  - [x] Penthouse ad
-  - [ ] 3 canal ads
-  - [ ] 2 home ads
-  - [ ] 3 more green screen ads
+- [x] 2 VSLs
+- [x] Bank ad
+- [x] Penthouse ad
+- [ ] 3 canal ads
+- [ ] 2 home ads
+- [ ] 3 more green screen ads
 - [ ] 10 book-a-call ads in total (10/3)
 - [ ] 3 prop ads and 3 notes ads (10/3)
-- [ ] 20 full ads, plus the short sorting-hat ads (10/1)
 - [ ] Keep up 15 new ads a week, each on a different angle (9/21)
 - [ ] Refine the 11 scripts (9/30)
 - [ ] Lock each script the night before you film it (10/4)
 - [ ] Move to bullet-point scripts with delivery marks after this batch (10/4)
 - [ ] Notes green screen ads (10/2)
-  - [ ] Storytelling notes: your timeline (how you got funded a little over $1,000,000), Gene's timeline (low 600s to $420,000 across 3 LLCs), and the funding mistakes that cost you money
-  - [ ] Film the cliffhanger version next to the full 7-step version
-  - [ ] Test line 2 ("Banks will fund you again for every business you open") as the hook in one version
+- [ ] Storytelling notes: your timeline (how you got funded a little over $1,000,000), Gene's timeline (low 600s to $420,000 across 3 LLCs), and the funding mistakes that cost you money
+- [ ] Film the cliffhanger version next to the full 7-step version
 - [ ] Film 3 testimonials with B-roll, then grow testimonials from 3 to 6–9 (9/30, 10/3)
-- [ ] Film 3 long-form B-roll interviews (10/1)
 - [ ] Send the B-roll asset request list to the marketing team (9/21)
 - [ ] Rooftop shoot: pick 2–3 spots (W Hotel at night, Canal Club, Diablo Rooftop) and a spot for the reclined shot (Caesars daybeds), then build the shot list (9/20)
 - [ ] Film the portal welcome video (script approved, opens with "What's up, welcome to Fundhub") (9/21)
 - [ ] Film the Credit Mastery System course in Loom, one video per module (93 slides) (8/21, 9/21, 10/2)
-- [ ] Capital Strategy course: only a wireframe exists, so build the deck before filming (8/21)
-
-### Gear
 - [ ] Spare Rode Wireless ME transmitter (about $80, pair it in Rode Central) (10/4)
 - [ ] USB-C power bank (10/4)
 - [ ] ZGCINE PS-R30 PRO charging case (10/4)
-- [ ] USB-C cable for the Rode SC16 receiver on the Mac, plus 2–3 solid USB-C cables with micro zips (9/19, 9/20)
-
----
-
-## Editing, thumbnails and the video pipeline
-
 - [ ] Edit the VSLs and ads first and lock them, then add animations last. Check you have enough animations for the VSL. (10/3, 10/4)
 - [ ] Visuals for the long ad ("Scale without your own cash"): the Remotion templates plus 3 new ones (10/4)
 - [ ] Study the long reference ad and use its method on the next long ads (10/4)
@@ -1315,21 +1288,11 @@ Pulled 10/4/2026 from your Claude chats (Aug 15 to Oct 4) plus today's session. 
 - [ ] Submagic: confirm you're on the Business + API plan (9/22)
 - [ ] Automated pipeline: Drive "Raw" folder → R2 → Submagic and Deepgram, with phone alerts through ntfy or Pushover (9/22)
 - [ ] Delete the 4 "DUPLICATE" files in the SLO Ads Drive folder (9/21)
-
----
-
-## Your teleprompter
-
 - [x] Version 1 built (10/4)
 - [ ] Put it on your phone as a real app through TestFlight ($99/year Apple developer account) this week (10/4)
 - [ ] Move it behind your login on fundhub.ai (10/4)
 - [ ] Load the scripts from the repo automatically (10/4)
 - [ ] Test it at home on one ad, fix what feels off, then film a full batch (10/4)
-
----
-
-## Funnels and site
-
 - [ ] Roadmap page audit: finish the 23 remaining fixes in the "Roadmap Page Audit & Game Plan" doc (9/30)
 - [ ] Reorder the /roadmap steps to match the 7-step note (10/2)
 - [ ] Resolve the copy conflicts: "12 funding rounds" vs the 3–6 round model, and the refund-period mismatch (10/1)
@@ -1338,166 +1301,85 @@ Pulled 10/4/2026 from your Claude chats (Aug 15 to Oct 4) plus today's session. 
 - [ ] Remove the empty testimonial boxes, edit the testimonials, then add the real ones (9/30, 10/1)
 - [ ] Mobile layout check (9/19)
 - [ ] Prep the sorting-hat funnel (9/30)
-- [ ] Turn off the free-access system (9/30)
-- [ ] Full walkthrough of the book-a-call funnel: VSL, survey, thank-you page (10/3)
 - [ ] Deploy the custom /apply survey and the /watch UnderwriteIQ panel, then swap the placeholder approval amounts for real approval screenshots (10/1)
 - [ ] Block AI crawlers on every ClickFunnels funnel (10/3)
 - [ ] Low-ticket session funnel (10/3)
-- [ ] Free lead magnet: save the 7-lesson outline ("How to get $100K–$300K in 0% funding off your credit file") and host it inside the client portal (10/4)
 - [ ] Proof cards: fill the template (fundhub-proof-cards.html) with real client wins (9/22)
 - [ ] ClickFunnels API slot with Paul (the Launch plan allows one app, and Paul's team is using it) (9/22)
 - [ ] Website migration off ClickFunnels (9/22)
-  - [ ] Merge the open branches first
-  - [ ] Restore the shuffle and the light-up course section
-  - [ ] Put the Canva approval screenshots into the asset stack
-  - [ ] Set up Cal.com and the CRM custom fields
+- [ ] Merge the open branches first
+- [ ] Restore the shuffle and the light-up course section
+- [ ] Put the Canva approval screenshots into the asset stack
+- [ ] Set up Cal.com and the CRM custom fields
 - [ ] Climate front door: commit the ClimateFrontDoor pack to the repo, and pick the flat Darwin map or the globe (9/19, 9/22)
-
----
-
-## Offers
-
 - [ ] Alt finance offer: SBA, hard money and real estate lending, launched within 30 days (10/4)
-  - [ ] Search the Meta Ad Library for SBA, hard money and fix-and-flip ads
-  - [ ] Find the avatar work already in the Drive or the repo
-  - [ ] Pick the lending partners for each product
-  - [ ] Define the offer and how it routes on the sorting-hat call
-  - [ ] Write and film the first batch of ads
-  - [ ] Build the funnel and launch
 - [ ] Mastermind the offer (10/3)
-- [ ] Send your sales manager the new offers and pricing ($2,500 / $5,000 / $10,000), and confirm the closer is trained on them (10/3)
-- [ ] Send the proposal to your sales manager (10/2)
-- [ ] Run free roadmaps for your shortlist, then pitch the first two cohort people (10/2)
 - [ ] Credit optimization clients: document-upload reminder texts on day 1, 3 and 5 (10/3)
 - [ ] Optimize the roadmaps (9/30)
 - [ ] Capital Blueprint features (9/30)
-  - [ ] Monthly soft pull that updates the plan and the letters
-  - [ ] Accountability agent with a proof-gated checklist
-  - [ ] Dispute-round waypoints in the checklist
-  - [ ] Ready-for-funding trigger that alerts the closer
-  - [ ] Payment timing guidance
-  - [ ] Promo alerts at 60, 30 and 7 days
-  - [ ] Payment reserve tracking
-  - [ ] Welcome kit
-  - [ ] Letter mailing as a per-letter upsell
-  - [ ] Credit partner file
-  - [ ] Bank relationship tracker
-  - [ ] Next-funding-sequence planner
-  - [ ] Finance OS: 12 months included, then monthly
-- [ ] Contracts: finish your additions to the 3 agreements (Business Funding Consultation, Credit Optimization Services, Credit Optimization Starter) (9/4)
-- [ ] White label: set the build clock and the guarantee terms (9/4)
+- [ ] Monthly soft pull that updates the plan and the letters
+- [ ] Accountability agent with a proof-gated checklist
+- [ ] Dispute-round waypoints in the checklist
+- [ ] Ready-for-funding trigger that alerts the closer
+- [ ] Welcome kit
+- [ ] Letter mailing as a per-letter upsell
+- [ ] Credit partner file
+- [ ] Bank relationship tracker
+- [ ] Next-funding-sequence planner
+- [ ] Finance OS: 12 months included, then monthly
 - [ ] White label recruiting (parked): pitches for credit optimization companies and high-ticket coaches, a Google Ads inbound page, and mailer copy (8/31)
-
----
-
-## Tracking, Meta and APIs
-
 - [ ] Confirm Lead and Schedule fire in Test Events (10/3)
-- [ ] Pixel conditioning, so only qualified survey answers fire Lead and Schedule (10/3)
 - [ ] Custom "ShowedCall" event for calls that show (10/1)
-- [ ] 1% value-based lookalike from about 2,000 leads (760+ credit, $100K–$200K revenue) (10/3)
 - [ ] Fix the buy box and get Meta purchase tracking live before you scale the Notes ads (10/2)
 - [ ] Clarity tracking check (9/30)
-- [ ] Apply for the Meta Marketing API, Google Ads API and Partner API (9/30)
-- [ ] Book the Plaid call and get the Plaid production API keys (10/3)
 - [ ] UnderwriteIQ: make the funding math match your rule (highest limit × 5.5 for personal, about double that for business). The client-facing number runs about 3x too big. (10/4)
 - [ ] UnderwriteIQ: post-funding inquiry log, backfilled from client files (9/11)
 - [ ] Ask a repair partner for a sample export, and look into a mortgage broker data trade for prime-lender coverage (9/11)
-
----
-
-## Payments and financing
-
-- [ ] ClarityPay: call the rep with the questions in section 07 of the proposal, and sign up directly so you get your own checkout (9/30, 10/2)
 - [ ] Zoom with Justice on financing approvals (9/30)
 - [ ] Create the Whop account, and follow up on the Whop KYB ticket for FH Consulting LLC (9/29, 9/30)
 - [ ] Commas: hit the processed-volume threshold that unlocks financing on any product (9/17)
 - [ ] FH Consulting BNPL setup (9/11)
-  - [ ] Register a domain for FH Consulting
-  - [ ] Confirm its EIN and open its business bank account
-  - [ ] Move the e-product pages, thank-you page and checkout to the new domain, with terms, privacy and refund pages in its name
-  - [ ] Connect Payments AI (or Stripe) and PayPal, and turn on Pay Later
-  - [ ] Apply to Elective with the disclosure statement
-  - [ ] Apply to FlexxBuy (Pro plan) and put its link on the white-label sales page
-  - [ ] Apply to Payva as the $10,000 backup
-  - [ ] Write the one-page intercompany agreement
-  - [ ] Link fundhub.ai out to the FH Consulting domain for the education products
-
----
-
-## Sales and outreach
-
+- [ ] Register a domain for FH Consulting
+- [ ] Confirm its EIN and open its business bank account
+- [ ] Move the e-product pages, thank-you page and checkout to the new domain, with terms, privacy and refund pages in its name
+- [ ] Connect Payments AI (or Stripe) and PayPal, and turn on Pay Later
+- [ ] Apply to Elective with the disclosure statement
+- [ ] Apply to FlexxBuy (Pro plan) and put its link on the white-label sales page
+- [ ] Apply to Payva as the $10,000 backup
+- [ ] Write the one-page intercompany agreement
+- [ ] Link fundhub.ai out to the FH Consulting domain for the education products
 - [ ] Text the 40 old clients (target: 10 sales) (10/1)
 - [ ] Text the 50-person list (10/3)
 - [ ] Follow up on leads (10/2)
-- [ ] Focus group: entrepreneurial women in AZ go through the program free and become spokespeople (9/14)
-- [ ] Get the Telegram contact for the Maria Wendt course (9/30)
-
----
-
-## Repo, tools and systems
-
 - [ ] Move the repo's home to GitHub, since you quit GitLab (10/4)
-  - [ ] Make the GitHub repo private
-  - [ ] Take the 155MB video (public/funnel/slo-testimonial-colin.mp4) out of the history or move it to LFS, because GitHub rejects files over 100MB
-  - [ ] Push main
-  - [ ] Update the repo rules that still say GitLab
+- [ ] Make the GitHub repo private
+- [ ] Take the 155MB video (public/funnel/slo-testimonial-colin.mp4) out of the history or move it to LFS, because GitHub rejects files over 100MB
+- [ ] Update the repo rules that still say GitLab
 - [ ] Remove the blocks that stop Claude from shipping on its own: open the network allowlist (ClickFunnels, Netlify, Supabase, Inngest), give the cloud repo access, and put deploy keys in cloud secrets (10/4)
 - [ ] Permanent cloud access to the repo (10/2)
 - [ ] Consolidate the conflicting rules across CLAUDE.md and the notes (10/3)
 - [ ] Triage TODO.md into Today, This week and Next 30 days (10/4)
 - [ ] Write the voice file (VOICE-CHRIS.md) from your own phrasing (10/4)
-- [ ] Background marketing agents: scheduled ad-script drafts you review in one batch (9/6)
 - [ ] Make the ad-creation system faster (10/3)
-- [ ] Save the interview research as an SOP (9/20)
 - [ ] Consolidate the lenders list into one CSV (8/15, 9/19)
-- [ ] Finalize the doc-collection agent prompts (8/22, 9/19)
-- [ ] Authorized contact access in the credit optimization portal: one person manages several clients' files, with consent and permission levels (9/27)
 - [ ] Your three numbers: cash on hand, monthly burn, monthly collected revenue. Then set kill criteria for each offer. (9/4)
 - [ ] Plan the investor buyout (9/4)
 - [ ] Claude organization agent for your desktop files and Google Drive (8/15)
 - [ ] Company brain: transcribe ACQ, your course and the Hormozi content, load them in, then add an open-source visualization (10/3)
-
----
-
-## Learning
-
 - [ ] Check that your friend's CXL access is still active (10/3)
 - [ ] CXL Conversion Optimization minidegree, starting with Landing Page Optimization (check the "last updated" dates first) (10/3)
 - [ ] CXL Digital Psychology & Persuasion minidegree (10/3)
-- [ ] Jeremy Haynes back-end ads once book-a-call has data (10/3)
 - [ ] Scrape the courses (10/3)
 - [ ] Find the app someone sent you that breaks down Hormozi's ad creatives and storytelling (check texts, Instagram and Facebook, and maybe the 99ads Skool group) (10/2)
 - [ ] Typing practice on Monkeytype (english 1k, 60-second tests) toward 140 WPM (8/31)
-
----
-
-## Personal errands
-
 - [ ] Taxes (9/19, 9/20, 9/21)
-  - [ ] Send the CPA the list of years
-  - [ ] Finish the last 2 years
-  - [ ] Mail all 3 years to the IRS by certified mail, and keep the signed PDF and the receipt
-  - [ ] Ask whether the CPA specializes in real estate (9/11)
-- [ ] FAFSA at studentaid.gov once the 2024 return posts (8/15, 9/19)
-- [ ] University of Phoenix: ask the advisor about Security+ transfer credit and the Maricopa 3+1 pathway (9/11)
-- [ ] Start TryHackMe or HackTheBox (9/11)
+- [ ] Send the CPA the list of years
+- [ ] Finish the last 2 years
+- [ ] Mail all 3 years to the IRS by certified mail, and keep the signed PDF and the receipt
 - [ ] Recover your Apple account (9/21, 10/3)
-- [ ] Call Eduardo Soto (8/15, 9/19)
-- [ ] Rent, due on the 1st (10/1)
 - [ ] DCM: order the AHH-DCM77 bypass harness (about $84 at autoharnesshouse.com, confirm it fits the 2024 Prius Prime) and a plastic pry tool, clean the car, then pull the DCM (9/19, 9/20)
-- [ ] Bulk coffee: Kirkland Espresso 5 lb on Walmart.com, or 2 Costco 3 lb bags at a time (9/20)
-- [ ] Buy an iPad (A16 11-inch, about $395 at the Walmart on N Dobson) (10/1)
-- [ ] Sell the iPad Air 11-inch M2 256GB at $450 OBO (check the model in Settings first) (9/23)
 - [ ] Lift 2–3 times a week (10/2, 10/4)
-- [ ] Black Friday: check the LG 100MRGB95BU price at Best Buy, Amazon and LG.com (10/3)
 - [ ] Ultra Japan (Sept 18–19, 2027): sign up for ticket alerts at ultrajapan.com, and book flights in Jan–Feb 2027 (in around Sept 15, out around Sept 22) (9/25)
-- [ ] Pick up the baby blanket at Tyler and Carly's (9/20)
-
----
-
-## Home setup
-
 - [ ] Clean the room, hang up clothes, and consolidate the yellow boxes into one (9/20)
 - [ ] Hang the art: your two pieces plus a third, in black frames above the desk (9/20, 9/25)
 - [ ] Replace the bed and sort out the desk (9/20)
@@ -1507,22 +1389,11 @@ Pulled 10/4/2026 from your Claude chats (Aug 15 to Oct 4) plus today's session. 
 - [ ] Snake-print rug from Marketplace (9/25)
 - [ ] Royal Berkey: check the filter age (Boroux filters are the cheaper swap) (9/25)
 - [ ] Sonos: add Era 100s as rear surrounds, and factory reset the Move (9/25)
-
----
-
-## Appointments
-
 - [ ] Speech therapist in Arizona who takes AHCCCS (send me your plan name and I'll search its directory) (10/4)
 - [ ] Sleep study, then an ENT consult (9/4)
 - [ ] Dentist: fillings and a deep cleaning, then cleanings every 3 months (9/1)
 - [ ] Botox consult (9/10)
-
----
-
-## Parked (ideas, trips, wishlist)
-
 - [ ] House: 655 N Gentry Circle, Mesa, after two steady months of income (strategy only) (9/22)
-- [ ] Townhouse: get the CC&Rs, and have an electrician check the 200-amp upgrade (9/7)
 - [ ] Airbnb for a month: Gilbert or Cornville (8/15, 9/19)
 - [ ] Corvette Z06, and sell the Cybertruck (9/22)
 - [ ] Tennis trip: Acapulco, the Miami Open or Las Vegas F1, with all-in costs from Phoenix (9/11)
@@ -1537,11 +1408,6 @@ Pulled 10/4/2026 from your Claude chats (Aug 15 to Oct 4) plus today's session. 
 - [ ] AI idea-pitch platform: decide whether you sell the ideas yourself or take a cut of users' ideas (9/5)
 - [ ] Clone the funnel for an e-product audience, without the funding questions (9/3)
 - [ ] Try claude-mem for shared memory across Claude Code, Cursor and Codex (8/31)
-
----
-
-## Older (August), probably done: check off or delete
-
 - [ ] Manual end-to-end test, firing every webhook and trigger yourself (8/15)
 - [ ] Favicons on the funnel and the main site (8/15)
 - [ ] UnderwriteIQ module for the $1,000–$5,000 course (8/15)
@@ -1555,20 +1421,26 @@ Pulled 10/4/2026 from your Claude chats (Aug 15 to Oct 4) plus today's session. 
 - [ ] Debug the deliverables and the credit letters (8/26)
 - [ ] BigVU Bluetooth remote ($10–15), if you stay on BigVU (9/2)
 - [ ] Vercel: downgrade to Hobby and ask for the refund (9/3)
-- [ ] Move your photos to the new Apple ID with Image Capture (9/5)
 - [ ] Cat odor kit: Nature's Miracle, Zout, white vinegar, Zeolite, a blacklight (9/5)
 
----
+## Personal
 
-Not covered: chats inside Claude Projects (like Dispute Fox) don't show up in search, so anything that lives only in a Project isn't on this list.
-
-## Source: TODO-personal.md
-
-# Personal to-dos (local only — gitignored, never pushed)
-Swept from Claude chats, Sep 6 – Oct 4, 2026.
-
+- [ ] USB-C cable for the Rode SC16 receiver on the Mac, plus 2–3 solid USB-C cables with micro zips (9/19, 9/20)
+- [ ] Ask whether the CPA specializes in real estate (9/11)
+- [ ] FAFSA at studentaid.gov once the 2024 return posts (8/15, 9/19)
+- [ ] University of Phoenix: ask the advisor about Security+ transfer credit and the Maricopa 3+1 pathway (9/11)
+- [ ] Start TryHackMe or HackTheBox (9/11)
+- [ ] Call Eduardo Soto (8/15, 9/19)
+- [ ] Rent, due on the 1st (10/1)
+- [ ] Bulk coffee: Kirkland Espresso 5 lb on Walmart.com, or 2 Costco 3 lb bags at a time (9/20)
+- [ ] Buy an iPad (A16 11-inch, about $395 at the Walmart on N Dobson) (10/1)
+- [ ] Sell the iPad Air 11-inch M2 256GB at $450 OBO (check the model in Settings first) (9/23)
+- [ ] Black Friday: check the LG 100MRGB95BU price at Best Buy, Amazon and LG.com (10/3)
+- [ ] Pick up the baby blanket at Tyler and Carly's (9/20)
+- [ ] Townhouse: get the CC&Rs, and have an electrician check the 200-amp upgrade (9/7)
+- [ ] Move your photos to the new Apple ID with Image Capture (9/5)
 - [ ] Taxes with the CPA
-  - [ ] Ask whether the CPA specializes in real estate
+- [ ] Ask whether the CPA specializes in real estate
 - [ ] Rent
 - [ ] Mail the returns
 - [ ] FAFSA
@@ -1586,136 +1458,12 @@ Swept from Claude chats, Sep 6 – Oct 4, 2026.
 - [ ] Ultra Japan: set ticket alerts, look at flights for Jan–Feb 2027
 - [ ] Townhouse (9/7 chat, if still on): get the CC&Rs, have an electrician check the 200-amp upgrade
 
----
+## Priority notes
 
-# Moved from TODO.md (2026-10-04)
+- Paused: Company Brain, Journey project, and Galaxy features. Do not chase them unless Chris reopens them.
+- Priority: sales-team recordings must become words on the file for the closer, with the sweeper and heartbeat checks kept live.
+- Existing sales-recording work is already in the repo. New recording work needs a named request before it starts.
 
-## Personal — errands
+## Leftovers
 
-
-### DEXA scan, Gilbert AZ — priced 2026-09-26
-
-**The place that does it all: DexaFit Gilbert.**
-5656 S. Power Road, Suite 124, Gilbert AZ · (480) 336-9062 · Tue–Sat 8am–4pm ·
-no doctor referral needed. One location for the body scan, the treadmill test,
-and the metabolism test.
-
-#### What ONE DEXA scan already includes (no extra charge)
-
-* Body fat percent, total and by limb
-* Lean muscle mass, total and by limb — this is the athletic benchmark most people want
-* Visceral fat — the fat around your organs, the one that matters for health
-* **Bone density with a T-score** — yes, bone density is in the same scan. Same price.
-  A T-score compares your bones to a healthy young adult.
-
-Takes about 5 minutes. Accurate to within about 1.5%.
-
-#### What is NOT included — separate tests, separate money
-
-| Test | What it tells you | Included in DEXA? |
-|---|---|---|
-| VO2 max | How well your heart and lungs use oxygen. The real fitness number. Done on a treadmill or bike with a mask. | **No** |
-| RMR (resting metabolic rate) | Exactly how many calories you burn doing nothing. Sets your food targets. | **No** |
-| Grip strength, jump, sprint benchmarks | Athletic performance testing | **No** — DexaFit does not do these |
-
-#### Prices
-
-Single DEXA, Gilbert area:
-
-| Where | Price |
-|---|---|
-| RadiologyAssist (Gilbert) | $111.11 — cheapest found, cash, no referral. Scan only. |
-| Gilbert body-composition average | from $149 |
-| Bone-density-only order | from $199 (insurance often covers THIS one if a doctor writes it as medically necessary) |
-| US average, any DEXA | $200–$500 |
-
-Bundles at other DexaFit locations, as a guide to what Gilbert will quote:
-
-| Bundle | Denver | Nashua | Cincinnati |
-|---|---|---|---|
-| Single DEXA | $99 | $119 | — |
-| DEXA + RMR | $179 | $219 | $385 |
-| DEXA + VO2 max | $189 | $219 | $399 |
-| All three | $289 | $319 | $575 |
-
-So expect Gilbert's all-three bundle somewhere in the $289–$575 range. HSA and FSA
-cards are accepted.
-
-**Not verified:** DexaFit Gilbert's own published prices. Their website is blocked
-from the agent environment. Do not quote a DexaFit Gilbert number until someone
-calls (480) 336-9062.
-
-**Next action:** call (480) 336-9062 and ask for the 3-service bundle price
-(DEXA + VO2 max + RMR).
-
-Sources: dexafit.com/locations/arizona/gilbert · phoenix.dexafit.com/gilbert ·
-dexascans.com/az/gilbert · radiologyassist.com (Gilbert DEXA rates) ·
-denver.dexafit.com · nashua.dexafit.com · cincinnati.dexafit.com ·
-bodyspec.com (what a DEXA report contains)
-
-## Source: ops/workflows/priority-slim-2026-10-07.md
-
-# Priority — slim down to scale (owner 2026-10-07)
-
-Chris direction: focus on essential automated systems. Over-built personal tools wait.
-
-## PAUSED / decommissioned (do not chase to “live”)
-
-| Area | Status | Agent rule |
-|------|--------|------------|
-| **Company Brain** | **PAUSED** — not a live product priority. OpenAI/embed path is not a blocker. Content and ops use other paths. | No OpenAI key work. No “fix embed_failed” for pulse. Live desk sweep excludes Company Brain specs. |
-| **Journey project** | **PAUSED** | No new journey build unless Chris re-opens. |
-| **Galaxy features** | **PAUSED** | No new Galaxy work unless Chris re-opens. |
-
-## PRIORITY — sales recordings (must reach 100% + heartbeat)
-
-**Goal:** Sales team Meet recordings → words on the file → closer can use them. Monitored every morning and on job heartbeats.
-
-### Already in repo (partial)
-
-- Meet files in **Google Drive**; `src/sales/recordings.mjs` lists and links to `call_outcomes`.
-- **Inngest:** `meet-transcript-sweeper` every **10 minutes** (`src/workflows/meet-transcript-sweeper.mjs`) — pairs transcript docs, Whisper for short files.
-- **Pulse:** `unrecorded` row in daily pulse (`src/sales/unrecorded.mjs`); job heartbeat list includes `meet-transcript-sweeper` (`src/pulse/heartbeats.mjs`).
-- **Coverage slices:** closer + calls slices expect sweeper + machine row.
-- **API:** `POST /api/call-outcomes` accepts `recording_url`; `GET /api/read/unrecorded-calls`; Drive sync via `api/company-brain/sync` (Meet pickup — tied to paused Brain stack but sweeper still runs).
-
-### Finished 2026-10-07 (this chat)
-
-- Sweeper now **scans Drive first**, then pairs words. No one has to open Company Brain.
-- Words still stamp on the sales call when Brain embed is down (Brain is paused).
-- Morning pulse **MACHINE_CHECKS** row `meet-transcript-sweeper` watches last Drive scan (red after 30 min = 3× the 10 min job) plus stuck files with no words.
-- Job heartbeat list already had `meet-transcript-sweeper`.
-- Closer pack already prints `said:` from `call_outcomes.transcript` (`src/agents/context.mjs`). That stays.
-
-### Encryption (looked up — not a new build)
-
-Tapes stay in **Google Drive**. Google holds the file. We store the Drive link and the spoken words on the call. There is no second encrypt/decrypt API for sales video. Building one would be the same over-build as Company Brain. Do not add it unless Chris names the exact lock.
-
-### Still a leftover (not this finish)
-
-- Board **LEFTOVER:** old AG-07 snapshot of 6 calls with no tape (2026-09-18). Pulse `unrecorded` still counts live misses.
-
-### Heartbeat (when “done”)
-
-Same change as the feature ships:
-
-- `meet-transcript-sweeper` stays on `src/pulse/heartbeats.mjs` (already listed).
-- Add any **new** live route or sweeper for recordings to `PULSE_REGISTRY` / `MACHINE_CHECKS` in the same commit.
-
-## This session owner
-
-- Align monitoring and live Playwright with **paused Brain**.
-- **Do not** start Company Brain, Journey, or Galaxy builds.
-- **Next build chat (when Chris says go):** sales recordings spec → backend (encrypt API if named) → prove → heartbeat.
-
-## Source: ops/workflows/LEFTOVER-unrecorded-sales-calls.md
-
-# Leftover — unrecorded sales calls (do not hunt)
-
-**Card only.** Agents do **not** fix or prove this unless Chris names a hole.
-
-| What | One line |
-|------|----------|
-| **6 unrecorded sales calls** | Old **AG-07** pulse (**2026-09-18T13:01:26Z**) still lists **6** sales calls with no recording. Next **daily-pulse** can **FAIL** again for this reason alone. **Not** the decline-autopsy URL — that is **PASS** now (`lane-2/ag-07-decline-autopsy-fix.json`). |
-
-**STOP** — leftover board. No Fixer paste unless Chris names it.
+- Six old sales calls still have no recording in the old AG-07 snapshot. This is a card only. Do not hunt or fix it unless Chris names it.

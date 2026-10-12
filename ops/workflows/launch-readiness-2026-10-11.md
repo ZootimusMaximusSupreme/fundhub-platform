@@ -67,8 +67,7 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 
 - Status: done.
 - Canonical document: `TODO.md`.
-- Merged in full: `TODO-all-chats.md`, `TODO-personal.md`, `ops/workflows/priority-slim-2026-10-07.md`, and `ops/workflows/LEFTOVER-unrecorded-sales-calls.md`.
-- Removed those four source files after verifying their full contents were present in `TODO.md`.
-- Removed the now-unused `.gitignore` entries for the two root source files.
+- Rebuilt `TODO.md` as one clean list with the business list, unique chat items, personal items, priority notes, and leftovers.
+- Removed the old source-copy sections. No `## Source:` blocks remain.
+- Removed the four old source files and the now-unused `.gitignore` entries for the two root files.
 - Preserved the old worktree and evidence copies because they are historical copies, not canonical lists.
-- Historical workflow notes that mention the old filenames were not rewritten.
