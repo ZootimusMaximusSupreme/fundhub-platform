@@ -2513,7 +2513,13 @@
     var st = track && track.getSettings ? track.getSettings() : {};
     var w = video.videoWidth || st.width || 1280;
     var h = video.videoHeight || st.height || 720;
-    var scale = Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
+    /* Ads can use the smaller fast canvas. VSLs and thank-you videos follow
+       the 4K policy: never silently downscale their recorded frames. */
+    var requires4K = stays4K(scripts[cur]);
+    var scale = requires4K ? 1 : Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
+    if (requires4K && !((w >= 3840 && h >= 2160) || (w >= 2160 && h >= 3840))) {
+      camLine("This VSL or thank-you camera is not 4K. Check the source before filming.", true);
+    }
     canvas.width = Math.max(2, Math.round(w * scale));
     canvas.height = Math.max(2, Math.round(h * scale));
     var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
@@ -2557,9 +2563,9 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
-    /* iPhone has one graphics lane for the live camera, the page, and canvas.
-       Copying every camera frame into a 4K canvas makes the words shake. Let
-       MediaRecorder use the camera's own hardware stream on that phone. */
+    /* The fixed capture canvas keeps one take alive through camera flips.
+       Ads use the smaller faster canvas. Long-form videos retain the source
+       resolution, subject to on-device performance and real camera support. */
     var recStream = continuousRecordStream(cam.stream);
     if (!recStream) {
       wantRec = false; cam.startAfterOpen = false; setRecLabel();
