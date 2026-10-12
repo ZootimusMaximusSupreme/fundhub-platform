@@ -29,7 +29,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] File deletes: approve them again in each new Claude session that needs to clear git locks (the approval lasts one session)
 - [ ] Consolidate the conflicting rules across CLAUDE.md, `.claude/rules`, `.cursor/rules` and the notes, so sessions stop building in different directions (10/3)
 - [ ] Animation overlays for the new ads. Owner-set order: edit the video first and lock it, then add the animations on top. Animations go in last so no cut ever chops one.
-- [ ] Find the animation templates already built in the repo
 - [ ] Lock the final cut of one ad
 - [ ] Mark the timestamps where each animation lands
 - [ ] Drop the animations in and export
