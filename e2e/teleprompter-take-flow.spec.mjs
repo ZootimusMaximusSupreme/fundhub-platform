@@ -384,16 +384,16 @@ test("Still to film uses offer-stack names and clearly marks the Complete target
   await page.locator("#p-file").dblclick();
   const rows = page.locator("#qmenu-list .item");
   await expect(rows).toHaveCount(3);
-  await expect(rows.nth(0).locator(".t")).toHaveText("Over and over");
-  await expect(rows.nth(0).locator(".m")).toHaveText("Current · Direct Book Ad 2");
+  await expect(rows.nth(0).locator(".t")).toHaveText("Direct Book Ad 2 — Over and over");
+  await expect(rows.nth(0).locator(".m")).toHaveText("Current · Take 1 · Full script");
   await expect(rows.nth(0)).toHaveAttribute("aria-current", "true");
-  await expect(rows.nth(1).locator(".m")).toHaveText("Direct Book VSL 1");
-  await expect(rows.nth(2).locator(".m")).toHaveText("Direct Book Thank You");
+  await expect(rows.nth(1).locator(".t")).toHaveText("Direct Book VSL 1 — Why lenders say no");
+  await expect(rows.nth(2).locator(".t")).toHaveText("Direct Book Thank You — Next steps");
   await expect(page.locator("#qmenu")).not.toContainText("Ad 93");
   await expect(page.locator("#q-complete")).toHaveText("Complete current: Direct Book Ad 2 — Over and over");
   await rows.nth(1).tap();
   await page.locator("#p-file").dblclick();
-  await expect(page.locator("#qmenu-list .item").nth(1).locator(".m")).toHaveText("Current · Direct Book VSL 1");
+  await expect(page.locator("#qmenu-list .item").nth(1).locator(".m")).toHaveText("Current · Take 1 · Full script");
   await expect(page.locator("#q-complete")).toHaveText("Complete current: Direct Book VSL 1 — Why lenders say no");
 });
 
