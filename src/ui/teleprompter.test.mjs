@@ -124,6 +124,7 @@ describe("teleprompter, pure", () => {
   });
 
   test("mic status names RØDE only when Safari exposes that device name", () => {
+    const T = load();
     assert.equal(T.micLabel(""), "Mic · source unknown");
     assert.equal(T.micLabel("Default"), "Mic · source unknown");
     assert.equal(T.micLabel("RØDE Wireless GO II"), "RØDE mic");
