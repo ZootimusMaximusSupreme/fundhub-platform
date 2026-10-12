@@ -85,5 +85,6 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Removed 9 duplicate unfinished rows; the fuller copy of each task remains.
 - Removed one duplicate Meta Test Events row; the detailed row remains.
 - Removed one duplicate rules-consolidation row; the broader row remains.
-- Result: 462 unfinished items remain.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 462; no checked items remain; `git diff --check` is clean.
+- Removed 14 clear duplicate rows; fuller or more specific copies remain.
+- Result: 448 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 448; no checked items remain; `git diff --check` is clean.

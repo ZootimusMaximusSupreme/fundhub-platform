@@ -277,7 +277,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Have Cursor run `npm run ship`. The server hasn't been deployed since 10/2, so checkout still charges $297 while /roadmap shows $147. (10/4)
 - [ ] Fix the follow-up texts. They still offer a $197 "discount," which is now higher than the $147 price, so lower it or turn it off. (10/4)
 - [ ] Check whether the old /order checkout (ClickFunnels product at $297) still gets traffic. If it does, change the product price. (10/4)
-- [ ] Financing approval (expected today). (10/3)
 - [ ] Today's shoot (10/4)
 - [ ] 3 canal ads
 - [ ] 2 home ads
@@ -288,8 +287,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Refine the 11 scripts (9/30)
 - [ ] Lock each script the night before you film it (10/4)
 - [ ] Move to bullet-point scripts with delivery marks after this batch (10/4)
-- [ ] Notes green screen ads (10/2)
-- [ ] Storytelling notes: your timeline (how you got funded a little over $1,000,000), Gene's timeline (low 600s to $420,000 across 3 LLCs), and the funding mistakes that cost you money
 - [ ] Film 3 testimonials with B-roll, then grow testimonials from 3 to 6–9 (9/30, 10/3)
 - [ ] Send the B-roll asset request list to the marketing team (9/21)
 - [ ] Rooftop shoot: pick 2–3 spots (W Hotel at night, Canal Club, Diablo Rooftop) and a spot for the reclined shot (Caesars daybeds), then build the shot list (9/20)
@@ -303,7 +300,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Smooth out the VSL with Carly (9/30, 10/1)
 - [ ] Export the 3 Submagic videos: Portal Welcome, SLO Main Page VSL, VSL 2 Booking (9/25)
 - [ ] Hand the edited videos to Paul for the campaigns (9/30)
-- [ ] Curiosity-gap thumbnails on certain ads (a finger pointing at a penthouse, or a red circle), paired with a strong opening (10/4)
 - [ ] Finish the Chase selfie frame: flip it so the sign reads right, cut the shine, crop to thumbnail size, add text (10/4)
 - [ ] Testimonial thumbnail pipeline: pull the best line from each video, pick a frame, render branded thumbnails (9/28)
 - [ ] Submagic: confirm you're on the Business + API plan (9/22)
@@ -315,7 +311,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Reorder the /roadmap steps to match the 7-step note (10/2)
 - [ ] Resolve the copy conflicts: "12 funding rounds" vs the 3–6 round model, and the refund-period mismatch (10/1)
 - [ ] Thank-you page: add the video slot, update the step copy and the FAQ (9/30)
-- [ ] Move the VSL mp4 off Netlify so bandwidth stops pausing the site (9/30)
 - [ ] Remove the empty testimonial boxes, edit the testimonials, then add the real ones (9/30, 10/1)
 - [ ] Mobile layout check (9/19)
 - [ ] Prep the sorting-hat funnel (9/30)
@@ -324,14 +319,10 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Low-ticket session funnel (10/3)
 - [ ] Proof cards: fill the template (fundhub-proof-cards.html) with real client wins (9/22)
 - [ ] ClickFunnels API slot with Paul (the Launch plan allows one app, and Paul's team is using it) (9/22)
-- [ ] Website migration off ClickFunnels (9/22)
 - [ ] Merge the open branches first
 - [ ] Restore the shuffle and the light-up course section
 - [ ] Put the Canva approval screenshots into the asset stack
 - [ ] Set up Cal.com and the CRM custom fields
-- [ ] Climate front door: commit the ClimateFrontDoor pack to the repo, and pick the flat Darwin map or the globe (9/19, 9/22)
-- [ ] Mastermind the offer (10/3)
-- [ ] Credit optimization clients: document-upload reminder texts on day 1, 3 and 5 (10/3)
 - [ ] Optimize the roadmaps (9/30)
 - [ ] Capital Blueprint features (9/30)
 - [ ] Monthly soft pull that updates the plan and the letters
@@ -345,7 +336,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Next-funding-sequence planner
 - [ ] Finance OS: 12 months included, then monthly
 - [ ] White label recruiting (parked): pitches for credit optimization companies and high-ticket coaches, a Google Ads inbound page, and mailer copy (8/31)
-- [ ] Custom "ShowedCall" event for calls that show (10/1)
 - [ ] Fix the buy box and get Meta purchase tracking live before you scale the Notes ads (10/2)
 - [ ] Clarity tracking check (9/30)
 - [ ] UnderwriteIQ: make the funding math match your rule (highest limit × 5.5 for personal, about double that for business). The client-facing number runs about 3x too big. (10/4)
@@ -381,7 +371,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Claude organization agent for your desktop files and Google Drive (8/15)
 - [ ] Company brain: transcribe ACQ, your course and the Hormozi content, load them in, then add an open-source visualization (10/3)
 - [ ] Check that your friend's CXL access is still active (10/3)
-- [ ] CXL Conversion Optimization minidegree, starting with Landing Page Optimization (check the "last updated" dates first) (10/3)
 - [ ] CXL Digital Psychology & Persuasion minidegree (10/3)
 - [ ] Scrape the courses (10/3)
 - [ ] Typing practice on Monkeytype (english 1k, 60-second tests) toward 140 WPM (8/31)
@@ -453,14 +442,11 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Rent
 - [ ] Mail the returns
 - [ ] FAFSA
-- [ ] Start TryHackMe or HackTheBox
 - [ ] Apple ID
-- [ ] Call Eduardo Soto
 - [ ] Buy the DCM harness AHH-DCM77
 - [ ] USB-C cables
 - [ ] Bulk coffee
 - [ ] iPad
 - [ ] Room: clean it, hang the art, sort the bed and desk
-- [ ] Black Friday: check the price on the LG 100MRGB95BU TV
 - [ ] Ultra Japan: set ticket alerts, look at flights for Jan–Feb 2027
 - [ ] Townhouse (9/7 chat, if still on): get the CC&Rs, have an electrician check the 200-amp upgrade
