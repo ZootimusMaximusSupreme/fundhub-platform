@@ -97,3 +97,17 @@ Done after the second and final strict review. Serena instructions loaded, but t
 ### Integration and ship
 
 Claimed by this session. Baseline six-lane built-bundle pulse passed as a safe runner: 0 skipped rows, 0 timeouts, 0 SQL errors, 0 writes, and 0 provider sends. It reported 1,879 red rows inside the selected lane output. The final folded report had 1,890 red rows because it also includes older company-health reds outside this catalog upgrade. Fresh review rejected 211 weak first-pass promotions. Final pre-rebuild gain is 24 strict result proofs: 11 Door and 13 Read. Honest catalog red count is expected to move from 1,762 to 1,738. Final catalog rebuild, full proof, and ship remain.
+
+## Wave 3 — plug-in proof shards
+
+Owner direction: keep going until every catalog row has real result proof. Each shard adds small row proof keys backed by one shared real runner. No test-name inference and no fake green.
+
+| Shard | Scope | Status |
+|---|---|---|
+| Display AB | `desks-a.json`, `desks-b.json` red controls | pending |
+| Display CD | `desks-c.json`, `desks-d.json` red controls | pending |
+| Display EF/Public | `desks-e.json`, `desks-f.json`, `public-pages.json` red controls | pending |
+| Door 01 | `routes-0.json`, `routes-1.json` red routes | pending |
+| Door 23 | `routes-2.json`, `routes-3.json`, seven red jobs | pending |
+
+Shard rule: create a disjoint proof-key module and its real result test. Do not edit the shared aggregator. Integration imports reviewed shards after all five return.
