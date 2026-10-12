@@ -163,7 +163,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Define the offer and how it routes on the sorting-hat call
 - [ ] Write and film the first batch of ads
 - [ ] Build the funnel and launch
-- [ ] Triage: walk each dated section below with Claude (done / keep / kill), move what's left into this section, and archive the rest
 - [ ] **Arizona MLO refinance funnel.** White label is E Mortgage Capital (`https://www.emortgagecapital.com/`). Use the Arizona mortgage-loan-officer license. Pull Arizona leads. Target homes that need a refinance. Then run that funnel. Company NMLS 1416824. Their refi door is `/refinance` (also `/e-refi`).
 - [ ] **Film more ads.**
 - [ ] **Film more interviews.** Shoot long form, then cut it into short form.
