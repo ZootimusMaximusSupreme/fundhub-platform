@@ -153,6 +153,8 @@ jobs:
     name: screens (real browser)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      STAFF_E2E_PASSWORD: ${{ secrets.STAFF_E2E_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
