@@ -143,3 +143,10 @@ Batch 4 safety: no live customer write, money move, text, email, or phone call. 
 - The job lane now accepts the live scope function or a direct database. Thirteen empty-work job tests no longer claim the named business result; those jobs stay exact red. Commit `43d187870`.
 - Four webhook no-op or not-found tests no longer claim deep saved-result proof; those webhooks stay exact red. Commit `b26c9b1e8`.
 - The final six-lane proof passed: no skipped selected-lane row, no timeout, no SQL error, no write, and no provider send.
+
+### Final ship guard repair
+
+- GitHub ship run `38293041665` exposed a log-cap bug: printing nearly 2,000 honest red findings killed the step before deploy.
+- The proof now prints 80 red findings plus the remaining count. Red and not-checked business results stay visible but do not claim the proof engine crashed.
+- A dead old live site had stretched the CRM link lane to 45 seconds. Its per-file timeout is now two seconds; the same full lane finished in 4.4 seconds.
+- Focused tests passed 90/90. The full built-bundle proof passed with all 75 steps under 20 seconds, no SQL error, no write, and no provider send.

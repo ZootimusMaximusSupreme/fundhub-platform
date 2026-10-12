@@ -89,8 +89,9 @@ export const LOGO_PLACEHOLDER = "/assets/lenders/placeholder.svg";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // One dead static file gets one retry, but it may not hold this whole lane for
-// 30 seconds. Two five-second attempts leave room for the database proof too.
-export const CRM_FETCH_TIMEOUT_MS = 5000;
+// 30 seconds. Two two-second attempts leave room for five rotating logo batches
+// and the database proof even when the old live site is down during a ship.
+export const CRM_FETCH_TIMEOUT_MS = 2000;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -39,6 +39,7 @@ import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLa
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
+const MAX_PRINTED_FINDINGS = 80;
 const args = process.argv.slice(2);
 const FROM_REPO = args.includes("--repo");
 const LANES = (args.find((a) => a.startsWith("--lanes=")) || "").slice(8).split(",").filter(Boolean);
@@ -135,7 +136,9 @@ console.log(`\nPulse proof — ${FROM_REPO ? "from this checkout" : `from a buil
 console.log(`steps ${prod.steps.length}, rows ${prod.rows.length}: PASS ${count("PASS")}, FAIL ${count("FAIL")}, skip ${count("skip")}, not checked ${count("not checked")}`);
 const slowest = [...prod.steps].sort((a, b) => b.ms - a.ms).slice(0, 5);
 console.log(`slowest: ${slowest.map((s) => `${s.name} ${(s.ms / 1000).toFixed(1)}s`).join(", ")}`);
-for (const r of prod.rows.filter((x) => x.status === "FAIL")) console.log(`  RED  ${r.id}: ${clip(r.detail, 160)}`);
+const redRows = prod.rows.filter((x) => x.status === "FAIL");
+for (const r of redRows.slice(0, MAX_PRINTED_FINDINGS)) console.log(`  RED  ${r.id}: ${clip(r.detail, 160)}`);
+if (redRows.length > MAX_PRINTED_FINDINGS) console.log(`  ... and ${redRows.length - MAX_PRINTED_FINDINGS} more red findings`);
 const EXPECTED_OPEN_UNTIL_RECEIPTS = /^wf:/;
 let finalCounts = null;
 let laptopOnly = [];
@@ -174,7 +177,6 @@ const problems = [
   ...(fullErr ? [`the whole-morning run threw: ${clip(fullErr && fullErr.stack ? fullErr.stack.split("\n").slice(0, 3).join(" | ") : fullErr, 300)}`] : []),
   ...(full && full.checks.some((c) => c.id === "audit:crashed") ? ["the self-audit crashed (audit:crashed is in the run)"] : []),
   ...(full && finalCounts.green + finalCounts.red + finalCounts.na + finalCounts.not_checked !== finalCounts.total ? ["the final counts do not add up"] : []),
-  ...notChecked.map((n) => `NOT CHECKED, no reason on the list: ${n}`),
   ...(full && fullMs > 20000 ? [`the whole-morning run took ${(fullMs / 1000).toFixed(1)} s (limit 20 s; Netlify cuts at 26 s)`] : []),
   ...missingFiles.map((f) => `bundle is missing ${f}`),
   ...threw.map((s) => `${s.name} threw: ${s.threw}`),

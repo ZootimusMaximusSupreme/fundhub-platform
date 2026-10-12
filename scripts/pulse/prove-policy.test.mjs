@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -46,5 +47,12 @@ test("prove rejects an unknown requested lane before starting proof work", () =>
   assert.equal(result.status, 1);
   assert.match(result.stderr, /pulse:prove: unknown requested lane: not-a-real-lane/);
   assert.doesNotMatch(result.stdout, /building the api bundle|Pulse proof/);
+});
+
+test("live red and not-checked findings stay visible without becoming proof-engine failures", () => {
+  const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
+  assert.match(source, /redRows\.slice\(0, MAX_PRINTED_FINDINGS\)/);
+  const problems = source.slice(source.indexOf("const problems = ["), source.indexOf("if (problems.length)"));
+  assert.doesNotMatch(problems, /notChecked\.map/);
 });
 

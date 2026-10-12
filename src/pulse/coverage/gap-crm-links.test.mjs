@@ -56,7 +56,7 @@ const NOW = new Date("2026-10-08T15:00:00.000Z");
 const BASE = "https://fundhub.ai";
 
 test("one dead CRM file cannot consume the whole pulse lane", () => {
-  assert.equal(CRM_FETCH_TIMEOUT_MS, 5000);
+  assert.equal(CRM_FETCH_TIMEOUT_MS, 2000);
   assert.ok(CRM_FETCH_TIMEOUT_MS * 2 < 15000, "one retry must still finish before the lane deadline");
 });
 
