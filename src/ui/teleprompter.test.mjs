@@ -169,6 +169,16 @@ describe("teleprompter, pure", () => {
     assert.equal(T.micLabel("Microphone"), "Mic · source unknown");
   });
 
+  test("Copy script keeps every displayed paragraph in one clipboard string", () => {
+    const T = load();
+    assert.equal(T.scriptClipboardText({
+      style: "words",
+      teleprompter_text: "First line.\n\nSecond line.\n\nThird line."
+    }), "First line.\n\nSecond line.\n\nThird line.");
+    assert.match(HTML, /id="b-script-copy"[^>]*>Copy script</);
+    assert.match(SRC, /scriptCopy\.onclick[\s\S]*copyCurrentScript\(\)/);
+  });
+
   test("the file name is the server's NAMING.md name, letter for letter", () => {
     const T = load();
     for (const n of [1, 2, 3, 12]) {

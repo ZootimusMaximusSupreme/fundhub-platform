@@ -142,6 +142,12 @@
       .filter(Boolean).map(function (p) { return { text: p, cue: false }; });
   }
 
+  /** Every displayed paragraph, ready for one full-script clipboard copy. */
+  function scriptClipboardText(s) {
+    return paragraphsFor(s).map(function (p) { return String(p.text || "").trim(); })
+      .filter(Boolean).join("\n\n");
+  }
+
   /** The first script to roll: the first with no Got it, else the first. */
   function firstToRoll(scripts) {
     for (var i = 0; i < scripts.length; i++) if (!scripts[i].got_it) return i;
@@ -980,7 +986,7 @@
   }
 
   root.FundhubTeleprompter = {
-    fileName: fileName, filmAccessFromPage: filmAccessFromPage, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
+    fileName: fileName, filmAccessFromPage: filmAccessFromPage, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, scriptClipboardText: scriptClipboardText, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
@@ -3481,6 +3487,48 @@
     while (out.length && !out[out.length - 1]) out.pop();
     return out;
   }
+  function currentScriptText() {
+    if (textEdit) return readCaretParas().filter(function (p) { return flatWords(p); }).join("\n\n");
+    var s = scripts[cur];
+    if (!s) return "";
+    var paras = paragraphsFor(s).map(function (p) { return p.text; });
+    if (editing && editing.box && editing.i >= 0 && editing.i < paras.length) paras[editing.i] = editing.box.value;
+    return paras.map(function (p) { return String(p || "").trim(); }).filter(Boolean).join("\n\n");
+  }
+  function copyCurrentScript() {
+    var text = currentScriptText();
+    if (!text) { say("There is no script to copy."); return; }
+    var btn = $("b-script-copy");
+    function done() {
+      say("Full script copied.");
+      if (!btn) return;
+      btn.textContent = "Copied";
+      root.setTimeout(function () { btn.textContent = "Copy script"; }, 1200);
+    }
+    function fallback() {
+      var box = doc.createElement("textarea");
+      box.value = text;
+      box.setAttribute("readonly", "");
+      box.style.position = "fixed";
+      box.style.left = "-9999px";
+      doc.body.appendChild(box);
+      box.select();
+      try { box.setSelectionRange(0, box.value.length); } catch (e) {}
+      var copied = false;
+      try { copied = !!(doc.execCommand && doc.execCommand("copy")); } catch (e2) { copied = false; }
+      box.remove();
+      if (copied) done(); else say("Copy failed. Select the script and try again.");
+    }
+    try {
+      var clipboard = root.navigator && root.navigator.clipboard;
+      if (clipboard && typeof clipboard.writeText === "function") {
+        var result = clipboard.writeText(text);
+        if (result && typeof result.then === "function") result.then(done, fallback); else done();
+        return;
+      }
+    } catch (e3) { /* use the iPhone selection fallback */ }
+    fallback();
+  }
   function syncCaretText(queue) {
     if (!textEdit) return;
     var s = scripts[cur];
@@ -3593,6 +3641,8 @@
 
   $("play").onclick = toggle;
   $("b-rec").onclick = recordToggle;
+  var scriptCopy = $("b-script-copy");
+  if (scriptCopy) scriptCopy.onclick = function (e) { e.preventDefault(); e.stopPropagation(); copyCurrentScript(); };
   var scriptSave = $("b-script-save");
   if (scriptSave) scriptSave.onclick = saveScript;
   $("b-cancel").addEventListener("pointerdown", function (e) {

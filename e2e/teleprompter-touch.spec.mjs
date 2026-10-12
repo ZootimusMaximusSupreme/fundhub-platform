@@ -550,6 +550,26 @@ test.describe("double tap edits while the words roll (owner call 2026-10-09)", (
     await expect.poll(() => server.posts.length, { timeout: 3000 }).toBeGreaterThan(0);
     expect(server.posts[0].body).toContain("ROLLING");
   });
+
+  test("Copy script copies every current word for Claude, including an unsaved edit", async ({ page }) => {
+    await page.addInitScript(() => {
+      const clipboard = { writeText: async (text) => { window.__copiedScript = text; } };
+      Object.defineProperty(navigator, "clipboard", { configurable: true, get: () => clipboard });
+    });
+    await open(page);
+    const m = await middle(page);
+    await page.touchscreen.tap(m.x, m.y);
+    await page.touchscreen.tap(m.x, m.y);
+    await expect(page.locator("body.wording")).toHaveCount(1);
+    await expect(page.locator("#b-script-copy")).toBeVisible();
+    await page.keyboard.type("CLAUDE COPY ");
+    const expected = (await page.locator("#content p").allTextContents())
+      .map((text) => text.replace(/\u00a0/g, " ").trim()).filter(Boolean).join("\n\n");
+    await page.locator("#b-script-copy").tap();
+    await expect.poll(() => page.evaluate(() => (window.__copiedScript || "").replace(/\s+/g, " ").trim()))
+      .toBe(expected.replace(/\s+/g, " ").trim());
+    expect(expected).toContain("CLAUDE COPY");
+  });
 });
 
 test.describe("single tap is play and pause only (owner call 2026-10-09)", () => {

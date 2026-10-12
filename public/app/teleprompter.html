@@ -211,7 +211,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css?v=20261012-full-edit1">
+<link rel="stylesheet" href="teleprompter.css?v=20261012-copy1">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -251,6 +251,7 @@ body.wording #flip{transform:none !important}
 </script>
 </head>
 <body>
+<button type="button" class="mini" id="b-script-copy" hidden>Copy script</button>
 <button type="button" class="mini" id="b-script-save" hidden>Save</button>
 <button type="button" id="b-cancel" aria-label="Cancel">X</button>
 <div id="app">
@@ -463,6 +464,6 @@ body.wording #flip{transform:none !important}
 
 <script src="teleprompter-edits.js?v=20261012-reconnect2"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-<script src="teleprompter.js?v=20261012-60fps-portrait4"></script>
+<script src="teleprompter.js?v=20261012-60fps-copy1"></script>
 </body>
 </html>

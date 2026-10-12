@@ -118,11 +118,13 @@ Video upload state now uses the small top-right `#video-save-status` chip. It sa
 
 ### 4f. Front and rear camera
 
-The 44 px top-left camera button switches the live preview from the mirrored front camera to the normal rear camera, then back. It never starts recording. While a take is recording, the button leaves the camera and recorder alone and tells Chris to stop before switching. Desktop recording uses a canvas stream. iPhone recording uses the camera's hardware stream directly, because painting a second 4K canvas on that phone makes the words shake. The recording clock moves beside the camera button.
+The 44 px top-left camera button switches the live preview from the mirrored front camera to the normal rear camera, then back. It never starts recording. A take that is already recording keeps one stable canvas recording stream while the physical camera changes, so a front/rear/front take stays one file. The recording clock moves beside the camera button.
 
 When iPhone Safari grants a requested lens but leaves `MediaTrackSettings.facingMode` blank, the page keeps the requested front/rear direction. It does not mistake the rear lens for the front lens and reopen the front camera.
 
 Desktop first asks the live video track to change lenses. iPhone releases the current lens and makes a direct `facingMode: exact` request for the other lens, then tries its saved exact device id. A new preview gets three start tries while its metadata arrives. Safari rejecting those early `video.play()` calls never makes the app discard the working rear stream. The words and the same black glass stay above either camera view. The flip action runs on `pointerdown`; its later click is swallowed, and Record ignores any ghost click for 500 ms. Desktop recording paints the mirrored file from camera-frame callbacks at no more than 30 frames a second. iPhone skips that copy loop. The word speed and word position do not change when Record starts.
+
+If camera access fails, the retry notice stays in a small top-left box and never takes taps or drags away from the script. During a double-tap word edit, **Copy script** copies every current paragraph as one clipboard value, including words typed but not saved yet, so the full script can be pasted into Claude. It uses the browser clipboard first and an iPhone selection fallback when that API is unavailable.
 
 The existing `counted` flag from merged PR #27 still limits 3-2-1 to the first play of an opened script. Pause, seek and resume do not reset it. `steadyPace`, cached reading-line measurements, and fractional `translate3d` scrolling are unchanged; checks now cover 200, 205, 210 and 215 WPM. The camera shade is `rgba(0, 0, 0, 0.558)`, 10% lighter than 0.62. These changes remain **UNVERIFIED on production** until deployed.
 

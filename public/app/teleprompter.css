@@ -86,17 +86,23 @@ body {
 }
 /* The video save is not a button on the glass. The word Save shows only
    while a double-tap edit is open, next to the X. */
+#b-script-copy,
 #b-script-save,
 #b-save {
   display: none !important;
 }
+body.wording #b-script-copy,
 body.wording #b-script-save {
   display: block !important;
-  right: 60px;
+  position: fixed;
+  z-index: 10;
+  top: calc(8px + env(safe-area-inset-top, 0px));
   min-height: 44px;
   padding: 0 18px;
   border-radius: 999px;
 }
+body.wording #b-script-save { right: 60px; }
+body.wording #b-script-copy { right: 148px; }
 /* Double-tap edit: the two buttons go away until the keyboard does.
    X throws away this edit. It is not on screen while he is filming. */
 body.wording #controls {
@@ -488,20 +494,22 @@ body:not(.wording) #content {
 #camera-status{
   position:fixed;
   z-index:3;
-  left:50%;
-  top:46%;
-  transform:translate(-50%,-50%);
-  padding:12px 16px;
-  max-width:min(320px, calc(100vw - 32px));
+  left:8px;
+  top:calc(104px + env(safe-area-inset-top, 0px));
+  transform:none;
+  padding:8px 10px;
+  max-width:min(220px, calc(100vw - 16px));
   border-radius:12px;
   border:1px solid rgba(255,255,255,.4);
   background:rgba(0,0,0,.82);
-  text-align:center;
+  text-align:left;
   color:#fff;
-  font-size:14px;
+  font-size:12px;
   display:grid;
-  justify-items:center;
-  gap:12px;
+  justify-items:start;
+  gap:8px;
+  /* A failed camera must never block play, pause, drag, or edit on the words. */
+  pointer-events:none;
 }
 #camera-retry{
   min-height:44px;
@@ -511,6 +519,7 @@ body:not(.wording) #content {
   background:#252525;
   color:#fff;
   touch-action:manipulation;
+  pointer-events:auto;
 }
 
 
