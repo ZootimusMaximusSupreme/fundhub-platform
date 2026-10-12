@@ -123,6 +123,17 @@ describe("teleprompter, pure", () => {
     assert.equal(T.cameraFacing({ facingMode: "environment" }, "user"), "environment");
   });
 
+  test("mic status names RØDE only when Safari exposes that device name", () => {
+    const T = load();
+    assert.equal(T.micLabel(""), "Mic · source unknown");
+    assert.equal(T.micLabel("Default"), "Mic · source unknown");
+    assert.equal(T.micLabel("RØDE Wireless GO II"), "RØDE mic");
+    assert.equal(T.micLabel("RODE Wireless ME"), "RØDE mic");
+    assert.equal(T.micLabel("iPhone Microphone"), "iPhone mic");
+    assert.equal(T.micLabel("External Microphone"), "External Microphone");
+    assert.equal(T.micLabel("Microphone"), "Mic · source unknown");
+  });
+
   test("the file name is the server's NAMING.md name, letter for letter", () => {
     const T = load();
     for (const n of [1, 2, 3, 12]) {
@@ -378,6 +389,26 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(r.acts, [{ do: "grab" }, { do: "drag", dy: -20 }, { do: "drag", dy: -30 }]);
   });
 
+  test("real drag and mousewheel never call Stop or drop autoplay", () => {
+    const pageAct = SRC.slice(SRC.indexOf("function act(a, e)"), SRC.indexOf("function feed(type, e)"));
+    const grab = pageAct.slice(pageAct.indexOf('a.do === "grab"'), pageAct.indexOf('a.do === "drag"'));
+    assert.doesNotMatch(grab, /\bstop\(/, "drag must never pause active text");
+    assert.match(grab, /stopFling\(\)/);
+    const wheel = SRC.slice(SRC.indexOf('stage.addEventListener("wheel"'), SRC.indexOf('content.addEventListener("input"'));
+    assert.doesNotMatch(wheel, /\bstop\(/, "the scroll wheel must not pause active text");
+    assert.match(wheel, /moveBy\(e\.deltaY\)/);
+    const move = SRC.slice(SRC.indexOf("function moveBy(dy)"), SRC.indexOf("function stopFling()"));
+    assert.match(move, /seeked = !\(playing \|\| countTimer\)/);
+    assert.match(move, /if \(playing\) last = root\.performance\.now\(\)/);
+    const gesture = run(load(), [
+      { type: "down", x: 150, y: 510, t: 1 },
+      { type: "move", x: 150, y: 445, t: 18 },
+      { type: "up", x: 150, y: 445, t: 30 },
+      { type: "settle", t: 500 }
+    ], "rolling");
+    assert.deepEqual(gesture.acts.map((a) => a.do), ["grab", "drag"]);
+  });
+
   test("a flick in scroll mode keeps the words moving; the same flick while paused does not", () => {
     const T = load();
     const flick = [
@@ -556,6 +587,73 @@ describe("top edge changes the script", () => {
   });
 });
 
+describe("signed filming link recovery", () => {
+  test("accepts only a correctly signed, shoot-scoped filming link from the dashboard", () => {
+    const T = load();
+    const shootId = "11111111-1111-4111-8111-111111111111";
+    const orgId = "22222222-2222-4222-8222-222222222222";
+    const key = orgId + "." + shootId + ".1999999999." + "a".repeat(64);
+    const page = { shoot: { id: shootId }, film: { path: "/app/teleprompter.html?k=" + key } };
+    assert.deepEqual(plain(T.filmAccessFromPage(page)), { shootId, key });
+    assert.equal(T.filmAccessFromPage({ shoot: { id: "33333333-3333-4333-8333-333333333333" }, film: page.film }), null);
+    assert.equal(T.filmAccessFromPage({ shoot: { id: shootId }, film: { path: "https://evil.com/app/teleprompter.html?k=" + key } }), null);
+    assert.equal(T.filmAccessFromPage({ shoot: { id: shootId }, film: { path: "/app/teleprompter.html?k=" + key.slice(0, -3) } }), null);
+    assert.equal(T.filmAccessFromPage({ shoot: { id: shootId } }), null);
+    const api = SRC.slice(SRC.indexOf("function api(method, path, body)"), SRC.indexOf("function fetchShoot(bare)"));
+    assert.match(api, /rejectedBearer = tk/);
+    assert.match(api, /request\("", ""\)/);
+    assert.match(SRC, /rememberFilmAccess\(r\.data\)/);
+    assert.match(SRC, /root\.addEventListener\("focus", function \(\) \{ flush\(\)/);
+    assert.match(SRC, /doc\.addEventListener\("visibilitychange"/);
+  });
+});
+
+describe("offer folder UI", () => {
+  test("the script list shows a descriptive name and opening words", () => {
+    const T = load();
+    const script = {
+      offer_word: "Direct Book", offer_key: "funding_dfy", stack_kind: "ad",
+      stack_no: 5, angle_name: "Paying for speed",
+      body: "You can spend the next year learning how credit turns into money."
+    };
+    assert.equal(T.queueLabel(script), "Direct Book Ad 5");
+    assert.match(T.queueHook(script), /^You can spend the next year/);
+    assert.match(T.driveUrlForScript(script), /drive\.google\.com\/drive\/folders\//);
+    assert.match(HTML, /id="b-drive"/);
+    assert.match(SRC, /driveGest = chipStart\(\)/);
+    assert.match(SRC, /if \(step\.go && !driveBtn\.hidden && driveBtn\.href\)/);
+  });
+});
+
+describe("teleprompter upload continuity", () => {
+  test("every accepted take is stored before uploading and restored after reopen", () => {
+    const store = fs.readFileSync(path.join(APP, "teleprompter-take-store.js"), "utf8");
+    assert.match(HTML, /src="teleprompter-take-store\.js/);
+    assert.ok(HTML.indexOf("teleprompter-take-store.js") < HTML.indexOf('src="teleprompter.js'));
+    assert.match(store, /indexedDB\.open\(NAME, 1\)/);
+    assert.match(store, /tx\.oncomplete = function \(\) \{ resolve\(value\)/);
+    assert.match(SRC, /takeStore\.put\(entry\)\.then\(function \(\) \{/);
+    assert.match(SRC, /function restoreQueuedVideos\(\) \{/);
+    assert.match(SRC, /restoreQueuedVideos\(\);/);
+    assert.match(SRC, /takeStore\.remove\(item\.id\)\.then\(function \(\) \{/);
+    assert.match(SRC, /root\.addEventListener\("online"/);
+    assert.match(SRC, /videoSaveStatus\("Upload paused · saved on device"/);
+    assert.match(SRC, /function saveNextVideo\(\) \{\s*if \(!cam\.uploads\.length \|\| cam\.saving \|\| uploadRetryTimer\) return/);
+  });
+
+  test("microphone level display uses the same live input track without asking again", () => {
+    assert.match(HTML, /id="mic-monitor"/);
+    assert.match(HTML, /id="mic-name"/);
+    assert.match(HTML, /id="mic-bars"/);
+    const meter = SRC.slice(SRC.indexOf("function syncMicMeter()"), SRC.indexOf("  var takeDialog"));
+    assert.match(meter, /cam\.audioTrack && cam\.audioTrack\.readyState === "live"/);
+    assert.match(meter, /createMediaStreamSource\(new root\.MediaStream\(\[track\]\)\)/);
+    assert.match(meter, /getByteTimeDomainData\(sample\)/);
+    assert.doesNotMatch(meter, /getUserMedia\(/);
+    assert.match(SRC, /syncMicMeter\(\);\s*var box = \$\("cam"\)/);
+  });
+});
+
 describe("teleprompter page", () => {
   test("the page: no shell, no sign-in, the mirror switches, the remote words, Fundhub spelled right", () => {
     assert.doesNotMatch(HTML, /shell\.js/);
@@ -579,7 +677,7 @@ describe("teleprompter page", () => {
     // The change pulse, the edit bar and the controls are NOT read through the glass.
     for (const id of ["pulse", "p-save", "editbar", "b-edit", "b-hist", "b-next"]) assert.ok(!flip.includes(`id="${id}"`), id);
     // The edit file loads first: teleprompter.js reads window.FundhubTeleprompterEdits.
-    assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js?v='));
+    assert.ok(HTML.indexOf('src="teleprompter-edits.js?v=') < HTML.indexOf('src="teleprompter.js?v='));
     // Editing turns the glass flip off so the words read the right way round.
     assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
     assert.match(HTML, /Play rolls the words/);
@@ -661,9 +759,41 @@ describe("teleprompter page", () => {
     assert.match(SRC, /file\.slice\(at, end\)/);
     assert.match(SRC, /x-shoot-film/);
     assert.match(SRC, /\$\("b-save"\)\.onclick = saveClick/);
-    assert.match(SRC, /setTransform\(-1/);
+    assert.match(SRC, /ctx\.translate\(canvas\.width, 0\)/);
+    assert.match(SRC, /ctx\.scale\(-1, 1\)/);
     assert.doesNotMatch(SRC, /8787/);
     assert.doesNotMatch(SRC, /ffmpeg/);
+  });
+});
+
+describe("recorded camera frame quality", () => {
+  test("portrait video remains tall, sharp, and mirrored only on the front camera", () => {
+    const T = load();
+    const vertical = T.recordFrameBox(1080, 1920, true, false);
+    assert.deepEqual(plain([vertical.width, vertical.height, vertical.sx, vertical.sy]), [1080, 1920, 0, 0]);
+    assert.equal(vertical.needsBetterCamera, false);
+    const horizontal = T.recordFrameBox(1920, 1080, true, false);
+    assert.ok(horizontal.height > horizontal.width, "portrait recording is not sideways");
+    assert.ok(horizontal.width < 1080, "do not invent source pixels after cropping");
+    assert.ok(horizontal.sx > 0, "center crop, never stretch a horizontal feed to portrait");
+    assert.equal(horizontal.needsBetterCamera, true);
+    const wide = T.recordFrameBox(1920, 1080, false, false);
+    assert.deepEqual(plain([wide.width, wide.height]), [1920, 1080]);
+    const full = T.recordFrameBox(2160, 3840, true, true);
+    assert.deepEqual(plain([full.width, full.height]), [2160, 3840]);
+    assert.equal(full.needsBetterCamera, false);
+    assert.equal(T.recordFrameBox(0, 0, true, false), null);
+    const recorder = SRC.slice(SRC.indexOf("function continuousRecordStream(stream)"), SRC.indexOf("function beginRec()"));
+    assert.match(recorder, /if \(cam\.facing !== "environment"\)/);
+    assert.match(recorder, /ctx\.translate\(canvas\.width, 0\)/);
+    assert.match(recorder, /ctx\.scale\(-1, 1\)/);
+    assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
+    assert.match(recorder, /canvas\.captureStream\(fps\)/);
+    assert.match(recorder, /Math\.min\(30, Math\.max\(24,/);
+    assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
+    const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));
+    assert.match(begin, /savedWidth >= 3840 \? 48000000/);
+    assert.match(begin, /savedWidth >= 1920 \? 24000000/);
   });
 });
 

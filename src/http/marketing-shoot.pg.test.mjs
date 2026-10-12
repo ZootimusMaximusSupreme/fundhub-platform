@@ -18,6 +18,7 @@ import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 import shootHandler from "../../api/marketing/shoot.mjs";
 import markHandler from "../../api/marketing/shoot/mark.mjs";
 import editHandler from "../../api/marketing/scripts/edit.mjs";
+import scriptHandler from "../../api/marketing/script.mjs";
 import { mintFilmKey } from "../marketing/shoot-film-key.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
@@ -430,6 +431,11 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
 
     const script = page.body.shoot.scripts[0];
     assert.match(script.body, /TWO/, "the fixture word this save changes");
+    const readable = await call(scriptHandler, null, { query: { id: script.id }, headers });
+    assert.equal(readable.code, 200, JSON.stringify(readable.body));
+    assert.equal(readable.body.script.id, script.id, "a valid signed filming link reads its own script");
+    const fakeRead = await call(scriptHandler, null, { query: { id: script.id }, headers: { "x-shoot-film": key + "tampered" } });
+    assert.equal(fakeRead.code, 404, "a forged filming link cannot read any script");
     const marked = await call(markHandler, null, {
       method: "POST", headers,
       body: { request_id: rid("filmmark"), shoot_id: page.body.shoot.id, root_script_id: script.root_script_id, mark: "another_take" }
@@ -453,6 +459,10 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     assert.equal(edited.code, 200, JSON.stringify(edited.body));
     assert.match(edited.body.script.body, /BOTH/);
     assert.notEqual(edited.body.script.id, script.id, "a new version, the old words kept");
+    const reconciled = await call(scriptHandler, null, { query: { id: script.id }, headers });
+    assert.equal(reconciled.code, 200, JSON.stringify(reconciled.body));
+    assert.equal(reconciled.body.versions[0].id, edited.body.script.id);
+    assert.match(reconciled.body.versions[0].body, /BOTH/, "a filming link can reconcile queued edits after a lost response");
     const file = (await db.query(
       `SELECT path, mode, content, committed_sha FROM repo_outbox WHERE org_id = $1 AND op_id = $2`,
       [orgA, `u25:edit-file:${editReq}`]
@@ -469,6 +479,8 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
       body: { request_id: rid("filmoff"), id: offRow.id, version: offRow.version, body: offRow.body }
     });
     assert.equal(off.code, 404, "a script that is not on this shoot cannot be edited");
+    const notReadable = await call(scriptHandler, null, { query: { id: offRow.id }, headers });
+    assert.equal(notReadable.code, 404, "the same signed key cannot read a script outside its shoot");
   });
 
   test("another company sees none of it", async () => {

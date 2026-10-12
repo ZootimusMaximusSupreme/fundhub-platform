@@ -214,6 +214,32 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect((await state(page)).word).toBeGreaterThanOrEqual(at);
     });
 
+    test("dragging while words play never pauses them; scrolling and recording are independent", async ({ page }) => {
+      const { errors } = await open(page);
+      await roll(page);
+      const f = await finger(page);
+      const m = await middle(page);
+      const before = await state(page);
+      expect(before.playing).toBe(true);
+      const position = before.t;
+      // Pull the text backward while autoplay is still rolling.
+      await f.drag(m.x, m.y - 80, 175);
+      const afterDrag = await state(page);
+      expect(afterDrag.playing).toBe(true);
+      expect(afterDrag.scrollMode).toBe(false);
+      expect(afterDrag.t).toBeLessThan(position + 0.7, "the thumb moved the script, not the pause control");
+      const current = afterDrag.t;
+      await expect.poll(async () => (await state(page)).t).toBeGreaterThan(current + 0.3);
+      await page.touchscreen.tap(m.x, m.y);
+      await expect.poll(async () => (await state(page)).playing).toBe(false);
+      const paused = (await state(page)).t;
+      await page.waitForTimeout(420);
+      expect((await state(page)).t).toBe(paused);
+      await page.touchscreen.tap(m.x, m.y);
+      await expect.poll(async () => (await state(page)).playing).toBe(true);
+      expect(errors).toEqual([]);
+    });
+
     test("tap, then drag by hand: the words move while paused", async ({ page }) => {
       await open(page);
       await roll(page);

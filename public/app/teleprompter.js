@@ -96,6 +96,25 @@
     return s.offer_word + (kind === "vsl" ? " VSL " : " Ad ") + n + " — " + s.angle_name + " Take " + takeNo + ".mp4";
   }
 
+  /* The Shoot tab issues a signed, single-shoot filming link. It already
+     authorizes script edits and marks even when a staff login expires. Only
+     remember links minted by the server for this same shoot. */
+  function filmAccessFromPage(page) {
+    var id = page && page.shoot && page.shoot.id;
+    var path = page && page.film && page.film.path;
+    if (!id || typeof path !== "string") return null;
+    var m = /^\/app\/teleprompter\.html\?k=([^&#]+)(?:&.*)?$/.exec(path);
+    if (!m) return null;
+    var k;
+    try { k = decodeURIComponent(m[1]); } catch (e) { return null; }
+    var parts = k.split(".");
+    var uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+    if (parts.length !== 4 || !uuid.test(parts[0]) || !uuid.test(parts[1]) ||
+        parts[1] !== id || !/^[0-9]{1,12}$/.test(parts[2]) ||
+        !/^[0-9a-f]{64}$/i.test(parts[3])) return null;
+    return { shootId: id, key: k };
+  }
+
   /** CAPS words go bold, except the acronyms v1 lets through. */
   function isCaps(tok) {
     var w = String(tok).replace(/[^A-Za-z]/g, "");
@@ -190,6 +209,23 @@
     return (offer ? offer + " " : "") + label + (n != null && String(n).trim() ? " " + String(n).trim() : "");
   }
 
+  /** Direct Book and SLO have separate folders. Additional offers learn their
+   * folder from the upload response, not from an unrelated offer. */
+  function driveUrlForScript(s) {
+    var key = String(s && s.offer_key || "").trim();
+    var saved = LS && LS.get ? LS.get("videoFolders", {}) : {};
+    if (key && saved && saved[key] && /^https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]+$/.test(saved[key])) return saved[key];
+    if (key === "funding_dfy" || (!key && String(s && s.offer_word || "").toLowerCase() === "direct book"))
+      return "https://drive.google.com/drive/folders/1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry";
+    if (key === "slo_roadmap" || (!key && String(s && s.offer_word || "").toLowerCase() === "slo"))
+      return "https://drive.google.com/drive/folders/13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ";
+    return "";
+  }
+  function queueHook(s) {
+    var phrase = String(s && (s.teleprompter_text || s.body) || "").replace(/\s+/g, " ").trim();
+    if (!phrase) return "";
+    return phrase.length > 126 ? phrase.slice(0, 123).replace(/\s+\S*$/, "") + "…" : phrase;
+  }
   function chipStart() { return { last: null }; }
 
   /**
@@ -384,7 +420,7 @@
    *   {do:'resume'}     one tap while paused or in scroll mode, after the wait
    *   {do:'caret', x, y} two quick taps, in any mode: pause the words and put the
    *                     cursor there. The camera keeps recording.
-   *   {do:'grab'}       a finger started dragging: stop the auto-scroll
+   *   {do:'grab'}       a finger started dragging: keep autoplay rolling
    *   {do:'drag', dy}   the finger moved dy pixels (down is positive). scriptDelta
    *                     rolls the words up when the thumb moves up.
    *   {do:'fling', v}   in scroll mode, let go fast: keep moving at v px/ms
@@ -520,16 +556,16 @@
     var front = facing !== "environment";
     var rate = fps === 30 ? 30 : 60;
     var tall = shape === "tall";
-    var four = mode === "4k" && front && !tall;
+    var four = mode === "4k" && front;
     var frame = four
       ? { ideal: rate }
       : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
     if (four) {
       return {
         facingMode: { ideal: "user" },
-        width: { ideal: 3840 },
-        height: { ideal: 2160 },
-        aspectRatio: { ideal: 16 / 9 },
+        width: { ideal: tall ? 2160 : 3840 },
+        height: { ideal: tall ? 3840 : 2160 },
+        aspectRatio: { ideal: tall ? (9 / 16) : (16 / 9) },
         frameRate: frame
       };
     }
@@ -554,6 +590,10 @@
   function cameraTries(facing, mode) {
     var back = facing === "environment";
     var list = [];
+    // A portrait iPhone should request a portrait feed FIRST, avoiding a
+    // drastic center-crop of a landscape 4K feed before it can be recorded.
+    var portraitPhone = !!(root.navigator && /iPhone|iPad|iPod/i.test(root.navigator.userAgent || "") &&
+      (root.innerHeight || 0) > (root.innerWidth || 0));
     function push(fps, shape, lockRate, steady, askMode) {
       var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate, askMode == null ? mode : askMode);
       if (steady) {
@@ -563,10 +603,18 @@
       list.push(video);
     }
     if (!back && mode === "4k") {
+      if (portraitPhone) {
+        push(30, "tall", false, false, "4k");
+        push(60, "tall", false, false, "4k");
+      }
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
     var hd = mode === "4k" ? "1080p" : mode;
+    if (portraitPhone) {
+      push(30, "tall", false, false, hd);
+      push(60, "tall", false, false, hd);
+    }
     if (back) {
       push(60, "wide", true, true, hd);
       push(30, "wide", true, true, hd);
@@ -921,16 +969,26 @@
     return newKeys[lo].t + (newKeys[hi].t - newKeys[lo].t) * f;
   }
 
+
+  /* Browser-reported input only. A hidden/unknown label must never be called RØDE. */
+  function micLabel(label) {
+    var name = String(label || "").trim();
+    if (!name || /^(default|communications|microphone(?:\s+\d+)?)$/i.test(name)) return "Mic · source unknown";
+    if (/iPhone|built.?in|internal microphone/i.test(name)) return "iPhone mic";
+    if (/r[oø]de/i.test(name)) return "RØDE mic";
+    return name.length > 25 ? name.slice(0, 24) + "…" : name;
+  }
+
   root.FundhubTeleprompter = {
-    fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
+    fileName: fileName, filmAccessFromPage: filmAccessFromPage, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
-    chipLabel: chipLabel, queueLabel: queueLabel, chipStart: chipStart, chipStep: chipStep,
+    chipLabel: chipLabel, queueLabel: queueLabel, driveUrlForScript: driveUrlForScript, queueHook: queueHook, chipStart: chipStart, chipStep: chipStep,
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport,
+    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -948,9 +1006,32 @@
     set: function (k, v) { try { root.localStorage.setItem("fhtp." + k, JSON.stringify(v)); } catch (e) { /* private mode */ } }
   };
   function token() { try { return root.localStorage.getItem("fh_token") || ""; } catch (e) { return ""; } }
-  function filmKey() {
+  function explicitFilmKey() {
     try { return new URL(root.location.href).searchParams.get("k") || ""; } catch (e) { return ""; }
   }
+  function rememberFilmAccess(page) {
+    var record = filmAccessFromPage(page);
+    if (!record && explicitFilmKey() && page && page.shoot && page.shoot.id) {
+      var key = explicitFilmKey().split(".");
+      if (key.length === 4 && key[1] === page.shoot.id) record = { shootId: page.shoot.id, key: explicitFilmKey() };
+    }
+    if (!record) return false;
+    LS.set("filmAccess", record);
+    return true;
+  }
+  function filmKey() {
+    var inLink = explicitFilmKey();
+    if (inLink) return inLink;
+    var access = LS.get("filmAccess", null);
+    var active = data && data.shoot && data.shoot.id;
+    if (!active) { var last = LS.get("cache", null); active = last && last.shoot && last.shoot.id; }
+    if (!active && access) active = access.shootId;
+    if (!access || !active || access.shootId !== active || typeof access.key !== "string") return "";
+    var parts = access.key.split(".");
+    return parts.length === 4 && parts[1] === active && Number(parts[2]) * 1000 > Date.now() ? access.key : "";
+  }
+  var rejectedBearer = "";
+
 
   /* A tablet gets bigger words by default (read from the camera distance). */
   var bigScreen = false;
@@ -994,25 +1075,44 @@
   /* ── talking to the server ──────────────────────────────────────────── */
 
   function api(method, path, body) {
-    var h = { accept: "application/json" };
+    function request(k, tk) {
+      var h = { accept: "application/json" }, opts = { method: method, headers: h };
+      if (k) {
+        h["x-shoot-film"] = k;
+        opts.credentials = "omit";
+      } else {
+        if (tk) h.authorization = "Bearer " + tk;
+        opts.credentials = "same-origin";
+      }
+      if (body) {
+        h["content-type"] = "application/json";
+        opts.body = JSON.stringify(body);
+      }
+      return root.fetch("/api/" + path, opts)
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
+        }, function () { return { status: 0, data: null }; });
+    }
     var k = filmKey();
-    var opts = { method: method, headers: h };
-    if (k) {
-      h["x-shoot-film"] = k;
-      opts.credentials = "omit";
-    } else {
-      var tk = token();
-      if (tk) h.authorization = "Bearer " + tk;
-      opts.credentials = "same-origin";
-    }
-    if (body) {
-      h["content-type"] = "application/json";
-      opts.body = JSON.stringify(body);
-    }
-    return root.fetch("/api/" + path, opts)
-      .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
-      }, function () { return { status: 0, data: null }; });
+    var tk = k ? "" : token();
+    if (tk && tk === rejectedBearer) tk = "";
+    return request(k, tk).then(function (r) {
+      if (r.status !== 401 || k || !tk) return r;
+      // An old bearer token overrides a good Safari session cookie. Stop
+      // sending it and try the existing cookie once, without asking Chris.
+      rejectedBearer = tk;
+      return request("", "").then(function (cookieResult) {
+        return cookieResult.status === 200 ? cookieResult : r;
+      });
+    });
+  }
+
+  function resetExpiredFilmAccess() {
+    // Only a remembered key can be discarded automatically. An explicit
+    // filming link must fail closed rather than silently changing shoots.
+    if (explicitFilmKey()) return false;
+    LS.set("filmAccess", null);
+    return true;
   }
 
   function fetchShoot(bare) {
@@ -1030,6 +1130,12 @@
   function load(first) {
     var k = filmKey();
     return fetchShoot(false).then(function (r) {
+      if (k && r.status === 404 && resetExpiredFilmAccess()) {
+        // A shoot can be closed or a key rotated. Do not strand the
+        // teleprompter on an old saved link; show the current read-only
+        // shoot and keep all unsent changes intact.
+        return fetchShoot(true);
+      }
       if (!k && (r.status === 401 || r.status === 403)) return fetchShoot(true);
       return r;
     }).then(function (r) {
@@ -1042,6 +1148,7 @@
         return;
       }
       if (r.status === 200 && r.data) {
+        rememberFilmAccess(r.data);
         LS.set("cache", r.data);
         $("offline").hidden = true;
         take(r.data, first);
@@ -1163,6 +1270,12 @@
     });
   }
   root.addEventListener("online", flush);
+  // iOS Safari suspends background timers. Retry the stored edits promptly
+  // on foreground instead of waiting for a timer that was never allowed to run.
+  root.addEventListener("focus", function () { flush(); });
+  doc.addEventListener("visibilitychange", function () {
+    if (doc.visibilityState === "visible") flush();
+  });
 
   /* ── the edits: one store, the shipped edit route ───────────────────── */
 
@@ -1302,6 +1415,13 @@
     var chip = $("p-file");
     chip.hidden = false;
     chip.textContent = label;
+    var drive = $("b-drive");
+    if (drive) {
+      var url = driveUrlForScript(s);
+      drive.hidden = !url;
+      if (url) drive.href = url;
+      drive.setAttribute("aria-label", "Double-tap to open " + String(s.offer_word || "this offer") + " videos in Google Drive");
+    }
     $("b-copy").hidden = !s.take_file_name;
     var endTake = $("end-take");
     if (s.take_file_name) {
@@ -1689,9 +1809,11 @@
       b.type = "button";
       b.className = "item" + (i === cur ? " on" : "");
       if (i === cur) b.setAttribute("aria-current", "true");
-      b.innerHTML = '<span class="t"></span><span class="m"></span>';
-      b.querySelector(".t").textContent = title;
-      b.querySelector(".m").textContent = (i === cur ? "Current · " : "") + queueLabel(s);
+      b.innerHTML = '<span class="t"></span><span class="m"></span><span class="hook"></span>';
+      b.querySelector(".t").textContent = queueLabel(s) + " — " + title;
+      b.querySelector(".m").textContent = (i === cur ? "Current · " : "") +
+        (s.take_no ? "Take " + s.take_no + " · " : "") + (s.first_line_only ? "Opening only" : "Full script");
+      b.querySelector(".hook").textContent = queueHook(s);
       b.onclick = function () { pickQueued(i); };
       list.appendChild(b);
     });
@@ -1781,8 +1903,12 @@
   }
   function moveBy(dy) {
     if (!kf.length) return;
+    // Hand movement adjusts the current reading position. It must never
+    // pause the automatic scroll or recording. A paused seek is remembered
+    // for the next Play; an active scroll continues from its new position.
     t = tAt(yAt(t) + scriptDelta(dy, S.flipV));
-    seeked = true;
+    seeked = !(playing || countTimer);
+    if (playing) last = root.performance.now();
     apply(!!textEdit);
   }
   function stopFling() { if (flingRaf) { root.cancelAnimationFrame(flingRaf); flingRaf = 0; } }
@@ -1874,7 +2000,8 @@
     } else if (a.do === "scroll-off") {
       stop(); unsnap(tapSnap); setScroll(false);
     } else if (a.do === "grab") {
-      stopFling(); stop(); hideEnd();
+      // Only Play/Pause and an intentional edit can stop the words.
+      stopFling(); hideEnd();
     } else if (a.do === "drag") {
       moveBy(a.dy);
     } else if (a.do === "fling") {
@@ -1985,7 +2112,7 @@
       moveBy(e.deltaY);
       return;
     }
-    e.preventDefault(); stop(); hideEnd();
+    e.preventDefault(); hideEnd();
     moveBy(e.deltaY);
   }, { passive: false });
   content.addEventListener("input", function (e) {
@@ -2243,6 +2370,88 @@
   var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, startAfterOpen: false, previewReady: false, recordStream: null, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
   var cameraTapUntil = 0;
+
+  /* Read-only input meter: this never replaces the track used by MediaRecorder.
+     Safari may hide the device label; the app names RØDE only when iOS does. */
+  var micMonitor = { track: null, ctx: null, source: null, analyser: null, timer: null };
+  function stopMicMeter() {
+    if (micMonitor.timer) root.clearInterval(micMonitor.timer);
+    micMonitor.timer = null;
+    if (micMonitor.source) {
+      try { micMonitor.source.disconnect(); } catch (e) {}
+    }
+    if (micMonitor.ctx) {
+      try { micMonitor.ctx.close(); } catch (e) {}
+    }
+    micMonitor.ctx = micMonitor.source = micMonitor.analyser = null;
+  }
+  function resumeMicMeter() {
+    var ctx = micMonitor.ctx;
+    if (ctx && ctx.state === "suspended") {
+      try { ctx.resume().catch(function () {}); } catch (e) {}
+    }
+  }
+  function syncMicMeter() {
+    var el = $("mic-monitor");
+    if (!el) return;
+    var nameEl = $("mic-name");
+    var track = cam.audioTrack && cam.audioTrack.readyState === "live" ? cam.audioTrack : null;
+    if (!track) {
+      stopMicMeter();
+      micMonitor.track = null;
+      nameEl.textContent = "No mic audio";
+      el.dataset.state = "unavailable";
+      el.dataset.level = "0";
+      return;
+    }
+    nameEl.textContent = micLabel(track.label);
+    el.dataset.state = track.muted || track.enabled === false ? "unavailable" : "live";
+    if (micMonitor.track === track) return;
+    stopMicMeter();
+    micMonitor.track = track;
+    el.dataset.level = "0";
+    track.addEventListener("ended", syncMicMeter);
+    track.addEventListener("mute", syncMicMeter);
+    track.addEventListener("unmute", syncMicMeter);
+    var AudioCtx = root.AudioContext || root.webkitAudioContext;
+    if (!AudioCtx || !root.MediaStream) return;
+    try {
+      var ctx = new AudioCtx();
+      var src = ctx.createMediaStreamSource(new root.MediaStream([track]));
+      var analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.55;
+      src.connect(analyser);
+      var sample = new Uint8Array(analyser.fftSize);
+      micMonitor.ctx = ctx;
+      micMonitor.source = src;
+      micMonitor.analyser = analyser;
+      micMonitor.timer = root.setInterval(function () {
+        if (cam.audioTrack !== track || track.readyState !== "live") {
+          syncMicMeter();
+          return;
+        }
+        if (doc.visibilityState !== "visible") return;
+        if (ctx.state !== "running") { el.dataset.level = "0"; return; }
+        analyser.getByteTimeDomainData(sample);
+        var sum = 0;
+        for (var i = 0; i < sample.length; i++) {
+          var d = (sample[i] - 128) / 128;
+          sum += d * d;
+        }
+        var rms = Math.sqrt(sum / sample.length);
+        el.dataset.level = String(rms < 0.009 ? 0 : rms < 0.023 ? 1 : rms < 0.055 ? 2 : rms < 0.105 ? 3 : 4);
+      }, 140);
+      resumeMicMeter();
+    } catch (e) {
+      // The source name still shows when Web Audio metering is unavailable.
+      stopMicMeter();
+      micMonitor.track = track;
+    }
+  }
+  doc.addEventListener("pointerdown", resumeMicMeter, { passive: true });
+  doc.addEventListener("touchstart", resumeMicMeter, { passive: true });
+
   var takeDialog = $("take-save");
 
   function activeMode() {
@@ -2321,6 +2530,35 @@
     if (width > 0) return hi ? 16000000 : 10000000;
     return 8000000;
   }
+  /* Saved video is cropped without stretching pixels. The front camera is
+     mirrored in the file; the rear camera is not. A portrait phone always
+     gets a tall file, even when Safari hands us a landscape camera stream. */
+  function recordFrameBox(sourceWidth, sourceHeight, portrait, requires4K) {
+    var w = Math.round(Number(sourceWidth) || 0);
+    var h = Math.round(Number(sourceHeight) || 0);
+    if (w < 2 || h < 2) return null;
+    var targetWidth = portrait ? (requires4K ? 2160 : 1080) : (requires4K ? 3840 : 1920);
+    var targetHeight = portrait ? (requires4K ? 3840 : 1920) : (requires4K ? 2160 : 1080);
+    var ar = targetWidth / targetHeight;
+    var cutW = Math.min(w, h * ar);
+    var cutH = Math.min(h, w / ar);
+    // Never invent resolution from a lower quality camera source.
+    var factor = Math.min(1, targetWidth / cutW, targetHeight / cutH);
+    var outW = Math.max(2, Math.floor(cutW * factor / 2) * 2);
+    var outH = Math.max(2, Math.floor(cutH * factor / 2) * 2);
+    return {
+      width: outW, height: outH,
+      sx: Math.max(0, (w - cutW) / 2), sy: Math.max(0, (h - cutH) / 2),
+      sw: cutW, sh: cutH,
+      portrait: !!portrait, needsBetterCamera: cutW < targetWidth || cutH < targetHeight
+    };
+  }
+  function recordingIsPortrait() {
+    if (root.matchMedia) {
+      try { return root.matchMedia("(orientation: portrait)").matches; } catch (e) {}
+    }
+    return (root.innerHeight || 0) >= (root.innerWidth || 0);
+  }
   function isPhone() {
     var ua = (root.navigator && root.navigator.userAgent) || "";
     return /iPhone|iPad|iPod/.test(ua) || (root.navigator.platform === "MacIntel" && root.navigator.maxTouchPoints > 1);
@@ -2342,7 +2580,7 @@
       var name = cam.fileName || "Take.mp4";
       if (type.indexOf("webm") >= 0) name = name.replace(/\.mp4$/i, ".webm");
       var file = new root.File(chunks, name, { type: type });
-      cam.pending.push({ file: file, then: then });
+      cam.pending.push({ file: file, then: then, offerKey: cam.fileOfferKey || "", funnelTag: cam.fileFunnelTag || "" });
       askToSaveTake();
     } catch (e) {
       camLine("The take did not save. The words still roll.", true);
@@ -2359,7 +2597,7 @@
     if (!takeDialog.open || !cam.pending.length) return;
     var take = cam.pending.shift();
     takeDialog.close();
-    if (yes) queueVideoSave(take.file);
+    if (yes) queueVideoSave(take.file, take.offerKey, take.funnelTag);
     else say("Video discarded.");
     if (take.then) take.then();
     askToSaveTake();
@@ -2380,11 +2618,10 @@
     }
     cam.pumpVideoFrame = 0;
   }
-  /* One stable canvas video track per take. iPhone Safari ends a MediaRecorder
-     if its recorded camera track is replaced or stopped. Capture the canvas
-     once, keep its track unchanged, and draw whichever lens is currently live.
-     The source camera can switch repeatedly without splitting the take.
-     1080p/24fps on iPhone avoids the old 4K canvas jank during word scrolling. */
+  /* MediaRecorder stays attached to one canvas track for a whole take. Camera
+     switches redraw into this canvas without stopping the clip. The canvas
+     holds the previous good image until the new lens has actual video frames.
+     The blur/dark overlay is PREVIEW ONLY and never enters the saved video. */
   function continuousRecordStream(stream) {
     var video = $("cam-video");
     if (!video || !stream) return null;
@@ -2393,24 +2630,42 @@
     if (!canvas.captureStream) return null;
     var track = stream.getVideoTracks()[0];
     var st = track && track.getSettings ? track.getSettings() : {};
-    var w = video.videoWidth || st.width || 1280;
-    var h = video.videoHeight || st.height || 720;
-    var scale = Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
-    canvas.width = Math.max(2, Math.round(w * scale));
-    canvas.height = Math.max(2, Math.round(h * scale));
+    var w = video.videoWidth || st.width || 0;
+    var h = video.videoHeight || st.height || 0;
+    var requires4K = stays4K(scripts[cur]);
+    var portrait = recordingIsPortrait();
+    var layout = recordFrameBox(w, h, portrait, requires4K);
+    if (!layout) {
+      camLine("Camera video is not ready. Wait for your face before recording.", true);
+      return null;
+    }
+    canvas.width = layout.width;
+    canvas.height = layout.height;
     var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) return null;
-    var fps = isPhone() ? 24 : 30;
+    if (layout.needsBetterCamera) {
+      camLine("Camera quality is only " + layout.width + "×" + layout.height +
+        ". This browser cannot supply sharper video at this angle.", true);
+    }
+    // 30 fps is standard for smooth social videos. Do not force 24 fps on iPhone.
+    var fps = Math.min(30, Math.max(24, Math.round(st.frameRate || 30)));
     function draw() {
       if (!cam.pumping) return;
-      if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0) {
+      if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
+          var box = recordFrameBox(video.videoWidth, video.videoHeight, portrait, requires4K);
+          if (!box) return;
+          ctx.save();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          if (cam.facing !== "environment") ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        } catch (e) { /* retain the last frame during a lens transition */ }
+          if (cam.facing !== "environment") {
+            // A normal mirrored selfie, saved in the video, not just the preview.
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
+            0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
       cam.pumpTimer = root.setTimeout(draw, 1000 / fps);
     }
@@ -2422,7 +2677,7 @@
     catch (e) { stopMirrorPump(); return null; }
     var audio = cam.audioTrack || stream.getAudioTracks()[0];
     if (audio && audio.readyState === "live") {
-      try { out.addTrack(audio); } catch (e) { /* video can still be saved silent */ }
+      try { out.addTrack(audio); } catch (e) { /* camera still saves */ }
     }
     return out;
   }
@@ -2439,16 +2694,20 @@
     var opts = {};
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
-    /* iPhone has one graphics lane for the live camera, the page, and canvas.
-       Copying every camera frame into a 4K canvas makes the words shake. Let
-       MediaRecorder use the camera's own hardware stream on that phone. */
+    /* The fixed capture canvas keeps one take alive through camera flips.
+       Ads use the smaller faster canvas. Long-form videos retain the source
+       resolution, subject to on-device performance and real camera support. */
     var recStream = continuousRecordStream(cam.stream);
     if (!recStream) {
       wantRec = false; cam.startAfterOpen = false; setRecLabel();
       camLine("This browser cannot record a continuous camera-switching video.", true);
       return;
     }
-    opts.videoBitsPerSecond = Math.min(opts.videoBitsPerSecond, isPhone() ? 12000000 : 22000000);
+    // Safari's previous 12 Mbps cap made 4K and active movement muddy.
+    // Use the actual saved canvas size, not the camera's different orientation.
+    var savedWidth = cam.canvas ? Math.max(cam.canvas.width, cam.canvas.height) : (st.width || 0);
+    opts.videoBitsPerSecond = savedWidth >= 3840 ? 48000000 :
+      savedWidth >= 1920 ? 24000000 : 14000000;
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
@@ -2465,6 +2724,8 @@
     cam.rec = rec;
     var s = scripts[cur];
     cam.fileName = (s && s.take_file_name) ? s.take_file_name : "Take.mp4";
+    cam.fileOfferKey = s && s.offer_key ? String(s.offer_key) : "";
+    cam.fileFunnelTag = s && s.funnel_tag ? String(s.funnel_tag) : "";
     cam.started = Date.now();
     rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) cam.chunks.push(ev.data); };
     rec.onstop = function () { onRecStop(); };
@@ -2600,6 +2861,7 @@
       cam.wantedFacing = facing;
       cam.opening = "";
       cam.previewReady = true;
+      syncMicMeter();
       var box = $("cam");
       if (box) box.hidden = false;
       clearHeldPreview();
@@ -2799,17 +3061,18 @@
       camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
       var asks = [];
-      var direct = cameraAsk(wanted, 30, "wide", false, mode);
+      var faceShape = recordingIsPortrait() ? "tall" : "wide";
+      var direct = cameraAsk(wanted, 30, faceShape, false, mode);
       direct.facingMode = { exact: wanted };
       asks.push(direct);
       var exactId = cam.deviceIds[wanted];
       if (exactId) {
-        var exact = cameraAsk(wanted, 30, "wide", false, mode);
+        var exact = cameraAsk(wanted, 30, faceShape, false, mode);
         exact.deviceId = { exact: exactId };
         delete exact.facingMode;
         asks.push(exact);
       }
-      var loose = cameraAsk(wanted, 30, "wide", false, mode);
+      var loose = cameraAsk(wanted, 30, faceShape, false, mode);
       loose.facingMode = { ideal: wanted };
       asks.push(loose);
       var at = 0;
@@ -2912,7 +3175,7 @@
   function uploadCreds(mode) {
     return mode === "session" ? "same-origin" : "omit";
   }
-  function startTake(file, mode) {
+  function startTake(file, mode, savedName, offerKey, funnelTag) {
     var h = uploadModeHeaders(mode);
     h["content-type"] = "application/json";
     return root.fetch("/api/marketing/shoot/take", {
@@ -2920,13 +3183,15 @@
       credentials: uploadCreds(mode),
       headers: h,
       body: JSON.stringify({
-        name: file.name || "Take.mp4",
+        name: savedName || file.name || "Take.mp4",
+        offer_key: offerKey || null,
+        funnel_tag: funnelTag || null,
         bytes: file.size,
         content_type: file.type || "video/mp4"
       })
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
-        return { status: r.status, ok: !!(r.ok && d && d.ok && d.token), token: d && d.token, chunk: d && d.chunk_bytes };
+        return { status: r.status, ok: !!(r.ok && d && d.ok && d.token), token: d && d.token, chunk: d && d.chunk_bytes, offerKey: d && d.offer_key, folderUrl: d && d.folder_url };
       });
     }, function () { return { status: 0, ok: false }; });
   }
@@ -2954,7 +3219,7 @@
             if (d.done) return;
             var next = typeof d.received === "number" && d.received > at ? d.received : end;
             if (next <= at || next > file.size) throw new Error("stuck");
-            videoSaveStatus("Saving " + Math.min(99, Math.round(next / file.size * 100)) + "%", "saving", true);
+            videoSaveStatus("Saving " + Math.min(99, Math.round(next / file.size * 100)) + "%" + (cam.uploads.length > 1 ? " · " + (cam.uploads.length - 1) + " queued" : ""), "saving", true);
             return step(next);
           });
         }, function () {
@@ -2966,11 +3231,21 @@
     }
     return step(0);
   }
-  function sendOriginal(file) {
+  function sendOriginal(file, savedName, offerKey, funnelTag) {
     var mode = filmKey() ? "film" : "session";
-    return startTake(file, mode).then(function (started) {
+    function rememberFolder(started) {
+      if (started.ok && started.offerKey && started.folderUrl &&
+          /^https:\/\/drive\.google\.com\/drive\/folders\/[a-zA-Z0-9_-]+$/.test(started.folderUrl)) {
+        var known = LS.get("videoFolders", {});
+        known[started.offerKey] = started.folderUrl;
+        LS.set("videoFolders", known);
+        if (scripts[cur] && scripts[cur].offer_key === started.offerKey) header();
+      }
+      return started;
+    }
+    return startTake(file, mode, savedName, offerKey, funnelTag).then(rememberFolder).then(function (started) {
       if (!started.ok && mode === "session" && (started.status === 401 || started.status === 403)) {
-        return startTake(file, "open").then(function (again) {
+        return startTake(file, "open", savedName, offerKey, funnelTag).then(rememberFolder).then(function (again) {
           if (!again.ok) throw new Error("start");
           return putChunks(file, again.token, again.chunk, "open");
         });
@@ -2979,37 +3254,102 @@
       return putChunks(file, started.token, started.chunk, mode);
     });
   }
+  /* Uploads run separately from the camera. Every accepted file is committed
+     to IndexedDB BEFORE the first Drive request. One active upload at a time
+     preserves iPhone memory, avoids contention with recording, and keeps FIFO
+     order even when many completed takes are waiting. */
+  var takeStore = root.FundhubTakeStore || null;
+  var uploadRetryTimer = null;
   function saveClick() {
     var file = cam.file;
     if (file) queueVideoSave(file);
   }
-  function queueVideoSave(file) {
-    if (cam.uploads.indexOf(file) < 0) cam.uploads.push(file);
-    saveNextVideo();
+  function queueVideoSave(file, offerKey, funnelTag) {
+    if (!file) return;
+    if (!takeStore) {
+      cam.file = file;
+      videoSaveStatus("Phone storage unavailable · Save to Files", "failed", true);
+      shareOrDownload(file);
+      return;
+    }
+    var entry = { id: takeStore.id(), file: file, name: file.name || "Take.mp4",
+      offerKey: offerKey || "", funnelTag: funnelTag || "", createdAt: Date.now(), attempts: 0 };
+    videoSaveStatus("Saving on device", "saving", true);
+    takeStore.put(entry).then(function () {
+      if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
+      cam.uploads.sort(function (a, b) { return a.createdAt - b.createdAt; });
+      videoSaveStatus("Saved on device · " + cam.uploads.length + " queued", "saving", true);
+      saveNextVideo();
+    }, function () {
+      cam.file = file;
+      var btn = $("b-save");
+      if (btn) btn.hidden = false;
+      videoSaveStatus("Storage full · Save to Files", "failed", true);
+      // No false local-saved claim. Present the real iPhone file backup.
+      shareOrDownload(file);
+    });
+  }
+  function restoreQueuedVideos() {
+    if (!takeStore) return;
+    takeStore.all().then(function (rows) {
+      rows.forEach(function (entry) {
+        if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
+      });
+      cam.uploads.sort(function (a, b) { return a.createdAt - b.createdAt; });
+      if (cam.uploads.length) {
+        videoSaveStatus("Recovered " + cam.uploads.length + " queued take" +
+          (cam.uploads.length === 1 ? "" : "s"), "saving", true);
+        saveNextVideo();
+      }
+    }, function () {
+      videoSaveStatus("Cannot read saved takes · Check phone storage", "failed", true);
+    });
   }
   function saveNextVideo() {
-    if (!cam.uploads.length || cam.saving) return;
-    var file = cam.uploads[0];
+    if (!cam.uploads.length || cam.saving || uploadRetryTimer) return;
+    var item = cam.uploads[0];
     cam.saving = true;
-    videoSaveStatus("Saving video", "saving", true);
+    var other = Math.max(0, cam.uploads.length - 1);
+    videoSaveStatus("Saving video" + (other ? " · " + other + " queued" : ""), "saving", true);
     function settled() {
-      cam.uploads.shift();
+      if (cam.uploads[0] && cam.uploads[0].id === item.id) cam.uploads.shift();
+      else cam.uploads = cam.uploads.filter(function (v) { return v.id !== item.id; });
       cam.saving = false;
       saveNextVideo();
     }
-    sendOriginal(file).then(function () {
-      if (cam.file === file) cam.file = null;
-      videoSaveStatus("Video saved", "saved", false);
-      settled();
+    sendOriginal(item.file, item.name, item.offerKey, item.funnelTag).then(function () {
+      // The server acknowledged Drive before deleting this device copy.
+      return takeStore.remove(item.id).then(function () {
+        if (cam.file === item.file) cam.file = null;
+        videoSaveStatus(cam.uploads.length > 1 ? "Uploaded · next queued" : "Video saved", "saved", false);
+        settled();
+      }, function () {
+        cam.saving = false;
+        videoSaveStatus("Uploaded · local queue cleanup needed", "failed", true);
+      });
     }, function () {
-      cam.file = file;
-      shareOrDownload(file);
-      var btn = $("b-save");
-      if (btn) btn.hidden = false;
-      videoSaveStatus("On phone · Drive failed", "failed", false, 4200);
-      settled();
+      // Leave the file in IndexedDB for retry/reopen, not just in RAM.
+      cam.saving = false;
+      var attempts = item.attempts = (item.attempts || 0) + 1;
+      var delay = Math.min(60000, 3000 * Math.pow(2, Math.min(attempts - 1, 5)));
+      videoSaveStatus("Upload paused · saved on device", "failed", true);
+      takeStore.put(item).catch(function () {});
+      uploadRetryTimer = root.setTimeout(function () {
+        uploadRetryTimer = null;
+        saveNextVideo();
+      }, delay);
     });
   }
+  root.addEventListener("online", function () {
+    if (uploadRetryTimer) { root.clearTimeout(uploadRetryTimer); uploadRetryTimer = null; }
+    saveNextVideo();
+  });
+  root.addEventListener("beforeunload", function (e) {
+    if (!wantRec && !cam.pending.length) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
 
   function rangeAtPoint(x, y) {
     var range = null;
@@ -3172,6 +3512,8 @@
   }
   function recordClick() {
     if (editing || textEdit || cam.pending.length) return;
+    syncMicMeter();
+    resumeMicMeter();
     ensureCamera();
     ensureRecording();
     setRecLabel();
@@ -3279,6 +3621,30 @@
   $("b-got").onclick = gotIt;
   $("b-again").onclick = anotherTake;
   $("empty-retry").onclick = function () { load(true); };
+  /* Exactly two taps open the correct offer's Drive folder in a new tab.
+     Prevent a one-tap anchor navigation so filming is never interrupted. */
+  var driveBtn = $("b-drive"), driveGest = chipStart(), driveDown = null;
+  if (driveBtn) {
+    driveBtn.addEventListener("pointerdown", function (e) {
+      e.stopPropagation();
+      if (e.button > 0) return;
+      driveDown = { x: e.clientX, y: e.clientY };
+    });
+    driveBtn.addEventListener("pointerup", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var down = driveDown; driveDown = null;
+      if (!down || Math.abs(e.clientX-down.x) > TAP_SLOP || Math.abs(e.clientY-down.y) > TAP_SLOP) return;
+      var step = chipStep(driveGest, { type:"up", x:e.clientX, y:e.clientY, t:root.performance.now() });
+      driveGest = step.g;
+      if (step.go && !driveBtn.hidden && driveBtn.href) {
+        var url = driveUrlForScript(scripts[cur]);
+        if (!url) return;
+        try { root.open(url, "_blank", "noopener,noreferrer"); }
+        catch (err) { say("Could not open Drive. Please retry."); }
+      }
+    });
+    driveBtn.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); });
+  }
   var chipGest = chipStart();
   var chipDown = null;
   var chipBtn = $("p-file");
@@ -3512,8 +3878,9 @@
   applyFont();
   paintPicks();
   pulse();
-  root.addEventListener("pagehide", function () { endRec(); });
+  root.addEventListener("pagehide", function () { endRec(); stopMicMeter(); });
   ensureCamera();
+  restoreQueuedVideos();
   if (queue.length) { $("pending").hidden = false; }
   load(true).then(function () { flush(); poll(); checkHealth(true); });
 

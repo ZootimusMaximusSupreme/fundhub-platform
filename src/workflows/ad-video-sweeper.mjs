@@ -47,6 +47,9 @@ import * as drive from "../messaging/providers/google-drive-write.mjs";
 import * as ntfy from "../messaging/providers/ntfy.mjs";
 import * as fanout from "../ad-videos/notify-fanout.mjs";
 import { joinBeforeSubmagic } from "../ad-videos/merge-takes-step.mjs";
+import { MARKETING_VIDEO_PARENT_ID, offerWordForKey } from "../marketing/take-upload.mjs";
+import { OFFER_KEYS } from "../marketing/offer-facts.mjs";
+import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 
 /** Every five minutes. The research puts the useful window at two to five;
     five is the slower end because each pass can cost a paid API minute. */
@@ -152,38 +155,64 @@ export async function approvalLinks(database, row, { store, env = process.env } 
   return { approveUrl: url("approve"), rejectUrl: url("reject") };
 }
 
-/* detect — new takes in the Raw folder become rows.
-
-   Two filters happen inside drive.listNewVideos and are worth repeating here
-   because they are the difference between a working trigger and a broken one:
-   a file still uploading has a real id and ZERO bytes, and a stray note in the
-   folder is not a take. Both are skipped. */
-export async function detect(database, { store, env = process.env, limit = DEFAULT_DETECT_LIMIT } = {}) {
-  const folderId = env.DRIVE_RAW_FOLDER_ID;
-  if (!folderId) return { ok: true, detected: 0, note: "DRIVE_RAW_FOLDER_ID is not set — nothing is being watched" };
+/* Detect new takes across all registered offer folders instead of the
+   SLO-only raw folder. The old DRIVE_RAW_FOLDER_ID is retained for the legacy
+   pipeline, while the marketing machine's registered offers each get their
+   independent folder under Marketing Videos. Unrelated folders are ignored. */
+export async function detect(database, {
+  store, env = process.env, limit = DEFAULT_DETECT_LIMIT, drivePort = drive
+} = {}) {
+  const legacyId = String(env.DRIVE_RAW_FOLDER_ID || "").trim();
+  if (!legacyId) return { ok: true, detected: 0, note: "DRIVE_RAW_FOLDER_ID is not set — nothing is being watched" };
   if (typeof store?.lastRawSeenAt !== "function" || typeof store?.recordRawTake !== "function") {
     return { ok: false, detected: 0, error: "the store does not offer lastRawSeenAt/recordRawTake" };
   }
-
-  const since = await store.lastRawSeenAt(database);
-  const listed = await drive.listNewVideos({ folderId, since, pageSize: limit, env });
-  if (!listed.ok) return { ok: false, detected: 0, error: listed.error };
-
-  let detected = 0;
-  for (const file of listed.files) {
-    const meta = await drive.getFileMeta(file.id, { env });
-    const written = await store.recordRawTake(database, {
-      driveFileId: file.id,
-      name: file.name,
-      createdTime: file.createdTime,
-      sizeBytes: Number(file.size) || null,
-      width: meta.ok ? meta.width : null,
-      height: meta.ok ? meta.height : null,
-      durationSeconds: meta.ok ? meta.durationSeconds : null
-    });
-    if (written?.created) detected += 1;
+  const registered = new Set(OFFER_KEYS.map(function (key) {
+    const word = offerWordForKey(key);
+    return word ? word + " Ads" : null;
+  }).filter(Boolean));
+  const available = await drivePort.listOfferVideoFolders({ parentId: MARKETING_VIDEO_PARENT_ID, env });
+  const ids = new Set([legacyId]);
+  if (available.ok) {
+    for (const folder of available.folders || []) {
+      if (registered.has(folder.name)) ids.add(String(folder.id));
+    }
   }
-  return { ok: true, detected, skipped: listed.skipped || 0 };
+  const since = await store.lastRawSeenAt(database);
+  let detected = 0;
+  let skipped = 0;
+  const failures = [];
+  /* A bounded per-folder page. The Drive provider filters incomplete zero
+     byte uploads and non-videos. The DB's unique Drive-file-id claim ignores
+     files a previous poll already saw. */
+  const perFolder = Math.max(1, Math.min(50, Number(limit) || DEFAULT_DETECT_LIMIT));
+  for (const folderId of ids) {
+    const listed = await drivePort.listNewVideos({ folderId, since, pageSize: perFolder, env });
+    if (!listed.ok) { failures.push(listed.error || "could not read offer video folder"); continue; }
+    skipped += listed.skipped || 0;
+    for (const file of listed.files || []) {
+      const meta = await drivePort.getFileMeta(file.id, { env });
+      const parsed = parseTakeName(file.name);
+      const written = await store.recordRawTake(database, {
+        driveFileId: file.id,
+        name: file.name,
+        createdTime: file.createdTime,
+        sizeBytes: Number(file.size) || null,
+        width: meta.ok ? meta.width : null,
+        height: meta.ok ? meta.height : null,
+        durationSeconds: meta.ok ? meta.durationSeconds : null,
+        // VSLs and thank-you videos have a separate 4K rule, not the ad rule.
+        videoKind: parsed && parsed.kind && parsed.kind !== "ad" ? "not_ad" : "ad"
+      });
+      if (written?.created) detected += 1;
+    }
+  }
+  if (!available.ok) failures.push(available.error || "could not discover registered offer folders");
+  return {
+    ok: failures.length === 0,
+    detected, skipped,
+    ...(failures.length ? { error: failures.join("; ").slice(0, 300) } : {})
+  };
 }
 
 /* walk — move each row one step, and write down what happened. */

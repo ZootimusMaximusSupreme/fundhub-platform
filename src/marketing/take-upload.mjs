@@ -1,21 +1,82 @@
-// Save the video from the teleprompter into the one SLO Ads Drive folder.
+// Save videos to their own offer's Google Drive folder, never to another offer.
 //
 // The phone cannot reach the Mac when Chris is away. It sends the original
 // file to this route in pieces. Each piece is small enough for the live site
 // to accept. The server forwards those same bytes to Drive. Nothing is
 // re-encoded, compressed, or flipped.
 //
-// The folder is the filmed folder in .cursor/rules/slo-one-filmed-folder.mdc.
-// DRIVE_RAW_FOLDER_ID is that same folder. The id is fixed here so a wrong
-// env value cannot send a take somewhere else.
+// Direct Book ads do NOT belong in the SLO folder. Folder selection comes
+// from the validated NAMING.md filename, never an arbitrary client folder id.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { openVideoSession, putVideoChunk } from "../messaging/providers/google-drive-write.mjs";
+import { openVideoSession, putVideoChunk, ensureFolder } from "../messaging/providers/google-drive-write.mjs";
+import { OFFER_WORDS } from "./shoot-plan.mjs";
+import { offerFacts } from "./offer-facts.mjs";
+import { parseTakeName } from "../ad-videos/merge-takes.mjs";
 
 export const SLO_ADS_FOLDER_ID = "13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ";
+export const DIRECT_BOOK_ADS_FOLDER_ID = "1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry";
+
+/** Stable parent for all offers, not an SLO-only folder.
+ * The marketing machine's canonical offer_key chooses a folder beneath it. */
+export const MARKETING_VIDEO_PARENT_ID = "1yIcllnXcq5ugtAdRGDTyLTHUDYXm0_Uh";
+
+/** Existing approved destinations keep their exact folder IDs. */
+export const EXISTING_OFFER_FOLDERS = Object.freeze({
+  slo_roadmap: SLO_ADS_FOLDER_ID,
+  funding_dfy: DIRECT_BOOK_ADS_FOLDER_ID
+});
+
+/** Official offer display word; new approved offers are pulled from the
+ * marketing offer registry rather than mapped to another offer's folder. */
+export function offerWordForKey(offerKey) {
+  const key = String(offerKey || "");
+  if (Object.prototype.hasOwnProperty.call(OFFER_WORDS, key)) return OFFER_WORDS[key];
+  const facts = offerFacts(key);
+  if (!facts || !facts.label) return null;
+  return String(facts.label).replace(/[\/\\]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || null;
+}
+export function offerKeyForName(name, offeredKey) {
+  const parsed = parseTakeName(name);
+  if (!parsed) return null;
+  if (offeredKey != null && offeredKey !== "") {
+    const key = String(offeredKey);
+    const word = offerWordForKey(key);
+    return word && word.toUpperCase() === parsed.offer ? key : null;
+  }
+  // Compatibility with previously recorded takes before offer_key was sent.
+  // Future offers must send their canonical offer_key, never guess.
+  for (const key of Object.keys(EXISTING_OFFER_FOLDERS)) {
+    const word = offerWordForKey(key);
+    if (word && word.toUpperCase() === parsed.offer) return key;
+  }
+  return null;
+}
+export function takeFolderForName(name, offeredKey) {
+  const key = offerKeyForName(name, offeredKey);
+  return key ? (EXISTING_OFFER_FOLDERS[key] || null) : null;
+}
+export async function resolveVideoFolder(name, offeredKey, deps = {}) {
+  const key = offerKeyForName(name, offeredKey);
+  if (!key) return null;
+  const existing = EXISTING_OFFER_FOLDERS[key];
+  if (existing) return { offerKey: key, folderId: existing };
+  const word = offerWordForKey(key);
+  if (!word) return null;
+  // Registered new offers get their own folder on first recorded upload.
+  // Do not mint a folder for an unregistered/unvalidated arbitrary tag.
+  const provision = deps.ensureFolder ?? ensureFolder;
+  const found = await provision({
+    parentId: MARKETING_VIDEO_PARENT_ID,
+    name: word + " Ads",
+    env: deps.env
+  });
+  if (!found?.ok || !found.folderId) return null;
+  return { offerKey: key, folderId: found.folderId };
+}
 
 /** One piece. A multiple of 256 KB, and under the live site's body cap. */
-export const TAKE_CHUNK_BYTES = 1024 * 1024;
+export const TAKE_CHUNK_BYTES = 2 * 1024 * 1024;
 
 /** A piece bigger than this is refused. It is not trimmed. */
 export const MAX_CHUNK_BYTES = 4 * 1024 * 1024;
@@ -143,10 +204,21 @@ export async function beginTake(body, deps) {
   if (!Number.isInteger(total) || total < 1 || total > MAX_TAKE_BYTES) {
     return { status: 400, body: { ok: false, error: "invalid", message: "That video has no size this site can store." } };
   }
+  const key = offerKeyForName(name, body?.offer_key);
+  if (!key) {
+    return { status: 400, body: {
+      ok: false, error: "unknown_offer",
+      message: "This take must name the registered offer and match its exact offer, ad or VSL, title, and take number."
+    } };
+  }
+  const folder = await resolveVideoFolder(name, key, deps);
+  if (!folder) {
+    return { status: 502, body: { ok: false, error: "folder_unavailable", message: "Could not open this offer's Google Drive folder. Your original video was not uploaded." } };
+  }
   const contentType = takeContentType(body?.content_type, name);
   const open = deps.openVideoSession ?? openVideoSession;
   const started = await open({
-    parentId: SLO_ADS_FOLDER_ID,
+    parentId: folder.folderId,
     name,
     totalBytes: total,
     contentType,
@@ -160,7 +232,8 @@ export async function beginTake(body, deps) {
   }, deps.filmSecret);
   return {
     status: 200,
-    body: { ok: true, token, chunk_bytes: TAKE_CHUNK_BYTES, name }
+    body: { ok: true, token, chunk_bytes: TAKE_CHUNK_BYTES, name, offer_key: key,
+      folder_url: "https://drive.google.com/drive/folders/" + folder.folderId }
   };
 }
 

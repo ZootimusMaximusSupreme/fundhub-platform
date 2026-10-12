@@ -14,6 +14,7 @@ import {
   planCompare, planFields, boardRow, sortBoard, applyMark, BOARD_STEPS, priorTakeNumbers
 } from "./shoot-plan.mjs";
 import { parseTakeName } from "../ad-videos/merge-takes.mjs";
+import { offerFacts } from "./offer-facts.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const NAMING = fs.readFileSync(path.resolve(HERE, "../../marketing/ads/NAMING.md"), "utf8");
@@ -81,7 +82,7 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     assert.equal(offerWordFor({ offer_key: null, lane: "slo" }), "SLO");
     // Owner, 2026-10-10: the book-a-call ads are the Direct Book offer.
     assert.equal(offerWordFor({ offer_key: "funding_dfy", lane: "sorting" }), "Direct Book");
-    assert.equal(offerWordFor({ offer_key: "capital_blueprint", lane: "sorting" }), null);
+    assert.equal(offerWordFor({ offer_key: "capital_blueprint", lane: "sorting" }), offerFacts("capital_blueprint").label);
     assert.equal(offerWordFor({ offer_key: "toString", lane: "__proto__" }), null);
     assert.deepEqual(Object.keys(OFFER_WORDS), ["slo_roadmap", "funding_dfy"]);
   });
@@ -162,7 +163,7 @@ describe("the take file name (marketing/ads/NAMING.md)", () => {
     assert.match(takeNameProblem({ ...SCRIPT, ad_id: null }), /no ad number/);
     assert.match(takeNameProblem({ ...SCRIPT, title: "" }), /no title/);
     assert.equal(takeNameProblem({ ...SCRIPT, offer_key: "funding_dfy", lane: "sorting" }), null);
-    assert.match(takeNameProblem({ ...SCRIPT, offer_key: "capital_blueprint", lane: "sorting" }), /no file-name word/);
+    assert.equal(takeNameProblem({ ...SCRIPT, offer_key: "capital_blueprint", lane: "sorting" }), null);
     assert.match(takeNameProblem({ ...SCRIPT, offer_key: null, lane: "sorting" }), /names no offer/);
   });
 });
@@ -221,9 +222,12 @@ describe("plan order and plan fields", () => {
   });
 
   test("a script with no offer word gets no name and the reason", () => {
-    const p = planFields({ ...SCRIPT, offer_key: "capital_blueprint", lane: "sorting" });
+    const p = planFields({ ...SCRIPT, offer_key: "unknown_offer", lane: "sorting" });
     assert.equal(p.take_file_name, null);
-    assert.match(p.take_name_problem, /no file-name word/);
+    assert.match(p.take_name_problem, /names no offer/);
+    const registered = planFields({ ...SCRIPT, offer_key: "capital_blueprint", lane: "sorting" });
+    assert.equal(registered.offer_word, offerFacts("capital_blueprint").label);
+    assert.match(registered.take_file_name, / Ad 91 — Lenders read two files Take 1\.mp4$/);
   });
 });
 

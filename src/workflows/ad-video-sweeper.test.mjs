@@ -101,6 +101,42 @@ describe("detect", () => {
     assert.equal(res.ok, false);
     assert.match(res.error, /lastRawSeenAt/);
   });
+
+  test("takes flow through every registered offer folder without mixing unrelated folders", async () => {
+    const asked = [];
+    const recorded = [];
+    const port = {
+      listOfferVideoFolders: async () => ({
+        ok: true,
+        folders: [
+          { id: "slo", name: "SLO Ads" },
+          { id: "book", name: "Direct Book Ads" },
+          { id: "other", name: "First Ads" }
+        ]
+      }),
+      listNewVideos: async ({ folderId }) => {
+        asked.push(folderId);
+        const names = {
+          slo: "SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4",
+          book: "Direct Book Thank You Take 1.mp4",
+          raw: "Old take.mp4"
+        };
+        return { ok: true, files: names[folderId] ?
+          [{ id: folderId + "-take", name: names[folderId], size: "4000" }] : [] };
+      },
+      getFileMeta: async () => ({ ok: true, width: 1920, height: 1080, durationSeconds: 45 })
+    };
+    const store = fakeStore({ onRecord: (take) => { recorded.push(take); return { created: true }; } });
+    const res = await detect(noDb, {
+      store, env: { DRIVE_RAW_FOLDER_ID: "raw" }, drivePort: port
+    });
+    assert.equal(res.ok, true);
+    assert.equal(res.detected, 3);
+    assert.deepEqual(new Set(asked), new Set(["raw", "slo", "book"]));
+    assert.equal(asked.includes("other"), false, "unregistered folders must not trigger paid editing");
+    assert.equal(recorded.find((x) => x.driveFileId === "book-take").videoKind, "not_ad");
+    assert.equal(recorded.find((x) => x.driveFileId === "slo-take").videoKind, "ad");
+  });
 });
 
 describe("walk", () => {

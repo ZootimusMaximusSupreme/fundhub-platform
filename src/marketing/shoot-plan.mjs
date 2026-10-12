@@ -53,6 +53,15 @@ export const LANE_WORDS = Object.freeze(Object.assign(Object.create(null), {
 export function offerWordFor(s) {
   const key = s && typeof s.offer_key === "string" ? s.offer_key : null;
   if (key && OFFER_WORDS[key]) return OFFER_WORDS[key];
+  // The registered marketing offer already has an approved customer-facing
+  // name. New funnel offers inherit that word without routing to SLO.
+  if (key) {
+    const facts = offerFacts(key);
+    if (facts && facts.label) {
+      const word = String(facts.label).replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
+      if (word) return word;
+    }
+  }
   const lane = s && typeof s.lane === "string" ? s.lane : null;
   if (lane && LANE_WORDS[lane]) return LANE_WORDS[lane];
   return null;

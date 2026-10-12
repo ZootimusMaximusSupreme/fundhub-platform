@@ -166,8 +166,14 @@ test("two accepted takes save in order even while the first upload is waiting", 
   await stopTake(page);
   await page.locator("#take-save-yes").tap();
   await expect.poll(() => server.chunks.length).toBe(1);
+  // An upload in progress does not prevent the next take, hide the camera,
+  // or discard the first finished file from device storage.
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(1);
   await stopTake(page);
   await page.locator("#take-save-yes").tap();
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(2);
   expect(server.uploads).toHaveLength(1);
   server.release();
   await expect.poll(() => server.uploads.length).toBe(2);
@@ -198,8 +204,34 @@ test("a failed video upload stays in the small top status and leaves the file on
   await page.locator("#take-save-yes").tap();
   await expect(page.locator("#video-save-status")).toBeVisible();
   await expect(page.locator("#video-save-status")).toHaveAttribute("data-state", "failed");
-  await expect(page.locator("#video-save-text")).toHaveText("On phone · Drive failed");
+  await expect(page.locator("#video-save-text")).toHaveText("Upload paused · saved on device");
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(1);
   await expect(page.locator("#toast")).toBeHidden();
+  expect(server.errors).toEqual([]);
+});
+
+test("an upload survives reopening the app and retries from the device-saved take", async ({ page }) => {
+  const { server } = await open(page, { holdUpload: true });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(1);
+  await expect.poll(() => server.chunks.length).toBe(1);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#b-rec")).toHaveText("Record");
+  await expect.poll(() => page.locator("#cam-video").evaluate((el) => el.videoWidth > 0 && el.readyState >= 2)).toBe(true);
+  await expect.poll(() => server.uploads.length).toBeGreaterThanOrEqual(2);
+  server.release();
+  await expect.poll(() => page.evaluate(() => window.FundhubTakeStore.all().then((rows) => rows.length))).toBe(0);
+  expect(server.errors).toEqual([]);
+});
+
+test("the phone UI has an independent input-level display", async ({ page }) => {
+  const { server } = await open(page);
+  const meter = page.locator("#mic-monitor");
+  await expect(meter).toBeVisible();
+  await expect(page.locator("#mic-name")).toHaveText("No mic audio");
+  await expect(meter).toHaveAttribute("data-state", "unavailable");
+  await expect(page.locator("#b-rec")).toHaveText("Record");
   expect(server.errors).toEqual([]);
 });
 
@@ -283,6 +315,40 @@ test("camera button uses the exact rear device when Safari ignores the ideal rea
   expect(server.errors).toEqual([]);
 });
 
+test("drag words while recording stays one take; only a tap changes playback and Record stops capture", async ({ page }) => {
+  const { server } = await open(page);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.locator("#play").tap();
+  await expect.poll(() => page.evaluate(() => window.__fhtp.state().playing)).toBe(true);
+  await page.waitForTimeout(350);
+  const rect = await page.locator("#stage").boundingBox();
+  const x = rect.x + rect.width * 0.5, y = rect.y + rect.height * 0.65;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 7; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + (i * 135 / 7) }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect.poll(() => page.evaluate(() => window.__fhtp.state().playing)).toBe(true);
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const atDrag = await page.evaluate(() => window.__fhtp.state().t);
+  await expect.poll(() => page.evaluate(() => window.__fhtp.state().t)).toBeGreaterThan(atDrag + 0.3);
+  await page.touchscreen.tap(x, y);
+  await expect.poll(() => page.evaluate(() => window.__fhtp.state().playing)).toBe(false);
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => window.__recorderStops)).toBe(0);
+  await page.touchscreen.tap(x, y);
+  await expect.poll(() => page.evaluate(() => window.__fhtp.state().playing)).toBe(true);
+  await page.waitForTimeout(550);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
 test("iPhone records one stable canvas stream even as physical lenses change", async ({ page }) => {
   const { server } = await open(page, { iphone: true, cameraDevices: [
     { kind: "videoinput", deviceId: "front", label: "Front Camera" },
@@ -318,16 +384,16 @@ test("Still to film uses offer-stack names and clearly marks the Complete target
   await page.locator("#p-file").dblclick();
   const rows = page.locator("#qmenu-list .item");
   await expect(rows).toHaveCount(3);
-  await expect(rows.nth(0).locator(".t")).toHaveText("Over and over");
-  await expect(rows.nth(0).locator(".m")).toHaveText("Current · Direct Book Ad 2");
+  await expect(rows.nth(0).locator(".t")).toHaveText("Direct Book Ad 2 — Over and over");
+  await expect(rows.nth(0).locator(".m")).toHaveText("Current · Take 1 · Full script");
   await expect(rows.nth(0)).toHaveAttribute("aria-current", "true");
-  await expect(rows.nth(1).locator(".m")).toHaveText("Direct Book VSL 1");
-  await expect(rows.nth(2).locator(".m")).toHaveText("Direct Book Thank You");
+  await expect(rows.nth(1).locator(".t")).toHaveText("Direct Book VSL 1 — Why lenders say no");
+  await expect(rows.nth(2).locator(".t")).toHaveText("Direct Book Thank You — Next steps");
   await expect(page.locator("#qmenu")).not.toContainText("Ad 93");
   await expect(page.locator("#q-complete")).toHaveText("Complete current: Direct Book Ad 2 — Over and over");
   await rows.nth(1).tap();
   await page.locator("#p-file").dblclick();
-  await expect(page.locator("#qmenu-list .item").nth(1).locator(".m")).toHaveText("Current · Direct Book VSL 1");
+  await expect(page.locator("#qmenu-list .item").nth(1).locator(".m")).toHaveText("Current · Take 1 · Full script");
   await expect(page.locator("#q-complete")).toHaveText("Complete current: Direct Book VSL 1 — Why lenders say no");
 });
 
