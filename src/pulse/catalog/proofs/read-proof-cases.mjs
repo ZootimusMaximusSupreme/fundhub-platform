@@ -142,6 +142,7 @@ const GAPS = READ_GAPS.map((item) => Object.freeze({
   surface: item.surface,
   control: item.control,
   depth: "deep",
+  verdict: "red",
   evidence: GAP_EVIDENCE,
   tests: Object.freeze(["src/pulse/coverage/gap-catalog-reads.test.mjs"]),
 }));
@@ -160,5 +161,10 @@ if (BY_KEY.size !== READ_PROOF_CASES.length) {
 export function readProofFor(sourceFile, row) {
   const found = BY_KEY.get(`${sourceFile}\0${row?.surface || ""}\0${row?.control || ""}`);
   if (!found) return null;
-  return { depth: found.depth, evidence: found.evidence, asserts: row.control };
+  return {
+    depth: found.depth,
+    ...(found.verdict ? { verdict: found.verdict } : {}),
+    evidence: found.evidence,
+    asserts: row.control,
+  };
 }

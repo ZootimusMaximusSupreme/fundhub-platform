@@ -488,6 +488,23 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  "catalog-display-retired-autopsy": Object.freeze({
+    say() {
+      return "The retired Decline Autopsy page still redirects to the live menu.";
+    },
+    claim() {
+      return "The retired Decline Autopsy page is still unreachable.";
+    },
+    problem(args) {
+      return args?.sourceFile === "public-pages.json"
+        && String(args?.surface || "").includes("partner/autopsy/index.html")
+        && isText(args?.control)
+        ? null
+        : "the retired page proof is incomplete";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row

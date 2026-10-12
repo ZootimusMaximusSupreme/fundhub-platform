@@ -109,7 +109,7 @@ const READY_TO_FUND_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE t.id IS NULL OR l.client_id IS DISTINCT FROM t.client_id
          OR l.task_id IS DISTINCT FROM t.id
-         OR l.idempotency_key IS DISTINCT FROM 'ready-to-fund:' || l.client_id::text || ':r' || l.detail->>'round'
+         OR l.idempotency_key IS DISTINCT FROM 'ready-to-fund:' || l.client_id::text || ':r' || (l.detail->>'round')
          OR l.detail->>'process' IS DISTINCT FROM 'blueprint-csm-prep'
          OR l.detail->>'via' IS DISTINCT FROM 'financeos')::int AS bad_count
   FROM money_agent_log l

@@ -77,6 +77,12 @@ function templateKey(row) {
   return String(row.surface).slice("template:".length);
 }
 
+const INACTIVE_ROWS = Object.freeze(FLOW_ROWS.filter(
+  (row) => row.family === "message" && isInactiveTemplateRow(row),
+));
+const INACTIVE_KEYS = Object.freeze(INACTIVE_ROWS.map(templateKey));
+const VERIFY_BATCHES = new WeakMap();
+
 function inactiveKind(row) {
   const control = String(row.control || "");
   if (control.includes("doc source copy for alias(es)")) return "an alias-only source key";
@@ -178,11 +184,27 @@ async function readInactiveCounts(ctx, keys, since) {
   }
 }
 
+async function readInactiveCountsForVerify(ctx, since) {
+  const handle = typeof ctx?.scope === "function" ? ctx.scope : ctx?.db;
+  if (!handle || (typeof handle !== "object" && typeof handle !== "function")) {
+    return readInactiveCounts(ctx, INACTIVE_KEYS, since);
+  }
+  let bySince = VERIFY_BATCHES.get(handle);
+  if (!bySince) {
+    bySince = new Map();
+    VERIFY_BATCHES.set(handle, bySince);
+  }
+  const cacheKey = `${ctx?.orgId || ""}\0${since}`;
+  if (!bySince.has(cacheKey)) {
+    bySince.set(cacheKey, readInactiveCounts(ctx, INACTIVE_KEYS, since));
+  }
+  return bySince.get(cacheKey);
+}
+
 export async function gapChecks(ctx = {}) {
   const now = new Date(ctx.now || Date.now());
   const since = new Date(now.getTime() - LOOKBACK_DAYS * DAY).toISOString();
-  const inactiveRows = FLOW_ROWS.filter((row) => row.family === "message" && isInactiveTemplateRow(row));
-  const read = await readInactiveCounts(ctx, inactiveRows.map(templateKey), since);
+  const read = await readInactiveCounts(ctx, INACTIVE_KEYS, since);
 
   return FLOW_ROWS.map((row) => {
     if (!isInactiveTemplateRow(row)) return staticResult(row);
@@ -205,7 +227,7 @@ export const naVerify = Object.freeze({
     const since = args?.since && Number.isFinite(new Date(args.since).getTime()) ? new Date(args.since) : null;
     const days = Number(args?.days);
     if (!since || !Number.isFinite(days) || days < 1) return false;
-    const read = await readInactiveCounts(ctx, [key], since.toISOString());
+    const read = await readInactiveCountsForVerify(ctx, since.toISOString());
     return !read.error && (read.counts.get(key) || 0) === 0;
   },
 });

@@ -59,7 +59,10 @@ test("every named proof target exists and every known missing result uses the ex
     }
     if (item.evidence.includes("gap-catalog-reads.mjs")) {
       gapCount += 1;
+      assert.equal(item.verdict, "red");
       assert.match(item.evidence, /gap-catalog-reads\.test\.mjs/);
+    } else {
+      assert.equal(item.verdict, undefined);
     }
   }
   assert.equal(gapCount, 40);

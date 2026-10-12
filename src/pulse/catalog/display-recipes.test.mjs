@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { makeRecipe, supports } from "./display-recipes.mjs";
 import { DISPLAY_PROOF_CASES } from "./proofs/display-proof-cases.mjs";
+import { DISPLAY_RESULT_LANE } from "./proofs/display-saved-result.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MAP_DIR = path.resolve(HERE, "../../../ops/workflows/coverage-every-surface-2026-10-10");
@@ -54,7 +55,11 @@ test("all seven display maps produce one valid recipe per row", () => {
       const { proof, ...baseRecipe } = recipe;
       assert.deepEqual(Object.keys(baseRecipe).sort(), BASE_RECIPE_KEYS);
       if (proof) {
-        assert.deepEqual(Object.keys(proof).sort(), ["asserts", "depth", "evidence"]);
+        assert.deepEqual(
+          Object.keys(proof).filter((key) => key !== "verdict").sort(),
+          ["asserts", "depth", "evidence"],
+        );
+        if (proof.verdict !== undefined) assert.equal(proof.verdict, "red");
         assert.ok(["deep", "e2e"].includes(proof.depth));
         assert.match(proof.evidence, /(?:\.test\.mjs\b|src\/pulse\/coverage\/gap-[^/]+\.mjs\b)/);
         assert.equal(proof.asserts, row.control);
@@ -83,6 +88,7 @@ test("tracked controls use safe executable proof without making a live write", (
   assert.equal(recipe.safe, true);
   assert.equal(recipe.expected, row.control);
   assert.match(recipe.proof.evidence, /gap-catalog-display\.mjs/);
+  assert.equal(recipe.proof.verdict, "red");
 });
 
 test("deep reads and pinged pages stay read-only", () => {
@@ -121,6 +127,7 @@ test("every named display control gets an exact executable tracking lane", () =>
     assert.equal(recipe.proof.depth, row.impact === "none" ? "e2e" : "deep");
     assert.equal(recipe.proof.asserts, row.control);
     assert.match(recipe.proof.evidence, /gap-catalog-display\.mjs/);
+    assert.equal(recipe.proof.verdict, "red");
   }
 });
 
@@ -133,11 +140,13 @@ test("only exact display proof cases receive deep executable proof", () => {
     const recipe = makeRecipe(proofCase.sourceFile, row);
 
     assert.notEqual(recipe.mode, "manual-red", `${proofCase.surface}: ${proofCase.control}`);
-    assert.deepEqual(recipe.proof, {
-      depth: proofCase.depth,
-      evidence: proofCase.evidence,
-      asserts: row.control,
-    });
+    assert.equal(recipe.proof.depth, proofCase.depth);
+    const expectedEvidence = recipe.proof.verdict === "red" && proofCase.evidence.includes(DISPLAY_RESULT_LANE)
+      ? DISPLAY_RESULT_LANE
+      : proofCase.evidence;
+    assert.equal(recipe.proof.evidence, expectedEvidence);
+    assert.equal(recipe.proof.asserts, row.control);
+    if (recipe.proof.verdict !== undefined) assert.equal(recipe.proof.verdict, "red");
   }
 });
 

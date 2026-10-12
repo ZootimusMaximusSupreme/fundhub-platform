@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DISPLAY_PROOF_CASES, displayProofFor } from "./display-proof-cases.mjs";
+import { DISPLAY_RESULT_LANE } from "./display-saved-result.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../../..");
@@ -36,11 +37,14 @@ test("every display proof case names one exact map row and real executable tests
       assert.ok(proofCase.evidence.includes(file), `${file} is missing from proof evidence`);
     }
 
-    assert.deepEqual(displayProofFor(proofCase.sourceFile, matches[0]), {
-      depth: proofCase.depth,
-      evidence: proofCase.evidence,
-      asserts: matches[0].control,
-    });
+    const proof = displayProofFor(proofCase.sourceFile, matches[0]);
+    assert.equal(proof.depth, proofCase.depth);
+    const expectedEvidence = proof.verdict === "red" && proofCase.evidence.includes(DISPLAY_RESULT_LANE)
+      ? DISPLAY_RESULT_LANE
+      : proofCase.evidence;
+    assert.equal(proof.evidence, expectedEvidence);
+    assert.equal(proof.asserts, matches[0].control);
+    if (proof.verdict !== undefined) assert.equal(proof.verdict, "red");
   }
 });
 

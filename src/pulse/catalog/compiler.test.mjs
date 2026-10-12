@@ -104,6 +104,8 @@ test("an exact red gap monitor wires a money row without claiming deep result pr
   assert.equal(out.items[0].proofVerdict, "red");
   assert.match(out.items[0].reason, /business result remains red/);
   assert.deepEqual(out.items[0].proof.lanes, ["src/pulse/coverage/gap-route-result.mjs"]);
+  assert.deepEqual(out.items[0].proof.tests, ["src/pulse/coverage/gap-route-result.test.mjs"]);
+  assert.equal(out.items[0].proof.tests.includes("src/x.test.mjs"), false);
 });
 
 test("an exact red claim needs a real gap lane", () => {

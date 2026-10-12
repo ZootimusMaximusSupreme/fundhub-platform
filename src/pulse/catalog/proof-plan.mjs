@@ -7,8 +7,8 @@ export function changedWiredItems(current, prior = { items: [] }) {
   return (current.items || []).filter((item) => {
     if (item.state !== "wired") return false;
     const old = before.get(item.id);
-    return !old || JSON.stringify([old.state, old.proof, old.proofDepth, old.proofAsserts])
-      !== JSON.stringify([item.state, item.proof, item.proofDepth, item.proofAsserts]);
+    return !old || JSON.stringify([old.state, old.proof, old.proofDepth, old.proofVerdict, old.proofAsserts])
+      !== JSON.stringify([item.state, item.proof, item.proofDepth, item.proofVerdict, item.proofAsserts]);
   });
 }
 
@@ -31,6 +31,16 @@ export function splitTestTargets(tests) {
 export function redByFamily(catalog) {
   return Object.entries((catalog.items || [])
     .filter((item) => item.state === "red")
+    .reduce((out, item) => {
+      out[item.family] = (out[item.family] || 0) + 1;
+      return out;
+    }, {}))
+    .sort((a, b) => b[1] - a[1]);
+}
+
+export function monitoredRedByFamily(catalog) {
+  return Object.entries((catalog.items || [])
+    .filter((item) => item.state === "wired" && item.proofVerdict === "red")
     .reduce((out, item) => {
       out[item.family] = (out[item.family] || 0) + 1;
       return out;

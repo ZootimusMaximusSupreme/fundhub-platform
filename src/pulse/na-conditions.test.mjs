@@ -25,9 +25,9 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these thirteen", () => {
+test("the list of codes is closed: exactly these fourteen", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "catalog-data-empty", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
+    "catalog-data-empty", "catalog-display-retired-autopsy", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
     "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
@@ -37,11 +37,11 @@ test("the list of codes is closed: exactly these thirteen", () => {
   assert.equal(isNaCode("toString"), false, "an inherited property is not a code");
 });
 
-test("the five core codes verify here; the eight lane codes say \"lane\"", () => {
+test("the five core codes verify here; the nine lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -59,7 +59,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "not-connected": { what: "YouTube" },
     "no-card-on-stage": { stages: ["sales/confirmed", "hiring/ramp"] },
     "no-limit-set": { boards: ["sales", "hiring"] },
-    "no-sender": { count: 158, days: 7 }
+    "no-sender": { count: 158, days: 7 },
+    "catalog-display-retired-autopsy": { sourceFile: "public-pages.json", surface: "partner/autopsy/index.html", control: "redirect" }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);
@@ -392,6 +393,19 @@ test("a lane code is answered by the lane: true stands, false does not, and the 
   assert.equal((await verifyNa(row, { laneNaVerify: make(true) })).ok, true);
   assert.equal((await verifyNa(row, { laneNaVerify: make(false) })).ok, false);
   assert.deepEqual(seen[0], ["gap-ads", "no-running-ad", { running: 0 }]);
+});
+
+test("the retired display page reason is checked by its exact lane", async () => {
+  const args = { sourceFile: "public-pages.json", surface: "partner/autopsy/index.html", control: "redirect" };
+  const row = {
+    id: "catalog-display:retired",
+    sliceId: "gap-catalog-display",
+    na: { code: "catalog-display-retired-autopsy", args },
+  };
+  const seen = [];
+  const out = await verifyNa(row, { laneNaVerify: async (...call) => { seen.push(call); return true; } });
+  assert.equal(out.ok, true);
+  assert.deepEqual(seen[0], ["gap-catalog-display", "catalog-display-retired-autopsy", args]);
 });
 
 test("each of the five lane codes stands on a lane's true and falls on its false", async () => {

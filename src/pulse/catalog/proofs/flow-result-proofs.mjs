@@ -1,6 +1,7 @@
 import {
   FLOW_GAP_LANE,
   FLOW_GAP_TEST,
+  isInactiveTemplateRow,
   needsAgentGapMonitor,
   needsJourneyGapMonitor,
   needsMessageGapMonitor,
@@ -178,8 +179,12 @@ function executableProof(depth, files, row) {
 }
 
 function exactGapProof(row) {
+  const verifiedNothingToJudge = isInactiveTemplateRow(row)
+    || row?.surface === "inbound:suppression-and-slugs-src-mail"
+    || row?.surface === "api:POST /api/chat/portal-message";
   return {
     depth: "deep",
+    ...(!verifiedNothingToJudge ? { verdict: "red" } : {}),
     evidence: `Executable exact result monitor: ${FLOW_GAP_LANE}; focused proof: ${FLOW_GAP_TEST}`,
     asserts: row.control,
   };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { changedWiredItems, proofPlan, redByFamily, splitTestTargets } from "./proof-plan.mjs";
+import { changedWiredItems, monitoredRedByFamily, proofPlan, redByFamily, splitTestTargets } from "./proof-plan.mjs";
 
 test("changed proof rows are selected once and targets are deduplicated", () => {
   const old = { items: [
@@ -32,6 +32,20 @@ test("red report groups failures without running them", () => {
     { state: "red", family: "button" },
     { state: "red", family: "route" },
   ] }), [["route", 2], ["button", 1]]);
+});
+
+test("a new monitored-red verdict reruns proof and reports by family", () => {
+  const old = { items: [
+    { id: "known", state: "wired", family: "route", proof: { lanes: ["gap-routes.mjs"] } },
+  ] };
+  const current = { items: [
+    { id: "known", state: "wired", family: "route", proofVerdict: "red", proof: { lanes: ["gap-routes.mjs"] } },
+    { id: "button", state: "wired", family: "button", proofVerdict: "red", proof: { lanes: ["gap-display.mjs"] } },
+    { id: "green", state: "wired", family: "route", proof: { tests: ["route.test.mjs"] } },
+  ] };
+
+  assert.deepEqual(changedWiredItems(current, old).map((item) => item.id), ["known", "button", "green"]);
+  assert.deepEqual(monitoredRedByFamily(current), [["route", 1], ["button", 1]]);
 });
 
 test("Playwright specs never go to Node's test runner", () => {

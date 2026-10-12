@@ -62,6 +62,8 @@ test("PASS-capable contracts use exact read-only links, never generic completene
     assert.doesNotMatch(sql, /complete_count|to_jsonb\(t\)|DISPLAY_RESULT_TABLE_RULES/);
     assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE)\b/i);
   }
+  const ready = SQL_BATCHES.find((sql) => marker(sql) === "ready-to-fund");
+  assert.match(ready, /\|\| \(l\.detail->>'round'\)/);
 });
 
 test("query contracts pass only with a real exact sample and no broken links", () => {

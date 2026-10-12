@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { changedWiredItems, proofPlan, redByFamily, splitTestTargets } from "../../src/pulse/catalog/proof-plan.mjs";
+import { changedWiredItems, monitoredRedByFamily, proofPlan, redByFamily, splitTestTargets } from "../../src/pulse/catalog/proof-plan.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const CATALOG = path.join(ROOT, "src/pulse/catalog/generated.json");
@@ -46,6 +46,8 @@ const testTargets = splitTestTargets(plan.tests);
 
 console.log(`catalog proof: ${plan.rows} ${all ? "wired" : "changed"} row(s); ${testTargets.node.length} Node test file(s), ${testTargets.browser.length} browser spec(s), ${plan.lanes.length} lane(s), ${plan.beats.length} beat(s)`);
 console.log(`catalog red: ${catalog.counts?.red || 0} — ${redByFamily(catalog).map(([family, count]) => `${family} ${count}`).join(", ")}`);
+const monitoredRed = monitoredRedByFamily(catalog);
+console.log(`catalog monitored red: ${monitoredRed.reduce((sum, [, count]) => sum + count, 0)} — ${monitoredRed.map(([family, count]) => `${family} ${count}`).join(", ")}`);
 
 if (reportOnly || plan.rows === 0) process.exit(0);
 

@@ -3,6 +3,7 @@ import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
 import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
 import {
   DISPLAY_RESULT_LANE,
+  displaySavedResultContract,
   isTrackedDisplayControl,
 } from "./display-saved-result.mjs";
 
@@ -358,9 +359,20 @@ export function displayProofFor(sourceFile, row) {
     const deep = ["money", "customerData", "customerMessage"].includes(row?.impact);
     return {
       depth: deep ? "deep" : "e2e",
+      verdict: "red",
       evidence: DISPLAY_RESULT_LANE,
       asserts: row.control,
     };
   }
-  return { depth: found.depth, evidence: found.evidence, asserts: row.control };
+  const savedResult = displaySavedResultContract(row);
+  const displayGapVerdict = String(found.evidence || "").includes(DISPLAY_RESULT_LANE)
+    && savedResult?.mode === "always-red";
+  const verdict = found.verdict
+    || (displayGapVerdict ? "red" : null);
+  return {
+    depth: found.depth,
+    ...(verdict ? { verdict } : {}),
+    evidence: displayGapVerdict ? DISPLAY_RESULT_LANE : found.evidence,
+    asserts: row.control,
+  };
 }

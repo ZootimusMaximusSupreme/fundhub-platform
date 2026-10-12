@@ -30,10 +30,12 @@ export function compileCatalog(sources, recipeModules, { resolve = (reference) =
       const recipe = validateRecipe(matches[0].makeRecipe(source.sourceFile, row), source.sourceFile, row);
       const mappedProof = proofTargets(row.evidence, resolve);
       const recipeProof = proofTargets(recipe?.proof?.evidence, resolve);
-      const proof = Object.fromEntries(Object.keys(mappedProof).map((key) => [
-        key,
-        [...new Set([...(mappedProof[key] || []), ...(recipeProof[key] || [])])].sort()
-      ]));
+      const proof = recipe?.proof?.verdict === "red"
+        ? recipeProof
+        : Object.fromEntries(Object.keys(mappedProof).map((key) => [
+          key,
+          [...new Set([...(mappedProof[key] || []), ...(recipeProof[key] || [])])].sort()
+        ]));
       const status = mappedState(row, recipe, proof, recipeProof);
       items.push({
         id: idFor(source.sourceFile, row),

@@ -111,6 +111,16 @@ test("no-sender claims re-read the exact key and reject a different or used key"
   assert.equal(await naVerify["no-sender"]({ ...args, surface: "template:not-real" }, { db: dbWith([]).db }), false);
 });
 
+test("the audit rechecks all inactive templates with one batched read", async () => {
+  const fake = dbWith([]);
+  const ctx = { db: fake.db };
+  const base = { count: 1, days: 7, since: "2026-10-05T12:00:00.000Z" };
+  assert.equal(await naVerify["no-sender"]({ ...base, surface: "template:AF", key: "AF" }, ctx), true);
+  assert.equal(await naVerify["no-sender"]({ ...base, surface: "template:AF-06", key: "AF-06" }, ctx), true);
+  assert.equal(fake.calls.length, 1);
+  assert.equal(fake.calls[0].params[2].length, 158);
+});
+
 test("inbound-only nothing-to-judge claims verify the exact named controls", async () => {
   assert.equal(await naVerify["no-sender"]({
     surface: "inbound:suppression-and-slugs-src-mail",

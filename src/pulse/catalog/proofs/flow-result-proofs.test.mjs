@@ -63,8 +63,18 @@ test("known flow gaps map to the exact executable red monitor", () => {
     const proof = proofForFlowRow(sourceFile, row);
     assert.ok(proof, surface);
     assert.match(proof.evidence, /src\/pulse\/coverage\/gap-catalog-flow\.mjs/, surface);
+    assert.equal(proof.verdict, "red", surface);
     assert.equal(proof.asserts, row.control, surface);
   }
+});
+
+test("verified inactive templates use the exact monitor without a red verdict", () => {
+  const row = loadRows("messages.json").find((candidate) => candidate.surface === "template:AF");
+  assert.ok(row);
+  const proof = proofForFlowRow("messages.json", row);
+  assert.ok(proof);
+  assert.match(proof.evidence, /src\/pulse\/coverage\/gap-catalog-flow\.mjs/);
+  assert.equal(proof.verdict, undefined);
 });
 
 test("every deep message proof runs the gate and final dispatcher outcome", () => {

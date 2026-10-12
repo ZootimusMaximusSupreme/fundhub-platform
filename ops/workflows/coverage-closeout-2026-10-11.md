@@ -110,3 +110,36 @@ Batch 3 core: integration rejected weak green claims from Display and Flow. Mone
 - Type check still has the older unrelated error at `src/marketing/filmed-receive.mjs:159` (`TS2345`). This batch did not touch that file.
 - The first GitHub live ship found four Batch 3 pulse faults: empty catalog tables used an unknown nothing-to-judge reason, and the three proof-only door lanes returned no rows. Empty tables now use a closed, rechecked reason and share the pulse's six batched reads. The door lanes now answer with honest red rows instead of disappearing.
 - The repaired full local bundle reached only three older self-audit timeouts: `checkout:funnel-no-sale`, `msg:dead-senders`, and `social:video-stats-stale`. Two full retries gave the same result, so the stuck rule stopped more changes to those older lanes.
+
+## Batch 4 — final 1,445 rows and refactor map
+
+Owner approval: Chris said to run all lanes and finish the remaining 1,445 rows. While the same code is being inspected, record a whole-company refactor plan. The refactor is planning only in this batch; coverage wiring stays the ship path.
+
+| Workflow | Exact scope | Status | Integration rule |
+|---|---|---|---|
+| Doors final | 339 routes, 13 jobs, 6 webhooks | done | Exact route gaps stay red; job and webhook result checks are live. Commits `058fc973b`, `752be0a88`. |
+| Display final | 278 buttons, 200 forms, 172 screens, 68 links | done | Every control has an exact result check or exact red monitor. Commits `953810d6c`, `184aaeb26`. |
+| Flow final | 184 messages, 105 journeys, 2 agents | done | Inactive templates are rechecked in one batch; every active gap stays red by exact name. Commits `f2fb2a250`, `232e382ed`. |
+| Reads + refactor map | 78 reads plus read-only architecture findings | done | 38 reads have result proof; 40 have exact red monitors. Refactor plan saved. Commit `0798ceecf`. |
+| Core integration | compiler, shared module list, generated catalog, final proof, ship | done | Red proof runs only its exact monitor. The targeted proof no longer sprays old browser tests. |
+
+Batch 4 safety: no live customer write, money move, text, email, or phone call. A real break stays red and is recorded. A row becomes wired only when its own executable proof runs and checks the stated result.
+
+## Batch 4 result
+
+- The map grew by one teleprompter row while this batch ran: 3,975 mapped rows, 33 marked repeats, 3,942 unique items.
+- All 3,942 unique items now have an executable proof path. Catalog state: 3,942 wired, 0 invisible or unproved.
+- This is not a claim that every item works. The catalog now reports 1,762 exact monitored-red items: 427 buttons, 385 screens, 339 routes, 259 forms, 172 links, 105 journeys, 40 reads, 17 messages, 13 jobs, 4 webhooks, and 1 agent.
+- The targeted proof is token-smart: 1,762 red rows collapse to 6 Node test files, 0 browser specs, and 6 read-only pulse lanes. Known-red rows do not rerun old linked tests.
+- The exact live read-only proof passed as a checker. It had no SQL error, no skipped row in the four selected lanes, no timed-out inactive-template audit, and no write or provider send.
+- The new display SQL bug found by the first pulse was fixed. The inactive-message audit now rechecks all 158 template keys with one batched read.
+- Focused integration tests passed. Lint passed across 3,380 files and inline scripts.
+- TypeScript still has the older unrelated `TS2345` error at `src/marketing/filmed-receive.mjs:159`. This batch did not touch that file.
+- Whole-company refactor plan: `ops/workflows/company-refactor-plan-2026-10-12.md`. It is planning only; no broad product refactor was mixed into this coverage ship.
+
+### Final review repairs
+
+- Unknown `--lanes` names now stop proof before it runs. Commit `401d1ad27`.
+- The job lane now accepts the live scope function or a direct database. Thirteen empty-work job tests no longer claim the named business result; those jobs stay exact red. Commit `43d187870`.
+- Four webhook no-op or not-found tests no longer claim deep saved-result proof; those webhooks stay exact red. Commit `b26c9b1e8`.
+- The final six-lane proof passed: no skipped selected-lane row, no timeout, no SQL error, no write, and no provider send.
