@@ -43,6 +43,7 @@ export function compileCatalog(sources, recipeModules, { resolve = (reference) =
         coverage: row.coverage,
         ...(recipe?.proof ? {
           proofDepth: recipe.proof.depth,
+          ...(recipe.proof.verdict ? { proofVerdict: recipe.proof.verdict } : {}),
           proofAsserts: recipe.proof.asserts
         } : {}),
         family: recipe.family,

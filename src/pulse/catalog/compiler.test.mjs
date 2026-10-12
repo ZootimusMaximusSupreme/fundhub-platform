@@ -80,6 +80,55 @@ test("a safe recipe can raise coverage only with its own executable proof", () =
   assert.deepEqual(out.items[0].proof.tests, ["src/catalog-result.test.mjs"]);
 });
 
+test("an exact red gap monitor wires a money row without claiming deep result proof", () => {
+  const redRecipe = {
+    supports: () => true,
+    makeRecipe: (sourceFile, row) => ({
+      family: "test", mode: "test", target: row.surface, expected: "stays red", schedule: "daily",
+      safe: true, sourceFile, surface: row.surface,
+      proof: {
+        depth: "e2e",
+        verdict: "red",
+        evidence: "src/pulse/coverage/gap-route-result.mjs src/pulse/coverage/gap-route-result.test.mjs",
+        asserts: "the exact named business result stays red"
+      }
+    })
+  };
+  const out = compileCatalog(
+    [{ sourceFile: "x.json", rows: [{ ...base, surface: "x:money-gap", impact: "money", coverage: "none" }] }],
+    [redRecipe],
+    { resolve: (reference) => [reference] }
+  );
+  assert.equal(out.items[0].state, "wired");
+  assert.equal(out.items[0].proofDepth, "e2e");
+  assert.equal(out.items[0].proofVerdict, "red");
+  assert.match(out.items[0].reason, /business result remains red/);
+  assert.deepEqual(out.items[0].proof.lanes, ["src/pulse/coverage/gap-route-result.mjs"]);
+});
+
+test("an exact red claim needs a real gap lane", () => {
+  const redRecipe = {
+    supports: () => true,
+    makeRecipe: (sourceFile, row) => ({
+      family: "test", mode: "test", target: row.surface, expected: "stays red", schedule: "daily",
+      safe: true, sourceFile, surface: row.surface,
+      proof: {
+        depth: "e2e",
+        verdict: "red",
+        evidence: "src/only-a-test.test.mjs",
+        asserts: "the exact named business result stays red"
+      }
+    })
+  };
+  const out = compileCatalog(
+    [{ sourceFile: "x.json", rows: [{ ...base, surface: "x:missing-gap", impact: "money", coverage: "none" }] }],
+    [redRecipe],
+    { resolve: (reference) => [reference] }
+  );
+  assert.equal(out.items[0].state, "red");
+  assert.match(out.items[0].reason, /no executable gap lane/);
+});
+
 test("recipe proof stays red when its own target cannot be resolved", () => {
   const deepRecipe = {
     supports: () => true,

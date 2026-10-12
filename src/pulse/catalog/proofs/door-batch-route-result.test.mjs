@@ -52,7 +52,7 @@ function expectedStatus(key) {
   return AUTH_FIRST.has(key) ? 401 : 405;
 }
 
-test("Batch 4 calls every remaining real route handler with a safe request", async () => {
+test("Batch 4 refusal context never claims the remaining route business results work", async () => {
   const rows = ROUTE_FILES.flatMap((file) => {
     const mapped = JSON.parse(fs.readFileSync(path.join(MAP, file), "utf8"));
     return mapped
@@ -63,7 +63,11 @@ test("Batch 4 calls every remaining real route handler with a safe request", asy
   assert.equal(rows.length, 339);
   for (const { row, file } of rows) {
     const proof = makeRecipe(file, row).proof;
+    assert.equal(proof.depth, "e2e");
+    assert.equal(proof.verdict, "red");
     assert.match(proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+    assert.match(proof.asserts, /monitor stays red until an intended-method fake-data test judges this named result$/);
+    assert.doesNotMatch(proof.asserts, /(?:the API|the route) works|business result is proved/i);
   }
   const targets = [...new Map(rows.map((item) => [item.key, item])).values()];
   assert.equal(targets.length, 255);

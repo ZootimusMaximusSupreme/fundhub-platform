@@ -49,8 +49,11 @@ test("every mapped door gets a complete recipe", async () => {
             `${row.env_name} has a valid env name and is referenced by repo code; no value is read`
           );
         } else if (recipe.proof.evidence.includes("door-batch-route-result.test.mjs")) {
+          assert.equal(recipe.proof.depth, "e2e");
+          assert.equal(recipe.proof.verdict, "red");
           assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
-          assert.match(recipe.proof.asserts, /invokes its real handler and returns its exact safe refusal$/);
+          assert.match(recipe.proof.evidence, /gap-door-batch-routes\.mjs/);
+          assert.match(recipe.proof.asserts, /monitor stays red until an intended-method fake-data test judges this named result$/);
         } else if (recipe.proof.evidence.includes("door-batch-webhook-final.test.mjs")) {
           assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
           assert.match(recipe.proof.asserts, /accepts its real fake signature and returns the expected safe handler result$/);
@@ -83,7 +86,7 @@ test("route recipes use route methods and keep writes out of read-only mode", as
   assert.equal(makeRecipe("routes-0.json", failedFocusedProof).mode, "read-only");
   assert.match(
     makeRecipe("routes-0.json", failedFocusedProof).proof.evidence,
-    /door-batch-route-result\.test\.mjs/
+    /gap-door-batch-routes\.mjs/
   );
   assert.equal(makeRecipe("routes-0.json", write).mode, "test");
   assert.equal(makeRecipe("routes-0.json", write).safe, true);

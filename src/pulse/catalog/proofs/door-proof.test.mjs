@@ -67,8 +67,11 @@ test("every door proof case names executable code and a focused test", async (t)
       if (recipe.proof.evidence.includes("door-batch-key-contract.test.mjs")) {
         assert.match(recipe.proof.asserts, /valid env name and is referenced by repo code; no value is read$/);
       } else if (recipe.proof.evidence.includes("door-batch-route-result.test.mjs")) {
+        assert.equal(recipe.proof.depth, "e2e");
+        assert.equal(recipe.proof.verdict, "red");
         assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
-        assert.match(recipe.proof.asserts, /invokes its real handler and returns its exact safe refusal$/);
+        assert.match(recipe.proof.evidence, /gap-door-batch-routes\.mjs/);
+        assert.match(recipe.proof.asserts, /monitor stays red until an intended-method fake-data test judges this named result$/);
       } else if (recipe.proof.evidence.includes("door-batch-webhook-final.test.mjs")) {
         assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
         assert.match(recipe.proof.asserts, /accepts its real fake signature and returns the expected safe handler result$/);
@@ -101,9 +104,13 @@ test("every door proof case names executable code and a focused test", async (t)
       );
 
       const needDeep = ["money", "customerMessage", "customerData"].includes(row.impact);
-      assert.equal(needDeep ? recipe.proof.depth === "deep" : ["e2e", "deep"].includes(recipe.proof.depth), true);
-      if (needDeep) {
-        const exactSafeHandler = /door-batch-(?:route-result|job-final|webhook-final)\.test\.mjs/.test(recipe.proof.evidence);
+      const exactRed = recipe.proof.verdict === "red";
+      assert.equal(needDeep ? (recipe.proof.depth === "deep" || exactRed) : ["e2e", "deep"].includes(recipe.proof.depth), true);
+      if (exactRed) {
+        assert.equal(recipe.proof.depth, "e2e");
+        assert.match(recipe.proof.evidence, /src\/pulse\/coverage\/gap-door-batch-routes\.mjs/);
+      } else if (needDeep) {
+        const exactSafeHandler = /door-batch-(?:job-final|webhook-final)\.test\.mjs/.test(recipe.proof.evidence);
         assert.equal(exactSafeHandler || resolved.some((reference) =>
           /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/.test(reference) && !reference.endsWith(".test.mjs")
         ), true, "deep proof must name the result lane, beat, or exact safe handler result");
@@ -119,13 +126,13 @@ test("every unproved door stays manual-red and omits proof", () => {
   }
 });
 
-test("an exact handler result checker can prove a row even when its old name-only evidence cannot", () => {
+test("an exact route gap monitor wires a row red when its old name-only evidence cannot prove the result", () => {
   const row = rowsFor("routes-0.json").find((item) => item.surface === "route:ad-videos");
   const sameNameWithoutEvidence = { ...row, coverage: "none", evidence: "route:ad-videos" };
   const recipe = makeRecipe("routes-0.json", sameNameWithoutEvidence);
   assert.equal(recipe.mode, "read-only");
-  assert.match(recipe.proof.evidence, /door-batch-route-result\.test\.mjs/);
-  assert.match(recipe.proof.asserts, /invokes its real handler and returns its exact safe refusal$/);
+  assert.match(recipe.proof.evidence, /gap-door-batch-routes\.mjs/);
+  assert.match(recipe.proof.asserts, /monitor stays red until an intended-method fake-data test judges this named result$/);
 });
 
 test("known partial rows use exact executable checkers without claiming the business result is green", () => {
@@ -144,7 +151,7 @@ test("known partial rows use exact executable checkers without claiming the busi
     assert.notEqual(recipe.mode, "manual-red", `${sourceFile}: ${surface}`);
     assert.ok(recipe.proof, `${sourceFile}: ${surface}`);
     assert.equal(
-      /door-batch-(?:route-result|job-final|webhook-red)\.test\.mjs/.test(recipe.proof.evidence),
+      /(?:gap-door-batch-routes|door-batch-(?:job-final|webhook-red))\.test\.mjs/.test(recipe.proof.evidence),
       true,
       `${sourceFile}: ${surface}`
     );

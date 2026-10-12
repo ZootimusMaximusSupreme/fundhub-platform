@@ -32,6 +32,9 @@ export function validateRecipe(recipe, sourceFile, row) {
       problems.push("proof must be an object");
     } else {
       if (!["e2e", "deep"].includes(recipe.proof.depth)) problems.push("proof depth must be e2e or deep");
+      if (recipe.proof.verdict !== undefined && recipe.proof.verdict !== "red") {
+        problems.push("proof verdict must be red when present");
+      }
       if (!String(recipe.proof.evidence || "").trim()) problems.push("proof evidence is empty");
       if (!String(recipe.proof.asserts || "").trim()) problems.push("proof assertion is empty");
       if (recipe.safe !== true) problems.push("executable proof must be safe");
@@ -55,6 +58,12 @@ export function mappedState(row, recipe, proofTargets = {}, recipeProofTargets =
   ];
   if (recipe.proof && !recipeTargets.length) {
     return { state: "red", reason: "The recipe claims proof, but its evidence names no executable target." };
+  }
+  if (recipe.proof?.verdict === "red") {
+    if (!(recipeProofTargets.lanes || []).length) {
+      return { state: "red", reason: "The recipe claims an exact red monitor, but its evidence names no executable gap lane." };
+    }
+    return { state: "wired", reason: "Mapped to an exact executable red monitor; the named business result remains red." };
   }
   const have = Math.max(COVERAGE_DEPTH[row.coverage], COVERAGE_DEPTH[recipe?.proof?.depth] || 0);
   if (have < need) {
