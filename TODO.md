@@ -158,7 +158,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Pick the first use case and move it to the Claude API.
 - [ ] Alt finance offer: SBA, hard money and real estate lending
 - [ ] Search the Meta Ad Library for SBA, hard money and fix-and-flip ads
-- [ ] Find the avatar work already in the Drive or the repo
 - [ ] Pick the lending partners for each product
 - [ ] Define the offer and how it routes on the sorting-hat call
 - [ ] Write and film the first batch of ads
