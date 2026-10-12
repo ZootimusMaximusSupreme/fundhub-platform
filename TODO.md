@@ -6,6 +6,7 @@
 - [ ] Record outcomes for the two booked calls that ended with no saved outcome.
 - [ ] Restore meeting links on new bookings; the newest five real bookings have no join link.
 - [ ] Close the 2,407 catalog rows that still lack proof at their required level. The coverage build owns the code; keep this row until its final proof is green.
+- [ ] Refactor the heartbeat proof maps after coverage is complete. Remove repeated rules and group shared proof targets, while keeping every check and every red/green result honest.
 - [ ] Add Justice Nikkel and Sarah Blankstein as booking-page hosts; both are past due.
 - [ ] Give repair file `64212914-1e0d-4ec1-bd6e-07fa156108b8` a real next step; it is stuck in Analysis.
 - [ ] Resolve failed delivery for `SMS-AISET04-HANDOFF` and `SMS-S05A-NOSHOW-RECOVER`.
