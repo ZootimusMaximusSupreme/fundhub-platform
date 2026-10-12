@@ -16,6 +16,7 @@ The 4:46:50 p.m. iPhone screenshot shows a portrait page and upright script, but
 2. **Saved file:** A take made upright plays as a vertical video with upright people and objects. A take made sideways plays as a horizontal video with upright people and objects. Check the actual pixels during playback as well as the file dimensions and orientation metadata.
 3. **Camera flip:** The top-left button switches front ↔ rear in either phone position. It never starts or stops a take. A flip during a take keeps one valid recording and an upright live view. Preserve the existing front-camera mirror choice and rear-camera unmirrored view.
 4. **Reading flow:** Words, buttons, smooth scroll, speed, pause/play, and video saving keep working. No new control or permission flow is part of this fix.
+5. **Video quality:** The saved take must look sharp and play smoothly. VSL and thank-you takes must meet the existing 4K rule when the iPhone browser grants 4K capture; ads may use 1080p. Do not claim 4K or 60 fps from requested settings alone. The upload must keep the original take bytes and quality; it must not use the dimmed or blurred preview image.
 
 ## Build approach
 
@@ -35,4 +36,6 @@ The 4:46:50 p.m. iPhone screenshot shows a portrait page and upright script, but
 
 Run each row on a real iPhone in the Home Screen app or Safari, whichever Chris is filming with. For each row, press Record, film a short take, save it, and play the saved file. Also flip cameras once before recording and once during recording; neither flip may trigger Record. Automated browser tests must cover the drawing and controls, but browser simulation alone does not close this bug. Verify the published page loads the new asset versions. Report any real-device row that remains untested as open.
 
-**Scope:** Camera orientation, framing, and the minimum tests and asset-version change needed to prove this correction. Do not change the client page, league call list, script data, or other teleprompter features.
+For one VSL or thank-you take, record at least 30 seconds while the script scrolls and the camera moves. Play the saved file on the phone and inspect its actual dimensions, frame cadence, duration, and visible sharpness. Check for freezes, repeated frames, dropped sections, and audio drift. Download the uploaded take and confirm that its bytes match the saved original. A smooth preview or a bitrate request alone is not proof of a smooth, high-quality file.
+
+**Scope:** Camera orientation, framing, saved-video quality, and the minimum tests and asset-version change needed to prove this correction. Do not change the client page, league call list, script data, or other teleprompter features.
