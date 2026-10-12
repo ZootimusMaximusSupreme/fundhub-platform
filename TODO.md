@@ -366,7 +366,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Your three numbers: cash on hand, monthly burn, monthly collected revenue. Then set kill criteria for each offer. (9/4)
 - [ ] Plan the investor buyout (9/4)
 - [ ] Claude organization agent for your desktop files and Google Drive (8/15)
-- [ ] Company brain: transcribe ACQ, your course and the Hormozi content, load them in, then add an open-source visualization (10/3)
 - [ ] Check that your friend's CXL access is still active (10/3)
 - [ ] CXL Digital Psychology & Persuasion minidegree (10/3)
 - [ ] Scrape the courses (10/3)
