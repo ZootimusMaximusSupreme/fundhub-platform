@@ -101,6 +101,35 @@ describe("teleprompter, pure", () => {
     }
   });
 
+  test("iPhone 17 Pro Max portrait prioritizes 60 fps in both cameras at 1080p and 4K", () => {
+    const ctx = createContext({
+      console, navigator: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)" },
+      innerHeight: 844, innerWidth: 390
+    });
+    runInContext(SRC, ctx);
+    const T = ctx.FundhubTeleprompter;
+    for (const facing of ["user", "environment"]) {
+      for (const mode of ["1080p", "4k"]) {
+        const tries = T.cameraTries(facing, mode);
+        assert.ok(tries.length > 2);
+        assert.equal(tries[0].frameRate.ideal, 60, "the first camera request must prefer 60 fps");
+        assert.equal(tries[0].width.ideal, mode === "4k" ? 2160 : 1080);
+        assert.equal(tries[0].height.ideal, mode === "4k" ? 3840 : 1920);
+        assert.equal(tries[0].facingMode.ideal, facing);
+        assert.ok(tries.some((x) => x.frameRate?.ideal === 30), "the fallback should still allow filming");
+      }
+    }
+    const stream = SRC.slice(SRC.indexOf("function continuousRecordStream(stream)"), SRC.indexOf("function beginRec()"));
+    assert.match(stream, /Math\.min\(60, Math\.max\(1, Math\.round\(st\.frameRate \|\| 60\)\)\)/);
+    assert.match(stream, /canvas\.captureStream\(fps\)/);
+    assert.doesNotMatch(stream, /Math\.min\(30/);
+    const flip = SRC.slice(SRC.indexOf("function switchCamera()"), SRC.indexOf("function setCamMode"));
+    assert.match(flip, /for \(var askFps of \[60, 30\]\)/);
+    assert.doesNotMatch(flip, /cameraAsk\(wanted, 30/);
+    const finish = SRC.slice(SRC.indexOf("function openCamera()"), SRC.indexOf("function switchCamera()"));
+    assert.match(finish, /cameraAsk\(facing, fps, recordingIsPortrait\(\) \? "tall" : "wide"/);
+  });
+
   test("the wide back camera is chosen, not the ultra-wide", () => {
     const T = load();
     const devices = [
@@ -789,11 +818,12 @@ describe("recorded camera frame quality", () => {
     assert.match(recorder, /ctx\.scale\(-1, 1\)/);
     assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
-    assert.match(recorder, /Math\.min\(30, Math\.max\(24,/);
+    assert.match(recorder, /Math\.min\(60, Math\.max\(1,/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
     const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));
-    assert.match(begin, /savedWidth >= 3840 \? 48000000/);
-    assert.match(begin, /savedWidth >= 1920 \? 24000000/);
+    assert.match(begin, /opts\.videoBitsPerSecond = videoBits\(savedWidth, savedFps\)/);
+    assert.match(begin, /st\.frameRate && st\.frameRate < 59\.5/);
+    assert.doesNotMatch(begin, /isPhone\(\) \? 12000000/);
   });
 });
 
