@@ -980,9 +980,14 @@ export async function gapChecks(ctx = {}) {
   const orgId = UUID_RE.test(orgRaw) ? orgRaw : null;
   const run = bind(ctx);
 
-  const pages = await checkPageLinks(ctx);
-  const logos = await checkLogos(ctx, run, orgId, now);
-  const cards = await checkPipelineCards(run, orgId);
+  // These checks use separate reads and do not depend on one another. Start
+  // them together so a slow HTTP request does not hold every database check
+  // behind it. Promise.all below keeps the public row order unchanged.
+  const frontChecks = Promise.all([
+    checkPageLinks(ctx),
+    checkLogos(ctx, run, orgId, now),
+    checkPipelineCards(run, orgId)
+  ]);
 
   const reads = [];
   const db = ctx.db && typeof ctx.db.query === "function" ? ctx.db : null;
@@ -1036,5 +1041,6 @@ export async function gapChecks(ctx = {}) {
       }
     }
   }
+  const [pages, logos, cards] = await frontChecks;
   return [...pages, logos, cards, ...reads];
 }

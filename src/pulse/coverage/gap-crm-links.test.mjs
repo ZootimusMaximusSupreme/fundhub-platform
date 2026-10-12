@@ -678,6 +678,56 @@ test("database handle: the plain handle wins over the staff scope, and the scope
   assert.equal(byId(rows, "crm-data:pipeline").status, "skip");
 });
 
+test("the page, logo, and pipeline checks start together without dropping coverage", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const started = new Set();
+  const mark = (name) => {
+    started.add(name);
+    if (started.size === 3) release();
+  };
+  const map = dbMap();
+  const db = {
+    async query(sql, params) {
+      const key = String(sql);
+      if (key === LOGO_SQL) {
+        mark("logos");
+        await gate;
+      } else if (key === PIPELINE_CARDS_SQL) {
+        mark("pipeline-cards");
+        await gate;
+      }
+      const answer = map[key];
+      if (!answer) throw new Error(`unexpected sql: ${key.slice(0, 70)}`);
+      return typeof answer === "function" ? answer(params) : answer;
+    }
+  };
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/app/")) {
+      mark("pages");
+      await gate;
+    }
+    return { status: 200, text: async () => "<html>no links here</html>" };
+  };
+
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("independent CRM checks did not start together")), 250);
+  });
+  let rows;
+  try {
+    rows = await Promise.race([
+      gapChecks({ db, orgId: ORG, now: NOW, crmReaders: readers(), fetchImpl, baseUrl: BASE }),
+      timeout
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  assert.deepEqual([...started].sort(), ["logos", "pages", "pipeline-cards"]);
+  for (const id of CHECK_IDS) assert.ok(byId(rows, id), `${id} is missing`);
+});
+
 test("records: the org passed in is a uuid; a junk org id reads as no org", async () => {
   const junk = await gapChecks({ db: fakeDb(dbMap()), orgId: "not-a-uuid", sources: [], crmReaders: readers() });
   assert.equal(byId(junk, "crm-data:lenders").status, "skip");
