@@ -3108,17 +3108,17 @@
       // A lens flip must not downgrade a genuine 60 fps take to 30 fps.
       // Safari still has a 30 fps fallback if all 60 fps requests fail.
       for (var askFps of [60, 30]) {
-        var direct = cameraAsk(wanted, askFps, faceShape, false, mode);
+        var direct = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
         direct.facingMode = { exact: wanted };
         asks.push(direct);
         var exactId = cam.deviceIds[wanted];
         if (exactId) {
-          var exact = cameraAsk(wanted, askFps, faceShape, false, mode);
+          var exact = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
           exact.deviceId = { exact: exactId };
           delete exact.facingMode;
           asks.push(exact);
         }
-        var loose = cameraAsk(wanted, askFps, faceShape, false, mode);
+        var loose = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
         loose.facingMode = { ideal: wanted };
         asks.push(loose);
       }
