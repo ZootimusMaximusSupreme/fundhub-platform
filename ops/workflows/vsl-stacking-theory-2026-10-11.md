@@ -8,7 +8,7 @@ Status: in progress
 | Task | Owner | Status |
 |---|---|---|
 | Theory and origin research | current session | done |
-| Funnel map | research agent | pending |
+| Funnel map | current session | done |
 | Examples and evidence | current session | done |
 | Critical review | current session | done |
 | Final synthesis | current session | pending |
@@ -60,3 +60,13 @@ Sources supplied by user:
 - Other workflows remain pending for funnel examples and the final synthesis.
 - Critical-review gap: no reliable public randomized study was found that directly compares one VSL with a multi-micro-VSL stack while holding offer, traffic, and message constant.
 - Examples/evidence gap: no public operator has published stage-level randomized results for a true multi-VSL stack with downstream revenue and quality metrics.
+
+### Funnel map — done
+
+- Added `research_notes/VSL Stacking Theory/funnel-map.md`.
+- The recommended map covers: ad click → lead capture; captured lead → booking; no-pickup recovery; booked call → show-up; high-ticket qualification; discovery call → proposal/second appointment; ecommerce product page → checkout; checkout abandonment; purchase confirmation; onboarding/first success; and referral/retention.
+- Each stage records the friction point, likely objection, video job, what to cover, what to avoid, handoff action, and primary measurement.
+- Theory claims are separated from the recommended operating model. The theory is sourced chiefly to Josh Hamilton's LinkedIn post/transcript; the operating model is an inference from that source plus public funnel guides and platform measurement docs.
+- Source notes added for Asset Academy, Skyline Social, Inflo Partners, Google Analytics Funnel exploration and Events, YouTube retention, Wistia Audience Analytics, Vimeo video measurement, Unbounce's large landing-page analysis, and the PMC randomized clinical-recruitment landing-page experiment.
+- Measurement recommendation: pair video events (`play`, retention milestones, CTA click) with the intended downstream event (`lead_submit`, `calendar_booked`, `showed`, `checkout_started`, `purchase`, `onboarding_started`) and judge the video by the transition it is meant to improve.
+- Important evidence limit: no independent controlled study was found that tests the complete VSL-stacking sequence from ad click through onboarding. Public lift numbers should not be used as benchmarks.
