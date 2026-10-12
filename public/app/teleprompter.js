@@ -921,6 +921,16 @@
     return newKeys[lo].t + (newKeys[hi].t - newKeys[lo].t) * f;
   }
 
+
+  /* Browser-reported input only. A hidden/unknown label must never be called RØDE. */
+  function micLabel(label) {
+    var name = String(label || "").trim();
+    if (!name || /^(default|communications|microphone(?:\s+\d+)?)$/i.test(name)) return "Mic · source unknown";
+    if (/iPhone|built.?in|internal microphone/i.test(name)) return "iPhone mic";
+    if (/r[oø]de/i.test(name)) return "RØDE mic";
+    return name.length > 25 ? name.slice(0, 24) + "…" : name;
+  }
+
   root.FundhubTeleprompter = {
     fileName: fileName, isCaps: isCaps, isBullets: isBullets, paragraphsFor: paragraphsFor, firstToRoll: firstToRoll,
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
@@ -930,7 +940,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport,
+    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -2243,6 +2253,88 @@
   var cam = { stream: null, rec: null, chunks: [], applied: "", opening: "", file: null, pending: [], uploads: [], gen: 0, stopping: false, again: false, after: null, tick: null, fadeT: null, started: 0, mime: "", fileName: "Take.mp4", facing: "user", wantedFacing: "user", audioTrack: null, deviceIds: {}, startAfterOpen: false, previewReady: false, recordStream: null, pumpTimer: 0, pumpVideoFrame: 0 };
   var wantRec = false;
   var cameraTapUntil = 0;
+
+  /* Read-only input meter: this never replaces the track used by MediaRecorder.
+     Safari may hide the device label; the app names RØDE only when iOS does. */
+  var micMonitor = { track: null, ctx: null, source: null, analyser: null, timer: null };
+  function stopMicMeter() {
+    if (micMonitor.timer) root.clearInterval(micMonitor.timer);
+    micMonitor.timer = null;
+    if (micMonitor.source) {
+      try { micMonitor.source.disconnect(); } catch (e) {}
+    }
+    if (micMonitor.ctx) {
+      try { micMonitor.ctx.close(); } catch (e) {}
+    }
+    micMonitor.ctx = micMonitor.source = micMonitor.analyser = null;
+  }
+  function resumeMicMeter() {
+    var ctx = micMonitor.ctx;
+    if (ctx && ctx.state === "suspended") {
+      try { ctx.resume().catch(function () {}); } catch (e) {}
+    }
+  }
+  function syncMicMeter() {
+    var el = $("mic-monitor");
+    if (!el) return;
+    var nameEl = $("mic-name");
+    var track = cam.audioTrack && cam.audioTrack.readyState === "live" ? cam.audioTrack : null;
+    if (!track) {
+      stopMicMeter();
+      micMonitor.track = null;
+      nameEl.textContent = "No mic audio";
+      el.dataset.state = "unavailable";
+      el.dataset.level = "0";
+      return;
+    }
+    nameEl.textContent = micLabel(track.label);
+    el.dataset.state = track.muted || track.enabled === false ? "unavailable" : "live";
+    if (micMonitor.track === track) return;
+    stopMicMeter();
+    micMonitor.track = track;
+    el.dataset.level = "0";
+    track.addEventListener("ended", syncMicMeter);
+    track.addEventListener("mute", syncMicMeter);
+    track.addEventListener("unmute", syncMicMeter);
+    var AudioCtx = root.AudioContext || root.webkitAudioContext;
+    if (!AudioCtx || !root.MediaStream) return;
+    try {
+      var ctx = new AudioCtx();
+      var src = ctx.createMediaStreamSource(new root.MediaStream([track]));
+      var analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.55;
+      src.connect(analyser);
+      var sample = new Uint8Array(analyser.fftSize);
+      micMonitor.ctx = ctx;
+      micMonitor.source = src;
+      micMonitor.analyser = analyser;
+      micMonitor.timer = root.setInterval(function () {
+        if (cam.audioTrack !== track || track.readyState !== "live") {
+          syncMicMeter();
+          return;
+        }
+        if (doc.visibilityState !== "visible") return;
+        if (ctx.state !== "running") { el.dataset.level = "0"; return; }
+        analyser.getByteTimeDomainData(sample);
+        var sum = 0;
+        for (var i = 0; i < sample.length; i++) {
+          var d = (sample[i] - 128) / 128;
+          sum += d * d;
+        }
+        var rms = Math.sqrt(sum / sample.length);
+        el.dataset.level = String(rms < 0.009 ? 0 : rms < 0.023 ? 1 : rms < 0.055 ? 2 : rms < 0.105 ? 3 : 4);
+      }, 140);
+      resumeMicMeter();
+    } catch (e) {
+      // The source name still shows when Web Audio metering is unavailable.
+      stopMicMeter();
+      micMonitor.track = track;
+    }
+  }
+  doc.addEventListener("pointerdown", resumeMicMeter, { passive: true });
+  doc.addEventListener("touchstart", resumeMicMeter, { passive: true });
+
   var takeDialog = $("take-save");
 
   function activeMode() {
@@ -2600,6 +2692,7 @@
       cam.wantedFacing = facing;
       cam.opening = "";
       cam.previewReady = true;
+      syncMicMeter();
       var box = $("cam");
       if (box) box.hidden = false;
       clearHeldPreview();
@@ -3172,6 +3265,8 @@
   }
   function recordClick() {
     if (editing || textEdit || cam.pending.length) return;
+    syncMicMeter();
+    resumeMicMeter();
     ensureCamera();
     ensureRecording();
     setRecLabel();
@@ -3512,7 +3607,7 @@
   applyFont();
   paintPicks();
   pulse();
-  root.addEventListener("pagehide", function () { endRec(); });
+  root.addEventListener("pagehide", function () { endRec(); stopMicMeter(); });
   ensureCamera();
   if (queue.length) { $("pending").hidden = false; }
   load(true).then(function () { flush(); poll(); checkHealth(true); });
