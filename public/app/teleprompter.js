@@ -3047,7 +3047,7 @@
             if (d.done) return;
             var next = typeof d.received === "number" && d.received > at ? d.received : end;
             if (next <= at || next > file.size) throw new Error("stuck");
-            videoSaveStatus("Saving " + Math.min(99, Math.round(next / file.size * 100)) + "%", "saving", true);
+            videoSaveStatus("Saving " + Math.min(99, Math.round(next / file.size * 100)) + "%" + (cam.uploads.length > 1 ? " · " + (cam.uploads.length - 1) + " queued" : ""), "saving", true);
             return step(next);
           });
         }, function () {
@@ -3072,37 +3072,101 @@
       return putChunks(file, started.token, started.chunk, mode);
     });
   }
+  /* Uploads run separately from the camera. Every accepted file is committed
+     to IndexedDB BEFORE the first Drive request. One active upload at a time
+     preserves iPhone memory, avoids contention with recording, and keeps FIFO
+     order even when many completed takes are waiting. */
+  var takeStore = root.FundhubTakeStore || null;
+  var uploadRetryTimer = null;
   function saveClick() {
     var file = cam.file;
     if (file) queueVideoSave(file);
   }
   function queueVideoSave(file) {
-    if (cam.uploads.indexOf(file) < 0) cam.uploads.push(file);
-    saveNextVideo();
+    if (!file) return;
+    if (!takeStore) {
+      cam.file = file;
+      videoSaveStatus("Phone storage unavailable · Save to Files", "failed", true);
+      shareOrDownload(file);
+      return;
+    }
+    var entry = { id: takeStore.id(), file: file, createdAt: Date.now(), attempts: 0 };
+    videoSaveStatus("Saving on device", "saving", true);
+    takeStore.put(entry).then(function () {
+      if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
+      cam.uploads.sort(function (a, b) { return a.createdAt - b.createdAt; });
+      videoSaveStatus("Saved on device · " + cam.uploads.length + " queued", "saving", true);
+      saveNextVideo();
+    }, function () {
+      cam.file = file;
+      var btn = $("b-save");
+      if (btn) btn.hidden = false;
+      videoSaveStatus("Storage full · Save to Files", "failed", true);
+      // No false local-saved claim. Present the real iPhone file backup.
+      shareOrDownload(file);
+    });
+  }
+  function restoreQueuedVideos() {
+    if (!takeStore) return;
+    takeStore.all().then(function (rows) {
+      rows.forEach(function (entry) {
+        if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
+      });
+      cam.uploads.sort(function (a, b) { return a.createdAt - b.createdAt; });
+      if (cam.uploads.length) {
+        videoSaveStatus("Recovered " + cam.uploads.length + " queued take" +
+          (cam.uploads.length === 1 ? "" : "s"), "saving", true);
+        saveNextVideo();
+      }
+    }, function () {
+      videoSaveStatus("Cannot read saved takes · Check phone storage", "failed", true);
+    });
   }
   function saveNextVideo() {
-    if (!cam.uploads.length || cam.saving) return;
-    var file = cam.uploads[0];
+    if (!cam.uploads.length || cam.saving || uploadRetryTimer) return;
+    var item = cam.uploads[0];
     cam.saving = true;
-    videoSaveStatus("Saving video", "saving", true);
+    var other = Math.max(0, cam.uploads.length - 1);
+    videoSaveStatus("Saving video" + (other ? " · " + other + " queued" : ""), "saving", true);
     function settled() {
-      cam.uploads.shift();
+      if (cam.uploads[0] && cam.uploads[0].id === item.id) cam.uploads.shift();
+      else cam.uploads = cam.uploads.filter(function (v) { return v.id !== item.id; });
       cam.saving = false;
       saveNextVideo();
     }
-    sendOriginal(file).then(function () {
-      if (cam.file === file) cam.file = null;
-      videoSaveStatus("Video saved", "saved", false);
-      settled();
+    sendOriginal(item.file).then(function () {
+      // The server acknowledged Drive before deleting this device copy.
+      return takeStore.remove(item.id).then(function () {
+        if (cam.file === item.file) cam.file = null;
+        videoSaveStatus(cam.uploads.length > 1 ? "Uploaded · next queued" : "Video saved", "saved", false);
+        settled();
+      }, function () {
+        cam.saving = false;
+        videoSaveStatus("Uploaded · local queue cleanup needed", "failed", true);
+      });
     }, function () {
-      cam.file = file;
-      shareOrDownload(file);
-      var btn = $("b-save");
-      if (btn) btn.hidden = false;
-      videoSaveStatus("On phone · Drive failed", "failed", false, 4200);
-      settled();
+      // Leave the file in IndexedDB for retry/reopen, not just in RAM.
+      cam.saving = false;
+      var attempts = item.attempts = (item.attempts || 0) + 1;
+      var delay = Math.min(60000, 3000 * Math.pow(2, Math.min(attempts - 1, 5)));
+      videoSaveStatus("Upload paused · saved on device", "failed", true);
+      takeStore.put(item).catch(function () {});
+      uploadRetryTimer = root.setTimeout(function () {
+        uploadRetryTimer = null;
+        saveNextVideo();
+      }, delay);
     });
   }
+  root.addEventListener("online", function () {
+    if (uploadRetryTimer) { root.clearTimeout(uploadRetryTimer); uploadRetryTimer = null; }
+    saveNextVideo();
+  });
+  root.addEventListener("beforeunload", function (e) {
+    if (!wantRec && !cam.pending.length) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
 
   function rangeAtPoint(x, y) {
     var range = null;
@@ -3609,6 +3673,7 @@
   pulse();
   root.addEventListener("pagehide", function () { endRec(); stopMicMeter(); });
   ensureCamera();
+  restoreQueuedVideos();
   if (queue.length) { $("pending").hidden = false; }
   load(true).then(function () { flush(); poll(); checkHealth(true); });
 
