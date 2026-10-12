@@ -394,7 +394,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] CXL Conversion Optimization minidegree, starting with Landing Page Optimization (check the "last updated" dates first) (10/3)
 - [ ] CXL Digital Psychology & Persuasion minidegree (10/3)
 - [ ] Scrape the courses (10/3)
-- [ ] Find the app someone sent you that breaks down Hormozi's ad creatives and storytelling (check texts, Instagram and Facebook, and maybe the 99ads Skool group) (10/2)
 - [ ] Typing practice on Monkeytype (english 1k, 60-second tests) toward 140 WPM (8/31)
 - [ ] Taxes (9/19, 9/20, 9/21)
 - [ ] Send the CPA the list of years

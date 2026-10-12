@@ -79,5 +79,6 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 - Repaired the earlier flattening so multiline checklist entries are full items again.
 - Removed the two repo-sync items proven complete: GitHub home and push main.
 - Removed one more item proven complete: the animation templates were found under `marketing/broll`.
-- Result: 476 unfinished items remain.
-- Verification: `rg -c '^- \[ \] ' TODO.md` returns 476; no checked items remain; `git diff --check` is clean.
+- Removed one duplicate app-research item; the earlier, fuller copy remains.
+- Result: 475 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 475; no checked items remain; `git diff --check` is clean.
