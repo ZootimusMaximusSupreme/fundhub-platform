@@ -76,5 +76,7 @@ In `/Users/chrisstanbridge/Developer/fundhub-platform`, audit sales-team launch 
 
 - Status: done.
 - `TODO.md` now contains only unique unchecked `- [ ]` items.
-- Removed completed items, source labels, audit notes, and history from the working TODO.
-- Result: 480 unfinished items remain.
+- Repaired the earlier flattening so multiline checklist entries are full items again.
+- Removed the two repo-sync items proven complete: GitHub home and push main.
+- Result: 477 unfinished items remain.
+- Verification: `rg -c '^- \[ \] ' TODO.md` returns 477; no checked items remain; `git diff --check` is clean.
