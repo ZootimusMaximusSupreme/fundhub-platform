@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   SLO_ADS_FOLDER_ID, DIRECT_BOOK_ADS_FOLDER_ID, TAKE_CHUNK_BYTES,
-  takeUploadName, takeFolderForName, chunkOk, parseContentRange,
+  takeUploadName, takeFolderForName, offerWordForKey, offerKeyForName, resolveVideoFolder, MARKETING_VIDEO_PARENT_ID, chunkOk, parseContentRange,
   sealTakeToken, openTakeToken, beginTake, continueTake
 } from "./take-upload.mjs";
 import { mintFilmKey } from "./shoot-film-key.mjs";
@@ -40,6 +40,29 @@ describe("the file name", () => {
     assert.equal(takeUploadName(""), "Take.mp4");
     assert.equal(takeUploadName("../"), "Take.mp4");
     assert.equal(takeUploadName("notes"), "notes.mp4");
+  });
+
+  test("future registered offers get their own folders, never silently SLO", async () => {
+    const offer = "capital_blueprint";
+    const title = offerWordForKey(offer);
+    assert.ok(title && title.length);
+    const name = title + " Ad 1 — Build your funding plan Take 1.mp4";
+    assert.equal(offerKeyForName(name, offer), offer);
+    assert.equal(offerKeyForName(name, "funding_dfy"), null);
+    const asks = [];
+    const got = await resolveVideoFolder(name, offer, {
+      ensureFolder: async (request) => {
+        asks.push(request);
+        return { ok: true, folderId: "new-offer-folder" };
+      },
+    });
+    assert.deepEqual(got, { offerKey: offer, folderId: "new-offer-folder" });
+    assert.equal(asks.length, 1);
+    assert.equal(asks[0].parentId, MARKETING_VIDEO_PARENT_ID);
+    assert.equal(asks[0].name, title + " Ads");
+    assert.equal(await resolveVideoFolder("Fake Ad 1 — No Take 1.mp4", "made_up_offer", {
+      ensureFolder: () => assert.fail("unknown offer must not create folders")
+    }), null);
   });
 
   test("Direct Book and SLO have distinct and explicit upload folders", () => {
