@@ -437,8 +437,10 @@ body.wording #flip{transform:none !important}
 </section>
 
 <div id="cam" hidden>
-  <video id="cam-video" playsinline autoplay muted></video>
-  <canvas id="cam-hold" hidden aria-hidden="true"></canvas>
+  <div id="cam-feed">
+    <video id="cam-video" playsinline autoplay muted></video>
+    <canvas id="cam-hold" hidden aria-hidden="true"></canvas>
+  </div>
   <div id="cam-shade"></div>
   <button type="button" id="cam-corner" aria-label="Show the camera"></button>
 </div>
@@ -464,6 +466,6 @@ body.wording #flip{transform:none !important}
 
 <script src="teleprompter-edits.js?v=20261012-reconnect2"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-<script src="teleprompter.js?v=20261012-60fps-copy1"></script>
+<script src="teleprompter.js?v=20261012-video-orientation1"></script>
 </body>
 </html>

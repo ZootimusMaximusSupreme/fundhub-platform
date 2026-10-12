@@ -136,6 +136,28 @@ describe("teleprompter, pure", () => {
     assert.match(record, /canvas\.captureStream\(fps\)/);
   });
 
+  test("saved video follows the phone angle even when the page viewport is stale", () => {
+    function videoShape(angle, mediaPortrait) {
+      const ctx = createContext({
+        console,
+        orientation: angle,
+        innerWidth: 390,
+        innerHeight: 844,
+        matchMedia: () => ({ matches: mediaPortrait })
+      });
+      runInContext(SRC, ctx);
+      const T = ctx.FundhubTeleprompter;
+      return T.recordFrameBox(1920, 1080, T.recordingIsPortrait(), false);
+    }
+    const upright = videoShape(0, false);
+    assert.ok(upright.height > upright.width, "upright phone saves a tall video");
+    const sideways = videoShape(90, true);
+    assert.ok(sideways.width > sideways.height, "sideways phone saves a wide video");
+    const otherSide = videoShape(-90, true);
+    assert.ok(otherSide.width > otherSide.height, "either sideways turn saves wide");
+    assert.ok(videoShape(180, false).height > videoShape(180, false).width);
+  });
+
   test("the wide back camera is chosen, not the ultra-wide", () => {
     const T = load();
     const devices = [
@@ -894,11 +916,6 @@ describe("teleprompter film look", () => {
     assert.match(CSS, /body\.cam-side-left #content/);
     assert.match(CSS, /width: 50%/);
     assert.match(SRC, /tp-portrait/);
-  });
-
-  test("portrait camera preview shows the whole frame without zoom crop", () => {
-    assert.match(CSS, /body\.tp-portrait #cam-video,\s*body\.tp-portrait #cam-hold\s*\{\s*object-fit:\s*contain;/);
-    assert.match(CSS, /#cam-hold[\s\S]*object-fit:\s*cover;/);
   });
 
   test("the two film buttons are glass, the shade is a little lighter, and speed is a tiny control", () => {

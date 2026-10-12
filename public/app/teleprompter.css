@@ -491,12 +491,20 @@ body:not(.wording) #content {
   object-fit:cover;
   pointer-events:none;
 }
-/* A wide iPhone camera feed must not be blown up and center-cropped on a
-   tall phone. Show the whole live frame in portrait; the black glass fills
-   any spare space. Sideways filming still fills the screen. */
-body.tp-portrait #cam-video,
-body.tp-portrait #cam-hold {
-  object-fit: contain;
+/* Turn only the live pixels when Safari supplies a sideways buffer. The
+   wrapper leaves the words and controls in their normal screen positions. */
+#cam-feed { position:absolute;inset:0;overflow:hidden; }
+#cam-video, #cam-hold { object-fit:contain; }
+#cam.cam-feed-rotated #cam-feed {
+  inset:auto;
+  left:50%;
+  top:50%;
+  width:100dvh;
+  height:100vw;
+  transform:translate(-50%,-50%) rotate(90deg);
+}
+#cam.cam-feed-rotated.cam-feed-front #cam-feed {
+  transform:translate(-50%,-50%) rotate(-90deg);
 }
 #camera-status{
   position:fixed;

@@ -994,7 +994,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox,
+    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -2501,6 +2501,14 @@
     $("camera-status-text").textContent = message || "";
     $("camera-retry").hidden = !retry;
   }
+  function syncPreviewOrientation() {
+    var box = $("cam"), video = $("cam-video");
+    if (!box || !video || !video.videoWidth || !video.videoHeight) return;
+    var portrait = recordingIsPortrait();
+    box.classList.toggle("cam-feed-front", cam.facing !== "environment");
+    box.classList.toggle("cam-feed-rotated",
+      portrait ? video.videoWidth > video.videoHeight : video.videoHeight > video.videoWidth);
+  }
   /* Hold the last real camera frame while Safari releases one lens and opens
      the other. Never put an empty video element in front of the filmmaker. */
   function holdPreview() {
@@ -2578,6 +2586,16 @@
     };
   }
   function recordingIsPortrait() {
+    // iPhone Home Screen mode can keep a stale page viewport after a turn.
+    // Use the device angle for the live view and saved canvas; the words and
+    // controls keep their normal screen positions.
+    if (typeof root.orientation === "number") return Math.abs(root.orientation % 180) !== 90;
+    var orientation = root.screen && root.screen.orientation;
+    if (orientation && typeof orientation.type === "string") {
+      if (orientation.type.indexOf("portrait") === 0) return true;
+      if (orientation.type.indexOf("landscape") === 0) return false;
+    }
+    if (orientation && typeof orientation.angle === "number") return Math.abs(orientation.angle % 180) !== 90;
     if (root.matchMedia) {
       try { return root.matchMedia("(orientation: portrait)").matches; } catch (e) {}
     }
@@ -2910,6 +2928,7 @@
       cam.wantedFacing = facing;
       cam.opening = "";
       cam.previewReady = true;
+      syncPreviewOrientation();
       syncMicMeter();
       var box = $("cam");
       if (box) box.hidden = false;
@@ -3941,12 +3960,14 @@
     doc.body.classList.toggle("cam-side-left", side === "left");
     doc.body.classList.toggle("cam-side-right", side === "right");
     doc.body.classList.toggle("tp-portrait", side === "full");
+    syncPreviewOrientation();
     applyFont();
     if (words.length) layout();
   }
   var rz = null;
   root.addEventListener("resize", function () { measureSafeTop.n = null; clearTimeout(rz); rz = setTimeout(function () { applyCameraSide(); }, 120); });
   root.addEventListener("orientationchange", applyCameraSide);
+  $("cam-video").addEventListener("resize", syncPreviewOrientation);
   try {
     var landQ = root.matchMedia && root.matchMedia("(orientation: landscape)");
     if (landQ && landQ.addEventListener) landQ.addEventListener("change", applyCameraSide);
