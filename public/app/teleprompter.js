@@ -976,7 +976,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel,
+    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -2518,6 +2518,35 @@
     if (width > 0) return hi ? 16000000 : 10000000;
     return 8000000;
   }
+  /* Saved video is cropped without stretching pixels. The front camera is
+     mirrored in the file; the rear camera is not. A portrait phone always
+     gets a tall file, even when Safari hands us a landscape camera stream. */
+  function recordFrameBox(sourceWidth, sourceHeight, portrait, requires4K) {
+    var w = Math.round(Number(sourceWidth) || 0);
+    var h = Math.round(Number(sourceHeight) || 0);
+    if (w < 2 || h < 2) return null;
+    var targetWidth = portrait ? (requires4K ? 2160 : 1080) : (requires4K ? 3840 : 1920);
+    var targetHeight = portrait ? (requires4K ? 3840 : 1920) : (requires4K ? 2160 : 1080);
+    var ar = targetWidth / targetHeight;
+    var cutW = Math.min(w, h * ar);
+    var cutH = Math.min(h, w / ar);
+    // Never invent resolution from a lower quality camera source.
+    var factor = Math.min(1, targetWidth / cutW, targetHeight / cutH);
+    var outW = Math.max(2, Math.floor(cutW * factor / 2) * 2);
+    var outH = Math.max(2, Math.floor(cutH * factor / 2) * 2);
+    return {
+      width: outW, height: outH,
+      sx: Math.max(0, (w - cutW) / 2), sy: Math.max(0, (h - cutH) / 2),
+      sw: cutW, sh: cutH,
+      portrait: !!portrait, needsBetterCamera: cutW < targetWidth || cutH < targetHeight
+    };
+  }
+  function recordingIsPortrait() {
+    if (root.matchMedia) {
+      try { return root.matchMedia("(orientation: portrait)").matches; } catch (e) {}
+    }
+    return (root.innerHeight || 0) >= (root.innerWidth || 0);
+  }
   function isPhone() {
     var ua = (root.navigator && root.navigator.userAgent) || "";
     return /iPhone|iPad|iPod/.test(ua) || (root.navigator.platform === "MacIntel" && root.navigator.maxTouchPoints > 1);
@@ -2577,11 +2606,10 @@
     }
     cam.pumpVideoFrame = 0;
   }
-  /* One stable canvas video track per take. iPhone Safari ends a MediaRecorder
-     if its recorded camera track is replaced or stopped. Capture the canvas
-     once, keep its track unchanged, and draw whichever lens is currently live.
-     The source camera can switch repeatedly without splitting the take.
-     1080p/24fps on iPhone avoids the old 4K canvas jank during word scrolling. */
+  /* MediaRecorder stays attached to one canvas track for a whole take. Camera
+     switches redraw into this canvas without stopping the clip. The canvas
+     holds the previous good image until the new lens has actual video frames.
+     The blur/dark overlay is PREVIEW ONLY and never enters the saved video. */
   function continuousRecordStream(stream) {
     var video = $("cam-video");
     if (!video || !stream) return null;
@@ -2590,30 +2618,42 @@
     if (!canvas.captureStream) return null;
     var track = stream.getVideoTracks()[0];
     var st = track && track.getSettings ? track.getSettings() : {};
-    var w = video.videoWidth || st.width || 1280;
-    var h = video.videoHeight || st.height || 720;
-    /* Ads can use the smaller fast canvas. VSLs and thank-you videos follow
-       the 4K policy: never silently downscale their recorded frames. */
+    var w = video.videoWidth || st.width || 0;
+    var h = video.videoHeight || st.height || 0;
     var requires4K = stays4K(scripts[cur]);
-    var scale = requires4K ? 1 : Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
-    if (requires4K && !((w >= 3840 && h >= 2160) || (w >= 2160 && h >= 3840))) {
-      camLine("This VSL or thank-you camera is not 4K. Check the source before filming.", true);
+    var portrait = recordingIsPortrait();
+    var layout = recordFrameBox(w, h, portrait, requires4K);
+    if (!layout) {
+      camLine("Camera video is not ready. Wait for your face before recording.", true);
+      return null;
     }
-    canvas.width = Math.max(2, Math.round(w * scale));
-    canvas.height = Math.max(2, Math.round(h * scale));
+    canvas.width = layout.width;
+    canvas.height = layout.height;
     var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) return null;
-    var fps = isPhone() ? 24 : 30;
+    if (layout.needsBetterCamera) {
+      camLine("Camera quality is only " + layout.width + "×" + layout.height +
+        ". This browser cannot supply sharper video at this angle.", true);
+    }
+    // 30 fps is standard for smooth social videos. Do not force 24 fps on iPhone.
+    var fps = Math.min(30, Math.max(24, Math.round(st.frameRate || 30)));
     function draw() {
       if (!cam.pumping) return;
-      if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0) {
+      if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
+          var box = recordFrameBox(video.videoWidth, video.videoHeight, portrait, requires4K);
+          if (!box) return;
+          ctx.save();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          if (cam.facing !== "environment") ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        } catch (e) { /* retain the last frame during a lens transition */ }
+          if (cam.facing !== "environment") {
+            // A normal mirrored selfie, saved in the video, not just the preview.
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
+            0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
       cam.pumpTimer = root.setTimeout(draw, 1000 / fps);
     }
@@ -2625,7 +2665,7 @@
     catch (e) { stopMirrorPump(); return null; }
     var audio = cam.audioTrack || stream.getAudioTracks()[0];
     if (audio && audio.readyState === "live") {
-      try { out.addTrack(audio); } catch (e) { /* video can still be saved silent */ }
+      try { out.addTrack(audio); } catch (e) { /* camera still saves */ }
     }
     return out;
   }
@@ -2651,7 +2691,11 @@
       camLine("This browser cannot record a continuous camera-switching video.", true);
       return;
     }
-    opts.videoBitsPerSecond = Math.min(opts.videoBitsPerSecond, isPhone() ? 12000000 : 22000000);
+    // Safari's previous 12 Mbps cap made 4K and active movement muddy.
+    // Use the actual saved canvas size, not the camera's different orientation.
+    var savedWidth = cam.canvas ? Math.max(cam.canvas.width, cam.canvas.height) : (st.width || 0);
+    opts.videoBitsPerSecond = savedWidth >= 3840 ? 48000000 :
+      savedWidth >= 1920 ? 24000000 : 14000000;
     var rec;
     try { rec = new root.MediaRecorder(recStream, opts); }
     catch (e1) {
