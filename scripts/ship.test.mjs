@@ -27,6 +27,7 @@ import {
   isDirectRun,
   redact,
   reasonLine,
+  morningOnlySlow,
   GIT_NO_PROMPT,
   PULSE_SHIP_GUARDS,
   PULL_TIMEOUT_MS,
@@ -367,7 +368,7 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort â
     assert.ok(skip > pull && lint > skip && deploy > lint, "pull, then skip check, then checks, then deploy");
   });
 
-  test("ship.mjs: pulse guards and both bundle proofs run before a live deploy", () => {
+  test("ship.mjs: checks stay strict; only measured morning audit slowness can be reported before release", () => {
     const required = [
       "src/pulse/registry.test.mjs",
       "src/pulse/heartbeats.test.mjs",
@@ -390,7 +391,30 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort â
     const morning = main.indexOf('run("node", ["scripts/pulse/prove.mjs"]');
     const deploy = main.indexOf('run("netlify", ["deploy", "--prod"');
     assert.ok(guard > 0 && catalog > guard && hourly > catalog && morning > hourly && deploy > morning,
-      "pulse guards, catalog freshness, and both bundle proofs must block the deploy");
+      "pulse checks and both audit commands must run before release");
+    assert.match(main, /if \(!morningOnlySlow\(morningAudit\.out\)\) \{/);
+    assert.match(main, /fail\("morning pulse bundle proof failed/);
+    assert.match(main, /hourly pulse bundle proof failed/);
+    assert.match(main, /Deployment continues because ONLY runtime duration failed/);
+  });
+
+  test("only slow checks qualify for a morning audit timing exception", () => {
+    const slow = "\nPROBLEMS (3):\n" +
+      "  - the whole-morning run took 22.7 s (limit 20 s; Netlify cuts at 26 s)\n" +
+      "  - coverage-gap-crm-links took 45.4 s (limit 20 s; Netlify cuts at 26 s)\n" +
+      "  - coverage-gap-fulfillment took 26.4 s (limit 20 s; Netlify cuts at 26 s)\n";
+    assert.equal(morningOnlySlow(slow), true);
+    const failures = [
+      "",
+      "everything is green",
+      "\nPROBLEMS (1):\n  - refused: DELETE FROM clients",
+      "\nPROBLEMS (1):\n  - SQL error (staff): 500",
+      "\nPROBLEMS (1):\n  - coverage-gap-crm-links threw: unauthorized",
+      "\nPROBLEMS (1):\n  - bundle is missing src/pulse/coverage/gap-check.mjs",
+      "\nPROBLEMS (1):\n  - coverage-gap-crm-links took 45.4 s (limit 20 s; Netlify cuts at 26 s)\n  - refused: DELETE",
+      "\nPROBLEMS (2):\n  - the whole-morning run took 22.7 s (limit 20 s; Netlify cuts at 26 s)"
+    ];
+    for (const text of failures) assert.equal(morningOnlySlow(text), false, text);
   });
 
   test("ship.mjs: between the pull and the deploy, the pull can stop the ship only when the folder was left mid-pull", () => {

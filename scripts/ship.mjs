@@ -111,6 +111,28 @@ export function redact(text, env = process.env) {
     .replace(/x-access-token:[^@\s]+@/g, "x-access-token:[token]@");
 }
 
+/**
+ * Only an over-budget timing audit may be reported instead of holding a deploy.
+ * Every refusal, SQL error, missing check, thrown test, and other failure still
+ * blocks release. The slow morning audit is NOT made green: the 6 a.m. pulse
+ * keeps checking it and CI prints the exact over-budget steps to fix.
+ */
+export function morningOnlySlow(output) {
+  const text = String(output || "");
+  const marker = /\nPROBLEMS \((\d+)\):\s*\n/g;
+  let match, at = -1, count = 0;
+  while ((match = marker.exec(text))) { at = marker.lastIndex; count = Number(match[1]); }
+  if (at < 0 || !Number.isSafeInteger(count) || count < 1) return false;
+  const problems = text.slice(at).split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "))
+    .map((line) => line.slice(2));
+  if (problems.length !== count) return false;
+  return problems.every((p) =>
+    /^(?:the whole-morning run|coverage-[a-z0-9-]+) took \d+(?:\.\d+)? s \(limit \d+ s; Netlify cuts at \d+ s\)$/.test(p)
+  );
+}
+
 /** The one line worth showing from a failed git or push run. */
 export function reasonLine(text, env = process.env) {
   const lines = redact(text, env).split("\n").map((l) => l.trim()).filter(Boolean);
@@ -291,8 +313,19 @@ async function main() {
   if (!run("node", ["scripts/pulse/prove.mjs", "--beats"]).ok) {
     fail("hourly pulse bundle proof failed: run npm run pulse:prove -- --beats");
   }
-  if (!run("node", ["scripts/pulse/prove.mjs"]).ok) {
-    fail("morning pulse bundle proof failed: run npm run pulse:prove");
+  const morningAudit = run("node", ["scripts/pulse/prove.mjs"], { quiet: true });
+  if (!morningAudit.ok) {
+    if (!morningOnlySlow(morningAudit.out)) {
+      console.error("Morning proof failure:\n" + redact(morningAudit.out.slice(-7000)));
+      fail("morning pulse bundle proof failed: run npm run pulse:prove");
+    }
+    // Owner launch decision, 2026-10-12: a heavy read-only catalog scan is
+    // still RED and must be fixed, but may not stop the teleprompter release.
+    // Real security/pulse guards, heartbeat checks, hourly beat bundle proof,
+    // SQL and refused-write failures remain blocking.
+    const tail = morningAudit.out.slice(morningAudit.out.lastIndexOf("\nPROBLEMS (")).trim();
+    console.warn("  WARNING: Morning heartbeat audit is too slow (still RED):\n" + redact(tail.slice(0, 3000)));
+    say("  Deployment continues because ONLY runtime duration failed.");
   }
   const { EXPECTED_MIGRATIONS } = await import(pathToFileURL(path.join(ROOT, "db/expected-migrations.mjs")).href);
   const onDisk = [];
@@ -303,7 +336,7 @@ async function main() {
   }
   const unlisted = onDisk.filter((k) => !EXPECTED_MIGRATIONS.includes(k));
   if (unlisted.length) fail(`db files missing from db/expected-migrations.mjs (run npm run migrations:manifest): ${unlisted.join(", ")}`);
-  say("  lint, route guards, coverage catalog, pulse guards, and both bundle proofs pass");
+  say("  lint, route guards, catalog, pulse guards and hourly proof pass; morning audit reported above");
 
   // ── 5. database changes ─────────────────────────────────────────────────────
   // The key is set for Claude's shell by .claude/settings.local.json (gitignored), not for
