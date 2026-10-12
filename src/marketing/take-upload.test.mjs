@@ -1,4 +1,4 @@
-// Save the video: the original bytes, the SLO Ads folder, no live Drive call.
+// Save the original bytes in the proper offer's Drive folder, no live write.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -7,7 +7,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  SLO_ADS_FOLDER_ID, TAKE_CHUNK_BYTES, takeUploadName, chunkOk, parseContentRange,
+  SLO_ADS_FOLDER_ID, DIRECT_BOOK_ADS_FOLDER_ID, TAKE_CHUNK_BYTES,
+  takeUploadName, takeFolderForName, chunkOk, parseContentRange,
   sealTakeToken, openTakeToken, beginTake, continueTake
 } from "./take-upload.mjs";
 import { mintFilmKey } from "./shoot-film-key.mjs";
@@ -39,6 +40,16 @@ describe("the file name", () => {
     assert.equal(takeUploadName(""), "Take.mp4");
     assert.equal(takeUploadName("../"), "Take.mp4");
     assert.equal(takeUploadName("notes"), "notes.mp4");
+  });
+
+  test("Direct Book and SLO have distinct and explicit upload folders", () => {
+    assert.equal(takeFolderForName("Direct Book Ad 5 — Paying for speed Take 1.mp4"), DIRECT_BOOK_ADS_FOLDER_ID);
+    assert.equal(takeFolderForName("Direct Book VSL 1 — Watch page Take 2.mp4"), DIRECT_BOOK_ADS_FOLDER_ID);
+    assert.equal(takeFolderForName("Direct Book Thank You Take 1.mp4"), DIRECT_BOOK_ADS_FOLDER_ID);
+    assert.equal(takeFolderForName(NAME), SLO_ADS_FOLDER_ID);
+    assert.equal(takeFolderForName("Take.webm"), null);
+    assert.equal(takeFolderForName("SLO Ad 7 Take 1.mp4"), null);
+    assert.equal(takeFolderForName("Other Offer Ad 5 — Paying for speed Take 1.mp4"), null);
   });
 });
 
@@ -101,6 +112,31 @@ describe("the route", () => {
     assert.equal(calls[0].totalBytes, 16);
   });
 
+  test("Direct Book cannot be misrouted to SLO; unknown filenames fail closed", async () => {
+    const calls = [];
+    for (const name of ["Take.mp4", "Unidentified Ad 1 — Nope Take 1.mp4"]) {
+      const out = res();
+      await handler({ method: "POST", headers: {}, body: { name, bytes: 16 } }, out, {
+        filmSecret: SECRET,
+        openVideoSession: async (arg) => {
+          calls.push(arg);
+          return { ok: true, sessionUrl: SESSION };
+        }
+      });
+      assert.equal(out.statusCode, 400);
+      assert.equal(out.body.error, "unknown_offer");
+    }
+    assert.equal(calls.length, 0);
+    const out = res();
+    await handler({ method: "POST", headers: {}, body: { name: "Direct Book Ad 5 — Paying for speed Take 1.mp4", bytes: 16 } }, out, {
+      filmSecret: SECRET,
+      openVideoSession: async (arg) => { calls.push(arg); return { ok: true, sessionUrl: SESSION }; }
+    });
+    assert.equal(out.statusCode, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].parentId, DIRECT_BOOK_ADS_FOLDER_ID);
+  });
+
   test("a film key starts the same save", async () => {
     const key = mintFilmKey({ orgId: ORG, shootId: SHOOT, secret: SECRET, now: () => Date.parse("2026-10-07T12:00:00Z") });
     const out = res();
@@ -108,15 +144,15 @@ describe("the route", () => {
     await handler({
       method: "POST",
       headers: { "x-shoot-film": key.token },
-      body: { name: "Take.webm", bytes: 16, content_type: "video/webm" }
+      body: { name: "Direct Book Ad 5 — Paying for speed Take 1.webm", bytes: 16, content_type: "video/webm" }
     }, out, {
       filmSecret: SECRET,
       now: () => Date.parse("2026-10-07T12:00:00Z"),
       openVideoSession: async (arg) => { parent = arg.parentId; return { ok: true, sessionUrl: SESSION }; }
     });
     assert.equal(out.statusCode, 200);
-    assert.equal(parent, SLO_ADS_FOLDER_ID);
-    assert.equal(out.body.name, "Take.webm");
+    assert.equal(parent, DIRECT_BOOK_ADS_FOLDER_ID);
+    assert.equal(out.body.name, "Direct Book Ad 5 — Paying for speed Take 1.webm");
   });
 
   test("the bytes handed to Drive are the bytes from the phone", async () => {
