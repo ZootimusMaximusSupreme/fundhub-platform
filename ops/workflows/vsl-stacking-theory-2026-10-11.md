@@ -9,7 +9,7 @@ Status: in progress
 |---|---|---|
 | Theory and origin research | current session | done |
 | Funnel map | research agent | pending |
-| Examples and evidence | research agent | pending |
+| Examples and evidence | current session | done |
 | Critical review | current session | done |
 | Final synthesis | current session | pending |
 
@@ -43,6 +43,15 @@ Sources supplied by user:
 - Separated sourced conclusions from reasoned inference.
 - No code, product, funnel, or marketing asset was changed.
 
+### Examples and evidence — done
+
+- Added `research_notes/VSL Stacking Theory/examples-and-evidence.md`.
+- Exact public use of the term found in Josh Hamilton's LinkedIn post. The post claims stage-level targets for bookings, show rate, and closes, but does not provide independently verifiable results.
+- Adjacent public examples found from Talking Heads, ElasticFunnels, Mark Pescetti, and Ash Davis. These show multi-video, modular, or stage-based practices but do not prove the named method.
+- Stronger adjacent evidence found in VWO/Wingify, Unbounce, NextAfter, Wistia, Google Analytics, and academic research. Findings show video effects are context-dependent and can be positive, neutral, or negative.
+- Instagram URLs supplied in the board were not independently inspected because web fetches were throttled.
+- No public, independently audited full-stack VSL experiment was found.
+
 ## Blockers and open questions
 
 - Exact first use and creator of the phrase remain unconfirmed.
@@ -50,3 +59,4 @@ Sources supplied by user:
 - No public head-to-head experiment comparing a VSL stack with one long VSL was found.
 - Other workflows remain pending for funnel examples and the final synthesis.
 - Critical-review gap: no reliable public randomized study was found that directly compares one VSL with a multi-micro-VSL stack while holding offer, traffic, and message constant.
+- Examples/evidence gap: no public operator has published stage-level randomized results for a true multi-VSL stack with downstream revenue and quality metrics.
