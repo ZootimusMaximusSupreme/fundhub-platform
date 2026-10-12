@@ -277,8 +277,16 @@ async function main() {
     console.error("Pulse coverage failures:\n" + redact(details.slice(0, 12000)));
     fail(`a pulse coverage guard failed: run node --test ${PULSE_SHIP_GUARDS.join(" ")}`);
   }
+  // Compile the catalog from the currently committed proof recipes. A proof
+  // improvement legitimately changes this generated artifact; an out-of-date
+  // copy must not deadlock every release. Rebuild reproducibly, check the
+  // exact generated content, then run BOTH bundle proofs as normal.
   if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok) {
-    fail("coverage catalog is stale: run npm run pulse:catalog");
+    const rebuilt = run("node", ["scripts/pulse/compile-catalog.mjs"], { quiet: true });
+    if (!rebuilt.ok) fail("the coverage catalog could not be generated: " + reasonLine(rebuilt.out));
+    const valid = run("node", ["scripts/pulse/compile-catalog.mjs", "--check"], { quiet: true });
+    if (!valid.ok) fail("the regenerated coverage catalog does not match current sources.");
+    say("  regenerated and verified coverage catalog from current proof recipes");
   }
   if (!run("node", ["scripts/pulse/prove.mjs", "--beats"]).ok) {
     fail("hourly pulse bundle proof failed: run npm run pulse:prove -- --beats");
@@ -407,7 +415,9 @@ async function main() {
     ].join("\n"));
   }
   fs.appendFileSync(LOG, `| ${stamp} | ${head} | ${applied} | ${health.migrations} applied, ${health.pending} pending |\n`);
-  run("git", ["add", SHIP_LOG], { quiet: true });
+  // When regeneration was required, the ship-log commit also records the
+  // generated source-of-truth artifact; it cannot silently drift on the next.
+  run("git", ["add", SHIP_LOG, "src/pulse/catalog/generated.json"], { quiet: true });
   run("git", ["commit", "-q", "-m", `ship: ${head} is live\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>`], { quiet: true });
   say(`\n✔ Shipped ${head}. Logged in ops/ship-log.md.`);
 
