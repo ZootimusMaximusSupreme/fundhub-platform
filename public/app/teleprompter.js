@@ -190,6 +190,23 @@
     return (offer ? offer + " " : "") + label + (n != null && String(n).trim() ? " " + String(n).trim() : "");
   }
 
+  /** Direct Book and SLO have separate folders. Additional offers learn their
+   * folder from the upload response, not from an unrelated offer. */
+  function driveUrlForScript(s) {
+    var key = String(s && s.offer_key || "").trim();
+    var saved = LS && LS.get ? LS.get("videoFolders", {}) : {};
+    if (key && saved && saved[key] && /^https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]+$/.test(saved[key])) return saved[key];
+    if (key === "funding_dfy" || (!key && String(s && s.offer_word || "").toLowerCase() === "direct book"))
+      return "https://drive.google.com/drive/folders/1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry";
+    if (key === "slo_roadmap" || (!key && String(s && s.offer_word || "").toLowerCase() === "slo"))
+      return "https://drive.google.com/drive/folders/13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ";
+    return "";
+  }
+  function queueHook(s) {
+    var phrase = String(s && (s.teleprompter_text || s.body) || "").replace(/\s+/g, " ").trim();
+    if (!phrase) return "";
+    return phrase.length > 126 ? phrase.slice(0, 123).replace(/\s+\S*$/, "") + "…" : phrase;
+  }
   function chipStart() { return { last: null }; }
 
   /**
@@ -936,7 +953,7 @@
     nextToRoll: nextToRoll, nextInOrder: nextInOrder, afterMark: afterMark, keyId: keyId, actionFor: actionFor,
     gestureStart: gestureStart, gestureStep: gestureStep, scriptDelta: scriptDelta, wordAfterEdit: wordAfterEdit,
     filmQueue: filmQueue, queueStep: queueStep, nextUnfilmed: nextUnfilmed,
-    chipLabel: chipLabel, queueLabel: queueLabel, chipStart: chipStart, chipStep: chipStep,
+    chipLabel: chipLabel, queueLabel: queueLabel, driveUrlForScript: driveUrlForScript, queueHook: queueHook, chipStart: chipStart, chipStep: chipStep,
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
@@ -1312,6 +1329,13 @@
     var chip = $("p-file");
     chip.hidden = false;
     chip.textContent = label;
+    var drive = $("b-drive");
+    if (drive) {
+      var url = driveUrlForScript(s);
+      drive.hidden = !url;
+      if (url) drive.href = url;
+      drive.setAttribute("aria-label", "Double-tap to open " + String(s.offer_word || "this offer") + " videos in Google Drive");
+    }
     $("b-copy").hidden = !s.take_file_name;
     var endTake = $("end-take");
     if (s.take_file_name) {
@@ -1699,9 +1723,11 @@
       b.type = "button";
       b.className = "item" + (i === cur ? " on" : "");
       if (i === cur) b.setAttribute("aria-current", "true");
-      b.innerHTML = '<span class="t"></span><span class="m"></span>';
-      b.querySelector(".t").textContent = title;
-      b.querySelector(".m").textContent = (i === cur ? "Current · " : "") + queueLabel(s);
+      b.innerHTML = '<span class="t"></span><span class="m"></span><span class="hook"></span>';
+      b.querySelector(".t").textContent = queueLabel(s) + " — " + title;
+      b.querySelector(".m").textContent = (i === cur ? "Current · " : "") +
+        (s.take_no ? "Take " + s.take_no + " · " : "") + (s.first_line_only ? "Opening only" : "Full script");
+      b.querySelector(".hook").textContent = queueHook(s);
       b.onclick = function () { pickQueued(i); };
       list.appendChild(b);
     });
@@ -3438,6 +3464,30 @@
   $("b-got").onclick = gotIt;
   $("b-again").onclick = anotherTake;
   $("empty-retry").onclick = function () { load(true); };
+  /* Exactly two taps open the correct offer's Drive folder in a new tab.
+     Prevent a one-tap anchor navigation so filming is never interrupted. */
+  var driveBtn = $("b-drive"), driveGest = chipStart(), driveDown = null;
+  if (driveBtn) {
+    driveBtn.addEventListener("pointerdown", function (e) {
+      e.stopPropagation();
+      if (e.button > 0) return;
+      driveDown = { x: e.clientX, y: e.clientY };
+    });
+    driveBtn.addEventListener("pointerup", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var down = driveDown; driveDown = null;
+      if (!down || Math.abs(e.clientX-down.x) > TAP_SLOP || Math.abs(e.clientY-down.y) > TAP_SLOP) return;
+      var step = chipStep(driveGest, { type:"up", x:e.clientX, y:e.clientY, t:root.performance.now() });
+      driveGest = step.g;
+      if (step.go && !driveBtn.hidden && driveBtn.href) {
+        var url = driveUrlForScript(scripts[cur]);
+        if (!url) return;
+        try { root.open(url, "_blank", "noopener,noreferrer"); }
+        catch (err) { say("Could not open Drive. Please retry."); }
+      }
+    });
+    driveBtn.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); });
+  }
   var chipGest = chipStart();
   var chipDown = null;
   var chipBtn = $("p-file");
