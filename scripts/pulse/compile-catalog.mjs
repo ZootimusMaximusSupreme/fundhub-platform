@@ -48,7 +48,19 @@ const catalog = compileCatalog(sources, [doors, display, data, flow], { resolve 
 if (catalog.rows < MIN_ROWS || catalog.unique < MIN_UNIQUE) {
   throw new Error(`Coverage map shrank: ${catalog.rows} rows / ${catalog.unique} unique; expected at least ${MIN_ROWS} / ${MIN_UNIQUE}.`);
 }
-const body = `${JSON.stringify(catalog, null, 2)}\n`;
+function renderCatalog(value) {
+  const head = {
+    version: value.version,
+    rows: value.rows,
+    repeats: value.repeats,
+    unique: value.unique,
+    counts: value.counts
+  };
+  const lines = Object.entries(head).map(([key, item]) => `  ${JSON.stringify(key)}: ${JSON.stringify(item)},`);
+  return `{\n${lines.join("\n")}\n  "items": [\n${value.items.map((item) => `    ${JSON.stringify(item)}`).join(",\n")}\n  ]\n}\n`;
+}
+
+const body = renderCatalog(catalog);
 if (CHECK) {
   const saved = fs.existsSync(OUTPUT) ? fs.readFileSync(OUTPUT, "utf8") : "";
   if (saved !== body) {
