@@ -134,11 +134,11 @@ test("Twilio and Mailgun receipts save the exact fake message result", async () 
   assert.equal(email.status, "delivered");
 });
 
-test("a signed contract link opens saved words and records the view", async () => {
+test("the contract link proves GET, POST, changed-word refusal, and missing-secret refusal", async () => {
   const oldSecret = process.env.CONTRACT_URL_SECRET;
   process.env.CONTRACT_URL_SECRET = SECRET;
   const rendered = "Funding fee: 10%";
-  const checksum = crypto.createHash("sha256").update(rendered).digest("hex");
+  const checksum = `sha256:${crypto.createHash("sha256").update(rendered).digest("hex")}`;
   const contract = {
     id: CONTRACT_ID,
     title: "Door proof contract",
@@ -172,12 +172,38 @@ test("a signed contract link opens saved words and records the view", async () =
     field_values: {},
     view_count: 0,
   };
+  const secondSigner = {
+    ...signer,
+    id: "00000000-0000-4000-8000-000000000107",
+    signer_index: 1,
+    role_label: "Fundhub",
+    name: "Fake Countersigner",
+    email: "counter@example.test",
+  };
+  contract.signing_order = "parallel";
+  const signers = [signer, secondSigner];
+  let signatureWrites = 0;
+  let queryCalls = 0;
   const originalQuery = db.query;
-  db.query = async (sql) => {
+  db.query = async (sql, params = []) => {
+    queryCalls += 1;
     const text = String(sql);
     if (/FROM contracts WHERE/.test(text)) return { rows: [contract] };
     if (/SELECT checksum FROM document_versions/.test(text)) return { rows: [{ checksum }] };
-    if (/FROM contract_signers\s+WHERE contract_id/.test(text)) return { rows: [signer] };
+    if (/FROM contract_signers\s+WHERE contract_id/.test(text)) return { rows: signers };
+    if (/SET status = 'signed'/.test(text)) {
+      signatureWrites += 1;
+      assert.equal(params[0], SIGNER_ID);
+      Object.assign(signer, {
+        status: "signed",
+        signed_at: params[1],
+        signer_name: params[2],
+        signer_ip: params[3],
+        signer_user_agent: params[4],
+        field_values: JSON.parse(params[5]),
+      });
+      return { rows: [signer] };
+    }
     if (/UPDATE contracts/.test(text)) {
       contract.status = "viewed";
       contract.view_count += 1;
@@ -200,6 +226,46 @@ test("a signed contract link opens saved words and records the view", async () =
     assert.equal(response.body.contract.can_sign, true);
     assert.equal(contract.view_count, 1);
     assert.equal(signer.view_count, 1);
+
+    const signedResponse = responseRecorder();
+    await contractSign({
+      method: "POST",
+      query,
+      headers: { "user-agent": "door-proof-browser", "x-forwarded-for": "192.0.2.10" },
+      body: { signer_name: "Fake Client", agreed: true },
+    }, signedResponse);
+    assert.equal(signedResponse.statusCode, 200);
+    assert.equal(signedResponse.body.ok, true);
+    assert.equal(signedResponse.body.complete, false);
+    assert.equal(signatureWrites, 1);
+    assert.equal(signer.status, "signed");
+    assert.equal(signer.signer_name, "Fake Client");
+    assert.equal(signer.signer_ip, "192.0.2.10");
+    assert.equal(signer.signer_user_agent, "door-proof-browser");
+
+    Object.assign(signer, {
+      status: "viewed", signed_at: null, signer_name: null,
+      signer_ip: null, signer_user_agent: null, field_values: {},
+    });
+    contract.rendered_body = "Funding fee: 99%";
+    const changedResponse = responseRecorder();
+    await contractSign({
+      method: "POST",
+      query,
+      headers: {},
+      body: { signer_name: "Fake Client", agreed: true },
+    }, changedResponse);
+    assert.equal(changedResponse.statusCode, 409);
+    assert.equal(changedResponse.body.error, "content_changed");
+    assert.equal(signatureWrites, 1, "changed words must not write a signature");
+
+    const beforeMissingSecret = queryCalls;
+    delete process.env.CONTRACT_URL_SECRET;
+    const missingSecretResponse = responseRecorder();
+    await contractSign({ method: "GET", query, headers: {} }, missingSecretResponse);
+    assert.equal(missingSecretResponse.statusCode, 503);
+    assert.equal(missingSecretResponse.body.error, "not_configured");
+    assert.equal(queryCalls, beforeMissingSecret, "missing secret must refuse before database access");
   } finally {
     db.query = originalQuery;
     if (oldSecret === undefined) delete process.env.CONTRACT_URL_SECRET;
@@ -224,7 +290,9 @@ test("a signed document link returns the saved fake bytes", async () => {
   });
   const storageKey = stored.storageKey;
   const originalQuery = db.query;
+  let documentQueries = 0;
   db.query = async (sql, params) => {
+    documentQueries += 1;
     assert.match(String(sql), /FROM documents d/);
     assert.equal(params[0], DOCUMENT_ID);
     return { rows: [{
@@ -248,6 +316,18 @@ test("a signed document link returns the saved fake bytes", async () => {
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.body, bytes);
     assert.equal(response.headers["content-type"], "text/plain");
+
+    const beforeMissingSecret = documentQueries;
+    delete process.env.DOCUMENT_URL_SECRET;
+    const refused = responseRecorder();
+    await documentDownload({
+      method: "GET",
+      query: { id: DOCUMENT_ID, ...Object.fromEntries(parsed.searchParams) },
+      headers: {},
+    }, refused);
+    assert.equal(refused.statusCode, 503);
+    assert.equal(refused.body.error, "not_configured");
+    assert.equal(documentQueries, beforeMissingSecret, "missing secret must refuse before database access");
   } finally {
     db.query = originalQuery;
     if (oldSecret === undefined) delete process.env.DOCUMENT_URL_SECRET;

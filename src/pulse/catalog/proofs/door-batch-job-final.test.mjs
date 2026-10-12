@@ -11,6 +11,17 @@ import { sweep as merchantSweep } from "../../../workflows/merchant-pull-sweeper
 import { sweep as paidExpirySweep } from "../../../workflows/paid-checkout-expiry-sweeper.mjs";
 import { sweepHubstaffPoll } from "../../../../netlify/functions/hubstaff-poll-sweeper.mjs";
 import { makeHandler as makeOfferHandler } from "../../../../netlify/functions/marketing-offer-background.mjs";
+import { encryptProcessorApiKey } from "../../../merchant/secrets.mjs";
+import { runOfferJob } from "../../../marketing/offer-run.mjs";
+import { askAnthropic } from "../../../marketing/offer-transport.mjs";
+import { createOfferJob } from "../../../marketing/offer-store.mjs";
+import { makeFakeDb as makeOfferDb } from "../../../marketing/fixtures/offer-fake-db.mjs";
+import {
+  anthropicMessage,
+  CANDIDATES_TEXT,
+  SYNTHESIS_TEXT,
+  panelsText,
+} from "../../../marketing/fixtures/offer-replies.mjs";
 import {
   CHECK_IDS,
   FINAL_JOB_GAP_ROWS,
@@ -70,33 +81,60 @@ test("six final jobs run non-empty fake work and judge the named result", async 
     assert.equal(proof.verdict, undefined, row.surface);
     assert.equal(proof.asserts, row.control, row.surface);
     assert.match(proof.evidence, /door-batch-job-final\.test\.mjs/, row.surface);
+    if (row.surface === "workflow:blueprint-next-funding-sequence-sweeper") {
+      assert.match(proof.evidence, /src\/blueprint\/next-sequence-plan\.test\.mjs/);
+    }
   }
 
   const payoutWrites = [];
+  const affiliates = {
+    "affiliate-ready": {
+      id: "affiliate-ready",
+      partner_license_signed_at: "2026-09-01T00:00:00.000Z",
+      tax_form_received_at: "2026-09-02T00:00:00.000Z",
+      payout_method: "manual",
+    },
+    "affiliate-held": {
+      id: "affiliate-held",
+      partner_license_signed_at: null,
+      tax_form_received_at: "2026-09-02T00:00:00.000Z",
+      payout_method: "manual",
+    },
+  };
   const payoutDb = {
-    async query(sql) {
+    async query(sql, params = []) {
       const text = String(sql);
       if (/SELECT id FROM orgs/.test(text)) return { rows: [{ id: "org-1" }] };
       if (/FROM affiliate_referrals/.test(text)) {
-        return { rows: [{
-          id: "referral-1", affiliate_id: "affiliate-1", client_id: "client-1",
-          tier: 1, commission_due: "75.00", basis_amount: "750.00",
-          rule_snapshot: {}, client_code: "CLIENT-1",
-        }] };
+        return { rows: [
+          {
+            id: "referral-ready", affiliate_id: "affiliate-ready", client_id: "client-1",
+            tier: 1, commission_due: "75.00", basis_amount: "750.00",
+            rule_snapshot: {}, client_code: "CLIENT-1",
+          },
+          {
+            id: "referral-held", affiliate_id: "affiliate-held", client_id: "client-2",
+            tier: 1, commission_due: "80.00", basis_amount: "800.00",
+            rule_snapshot: {}, client_code: "CLIENT-2",
+          },
+        ] };
       }
       if (/FROM affiliates WHERE/.test(text)) {
-        return { rows: [{
-          id: "affiliate-1", partner_license_signed_at: new Date().toISOString(),
-          tax_form_received_at: new Date().toISOString(), payout_method: "manual",
-        }] };
+        return { rows: affiliates[params[0]] ? [affiliates[params[0]]] : [] };
       }
       if (/INSERT INTO affiliate_payouts/.test(text)) {
-        payoutWrites.push("payout");
-        return { rows: [{ id: "payout-1" }] };
+        const row = {
+          affiliateId: params[1],
+          status: params[4],
+          holdReason: params[5],
+          id: `payout-${params[1]}`,
+        };
+        payoutWrites.push(row);
+        return { rows: [{ id: row.id }] };
       }
       if (/INSERT INTO affiliate_payout_lines/.test(text)) {
-        payoutWrites.push("line");
-        return { rows: [{ id: "line-1" }] };
+        payoutWrites.push({ payoutId: params[1], referralId: params[2], amount: params[3] });
+        return { rows: [{ id: `line-${params[2]}` }] };
       }
       throw new Error(`unexpected payout proof query: ${text.slice(0, 80)}`);
     },
@@ -105,11 +143,23 @@ test("six final jobs run non-empty fake work and judge the named result", async 
     now: new Date("2026-10-01T03:00:00Z"),
     minimumUsd: 50,
   });
-  assert.deepEqual(payoutWrites, ["payout", "line"]);
   assert.equal(payout.errors.length, 0);
-  assert.equal(payout.orgs[0].payoutsCreated, 1);
-  assert.equal(payout.orgs[0].linesCreated, 1);
-  assert.equal(payout.orgs[0].payouts[0].status, "pending");
+  assert.equal(payout.orgs[0].payoutsCreated, 2);
+  assert.equal(payout.orgs[0].linesCreated, 2);
+  assert.deepEqual(
+    payout.orgs[0].payouts.map(({ affiliateId, status, holdReason }) => ({ affiliateId, status, holdReason })),
+    [
+      { affiliateId: "affiliate-ready", status: "pending", holdReason: null },
+      { affiliateId: "affiliate-held", status: "held", holdReason: "partner_license_unsigned" },
+    ]
+  );
+  assert.deepEqual(payout.orgs[0].held, [{
+    affiliateId: "affiliate-held",
+    payoutId: "payout-affiliate-held",
+    reason: "partner_license_unsigned",
+  }]);
+  assert.equal(payoutWrites.filter((row) => row.status === "held").length, 1);
+  assert.equal(payoutWrites.filter((row) => row.referralId).length, 2);
 
   const taskWrites = [];
   const blueprintDb = {
@@ -138,27 +188,83 @@ test("six final jobs run non-empty fake work and judge the named result", async 
   assert.equal(blueprint.suggested.checked, 0);
   assert.deepEqual(taskWrites, ["closer-task"]);
 
+  const merchantEnv = {
+    MERCHANT_SECRET_ENC_KEY: Buffer.alloc(32, 7).toString("base64"),
+    ADAPTERS_DRY_RUN: "0",
+  };
+  const processorKey = "fake-commas-read-key";
   const connection = {
     id: "connection-1", org_id: "org-1", client_id: "client-1", entity_id: "entity-1",
-    provider: "commas", mode: "pull", status: "active", encrypted_api_key: "fake",
+    provider: "commas", mode: "pull", status: "active",
+    encrypted_api_key: encryptProcessorApiKey(processorKey, {
+      connectionId: "connection-1", env: merchantEnv,
+    }),
     sync_cursor: null, synced_through: null, last_synced_at: null,
   };
+  const merchantEvents = [];
+  const merchantProgress = [];
   const merchantDb = {
     async query(sql, params) {
-      assert.match(String(sql), /FROM merchant_connections/);
-      assert.equal(params[0], connection.id);
-      return { rows: [connection] };
+      const text = String(sql);
+      if (/FROM merchant_connections/.test(text)) {
+        assert.equal(params[0], connection.id);
+        return { rows: [connection] };
+      }
+      if (/INSERT INTO merchant_events/.test(text)) {
+        merchantEvents.push({
+          providerEventId: params[1], kind: params[2], amountCents: params[3],
+          currency: params[4], description: params[6],
+        });
+        return { rows: [{ id: `event-${merchantEvents.length}` }] };
+      }
+      if (/SET last_event_at = now\(\)/.test(text)) return { rows: [] };
+      if (/SET sync_cursor =/.test(text)) {
+        merchantProgress.push({ cursor: params[1], completedAt: params[2] });
+        return { rows: [] };
+      }
+      throw new Error(`unexpected merchant proof query: ${text.slice(0, 80)}`);
     },
+  };
+  let merchantFetches = 0;
+  const merchantFetch = async (url, init) => {
+    merchantFetches += 1;
+    assert.match(String(url), /^https:\/\/www\.fanbasis\.com\/public-api\/checkout-sessions\/transactions\?/);
+    assert.equal(init.headers["x-api-key"], processorKey);
+    const body = { data: {
+      transactions: [{
+        id: 77,
+        transaction_date: "2026-10-01T12:00:00Z",
+        amount: "100.00",
+        fee_amount: "5.00",
+        product: { title: "Door Proof" },
+        refunds: [{
+          refund_id: "rf-1", amount: "20.00", status: "succeeded",
+          created_at: "2026-10-02T12:00:00Z",
+        }],
+      }],
+      pagination: { has_more: false },
+    } };
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      async text() { return JSON.stringify(body); },
+    };
   };
   const merchant = await merchantSweep(merchantDb, {
     list: async () => [{ id: connection.id }],
-    sync: async (_db, row) => {
-      assert.equal(row.id, connection.id);
-      return { ok: true, done: true, inserted: 3 };
-    },
-    env: {},
+    env: merchantEnv,
+    fetchImpl: merchantFetch,
+    now: new Date("2026-10-12T18:00:00.000Z"),
   });
   assert.deepEqual(merchant, { checked: 1, synced: 1, partway: 0, inserted: 3, failed: [] });
+  assert.equal(merchantFetches, 1);
+  assert.deepEqual(merchantEvents, [
+    { providerEventId: "txn:77", kind: "sale", amountCents: 10000, currency: "usd", description: "Door Proof" },
+    { providerEventId: "txn:77:fee", kind: "fee", amountCents: -500, currency: "usd", description: "Commas fees" },
+    { providerEventId: "refund:rf-1", kind: "refund", amountCents: -2000, currency: "usd", description: "Refund of Door Proof" },
+  ]);
+  assert.deepEqual(merchantProgress, [{ cursor: null, completedAt: "2026-10-12T18:00:00.000Z" }]);
 
   const expiredAt = new Date("2026-10-12T00:00:00Z");
   const expiryDb = {
@@ -208,7 +314,10 @@ test("six final jobs run non-empty fake work and judge the named result", async 
           id: 12, user_id: 44, starts_at: "2026-10-12T15:00:00Z", overall: 70, tracked: 600,
         }] };
       }
-      return { screenshots: [] };
+      return { screenshots: [{
+        id: 13, user_id: 44, taken_at: "2026-10-12T15:05:00Z",
+        thumb_url: "https://hubstaff.example.test/fake-thumb.jpg",
+      }] };
     },
   });
   const hubstaff = await sweepHubstaffPoll(hubstaffDb, {
@@ -217,27 +326,58 @@ test("six final jobs run non-empty fake work and judge the named result", async 
     now: new Date("2026-10-12T18:00:00Z"),
   });
   assert.equal(hubstaff.ok, true);
-  assert.equal(hubstaff.merged, 1);
+  assert.equal(hubstaff.merged, 2);
   assert.equal(merged[0].external_id, "activity:12");
+  assert.equal(merged[1].external_id, "screenshot:13");
+  assert.equal(merged[1].thumb_url, "https://hubstaff.example.test/fake-thumb.jpg");
 
-  let offerRun = null;
-  const offerHandler = makeOfferHandler({
-    database: { name: "fake-db" },
-    auth: async () => ({ staff: { role: "owner", org_id: "org-1" } }),
-    env: { MARKETING_AI_RUNNER: "cloud" },
-    run: async (database, input) => {
-      offerRun = { database, input };
-      return { ok: true, status: "completed", candidates: 6, judges: 4 };
+  const offerDb = makeOfferDb();
+  const offerOrg = "55555555-5555-4555-8555-555555555555";
+  const { job: offerJob } = await createOfferJob(offerDb, {
+    orgId: offerOrg,
+    staffId: null,
+    payload: {
+      campaign: "partner", today: "2026-10-05",
+      avatarSummary: "AVATAR", adResearchSummary: "RESEARCH", ownerNotes: "",
+      sources: { avatar: "supplied", adResearch: "supplied", ownerNotes: null }, cut: {},
     },
+  });
+  let modelCalls = 0;
+  const offerAsk = (args) => askAnthropic({
+    ...args,
+    env: { ANTHROPIC_API_KEY: "test-key-not-real" },
+    fetchImpl: async (_url, init) => {
+      modelCalls += 1;
+      const prompt = JSON.parse(init.body).messages[0].content;
+      const text = prompt.startsWith("Design SIX offers")
+        ? CANDIDATES_TEXT
+        : prompt.startsWith("You are a panel of four judges")
+          ? panelsText([...new Set([...prompt.matchAll(/\"blindId\":\"(Offer [A-F])\"/g)].map((match) => match[1]))])
+          : SYNTHESIS_TEXT;
+      return { ok: true, status: 200, json: async () => anthropicMessage(text, { input: 1000, output: 500 }) };
+    },
+  });
+  const offerHandler = makeOfferHandler({
+    database: offerDb,
+    auth: async () => ({ staff: { role: "owner", org_id: offerOrg } }),
+    env: { MARKETING_AI_RUNNER: "cloud" },
+    run: (database, input) => runOfferJob(database, { ...input, ask: offerAsk }),
   });
   const offer = await offerHandler(new Request("https://fundhub.test/.netlify/functions/marketing-offer-background", {
     method: "POST",
     headers: { authorization: "Bearer fake" },
-    body: JSON.stringify({ job_id: "44444444-4444-4444-8444-444444444444" }),
+    body: JSON.stringify({ job_id: offerJob.id }),
   }));
   assert.equal(offer.status, 200);
-  assert.deepEqual(await offer.json(), { ok: true, status: "completed", candidates: 6, judges: 4 });
-  assert.equal(offerRun.input.orgId, "org-1");
+  assert.deepEqual(await offer.json(), { ok: true, status: "done" });
+  assert.equal(modelCalls, 3);
+  assert.equal(offerDb.jobs[0].status, "done");
+  assert.equal(offerDb.jobs[0].attempts, 1);
+  assert.equal(offerDb.jobs[0].result.offer.name, "Live or We Keep Building");
+  assert.equal(
+    offerDb.jobs[0].result.reviewCard.threeThingsToCheck[0],
+    "The price is $10,000 once, can be financed — yes or no?"
+  );
 });
 
 test("the job lane accepts the live scope function and a direct database", async () => {

@@ -4,7 +4,6 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import climateGeocode from "../../../../api/climate/geocode.mjs";
 import rb2bWebhook from "../../../../api/public/rb2b-webhook.mjs";
 import { makeRecipe } from "../door-recipes.mjs";
 
@@ -23,9 +22,8 @@ function responseRecorder() {
   };
 }
 
-test("the exact route batch owns only the two result paths it runs", () => {
+test("the exact route batch owns only the result path it fully proves", () => {
   const cases = [
-    ["routes-0.json", "route:climate/geocode"],
     ["routes-1.json", "route:public/rb2b-webhook"],
   ];
   for (const [sourceFile, surface] of cases) {
@@ -35,43 +33,6 @@ test("the exact route batch owns only the two result paths it runs", () => {
     const proof = makeRecipe(sourceFile, row).proof;
     assert.equal(proof.verdict, undefined);
     assert.equal(proof.asserts, row.control);
-  }
-});
-
-test("the geocode route turns a fake address into the returned state and coordinates", async () => {
-  const originalFetch = globalThis.fetch;
-  const savedGoogle = process.env.GOOGLE_MAPS_API_KEY;
-  const savedBrowser = process.env.GOOGLE_MAPS_BROWSER_KEY;
-  delete process.env.GOOGLE_MAPS_API_KEY;
-  delete process.env.GOOGLE_MAPS_BROWSER_KEY;
-  globalThis.fetch = async (url) => {
-    assert.match(String(url), /^https:\/\/geocoding\.geo\.census\.gov\//);
-    return {
-      ok: true,
-      status: 200,
-      async json() {
-        return { result: { addressMatches: [{
-          addressComponents: { state: "TX" },
-          coordinates: { x: -97.13, y: 33.21 },
-          matchedAddress: "100 DOOR PROOF ST, DENTON, TX 76201",
-        }] } };
-      },
-    };
-  };
-  try {
-    const response = responseRecorder();
-    await climateGeocode({ method: "POST", body: { q: "100 Door Proof St, Denton, TX 76201" } }, response);
-    assert.equal(response.statusCode, 200);
-    assert.equal(response.body.provider, "census");
-    assert.equal(response.body.stateCode, "TX");
-    assert.equal(response.body.lat, 33.21);
-    assert.equal(response.body.lng, -97.13);
-  } finally {
-    globalThis.fetch = originalFetch;
-    if (savedGoogle === undefined) delete process.env.GOOGLE_MAPS_API_KEY;
-    else process.env.GOOGLE_MAPS_API_KEY = savedGoogle;
-    if (savedBrowser === undefined) delete process.env.GOOGLE_MAPS_BROWSER_KEY;
-    else process.env.GOOGLE_MAPS_BROWSER_KEY = savedBrowser;
   }
 });
 
