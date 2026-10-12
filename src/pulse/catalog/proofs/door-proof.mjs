@@ -1,5 +1,7 @@
 import { keyContractProof } from "./door-batch-key-contract.mjs";
 import { routeContractProof } from "./door-batch-route-contract.mjs";
+import { routeResultProof } from "./door-batch-route-result.mjs";
+import { webhookFinalProof } from "./door-batch-webhook-final.mjs";
 import { keyHealthProof } from "../../coverage/gap-door-batch-keys.mjs";
 import { jobResultProof } from "../../coverage/gap-door-batch-jobs.mjs";
 import { webhookResultProof } from "../../coverage/gap-door-batch-webhooks.mjs";
@@ -115,9 +117,6 @@ const DENIED_MAP_PROOFS = [
   ["routes-2.json", "route:auth/send-portal-link", /^POST /],
   ["routes-2.json", "route:blueprint/declines", /^GET\/POST /],
   ["routes-3.json", "route:lender-observations", /^POST /],
-  ["jobs.json", "function:ad-video-worker-background", /.*/],
-  ["jobs.json", "function:hubstaff-poll-sweeper", /.*/],
-  ["webhooks.json", "webhook:POST netlify/functions/ad-video-worker-background", /whole ad-video pass/],
 ];
 
 function unique(values) {
@@ -197,6 +196,8 @@ function keyProof(row) {
 }
 
 function webhookProof(row) {
+  const final = webhookFinalProof(row);
+  if (final) return final;
   const proof = FAILED_FOCUSED_WEBHOOKS.has(row?.surface) ? null : WEBHOOK_PROOFS.get(row?.surface);
   if (proof) {
     const evidence = proofReferences(proof.evidence)
@@ -223,6 +224,10 @@ export function proofForDoor(sourceFile, row) {
   if (name === "jobs.json" || /^routes-[0-3]\.json$/.test(name)) {
     const contract = routeContractProof(row);
     if (contract) return contract;
+    if (/^routes-[0-3]\.json$/.test(name)) {
+      const audited = isDeniedMapProof(sourceFile, row) ? null : auditedMapProof(row);
+      return audited || routeResultProof(row);
+    }
     return isDeniedMapProof(sourceFile, row) ? null : auditedMapProof(row);
   }
   return null;

@@ -6,6 +6,7 @@ import contractSign from "../../../api/contracts/sign.mjs";
 import adVideoApprove from "../../../api/public/ad-video-approve.mjs";
 import documentDownload from "../../../api/documents/[id].mjs";
 import adVideoWorker from "../../../netlify/functions/ad-video-worker-background.mjs";
+import { gapChecks as adVideoJobChecks } from "./gap-door-batch-jobs.mjs";
 
 const FILE_RE = /\b(?:(?:src|api|netlify|scripts|e2e)\/)?[A-Za-z0-9_./[\]-]+\.test\.mjs\b/g;
 const RESULT_RE = /\bsrc\/pulse\/(?:coverage\/gap-|beats\/beat-)[A-Za-z0-9_./-]+\.mjs\b/g;
@@ -14,7 +15,17 @@ export const WEBHOOK_RESULT_EVIDENCE =
   "src/pulse/coverage/gap-door-batch-webhooks.mjs " +
   "src/pulse/catalog/proofs/door-batch-webhook-result.test.mjs";
 
-export const CHECK_IDS = Object.freeze(["door-batch:webhooks-live-proof"]);
+export const CHECK_IDS = Object.freeze([
+  "door-batch:webhook-lendflow-contract",
+  "door-batch:webhook-ad-video-worker",
+]);
+export const KNOWN_GAP_TEST =
+  "src/pulse/catalog/proofs/door-batch-webhook-red.test.mjs";
+
+const KNOWN_GAP_SURFACES = new Set([
+  "webhook:POST /api/webhooks/lendflow",
+  "webhook:POST netlify/functions/ad-video-worker-background",
+]);
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort();
@@ -118,6 +129,13 @@ export async function evaluateWebhookGate(row) {
 }
 
 export function webhookResultProof(row) {
+  if (KNOWN_GAP_SURFACES.has(row?.surface)) {
+    return {
+      depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
+      evidence: unique([WEBHOOK_RESULT_EVIDENCE, KNOWN_GAP_TEST]).join(" "),
+      asserts: row.control,
+    };
+  }
   if (/unverified/i.test(String(row?.signature || ""))) return null;
   const refs = webhookProofReferences(row);
   const sensitive = ["money", "customerMessage", "customerData"].includes(row?.impact);
@@ -134,11 +152,20 @@ export function webhookResultProof(row) {
   };
 }
 
-export async function gapChecks() {
-  return [{
-    id: CHECK_IDS[0],
-    status: "FAIL",
-    detail: "The shared webhook batch proves safe fake requests, but it does not prove every provider reached the live door.",
-    suggestedFix: "Keep each provider's live webhook receipt or beat green. Do not send a real webhook from the pulse.",
-  }];
+export async function gapChecks(ctx = {}) {
+  const worker = (await adVideoJobChecks(ctx))[0];
+  return [
+    {
+      id: CHECK_IDS[0],
+      status: "FAIL",
+      detail: "The Lendflow door and fail-closed HMAC code run, but no real Lendflow payload has confirmed the provider's signature scheme or stage words.",
+      suggestedFix: "Keep this red until one real or sandbox Lendflow payload confirms the header, HMAC scheme, and stage words.",
+    },
+    {
+      id: CHECK_IDS[1],
+      status: worker.status,
+      detail: "The ad-video worker secret guard is closed. " + worker.detail,
+      suggestedFix: worker.suggestedFix,
+    },
+  ];
 }

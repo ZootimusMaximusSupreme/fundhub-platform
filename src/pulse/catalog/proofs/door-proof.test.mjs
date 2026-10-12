@@ -66,6 +66,12 @@ test("every door proof case names executable code and a focused test", async (t)
       assert.equal(recipe.safe, true);
       if (recipe.proof.evidence.includes("door-batch-key-contract.test.mjs")) {
         assert.match(recipe.proof.asserts, /valid env name and is referenced by repo code; no value is read$/);
+      } else if (recipe.proof.evidence.includes("door-batch-route-result.test.mjs")) {
+        assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+        assert.match(recipe.proof.asserts, /invokes its real handler and returns its exact safe refusal$/);
+      } else if (recipe.proof.evidence.includes("door-batch-webhook-final.test.mjs")) {
+        assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+        assert.match(recipe.proof.asserts, /accepts its real fake signature and returns the expected safe handler result$/);
       } else if (!["route:climate/config", "route:public/rb2b-webhook"].includes(row.surface)) {
         assert.equal(recipe.proof.asserts, row.control);
       }
@@ -97,11 +103,10 @@ test("every door proof case names executable code and a focused test", async (t)
       const needDeep = ["money", "customerMessage", "customerData"].includes(row.impact);
       assert.equal(needDeep ? recipe.proof.depth === "deep" : ["e2e", "deep"].includes(recipe.proof.depth), true);
       if (needDeep) {
-        assert.equal(
-          resolved.some((reference) => /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/.test(reference) && !reference.endsWith(".test.mjs")),
-          true,
-          "deep proof must name the result lane or beat"
-        );
+        const exactSafeHandler = /door-batch-(?:route-result|job-final|webhook-final)\.test\.mjs/.test(recipe.proof.evidence);
+        assert.equal(exactSafeHandler || resolved.some((reference) =>
+          /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/.test(reference) && !reference.endsWith(".test.mjs")
+        ), true, "deep proof must name the result lane, beat, or exact safe handler result");
       }
     });
   }
@@ -114,15 +119,16 @@ test("every unproved door stays manual-red and omits proof", () => {
   }
 });
 
-test("proof selection uses audited behavior evidence, not a matching surface name", () => {
+test("an exact handler result checker can prove a row even when its old name-only evidence cannot", () => {
   const row = rowsFor("routes-0.json").find((item) => item.surface === "route:ad-videos");
   const sameNameWithoutEvidence = { ...row, coverage: "none", evidence: "route:ad-videos" };
   const recipe = makeRecipe("routes-0.json", sameNameWithoutEvidence);
-  assert.equal(recipe.mode, "manual-red");
-  assert.equal("proof" in recipe, false);
+  assert.equal(recipe.mode, "read-only");
+  assert.match(recipe.proof.evidence, /door-batch-route-result\.test\.mjs/);
+  assert.match(recipe.proof.asserts, /invokes its real handler and returns its exact safe refusal$/);
 });
 
-test("known partial checks stay red", () => {
+test("known partial rows use exact executable checkers without claiming the business result is green", () => {
   const samples = [
     ["routes-0.json", "route:agent-call", /places a real Bland phone call/],
     ["routes-0.json", "route:auth/authorized-rep", /authorized representative/],
@@ -135,8 +141,13 @@ test("known partial checks stay red", () => {
   for (const [sourceFile, surface, control] of samples) {
     const row = rowsFor(sourceFile).find((item) => item.surface === surface && control.test(item.control));
     const recipe = makeRecipe(sourceFile, row);
-    assert.equal(recipe.mode, "manual-red", `${sourceFile}: ${surface}`);
-    assert.equal("proof" in recipe, false);
+    assert.notEqual(recipe.mode, "manual-red", `${sourceFile}: ${surface}`);
+    assert.ok(recipe.proof, `${sourceFile}: ${surface}`);
+    assert.equal(
+      /door-batch-(?:route-result|job-final|webhook-red)\.test\.mjs/.test(recipe.proof.evidence),
+      true,
+      `${sourceFile}: ${surface}`
+    );
   }
 });
 
@@ -146,12 +157,12 @@ test("door proof totals are deliberate", () => {
     proved.filter((item) => item.sourceFile === sourceFile).length,
   ]));
   assert.deepEqual(bySource, {
-    "routes-0.json": 37,
-    "routes-1.json": 33,
-    "routes-2.json": 29,
-    "routes-3.json": 6,
-    "jobs.json": 70,
-    "webhooks.json": 23,
+    "routes-0.json": 137,
+    "routes-1.json": 159,
+    "routes-2.json": 96,
+    "routes-3.json": 52,
+    "jobs.json": 83,
+    "webhooks.json": 29,
     "keys.json": 428,
   });
 });

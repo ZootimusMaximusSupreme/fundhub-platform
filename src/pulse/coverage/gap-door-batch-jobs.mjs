@@ -10,14 +10,35 @@ export const JOB_RESULT_EVIDENCE =
   "src/pulse/coverage/gap-door-batch-jobs.mjs " +
   "src/pulse/catalog/proofs/door-batch-job-result.test.mjs";
 
-export const CHECK_IDS = Object.freeze(["door-batch:jobs-live-proof"]);
+export const FINAL_JOB_RESULT_TEST =
+  "src/pulse/catalog/proofs/door-batch-job-final.test.mjs";
+
+const FINAL_JOB_SURFACES = new Set([
+  "workflow:contract-chaser",
+  "workflow:hiring-outreach-cadence",
+  "workflow:merchant-pull-sweeper",
+  "workflow:blueprint-next-funding-sequence-sweeper",
+  "workflow:paid-checkout-expiry-sweeper",
+  "workflow:pulse-instant-watch",
+  "workflow:affiliate-payout-run",
+  "workflow:meet-transcript-sweeper",
+  "workflow:inquiry-call-sweeper",
+  "workflow:repair-bureau-response-reader",
+  "function:hubstaff-poll-sweeper",
+  "function:marketing-offer-background",
+  "function:ad-video-worker-background",
+]);
+
+export const CHECK_IDS = Object.freeze(["door-batch:ad-video-worker-result"]);
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort();
 }
 
 export function jobResultTests(row) {
-  return unique(String(row?.evidence || "").match(FILE_RE) || []).filter((file) => {
+  const mapped = String(row?.evidence || "").match(FILE_RE) || [];
+  if (FINAL_JOB_SURFACES.has(row?.surface)) mapped.push(FINAL_JOB_RESULT_TEST);
+  return unique(mapped).filter((file) => {
     const base = file.split("/").at(-1);
     return !file.endsWith(".pg.test.mjs") && !FAILED.has(base);
   });
@@ -85,18 +106,73 @@ export function jobResultProof(row) {
   const tests = jobResultTests(row);
   if (!String(row?.file || "").trim() || tests.length === 0) return null;
   const sensitive = ["money", "customerMessage", "customerData"].includes(row?.impact);
+  const evidence = FINAL_JOB_SURFACES.has(row?.surface)
+    ? [
+        ...(row.surface === "function:ad-video-worker-background"
+          ? ["src/pulse/coverage/gap-door-batch-jobs.mjs"]
+          : []),
+        ...tests,
+      ]
+    : [JOB_RESULT_EVIDENCE, ...tests];
   return {
     depth: sensitive ? "deep" : "e2e",
-    evidence: unique([JOB_RESULT_EVIDENCE, ...tests]).join(" "),
+    evidence: unique(evidence).join(" "),
     asserts: row.control,
   };
 }
 
-export async function gapChecks() {
-  return [{
+export const AD_VIDEO_WORKER_SQL = [
+  "SELECT count(*) FILTER (",
+  "         WHERE submagic_claimed_at IS NOT NULL",
+  "           AND submagic_project_id IS NULL",
+  "           AND submagic_claimed_at < now() - interval '30 minutes'",
+  "       )::int AS stuck_create_n,",
+  "       count(*) FILTER (",
+  "         WHERE export_claimed_at IS NOT NULL",
+  "           AND exported_at IS NULL",
+  "           AND export_claimed_at < now() - interval '30 minutes'",
+  "       )::int AS stuck_export_n",
+  "  FROM ad_videos",
+].join("\n");
+
+export function judgeAdVideoWorker(row = {}) {
+  const create = Number(row.stuck_create_n || 0);
+  const exports = Number(row.stuck_export_n || 0);
+  if (create || exports) {
+    return {
+      id: CHECK_IDS[0],
+      status: "FAIL",
+      detail: "The ad-video worker has " + create + " stuck upload claim(s) and " + exports + " stuck export claim(s).",
+      suggestedFix: "Review the named ad-video rows before clearing or retrying a spend claim.",
+    };
+  }
+  return {
     id: CHECK_IDS[0],
-    status: "FAIL",
-    detail: "The shared job batch proves code and trigger rules, but it does not replace each job's live run receipt.",
-    suggestedFix: "Keep each job's own heartbeat or workflow receipt green. Do not treat this code proof as a live run.",
-  }];
+    status: "PASS",
+    detail: "No ad-video upload or export claim has been stuck for 30 minutes.",
+    suggestedFix: null,
+  };
+}
+
+export async function gapChecks(ctx = {}) {
+  const run = ctx?.scope?.run || ctx?.run;
+  if (typeof run !== "function") {
+    return [{
+      id: CHECK_IDS[0],
+      status: "FAIL",
+      detail: "The ad-video worker result could not be read because this pulse has no database reader.",
+      suggestedFix: "Run the pulse with its normal read-only database scope.",
+    }];
+  }
+  try {
+    const result = await run((tx) => tx.query(AD_VIDEO_WORKER_SQL));
+    return [judgeAdVideoWorker(result?.rows?.[0] || {})];
+  } catch (error) {
+    return [{
+      id: CHECK_IDS[0],
+      status: "FAIL",
+      detail: "The ad-video worker result read failed: " + String(error?.message || error).slice(0, 180),
+      suggestedFix: "Restore the read-only ad_videos check.",
+    }];
+  }
 }

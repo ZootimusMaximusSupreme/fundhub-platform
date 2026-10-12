@@ -48,6 +48,12 @@ test("every mapped door gets a complete recipe", async () => {
             recipe.proof.asserts,
             `${row.env_name} has a valid env name and is referenced by repo code; no value is read`
           );
+        } else if (recipe.proof.evidence.includes("door-batch-route-result.test.mjs")) {
+          assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+          assert.match(recipe.proof.asserts, /invokes its real handler and returns its exact safe refusal$/);
+        } else if (recipe.proof.evidence.includes("door-batch-webhook-final.test.mjs")) {
+          assert.match(recipe.proof.asserts, new RegExp(`^${row.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+          assert.match(recipe.proof.asserts, /accepts its real fake signature and returns the expected safe handler result$/);
         } else if (!["route:climate/config", "route:public/rb2b-webhook"].includes(row.surface)) {
           assert.equal(recipe.proof.asserts, row.control);
         }
@@ -74,7 +80,11 @@ test("route recipes use route methods and keep writes out of read-only mode", as
   assert.equal(readRecipe.expected, "GET matches the declared route contract");
   assert.equal(readRecipe.proof.depth, "e2e");
   assert.match(readRecipe.proof.evidence, /src\/http\/demo-logins\.test\.mjs/);
-  assert.equal(makeRecipe("routes-0.json", failedFocusedProof).mode, "manual-red");
+  assert.equal(makeRecipe("routes-0.json", failedFocusedProof).mode, "read-only");
+  assert.match(
+    makeRecipe("routes-0.json", failedFocusedProof).proof.evidence,
+    /door-batch-route-result\.test\.mjs/
+  );
   assert.equal(makeRecipe("routes-0.json", write).mode, "test");
   assert.equal(makeRecipe("routes-0.json", write).safe, true);
 });
@@ -99,7 +109,8 @@ test("webhooks use door and signature metadata without touching a provider", asy
 
   assert.equal(makeRecipe("webhooks.json", commas).target, "/api/webhooks/commas");
   assert.match(makeRecipe("webhooks.json", commas).expected, /HMAC-SHA256/);
-  assert.equal(makeRecipe("webhooks.json", lendflow).mode, "manual-red");
+  assert.equal(makeRecipe("webhooks.json", lendflow).mode, "test");
+  assert.match(makeRecipe("webhooks.json", lendflow).proof.evidence, /door-batch-webhook-red\.test\.mjs/);
 });
 
 test("key recipes prove watched names without reading secret values", async () => {

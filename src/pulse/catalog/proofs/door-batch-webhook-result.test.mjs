@@ -26,10 +26,11 @@ test("one webhook pass calls every selected signature or credential gate without
   }
 });
 
-test("unverified webhook schemes stay red", () => {
+test("an unverified webhook scheme maps to an exact executable red checker", () => {
   const rows = JSON.parse(fs.readFileSync(MAP, "utf8"));
   const lendflow = rows.find((row) => row.surface === "webhook:POST /api/webhooks/lendflow");
   const recipe = makeRecipe("webhooks.json", lendflow);
-  assert.equal(recipe.mode, "manual-red");
-  assert.equal("proof" in recipe, false);
+  assert.equal(recipe.mode, "test");
+  assert.match(recipe.proof.evidence, /door-batch-webhook-red\.test\.mjs/);
+  assert.equal(recipe.proof.asserts, lendflow.control);
 });
