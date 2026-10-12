@@ -1043,6 +1043,14 @@
   var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k", rot: 0 }, savedSettings);
   S.wpm = storedWpm(rememberedWpm, 150);
   LS.set("wpm", S.wpm);
+  // One-time upgrade for iPhones previously left on the low-quality preset.
+  // The owner asked for maximum front-camera video. Users can still choose
+  // 1080p again afterward for smaller files or slower networks.
+  if (isPhone() && !LS.get("front4k60Default20261012", false)) {
+    S.cam = "4k";
+    LS.set("settings", S);
+    LS.set("front4k60Default20261012", true);
+  }
   var rigQ = rigQuery((function () { try { return new URL(root.location.href).search; } catch (e) { return ""; } })());
   var look = rigLook(rigQ, S);
   S.mirror = look.mirror;
