@@ -1,3 +1,5 @@
+import { displayProofFor } from "./proofs/display-proof-cases.mjs";
+
 const SOURCE_FILES = new Set([
   "desks-a.json",
   "desks-b.json",
@@ -136,8 +138,9 @@ export function makeRecipe(sourceFile, row) {
 
   const family = FAMILY_BY_KIND.get(normalizedKind(row));
   const mode = modeFor(row, family);
+  const proof = displayProofFor(baseName(sourceFile), row);
 
-  return {
+  const recipe = {
     family,
     mode,
     target: String(targetFor(row)),
@@ -147,4 +150,7 @@ export function makeRecipe(sourceFile, row) {
     sourceFile: baseName(sourceFile),
     surface: String(row.surface),
   };
+
+  if (proof) recipe.proof = proof;
+  return recipe;
 }

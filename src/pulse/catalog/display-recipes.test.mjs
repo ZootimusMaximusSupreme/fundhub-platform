@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { makeRecipe, supports } from "./display-recipes.mjs";
+import { DISPLAY_PROOF_CASES } from "./proofs/display-proof-cases.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MAP_DIR = path.resolve(HERE, "../../../ops/workflows/coverage-every-surface-2026-10-10");
@@ -19,7 +20,7 @@ const SOURCE_FILES = [
 ];
 const MODES = new Set(["read-only", "test", "receipt", "manual-red"]);
 const FAMILIES = new Set(["button", "form", "link", "read", "screen"]);
-const RECIPE_KEYS = [
+const BASE_RECIPE_KEYS = [
   "expected",
   "family",
   "mode",
@@ -50,7 +51,13 @@ test("all seven display maps produce one valid recipe per row", () => {
     for (const row of rows) {
       assert.equal(supports(sourceFile, row), true, `${sourceFile}: ${row.surface} / ${row.kind}`);
       const recipe = makeRecipe(sourceFile, row);
-      assert.deepEqual(Object.keys(recipe).sort(), RECIPE_KEYS);
+      const { proof, ...baseRecipe } = recipe;
+      assert.deepEqual(Object.keys(baseRecipe).sort(), BASE_RECIPE_KEYS);
+      if (proof) {
+        assert.deepEqual(Object.keys(proof).sort(), ["depth", "evidence"]);
+        assert.ok(["deep", "e2e"].includes(proof.depth));
+        assert.match(proof.evidence, /\.test\.mjs\b/);
+      }
       assert.ok(FAMILIES.has(recipe.family), `${row.surface} has invalid family ${recipe.family}`);
       assert.ok(MODES.has(recipe.mode), `${row.surface} has invalid mode ${recipe.mode}`);
       assert.equal(typeof recipe.safe, "boolean");
@@ -99,6 +106,24 @@ test("unproved controls stay visibly red", () => {
 
   assert.equal(makeRecipe("public-pages.json", pingOnlyLink).mode, "manual-red");
   assert.equal(makeRecipe("public-pages.json", uncoveredPage).mode, "manual-red");
+  assert.equal(makeRecipe("public-pages.json", pingOnlyLink).proof, undefined);
+  assert.equal(makeRecipe("public-pages.json", uncoveredPage).proof, undefined);
+});
+
+test("only exact display proof cases receive deep executable proof", () => {
+  for (const proofCase of DISPLAY_PROOF_CASES) {
+    const row = findRow(
+      proofCase.sourceFile,
+      (item) => item.surface === proofCase.surface && item.control === proofCase.control,
+    );
+    const recipe = makeRecipe(proofCase.sourceFile, row);
+
+    assert.notEqual(recipe.mode, "manual-red", `${proofCase.surface}: ${proofCase.control}`);
+    assert.deepEqual(recipe.proof, {
+      depth: "deep",
+      evidence: proofCase.evidence,
+    });
+  }
 });
 
 test("only the approved display map files are supported", () => {
