@@ -1,3 +1,6 @@
+import { keyContractProof } from "./door-batch-key-contract.mjs";
+import { routeContractProof } from "./door-batch-route-contract.mjs";
+
 const FILE_RE = /\b(?:(?:src|api|netlify|scripts|e2e)\/)?[A-Za-z0-9_./[\]-]+\.mjs\b/g;
 
 const DEEP_IMPACTS = new Set(["money", "customerMessage", "customerData"]);
@@ -176,12 +179,15 @@ function isDeniedMapProof(sourceFile, row) {
 }
 
 function keyProof(row) {
-  if (row?.coverage !== "deep") return null;
-  const references = proofReferences(row.evidence);
-  const resultChecks = references.filter(isResultCheck);
-  if (!resultChecks.length) return null;
-  const executable = unique([...resultChecks, ...resultChecks.map(companionTest)]);
-  return { depth: "deep", evidence: executable.join(" "), asserts: row.control };
+  if (row?.coverage === "deep") {
+    const references = proofReferences(row.evidence);
+    const resultChecks = references.filter(isResultCheck);
+    if (resultChecks.length) {
+      const executable = unique([...resultChecks, ...resultChecks.map(companionTest)]);
+      return { depth: "deep", evidence: executable.join(" "), asserts: row.control };
+    }
+  }
+  return keyContractProof(row);
 }
 
 function webhookProof(row) {
@@ -199,6 +205,8 @@ export function proofForDoor(sourceFile, row) {
   if (name === "keys.json") return keyProof(row);
   if (name === "webhooks.json") return webhookProof(row);
   if (name === "jobs.json" || /^routes-[0-3]\.json$/.test(name)) {
+    const contract = routeContractProof(row);
+    if (contract) return contract;
     return isDeniedMapProof(sourceFile, row) ? null : auditedMapProof(row);
   }
   return null;

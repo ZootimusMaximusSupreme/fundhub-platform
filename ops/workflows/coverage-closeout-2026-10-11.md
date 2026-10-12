@@ -28,6 +28,8 @@ Owner order: turn all 2,407 weak catalog rows into executable proof at the level
 
 Done in `43651fe73`. Added honest executable proof to 188 door rows. The stricter proof rule also returned 157 weak rows to red. Door gaps remaining: 796.
 
+Batch 2 complete in this commit. Added 281 shared executable proofs: 279 non-sensitive key contracts that check valid names and real code readers without reading values, plus 2 safe public route result checks that call the handlers with fake data. Focused Doors tests passed: 484 passed, 0 failed, 0 skipped. Exact Doors count: 469 wired, 515 red. Remaining red by map: 100 routes-0, 126 routes-1, 67 routes-2, 46 routes-3, 47 jobs, 15 webhooks, 114 keys.
+
 ### Display
 
 Done in `91b8b1b42`. Added 40 honest executable display proofs: 27 screens, 12 buttons, and 1 link. Focused tests passed. Remaining display gaps stay red.

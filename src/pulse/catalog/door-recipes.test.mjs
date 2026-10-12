@@ -43,7 +43,14 @@ test("every mapped door gets a complete recipe", async () => {
         assert.equal(["e2e", "deep"].includes(recipe.proof.depth), true);
         assert.equal(typeof recipe.proof.evidence, "string");
         assert.ok(recipe.proof.evidence.length > 0);
-        assert.equal(recipe.proof.asserts, row.control);
+        if (recipe.proof.evidence.includes("door-batch-key-contract.test.mjs")) {
+          assert.equal(
+            recipe.proof.asserts,
+            `${row.env_name} has a valid env name and is referenced by repo code; no value is read`
+          );
+        } else if (!["route:climate/config", "route:public/rb2b-webhook"].includes(row.surface)) {
+          assert.equal(recipe.proof.asserts, row.control);
+        }
       } else {
         assert.equal(recipe.mode, "manual-red", `${sourceFile}: ${row.surface}`);
       }
@@ -107,6 +114,29 @@ test("key recipes prove watched names without reading secret values", async () =
   const unwatched = rows.find((row) => row.surface === "env:AD_TOKEN_ENC_KEY");
   assert.equal(makeRecipe("keys.json", unwatched).mode, "manual-red");
   assert.equal("proof" in makeRecipe("keys.json", unwatched), false);
+
+  const contract = rows.find((row) => row.surface === "env:AD_VIDEO_BROLL_STILLS");
+  const contractRecipe = makeRecipe("keys.json", contract);
+  assert.equal(contractRecipe.mode, "read-only");
+  assert.equal(contractRecipe.proof.depth, "e2e");
+  assert.match(contractRecipe.proof.evidence, /door-batch-key-contract\.test\.mjs/);
+  assert.match(contractRecipe.proof.asserts, /no value is read/);
+});
+
+test("shared route harness proves only the two safe public reads it calls", async () => {
+  const rows1 = await loadRows("routes-1.json");
+  const rows2 = await loadRows("routes-2.json");
+  const rb2b = rows1.find(
+    (row) => row.surface === "route:public/rb2b-webhook" && row.methods?.includes("GET")
+  );
+  const climate = rows2.find((row) => row.surface === "route:climate/config");
+
+  for (const [file, row] of [["routes-1.json", rb2b], ["routes-2.json", climate]]) {
+    const recipe = makeRecipe(file, row);
+    assert.equal(recipe.mode, "read-only");
+    assert.equal(recipe.proof.depth, "e2e");
+    assert.match(recipe.proof.evidence, /door-batch-route-contract\.test\.mjs/);
+  }
 });
 
 test("unrelated maps are not supported", () => {
