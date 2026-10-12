@@ -136,6 +136,7 @@ export function parseMarkWrite(body) {
 const SCRIPT_SQL = `
   SELECT s.*, b.week_key AS batch_week_key,
          COALESCE(s.offer_key, f.offer_key) AS plan_offer_key,
+         f.tag AS plan_funnel_tag,
          i.kind AS idea_kind
     FROM ad_scripts s
     LEFT JOIN marketing_batches b ON b.id = s.batch_id
@@ -160,6 +161,8 @@ function withPlan(row, opts) {
   const s = scriptView(row);
   return {
     ...s,
+    offer_key: row.plan_offer_key ?? s.offer_key,
+    funnel_tag: row.plan_funnel_tag ?? null,
     ...planFields({
       ...s,
       offer_key: row.plan_offer_key ?? s.offer_key,
