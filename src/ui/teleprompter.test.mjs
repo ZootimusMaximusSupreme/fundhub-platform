@@ -389,6 +389,26 @@ describe("teleprompter touch rules (gestureStep)", () => {
     assert.deepEqual(r.acts, [{ do: "grab" }, { do: "drag", dy: -20 }, { do: "drag", dy: -30 }]);
   });
 
+  test("real drag and mousewheel never call Stop or drop autoplay", () => {
+    const pageAct = SRC.slice(SRC.indexOf("function act(a, e)"), SRC.indexOf("function feed(type, e)"));
+    const grab = pageAct.slice(pageAct.indexOf('a.do === "grab"'), pageAct.indexOf('a.do === "drag"'));
+    assert.doesNotMatch(grab, /\bstop\(/, "drag must never pause active text");
+    assert.match(grab, /stopFling\(\)/);
+    const wheel = SRC.slice(SRC.indexOf('stage.addEventListener("wheel"'), SRC.indexOf('content.addEventListener("input"'));
+    assert.doesNotMatch(wheel, /\bstop\(/, "the scroll wheel must not pause active text");
+    assert.match(wheel, /moveBy\(e\.deltaY\)/);
+    const move = SRC.slice(SRC.indexOf("function moveBy(dy)"), SRC.indexOf("function stopFling()"));
+    assert.match(move, /seeked = !\(playing \|\| countTimer\)/);
+    assert.match(move, /if \(playing\) last = root\.performance\.now\(\)/);
+    const gesture = run(load(), [
+      { type: "down", x: 150, y: 510, t: 1 },
+      { type: "move", x: 150, y: 445, t: 18 },
+      { type: "up", x: 150, y: 445, t: 30 },
+      { type: "settle", t: 500 }
+    ], "rolling");
+    assert.deepEqual(gesture.acts.map((a) => a.do), ["grab", "drag"]);
+  });
+
   test("a flick in scroll mode keeps the words moving; the same flick while paused does not", () => {
     const T = load();
     const flick = [
