@@ -789,8 +789,12 @@ describe("recorded camera frame quality", () => {
     assert.match(recorder, /ctx\.scale\(-1, 1\)/);
     assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
-    assert.match(recorder, /Math\.min\(30, Math\.max\(24,/);
+    assert.match(recorder, /Math\.min\(60, Math\.max\(1,/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
+    assert.match(SRC, /return stays4K\(scripts\[cur\]\) \? "4k" : "1080p"/);
+    assert.match(SRC, /push\(60, "tall", true, false, hd\)/);
+    assert.match(SRC, /push\(30, "tall", true, false, hd\)/);
+    assert.match(SRC, /measure: 30, cam: "1080p"/);
     const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));
     assert.match(begin, /savedWidth >= 3840 \? 48000000/);
     assert.match(begin, /savedWidth >= 1920 \? 24000000/);
