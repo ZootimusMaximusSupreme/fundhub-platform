@@ -10,3 +10,12 @@ export function isRunnerOnlyNotChecked({ id = "", why = "" } = {}, { ci = false 
     || (ci && CI_SECRET_ONLY_IDS.has(String(id)) && /not set here/i.test(String(why)));
 }
 
+export function isPartialLaneOnlyNotChecked({ why = "" } = {}, { partial = false } = {}) {
+  return partial && /^Claims covered by .+, but .+ did not run today\.$/.test(String(why));
+}
+
+export function unknownRequestedLanes(requested = [], available = []) {
+  const known = new Set(available.map(String));
+  return [...new Set(requested.map(String).filter((lane) => !known.has(lane)))];
+}
+

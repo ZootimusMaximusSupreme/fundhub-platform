@@ -35,7 +35,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DB_SETTINGS_SQL } from "../../src/pulse/beats/readbox.mjs";
-import { isRunnerOnlyNotChecked } from "./prove-policy.mjs";
+import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLanes } from "./prove-policy.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
@@ -50,6 +50,10 @@ if (args.includes("--beats")) {
   await proveBeats();
   process.exit(0);
 }
+
+const { GAP_LANES: REQUESTABLE_GAP_LANES } = await import(pathToFileURL(path.join(REPO, "src/pulse/coverage/run-slices.mjs")).href);
+const unknownLanes = unknownRequestedLanes(LANES, REQUESTABLE_GAP_LANES);
+if (unknownLanes.length) fail(`unknown requested lane${unknownLanes.length === 1 ? "" : "s"}: ${unknownLanes.join(", ")}`);
 
 loadDotEnv(path.join(REPO, ".env"));
 const REAL_DATABASE_URL = process.env.DATABASE_URL;
@@ -136,6 +140,7 @@ const EXPECTED_OPEN_UNTIL_RECEIPTS = /^wf:/;
 let finalCounts = null;
 let laptopOnly = [];
 let waitingOnReceipts = [];
+let partialLaneOnly = [];
 let notChecked = [];
 const auditRows = [];
 if (full) {
@@ -149,9 +154,10 @@ if (full) {
      are never counted green. */
   const runnerOnly = (row) => isRunnerOnlyNotChecked(row, { ci: process.env.CI === "true" });
   laptopOnly = notCheckedAll.filter(runnerOnly);
+  partialLaneOnly = notCheckedAll.filter((n) => !runnerOnly(n) && isPartialLaneOnlyNotChecked(n, { partial: LANES.length > 0 }));
   /* Until the run receipts ship, a workflow that was handed an event cannot show it ran. Closed list, printed by name. */
-  waitingOnReceipts = notCheckedAll.filter((n) => !runnerOnly(n) && EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id));
-  notChecked = notCheckedAll.filter((n) => !runnerOnly(n) && !EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id)).map((n) => `${n.id}: ${n.why}`);
+  waitingOnReceipts = notCheckedAll.filter((n) => !runnerOnly(n) && !partialLaneOnly.includes(n) && EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id));
+  notChecked = notCheckedAll.filter((n) => !runnerOnly(n) && !partialLaneOnly.includes(n) && !EXPECTED_OPEN_UNTIL_RECEIPTS.test(n.id)).map((n) => `${n.id}: ${n.why}`);
   for (const f of final) if (String(f.row.id).startsWith("audit:")) auditRows.push(`${f.row.status.padEnd(11)} ${f.row.id}: ${clip(f.row.proof || f.row.reason || f.raw.detail, 150)}`);
 }
 if (full) {
@@ -159,6 +165,7 @@ if (full) {
   console.log(`final rows ${finalCounts.total}: green ${finalCounts.green}, red ${finalCounts.red}, nothing to judge ${finalCounts.na}, NOT CHECKED ${finalCounts.not_checked}; claims folded into a real check: ${full.folded}`);
   for (const a of auditRows) console.log(`  ${a}`);
   console.log(`  laptop only (green on the live server this morning, never counted green here): ${laptopOnly.length}${laptopOnly.length ? ` (${laptopOnly.map((n) => n.id).join(", ")})` : ""}`);
+  console.log(`  outside this targeted lane run: ${partialLaneOnly.length}${partialLaneOnly.length ? ` (${partialLaneOnly.map((n) => n.id).join(", ")})` : ""}`);
   console.log(`  waiting on run receipts (handed an event, nothing records that it ran): ${waitingOnReceipts.length}${waitingOnReceipts.length ? ` (${waitingOnReceipts.map((n) => n.id).join(", ")})` : ""}`);
   for (const n of notChecked.slice(0, 80)) console.log(`  NOT CHECKED  ${n}`);
   if (notChecked.length > 80) console.log(`  ... and ${notChecked.length - 80} more`);
