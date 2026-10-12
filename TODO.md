@@ -278,7 +278,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Fix the follow-up texts. They still offer a $197 "discount," which is now higher than the $147 price, so lower it or turn it off. (10/4)
 - [ ] Check whether the old /order checkout (ClickFunnels product at $297) still gets traffic. If it does, change the product price. (10/4)
 - [ ] Financing approval (expected today). (10/3)
-- [ ] Launch book-a-call at $250/day once Lead and Schedule fire in Test Events. (10/3)
 - [ ] Today's shoot (10/4)
 - [ ] 3 canal ads
 - [ ] 2 home ads
@@ -291,12 +290,10 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Move to bullet-point scripts with delivery marks after this batch (10/4)
 - [ ] Notes green screen ads (10/2)
 - [ ] Storytelling notes: your timeline (how you got funded a little over $1,000,000), Gene's timeline (low 600s to $420,000 across 3 LLCs), and the funding mistakes that cost you money
-- [ ] Film the cliffhanger version next to the full 7-step version
 - [ ] Film 3 testimonials with B-roll, then grow testimonials from 3 to 6–9 (9/30, 10/3)
 - [ ] Send the B-roll asset request list to the marketing team (9/21)
 - [ ] Rooftop shoot: pick 2–3 spots (W Hotel at night, Canal Club, Diablo Rooftop) and a spot for the reclined shot (Caesars daybeds), then build the shot list (9/20)
 - [ ] Film the portal welcome video (script approved, opens with "What's up, welcome to Fundhub") (9/21)
-- [ ] Film the Credit Mastery System course in Loom, one video per module (93 slides) (8/21, 9/21, 10/2)
 - [ ] Spare Rode Wireless ME transmitter (about $80, pair it in Rode Central) (10/4)
 - [ ] USB-C power bank (10/4)
 - [ ] ZGCINE PS-R30 PRO charging case (10/4)
@@ -312,8 +309,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Submagic: confirm you're on the Business + API plan (9/22)
 - [ ] Automated pipeline: Drive "Raw" folder → R2 → Submagic and Deepgram, with phone alerts through ntfy or Pushover (9/22)
 - [ ] Delete the 4 "DUPLICATE" files in the SLO Ads Drive folder (9/21)
-- [ ] Put it on your phone as a real app through TestFlight ($99/year Apple developer account) this week (10/4)
-- [ ] Move it behind your login on fundhub.ai (10/4)
 - [ ] Load the scripts from the repo automatically (10/4)
 - [ ] Test it at home on one ad, fix what feels off, then film a full batch (10/4)
 - [ ] Roadmap page audit: finish the 23 remaining fixes in the "Roadmap Page Audit & Game Plan" doc (9/30)
@@ -335,7 +330,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Put the Canva approval screenshots into the asset stack
 - [ ] Set up Cal.com and the CRM custom fields
 - [ ] Climate front door: commit the ClimateFrontDoor pack to the repo, and pick the flat Darwin map or the globe (9/19, 9/22)
-- [ ] Alt finance offer: SBA, hard money and real estate lending, launched within 30 days (10/4)
 - [ ] Mastermind the offer (10/3)
 - [ ] Credit optimization clients: document-upload reminder texts on day 1, 3 and 5 (10/3)
 - [ ] Optimize the roadmaps (9/30)
@@ -458,11 +452,9 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Townhouse: get the CC&Rs, and have an electrician check the 200-amp upgrade (9/7)
 - [ ] Move your photos to the new Apple ID with Image Capture (9/5)
 - [ ] Taxes with the CPA
-- [ ] Ask whether the CPA specializes in real estate
 - [ ] Rent
 - [ ] Mail the returns
 - [ ] FAFSA
-- [ ] University of Phoenix: ask the advisor about Security+ transfer credit and the Maricopa 3+1 pathway
 - [ ] Start TryHackMe or HackTheBox
 - [ ] Apple ID
 - [ ] Call Eduardo Soto
@@ -471,7 +463,6 @@ This file contains only unchecked items. Items stay here until current evidence 
 - [ ] Bulk coffee
 - [ ] iPad
 - [ ] Room: clean it, hang the art, sort the bed and desk
-- [ ] Pick up the baby blanket at Tyler and Carly's
 - [ ] Black Friday: check the price on the LG 100MRGB95BU TV
 - [ ] Ultra Japan: set ticket alerts, look at flights for Jan–Feb 2027
 - [ ] Townhouse (9/7 chat, if still on): get the CC&Rs, have an electrician check the 200-amp upgrade
