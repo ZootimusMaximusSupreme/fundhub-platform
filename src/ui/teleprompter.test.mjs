@@ -568,7 +568,7 @@ describe("teleprompter page", () => {
     // The change pulse, the edit bar and the controls are NOT read through the glass.
     for (const id of ["pulse", "p-save", "editbar", "b-edit", "b-hist", "b-next"]) assert.ok(!flip.includes(`id="${id}"`), id);
     // The edit file loads first: teleprompter.js reads window.FundhubTeleprompterEdits.
-    assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js"'));
+    assert.ok(HTML.indexOf('src="teleprompter-edits.js"') < HTML.indexOf('src="teleprompter.js?v='));
     // Editing turns the glass flip off so the words read the right way round.
     assert.match(HTML, /body\.editing #flip\{transform:none !important\}/);
     assert.match(HTML, /Play rolls the words/);
