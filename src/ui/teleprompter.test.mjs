@@ -579,7 +579,7 @@ describe("offer folder UI", () => {
     assert.match(T.queueHook(script), /^You can spend the next year/);
     assert.match(T.driveUrlForScript(script), /drive\.google\.com\/drive\/folders\//);
     assert.match(HTML, /id="b-drive"/);
-    assert.match(SRC, /var driveGest = chipStart\(\)/);
+    assert.match(SRC, /driveGest = chipStart\(\)/);
     assert.match(SRC, /if \(step\.go && !driveBtn\.hidden && driveBtn\.href\)/);
   });
 });
