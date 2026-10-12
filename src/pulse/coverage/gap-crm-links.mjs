@@ -84,6 +84,7 @@ const RECORD_IDS = Object.freeze([...ROUTE_IDS, ...LIBRARY_IDS]);
 /** Logos looked at per morning: the newest few, plus one slice of a rotation. */
 export const LOGO_NEWEST = 10;
 export const LOGO_ROTATION = 40;
+export const LOGO_FETCH_BATCH = 20;
 export const LOGO_PLACEHOLDER = "/assets/lenders/placeholder.svg";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -491,7 +492,7 @@ async function checkLogos(ctx, run, orgId, now) {
   if (!ownRows.length && !badPaths.length) return row(id, "skip", "no /assets/lenders bank logo paths on file");
   const { picked, total } = pickLogos(ownRows, now);
   const base = originOf(ctx.baseUrl);
-  const results = await inBatches(picked, 10, async (p) => {
+  const results = await inBatches(picked, LOGO_FETCH_BATCH, async (p) => {
     try {
       const { status } = await getText(fetchImpl, `${base}${p}`, "HEAD");
       return { p, status };

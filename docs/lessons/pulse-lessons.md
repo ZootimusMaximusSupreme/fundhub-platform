@@ -27,9 +27,9 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 
 ## 2026-10-12 — full catalog ship proof — timeout_or_capacity
 - Cause: the full catalog added 1,762 honest red findings. The proof printed every red line, which overflowed the GitHub ship log. A dead old live site also made the rotating CRM file check take 45 seconds.
-- Fix: the proof prints the first 80 findings plus the remaining count. Live red and not-checked results stay in the scorecard but do not pretend the proof engine crashed. CRM file reads now stop after two seconds, so the full lane finished in 4.4 seconds with the old site down.
+- Fix: the proof prints the first 80 findings plus the remaining count. Live red and not-checked results stay in the scorecard but do not pretend the proof engine crashed. CRM file reads stop after two seconds, and the 51-logo sample runs in batches of 20 so a slow GitHub network still leaves room for the rest of the lane.
 - Guard added: `scripts/pulse/prove-policy.test.mjs`, `src/pulse/coverage/gap-crm-links.test.mjs`, and the full built-bundle `npm run pulse:prove`. The proof still fails for missing bundle files, thrown steps, slow lanes, SQL errors, writes, or sends.
-- Incident: none (caught by GitHub ship run `38293041665`). PR: none
+- Incident: none (caught by GitHub ship runs `38293041665` and `38295693277`). PR: none
 
 ## 2026-10-10 — trip lanes — timeout_or_capacity
 - Cause: the audit checks every "nothing to judge" row again, all together, inside 2.5 seconds. Three new trip rows that said "nothing to judge" each read the database again. That pushed the list past the deadline, and about 50 other rows after them (every workflow row) read "not true any more" with no real cause. Found by `npm run pulse:prove` before ship. A faster read and one shared read both helped and neither was enough in the proof.

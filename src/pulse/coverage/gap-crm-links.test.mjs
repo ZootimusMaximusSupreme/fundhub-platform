@@ -20,6 +20,7 @@ import {
   CLIENT_TX_SQL,
   CRM_FETCH_TIMEOUT_MS,
   LENDER_COUNT_SQL,
+  LOGO_FETCH_BATCH,
   LOGO_NEWEST,
   LOGO_PLACEHOLDER,
   LOGO_ROTATION,
@@ -57,7 +58,9 @@ const BASE = "https://fundhub.ai";
 
 test("one dead CRM file cannot consume the whole pulse lane", () => {
   assert.equal(CRM_FETCH_TIMEOUT_MS, 2000);
-  assert.ok(CRM_FETCH_TIMEOUT_MS * 2 < 15000, "one retry must still finish before the lane deadline");
+  assert.equal(LOGO_FETCH_BATCH, 20);
+  const logoBatches = Math.ceil((LOGO_NEWEST + LOGO_ROTATION + 1) / LOGO_FETCH_BATCH);
+  assert.ok(logoBatches * CRM_FETCH_TIMEOUT_MS * 2 < 15000, "all logo retries must still leave room for the rest of the lane");
 });
 
 function shape(rows) {
