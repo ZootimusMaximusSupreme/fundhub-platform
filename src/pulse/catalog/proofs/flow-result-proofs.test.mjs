@@ -10,13 +10,14 @@ const ROOT = new URL("../../../../", import.meta.url);
 const MAP_ROOT = new URL("ops/workflows/coverage-every-surface-2026-10-10/", ROOT);
 const SOURCE_FILES = ["messages.json", "journeys.json", "agents.json"];
 const EXPECTED_PROOF_COUNTS = Object.freeze({
-  "messages.json": 270,
-  "journeys.json": 27,
-  "agents.json": 24,
+  "messages.json": 447,
+  "journeys.json": 132,
+  "agents.json": 25,
 });
 
 const MESSAGE_DELIVERY_BATCH = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
 const ACTIVE_MESSAGE_BATCH = "src/pulse/catalog/proofs/flow-batch-active-message-results.test.mjs";
+const FLOW_GAP_TEST = "src/pulse/coverage/gap-catalog-flow.test.mjs";
 const execFileAsync = promisify(execFile);
 
 function loadRows(sourceFile) {
@@ -48,7 +49,7 @@ test("flow proofs name only real, runnable result tests", () => {
   assert.deepEqual(counts, EXPECTED_PROOF_COUNTS);
 });
 
-test("known unproved flow gaps stay without proof", () => {
+test("known flow gaps map to the exact executable red monitor", () => {
   const cases = [
     ["messages.json", "dispatch:sms-duplicate-guard-NOT-WIRED"],
     ["journeys.json", "journey:optimize-intended#2-book-without-form"],
@@ -59,7 +60,10 @@ test("known unproved flow gaps stay without proof", () => {
   for (const [sourceFile, surface] of cases) {
     const row = loadRows(sourceFile).find((candidate) => candidate.surface === surface);
     assert.ok(row, `${sourceFile}: ${surface}`);
-    assert.equal(proofForFlowRow(sourceFile, row), undefined, surface);
+    const proof = proofForFlowRow(sourceFile, row);
+    assert.ok(proof, surface);
+    assert.match(proof.evidence, /src\/pulse\/coverage\/gap-catalog-flow\.mjs/, surface);
+    assert.equal(proof.asserts, row.control, surface);
   }
 });
 
@@ -70,7 +74,9 @@ test("every deep message proof runs the gate and final dispatcher outcome", () =
     const files = new Set(proofTestFiles(proof));
     const sharedChain = files.has("src/messaging/gate.test.mjs")
       && files.has("src/messaging/dispatch.test.mjs");
-    const batchedChain = files.has(MESSAGE_DELIVERY_BATCH) || files.has(ACTIVE_MESSAGE_BATCH);
+    const batchedChain = files.has(MESSAGE_DELIVERY_BATCH)
+      || files.has(ACTIVE_MESSAGE_BATCH)
+      || files.has(FLOW_GAP_TEST);
     assert.equal(sharedChain || batchedChain, true, row.surface);
   }
 });

@@ -1,3 +1,11 @@
+import {
+  FLOW_GAP_LANE,
+  FLOW_GAP_TEST,
+  needsAgentGapMonitor,
+  needsJourneyGapMonitor,
+  needsMessageGapMonitor,
+} from "./flow-gap-cases.mjs";
+
 const TEST_FILE_RE = /\b(?:src|api|scripts|e2e)\/[A-Za-z0-9_./-]+\.test\.mjs\b/g;
 
 const MESSAGE_RESULT_CHAIN = Object.freeze([
@@ -169,6 +177,14 @@ function executableProof(depth, files, row) {
   };
 }
 
+function exactGapProof(row) {
+  return {
+    depth: "deep",
+    evidence: `Executable exact result monitor: ${FLOW_GAP_LANE}; focused proof: ${FLOW_GAP_TEST}`,
+    asserts: row.control,
+  };
+}
+
 function checkedProof(depth, files, row) {
   const evidence = String(row?.evidence || "");
   const missing = files.filter((file) => !evidence.includes(file));
@@ -199,11 +215,13 @@ function messageProof(row) {
 
 export function proofForFlowRow(sourceFile, row) {
   const file = basename(sourceFile);
-  if (file === "messages.json") return messageProof(row);
+  if (file === "messages.json") {
+    return messageProof(row) || (needsMessageGapMonitor(row) ? exactGapProof(row) : undefined);
+  }
 
   if (file === "journeys.json") {
     const files = JOURNEY_RESULT_TESTS[row?.surface];
-    if (!files) return undefined;
+    if (!files) return needsJourneyGapMonitor(row) ? exactGapProof(row) : undefined;
     return files.includes(JOURNEY_BATCH_RESULT_TEST)
       ? executableProof("deep", files, row)
       : checkedProof("deep", files, row);
@@ -213,7 +231,9 @@ export function proofForFlowRow(sourceFile, row) {
     const runtimeFiles = AGENT_RUNTIME_RESULT_TESTS[row?.surface];
     if (runtimeFiles) return executableProof("deep", runtimeFiles, row);
     const files = AGENT_RESULT_TESTS[row?.surface];
-    return files ? checkedProof("deep", files, row) : undefined;
+    return files
+      ? checkedProof("deep", files, row)
+      : needsAgentGapMonitor(row) ? exactGapProof(row) : undefined;
   }
 
   return undefined;
