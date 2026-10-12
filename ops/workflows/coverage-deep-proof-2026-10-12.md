@@ -19,7 +19,7 @@ Owner approved the full build. This batch upgrades the 1,762 honest red catalog 
 | Display proof | Agent 1 | 427 buttons, 385 screens, 259 forms, 172 links | done — 0 new proof, 1,243 honest red |
 | Door proof | Agent 2 | 339 routes, 13 jobs, 4 webhooks | done — 11 proved, 345 honest red |
 | Flow proof | Agent 3 | 105 journeys, 17 messages, 1 agent | done — 0 new proof, 123 honest red |
-| Read proof | Agent 4 | 40 reads | done — 19 proved, 21 honest red |
+| Read proof | Agent 4 | 40 reads | done — 13 proved, 27 honest red |
 | Integration and ship | This session | review, combine, full proof, commit, push, live check | claimed |
 
 ## Shared context
@@ -85,15 +85,15 @@ Second and final pass done. Serena was called first. Its TypeScript server could
 Done after the second and final strict review. Serena instructions loaded, but the shared TypeScript server could not see Node. This lane used normal repo search/read tools as the documented fallback.
 
 - Before: 40 monitored-red read rows.
-- After: 21 monitored-red read rows.
-- Strict green: 19. The Money Helper bridge is the accepted module-result proof. Real Chromium proof covers the Agent Editor staff choices and promotion gate, bank-amount waiting count, portal referral card, four affiliate reads, two Brand Studio reads, and eight Campaign Manager reads.
-- Corrected: the other 15 first-pass promotions went back to red. Raw file text, extracted page functions, helper math, and string checks are not counted as result proof.
+- After final review: 27 monitored-red read rows.
+- Strict green: 13. The Money Helper bridge is the accepted module-result proof. Real Chromium proof covers the bank-amount waiting count, portal referral card, two affiliate reads, two Brand Studio reads, and six Campaign Manager reads.
+- Corrected: 21 first-pass promotions went back to red. Raw file text, extracted page functions, helper math, string checks, and partial panel checks are not counted as result proof.
 - Proof method: controlled fake source values go through the actual rendered page, or through the accepted Money Helper module path. The browser checks assert exact values, filters, money display, empty/refusal behavior already covered by the reused specs, and role scope. No page-load, route-exists, file-exists, schema-only, or HTTP-200 proof was accepted.
 - Focused checks: `node --test src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs src/pulse/catalog/proofs/read-second-pass-browser.test.mjs` — 4 passed, 0 failed, 0 skipped. `node --test src/pulse/coverage/gap-catalog-reads.test.mjs` — 3 passed, 0 failed, 0 skipped. `node --test src/pulse/catalog/proofs/read-proof-cases.test.mjs` — 3 passed, 0 failed, 0 skipped; its proof run executed all 57 green read rows.
 - Safety: no live client, message, call, charge, provider send, production write, stage, commit, or push ran.
 - Changed paths: `src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs`, `src/pulse/catalog/proofs/read-second-pass-browser.test.mjs`, `src/pulse/catalog/proofs/read-proof-cases.mjs`, `src/pulse/coverage/gap-catalog-reads.mjs`, and this Read proof manifest section.
-- Honest leftovers: 21 remain red. They are portal agreements, Money Helper polling, money trends, three My Numbers reads, four Ops Admin reads, two payment-success reads, the Present send lock, two teleprompter reads, portal welcome video, closer logbar, Plaid Link, partner census, social OAuth, and climate map. Every row names the exact missing real-page or real-module result in `gap-catalog-reads.mjs`.
+- Honest leftovers: 27 remain red. The six final-review returns are both Agent Editor reads, both affiliate gate chips, the Campaign fatigue label, and both can-launch values in the Connections result. The other 21 are listed in `gap-catalog-reads.mjs`. Every row names its exact missing real-page or real-module result.
 
 ### Integration and ship
 
-Claimed by this session. Baseline six-lane built-bundle pulse passed as a safe runner: 0 skipped rows, 0 timeouts, 0 SQL errors, 0 writes, and 0 provider sends. It reported 1,879 red rows inside the selected lane output. The final folded report had 1,890 red rows because it also includes older company-health reds outside this catalog upgrade. Fresh review rejected 205 weak first-pass promotions. Final pre-rebuild gain is 30 strict result proofs: 11 Door and 19 Read. Honest catalog red count is expected to move from 1,762 to 1,732. Final fresh review, catalog rebuild, full proof, and ship remain.
+Claimed by this session. Baseline six-lane built-bundle pulse passed as a safe runner: 0 skipped rows, 0 timeouts, 0 SQL errors, 0 writes, and 0 provider sends. It reported 1,879 red rows inside the selected lane output. The final folded report had 1,890 red rows because it also includes older company-health reds outside this catalog upgrade. Fresh review rejected 211 weak first-pass promotions. Final pre-rebuild gain is 24 strict result proofs: 11 Door and 13 Read. Honest catalog red count is expected to move from 1,762 to 1,738. Final catalog rebuild, full proof, and ship remain.

@@ -16,10 +16,6 @@ function group(sourceFile, surface, tests, controls) {
 }
 
 const PROVED = [
-  ...group("desks-a.json", "agent-editor.html", ["src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs"], [
-    "Page open: staff pickers for Owner and Escalate-to selects",
-    "Promotion gate checklist (display: trigger, prompt 60+ chars, guardrail 20+ chars, escalation)",
-  ]),
   ...group("desks-a.json", "client-control-panel.html", ["src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs"], [
     "Waiting count headline (bank yes with no amount)",
   ]),
@@ -38,8 +34,6 @@ const PROVED = [
   ...group("desks-a.json", "affiliate.html", ["src/pulse/catalog/proofs/read-second-pass-browser.test.mjs"], [
     "Page open: affiliate figures (REFERRED, CONVERTED, OWED, PAID tiles, referral funnel, license banner, topbar chips)",
     "Page open: own portal read (offer links, code, rate, license gate, tax gate, referral rows, payout rows)",
-    "License-unsigned banner and topbar chip (display, no button)",
-    "Tax-form-missing banner (display, no button)",
   ]),
   ...group("desks-a.json", "brand-studio.html", ["src/http/partner-marketing-usage-handler.test.mjs"], [
     "Generation: Writing left and Pages live tiles",
@@ -56,8 +50,6 @@ const PROVED = [
     "Spend vs ceilings panel (CM-03 rows, headroom, % of ceiling, flags)",
     "Ad performance panel (CM-09: leads, booked calls, booked rate)",
     "Campaign list panel (CM-04: approval state, strategy, budget, spend yesterday, ROAS, status)",
-    "Creative fatigue panel (CM-06: frequency, CTR, ROAS, recommendation, label)",
-    "Connections panel (CM-07: state, verification, token, can launch, blockers)",
     "Action log panel (CM-08: actor, rule, reason, change, outcome, revertible)",
     "Ceiling chip and summary tiles (display)",
   ]),

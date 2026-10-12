@@ -8,6 +8,12 @@ function gap(id, surface, control, finding) {
 }
 
 export const READ_GAPS = Object.freeze([
+  gap("catalog-read:agent-owner-picker", "agent-editor.html", "Page open: staff pickers for Owner and Escalate-to selects", "The browser proof checks Escalate-to but not the Owner picker. No real rendered result proves both returned staff lists and selected values."),
+  gap("catalog-read:agent-promotion-gates", "agent-editor.html", "Promotion gate checklist (display: trigger, prompt 60+ chars, guardrail 20+ chars, escalation)", "The browser proof checks only part of the checklist. No real rendered result proves all four returned promotion gates together."),
+  gap("catalog-read:affiliate-license-chip", "affiliate.html", "License-unsigned banner and topbar chip (display, no button)", "The browser proof checks the license banner but not the topbar chip. Both exact rendered results must be observed."),
+  gap("catalog-read:affiliate-tax-chip", "affiliate.html", "Tax-form-missing banner (display, no button)", "The browser proof checks the tax banner but not its topbar chip. Both exact rendered results must be observed."),
+  gap("catalog-read:campaign-fatigue-label", "campaign-manager.html", "Creative fatigue panel (CM-06: frequency, CTR, ROAS, recommendation, label)", "The browser proof checks fatigue values but not the rendered label control. The full named result stays red."),
+  gap("catalog-read:campaign-can-launch", "campaign-manager.html", "Connections panel (CM-07: state, verification, token, can launch, blockers)", "The browser proof checks connection state but not either rendered can-launch value. The full named result stays red."),
   gap("catalog-read:portal-agreements", "client-portal.html", "Page open: portal contracts read (Agreements tab)", "No real browser check feeds agreement rows through the portal read and asserts the exact pending state and signing link shown on the Agreements tab."),
   gap("catalog-read:money-helper-poll", "public/app/money-helper.html", "Thinking... poll every 3 s (up to 100 polls) and Check again button", "The old check ran an extracted function. No real page or module result proves the 3-second poll, 100-read stop, and Check again result."),
   gap("catalog-read:money-trends", "public/app/money.html", "Trends line-graph slot (mounted from money-trends.js when the page loaded it)", "The old check only proved source wiring. No rendered browser result proves the graph shows the exact returned trend values."),
