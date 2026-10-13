@@ -26,13 +26,14 @@ const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const cases = {
   ui: new RegExp(`(?:${core.map(escape).join("|")})$|teleprompter on an iPhone \\(touch\\) (?:${conflict.map(escape).join("|")})$`),
   ad60: /Ad preview reports the granted 60 fps camera rate$/,
-  rear4k: /full 4K GPU recording preserves portrait pixels and one take across lens changes$/
+  rear4k: /full 4K GPU recording preserves portrait pixels and one take across lens changes$/,
+  handoff: /(?:muted rear preview holds the last frame until a real frame, then saves one take|stopping during a muted rear flip records the pending rear settings and one red-frame take)$/
 };
 const selectedCase = process.env.FHTP_LIVE_CASE || "ui";
 if (!Object.hasOwn(cases, selectedCase)) throw new Error(`Unknown live UI case: ${selectedCase}`);
 const resultTag = process.env.FHTP_LIVE_TAG || "";
 if (resultTag && !/^[a-f0-9]{8}$/.test(resultTag)) throw new Error("FHTP_LIVE_TAG must be an 8-character commit prefix");
-const resultName = `fundhub-live-${selectedCase === "ui" ? "final-ui" : selectedCase === "ad60" ? "ad60" : "rear4k"}-results${resultTag ? `-${resultTag}` : ""}.json`;
+const resultName = `fundhub-live-${selectedCase === "ui" ? "final-ui" : selectedCase}-results${resultTag ? `-${resultTag}` : ""}.json`;
 
 export default {
   ...base,
