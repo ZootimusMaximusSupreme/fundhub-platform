@@ -2,11 +2,13 @@
 
 ## Today — 2026-10-13
 
-Timing (Arizona/MST): no AI work before 9:00 AM; start Claude at 9:00 AM. Aim to text 50 people around 6:00 AM if possible. Panera opens around 7:30–8:00 AM per owner. All filming waits until the teleprompter is fixed; film outside except for four green-screen ads at home, once people are awake. Stack independent tasks while AI runs and check progress at planned breaks.
+Timing (Arizona/MST): no AI work before 9:00 AM; start Claude at 9:00 AM. Aim to text 50 people around 6:00 AM if possible. Panera opens around 7:30–8:00 AM per owner. All filming waits until the teleprompter is fixed; film outside except for four green-screen videos at home, once people are awake. Stack independent tasks while AI runs and check progress at planned breaks.
+
+Filming priority: owner is strongest in the morning and wants to leave home by 10:00 AM. Claude's first job at 9:00 AM is the teleprompter; filming cannot begin until it works. Aim to finish filming before 2:00 PM, because starting again after 2:00 PM is too tiring. The one-hour repair window is a target, not a confirmed estimate. Have gear and scripts ready before 9:00 AM; handle independent tasks during the repair. Protect the filming window before editing, refactor planning, and repository cleanup.
 
 - [ ] Sign MCA deal.
 - [ ] Fix teleprompter.
-- [ ] Finish filming.
+- [ ] Finish filming: four green-screen videos at home, four remaining ads, and the remaining longer-form/thank-you videos. Longer-video count/titles need clarification: owner dictated “two ESL—one BSL and one thank you.”
 - [ ] Edit the filmed videos.
 - [ ] Google account — Justice.
 - [ ] Start Claude again.
@@ -18,6 +20,7 @@ Timing (Arizona/MST): no AI work before 9:00 AM; start Claude at 9:00 AM. Aim to
 - [ ] Help Colin with Lexi’s nexus.
 - [ ] Pay CRS.
 - [ ] Get coffee at Panera.
+- [ ] Optional: sushi around 1:00–2:00 PM if filming allows.
 - [ ] Clean the house floors today.
 - [ ] Figure out a strategy to stack other work while AI runs, without staring at the screen or obsessively checking loading.
 
