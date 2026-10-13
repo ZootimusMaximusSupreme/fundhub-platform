@@ -2,10 +2,11 @@
 
 ## Today — 2026-10-13
 
-Updated 10:36 AM Arizona/MST. Open work only. Focus: outreach, filming, then editing. The owner reports no further completed tasks since the prior update and wants to stop babysitting AI. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
+Updated 10:39 AM Arizona/MST. Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: outreach, filming, then editing. The owner reports no further completed tasks since the prior update and wants to stop babysitting AI. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
 
-### 1. Now — outreach
+### 1. Now — food, water, then outreach
 
+- [ ] Get food and water at Trader Joe's — owner is there now.
 - [ ] Text Blake's leads first using the 661 number and owner's 480 number as planned.
 - [ ] Complete the group-text step for Blake — approximately 28 leads; confirm the count and grouping.
 - [ ] Finish texting the remaining people on the corrected lead list — owner now estimates 80–85 prior/current-client leads in total. The roughly 28 Blake leads are a subset, not a replacement total.
@@ -23,7 +24,9 @@ The original 10:00 AM departure target has passed. Protect the remaining filming
 
 - [ ] Handle Bram, the credit client (also dictated as Brahm/Brom).
 - [ ] Finish LexisNexis setup for Colin.
-- [ ] Hook up Cortana correctly with the funnel and verify the appointment-setting process.
+- [ ] Hook up Cortana correctly with the funnel.
+- [ ] Verify the setter's complete appointment-setting process.
+- [ ] Confirm the closer is connected, ready, and receiving the setter handoff correctly.
 
 ### 4. Sales and system checks
 
