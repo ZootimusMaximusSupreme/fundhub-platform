@@ -10,7 +10,7 @@ Make sure leads from Blake Evertsen, Fundhub Funnel, and iCloud show their sourc
 | --- | --- | --- | --- |
 | Source rules | agent | DONE | Find existing mappings, docs, and tests. No edits. |
 | Live record check | agent | DONE | Check the named live lead and available records. No edits. |
-| Repair and proof | root | IN PROGRESS | Group the private list by source and add source filtering, then verify it live. |
+| Repair and proof | root | DONE | Grouped the private list by source, added source filtering, and verified it on fundhub.ai. |
 
 ## Prompts
 
@@ -61,3 +61,4 @@ Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
 - A fresh live-page reload showed L001-L014 as `Blake Evertsen` and L065-L084 as `Fundhub Funnel`.
 - The file `Funding Leads Fundub LLC Pre Validated.csv` is reserved for Facebook uploads and was not used as a source for this page.
 - The iPhone import results in 337 total private leads. Blake retains precedence if a contact matches both Blake and iCloud, so Blake-labelled referrals remain visible as Blake.
+- The production source grouping deploy `6ace41027c57c3adb1b1d3c7` reached `ready` at 2026-10-13 07:34 Arizona time. A fresh read from both its deployment URL and `fundhub.ai` confirmed the source filter and grouped rows are present.
