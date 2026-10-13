@@ -1,0 +1,51 @@
+{
+  "scope": "Deployed screen assets with intercepted API and mock camera; no physical iPhone quality proof",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "mockCamera": {
+    "width": 1080,
+    "height": 1920,
+    "frameRate": 30
+  },
+  "assets": [
+    {
+      "url": "https://fundhub.ai/app/teleprompter.html",
+      "status": 200,
+      "sha256": "67f6e351b3e3e492cc7a6113cbeae3c772e2e5cf344f36c1355693977eb3560a",
+      "localSha256": "67f6e351b3e3e492cc7a6113cbeae3c772e2e5cf344f36c1355693977eb3560a",
+      "matchesLocal": true
+    },
+    {
+      "url": "https://fundhub.ai/app/teleprompter.css?v=20261012-quality-badge",
+      "status": 200,
+      "sha256": "eac64c1c174aa03a84be428f6a47f28ace3d5350babd3092d2f3c1f3c82a5024",
+      "localSha256": "eac64c1c174aa03a84be428f6a47f28ace3d5350babd3092d2f3c1f3c82a5024",
+      "matchesLocal": true
+    },
+    {
+      "url": "https://fundhub.ai/app/teleprompter.js?v=20261012-quality-badge",
+      "status": 200,
+      "sha256": "fd1a129bb4f6899ee545756b15a3e0f1ad2cd1c650fba2d3c5f821535c268daf",
+      "localSha256": "fd1a129bb4f6899ee545756b15a3e0f1ad2cd1c650fba2d3c5f821535c268daf",
+      "matchesLocal": true
+    }
+  ],
+  "api": [
+    {
+      "url": "https://fundhub.ai/api/marketing/shoot?wpm=200",
+      "status": 200,
+      "intercepted": true
+    },
+    {
+      "url": "https://fundhub.ai/api/marketing/health",
+      "status": 200,
+      "intercepted": true
+    }
+  ],
+  "screenshots": [
+    "/tmp/fundhub-live-camera-badge-webkit.png",
+    "/tmp/fundhub-live-picker-webkit.png"
+  ]
+}

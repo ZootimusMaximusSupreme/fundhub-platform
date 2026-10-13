@@ -22,6 +22,19 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 | `/root/luna_capture_settings` | Camera-rate ordering proof; targeted investigation of remaining 4K copy loss | Done: no unproved painter fix |
 | `/root/sol_screen_proof` | Requested actual-camera badge and reported picker overlap proof in Chromium/WebKit | Done: wrapper lifetime repaired; 3/3 final WebKit checks |
 
+## Required live UI checks for this repair
+
+Run against the published teleprompter assets in WebKit. API and camera fixtures prevent writes to real recordings or customer data. This proves the shipped UI wiring, not physical iPhone capture quality. The score is the fraction of these six required cases that pass; real saved-file 60 fps remains a separate acceptance gate.
+
+1. Actual Ad 30 fps is displayed and marked below target.
+2. Actual VSL 30 fps is displayed and marked below target.
+3. Actual VSL 60 fps is displayed without a below-target warning.
+4. Missing actual frame rate says unavailable, never 60 fps.
+5. Lens switching refreshes the badge and retains one recording.
+6. Picker titles, metadata and hooks remain within separate row bounds.
+
+Release `38351397744` succeeded. Sol's deployed-site WebKit proof passed **6/6 (100/100 for these six UI cases only)** in 10.1 seconds, after exact served-asset verification. Camera/API fixtures were used; this score does not pass the physical iPhone saved-video gate. Durable, synthetic-only evidence: `docs/workflows/teleprompter-video-2026-10-12-evidence/` (six-case results, asset/API responses, marked badge and picker screenshots). Real recordings remain outside Git.
+
 ## Drive video findings
 
 - **Earlier cropped file:** [Direct Book Ad 5 — Paying for speed Take 1.mp4](https://drive.google.com/file/d/1YIFl15ZZxHrQz_ZNxPnX102-RN094kvv/view), ID `1YIFl15ZZxHrQz_ZNxPnX102-RN094kvv`. Uploaded October 12 at 5:17:39 p.m. Phoenix time; 48,051,593 bytes. Its parent is the correct [Direct Book Ads folder](https://drive.google.com/drive/folders/1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry), not SLO Ads. The name matches `marketing/ads/NAMING.md`.
@@ -63,6 +76,7 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 - The existing full morning proof passed on Luna's read-only retry, exit 0: CRM took 4.6 seconds, total morning execution 14.9 seconds, neither staff/app mismatch recurred, and no SQL errors or write attempts occurred. Operational RED rows remain RED. This supports a normal release retry without changing any guard.
 - Sol traced the WebKit lens-test failure to the fixture's `navigator.mediaDevices` wrapper losing its own fake methods after Record created the canvas. Before Record the method was the mock; after Record it was native, so flipping called a denied real camera API. This is a fixture lifetime problem, not evidence of broken product lens routing. Sol is retaining the mocked object strongly on `window`, without changing the lens, exact-count or one-file assertions.
 - After the fixture correction, Sol verified the same wrapper and overridden method survive Record, four below-target rear 60 fps grants are rejected before the rear 30 fps fallback, the preview becomes ready at 1080×1920, the lens label is correct, and one recorder starts with zero stops. The uninstrumented final WebKit sequence passes **3/3** in 4.6 seconds (30 fps truth, lens switch/one file, strict picker bounds). Sol reviewed the approved production UI diff: only the requested badge, reported picker layout and asset version changed; camera view, word size, reading line and controls remain intact.
+- The normal release passed and shipped **d07d04e8** at **10:39 p.m. Phoenix**, run `38351397744`, Netlify deploy `6acdc3dd103d370e0aa1c28c`. Luna independently confirmed production/main ready, published `2026-10-13T05:39:28.796Z`, no deploy error, and successful Inngest registration. Root verified the served `20261012-quality-badge` JavaScript (`fd1a129bb4f6899ee545756b15a3e0f1ad2cd1c650fba2d3c5f821535c268daf`) and CSS (`eac64c1c174aa03a84be428f6a47f28ace3d5350babd3092d2f3c1f3c82a5024`) exactly match the tested source; site health is up with 393 applied migrations and **0 pending**. The source is live; physical iPhone 60 fps saved-file proof remains open.
 
 ### Follow-up: fetched camera settings and publication failure
 

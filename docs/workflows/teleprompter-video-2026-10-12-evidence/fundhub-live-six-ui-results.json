@@ -1,0 +1,294 @@
+{
+  "config": {
+    "argv": [
+      "/Users/chrisstanbridge/.nvm/versions/node/v22.23.2/bin/node",
+      "/Users/chrisstanbridge/Developer/fundhub-platform/node_modules/.bin/playwright",
+      "test",
+      "--config",
+      "/tmp/fundhub-live-six-ui.config.mjs"
+    ],
+    "configFile": "/tmp/fundhub-live-six-ui.config.mjs",
+    "rootDir": "/Users/chrisstanbridge/Developer/fundhub-platform/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/fundhub-live-six-ui-tests",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "live-webkit",
+        "name": "live-webkit",
+        "testDir": "/Users/chrisstanbridge/Developer/fundhub-platform/e2e",
+        "testIgnore": [
+          "**/launch-proof-live.spec.mjs",
+          "**/live-*.spec.mjs"
+        ],
+        "testMatch": [
+          "**/teleprompter-take-flow.spec.mjs"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/fundhub-live-six-ui-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "teleprompter-take-flow.spec.mjs",
+      "file": "teleprompter-take-flow.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Ad preview reports the granted 30 fps camera rate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "live-webkit",
+              "projectName": "live-webkit",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1826,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T05:41:05.470Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f3de40a78bc1435b2dd6-ffa20b248be392e4a1c9",
+          "file": "teleprompter-take-flow.spec.mjs",
+          "line": 578,
+          "column": 3
+        },
+        {
+          "title": "VSL preview reports the granted 30 fps camera rate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "live-webkit",
+              "projectName": "live-webkit",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 943,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T05:41:07.485Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f3de40a78bc1435b2dd6-ac2f297f10a03fa0e320",
+          "file": "teleprompter-take-flow.spec.mjs",
+          "line": 578,
+          "column": 3
+        },
+        {
+          "title": "VSL preview reports the granted 60 fps camera rate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "live-webkit",
+              "projectName": "live-webkit",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1626,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T05:41:08.433Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f3de40a78bc1435b2dd6-7fce3bb4956cdad39574",
+          "file": "teleprompter-take-flow.spec.mjs",
+          "line": 578,
+          "column": 3
+        },
+        {
+          "title": "camera quality badge says fps unavailable when the track omits its rate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "live-webkit",
+              "projectName": "live-webkit",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1782,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T05:41:10.067Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f3de40a78bc1435b2dd6-0bb58c1396bd7a474c3f",
+          "file": "teleprompter-take-flow.spec.mjs",
+          "line": 605,
+          "column": 1
+        },
+        {
+          "title": "camera quality badge follows the granted rate when switching lenses during a take",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "live-webkit",
+              "projectName": "live-webkit",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2631,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T05:41:11.855Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f3de40a78bc1435b2dd6-3fedfcb4c7f186ffb2c6",
+          "file": "teleprompter-take-flow.spec.mjs",
+          "line": 611,
+          "column": 1
+        },
+        {
+          "title": "Still to film keeps each title, take detail, and hook on its own line",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "live-webkit",
+              "projectName": "live-webkit",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 761,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T05:41:14.492Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f3de40a78bc1435b2dd6-c734028058da3b5b8f89",
+          "file": "teleprompter-take-flow.spec.mjs",
+          "line": 1008,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-13T05:41:05.152Z",
+    "duration": 10128.207,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
