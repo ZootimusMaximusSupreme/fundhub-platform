@@ -165,7 +165,7 @@ describe("teleprompter, pure", () => {
 
   test("back camera asks for steady portrait 1080p and never 4K", () => {
     const T = load();
-    const tries = T.cameraTries("environment");
+    const tries = T.cameraTries("environment", "1080p");
     assert.equal(tries[0].facingMode.ideal, "environment");
     assert.equal(tries[0].width.ideal, 1080);
     assert.equal(tries[0].height.ideal, 1920);
@@ -179,6 +179,28 @@ describe("teleprompter, pure", () => {
       assert.equal(blob.includes("2160"), false);
       if (c.width && c.width.max) assert.ok(c.width.max <= 1920);
       if (c.height && c.height.max) assert.ok(c.height.max <= 1920);
+    }
+  });
+
+  test("back camera preserves the 4K60 request when opening or switching lenses", () => {
+    const T = load();
+    const tries = T.cameraTries("environment", "4k");
+    assert.equal(tries[0].facingMode.ideal, "environment");
+    assert.equal(tries[0].width.ideal, 3840);
+    assert.equal(tries[0].height.ideal, 2160);
+    assert.equal(tries[0].frameRate.min, 60);
+    assert.equal(tries[0].frameRate.ideal, 60);
+    assert.equal(tries[0].focusMode, "continuous");
+    assert.equal(tries[0].exposureMode, "continuous");
+    const rates = tries.map((c) => c.frameRate && (c.frameRate.min || c.frameRate.ideal));
+    assert.ok(rates.lastIndexOf(60) < rates.indexOf(30));
+    // Direct exact-lens and exact-device requests bypass cameraTries.
+    for (const shape of ["wide", "tall"]) {
+      const ask = T.cameraAsk("environment", 60, shape, true, "4k");
+      assert.deepEqual([ask.width.ideal, ask.height.ideal].sort((a, b) => a - b), [2160, 3840]);
+      assert.equal(ask.frameRate.min, 60);
+      assert.equal(ask.focusMode, "continuous");
+      assert.equal(ask.exposureMode, "continuous");
     }
   });
 

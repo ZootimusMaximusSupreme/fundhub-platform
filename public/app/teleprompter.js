@@ -551,29 +551,34 @@
 
   /**
    * One real camera ask.
-   * Front 4K is 3840×2160. The frame rate is 60 with no ceiling, so the
+   * Either lens can request 4K at 3840×2160. The frame rate is 60 with no ceiling, so the
    * camera gives the highest rate it has at that size. It is not locked to 30.
    * Settings 1080p is 1920×1080. lockRate asks for that exact frame rate.
    * Tall is the 1080p picture held upright (1080×1920).
    * facing is "user" (front) or "environment" (back).
-   * mode "4k" is the front 4K ask. mode "1080p" stays at 1920×1080.
+   * mode "4k" keeps 4K when lenses change. mode "1080p" stays at 1920×1080.
    */
   function cameraAsk(facing, fps, shape, lockRate, mode) {
     var front = facing !== "environment";
     var rate = fps === 30 ? 30 : 60;
     var tall = shape === "tall";
-    var four = mode === "4k" && front;
+    var four = mode === "4k";
     var frame = four
       ? (lockRate ? { min: rate, ideal: rate } : { ideal: rate })
       : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
     if (four) {
-      return {
-        facingMode: { ideal: "user" },
+      var ask = {
+        facingMode: { ideal: front ? "user" : "environment" },
         width: { ideal: tall ? 2160 : 3840 },
         height: { ideal: tall ? 3840 : 2160 },
         aspectRatio: { ideal: tall ? (9 / 16) : (16 / 9) },
         frameRate: frame
       };
+      if (!front) {
+        ask.focusMode = "continuous";
+        ask.exposureMode = "continuous";
+      }
+      return ask;
     }
     return {
       facingMode: { ideal: front ? "user" : "environment" },
@@ -594,7 +599,7 @@
   /**
    * Tries, in order. The first one the browser accepts is the one we keep.
    * A reject moves to the next try.
-   * Front 4K asks for 3840×2160 at 60 first (no ceiling), then 30.
+   * Both lenses ask for 3840×2160 at 60 first (no ceiling), then 30.
    * The 1080p tries stay under that, capped at 1920, for the Settings choice
    * and for a camera that will not do 4K.
    * The back camera (the phone that sits and films him) adds a steady
@@ -613,8 +618,8 @@
       }
       list.push(video);
     }
-    if (!back && mode === "4k") {
-      push(60, "wide", true, false, "4k");
+    if (mode === "4k") {
+      push(60, "wide", true, back, "4k");
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
@@ -3449,7 +3454,7 @@
         if (gen !== cam.gen) return;
         if (step >= steps.length) { fail(); return; }
         var cur = steps[step++];
-        if (cur.facing === "environment" && cur.audio) camLine("Asking the back camera for 1080p.", false);
+        if (cur.facing === "environment" && cur.audio) camLine("Asking the back camera for " + (mode === "4k" ? "4K" : "1080p") + ".", false);
         md.getUserMedia({ audio: cur.audio, video: cur.video }).then(function (s) {
           afterOpen(s, !cur.audio, cur.facing, cur.video);
         }, function () { run(); });

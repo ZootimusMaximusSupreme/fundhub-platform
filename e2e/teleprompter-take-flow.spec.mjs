@@ -1314,6 +1314,7 @@ test("recording still paints and rolls on a browser without video-frame callback
 test("full 4K GPU recording preserves portrait pixels and one take across lens changes", async ({ page }) => {
   const { server } = await open(page, {
     iphone: true, cameraFps: 60, sourceWidth: 2160, sourceHeight: 3840, edgeMarkers: true, liveCamera: true,
+    sourceSizeByAsk: true, fourKCameraFps: 60, rearCameraFps: 60,
     scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
   });
   await page.locator("#b-rec").tap();
@@ -1340,6 +1341,14 @@ test("full 4K GPU recording preserves portrait pixels and one take across lens c
     left: "yellow", right: "lime", draws2d: 0 });
   await page.locator("#b-camera-flip").tap();
   await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use front camera");
+  const rear = await page.evaluate(() => ({
+    ask: window.__cameraAsks.filter((a) => a.facing === "environment").at(-1).video,
+    settings: document.getElementById("cam-video").srcObject.getVideoTracks()[0].getSettings()
+  }));
+  expect(rear.ask).toMatchObject({ width: { ideal: 3840 }, height: { ideal: 2160 },
+    frameRate: { min: 60, ideal: 60 }, focusMode: "continuous", exposureMode: "continuous" });
+  expect(rear.settings).toMatchObject({ width: 2160, height: 3840, frameRate: 60, facingMode: "environment" });
+  await expect(page.locator("#camera-quality")).toHaveText("4K · 60 fps");
   await expect.poll(async () => (await pixels())?.left).toBe("lime");
   expect(await pixels()).toMatchObject({ top: "red", bottom: "blue", right: "yellow", draws2d: 0 });
   await page.locator("#b-camera-flip").tap();

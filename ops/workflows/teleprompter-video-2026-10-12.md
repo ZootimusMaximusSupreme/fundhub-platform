@@ -1,5 +1,15 @@
 # Teleprompter video investigation — 2026-10-12
 
+## Current continuation — October 13
+
+- GPU recording and phone playback/export are live. Failed run `38413135989` was superseded by successful normal ship `38415984196`, publishing Netlify deploy `6ace45eaf943d6d4d3e531b6` at `2026-10-13T14:54:50.031Z`. Luna and root independently verified all four served asset hashes. Health answers `ok:true`, pending migrations `0`.
+- Sol's shipped UI checks passed **15/15** in WebKit, plus an Ad granted-60 badge check. All actual 30/60/unknown badge states are truthful. Camera/API input is synthetic, so this is not physical 60 fps proof.
+- Luna's settings review found a concrete separate bug: `cameraAsk` applied 4K only to the front lens. Switching to the rear during a 4K take therefore requested 1080p while the recorder canvas stayed 4K. The new regression failed on the original code (`1080 !== 3840`). The correction applies the existing 4K60 request to either lens and retains rear continuous focus/exposure. Ad/default 1080p asks are unchanged.
+- Corrected units: **66/66 passed**. Chromium and regular WebKit: **3/3 each passed**, including real GPU pixels, actual mocked rear 2160×3840@60 settings and badge, front/rear/front one-file recording, and both Ad/VSL mode guards. Lint passed, **3423 files/inline scripts**. TypeScript remains red only at unchanged `src/marketing/filmed-receive.mjs:159`. Publication is in progress.
+- Luna found **no originals newer than `2026-10-13T12:47:21Z`** in Direct Book. The prior Ad measures 29.94 fps and the prior 4K take 11.18 fps. Neither proves the new GPU candidate or the owner's required 60 fps. Physical iPhone preview and new original video/audio proof remain **OPEN**; don't call filming perfect from these browser tests.
+
+Root owns source, asset query, integration and this board; Luna owns settings/release/video checks; Sol owns the existing requested display proof. Other finance edits in this shared checkout belong to a separate task and are not staged with this repair.
+
 ## Scope
 
 ### Owner-approved repair phase — October 13

@@ -1,0 +1,41 @@
+{
+  "checked_at_utc": "2026-10-13T15:13:42.432921+00:00",
+  "assets": [
+    {
+      "name": "teleprompter.html",
+      "url": "https://fundhub.ai/app/teleprompter.html",
+      "status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "acc6a5575f318ed6162f7c92a0d241b7bd02f6c6d578f59367469eff9abcb0c3",
+      "local_sha256": "acc6a5575f318ed6162f7c92a0d241b7bd02f6c6d578f59367469eff9abcb0c3",
+      "matches_local": true
+    },
+    {
+      "name": "teleprompter.js",
+      "url": "https://fundhub.ai/app/teleprompter.js?v=20261013-gpu-phone-save",
+      "status": 200,
+      "content_type": "application/javascript; charset=UTF-8",
+      "sha256": "c721a8c00c05218ab7ac1218d6489e361edf471a3ae766281c7f3b5c58e5a049",
+      "local_sha256": "c721a8c00c05218ab7ac1218d6489e361edf471a3ae766281c7f3b5c58e5a049",
+      "matches_local": true
+    },
+    {
+      "name": "teleprompter.css",
+      "url": "https://fundhub.ai/app/teleprompter.css?v=20261013-gpu-phone-save",
+      "status": 200,
+      "content_type": "text/css; charset=UTF-8",
+      "sha256": "a5833af630ff18d6ed9cd97f36b81d57d607d84df7c138036ebd5ba85dbb17ce",
+      "local_sha256": "a5833af630ff18d6ed9cd97f36b81d57d607d84df7c138036ebd5ba85dbb17ce",
+      "matches_local": true
+    },
+    {
+      "name": "teleprompter-edits.js",
+      "url": "https://fundhub.ai/app/teleprompter-edits.js?v=20261013-phone-draft-backup",
+      "status": 200,
+      "content_type": "application/javascript; charset=UTF-8",
+      "sha256": "5e079e7576f6afac551059e732c54f0c3a0d2ba02a878dd6dd625479ca324b27",
+      "local_sha256": "5e079e7576f6afac551059e732c54f0c3a0d2ba02a878dd6dd625479ca324b27",
+      "matches_local": true
+    }
+  ]
+}
