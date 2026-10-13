@@ -1,9 +1,9 @@
-// POST /api/campaigns/write — resume and update_budget, run with no Postgres
+// POST /api/campaigns/write — pause, resume and update_budget, run with no Postgres
 // and a stand-in for Meta.
 //
-// "Start spending again" and "Change daily budget" on the Campaign Manager
-// drawer move real ad money. Only pause and the per-ad resume_ad had a test.
-// This runs the two that spend: what is logged before Meta is asked, what is
+// "Pause spending", "Start spending again" and "Change daily budget" on the
+// Campaign Manager drawer move real ad money. This runs all three: what is
+// logged before Meta is asked, what is
 // sent to Meta, that our campaign row changes only after Meta says yes, and
 // that the spend ceiling stops an over-limit budget before Meta is asked.
 //
@@ -70,7 +70,7 @@ async function call(request, rules) {
   return { res, fake };
 }
 
-describe("POST /api/campaigns/write — resume and update_budget", () => {
+describe("POST /api/campaigns/write — pause, resume and update_budget", () => {
   test("is routed", () => {
     assert.equal(ROUTES["campaigns/write"], handler);
   });
@@ -100,6 +100,26 @@ describe("POST /api/campaigns/write — resume and update_budget", () => {
     );
     assert.equal(res.statusCode, 404);
     assert.equal(metaCalls.length, 0);
+  });
+
+  test("Pause spending: logged first, Meta is told PAUSED for that campaign only, then our row says PAUSED", async () => {
+    const { res, fake } = await call(
+      req("POST", { body: { action: "pause", campaign_id: CAMPAIGN, partner_id: PARTNER } }),
+      [staffSession(), campaignRow({ status: "ACTIVE", approval_state: "live" }), actionLog]
+    );
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.action, "pause");
+    assert.equal(metaCalls.length, 1);
+    assert.match(metaCalls[0].url, new RegExp(`^https://graph\\.facebook\\.com/v\\d+\\.\\d+/${META_CAMPAIGN}$`));
+    assert.equal(metaCalls[0].method, "POST");
+    assert.deepEqual(metaCalls[0].body, { status: "PAUSED" });
+    assert.equal(metaCalls[0].auth, "Bearer meta-test-token");
+    const logIdx = fake.calls.findIndex((c) => /INSERT INTO action_log/.test(c.sql));
+    const rowIdx = fake.calls.findIndex((c) => /UPDATE campaigns SET status = 'PAUSED'/.test(c.sql));
+    assert.ok(logIdx >= 0 && rowIdx > logIdx, "the pause is logged before our row changes");
+    const after = JSON.parse(fake.calls[logIdx].params[11]);
+    assert.deepEqual(after, { status: "PAUSED", budget_cents: 5000, approval_state: "paused" });
+    assert.deepEqual(fake.calls[rowIdx].params, [CAMPAIGN]);
   });
 
   test("Start spending again: logged first, Meta is told ACTIVE for that campaign only, then our row says ACTIVE / live", async () => {

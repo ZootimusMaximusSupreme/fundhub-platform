@@ -6,6 +6,7 @@ import { webhookFinalProof } from "./door-batch-webhook-final.mjs";
 import { doorContractsRoutes01Proof } from "./door-contracts-routes-01.mjs";
 import { doorContractsRoutes012Proof } from "./door-contracts-routes-01-2.mjs";
 import { doorContractsRoutes23Proof } from "./door-contracts-routes-23.mjs";
+import { doorContractsMoneyCustomerProof } from "./door-contracts-money-customer.mjs";
 import { doorFlowReadDoorProof } from "./door-flow-read-contracts-2.mjs";
 import { keyHealthProof } from "../../coverage/gap-door-batch-keys.mjs";
 import { jobResultProof } from "../../coverage/gap-door-batch-jobs.mjs";
@@ -216,6 +217,7 @@ function webhookProof(row) {
 export function proofForDoor(sourceFile, row) {
   const name = String(sourceFile || "").split(/[\\/]/).at(-1);
   const plugIn = doorFlowReadDoorProof(sourceFile, row)
+    || doorContractsMoneyCustomerProof(sourceFile, row)
     || doorContractsRoutes01Proof(sourceFile, row)
     || doorContractsRoutes012Proof(sourceFile, row)
     || doorContractsRoutes23Proof(row);
