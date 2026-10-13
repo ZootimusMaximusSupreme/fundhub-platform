@@ -52,6 +52,13 @@ describe("hiring survey — the questions", () => {
     for (const r of FUNNEL_ROLES) assert.ok(questionsFor(r).length >= 4, `${r} has questions`);
   });
 
+  test("each seat gets exactly three questions of its own (owner-set 2026-10-13)", () => {
+    for (const r of FUNNEL_ROLES) {
+      const own = QUESTIONS.filter((q) => q.roles.length === 1 && q.roles[0] === r);
+      assert.equal(own.length, 3, `${r} has three seat questions`);
+    }
+  });
+
   test("no question key looks like a protected characteristic", () => {
     for (const q of QUESTIONS) {
       assert.equal(isProtected(q.key), false, `${q.key} must not trip the protected deny-list`);
@@ -77,7 +84,7 @@ describe("hiring survey — parsing answers", () => {
 
   test("a missing answer is refused", () => {
     const a = goodAnswers("closer");
-    delete a.closer_close_rate;
+    delete a.closer_cash_last_month;
     assert.deepStrictEqual(parseSurveyAnswers("closer", a), { ok: false, error: "survey_incomplete" });
   });
 

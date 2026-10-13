@@ -27,7 +27,7 @@
 // PURE. No database, no clock, no environment. The page carries a copy of
 // pageSurvey()'s output as JSON, and survey.test.mjs fails if the two drift.
 
-export const SURVEY_VERSION = "join-2026-10-13";
+export const SURVEY_VERSION = "join-2026-10-13.2";
 
 /* The four seats this funnel hires for, in the order the page shows them.
    Each key is a hiring_roles.key. setter and closer are seeded by 051, csm by
@@ -75,34 +75,38 @@ export const QUESTIONS = Object.freeze([
     title: "When can you start?",
     opts: ["Right away", "Within 2 weeks", "Within 30 days", "More than 30 days out"] },
 
+  /* THREE PER SEAT. Owner-set 2026-10-13: "3 application questions per role
+     that are the best for each role, most relevant". */
+
   { key: "closer_top_ticket", roles: ["closer"],
     title: "What's the highest-ticket offer you've closed?",
     opts: ["Under $3,000", "$3,000 to $5,000", "$5,000 to $10,000", "$10,000+"] },
-  { key: "closer_close_rate", roles: ["closer"],
-    title: "What was your close rate over the last 90 days?",
-    opts: ["Under 15%", "15% to 25%", "25% to 35%", "35%+", "I don't track it"] },
   { key: "closer_cash_last_month", roles: ["closer"],
     title: "How much cash did you collect last month?",
     opts: ["Under $10,000", "$10,000 to $25,000", "$25,000 to $50,000", "$50,000 to $100,000", "$100,000+"] },
+  { key: "closer_financial_sales", roles: ["closer"],
+    title: "Have you sold a financial offer before?",
+    hint: "Funding, credit optimization, lending, insurance or investing.",
+    opts: ["Yes, business funding or lending", "Yes, credit optimization", "Yes, another financial offer", "No"] },
 
   { key: "setter_dials", roles: ["setter"],
     title: "How many dials do you make in a day?",
     opts: ["Under 50", "50 to 100", "100 to 200", "200+"] },
-  { key: "setter_set_rate", roles: ["setter"],
-    title: "What's your set rate?",
-    hint: "Of the leads you talk to, how many book a call.",
-    opts: ["Under 10%", "10% to 20%", "20% to 30%", "30%+", "I don't track it"] },
   { key: "setter_show_rate", roles: ["setter"],
     title: "What's your show rate?",
     hint: "Of the calls you book, how many show up.",
     opts: ["Under 50%", "50% to 70%", "70% to 85%", "85%+", "I don't track it"] },
-  { key: "setter_dm", roles: ["setter"],
-    title: "Have you set appointments over DMs?",
-    opts: ["Yes", "No"] },
+  { key: "setter_offer_price", roles: ["setter"],
+    title: "What's the highest-priced offer you've set calls for?",
+    opts: ["Under $3,000", "$3,000 to $10,000", "$10,000+"] },
 
-  { key: "csm_onboarding_retention", roles: ["csm"],
-    title: "Have you run client onboarding or retention?",
-    opts: ["Yes, both", "Onboarding only", "Retention only", "Not yet"] },
+  { key: "csm_caseload", roles: ["csm"],
+    title: "How many clients have you managed at one time?",
+    opts: ["Under 25", "25 to 50", "50 to 100", "100+"] },
+  { key: "csm_checkins", roles: ["csm"],
+    title: "Have you walked clients through a step-by-step program with check-ins?",
+    hint: "You followed up until each client finished their steps.",
+    opts: ["Yes, every week", "Sometimes", "Not yet"] },
   { key: "csm_credit_finance", roles: ["csm"],
     title: "Do you have a credit or finance background?",
     opts: ["Yes, credit", "Yes, finance or lending", "Both", "No"] },
@@ -114,9 +118,10 @@ export const QUESTIONS = Object.freeze([
     title: "What's the biggest company you've run operations for?",
     hint: "Monthly revenue.",
     opts: ["Under $100,000", "$100,000 to $500,000", "$500,000 to $1,000,000", "$1,000,000+"] },
-  { key: "coo_kpi_cadence", roles: ["coo"],
-    title: "Have you run a weekly KPI meeting with a scorecard?",
-    opts: ["Yes, every week", "Sometimes", "Not yet"] }
+  { key: "coo_sales_team_ops", roles: ["coo"],
+    title: "Have you run operations for a sales team?",
+    hint: "Setters, closers and the people who serve the clients after the sale.",
+    opts: ["Yes, I built it from scratch", "Yes, I ran one that already existed", "No"] }
 ]);
 
 /* WHY THE CALENDAR IS HELD BACK. Owner-set 2026-10-13: "can't cover required

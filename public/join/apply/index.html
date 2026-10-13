@@ -129,7 +129,7 @@ input:focus{border-color:rgb(var(--blue));outline:none}
      module, then paste its output here. -->
 <script type="application/json" id="fh-join-survey">
 {
-  "version": "join-2026-10-13",
+  "version": "join-2026-10-13.2",
   "roles": [
     {
       "key": "setter",
@@ -219,20 +219,6 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       ]
     },
     {
-      "key": "closer_close_rate",
-      "roles": [
-        "closer"
-      ],
-      "title": "What was your close rate over the last 90 days?",
-      "opts": [
-        "Under 15%",
-        "15% to 25%",
-        "25% to 35%",
-        "35%+",
-        "I don't track it"
-      ]
-    },
-    {
       "key": "closer_cash_last_month",
       "roles": [
         "closer"
@@ -247,6 +233,20 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       ]
     },
     {
+      "key": "closer_financial_sales",
+      "roles": [
+        "closer"
+      ],
+      "title": "Have you sold a financial offer before?",
+      "hint": "Funding, credit optimization, lending, insurance or investing.",
+      "opts": [
+        "Yes, business funding or lending",
+        "Yes, credit optimization",
+        "Yes, another financial offer",
+        "No"
+      ]
+    },
+    {
       "key": "setter_dials",
       "roles": [
         "setter"
@@ -257,21 +257,6 @@ input:focus{border-color:rgb(var(--blue));outline:none}
         "50 to 100",
         "100 to 200",
         "200+"
-      ]
-    },
-    {
-      "key": "setter_set_rate",
-      "roles": [
-        "setter"
-      ],
-      "title": "What's your set rate?",
-      "hint": "Of the leads you talk to, how many book a call.",
-      "opts": [
-        "Under 10%",
-        "10% to 20%",
-        "20% to 30%",
-        "30%+",
-        "I don't track it"
       ]
     },
     {
@@ -290,26 +275,40 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       ]
     },
     {
-      "key": "setter_dm",
+      "key": "setter_offer_price",
       "roles": [
         "setter"
       ],
-      "title": "Have you set appointments over DMs?",
+      "title": "What's the highest-priced offer you've set calls for?",
       "opts": [
-        "Yes",
-        "No"
+        "Under $3,000",
+        "$3,000 to $10,000",
+        "$10,000+"
       ]
     },
     {
-      "key": "csm_onboarding_retention",
+      "key": "csm_caseload",
       "roles": [
         "csm"
       ],
-      "title": "Have you run client onboarding or retention?",
+      "title": "How many clients have you managed at one time?",
       "opts": [
-        "Yes, both",
-        "Onboarding only",
-        "Retention only",
+        "Under 25",
+        "25 to 50",
+        "50 to 100",
+        "100+"
+      ]
+    },
+    {
+      "key": "csm_checkins",
+      "roles": [
+        "csm"
+      ],
+      "title": "Have you walked clients through a step-by-step program with check-ins?",
+      "hint": "You followed up until each client finished their steps.",
+      "opts": [
+        "Yes, every week",
+        "Sometimes",
         "Not yet"
       ]
     },
@@ -354,15 +353,16 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       ]
     },
     {
-      "key": "coo_kpi_cadence",
+      "key": "coo_sales_team_ops",
       "roles": [
         "coo"
       ],
-      "title": "Have you run a weekly KPI meeting with a scorecard?",
+      "title": "Have you run operations for a sales team?",
+      "hint": "Setters, closers and the people who serve the clients after the sale.",
       "opts": [
-        "Yes, every week",
-        "Sometimes",
-        "Not yet"
+        "Yes, I built it from scratch",
+        "Yes, I ran one that already existed",
+        "No"
       ]
     }
   ]
