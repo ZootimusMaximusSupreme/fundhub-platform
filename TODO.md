@@ -2,17 +2,19 @@
 
 ## Today — 2026-10-13
 
-Latest owner update: approximately 7:40 AM Arizona/MST. Today's money-making priorities are texting, filming, sales, and appointment setting. Keep work moving in parallel where tasks are independent; do not spend the filming window watching AI load.
+Latest owner update: 8:57 AM Arizona/MST. Today's money-making priorities are texting, filming, sales, and appointment setting. Keep work moving in parallel where tasks are independent; do not spend the filming window watching AI load.
 
 ### Completed
 
 - [x] Sauna — done at 5:00 AM.
 - [x] CRS — paid; owner confirmed at 7:01 AM.
 - [x] Lead list — owner reports the corrections are finished. Texts still need to be sent.
+- [x] LexisNexis activation — owner confirmed at 8:57 AM; setup is still pending.
+- [x] Justice's email issue — owner reports it is resolved; Justice's confirmation is still pending.
 
 ### Next: outreach, clients, and filming
 
-- [ ] Text the 50 people from the corrected lead list — READY; no sends confirmed yet.
+- [ ] Text everyone on the corrected lead list — Blake's leads FIRST, using the 661 number and owner's 480 number as planned. Then the group-text step for Blake involving approximately 28 leads; the exact count and group arrangement are not yet confirmed. No sends confirmed yet (8:57 AM owner update).
 - [ ] Handle Bram (also dictated as Brahm/Brom), the credit client — owner plans to handle him next; CRS is now paid.
 - [ ] Clean the house floors when back home.
 - [ ] Teleprompter — REPORTED FIXED, still to confirm: owner said “done, I think.” Check one short recording, playback, and saved take before relying on it for the shoot. Do not treat this report as proof that every launch-readiness item below is complete.
@@ -30,15 +32,15 @@ Filming timing: owner wants to leave home by about 10:00 AM and film while morni
 
 ### Building or waiting
 
-- [ ] Help Colin with LexisNexis — IN PROGRESS: the LexisNexis work is being built; completion is not confirmed.
-- [ ] Set up Justice's Google account/email — WAITING for Justice to reply.
+- [ ] Help Colin with LexisNexis — ACTIVATED; finish setup. Activation is complete, setup is not (8:57 AM owner update).
+- [ ] Get Justice's confirmation that his email/account works — issue resolved; waiting on his confirmation (8:57 AM owner update).
 - [ ] Sign MCA deal — WAITING for the contract; no arrival confirmed.
 - [ ] Restart Claude at 9:00 AM as planned; use the fresh teleprompter status to decide whether repair work is still needed.
 - [ ] Check Gmail for Blake Everton's leads/referral details only if still needed after the completed lead-list corrections. This session has not read those emails.
 
 ### Heartbeat, complete system checks, then refactor
 
-- [ ] Finish and understand the heartbeat monitor: what is checked, what is failing, and what still lacks proof.
+- [ ] Finish and understand the heartbeat monitor — IN PROGRESS: coding and fixes are underway (8:57 AM owner update). When ready, review what is checked, what is failing, and what still lacks proof.
 - [ ] After heartbeat work, itemize and run a thorough end-to-end check of the company. Reuse the existing inventory and record each item's expected result, observed result, pass/fail/not checked, and next action; cover the complete sales and setting process as well as individual controls.
 - [ ] Keep monitoring coverage separate from a proven business result. The latest recorded inventory in `ops/workflows/coverage-deep-proof-2026-10-12.md` is 3,942 unique tracked items, including screens, controls, routes, and workflows; it is not 3,942 independently proven features. Recount before the comprehensive test rather than treating the recorded total as a fresh runtime measurement.
 - [ ] Continue the existing refactor plan at `ops/workflows/company-refactor-plan-2026-10-12.md` after the system checks. Owner's goals: roughly halve the codebase where justified, reduce repeated code and AI token use, improve performance, and strengthen the architecture. Measure the gains and preserve working behavior; a 50% reduction is a goal, not a promised result.
