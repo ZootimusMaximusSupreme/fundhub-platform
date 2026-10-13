@@ -20,14 +20,14 @@ import {
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 
-function liveRedirect({ status = 302, location = "/partner/menu/", menuStatus = 200, error = null } = {}) {
+function liveRedirect({ status = 302, location = "/partner/menu/", menuStatus = 200, menuHtml = '<h1>Four Ways In. You Can Start Anywhere.</h1><a href="/partner/">See the Partnership</a>', error = null } = {}) {
   return async (url, init) => {
     assert.equal(init.method, "GET");
     assert.equal(init.redirect, "manual");
     if (error) throw new Error(error);
     return String(url).endsWith("/partner/autopsy/")
       ? new Response(null, { status, headers: location ? { location } : {} })
-      : new Response(null, { status: menuStatus });
+      : new Response(menuHtml, { status: menuStatus });
   };
 }
 
@@ -147,7 +147,7 @@ test("only the exact retired redirect can be nothing-to-judge", async () => {
 
 test("wrong live redirects and broken menus stay red; unread pages stay unchecked", async () => {
   const retired = DISPLAY_TRACKING_CASES.find((item) => item.retired);
-  for (const options of [{ status: 200 }, { location: "/app/login.html" }, { location: "https://other.example/partner/menu/" }, { location: null }, { menuStatus: 404 }]) {
+  for (const options of [{ status: 200 }, { location: "/app/login.html" }, { location: "https://other.example/partner/menu/" }, { location: null }, { menuStatus: 404 }, { menuHtml: "<h1>Sign in</h1>" }, { menuHtml: "<h1>Four Ways In. You Can Start Anywhere.</h1>" }]) {
     const ctx = { fetchImpl: liveRedirect(options) };
     const rows = await gapChecks(ctx);
     assert.equal(rows.find((row) => row.id === retired.id).status, "FAIL");

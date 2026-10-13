@@ -91,6 +91,11 @@ async function retiredPageState(ctx = {}) {
     }
     const menu = await fetchImpl(menuUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
     if (menu.status !== 200) return { status: "FAIL", detail: "the retired page redirects, but the active offer menu does not open." };
+    const html = await menu.text();
+    if (!/<h1\b[^>]*>\s*Four Ways In\. You Can Start Anywhere\.\s*<\/h1>/i.test(html)
+      || !/<a\b[^>]*href=["']\/partner\/["']/i.test(html)) {
+      return { status: "FAIL", detail: "the retired page redirects, but its destination is not the active offer menu." };
+    }
     return { status: "na", detail: "the live retired page redirects to the active offer menu, and that menu opens." };
   } catch (error) {
     return { status: "skip", detail: `the live retired-page redirect was not read: ${String(error?.message || error).slice(0, 120)}.` };
