@@ -39,7 +39,7 @@ test("catalog lane fails on missing rows, duplicate ids, and weak proof", () => 
     items: [{ id: "same" }, { id: "same" }]
   };
   const rows = judgeCatalog(weak);
-  assert.deepEqual(rows.map((item) => item.status), ["FAIL", "FAIL"]);
+  assert.deepEqual(rows.map((item) => item.status), ["FAIL", "FAIL", "FAIL"]);
   assert.ok(rows.every((item) => typeof item.suggestedFix === "string"));
 });
 
@@ -49,7 +49,18 @@ test("catalog lane passes only when the complete map has proof for every item", 
     repeats: EXPECTED_REPEATS,
     unique: MIN_UNIQUE_ITEMS,
     counts: { wired: MIN_UNIQUE_ITEMS, red: 0 },
+    hourlyUncoveredSurfaces: [],
     items: Array.from({ length: MIN_UNIQUE_ITEMS }, (_, index) => ({ id: `item-${index}` }))
   };
-  assert.deepEqual(judgeCatalog(complete).map((item) => item.status), ["PASS", "PASS"]);
+  assert.deepEqual(judgeCatalog(complete).map((item) => item.status), ["PASS", "PASS", "PASS"]);
+});
+
+
+test("hourly coverage gaps stay red and missing build data is never a pass", () => {
+  const uncovered = judgeCatalog({ ...catalog, hourlyUncoveredSurfaces: ["route:money/payments"] })[2];
+  assert.equal(uncovered.status, "FAIL");
+  assert.match(uncovered.detail, /1 customer or money/);
+  assert.match(uncovered.detail, /route:money\/payments/);
+  assert.equal(judgeCatalog({ ...catalog, hourlyUncoveredSurfaces: undefined })[2].status, "FAIL");
+  assert.equal(judgeCatalog({ ...catalog, hourlyUncoveredSurfaces: [] })[2].status, "PASS");
 });

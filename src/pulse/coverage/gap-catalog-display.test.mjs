@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { DISPLAY_RESULT_CONTRACTS } from "../catalog/proofs/display-saved-result.mjs";
 import {
@@ -15,6 +19,17 @@ import {
 } from "./gap-catalog-display.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
+
+function liveRedirect({ status = 302, location = "/partner/menu/", menuStatus = 200, error = null } = {}) {
+  return async (url, init) => {
+    assert.equal(init.method, "GET");
+    assert.equal(init.redirect, "manual");
+    if (error) throw new Error(error);
+    return String(url).endsWith("/partner/autopsy/")
+      ? new Response(null, { status, headers: location ? { location } : {} })
+      : new Response(null, { status: menuStatus });
+  };
+}
 
 function marker(sql) {
   return /display-result:([^*\s]+)/.exec(sql)?.[1] || "unknown";
@@ -98,7 +113,7 @@ test("unprovable controls always stay red and name the missing exact link", () =
 
 test("the lane runs each exact query once and keeps the 18 gaps red", async () => {
   const db = fakeDb();
-  const rows = await gapChecks({ db, orgId: ORG });
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveRedirect() });
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
 
@@ -110,7 +125,7 @@ test("the lane runs each exact query once and keeps the 18 gaps red", async () =
 
 test("a failed exact read stays unchecked while static gaps remain red", async () => {
   const failedKey = marker(SQL_BATCHES[0]);
-  const rows = await gapChecks({ db: fakeDb({}, failedKey), orgId: ORG });
+  const rows = await gapChecks({ db: fakeDb({}, failedKey), orgId: ORG, fetchImpl: liveRedirect() });
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   assert.ok(focused.some((row) => row.status === "skip"));
@@ -126,5 +141,35 @@ test("only the exact retired redirect can be nothing-to-judge", async () => {
     sourceFile: retired.sourceFile,
     surface: retired.surface,
     control: retired.control,
-  }), true);
+  }, { fetchImpl: liveRedirect() }), true);
+});
+
+
+test("wrong live redirects and broken menus stay red; unread pages stay unchecked", async () => {
+  const retired = DISPLAY_TRACKING_CASES.find((item) => item.retired);
+  for (const options of [{ status: 200 }, { location: "/app/login.html" }, { location: "https://other.example/partner/menu/" }, { location: null }, { menuStatus: 404 }]) {
+    const ctx = { fetchImpl: liveRedirect(options) };
+    const rows = await gapChecks(ctx);
+    assert.equal(rows.find((row) => row.id === retired.id).status, "FAIL");
+    assert.equal(await naVerify["catalog-display-retired-autopsy"](retired, ctx), false);
+  }
+  const rows = await gapChecks({ fetchImpl: liveRedirect({ error: "offline" }) });
+  assert.equal(rows.find((row) => row.id === retired.id).status, "skip");
+  assert.equal(await naVerify["catalog-display-retired-autopsy"](retired, { fetchImpl: null }), false);
+  assert.equal(await naVerify["catalog-display-retired-autopsy"]({ ...retired, control: "invented" }, { fetchImpl: liveRedirect() }), false);
+});
+
+test("display lane loads with shipped data and no ops folder or netlify config", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-display-bundle-"));
+  try {
+    const sourceRoot = new URL("../", import.meta.url);
+    fs.cpSync(sourceRoot, path.join(root, "pulse"), { recursive: true });
+    assert.equal(fs.existsSync(path.join(root, "ops")), false);
+    assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
+    const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
+    assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 45);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

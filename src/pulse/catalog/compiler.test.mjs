@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { compileCatalog } from "./compiler.mjs";
+import { compileCatalog, compileDisplayRuntimeData, compileHourlyUncoveredSurfaces } from "./compiler.mjs";
 
 const base = {
   control: "does one thing", kind: "button", calls: [], tables: [], evidence: "src/x.test.mjs",
@@ -14,6 +14,13 @@ const recipe = {
     safe: true, sourceFile, surface: row.surface
   })
 };
+
+test("hourly backlog follows current tripwires and real beat covers, including new gaps", () => {
+  const tripwires = { "route:z": ["deep:z"], "route:a": ["deep:a"], "route:new": ["deep:new"] };
+  assert.deepEqual(compileHourlyUncoveredSurfaces(tripwires, [{ covers: ["route:z", "route:other"] }]), ["route:a", "route:new"]);
+  assert.deepEqual(compileHourlyUncoveredSurfaces(tripwires, [{ covers: Object.keys(tripwires) }]), []);
+  assert.deepEqual(compileHourlyUncoveredSurfaces(tripwires, []), ["route:a", "route:new", "route:z"]);
+});
 
 test("compiler removes only rows Claude marked as repeats and keeps stable unique ids", () => {
   const sources = [{ sourceFile: "x.json", rows: [
@@ -34,6 +41,44 @@ test("money and customer rows stay red below deep", () => {
     assert.equal(out.items[0].state, "red");
     assert.match(out.items[0].reason, /below required level L3/);
   }
+});
+
+test("display runtime compilation preserves exact cases, saved contracts, and retired pages", () => {
+  const rows = [
+    { ...base, surface: "a", control: "saved", page: "public/a.html" },
+    { ...base, surface: "b", control: "unproved" },
+    { ...base, surface: "c", control: "direct" },
+    { ...base, surface: "d", control: "repeat", repeats_row_in: "old.json" },
+    { ...base, surface: "e", control: "retired", page: "public/partner/autopsy/index.html" }
+  ];
+  const proof = (row, evidence) => ({ ...row, sourceFile: "public-pages.json", depth: "deep", evidence });
+  const contract = { mode: "query", requirement: "exact result", sql: "SELECT 1" };
+  const options = {
+    staffProofCases: [proof(rows[0])],
+    proofCases: [proof(rows[0], "src/pulse/coverage/gap-catalog-display.mjs"), proof(rows[2], "src/direct.test.mjs")],
+    contractFor: (row) => row.control === "saved" ? contract : null,
+    isTracked: () => true
+  };
+  const out = compileDisplayRuntimeData([{ sourceFile: "public-pages.json", rows }], options);
+  assert.deepEqual(out.displayResultCases.map((entry) => entry.control), ["saved"]);
+  assert.deepEqual(out.displayTrackingCases.map((entry) => entry.control), ["saved", "unproved", "retired"]);
+  assert.deepEqual(out.displayTrackingCases[0].contract, contract);
+  assert.equal(out.displayTrackingCases[1].contract, null);
+  assert.equal(out.displayTrackingCases[2].retired, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(out)), out);
+  assert.throws(() => compileDisplayRuntimeData([{ sourceFile: "public-pages.json", rows: [...rows, rows[0]] }], options), /found 2/);
+});
+
+test("an exact saved result still runs when its map kind is outside the generic control list", () => {
+  const row = { ...base, kind: "contract-cell", surface: "documents.html", control: "Void contract" };
+  const proof = { ...row, sourceFile: "desks-b.json", depth: "deep", evidence: "src/browser.test.mjs" };
+  const contract = { mode: "always-red", requirement: "Missing exact void receipt", sql: null };
+  const out = compileDisplayRuntimeData([{ sourceFile: "desks-b.json", rows: [row] }], {
+    proofCases: [proof], staffProofCases: [proof], contractFor: () => contract, isTracked: () => false
+  });
+  assert.equal(out.displayResultCases.length, 1);
+  assert.equal(out.displayTrackingCases.length, 1);
+  assert.deepEqual(out.displayTrackingCases[0].contract, contract);
 });
 
 test("a declared level without an executable target stays red", () => {
