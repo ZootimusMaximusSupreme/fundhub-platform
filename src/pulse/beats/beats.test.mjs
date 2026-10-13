@@ -174,6 +174,38 @@ test("Guard 2.4: every helper under lib/ passes the same pin (a beat cannot hide
   }
 });
 
+test("Guard 2.4: the hourly money truth's full import closure stays inside beats/lib", () => {
+  const seen = new Set();
+  const staticImports = /^\s*(?:import\s+(?:[\s\S]*?\s+from\s+)?|export\s+(?:\*|\{[^}]*\})\s+(?:as\s+\w+\s+)?from\s+)["']([^"']+)["']/gm;
+  const dynamicImports = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+  const inside = `${LIB}${path.sep}`;
+
+  const visit = (file) => {
+    const full = path.resolve(file);
+    assert.ok(full.startsWith(inside), `${full} left src/pulse/beats/lib`);
+    assert.ok(!full.endsWith(".test.mjs"), `${full} pulled a test into the runtime closure`);
+    assert.ok(fs.existsSync(full), `${full} does not exist`);
+    if (seen.has(full)) return;
+    seen.add(full);
+    const source = read(full);
+    const specs = [
+      ...[...source.matchAll(staticImports)].map((match) => match[1]),
+      ...[...source.matchAll(dynamicImports)].map((match) => match[1])
+    ];
+    for (const spec of specs) {
+      if (spec === "node:crypto") continue;
+      assert.ok(spec.startsWith("."), `${path.relative(HERE, full)} imports package ${spec}`);
+      visit(path.resolve(path.dirname(full), spec));
+    }
+  };
+
+  visit(path.join(LIB, "money-hourly.mjs"));
+  assert.ok(seen.has(path.join(LIB, "money-hourly.mjs")), "the money helper was not in the tested closure");
+  assert.ok(seen.has(path.join(LIB, "money-funding-truth.mjs")), "the W1 truth was not in the tested closure");
+  assert.ok(seen.has(path.join(LIB, "money-ads-meta-truth.mjs")), "the W2 truth was not in the tested closure");
+  assert.ok(seen.has(path.join(LIB, "trip-partner-truth.mjs")), "the partner-trip truth was not in the tested closure");
+});
+
 test("Guard 2.4: PURE_IMPORTS entries each carry a written reason", () => {
   for (const [spec, why] of Object.entries(PURE_IMPORTS)) {
     assert.ok(typeof why === "string" && why.trim().length >= 20, `${spec}: say why it is pure`);
