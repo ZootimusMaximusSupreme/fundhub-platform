@@ -30,6 +30,15 @@ Find the fault shown by the new Drive recording and fix that recording path. Kee
 
 ## Test and live proof
 
+### Follow-up: choppy words during recording (`/root/proof_tests`)
+
+- The old scrolling browser check used distance divided by elapsed time. It could pass after a visible pause because the script catches up on the next animation frame. The recording path separately drew the full camera image on a fixed 30 fps timer, even when the video had not produced a new frame.
+- Added `recording does not redraw a stale camera frame while the words roll` in `e2e/teleprompter-take-flow.spec.mjs`. The test freezes video-frame notifications after the first frame, starts words and recording, then checks that the words move and the recording canvas does not keep drawing the same image.
+- Baseline on current code: **red as expected**. Words moved, but the recorder drew the stale frame **13 extra times in 450 ms** (allowed: 1). Command: `E2E_PORT=43132 npx playwright test e2e/teleprompter-take-flow.spec.mjs -g 'does not redraw a stale camera frame' --reporter=line`.
+- After the callback pump change, the new test passes. First full take-flow run is **25/27**: the two saved-pixel tests saw a black canvas because the fake camera had already produced its one frame before recording began. The recorder waits for a new callback. A single paint of the ready preview frame at recording start is being checked; the stale-frame test must stay green.
+- The recorder now paints that ready frame once at startup. The saved-pixel tests and stale-frame test both pass. Added a fallback check for browsers without video-frame callbacks: the timer still paints while the words move. Final local take-flow browser run: `E2E_PORT=43137 npx playwright test e2e/teleprompter-take-flow.spec.mjs --reporter=line` — **28 passed, 0 failed**.
+- This isolates wasted canvas work. It does not by itself measure real iPhone scroll smoothness; that still needs a fresh phone pass.
+
 ### Baseline before this repair (`/root/proof_tests`)
 
 - `node --test src/ui/teleprompter.test.mjs`: 61 passed, 0 failed.
@@ -49,8 +58,8 @@ Find the fault shown by the new Drive recording and fix that recording path. Kee
 - Complete `e2e/teleprompter-take-flow.spec.mjs` in local Chromium with a mocked camera: **26 passed, 0 failed**. This includes both source edges surviving the saved portrait canvas, upright color order, sideways output, one recording through a lens flip, and a 30 fps saved-canvas request from a 60 fps camera input.
 - `npm run lint`: **passed**, 3,403 files and inline scripts parse clean.
 - `npx tsc --noEmit`: **failed** at `src/marketing/filmed-receive.mjs:159`, a file untouched by this change. No teleprompter type error was reported. This is recorded as an existing unrelated check failure; it has not been changed to hide red proof.
-- Full `npm test` suite: running. Real iPhone and new Drive take: pending.
+- Full `npm test` suite: failed in the unrelated display-contracts proof; database checks skipped without `DATABASE_URL`. Real iPhone and new Drive take: pending.
 
 ## Release
 
-Pending.
+The full-frame repair shipped at 5:44 p.m. Phoenix in commit `c5026292`; GitHub run `38328006180` passed and the live HTML loaded `teleprompter.js?v=20261012-fullframe1`. The smooth-scroll recording follow-up and Codex instruction migration are ready for a new GitHub push. No newer Direct Book take was in Drive at the last check.

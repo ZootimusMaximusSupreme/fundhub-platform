@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, disableVideoCallbacks = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -38,6 +38,24 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     window.__recorderStops = 0;
     window.__recordStream = null;
     window.__captureRates = [];
+    window.__recordDraws = 0;
+    const nativeDrawImage = CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+      if (this.canvas === window.__recordCanvas) window.__recordDraws++;
+      return nativeDrawImage.apply(this, args);
+    };
+    if (freezeVideoCallbacks) {
+      let firstFrame = true;
+      HTMLVideoElement.prototype.requestVideoFrameCallback = function (callback) {
+        if (firstFrame) {
+          firstFrame = false;
+          setTimeout(() => callback(performance.now(), { presentedFrames: 1, mediaTime: 0 }), 0);
+        }
+        return 1;
+      };
+      HTMLVideoElement.prototype.cancelVideoFrameCallback = () => {};
+    }
+    if (disableVideoCallbacks) HTMLVideoElement.prototype.requestVideoFrameCallback = undefined;
     const nativeCanvasCapture = HTMLCanvasElement.prototype.captureStream;
     HTMLCanvasElement.prototype.captureStream = function (rate) {
       window.__captureRates.push(rate);
@@ -112,7 +130,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -673,6 +691,40 @@ test("recording does not add a competing animation-frame loop to smooth scrollin
   expect(speeds.every((speed) => speed > 0)).toBe(true);
   const average = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
   expect(Math.max(...speeds) - Math.min(...speeds)).toBeLessThan(average * 0.08);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("recording does not redraw a stale camera frame while the words roll", async ({ page }) => {
+  const { server } = await open(page, { wpm: 200, freezeVideoCallbacks: true });
+  await page.locator("#play").tap();
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.waitForTimeout(150);
+  const sample = () => page.evaluate(() => ({
+    draws: window.__recordDraws,
+    y: new DOMMatrix(document.getElementById("content").style.transform).m42
+  }));
+  const before = await sample();
+  await page.waitForTimeout(450);
+  const after = await sample();
+  expect(after.y).toBeLessThan(before.y - 1);
+  expect(after.draws - before.draws).toBeLessThanOrEqual(1);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("recording still paints and rolls on a browser without video-frame callbacks", async ({ page }) => {
+  const { server } = await open(page, { wpm: 200, disableVideoCallbacks: true });
+  await page.locator("#play").tap();
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const before = await page.evaluate(() => new DOMMatrix(document.getElementById("content").style.transform).m42);
+  await expect.poll(() => page.evaluate(() => window.__recordDraws)).toBeGreaterThan(1);
+  const after = await page.evaluate(() => new DOMMatrix(document.getElementById("content").style.transform).m42);
+  expect(after).toBeLessThan(before - 1);
   await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);

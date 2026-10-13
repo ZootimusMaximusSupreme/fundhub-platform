@@ -869,7 +869,8 @@ describe("recorded camera frame quality", () => {
     assert.match(recorder, /ctx\.translate\(canvas\.width, 0\)/);
     assert.match(recorder, /ctx\.scale\(-1, 1\)/);
     assert.doesNotMatch(recorder, /ctx\.rotate\(/, "Safari's upright camera pixels must not turn sideways in the file");
-    assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
+    assert.match(recorder, /ctx\.drawImage\(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH\)/,
+      "lens changes still draw the full source into the fixed take canvas");
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
     assert.match(recorder, /Math\.min\(isPhone\(\) \? 30 : 60, Math\.max\(1,/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);

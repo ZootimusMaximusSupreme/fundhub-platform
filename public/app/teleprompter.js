@@ -2663,36 +2663,60 @@
     if (!ctx) return null;
     cam.recordFullQuality = !layout.needsBetterCamera;
     if (layout.needsBetterCamera) camLine("This camera cannot fill an upright video at the selected quality. The full view will be kept.", true);
-    // The previous 4K/60 canvas request saved only about 19 real frames per
-    // second on iPhone. Give Safari a 30 fps canvas budget for steady video.
+    // Keep the encoder at a rate the phone can sustain. Copy a camera frame
+    // only when the preview has a new one; repeated 4K canvas draws take time
+    // away from the script's animation frames.
     var fps = Math.min(isPhone() ? 30 : 60, Math.max(1, Math.round(st.frameRate || 30)));
     cam.recordTargetFps = fps;
     cam.recordFrameSize = canvas.width + "×" + canvas.height;
-    function draw() {
+    var frameEvery = 1000 / fps;
+    var drewAt = -frameEvery;
+    var paintedShape = layout.dw + ":" + layout.dh;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function schedule() {
       if (!cam.pumping) return;
-      if (cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(draw);
+      else cam.pumpTimer = root.setTimeout(function () { draw(root.performance.now()); }, frameEvery);
+    }
+    function draw(now) {
+      if (!cam.pumping) return;
+      cam.pumpVideoFrame = 0;
+      cam.pumpTimer = 0;
+      if (!(now >= 0)) now = root.performance.now();
+      if (now - drewAt >= frameEvery - 1 && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
-          var box = recordFrameBox(video.videoWidth, video.videoHeight, portrait, requires4K);
-          if (!box) return;
+          // The canvas size is fixed for the whole take. A lens switch can
+          // change source dimensions, so fit that new full frame to this same
+          // canvas instead of drawing it into a smaller corner.
+          var sourceW = video.videoWidth, sourceH = video.videoHeight;
+          var scale = Math.min(canvas.width / sourceW, canvas.height / sourceH);
+          var drawW = sourceW * scale, drawH = sourceH * scale;
+          var drawX = (canvas.width - drawW) / 2, drawY = (canvas.height - drawH) / 2;
+          var shape = drawW + ":" + drawH;
           ctx.save();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          if (shape !== paintedShape) {
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            paintedShape = shape;
+          }
           if (cam.facing !== "environment") {
             // A normal mirrored selfie, saved in the video, not just the preview.
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
-          ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
-            box.dx, box.dy, box.dw, box.dh);
+          ctx.drawImage(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH);
           ctx.restore();
+          drewAt = now;
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
-      cam.pumpTimer = root.setTimeout(draw, 1000 / fps);
+      schedule();
     }
     stopMirrorPump();
     cam.pumping = true;
-    draw();
+    // Put the already visible camera frame into the take immediately. Later
+    // frames arrive only when the camera has actually produced a new image.
+    draw(root.performance.now());
     var out;
     try { out = canvas.captureStream(fps); }
     catch (e) { stopMirrorPump(); return null; }
