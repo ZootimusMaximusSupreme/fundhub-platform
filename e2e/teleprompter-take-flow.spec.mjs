@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, disableVideoCallbacks = false, savedCam = "1080p" } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, disableVideoCallbacks = false, savedCam = "1080p", portraitOnlyFor4k = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -74,25 +74,28 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         return nativePlay.call(this);
       };
     }
-    const makeStream = (facing, deviceId) => {
+    const makeStream = (facing, deviceId, videoAsk) => {
+      const highSource = portraitOnlyFor4k && videoAsk?.width?.ideal >= 2160;
+      const width = portraitOnlyFor4k ? (highSource ? 32 : 56) : sourceWidth;
+      const height = portraitOnlyFor4k ? (highSource ? 56 : 32) : sourceHeight;
       const canvas = document.createElement("canvas");
-      canvas.width = sourceWidth; canvas.height = sourceHeight;
+      canvas.width = width; canvas.height = height;
       const cameraPixels = canvas.getContext("2d");
       cameraPixels.fillStyle = "red";
-      cameraPixels.fillRect(0, 0, sourceWidth, sourceHeight / 2);
+      cameraPixels.fillRect(0, 0, width, height / 2);
       cameraPixels.fillStyle = "blue";
-      cameraPixels.fillRect(0, sourceHeight / 2, sourceWidth, sourceHeight / 2);
+      cameraPixels.fillRect(0, height / 2, width, height / 2);
       if (edgeMarkers) {
         cameraPixels.fillStyle = "lime";
-        cameraPixels.fillRect(0, 0, sourceWidth / 8, sourceHeight);
+        cameraPixels.fillRect(0, 0, width / 8, height);
         cameraPixels.fillStyle = "yellow";
-        cameraPixels.fillRect(sourceWidth * 7 / 8, 0, sourceWidth / 8, sourceHeight);
+        cameraPixels.fillRect(width * 7 / 8, 0, width / 8, height);
       }
       const stream = canvas.captureStream(30);
       const track = stream.getVideoTracks()[0];
       let liveFacing = facing;
       let liveDevice = deviceId;
-      track.getSettings = () => ({ width: sourceWidth, height: sourceHeight, frameRate: cameraFps, deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
+      track.getSettings = () => ({ width, height, frameRate: cameraFps, deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
       track.applyConstraints = (next = {}) => {
         const exactFacing = next.facingMode && next.facingMode.exact;
         if (exactFacing && exactFacing !== liveFacing && rejectTrackSwitch) return Promise.reject(new Error("track switch rejected"));
@@ -113,7 +116,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       const deviceId = exactId || (facing === "environment" ? "rear" : "front");
       window.__cameraRequests.push(facing);
       window.__cameraAsks.push({ facing, audio: !!ask.audio, video: JSON.parse(JSON.stringify(video)) });
-      return Promise.resolve(makeStream(facing, deviceId));
+      return Promise.resolve(makeStream(facing, deviceId, video));
     };
     navigator.mediaDevices.enumerateDevices = () => Promise.resolve(cameraDevices);
     let take = 0;
@@ -130,7 +133,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -178,6 +181,18 @@ test("a stopped take reports camera and copied frame rates for diagnosis", async
   await open(page, { iphone: true });
   await stopTake(page);
   await expect(page.locator("#cam-line")).toContainText(/This take: camera \d+ fps · copied \d+ fps/);
+});
+
+test("upright Ad rejects a wide 1080p feed and keeps a full portrait preview", async ({ page }) => {
+  await open(page, { iphone: true, portraitOnlyFor4k: true });
+  await expect.poll(() => page.evaluate(() => {
+    const video = document.querySelector("#cam-video");
+    return video.videoWidth > 0 && video.videoHeight > video.videoWidth;
+  })).toBe(true);
+  const asks = await page.evaluate(() => window.__cameraAsks);
+  expect(asks.some((ask) => ask.video.width?.ideal === 1080)).toBe(true);
+  expect(asks.some((ask) => ask.video.width?.ideal === 3840)).toBe(true);
+  await stopTake(page);
 });
 
 test("every take asks Yes or No; No sends nothing and Yes sends that take once", async ({ page }) => {
@@ -434,7 +449,7 @@ test("an iPhone VSL requests 4K and a 30 fps take despite a saved 1080p choice",
 });
 
 test("live camera stays unrotated while saved video follows the phone turn", async ({ page }) => {
-  const { server } = await open(page, { iphone: true, sourceWidth: 64, sourceHeight: 36 });
+  const { server } = await open(page, { iphone: true, sourceWidth: 36, sourceHeight: 64 });
   await page.evaluate(() => {
     window.__phoneAngle = 0;
     Object.defineProperty(window, "orientation", {
@@ -469,8 +484,7 @@ test("live camera stays unrotated while saved video follows the phone turn", asy
       const canvas = window.__recordCanvas;
       if (!canvas || canvas.width < 2 || canvas.height < 2) return false;
       const ctx = canvas.getContext("2d");
-      // A wide source fitted in a portrait file has black space above and
-      // below it. Read the actual image band, keeping the red-over-blue test.
+      // Read the camera image and keep the red-over-blue orientation check.
       const { data } = ctx.getImageData(Math.floor(canvas.width / 2), 0, 1, canvas.height);
       const colors = [];
       for (let p = 0; p < data.length; p += 4) {
@@ -495,9 +509,9 @@ test("live camera stays unrotated while saved video follows the phone turn", asy
   expect(server.errors).toEqual([]);
 });
 
-test("portrait take keeps both edges of a wide camera image without a close crop", async ({ page }) => {
+test("portrait take keeps both edges of the native portrait camera without a crop", async ({ page }) => {
   const { server } = await open(page, {
-    iphone: true, sourceWidth: 64, sourceHeight: 36, edgeMarkers: true
+    iphone: true, sourceWidth: 36, sourceHeight: 64, edgeMarkers: true
   });
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");

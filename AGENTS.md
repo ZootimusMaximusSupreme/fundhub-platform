@@ -35,6 +35,8 @@ Before reading code or planning a new task, propose the parallel workflows, what
 
 ## Teleprompter acceptance checklist
 
+Before any teleprompter camera or recording repair, follow [`docs/rules/TELEPROMPTER-VIDEO.md`](docs/rules/TELEPROMPTER-VIDEO.md). It requires measured stage-by-stage diagnosis and a real iPhone preview and saved-file check before success is claimed.
+
 The front camera must open to a usable, slightly soft preview. Switching front/back must not start, stop, or split the recording. The Record button controls starts and manual stops; reaching the script end adds an exact two-second tail before automatic stop.
 
 Ads use full-frame 1080p and target 60 fps or higher when the phone grants it. VSLs, thank-you videos, and testimonials use full-frame 4K and target 30–60 fps. Never infer the saved frame rate from the request; measure the original Drive video before claiming smooth filming.

@@ -76,4 +76,6 @@ Find the fault shown by the new Drive recording and fix that recording path. Kee
 
 ## Release
 
+The 6:33 p.m. release at `2314782f` passed GitHub ship run `38331857922` and served the new 1080p Ad script. Chris's 6:35 p.m. iPhone screenshot showed a wide camera feed letterboxed into a thin middle strip on the upright screen. This is a preview regression from accepting a wide result of the new 1080p request. The next repair rejects wide results on an upright phone, tries all 1080p modes, then uses the previously proven portrait 4K front-camera source while saving the Ad at 1080p. `docs/rules/TELEPROMPTER-VIDEO.md` now requires measured stage-by-stage evidence and a real phone preview before calling a camera change ready.
+
 The full-frame repair shipped at 5:44 p.m. Phoenix in commit `c5026292`; GitHub run `38328006180` passed. The smooth-scroll recording follow-up and Codex instruction migration shipped in commits `c54f8d5f` and `00f20473`; GitHub run `38330313337` passed and the live HTML loaded `teleprompter.js?v=20261012-smooth1`. The Ad quality correction and frame counters still need release and a fresh iPhone take before the recording can be called smooth.

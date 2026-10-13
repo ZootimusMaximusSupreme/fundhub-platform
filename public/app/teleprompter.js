@@ -622,6 +622,14 @@
     push(60, "wide", false, false, hd);
     push(30, hdShape, true, false, hd);
     push(30, "wide", false, false, hd);
+    // Safari can grant a 1080p request as a wide frame on an upright iPhone.
+    // The 4K front-camera mode has supplied a true portrait source here; use
+    // it only when every 1080p try lacks a full upright frame. The Ad file is
+    // still recorded by the 1080p canvas, never saved at 4K.
+    if (!back && mode === "1080p") {
+      push(60, "wide", false, false, "4k");
+      push(30, "wide", false, false, "4k");
+    }
     list.push({
       facingMode: { ideal: back ? "environment" : "user" },
       width: { max: 1920 },
@@ -2904,7 +2912,7 @@
     timeout = root.setTimeout(function () { if (video.srcObject === stream) finish(false); }, 6500);
     step();
   }
-  function attachStream(stream, mode, noMic, requestedFacing) {
+  function attachStream(stream, mode, noMic, requestedFacing, retryPortrait) {
     var gen = cam.gen;
     var old = cam.stream;
     var freshAudio = stream.getAudioTracks()[0] || null;
@@ -2928,6 +2936,16 @@
     }
     function ready() {
       if (gen !== cam.gen) return;
+      if (retryPortrait && isPhone() && mode === "1080p" && recordingIsPortrait() &&
+          video && video.videoWidth > video.videoHeight) {
+        stream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+        var oldTrack = old && old.getVideoTracks()[0];
+        video.srcObject = oldTrack && oldTrack.readyState === "live" ? old : null;
+        cam.previewReady = false;
+        camLine("Finding a full upright camera view…", false);
+        retryPortrait();
+        return;
+      }
       stopOld();
       cam.stream = stream;
       cam.applied = mode;
@@ -3035,12 +3053,14 @@
         if (!stream) return;
         stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* already stopped */ } });
       }
-      function fail() {
+    var wideRejected = false;
+    function fail() {
         if (gen !== cam.gen) return;
         cam.opening = "";
         cam.previewReady = false;
-        cameraMessage("Camera unavailable. Allow camera access in Safari, then tap Retry camera.", true);
-        camLine("Camera failed to open. Retry camera.", true);
+      cameraMessage(wideRejected ? "Safari gave only a wide camera view. Tap Retry camera." :
+        "Camera unavailable. Allow camera access in Safari, then tap Retry camera.", true);
+      camLine(wideRejected ? "No full upright camera view was available." : "Camera failed to open. Retry camera.", true);
       }
       function finish(stream, noMic, requestedFacing) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
@@ -3049,7 +3069,7 @@
         var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
         // Keep the frame the camera opened. The extra tall constraint added
         // with the crop path did not help this portrait recording.
-        attachStream(stream, mode, noMic, facing);
+        attachStream(stream, mode, noMic, facing, function () { wideRejected = true; run(); });
       }
       function afterOpen(stream, noMic, requestedFacing) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
@@ -3146,6 +3166,13 @@
           asks.push(loose);
         }
       }
+      if (wanted === "user" && mode === "1080p") {
+        for (var fallbackFps of [60, 30]) {
+          var portraitSource = cameraAsk(wanted, fallbackFps, "wide", false, "4k");
+          portraitSource.facingMode = { exact: wanted };
+          asks.push(portraitSource);
+        }
+      }
       var at = 0;
       function next() {
         if (gen !== cam.gen) return;
@@ -3170,7 +3197,7 @@
             next();
             return;
           }
-          attachStream(stream, mode, !cam.audioTrack || cam.audioTrack.readyState === "ended", wanted);
+          attachStream(stream, mode, !cam.audioTrack || cam.audioTrack.readyState === "ended", wanted, next);
         }, next);
       }
       next();

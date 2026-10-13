@@ -1,0 +1,12 @@
+# Teleprompter video repair rules
+
+These rules apply to every change to `public/app/teleprompter.*` or its recording and Drive upload path. Read them with `AGENTS.md` and the shoot-flow specs.
+
+1. **Name the measured failure first.** Record the exact take, time, device orientation, preview appearance, raw Drive file dimensions, distinct frames per second, and frame gaps. A requested camera setting is not a measured result.
+2. **Locate the failing stage before calling a fix.** Check, in order, the camera frame shown by Safari, frames copied to the recording canvas, the locally created file, the raw file downloaded from Drive, and the upload code. If a stage has no evidence, add a small measurement and say the cause is still open. Do not guess that Drive, Safari, or the encoder is at fault.
+3. **Keep the owner's capture targets.** Ads: full-frame 1080p at 60 fps or higher when granted. VSLs, thank-you videos, and testimonials: full-frame 4K at 30–60 fps. The upright preview and saved video must show an upright, usable portrait picture with the full camera view: no crop, stretched image, thin letterboxed strip, or unexplained black bars. Apply the same rule sideways in landscape.
+4. **Change one cause at a time.** Preserve the working camera flip, smooth word scroll, one-file recording, and device-first save. Do not change a camera request merely because it looks plausible in desktop tests; check the dimensions Safari actually gives on the iPhone. If a new request breaks the preview, repair that request before changing upload or scroll code.
+5. **Prove each stage before asking for another owner test.** Run focused code and browser checks, verify the new script is live, then check the preview on the real iPhone before recording. Use one short take to check the preview, saved file, sound, and frame rate. Decode the uploaded original frame by frame; Drive preview smoothness alone is not proof. Never call it ready to film while the real-phone proof is missing or red.
+6. **Report evidence and the next action plainly.** Say what is confirmed, what remains unknown, and the one next check. Never say “fixed,” “smooth,” or “live” from a green test or a requested frame rate alone.
+
+Current regression (2026-10-12): the new Ad 1080p request produced a wide camera picture on an upright iPhone. With the no-crop preview, it appeared as a thin strip with black space. Treat the portrait camera source as a required check before the next release.

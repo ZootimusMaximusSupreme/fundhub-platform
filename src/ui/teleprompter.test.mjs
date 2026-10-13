@@ -90,7 +90,7 @@ describe("teleprompter, pure", () => {
     assert.match(SRC, /var list = \["video\/mp4;codecs=hvc1,mp4a\.40\.2", "video\/mp4"/);
   });
 
-  test("portrait 1080p asks for 1080x1920 at 60 fps", () => {
+  test("portrait Ad asks for 1080x1920 at 60 fps before a full-frame fallback", () => {
     const T = load();
     const tries = T.cameraTries("user", "1080p");
     assert.equal(tries[0].facingMode.ideal, "user");
@@ -101,7 +101,9 @@ describe("teleprompter, pure", () => {
     assert.equal(tries[0].frameRate.min, 60);
     assert.equal(tries[0].frameRate.ideal, 60);
     assert.equal(tries[0].frameRate.max, 60);
-    for (const c of tries) {
+    const fallback = tries.findIndex((c) => c.width?.ideal === 3840);
+    assert.ok(fallback > 0, "try a proven portrait source if 1080p returns a wide strip");
+    for (const c of tries.slice(0, fallback)) {
       const blob = JSON.stringify(c);
       assert.equal(blob.includes("3840"), false);
       assert.equal(blob.includes("2160"), false);
