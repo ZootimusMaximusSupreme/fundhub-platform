@@ -10,7 +10,7 @@ Make sure leads from Blake Evertsen, Fundhub Funnel, and iCloud show their sourc
 | --- | --- | --- | --- |
 | Source rules | agent | DONE | Find existing mappings, docs, and tests. No edits. |
 | Live record check | agent | DONE | Check the named live lead and available records. No edits. |
-| Repair and proof | root | DONE | Blake, Funnel, and verified iPhone-contact sources are labelled and published. |
+| Repair and proof | root | IN PROGRESS | Group the private list by source and add source filtering, then verify it live. |
 
 ## Prompts
 
@@ -48,6 +48,12 @@ The page now derives the shown source without changing the original private lead
 - It found 293 matching contacts; 40 already match existing private-lead phone numbers and show `iCloud`, while 253 new unique contacts were added with the source `iCloud`.
 
 Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
+
+## Source organization
+
+- The private list groups rows under source headings, with Blake Evertsen first, Fundhub Funnel second, iCloud third, and remaining source labels after those groups.
+- A lead-source filter is available alongside the existing search and status filter.
+- Local count proof: 337 total rows; 14 Blake Evertsen, 20 Fundhub Funnel, and 293 iCloud rows. The iCloud count includes the 40 matching existing rows and 253 imported contacts.
 
 ## Live proof
 
