@@ -44,17 +44,18 @@ describe("teleprompter, pure", () => {
     assert.doesNotMatch(asked.line, /4K/);
   });
 
-  test("actual 30 fps reports below the 60 fps target for Ads and VSLs", () => {
+  test("a hard 30 fps meets the target, and less than 30 is flagged (owner call 2026-10-13)", () => {
     const T = load();
-    const cases = [
+    assert.equal(T.HARD_FPS, 30);
+    for (const [mode, settings] of [
       ["1080p", { width: 1080, height: 1920, frameRate: 30 }],
       ["4k", { width: 2160, height: 3840, frameRate: 30 }]
-    ];
-    for (const [mode, settings] of cases) {
+    ]) {
       const report = T.cameraReport(settings, mode);
       assert.match(report.line, /30 fps/);
-      assert.match(report.short, /below 60 fps target/i);
+      assert.equal(report.short, "");
     }
+    assert.match(T.cameraReport({ width: 1080, height: 1920, frameRate: 20 }, "1080p").short, /below 30 fps target/);
   });
 
   test("actual 60 fps meets the target for Ads and VSLs", () => {
@@ -79,25 +80,22 @@ describe("teleprompter, pure", () => {
     assert.equal(T.cameraRateBelow(settings, { frameRate: { min: 30, ideal: 30 } }), false);
   });
 
-  test("front camera asks for real 4K at the highest frame rate", () => {
+  test("front camera asks for real 4K at a hard 30 fps", () => {
     const T = load();
     const tries = T.cameraTries("user", "4k");
     assert.equal(tries[0].facingMode.ideal, "user");
-    assert.equal(tries[0].frameRate.min, 60, "first 4K ask must require 60 fps");
     assert.equal(tries[0].width.ideal, 3840);
     assert.equal(tries[0].height.ideal, 2160);
     assert.equal(tries[0].width.max, undefined);
     assert.equal(tries[0].height.max, undefined);
-    assert.equal(tries[0].frameRate.ideal, 60);
-    assert.equal(tries[0].frameRate.max, undefined);
+    assert.equal(tries[0].frameRate.ideal, 30);
+    assert.equal(tries[0].frameRate.max, 30);
+    assert.equal(tries[0].frameRate.min, undefined);
     assert.equal(tries[0].focusMode, undefined);
-    const four = tries.filter((c) => c.width && c.width.ideal === 3840);
-    const rates = four.map((c) => c.frameRate && c.frameRate.ideal);
-    assert.ok(rates.indexOf(60) < rates.indexOf(30));
     assert.notEqual(tries[0].facingMode.ideal, "environment");
   });
 
-  test("portrait iPhone asks for strict 4K60, then relaxed 4K60", () => {
+  test("portrait iPhone asks for 4K at 30 fps first", () => {
     const ctx = createContext({
       console,
       navigator: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15" },
@@ -107,12 +105,8 @@ describe("teleprompter, pure", () => {
     runInContext(SRC, ctx);
     const T = ctx.FundhubTeleprompter;
     const tries = T.cameraTries("user", "4k");
-    assert.deepEqual(plain([
-      tries[0].width.ideal, tries[0].height.ideal, tries[0].frameRate.ideal,
-      tries[1].width.ideal, tries[1].height.ideal, tries[1].frameRate.ideal
-    ]), [3840, 2160, 60, 3840, 2160, 60]);
-    assert.equal(tries[0].frameRate.min, 60);
-    assert.equal(tries[1].frameRate.min, undefined);
+    assert.deepEqual(plain([tries[0].width.ideal, tries[0].height.ideal, tries[0].frameRate.ideal]), [3840, 2160, 30]);
+    assert.equal(tries[0].frameRate.min, undefined);
     assert.equal(tries[0].aspectRatio.ideal, 16 / 9);
     assert.equal(tries[0].facingMode.ideal, "user");
     const hd = T.cameraTries("user", "1080p");
@@ -128,19 +122,23 @@ describe("teleprompter, pure", () => {
     assert.match(SRC, /var list = \["video\/mp4;codecs=hvc1,mp4a\.40\.2", "video\/mp4"/);
   });
 
-  test("every front-camera mode tries all 60 fps sources before any 30 fps fallback", () => {
+  test("no camera ask anywhere asks for 60 fps: one 30 fps ask opens the lens (owner call 2026-10-13)", () => {
     const T = load();
-    for (const mode of ["1080p", "4k"]) {
-      const tries = T.cameraTries("user", mode);
-      const rates = tries.map((c) => c.frameRate?.ideal).filter((n) => n != null);
-      const first30 = rates.indexOf(30);
-      const last60 = rates.lastIndexOf(60);
-      assert.ok(first30 >= 0, mode + " keeps a 30 fps preview fallback");
-      assert.ok(last60 < first30, mode + " tries every 60 fps source first");
+    for (const facing of ["user", "environment"]) {
+      for (const mode of ["1080p", "4k"]) {
+        for (const c of T.cameraTries(facing, mode)) {
+          if (!c.frameRate) continue;
+          assert.equal(c.frameRate.ideal, 30, facing + " " + mode);
+          assert.equal(c.frameRate.max, 30, facing + " " + mode);
+          assert.equal(c.frameRate.min, undefined, facing + " " + mode);
+        }
+      }
     }
+    assert.equal(T.cameraAsk("environment", 60, "wide", true, "4k").frameRate.ideal, 30, "a 60 ask still opens at 30");
+    assert.doesNotMatch(SRC, /min: 60/);
   });
 
-  test("portrait Ad asks for 1080x1920 at 60 fps before a full-frame fallback", () => {
+  test("portrait Ad asks for 1080x1920 at 30 fps before a full-frame fallback", () => {
     const T = load();
     const tries = T.cameraTries("user", "1080p");
     assert.equal(tries[0].facingMode.ideal, "user");
@@ -148,9 +146,8 @@ describe("teleprompter, pure", () => {
     assert.equal(tries[0].width.max, 1080);
     assert.equal(tries[0].height.ideal, 1920);
     assert.equal(tries[0].height.max, 1920);
-    assert.equal(tries[0].frameRate.min, 60);
-    assert.equal(tries[0].frameRate.ideal, 60);
-    assert.equal(tries[0].frameRate.max, 60);
+    assert.equal(tries[0].frameRate.ideal, 30);
+    assert.equal(tries[0].frameRate.max, 30);
     const fallback = tries.findIndex((c) => c.width?.ideal === 3840);
     assert.ok(fallback > 0, "try a proven portrait source if 1080p returns a wide strip");
     for (const c of tries.slice(0, fallback)) {
@@ -169,10 +166,8 @@ describe("teleprompter, pure", () => {
     assert.equal(tries[0].facingMode.ideal, "environment");
     assert.equal(tries[0].width.ideal, 1080);
     assert.equal(tries[0].height.ideal, 1920);
-    assert.equal(tries[0].frameRate.min, 60);
+    assert.equal(tries[0].frameRate.ideal, 30);
     assert.equal(tries[0].focusMode, "continuous");
-    const rates = tries.map((c) => c.frameRate && c.frameRate.ideal).filter((n) => n);
-    assert.ok(rates.indexOf(60) < rates.indexOf(30));
     for (const c of tries) {
       const blob = JSON.stringify(c);
       assert.equal(blob.includes("3840"), false);
@@ -182,31 +177,30 @@ describe("teleprompter, pure", () => {
     }
   });
 
-  test("back camera preserves the 4K60 request when opening or switching lenses", () => {
+  test("back camera keeps the 4K request at a hard 30 fps when opening or switching lenses", () => {
     const T = load();
     const tries = T.cameraTries("environment", "4k");
     assert.equal(tries[0].facingMode.ideal, "environment");
     assert.equal(tries[0].width.ideal, 3840);
     assert.equal(tries[0].height.ideal, 2160);
-    assert.equal(tries[0].frameRate.min, 60);
-    assert.equal(tries[0].frameRate.ideal, 60);
+    assert.equal(tries[0].frameRate.ideal, 30);
+    assert.equal(tries[0].frameRate.max, 30);
     assert.equal(tries[0].focusMode, "continuous");
     assert.equal(tries[0].exposureMode, "continuous");
-    const rates = tries.map((c) => c.frameRate && (c.frameRate.min || c.frameRate.ideal));
-    assert.ok(rates.lastIndexOf(60) < rates.indexOf(30));
     // Direct exact-lens and exact-device requests bypass cameraTries.
     for (const shape of ["wide", "tall"]) {
       const ask = T.cameraAsk("environment", 60, shape, true, "4k");
       assert.deepEqual([ask.width.ideal, ask.height.ideal].sort((a, b) => a - b), [2160, 3840]);
-      assert.equal(ask.frameRate.min, 60);
+      assert.equal(ask.frameRate.ideal, 30);
       assert.equal(ask.focusMode, "continuous");
       assert.equal(ask.exposureMode, "continuous");
     }
   });
 
-  test("switching front/rear retains 60 fps and the current script's camera shape", () => {
+  test("switching front/rear asks once at 30 fps and keeps the current script's camera shape", () => {
     const source = SRC.slice(SRC.indexOf("function switchCamera()"), SRC.indexOf("function setCamMode"));
-    assert.match(source, /for \(var askFps of \[60, 30\]\)/);
+    assert.match(source, /for \(var askFps of \[HARD_FPS\]\)/);
+    assert.match(source, /var rememberedAsk = cameraRecipe\(wanted, mode\);\s*if \(rememberedAsk\) asks\.unshift\(rememberedAsk\);/);
     assert.match(source, /var faceShape = mode === "1080p" && recordingIsPortrait\(\) \? "tall" : "wide"/);
     assert.match(source, /var shapes = faceShape === "wide" \? \["wide"\] : \["tall", "wide"\]/);
     assert.match(source, /cameraAsk\(wanted, askFps, shape, askFps === 60, mode\)/);

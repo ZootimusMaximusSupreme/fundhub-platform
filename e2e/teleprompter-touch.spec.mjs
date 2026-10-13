@@ -340,54 +340,19 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("fhtp.edits")).items))).toEqual([]);
     });
 
-    test("409: the filming screen stays clear, and Choose words lets Chris keep his words", async ({ page }) => {
+    test("409: no Choose words. The phone's script is kept and saved on the newest version (owner call 2026-10-13)", async ({ page }) => {
       const { server } = await open(page);
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris"); // the Scripts tab, on the Mac
       await editHook(page, NEW_HOOK);
-      await expect(page.locator("#pick")).toBeHidden();
-      await expect(page.locator("#p-save")).toHaveText("Choose words");
-      await page.locator("#p-save").tap();
-      await expect(page.locator("#hist")).toHaveCount(0);
-      await expect(page.locator("#pick")).toBeVisible();
-      await expect(page.locator("#pick-title")).toHaveText("Choose words for this script");
-      await expect(page.locator("#pick-body")).toContainText("BOTH files before they ever say yes.");
-      await expect(page.locator("#pick-body")).toContainText("MOST banks read TWO files first.");
-      await page.getByRole("button", { name: "Keep my words" }).tap();
+      // It saves on the live version by itself: version 3, written on version 2.
       await expect.poll(() => server.versions[THREE.root_script_id].length).toBe(3);
+      await expect(page.locator("#pick")).toBeHidden();
       await expect(page.locator("#p-save")).toBeHidden();
       const last = server.posts[server.posts.length - 1];
       expect(last).toMatchObject({ id: server.versions[THREE.root_script_id][1].id, version: 2 });
       expect(server.versions[THREE.root_script_id][0].body).toContain(NEW_HOOK);
-      expect(server.versions[THREE.root_script_id]).toHaveLength(3);
-    });
-
-    test("409: using saved words keeps the exact phone edit as a backup on the phone", async ({ page }) => {
-      const { server } = await open(page);
-      const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
-      server.save(THREE.root_script_id, theirs, null, "chris");
-      await editHook(page, NEW_HOOK);
-      await expect(page.locator("#pick")).toBeHidden();
-      await page.locator("#p-save").tap();
-      await expect(page.locator("#pick")).toBeVisible();
-      const newest = THREE.body.replace(HOOK, "MOST banks check THREE files first.");
-      server.save(THREE.root_script_id, newest, null, "chris");
-      await page.getByRole("button", { name: "Use the saved words" }).tap();
-      await expect(page.locator("#pick-body")).toContainText("MOST banks check THREE files first.");
-      await expect(page.locator("#content")).toContainText("BOTH files");
-      expect(await page.evaluate((rootId) => Object.keys(localStorage)
-        .filter((key) => key.startsWith(`fhtp.editBackup.${rootId}.`)).length, THREE.root_script_id)).toBe(0);
-      await page.getByRole("button", { name: "Use the saved words" }).tap();
-      await expect(page.locator("#content")).toContainText("MOST banks check THREE files first.");
-      await expect(page.locator("#content")).not.toContainText("BOTH files");
-      expect(server.versions[THREE.root_script_id]).toHaveLength(3);
-      const backups = await page.evaluate((rootId) => Object.keys(localStorage)
-        .filter((key) => key.startsWith(`fhtp.editBackup.${rootId}.`))
-        .map((key) => JSON.parse(localStorage.getItem(key))), THREE.root_script_id);
-      expect(backups).toHaveLength(1);
-      expect(backups[0].body).toBe(THREE.body.replace(HOOK, NEW_HOOK));
-      expect(backups[0].parts).toHaveLength(THREE.parts.length);
-      expect(backups[0].parts[0]).toEqual({ kind: "hook", text: NEW_HOOK });
+      await expect(page.locator("#content")).toContainText("BOTH files before they ever say yes.");
     });
 
   });

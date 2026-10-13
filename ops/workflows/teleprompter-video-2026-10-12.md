@@ -1,5 +1,21 @@
 # Teleprompter video investigation — 2026-10-12
 
+## Black screens on open and on lens flips — Claude, October 13, 1:15 p.m. Phoenix
+
+Chris's 13:03 screen recording: the camera stays black for many seconds after opening, after a script switch (Ad ↔ VSL), and on every front/back flip.
+
+Cause, from the code: every open asked for 60 fps first. Safari granted 30, the app rejected it, stopped the lens and asked again, up to about ten times. On an iPhone each new ask takes the lens from the last one, so each try was a black flash. Nothing restarted a camera that dropped while the app was in the background.
+
+Owner calls 2026-10-13: "make it a hard 30fps for now", "the camera should never go black ever when on the app", "remove choose words".
+
+Change (branch `claude/teleprompter-no-choose-words`):
+- Every ask is `frameRate: { ideal: 30, max: 30 }` on both lenses, 1080p and 4K (`HARD_FPS`). The first ask opens.
+- The ask that reached the screen is saved per lens, size and phone turn (`fhtp.camRecipes1`) and tried first.
+- The last picture is held on screen while the camera reopens; a dropped lens, a muted lens for 1.5 s, or a return to the app reopens it by itself (never during a take).
+- A save conflict keeps the phone's words and saves them on the newest version. The save line never says Choose words.
+
+Proof: unit 91/91; browser teleprompter take flow 60/60 + camera steady 2/2 (both new tests failed on the old code), touch, page and mic specs green; lint clean. Real-phone proof is Chris's next filming session.
+
 ## Why the front camera records at 30 fps — Claude, October 13, 10:30 a.m. Phoenix
 
 Status: **cause found. No web-page fix exists.** Owner moved this work from Codex to Claude.

@@ -85,7 +85,7 @@ flowchart TD
     U --> P
     P -->|409 stale| L["GET marketing/script?id= → the live version"]
     L -->|"live words = these words<br/>(the first answer was lost)"| V
-    L -->|different words| C["The save line shows 'Choose words'<br/>a tap opens both texts"]
+    L -->|different words| C["No Choose words (owner call 2026-10-13):<br/>the phone's script is kept by itself"]
     C -->|Keep my words| P2["POST again on the live id + version"] --> V
     C -->|Use the saved words| W["Read the live version again; show new words for another choice if it changed<br/>then verify a phone backup and show the saved words"]
     P -->|"400 / 403 / 404"| F["'Not saved. Tap to see why.'<br/>words kept: Try again, or Throw away (asks first)"]
@@ -93,7 +93,7 @@ flowchart TD
 
 - The database version is the memory. The repo file follows through the outbox, which is held until `GITHUB_REPO_TOKEN` exists; the pulse says so.
 - The save path does not filter by title or kind. Ads, VSLs, thank-you videos, and their variants all create the same next `ad_scripts` version and keep their stack fields.
-- History is gone from the teleprompter (owner call 2026-10-13). The save line shows only when a save has not reached the server: offline, signed out, not saved, or Choose words. Choosing saved words still reads the live version again and keeps a backup of the phone words in this phone's storage.
+- History is gone from the teleprompter (owner call 2026-10-13). The save line shows only when a save has not reached the server: offline, signed out, or not saved. A conflict is never shown: the phone's script is saved on the newest version, and the server keeps every older one. Choosing saved words still reads the live version again and keeps a backup of the phone words in this phone's storage.
 - The 5-second shoot poll never redraws under the edit box, and an edit still waiting on this phone wins over what the server sends. Words changed elsewhere redraw only while nothing rolls, keeping the place.
 
 ### 4c. The rig

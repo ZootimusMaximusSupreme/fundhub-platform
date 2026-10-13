@@ -551,21 +551,23 @@
 
   /**
    * One real camera ask.
-   * Either lens can request 4K at 3840×2160. The frame rate is 60 with no ceiling, so the
-   * camera gives the highest rate it has at that size. It is not locked to 30.
+   * Either lens can request 4K at 3840×2160. The frame rate is a hard 30 (owner call 2026-10-13), so the
+   * camera opens on the first ask on both lenses. 60 fps waits for the iPhone app.
    * Settings 1080p is 1920×1080. lockRate asks for that exact frame rate.
    * Tall is the 1080p picture held upright (1080×1920).
    * facing is "user" (front) or "environment" (back).
    * mode "4k" keeps 4K when lenses change. mode "1080p" stays at 1920×1080.
    */
+  /* Owner call 2026-10-13: a hard 30 fps on both lenses, 1080p and 4K, until the
+     iPhone app. Asking for 60 on an iPhone got 30 back, and each re-ask took the
+     lens away, so flipping cameras went black. One 30 fps ask opens the first time. */
+  var HARD_FPS = 30;
   function cameraAsk(facing, fps, shape, lockRate, mode) {
     var front = facing !== "environment";
-    var rate = fps === 30 ? 30 : 60;
+    var rate = HARD_FPS;
     var tall = shape === "tall";
     var four = mode === "4k";
-    var frame = four
-      ? (lockRate ? { min: rate, ideal: rate } : { ideal: rate })
-      : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
+    var frame = { ideal: rate, max: rate };
     if (four) {
       var ask = {
         facingMode: { ideal: front ? "user" : "environment" },
@@ -735,7 +737,7 @@
     var short = "";
     if (want === "4k" && !four) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 4K.";
     else if (want === "1080p" && !hd) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 1080p.";
-    else if (fps && fps < 60) short = line + " · below 60 fps target";
+    else if (fps && fps < HARD_FPS - 1) short = line + " · below " + HARD_FPS + " fps target";
     return { line: line, short: short, width: w, height: h, fps: fps };
   }
 
@@ -1019,7 +1021,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraRateBelow: cameraRateBelow, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, isRodeMic: isRodeMic, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
+    HARD_FPS: HARD_FPS, cameraAsk: cameraAsk, cameraRateBelow: cameraRateBelow, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, isRodeMic: isRodeMic, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -1334,8 +1336,17 @@
     debounceMs: 300,
     onChange: onEditChange
   });
+  root.setTimeout(keepPhoneWords, 0);
 
+  /* Owner call 2026-10-13: no Choose words. The script on this phone is the one he
+     reads and films, so a conflict keeps it and saves it on the newest version.
+     The server keeps every older version. */
+  function keepPhoneWords() {
+    var list = edits.list();
+    for (var i = 0; i < list.length; i++) if (list[i].conflict) edits.resolve(list[i].root, "mine");
+  }
   function onEditChange(ev) {
+    if (ev.type === "conflict" || ev.type === "conflict-refreshed") { root.setTimeout(keepPhoneWords, 0); }
     if (ev.type === "saved") savedOne(ev.root, ev.script, ev.warnings);
     if (ev.type === "failed") say("That edit did not save: " + ev.message);
     if (ev.type === "backup-failed") say("The phone could not back up those words. Your edit is still here.");
@@ -1406,7 +1417,8 @@
     var said = E.statusText(st, repoHeld);
     // Owner call 2026-10-13: a clean screen. The line shows only when a pasted
     // script has not reached the server yet, so a lost save is never silent.
-    var problem = !!(st && (st.failed || st.conflicts || (st.waiting && st.net !== "ok")));
+    // A conflict is not shown: the phone's words are kept by themselves.
+    var problem = !!(st && (st.failed || (st.waiting && st.net !== "ok")));
     el.textContent = problem ? said : "";
     el.hidden = !problem;
     el.classList.toggle("warn", !!(st.failed || (st.waiting && st.net !== "ok")));
@@ -3269,6 +3281,13 @@
         return;
       }
       stopOld();
+      if (cam.lastAsk && cam.lastAsk.stream === stream) rememberCameraRecipe(facing, mode, cam.lastAsk.ask);
+      cam.lastAsk = null;
+      if (track && !track.__fhtpWatched) {
+        track.__fhtpWatched = true;
+        track.addEventListener("ended", function () { if (cam.stream === stream) checkCameraAlive(300); });
+        track.addEventListener("mute", function () { if (cam.stream === stream) checkCameraAlive(1500); });
+      }
       cam.stream = stream;
       cam.applied = mode;
       cam.facing = facing;
@@ -3334,6 +3353,46 @@
     }
     ready();
   }
+  /* Owner call 2026-10-13: the camera never goes black while the app is open.
+     Each camera ask on an iPhone takes the lens from the last one, so hunting
+     through asks flashed black again and again. The ask that worked is saved per
+     lens, size and phone turn, and is tried first next time: one open, not ten. */
+  function recipeKey(facing, mode) {
+    return (facing === "environment" ? "environment" : "user") + ":" + (mode === "4k" ? "4k" : "1080p") + ":" + (recordingIsPortrait() ? "tall" : "wide");
+  }
+  function cameraRecipe(facing, mode) {
+    var all = LS.get("camRecipes1", {});
+    var ask = all && all[recipeKey(facing, mode)];
+    return ask && typeof ask === "object" ? JSON.parse(JSON.stringify(ask)) : null;
+  }
+  function rememberCameraRecipe(facing, mode, ask) {
+    if (!ask || typeof ask !== "object") return;
+    var copy = JSON.parse(JSON.stringify(ask));
+    delete copy.deviceId;   // ids can change between launches; the lens name stays
+    copy.facingMode = { exact: facing === "environment" ? "environment" : "user" };
+    var all = LS.get("camRecipes1", {}) || {};
+    all[recipeKey(facing, mode)] = copy;
+    LS.set("camRecipes1", all);
+  }
+  /* Back to the app, or the lens dropped: open the camera again by itself.
+     The last picture stays on screen while it does. Never during a take. */
+  var camCheckTimer = 0;
+  function checkCameraAlive(waitMs) {
+    root.clearTimeout(camCheckTimer);
+    camCheckTimer = root.setTimeout(function () {
+      if (doc.visibilityState === "hidden") return;
+      if (cam.rec && cam.rec.state === "recording") return;
+      if (cam.opening || cam.stopping) return;
+      var track = cam.stream && cam.stream.getVideoTracks()[0];
+      if (track && track.readyState === "live" && !track.muted) return;
+      if (!scripts[cur]) return;
+      holdPreview();
+      cam.stream = null; cam.applied = ""; cam.previewReady = false;
+      ensureCamera();
+    }, waitMs == null ? 400 : waitMs);
+  }
+  doc.addEventListener("visibilitychange", function () { if (doc.visibilityState === "visible") checkCameraAlive(600); });
+  root.addEventListener("pageshow", function () { checkCameraAlive(600); });
   function ensureCamera() {
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) return;
@@ -3353,15 +3412,21 @@
       var gen = ++cam.gen;
       var mode = activeMode();
       var wanted = cam.wantedFacing === "environment" ? "environment" : "user";
+      if (cam.previewReady) holdPreview();
       cam.opening = mode + ":" + wanted;
       camLine("Asking the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       if (!cam.previewReady) cameraMessage("Starting " + (wanted === "environment" ? "back" : "front") + " camera…", false);
       paintPicks();
       var steps = [];
+      var remembered = cameraRecipe(wanted, mode);
+      if (remembered) {
+        if (!cam.audioTrack || cam.audioTrack.readyState === "ended") steps.push({ video: remembered, audio: true, facing: wanted });
+        steps.push({ video: cameraRecipe(wanted, mode), audio: false, facing: wanted });
+      }
       var exactId = cam.deviceIds[wanted];
       if (exactId) {
         var exactVideo = cameraAsk(wanted, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", false, mode);
-        exactVideo.frameRate = mode === "4k" ? { min: 60, ideal: 60 } : { min: 60, ideal: 60, max: 60 };
+        exactVideo.frameRate = { ideal: HARD_FPS, max: HARD_FPS };
         exactVideo.deviceId = { exact: exactId };
         delete exactVideo.facingMode;
         steps.push({ video: exactVideo, audio: false, facing: wanted });
@@ -3386,8 +3451,9 @@
         "Camera unavailable. Allow camera access in Safari, then tap Retry camera.", true);
       camLine(wideRejected ? "No full upright camera view was available." : "Camera failed to open. Retry camera.", true);
       }
-      function finish(stream, noMic, requestedFacing) {
+      function finish(stream, noMic, requestedFacing, ask) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
+        cam.lastAsk = ask ? { stream: stream, ask: ask } : null;
         var track = stream.getVideoTracks()[0];
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
         var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
@@ -3404,7 +3470,7 @@
         var requested = requestedFacing === "environment" ? "environment" : "user";
         if (!md.enumerateDevices) {
           if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-          finish(stream, noMic, facing);
+          finish(stream, noMic, facing, ask);
           return;
         }
         md.enumerateDevices().then(function (devs) {
@@ -3413,7 +3479,7 @@
           rememberVideoDevices(devs);
           if (!id || settings.deviceId === id) {
             if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-            finish(stream, noMic, facing);
+            finish(stream, noMic, facing, ask);
             return;
           }
           var video = cameraAsk(requested, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", true, mode);
@@ -3424,14 +3490,14 @@
             var exactSettings = exactTrack && exactTrack.getSettings ? exactTrack.getSettings() : {};
             if (cameraRateBelow(exactSettings, video)) { stopTracks(s2); stopTracks(stream); run(); return; }
             stopTracks(stream);
-            finish(s2, noMic, requested);
+            finish(s2, noMic, requested, video);
           }, function () {
             if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-            finish(stream, noMic, facing);
+            finish(stream, noMic, facing, ask);
           });
         }, function () {
           if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-          finish(stream, noMic, facing);
+          finish(stream, noMic, facing, ask);
         });
       }
       function run() {
@@ -3475,9 +3541,9 @@
       var asks = [];
       var faceShape = mode === "1080p" && recordingIsPortrait() ? "tall" : "wide";
       var shapes = faceShape === "wide" ? ["wide"] : ["tall", "wide"];
-      // A lens flip must not downgrade a genuine 60 fps take to 30 fps.
-      // Safari still has a 30 fps fallback if all 60 fps requests fail.
-      for (var askFps of [60, 30]) {
+      // Hard 30 fps (owner call 2026-10-13): one ask per shape, no 60 fps re-asks
+      // that take the lens away and black out the screen during a flip.
+      for (var askFps of [HARD_FPS]) {
         for (var shape of shapes) {
           var direct = cameraAsk(wanted, askFps, shape, askFps === 60, mode);
           direct.facingMode = { exact: wanted };
@@ -3495,7 +3561,7 @@
         }
       }
       if (wanted === "user" && mode === "1080p") {
-        for (var fallbackFps of [60, 30]) {
+        for (var fallbackFps of [HARD_FPS]) {
           var portraitSource = cameraAsk(wanted, fallbackFps, "wide", fallbackFps === 60, "4k");
           portraitSource.facingMode = { exact: wanted };
           asks.push(portraitSource);
@@ -3504,6 +3570,8 @@
       asks.sort(function (a, b) {
         return ((b.frameRate && b.frameRate.ideal) || 0) - ((a.frameRate && a.frameRate.ideal) || 0);
       });
+      var rememberedAsk = cameraRecipe(wanted, mode);
+      if (rememberedAsk) asks.unshift(rememberedAsk);
       var at = 0;
       function next() {
         if (gen !== cam.gen) return;
@@ -3533,6 +3601,7 @@
             next();
             return;
           }
+          cam.lastAsk = { stream: stream, ask: currentAsk };
           attachStream(stream, mode, !cam.audioTrack || cam.audioTrack.readyState === "ended", wanted, next);
         }, next);
       }
