@@ -1,5 +1,17 @@
 # Teleprompter video investigation — 2026-10-12
 
+## Physical lens-switch failure — October 13, current work
+
+The owner completed a real phone pass and reports the camera goes black/freezes during a recording flip. Luna decoded both newly uploaded originals and root inspected the private frame contact sheet. The second Ad's last changing selfie frame is at **2.688 s**; frame 80 at **3.093 s** is pure black, and frames 80–214 remain black through **8.172 s**. Its 215 decoded video frames contain **81 unique images and 134 extra duplicates**. Audio and video decode without errors, and download size matches Drive. End settings report rear **1920×1080@60**, but no rear scene appears in the file. This is failed filming, despite the earlier passing synthetic live checks.
+
+Only two Ads are available from this pass; no VSL arrived during Luna's bounded three-minute watch. The first Ad is usable-looking full portrait 1080p at about **29 fps**, not a proven 60 fps file. Sanitized original-file evidence is in `postpublish-lens-flip-failure-2026-10-13.json`; private frames/audio remain outside Git.
+
+The exact native black-frame cause remains unproved: that old report has no mute flags. A focused WebKit reproducer confirms a real app gap: a live, decoded-but-muted replacement track is accepted immediately, the held preview clears, and black video is copied. The correction retains the held frame until the track unmutes and a fresh callback arrives where supported; the recorder skips muted-source callbacks. Another failing test proved stop-during-switch sampled the old front `cam.stream`; end measurements now sample the active `video.srcObject` and its lens. Bounded start/end mute flags and muted callback count travel with each saved file.
+
+Checks: **86/86 units**, **5/5 focused Chromium**, **5/5 focused regular WebKit before the final metrics correction**, then **2/2 final WebKit muted/stop cases**. Both new cases failed before their respective patches. The real desktop WebKit encoder produced playable 2160×3840 H.264 plus decoded AAC on the final source at about 42 fps with no black images; an earlier same-source run produced zero chunks and a repeat succeeded, recorded as a harness limitation rather than a hidden pass. Lint passed; TypeScript retains the unrelated `filmed-receive.mjs:159` failure. No preview layout, camera constraints, microphone capture, or upload-byte change is included in this guard correction.
+
+This guard must be published and rechecked live before the owner is asked for another phone take. Actual iPhone lens switching, 1080p60 and 4K60 remain **OPEN**. No claim that historical WebKit bugs identify this phone's cause, and no claim that a live/unmuted track guarantees nonblack pixels.
+
 ## Current continuation — October 13
 
 - GPU recording and phone playback/export are live. Failed run `38413135989` was superseded by successful normal ship `38415984196`, publishing Netlify deploy `6ace45eaf943d6d4d3e531b6` at `2026-10-13T14:54:50.031Z`. Luna and root independently verified all four served asset hashes. Health answers `ok:true`, pending migrations `0`.

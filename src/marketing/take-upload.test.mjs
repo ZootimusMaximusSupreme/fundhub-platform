@@ -96,6 +96,18 @@ describe("the pieces", () => {
 describe("take capture diagnostics", () => {
   const prefix = "FundHub recording diagnostics v1\n";
 
+  test("keeps bounded muted-source evidence without allowing arbitrary track data", () => {
+    const read = (fields) => JSON.parse(takeUpload.takeCaptureDescription({ elapsed_ms: 1000, ...fields }).slice(prefix.length));
+    const good = read({ start_video_muted: false, end_video_muted: true, muted_frame_callbacks: 12 });
+    assert.equal(good.start_video_muted, false);
+    assert.equal(good.end_video_muted, true);
+    assert.equal(good.muted_frame_callbacks, 12);
+    const bad = read({ start_video_muted: "false", end_video_muted: "camera-id", muted_frame_callbacks: -1 });
+    assert.equal(bad.start_video_muted, undefined);
+    assert.equal(bad.end_video_muted, undefined);
+    assert.equal(bad.muted_frame_callbacks, undefined);
+  });
+
   test("formats bounded measured fields and strips unknown strings and identifiers", () => {
     const description = takeUpload.takeCaptureDescription({
       elapsed_ms: 2500, camera_frames: 147, copied_frames: 140, missed_callbacks: 7,

@@ -2814,8 +2814,11 @@
     var video = $("cam-video");
     return { width: settings.width || null, height: settings.height || null,
       frameRate: settings.frameRate || null, frameRateMax: capabilities.frameRate && capabilities.frameRate.max || null,
+      videoMuted: track ? !!track.muted : null,
       previewWidth: video && video.videoWidth || null,
-      previewHeight: video && video.videoHeight || null, facing: cam.facing };
+      previewHeight: video && video.videoHeight || null,
+      facing: cameraFacing(settings, cameraLabelFacing(track) ||
+        (video && stream === video.srcObject && stream !== cam.stream ? cam.wantedFacing : cam.facing)) };
   }
   /* Keep 4K pixels on the GPU. WebKit can hand a WebGL surface to the
      recorder without the 2D canvas snapshot used by the Ad path. */
@@ -2935,7 +2938,7 @@
       hasVideoCallbacks: !!video.requestVideoFrameCallback, missedCallbacks: 0,
       cameraStart: captureCameraSettings(stream), lensChanges: 0, copyTotalMs: 0, copyLongestMs: 0,
       hasFrameRequests: false, frameRequests: 0, frameRequestFailures: 0,
-      captureMode: gpu ? "webgl" : "2d" };
+      captureMode: gpu ? "webgl" : "2d", mutedFrameCallbacks: 0 };
     cam.captureStats = stats;
     var frameOrigin = null, copiedSlot = -1, previousFrameTime = null;
     var sourceStream = video.srcObject, sourceFacing = cam.facing, previousPresented = null;
@@ -2980,6 +2983,12 @@
         previousPresented = typeof presented === "number" ? presented : null;
         if (stats.cameraLast) stats.cameraLongestGap = Math.max(stats.cameraLongestGap, now - stats.cameraLast);
         stats.cameraLast = now;
+      }
+      var currentTrack = video.srcObject && video.srcObject.getVideoTracks ? video.srcObject.getVideoTracks()[0] : null;
+      if (currentTrack && currentTrack.muted) {
+        if (fromCamera) stats.mutedFrameCallbacks++;
+        schedule();
+        return;
       }
       // Each video callback has a fresh camera frame. Do not reject it for
       // callback jitter when the recording budget can keep the source rate.
@@ -3137,7 +3146,8 @@
     if (cam.captureStats) {
       var stats = cam.captureStats;
       var seconds = Math.max(0.1, (root.performance.now() - stats.started) / 1000);
-      var startCamera = stats.cameraStart || {}, endCamera = captureCameraSettings(cam.stream);
+      var liveVideo = $("cam-video");
+      var startCamera = stats.cameraStart || {}, endCamera = captureCameraSettings(liveVideo && liveVideo.srcObject || cam.stream);
       diagnostics = {
         elapsed_ms: Math.round((root.performance.now() - stats.started)),
         camera_frames: stats.cameraFrames, copied_frames: stats.copiedFrames,
@@ -3147,14 +3157,17 @@
         frame_request_failures: stats.frameRequestFailures,
         copy_total_ms: Math.round(stats.copyTotalMs || 0), copy_longest_ms: Math.round(stats.copyLongestMs || 0),
         capture_mode: stats.captureMode,
+        muted_frame_callbacks: stats.mutedFrameCallbacks,
         canvas_width: cam.canvas && cam.canvas.width, canvas_height: cam.canvas && cam.canvas.height,
         target_fps: cam.recordTargetFps, lens_changes: stats.lensChanges,
         start_width: startCamera.width, start_height: startCamera.height,
         start_frame_rate: startCamera.frameRate, start_frame_rate_max: startCamera.frameRateMax,
+        start_video_muted: startCamera.videoMuted,
         start_preview_width: startCamera.previewWidth,
         start_preview_height: startCamera.previewHeight, start_facing: startCamera.facing,
         end_width: endCamera.width, end_height: endCamera.height,
         end_frame_rate: endCamera.frameRate, end_frame_rate_max: endCamera.frameRateMax,
+        end_video_muted: endCamera.videoMuted,
         end_preview_width: endCamera.previewWidth,
         end_preview_height: endCamera.previewHeight, end_facing: endCamera.facing
       };
@@ -3211,12 +3224,16 @@
      Accept only loaded video pixels; otherwise retry or recover the old lens. */
   function playPreview(video, stream, ready, failed) {
     var done = false, attempts = 0, timer = null, timeout = null;
+    var wasMuted = false, freshAfterMute = false, frameWait = 0;
     function cleanup() {
       root.clearTimeout(timer); root.clearTimeout(timeout);
       video.removeEventListener("loadeddata", check);
       video.removeEventListener("playing", check);
       video.removeEventListener("canplay", check);
       video.removeEventListener("resize", check);
+      if (frameWait && video.cancelVideoFrameCallback) {
+        try { video.cancelVideoFrameCallback(frameWait); } catch (e) { /* already delivered */ }
+      }
     }
     function finish(ok) {
       if (done) return;
@@ -3227,6 +3244,17 @@
       if (done) return;
       if (video.srcObject !== stream) { done = true; cleanup(); return; }
       var tracks = stream.getVideoTracks();
+      if (tracks.length && tracks[0].muted) { wasMuted = true; return; }
+      if (tracks.length && wasMuted && !freshAfterMute && video.requestVideoFrameCallback) {
+        if (!frameWait) frameWait = video.requestVideoFrameCallback(function () {
+          frameWait = 0;
+          if (video.srcObject !== stream || done) return;
+          if (tracks[0].muted) { check(); return; }
+          freshAfterMute = true;
+          check();
+        });
+        return;
+      }
       if (tracks.length && tracks[0].readyState === "live" &&
           video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) finish(true);
     }

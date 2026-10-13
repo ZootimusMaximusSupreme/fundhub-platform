@@ -1,0 +1,49 @@
+{
+  "checked_at_utc": "2026-10-13T16:14:03.124754+00:00",
+  "scope": "Desktop WebKit synthetic iPhone camera/MediaRecorder and mocked API. Not a physical iPhone result.",
+  "test": "stopping during a muted rear flip records the pending rear settings and one red-frame take",
+  "baseline": {
+    "js_sha256": "0fc08c760702507dc64300be9ce981fd4ef6d0f2df325d256d24c30eab3cc6a8",
+    "result": "FAIL at diagnostic fields after one successful upload",
+    "verified_before_failure": {
+      "rear_stream": "live, muted, loaded 720x1280",
+      "held_preview": "visible",
+      "record_canvas_top": "red while rear was black",
+      "upload_chunks": [
+        "take-1"
+      ]
+    },
+    "actual": {
+      "end_facing": "user",
+      "end_width": 1080,
+      "end_height": 1920,
+      "end_video_muted": false,
+      "end_preview_width": 720,
+      "end_preview_height": 1280
+    },
+    "expected": {
+      "end_facing": "environment",
+      "end_width": 720,
+      "end_height": 1280,
+      "end_video_muted": true,
+      "end_preview_width": 720,
+      "end_preview_height": 1280
+    }
+  },
+  "patched_local": {
+    "js_sha256": "5b3bdd9fde99f4cdc73e3581a1246fd7676d855719c5fae8c513f8019314e39e",
+    "test_sha256": "82c7f16803903276ae8ef6d212e00c2a63c1af881a5670af320e111a2a8c11aa",
+    "result": "PASS 1/1 in combined focused WebKit run; both muted-rear cases PASS 2/2",
+    "verified_end_fields": {
+      "end_facing": "environment",
+      "end_width": 720,
+      "end_height": 1280,
+      "end_video_muted": true,
+      "end_preview_width": 720,
+      "end_preview_height": 1280
+    },
+    "field_basis": "Exact values asserted by passing Playwright test against the intercepted upload metadata.",
+    "other_checks": "Rear stream remained live/muted/loaded, held preview stayed visible, recorder canvas stayed red, and one uploaded chunk was exactly take-1.",
+    "run": "E2E_PORT=43195 FHTP_WEBKIT_FILES=1 npx playwright test --config=/tmp/fundhub-muted-two-local-webkit.config.mjs"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "test": "real WebKit MediaRecorder 4K WebGL encoder smoke test",
+  "date": "2026-10-13",
+  "app_source_sha256": "5b3bdd9fde99f4cdc73e3581a1246fd7676d855719c5fae8c513f8019314e39e",
+  "harness_sha256": "ccce8e0c31ad0291a9e24415b0d29c30867bef612f926c6436bae665c3bb97a5",
+  "environment": "Playwright headless WebKit desktop engine with iPhone user-agent and viewport; synthetic 2160x3840 canvas source; native MediaRecorder",
+  "runs": [
+    {
+      "audio_enabled": true,
+      "test_wait_seconds": 3.0,
+      "result": "failed",
+      "detail": "Recorder ended inactive and produced zero chunks; no take-save player opened."
+    },
+    {
+      "audio_enabled": false,
+      "test_wait_seconds": 3.012,
+      "result": "player_pass",
+      "player_duration_seconds": 3.352,
+      "player_frame_size": [
+        2160,
+        3840
+      ]
+    },
+    {
+      "audio_enabled": true,
+      "test_wait_seconds": 3.004,
+      "result": "decode_pass",
+      "player_duration_seconds": 3.177,
+      "player_frame_size": [
+        2160,
+        3840
+      ],
+      "mp4_bytes": 19484091,
+      "video": {
+        "codec": "H.264",
+        "width": 2160,
+        "height": 3840,
+        "duration_seconds": 3.212,
+        "decoded_frames": 135,
+        "sampled_unique_frames": 135,
+        "black_frames": 0
+      },
+      "audio": {
+        "codec": "AAC",
+        "duration_seconds": 3.221,
+        "decoded_frames": 151,
+        "decoded_samples": 309248,
+        "peak": 0.02033,
+        "rms": 0.01397
+      },
+      "capture": {
+        "mode": "webgl",
+        "reported_camera_fps": 42,
+        "reported_copied_fps": 43,
+        "camera_frames": 144,
+        "copied_frames": 145,
+        "missed_updates": 0,
+        "longest_callback_gap_ms": 59,
+        "webgl_uploads": 145,
+        "webgl_draws": 145,
+        "frame_requests": 145,
+        "frame_request_failures": 0,
+        "copy_total_ms": 1031,
+        "copy_longest_ms": 31
+      },
+      "ffmpeg_decode_exit_code": 0,
+      "ffmpeg_decode_warnings": "Repeated/non-monotonic DTS on some video packets"
+    }
+  ],
+  "limits": "One same-source audio run failed with zero chunks before a repeat succeeded. This synthetic-source harness does not simulate track mute or lens handoff, and desktop WebKit is not proof of iPhone behavior or a 60 fps result.",
+  "media": "Synthetic test media remains in /tmp; no customer media or device identifiers are included."
+}
