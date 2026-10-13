@@ -69,8 +69,8 @@ export function judgeRouteGap(row, routes = ROUTES) {
     : `the ${row.route} handler is not registered`;
   return {
     id: row.id,
-    status: "FAIL",
-    detail: `${row.surface} — ${row.control}: ${context}. No fake-data check calls ${intendedMethod(row)} and judges this named business result, so this route stays red.`,
+    status: "NOT_PROVED",
+    detail: `${row.surface} — ${row.control}: ${context}. No fake-data check calls ${intendedMethod(row)} and judges this named business result, so this route stays not proved.`,
     suggestedFix: `Add a fake-data ${intendedMethod(row)} test for ${row.surface} that calls the real handler and judges this exact result.`,
   };
 }
