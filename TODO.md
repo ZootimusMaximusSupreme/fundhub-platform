@@ -2,7 +2,7 @@
 
 ## Today — 2026-10-13
 
-Updated 10:39 AM Arizona/MST. Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: outreach, filming, then editing. The owner reports no further completed tasks since the prior update and wants to stop babysitting AI. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
+Updated 10:42 AM Arizona/MST. Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: outreach, filming, then editing. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
 
 ### 1. Now — food, water, then outreach
 
@@ -42,7 +42,6 @@ Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last reco
 ### 5. Waiting
 
 - [ ] Justice — waiting for confirmation that his email/account works.
-- [ ] MCA — waiting for the contract, then sign it.
 
 ### 6. After the priority work
 
