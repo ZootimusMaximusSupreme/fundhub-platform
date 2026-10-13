@@ -18,7 +18,7 @@ test.afterEach(async () => {
   }
 });
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false, fourKCameraFps = null, rearCameraFps = null, sourceSizeByAsk = false, liveCamera = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, rearMutedUntil = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, rearSourceWidth = null, rearSourceHeight = null, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false, fourKCameraFps = null, rearCameraFps = null, sourceSizeByAsk = false, liveCamera = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -60,7 +60,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     const baseline = fs.readFileSync(process.env.FHTP_BASELINE_JS_FILE, "utf8");
     await page.route("**/app/teleprompter.js*", (route) => route.fulfill({ contentType: "text/javascript", body: baseline }));
   }
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk, liveCamera, wireOrigin }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, rearMutedUntil, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, rearSourceWidth, rearSourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk, liveCamera, wireOrigin }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -174,8 +174,10 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     const makeStream = (facing, deviceId, videoAsk) => {
       const fourKAsk = videoAsk?.width?.ideal >= 2160;
       const highSource = portraitOnlyFor4k && fourKAsk;
-      const width = sourceSizeByAsk ? (fourKAsk ? 2160 : 1080) : portraitOnlyFor4k ? (highSource ? 32 : 56) : sourceWidth;
-      const height = sourceSizeByAsk ? (fourKAsk ? 3840 : 1920) : portraitOnlyFor4k ? (highSource ? 56 : 32) : sourceHeight;
+      const width = facing === "environment" && rearSourceWidth != null ? rearSourceWidth :
+        sourceSizeByAsk ? (fourKAsk ? 2160 : 1080) : portraitOnlyFor4k ? (highSource ? 32 : 56) : sourceWidth;
+      const height = facing === "environment" && rearSourceHeight != null ? rearSourceHeight :
+        sourceSizeByAsk ? (fourKAsk ? 3840 : 1920) : portraitOnlyFor4k ? (highSource ? 56 : 32) : sourceHeight;
       const grantedFps = () => liveFacing === "environment" && rearCameraFps != null ? rearCameraFps : fourKAsk && fourKCameraFps != null ? fourKCameraFps : cameraFps;
       const canvas = document.createElement("canvas");
       canvas.width = width; canvas.height = height;
@@ -190,10 +192,28 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         cameraPixels.fillStyle = "yellow";
         cameraPixels.fillRect(width * 7 / 8, 0, width / 8, height);
       }
+      const mutedRear = rearMutedUntil && facing === "environment";
+      if (mutedRear) {
+        cameraPixels.fillStyle = "black";
+        cameraPixels.fillRect(0, 0, width, height);
+      }
       const stream = canvas.captureStream(30);
       const track = stream.getVideoTracks()[0];
       // Keep the same source pixels and exclude them from recorder counts.
       cameraPaints.set(stream, () => nativeDrawImage.call(cameraPixels, canvas, 0, 0));
+      if (mutedRear) {
+        window.__rearUnmuted = false;
+        Object.defineProperty(track, "muted", { configurable: true, get: () => !window.__rearUnmuted });
+        window.__unmuteRear = () => {
+          window.__rearUnmuted = true;
+          cameraPixels.fillStyle = "lime";
+          cameraPixels.fillRect(0, 0, width, height / 2);
+          cameraPixels.fillStyle = "yellow";
+          cameraPixels.fillRect(0, height / 2, width, height / 2);
+          cameraPaints.get(stream)();
+          track.dispatchEvent(new Event("unmute"));
+        };
+      }
       if (liveCamera) {
         // Real cameras keep delivering frames after the ready-preview check.
         // A single startup paint can arrive during lens attachment and leave
@@ -243,7 +263,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk, liveCamera, wireOrigin });
+  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, rearMutedUntil, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, rearSourceWidth, rearSourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk, liveCamera, wireOrigin });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     if (wireOrigin && new URL(req.url()).origin === wireOrigin) { await route.continue(); return; }
@@ -514,6 +534,101 @@ test("camera flip is live, and one recording continues front/rear/front until Re
   expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
   expect(server.uploads).toHaveLength(0);
   await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("muted rear preview holds the last frame until a real frame, then saves one take", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, sourceWidth: 1080, sourceHeight: 1920,
+    liveCamera: true, rearMutedUntil: true
+  });
+  const flip = page.locator("#b-camera-flip");
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => { window.__heldTakeCanvas = window.__recordCanvas; });
+  const takeTopColor = () => page.evaluate(() => {
+    const canvas = window.__heldTakeCanvas;
+    const color = canvas.getContext("2d").getImageData(
+      Math.floor(canvas.width / 2), Math.floor(canvas.height / 4), 1, 1
+    ).data;
+    if (color[0] > 200 && color[1] < 80 && color[2] < 80) return "red";
+    if (color[1] > 200 && color[0] < 80 && color[2] < 80) return "lime";
+    return [...color];
+  });
+  await expect.poll(takeTopColor).toBe("red");
+  await flip.tap();
+  await expect.poll(() => page.locator("#cam-video").evaluate((video) => {
+    const track = video.srcObject && video.srcObject.getVideoTracks()[0];
+    return !!track && track.getSettings().facingMode === "environment" &&
+      track.readyState === "live" && track.muted && video.readyState >= 2 &&
+      video.videoWidth > 0 && video.videoHeight > 0;
+  })).toBe(true);
+  await expect(page.locator("#cam-hold")).toBeVisible();
+  await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+  await page.waitForTimeout(300);
+  expect(await takeTopColor()).toBe("red");
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+
+  await page.evaluate(() => window.__unmuteRear());
+  await expect.poll(() => page.locator("#cam-video").evaluate((video) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+    const color = ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 4), 1, 1).data;
+    return color[1] > 200 && color[0] < 80 && color[2] < 80;
+  })).toBe(true);
+  await expect(page.locator("#cam-hold")).toBeHidden();
+  await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+  await expect.poll(takeTopColor).toBe("lime");
+  await page.waitForTimeout(550);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(() => server.uploads.length).toBe(1);
+  expect(server.uploads[0].diagnostics.lens_changes).toBe(1);
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
+  expect(server.errors).toEqual([]);
+});
+
+test("stopping during a muted rear flip records the pending rear settings and one red-frame take", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, sourceWidth: 1080, sourceHeight: 1920,
+    rearSourceWidth: 720, rearSourceHeight: 1280, liveCamera: true, rearMutedUntil: true
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => { window.__heldTakeCanvas = window.__recordCanvas; });
+  const takeTopIsRed = () => page.evaluate(() => {
+    const canvas = window.__heldTakeCanvas;
+    const color = canvas.getContext("2d").getImageData(
+      Math.floor(canvas.width / 2), Math.floor(canvas.height / 4), 1, 1
+    ).data;
+    return color[0] > 200 && color[1] < 80 && color[2] < 80;
+  });
+  await expect.poll(takeTopIsRed).toBe(true);
+  await page.locator("#b-camera-flip").tap();
+  await expect.poll(() => page.locator("#cam-video").evaluate((video) => {
+    const track = video.srcObject && video.srcObject.getVideoTracks()[0];
+    const settings = track && track.getSettings();
+    return !!track && track.readyState === "live" && track.muted &&
+      settings.facingMode === "environment" && settings.width === 720 && settings.height === 1280 &&
+      video.readyState >= 2 && video.videoWidth === 720 && video.videoHeight === 1280;
+  })).toBe(true);
+  await expect(page.locator("#cam-hold")).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(await takeTopIsRed()).toBe(true);
+  await page.waitForTimeout(550);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(() => server.uploads.length).toBe(1);
+  await expect.poll(() => server.chunks).toEqual(["take-1"]);
+  expect(server.uploads[0].diagnostics).toMatchObject({
+    end_video_muted: true, end_facing: "environment", end_width: 720, end_height: 1280,
+    end_preview_width: 720, end_preview_height: 1280
+  });
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
   expect(server.errors).toEqual([]);
 });
 

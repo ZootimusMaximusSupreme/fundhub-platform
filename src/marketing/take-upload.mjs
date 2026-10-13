@@ -126,6 +126,7 @@ export function takeCaptureDescription(input) {
     missed_callbacks: 10000000, camera_longest_gap_ms: 10000000,
     copied_longest_gap_ms: 10000000, lens_changes: 10000000,
     frame_requests: 10000000, frame_request_failures: 10000000,
+    muted_frame_callbacks: 10000000,
     copy_total_ms: 10000000, copy_longest_ms: 10000000,
     canvas_width: 8192, canvas_height: 8192, target_fps: 240,
     start_width: 8192, start_height: 8192, start_frame_rate: 240,
@@ -141,7 +142,7 @@ export function takeCaptureDescription(input) {
         (rate || Number.isInteger(value))) allowed[key] = value;
   }
   if (!(allowed.elapsed_ms > 0)) return "";
-  for (const key of ["has_video_callbacks", "has_frame_requests"]) {
+  for (const key of ["has_video_callbacks", "has_frame_requests", "start_video_muted", "end_video_muted"]) {
     if (typeof input[key] === "boolean") allowed[key] = input[key];
   }
   for (const key of ["start_facing", "end_facing"]) {
