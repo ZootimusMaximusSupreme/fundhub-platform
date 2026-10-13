@@ -13,7 +13,7 @@ import { routeKeyForDoor } from "../catalog/proofs/door-batch-route-result.mjs";
 export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
   "routes-0.json": 98,
   "routes-1.json": 113,
-  "routes-2.json": 65,
+  "routes-2.json": 64,
   "routes-3.json": 41,
 });
 

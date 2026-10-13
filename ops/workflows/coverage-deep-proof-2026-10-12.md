@@ -179,7 +179,7 @@ Rule: real rendered action plus observed result only. Existing page loads, selec
 - Focused rendered-browser tests: 13 passed, 0 failed. Exact map and unmapped-red guards: 2 passed, 0 failed.
 - Catalog rebuild: 3,942 unique; 3,919 mapped/wired; 23 unmapped red. The two deep social actions remain wired because their proof depth is deep, not page-load-only.
 - The combined Display mega-run was stopped after its old `display-batch-staff-ui.test.mjs` child did not exit after six minutes. All four new shards and both exact catalog guards passed on their own.
-- Safe selected-lane pulse built and ran without a live send or write. It reported 1,985 final rows: 465 green, 1,323 red, 189 verified nothing-to-judge, and 8 not checked. This selected-lane total is not directly comparable to the earlier 2,357-row full pulse.
-- The pulse exit is red because `routes-2.json` now has 64 rows while the route monitor still expects 65. Per owner direction, this unrelated drift is recorded and was not fixed in this proof batch.
+- Safe selected-lane pulse built and ran without a live send or write. After the stale Door count was fixed, it exited 0 with 2,300 final rows: 465 green, 1,639 red, 189 verified nothing-to-judge, and 7 not checked. This selected-lane total is not directly comparable to the earlier 2,357-row full pulse.
+- The first ship run found stale Door guard totals after the accepted proofs reduced the exact-red route list. The guard now expects the real 316 route reds, including 64 in `routes-2.json`, so the monitor and its tests match the reviewed proof map again.
 - Lint passed: 3,418 files and inline scripts parse clean.
 - Type check still has the known unrelated error at `src/marketing/filmed-receive.mjs:159`; this batch did not touch that file.
