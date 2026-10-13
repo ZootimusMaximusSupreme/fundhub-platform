@@ -19,7 +19,7 @@ import { checkJobHeartbeats } from "./heartbeats.mjs";
 import { GAP_LANES, runCoverageSlices } from "./coverage/run-slices.mjs";
 import { foldCoverage } from "./coverage/link.mjs";
 import { checkWorkflowRuns } from "./workflow-runs.mjs";
-import { auditPulse, makeLaneNaVerify } from "./self-audit.mjs";
+import { auditPulse, makeLaneNaVerify, prepareNaAudit } from "./self-audit.mjs";
 import { checkPipelineMotion } from "./pipeline-motion.mjs";
 import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
 import { checkLivePlaywright } from "./live-playwright-check.mjs";
@@ -376,6 +376,20 @@ export async function runDailyPulse({
   const date = phoenixDate(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
   let checks = [];
+  const laneNaVerify = makeLaneNaVerify({ db, scope: staffScope, now });
+  /* Coverage rows were made in the earlier Inngest steps. Start their N/A proof
+     now, beside the five web checks, instead of adding that read time to the
+     end of the whole-morning step. A failed early job is not
+     hidden: auditPulse gets null and performs the normal proof itself. */
+  const earlyNaJob = Array.isArray(coverageRows)
+    ? prepareNaAudit(coverageRows, {
+      db,
+      scope: staffScope,
+      now,
+      functions,
+      laneNaVerify
+    }).catch(() => null)
+    : null;
 
   checks.push(await checkHealth({ fetchImpl, baseUrl: origin }));
   checks.push(await checkLogin({ fetchImpl, baseUrl: origin }));
@@ -408,6 +422,11 @@ export async function runDailyPulse({
         "Check https://fundhub.ai/api/health and the Supabase project first.")];
     }
   };
+  // Do not overlap database work with the calls below. A staffScope may use a
+  // transaction on one client; waiting here keeps its BEGIN/SET/COMMIT from
+  // interleaving with the pulse's later database checks. The early proof still
+  // runs beside the five web checks above.
+  const earlyNaOutcome = earlyNaJob ? await earlyNaJob : null;
   let resolvedOrg = orgId || null;
   if (!resolvedOrg) {
     const [row] = await guard("db", async () => {
@@ -481,7 +500,8 @@ export async function runDailyPulse({
       scope: staffScope,
       now,
       orgId: resolvedOrg,
-      laneNaVerify: makeLaneNaVerify({ db, scope: staffScope, now })
+      laneNaVerify,
+      naOutcome: earlyNaOutcome
     });
     checks = [...audit.checks, ...audit.rows];
     folded += audit.folded || 0;

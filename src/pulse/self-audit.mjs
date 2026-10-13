@@ -336,15 +336,37 @@ export async function loadManifest({ functions = [], notLiveRows = null, ...rest
  * Returns undefined when the lane has no verifier (that counts as not true).
  */
 export function makeLaneNaVerify({ db = null, scope = null, now = new Date(), gapFiles = GAP_FILES } = {}) {
-  return async function laneNaVerify(sliceId, code, args) {
-    const lane = String(sliceId || "").replace(/\.mjs$/, "");
-    const entry = gapFiles.find(([name]) => name.replace(/\.mjs$/, "") === lane);
-    if (!entry) return undefined;
-    const mod = await entry[1]();
+  const entries = new Map(gapFiles.map(([name, load]) => [name.replace(/\.mjs$/, ""), load]));
+  const loaded = new Map();
+  const laneName = (sliceId) => {
+    const asked = String(sliceId || "").replace(/\.mjs$/, "");
+    if (entries.has(asked)) return asked;
+    const prefixed = `gap-${asked}`;
+    return entries.has(prefixed) ? prefixed : asked;
+  };
+  const loadLane = (sliceId) => {
+    const lane = laneName(sliceId);
+    const load = entries.get(lane);
+    if (!load) return Promise.resolve(undefined);
+    let pending = loaded.get(lane);
+    if (!pending) {
+      pending = Promise.resolve().then(load);
+      loaded.set(lane, pending);
+    }
+    return pending;
+  };
+  const laneNaVerify = async (sliceId, code, args) => {
+    const mod = await loadLane(sliceId);
     const fn = mod && mod.naVerify && mod.naVerify[code];
     if (typeof fn !== "function") return undefined;
     return fn(args, { db, scope, now });
   };
+  laneNaVerify.warm = async (rows = []) => {
+    const lanes = new Set(rows.map((row) => row?.sliceId || (typeof row?.id === "string" ? row.id.split(":")[0] : null)).filter(Boolean));
+    await Promise.all([...lanes].map(loadLane));
+  };
+  laneNaVerify.hasLane = (sliceId) => entries.has(laneName(sliceId));
+  return laneNaVerify;
 }
 
 // ── step 1: "nothing to judge" is checked again ──────────────────────────────
@@ -426,31 +448,91 @@ function naKeyOf(row) {
   }
 }
 
-/* Runs verifyNa for every `na` row. Same code + args + lane = one call. Eight
-   at a time. Returns a Map from the row object to { ok, problem, reason }. */
-async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs }) {
+/* Runs verifyNa for every `na` row. Same code + args + lane = one call. When
+   the pulse provides a database or staff scope, every check can reach its one
+   client, including checks not owned by a gap lane, so all run one at a time.
+   Without a database, only lane checks are serial and pure checks stay bounded
+   at eight workers. Each clock starts after its worker slot is acquired. */
+async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seededOutcome = null }) {
   const naRows = list.filter((r) => r && r.status === "na");
   const outcome = new Map();
   if (!naRows.length) return outcome;
+  const seededByKey = new Map();
+  if (seededOutcome instanceof Map) {
+    for (const [row, result] of seededOutcome) {
+      const key = naKeyOf(row);
+      if (row && key) seededByKey.set(`${String(row.id)}\n${key}`, result);
+    }
+  }
+  const pendingRows = [];
+  for (const row of naRows) {
+    const direct = seededOutcome instanceof Map ? seededOutcome.get(row) : null;
+    const key = naKeyOf(row);
+    const seeded = direct || (key ? seededByKey.get(`${String(row.id)}\n${key}`) : null);
+    if (seeded && (seeded.ok === true || seeded.problem === "stale")) outcome.set(row, seeded);
+    else pendingRows.push(row);
+  }
+  if (!pendingRows.length) return outcome;
   const verify = verifyNa || await defaultVerifyNa();
   const hardStopMs = Math.min(AUDIT_HARD_STOP_MS, Math.max(0, Number(totalBudgetMs) || 0));
   const hardStopAt = Date.now() + hardStopMs;
-  const memo = new Map();
-  let next = 0;
-  async function worker() {
-    while (next < naRows.length) {
-      const row = naRows[next++];
-      const key = naKeyOf(row);
-      let pending = key ? memo.get(key) : null;
-      if (!pending) {
-        pending = verifyOne(row, ctx, verify, budgetMs, hardStopAt, hardStopMs);
-        if (key) memo.set(key, pending);
-      }
-      outcome.set(row, await pending);
+  if (typeof ctx?.laneNaVerify?.warm === "function") {
+    try {
+      await withTimeout(ctx.laneNaVerify.warm(pendingRows), Math.max(0, hardStopAt - Date.now()));
+    } catch {
+      // The real checks below keep the failure visible with the row's exact reason.
     }
   }
-  await Promise.all(Array.from({ length: Math.min(NA_CONCURRENCY, naRows.length) }, worker));
+  const memo = new Map();
+  async function runRows(rows, concurrency) {
+    let next = 0;
+    async function worker() {
+      while (next < rows.length) {
+        const row = rows[next++];
+        const key = naKeyOf(row);
+        let pending = key ? memo.get(key) : null;
+        if (!pending) {
+          pending = verifyOne(row, ctx, verify, budgetMs, hardStopAt, hardStopMs);
+          if (key) memo.set(key, pending);
+        }
+        outcome.set(row, await pending);
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
+  }
+  const serialRows = [];
+  const parallelRows = [];
+  const hasSharedDatabase = typeof ctx?.scope === "function" || (ctx?.db && typeof ctx.db.query === "function");
+  for (const row of pendingRows) {
+    const lane = row.sliceId || (typeof row.id === "string" ? row.id.split(":")[0] : "");
+    const isLane = typeof ctx?.laneNaVerify?.hasLane === "function"
+      ? ctx.laneNaVerify.hasLane(lane)
+      : String(lane).startsWith("gap-");
+    (hasSharedDatabase || isLane ? serialRows : parallelRows).push(row);
+  }
+  await Promise.all([
+    runRows(serialRows, 1),
+    runRows(parallelRows, NA_CONCURRENCY)
+  ]);
   return outcome;
+}
+
+export async function prepareNaAudit(checks, {
+  verifyNa = null,
+  laneNaVerify = null,
+  db = null,
+  scope = null,
+  now = new Date(),
+  functions = null,
+  budgetMs = AUDIT_BUDGET_MS,
+  totalBudgetMs = AUDIT_HARD_STOP_MS
+} = {}) {
+  return verifyAllNa(Array.isArray(checks) ? checks : [], {
+    verifyNa,
+    ctx: { db, scope, now, functions, laneNaVerify },
+    budgetMs,
+    totalBudgetMs
+  });
 }
 
 /* "Said nothing to judge, but <why> is not true." <why> is the reason verifyNa
@@ -935,7 +1017,8 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
  *   orgId          the company for the morning-report read; the default company when left out
  * Wiring that tests inject, and the pulse leaves alone:
  *   verifyNa, sharedClient, notLiveRows, contract { toContractCheck, countChecks },
- *   budgetMs (per check), totalBudgetMs (whole audit safety stop)
+ *   budgetMs (per check), totalBudgetMs (whole audit safety stop),
+ *   naOutcome (an optional early prepareNaAudit result)
  *
  * Returns { checks, rows, folded }:
  *   checks  the input rows; every failed `na` row replaced by a `skip` row, and
@@ -960,7 +1043,8 @@ export async function auditPulse({
   notLiveRows = null,
   contract = null,
   budgetMs = AUDIT_BUDGET_MS,
-  totalBudgetMs = AUDIT_HARD_STOP_MS
+  totalBudgetMs = AUDIT_HARD_STOP_MS,
+  naOutcome = null
 } = {}) {
   try {
     if (!Array.isArray(checks)) throw new TypeError("auditPulse needs the list of checks");
@@ -976,7 +1060,7 @@ export async function auditPulse({
         (err) => ({ want: null, error: clip((err && err.message) || err, 120) })
       );
     const [outcome, briefs, built, recorder] = await Promise.all([
-      verifyAllNa(checks, { verifyNa, ctx, budgetMs, totalBudgetMs }),
+      verifyAllNa(checks, { verifyNa, ctx, budgetMs, totalBudgetMs, seededOutcome: naOutcome }),
       checkBriefsSent({ db, now, orgId }),
       manifestJob,
       checkRunRecorder({ db, scope, now, functions, sharedClient })

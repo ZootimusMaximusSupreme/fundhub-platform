@@ -26,6 +26,7 @@ import {
   laneCheckIds,
   loadManifest,
   makeLaneNaVerify,
+  prepareNaAudit,
   middlewareNames,
   notLiveIds
 } from "./self-audit.mjs";
@@ -497,8 +498,8 @@ test("rows with the same code, args and lane are checked once; different args ar
   assert.equal(calls, 4); // wf:evt-a, wf:evt-off, one for m1+m2 together, one for m3
 });
 
-test("at most eight nothing-to-judge checks run at the same time", async () => {
-  const fx = fixture();
+test("without a shared database, at most eight nothing-to-judge checks run at the same time", async () => {
+  const fx = fixture({ db: null });
   for (let i = 0; i < 40; i++) {
     fx.checks.push({ id: `wf:c${i}`, status: "na", detail: "x.", na: { code: "no-demand", args: { n: i } } });
   }
@@ -1105,6 +1106,187 @@ test("makeLaneNaVerify finds the real lane files by id (no verifier yet is undef
   const verify = makeLaneNaVerify({ gapFiles: GAP_FILES });
   const out = await verify("gap-closer", "no-real-lead", {});
   assert.ok(out === undefined || typeof out === "boolean");
+});
+
+test("cold lane module setup is warmed before a nothing-to-judge check starts its own timer", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let loads = 0;
+  let checks = 0;
+  const laneNaVerify = makeLaneNaVerify({
+    gapFiles: [["gap-cold.mjs", async () => {
+      loads += 1;
+      await wait(35);
+      return { naVerify: { "cold-empty": async () => { checks += 1; return true; } } };
+    }]]
+  });
+  const fx = fixture({ na: false });
+  fx.checks.push({
+    id: "cold:empty",
+    sliceId: "gap-cold",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "cold-empty", args: {} }
+  });
+  const result = await run({
+    laneNaVerify,
+    budgetMs: 10,
+    totalBudgetMs: 100,
+    verifyNa: async (row, ctx) => {
+      const held = await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+      return held === true ? { ok: true, reason: "nothing is here" } : { ok: false, reason: "a measured row exists" };
+    }
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.find((row) => row.id === "cold:empty").status, "na");
+  assert.equal(loads, 1, "the warmed lane module is reused by the real check");
+  assert.equal(checks, 1);
+});
+
+test("lane checks do not spend their timer waiting behind one serial database client", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let chain = Promise.resolve();
+  const scope = async (fn) => fn({
+    query() {
+      const read = chain.then(async () => { await wait(8); return { rows: [] }; });
+      chain = read.catch(() => {});
+      return read;
+    }
+  });
+  const laneNaVerify = makeLaneNaVerify({
+    scope,
+    gapFiles: [
+      ["gap-built-funnels.mjs", async () => ({
+        naVerify: { "cold-empty": async (_args, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => true)) }
+      })],
+      ["gap-catalog-data.mjs", async () => ({
+        naVerify: { "cold-empty": async (_args, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => true)) }
+      })]
+    ]
+  });
+  const fx = fixture({ na: false });
+  for (let i = 0; i < 6; i += 1) {
+    const lane = i === 0 ? "built-funnels" : "catalog-data";
+    fx.checks.push({
+      id: `${lane}:queued-${i}`,
+      status: "na",
+      detail: "Nothing is here.",
+      na: { code: "cold-empty", args: { n: i } }
+    });
+  }
+  const result = await run({
+    laneNaVerify,
+    budgetMs: 25,
+    totalBudgetMs: 200,
+    verifyNa: async (row, ctx) => {
+      const lane = row.sliceId || row.id.split(":")[0];
+      const held = await ctx.laneNaVerify(lane, row.na.code, row.na.args);
+      return held === true ? { ok: true, reason: "nothing is here" } : { ok: false, reason: "a measured row exists" };
+    }
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.filter((row) => /^(built-funnels|catalog-data):queued-/.test(row.id) && row.status === "na").length, 6);
+});
+
+test("non-lane checks do not spend their timer waiting behind one serial database client", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let chain = Promise.resolve();
+  const scope = async (fn) => fn({
+    query() {
+      const read = chain.then(async () => { await wait(8); return { rows: [] }; });
+      chain = read.catch(() => {});
+      return read;
+    }
+  });
+  const fx = fixture({ na: false });
+  for (let i = 0; i < 6; i += 1) {
+    fx.checks.push({
+      id: `plain:queued-${i}`,
+      status: "na",
+      detail: "Nothing is here.",
+      na: { code: "plain-empty", args: { n: i } }
+    });
+  }
+  const result = await run({
+    scope,
+    budgetMs: 25,
+    totalBudgetMs: 200,
+    verifyNa: async (_row, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => ({ ok: true, reason: "nothing is here" })))
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.filter((row) => /^plain:queued-/.test(row.id) && row.status === "na").length, 6);
+});
+
+test("warming a lane never turns a measured break into nothing to judge", async () => {
+  const laneNaVerify = makeLaneNaVerify({
+    scope: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    gapFiles: [["gap-cold.mjs", async () => ({ naVerify: { "cold-empty": async () => false } })]]
+  });
+  const fx = fixture({ na: false });
+  fx.checks.push({
+    id: "cold:broken",
+    sliceId: "gap-cold",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "cold-empty", args: {} }
+  });
+  const result = await run({
+    laneNaVerify,
+    verifyNa: async (row, ctx) => {
+      const held = await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+      return held === true ? { ok: true, reason: "nothing is here" } : { ok: false, reason: "a measured row exists" };
+    }
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "FAIL");
+  assert.equal(result.checks.find((row) => row.id === "cold:broken").status, "skip");
+});
+
+test("an early N/A result is reused, while rows added later are still checked", async () => {
+  const earlyRow = {
+    id: "built-funnels:early",
+    sliceId: "gap-built-funnels",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "cold-empty", args: {} }
+  };
+  const laneNaVerify = makeLaneNaVerify({
+    gapFiles: [["gap-built-funnels.mjs", async () => ({ naVerify: { "cold-empty": async () => true } })]]
+  });
+  const asked = [];
+  const verifyNa = async (row, ctx) => {
+    asked.push(row.id);
+    if (row.id === earlyRow.id) {
+      const held = await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+      return { ok: held === true, reason: "nothing is here" };
+    }
+    return { ok: true, reason: "still no event" };
+  };
+  const naOutcome = await prepareNaAudit([earlyRow], { verifyNa, laneNaVerify, now: NOW });
+  const fx = fixture();
+  fx.checks.push({ ...earlyRow });
+  const result = await run({ verifyNa, laneNaVerify, naOutcome }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(asked.filter((id) => id === earlyRow.id).length, 1, "the early row is not read twice");
+  assert.ok(asked.includes("wf:evt-a") && asked.includes("wf:evt-off"), "later rows are still audited");
+});
+
+test("an early technical timeout is retried in the final audit instead of being reused", async () => {
+  const earlyRow = {
+    id: "catalog-data:alerts",
+    sliceId: "gap-catalog-data",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "catalog-data-empty", args: { table: "alerts" } }
+  };
+  const fx = fixture({ na: false });
+  fx.checks.push(earlyRow);
+  let calls = 0;
+  const result = await run({
+    naOutcome: new Map([[earlyRow, { ok: false, problem: "timeout", reason: "the cold read timed out" }]]),
+    verifyNa: async () => { calls += 1; return { ok: true, reason: "alerts is still empty" }; }
+  }, fx);
+  assert.equal(calls, 1);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.find((row) => row.id === earlyRow.id).status, "na");
 });
 
 // ── the manifest against the real code ───────────────────────────────────────

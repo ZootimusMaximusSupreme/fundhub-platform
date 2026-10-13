@@ -77,3 +77,20 @@ This build changes the heartbeat and its proof harness. It does not add or chang
 - `git diff --check` passed after removing two rebase artifacts: one duplicate outbound-fence key and one blank line at the end of the receipt evidence file.
 - Audit: no LNR, teleprompter, agent-editor, key, secret, dependency, new route, new page, deploy file, production data, or live database was changed. No `.env` file or link was created.
 - Unfinished: Claude still performs the required clean-checkout test of the updated draft PR, including a fresh non-contended full-suite run. Nothing was merged or deployed.
+
+## 9. Claude second-retest repair
+
+- Rebased the branch onto current `origin/main` before this repair. The work remains on the one draft PR; nothing was merged, deployed, or pushed to `main`.
+- Changed `src/pulse/self-audit.mjs` and `src/pulse/self-audit.test.mjs`. Lane-backed N/A checks now warm their modules before their 2,500 ms clocks. When the pulse has a database or staff scope, all N/A checks use its one client in order, including non-lane checks; without a database, pure checks retain bounded parallel work. This removes queued time from later checks without turning a timeout or unread result green. A measured `ok:false` result stays Broken.
+- Changed `src/pulse/daily-pulse.mjs` and `src/pulse/daily-pulse.test.mjs`. Coverage N/A proof starts beside the five initial web checks, then must settle before the next database read. The final audit reuses only trustworthy early outcomes and retries technical timeouts or read failures.
+- Focused proof after final review: `env -u DATABASE_URL node --test src/pulse/self-audit.test.mjs src/pulse/na-conditions.test.mjs src/pulse/daily-pulse.test.mjs src/workflows/daily-pulse.test.mjs` — 167 passed, 0 failed, 0 skipped.
+- Built a new disposable local PostgreSQL database, applied all 353 migrations, and used only its scratch `fundhub_app` role. No repo environment file was read or changed. No live database was contacted.
+- Consecutive `npm run pulse:prove` result 1 after final review: final `OK`; whole morning 9.8 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
+- Consecutive `npm run pulse:prove` result 2 after final review: final `OK`; whole morning 8.0 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
+- Consecutive `npm run pulse:prove` result 3 after final review: final `OK`; whole morning 7.5 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
+- `coverage-gap-fulfillment` did not appear in the five slowest steps on any final run. On runs 2 and 3 it was therefore under 0.5 s, the printed fifth-slowest time.
+- `env -u DATABASE_URL npm run lint` — 3,452 files and inline scripts parse clean.
+- `env -u DATABASE_URL npx --no-install tsc --noEmit` — exit 0.
+- `env -u DATABASE_URL npm test` was run with local test ports allowed and no database. The Postgres half had 83 pass, 0 fail, and 1,005 expected no-database skips. The unit half had one load-only failure: `e2e/agent-editor-promote-demote.spec.mjs:96` inside the 374-test display batch (`Sarah Whitfield · Sales Manager` had not rendered before the assertion). The exact test file then passed 8 of 8 in isolation. No test or agent-editor file was changed to hide it.
+- Screens CI report only: PR-head run `38467806913` had 4 failures — Numbers-tab at `e2e/cc-tab-numbers.spec.mjs:405`, two Company Brain tests at `e2e/company-brain-chat.paused.spec.mjs:70` and `:123`, and teleprompter rotation at `e2e/teleprompter-take-flow.spec.mjs:1076`. Main run `38465115587` reproduced both Company Brain failures and the teleprompter failure. No screen, screen test, teleprompter, or Company Brain file was changed.
+- Final unfinished item: Claude must retest the updated draft PR from a clean checkout. Nothing in this repair touched production data or attempted to remove the October 11–12 test records.
