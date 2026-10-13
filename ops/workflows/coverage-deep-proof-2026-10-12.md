@@ -135,3 +135,17 @@ Shard rule: create a disjoint proof-key module and its real result test. Do not 
 - Lint: 3,403 files and inline scripts parse clean.
 - Type check still has the known unrelated error at `src/marketing/filmed-receive.mjs:159`.
 - Honest state: this proof batch is shipped. The company is not fully green. The 1,696 runtime reds remain the work list; they were not renamed, hidden, or counted as proven.
+
+## Wave 5 — Sol lead with Luna proof workers
+
+Owner said proceed on 2026-10-12. Sol owns shared files, final review, git, and ship. Luna workers may only add their named shard files. No worker may edit an aggregator, generated catalog, existing passing test, journey, live provider, or app code.
+
+| Lane | Model | Exact scope | Status |
+|---|---|---|---|
+| Display AB3 | Luna Medium | exact result contracts for remaining `desks-a.json` and `desks-b.json` rows; new `display-contracts-ab-3.*` files only | claimed |
+| Display CD2 | Luna Medium | exact result contracts for remaining `desks-c.json` and `desks-d.json` rows; new `display-contracts-cd-2.*` files only | claimed |
+| Display EF/Public3 | Luna Medium | exact result contracts for remaining `desks-e.json`, `desks-f.json`, and `public-pages.json` rows; new `display-contracts-ef-public-3.*` files only | claimed |
+| Door/Flow/Read2 | Luna Medium | exact result contracts for remaining route, job, journey, message, agent, and read rows; new `door-flow-read-contracts-2.*` files only | claimed |
+| Integration | Sol High | fresh review, exact-key imports, catalog rebuild, safe pulse, lint, type check, commit, push, live ship | claimed |
+
+Budget fact: the account was 86% used when Wave 5 began. This wave checkpoints and ships honest gains before the remaining limit is exhausted.
