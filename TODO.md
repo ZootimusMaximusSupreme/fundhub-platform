@@ -4,12 +4,13 @@
 
 Timing (Arizona/MST): no AI work before 9:00 AM; start Claude at 9:00 AM. Aim to text 50 people around 6:00 AM if possible. Panera opens around 7:30–8:00 AM per owner. All filming waits until the teleprompter is fixed; film outside except for four green-screen videos at home, once people are awake. Stack independent tasks while AI runs and check progress at planned breaks.
 
-Filming priority: owner is strongest in the morning and wants to leave home by 10:00 AM. Claude's first job at 9:00 AM is the teleprompter; filming cannot begin until it works. Aim to finish filming before 2:00 PM, because starting again after 2:00 PM is too tiring. The one-hour repair window is a target, not a confirmed estimate. Have gear and scripts ready before 9:00 AM; handle independent tasks during the repair. Protect the filming window before editing, refactor planning, and repository cleanup.
+Filming priority: owner is strongest in the morning and wants to leave home by 10:00 AM. Claude's first job at 9:00 AM is the teleprompter; filming cannot begin until it works. Aim to finish filming before 2:00 PM, because starting again after 2:00 PM is too tiring. The one-hour repair window is a target, not a confirmed estimate. Prepare scripts and basic gear before 9:00 AM, but defer the green-screen teleprompter setup until recording works; handle independent tasks during the repair. Protect the filming window before editing, refactor planning, and repository cleanup.
 
 - [ ] Sign MCA deal.
 - [ ] Fix teleprompter.
+- [ ] Set up the green screen for the teleprompter after recording works; defer setup until then.
 - [ ] Finish filming: four green-screen videos at home, four remaining ads, and the remaining longer-form/thank-you videos. Longer-video count/titles need clarification: owner dictated “two ESL—one BSL and one thank you.”
-- [ ] Edit the filmed videos.
+- [ ] Edit the filmed videos and add B-roll — reserve about three uninterrupted hours after filming (owner estimate). Lock cuts before adding animation overlays; avoid AI check-ins during this focus block.
 - [ ] Google account — Justice.
 - [ ] Start Claude again.
 - [ ] Finish heartbeat / figure it out.
@@ -22,6 +23,7 @@ Filming priority: owner is strongest in the morning and wants to leave home by 1
 - [ ] Get coffee at Panera.
 - [ ] Optional: sushi around 1:00–2:00 PM if filming allows.
 - [ ] Clean the house floors today.
+- [ ] Gym tonight — full workout before bed.
 - [ ] Figure out a strategy to stack other work while AI runs, without staring at the screen or obsessively checking loading.
 
 Completed today: sauna — done at 5:00 AM Arizona.
