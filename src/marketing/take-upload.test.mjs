@@ -11,6 +11,7 @@ import {
   takeUploadName, takeFolderForName, offerWordForKey, offerKeyForName, resolveVideoFolder, MARKETING_VIDEO_PARENT_ID, chunkOk, parseContentRange,
   sealTakeToken, openTakeToken, beginTake, continueTake
 } from "./take-upload.mjs";
+import * as takeUpload from "./take-upload.mjs";
 import { mintFilmKey } from "./shoot-film-key.mjs";
 import handler from "../../api/marketing/shoot/take.mjs";
 
@@ -92,6 +93,62 @@ describe("the pieces", () => {
   });
 });
 
+describe("take capture diagnostics", () => {
+  const prefix = "FundHub recording diagnostics v1\n";
+
+  test("formats bounded measured fields and strips unknown strings and identifiers", () => {
+    const description = takeUpload.takeCaptureDescription({
+      elapsed_ms: 2500, camera_frames: 147, copied_frames: 140, missed_callbacks: 7,
+      camera_longest_gap_ms: 54, copied_longest_gap_ms: 60, has_video_callbacks: true,
+      has_frame_requests: true, frame_requests: 140, frame_request_failures: 0,
+      canvas_width: 1080, canvas_height: 1920, target_fps: 60,
+      start_width: 1080, start_height: 1920, start_frame_rate: 60,
+      start_preview_width: 1080, start_preview_height: 1920, start_facing: "user",
+      end_width: 1080, end_height: 1920, end_frame_rate: 30,
+      end_preview_width: 1080, end_preview_height: 1920, end_facing: "environment",
+      lens_changes: 1,
+      deviceId: "private-camera-id", token: "secret", extra: "do not send"
+    });
+    assert.ok(description.startsWith(prefix));
+    assert.ok(description.length < 4096);
+    const data = JSON.parse(description.slice(prefix.length));
+    assert.equal(data.elapsed_ms, 2500);
+    assert.equal(data.camera_frames, 147);
+    assert.equal(data.copied_frames, 140);
+    assert.equal(data.has_video_callbacks, true);
+    assert.equal(data.has_frame_requests, true);
+    assert.equal(data.frame_requests, 140);
+    assert.equal(data.frame_request_failures, 0);
+    assert.equal(data.start_frame_rate, 60);
+    assert.equal(data.end_frame_rate, 30);
+    assert.equal(data.start_facing, "user");
+    assert.equal(data.end_facing, "environment");
+    assert.equal(data.lens_changes, 1);
+    assert.equal(data.deviceId, undefined);
+    assert.equal(data.token, undefined);
+    assert.equal(data.extra, undefined);
+  });
+
+  test("omits bad metrics and refuses a missing or invalid elapsed time", () => {
+    assert.equal(takeUpload.takeCaptureDescription({ camera_frames: 1 }), "");
+    assert.equal(takeUpload.takeCaptureDescription({ elapsed_ms: -1 }), "");
+    assert.equal(takeUpload.takeCaptureDescription({ elapsed_ms: Number.POSITIVE_INFINITY }), "");
+    const description = takeUpload.takeCaptureDescription({
+      elapsed_ms: 2500, camera_frames: -1, copied_frames: Number.POSITIVE_INFINITY,
+      missed_callbacks: 1e100, target_fps: "60", start_frame_rate: Number.NaN,
+      camera_longest_gap_ms: -12, lens_changes: 1e100,
+      has_frame_requests: "true", frame_requests: -1, frame_request_failures: 1e100,
+      start_facing: "private-camera-id", end_facing: "environment"
+    });
+    const data = JSON.parse(description.slice(prefix.length));
+    assert.equal(data.elapsed_ms, 2500);
+    for (const field of ["camera_frames", "copied_frames", "missed_callbacks", "target_fps", "start_frame_rate", "camera_longest_gap_ms", "lens_changes", "has_frame_requests", "frame_requests", "frame_request_failures", "start_facing"]) {
+      assert.equal(data[field], undefined, field);
+    }
+    assert.equal(data.end_facing, "environment");
+  });
+});
+
 describe("the route", () => {
   test("GET does not upload", async () => {
     const out = res();
@@ -133,6 +190,42 @@ describe("the route", () => {
     assert.equal(calls[0].parentId, SLO_ADS_FOLDER_ID);
     assert.equal(calls[0].name, NAME);
     assert.equal(calls[0].totalBytes, 16);
+    assert.equal(calls[0].description, undefined, "older takes without diagnostics still upload");
+  });
+
+  test("a take starts Drive upload with its sanitized diagnostics description", async () => {
+    const out = res();
+    const calls = [];
+    await handler({
+      method: "POST", headers: {},
+      body: { name: NAME, bytes: 16, diagnostics: {
+        elapsed_ms: 2500, camera_frames: 147, copied_frames: 140,
+        start_frame_rate: 60, target_fps: 60, deviceId: "private-camera-id"
+      } }
+    }, out, {
+      filmSecret: SECRET,
+      openVideoSession: async (arg) => { calls.push(arg); return { ok: true, sessionUrl: SESSION }; }
+    });
+    assert.equal(out.statusCode, 200);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].description.startsWith("FundHub recording diagnostics v1\n"));
+    assert.match(calls[0].description, /"camera_frames":147/);
+    assert.doesNotMatch(calls[0].description, /deviceId|private-camera-id/);
+  });
+
+  test("invalid diagnostics never block an otherwise valid video upload", async () => {
+    const out = res();
+    const calls = [];
+    await handler({
+      method: "POST", headers: {},
+      body: { name: NAME, bytes: 16, diagnostics: { elapsed_ms: -1, token: "secret" } }
+    }, out, {
+      filmSecret: SECRET,
+      openVideoSession: async (arg) => { calls.push(arg); return { ok: true, sessionUrl: SESSION }; }
+    });
+    assert.equal(out.statusCode, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].description, undefined);
   });
 
   test("Direct Book cannot be misrouted to SLO; unknown filenames fail closed", async () => {

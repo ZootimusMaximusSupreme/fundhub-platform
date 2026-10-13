@@ -117,6 +117,37 @@ export function takeContentType(given, name) {
   return "video/mp4";
 }
 
+/** Optional recording measurements, stored as metadata rather than video bytes. */
+export function takeCaptureDescription(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return "";
+  const allowed = {};
+  const limits = {
+    elapsed_ms: 86400000, camera_frames: 10000000, copied_frames: 10000000,
+    missed_callbacks: 10000000, camera_longest_gap_ms: 10000000,
+    copied_longest_gap_ms: 10000000, lens_changes: 10000000,
+    frame_requests: 10000000, frame_request_failures: 10000000,
+    canvas_width: 8192, canvas_height: 8192, target_fps: 240,
+    start_width: 8192, start_height: 8192, start_frame_rate: 240,
+    start_preview_width: 8192, start_preview_height: 8192,
+    end_width: 8192, end_height: 8192, end_frame_rate: 240,
+    end_preview_width: 8192, end_preview_height: 8192
+  };
+  for (const [key, max] of Object.entries(limits)) {
+    const value = input[key];
+    const rate = key === "target_fps" || key.endsWith("frame_rate");
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max &&
+        (rate || Number.isInteger(value))) allowed[key] = value;
+  }
+  if (!(allowed.elapsed_ms > 0)) return "";
+  for (const key of ["has_video_callbacks", "has_frame_requests"]) {
+    if (typeof input[key] === "boolean") allowed[key] = input[key];
+  }
+  for (const key of ["start_facing", "end_facing"]) {
+    if (input[key] === "user" || input[key] === "environment") allowed[key] = input[key];
+  }
+  return "FundHub recording diagnostics v1\n" + JSON.stringify(allowed);
+}
+
 /**
  * @param {unknown} header
  * @returns {{ start: number, end: number, total: number, length: number } | null}
@@ -195,7 +226,7 @@ export function openTakeToken(token, secret) {
 
 /**
  * Start the Drive upload. Returns the token the next pieces must carry.
- * @param {{ name?: unknown, bytes?: unknown, content_type?: unknown }} body
+ * @param {{ name?: unknown, bytes?: unknown, content_type?: unknown, offer_key?: unknown, funnel_tag?: unknown, diagnostics?: unknown }} body
  * @param {{ filmSecret: string, env?: NodeJS.ProcessEnv, openVideoSession?: typeof openVideoSession }} deps
  */
 export async function beginTake(body, deps) {
@@ -216,12 +247,14 @@ export async function beginTake(body, deps) {
     return { status: 502, body: { ok: false, error: "folder_unavailable", message: "Could not open this offer's Google Drive folder. Your original video was not uploaded." } };
   }
   const contentType = takeContentType(body?.content_type, name);
+  const description = takeCaptureDescription(body?.diagnostics);
   const open = deps.openVideoSession ?? openVideoSession;
   const started = await open({
     parentId: folder.folderId,
     name,
     totalBytes: total,
     contentType,
+    ...(description ? { description } : {}),
     env: deps.env
   });
   if (!started?.ok || !started.sessionUrl) {

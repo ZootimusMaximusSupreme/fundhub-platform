@@ -313,6 +313,75 @@ test("an upload survives reopening the app and retries from the device-saved tak
   expect(server.errors).toEqual([]);
 });
 
+test("accepted take sends measured camera and canvas diagnostics with its upload", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+    sourceWidth: 1080, sourceHeight: 1920
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => {
+    const start = performance.now() + 100;
+    window.__sendVideoFrames(Array.from({ length: 12 }, (_, i) => start + (i + 1) * 1000 / 60));
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(() => server.uploads.length).toBe(1);
+  const d = server.uploads[0].diagnostics;
+  expect(d).toMatchObject({
+    has_video_callbacks: true, camera_frames: 12, missed_callbacks: 0,
+    canvas_width: 1080, canvas_height: 1920, target_fps: 60,
+    start_width: 1080, start_height: 1920, start_frame_rate: 60,
+    start_preview_width: 1080, start_preview_height: 1920, start_facing: "user",
+    end_width: 1080, end_height: 1920, end_frame_rate: 60,
+    end_preview_width: 1080, end_preview_height: 1920, end_facing: "user",
+    lens_changes: 0
+  });
+  expect(d.elapsed_ms).toBeGreaterThan(0);
+  expect(d.copied_frames).toBeGreaterThanOrEqual(12);
+  expect(d.has_frame_requests).toBe(true);
+  expect(d.frame_requests).toBeGreaterThanOrEqual(12);
+  expect(d.frame_request_failures).toBe(0);
+  expect(d.camera_longest_gap_ms).toBeGreaterThanOrEqual(0);
+  expect(d.copied_longest_gap_ms).toBeGreaterThanOrEqual(0);
+  expect(JSON.stringify(d)).not.toMatch(/deviceId|device_id|token|microphone/i);
+  expect(server.errors).toEqual([]);
+});
+
+test("two queued takes keep separate diagnostics after a reload", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true, holdUpload: true
+  });
+  async function saveWithFrames(count) {
+    await page.locator("#b-rec").tap();
+    await expect(page.locator("#b-rec")).toHaveText("Stop");
+    await page.evaluate((n) => {
+      const start = performance.now() + 100;
+      window.__sendVideoFrames(Array.from({ length: n }, (_, i) => start + (i + 1) * 1000 / 60));
+    }, count);
+    await page.locator("#b-rec").tap();
+    await expect(page.locator("#take-save")).toBeVisible();
+    await page.locator("#take-save-yes").tap();
+  }
+  await saveWithFrames(3);
+  await expect.poll(() => server.chunks.length).toBe(1);
+  await saveWithFrames(9);
+  await expect.poll(() => page.evaluate(async () => {
+    const rows = await window.FundhubTakeStore.all();
+    return rows.map((row) => row.diagnostics?.camera_frames);
+  })).toEqual([3, 9]);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect.poll(() => page.evaluate(async () => {
+    const rows = await window.FundhubTakeStore.all();
+    return rows.map((row) => row.diagnostics?.camera_frames);
+  })).toEqual([3, 9]);
+  server.release();
+  await expect.poll(() => server.uploads.some((upload) => upload.diagnostics?.camera_frames === 9)).toBe(true);
+  expect(server.uploads.filter((upload) => upload.diagnostics?.camera_frames === 3).length).toBeGreaterThanOrEqual(1);
+  expect(server.errors).toEqual([]);
+});
+
 test("the phone UI has an independent input-level display", async ({ page }) => {
   const { server } = await open(page);
   const meter = page.locator("#mic-monitor");
@@ -557,7 +626,11 @@ test("recording still works when canvas requestFrame is unsupported", async ({ p
   expect(counts.requests).toBe(0);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
-  await page.locator("#take-save-no").tap();
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(() => server.uploads.length).toBe(1);
+  expect(server.uploads[0].diagnostics).toMatchObject({
+    has_frame_requests: false, frame_requests: 0, frame_request_failures: 0
+  });
   expect(server.errors).toEqual([]);
 });
 

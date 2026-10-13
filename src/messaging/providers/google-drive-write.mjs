@@ -92,7 +92,7 @@ export const MAX_VIDEO_BYTES = 512 * 1024 * 1024;
    ten seconds, and the JSON calls above keep the short default. */
 export const VIDEO_TIMEOUT_MS = 300_000;
 
-const FILE_FIELDS = "id,name,mimeType,parents,createdTime,modifiedTime,size,videoMediaMetadata,trashed";
+const FILE_FIELDS = "id,name,mimeType,parents,createdTime,modifiedTime,size,videoMediaMetadata,description,trashed";
 
 /** True when Google's granted-scope list can write. Null scope means Google did
     not say, which on the OAuth path means the token may or may not write — the
@@ -760,7 +760,7 @@ function readChunkStatus(put, { start, total }) {
  * The caller then sends the file in pieces with putVideoChunk.
  */
 export async function openVideoSession({
-  parentId, name, totalBytes, contentType = "video/mp4",
+  parentId, name, totalBytes, contentType = "video/mp4", description = "",
   env = process.env, fetchImpl, timeoutMs = 20_000, signal
 } = {}) {
   const parent = String(parentId || "").trim();
@@ -778,7 +778,8 @@ export async function openVideoSession({
   const startUrl = `${DRIVE_UPLOAD_API}/files?${qs({ uploadType: "resumable", fields: "id,name", ...SHARED })}`;
   const started = await driveCall("POST", startUrl, {
     token: tok.accessToken,
-    body: JSON.stringify({ name: fileName, parents: [parent] }),
+    body: JSON.stringify({ name: fileName, parents: [parent],
+      ...(typeof description === "string" && description ? { description: description.slice(0, 4096) } : {}) }),
     extraHeaders: {
       "X-Upload-Content-Type": contentType,
       "X-Upload-Content-Length": String(total)

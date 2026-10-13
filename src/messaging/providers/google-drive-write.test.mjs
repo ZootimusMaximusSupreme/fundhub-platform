@@ -454,8 +454,42 @@ describe("a filmed take, one original piece at a time", () => {
     const meta = JSON.parse(call.init.body);
     assert.deepEqual(meta.parents, [folder]);
     assert.equal(meta.name, "SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4");
+    assert.equal(meta.description, undefined, "older videos still start with only their name and folder");
     assert.equal(call.init.headers["X-Upload-Content-Length"], "800");
     assert.equal(impl.drive().length, 1);
+  });
+
+  test("the resumable session carries a bounded description without video bytes", async () => {
+    const impl = binaryFetch({ responses: [
+      { status: 200, body: {}, headers: { location: session } }
+    ] });
+    const description = 'FundHub recording diagnostics v1\n{"elapsed_ms":2500,"camera_frames":147}';
+    const res = await openVideoSession({
+      parentId: folder, name: "SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4",
+      totalBytes: 800, contentType: "video/mp4", description,
+      env: envWith(), fetchImpl: impl
+    });
+    assert.equal(res.ok, true);
+    const call = impl.drive()[0];
+    const meta = JSON.parse(call.init.body);
+    assert.equal(meta.description, description);
+    assert.deepEqual(meta.parents, [folder]);
+    assert.equal(call.init.headers["X-Upload-Content-Length"], "800");
+    assert.equal(impl.drive().length, 1, "only the metadata request has happened");
+  });
+
+  test("an oversized diagnostic description cannot expand Drive metadata without limit", async () => {
+    const impl = binaryFetch({ responses: [
+      { status: 200, body: {}, headers: { location: session } }
+    ] });
+    const res = await openVideoSession({
+      parentId: folder, name: "SLO Ad 7 — Haynes, the call that was never a roadmap Take 1.mp4",
+      totalBytes: 800, description: "x".repeat(100_000),
+      env: envWith(), fetchImpl: impl
+    });
+    assert.equal(res.ok, true, "bad diagnostics must not block the video");
+    const meta = JSON.parse(impl.drive()[0].init.body);
+    assert.ok(meta.description == null || meta.description.length <= 4096);
   });
 
   test("the piece that leaves is the piece that was handed in", async () => {

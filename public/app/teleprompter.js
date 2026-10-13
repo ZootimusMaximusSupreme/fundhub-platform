@@ -2592,13 +2592,13 @@
     a.click();
     a.remove();
   }
-  function keepFile(chunks, then) {
+  function keepFile(chunks, then, diagnostics) {
     try {
       var type = cam.mime || (chunks[0] && chunks[0].type) || "video/mp4";
       var name = cam.fileName || "Take.mp4";
       if (type.indexOf("webm") >= 0) name = name.replace(/\.mp4$/i, ".webm");
       var file = new root.File(chunks, name, { type: type });
-      cam.pending.push({ file: file, then: then, offerKey: cam.fileOfferKey || "", funnelTag: cam.fileFunnelTag || "" });
+      cam.pending.push({ file: file, then: then, offerKey: cam.fileOfferKey || "", funnelTag: cam.fileFunnelTag || "", diagnostics: diagnostics || null });
       askToSaveTake();
     } catch (e) {
       camLine("The take did not save. The words still roll.", true);
@@ -2615,7 +2615,7 @@
     if (!takeDialog.open || !cam.pending.length) return;
     var take = cam.pending.shift();
     takeDialog.close();
-    if (yes) queueVideoSave(take.file, take.offerKey, take.funnelTag);
+    if (yes) queueVideoSave(take.file, take.offerKey, take.funnelTag, take.diagnostics);
     else say("Video discarded.");
     if (take.then) take.then();
     askToSaveTake();
@@ -2635,6 +2635,15 @@
       try { video.cancelVideoFrameCallback(cam.pumpVideoFrame); } catch (e) { /* already stopped */ }
     }
     cam.pumpVideoFrame = 0;
+  }
+  function captureCameraSettings(stream) {
+    var track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+    var settings = {};
+    try { settings = track && track.getSettings ? track.getSettings() : {}; } catch (e) {}
+    var video = $("cam-video");
+    return { width: settings.width || null, height: settings.height || null,
+      frameRate: settings.frameRate || null, previewWidth: video && video.videoWidth || null,
+      previewHeight: video && video.videoHeight || null, facing: cam.facing };
   }
   /* MediaRecorder stays attached to one canvas track for a whole take. Camera
      switches redraw into this canvas without stopping the clip. The canvas
@@ -2676,10 +2685,12 @@
     var frameEvery = 1000 / fps;
     var stats = { started: root.performance.now(), cameraFrames: 0, copiedFrames: 0,
       cameraLast: 0, copiedLast: 0, cameraLongestGap: 0, copiedLongestGap: 0,
-      hasVideoCallbacks: !!video.requestVideoFrameCallback, missedCallbacks: 0 };
+      hasVideoCallbacks: !!video.requestVideoFrameCallback, missedCallbacks: 0,
+      cameraStart: captureCameraSettings(stream), lensChanges: 0,
+      hasFrameRequests: false, frameRequests: 0, frameRequestFailures: 0 };
     cam.captureStats = stats;
     var frameOrigin = null, copiedSlot = -1, previousFrameTime = null;
-    var sourceStream = video.srcObject, previousPresented = null;
+    var sourceStream = video.srcObject, sourceFacing = cam.facing, previousPresented = null;
     var sourceFps = st.frameRate > 0 ? st.frameRate : 60;
     var canvasTrack = null;
     var paintedShape = layout.dw + ":" + layout.dh;
@@ -2689,7 +2700,9 @@
       // Safari's independent capture timer can miss a freshly painted frame.
       // Hand it over now when supported; retain timed capture as the fallback.
       if (canvasTrack && typeof canvasTrack.requestFrame === "function") {
-        try { canvasTrack.requestFrame(); } catch (e) { /* timed capture remains active */ }
+        stats.hasFrameRequests = true;
+        try { canvasTrack.requestFrame(); stats.frameRequests++; }
+        catch (e) { stats.frameRequestFailures++; /* timed capture remains active */ }
       }
     }
     function schedule() {
@@ -2702,7 +2715,9 @@
       cam.pumpVideoFrame = 0;
       cam.pumpTimer = 0;
       if (!(now >= 0)) now = root.performance.now();
-      if (sourceStream !== video.srcObject) {
+      if (sourceStream !== video.srcObject || sourceFacing !== cam.facing) {
+        if (sourceFacing !== cam.facing) stats.lensChanges++;
+        sourceFacing = cam.facing;
         sourceStream = video.srcObject;
         frameOrigin = null; copiedSlot = -1; previousFrameTime = null; previousPresented = null;
         var liveTrack = sourceStream && sourceStream.getVideoTracks ? sourceStream.getVideoTracks()[0] : null;
@@ -2859,9 +2874,27 @@
   }
   function onRecStop() {
     stopMirrorPump();
+    var diagnostics = null;
     if (cam.captureStats) {
       var stats = cam.captureStats;
       var seconds = Math.max(0.1, (root.performance.now() - stats.started) / 1000);
+      var startCamera = stats.cameraStart || {}, endCamera = captureCameraSettings(cam.stream);
+      diagnostics = {
+        elapsed_ms: Math.round((root.performance.now() - stats.started)),
+        camera_frames: stats.cameraFrames, copied_frames: stats.copiedFrames,
+        missed_callbacks: stats.missedCallbacks, camera_longest_gap_ms: Math.round(stats.cameraLongestGap),
+        copied_longest_gap_ms: Math.round(stats.copiedLongestGap), has_video_callbacks: stats.hasVideoCallbacks,
+        has_frame_requests: stats.hasFrameRequests, frame_requests: stats.frameRequests,
+        frame_request_failures: stats.frameRequestFailures,
+        canvas_width: cam.canvas && cam.canvas.width, canvas_height: cam.canvas && cam.canvas.height,
+        target_fps: cam.recordTargetFps, lens_changes: stats.lensChanges,
+        start_width: startCamera.width, start_height: startCamera.height,
+        start_frame_rate: startCamera.frameRate, start_preview_width: startCamera.previewWidth,
+        start_preview_height: startCamera.previewHeight, start_facing: startCamera.facing,
+        end_width: endCamera.width, end_height: endCamera.height,
+        end_frame_rate: endCamera.frameRate, end_preview_width: endCamera.previewWidth,
+        end_preview_height: endCamera.previewHeight, end_facing: endCamera.facing
+      };
       var source = stats.hasVideoCallbacks ? Math.round(stats.cameraFrames / seconds) + " fps" : "unavailable";
       var copied = Math.round(stats.copiedFrames / seconds) + " fps";
       camLine("This take: camera " + source + " · copied " + copied +
@@ -2890,7 +2923,7 @@
       else if (next) next();
       ensureCamera();
     }
-    if (chunks.length) keepFile(chunks, resume);
+    if (chunks.length) keepFile(chunks, resume, diagnostics);
     else resume();
   }
   function endRec(then) {
@@ -3303,7 +3336,7 @@
   function uploadCreds(mode) {
     return mode === "session" ? "same-origin" : "omit";
   }
-  function startTake(file, mode, savedName, offerKey, funnelTag) {
+  function startTake(file, mode, savedName, offerKey, funnelTag, diagnostics) {
     var h = uploadModeHeaders(mode);
     h["content-type"] = "application/json";
     return root.fetch("/api/marketing/shoot/take", {
@@ -3315,7 +3348,8 @@
         offer_key: offerKey || null,
         funnel_tag: funnelTag || null,
         bytes: file.size,
-        content_type: file.type || "video/mp4"
+        content_type: file.type || "video/mp4",
+        diagnostics: diagnostics || null
       })
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
@@ -3359,7 +3393,7 @@
     }
     return step(0);
   }
-  function sendOriginal(file, savedName, offerKey, funnelTag) {
+  function sendOriginal(file, savedName, offerKey, funnelTag, diagnostics) {
     var mode = filmKey() ? "film" : "session";
     function rememberFolder(started) {
       if (started.ok && started.offerKey && started.folderUrl &&
@@ -3371,9 +3405,9 @@
       }
       return started;
     }
-    return startTake(file, mode, savedName, offerKey, funnelTag).then(rememberFolder).then(function (started) {
+    return startTake(file, mode, savedName, offerKey, funnelTag, diagnostics).then(rememberFolder).then(function (started) {
       if (!started.ok && mode === "session" && (started.status === 401 || started.status === 403)) {
-        return startTake(file, "open", savedName, offerKey, funnelTag).then(rememberFolder).then(function (again) {
+        return startTake(file, "open", savedName, offerKey, funnelTag, diagnostics).then(rememberFolder).then(function (again) {
           if (!again.ok) throw new Error("start");
           return putChunks(file, again.token, again.chunk, "open");
         });
@@ -3392,7 +3426,7 @@
     var file = cam.file;
     if (file) queueVideoSave(file);
   }
-  function queueVideoSave(file, offerKey, funnelTag) {
+  function queueVideoSave(file, offerKey, funnelTag, diagnostics) {
     if (!file) return;
     if (!takeStore) {
       cam.file = file;
@@ -3401,7 +3435,8 @@
       return;
     }
     var entry = { id: takeStore.id(), file: file, name: file.name || "Take.mp4",
-      offerKey: offerKey || "", funnelTag: funnelTag || "", createdAt: Date.now(), attempts: 0 };
+      offerKey: offerKey || "", funnelTag: funnelTag || "", diagnostics: diagnostics || null,
+      createdAt: Date.now(), attempts: 0 };
     videoSaveStatus("Saving on device", "saving", true);
     takeStore.put(entry).then(function () {
       if (!cam.uploads.some(function (item) { return item.id === entry.id; })) cam.uploads.push(entry);
@@ -3445,7 +3480,7 @@
       cam.saving = false;
       saveNextVideo();
     }
-    sendOriginal(item.file, item.name, item.offerKey, item.funnelTag).then(function () {
+    sendOriginal(item.file, item.name, item.offerKey, item.funnelTag, item.diagnostics).then(function () {
       // The server acknowledged Drive before deleting this device copy.
       return takeStore.remove(item.id).then(function () {
         if (cam.file === item.file) cam.file = null;
