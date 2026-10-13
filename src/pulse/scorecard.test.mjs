@@ -2,6 +2,8 @@
 //
 // Rules proved here:
 //   * four stored statuses: green, red, na, not_checked;
+//   * NOT_PROVED is stored as a counted not_checked row with an explicit marker;
+//   * FAIL always stays red, even if a producer adds not-proved metadata;
 //   * an "na" row stays "na" only with a usable { code, args }; otherwise it is "not checked";
 //   * a green with no proof is still "not checked";
 //   * the counts add up, and na_count is written;
@@ -32,11 +34,29 @@ test("PASS with proof is green; PASS with no proof is not_checked, never green",
 });
 
 test("FAIL and down are red with the customer line and the fix", () => {
-  const red = toContractCheck({ id: "job:x", status: "FAIL", detail: "no run", customerSees: "x stopped", suggestedFix: "read the run" });
+  const red = toContractCheck({ id: "job:x", status: "FAIL", detail: "no run", customerSees: "x stopped", suggestedFix: "read the run", not_proved: true });
   assert.equal(red.status, "red");
+  assert.equal("not_proved" in red, false, "a measured break cannot be filed as not proved");
   assert.equal(red.customer_sees, "x stopped");
   assert.equal(red.fix, "read the run");
   assert.equal(toContractCheck({ id: "d", status: "down", detail: "x" }).status, "red");
+});
+
+test("NOT_PROVED is counted every day, never green, and keeps its reason and fix", () => {
+  const row = toContractCheck({
+    id: "catalog-route:x",
+    status: "NOT_PROVED",
+    detail: "No exact handler test judges this result.",
+    suggestedFix: "Add the exact fake-data handler test.",
+  });
+  assert.deepEqual(row, {
+    id: "catalog-route:x",
+    group: "backend",
+    status: "not_checked",
+    reason: "No exact handler test judges this result.",
+    not_proved: true,
+    fix: "Add the exact fake-data handler test.",
+  });
 });
 
 test("skip, the old \"not checked\" string, and an empty status all land as not_checked with the reason", () => {
@@ -109,13 +129,14 @@ test("the folded claim list (also) rides along on every status, as plain strings
 
 /* ---------- counts and the whole card ---------- */
 
-test("countChecks counts four statuses and they add up", () => {
+test("countChecks keeps broken and not-proved rows separate while the four stored statuses add up", () => {
   const rows = [
     { status: "green" }, { status: "green" }, { status: "red" },
-    { status: "na" }, { status: "na" }, { status: "na" }, { status: "not_checked" }
+    { status: "na" }, { status: "na" }, { status: "na" },
+    { status: "not_checked" }, { status: "not_checked", not_proved: true }
   ];
-  assert.deepEqual(countChecks(rows), { green: 2, red: 1, na: 3, not_checked: 1 });
-  assert.deepEqual(countChecks([]), { green: 0, red: 0, na: 0, not_checked: 0 });
+  assert.deepEqual(countChecks(rows), { green: 2, red: 1, na: 3, not_checked: 2, not_proved: 1 });
+  assert.deepEqual(countChecks([]), { green: 0, red: 0, na: 0, not_checked: 0, not_proved: 0 });
 });
 
 test("buildScorecard turns a mixed run into one card whose counts equal its rows", () => {
@@ -133,7 +154,8 @@ test("buildScorecard turns a mixed run into one card whose counts equal its rows
   assert.deepEqual(card.checks.map((c) => c.status), ["green", "red", "na", "not_checked", "not_checked"]);
   const n = countChecks(card.checks);
   assert.equal(n.green + n.red + n.na + n.not_checked, card.checks.length);
-  assert.deepEqual(n, { green: 1, red: 1, na: 1, not_checked: 2 });
+  assert.deepEqual(n, { green: 1, red: 1, na: 1, not_checked: 2, not_proved: 0 });
+  assert.deepEqual(card.counts, { broken: 1, not_proved: 0 });
 });
 
 test("a red carries since and day_count from the last stored morning; an na row is left alone", () => {
@@ -177,7 +199,7 @@ test("saveScorecard writes na_count with the other three counts, in the stored J
   const calls = [];
   const db = { query: async (text, params) => { calls.push({ text, params }); return { rows: [{ id: "row-1" }] }; } };
   const out = await saveScorecard(db, ORG, card());
-  assert.deepEqual(out, { saved: true, id: "row-1", counts: { green: 1, red: 1, na: 1, not_checked: 1 } });
+  assert.deepEqual(out, { saved: true, id: "row-1", counts: { green: 1, red: 1, na: 1, not_checked: 1, not_proved: 0 } });
   assert.equal(calls.length, 1);
   assert.match(calls[0].text, /na_count/);
   assert.match(calls[0].text, /na_count = EXCLUDED\.na_count/);
@@ -188,6 +210,27 @@ test("saveScorecard writes na_count with the other three counts, in the stored J
   assert.equal(stored[2].status, "na");
   assert.equal(stored[2].na_code, "no-running-ad");
   assert.deepEqual(stored[2].also, ["03-x:claim"]);
+});
+
+test("saveScorecard keeps a not-proved row in the daily total and stores its marker", async () => {
+  const calls = [];
+  const db = { query: async (text, params) => { calls.push({ text, params }); return { rows: [{ id: "row-not-proved" }] }; } };
+  const daily = buildScorecard({
+    now: new Date("2026-10-09T13:00:00Z"),
+    checks: [
+      { id: "meta-sync", status: "FAIL", detail: "token cannot be read" },
+      { id: "catalog-route:x", status: "NOT_PROVED", detail: "No exact result test yet." },
+    ],
+  });
+  const out = await saveScorecard(db, ORG, daily);
+  assert.deepEqual(daily.counts, { broken: 1, not_proved: 1 });
+  assert.deepEqual(out.counts, { green: 0, red: 1, na: 0, not_checked: 1, not_proved: 1 });
+  assert.deepEqual([calls[0].params[3], calls[0].params[4], calls[0].params[5]], [0, 1, 1]);
+  const stored = JSON.parse(calls[0].params[2]);
+  assert.equal(stored[0].status, "red");
+  assert.equal(stored[0].not_proved, undefined);
+  assert.equal(stored[1].status, "not_checked");
+  assert.equal(stored[1].not_proved, true);
 });
 
 test("saveScorecard needs an org", async () => {
@@ -219,7 +262,7 @@ for (const code of ["42703", "23514"]) {
     assert.equal(stored[2].reason, "No ad is running. Judged the day one runs.", "the sentence is kept");
     assert.deepEqual(calls[1].params.slice(3, 6), [1, 1, 2], "old counts: green, red, not_checked (the na row counts here)");
     assert.equal(stored.length, 4, "no row is lost");
-    assert.deepEqual(out, { saved: true, id: "row-2", counts: { green: 1, red: 1, na: 0, not_checked: 2 }, legacy: true, na_downgraded: 1 });
+    assert.deepEqual(out, { saved: true, id: "row-2", counts: { green: 1, red: 1, na: 0, not_checked: 2, not_proved: 0 }, legacy: true, na_downgraded: 1 });
     assert.equal(warned.length, 1, "one line, not a flood");
     assert.match(warned[0], /migration 477/);
   });

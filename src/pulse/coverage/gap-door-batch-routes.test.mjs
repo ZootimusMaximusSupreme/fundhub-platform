@@ -21,17 +21,17 @@ test("the route gap monitor owns the exact 316 rows", () => {
   assert.equal(new Set(CHECK_IDS).size, 316);
 });
 
-test("every missing route result emits one exact red", async () => {
+test("every missing route result emits one exact not-proved row", async () => {
   const results = await gapChecks();
   assert.equal(results.length, 316);
   for (let index = 0; index < ROUTE_GAP_ROWS.length; index += 1) {
     const source = ROUTE_GAP_ROWS[index];
     const result = results[index];
     assert.equal(result.id, source.id);
-    assert.equal(result.status, "FAIL", source.id);
+    assert.equal(result.status, "NOT_PROVED", source.id);
     assert.ok(result.detail.includes(source.surface), source.id);
     assert.ok(result.detail.includes(source.control), source.id);
-    assert.match(result.detail, /No fake-data check calls .* named business result, so this route stays red\.$/);
+    assert.match(result.detail, /No fake-data check calls .* named business result, so this route stays not proved\.$/);
     assert.doesNotMatch(result.detail, /(?:the API|the route|the business result) works/i);
   }
 });
@@ -51,10 +51,10 @@ test("money and customer rows stay below deep while the exact red lane keeps the
   }
 });
 
-test("a missing handler stays the same exact red and names the missing context", () => {
+test("a missing handler stays not proved and names the missing context", () => {
   const source = ROUTE_GAP_ROWS[0];
   const result = judgeRouteGap(source, {});
-  assert.equal(result.status, "FAIL");
+  assert.equal(result.status, "NOT_PROVED");
   assert.ok(result.detail.includes(source.surface));
   assert.ok(result.detail.includes(source.control));
   assert.match(result.detail, new RegExp(`${source.route.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} handler is not registered`));

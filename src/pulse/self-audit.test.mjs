@@ -229,6 +229,16 @@ test("audit:not-checked is red and names the ids when a row lands not checked", 
   assert.match(r.suggestedFix, /src\/pulse\/na-conditions\.mjs/);
 });
 
+test("audit:not-checked keeps an explicit proof backlog counted without calling it broken", async () => {
+  const fx = fixture();
+  fx.checks.push({ id: "catalog-route:x", status: "NOT_PROVED", detail: "No exact result test yet." });
+  const res = await run({ contract: null }, fx);
+  const row = rowOf(res, "audit:not-checked");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /1 check is counted as not proved/);
+  assert.match(rowOf(res, "audit:totals").detail, /1 not proved/);
+});
+
 test("audit:not-checked is one row, lists only the first ten ids, and counts the rest", async () => {
   const fx = fixture();
   for (let i = 0; i < 30; i++) fx.checks.push({ id: `bulk:${i}`, status: "not checked", detail: "Not checked." });
@@ -526,7 +536,7 @@ test("audit:totals is green and shows how the numbers add up", async () => {
   const r = rowOf(await run(), "audit:totals");
   assert.equal(r.status, "PASS");
   // 8 checks - 1 claim the audit folds = 7, plus the 8 audit rows = 15.
-  assert.match(r.detail, /15 rows = 13 green \+ 0 red \+ 2 with nothing to judge \+ 0 not checked\./);
+  assert.match(r.detail, /15 rows = 13 green \+ 0 broken \+ 0 not proved \+ 2 with nothing to judge \+ 0 not checked\./);
   // 3 folded before the audit ran + 1 the audit folded itself.
   assert.match(r.detail, /4 claims were folded/);
 });

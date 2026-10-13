@@ -130,7 +130,7 @@ describe("migration 477 against a real Postgres", { skip: SKIP }, () => {
       };
       const first = await saveScorecard(c, ORG, build(1));
       assert.equal(first.saved, true);
-      assert.deepEqual(first.counts, { green: 1, red: 1, na: 1, not_checked: 1 });
+      assert.deepEqual(first.counts, { green: 1, red: 1, na: 1, not_checked: 1, not_proved: 0 });
       assert.equal(first.legacy, undefined, "with the migration applied the save is not the old shape");
 
       const second = await saveScorecard(c, ORG, build(3));

@@ -187,13 +187,15 @@ flowchart TD
 ```mermaid
 stateDiagram-v2
     [*] --> PASS: the answer is right
-    [*] --> FAIL: the answer is wrong — red in the text
+    [*] --> FAIL: the answer is wrong — broken in the text
+    [*] --> NOT_PROVED: no exact result test yet — counted, never green
     [*] --> skip: the check could not read (it says why)
     [*] --> not_checked: a job with no last-run time saved yet
     FAIL --> PASS: someone fixed it
 ```
 
 `skip` is never a pass. A check that can only pass, or only skip, is not a tripwire.
+`NOT_PROVED` is the explicit proof backlog, not a softer name for a measured break. It is saved in the existing `not_checked` storage state with `not_proved: true`, so it stays in every daily total without a database change. A raw `FAIL` is always broken even if bad metadata tries to mark it not proved. The morning text and report page show separate **Broken** and **Not proved** counts; technical skips remain separate and still make the self-audit red.
 
 ## Traps already paid for (2026-10-08)
 

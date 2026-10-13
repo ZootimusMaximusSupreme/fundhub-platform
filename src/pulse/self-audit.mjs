@@ -111,7 +111,7 @@ const DIED_WHY = Object.freeze({
   "bad-row": "sent back an empty row"
 });
 
-const KNOWN_RAW_STATUSES = new Set(["PASS", "FAIL", "skip", "up", "down", "na", "not checked"]);
+const KNOWN_RAW_STATUSES = new Set(["PASS", "FAIL", "NOT_PROVED", "skip", "up", "down", "na", "not checked"]);
 const CONTRACT_STATUSES = new Set(["green", "red", "na", "not_checked"]);
 
 export const BRIEFS_SENT_SQL = `
@@ -781,7 +781,10 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
 
 function judgeNotChecked(rows, contract) {
   const id = AUDIT_ROW_IDS.notChecked;
-  const bad = rows.filter((r) => contract.toContractCheck(r).status === "not_checked").map((r) => String(r.id));
+  const bad = rows.filter((r) => {
+    const mapped = contract.toContractCheck(r);
+    return mapped.status === "not_checked" && mapped.not_proved !== true;
+  }).map((r) => String(r.id));
   if (bad.length) {
     return auditRow(
       id,
@@ -793,7 +796,9 @@ function judgeNotChecked(rows, contract) {
       }
     );
   }
-  return auditRow(id, "PASS", `${rows.length === 1 ? "The 1 check was" : `All ${rows.length} checks were`} green, red, or had a reason to say nothing to judge today. None were left not checked.`);
+  const notProved = rows.filter((r) => contract.toContractCheck(r).not_proved === true).length;
+  const note = notProved ? ` ${notProved} ${plural(notProved, "check is", "checks are")} counted as not proved.` : "";
+  return auditRow(id, "PASS", `${rows.length === 1 ? "The 1 check was" : `All ${rows.length} checks were`} green, red, not proved, or had a reason to say nothing to judge today. None were left not checked.${note}`);
 }
 
 /* `folded` is the count the pulse already folded (it is checked below).
@@ -819,6 +824,8 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
   const red = counts.red || 0;
   const na = counts.na || 0;
   const notChecked = counts.not_checked || 0;
+  const notProved = counts.not_proved || 0;
+  const unread = Math.max(0, notChecked - notProved);
   const sum = green + red + na + notChecked;
   if (sum !== rows.length) problems.push(`the four counts add to ${sum}, but there are ${rows.length} rows`);
   if (folded != null && !(Number.isInteger(folded) && folded >= 0)) problems.push("the folded count is not a whole number");
@@ -838,7 +845,7 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
   return auditRow(
     id,
     "PASS",
-    `The report's numbers add up: ${rows.length} rows = ${green} green + ${red} red + ${na} with nothing to judge + ${notChecked} not checked.${foldedNote}`
+    `The report's numbers add up: ${rows.length} rows = ${green} green + ${red} broken + ${notProved} not proved + ${na} with nothing to judge + ${unread} not checked.${foldedNote}`
   );
 }
 
