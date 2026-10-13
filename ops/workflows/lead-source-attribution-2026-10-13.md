@@ -46,3 +46,8 @@ The page now derives the shown source without changing the original private lead
 - iCloud remains open because no data source identifies which generic `Phone contact` rows came from iCloud.
 
 Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
+
+## Live proof
+
+- Netlify production deploy `6ace2b5e005be44dc216ba80` reached `ready` at 2026-10-13 06:02 Arizona time.
+- A fresh live-page reload showed L001-L014 as `Blake Evertsen` and L065-L084 as `Fundhub Funnel`.
