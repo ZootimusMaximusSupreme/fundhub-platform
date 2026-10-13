@@ -80,3 +80,10 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 - Cause: the 5-minute alarm read the database before it texted, and the 6 a.m. pulse threw on a dead database. When the database dies the heartbeat went quiet.
 - Fix: a dead database is one red row; the alarm texts at most twice an hour without a database; the job sends a plain text if the brief or the pulse dies.
 - Guard added: `src/pulse/instant-watch.test.mjs`, `src/pulse/daily-pulse.test.mjs`, `src/workflows/daily-pulse.test.mjs`, `outside:*` lane.
+
+
+## 2026-10-13 — display-result lane — deploy_or_bundle
+- Cause: `gap-catalog-display.mjs` loaded map files under `ops/workflows/` and imported proof builders that also read those files. Its retired-page verifier read `netlify.toml`. Those checkout files are absent on the live server.
+- Fix prepared for review: compile the exact result and tracking cases into the existing `src/pulse/catalog/generated.json`; the live lane imports only that saved data. Check the retired page and active menu with read-only live GETs.
+- Guard added: a display-lane test imports a copy containing only shipped pulse data, with no work folders or Netlify config. Redirect tests keep wrong targets, a dead menu, and unread pages red or unchecked. The saved-result tests also require all 18 missing exact receipts to stay red.
+- Release: not deployed. No incident records changed; this task authorized read-only production access.

@@ -1,90 +1,12 @@
 // Exact read-only saved-result judges for display controls. Browser contracts
 // prove the click. This lane proves the named durable result, or stays red.
 
-import {
-  displaySavedResultContract,
-  isTrackedDisplayControl,
-} from "../catalog/proofs/display-saved-result.mjs";
-import { DISPLAY_PROOF_CASES } from "../catalog/proofs/display-proof-cases.mjs";
-import { STAFF_UI_PROOF_CASES } from "../catalog/proofs/display-batch-staff-ui.mjs";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import catalog from "../catalog/generated.json" with { type: "json" };
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
-const MAPS = new Map();
-
-function rowsFor(sourceFile) {
-  if (!MAPS.has(sourceFile)) {
-    MAPS.set(sourceFile, JSON.parse(fs.readFileSync(path.join(MAP_DIR, sourceFile), "utf8")));
-  }
-  return MAPS.get(sourceFile);
-}
-
-function exactRow(proofCase) {
-  const matches = rowsFor(proofCase.sourceFile).filter(
-    (row) => row.surface === proofCase.surface && row.control === proofCase.control,
-  );
-  if (matches.length !== 1) {
-    throw new Error(`Expected one display result row for ${proofCase.sourceFile} / ${proofCase.surface} / ${proofCase.control}, found ${matches.length}`);
-  }
-  return matches[0];
-}
-
-const DIRECT_PROOF_KEYS = new Set(DISPLAY_PROOF_CASES.map(
-  (entry) => `${entry.sourceFile}\0${entry.surface}\0${entry.control}`,
-));
-
-export const DISPLAY_RESULT_CASES = Object.freeze(STAFF_UI_PROOF_CASES
-  .filter((proofCase) => proofCase.depth === "deep")
-  .map((proofCase) => {
-    const row = exactRow(proofCase);
-    const contract = displaySavedResultContract(row);
-    if (!contract) return null;
-    return Object.freeze({
-      id: `catalog-display:${proofCase.sourceFile}:${proofCase.surface}:${proofCase.control}`,
-      sourceFile: proofCase.sourceFile,
-      surface: proofCase.surface,
-      control: proofCase.control,
-      contract,
-    });
-  })
-  .filter(Boolean));
-
-const RESULT_CASES_BY_KEY = new Map(DISPLAY_RESULT_CASES.map(
-  (entry) => [`${entry.sourceFile}\0${entry.surface}\0${entry.control}`, entry],
-));
-const LANE_PROOF_KEYS = new Set(DISPLAY_PROOF_CASES
-  .filter((entry) => String(entry.evidence || "").includes("gap-catalog-display.mjs"))
-  .map((entry) => `${entry.sourceFile}\0${entry.surface}\0${entry.control}`));
-
-function isRetiredAutopsy(row) {
-  return String(row?.page || "") === "public/partner/autopsy/index.html";
-}
-
-export const DISPLAY_TRACKING_CASES = Object.freeze([
-  ...new Map(
-    ["desks-a.json", "desks-b.json", "desks-c.json", "desks-d.json", "desks-e.json", "desks-f.json", "public-pages.json"]
-      .flatMap((sourceFile) => rowsFor(sourceFile)
-        .filter((row) => !row.repeats_row_in && isTrackedDisplayControl(row))
-        .map((row) => {
-          const key = `${sourceFile}\0${row.surface}\0${row.control}`;
-          const saved = RESULT_CASES_BY_KEY.get(key);
-          if (DIRECT_PROOF_KEYS.has(key) && !LANE_PROOF_KEYS.has(key)) return null;
-          return [key, Object.freeze({
-            id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`,
-            sourceFile,
-            surface: row.surface,
-            control: row.control,
-            expected: row.control,
-            contract: saved?.contract || null,
-            retired: isRetiredAutopsy(row),
-          })];
-        }))
-      .filter(Boolean),
-  ).values(),
-]);
+// Compiled from the approved map and proof recipes at build time. Proof recipe
+// modules may read the checkout, so the live lane imports only their saved data.
+export const DISPLAY_RESULT_CASES = Object.freeze(catalog.displayResultCases);
+export const DISPLAY_TRACKING_CASES = Object.freeze(catalog.displayTrackingCases);
 
 export const CHECK_IDS = Object.freeze(DISPLAY_TRACKING_CASES.map((entry) => entry.id));
 export const PASS_CAPABLE_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").length;
@@ -155,11 +77,38 @@ function skipped(entry, error) {
   return result(entry.id, "skip", `${entry.control} was not read: ${message}.`);
 }
 
+async function retiredPageState(ctx = {}) {
+  const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
+  if (typeof fetchImpl !== "function") return { status: "skip", detail: "the live retired-page redirect was not read: no fetch in this run." };
+  const base = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
+  const oldUrl = `${base}/partner/autopsy/`;
+  const menuUrl = `${base}/partner/menu/`;
+  try {
+    const response = await fetchImpl(oldUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
+    const location = response.headers.get("location");
+    if (response.status !== 302 || !location || new URL(location, oldUrl).href !== menuUrl) {
+      return { status: "FAIL", detail: "the live Decline Autopsy page does not redirect to the active offer menu with the expected temporary redirect." };
+    }
+    const menu = await fetchImpl(menuUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
+    if (menu.status !== 200) return { status: "FAIL", detail: "the retired page redirects, but the active offer menu does not open." };
+    return { status: "na", detail: "the live retired page redirects to the active offer menu, and that menu opens." };
+  } catch (error) {
+    return { status: "skip", detail: `the live retired-page redirect was not read: ${String(error?.message || error).slice(0, 120)}.` };
+  }
+}
+
 export async function gapChecks(ctx = {}) {
+  // One live read for all controls on this retired page, even without a DB.
+  const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
+  const judge = (entry, stats) => {
+    if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
+    return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
+      retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
+  };
   const run = reader(ctx);
   if (!run) {
     return DISPLAY_TRACKING_CASES.map((entry) => (
-      entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judgeDisplayResult(entry)
+      entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judge(entry)
     ));
   }
 
@@ -174,18 +123,18 @@ export async function gapChecks(ctx = {}) {
   }
 
   return DISPLAY_TRACKING_CASES.map((entry) => {
-    if (entry.contract?.mode !== "query") return judgeDisplayResult(entry);
+    if (entry.contract?.mode !== "query") return judge(entry);
     const stats = bySql.get(entry.contract.sql);
     if (stats?.error) return skipped(entry, stats.error);
-    return judgeDisplayResult(entry, stats);
+    return judge(entry, stats);
   });
 }
 
 export const naVerify = Object.freeze({
-  "catalog-display-retired-autopsy": async (args) => {
-    if (String(args?.sourceFile || "") !== "public-pages.json") return false;
-    if (!String(args?.surface || "").includes("partner/autopsy/index.html")) return false;
-    const config = fs.readFileSync(path.join(ROOT, "netlify.toml"), "utf8");
-    return /from\s*=\s*"\/partner\/autopsy\/\*"[\s\S]{0,160}to\s*=\s*"\/partner\/menu\/"[\s\S]{0,80}status\s*=\s*302/.test(config);
+  "catalog-display-retired-autopsy": async (args, ctx = {}) => {
+    const entry = DISPLAY_TRACKING_CASES.find((item) => item.retired
+      && item.sourceFile === args?.sourceFile && item.surface === args?.surface && item.control === args?.control);
+    if (!entry) return false;
+    return (await retiredPageState(ctx)).status === "na";
   },
 });
