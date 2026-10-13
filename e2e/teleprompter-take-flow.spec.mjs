@@ -1184,6 +1184,9 @@ for (const [film, shape, kind] of [
   ["4K VSL", { savedCam: "4k", sourceSizeByAsk: true, scriptShapes: [{ stack_kind: "vsl", script_format: "vsl", take_file_name: "SLO VSL 1 — Script 1 Take 1.mp4" }] }, "webgl"]
 ]) {
   test(`${film}: the front camera is saved mirrored and the back camera is saved as it is (owner call 2026-10-13)`, async ({ page }) => {
+    // A real 4K camera paints 2160×3840 ten times a second, then the GPU copies it.
+    // On a busy test machine that alone can pass 30 seconds, so it gets slow-test time.
+    if (kind === "webgl") test.slow();
     const { server } = await open(page, { iphone: true, edgeMarkers: true, liveCamera: true, ...shape });
     const flip = page.locator("#b-camera-flip");
     await expect(flip).toHaveAttribute("aria-label", "Use back camera");
