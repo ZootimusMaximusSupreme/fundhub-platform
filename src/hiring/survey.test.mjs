@@ -14,8 +14,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  FUNNEL_ROLES, QUESTIONS, REVIEW_RULES, SURVEY_VERSION,
-  questionsFor, parseSurveyAnswers, routeFor, loomUrl, pageSurvey
+  FUNNEL_ROLES, QUESTIONS, REVIEW_RULES, SURVEY_VERSION, REFERENCE,
+  questionsFor, parseSurveyAnswers, parseReference, routeFor, loomUrl, pageSurvey
 } from "./survey.mjs";
 import { isProtected } from "./grading.mjs";
 import { parseApplyBody } from "./apply-public.mjs";
@@ -42,9 +42,64 @@ function funnelBody(roleKey, extra = {}) {
     linkedin: "linkedin.com/in/danareyes",
     loom: "https://www.loom.com/share/abc123",
     answers: goodAnswers(roleKey),
+    reference: goodReference(roleKey),
     ...extra
   };
 }
+
+function goodReference(roleKey) {
+  return { name: "Sam Ortiz", phone: "(480) 555-0199", company: "Acme Lending",
+    relationship: REFERENCE[roleKey].relationships[0] };
+}
+
+describe("hiring survey — the reference", () => {
+  test("sales seats ask for a sales manager or business owner; the COO asks for a founder or investor", () => {
+    for (const r of ["setter", "closer", "csm"]) {
+      assert.ok(REFERENCE[r].relationships.includes("Sales manager I reported to"), r);
+    }
+    assert.ok(REFERENCE.coo.relationships.includes("Founder I worked with"));
+    assert.ok(REFERENCE.coo.relationships.includes("Investor in a company I ran"));
+  });
+
+  test("a complete reference parses, phone as 10 digits", () => {
+    assert.deepStrictEqual(parseReference("closer", goodReference("closer"), "6025550142"), {
+      ok: true,
+      reference: { name: "Sam Ortiz", phone: "4805550199", company: "Acme Lending",
+        relationship: "Sales manager I reported to" }
+    });
+  });
+
+  test("every part is required", () => {
+    for (const k of ["name", "company", "relationship"]) {
+      const ref = { ...goodReference("setter") };
+      delete ref[k];
+      assert.equal(parseReference("setter", ref).error, "reference_required", k);
+    }
+    assert.equal(parseReference("setter", { ...goodReference("setter"), phone: "" }).error,
+      "reference_phone_invalid");
+    assert.equal(parseReference("setter", undefined).error, "reference_required");
+  });
+
+  test("the applicant's own number is refused", () => {
+    assert.equal(parseReference("csm", goodReference("csm"), "480-555-0199").error, "reference_same_as_you");
+  });
+
+  test("another seat's relationship, an extra key, or a link is refused", () => {
+    assert.equal(parseReference("coo", goodReference("closer")).error, "reference_required");
+    assert.equal(parseReference("closer", { ...goodReference("closer"), email: "x@y.test" }).error,
+      "reference_required");
+    assert.equal(parseReference("closer", { ...goodReference("closer"), name: "http://spam.test" }).error,
+      "reference_required");
+  });
+
+  test("the public door requires the reference and stores it on the answers", () => {
+    assert.equal(parseApplyBody(funnelBody("closer", { reference: undefined })).error, "reference_required");
+    const out = parseApplyBody(funnelBody("coo"));
+    assert.equal(out.ok, true);
+    assert.equal(out.answers.reference.relationship, "Founder I worked with");
+    assert.equal(out.answers.reference.phone, "4805550199");
+  });
+});
 
 describe("hiring survey — the questions", () => {
   test("every seat the funnel hires for has questions, and the four seats are the owner's", () => {

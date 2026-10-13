@@ -45,6 +45,7 @@ import { apply } from "./pipeline.mjs";
 import {
   SURVEY_VERSION,
   parseSurveyAnswers,
+  parseReference,
   routeFor,
   loomUrl
 } from "./survey.mjs";
@@ -253,6 +254,10 @@ export function parseApplyBody(body) {
 
   const survey = parseSurveyAnswers(roleKey, body.answers);
   if (!survey.ok) return { ok: false, error: survey.error };
+  /* Owner-set 2026-10-13: a reference Chris can call. Sales seats give a sales
+     manager or business owner; the COO gives a founder or investor. */
+  const ref = parseReference(roleKey, body.reference, base.phone);
+  if (!ref.ok) return { ok: false, error: ref.error };
   const route = routeFor(roleKey, survey.answers);
 
   return {
@@ -265,6 +270,7 @@ export function parseApplyBody(body) {
        was held back (empty when it was not). */
     answers: {
       ...survey.answers,
+      reference: ref.reference,
       survey_version: SURVEY_VERSION,
       review_flags: route.flags
     }

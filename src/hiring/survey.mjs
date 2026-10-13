@@ -58,6 +58,25 @@ export const LOOM_PROMPTS = Object.freeze({
   coo: "In 90 seconds, walk us through an operation you built and the numbers it moved."
 });
 
+/* THE REFERENCE. Owner-set 2026-10-13: "someone i can request info from, like a
+   contact or previous employer. someone i can talk to. if it was sales, like
+   previous sales manager; if coo, like a founder or investor". Name, phone,
+   company and how they know the applicant. */
+const SALES_REFERENCE = Object.freeze({
+  prompt: "Give us a sales manager or business owner you worked under. Someone we can call.",
+  relationships: ["Sales manager I reported to", "Business owner I worked for", "Another manager I reported to"]
+});
+export const REFERENCE = Object.freeze({
+  setter: SALES_REFERENCE,
+  closer: SALES_REFERENCE,
+  csm: SALES_REFERENCE,
+  coo: Object.freeze({
+    prompt: "Give us a founder or investor you worked with. Someone we can call.",
+    relationships: ["Founder I worked with", "Investor in a company I ran", "CEO I reported to", "Board member"]
+  })
+});
+export const REFERENCE_LIMITS = Object.freeze({ name: 120, company: 120 });
+
 const ALL = FUNNEL_ROLES;
 
 /* Every question after contact details and before the Loom. `roles` is who
@@ -181,6 +200,48 @@ export function routeFor(roleKey, answers = {}) {
   return { next: flags.length ? "review" : "book", flags };
 }
 
+/* parseReference(roleKey, raw, applicantPhone) → { ok:true, reference } | { ok:false, error }
+
+   All four parts are required. The phone is stored as 10 digits, and it cannot
+   be the applicant's own number. The relationship must be one of the seat's
+   options, word for word. A name or company carrying a link is refused. */
+const CONTROL = /[\u0000-\u001F\u007F]/g;
+const HAS_LINK = /(https?:\/\/|www\.|\[url|<a\s)/i;
+function text(v, max) {
+  if (v == null) return "";
+  return String(v).replace(CONTROL, " ").replace(/\s+/g, " ").trim().slice(0, max);
+}
+function digits10(v) {
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.length === 11 && d.charAt(0) === "1") d = d.slice(1);
+  return d.length === 10 ? d : "";
+}
+export function parseReference(roleKey, raw, applicantPhone = null) {
+  const spec = REFERENCE[roleKey];
+  if (!spec) return { ok: false, error: "role_required" };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "reference_required" };
+  }
+  for (const k of Object.keys(raw)) {
+    if (!["name", "phone", "company", "relationship"].includes(k)) {
+      return { ok: false, error: "reference_required" };
+    }
+  }
+  const name = text(raw.name, REFERENCE_LIMITS.name);
+  const company = text(raw.company, REFERENCE_LIMITS.company);
+  const relationship = typeof raw.relationship === "string" ? raw.relationship : "";
+  if (!name || !company || HAS_LINK.test(name) || HAS_LINK.test(company)) {
+    return { ok: false, error: "reference_required" };
+  }
+  if (!spec.relationships.includes(relationship)) return { ok: false, error: "reference_required" };
+  const phone = digits10(raw.phone);
+  if (!phone) return { ok: false, error: "reference_phone_invalid" };
+  if (applicantPhone && digits10(applicantPhone) === phone) {
+    return { ok: false, error: "reference_same_as_you" };
+  }
+  return { ok: true, reference: { name, phone, company, relationship } };
+}
+
 /* A Loom share link, and nothing else. Stored as https whatever was pasted, same
    as the LinkedIn link in apply-public.mjs. Returns null when it is not a Loom
    link, "" when blank. */
@@ -213,7 +274,9 @@ export function pageSurvey() {
       key,
       label: ROLE_LABELS[key],
       blurb: ROLE_BLURBS[key],
-      loomPrompt: LOOM_PROMPTS[key]
+      loomPrompt: LOOM_PROMPTS[key],
+      referencePrompt: REFERENCE[key].prompt,
+      referenceRelationships: [...REFERENCE[key].relationships]
     })),
     questions: QUESTIONS.map((q) => {
       const out = { key: q.key, roles: [...q.roles], title: q.title };
@@ -226,5 +289,6 @@ export function pageSurvey() {
 
 export default {
   SURVEY_VERSION, FUNNEL_ROLES, ROLE_LABELS, ROLE_BLURBS, LOOM_PROMPTS, QUESTIONS,
-  REVIEW_RULES, questionsFor, parseSurveyAnswers, routeFor, loomUrl, pageSurvey
+  REFERENCE, REVIEW_RULES, questionsFor, parseSurveyAnswers, parseReference, routeFor,
+  loomUrl, pageSurvey
 };

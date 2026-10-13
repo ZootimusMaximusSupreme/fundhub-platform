@@ -34,7 +34,7 @@ import {
   HOW_HEARD
 } from "./apply-public.mjs";
 import handler from "../../api/hiring/apply.mjs";
-import { questionsFor, SURVEY_VERSION } from "./survey.mjs";
+import { questionsFor, SURVEY_VERSION, REFERENCE } from "./survey.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 const TAG = "careertest";
@@ -480,7 +480,10 @@ describe("careers intake — against the database", { skip: !HAVE_DB ? "no DATAB
     return {
       funnel: "join", role: roleKey, name: `${TAG} ${who}`, email: `${TAG}-${who}@example.test`,
       phone: "6025550142", linkedin: `linkedin.com/in/${TAG}-${who}`,
-      loom: `https://www.loom.com/share/${who}`, answers: funnelAnswers(roleKey), ...over
+      loom: `https://www.loom.com/share/${who}`, answers: funnelAnswers(roleKey),
+      reference: { name: "Sam Ortiz", phone: "4805550199", company: "Acme Lending",
+        relationship: REFERENCE[roleKey].relationships[0] },
+      ...over
     };
   }
   async function withBookingUrl(roleKey, url, fn) {
@@ -520,6 +523,10 @@ describe("careers intake — against the database", { skip: !HAVE_DB ? "no DATAB
     assert.equal(row.answers.survey_version, SURVEY_VERSION);
     assert.deepStrictEqual(row.answers.review_flags, []);
     assert.equal(row.video_url, "https://www.loom.com/share/fun1");
+    assert.deepStrictEqual(row.answers.reference, {
+      name: "Sam Ortiz", phone: "4805550199", company: "Acme Lending",
+      relationship: "Sales manager I reported to"
+    }, "the reference the sales manager will call is on the application");
     assert.equal(row.linkedin_profile_url, `https://linkedin.com/in/${TAG}-fun1`);
     assert.equal(row.status, "open");
     assert.equal(row.stage, "applied");

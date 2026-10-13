@@ -135,25 +135,50 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       "key": "setter",
       "label": "Setter",
       "blurb": "Work inbound leads from our ads and affiliates fast, and book qualified calls for the closers.",
-      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds."
+      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds.",
+      "referencePrompt": "Give us a sales manager or business owner you worked under. Someone we can call.",
+      "referenceRelationships": [
+        "Sales manager I reported to",
+        "Business owner I worked for",
+        "Another manager I reported to"
+      ]
     },
     {
       "key": "closer",
       "label": "Closer",
       "blurb": "Run the booked calls, find the right path for each person, and close.",
-      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds."
+      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds.",
+      "referencePrompt": "Give us a sales manager or business owner you worked under. Someone we can call.",
+      "referenceRelationships": [
+        "Sales manager I reported to",
+        "Business owner I worked for",
+        "Another manager I reported to"
+      ]
     },
     {
       "key": "csm",
       "label": "Client Success Manager",
       "blurb": "Own each client after the sale, keep their steps moving, and get them ready to fund.",
-      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds."
+      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds.",
+      "referencePrompt": "Give us a sales manager or business owner you worked under. Someone we can call.",
+      "referenceRelationships": [
+        "Sales manager I reported to",
+        "Business owner I worked for",
+        "Another manager I reported to"
+      ]
     },
     {
       "key": "coo",
       "label": "Chief Operating Officer",
       "blurb": "Run the operating rhythm: the team, the numbers, and the weekly meetings.",
-      "loomPrompt": "In 90 seconds, walk us through an operation you built and the numbers it moved."
+      "loomPrompt": "In 90 seconds, walk us through an operation you built and the numbers it moved.",
+      "referencePrompt": "Give us a founder or investor you worked with. Someone we can call.",
+      "referenceRelationships": [
+        "Founder I worked with",
+        "Investor in a company I ran",
+        "CEO I reported to",
+        "Board member"
+      ]
     }
   ],
   "questions": [
@@ -374,7 +399,7 @@ input:focus{border-color:rgb(var(--blue));outline:none}
   var S = JSON.parse(document.getElementById('fh-join-survey').textContent);
   var ENDPOINT = "/api/hiring/apply";
   var ROLE_KEYS = S.roles.map(function (r) { return r.key; });
-  var state = { role: null, contact: {}, answers: {}, loom: '' };
+  var state = { role: null, contact: {}, answers: {}, reference: {}, loom: '' };
   var at = 0;
 
   var preset = new URLSearchParams(location.search).get('role');
@@ -388,8 +413,14 @@ input:focus{border-color:rgb(var(--blue));outline:none}
   function steps() {
     var out = [{ type: 'role' }, { type: 'contact' }];
     questions().forEach(function (q) { out.push({ type: 'q', q: q }); });
+    out.push({ type: 'reference' });
     out.push({ type: 'loom' });
     return out;
+  }
+  function stepIndex(type) {
+    var list = steps();
+    for (var i = 0; i < list.length; i++) if (list[i].type === type) return i;
+    return -1;
   }
   /* Who the applicant meets. Owner-set 2026-10-13: the COO books with Chris. */
   function meets() { return state.role === 'coo' ? 'Chris, our CEO' : 'our sales manager'; }
@@ -424,6 +455,18 @@ input:focus{border-color:rgb(var(--blue));outline:none}
         h += '<button type="button" class="opt" role="radio" aria-checked="' + (cur === o) + '" data-i="' + i + '"><span class="mk"></span><span class="tx">' + esc(o) + '</span></button>';
       });
       h += '</div><div class="err" id="err"></div>';
+    } else if (st.type === 'reference') {
+      var rr = roleOf(state.role) || {}, ref = state.reference;
+      h += '<h2>Who Can We Call About You?</h2><p class="hint">' + esc(rr.referencePrompt || '') + ' Let them know we might call.</p>' +
+        '<div class="fields">' +
+        '<div><label for="f-ref-name">Their name</label><input type="text" id="f-ref-name" autocomplete="off" maxlength="120" value="' + esc(ref.name || '') + '"></div>' +
+        '<div><label for="f-ref-phone">Their phone number</label><input type="tel" id="f-ref-phone" autocomplete="off" inputmode="tel" placeholder="(555) 555-5555" maxlength="14" value="' + esc(ref.phone || '') + '"></div>' +
+        '<div><label for="f-ref-company">Company you worked together at</label><input type="text" id="f-ref-company" autocomplete="off" maxlength="120" value="' + esc(ref.company || '') + '"></div>' +
+        '</div><p class="hint" style="margin-top:16px">How do you know them?</p><div class="opts" role="radiogroup">';
+      (rr.referenceRelationships || []).forEach(function (o, i) {
+        h += '<button type="button" class="opt" role="radio" aria-checked="' + (ref.relationship === o) + '" data-i="' + i + '"><span class="mk"></span><span class="tx">' + esc(o) + '</span></button>';
+      });
+      h += '</div><div class="err" id="err"></div><div class="actions"><button type="button" class="btn" id="next">Next</button></div>';
     } else {
       var r = roleOf(state.role);
       h += '<h2>Record a 90-Second Loom</h2><p class="hint">Record it on loom.com, copy the share link, and paste it here. A free Loom account works.</p>' +
@@ -472,6 +515,22 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       wireContact();
       document.getElementById('next').addEventListener('click', function () { if (readContact()) next(); });
       document.getElementById('f-first').focus();
+    } else if (st.type === 'reference') {
+      var rels = (roleOf(state.role) || {}).referenceRelationships || [];
+      var rp = document.getElementById('f-ref-phone');
+      rp.value = fmtPhone(rp.value);
+      rp.addEventListener('input', function () { rp.value = fmtPhone(rp.value); });
+      var rn = document.getElementById('f-ref-name');
+      rn.addEventListener('blur', function () { rn.value = capName(rn.value.trim()); });
+      body.querySelectorAll('.opt').forEach(function (b) {
+        b.addEventListener('click', function () {
+          body.querySelectorAll('.opt').forEach(function (x) { x.setAttribute('aria-checked', 'false'); });
+          b.setAttribute('aria-checked', 'true');
+          state.reference.relationship = rels[+b.getAttribute('data-i')];
+        });
+      });
+      document.getElementById('next').addEventListener('click', function () { if (readReference()) next(); });
+      rn.focus();
     } else {
       var lm = document.getElementById('f-loom');
       lm.addEventListener('input', function () { state.loom = lm.value.trim(); });
@@ -513,19 +572,35 @@ input:focus{border-color:rgb(var(--blue));outline:none}
     if (!isLinkedIn(c.linkedin)) { err('Add your LinkedIn profile link, like linkedin.com/in/yourname.'); return false; }
     return true;
   }
+  function readReference() {
+    var r = state.reference;
+    r.name = capName(document.getElementById('f-ref-name').value.trim());
+    r.phone = document.getElementById('f-ref-phone').value.trim();
+    r.company = document.getElementById('f-ref-company').value.trim();
+    if (!r.name) { err('Add their name.'); return false; }
+    var d = r.phone.replace(/\D/g, '');
+    if (d.length !== 10) { err('Add their 10-digit phone number.'); return false; }
+    if (d === String(state.contact.phone || '').replace(/\D/g, '')) { err('Use their phone number, not yours.'); return false; }
+    if (!r.company) { err('Add the company you worked together at.'); return false; }
+    if (!r.relationship) { err('Pick how you know them.'); return false; }
+    return true;
+  }
 
   /* Server error → what the applicant reads, and which step to send them to. */
   var ERRORS = {
-    name_email_required: ['Check your name and email.', 1],
-    phone_required: ['Add a 10-digit phone number.', 1],
-    linkedin_required: ['Add your LinkedIn profile link, like linkedin.com/in/yourname.', 1],
-    linkedin_url_invalid: ['That LinkedIn link did not work. Use your profile link, like linkedin.com/in/yourname.', 1],
-    loom_required: ['Paste your Loom share link.', -1],
-    loom_url_invalid: ['That link is not a Loom share link. It looks like loom.com/share/…', -1],
-    survey_incomplete: ['One answer is missing. Go back through the questions and pick one for each.', 2],
-    survey_answer_unknown: ['Something in your answers did not match. Go back through the questions.', 2],
-    role_unavailable: ['That seat just closed. Pick another seat.', 0],
-    rate_limited: ['Too many tries in a row. Wait 15 minutes, then submit again.', -1]
+    name_email_required: ['Check your name and email.', 'contact'],
+    phone_required: ['Add a 10-digit phone number.', 'contact'],
+    linkedin_required: ['Add your LinkedIn profile link, like linkedin.com/in/yourname.', 'contact'],
+    linkedin_url_invalid: ['That LinkedIn link did not work. Use your profile link, like linkedin.com/in/yourname.', 'contact'],
+    reference_required: ['Fill in every part of your reference.', 'reference'],
+    reference_phone_invalid: ['Add your reference’s 10-digit phone number.', 'reference'],
+    reference_same_as_you: ['Use your reference’s phone number, not yours.', 'reference'],
+    loom_required: ['Paste your Loom share link.', null],
+    loom_url_invalid: ['That link is not a Loom share link. It looks like loom.com/share/…', null],
+    survey_incomplete: ['One answer is missing. Go back through the questions and pick one for each.', 'q'],
+    survey_answer_unknown: ['Something in your answers did not match. Go back through the questions.', 'q'],
+    role_unavailable: ['That seat just closed. Pick another seat.', 'role'],
+    rate_limited: ['Too many tries in a row. Wait 15 minutes, then submit again.', null]
   };
 
   function attribution() {
@@ -551,6 +626,12 @@ input:focus{border-color:rgb(var(--blue));outline:none}
       linkedin: state.contact.linkedin,
       loom: state.loom,
       answers: answers,
+      reference: {
+        name: state.reference.name,
+        phone: state.reference.phone,
+        company: state.reference.company,
+        relationship: state.reference.relationship
+      },
       website: document.getElementById('f-website').value
     };
     var a = attribution();
@@ -565,7 +646,8 @@ input:focus{border-color:rgb(var(--blue));outline:none}
         sending = false;
         if (res && res.ok) return finish(res);
         var e = ERRORS[res && res.error];
-        if (e && e[1] >= 0 && e[1] !== at) { go(e[1]); }
+        var target = e && e[1] ? stepIndex(e[1]) : -1;
+        if (target >= 0 && target !== at) { go(target); }
         else { btn.disabled = false; btn.textContent = 'Submit Application'; }
         err(e ? e[0] : 'Something went wrong on our side. Try again in a minute.');
       })
