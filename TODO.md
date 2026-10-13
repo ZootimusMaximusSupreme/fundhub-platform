@@ -2,54 +2,58 @@
 
 ## Today — 2026-10-13
 
-Latest owner update: approximately 7:40 AM Arizona/MST. Today's money-making priorities are texting, filming, sales, and appointment setting. Keep work moving in parallel where tasks are independent; do not spend the filming window watching AI load.
+Updated 10:42 AM Arizona/MST. Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: outreach, filming, then editing. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
 
-### Completed
+### 1. Now — food, water, then outreach
 
-- [x] Sauna — done at 5:00 AM.
-- [x] CRS — paid; owner confirmed at 7:01 AM.
-- [x] Lead list — owner reports the corrections are finished. Texts still need to be sent.
+- [ ] Get food and water at Trader Joe's — owner is there now.
+- [ ] Text Blake's leads first using the 661 number and owner's 480 number as planned.
+- [ ] Complete the group-text step for Blake — approximately 28 leads; confirm the count and grouping.
+- [ ] Finish texting the remaining people on the corrected lead list — owner now estimates 80–85 prior/current-client leads in total. The roughly 28 Blake leads are a subset, not a replacement total.
 
-### Next: outreach, clients, and filming
+### 2. Filming and editing
 
-- [ ] Text the 50 people from the corrected lead list — READY; no sends confirmed yet.
-- [ ] Handle Bram (also dictated as Brahm/Brom), the credit client — owner plans to handle him next; CRS is now paid.
-- [ ] Clean the house floors when back home.
-- [ ] Teleprompter — REPORTED FIXED, still to confirm: owner said “done, I think.” Check one short recording, playback, and saved take before relying on it for the shoot. Do not treat this report as proof that every launch-readiness item below is complete.
-- [ ] Get teleprompting, filming gear, and the green-screen setup situated now that the repair is reportedly done.
-- [ ] Finish outside filming — four remaining ads and remaining longer-form/thank-you videos. The exact longer-video count/titles remain unclear from dictation.
-- [ ] Film four green-screen videos at home once people are awake.
-- [ ] Edit the filmed videos and add B-roll — reserve about three uninterrupted hours after all filming. Lock cuts before animation overlays; avoid AI check-ins during this focus block.
-- [ ] Hook up Cortana correctly with the funnel and check the appointment-setting process end to end.
+- [ ] Confirm a short teleprompter recording plays back and saves, then get filming gear situated. Owner says Claude is finishing the repair and accepts front-camera 30 fps if the saved video is usable; readiness is still to be confirmed.
+- [ ] Film outside — four remaining ads and the remaining longer-form/thank-you videos; exact longer-video count/titles still need clarification.
+- [ ] Set up the green screen and film four green-screen videos at home.
+- [ ] Edit the videos and add B-roll — three uninterrupted hours. Lock cuts before adding animation overlays.
+
+The original 10:00 AM departure target has passed. Protect the remaining filming window before 2:00 PM. The teleprompter is reported nearly finished; confirm a saved take before filming. Owner accepts 30 fps for front-camera ads (10:35 AM update); the earlier 60 fps requirement below is superseded for that use. This does not verify a universal Safari cap or change other video-quality requirements.
+
+### 3. Clients and setup
+
+- [ ] Handle Bram, the credit client (also dictated as Brahm/Brom).
+- [ ] Finish LexisNexis setup for Colin.
+- [ ] Hook up Cortana correctly with the funnel.
+- [ ] Verify the setter's complete appointment-setting process.
+- [ ] Confirm the closer is connected, ready, and receiving the setter handoff correctly.
+
+### 4. Sales and system checks
+
+- [ ] Finish heartbeat fixes — IN PROGRESS: Claude and Codex are working on it. Owner expects completion tonight; this is a target, not verified completion (10:36 AM update). Review results when the work is ready.
 - [ ] Do mock sales calls.
-- [ ] Walk through the dashboard and the sales/setting process; confirm the expected results at each step.
-- [ ] Identify and make the remaining sales assets needed for outreach, setting, and sales.
-- [ ] Finish the remaining end-to-end marketing work.
+- [ ] Walk through the dashboard and the complete sales/setting process.
+- [ ] Refine the offers and existing sales assets; verify the existing marketing process end to end.
+- [ ] After heartbeat fixes, run the itemized company-wide end-to-end checks. Record expected and observed results, pass/fail/not checked, and next action.
+- [ ] Fix and harden the issues those checks reveal, then repeat the affected journeys before refactoring.
 
-Filming timing: owner wants to leave home by about 10:00 AM and film while morning energy is strongest. Aim to finish filming before 2:00 PM; avoid starting a fresh filming block after 2:00 PM. The earlier plan to wait until 9:00 AM for a repair is superseded by the owner's tentative report that the teleprompter is fixed. Confirm it works before filming. Editing takes about three hours by the owner's estimate.
+Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last records 3,942 tracked items, including screens, controls, routes, and workflows. Recount before the full check; a mapped monitor does not by itself prove the business result.
 
-### Building or waiting
+### 5. Waiting
 
-- [ ] Help Colin with LexisNexis — IN PROGRESS: the LexisNexis work is being built; completion is not confirmed.
-- [ ] Set up Justice's Google account/email — WAITING for Justice to reply.
-- [ ] Sign MCA deal — WAITING for the contract; no arrival confirmed.
-- [ ] Restart Claude at 9:00 AM as planned; use the fresh teleprompter status to decide whether repair work is still needed.
-- [ ] Check Gmail for Blake Everton's leads/referral details only if still needed after the completed lead-list corrections. This session has not read those emails.
+- [ ] Justice — waiting for confirmation that his email/account works.
 
-### Heartbeat, complete system checks, then refactor
+### 6. After the priority work
 
-- [ ] Finish and understand the heartbeat monitor: what is checked, what is failing, and what still lacks proof.
-- [ ] After heartbeat work, itemize and run a thorough end-to-end check of the company. Reuse the existing inventory and record each item's expected result, observed result, pass/fail/not checked, and next action; cover the complete sales and setting process as well as individual controls.
-- [ ] Keep monitoring coverage separate from a proven business result. The latest recorded inventory in `ops/workflows/coverage-deep-proof-2026-10-12.md` is 3,942 unique tracked items, including screens, controls, routes, and workflows; it is not 3,942 independently proven features. Recount before the comprehensive test rather than treating the recorded total as a fresh runtime measurement.
-- [ ] Continue the existing refactor plan at `ops/workflows/company-refactor-plan-2026-10-12.md` after the system checks. Owner's goals: roughly halve the codebase where justified, reduce repeated code and AI token use, improve performance, and strengthen the architecture. Measure the gains and preserve working behavior; a 50% reduction is a goal, not a promised result.
-- [ ] **Repository cleanup — code only.** Remove stale notes, duplicate plans/to-do lists, abandoned extras, and other non-code clutter. Before deleting, identify any non-code files the live application requires and flag those dependencies. Preserve working code and other sessions' unfinished work. Keep this after the revenue work.
+- [ ] Continue the existing refactor plan: `ops/workflows/company-refactor-plan-2026-10-12.md`. Goals: less duplicate code, lower AI token use, stronger architecture, better performance, and roughly half the code where justified. Measure improvements and preserve behavior.
+- [ ] Repository cleanup — code only. Identify required non-code dependencies before deleting clutter; protect working code and other sessions' unfinished work.
 
-### Personal and work rhythm
+### 7. Personal
 
-- [ ] Get coffee at Panera — opens around 7:30–8:00 AM per owner; completion not confirmed.
-- [ ] Optional: sushi around 1:00–2:00 PM if filming allows.
-- [ ] Gym tonight — full workout before bed.
-- [ ] Use the work-stacking strategy: start an AI task, do one independent task, and check at planned breaks. Protect the three-hour editing block from AI interruptions.
+- [ ] Clean the house floors when back home.
+- [ ] Coffee at Panera, if still needed.
+- [ ] Optional sushi around 1:00–2:00 PM if filming allows.
+- [ ] Full gym workout tonight before bed.
 
 ## Priority — iPhone teleprompter launch readiness (updated 2026-10-13)
 
