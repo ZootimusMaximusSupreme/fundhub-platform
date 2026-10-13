@@ -123,4 +123,15 @@ Shard rule: create a disjoint proof-key module and its real result test. Do not 
 - Focused green checks: AB wave 2 27/27; EF/Public wave 2 8/8; Door 01 wave 2 11/11; Display catalog guards 2/2; Door aggregate 989/989; Flow aggregate 9/9; Read executable proof run 2/3 with the metadata guard corrected and rerun green.
 - The combined Display mega-run was stopped after its child launched every browser proof at once and did not exit. Individual browser shards and the exact catalog guards are green.
 - Remaining 1,553 rows stay red. They were not renamed, hidden, or inferred green.
-- Next: rebuild the generated catalog, run the six-lane pulse, commit, merge current `origin/main`, push, and check the GitHub ship.
+- Current strict batch is merged into GitHub `main` and live through the normal ship chain.
+
+## Final post-merge check — 2026-10-12
+
+- `main` matched `origin/main` at `2314782f6` before this note. The strict proof commits are in that history.
+- Catalog rebuild: 3,942 unique rows; 3,919 mapped to an executable check; 23 are still unmapped/red.
+- The catalog mapping count is not the business-result count. The safe built-bundle pulse is the honest result: 2,357 final rows, 465 green, 1,696 red, 189 verified nothing-to-judge, and 7 not checked.
+- Safe runner proof: exit 0, no skipped selected rows, no step over 20 seconds, no SQL error, no write, and no provider send.
+- Exact proof guards: Display 2/2 green and Door 989/989 green. Flow 8/9 green; its real rendered-page run passed, but one metadata guard still expects every 12-row shard entry to stay red while the rebuilt catalog now has mixed wired/red truth. Two small fixes did not model both states, so the stuck rule stopped a third try and the guard remains open.
+- Lint: 3,403 files and inline scripts parse clean.
+- Type check still has the known unrelated error at `src/marketing/filmed-receive.mjs:159`.
+- Honest state: this proof batch is shipped. The company is not fully green. The 1,696 runtime reds remain the work list; they were not renamed, hidden, or counted as proven.
