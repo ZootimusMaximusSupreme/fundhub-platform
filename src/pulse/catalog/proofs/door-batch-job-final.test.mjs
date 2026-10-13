@@ -390,7 +390,11 @@ test("the job lane accepts the live scope function and a direct database", async
     assert.equal(db.calls.length, 1, kind);
     assert.equal(checks[0].id, "door-batch:ad-video-worker-result", kind);
     assert.equal(checks[0].status, "PASS", kind);
-    assert.deepEqual(checks.slice(1).map((check) => check.status), Array(6).fill("FAIL"), kind);
+    assert.deepEqual(
+      checks.slice(1).map((check) => check.status),
+      Array(FINAL_JOB_GAP_ROWS.length).fill("FAIL"),
+      kind,
+    );
     assert.deepEqual(
       new Set(checks.slice(1).map((check) => check.id)),
       new Set(FINAL_JOB_GAP_ROWS.map((row) => row.id)),

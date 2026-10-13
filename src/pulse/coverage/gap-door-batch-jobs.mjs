@@ -18,6 +18,7 @@ export const FINAL_JOB_RESULT_TEST =
 const PROVED_FINAL_JOB_SURFACES = new Set([
   "workflow:affiliate-payout-run",
   "workflow:blueprint-next-funding-sequence-sweeper",
+  "workflow:hiring-outreach-cadence",
   "workflow:merchant-pull-sweeper",
   "workflow:paid-checkout-expiry-sweeper",
   "function:hubstaff-poll-sweeper",
