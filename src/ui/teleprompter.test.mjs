@@ -61,7 +61,7 @@ describe("teleprompter, pure", () => {
     assert.notEqual(tries[0].facingMode.ideal, "environment");
   });
 
-  test("iPhone 17 Pro Max portrait first asks for true front-camera 4K60, then 4K30", () => {
+  test("portrait iPhone first asks for native wide 4K60, then 4K30", () => {
     const ctx = createContext({
       console,
       navigator: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15" },
@@ -74,9 +74,13 @@ describe("teleprompter, pure", () => {
     assert.deepEqual(plain([
       tries[0].width.ideal, tries[0].height.ideal, tries[0].frameRate.ideal,
       tries[1].width.ideal, tries[1].height.ideal, tries[1].frameRate.ideal
-    ]), [2160, 3840, 60, 2160, 3840, 30]);
-    assert.equal(tries[0].aspectRatio.ideal, 9 / 16);
+    ]), [3840, 2160, 60, 3840, 2160, 30]);
+    assert.equal(tries[0].aspectRatio.ideal, 16 / 9);
     assert.equal(tries[0].facingMode.ideal, "user");
+    const hd = T.cameraTries("user", "1080p");
+    assert.deepEqual(plain([hd[0].width.ideal, hd[0].height.ideal]), [1920, 1080]);
+    const rear = T.cameraTries("environment", "1080p");
+    assert.deepEqual(plain([rear[0].width.ideal, rear[0].height.ideal]), [1920, 1080]);
     assert.match(SRC, /opts\.videoBitsPerSecond = videoBits\(savedWidth, cam\.recordTargetFps/);
     assert.equal(T.recordFrameBox(2160, 3840, true, true).height, 3840);
     assert.equal(T.recordFrameBox(2160, 3840, true, true).width, 2160);
@@ -123,16 +127,18 @@ describe("teleprompter, pure", () => {
     }
   });
 
-  test("switching front/rear retains 60 fps and portrait camera requests", () => {
+  test("switching front/rear retains 60 fps and full-width iPhone camera requests", () => {
     const source = SRC.slice(SRC.indexOf("function switchCamera()"), SRC.indexOf("function setCamMode"));
     assert.match(source, /for \(var askFps of \[60, 30\]\)/);
+    assert.match(source, /var faceShape = "wide"/);
     assert.match(source, /cameraAsk\(wanted, askFps, faceShape, askFps === 60, mode\)/);
     assert.match(source, /cameraAsk\(wanted, 60, recordingIsPortrait\(\) \? "tall" : "wide", false, activeMode\(\)\)/);
     const open = SRC.slice(SRC.indexOf("function openCamera()"), SRC.indexOf("function switchCamera()"));
-    assert.match(open, /cameraAsk\(facing, fps, recordingIsPortrait\(\) \? "tall" : "wide", true, mode\)/);
-    assert.match(open, /cameraAsk\(requested, 60, recordingIsPortrait\(\) \? "tall" : "wide", true, mode\)/);
+    assert.match(open, /cameraTries\(facing, mode\)/);
+    assert.match(open, /cameraAsk\(requested, 60, "wide", true, mode\)/);
+    assert.doesNotMatch(open, /applyConstraints\(/, "do not force a tall crop after opening Safari's camera");
     const record = SRC.slice(SRC.indexOf("function continuousRecordStream(stream)"), SRC.indexOf("function beginRec()"));
-    assert.match(record, /Math\.min\(60, Math\.max\(1, Math\.round\(st\.frameRate \|\| 30\)\)\)/);
+    assert.match(record, /Math\.min\(isPhone\(\) \? 30 : 60, Math\.max\(1, Math\.round\(st\.frameRate \|\| 30\)\)\)/);
     assert.match(record, /canvas\.captureStream\(fps\)/);
   });
 
@@ -834,19 +840,23 @@ describe("teleprompter page", () => {
 });
 
 describe("recorded camera frame quality", () => {
-  test("portrait video remains tall, sharp, and mirrored only on the front camera", () => {
+  test("portrait video keeps the full camera view, with no stretch or close crop", () => {
     const T = load();
     const vertical = T.recordFrameBox(1080, 1920, true, false);
     assert.deepEqual(plain([vertical.width, vertical.height, vertical.sx, vertical.sy]), [1080, 1920, 0, 0]);
     assert.equal(vertical.needsBetterCamera, false);
     const horizontal = T.recordFrameBox(1920, 1080, true, false);
-    assert.deepEqual(plain([horizontal.width, horizontal.height]), [606, 1080]);
-    assert.ok(horizontal.sx > 0, "center-crop the upright wide source");
-    assert.equal(horizontal.sy, 0);
-    assert.equal(horizontal.sh, 1080);
+    assert.ok(horizontal.height > horizontal.width, "upright phone saves a portrait canvas");
+    assert.deepEqual(plain([horizontal.sx, horizontal.sy, horizontal.sw, horizontal.sh]), [0, 0, 1920, 1080], "keep every camera pixel");
+    assert.ok(Math.abs(horizontal.dw / horizontal.dh - 16 / 9) < 0.02, "do not stretch the wide image");
+    assert.ok(horizontal.dx >= 0 && horizontal.dy >= 0, "place the full image inside the canvas");
+    assert.ok(horizontal.dx + horizontal.dw <= horizontal.width + 1);
+    assert.ok(horizontal.dy + horizontal.dh <= horizontal.height + 1);
     assert.equal(horizontal.needsBetterCamera, true, "report when portrait detail is below the requested quality");
     const sideways4K = T.recordFrameBox(3840, 2160, true, true);
-    assert.deepEqual(plain([sideways4K.width, sideways4K.height]), [1214, 2160]);
+    assert.ok(sideways4K.height > sideways4K.width);
+    assert.deepEqual(plain([sideways4K.sx, sideways4K.sy, sideways4K.sw, sideways4K.sh]), [0, 0, 3840, 2160]);
+    assert.ok(Math.abs(sideways4K.dw / sideways4K.dh - 16 / 9) < 0.02);
     assert.equal(sideways4K.needsBetterCamera, true);
     const wide = T.recordFrameBox(1920, 1080, false, false);
     assert.deepEqual(plain([wide.width, wide.height]), [1920, 1080]);
@@ -861,7 +871,7 @@ describe("recorded camera frame quality", () => {
     assert.doesNotMatch(recorder, /ctx\.rotate\(/, "Safari's upright camera pixels must not turn sideways in the file");
     assert.match(recorder, /ctx\.drawImage\(video, box\.sx, box\.sy, box\.sw, box\.sh/);
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
-    assert.match(recorder, /Math\.min\(60, Math\.max\(1,/);
+    assert.match(recorder, /Math\.min\(isPhone\(\) \? 30 : 60, Math\.max\(1,/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
     assert.match(recorder, /activeMode\(\) === "4k" \|\| stays4K\(scripts\[cur\]\)/);
     const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));

@@ -596,10 +596,8 @@
   function cameraTries(facing, mode) {
     var back = facing === "environment";
     var list = [];
-    // A portrait iPhone should request a portrait feed FIRST, avoiding a
-    // drastic center-crop of a landscape 4K feed before it can be recorded.
-    var portraitPhone = !!(root.navigator && /iPhone|iPad|iPod/i.test(root.navigator.userAgent || "") &&
-      (root.innerHeight || 0) > (root.innerWidth || 0));
+    // Use the full wide camera request that worked before the portrait-crop
+    // path was added. Output orientation is set by the recording canvas.
     function push(fps, shape, lockRate, steady, askMode) {
       var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate, askMode == null ? mode : askMode);
       if (steady) {
@@ -609,18 +607,10 @@
       list.push(video);
     }
     if (!back && mode === "4k") {
-      if (portraitPhone) {
-        push(60, "tall", false, false, "4k");
-        push(30, "tall", false, false, "4k");
-      }
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
     var hd = mode === "4k" ? "1080p" : mode;
-    if (portraitPhone) {
-      push(60, "tall", false, false, hd);
-      push(30, "tall", false, false, hd);
-    }
     if (back) {
       push(60, "wide", true, true, hd);
       push(30, "wide", true, true, hd);
@@ -629,8 +619,6 @@
     push(60, "wide", false, false, hd);
     push(30, "wide", true, false, hd);
     push(30, "wide", false, false, hd);
-    push(60, "tall", true, false, hd);
-    push(30, "tall", true, false, hd);
     list.push({
       facingMode: { ideal: back ? "environment" : "user" },
       width: { max: 1920 },
@@ -2548,26 +2536,27 @@
     if (width > 0) return hi ? 16000000 : 10000000;
     return 8000000;
   }
-  /* Safari already gives canvas upright camera pixels, even when the frame
-     reports landscape dimensions on an upright phone. Crop to the phone's
-     shape without rotating or stretching those pixels. */
+  /* Safari draws upright pixels but may report a wide frame on a portrait
+     phone. Fit the whole frame in the phone-shaped file; never zoom by cutting
+     away the sides. A true portrait camera frame fills the file. */
   function recordFrameBox(sourceWidth, sourceHeight, portrait, requires4K) {
     var w = Math.round(Number(sourceWidth) || 0);
     var h = Math.round(Number(sourceHeight) || 0);
     if (w < 2 || h < 2) return null;
     var targetWidth = portrait ? (requires4K ? 2160 : 1080) : (requires4K ? 3840 : 1920);
     var targetHeight = portrait ? (requires4K ? 3840 : 1920) : (requires4K ? 2160 : 1080);
-    var ar = targetWidth / targetHeight;
-    var cutW = Math.min(w, h * ar);
-    var cutH = Math.min(h, w / ar);
-    var factor = Math.min(1, targetWidth / cutW, targetHeight / cutH);
-    var outW = Math.max(2, Math.floor(cutW * factor / 2) * 2);
-    var outH = Math.max(2, Math.floor(cutH * factor / 2) * 2);
+    var outW = Math.max(2, Math.floor(Math.min(w, targetWidth) / 2) * 2);
+    var outH = Math.max(2, Math.floor(Math.min(h, targetHeight) / 2) * 2);
+    if (portrait !== (w < h)) { outW = targetWidth; outH = targetHeight; }
+    var drawW = w * Math.min(outW / w, outH / h);
+    var drawH = h * Math.min(outW / w, outH / h);
     return {
       width: outW, height: outH,
-      sx: Math.max(0, (w - cutW) / 2), sy: Math.max(0, (h - cutH) / 2),
-      sw: cutW, sh: cutH,
-      portrait: !!portrait, needsBetterCamera: cutW < targetWidth || cutH < targetHeight
+      sx: 0, sy: 0, sw: w, sh: h,
+      dx: (outW - drawW) / 2, dy: (outH - drawH) / 2,
+      dw: drawW, dh: drawH,
+      portrait: !!portrait,
+      needsBetterCamera: drawW < targetWidth || drawH < targetHeight
     };
   }
   function recordingIsPortrait() {
@@ -2672,13 +2661,11 @@
     canvas.height = layout.height;
     var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) return null;
-    if (layout.needsBetterCamera) {
-      camLine("Camera quality is only " + layout.width + "×" + layout.height +
-        ". This browser cannot supply sharper video at this angle.", true);
-    }
-    // Follow the real camera's frame rate (up to Apple's front camera 4K60).
-    // Safari may expose only 30fps; never label a 30fps stream as 60fps.
-    var fps = Math.min(60, Math.max(1, Math.round(st.frameRate || 30)));
+    cam.recordFullQuality = !layout.needsBetterCamera;
+    if (layout.needsBetterCamera) camLine("This camera cannot fill an upright video at the selected quality. The full view will be kept.", true);
+    // The previous 4K/60 canvas request saved only about 19 real frames per
+    // second on iPhone. Give Safari a 30 fps canvas budget for steady video.
+    var fps = Math.min(isPhone() ? 30 : 60, Math.max(1, Math.round(st.frameRate || 30)));
     cam.recordTargetFps = fps;
     cam.recordFrameSize = canvas.width + "×" + canvas.height;
     function draw() {
@@ -2689,13 +2676,15 @@
           if (!box) return;
           ctx.save();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           if (cam.facing !== "environment") {
             // A normal mirrored selfie, saved in the video, not just the preview.
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
           ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
-            0, 0, canvas.width, canvas.height);
+            box.dx, box.dy, box.dw, box.dh);
           ctx.restore();
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
@@ -2779,7 +2768,7 @@
     }
     var actualFrame = cam.recordFrameSize || "unknown size";
     var fpsRequested = cam.recordTargetFps || 30;
-    var sizeReady = savedWidth >= (activeMode() === "4k" ? 3840 : 1920);
+    var sizeReady = !!cam.recordFullQuality;
     camLine("Recording requested: " + actualFrame + " · up to " + fpsRequested +
       " fps · " + Math.round(opts.videoBitsPerSecond / 1000000) + " Mbps" +
       (cam.facing === "user" ? " · mirrored" : "") +
@@ -3020,19 +3009,9 @@
         var track = stream.getVideoTracks()[0];
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
         var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
-        function locked(fps) {
-          var ask = cameraAsk(facing, fps, recordingIsPortrait() ? "tall" : "wide", true, mode);
-          return { width: ask.width, height: ask.height, frameRate: ask.frameRate };
-        }
-        var apply = track.applyConstraints
-          ? track.applyConstraints(locked(60)).catch(function () {
-            return track.applyConstraints(locked(30)).catch(function () { /* keep the preview */ });
-          })
-          : Promise.resolve();
-        apply.then(function () {
-          if (gen !== cam.gen) { stopTracks(stream); return; }
-          attachStream(stream, mode, noMic, facing);
-        });
+        // Keep the frame the camera opened. The extra tall constraint added
+        // with the crop path did not help this portrait recording.
+        attachStream(stream, mode, noMic, facing);
       }
       function afterOpen(stream, noMic, requestedFacing) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
@@ -3054,7 +3033,7 @@
             finish(stream, noMic, facing);
             return;
           }
-          var video = cameraAsk(requested, 60, recordingIsPortrait() ? "tall" : "wide", true, mode);
+          var video = cameraAsk(requested, 60, "wide", true, mode);
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
@@ -3108,7 +3087,7 @@
       camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
       var asks = [];
-      var faceShape = recordingIsPortrait() ? "tall" : "wide";
+      var faceShape = "wide";
       // A lens flip must not downgrade a genuine 60 fps take to 30 fps.
       // Safari still has a 30 fps fallback if all 60 fps requests fail.
       for (var askFps of [60, 30]) {

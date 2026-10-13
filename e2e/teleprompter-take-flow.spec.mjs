@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32 } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -64,6 +64,12 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       cameraPixels.fillRect(0, 0, sourceWidth, sourceHeight / 2);
       cameraPixels.fillStyle = "blue";
       cameraPixels.fillRect(0, sourceHeight / 2, sourceWidth, sourceHeight / 2);
+      if (edgeMarkers) {
+        cameraPixels.fillStyle = "lime";
+        cameraPixels.fillRect(0, 0, sourceWidth / 8, sourceHeight);
+        cameraPixels.fillStyle = "yellow";
+        cameraPixels.fillRect(sourceWidth * 7 / 8, 0, sourceWidth / 8, sourceHeight);
+      }
       const stream = canvas.captureStream(30);
       const track = stream.getVideoTracks()[0];
       let liveFacing = facing;
@@ -106,7 +112,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -360,11 +366,12 @@ test("drag words while recording stays one take; only a tap changes playback and
   expect(server.errors).toEqual([]);
 });
 
-test("iPhone 60fps front camera saves a 60fps track across lens changes", async ({ page }) => {
+test("iPhone keeps a 60 fps lens but caps the saved canvas at 30 fps across lens changes", async ({ page }) => {
   const { server } = await open(page, { iphone: true, cameraFps: 60 });
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(60);
+  expect(await page.evaluate(() => window.__cameraStreams[0].getVideoTracks()[0].getSettings().frameRate)).toBe(60);
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
   const flip = page.locator("#b-camera-flip");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
@@ -413,9 +420,17 @@ test("live camera stays unrotated while saved video follows the phone turn", asy
       const canvas = window.__recordCanvas;
       if (!canvas || canvas.width < 2 || canvas.height < 2) return false;
       const ctx = canvas.getContext("2d");
-      const top = ctx.getImageData(canvas.width / 2, 1, 1, 1).data;
-      const bottom = ctx.getImageData(canvas.width / 2, canvas.height - 2, 1, 1).data;
-      return top[0] > 200 && top[2] < 50 && bottom[2] > 200 && bottom[0] < 50;
+      // A wide source fitted in a portrait file has black space above and
+      // below it. Read the actual image band, keeping the red-over-blue test.
+      const { data } = ctx.getImageData(Math.floor(canvas.width / 2), 0, 1, canvas.height);
+      const colors = [];
+      for (let p = 0; p < data.length; p += 4) {
+        if (data[p] > 200 && data[p + 2] < 50) colors.push("red");
+        else if (data[p + 2] > 200 && data[p] < 50) colors.push("blue");
+      }
+      const firstBlue = colors.indexOf("blue");
+      return firstBlue > 0 && colors[0] === "red" && colors.at(-1) === "blue" &&
+        colors.slice(firstBlue).every((color) => color === "blue");
     })).toBe(true);
     await page.locator("#b-rec").tap();
     await expect(page.locator("#take-save")).toBeVisible();
@@ -428,6 +443,29 @@ test("live camera stays unrotated while saved video follows the phone turn", asy
   const sideways = await recordShape(90);
   expect(upright[1]).toBeGreaterThan(upright[0]);
   expect(sideways[0]).toBeGreaterThan(sideways[1]);
+  expect(server.errors).toEqual([]);
+});
+
+test("portrait take keeps both edges of a wide camera image without a close crop", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, sourceWidth: 64, sourceHeight: 36, edgeMarkers: true
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await expect.poll(() => page.evaluate(() => {
+    const canvas = window.__recordCanvas;
+    if (!canvas || canvas.width < 2 || canvas.height < 2) return null;
+    const { data } = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+    let lime = false, yellow = false;
+    for (let p = 0; p < data.length; p += 4) {
+      if (data[p] < 100 && data[p + 1] > 150 && data[p + 2] < 100) lime = true;
+      if (data[p] > 150 && data[p + 1] > 150 && data[p + 2] < 100) yellow = true;
+    }
+    return { portrait: canvas.height > canvas.width, lime, yellow };
+  })).toEqual({ portrait: true, lime: true, yellow: true });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });
 
