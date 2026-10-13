@@ -401,8 +401,14 @@ async function verifyOne(row, ctx, verify, timeoutMs, hardStopAt, hardStopMs) {
     return { ok: false, problem: "timeout", reason: "the check was given no time to answer" };
   }
   const limitedByHardStop = hardLeft < perCheckMs;
+  let settled = false;
+  const pending = Promise.resolve().then(() => verify(row, ctx));
+  pending.then(
+    () => { settled = true; },
+    () => { settled = true; }
+  );
   try {
-    const res = await withTimeout(verify(row, ctx), waitMs);
+    const res = await withTimeout(pending, waitMs);
     if (res && typeof res === "object") {
       const ok = res.ok === true;
       return { ok, problem: ok ? null : "stale", reason: clip(res.reason, 200) };
@@ -410,7 +416,11 @@ async function verifyOne(row, ctx, verify, timeoutMs, hardStopAt, hardStopMs) {
     return { ok: false, problem: "unreadable", reason: "the checker did not give an answer" };
   } catch (err) {
     if (err && err.code === "PULSE_NA_TIMEOUT") {
-      return limitedByHardStop
+      const drainMs = Math.min(perCheckMs, Math.max(0, hardStopAt - Date.now()));
+      if (!settled && drainMs > 0) {
+        try { await withTimeout(pending, drainMs); } catch { /* result stays technical and visible below */ }
+      }
+      const answer = limitedByHardStop
         ? {
           ok: false,
           problem: "hard-stop",
@@ -421,6 +431,8 @@ async function verifyOne(row, ctx, verify, timeoutMs, hardStopAt, hardStopMs) {
           problem: "timeout",
           reason: `the check did not answer within ${perCheckMs} ms`
         };
+      if (!settled) answer.openWork = true;
+      return answer;
     }
     return {
       ok: false,
@@ -428,6 +440,10 @@ async function verifyOne(row, ctx, verify, timeoutMs, hardStopAt, hardStopMs) {
       reason: `the read failed: ${clip((err && err.message) || err, 120)}`
     };
   }
+}
+
+export function naAuditHasOpenWork(outcome) {
+  return outcome instanceof Map && [...outcome.values()].some((result) => result?.openWork === true);
 }
 
 /* The memo key for one nothing-to-judge row. A lane code is answered by the lane
@@ -457,6 +473,7 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seede
   const naRows = list.filter((r) => r && r.status === "na");
   const outcome = new Map();
   if (!naRows.length) return outcome;
+  const seededHasOpenWork = naAuditHasOpenWork(seededOutcome);
   const seededByKey = new Map();
   if (seededOutcome instanceof Map) {
     for (const [row, result] of seededOutcome) {
@@ -469,8 +486,17 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seede
     const direct = seededOutcome instanceof Map ? seededOutcome.get(row) : null;
     const key = naKeyOf(row);
     const seeded = direct || (key ? seededByKey.get(`${String(row.id)}\n${key}`) : null);
-    if (seeded && (seeded.ok === true || seeded.problem === "stale")) outcome.set(row, seeded);
-    else pendingRows.push(row);
+    if (seeded && (seededHasOpenWork || seeded.ok === true || seeded.problem === "stale")) {
+      outcome.set(row, seeded);
+    } else if (seededHasOpenWork) {
+      outcome.set(row, {
+        ok: false,
+        problem: "blocked",
+        reason: "an earlier database check is still running, so this check did not start"
+      });
+    } else {
+      pendingRows.push(row);
+    }
   }
   if (!pendingRows.length) return outcome;
   const verify = verifyNa || await defaultVerifyNa();
@@ -484,7 +510,7 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seede
     }
   }
   const memo = new Map();
-  async function runRows(rows, concurrency) {
+  async function runRows(rows, concurrency, stopAfterTimeout = false) {
     let next = 0;
     async function worker() {
       while (next < rows.length) {
@@ -495,7 +521,17 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seede
           pending = verifyOne(row, ctx, verify, budgetMs, hardStopAt, hardStopMs);
           if (key) memo.set(key, pending);
         }
-        outcome.set(row, await pending);
+        const result = await pending;
+        outcome.set(row, result);
+        if (stopAfterTimeout && ["timeout", "hard-stop"].includes(result?.problem)) {
+          while (next < rows.length) {
+            outcome.set(rows[next++], {
+              ok: false,
+              problem: "blocked",
+              reason: "an earlier database check timed out, so this check did not start"
+            });
+          }
+        }
       }
     }
     await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
@@ -511,7 +547,7 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seede
     (hasSharedDatabase || isLane ? serialRows : parallelRows).push(row);
   }
   await Promise.all([
-    runRows(serialRows, 1),
+    runRows(serialRows, 1, true),
     runRows(parallelRows, NA_CONCURRENCY)
   ]);
   return outcome;
@@ -1051,20 +1087,31 @@ export async function auditPulse({
     const api = contract || { toContractCheck, countChecks };
     const ctx = { db, scope, now, functions, laneNaVerify };
 
-    // The reads run side by side. The list of expected checks is only built
-    // here when the pulse did not hand one in.
+    // The list of expected checks is only built here when the pulse did not
+    // hand one in.
     const manifestJob = manifest
       ? Promise.resolve({ want: manifest, error: null })
       : loadManifest({ functions: Array.isArray(functions) ? functions : [], notLiveRows }).then(
         (want) => ({ want, error: null }),
         (err) => ({ want: null, error: clip((err && err.message) || err, 120) })
       );
-    const [outcome, briefs, built, recorder] = await Promise.all([
-      verifyAllNa(checks, { verifyNa, ctx, budgetMs, totalBudgetMs, seededOutcome: naOutcome }),
-      checkBriefsSent({ db, now, orgId }),
-      manifestJob,
-      checkRunRecorder({ db, scope, now, functions, sharedClient })
-    ]);
+    // N/A checks may share one transaction client. Finish them before the
+    // other audit database reads so no outside query can occupy that client's
+    // queue while an N/A check's own clock is running.
+    const outcome = await verifyAllNa(checks, { verifyNa, ctx, budgetMs, totalBudgetMs, seededOutcome: naOutcome });
+    const openNaWork = naAuditHasOpenWork(outcome);
+    const blocked = "An earlier nothing-to-judge database read is still running, so this read did not start.";
+    const [briefs, built, recorder] = openNaWork
+      ? [
+        auditRow(AUDIT_ROW_IDS.briefsSent, "skip", blocked),
+        await manifestJob,
+        auditRow(AUDIT_ROW_IDS.runRecorder, "skip", blocked)
+      ]
+      : await Promise.all([
+        checkBriefsSent({ db, now, orgId }),
+        manifestJob,
+        checkRunRecorder({ db, scope, now, functions, sharedClient })
+      ]);
 
     // 1. every failed "nothing to judge" row becomes a skip row.
     const naRows = checks.filter((r) => r && r.status === "na");

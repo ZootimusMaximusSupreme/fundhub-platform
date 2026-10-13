@@ -6,7 +6,7 @@ Branch worktree: `/private/tmp/fundhub-pr41-repair-20261013`
 
 | Workflow | Owner | Status | Evidence |
 |---|---|---|---|
-| Morning run under about 16 seconds | performance agent | Complete | Final three scratch runs: 9.8 s, 8.0 s, 7.5 s |
+| Morning run under about 16 seconds | performance agent | Complete | Definitive three scratch runs: 8.0 s, 7.5 s, 7.4 s |
 | Cold-start N/A re-checks finish without 2,500 ms timeouts | self-audit agent | Complete | `audit:na-verified` checked all 304 N/A rows cleanly on all three scratch runs |
 | Integrate, run `pulse:prove` three times, update manifest and PR | primary agent | Complete | Three consecutive final `OK` results; manifest updated |
 
@@ -48,19 +48,19 @@ Comparison: main `f367aae3`, GitHub run `38465115587`, job `115530285828` report
 ### Final scratch proof
 
 - Built a new disposable local PostgreSQL database, applied all 353 migrations, and ran through the scratch `fundhub_app` role. No repo environment file was read or changed, and no live database was contacted.
-- Consecutive `npm run pulse:prove` result 1 after final review: final `OK`; whole morning 9.8 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
-- Consecutive `npm run pulse:prove` result 2 after final review: final `OK`; whole morning 8.0 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
-- Consecutive `npm run pulse:prove` result 3 after final review: final `OK`; whole morning 7.5 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
-- `coverage-gap-fulfillment` was below the printed five-slowest floor on every final run; on runs 2 and 3 it was under 0.5 s.
-- `env -u DATABASE_URL node --test src/pulse/self-audit.test.mjs src/pulse/na-conditions.test.mjs src/pulse/daily-pulse.test.mjs src/workflows/daily-pulse.test.mjs` — 167 passed, 0 failed, 0 skipped.
+- Definitive consecutive `npm run pulse:prove` result 1: final `OK`; whole morning 8.0 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
+- Definitive consecutive `npm run pulse:prove` result 2: final `OK`; whole morning 7.5 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
+- Definitive consecutive `npm run pulse:prove` result 3: final `OK`; whole morning 7.4 s; `audit:na-verified` checked all 304 N/A rows; no SQL error, write, send, or cut-off.
+- `coverage-gap-fulfillment` was below the printed five-slowest floor on every definitive run; on runs 2 and 3 it was under 0.4 s.
+- `env -u DATABASE_URL node --test src/pulse/self-audit.test.mjs src/pulse/na-conditions.test.mjs src/pulse/daily-pulse.test.mjs src/workflows/daily-pulse.test.mjs` — 169 passed, 0 failed, 0 skipped.
 - `env -u DATABASE_URL npm run lint` — 3,452 files and inline scripts parse clean.
 - `env -u DATABASE_URL npx --no-install tsc --noEmit` — exit 0.
-- `env -u DATABASE_URL npm test` ran with local test ports allowed and no database. The Postgres half had 83 pass, 0 fail, and 1,005 expected no-database skips. The unit half had one load-only failure: `e2e/agent-editor-promote-demote.spec.mjs:96` inside the 374-test display batch. The exact file then passed 8 of 8 in isolation. No agent-editor file was changed.
+- Final `env -u DATABASE_URL npm test` ran with local test ports allowed and no database: unit 21,932 pass, 0 fail, 23 existing skips; Postgres 83 pass, 0 fail, 1,005 expected no-database skips; runner exits 0/0. No agent-editor file was changed.
 
 ### N/A cold-start and queue fix (no live database)
 
 - Cause: lane re-checks started eight 2,500 ms clocks at once, but the bundle proof gives them one serial Postgres client. Later reads spent their clock waiting behind earlier reads and were falsely called timeouts.
-- `src/pulse/self-audit.mjs`: lane modules now load before per-check clocks. Lane-backed N/A checks then run one at a time, so queued time is outside the next check's clock. Non-lane reasons still run eight at a time. `prepareNaAudit` lets the morning runner start coverage proof early; `auditPulse` reuses exact early results and still checks rows added later. A failed or unreadable check stays visible; no false result becomes green.
+- `src/pulse/self-audit.mjs`: lane modules load before per-check clocks. With a database, every N/A check runs in order on the one client; pure no-database checks retain bounded parallel work. A real timeout stops later reads honestly. If the underlying query is still open, the final audit starts zero verifiers or database reads and the morning run starts no later database read or write. A failed or unreadable check stays visible; no false result becomes green.
 - `src/pulse/self-audit.test.mjs`: added cold-module PASS proof, exact built-funnels/catalog-data serial-client queue proof, measured-false FAIL proof, early-result reuse proof, and a proof that an early technical timeout is retried rather than reused.
 - `env -u DATABASE_URL -u NETLIFY_DATABASE_URL node --test src/pulse/self-audit.test.mjs src/pulse/daily-pulse.test.mjs src/workflows/daily-pulse.test.mjs` — 130 passed, 0 failed, 0 skipped, 5.72 s total. The set includes two intentional 2 s cutoff tests.
 - `npm run lint` — clean.
