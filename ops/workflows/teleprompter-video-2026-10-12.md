@@ -259,3 +259,21 @@ Release `38351397744` succeeded. Sol's deployed-site WebKit proof passed **6/6 (
 The 6:33 p.m. release at `2314782f` passed GitHub ship run `38331857922` and served the new 1080p Ad script. Chris's 6:35 p.m. iPhone screenshot showed a wide camera feed letterboxed into a thin middle strip on the upright screen. This is a preview regression from accepting a wide result of the new 1080p request. The next repair rejects wide results on an upright phone, tries all 1080p modes, then uses the previously proven portrait 4K front-camera source while saving the Ad at 1080p. `docs/rules/TELEPROMPTER-VIDEO.md` now requires measured stage-by-stage evidence and a real phone preview before calling a camera change ready.
 
 The full-frame repair shipped at 5:44 p.m. Phoenix in commit `c5026292`; GitHub run `38328006180` passed. The smooth-scroll recording follow-up and Codex instruction migration shipped in commits `c54f8d5f` and `00f20473`; GitHub run `38330313337` passed and the live HTML loaded `teleprompter.js?v=20261012-smooth1`. The Ad quality correction and frame counters still need release and a fresh iPhone take before the recording can be called smooth.
+
+## Hardened (2026-10-13, Claude)
+
+Chris filmed two takes on the live app after the black-screen fix and said it is perfect. Measured from the Drive diagnostics:
+
+- 1080p Ad, 2:17 p.m.: 281 camera frames in 9.4 s (30 fps), 281 copied, longest gap 56 ms, front camera, 2D path.
+- 4K, 2:59 p.m. ("Direct Book Thank You Take 1"): 296 camera frames in 9.9 s (30 fps), 0 missed, longest gap 47 ms, front camera, WebGL path.
+
+He asked to harden it. Locked as owner law in `.claude/rules/teleprompter-camera.md` and `.cursor/rules/teleprompter-camera.mdc`, with a line in `CLAUDE.md`. `docs/rules/TELEPROMPTER-VIDEO.md` now says 30 fps until the iPhone app (it still asked for 60).
+
+New locks:
+
+- `e2e/teleprompter-take-flow.spec.mjs`: the saved video is mirrored on the front camera and as-is on the back, on the 1080p (2D) and 4K (WebGL) paths, through front → back → front in one take. It reads the canvas behind the recorder's own track. Fails when the mirror is turned off, and fails when the back camera is mirrored.
+- `e2e/teleprompter-touch.spec.mjs`: holding a line opens no editor and no keyboard, and typing changes nothing. Fails when hold-to-edit comes back.
+
+Manifest: no app code changed. Files: the two specs, the two rule files, `CLAUDE.md`, `docs/rules/TELEPROMPTER-VIDEO.md`, this board. Journeys: none changed.
+
+Proof: teleprompter unit tests 97/97; every teleprompter browser spec 134/134; lint clean; `tsc --noEmit` clean.

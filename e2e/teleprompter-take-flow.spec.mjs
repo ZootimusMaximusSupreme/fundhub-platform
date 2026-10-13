@@ -1163,6 +1163,60 @@ test("portrait take keeps both edges of the native portrait camera without a cro
   expect(server.errors).toEqual([]);
 });
 
+/* Owner call 2026-10-13: the saved video looks like a mirror on the front camera,
+   so he is not looking the wrong way. The back camera saves the world as it is.
+   The fake camera has lime down its left edge and yellow down its right edge. */
+const savedEdges = (page) => page.evaluate(() => {
+  // The canvas behind the recorder's own video track: the picture that is saved.
+  const track = window.__recordStream && window.__recordStream.getVideoTracks()[0];
+  const src = track && track.canvas;
+  if (!src || src.width < 8 || src.height < 8) return null;
+  const row = document.createElement("canvas");
+  row.width = src.width; row.height = 1;
+  const g = row.getContext("2d");
+  g.drawImage(src, 0, Math.floor(src.height / 2), src.width, 1, 0, 0, src.width, 1);
+  const d = g.getImageData(0, 0, src.width, 1).data;
+  const color = (x) => {
+    const i = Math.floor(x) * 4;
+    if (d[i] < 100 && d[i + 1] > 150 && d[i + 2] < 100) return "lime";
+    if (d[i] > 150 && d[i + 1] > 150 && d[i + 2] < 100) return "yellow";
+    return "other";
+  };
+  return [color(src.width * 0.03), color(src.width * 0.97)];
+});
+
+for (const [film, shape, kind] of [
+  ["1080p Ad", { savedCam: "1080p", sourceWidth: 36, sourceHeight: 64, scriptShapes: [{ stack_kind: "ad", script_format: "standard", take_file_name: "SLO Ad 91 — Script 1 Take 1.mp4" }] }, "2d"],
+  ["4K VSL", { savedCam: "4k", sourceSizeByAsk: true, scriptShapes: [{ stack_kind: "vsl", script_format: "vsl", take_file_name: "SLO VSL 1 — Script 1 Take 1.mp4" }] }, "webgl"]
+]) {
+  test(`${film}: the front camera is saved mirrored and the back camera is saved as it is (owner call 2026-10-13)`, async ({ page }) => {
+    const { server } = await open(page, { iphone: true, edgeMarkers: true, liveCamera: true, ...shape });
+    const flip = page.locator("#b-camera-flip");
+    await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+    await page.locator("#b-rec").tap();
+    await expect(page.locator("#b-rec")).toHaveText("Stop");
+    // The saved picture goes through the path this kind of film really uses.
+    expect(await page.evaluate(() => window.__recordStream.getVideoTracks()[0].canvas.getContext("webgl") ? "webgl" : "2d")).toBe(kind);
+    // Front: mirrored. His right hand shows on the right of the saved video.
+    await expect.poll(() => savedEdges(page), { timeout: 5000 }).toEqual(["yellow", "lime"]);
+    // Flip to the back camera in the same take: saved as the world looks.
+    await flip.tap();
+    await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+    await expect.poll(() => savedEdges(page), { timeout: 5000 }).toEqual(["lime", "yellow"]);
+    // And back to the front: mirrored again.
+    await page.waitForTimeout(550);
+    await flip.tap();
+    await expect(flip).toHaveAttribute("aria-label", "Use back camera");
+    await expect.poll(() => savedEdges(page), { timeout: 5000 }).toEqual(["yellow", "lime"]);
+    expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+    await page.waitForTimeout(550);
+    await page.locator("#b-rec").tap();
+    await expect(page.locator("#take-save")).toBeVisible();
+    await page.locator("#take-save-no").tap();
+    expect(server.errors).toEqual([]);
+  });
+}
+
 test("sideways phone keeps Safari preview unrotated and saves a wide file", async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const { server } = await open(page, { iphone: true, sourceWidth: 36, sourceHeight: 64 });
