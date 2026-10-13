@@ -20,14 +20,13 @@ Filming priority: owner is strongest in the morning and wants to leave home by 1
 - [ ] Make sure Cortana is fully set up correctly with the funnel.
 - [ ] Make sure Bram (also dictated as Brahm), the credit client, is handled — next after the CRS payment.
 - [ ] Help Colin with Lexi’s nexus.
-- [ ] Pay CRS — BLOCKED / UNPAID: business credit card was declined with an “insufficient funds” message. Resolve the card/payment issue, then complete payment (owner update, 5:58 AM).
 - [ ] Get coffee at Panera.
 - [ ] Optional: sushi around 1:00–2:00 PM if filming allows.
 - [ ] Clean the house floors today — after handling Bram/Brahm.
 - [ ] Gym tonight — full workout before bed.
 - [ ] Figure out a strategy to stack other work while AI runs, without staring at the screen or obsessively checking loading.
 
-Completed today: sauna — done at 5:00 AM Arizona.
+Completed today: sauna — done at 5:00 AM Arizona; CRS — paid (owner confirmed at 7:01 AM Arizona).
 - [ ] **Repository cleanup — code only.** Owner wants just the code; everything else is unnecessary. Remove stale notes, duplicate plans/to-do lists, abandoned extras, and other non-code clutter. Before deleting, identify any non-code files the live application requires and flag those dependencies. Preserve working code and other sessions’ unfinished work.
 
 ## Priority — iPhone teleprompter launch readiness (updated 2026-10-13)
