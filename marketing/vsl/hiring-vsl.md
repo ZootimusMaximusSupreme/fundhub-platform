@@ -15,7 +15,7 @@ Aim for 4 to 6 minutes. Lead with the money.
 
 1. If you can close, we'll make you a lot of money. [Top closer earnings last month — fill in before filming.]
 2. The reason you'll make money here: our paid ads and our affiliate partners fill the calendar. You talk to business owners who already asked to talk to us.
-3. They already know what credit card stacking is when they book. They want someone who can get it done, and that's you.
+3. We have an offer for every person who books: done-for-you funding, credit optimization, Capital Blueprint and Capital Academy. Most already know what they want, and you match them to the right path, so more of your calls end in a sale.
 4. The average client gets $100,000 to $300,000 in funding, so every deal you close is a big one for them.
 5. You're selling something real. Close to a decade in funding, hundreds of files, thousands of data points. Our own software, UnderwriteIQ, reviews every file the way a lender does.
 6. Your sales manager coaches you and holds you to clear numbers. Our CRM and internal AI tools do the busywork, so your time goes to calls.

@@ -20,7 +20,7 @@ Aim for 4 to 6 minutes.
 6. What I do best is build the product, the offers and the marketing. I need someone who makes sure every process runs end to end, every week.
 7. What you own: the team, the numbers, the weekly meetings and the hiring. You report to me.
 8. Your first 90 days: learn every seat and every number, run a weekly KPI meeting with a scorecard for every seat, hire and onboard closers and CSMs, and give every step from ad click to funded client an owner and a number.
-9. We're scaling paid acquisition, so your job is to make sure the company handles the growth without dropping a client.
+9. We sell done-for-you funding, credit optimization, Capital Blueprint and Capital Academy, with Finance OS and alternative financing on the way. We're scaling paid acquisition across all of them, so your job is to make sure the company handles the growth without dropping a client.
 10. Comp: [base, plus equity or profit share — fill in before filming].
 11. The application takes about 5 minutes. You'll add your LinkedIn, a founder or investor I can call, and a 90-second Loom.
 12. Strong fits pick a time with me right after they apply. Click Apply for the COO Seat below.
