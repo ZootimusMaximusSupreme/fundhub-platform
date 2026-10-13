@@ -47,6 +47,8 @@ Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last reco
 
 - [ ] Continue the existing refactor plan: `ops/workflows/company-refactor-plan-2026-10-12.md`. Goals: less duplicate code, lower AI token use, stronger architecture, better performance, and roughly half the code where justified. Measure improvements and preserve behavior.
 - [ ] Repository cleanup — code only. Identify required non-code dependencies before deleting clutter; protect working code and other sessions' unfinished work.
+- [ ] Get the client portal on the App Store (owner-added 2026-10-13).
+- [ ] Get the Fundhub employee app on the App Store (owner-added 2026-10-13).
 
 ### 7. Personal
 
