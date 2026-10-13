@@ -158,3 +158,15 @@ Budget fact: the account was 86% used when Wave 5 began. This wave checkpoints a
 - Net strict gain: 4 rows. Display red moved from 1,095 to 1,092. Door red moved from 323 to 322. Flow stays 121. Read stays 14. Strict catalog total moved from 1,553 to 1,549.
 - Focused tests: AB3 3/3, CD2 2/2, EF/Public3 1/1, Door/Flow/Read2 1/1. Display guard 2/2. Door aggregate 989/989. Read metadata guard 2/2.
 - Catalog rebuild: 3,942 unique; 3,919 mapped/wired; 23 unmapped red. This map count is not the runtime result count.
+
+## Wave 6 — focused low-risk UI groups
+
+| Lane | Model | Exact scope | Status |
+|---|---|---|---|
+| Shared shells | Luna Medium | remaining controls on `sidebar.fragment.html`, staff `shell.js`, and public app `shell.js`; new `display-contracts-shells-1.*` only | claimed |
+| Teleprompter | Luna Medium | remaining `desks-f.json` teleprompter controls; new `display-contracts-teleprompter-4.*` only | claimed |
+| Money connections/plan | Luna Medium | remaining controls on `money-connections.html` and `money-plan.html`; new `display-contracts-money-2.*` only | claimed |
+| Teams/social | Luna Medium | remaining controls on `staff-teams.html` and `social-studio.html`; new `display-contracts-teams-social-1.*` only | claimed |
+| Integration | Sol High | fresh review, imports, counts, focused tests, and checkpoint commit | claimed |
+
+Rule: real rendered action plus observed result only. Existing page loads, selectors, text, and fake green claims stay red.
