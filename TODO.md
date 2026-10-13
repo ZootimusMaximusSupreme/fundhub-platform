@@ -27,6 +27,8 @@ Aim to leave home around 10:00 AM and finish filming before 2:00 PM. The telepro
 
 ### 4. Sales and system checks
 
+- [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).
+
 - [ ] Finish heartbeat fixes — coding is in progress; review what works and what still needs attention.
 - [ ] Do mock sales calls.
 - [ ] Walk through the dashboard and the complete sales/setting process.
