@@ -34,7 +34,10 @@ const REPORT_PATHS = Object.freeze({
    through the personal-file gate. The host check above still applies. */
 const BUSINESS_PATHS = new Set([
   "/api/ccc/exp/search",
-  "/api/ccc/exp/report"
+  "/api/ccc/exp/report",
+  "/api/top-business-search/top-business-search",
+  "/api/top-business-report/top-business-report",
+  "/api/top-business-report/pdf/top-business-report"
 ]);
 
 function bureauForReportPath(pathname) {

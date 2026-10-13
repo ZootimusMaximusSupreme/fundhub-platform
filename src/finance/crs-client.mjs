@@ -187,6 +187,34 @@ function binFromBusinessSearch(body) {
   return null;
 }
 
+/* LexisNexis Top Business returns a selection key, not a report-ready company
+   record. The caller must show this small, explicit match list and send the
+   chosen ids back — never guess that the first search hit is the right firm. */
+function topBusinessMatches(body) {
+  const rows = Array.isArray(body) ? body
+    : Array.isArray(body?.results) ? body.results
+      : Array.isArray(body?.data?.results) ? body.data.results
+        : body && typeof body === "object" ? [body] : [];
+  return rows.map((row) => {
+    const seleID = Number(row?.seleID ?? row?.seleId);
+    const orgID = Number(row?.orgID ?? row?.orgId ?? 0);
+    const ultID = Number(row?.ultID ?? row?.ultId ?? 0);
+    if (!Number.isSafeInteger(seleID) || seleID <= 0
+        || !Number.isSafeInteger(orgID) || orgID < 0
+        || !Number.isSafeInteger(ultID) || ultID < 0) return null;
+    return {
+      seleID,
+      orgID,
+      ultID,
+      companyName: String(row?.companyName ?? row?.businessName ?? row?.name ?? "").trim(),
+      streetAddress: String(row?.streetAddress ?? row?.address ?? "").trim(),
+      city: String(row?.city ?? "").trim(),
+      state: String(row?.state ?? "").trim().toUpperCase(),
+      zipCode: String(row?.zipCode ?? row?.postalCode ?? "").trim()
+    };
+  }).filter(Boolean);
+}
+
 function looksLikeReport(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) return false;
   return Array.isArray(body.creditFiles)
@@ -512,6 +540,41 @@ export function createCrsClient({ env = process.env, fetchImpl, now = Date.now }
     return { ok: true, report: report.body, bin, error: null };
   }
 
+  /** Search LNR Top Business. This contains business-only fields: no person,
+   * SSN, date of birth, or consumer-credit identity is accepted here. */
+  async function searchTopBusiness({ companyName, streetAddress = "", city = "", state = "", zipCode = "" } = {}) {
+    const company = String(companyName ?? "").trim();
+    if (!company) return { ok: false, matches: [], error: "company name is required" };
+    const search = await authed("/top-business-search/top-business-search", {
+      body: {
+        companyName: company,
+        streetAddress: String(streetAddress ?? "").trim(),
+        city: String(city ?? "").trim(),
+        state: String(state ?? "").trim().toUpperCase(),
+        zipCode: String(zipCode ?? "").trim()
+      }
+    });
+    if (search.blocked || !search.ok) {
+      return { ok: false, matches: [], error: safeResponseError(search, "LNR business search failed") };
+    }
+    return { ok: true, matches: topBusinessMatches(search.body), error: null };
+  }
+
+  /** Pull the LNR Comprehensive Business Report for a match the operator chose. */
+  async function pullTopBusinessReport({ seleID, orgID, ultID } = {}) {
+    const ids = { seleID: Number(seleID), orgID: Number(orgID), ultID: Number(ultID) };
+    if (!Number.isSafeInteger(ids.seleID) || ids.seleID <= 0
+        || !Number.isSafeInteger(ids.orgID) || ids.orgID < 0
+        || !Number.isSafeInteger(ids.ultID) || ids.ultID < 0) {
+      return { ok: false, report: null, error: "a valid LNR business match is required" };
+    }
+    const report = await authed("/top-business-report/top-business-report", { body: ids });
+    if (report.blocked || !report.ok || !report.body || typeof report.body !== "object") {
+      return { ok: false, report: null, error: safeResponseError(report, "LNR business report failed") };
+    }
+    return { ok: true, report: report.body, error: null };
+  }
+
   return {
     config,
     host: config.host,
@@ -522,6 +585,8 @@ export function createCrsClient({ env = process.env, fetchImpl, now = Date.now }
     orderPrequal,
     retrievePrequal,
     orderBusinessReport,
+    searchTopBusiness,
+    pullTopBusinessReport,
     // Test seam only — lets a test assert the cache without exporting the
     // token itself, which has no business leaving this closure.
     _tokenState: () => ({ hasToken: !!token, hasRefresh: !!refreshToken, expiresAt })

@@ -157,6 +157,24 @@ test("CRS provider: unlisted sandbox endpoints are refused", async () => {
   assert.equal(called, false);
 });
 
+test("CRS provider: allows the documented LNR Top Business endpoints", async () => {
+  for (const path of [
+    "/api/top-business-search/top-business-search",
+    "/api/top-business-report/top-business-report",
+    "/api/top-business-report/pdf/top-business-report"
+  ]) {
+    let called = false;
+    const result = await requestCrsSandbox({
+      url: "https://api-sandbox.stitchcredit.com" + path,
+      env: { ADAPTERS_DRY_RUN: "0" },
+      body: "{}",
+      fetchImpl: async () => { called = true; return response({ ok: true }); }
+    });
+    assert.equal(result.ok, true, path);
+    assert.equal(called, true, path);
+  }
+});
+
 test("CRS provider: errors redact credentials and Social Security numbers", () => {
   const password = "unit-password-not-real";
   const safe = redactCrsError(

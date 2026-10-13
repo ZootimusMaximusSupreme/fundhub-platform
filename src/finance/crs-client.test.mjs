@@ -323,3 +323,36 @@ test("CRS client: a company match orders that business report", async () => {
   assert.deepEqual(bodies[0].body, { name: "Acme LLC", state: "CA" });
   assert.deepEqual(bodies[1].body, { bin: "BIN9" });
 });
+
+test("CRS client: LNR search returns explicit selectable business matches", async () => {
+  const bodies = [];
+  const client = createCrsClient({
+    env: LIVE_ENV,
+    fetchImpl: async (url, init) => {
+      if (url.endsWith("/api/users/login")) return response(200, { token: "unit-lnr", refreshToken: "r", expires: 3600 });
+      bodies.push({ url, body: JSON.parse(init.body) });
+      return response(200, { results: [{ seleId: 10, orgId: 11, ultId: 12, companyName: "Acme LLC", city: "Phoenix", state: "az" }] });
+    }
+  });
+  const out = await client.searchTopBusiness({ companyName: "Acme LLC", city: "Phoenix", state: "az" });
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.matches, [{ seleID: 10, orgID: 11, ultID: 12, companyName: "Acme LLC", streetAddress: "", city: "Phoenix", state: "AZ", zipCode: "" }]);
+  assert.match(bodies[0].url, /top-business-search\/top-business-search$/);
+  assert.deepEqual(bodies[0].body, { companyName: "Acme LLC", streetAddress: "", city: "Phoenix", state: "AZ", zipCode: "" });
+});
+
+test("CRS client: LNR report uses only the selected business ids", async () => {
+  let reportBody = null;
+  const client = createCrsClient({
+    env: LIVE_ENV,
+    fetchImpl: async (url, init) => {
+      if (url.endsWith("/api/users/login")) return response(200, { token: "unit-lnr", refreshToken: "r", expires: 3600 });
+      reportBody = JSON.parse(init.body);
+      return response(200, { comprehensive: true });
+    }
+  });
+  const out = await client.pullTopBusinessReport({ seleID: 10, orgID: 11, ultID: 12 });
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.report, { comprehensive: true });
+  assert.deepEqual(reportBody, { seleID: 10, orgID: 11, ultID: 12 });
+});
