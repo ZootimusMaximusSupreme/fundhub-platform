@@ -6,6 +6,8 @@ Find the fault shown by the new Drive recording and fix that recording path. Kee
 
 Owner follow-up: after the real iPhone recording meets the requested quality and motion targets, harden the proven camera, frame-rate, scroll, lens-switch, device-save, and Drive-upload behaviors against future regressions. Finish the recording repair and real-phone proof before starting that next phase.
 
+Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 1080p60; VSLs and other 4K films must save full-frame 4K60. The earlier 4K30–60 allowance is superseded. A 30 fps file remains a failed quality proof.
+
 ## Workflows
 
 | Owner | Work | Status |
@@ -40,6 +42,19 @@ Owner follow-up: after the real iPhone recording meets the requested quality and
 - Changed: `public/app/teleprompter.js`, `public/app/teleprompter.html` (fresh asset version), `docs/journeys/shoot-flow.md`, `docs/journeys/CHANGELOG.md`. Tests are owned by `/root/proof_tests`.
 
 ## Test and live proof
+
+### Follow-up: remove the deliberate iPhone 4K30 recording cap
+
+- The 4K camera request already starts at 60 fps, but `continuousRecordStream` deliberately capped iPhone 4K at 30. This is a confirmed recording-stage cap, separate from the still-unlocated 1080p30 result in the newest real take.
+- Before changing production code, the stricter tests failed as expected: two unit guards and all five focused 4K browser cases received the old 30 fps limit. The correction sets the recording budget to 60 for both modes and keeps the same source-frame pump, full-frame layout, encoder handoff, lens switching, and upload bytes.
+- Live 1080p60 and 4K60 acceptance remain open until the next measured iPhone recordings pass. Automatic per-take camera/copy/encoder-request measurements are included in the pending release.
+- After the cap change: **61/61 unit checks and 44/44 browser checks pass**, including all 60 fresh 4K-source frames with callback jitter or fixed `mediaTime`, and a 120 fps source limited near 60 copies. These mock-camera checks prove code behavior, not real iPhone output.
+- A real desktop WebKit run at a 2160×3840 canvas decoded **89 clean frames from 90 total draws** (the initial paint occurs before recording starts), with no exact adjacent duplicate frames. The extra canvas used to emulate the camera supplied about 23 fps; the recorded file stays at about 23.25 fps. This confirms playable encoder handoff at the supplied rate and **does not pass the real 4K60 target**. Raw file `/tmp/fundhub-real-encoder-4k60.mp4`; log `/tmp/fundhub-real-encoder-4k60.log`. Luna independently decoded it with PyAV; real-phone proof remains open.
+
+### Release checks and isolation
+
+- Diagnostics commit `b62ac55cd` is on GitHub. Its main release failed the existing Pulse route-count mismatch (65 expected, 64 present), which also failed the preceding unrelated release.
+- A release snapshot based on the last verified live commit plus the diagnostics change (`9dc923417`) passed lint, 117 scoped units, 43 browser checks, 26 security/routes guards, 94 Pulse guards, catalog checks, and both Pulse proof gates without bypasses. It was not deployed: a separate main commit `146b90f50` corrected the route guard totals and started the normal release. Use the normal release if it passes; do not overwrite concurrent main work with the isolated snapshot.
 
 ### Follow-up: preserve the phone's stage measurements with the next take
 

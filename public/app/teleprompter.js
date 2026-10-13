@@ -2674,10 +2674,9 @@
     if (!ctx) return null;
     cam.recordFullQuality = !layout.needsBetterCamera;
     if (layout.needsBetterCamera) camLine("This camera cannot fill an upright video at the selected quality. The full view will be kept.", true);
-    // Keep the encoder at a rate the phone can sustain. Copy a camera frame
-    // only when the preview has a new one; repeated 4K canvas draws take time
-    // away from the script's animation frames.
-    var maxFps = isPhone() && requires4K ? 30 : 60;
+    // Ads and 4K films both target 60 fps. Copy only fresh camera frames;
+    // never halve a granted 4K60 source because it is an iPhone.
+    var maxFps = 60;
     // An omitted camera setting does not mean the camera is limited to 30.
     var fps = st.frameRate > 0 ? Math.min(maxFps, Math.max(1, Math.round(st.frameRate))) : maxFps;
     cam.recordTargetFps = fps;
@@ -2737,7 +2736,7 @@
       // Each video callback has a fresh camera frame. Do not reject it for
       // callback jitter when the recording budget can keep the source rate.
       // Live Safari streams can report mediaTime=0 forever. Use their advancing
-      // presentation timestamp only when reducing a faster source (4K/30).
+      // presentation timestamp only when reducing a source faster than 60 fps.
       var copyFreshFrame = fromCamera && fps >= sourceFps;
       var presentationTime = metadata && metadata.presentationTime;
       var frameTime = fromCamera && typeof presentationTime === "number" && isFinite(presentationTime) ? presentationTime : now;

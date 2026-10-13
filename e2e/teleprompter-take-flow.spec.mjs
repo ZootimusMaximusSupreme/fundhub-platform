@@ -534,16 +534,17 @@ test("an iPhone ad requests portrait 1080p and a 60 fps take despite a saved 4K 
   expect(server.errors).toEqual([]);
 });
 
-test("an iPhone VSL requests 4K and a 30 fps take despite a saved 1080p choice", async ({ page }) => {
+test("an iPhone VSL requests 4K and a 60 fps take despite a saved 1080p choice", async ({ page }) => {
   const { server } = await open(page, {
     iphone: true, cameraFps: 60, savedCam: "1080p", sourceWidth: 1080, sourceHeight: 1920,
     scriptShapes: [{ stack_kind: "vsl", script_format: "vsl", take_file_name: "SLO VSL 1 — Script 1 Take 1.mp4" }]
   });
   const ask = await page.evaluate(() => window.__cameraAsks[0].video);
   expect([ask.width.ideal, ask.height.ideal]).toEqual([3840, 2160]);
+  expect(ask.frameRate.ideal).toBeGreaterThanOrEqual(60);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(60);
   await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
@@ -670,7 +671,7 @@ test("camera rate counts presented frames even when video callbacks skip frames"
   expect(server.errors).toEqual([]);
 });
 
-test("4K VSL caps fresh 60 fps camera frames near 30 canvas copies", async ({ page }) => {
+test("4K VSL copies each fresh 60 fps camera frame despite callback jitter", async ({ page }) => {
   const { server } = await open(page, {
     iphone: true, cameraFps: 60, manualVideoCallbacks: true,
     sourceWidth: 1080, sourceHeight: 1920,
@@ -686,9 +687,32 @@ test("4K VSL caps fresh 60 fps camera frames near 30 canvas copies", async ({ pa
     window.__sendVideoFrames(times);
     return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
   });
-  expect(rate).toBe(30);
-  expect(copied).toBeGreaterThanOrEqual(25);
-  expect(copied).toBeLessThanOrEqual(35);
+  expect(rate).toBe(60);
+  expect(copied).toBe(60);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("4K VSL limits a faster 120 fps source to about 60 canvas copies", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 120, manualVideoCallbacks: true,
+    sourceWidth: 1080, sourceHeight: 1920,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const { copied, rate } = await page.evaluate(() => {
+    const before = window.__recordDraws;
+    const every = 1000 / 120;
+    const start = performance.now() + 100;
+    const times = Array.from({ length: 120 }, (_, i) => start + (i + 1) * every);
+    window.__sendVideoFrames(times);
+    return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
+  });
+  expect(rate).toBe(60);
+  expect(copied).toBeGreaterThanOrEqual(55);
+  expect(copied).toBeLessThanOrEqual(65);
   await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
@@ -718,7 +742,7 @@ for (const frozenMediaTime of [0, 2]) {
     expect(server.errors).toEqual([]);
   });
 
-  test(`4K VSL caps fresh frames when mediaTime stays ${frozenMediaTime}`, async ({ page }) => {
+  test(`4K VSL copies all fresh frames when mediaTime stays ${frozenMediaTime}`, async ({ page }) => {
     const { server } = await open(page, {
       iphone: true, cameraFps: 60, manualVideoCallbacks: true,
       sourceWidth: 1080, sourceHeight: 1920,
@@ -734,9 +758,8 @@ for (const frozenMediaTime of [0, 2]) {
       window.__sendVideoFrames(times, [], times.map(() => mediaTime));
       return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
     }, frozenMediaTime);
-    expect(rate).toBe(30);
-    expect(copied).toBeGreaterThanOrEqual(25);
-    expect(copied).toBeLessThanOrEqual(35);
+    expect(rate).toBe(60);
+    expect(copied).toBe(60);
     await page.locator("#b-rec").tap();
     await page.locator("#take-save-no").tap();
     expect(server.errors).toEqual([]);
