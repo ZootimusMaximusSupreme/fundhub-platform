@@ -268,13 +268,18 @@ describe("teleprompter, pure", () => {
 
   test("mic status names RØDE only when Safari exposes that device name", () => {
     const T = load();
-    assert.equal(T.micLabel(""), "Mic · source unknown");
-    assert.equal(T.micLabel("Default"), "Mic · source unknown");
-    assert.equal(T.micLabel("RØDE Wireless GO II"), "RØDE mic");
-    assert.equal(T.micLabel("RODE Wireless ME"), "RØDE mic");
-    assert.equal(T.micLabel("iPhone Microphone"), "iPhone mic");
-    assert.equal(T.micLabel("External Microphone"), "External Microphone");
-    assert.equal(T.micLabel("Microphone"), "Mic · source unknown");
+    assert.equal(T.micLabel(""), "Mic on");
+    assert.equal(T.micLabel("Default"), "Mic on");
+    assert.equal(T.micLabel("RØDE Wireless GO II"), "Rode on");
+    assert.equal(T.micLabel("RODE Wireless ME"), "Rode on");
+    assert.equal(T.micLabel("Wireless Micro"), "Rode on");
+    assert.equal(T.micLabel("iPhone Microphone"), "iPhone mic on");
+    assert.equal(T.micLabel("External Microphone"), "External Microphone on");
+    assert.equal(T.micLabel("Microphone"), "Mic on");
+    // A hidden or plain name is never called a Rode.
+    assert.equal(T.isRodeMic("Microphone"), false);
+    assert.equal(T.isRodeMic(""), false);
+    assert.equal(T.isRodeMic("RØDE VideoMic Me-C"), true);
   });
 
   test("Copy script keeps every displayed paragraph in one clipboard string", () => {
@@ -798,12 +803,23 @@ describe("teleprompter upload continuity", () => {
     assert.match(HTML, /id="mic-monitor"/);
     assert.match(HTML, /id="mic-name"/);
     assert.match(HTML, /id="mic-bars"/);
-    const meter = SRC.slice(SRC.indexOf("function syncMicMeter()"), SRC.indexOf("  var takeDialog"));
+    const meter = SRC.slice(SRC.indexOf("function syncMicMeter()"), SRC.indexOf("  /* Plug a Rode in"));
     assert.match(meter, /cam\.audioTrack && cam\.audioTrack\.readyState === "live"/);
     assert.match(meter, /createMediaStreamSource\(new root\.MediaStream\(\[track\]\)\)/);
     assert.match(meter, /getByteTimeDomainData\(sample\)/);
     assert.doesNotMatch(meter, /getUserMedia\(/);
     assert.match(SRC, /syncMicMeter\(\);\s*var box = \$\("cam"\)/);
+  });
+
+  test("a Rode plugged in or pulled out moves the mic, but never during a take (owner call 2026-10-13)", () => {
+    const follow = SRC.slice(SRC.indexOf("function followMic()"), SRC.indexOf("  var takeDialog"));
+    assert.match(SRC, /mediaDevices\.addEventListener\("devicechange", followMic\)/);
+    assert.match(follow, /isRodeMic\(d\.label\)/);
+    assert.match(follow, /deviceId: \{ exact: rode\.deviceId \}/);
+    // A recording keeps its sound track; the switch waits for Stop.
+    assert.match(follow, /if \(micRecording\(\)\) \{ micAfterTake = true;/);
+    assert.match(SRC, /if \(micAfterTake\) \{ micAfterTake = false; followMic\(\); \}/);
+    assert.match(SRC, /track\.addEventListener\("ended", followMic\)/);
   });
 });
 

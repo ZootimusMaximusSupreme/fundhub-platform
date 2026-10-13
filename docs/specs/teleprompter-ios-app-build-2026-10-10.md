@@ -3,6 +3,11 @@
 **Status: paused.** Chris: the web teleprompter works fine for now. When the app goes out he
 pays the $99 Apple developer account and this gets built. Nothing here is started.
 
+**Owner call 2026-10-13:** 30 fps on the front camera is fine for now; leave the web page as it is.
+Chris pays the $99 Apple developer account at the end of this week. The app is the path to 60 fps
+on the front camera: Safari only offers it at 30 on his iPhone 17 Pro Max (proof on
+`ops/workflows/teleprompter-video-2026-10-12.md`), and the app asks the camera for its 60 fps format directly.
+
 ## Why the app is needed
 
 One thing the web page cannot do on an iPhone: the **volume buttons**. Apple does not let a web

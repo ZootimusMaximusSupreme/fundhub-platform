@@ -30,6 +30,8 @@ The original 10:00 AM departure target has passed. Protect the remaining filming
 
 ### 4. Sales and system checks
 
+- [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).
+
 - [ ] Finish heartbeat fixes — IN PROGRESS: Claude and Codex are working on it. Owner expects completion tonight; this is a target, not verified completion (10:36 AM update). Review results when the work is ready.
 - [ ] Do mock sales calls.
 - [ ] Walk through the dashboard and the complete sales/setting process.
