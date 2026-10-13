@@ -103,7 +103,7 @@ function proofById(id) {
   return proof;
 }
 
-test("the shard exports exact proof metadata and an honest 150-row partition", () => {
+test("the shard exports exact proof metadata and an honest freshly compiled 150-row partition", () => {
   assert.deepEqual(FLOW_READ_CURRENT_RED_COUNTS, {
     flow: 123,
     read: 27,
@@ -118,6 +118,8 @@ test("the shard exports exact proof metadata and an honest 150-row partition", (
   const unprovedKeys = new Set(FLOW_READ_UNPROVED.map((row) => (
     flowReadContractRowKey(row.sourceFile, row)
   )));
+  let wired = 0;
+  let stillRed = 0;
   for (const entry of FLOW_READ_CONTRACTS) {
     assert.equal(entry.key, flowReadContractRowKey(entry.sourceFile, entry));
     assert.deepEqual(flowReadContractProof(entry.sourceFile, entry), entry.proof);
@@ -131,8 +133,19 @@ test("the shard exports exact proof metadata and an honest 150-row partition", (
     assert.equal(catalog.sourceFile, entry.sourceFile);
     assert.equal(catalog.surface, entry.surface);
     assert.equal(catalog.proofAsserts, entry.control);
-    assert.equal(catalog.proofVerdict, "red");
+    assert.equal(catalog.proofVerdict, undefined, `${entry.generatedId} stayed explicitly red after compile`);
+    assert.ok(["e2e", "deep"].includes(catalog.proofDepth));
+    assert.ok(catalog.proof.tests.length > 0, `${entry.generatedId} lost its executable proof target`);
+    if (catalog.state === "wired") {
+      wired += 1;
+      assert.match(catalog.reason, /Mapped to .* executable proof target/);
+    } else {
+      stillRed += 1;
+      assert.equal(catalog.state, "red");
+      assert.match(catalog.reason, /below required level/);
+    }
   }
+  assert.deepEqual({ wired, stillRed }, { wired: 11, stillRed: 1 });
 });
 
 test("every exported proof key is exercised by its real rendered page", async (t) => {

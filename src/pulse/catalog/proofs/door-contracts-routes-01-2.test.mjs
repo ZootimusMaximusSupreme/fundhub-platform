@@ -740,7 +740,9 @@ test("Door 01 second shard exports only exact red rows with full real-handler re
       assert.ok(generated, `missing generated row ${entry.generatedId}`);
       assert.equal(generated.sourceFile, entry.sourceFile);
       assert.equal(generated.surface, entry.surface);
-      assert.equal(generated.proofVerdict, "red");
+      assert.equal(generated.proofVerdict, undefined, `${entry.generatedId} stayed red after its executable proof compiled`);
+      assert.equal(generated.state, "wired");
+      assert.ok(generated.proof.tests.includes("src/pulse/catalog/proofs/door-contracts-routes-01-2.test.mjs"), `${entry.generatedId} lost its executable proof file`);
 
       const runner = RUNNERS.get(entry.generatedId);
       assert.equal(typeof runner, "function", `missing real-handler runner ${entry.generatedId}`);

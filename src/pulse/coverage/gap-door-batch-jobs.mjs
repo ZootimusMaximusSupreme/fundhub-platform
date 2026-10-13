@@ -26,7 +26,6 @@ const PROVED_FINAL_JOB_SURFACES = new Set([
 
 const FINAL_JOB_SURFACES = new Set([
   "workflow:contract-chaser",
-  "workflow:hiring-outreach-cadence",
   "workflow:merchant-pull-sweeper",
   "workflow:blueprint-next-funding-sequence-sweeper",
   "workflow:paid-checkout-expiry-sweeper",

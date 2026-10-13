@@ -113,7 +113,7 @@ async function visibleText(locator) {
   return (await locator.innerText()).replace(/\s+/g, " ").trim();
 }
 
-test("Display AB 2 exports only disjoint exact red catalog rows", () => {
+test("Display AB 2 exports only disjoint exact freshly compiled rows", () => {
   assert.equal(DISPLAY_CONTRACT_PROOF_AB_2.strictProvedCount, 25);
   assert.equal(new Set(DISPLAY_CONTRACT_KEYS_AB_2).size, DISPLAY_CONTRACT_KEYS_AB_2.length);
   assert.deepEqual(DISPLAY_CONTRACT_PROOF_AB_2.sourceFiles, ["desks-a.json", "desks-b.json"]);
@@ -128,7 +128,9 @@ test("Display AB 2 exports only disjoint exact red catalog rows", () => {
     assert.equal(row.surface, proof.surface);
     assert.equal(row.family, proof.family);
     assert.equal(row.expected, proof.expected);
-    assert.equal(row.proofVerdict, "red", `${proof.rowKey} was not red when selected`);
+    assert.equal(row.proofVerdict, undefined, `${proof.rowKey} stayed red after its executable proof compiled`);
+    assert.equal(row.proofDepth, proof.proof.depth);
+    assert.ok(row.proof.tests.includes(proof.proof.file), `${proof.rowKey} lost its executable proof file`);
     assert.equal(oldKeys.has(proof.rowKey), false, `${proof.rowKey} is in Display AB 1`);
     assert.equal(proof.proof.runner, "rendered-chromium-local-fake-routes");
     assert.equal(proof.proof.file, "src/pulse/catalog/proofs/display-contracts-ab-2.test.mjs");

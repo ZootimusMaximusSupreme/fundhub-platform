@@ -494,7 +494,9 @@ test("Door 01 exports only exact row keys whose real handler result this shard p
       assert.ok(generated, `missing generated row ${entry.generatedId}`);
       assert.equal(generated.sourceFile, entry.sourceFile);
       assert.equal(generated.surface, entry.surface);
-      assert.equal(generated.proofVerdict, "red");
+      assert.equal(generated.proofVerdict, undefined, `${entry.generatedId} stayed red after its executable proof compiled`);
+      assert.equal(generated.state, "wired");
+      assert.ok(generated.proof.tests.includes("src/pulse/catalog/proofs/door-contracts-routes-01.test.mjs"), `${entry.generatedId} lost its executable proof file`);
       assert.equal(typeof RUNNERS.get(entry.surface), "function", `missing runner ${entry.surface}`);
       await RUNNERS.get(entry.surface)();
       exercised.add(entry.key);

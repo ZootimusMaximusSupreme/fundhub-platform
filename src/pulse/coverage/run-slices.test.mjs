@@ -336,7 +336,9 @@ test("the morning pass runs every gap file and still does not pass a slice witho
   const sliceExpected = (await loadSliceModules()).reduce((n, item) => n + item.CHECKS.length, 0);
   assert.equal(sliceRows.length, sliceExpected);
   assert.ok(sliceRows.every((row) => row.status === NOT_CHECKED));
-  assert.ok(gapRows.every((row) => row.status === "PASS" || row.status === "FAIL" || row.status === "skip"));
+  // "na" is allowed only as a verified nothing-to-judge: it must carry its na-conditions code.
+  assert.ok(gapRows.every((row) => row.status === "PASS" || row.status === "FAIL" || row.status === "skip"
+    || (row.status === "na" && typeof row.na?.code === "string" && row.na.code.length > 0)));
 });
 
 test("one gap lane runs alone, so the 6 a.m. job can give each lane its own step", async () => {
