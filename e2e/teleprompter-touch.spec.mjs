@@ -347,17 +347,16 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("fhtp.edits")).items))).toEqual([]);
     });
 
-    test("409: the filming screen stays clear, and History lets Chris keep his words", async ({ page }) => {
+    test("409: the filming screen stays clear, and Choose words lets Chris keep his words", async ({ page }) => {
       const { server } = await open(page);
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris"); // the Scripts tab, on the Mac
       await editHook(page, NEW_HOOK);
       await page.locator("#e-done").tap();
       await expect(page.locator("#pick")).toBeHidden();
-      await expect(page.locator("#p-save")).toHaveText("History");
+      await expect(page.locator("#p-save")).toHaveText("Choose words");
       await page.locator("#p-save").tap();
-      await expect(page.locator("#hist")).toBeVisible();
-      await page.getByRole("button", { name: "Choose words" }).tap();
+      await expect(page.locator("#hist")).toHaveCount(0);
       await expect(page.locator("#pick")).toBeVisible();
       await expect(page.locator("#pick-title")).toHaveText("Choose words for this script");
       await expect(page.locator("#pick-body")).toContainText("BOTH files before they ever say yes.");
@@ -370,7 +369,7 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(server.versions[THREE.root_script_id]).toHaveLength(3);
     });
 
-    test("409: using saved words keeps the exact phone edit in History", async ({ page }) => {
+    test("409: using saved words keeps the exact phone edit as a backup on the phone", async ({ page }) => {
       const { server } = await open(page);
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris");
@@ -378,7 +377,7 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       await page.locator("#e-done").tap();
       await expect(page.locator("#pick")).toBeHidden();
       await page.locator("#p-save").tap();
-      await page.getByRole("button", { name: "Choose words" }).tap();
+      await expect(page.locator("#pick")).toBeVisible();
       const newest = THREE.body.replace(HOOK, "MOST banks check THREE files first.");
       server.save(THREE.root_script_id, newest, null, "chris");
       await page.getByRole("button", { name: "Use the saved words" }).tap();
@@ -397,27 +396,8 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(backups[0].body).toBe(THREE.body.replace(HOOK, NEW_HOOK));
       expect(backups[0].parts).toHaveLength(THREE.parts.length);
       expect(backups[0].parts[0]).toEqual({ kind: "hook", text: NEW_HOOK });
-      await page.locator("#p-save").tap();
-      await expect(page.locator("#hist-list")).toContainText("Phone backup");
-      await expect(page.locator("#hist-list")).toContainText(NEW_HOOK);
     });
 
-    test("history: who changed what and when, and whether the repo has it", async ({ page }) => {
-      const { server } = await open(page);
-      await editHook(page, NEW_HOOK);
-      await page.locator("#e-hist").tap();
-      await expect.poll(() => server.posts.length).toBe(1);
-      await expect(page.locator("#p-save")).toHaveText(SAVED_HELD);
-      await expect(page.locator("#hist")).toBeVisible();
-      const rows = page.locator("#hist-list .ver");
-      await expect(rows).toHaveCount(2);
-      await expect(rows.nth(0)).toContainText("Version 2 · Chris");
-      await expect(rows.nth(0)).toContainText("Not in the repo yet.");
-      await expect(rows.nth(0).locator("del")).toContainText("TWO");
-      await expect(rows.nth(0).locator("ins")).toHaveText(["BOTH", "ever"]);
-      await expect(rows.nth(1)).toContainText("Version 1 · The machine");
-      await expect(rows.nth(1)).toContainText("In the repo.");
-    });
   });
 }
 

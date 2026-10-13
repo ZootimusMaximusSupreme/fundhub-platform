@@ -691,3 +691,49 @@ body:not(.wording) #content {
   white-space:normal;
   overflow-wrap:anywhere;
 }
+
+/* Owner call 2026-10-13: the buttons sit all the way down on the phone.
+   The home bar area keeps only a thin gap, so the thumb reaches Record and Play. */
+#bar {
+  padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px));
+}
+/* The save line is plain text on the glass, not a black box. */
+#p-save {
+  background: transparent;
+}
+
+/* Owner call 2026-10-13: double-tap shows Copy script and X at the top. Nothing else. */
+body.copying #b-script-copy {
+  display: block !important;
+  position: fixed;
+  z-index: 10;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 60px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  background: #000;
+  border-color: var(--ok);
+  color: #fff;
+}
+body.copying #b-script-paste {
+  display: block !important;
+  position: fixed;
+  z-index: 10;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 196px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+#b-script-paste {
+  display: none;
+}
+body.copying #b-cancel {
+  display: grid;
+}
