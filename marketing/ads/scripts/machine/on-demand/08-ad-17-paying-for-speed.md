@@ -1,6 +1,6 @@
 ---
 ad: 96
-version: 4
+version: 5
 status: locked
 offer: funding_dfy
 funnel: null
@@ -9,11 +9,11 @@ style: null
 angle: null
 batch: null
 updated_by: null
-updated_at: 2026-10-12T21:38:36.293Z
+updated_at: 2026-10-13T20:51:43.662Z
 ---
-You can spend the next year figuring out how credit turns into money, OR you can get my last10 years of it on one call.
+You can spend the next year figuring out how credit turns into money, OR you can get my last 10 years of experience on one call.
 
-There's ONE move I see on most of the files I review that costs about $300,000 in funding, and it feels like the responsible thing to do. ↑
+There's ONE move I see on most of the files I review that costs about $300,000 in funding.
 
 In those ten years I've funded a little over $1 million for myself, worked hundreds of other people's files, and made every expensive mistake there is, including this one.
 
