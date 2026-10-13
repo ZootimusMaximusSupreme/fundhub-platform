@@ -12,6 +12,13 @@
 - [ ] Text 50 people.
 - [ ] Make sure Cortana is fully set up correctly with the funnel.
 - [ ] Make sure Bram, the credit client, is handled.
+- [ ] Help Colin with Lexi’s nexus.
+- [ ] Pay CRS.
+- [ ] Get coffee at Panera.
+- [ ] Clean the house floors today.
+- [ ] Figure out a strategy to stack other work while AI runs, without staring at the screen or obsessively checking loading.
+
+Completed today: sauna — done at 5:00 AM Arizona.
 - [ ] **Repository cleanup — code only.** Owner wants just the code; everything else is unnecessary. Remove stale notes, duplicate plans/to-do lists, abandoned extras, and other non-code clutter. Before deleting, identify any non-code files the live application requires and flag those dependencies. Preserve working code and other sessions’ unfinished work.
 
 ## Priority — iPhone teleprompter launch readiness (updated 2026-10-13)
