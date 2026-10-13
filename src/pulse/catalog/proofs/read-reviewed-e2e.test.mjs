@@ -19,7 +19,11 @@ test("reviewed read proofs pass through the real rendered pages", () => {
   ], {
     cwd: ROOT,
     encoding: "utf8",
-    env: { ...process.env, CI: "1" },
+    env: {
+      ...process.env,
+      CI: "1",
+      E2E_PORT: String(46_000 + (process.pid % 10_000)),
+    },
     maxBuffer: 16 * 1024 * 1024,
   });
 

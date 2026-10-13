@@ -473,7 +473,7 @@ const RUNNERS = new Map([
   ["route:trials/eligibility", proveTrialEligibility],
 ]);
 
-test("Door 01 exports only exact row keys whose real handler result this shard proves", async (t) => {
+test("Door 01 exports only exact freshly compiled rows whose real handler result this shard proves", async (t) => {
   assert.equal(DOOR_CONTRACTS_ROUTES_01_PROOFS.length, 4);
   assert.deepEqual(
     [...DOOR_CONTRACTS_ROUTES_01_ROW_KEYS].sort(),
@@ -494,7 +494,10 @@ test("Door 01 exports only exact row keys whose real handler result this shard p
       assert.ok(generated, `missing generated row ${entry.generatedId}`);
       assert.equal(generated.sourceFile, entry.sourceFile);
       assert.equal(generated.surface, entry.surface);
-      assert.equal(generated.proofVerdict, "red");
+      assert.equal(generated.proofVerdict, undefined, `${entry.generatedId} stayed red after its result proof compiled`);
+      assert.equal(generated.state, "wired");
+      assert.equal(generated.proofDepth, entry.proof.depth);
+      assert.ok(generated.proof.tests.includes(entry.proof.evidence));
       assert.equal(typeof RUNNERS.get(entry.surface), "function", `missing runner ${entry.surface}`);
       await RUNNERS.get(entry.surface)();
       exercised.add(entry.key);

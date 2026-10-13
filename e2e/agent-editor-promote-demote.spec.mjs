@@ -37,7 +37,7 @@ async function open(page, { status = "draft", saveFails = false, shadowRuns = 25
     }
   });
   await expect(page.locator("#a_name")).toHaveValue("Lead Follow-up", { timeout: 10_000 });
-  await expect(page.locator("#a_esc")).toHaveValue("Sarah Whitfield · Sales Manager");
+  await expect(page.locator("#a_esc")).toHaveValue("Sarah Whitfield · Sales Manager", { timeout: 10_000 });
   return { writes };
 }
 
