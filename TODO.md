@@ -2,11 +2,11 @@
 
 ## Today — 2026-10-13
 
-Timing (Arizona/MST): no AI work before 9:00 AM; start Claude at 9:00 AM. Texting 50 people is on hold as of 5:49 AM while the recipient list and missing referral-source details are corrected. Panera opens around 7:30–8:00 AM per owner. All filming waits until the teleprompter is fixed; film outside except for four green-screen videos at home, once people are awake. Stack independent tasks while AI runs and check progress at planned breaks.
+Timing (Arizona/MST): start Claude for the teleprompter at 9:00 AM. Latest owner update at 5:58 AM: AI is finishing contact-list corrections, and texting is next once the recipients and referral details are ready. Panera opens around 7:30–8:00 AM per owner. All filming waits until the teleprompter is fixed; film outside except for four green-screen videos at home, once people are awake. Stack independent tasks while AI runs and check progress at planned breaks.
 
 Filming priority: owner is strongest in the morning and wants to leave home by 10:00 AM. Claude's first job at 9:00 AM is the teleprompter; filming cannot begin until it works. Aim to finish filming before 2:00 PM, because starting again after 2:00 PM is too tiring. The one-hour repair window is a target, not a confirmed estimate. Prepare scripts and basic gear before 9:00 AM, but defer the green-screen teleprompter setup until recording works; handle independent tasks during the repair. Protect the filming window before editing, refactor planning, and repository cleanup.
 
-- [ ] Sign MCA deal — WAITING: agreement has not arrived (owner update, 5:49 AM).
+- [ ] Sign MCA deal — WAITING: contract still has not arrived (owner update, 5:58 AM).
 - [ ] Fix teleprompter.
 - [ ] Set up the green screen for the teleprompter after recording works; defer setup until then.
 - [ ] Finish filming: four green-screen videos at home, four remaining ads, and the remaining longer-form/thank-you videos. Longer-video count/titles need clarification: owner dictated “two ESL—one BSL and one thank you.”
@@ -15,12 +15,12 @@ Filming priority: owner is strongest in the morning and wants to leave home by 1
 - [ ] Start Claude again.
 - [ ] Finish heartbeat / figure it out.
 - [ ] Start refactor planning.
-- [ ] Text 50 people — ON HOLD: confirm the right recipients and add missing referral-source details to the contact document; corrections are being addressed (owner update, 5:49 AM).
+- [ ] Text 50 people — NEXT: owner plans to text while other items are blocked, once AI finishes correcting the recipients and referral details. No sends confirmed yet (owner update, 5:58 AM).
 - [ ] Check Gmail for Blake Everton’s leads and their referral details (owner-identified source; email contents not yet verified).
 - [ ] Make sure Cortana is fully set up correctly with the funnel.
 - [ ] Make sure Bram (also dictated as Brahm), the credit client, is handled — next after the CRS payment.
 - [ ] Help Colin with Lexi’s nexus.
-- [ ] Pay CRS — IN PROGRESS: owner is paying now; completion not yet confirmed (5:49 AM).
+- [ ] Pay CRS — BLOCKED / UNPAID: business credit card was declined with an “insufficient funds” message. Resolve the card/payment issue, then complete payment (owner update, 5:58 AM).
 - [ ] Get coffee at Panera.
 - [ ] Optional: sushi around 1:00–2:00 PM if filming allows.
 - [ ] Clean the house floors today — after handling Bram/Brahm.
