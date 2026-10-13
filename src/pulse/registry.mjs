@@ -585,9 +585,12 @@ const PUBLIC_STATIC_FILES = [
   "education/refund/index.html",
   "education/terms/index.html",
   "index.html",
-  /* The hiring funnel (owner-set 2026-10-13): the VSL page, then the application
-     that posts to hiring/apply. Both answer 200 to a plain GET with no session. */
+  /* The hiring funnels (owner-set 2026-10-13): sales (setter, closer, CSM) at
+     /join/ and COO at /join/coo/, each a VSL page then an application that posts
+     to hiring/apply. All four answer 200 to a plain GET with no session. */
   "join/apply/index.html",
+  "join/coo/apply/index.html",
+  "join/coo/index.html",
   "join/index.html",
   "leads/c01cb7592c8bb994130158e897e99bf1/index.html",
   "login.html",

@@ -34,6 +34,16 @@ export const SURVEY_VERSION = "join-2026-10-13.2";
    294, coo by 480. */
 export const FUNNEL_ROLES = Object.freeze(["setter", "closer", "csm", "coo"]);
 
+/* TWO FUNNELS. Owner-set 2026-10-13: "split the funnel … one funnel will be set
+   as closers, CSMs. The other … a COO." Same server door, same questions
+   module; each funnel page shows only its own seats.
+     sales  /join/      → /join/apply/      setter, closer, CSM
+     coo    /join/coo/  → /join/coo/apply/  COO */
+export const FUNNELS = Object.freeze({
+  sales: Object.freeze(["setter", "closer", "csm"]),
+  coo: Object.freeze(["coo"])
+});
+
 export const ROLE_LABELS = Object.freeze({
   setter: "Setter",
   closer: "Closer",
@@ -262,15 +272,18 @@ export function loomUrl(raw) {
   return out.length > LOOM_URL_MAX ? null : out;
 }
 
-/* What the page needs to draw the survey. The page holds a copy of this as JSON
-   (script#fh-join-survey in public/join/apply/index.html); survey.test.mjs
-   fails if the copy and this function disagree. The review rules stay on the
-   server: the page learns the route from the reply, not from a copy of the
-   rules. */
-export function pageSurvey() {
+/* What a funnel page needs to draw the survey. Each page holds a copy of this as
+   JSON (script#fh-join-survey): public/join/apply/index.html holds
+   pageSurvey("sales"), public/join/coo/apply/index.html holds pageSurvey("coo").
+   survey.test.mjs fails if a copy and this function disagree. The review rules
+   stay on the server: the page learns the route from the reply. */
+export function pageSurvey(funnel) {
+  const seats = FUNNELS[funnel];
+  if (!seats) throw new Error(`pageSurvey: unknown funnel "${funnel}"`);
   return {
     version: SURVEY_VERSION,
-    roles: FUNNEL_ROLES.map((key) => ({
+    funnel,
+    roles: seats.map((key) => ({
       key,
       label: ROLE_LABELS[key],
       blurb: ROLE_BLURBS[key],
@@ -278,8 +291,8 @@ export function pageSurvey() {
       referencePrompt: REFERENCE[key].prompt,
       referenceRelationships: [...REFERENCE[key].relationships]
     })),
-    questions: QUESTIONS.map((q) => {
-      const out = { key: q.key, roles: [...q.roles], title: q.title };
+    questions: QUESTIONS.filter((q) => q.roles.some((r) => seats.includes(r))).map((q) => {
+      const out = { key: q.key, roles: q.roles.filter((r) => seats.includes(r)), title: q.title };
       if (q.hint) out.hint = q.hint;
       out.opts = [...q.opts];
       return out;
@@ -288,7 +301,7 @@ export function pageSurvey() {
 }
 
 export default {
-  SURVEY_VERSION, FUNNEL_ROLES, ROLE_LABELS, ROLE_BLURBS, LOOM_PROMPTS, QUESTIONS,
+  SURVEY_VERSION, FUNNELS, FUNNEL_ROLES, ROLE_LABELS, ROLE_BLURBS, LOOM_PROMPTS, QUESTIONS,
   REFERENCE, REVIEW_RULES, questionsFor, parseSurveyAnswers, parseReference, routeFor,
   loomUrl, pageSurvey
 };

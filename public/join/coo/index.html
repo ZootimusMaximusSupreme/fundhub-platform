@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0A0A0A">
+<title>COO | Fundhub Careers</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="Fundhub is hiring a COO to own operations: the team, the numbers, the weekly rhythm and the hiring.">
+<!-- NOINDEX UNTIL THE COO VSL IS FILMED AND THE PLACEHOLDERS ARE FILLED.
+     Placeholders are the dashed amber boxes (class "ph"). Delete this one line
+     once the video and the real numbers are up. -->
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The COO hiring funnel's front door. Same identity as the sales hiring page
+   (public/join/index.html) and the book-a-call watch page. */
+:root{
+  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
+  --paper:#FCFCFC;--ink:#0A0A0A;--ink2:#18181B;--gray:#52525B;--gray2:#8A8A93;
+  --line:#E4E4E7;--soft:#F4F4F5;--card:#111113;--cardline:#26262B;--blue:#188bf6;--blue2:#0b78dd;
+  --good:#15803D;--ph-bg:#FFFBEB;--ph-line:#F59E0B;--ph-ink:#92400E;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:var(--paper);
+  background-image:linear-gradient(rgba(10,10,10,.048) 1px,transparent 1px),linear-gradient(90deg,rgba(10,10,10,.048) 1px,transparent 1px);
+  background-size:44px 44px}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px}
+@media(min-width:640px){.wrap{padding:0 24px}}
+
+header{padding:18px 0 0;text-align:center}
+.logo{font-weight:700;font-size:24px;letter-spacing:-.045em;color:var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);display:inline-block}
+.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
+
+.hero{text-align:center;padding:34px 0 8px}
+.hero h1{font-size:clamp(30px,5.2vw,50px);font-weight:700;letter-spacing:-.045em;line-height:1.02;margin:20px auto 0;max-width:20ch;text-wrap:balance}
+.hero .lede{margin:20px auto 0;font-size:16.5px;color:var(--gray);max-width:52ch}
+@media(max-width:640px){.hero{padding:22px 0 4px}.hero .lede{font-size:15px}}
+
+/* PLACEHOLDERS. Dashed amber, so nobody mistakes them for real proof. Each one
+   names what goes there. */
+.ph{display:inline-block;border:1.5px dashed var(--ph-line);background:var(--ph-bg);color:var(--ph-ink);border-radius:6px;padding:0 7px;font-family:var(--mono);font-size:.8em;letter-spacing:0;font-weight:600;line-height:1.6;vertical-align:middle}
+.ph-tile{display:flex;align-items:center;justify-content:center;text-align:center;border:1.5px dashed var(--ph-line);background:var(--ph-bg);color:var(--ph-ink);border-radius:12px;font-family:var(--mono);font-size:12px;font-weight:600;padding:16px;min-height:150px}
+
+.media{margin:30px auto 0;aspect-ratio:16/9;max-width:100%;border-radius:12px;background:var(--card);border:1px solid var(--cardline);overflow:hidden;box-shadow:0 18px 44px rgba(10,10,10,.16);position:relative}
+.media video{width:100%;height:100%;object-fit:cover;display:block}
+.media .soon{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#D4D4D8;text-align:center;padding:24px}
+.media .soon b{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#A1A1AA;font-weight:500}
+.media .soon span{font-size:15px;max-width:34ch}
+.unmute{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,10,10,.28);transition:opacity .2s;z-index:2;border:0;cursor:pointer;width:100%}
+.unmute.hidden{opacity:0;pointer-events:none}
+.unmute-pill{display:flex;align-items:center;gap:10px;background:var(--blue);color:#fff;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:14px 22px;border-radius:999px}
+.unmute-pill svg{width:16px;height:16px}
+
+.btn{display:block;width:100%;max-width:420px;margin:30px auto 0;background:var(--blue);color:#fff;font-size:17px;font-weight:600;padding:18px 26px;border:0;border-radius:9px;cursor:pointer;text-align:center;box-shadow:0 10px 24px -12px rgba(24,139,246,.9)}
+.btn:hover{background:var(--blue2)}
+.cta-note{margin-top:14px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}
+
+/* The money strip under the video. */
+.stats{display:grid;grid-template-columns:1fr;gap:10px;margin-top:28px}
+@media(min-width:640px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center}
+.stat .v{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.stat .k{margin-top:4px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+
+.marq{margin-top:48px;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:12px 0}
+.marq-track{display:flex;width:max-content;animation:marq 34s linear infinite}
+.marq-set{display:flex;align-items:center}
+.marq-set span{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);white-space:nowrap;padding:0 16px}
+.marq-set i{width:10px;height:2px;background:var(--spectrum);border-radius:1px;flex:0 0 auto}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+section.block{padding:56px 0 0}
+.block h2{text-align:center;font-size:clamp(24px,3.6vw,32px);font-weight:700;letter-spacing:-.035em;line-height:1.1;margin-top:14px;text-wrap:balance}
+.block .center{text-align:center}
+.block .sub{text-align:center;margin:10px auto 0;max-width:52ch;color:var(--gray);font-size:15px}
+.facts{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+@media(min-width:720px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fact{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+.fact h3{font-size:16px;font-weight:700;letter-spacing:-.015em}
+.fact p{margin-top:6px;font-size:14.5px;line-height:1.6;color:var(--gray)}
+
+.proof{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+@media(min-width:720px){.proof{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.roles{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+@media(min-width:720px){.roles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.role{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;transition:border-color .15s,box-shadow .15s;min-width:0}
+.role:hover{border-color:rgba(24,139,246,.55);box-shadow:0 10px 24px -16px rgba(10,10,10,.35)}
+.role h3{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.role p{margin-top:6px;font-size:14.5px;line-height:1.6;color:var(--gray);flex:1}
+.role .go{margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);font-weight:600}
+
+.founder{display:grid;grid-template-columns:1fr;gap:18px;align-items:center;margin-top:24px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}
+@media(min-width:720px){.founder{grid-template-columns:200px minmax(0,1fr)}}
+.founder .ph-tile{min-height:200px}
+.founder p{font-size:15.5px;line-height:1.65;color:var(--ink2)}
+.founder p + p{margin-top:10px}
+
+.closer{padding:56px 0 64px;text-align:center}
+.other{margin-top:18px;font-size:14px;color:var(--gray)}
+.other a{color:var(--blue);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+footer{background:#fff;border-top:1px solid var(--line);padding:28px 0 36px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--gray)}
+footer a{color:var(--ink2);text-decoration:underline;text-underline-offset:3px}
+
+@media(prefers-reduced-motion:reduce){.marq-track{animation:none}}
+.steps{list-style:none;counter-reset:s;display:grid;gap:10px;margin:24px auto 0;max-width:680px}
+.steps li{counter-increment:s;position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px 58px;font-size:15px;line-height:1.6;color:var(--gray)}
+.steps li::before{content:counter(s);position:absolute;left:18px;top:15px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--mono);font-size:12px;font-weight:600;display:grid;place-items:center}
+.steps li b{color:var(--ink);font-weight:700}
+</style>
+</head>
+<body>
+
+<header><a class="logo" href="/join/coo/" aria-label="Fundhub">fundhub.</a></header>
+
+<main class="wrap">
+  <section class="hero">
+    <span class="eyebrow">Now hiring · Chief Operating Officer</span>
+    <h1>Run Fundhub's Operations as Our COO</h1>
+    <p class="lede">Chris builds the product, the offers and the marketing. You make sure everything runs end to end, every week, while we scale paid acquisition.</p>
+  </section>
+
+  <!-- The COO VSL. Drop the filmed file at public/funnel/hiring-coo-vsl.mp4 (4K,
+       it is not an ad) and this slot plays it with no other change. -->
+  <div class="media" id="vsl" data-src="/funnel/hiring-coo-vsl.mp4">
+    <div class="soon" id="vsl-soon"><b>Video</b><span>A message from Chris is on its way. Everything you need to know is below.</span></div>
+  </div>
+
+  <div class="stats" aria-label="The company today">
+    <div class="stat"><div class="v"><span class="ph">[Monthly revenue]</span></div><div class="k">Monthly revenue</div></div>
+    <div class="stat"><div class="v"><span class="ph">[Clients funded]</span></div><div class="k">Clients funded</div></div>
+    <div class="stat"><div class="v">$100,000–$300,000</div><div class="k">Funding the average client gets</div></div>
+  </div>
+
+  <a class="btn" href="/join/coo/apply/">Apply for the COO Seat</a>
+  <div class="cta-note">5-minute application · You interview with Chris directly</div>
+</main>
+
+<div class="marq" aria-hidden="true"><div class="marq-track">
+  <div class="marq-set"><span>Close to a decade in funding</span><i></i><span>Hundreds of files</span><i></i><span>Thousands of data points</span><i></i><span>UnderwriteIQ</span><i></i><span>Team in place</span><i></i><span>Scaling paid acquisition</span><i></i></div>
+  <div class="marq-set"><span>Close to a decade in funding</span><i></i><span>Hundreds of files</span><i></i><span>Thousands of data points</span><i></i><span>UnderwriteIQ</span><i></i><span>Team in place</span><i></i><span>Scaling paid acquisition</span><i></i></div>
+</div></div>
+
+<div class="wrap">
+  <section class="block" aria-labelledby="walk-h">
+    <div class="center"><span class="eyebrow">What you walk into</span></div>
+    <h2 id="walk-h">A Real Company With Room to Scale</h2>
+    <div class="facts">
+      <div class="fact"><h3>Clear ownership</h3><p>Operations are yours: the team, the numbers, the weekly meetings and the hiring. You report to Chris, and you have the authority to run your side of the company.</p></div>
+      <div class="fact"><h3>A team already in place</h3><p>A sales manager, closers, a client success manager, a funding advisor and a credit optimization specialist, plus an affiliate program and content creators.</p></div>
+      <div class="fact"><h3>Systems already built</h3><p>Our own underwriting software, UnderwriteIQ. A CRM and client portal. Every money path in the company is checked every hour and alerts us the moment it breaks. Internal AI tools support marketing and operations.</p></div>
+      <div class="fact"><h3>Room to scale</h3><p>We sell funding, credit optimization and education, and we're scaling paid acquisition. Your job is to make sure the company handles the growth without dropping a client.</p></div>
+      <div class="fact"><h3>Real upside</h3><p><span class="ph">[Comp: base, plus equity or profit share]</span></p></div>
+      <div class="fact"><h3>A founder who knows what he needs</h3><p>Chris is at his best building the product and the offers. He's hiring a COO so every process runs end to end while he keeps building.</p></div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="ninety-h">
+    <div class="center"><span class="eyebrow">Your first 90 days</span></div>
+    <h2 id="ninety-h">What You'll Own First</h2>
+    <ol class="steps">
+      <li><b>Learn every seat and every number.</b> Sit in on sales calls, client check-ins and funding rounds until you know how each one works.</li>
+      <li><b>Run the weekly rhythm.</b> A KPI meeting every week and a scorecard for every seat.</li>
+      <li><b>Hire and onboard.</b> Closers and client success managers, with a ramp plan for each.</li>
+      <li><b>Make it run end to end.</b> Every step from the first ad click to a funded client has an owner and a number.</li>
+    </ol>
+  </section>
+
+  <section class="block" aria-labelledby="proof-h">
+    <div class="center"><span class="eyebrow">Proof</span></div>
+    <h2 id="proof-h">Where the Company Is Today</h2>
+    <div class="proof">
+      <div class="ph-tile">[Revenue chart]</div>
+      <div class="ph-tile">[Client funding approvals]</div>
+      <div class="ph-tile">[Team photo]</div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="who-h">
+    <div class="center"><span class="eyebrow">Who you'd work with</span></div>
+    <h2 id="who-h">Who Runs Fundhub</h2>
+    <div class="founder">
+      <div class="ph-tile">[Photo of Chris]</div>
+      <div>
+        <p>Fundhub is run by Chris Stanbridge. He learned credit card stacking ten years ago, has funded a little over $1,000,000 for his own companies, and has invested that capital in cash-flowing companies for ten years.</p>
+        <p>He built UnderwriteIQ to review every file the way a lender does, and he's looking for an operator to run the company with him.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="closer">
+    <a class="btn" href="/join/coo/apply/">Apply for the COO Seat</a>
+    <div class="cta-note">LinkedIn, a founder or investor reference and a 90-second Loom</div>
+    <p class="other">Applying for a sales seat? <a href="/join/">Go to the sales page</a></p>
+  </section>
+</div>
+
+<footer>
+  © 2026 Fundhub LLC &nbsp;·&nbsp; <a href="/privacy/">Privacy Policy</a> &nbsp;·&nbsp; <a href="/terms/">Terms of Service</a>
+</footer>
+
+<script src="/join/vsl.js"></script>
+</body>
+</html>

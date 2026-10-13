@@ -28,7 +28,7 @@ outside a test file.
 flowchart TD
     subgraph GETTING_CANDIDATES [How a candidate gets in]
       CAREERS[Stranger on /careers.html] -->|GET/POST /api/hiring/apply| APPLYFN
-      JOIN[Stranger on /join/ VSL → /join/apply/ survey<br/>added 2026-10-13] -->|POST /api/hiring/apply<br/>funnel: join, answers, Loom| APPLYFN
+      JOIN[Stranger on /join/ or /join/coo/ VSL → its application<br/>added 2026-10-13] -->|POST /api/hiring/apply<br/>funnel: join, answers, reference, Loom| APPLYFN
       APPLYFN[src/hiring/apply-public.mjs → pipeline.mjs apply] --> ROW
       ZOHO[src/hiring/zoho.mjs syncCandidates → apply<br/>NOT WIRED - no cron, no endpoint] -.-> ROW
       LI[src/hiring/linkedin.mjs ingestApplications → apply<br/>NOT WIRED - owner-set dead] -.-> ROW
@@ -75,7 +75,7 @@ flowchart TD
 | Surface | What it is | Who gets in |
 |---|---|---|
 | `GET /api/hiring/apply` | Open roles list (key, name, brief) | **No auth** — public careers door |
-| `POST /api/hiring/apply` | One application → `apply()`, stage `applied`. From the hiring funnel (`funnel: "join"`) it also stores the survey answers and the Loom link, and the reply says which screen is next (`book`, `book_pending`, `review`) | **No auth** — public careers door |
+| `POST /api/hiring/apply` | One application → `apply()`, stage `applied`. From the hiring funnels (`funnel: "join"`) it also stores the survey answers, the reference and the Loom link, and the reply says which screen is next (`book`, `book_pending`, `review`) | **No auth** — public careers door |
 | `GET /api/hiring/candidates` | The board — every application, filtered by stage | `owner`, `admin` (`ROLE_SETS.HIRING`) |
 | `GET /api/hiring/application?id=` | One candidate's full record: answers, every score, interviews, every decision | `owner`, `admin` |
 | `GET /api/hiring/decisions` | The decision log — who decided what, and whether a person decided it | `owner`, `admin` |

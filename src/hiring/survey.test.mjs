@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  FUNNEL_ROLES, QUESTIONS, REVIEW_RULES, SURVEY_VERSION, REFERENCE,
+  FUNNELS, FUNNEL_ROLES, QUESTIONS, REVIEW_RULES, SURVEY_VERSION, REFERENCE,
   questionsFor, parseSurveyAnswers, parseReference, routeFor, loomUrl, pageSurvey
 } from "./survey.mjs";
 import { isProtected } from "./grading.mjs";
@@ -22,6 +22,8 @@ import { parseApplyBody } from "./apply-public.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PAGE = path.join(HERE, "../../public/join/apply/index.html");
+const COO_PAGE = path.join(HERE, "../../public/join/coo/apply/index.html");
+const SHARED_JS = path.join(HERE, "../../public/join/apply.js");
 
 /* A complete, good answer set for a seat: the first option of every question,
    except the two that would trip a review rule. */
@@ -275,18 +277,43 @@ describe("hiring survey — the public door", () => {
   });
 });
 
-describe("hiring survey — the page's copy", () => {
-  test("public/join/apply/index.html carries pageSurvey() word for word", () => {
-    const html = fs.readFileSync(PAGE, "utf8");
-    const m = html.match(/<script type="application\/json" id="fh-join-survey">([\s\S]*?)<\/script>/);
-    assert.ok(m, "the page has script#fh-join-survey");
-    assert.deepStrictEqual(JSON.parse(m[1]), pageSurvey(),
-      "the page and src/hiring/survey.mjs drifted — regenerate the page block from pageSurvey()");
+describe("hiring survey — the two funnels", () => {
+  test("sales holds setter, closer and CSM; coo holds the COO; together they are every seat", () => {
+    assert.deepStrictEqual([...FUNNELS.sales], ["setter", "closer", "csm"]);
+    assert.deepStrictEqual([...FUNNELS.coo], ["coo"]);
+    assert.deepStrictEqual([...FUNNELS.sales, ...FUNNELS.coo].sort(), [...FUNNEL_ROLES].sort());
   });
 
-  test("the page posts to the public apply door and marks itself as the funnel", () => {
-    const html = fs.readFileSync(PAGE, "utf8");
-    assert.match(html, /"\/api\/hiring\/apply"/);
-    assert.match(html, /funnel:\s*"join"/);
+  test("a funnel's page data carries only its own seats and their questions", () => {
+    const coo = pageSurvey("coo");
+    assert.deepStrictEqual(coo.roles.map((r) => r.key), ["coo"]);
+    assert.ok(coo.questions.every((q) => q.roles.length === 1 && q.roles[0] === "coo"));
+    assert.ok(!coo.questions.some((q) => q.key.startsWith("closer_")));
+    const sales = pageSurvey("sales");
+    assert.ok(!sales.questions.some((q) => q.key.startsWith("coo_")));
+    assert.ok(sales.questions.every((q) => !q.roles.includes("coo")));
+  });
+
+  test("an unknown funnel throws", () => {
+    assert.throws(() => pageSurvey("other"));
+  });
+});
+
+describe("hiring survey — the pages' copies", () => {
+  for (const [funnel, file] of [["sales", PAGE], ["coo", COO_PAGE]]) {
+    test(`${path.relative(path.join(HERE, "../.."), file)} carries pageSurvey("${funnel}") word for word`, () => {
+      const html = fs.readFileSync(file, "utf8");
+      const m = html.match(/<script type="application\/json" id="fh-join-survey">([\s\S]*?)<\/script>/);
+      assert.ok(m, "the page has script#fh-join-survey");
+      assert.deepStrictEqual(JSON.parse(m[1]), pageSurvey(funnel),
+        "the page and src/hiring/survey.mjs drifted — regenerate the page block from pageSurvey()");
+      assert.match(html, /<script src="\/join\/apply\.js"><\/script>/, "the page runs the shared survey script");
+    });
+  }
+
+  test("the shared script posts to the public apply door and marks itself as the funnel", () => {
+    const js = fs.readFileSync(SHARED_JS, "utf8");
+    assert.match(js, /"\/api\/hiring\/apply"/);
+    assert.match(js, /funnel:\s*"join"/);
   });
 });

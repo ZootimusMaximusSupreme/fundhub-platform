@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0A0A0A">
+<title>Apply for COO | Fundhub Careers</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="Apply to be Fundhub's COO.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* The COO hiring funnel's application (a clone of /join/apply/, one seat). Built on the book-a-call funnel's survey
+   (marketing/landing-pages/apply-survey.html): faint grid ground, centered
+   hero, one white card, one question per screen, then the calendar below. */
+:root{
+  --bg:#FCFCFC;--grid:#EFEFF1;--ink:#0A0A0A;--ink2:#27272A;--gray:#52525B;--gray2:#9C9CA5;
+  --line:#E4E4E7;--panel:#F5F5F6;--blue:63,124,239;--good:#15803D;--bad:#B42318;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  color-scheme:light}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px;color:var(--ink);font-family:var(--sans);padding-inline:16px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:680px;margin:0 auto;padding-block:16px 48px}
+.logo{display:block;text-align:center;font-weight:700;font-size:22px;letter-spacing:-.04em;color:var(--ink);text-decoration:none}
+.hero{text-align:center;margin-top:10px}
+.kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray2)}
+h1{font-size:clamp(28px,5vw,42px);font-weight:700;letter-spacing:-.045em;line-height:1.05;margin:12px 0 0;text-wrap:balance}
+.lede{margin:12px auto 0;max-width:48ch;font-size:15.5px;line-height:1.6;color:var(--gray)}
+.card{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px rgba(10,10,10,.08);overflow:hidden}
+.card[hidden]{display:none}
+.bar{height:6px;background:var(--panel)}
+.bar i{display:block;height:100%;width:0;background:rgb(var(--blue));transition:width .35s cubic-bezier(.4,0,.2,1)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 22px 0;min-height:34px}
+.step{font-family:var(--mono);font-size:11px;color:var(--gray)}
+.step b{color:rgb(var(--blue));font-weight:600}
+.back{border:0;background:none;font:500 13px var(--sans);color:var(--gray);cursor:pointer;padding:6px 0}
+.back[hidden]{display:none}
+.body{padding:10px 22px 24px}
+.q{animation:in .3s ease-out both}
+@keyframes in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.q h2{font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1.2;margin:4px 0 0}
+.q .hint{margin:6px 0 0;font-size:14px;line-height:1.5;color:var(--gray)}
+.opts{display:grid;gap:8px;margin-top:18px}
+.opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font:500 15px/1.35 var(--sans);color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s}
+.opt:hover{border-color:rgba(var(--blue),.55)}
+.opt .mk{flex:0 0 20px;width:20px;height:20px;border:1.5px solid var(--gray2);border-radius:50%;display:grid;place-items:center}
+.opt .tx{display:flex;flex-direction:column;gap:3px}
+.opt .tx small{font-size:13px;font-weight:400;line-height:1.45;color:var(--gray)}
+.opt[aria-checked="true"]{border-color:rgb(var(--blue));background:rgba(var(--blue),.06)}
+.opt[aria-checked="true"] .mk{border-color:rgb(var(--blue));background:rgb(var(--blue))}
+.opt[aria-checked="true"] .mk::after{content:"";width:8px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.opt:focus-visible,.btn:focus-visible,input:focus-visible,.back:focus-visible{outline:3px solid rgba(var(--blue),.35);outline-offset:2px}
+.fields{display:grid;gap:12px;margin-top:18px}
+.fields .half{grid-template-columns:1fr 1fr;display:grid;gap:10px}
+label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+input[type=text],input[type=email],input[type=tel],input[type=url]{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:10px;font:500 15px var(--sans);color:var(--ink);background:#fff}
+input:focus{border-color:rgb(var(--blue));outline:none}
+.fieldnote{margin-top:6px;font-size:12px;line-height:1.5;color:var(--gray)}
+.prompt{margin-top:16px;padding:14px 16px;border-radius:12px;background:rgba(var(--blue),.07);font-size:15px;line-height:1.55;color:var(--ink2)}
+.prompt b{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgb(var(--blue));margin-bottom:4px;font-weight:600}
+.err{min-height:18px;margin-top:8px;font-size:13px;color:var(--bad)}
+.err:empty{display:none}
+.actions{display:flex;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.btn{border:0;border-radius:10px;padding:14px 26px;font:600 15px var(--sans);color:#fff;background:rgb(var(--blue));cursor:pointer;box-shadow:0 8px 20px -10px rgba(var(--blue),.8);text-decoration:none;display:inline-block}
+.btn:disabled{opacity:.45;cursor:default}
+.trust{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--gray)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.done{text-align:center;padding:26px 22px 28px}
+.done .ok{width:48px;height:48px;border-radius:50%;background:rgba(21,128,61,.1);color:var(--good);display:grid;place-items:center;margin:0 auto;font-size:22px;font-weight:700;animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.done h2{margin:14px 0 0;font-size:24px;font-weight:700;letter-spacing:-.03em}
+.done p{margin:8px auto 0;max-width:44ch;font-size:15px;line-height:1.6;color:var(--gray)}
+.cal{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px rgba(10,10,10,.08);padding:22px;scroll-margin-top:16px}
+.cal[hidden]{display:none}
+.cal h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.03em}
+.cal .sub{margin:6px 0 0;font-size:14px;color:var(--gray)}
+.cal .newtab{display:inline-block;margin-top:10px;font-size:13px;font-weight:600;color:rgb(var(--blue));text-decoration:underline;text-underline-offset:3px}
+.embed{margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#fff}
+.embed iframe{display:block;width:100%;height:860px;min-height:600px;border:0;background:#fff}
+@media(max-width:520px){
+  h1{font-size:26px;margin-top:8px}.lede{font-size:14px;margin-top:6px}.card{margin-top:12px}.logo{font-size:19px}
+  .top{padding:12px 16px 0}.body{padding:8px 16px 18px}.q h2{font-size:19px}.q .hint{font-size:13px}
+  .opts{gap:6px;margin-top:14px}.opt{padding:12px 13px;font-size:14px}.fields{gap:10px;margin-top:14px}
+  .fields .half{grid-template-columns:1fr}
+  input[type=text],input[type=email],input[type=tel],input[type=url]{padding:12px;font-size:16px}
+  .actions .btn{width:100%}
+  .embed iframe{height:760px}
+}
+@media(prefers-reduced-motion:reduce){.q,.done .ok{animation:none}.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="logo" href="/join/coo/" aria-label="Fundhub careers">fundhub.</a>
+  <div class="hero" id="hero">
+    <span class="kicker" id="kicker">COO application · Step 1 of 2</span>
+    <h1 id="title">Apply for the COO Seat</h1>
+    <p class="lede" id="lede">About 5 minutes. Strong fits pick a time with Chris right after.</p>
+  </div>
+
+  <form class="card" id="sv" novalidate>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="top"><button type="button" class="back" id="back" hidden>← Back</button><span class="step" id="count"></span></div>
+    <div class="body" id="body" aria-live="polite"></div>
+    <!-- Honeypot. A person never sees or fills this; a form-filling bot does.
+         The server answers a bot exactly as it answers a person. -->
+    <div class="hp" aria-hidden="true"><label for="f-website">Website</label><input type="text" id="f-website" name="website" tabindex="-1" autocomplete="off"></div>
+  </form>
+
+  <div class="card" id="done" hidden></div>
+
+  <section class="cal" id="cal" hidden aria-labelledby="cal-h">
+    <h2 id="cal-h">Pick a Time for Your Interview</h2>
+    <p class="sub" id="cal-sub">You'll meet with Chris, our CEO.</p>
+    <a class="newtab" id="cal-newtab" href="#" target="_blank" rel="noopener">Calendar not loading? Open it in a new tab</a>
+    <div class="embed"><iframe id="cal-frame" title="Book your Fundhub interview"></iframe></div>
+  </section>
+
+  <div class="trust" id="trust"><span>About 5 minutes</span><span>·</span><span>LinkedIn required</span><span>·</span><span>Founder or investor reference</span><span>·</span><span>90-second Loom</span></div>
+</div>
+
+<!-- The questions. This block is pageSurvey("coo") from src/hiring/survey.mjs, word
+     for word; src/hiring/survey.test.mjs fails the build if they drift. Edit the
+     module, then paste its output here. -->
+<script type="application/json" id="fh-join-survey">
+{
+  "version": "join-2026-10-13.2",
+  "funnel": "coo",
+  "roles": [
+    {
+      "key": "coo",
+      "label": "Chief Operating Officer",
+      "blurb": "Run the operating rhythm: the team, the numbers, and the weekly meetings.",
+      "loomPrompt": "In 90 seconds, walk us through an operation you built and the numbers it moved.",
+      "referencePrompt": "Give us a founder or investor you worked with. Someone we can call.",
+      "referenceRelationships": [
+        "Founder I worked with",
+        "Investor in a company I ran",
+        "CEO I reported to",
+        "Board member"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "key": "years_in_role",
+      "roles": [
+        "coo"
+      ],
+      "title": "How long have you done this kind of work?",
+      "opts": [
+        "Less than 1 year",
+        "1 to 2 years",
+        "3 to 5 years",
+        "5+ years"
+      ]
+    },
+    {
+      "key": "hours",
+      "roles": [
+        "coo"
+      ],
+      "title": "What hours can you work?",
+      "hint": "Arizona time.",
+      "opts": [
+        "Full-time, Monday to Friday",
+        "Full-time, plus evenings or weekends",
+        "Part-time only"
+      ]
+    },
+    {
+      "key": "start",
+      "roles": [
+        "coo"
+      ],
+      "title": "When can you start?",
+      "opts": [
+        "Right away",
+        "Within 2 weeks",
+        "Within 30 days",
+        "More than 30 days out"
+      ]
+    },
+    {
+      "key": "coo_team_size",
+      "roles": [
+        "coo"
+      ],
+      "title": "What's the biggest team you've managed?",
+      "opts": [
+        "1 to 5 people",
+        "6 to 15 people",
+        "16 to 50 people",
+        "50+ people"
+      ]
+    },
+    {
+      "key": "coo_company_size",
+      "roles": [
+        "coo"
+      ],
+      "title": "What's the biggest company you've run operations for?",
+      "hint": "Monthly revenue.",
+      "opts": [
+        "Under $100,000",
+        "$100,000 to $500,000",
+        "$500,000 to $1,000,000",
+        "$1,000,000+"
+      ]
+    },
+    {
+      "key": "coo_sales_team_ops",
+      "roles": [
+        "coo"
+      ],
+      "title": "Have you run operations for a sales team?",
+      "hint": "Setters, closers and the people who serve the clients after the sale.",
+      "opts": [
+        "Yes, I built it from scratch",
+        "Yes, I ran one that already existed",
+        "No"
+      ]
+    }
+  ]
+}
+</script>
+
+<script src="/join/apply.js"></script>
+</body>
+</html>
