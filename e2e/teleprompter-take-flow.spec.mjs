@@ -720,18 +720,20 @@ test("drag words while recording stays one take; only a tap changes playback and
   expect(server.errors).toEqual([]);
 });
 
-test("an iPhone ad requests portrait 1080p and a 60 fps take despite a saved 4K choice", async ({ page }) => {
+test("an iPhone ad requests portrait 1080p at a hard 30 fps despite a saved 4K choice", async ({ page }) => {
   const { server } = await open(page, {
-    iphone: true, cameraFps: 60, savedCam: "4k", sourceWidth: 1080, sourceHeight: 1920,
+    iphone: true, cameraFps: 30, savedCam: "4k", sourceWidth: 1080, sourceHeight: 1920,
     scriptShapes: [{ stack_kind: "ad", script_format: "standard", take_file_name: "SLO Ad 91 — Script 1 Take 1.mp4" }]
   });
   const ask = await page.evaluate(() => window.__cameraAsks[0].video);
   expect([ask.width.ideal, ask.height.ideal]).toEqual([1080, 1920]);
-  expect(ask.frameRate.ideal).toBeGreaterThanOrEqual(60);
+  expect(ask.frameRate).toEqual({ ideal: 30, max: 30 });
+  // One ask opens the lens: no 60 fps re-asks that black out the screen.
+  expect(await page.evaluate(() => window.__cameraAsks.length)).toBe(1);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__cameraStreams[0].getVideoTracks()[0].getSettings().frameRate)).toBe(60);
-  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBeGreaterThanOrEqual(60);
+  expect(await page.evaluate(() => window.__cameraStreams[0].getVideoTracks()[0].getSettings().frameRate)).toBe(30);
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
   expect(await page.evaluate(() => [window.__recordCanvas.width, window.__recordCanvas.height])).toEqual([1080, 1920]);
   const asksBeforeFlip = await page.evaluate(() => window.__cameraAsks.length);
   const flip = page.locator("#b-camera-flip");
@@ -739,6 +741,9 @@ test("an iPhone ad requests portrait 1080p and a 60 fps take despite a saved 4K 
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
   const flipAsk = await page.evaluate((at) => window.__cameraAsks[at].video, asksBeforeFlip);
   expect([flipAsk.width.ideal, flipAsk.height.ideal]).toEqual([1080, 1920]);
+  expect(flipAsk.frameRate).toEqual({ ideal: 30, max: 30 });
+  // A flip is one ask too.
+  expect(await page.evaluate(() => window.__cameraAsks.length)).toBe(asksBeforeFlip + 1);
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
   await page.waitForTimeout(550);
@@ -748,28 +753,28 @@ test("an iPhone ad requests portrait 1080p and a 60 fps take despite a saved 4K 
   expect(server.errors).toEqual([]);
 });
 
-test("an iPhone VSL requests 4K and a 60 fps take despite a saved 1080p choice", async ({ page }) => {
+test("an iPhone VSL requests 4K at a hard 30 fps despite a saved 1080p choice", async ({ page }) => {
   const { server } = await open(page, {
-    iphone: true, cameraFps: 60, savedCam: "1080p", sourceWidth: 1080, sourceHeight: 1920,
+    iphone: true, cameraFps: 30, savedCam: "1080p", sourceWidth: 1080, sourceHeight: 1920,
     scriptShapes: [{ stack_kind: "vsl", script_format: "vsl", take_file_name: "SLO VSL 1 — Script 1 Take 1.mp4" }]
   });
   const ask = await page.evaluate(() => window.__cameraAsks[0].video);
   expect([ask.width.ideal, ask.height.ideal]).toEqual([3840, 2160]);
-  expect(ask.frameRate.ideal).toBeGreaterThanOrEqual(60);
+  expect(ask.frameRate).toEqual({ ideal: 30, max: 30 });
   // The requested 4K mode cannot be used as the displayed granted size.
-  await expect(page.locator("#camera-quality")).toHaveText("1080p · 60 fps");
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 30 fps");
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
-  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(60);
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
   await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });
 
 for (const [mode, fps, expected, scriptShape, sourceWidth, sourceHeight] of [
-  ["Ad", 30, /1080p · 30 fps · below 60 fps target/i, { stack_kind: "ad", script_format: "standard" }, 1080, 1920],
+  ["Ad", 30, /1080p · 30 fps/i, { stack_kind: "ad", script_format: "standard" }, 1080, 1920],
   ["Ad", 60, /1080p · 60 fps/i, { stack_kind: "ad", script_format: "standard" }, 1080, 1920],
-  ["VSL", 30, /4K · 30 fps · below 60 fps target/i, { stack_kind: "vsl", script_format: "vsl" }, 2160, 3840],
+  ["VSL", 30, /4K · 30 fps/i, { stack_kind: "vsl", script_format: "vsl" }, 2160, 3840],
   ["VSL", 60, /4K · 60 fps/i, { stack_kind: "vsl", script_format: "vsl" }, 2160, 3840]
 ]) {
   test(`${mode} preview reports the granted ${fps} fps camera rate`, async ({ page }) => {
@@ -782,7 +787,9 @@ for (const [mode, fps, expected, scriptShape, sourceWidth, sourceHeight] of [
     const badge = page.locator("#camera-quality");
     await expect(badge).toBeVisible();
     await expect(badge).toHaveText(`${mode === "VSL" ? "4K" : "1080p"} · ${fps} fps`);
-    await expect(badge).toHaveAttribute("data-below-target", String(fps < 60));
+    // Owner call 2026-10-13: a hard 30 fps is the target, so 30 is not flagged.
+    await expect(badge).toHaveAttribute("data-below-target", "false");
+    await expect(report).not.toContainText("below");
     const badgeUi = await badge.evaluate((el) => ({
       tag: el.tagName, role: el.getAttribute("role"), tabIndex: el.tabIndex,
       pointers: getComputedStyle(el).pointerEvents, box: el.getBoundingClientRect().toJSON()
@@ -794,8 +801,7 @@ for (const [mode, fps, expected, scriptShape, sourceWidth, sourceHeight] of [
     const micBox = await page.locator("#mic-monitor").boundingBox();
     expect(badgeUi.box.top).toBeGreaterThanOrEqual(micBox.y + micBox.height);
     const inlineColor = await report.evaluate((el) => el.style.color);
-    if (fps < 60) expect(inlineColor).toBe("var(--tally)");
-    else expect(inlineColor).toBe("");
+    expect(inlineColor).toBe("");
   });
 }
 
@@ -813,7 +819,7 @@ test("camera quality badge follows the granted rate when switching lenses during
   await page.locator("#b-camera-flip").tap();
   await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use front camera");
   await expect(page.locator("#camera-quality")).toHaveText("1080p · 30 fps");
-  await expect(page.locator("#camera-quality")).toHaveAttribute("data-below-target", "true");
+  await expect(page.locator("#camera-quality")).toHaveAttribute("data-below-target", "false");
   await page.locator("#b-camera-flip").tap();
   await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use back camera");
   await expect(page.locator("#camera-quality")).toHaveText("1080p · 60 fps");
@@ -836,16 +842,14 @@ test("camera quality badge follows the actual resolution when changing Ad to VSL
   await expect(page.locator("#camera-quality")).toHaveText("4K · 60 fps");
 });
 
-test("an Ad tries the portrait 4K 60 fps source before keeping a native 1080p 30 fps grant", async ({ page }) => {
+test("an Ad keeps the first 30 fps grant: one camera ask and no 4K hunt (owner call 2026-10-13)", async ({ page }) => {
   await open(page, { iphone: true, cameraFps: 30, fourKCameraFps: 60, sourceSizeByAsk: true });
-  await expect(page.locator("#camera-quality")).toHaveText("4K · 60 fps");
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 30 fps");
   const asks = await page.evaluate(() => window.__cameraAsks);
-  const fourK60 = asks.findIndex((ask) => ask.video.width?.ideal >= 2160 && ask.video.frameRate?.ideal >= 60);
-  expect(fourK60).toBeGreaterThan(0);
-  expect(asks.slice(0, fourK60).every((ask) => ask.video.frameRate?.ideal !== 30)).toBe(true);
+  expect(asks).toHaveLength(1);
+  expect(asks[0].video.width?.ideal).toBe(1080);
   const liveSettings = await page.evaluate(() => document.querySelector("#cam-video").srcObject.getVideoTracks()[0].getSettings());
-  expect(liveSettings.frameRate).toBe(60);
-  expect([liveSettings.width, liveSettings.height]).toEqual([2160, 3840]);
+  expect([liveSettings.width, liveSettings.height, liveSettings.frameRate]).toEqual([1080, 1920, 30]);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => [window.__recordCanvas.width, window.__recordCanvas.height])).toEqual([1080, 1920]);
@@ -1461,7 +1465,7 @@ test("full 4K GPU recording preserves portrait pixels and one take across lens c
     settings: document.getElementById("cam-video").srcObject.getVideoTracks()[0].getSettings()
   }));
   expect(rear.ask).toMatchObject({ width: { ideal: 3840 }, height: { ideal: 2160 },
-    frameRate: { min: 60, ideal: 60 }, focusMode: "continuous", exposureMode: "continuous" });
+    frameRate: { ideal: 30, max: 30 }, focusMode: "continuous", exposureMode: "continuous" });
   expect(rear.settings).toMatchObject({ width: 2160, height: 3840, frameRate: 60, facingMode: "environment" });
   await expect(page.locator("#camera-quality")).toHaveText("4K · 60 fps");
   await expect.poll(async () => (await pixels())?.left).toBe("lime");
