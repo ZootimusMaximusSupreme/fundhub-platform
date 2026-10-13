@@ -1,5 +1,9 @@
 # TODO — unfinished work
 
+## Today — 2026-10-13
+
+- [ ] **Repository cleanup — code only.** Owner wants just the code; everything else is unnecessary. Remove stale notes, duplicate plans/to-do lists, abandoned extras, and other non-code clutter. Before deleting, identify any non-code files the live application requires and flag those dependencies. Preserve working code and other sessions’ unfinished work.
+
 ## Priority — iPhone teleprompter launch readiness (updated 2026-10-13)
 
 The main recording, camera switching, two-second tail, full-script editor, local take queue, microphone meter, and per-offer Drive routing were built and merged in PRs #29, #30, and #31. Some versions also shipped. **Implementation/merge is not a physical iPhone proof.** Evidence and latest measurements: `ops/workflows/teleprompter-video-2026-10-12.md`. Keep each item open until the acceptance test is real.
