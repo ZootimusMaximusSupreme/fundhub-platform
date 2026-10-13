@@ -2,6 +2,9 @@
 
 ## Today — 2026-10-13
 
+Timing (Arizona/MST): no AI work before 9:00 AM; start Claude at 9:00 AM. Aim to text 50 people around 6:00 AM if possible. Panera opens around 7:30–8:00 AM per owner. All filming waits until the teleprompter is fixed; film outside except for four green-screen ads at home, once people are awake. Stack independent tasks while AI runs and check progress at planned breaks.
+
+- [ ] Sign MCA deal.
 - [ ] Fix teleprompter.
 - [ ] Finish filming.
 - [ ] Edit the filmed videos.
@@ -9,7 +12,7 @@
 - [ ] Start Claude again.
 - [ ] Finish heartbeat / figure it out.
 - [ ] Start refactor planning.
-- [ ] Text 50 people.
+- [ ] Text 50 people — aim for around 6:00 AM MST if possible.
 - [ ] Make sure Cortana is fully set up correctly with the funnel.
 - [ ] Make sure Bram, the credit client, is handled.
 - [ ] Help Colin with Lexi’s nexus.
