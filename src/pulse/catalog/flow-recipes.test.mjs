@@ -39,7 +39,9 @@ test("every flow map row gets one valid safe recipe", () => {
       assert.equal(recipe.sourceFile, sourceFile);
       assert.equal(recipe.surface, row.surface);
       if (recipe.proof) {
-        assert.deepEqual(Object.keys(recipe.proof).filter((key) => key !== "verdict").sort(), PROOF_KEYS, row.surface);
+        const expectedProofKeys = recipe.proof.runner ? [...PROOF_KEYS, "runner"] : PROOF_KEYS;
+        assert.deepEqual(Object.keys(recipe.proof).filter((key) => key !== "verdict").sort(), expectedProofKeys, row.surface);
+        if (recipe.proof.runner) assert.equal(recipe.proof.runner, "real-rendered-page", row.surface);
         if (recipe.proof.verdict !== undefined) assert.equal(recipe.proof.verdict, "red", row.surface);
         assert.equal(["e2e", "deep"].includes(recipe.proof.depth), true, row.surface);
         assert.match(recipe.proof.evidence, /\.test\.mjs\b/, row.surface);

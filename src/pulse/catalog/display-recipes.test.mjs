@@ -87,8 +87,9 @@ test("tracked controls use safe executable proof without making a live write", (
   assert.equal(recipe.schedule, "on-demand");
   assert.equal(recipe.safe, true);
   assert.equal(recipe.expected, row.control);
-  assert.match(recipe.proof.evidence, /gap-catalog-display\.mjs/);
-  assert.equal(recipe.proof.verdict, "red");
+  assert.equal(recipe.proof.depth, "deep");
+  assert.match(recipe.proof.evidence, /src\/pulse\/catalog\/proofs\/display-contracts-ab\.test\.mjs$/);
+  assert.ok(fs.existsSync(path.resolve(HERE, "../../..", recipe.proof.evidence)));
 });
 
 test("deep reads and pinged pages stay read-only", () => {
@@ -124,10 +125,10 @@ test("every named display control gets an exact executable tracking lane", () =>
     const recipe = makeRecipe("public-pages.json", row);
     assert.equal(recipe.mode, row.kind === "page" ? "read-only" : "test");
     assert.equal(recipe.safe, true);
-    assert.equal(recipe.proof.depth, row.impact === "none" ? "e2e" : "deep");
+    assert.equal(recipe.proof.depth, "e2e");
     assert.equal(recipe.proof.asserts, row.control);
-    assert.match(recipe.proof.evidence, /gap-catalog-display\.mjs/);
-    assert.equal(recipe.proof.verdict, "red");
+    assert.equal(recipe.proof.evidence, "src/pulse/catalog/proofs/display-contracts-ef-public.test.mjs");
+    assert.ok(fs.existsSync(path.resolve(HERE, "../../..", recipe.proof.evidence)));
   }
 });
 
