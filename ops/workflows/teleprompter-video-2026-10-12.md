@@ -24,6 +24,10 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 
 ## Required live UI checks for this repair
 
+### Fresh-upload lookup — October 13, 1:08 a.m. Phoenix
+
+The owner replied that both new takes uploaded. Connector folder/search reads, the authenticated Direct Book listing, and an authenticated account-wide video listing still show October 12's 9:17 p.m. Ad and 9:20 p.m. VSL as newest. No accessible video has a modified time after the verified 10:39 p.m. release. Luna also checked the other registered offer folders and found no new videos; the local Drive config has one OAuth candidate. This does not prove an upload failed. A link to either new video or the app's save-status screenshot has been requested to locate the pair. Do not report the old files as new-build footage or claim a fresh frame-rate result. No app code was changed during this lookup.
+
 Run against the published teleprompter assets in WebKit. API and camera fixtures prevent writes to real recordings or customer data. This proves the shipped UI wiring, not physical iPhone capture quality. The score is the fraction of these six required cases that pass; real saved-file 60 fps remains a separate acceptance gate.
 
 1. Actual Ad 30 fps is displayed and marked below target.
