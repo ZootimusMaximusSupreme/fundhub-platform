@@ -23,6 +23,16 @@ const conflict = [
   "history: who changed what and when, and whether the repo has it"
 ];
 const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const cases = {
+  ui: new RegExp(`(?:${core.map(escape).join("|")})$|teleprompter on an iPhone \\(touch\\) (?:${conflict.map(escape).join("|")})$`),
+  ad60: /Ad preview reports the granted 60 fps camera rate$/,
+  rear4k: /full 4K GPU recording preserves portrait pixels and one take across lens changes$/
+};
+const selectedCase = process.env.FHTP_LIVE_CASE || "ui";
+if (!Object.hasOwn(cases, selectedCase)) throw new Error(`Unknown live UI case: ${selectedCase}`);
+const resultTag = process.env.FHTP_LIVE_TAG || "";
+if (resultTag && !/^[a-f0-9]{8}$/.test(resultTag)) throw new Error("FHTP_LIVE_TAG must be an 8-character commit prefix");
+const resultName = `fundhub-live-${selectedCase === "ui" ? "final-ui" : selectedCase === "ad60" ? "ad60" : "rear4k"}-results${resultTag ? `-${resultTag}` : ""}.json`;
 
 export default {
   ...base,
@@ -34,10 +44,10 @@ export default {
   ],
   outputDir: path.join(root, "test-results", "teleprompter-live"),
   webServer: undefined,
-  grep: new RegExp(`(?:${core.map(escape).join("|")})$|teleprompter on an iPhone \\(touch\\) (?:${conflict.map(escape).join("|")})$`),
+  grep: cases[selectedCase],
   reporter: [
     ["list"],
-    ["json", { outputFile: path.join(root, "docs", "workflows", "teleprompter-video-2026-10-12-evidence", "fundhub-live-final-ui-results.json") }]
+    ["json", { outputFile: path.join(root, "docs", "workflows", "teleprompter-video-2026-10-12-evidence", resultName) }]
   ],
   use: {
     ...base.use,
