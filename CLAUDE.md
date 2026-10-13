@@ -2,9 +2,9 @@
 
 # How to work in this repository
 
-This file governs agent behavior. It is not product documentation.
+Read `AGENTS.md` first for the short rules shared by Codex, Claude, and Cursor. This file keeps the expanded Claude workflow, repo history, and task-specific details. It is not product documentation.
 
-**Owner rule, 2026-10-12:** Read `AGENTS.md` before starting. If something blocks the task, find a practical way forward instead of waiting. Speak in fifth-grade English. Get the work onto GitHub; if shipping is blocked, offer a simple manual path rather than giving up. Divide tasks into parallel agents when available, but never claim an agent is running without proof.
+**Owner rule, 2026-10-12:** Read `AGENTS.md` before starting. If something blocks the task, find a practical way forward instead of waiting. Speak in fourth-grade English. Get the work onto GitHub; if shipping is blocked, offer a simple manual path rather than giving up. Divide tasks into parallel agents when available, but never claim an agent is running without proof.
 
 Domain facts, business rules, and architecture live in `docs/`. Read them when a task touches them. Do not restate them here.
 
@@ -175,7 +175,7 @@ When a chat gets long, or the named task is done, remind Chris once: the loud `/
 
 ### 4th grade English (owner-set 2026-10-05)
 
-Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This replaces the 5th grade level in §10; where they differ, this wins. Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
+Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This is the current owner-set level throughout this file. Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
 
 ### Texting hours (owner-set 2026-10-09)
 
@@ -450,7 +450,7 @@ I am the decision maker and I do not read code. Optimize for that.
 
 ### Plain language — required
 
-Write everything at a 5th grade reading level. This is not optional and it is not a style preference. If I cannot understand what broke, I cannot decide what to do about it.
+Write everything at a 4th grade reading level. This is not optional and it is not a style preference. If I cannot understand what broke, I cannot decide what to do about it.
 
 * No jargon. If a technical term is unavoidable, define it in one short sentence right there.
 * Say what broke in terms of what the user sees, not what the code does. Not "null pointer on the auth middleware" — "people can't log in."
