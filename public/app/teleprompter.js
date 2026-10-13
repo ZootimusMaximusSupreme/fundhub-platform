@@ -2668,34 +2668,56 @@
     // Keep the encoder at a rate the phone can sustain. Copy a camera frame
     // only when the preview has a new one; repeated 4K canvas draws take time
     // away from the script's animation frames.
-    var fps = Math.min(isPhone() && requires4K ? 30 : 60, Math.max(1, Math.round(st.frameRate || 30)));
+    var maxFps = isPhone() && requires4K ? 30 : 60;
+    // An omitted camera setting does not mean the camera is limited to 30.
+    var fps = st.frameRate > 0 ? Math.min(maxFps, Math.max(1, Math.round(st.frameRate))) : maxFps;
     cam.recordTargetFps = fps;
     cam.recordFrameSize = canvas.width + "×" + canvas.height;
     var frameEvery = 1000 / fps;
     var stats = { started: root.performance.now(), cameraFrames: 0, copiedFrames: 0,
       cameraLast: 0, copiedLast: 0, cameraLongestGap: 0, copiedLongestGap: 0,
-      hasVideoCallbacks: !!video.requestVideoFrameCallback };
+      hasVideoCallbacks: !!video.requestVideoFrameCallback, missedCallbacks: 0 };
     cam.captureStats = stats;
-    var drewAt = -frameEvery;
+    var frameOrigin = null, copiedSlot = -1, previousFrameTime = null;
+    var sourceStream = video.srcObject, previousPresented = null;
     var paintedShape = layout.dw + ":" + layout.dh;
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     function schedule() {
       if (!cam.pumping) return;
-      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(function (now) { draw(now, true); });
+      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(function (now, metadata) { draw(now, true, metadata); });
       else cam.pumpTimer = root.setTimeout(function () { draw(root.performance.now(), false); }, frameEvery);
     }
-    function draw(now, fromCamera) {
+    function draw(now, fromCamera, metadata) {
       if (!cam.pumping) return;
       cam.pumpVideoFrame = 0;
       cam.pumpTimer = 0;
       if (!(now >= 0)) now = root.performance.now();
+      if (sourceStream !== video.srcObject) {
+        sourceStream = video.srcObject;
+        frameOrigin = null; copiedSlot = -1; previousFrameTime = null; previousPresented = null;
+      }
       if (fromCamera) {
-        stats.cameraFrames++;
+        var presented = metadata && metadata.presentedFrames;
+        var arrived = typeof presented === "number" && previousPresented != null && presented > previousPresented
+          ? presented - previousPresented : 1;
+        stats.cameraFrames += arrived;
+        stats.missedCallbacks += Math.max(0, arrived - 1);
+        previousPresented = typeof presented === "number" ? presented : null;
         if (stats.cameraLast) stats.cameraLongestGap = Math.max(stats.cameraLongestGap, now - stats.cameraLast);
         stats.cameraLast = now;
       }
-      if (now - drewAt >= frameEvery - 1 && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      // Choose frames by their video timestamps, not when JavaScript gets its
+      // callback. Just 1 ms of callback jitter made the old 60 fps gate skip
+      // every other fresh frame. Slots also keep a 4K take at its 30 fps budget.
+      var mediaTime = metadata && metadata.mediaTime;
+      var frameTime = fromCamera && typeof mediaTime === "number" && isFinite(mediaTime) ? mediaTime * 1000 : now;
+      if (frameOrigin == null || (previousFrameTime != null && frameTime < previousFrameTime)) {
+        frameOrigin = frameTime; copiedSlot = -1;
+      }
+      previousFrameTime = frameTime;
+      var slot = Math.floor((frameTime - frameOrigin) / frameEvery + 0.25);
+      if (slot > copiedSlot && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
           // The canvas size is fixed for the whole take. A lens switch can
           // change source dimensions, so fit that new full frame to this same
@@ -2718,7 +2740,7 @@
           }
           ctx.drawImage(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH);
           ctx.restore();
-          drewAt = now;
+          copiedSlot = slot;
           stats.copiedFrames++;
           if (stats.copiedLast) stats.copiedLongestGap = Math.max(stats.copiedLongestGap, now - stats.copiedLast);
           stats.copiedLast = now;
@@ -2826,7 +2848,7 @@
       var source = stats.hasVideoCallbacks ? Math.round(stats.cameraFrames / seconds) + " fps" : "unavailable";
       var copied = Math.round(stats.copiedFrames / seconds) + " fps";
       camLine("This take: camera " + source + " · copied " + copied +
-        (stats.hasVideoCallbacks ? " · longest camera gap " + Math.round(stats.cameraLongestGap) + " ms" : ""), false);
+        (stats.hasVideoCallbacks ? " · missed " + stats.missedCallbacks + " updates · longest callback gap " + Math.round(stats.cameraLongestGap) + " ms" : ""), false);
       cam.captureStats = null;
     }
     if (cam.recordStream && cam.recordStream !== cam.stream) {

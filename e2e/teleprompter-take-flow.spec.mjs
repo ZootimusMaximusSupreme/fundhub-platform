@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, disableVideoCallbacks = false, savedCam = "1080p", portraitOnlyFor4k = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, savedCam = "1080p", portraitOnlyFor4k = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -54,6 +54,26 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         return 1;
       };
       HTMLVideoElement.prototype.cancelVideoFrameCallback = () => {};
+    }
+    if (manualVideoCallbacks) {
+      let nextId = 1;
+      let presentedFrames = 0;
+      const pending = new Map();
+      HTMLVideoElement.prototype.requestVideoFrameCallback = function (callback) {
+        const id = nextId++;
+        pending.set(id, callback);
+        return id;
+      };
+      HTMLVideoElement.prototype.cancelVideoFrameCallback = (id) => { pending.delete(id); };
+      window.__sendVideoFrames = (times, counts = []) => {
+        for (const [index, now] of times.entries()) {
+          const next = pending.entries().next().value;
+          if (!next) throw new Error("recorder did not request the next camera frame");
+          pending.delete(next[0]);
+          presentedFrames = counts[index] ?? presentedFrames + 1;
+          next[1](now, { presentedFrames, mediaTime: presentedFrames / 60 });
+        }
+      };
     }
     if (disableVideoCallbacks) HTMLVideoElement.prototype.requestVideoFrameCallback = undefined;
     const nativeCanvasCapture = HTMLCanvasElement.prototype.captureStream;
@@ -95,7 +115,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       const track = stream.getVideoTracks()[0];
       let liveFacing = facing;
       let liveDevice = deviceId;
-      track.getSettings = () => ({ width, height, frameRate: cameraFps, deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
+      track.getSettings = () => ({ width, height, ...(omitFrameRateSetting ? {} : { frameRate: cameraFps }), deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
       track.applyConstraints = (next = {}) => {
         const exactFacing = next.facingMode && next.facingMode.exact;
         if (exactFacing && exactFacing !== liveFacing && rejectTrackSwitch) return Promise.reject(new Error("track switch rejected"));
@@ -133,7 +153,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k });
+  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -443,6 +463,89 @@ test("an iPhone VSL requests 4K and a 30 fps take despite a saved 1080p choice",
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("1080p Ad copies each fresh 60 fps camera frame despite callback jitter", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+    sourceWidth: 1080, sourceHeight: 1920,
+    scriptShapes: [{ stack_kind: "ad", script_format: "standard" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const { copied, rate } = await page.evaluate(() => {
+    const before = window.__recordDraws;
+    const every = 1000 / 60;
+    const start = performance.now() + 100;
+    const times = Array.from({ length: 60 }, (_, i) => start + (i + 1) * every + (i % 2 ? -1 : 1));
+    window.__sendVideoFrames(times);
+    return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
+  });
+  expect(rate).toBe(60);
+  expect(copied).toBeGreaterThanOrEqual(55);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("1080p Ad keeps its 60 fps request when camera settings omit frame rate", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, omitFrameRateSetting: true,
+    scriptShapes: [{ stack_kind: "ad", script_format: "standard" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => window.__cameraStreams[0].getVideoTracks()[0].getSettings().frameRate)).toBeUndefined();
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(60);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("camera rate counts presented frames even when video callbacks skip frames", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+    scriptShapes: [{ stack_kind: "ad", script_format: "standard" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => {
+    const now = performance.now();
+    window.__sendVideoFrames([now + 20, now + 60], [1, 61]);
+  });
+  await page.waitForTimeout(250);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  const report = await page.locator("#cam-line").textContent();
+  const rates = report.match(/This take: camera (\d+) fps · copied (\d+) fps/);
+  expect(rates).not.toBeNull();
+  expect(Number(rates[1])).toBeGreaterThan(Number(rates[2]) * 10);
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("4K VSL caps fresh 60 fps camera frames near 30 canvas copies", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+    sourceWidth: 1080, sourceHeight: 1920,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const { copied, rate } = await page.evaluate(() => {
+    const before = window.__recordDraws;
+    const every = 1000 / 60;
+    const start = performance.now() + 100;
+    const times = Array.from({ length: 60 }, (_, i) => start + (i + 1) * every + (i % 2 ? -1 : 1));
+    window.__sendVideoFrames(times);
+    return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
+  });
+  expect(rate).toBe(30);
+  expect(copied).toBeGreaterThanOrEqual(25);
+  expect(copied).toBeLessThanOrEqual(35);
   await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);

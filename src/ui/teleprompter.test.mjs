@@ -144,7 +144,9 @@ describe("teleprompter, pure", () => {
     assert.match(open, /cameraAsk\(requested, 60, mode === "1080p" && recordingIsPortrait\(\) \? "tall" : "wide", true, mode\)/);
     assert.doesNotMatch(open, /applyConstraints\(/, "do not force a tall crop after opening Safari's camera");
     const record = SRC.slice(SRC.indexOf("function continuousRecordStream(stream)"), SRC.indexOf("function beginRec()"));
-    assert.match(record, /Math\.min\(isPhone\(\) && requires4K \? 30 : 60, Math\.max\(1, Math\.round\(st\.frameRate \|\| 30\)\)\)/);
+    assert.match(record, /var maxFps = isPhone\(\) && requires4K \? 30 : 60/);
+    assert.match(record, /st\.frameRate > 0 \? Math\.min\(maxFps, Math\.max\(1, Math\.round\(st\.frameRate\)\)\) : maxFps/);
+    assert.doesNotMatch(record, /st\.frameRate \|\| 30/, "missing camera metadata must not cap an Ad to 30 fps");
     assert.match(record, /canvas\.captureStream\(fps\)/);
   });
 
@@ -878,7 +880,8 @@ describe("recorded camera frame quality", () => {
     assert.match(recorder, /ctx\.drawImage\(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH\)/,
       "lens changes still draw the full source into the fixed take canvas");
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
-    assert.match(recorder, /Math\.min\(isPhone\(\) && requires4K \? 30 : 60, Math\.max\(1,/);
+    assert.match(recorder, /var maxFps = isPhone\(\) && requires4K \? 30 : 60/);
+    assert.match(recorder, /Math\.min\(maxFps, Math\.max\(1, Math\.round\(st\.frameRate\)\)\)/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
     assert.match(recorder, /activeMode\(\) === "4k" \|\| stays4K\(scripts\[cur\]\)/);
     const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));
