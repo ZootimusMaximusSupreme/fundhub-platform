@@ -16,13 +16,14 @@ Filming priority: owner is strongest in the morning and wants to leave home by 1
 - [ ] Finish heartbeat / figure it out.
 - [ ] Start refactor planning.
 - [ ] Text 50 people — ON HOLD: confirm the right recipients and add missing referral-source details to the contact document; corrections are being addressed (owner update, 5:49 AM).
+- [ ] Check Gmail for Blake Everton’s leads and their referral details (owner-identified source; email contents not yet verified).
 - [ ] Make sure Cortana is fully set up correctly with the funnel.
-- [ ] Make sure Bram, the credit client, is handled.
+- [ ] Make sure Bram (also dictated as Brahm), the credit client, is handled — next after the CRS payment.
 - [ ] Help Colin with Lexi’s nexus.
 - [ ] Pay CRS — IN PROGRESS: owner is paying now; completion not yet confirmed (5:49 AM).
 - [ ] Get coffee at Panera.
 - [ ] Optional: sushi around 1:00–2:00 PM if filming allows.
-- [ ] Clean the house floors today.
+- [ ] Clean the house floors today — after handling Bram/Brahm.
 - [ ] Gym tonight — full workout before bed.
 - [ ] Figure out a strategy to stack other work while AI runs, without staring at the screen or obsessively checking loading.
 
