@@ -6,6 +6,8 @@
 
 The 4:46:50 p.m. iPhone screenshot shows a portrait page and upright script, but Chris's face in the camera layer is sideways. The 4:46:40 p.m. screenshot also shows the rear-camera scene through the glass with the wrong framing. The earlier desktop browser checks passed, but they did not prove real iPhone Safari camera behavior. Do not call this fixed based on those checks.
 
+The two recent **Direct Book Ad 5 — Paying for speed Take 1.mp4** files were downloaded from the Direct Book Google Drive offer folder. Both report a tall 2160×3840 file, but their picture is sideways. One contains 40 frames in about 3.0 seconds (13.39 fps); the other has 23 frames in about 1.7 seconds (14.18 fps). This proves that requested 4K/60 fps settings were not the actual saved quality. A new take from the corrected build is required to prove improvement.
+
 ## Likely fault to test
 
 `syncPreviewOrientation()` in `public/app/teleprompter.js` treats `video.videoWidth > video.videoHeight` on a portrait phone as proof that the visible pixels need turning. `public/app/teleprompter.css` then rotates `#cam-feed`, with the opposite direction for the front camera. Safari may already display the track upright despite reporting a wide camera buffer. The same width/height assumption also drives `recordFrameBox()` and the saved canvas. This is a diagnosis to verify on a real iPhone, not a confirmed cause.
@@ -16,7 +18,7 @@ The 4:46:50 p.m. iPhone screenshot shows a portrait page and upright script, but
 2. **Saved file:** A take made upright plays as a vertical video with upright people and objects. A take made sideways plays as a horizontal video with upright people and objects. Check the actual pixels during playback as well as the file dimensions and orientation metadata.
 3. **Camera flip:** The top-left button switches front ↔ rear in either phone position. It never starts or stops a take. A flip during a take keeps one valid recording and an upright live view. Preserve the existing front-camera mirror choice and rear-camera unmirrored view.
 4. **Reading flow:** Words, buttons, smooth scroll, speed, pause/play, and video saving keep working. No new control or permission flow is part of this fix.
-5. **Video quality:** The saved take must look sharp and play smoothly. VSL and thank-you takes must meet the existing 4K rule when the iPhone browser grants 4K capture; ads may use 1080p. Do not claim 4K or 60 fps from requested settings alone. The upload must keep the original take bytes and quality; it must not use the dimmed or blurred preview image.
+5. **Video quality:** The saved take must look sharp and play smoothly. VSL and thank-you takes must meet the existing 4K rule when the iPhone browser supplies enough upright portrait pixels for a true 4K file; ads may use 1080p. If Safari gives only a wide 4K frame, a tall crop has less than 4K detail: show that limit rather than claim 4K. Do not claim 60 fps from requested settings alone. The upload must keep the original take bytes and quality; it must not use the dimmed or blurred preview image.
 
 ## Build approach
 

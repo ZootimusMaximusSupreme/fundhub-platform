@@ -2548,9 +2548,9 @@
     if (width > 0) return hi ? 16000000 : 10000000;
     return 8000000;
   }
-  /* Saved video is cropped without stretching pixels. The front camera is
-     mirrored in the file; the rear camera is not. A portrait phone always
-     gets a tall file, even when Safari hands us a landscape camera stream. */
+  /* Safari already gives canvas upright camera pixels, even when the frame
+     reports landscape dimensions on an upright phone. Crop to the phone's
+     shape without rotating or stretching those pixels. */
   function recordFrameBox(sourceWidth, sourceHeight, portrait, requires4K) {
     var w = Math.round(Number(sourceWidth) || 0);
     var h = Math.round(Number(sourceHeight) || 0);
@@ -2558,22 +2558,15 @@
     var targetWidth = portrait ? (requires4K ? 2160 : 1080) : (requires4K ? 3840 : 1920);
     var targetHeight = portrait ? (requires4K ? 3840 : 1920) : (requires4K ? 2160 : 1080);
     var ar = targetWidth / targetHeight;
-    // iPhone Safari may report a sideways buffer even while the phone is
-    // upright. Rotate those pixels; cropping would discard most of the image.
-    var rotate90 = !!(portrait ? w > h : h > w);
-    var orientedW = rotate90 ? h : w;
-    var orientedH = rotate90 ? w : h;
-    var cutW = Math.min(orientedW, orientedH * ar);
-    var cutH = Math.min(orientedH, orientedW / ar);
-    var srcW = rotate90 ? cutH : cutW;
-    var srcH = rotate90 ? cutW : cutH;
+    var cutW = Math.min(w, h * ar);
+    var cutH = Math.min(h, w / ar);
     var factor = Math.min(1, targetWidth / cutW, targetHeight / cutH);
     var outW = Math.max(2, Math.floor(cutW * factor / 2) * 2);
     var outH = Math.max(2, Math.floor(cutH * factor / 2) * 2);
     return {
       width: outW, height: outH,
-      sx: Math.max(0, (w - srcW) / 2), sy: Math.max(0, (h - srcH) / 2),
-      sw: srcW, sh: srcH, rotate90: rotate90,
+      sx: Math.max(0, (w - cutW) / 2), sy: Math.max(0, (h - cutH) / 2),
+      sw: cutW, sh: cutH,
       portrait: !!portrait, needsBetterCamera: cutW < targetWidth || cutH < targetHeight
     };
   }
@@ -2701,13 +2694,8 @@
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
-          if (box.rotate90) {
-            ctx.translate(canvas.width, 0);
-            ctx.rotate(Math.PI / 2);
-          }
           ctx.drawImage(video, box.sx, box.sy, box.sw, box.sh,
-            0, 0, box.rotate90 ? canvas.height : canvas.width,
-            box.rotate90 ? canvas.width : canvas.height);
+            0, 0, canvas.width, canvas.height);
           ctx.restore();
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }

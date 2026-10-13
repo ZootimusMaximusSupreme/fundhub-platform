@@ -41,6 +41,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     const nativeCanvasCapture = HTMLCanvasElement.prototype.captureStream;
     HTMLCanvasElement.prototype.captureStream = function (rate) {
       window.__captureRates.push(rate);
+      window.__recordCanvas = this;
       return nativeCanvasCapture.call(this, rate);
     };
     if (rearPlayRejectOnce) {
@@ -58,7 +59,11 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     const makeStream = (facing, deviceId) => {
       const canvas = document.createElement("canvas");
       canvas.width = sourceWidth; canvas.height = sourceHeight;
-      canvas.getContext("2d").fillRect(0, 0, sourceWidth, sourceHeight);
+      const cameraPixels = canvas.getContext("2d");
+      cameraPixels.fillStyle = "red";
+      cameraPixels.fillRect(0, 0, sourceWidth, sourceHeight / 2);
+      cameraPixels.fillStyle = "blue";
+      cameraPixels.fillRect(0, sourceHeight / 2, sourceWidth, sourceHeight / 2);
       const stream = canvas.captureStream(30);
       const track = stream.getVideoTracks()[0];
       let liveFacing = facing;
@@ -404,6 +409,14 @@ test("live camera stays unrotated while saved video follows the phone turn", asy
       const settings = track.getSettings();
       return [settings.width, settings.height];
     });
+    await expect.poll(() => page.evaluate(() => {
+      const canvas = window.__recordCanvas;
+      if (!canvas || canvas.width < 2 || canvas.height < 2) return false;
+      const ctx = canvas.getContext("2d");
+      const top = ctx.getImageData(canvas.width / 2, 1, 1, 1).data;
+      const bottom = ctx.getImageData(canvas.width / 2, canvas.height - 2, 1, 1).data;
+      return top[0] > 200 && top[2] < 50 && bottom[2] > 200 && bottom[0] < 50;
+    })).toBe(true);
     await page.locator("#b-rec").tap();
     await expect(page.locator("#take-save")).toBeVisible();
     await page.locator("#take-save-no").tap();
