@@ -2,22 +2,22 @@
 
 ## Today — 2026-10-13
 
-Updated 9:19 AM Arizona/MST. Open work only. Focus: outreach, filming, then editing. Use AI wait time for independent tasks; keep the editing block uninterrupted.
+Updated 10:36 AM Arizona/MST. Open work only. Focus: outreach, filming, then editing. The owner reports no further completed tasks since the prior update and wants to stop babysitting AI. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
 
 ### 1. Now — outreach
 
 - [ ] Text Blake's leads first using the 661 number and owner's 480 number as planned.
 - [ ] Complete the group-text step for Blake — approximately 28 leads; confirm the count and grouping.
-- [ ] Finish texting the remaining people on the corrected lead list.
+- [ ] Finish texting the remaining people on the corrected lead list — owner now estimates 80–85 prior/current-client leads in total. The roughly 28 Blake leads are a subset, not a replacement total.
 
 ### 2. Filming and editing
 
-- [ ] Confirm a short teleprompter recording plays back and saves, then get filming gear situated.
+- [ ] Confirm a short teleprompter recording plays back and saves, then get filming gear situated. Owner says Claude is finishing the repair and accepts front-camera 30 fps if the saved video is usable; readiness is still to be confirmed.
 - [ ] Film outside — four remaining ads and the remaining longer-form/thank-you videos; exact longer-video count/titles still need clarification.
 - [ ] Set up the green screen and film four green-screen videos at home.
 - [ ] Edit the videos and add B-roll — three uninterrupted hours. Lock cuts before adding animation overlays.
 
-Aim to leave home around 10:00 AM and finish filming before 2:00 PM. The teleprompter is reported fixed; the short recording check confirms readiness for the shoot. The detailed acceptance checklist below remains separate.
+The original 10:00 AM departure target has passed. Protect the remaining filming window before 2:00 PM. The teleprompter is reported nearly finished; confirm a saved take before filming. Owner accepts 30 fps for front-camera ads (10:35 AM update); the earlier 60 fps requirement below is superseded for that use. This does not verify a universal Safari cap or change other video-quality requirements.
 
 ### 3. Clients and setup
 
@@ -27,11 +27,12 @@ Aim to leave home around 10:00 AM and finish filming before 2:00 PM. The telepro
 
 ### 4. Sales and system checks
 
-- [ ] Finish heartbeat fixes — coding is in progress; review what works and what still needs attention.
+- [ ] Finish heartbeat fixes — IN PROGRESS: Claude and Codex are working on it. Owner expects completion tonight; this is a target, not verified completion (10:36 AM update). Review results when the work is ready.
 - [ ] Do mock sales calls.
 - [ ] Walk through the dashboard and the complete sales/setting process.
-- [ ] Make the remaining sales assets and finish the end-to-end marketing work.
+- [ ] Refine the offers and existing sales assets; verify the existing marketing process end to end.
 - [ ] After heartbeat fixes, run the itemized company-wide end-to-end checks. Record expected and observed results, pass/fail/not checked, and next action.
+- [ ] Fix and harden the issues those checks reveal, then repeat the affected journeys before refactoring.
 
 Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last records 3,942 tracked items, including screens, controls, routes, and workflows. Recount before the full check; a mapped monitor does not by itself prove the business result.
 
