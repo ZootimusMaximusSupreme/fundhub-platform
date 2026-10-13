@@ -37,6 +37,8 @@ Before reading code or planning a new task, propose the parallel workflows, what
 
 The front camera must open to a usable, slightly soft preview. Switching front/back must not start, stop, or split the recording. The Record button controls starts and manual stops; reaching the script end adds an exact two-second tail before automatic stop.
 
+Ads use full-frame 1080p and target 60 fps or higher when the phone grants it. VSLs, thank-you videos, and testimonials use full-frame 4K and target 30–60 fps. Never infer the saved frame rate from the request; measure the original Drive video before claiming smooth filming.
+
 When a take is accepted, save it on the device first, then queue it for upload. Filming the next take must not pause or delete older queued takes. Reopening the app must recover saved queued takes. Never promise that an unfinished iPhone browser recording survives force-closing the app.
 
 Show the real microphone name if the browser provides it, with small live audio levels. Show descriptive names from `marketing/ads/NAMING.md`. Use the **canonical offer key and funnel tag** to send the take to the right marketing offer's Drive folder, including new registered offers. Never place Direct Book recordings in the SLO folder. The lower Drive icon opens the current offer's folder on a double-tap.

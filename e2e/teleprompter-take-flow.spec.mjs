@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, disableVideoCallbacks = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, disableVideoCallbacks = false, savedCam = "1080p" } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,8 +24,8 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks }) => {
-    localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: "1080p" }));
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam }) => {
+    localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
     if (!camera) return;
@@ -112,7 +112,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       const facing = exactId === "rear" || (!ignoreIdealFacing && fm && (fm.exact || fm.ideal) === "environment") ? "environment" : "user";
       const deviceId = exactId || (facing === "environment" ? "rear" : "front");
       window.__cameraRequests.push(facing);
-      window.__cameraAsks.push({ facing, audio: !!ask.audio });
+      window.__cameraAsks.push({ facing, audio: !!ask.audio, video: JSON.parse(JSON.stringify(video)) });
       return Promise.resolve(makeStream(facing, deviceId));
     };
     navigator.mediaDevices.enumerateDevices = () => Promise.resolve(cameraDevices);
@@ -130,7 +130,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks });
+  }, { countdown, wpm, camera, omitFacingSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, disableVideoCallbacks, savedCam });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -173,6 +173,12 @@ async function stopTake(page) {
   await page.locator("#b-rec").tap();
   await expect(page.getByRole("dialog", { name: "Save this video?" })).toBeVisible();
 }
+
+test("a stopped take reports camera and copied frame rates for diagnosis", async ({ page }) => {
+  await open(page, { iphone: true });
+  await stopTake(page);
+  await expect(page.locator("#cam-line")).toContainText(/This take: camera \d+ fps · copied \d+ fps/);
+});
 
 test("every take asks Yes or No; No sends nothing and Yes sends that take once", async ({ page }) => {
   const { server, scripts } = await open(page);
@@ -384,20 +390,45 @@ test("drag words while recording stays one take; only a tap changes playback and
   expect(server.errors).toEqual([]);
 });
 
-test("iPhone keeps a 60 fps lens but caps the saved canvas at 30 fps across lens changes", async ({ page }) => {
-  const { server } = await open(page, { iphone: true, cameraFps: 60 });
+test("an iPhone ad requests portrait 1080p and a 60 fps take despite a saved 4K choice", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, savedCam: "4k", sourceWidth: 1080, sourceHeight: 1920,
+    scriptShapes: [{ stack_kind: "ad", script_format: "standard", take_file_name: "SLO Ad 91 — Script 1 Take 1.mp4" }]
+  });
+  const ask = await page.evaluate(() => window.__cameraAsks[0].video);
+  expect([ask.width.ideal, ask.height.ideal]).toEqual([1080, 1920]);
+  expect(ask.frameRate.ideal).toBeGreaterThanOrEqual(60);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => window.__cameraStreams[0].getVideoTracks()[0].getSettings().frameRate)).toBe(60);
-  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBeGreaterThanOrEqual(60);
+  expect(await page.evaluate(() => [window.__recordCanvas.width, window.__recordCanvas.height])).toEqual([1080, 1920]);
+  const asksBeforeFlip = await page.evaluate(() => window.__cameraAsks.length);
   const flip = page.locator("#b-camera-flip");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
+  const flipAsk = await page.evaluate((at) => window.__cameraAsks[at].video, asksBeforeFlip);
+  expect([flipAsk.width.ideal, flipAsk.height.ideal]).toEqual([1080, 1920]);
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
   await page.waitForTimeout(550);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("an iPhone VSL requests 4K and a 30 fps take despite a saved 1080p choice", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, savedCam: "1080p", sourceWidth: 1080, sourceHeight: 1920,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl", take_file_name: "SLO VSL 1 — Script 1 Take 1.mp4" }]
+  });
+  const ask = await page.evaluate(() => window.__cameraAsks[0].video);
+  expect([ask.width.ideal, ask.height.ideal]).toEqual([3840, 2160]);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(30);
+  await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });

@@ -78,23 +78,26 @@ describe("teleprompter, pure", () => {
     assert.equal(tries[0].aspectRatio.ideal, 16 / 9);
     assert.equal(tries[0].facingMode.ideal, "user");
     const hd = T.cameraTries("user", "1080p");
-    assert.deepEqual(plain([hd[0].width.ideal, hd[0].height.ideal]), [1920, 1080]);
+    assert.deepEqual(plain([hd[0].width.ideal, hd[0].height.ideal]), [1080, 1920]);
+    assert.ok(hd[0].height.max == null || hd[0].height.max >= 1920, "allow a full-height portrait frame");
+    assert.ok(hd.some((c) => c.width?.ideal === 1920 && c.height?.ideal === 1080), "keep a wide fallback");
     const rear = T.cameraTries("environment", "1080p");
-    assert.deepEqual(plain([rear[0].width.ideal, rear[0].height.ideal]), [1920, 1080]);
+    assert.deepEqual(plain([rear[0].width.ideal, rear[0].height.ideal]), [1080, 1920]);
+    assert.ok(rear[0].height.max == null || rear[0].height.max >= 1920);
     assert.match(SRC, /opts\.videoBitsPerSecond = videoBits\(savedWidth, cam\.recordTargetFps/);
     assert.equal(T.recordFrameBox(2160, 3840, true, true).height, 3840);
     assert.equal(T.recordFrameBox(2160, 3840, true, true).width, 2160);
     assert.match(SRC, /var list = \["video\/mp4;codecs=hvc1,mp4a\.40\.2", "video\/mp4"/);
   });
 
-  test("settings 1080p asks for 1920x1080 at 60 fps", () => {
+  test("portrait 1080p asks for 1080x1920 at 60 fps", () => {
     const T = load();
     const tries = T.cameraTries("user", "1080p");
     assert.equal(tries[0].facingMode.ideal, "user");
-    assert.equal(tries[0].width.ideal, 1920);
-    assert.equal(tries[0].width.max, 1920);
-    assert.equal(tries[0].height.ideal, 1080);
-    assert.equal(tries[0].height.max, 1080);
+    assert.equal(tries[0].width.ideal, 1080);
+    assert.equal(tries[0].width.max, 1080);
+    assert.equal(tries[0].height.ideal, 1920);
+    assert.equal(tries[0].height.max, 1920);
     assert.equal(tries[0].frameRate.min, 60);
     assert.equal(tries[0].frameRate.ideal, 60);
     assert.equal(tries[0].frameRate.max, 60);
@@ -108,12 +111,12 @@ describe("teleprompter, pure", () => {
     }
   });
 
-  test("back camera asks are steady 1080p and never 4K", () => {
+  test("back camera asks for steady portrait 1080p and never 4K", () => {
     const T = load();
     const tries = T.cameraTries("environment");
     assert.equal(tries[0].facingMode.ideal, "environment");
-    assert.equal(tries[0].width.ideal, 1920);
-    assert.equal(tries[0].height.ideal, 1080);
+    assert.equal(tries[0].width.ideal, 1080);
+    assert.equal(tries[0].height.ideal, 1920);
     assert.equal(tries[0].frameRate.min, 60);
     assert.equal(tries[0].focusMode, "continuous");
     const rates = tries.map((c) => c.frameRate && c.frameRate.ideal).filter((n) => n);
@@ -127,18 +130,19 @@ describe("teleprompter, pure", () => {
     }
   });
 
-  test("switching front/rear retains 60 fps and full-width iPhone camera requests", () => {
+  test("switching front/rear retains 60 fps and the current script's camera shape", () => {
     const source = SRC.slice(SRC.indexOf("function switchCamera()"), SRC.indexOf("function setCamMode"));
     assert.match(source, /for \(var askFps of \[60, 30\]\)/);
-    assert.match(source, /var faceShape = "wide"/);
-    assert.match(source, /cameraAsk\(wanted, askFps, faceShape, askFps === 60, mode\)/);
+    assert.match(source, /var faceShape = mode === "1080p" && recordingIsPortrait\(\) \? "tall" : "wide"/);
+    assert.match(source, /var shapes = faceShape === "wide" \? \["wide"\] : \["tall", "wide"\]/);
+    assert.match(source, /cameraAsk\(wanted, askFps, shape, askFps === 60, mode\)/);
     assert.match(source, /cameraAsk\(wanted, 60, recordingIsPortrait\(\) \? "tall" : "wide", false, activeMode\(\)\)/);
     const open = SRC.slice(SRC.indexOf("function openCamera()"), SRC.indexOf("function switchCamera()"));
     assert.match(open, /cameraTries\(facing, mode\)/);
-    assert.match(open, /cameraAsk\(requested, 60, "wide", true, mode\)/);
+    assert.match(open, /cameraAsk\(requested, 60, mode === "1080p" && recordingIsPortrait\(\) \? "tall" : "wide", true, mode\)/);
     assert.doesNotMatch(open, /applyConstraints\(/, "do not force a tall crop after opening Safari's camera");
     const record = SRC.slice(SRC.indexOf("function continuousRecordStream(stream)"), SRC.indexOf("function beginRec()"));
-    assert.match(record, /Math\.min\(isPhone\(\) \? 30 : 60, Math\.max\(1, Math\.round\(st\.frameRate \|\| 30\)\)\)/);
+    assert.match(record, /Math\.min\(isPhone\(\) && requires4K \? 30 : 60, Math\.max\(1, Math\.round\(st\.frameRate \|\| 30\)\)\)/);
     assert.match(record, /canvas\.captureStream\(fps\)/);
   });
 
@@ -872,7 +876,7 @@ describe("recorded camera frame quality", () => {
     assert.match(recorder, /ctx\.drawImage\(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH\)/,
       "lens changes still draw the full source into the fixed take canvas");
     assert.match(recorder, /canvas\.captureStream\(fps\)/);
-    assert.match(recorder, /Math\.min\(isPhone\(\) \? 30 : 60, Math\.max\(1,/);
+    assert.match(recorder, /Math\.min\(isPhone\(\) && requires4K \? 30 : 60, Math\.max\(1,/);
     assert.doesNotMatch(recorder, /isPhone\(\) \? 24/);
     assert.match(recorder, /activeMode\(\) === "4k" \|\| stays4K\(scripts\[cur\]\)/);
     const begin = SRC.slice(SRC.indexOf("function beginRec()"), SRC.indexOf("function onRecStop()"));

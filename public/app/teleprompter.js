@@ -596,8 +596,8 @@
   function cameraTries(facing, mode) {
     var back = facing === "environment";
     var list = [];
-    // Use the full wide camera request that worked before the portrait-crop
-    // path was added. Output orientation is set by the recording canvas.
+    // Ads ask for a native upright 1080p source first. The wide ask stays as
+    // a fallback; the recording canvas fits the entire source either way.
     function push(fps, shape, lockRate, steady, askMode) {
       var video = cameraAsk(back ? "environment" : "user", fps, shape, lockRate, askMode == null ? mode : askMode);
       if (steady) {
@@ -611,13 +611,16 @@
       push(30, "wide", false, false, "4k");
     }
     var hd = mode === "4k" ? "1080p" : mode;
+    var hdShape = recordingIsPortrait() ? "tall" : "wide";
     if (back) {
-      push(60, "wide", true, true, hd);
-      push(30, "wide", true, true, hd);
+      push(60, hdShape, true, true, hd);
+      if (hdShape !== "wide") push(60, "wide", true, true, hd);
+      push(30, hdShape, true, true, hd);
     }
-    push(60, "wide", true, false, hd);
+    push(60, hdShape, true, false, hd);
+    if (hdShape !== "wide") push(60, "wide", true, false, hd);
     push(60, "wide", false, false, hd);
-    push(30, "wide", true, false, hd);
+    push(30, hdShape, true, false, hd);
     push(30, "wide", false, false, hd);
     list.push({
       facingMode: { ideal: back ? "environment" : "user" },
@@ -682,13 +685,13 @@
     return "";
   }
 
-  /** VSLs and thank-you videos stay 4K. Ads may use the 1080p choice. */
+  /** VSLs and thank-you videos stay 4K. Ads use 1080p for smooth 60 fps takes. */
   function stays4K(s) {
     if (!s) return false;
-    if (String(s.script_format || "").toLowerCase() === "vsl") return true;
+    if (/^(vsl|testimonial|thank[_ -]?you)$/.test(String(s.script_format || "").toLowerCase())) return true;
     var blob = [s.title, s.angle_name, s.take_file_name, s.funnel_key, s.style].filter(Boolean).join(" ").toLowerCase();
     if (/\bvsl\b/.test(blob)) return true;
-    if (/thank[- ]?you/.test(blob)) return true;
+    if (/thank[- ]?you|testimonial/.test(blob)) return true;
     return false;
   }
 
@@ -698,7 +701,7 @@
     var h = got && got.height ? got.height : 0;
     var fps = got && got.frameRate ? Math.round(got.frameRate) : 0;
     var four = (w >= 3840 && h >= 2160) || (w >= 2160 && h >= 3840);
-    var hd = w >= 1920 && h >= 1080;
+    var hd = (w >= 1920 && h >= 1080) || (h >= 1920 && w >= 1080);
     var label = four ? "4K" : hd ? "1080p" : (w && h ? (w + "×" + h) : "no picture");
     var line = label + (fps ? " · " + fps + " fps" : "");
     var short = "";
@@ -1034,17 +1037,9 @@
   if (!savedSettings || typeof savedSettings !== "object") savedSettings = {};
   var rememberedWpm = LS.get("wpm", null);
   if (rememberedWpm == null && savedSettings.wpm != null) rememberedWpm = savedSettings.wpm;
-  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, cam: "4k", rot: 0 }, savedSettings);
+  var S = Object.assign({ wpm: 150, font: bigScreen ? 64 : 48, line: 26, pause: 0.8, mirror: false, flipV: false, countdown: true, measure: 30, rot: 0 }, savedSettings);
   S.wpm = storedWpm(rememberedWpm, 150);
   LS.set("wpm", S.wpm);
-  // One-time upgrade for iPhones previously left on the low-quality preset.
-  // The owner asked for maximum front-camera video. Users can still choose
-  // 1080p again afterward for smaller files or slower networks.
-  if (isPhone() && !LS.get("front4k60Default20261012", false)) {
-    S.cam = "4k";
-    LS.set("settings", S);
-    LS.set("front4k60Default20261012", true);
-  }
   var rigQ = rigQuery((function () { try { return new URL(root.location.href).search; } catch (e) { return ""; } })());
   var look = rigLook(rigQ, S);
   S.mirror = look.mirror;
@@ -2457,14 +2452,13 @@
   var takeDialog = $("take-save");
 
   function activeMode() {
-    if (stays4K(scripts[cur])) return "4k";
-    return S.cam === "1080p" ? "1080p" : "4k";
+    return stays4K(scripts[cur]) ? "4k" : "1080p";
   }
   function paintPicks() {
     var mode = activeMode();
     var a = $("q-4k"), b = $("q-1080");
-    if (a) a.classList.toggle("on", mode === "4k");
-    if (b) b.classList.toggle("on", mode === "1080p");
+    if (a) { a.classList.toggle("on", mode === "4k"); a.disabled = mode !== "4k"; }
+    if (b) { b.classList.toggle("on", mode === "1080p"); b.disabled = mode !== "1080p"; }
   }
   function paintCameraFlip() {
     var btn = $("b-camera-flip");
@@ -2666,24 +2660,33 @@
     // Keep the encoder at a rate the phone can sustain. Copy a camera frame
     // only when the preview has a new one; repeated 4K canvas draws take time
     // away from the script's animation frames.
-    var fps = Math.min(isPhone() ? 30 : 60, Math.max(1, Math.round(st.frameRate || 30)));
+    var fps = Math.min(isPhone() && requires4K ? 30 : 60, Math.max(1, Math.round(st.frameRate || 30)));
     cam.recordTargetFps = fps;
     cam.recordFrameSize = canvas.width + "×" + canvas.height;
     var frameEvery = 1000 / fps;
+    var stats = { started: root.performance.now(), cameraFrames: 0, copiedFrames: 0,
+      cameraLast: 0, copiedLast: 0, cameraLongestGap: 0, copiedLongestGap: 0,
+      hasVideoCallbacks: !!video.requestVideoFrameCallback };
+    cam.captureStats = stats;
     var drewAt = -frameEvery;
     var paintedShape = layout.dw + ":" + layout.dh;
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     function schedule() {
       if (!cam.pumping) return;
-      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(draw);
-      else cam.pumpTimer = root.setTimeout(function () { draw(root.performance.now()); }, frameEvery);
+      if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(function (now) { draw(now, true); });
+      else cam.pumpTimer = root.setTimeout(function () { draw(root.performance.now(), false); }, frameEvery);
     }
-    function draw(now) {
+    function draw(now, fromCamera) {
       if (!cam.pumping) return;
       cam.pumpVideoFrame = 0;
       cam.pumpTimer = 0;
       if (!(now >= 0)) now = root.performance.now();
+      if (fromCamera) {
+        stats.cameraFrames++;
+        if (stats.cameraLast) stats.cameraLongestGap = Math.max(stats.cameraLongestGap, now - stats.cameraLast);
+        stats.cameraLast = now;
+      }
       if (now - drewAt >= frameEvery - 1 && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
           // The canvas size is fixed for the whole take. A lens switch can
@@ -2708,6 +2711,9 @@
           ctx.drawImage(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH);
           ctx.restore();
           drewAt = now;
+          stats.copiedFrames++;
+          if (stats.copiedLast) stats.copiedLongestGap = Math.max(stats.copiedLongestGap, now - stats.copiedLast);
+          stats.copiedLast = now;
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
       schedule();
@@ -2740,8 +2746,7 @@
     if (mime) opts.mimeType = mime;
     opts.videoBitsPerSecond = videoBits(st.width || 0, st.frameRate || 30);
     /* One fixed capture stream keeps the take alive through lens flips.
-       Every 4K-selected take, including ads, keeps the full source detail
-       when Safari provides it. Do not claim native HDR or ProRes from a page. */
+       Ads record at 1080p; VSLs and other non-ad films keep the 4K request. */
     var recStream = continuousRecordStream(cam.stream);
     if (!recStream) {
       wantRec = false; cam.startAfterOpen = false; setRecLabel();
@@ -2807,6 +2812,15 @@
   }
   function onRecStop() {
     stopMirrorPump();
+    if (cam.captureStats) {
+      var stats = cam.captureStats;
+      var seconds = Math.max(0.1, (root.performance.now() - stats.started) / 1000);
+      var source = stats.hasVideoCallbacks ? Math.round(stats.cameraFrames / seconds) + " fps" : "unavailable";
+      var copied = Math.round(stats.copiedFrames / seconds) + " fps";
+      camLine("This take: camera " + source + " · copied " + copied +
+        (stats.hasVideoCallbacks ? " · longest camera gap " + Math.round(stats.cameraLongestGap) + " ms" : ""), false);
+      cam.captureStats = null;
+    }
     if (cam.recordStream && cam.recordStream !== cam.stream) {
       cam.recordStream.getVideoTracks().forEach(function (track) {
         try { track.stop(); } catch (e) { /* recorder is already stopping */ }
@@ -3005,7 +3019,7 @@
       var steps = [];
       var exactId = cam.deviceIds[wanted];
       if (exactId) {
-        var exactVideo = cameraAsk(wanted, 60, "wide", false, mode);
+        var exactVideo = cameraAsk(wanted, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", false, mode);
         exactVideo.deviceId = { exact: exactId };
         delete exactVideo.facingMode;
         steps.push({ video: exactVideo, audio: false, facing: wanted });
@@ -3057,7 +3071,7 @@
             finish(stream, noMic, facing);
             return;
           }
-          var video = cameraAsk(requested, 60, "wide", true, mode);
+          var video = cameraAsk(requested, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", true, mode);
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
@@ -3111,23 +3125,26 @@
       camLine("Opening the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       try { track.stop(); } catch (e) { /* release the old iPhone lens */ }
       var asks = [];
-      var faceShape = "wide";
+      var faceShape = mode === "1080p" && recordingIsPortrait() ? "tall" : "wide";
+      var shapes = faceShape === "wide" ? ["wide"] : ["tall", "wide"];
       // A lens flip must not downgrade a genuine 60 fps take to 30 fps.
       // Safari still has a 30 fps fallback if all 60 fps requests fail.
       for (var askFps of [60, 30]) {
-        var direct = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
-        direct.facingMode = { exact: wanted };
-        asks.push(direct);
-        var exactId = cam.deviceIds[wanted];
-        if (exactId) {
-          var exact = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
-          exact.deviceId = { exact: exactId };
-          delete exact.facingMode;
-          asks.push(exact);
+        for (var shape of shapes) {
+          var direct = cameraAsk(wanted, askFps, shape, askFps === 60, mode);
+          direct.facingMode = { exact: wanted };
+          asks.push(direct);
+          var exactId = cam.deviceIds[wanted];
+          if (exactId) {
+            var exact = cameraAsk(wanted, askFps, shape, askFps === 60, mode);
+            exact.deviceId = { exact: exactId };
+            delete exact.facingMode;
+            asks.push(exact);
+          }
+          var loose = cameraAsk(wanted, askFps, shape, askFps === 60, mode);
+          loose.facingMode = { ideal: wanted };
+          asks.push(loose);
         }
-        var loose = cameraAsk(wanted, askFps, faceShape, askFps === 60, mode);
-        loose.facingMode = { ideal: wanted };
-        asks.push(loose);
       }
       var at = 0;
       function next() {
@@ -3195,17 +3212,8 @@
     }, reopen);
   }
   function setCamMode(mode) {
-    if (mode === "1080p" && stays4K(scripts[cur])) { say("This one films at 1080p. It is not 4K."); paintPicks(); return; }
-    S.cam = mode === "1080p" ? "1080p" : "4k";
-    save();
+    if (mode !== activeMode()) say(activeMode() === "4k" ? "This one films at 4K." : "Ads film at 1080p for smooth video.");
     paintPicks();
-    if (cam.rec && cam.rec.state === "recording") {
-      say(S.cam === "1080p" ? "The next take films at 1080p." : "The next take films at 4K.");
-      return;
-    }
-    cam.applied = "";
-    cam.opening = "";
-    ensureCamera();
   }
   function shareOrDownload(file) {
     var nav = root.navigator;
@@ -3977,7 +3985,6 @@
   paintPicks();
   pulse();
   root.addEventListener("pagehide", function () { endRec(); stopMicMeter(); });
-  ensureCamera();
   restoreQueuedVideos();
   if (queue.length) { $("pending").hidden = false; }
   load(true).then(function () { flush(); poll(); checkHealth(true); });
