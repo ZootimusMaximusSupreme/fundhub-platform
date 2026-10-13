@@ -142,10 +142,19 @@ Owner said proceed on 2026-10-12. Sol owns shared files, final review, git, and 
 
 | Lane | Model | Exact scope | Status |
 |---|---|---|---|
-| Display AB3 | Luna Medium | exact result contracts for remaining `desks-a.json` and `desks-b.json` rows; new `display-contracts-ab-3.*` files only | claimed |
-| Display CD2 | Luna Medium | exact result contracts for remaining `desks-c.json` and `desks-d.json` rows; new `display-contracts-cd-2.*` files only | claimed |
-| Display EF/Public3 | Luna Medium | exact result contracts for remaining `desks-e.json`, `desks-f.json`, and `public-pages.json` rows; new `display-contracts-ef-public-3.*` files only | claimed |
-| Door/Flow/Read2 | Luna Medium | exact result contracts for remaining route, job, journey, message, agent, and read rows; new `door-flow-read-contracts-2.*` files only | claimed |
+| Display AB3 | Luna Medium | exact result contracts for remaining `desks-a.json` and `desks-b.json` rows; new `display-contracts-ab-3.*` files only | done — 1 exact result |
+| Display CD2 | Luna Medium | exact result contracts for remaining `desks-c.json` and `desks-d.json` rows; new `display-contracts-cd-2.*` files only | done — 1 exact result |
+| Display EF/Public3 | Luna Medium | exact result contracts for remaining `desks-e.json`, `desks-f.json`, and `public-pages.json` rows; new `display-contracts-ef-public-3.*` files only | done — 1 exact result |
+| Door/Flow/Read2 | Luna Medium | exact result contracts for remaining route, job, journey, message, agent, and read rows; new `door-flow-read-contracts-2.*` files only | done — 1 new Door result and 1 stronger existing Read result |
 | Integration | Sol High | fresh review, exact-key imports, catalog rebuild, safe pulse, lint, type check, commit, push, live ship | claimed |
 
 Budget fact: the account was 86% used when Wave 5 began. This wave checkpoints and ships honest gains before the remaining limit is exhausted.
+
+### Wave 5 manifest
+
+- Fresh Sol review rejected the all-groups sidebar claim and the mismatched health-label claim. They stay red.
+- New honest green rows: sidebar burger; Commas/Whop/Open API connection actions; teleprompter Mirror/Turn; finance entity list plus business create, personal create, rename, and archive.
+- The campaign fatigue row received a stronger rendered proof, but it was already counted green, so it is not counted as a new gain.
+- Net strict gain: 4 rows. Display red moved from 1,095 to 1,092. Door red moved from 323 to 322. Flow stays 121. Read stays 14. Strict catalog total moved from 1,553 to 1,549.
+- Focused tests: AB3 3/3, CD2 2/2, EF/Public3 1/1, Door/Flow/Read2 1/1. Display guard 2/2. Door aggregate 989/989. Read metadata guard 2/2.
+- Catalog rebuild: 3,942 unique; 3,919 mapped/wired; 23 unmapped red. This map count is not the runtime result count.

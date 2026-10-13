@@ -2,9 +2,12 @@ import { PUBLIC_UI_PROOF_CASES } from "./display-batch-public-ui.mjs";
 import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
 import { DISPLAY_CONTRACTS_AB } from "./display-contracts-ab.mjs";
 import { DISPLAY_CONTRACTS_AB_2 } from "./display-contracts-ab-2.mjs";
+import { DISPLAY_CONTRACTS_AB_3 } from "./display-contracts-ab-3.mjs";
 import { DISPLAY_CONTRACTS_CD_PROOFS } from "./display-contracts-cd.mjs";
+import { DISPLAY_CONTRACTS_CD_2_PROOFS } from "./display-contracts-cd-2.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
+import { DISPLAY_CONTRACTS_EF_PUBLIC_3_PROOF_CASES } from "./display-contracts-ef-public-3.mjs";
 import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
 import {
   DISPLAY_RESULT_LANE,
@@ -373,9 +376,12 @@ const READ_PROOF_KEYS = new Set(READ_PROOF_CASES.map(proofKey));
 const PLUGIN_DISPLAY_PROOF_CASES = [
   ...DISPLAY_CONTRACTS_AB,
   ...DISPLAY_CONTRACTS_AB_2,
+  ...DISPLAY_CONTRACTS_AB_3,
   ...DISPLAY_CONTRACTS_CD_PROOFS,
+  ...DISPLAY_CONTRACTS_CD_2_PROOFS,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
+  ...DISPLAY_CONTRACTS_EF_PUBLIC_3_PROOF_CASES,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));

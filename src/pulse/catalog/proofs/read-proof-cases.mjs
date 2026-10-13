@@ -5,6 +5,7 @@ import {
 import { DISPLAY_CONTRACTS_AB } from "./display-contracts-ab.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
+import { DOOR_FLOW_READ_READ_CONTRACTS } from "./door-flow-read-contracts-2.mjs";
 import { FLOW_READ_CONTRACTS } from "./flow-read-contracts.mjs";
 
 function group(sourceFile, surface, tests, controls) {
@@ -205,6 +206,7 @@ const PLUGIN_READ_PROOF_CASES = [
   ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
   ...FLOW_READ_CONTRACTS.filter((entry) => entry.family === "read"),
+  ...DOOR_FLOW_READ_READ_CONTRACTS,
 ]
   .map(pluginReadCase)
   .filter((entry) => BASE_READ_KEYS.has(proofKey(entry)));
