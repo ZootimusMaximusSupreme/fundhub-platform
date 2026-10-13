@@ -79,11 +79,11 @@ function skipped(entry, error) {
 
 async function retiredPageState(ctx = {}) {
   const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
-  if (typeof fetchImpl !== "function") return { status: "skip", detail: "the live retired-page redirect was not read: no fetch in this run." };
-  const base = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
-  const oldUrl = `${base}/partner/autopsy/`;
-  const menuUrl = `${base}/partner/menu/`;
+  if (typeof fetchImpl !== "function") return { status: "FAIL", detail: "the live retired-page redirect could not be proved because this run has no GET client." };
   try {
+    const base = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
+    const oldUrl = `${base}/partner/autopsy/`;
+    const menuUrl = `${base}/partner/menu/`;
     const response = await fetchImpl(oldUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
     const location = response.headers.get("location");
     if (response.status !== 302 || !location || new URL(location, oldUrl).href !== menuUrl) {
@@ -98,7 +98,7 @@ async function retiredPageState(ctx = {}) {
     }
     return { status: "na", detail: "the live retired page redirects to the active offer menu, and that menu opens." };
   } catch (error) {
-    return { status: "skip", detail: `the live retired-page redirect was not read: ${String(error?.message || error).slice(0, 120)}.` };
+    return { status: "FAIL", detail: `the live retired-page redirect could not be proved by GET: ${String(error?.message || error).slice(0, 120)}.` };
   }
 }
 

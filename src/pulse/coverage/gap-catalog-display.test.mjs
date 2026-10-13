@@ -145,7 +145,7 @@ test("only the exact retired redirect can be nothing-to-judge", async () => {
 });
 
 
-test("wrong live redirects and broken menus stay red; unread pages stay unchecked", async () => {
+test("wrong, unread, and invalid retired-page GETs stay red", async () => {
   const retired = DISPLAY_TRACKING_CASES.find((item) => item.retired);
   for (const options of [{ status: 200 }, { location: "/app/login.html" }, { location: "https://other.example/partner/menu/" }, { location: null }, { menuStatus: 404 }, { menuHtml: "<h1>Sign in</h1>" }, { menuHtml: "<h1>Four Ways In. You Can Start Anywhere.</h1>" }]) {
     const ctx = { fetchImpl: liveRedirect(options) };
@@ -154,7 +154,11 @@ test("wrong live redirects and broken menus stay red; unread pages stay unchecke
     assert.equal(await naVerify["catalog-display-retired-autopsy"](retired, ctx), false);
   }
   const rows = await gapChecks({ fetchImpl: liveRedirect({ error: "offline" }) });
-  assert.equal(rows.find((row) => row.id === retired.id).status, "skip");
+  assert.equal(rows.find((row) => row.id === retired.id).status, "FAIL");
+  const invalidBase = await gapChecks({ fetchImpl: liveRedirect(), baseUrl: "not a URL" });
+  assert.equal(invalidBase.find((row) => row.id === retired.id).status, "FAIL");
+  const noGet = await gapChecks({ fetchImpl: null });
+  assert.equal(noGet.find((row) => row.id === retired.id).status, "FAIL");
   assert.equal(await naVerify["catalog-display-retired-autopsy"](retired, { fetchImpl: null }), false);
   assert.equal(await naVerify["catalog-display-retired-autopsy"]({ ...retired, control: "invented" }, { fetchImpl: liveRedirect() }), false);
 });
