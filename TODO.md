@@ -10,6 +10,8 @@
 - [ ] Finish heartbeat / figure it out.
 - [ ] Start refactor planning.
 - [ ] Text 50 people.
+- [ ] Make sure Cortana is fully set up correctly with the funnel.
+- [ ] Make sure Bram, the credit client, is handled.
 - [ ] **Repository cleanup — code only.** Owner wants just the code; everything else is unnecessary. Remove stale notes, duplicate plans/to-do lists, abandoned extras, and other non-code clutter. Before deleting, identify any non-code files the live application requires and flag those dependencies. Preserve working code and other sessions’ unfinished work.
 
 ## Priority — iPhone teleprompter launch readiness (updated 2026-10-13)
