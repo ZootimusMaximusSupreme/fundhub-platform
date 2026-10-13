@@ -147,6 +147,7 @@ export function takeCaptureDescription(input) {
   for (const key of ["start_facing", "end_facing"]) {
     if (input[key] === "user" || input[key] === "environment") allowed[key] = input[key];
   }
+  if (input.capture_mode === "webgl" || input.capture_mode === "2d") allowed.capture_mode = input.capture_mode;
   return "FundHub recording diagnostics v1\n" + JSON.stringify(allowed);
 }
 

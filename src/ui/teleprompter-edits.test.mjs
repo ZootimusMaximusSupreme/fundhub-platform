@@ -144,7 +144,7 @@ describe("what changed between versions", () => {
 });
 
 /* A fake clock and a fake server for the waiting list. */
-function rig({ answers = [], live = null } = {}) {
+function rig({ answers = [], live = null, archive = null } = {}) {
   const { E } = load();
   let now = 1_000_000;
   let timers = [];
@@ -152,9 +152,15 @@ function rig({ answers = [], live = null } = {}) {
   const saved = { value: null };
   const sent = [];
   const events = [];
+  const backups = [];
   const store = { get: () => saved.value && JSON.parse(JSON.stringify(saved.value)), set: (v) => { saved.value = JSON.parse(JSON.stringify(v)); } };
   const make = () => E.createSaveQueue({
     store,
+    archive: (it) => {
+      if (archive && !archive(it)) return false;
+      backups.push(plain(it));
+      return true;
+    },
     send: (body) => { sent.push(plain(body)); const a = answers.shift(); return Promise.resolve(typeof a === "function" ? a(body) : a || { status: 0, data: null }); },
     live: () => Promise.resolve(live ? live() : { status: 0, data: null }),
     requestId: () => `req-${++n}`,
@@ -171,7 +177,7 @@ function rig({ answers = [], live = null } = {}) {
     for (const h of due) h.f();
     await flushAsync();
   };
-  return { E, q, make, sent, events, tick, store: saved, at: () => now };
+  return { E, q, make, sent, events, backups, tick, store: saved, at: () => now };
 }
 const flushAsync = () => new Promise((r) => setImmediate(r));
 const ok = (id, version, body) => ({ status: 200, data: { script: { id, version, body, parts: null, status: "locked" }, warnings: [] } });
@@ -294,7 +300,7 @@ describe("the waiting list (autosave queue)", () => {
     await flushAsync();
     const st = r.q.status();
     assert.equal(st.conflicts, 1);
-    assert.equal(r.E.statusText(st), "Two versions. Tap to pick one.");
+    assert.equal(r.E.statusText(st), "History");
     assert.equal(r.q.item("root-1").conflict.theirs.body, "Their words.");
     await r.q.resolve("root-1", "mine");
     await flushAsync();
@@ -303,20 +309,42 @@ describe("the waiting list (autosave queue)", () => {
     assert.equal(r.q.item("root-1"), null);
   });
 
-  test("409, Chris picks the saved words: his are dropped and the page is handed theirs", async () => {
+  test("409, the saved words are shown only after the phone edit is backed up", async () => {
     const theirs = { id: "v9", version: 4, body: "Their words.", parts: null, status: "locked", source: "chris" };
     const r = rig({
       answers: [{ status: 409, data: { error: "stale", current: { version: 4, body: "Their words.", parts: null } } }],
       live: () => ({ status: 200, data: { versions: [theirs] } })
     });
-    r.q.edit("root-1", BASE, "My words.", null);
+    const phoneParts = [{ kind: "hook", text: "My words." }];
+    r.q.edit("root-1", BASE, "My words.", phoneParts);
     await r.q.commit();
     await flushAsync();
-    r.q.resolve("root-1", "theirs");
+    assert.equal(r.q.refreshConflict("root-1", { id: "v10", version: 5, body: "Newest saved words.", parts: null }), true);
+    assert.equal(r.q.resolve("root-1", "theirs"), true);
+    assert.equal(r.backups.length, 1);
+    assert.equal(r.backups[0].body, "My words.");
+    assert.deepEqual(r.backups[0].parts, phoneParts);
+    assert.equal(r.backups[0].base_id, BASE.id);
     const ev = r.events.find((e) => e.type === "resolved");
     assert.equal(ev.ev.choice, "theirs");
-    assert.equal(ev.ev.script.body, "Their words.");
+    assert.equal(ev.ev.script.body, "Newest saved words.");
     assert.equal(r.q.item("root-1"), null);
+    assert.equal(r.sent.length, 1);
+  });
+
+  test("a failed phone backup keeps the unsaved edit and the choice open", async () => {
+    const theirs = { id: "v9", version: 4, body: "Their words.", parts: null, status: "locked" };
+    const r = rig({
+      answers: [{ status: 409, data: { error: "stale", current: { version: 4, body: theirs.body, parts: null } } }],
+      live: () => ({ status: 200, data: { versions: [theirs] } }),
+      archive: () => false
+    });
+    r.q.edit("root-1", BASE, "My words.", null);
+    await r.q.commit();
+    assert.equal(r.q.resolve("root-1", "theirs"), false);
+    assert.equal(r.q.item("root-1").body, "My words.");
+    assert.equal(r.q.status().conflicts, 1);
+    assert.ok(r.events.some((e) => e.type === "backup-failed"));
     assert.equal(r.sent.length, 1);
   });
 

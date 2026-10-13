@@ -20,6 +20,13 @@ Built so far (ship 2): `public/app/teleprompter.html` + `teleprompter.js` — mi
 - Small camera preview only to line up, then it fades to dark glass.
 - Low-detail preview is fine; dark background so the words pop.
 
+### Completed recordings (owner, 2026-10-13)
+- Front/back switching must keep one continuous take, including 4K; choosing a fixed lens before each take was rejected.
+- After Stop, watch the original completed file on the phone immediately.
+- Accepting the take saves it to the phone's durable queue before Drive upload starts; uploads run separately from filming.
+- A user-triggered Save to phone action opens iOS sharing/downloading for the same original video. Do not claim the browser automatically writes to Photos.
+- Watch last take reopens the last accepted video in this session; after reopening the app, queued device files remain available while awaiting upload. No extra permanent retention of already-uploaded files is required by this change.
+
 ## Later
 - Pronunciation guides.
 - Bullet-point scripts.

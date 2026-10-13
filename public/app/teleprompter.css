@@ -391,7 +391,8 @@ body.cam-side-right #script-fade {
   background: #ff453a;
 }
 
-#take-save {
+#take-save,
+#take-watch {
   width: min(420px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   overflow: auto;
@@ -402,19 +403,73 @@ body.cam-side-right #script-fade {
   background: #101114;
   color: #fff;
 }
-#take-save::backdrop {
+#take-save::backdrop,
+#take-watch::backdrop {
   background: rgba(0, 0, 0, 0.5);
 }
-#take-save h2 {
+#take-save h2,
+#take-watch h2 {
   margin-top: 0;
 }
-#take-save-name {
+#take-save-name,
+#take-watch-name {
   overflow-wrap: anywhere;
+}
+#take-save-preview,
+#take-watch-preview {
+  display: block;
+  width: 100%;
+  max-height: 40dvh;
+  margin: 12px 0;
+  background: #000;
+  border-radius: 10px;
+}
+.take-phone {
+  width: 100%;
+  margin-bottom: 12px;
 }
 .take-save-actions {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  margin-top: 12px;
+}
+#take-watch-phone {
+  padding-inline: 6px;
+  font-size: 15px;
+}
+
+#watch-last {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+  margin-block: -9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  touch-action: manipulation;
+}
+#watch-last span {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 9px;
+  background: rgba(12, 14, 18, 0.55);
+  font-size: 11px;
+  font-weight: 700;
+}
+body.rolling #watch-last,
+body:has(#rec:not([hidden])) #watch-last {
+  display: none !important;
+}
+body:has(#watch-last:not([hidden])) #p-file {
+  max-width: 6.5rem;
 }
 
 #cam-shade,

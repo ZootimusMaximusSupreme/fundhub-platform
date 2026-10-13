@@ -1,0 +1,111 @@
+{
+  "date": "2026-10-13",
+  "purpose": "Compare the app's native 4K WebGL recording path with the same-fixture 4K 2D canvas path in real WebKit MediaRecorder.",
+  "environment": {
+    "browser": "Playwright WebKit, headless desktop",
+    "input": "Synthetic 1080x1920 60 fps test-pattern MP4 drawn into a 2160x3840 canvas stream",
+    "recording": "Native MediaRecorder; no encoder or MediaRecorder mocks",
+    "captureTarget": "2160x3840 at 60 fps",
+    "phoneProof": false,
+    "customerData": false
+  },
+  "hashes": {
+    "appHarnessSha256": "ccce8e0c31ad0291a9a24415b0d29c30867bef612f926c6436bae665c3bb97a5",
+    "standaloneHarnessSha256": "701690f614bff49da13855031c176846e4e2ec839e36a95ffbcc1810570d05a4",
+    "teleprompterSourceSha256": "9c1c715c13d96ed54f261a43deb7d8c32aa4e51458bba11e7b003e927191bf3b",
+    "syntheticSourceSha256": "105b90a8466cdc495e6d6a6ddddd1de6b836d67344280d57df264df270f04fd6",
+    "appWebglMp4Sha256": "77b7afbe1e56233ce577c72bb2ad80bff5c267eda599be85b4abb8c8937ddf20",
+    "app2dBaselineMp4Sha256": "f78864017c0421c21cabf18e9002b12b264357d398a0b653aec89f67a02803a5",
+    "appWebglAudioMp4Sha256": "fc54679f3b1e7989f093e1405efdc2983be3e29bbc5fb4947e1e281543166a34",
+    "markedTakePlayerDraftSha256": "f4dd1eccfd0ede9871d62a43deb7d8c32aa4e51458bba11e7b003e927191bf3b"
+  },
+  "appWebgl4k": {
+    "result": "playable",
+    "codec": "H.264",
+    "dimensions": "2160x3840",
+    "decodedFrames": 142,
+    "decodedDurationSeconds": 3.158,
+    "decodedAverageFps": 44.64,
+    "medianFrameMilliseconds": 21.67,
+    "p95FrameMilliseconds": 31.67,
+    "captureTargetFps": 60,
+    "appReportedCameraFps": 43,
+    "appReportedCopiedFps": 44,
+    "missedCameraCallbacks": 0,
+    "longestCameraCallbackGapMs": 89,
+    "captureMode": "webgl",
+    "webglTextureUploads": 159,
+    "webglDrawCalls": 159,
+    "recordingCanvas2dDrawImageCalls": 0,
+    "copyTotalMs": 1169,
+    "copyLongestMs": 22,
+    "frameRequests": 159,
+    "frameRequestFailures": 0,
+    "testedSourceSha256": "9c1c715c13d96ed54f261a43deb7d8c32aa4e51458bba11e7b003e927191bf3b",
+    "audio": "No audio track in the base comparison. Synthetic audio was checked separately."
+  },
+  "app2d4kBaseline": {
+    "result": "playable",
+    "codec": "H.264",
+    "dimensions": "2160x3840",
+    "decodedFrames": 106,
+    "decodedDurationSeconds": 3.803,
+    "decodedAverageFps": 27.61,
+    "medianFrameMilliseconds": 35.0,
+    "captureTargetFps": 60,
+    "appReportedCameraFps": 28,
+    "appReportedCopiedFps": 28,
+    "missedCameraCallbacks": 0,
+    "longestCameraCallbackGapMs": 52,
+    "captureMode": "2d",
+    "recordingCanvas2dDrawImageCalls": 108,
+    "copyTotalMs": 1331,
+    "copyLongestMs": 21,
+    "frameRequests": 109,
+    "frameRequestFailures": 0,
+    "testedSourceSha256": "969b4414946092082553c8e3f74fc4794d226194a6f8b0c67ba403a8e3832331",
+    "appHarnessSha256": "b6091a27d76c5f773bef6d30d6f3650b034ffc4555ac8345678dfa45ef843bf0"
+  },
+  "syntheticAudioCheck": {
+    "result": "decoded",
+    "source": "440 Hz oscillator captured through MediaStreamAudioDestinationNode",
+    "codec": "AAC",
+    "sampleRateHz": 48000,
+    "channels": 2,
+    "decodedSamplesPerChannel": 178176,
+    "decodedDurationSeconds": 3.712,
+    "decodedRms": 0.014013,
+    "measuredPeakHz": 439.9,
+    "testedSourceSha256": "969b4414946092082553c8e3f74fc4794d226194a6f8b0c67ba403a8e3832331"
+  },
+  "latestRealTakePlayer": {
+    "realRecorderBlob": true,
+    "blobBytes": 20319762,
+    "readyState": 4,
+    "dimensions": "2160x3840",
+    "firstDecodedFrameTimeSeconds": 0.031,
+    "markedDraftName": "fundhub-real-take-player-marked-draft.png",
+    "markedDraftSha256": "f4dd1eccfd0ede9871d62a43deb7d8c32aa4e51458bba11e7b003e927191bf3b"
+  },
+  "decodedFrameInspection": {
+    "upright": true,
+    "fullFrame": true,
+    "previewBlurOrInterfaceBurnedIn": false,
+    "frontCameraMirrorObserved": true,
+    "sourceLeftMidRgb": [252, 0, 0],
+    "sourceRightMidRgb": [0, 254, 254],
+    "recordingLeftMidRgb": [18, 255, 251],
+    "recordingRightMidRgb": [235, 1, 2],
+    "topCornerTimecodeMovedFromLeftToRight": true
+  },
+  "standaloneNotes": {
+    "webglAutomaticCapture": "A 2160x3840 canvas using captureStream(60) emitted only zero-byte chunks in headless WebKit.",
+    "webglRequestFrameCapture": "A 2160x3840 WebGL canvas using captureStream(0) plus requestFrame after draws produced a playable H.264 file: 289 decoded frames over 4.01 seconds, median frame interval 13.33 ms, p95 16.67 ms.",
+    "twoDimensionalCanvas": "A standalone 2160x3840 2D capture produced a playable H.264 file at about 44.25 decoded fps."
+  },
+  "limits": [
+    "This uses a desktop synthetic camera stream; it does not prove recording on a real iPhone.",
+    "The desktop WebKit run reached about 44 fps on the WebGL app route, below the 60 fps target.",
+    "A front/back camera switch during one recording was not exercised by this encoder comparison."
+  ]
+}

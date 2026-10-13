@@ -86,15 +86,15 @@ flowchart TD
     U --> P
     P -->|409 stale| L["GET marketing/script?id= → the live version"]
     L -->|"live words = these words<br/>(the first answer was lost)"| V
-    L -->|different words| C["'Two versions. Tap to pick one.'<br/>both texts shown"]
+    L -->|different words| C["History stays available without a filming popup<br/>tap History, then Choose words to see both texts"]
     C -->|Keep my words| P2["POST again on the live id + version"] --> V
-    C -->|Use the saved words| W["Screen shows the saved words; this phone's copy dropped"]
+    C -->|Use the saved words| W["Read the live version again; show new words for another choice if it changed<br/>then verify a phone backup and show the saved words"]
     P -->|"400 / 403 / 404"| F["'Not saved. Tap to see why.'<br/>words kept: Try again, or Throw away (asks first)"]
 ```
 
 - The database version is the memory. The repo file follows through the outbox, which is held until `GITHUB_REPO_TOKEN` exists; the pulse says so.
 - The save path does not filter by title or kind. Ads, VSLs, thank-you videos, and their variants all create the same next `ad_scripts` version and keep their stack fields.
-- History (the History button, or tap the pulse): `GET marketing/script?id=` — every version newest first, who (from `source`: Chris, The machine, An agent, Imported), when, the words out (red) and in (green), and "In the repo." / "Not in the repo yet." Edits still on this phone show on top.
+- History (the History button, or tap the pulse): `GET marketing/script?id=` — every server version newest first, who (from `source`: Chris, The machine, An agent, Imported), when, the words out (red) and in (green), and "In the repo." / "Not in the repo yet." Edits still waiting on this phone and backups made when choosing saved words appear above the server versions. Choosing saved words reads the live version again; if it changed, the picker shows the new words and asks for another tap. If phone storage cannot verify the backup, the choice does not clear the phone edit.
 - The 5-second shoot poll never redraws under the edit box, and an edit still waiting on this phone wins over what the server sends. Words changed elsewhere redraw only while nothing rolls, keeping the place.
 
 ### 4c. The rig
@@ -112,13 +112,17 @@ Owner change, 2026-10-12: each row uses the offer-stack label from `offer_word`,
 
 ### 4e. The video decision after each recorded take
 
-`onRecStop` collects the original recording bytes into a named File (`keepFile`) and opens the modal `#take-save`. The modal shows the captured take name and asks **Save this video? Yes / No**. No drops that video's pending File without an upload or download. Yes queues the File for `sendOriginal`, the existing POST/PUT `/api/marketing/shoot/take` route. Uploads run one at a time; accepting a second take while the first saves keeps both Files in order. A restart callback waits for the decision. A pause or an edit still keeps the camera recording and opens no video decision.
+`onRecStop` collects the original recording bytes into a named File (`keepFile`) and opens the modal `#take-save`. The modal shows the captured take name, a local video player that does not autoplay, and **Save to phone**. That button gives the same File to the phone's share sheet or browser download. **Yes** commits the File to IndexedDB on this phone before the existing POST/PUT `/api/marketing/shoot/take` upload starts in the background. **No** drops the pending File from the app without queuing or uploading it; a copy the owner already chose to export remains with the phone. Uploads run one at a time; accepting a second take while the first saves keeps both Files in order. A restart callback waits for the decision. A pause or an edit still keeps the camera recording and opens no video decision.
+
+After Yes, **Watch** in the pulse row opens the last accepted File for local playback or another phone export, even after its Drive upload cleans up the queue in this open page. Reopening the page offers Watch for the latest take still in the IndexedDB upload queue. A completed Drive upload is not retained in that queue, so Watch does not survive a later page reload for that take. Closing either player pauses it and releases its object URL. Viewing or exporting does not start, stop, or queue a take.
 
 Video upload state now uses the small top-right `#video-save-status` chip. It says saving, saved, or that Drive failed while the file remains on the phone. It does not use the large bottom filming toast.
 
 ### 4f. Front and rear camera
 
 The 44 px top-left camera button switches the live preview from the mirrored front camera to the normal rear camera, then back. It never starts recording. A take that is already recording keeps one stable canvas recording stream while the physical camera changes, so a front/rear/front take stays one file. The recording clock moves beside the camera button. In portrait, the preview shows the whole camera frame instead of enlarging and center-cropping a wide iPhone feed; the black glass fills any spare space.
+
+Owner repair, 2026-10-13: full 4K output uses a WebGL surface when available; Ads and smaller output retain the existing 2D canvas path. The GPU painter fits the full source frame and mirrors only the front lens. It preserves the same recording track across camera switches and releases its shaders/texture when the take stops or recording fails. If GPU setup is unavailable, the existing 2D path remains. The saved diagnostic report includes bounded `capture_mode` (`webgl` or `2d`) so original Drive files can be compared. A real desktop WebKit encoder comparison is playable and faster; real iPhone cadence remains unverified.
 
 Safari displays the live camera in screen orientation, so the camera layer stays unrotated on both lenses even when the reported camera frame is wide. The words and buttons stay in their normal positions. The page requests the camera's full wide frame and does not force tall constraints after opening it. The saved canvas separately chooses a tall or wide file from the phone's orientation angle at Record. It fits every source pixel inside that file without stretching or turning the person sideways. If Safari gives a wide frame for a portrait take, the file has black space above and below the full image and the page reports that the selected portrait detail is unavailable.
 

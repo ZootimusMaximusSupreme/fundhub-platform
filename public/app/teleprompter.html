@@ -211,7 +211,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css?v=20261012-quality-badge">
+<link rel="stylesheet" href="teleprompter.css?v=20261013-gpu-phone-save">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -322,6 +322,7 @@ body.wording #flip{transform:none !important}
         <path fill="#2684fc" d="M17 4h11L11 33 5 43 0 33z"/>
       </svg>
     </a>
+    <button type="button" id="watch-last" aria-label="Watch last take" hidden><span>Watch</span></button>
     <span id="p-save">No changes yet</span>
   </div>
 
@@ -361,9 +362,22 @@ body.wording #flip{transform:none !important}
 <dialog id="take-save" aria-labelledby="take-save-title" aria-describedby="take-save-name">
   <h2 id="take-save-title">Save this video?</h2>
   <p class="note" id="take-save-name"></p>
+  <video id="take-save-preview" controls playsinline preload="metadata" aria-label="Watch this take"></video>
+  <button type="button" class="big take-phone" id="take-save-phone">Save to phone</button>
+  <p class="note">Yes saves this take on the phone, then sends it to Drive in the background.</p>
   <div class="take-save-actions">
     <button type="button" class="big primary" id="take-save-yes">Yes</button>
     <button type="button" class="big" id="take-save-no">No</button>
+  </div>
+</dialog>
+
+<dialog id="take-watch" aria-labelledby="take-watch-title" aria-describedby="take-watch-name">
+  <h2 id="take-watch-title">Last take</h2>
+  <p class="note" id="take-watch-name"></p>
+  <video id="take-watch-preview" controls playsinline preload="metadata" aria-label="Watch last take"></video>
+  <div class="take-save-actions">
+    <button type="button" class="big primary" id="take-watch-phone">Save to phone</button>
+    <button type="button" class="big" id="take-watch-close">Close</button>
   </div>
 </dialog>
 
@@ -431,7 +445,7 @@ body.wording #flip{transform:none !important}
 </section>
 
 <section class="sheet" id="pick" hidden aria-label="Pick the words to keep">
-  <div class="row"><h2 id="pick-title">Two versions of this script</h2><button type="button" class="x" data-close>Close</button></div>
+  <div class="row"><h2 id="pick-title">Choose words for this script</h2><button type="button" class="x" data-close>Close</button></div>
   <div class="list" id="pick-body"></div>
   <div class="acts" id="pick-acts"></div>
 </section>
@@ -465,8 +479,8 @@ body.wording #flip{transform:none !important}
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="teleprompter-edits.js?v=20261012-reconnect2"></script>
+<script src="teleprompter-edits.js?v=20261013-phone-draft-backup"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-  <script src="teleprompter.js?v=20261012-quality-badge"></script>
+  <script src="teleprompter.js?v=20261013-gpu-phone-save"></script>
 </body>
 </html>

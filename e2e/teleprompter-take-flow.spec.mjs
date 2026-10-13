@@ -1,13 +1,24 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./teleprompter-browser-fixture.mjs";
 import { CONTRACT } from "../src/marketing/api-contract.mjs";
+import http from "node:http";
+import fs from "node:fs";
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
+const wireServers = new Set();
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false, fourKCameraFps = null, rearCameraFps = null, sourceSizeByAsk = false } = {}) {
+test.afterEach(async () => {
+  for (const entry of wireServers) {
+    entry.release();
+    await new Promise((resolve) => entry.server.close(resolve));
+    wireServers.delete(entry);
+  }
+});
+
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false, fourKCameraFps = null, rearCameraFps = null, sourceSizeByAsk = false, liveCamera = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -23,8 +34,33 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   }));
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
+  var wireOrigin = "";
+  if (holdUpload) {
+    // A paused route holds WebKit's Blob serialization itself. A real server
+    // reads the upload body before waiting for a reply, as Drive does. Test
+    // navigation/recovery at that real network stage, with synthetic bytes.
+    const wire = http.createServer(async (req, res) => {
+      res.setHeader("access-control-allow-origin", req.headers.origin || "*");
+      res.setHeader("access-control-allow-methods", "PUT, OPTIONS");
+      res.setHeader("access-control-allow-headers", "authorization,content-type,content-range,x-shoot-film,x-take-token");
+      if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
+      const pieces = [];
+      for await (const piece of req) pieces.push(piece);
+      server.chunks.push(Buffer.concat(pieces).toString());
+      await uploadGate;
+      if (!res.destroyed) res.writeHead(failUpload ? 503 : 200, { "content-type": "application/json" })
+        .end(failUpload ? "{}" : JSON.stringify({ ok: true, done: true }));
+    });
+    await new Promise((resolve) => wire.listen(0, "127.0.0.1", resolve));
+    wireOrigin = "http://127.0.0.1:" + wire.address().port;
+    wireServers.add({ server: wire, release: server.release });
+  }
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk }) => {
+  if (process.env.FHTP_BASELINE_JS_FILE) {
+    const baseline = fs.readFileSync(process.env.FHTP_BASELINE_JS_FILE, "utf8");
+    await page.route("**/app/teleprompter.js*", (route) => route.fulfill({ contentType: "text/javascript", body: baseline }));
+  }
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk, liveCamera, wireOrigin }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -38,12 +74,27 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     window.__cameraRequests = [];
     window.__cameraAsks = [];
     window.__cameraStreams = [];
+    // WebKit can collect JS wrappers even while their native tracks live.
+    // Retain the overridden settings/facing methods for the whole test.
+    window.__cameraTracks = [];
     window.__recorderStarts = 0;
     window.__recorderStops = 0;
     window.__recordStream = null;
     window.__captureRates = [];
     window.__recordDraws = 0;
     window.__recordFrameRequests = 0;
+    window.__submittedPutBodies = [];
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, options) => {
+      if (String(input).includes("/api/marketing/shoot/take") && options?.method === "PUT") {
+        const bytes = options.body.text();
+        window.__submittedPutBodies.push(bytes);
+        // Finish the observer read before a reload can invalidate its Blob.
+        // The original body/options still go to the real browser fetch.
+        return bytes.then(() => nativeFetch(wireOrigin ? wireOrigin + "/api/marketing/shoot/take" : input, options));
+      }
+      return nativeFetch(input, options);
+    };
     const nativeDrawImage = CanvasRenderingContext2D.prototype.drawImage;
     CanvasRenderingContext2D.prototype.drawImage = function (...args) {
       if (this.canvas === window.__recordCanvas) window.__recordDraws++;
@@ -87,6 +138,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       window.__recordCanvas = this;
       const stream = nativeCanvasCapture.call(this, rate);
       const track = stream.getVideoTracks()[0];
+      window.__cameraTracks.push(track);
       if (track && disableRequestFrame) track.requestFrame = undefined;
       else if (track && typeof track.requestFrame === "function") {
         const nativeRequestFrame = track.requestFrame.bind(track);
@@ -142,6 +194,15 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       const track = stream.getVideoTracks()[0];
       // Keep the same source pixels and exclude them from recorder counts.
       cameraPaints.set(stream, () => nativeDrawImage.call(cameraPixels, canvas, 0, 0));
+      if (liveCamera) {
+        // Real cameras keep delivering frames after the ready-preview check.
+        // A single startup paint can arrive during lens attachment and leave
+        // a frame-driven recorder waiting forever in a static fake camera.
+        const timer = setInterval(() => {
+          if (track.readyState === "ended") { clearInterval(timer); return; }
+          cameraPaints.get(stream)();
+        }, 100);
+      }
       let liveFacing = facing;
       let liveDevice = deviceId;
       track.getSettings = () => ({ width, height, ...(omitFrameRateSetting ? {} : { frameRate: grantedFps() }), deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
@@ -182,9 +243,10 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk });
+  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk, liveCamera, wireOrigin });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
+    if (wireOrigin && new URL(req.url()).origin === wireOrigin) { await route.continue(); return; }
     const url = new URL(req.url());
     const p = url.pathname;
     const json = (body) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -204,7 +266,13 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       return json({ ok: true, token: `take-${server.uploads.length}`, chunk_bytes: 1024 * 1024 });
     }
     if (p === "/api/marketing/shoot/take" && req.method() === "PUT") {
-      server.chunks.push(req.postData());
+      const submitted = await page.evaluate(() => window.__submittedPutBodies.shift());
+      const intercepted = req.postData();
+      // WebKit's automation protocol omits Blob request bodies. Observe the
+      // real submitted Blob without changing fetch; where the protocol exposes
+      // bytes, independently compare both observations.
+      if (intercepted !== null) expect(intercepted).toBe(submitted);
+      server.chunks.push(intercepted ?? submitted);
       await uploadGate;
       if (failUpload) return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
       return json({ ok: true, done: true });
@@ -214,6 +282,13 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   await page.goto("/app/teleprompter.html", { waitUntil: "domcontentloaded" });
   await expect(page.locator("#p-file")).toHaveText(scripts[0].take_file_name);
   if (camera) await expect(page.locator("#cam")).toBeVisible();
+  await page.evaluate(() => {
+    const store = window.FundhubTakeStore, put = store.put.bind(store);
+    store.put = (entry) => put(entry).catch((error) => {
+      window.__saveFailure = `${error.name}: ${error.message}`;
+      throw error;
+    });
+  });
   return { server, scripts };
 }
 
@@ -489,7 +564,7 @@ test("camera button uses the exact rear device when Safari ignores the ideal rea
   expect(server.errors).toEqual([]);
 });
 
-test("drag words while recording stays one take; only a tap changes playback and Record stops capture", async ({ page }) => {
+test("drag words while recording stays one take; only a tap changes playback and Record stops capture", async ({ page, browserName }) => {
   const { server } = await open(page);
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
@@ -498,12 +573,19 @@ test("drag words while recording stays one take; only a tap changes playback and
   await page.waitForTimeout(350);
   const rect = await page.locator("#stage").boundingBox();
   const x = rect.x + rect.width * 0.5, y = rect.y + rect.height * 0.65;
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-  for (let i = 1; i <= 7; i++) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + (i * 135 / 7) }] });
+  if (browserName === "chromium") {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 7; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + (i * 135 / 7) }] });
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  } else {
+    // WebKit has no Chrome DevTools touch API. Its trusted pointer motion
+    // exercises the same gesture/recording contract; Chromium covers touch.
+    await page.mouse.move(x, y); await page.mouse.down();
+    await page.mouse.move(x, y + 135, { steps: 7 }); await page.mouse.up();
   }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect.poll(() => page.evaluate(() => window.__fhtp.state().playing)).toBe(true);
   expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
   await expect(page.locator("#b-rec")).toHaveText("Stop");
@@ -1227,4 +1309,117 @@ test("recording still paints and rolls on a browser without video-frame callback
   await page.locator("#b-rec").tap();
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
+});
+
+test("full 4K GPU recording preserves portrait pixels and one take across lens changes", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, sourceWidth: 2160, sourceHeight: 3840, edgeMarkers: true, liveCamera: true,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.evaluate(() => { window.__gpuRecordingCanvas = window.__recordCanvas; });
+  const pixels = () => page.evaluate(() => {
+    const canvas = window.__gpuRecordingCanvas, gl = canvas.getContext("webgl");
+    if (!gl) return null;
+    const pixel = (x, y) => {
+      const out = new Uint8Array(4);
+      gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+      // Camera/video YUV conversion may shift a channel by one level.
+      if (out[0] > 230 && out[1] < 15 && out[2] < 15) return "red";
+      if (out[2] > 230 && out[0] < 15 && out[1] < 15) return "blue";
+      if (out[0] > 230 && out[1] > 230 && out[2] < 15) return "yellow";
+      if (out[1] > 230 && out[0] < 15 && out[2] < 15) return "lime";
+      return [...out];
+    };
+    return { width: canvas.width, height: canvas.height, top: pixel(1080, 3700), bottom: pixel(1080, 100),
+      left: pixel(100, 1900), right: pixel(2060, 1900), draws2d: window.__recordDraws };
+  });
+  await expect.poll(async () => (await pixels())?.top).toBe("red");
+  expect(await pixels()).toMatchObject({ width: 2160, height: 3840, bottom: "blue",
+    left: "yellow", right: "lime", draws2d: 0 });
+  await page.locator("#b-camera-flip").tap();
+  await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use front camera");
+  await expect.poll(async () => (await pixels())?.left).toBe("lime");
+  expect(await pixels()).toMatchObject({ top: "red", bottom: "blue", right: "yellow", draws2d: 0 });
+  await page.locator("#b-camera-flip").tap();
+  await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use back camera");
+  await expect.poll(async () => (await pixels())?.left).toBe("yellow");
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  await page.waitForTimeout(550);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(async () => server.uploads.length || await page.evaluate(() => window.__saveFailure || 0)).toBe(1);
+  expect(server.uploads[0].diagnostics).toMatchObject({ capture_mode: "webgl", canvas_width: 2160, canvas_height: 3840, lens_changes: 2 });
+  expect(await page.evaluate(() => document.getElementById("cam-video").srcObject.getVideoTracks()[0].readyState)).toBe("live");
+  expect(server.errors).toEqual([]);
+});
+
+test("4K falls back to the existing 2D recorder when GPU capture is unavailable", async ({ page }) => {
+  await page.addInitScript(() => {
+    const native = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      return type === "webgl" ? null : native.call(this, type, ...args);
+    };
+  });
+  const { server } = await open(page, {
+    iphone: true, sourceWidth: 2160, sourceHeight: 3840,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+  });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(async () => server.uploads.length || await page.evaluate(() => window.__saveFailure || 0)).toBe(1);
+  expect(server.uploads[0].diagnostics).toMatchObject({ capture_mode: "2d", canvas_width: 2160, canvas_height: 3840 });
+  expect(server.uploads[0].diagnostics.copied_frames).toBeGreaterThan(0);
+  expect(server.errors).toEqual([]);
+});
+
+test("1080p keeps its existing 2D capture path even with a 4K camera source", async ({ page }) => {
+  const { server } = await open(page, { iphone: true, sourceWidth: 2160, sourceHeight: 3840 });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(async () => server.uploads.length || await page.evaluate(() => window.__saveFailure || 0)).toBe(1);
+  expect(server.uploads[0].diagnostics).toMatchObject({ capture_mode: "2d", canvas_width: 1080, canvas_height: 1920 });
+  expect(server.uploads[0].diagnostics.copied_frames).toBeGreaterThan(0);
+});
+
+test("4K GPU allocation failure falls back without counting a black GPU frame", async ({ page }) => {
+  await page.addInitScript(() => { WebGLRenderingContext.prototype.createTexture = () => null; });
+  const { server } = await open(page, {
+    iphone: true, sourceWidth: 2160, sourceHeight: 3840,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+  });
+  await stopTake(page);
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(async () => server.uploads.length || await page.evaluate(() => window.__saveFailure || 0)).toBe(1);
+  expect(server.uploads[0].diagnostics.capture_mode).toBe("2d");
+  expect(server.uploads[0].diagnostics.copied_frames).toBeGreaterThan(0);
+});
+
+test("4K GPU draw errors warn and are not counted as copied frames", async ({ page }) => {
+  await page.addInitScript(() => {
+    const native = WebGLRenderingContext.prototype.getError;
+    WebGLRenderingContext.prototype.getError = function () {
+      return window.__failGpuDraw ? this.INVALID_OPERATION : native.call(this);
+    };
+    const draw = WebGLRenderingContext.prototype.drawArrays;
+    WebGLRenderingContext.prototype.drawArrays = function (...args) {
+      window.__gpuDrawAttempts = (window.__gpuDrawAttempts || 0) + 1;
+      return draw.apply(this, args);
+    };
+  });
+  const { server } = await open(page, {
+    iphone: true, liveCamera: true, sourceWidth: 2160, sourceHeight: 3840,
+    scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const goodDraws = await page.evaluate(() => { window.__failGpuDraw = true; return window.__gpuDrawAttempts; });
+  await expect(page.locator("#cam-line")).toContainText("4K frame copy failed");
+  await expect.poll(() => page.evaluate(() => window.__gpuDrawAttempts)).toBeGreaterThan(goodDraws);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-yes").tap();
+  await expect.poll(async () => server.uploads.length || await page.evaluate(() => window.__saveFailure || 0)).toBe(1);
+  expect(server.uploads[0].diagnostics.capture_mode).toBe("webgl");
+  expect(server.uploads[0].diagnostics.copied_frames).toBe(goodDraws);
 });

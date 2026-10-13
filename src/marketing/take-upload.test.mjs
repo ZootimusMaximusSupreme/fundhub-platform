@@ -154,6 +154,15 @@ describe("take capture diagnostics", () => {
     }
     assert.equal(data.end_facing, "environment");
   });
+
+  test("records only known canvas paths so GPU and 2D takes can be compared", () => {
+    for (const mode of ["webgl", "2d"]) {
+      const data = JSON.parse(takeUpload.takeCaptureDescription({ elapsed_ms: 1000, capture_mode: mode }).slice(prefix.length));
+      assert.equal(data.capture_mode, mode);
+    }
+    const data = JSON.parse(takeUpload.takeCaptureDescription({ elapsed_ms: 1000, capture_mode: "private-device-id" }).slice(prefix.length));
+    assert.equal(data.capture_mode, undefined);
+  });
 });
 
 describe("the route", () => {

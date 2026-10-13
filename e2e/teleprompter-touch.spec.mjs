@@ -126,6 +126,22 @@ async function middle(page) {
 
 /* A finger on the glass, through the browser's own touch input (CDP). */
 async function finger(page) {
+  if (page.context().browser()?.browserType().name() !== "chromium") {
+    return {
+      async drag(x, y, dy, steps = 8) {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        for (let i = 1; i <= steps; i++) await page.mouse.move(x, y + (dy * i) / steps);
+        await page.mouse.up();
+      },
+      async hold(x, y, ms = 800) {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.waitForTimeout(ms);
+        await page.mouse.up();
+      }
+    };
+  }
   const c = await page.context().newCDPSession(page);
   const send = (type, pts) => c.send("Input.dispatchTouchEvent", { type, touchPoints: pts });
   return {
@@ -331,17 +347,21 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("fhtp.edits")).items))).toEqual([]);
     });
 
-    test("409: someone saved first — both texts show and Chris picks his own", async ({ page }) => {
+    test("409: the filming screen stays clear, and History lets Chris keep his words", async ({ page }) => {
       const { server } = await open(page);
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris"); // the Scripts tab, on the Mac
       await editHook(page, NEW_HOOK);
       await page.locator("#e-done").tap();
+      await expect(page.locator("#pick")).toBeHidden();
+      await expect(page.locator("#p-save")).toHaveText("History");
+      await page.locator("#p-save").tap();
+      await expect(page.locator("#hist")).toBeVisible();
+      await page.getByRole("button", { name: "Choose words" }).tap();
       await expect(page.locator("#pick")).toBeVisible();
-      await expect(page.locator("#pick-title")).toHaveText("Two versions of this script");
+      await expect(page.locator("#pick-title")).toHaveText("Choose words for this script");
       await expect(page.locator("#pick-body")).toContainText("BOTH files before they ever say yes.");
       await expect(page.locator("#pick-body")).toContainText("MOST banks read TWO files first.");
-      await expect(page.locator("#p-save")).toHaveText("Two versions. Tap to pick one.");
       await page.getByRole("button", { name: "Keep my words" }).tap();
       await expect(page.locator("#p-save")).toHaveText(SAVED_HELD);
       const last = server.posts[server.posts.length - 1];
@@ -350,16 +370,36 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(server.versions[THREE.root_script_id]).toHaveLength(3);
     });
 
-    test("409, the other way: Chris picks the saved words and the screen shows them", async ({ page }) => {
+    test("409: using saved words keeps the exact phone edit in History", async ({ page }) => {
       const { server } = await open(page);
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris");
       await editHook(page, NEW_HOOK);
       await page.locator("#e-done").tap();
+      await expect(page.locator("#pick")).toBeHidden();
+      await page.locator("#p-save").tap();
+      await page.getByRole("button", { name: "Choose words" }).tap();
+      const newest = THREE.body.replace(HOOK, "MOST banks check THREE files first.");
+      server.save(THREE.root_script_id, newest, null, "chris");
       await page.getByRole("button", { name: "Use the saved words" }).tap();
-      await expect(page.locator("#content")).toContainText("MOST banks read TWO files first.");
+      await expect(page.locator("#pick-body")).toContainText("MOST banks check THREE files first.");
+      await expect(page.locator("#content")).toContainText("BOTH files");
+      expect(await page.evaluate((rootId) => Object.keys(localStorage)
+        .filter((key) => key.startsWith(`fhtp.editBackup.${rootId}.`)).length, THREE.root_script_id)).toBe(0);
+      await page.getByRole("button", { name: "Use the saved words" }).tap();
+      await expect(page.locator("#content")).toContainText("MOST banks check THREE files first.");
       await expect(page.locator("#content")).not.toContainText("BOTH files");
-      expect(server.versions[THREE.root_script_id]).toHaveLength(2);
+      expect(server.versions[THREE.root_script_id]).toHaveLength(3);
+      const backups = await page.evaluate((rootId) => Object.keys(localStorage)
+        .filter((key) => key.startsWith(`fhtp.editBackup.${rootId}.`))
+        .map((key) => JSON.parse(localStorage.getItem(key))), THREE.root_script_id);
+      expect(backups).toHaveLength(1);
+      expect(backups[0].body).toBe(THREE.body.replace(HOOK, NEW_HOOK));
+      expect(backups[0].parts).toHaveLength(THREE.parts.length);
+      expect(backups[0].parts[0]).toEqual({ kind: "hook", text: NEW_HOOK });
+      await page.locator("#p-save").tap();
+      await expect(page.locator("#hist-list")).toContainText("Phone backup");
+      await expect(page.locator("#hist-list")).toContainText(NEW_HOOK);
     });
 
     test("history: who changed what and when, and whether the repo has it", async ({ page }) => {

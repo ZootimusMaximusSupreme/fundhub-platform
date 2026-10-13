@@ -7,7 +7,8 @@
  * /api/marketing/scripts/edit {request_id, id, version, body, parts?}: a new
  * version in the database (the old one is kept), voice pairs for the machine's
  * lines Chris changed, and the repo file queued through the outbox. Nothing
- * here keeps a second copy of the script anywhere but this phone's waiting list.
+ * here creates another server script store. The page keeps a verified phone
+ * backup before a user chooses saved words over an unsaved edit.
  *
  * WHAT IS IN THIS FILE (no document needed, so src/ui/teleprompter-edits.test.mjs
  * proves it in a bare VM):
@@ -229,7 +230,7 @@
    * server answers it once. Words typed after it go in the next save.
    */
   function createSaveQueue(o) {
-    var store = o.store, send = o.send, live = o.live;
+    var store = o.store, send = o.send, live = o.live, archive = o.archive;
     var now = o.now || function () { return Date.now(); };
     var later = o.setTimeout || function (f, ms) { return root.setTimeout(f, ms); };
     var cancel = o.clearTimeout || function (h) { root.clearTimeout(h); };
@@ -350,6 +351,10 @@
       });
     }
 
+    function conflictVersion(v) {
+      return { id: v.id, version: Number(v.version), body: v.body, parts: v.parts == null ? null : v.parts, source: v.source || null, created_at: v.created_at || null };
+    }
+
     /* 409: someone saved after these words were started. Read the live version
        (the 409 names its words, not its id). If it IS these words, the earlier
        save landed and only its answer was lost. Otherwise: two versions, and
@@ -372,7 +377,7 @@
         if (v.body === snap.body) return done(cur, snap, v, []);
         cur.sent = null;
         cur.conflict = {
-          theirs: { id: v.id, version: Number(v.version), body: v.body, parts: v.parts == null ? null : v.parts, source: v.source || null, created_at: v.created_at || null },
+          theirs: conflictVersion(v),
           current: d && d.current ? d.current : null
         };
         net = "ok";
@@ -382,7 +387,16 @@
       });
     }
 
-    /** Chris picked: 'mine' sends his words on top of the saved ones; 'theirs' drops his. */
+    function refreshConflict(rootId, v) {
+      var it = items[rootId];
+      if (!it || !it.conflict || !v || !v.id || typeof v.body !== "string") return false;
+      it.conflict.theirs = conflictVersion(v);
+      persist();
+      emit("conflict-refreshed", { root: rootId });
+      return true;
+    }
+
+    /** 'mine' sends the phone edit; 'theirs' shows saved words after a verified phone backup. */
     function resolve(rootId, choice) {
       var it = items[rootId];
       if (!it || !it.conflict) return null;
@@ -398,10 +412,16 @@
         emit("resolved", { root: rootId, choice: "mine" });
         return sendOne(it);
       }
+      var backedUp = false;
+      try { backedUp = !!(archive && archive(it)); } catch (e) { backedUp = false; }
+      if (!backedUp) {
+        emit("backup-failed", { root: rootId });
+        return false;
+      }
       delete items[rootId];
       persist();
       emit("resolved", { root: rootId, choice: "theirs", script: th });
-      return null;
+      return true;
     }
 
     /** A failed edit: send it again, or throw the words away (Chris confirms first). */
@@ -435,7 +455,7 @@
     function item(rootId) { return items[rootId] || null; }
     function list() { return Object.keys(items).map(function (r) { return items[r]; }); }
 
-    return { edit: edit, commit: commit, flush: flush, resolve: resolve, retry: retryFailed, drop: drop, status: status, item: item, list: list };
+    return { edit: edit, commit: commit, flush: flush, refreshConflict: refreshConflict, resolve: resolve, retry: retryFailed, drop: drop, status: status, item: item, list: list };
   }
 
   /** "12:04 PM", Arizona time like every staff screen (ops/workflows/arizona-time-2026-08-28.md). */
@@ -452,11 +472,11 @@
     var time = fmt || clockTime;
     var edits = function (n) { return n + (n === 1 ? " edit" : " edits"); };
     if (!st) return "No changes yet";
-    if (st.conflicts) return "Two versions. Tap to pick one.";
     if (st.failed) return "Not saved. Tap to see why.";
     if (st.waiting && st.net === "offline") return "Offline — " + edits(st.waiting) + " waiting";
     if (st.waiting && st.net === "signedout") return edits(st.waiting) + " on phone · reconnecting";
     if (st.saving || st.waiting) return "Saving…";
+    if (st.conflicts) return "History";
     if (st.savedAt) return "Saved " + time(st.savedAt) + (repoHeld ? ". Waiting to copy to the repo." : "");
     return "No changes yet";
   }

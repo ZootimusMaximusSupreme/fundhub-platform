@@ -1300,8 +1300,40 @@
 
   /* ── the edits: one store, the shipped edit route ───────────────────── */
 
+  function archivePhoneEdit(it) {
+    if (!it || typeof it.body !== "string") return false;
+    var record = {
+      root: it.root, body: it.body, parts: it.parts,
+      base_id: it.base_id, base_version: it.base_version,
+      saved_at: new Date().toISOString()
+    };
+    var key = "fhtp.editBackup." + it.root + "." + requestId();
+    var value = JSON.stringify(record);
+    try {
+      root.localStorage.setItem(key, value);
+      return root.localStorage.getItem(key) === value;
+    } catch (e) { return false; }
+  }
+
+  function phoneEditBackups(rootId) {
+    var prefix = "fhtp.editBackup." + rootId + ".";
+    var rows = [];
+    try {
+      for (var i = 0; i < root.localStorage.length; i++) {
+        var key = root.localStorage.key(i);
+        if (!key || key.indexOf(prefix) !== 0) continue;
+        try {
+          var row = JSON.parse(root.localStorage.getItem(key));
+          if (row && row.root === rootId && typeof row.body === "string") rows.push(row);
+        } catch (badRow) { /* keep looking for the other backups */ }
+      }
+    } catch (e) { /* a saved backup stays on this phone if storage cannot be read now */ }
+    return rows.sort(function (a, b) { return String(b.saved_at).localeCompare(String(a.saved_at)); });
+  }
+
   var edits = E.createSaveQueue({
     store: { get: function () { return LS.get("edits", null); }, set: function (v) { LS.set("edits", v); } },
+    archive: archivePhoneEdit,
     send: function (body) { return api("POST", "marketing/scripts/edit", body); },
     live: function (id) { return api("GET", "marketing/script?id=" + encodeURIComponent(id)); },
     requestId: requestId,
@@ -1311,8 +1343,8 @@
 
   function onEditChange(ev) {
     if (ev.type === "saved") savedOne(ev.root, ev.script, ev.warnings);
-    if (ev.type === "conflict") { stop(); openPick(ev.root); }
     if (ev.type === "failed") say("That edit did not save: " + ev.message);
+    if (ev.type === "backup-failed") say("The phone could not back up those words. Your edit is still here.");
     if (ev.type === "resolved" && ev.choice === "theirs" && ev.script) useWords(ev.root, ev.script);
     pulse();
   }
@@ -1378,7 +1410,7 @@
     var st = edits.status();
     var el = $("p-save");
     el.textContent = E.statusText(st, repoHeld);
-    el.classList.toggle("warn", !!(st.conflicts || st.failed || (st.waiting && st.net !== "ok")));
+    el.classList.toggle("warn", !!(st.failed || (st.waiting && st.net !== "ok")));
     el.classList.toggle("busy", !!(st.saving || (st.waiting && st.net === "ok")));
     if (editing) $("e-status").textContent = el.textContent;
   }
@@ -2308,10 +2340,22 @@
       var liveV = versions ? E.liveOf(versions) : null;
       if (it) {
         var row = el("div", "ver here");
-        row.appendChild(el("div", "vh", "On this phone · " + (it.conflict ? "two versions, pick one" : it.failed ? "not saved" : "waiting to save")));
+        row.appendChild(el("div", "vh", "On this phone · " + (it.conflict ? "choose which words to use" : it.failed ? "not saved" : "waiting to save")));
         row.appendChild(diffBox(liveV ? liveV.body : (s.body || ""), it.body));
+        if (it.conflict) {
+          var choose = el("button", "big", "Choose words");
+          choose.type = "button";
+          choose.onclick = function () { openPick(it.root); };
+          row.appendChild(choose);
+        }
         list.appendChild(row);
       }
+      phoneEditBackups(s.root_script_id).forEach(function (backup) {
+        var row = el("div", "ver here");
+        row.appendChild(el("div", "vh", "Phone backup · " + when(backup.saved_at) + " · not saved to the server"));
+        row.appendChild(el("p", "diff", backup.body));
+        list.appendChild(row);
+      });
       if (!versions) {
         list.appendChild(el("p", "note", r.status === 0
           ? "History needs a connection. Your edits are safe on this phone and send when you are back online."
@@ -2336,7 +2380,7 @@
     });
   }
 
-  /* A 409 (two versions) or a failed save: show the words and let Chris pick. */
+  /* A stale or failed save: show the words and let Chris choose. */
   function openPick(rootId) {
     var it = edits.item(rootId);
     if (!it) return;
@@ -2348,8 +2392,8 @@
     acts.innerHTML = "";
     if (it.conflict) {
       var th = it.conflict.theirs;
-      $("pick-title").textContent = "Two versions of this script";
-      box.appendChild(el("p", "note", "Someone saved this script after you started. Pick the words to keep. Nothing is lost: the other words stay in the history."));
+      $("pick-title").textContent = "Choose words for this script";
+      box.appendChild(el("p", "note", "Your phone edit has not saved to the server. The saved words came from the server. If you use them, your phone edit stays in History on this phone."));
       box.appendChild(el("h3", null, "Your words (on this phone)"));
       box.appendChild(el("p", "words", it.body));
       box.appendChild(el("h3", null, "Saved words · " + E.whoWrote(th.source) + (th.created_at ? " · " + when(th.created_at) : "")));
@@ -2359,7 +2403,29 @@
       mine.onclick = function () { closeSheets(true); edits.resolve(rootId, "mine"); pulse(); };
       var theirs = el("button", "big", "Use the saved words");
       theirs.type = "button";
-      theirs.onclick = function () { closeSheets(true); edits.resolve(rootId, "theirs"); pulse(); };
+      theirs.onclick = function () {
+        mine.disabled = true;
+        theirs.disabled = true;
+        theirs.textContent = "Checking saved words…";
+        api("GET", "marketing/script?id=" + encodeURIComponent(th.id)).then(function (r) {
+          var v = r.status === 200 && r.data ? E.liveOf(r.data.versions) : null;
+          if (!v) {
+            say("The saved words could not be checked. Your phone edit is still here.");
+          } else if (v.id !== th.id || Number(v.version) !== th.version || v.body !== th.body) {
+            if (edits.refreshConflict(rootId, v)) {
+              openPick(rootId);
+              say("The saved words changed again. Please review them before choosing.");
+              return;
+            }
+          } else if (edits.resolve(rootId, "theirs")) {
+            closeSheets(true);
+          }
+          mine.disabled = false;
+          theirs.disabled = false;
+          theirs.textContent = "Use the saved words";
+          pulse();
+        });
+      };
       acts.appendChild(mine); acts.appendChild(theirs);
     } else if (it.failed) {
       $("pick-title").textContent = "This edit did not save";
@@ -2382,7 +2448,7 @@
 
   function pulseTap() {
     var list = edits.list();
-    for (var i = 0; i < list.length; i++) if (list[i].conflict || list[i].failed) { openPick(list[i].root); return; }
+    for (var i = 0; i < list.length; i++) if (list[i].failed) { openPick(list[i].root); return; }
     openHistory();
   }
 
@@ -2474,6 +2540,68 @@
   doc.addEventListener("touchstart", resumeMicMeter, { passive: true });
 
   var takeDialog = $("take-save");
+  var watchDialog = $("take-watch");
+  var lastWatchFile = null;
+  var watchingFile = null;
+  var takePreviewUrls = { save: "", watch: "" };
+
+  function clearTakePreview(id, key) {
+    var video = $(id);
+    var url = takePreviewUrls[key];
+    takePreviewUrls[key] = "";
+    var fallback = null, afterEmpty = null, released = false;
+    function release() {
+      if (released || !url) return;
+      released = true;
+      root.clearTimeout(fallback);
+      root.clearTimeout(afterEmpty);
+      if (video) video.removeEventListener("emptied", onEmptied);
+      root.URL.revokeObjectURL(url);
+    }
+    function onEmptied() {
+      // WebKit may still be cancelling a metadata request in this task.
+      afterEmpty = root.setTimeout(release, 200);
+    }
+    if (video && url) video.addEventListener("emptied", onEmptied, { once: true });
+    if (video) {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    }
+    // A stopped preview still needs bounded cleanup when no event fires.
+    if (url) fallback = root.setTimeout(release, 1500);
+  }
+  function showTakePreview(id, key, file) {
+    clearTakePreview(id, key);
+    var video = $(id);
+    if (!video || !file) return;
+    try {
+      takePreviewUrls[key] = root.URL.createObjectURL(file);
+      video.src = takePreviewUrls[key];
+      video.hidden = false;
+    } catch (e) {
+      video.hidden = true;
+    }
+  }
+  function setLastWatchFile(file) {
+    lastWatchFile = file || null;
+    var button = $("watch-last");
+    if (button) button.hidden = !lastWatchFile;
+  }
+  function openLastWatch() {
+    if (!lastWatchFile || wantRec || cam.rec || cam.stopping || cam.pending.length ||
+        doc.body.classList.contains("rolling") ||
+        takeDialog.open || watchDialog.open) return;
+    watchingFile = lastWatchFile;
+    $("take-watch-name").textContent = watchingFile.name;
+    showTakePreview("take-watch-preview", "watch", watchingFile);
+    watchDialog.showModal();
+  }
+  function closeLastWatch() {
+    if (watchDialog.open) watchDialog.close();
+    clearTakePreview("take-watch-preview", "watch");
+    watchingFile = null;
+  }
 
   function activeMode() {
     return stays4K(scripts[cur]) ? "4k" : "1080p";
@@ -2639,13 +2767,18 @@
     if (!cam.pending.length || takeDialog.open) return;
     stop();
     $("take-save-name").textContent = cam.pending[0].file.name;
+    showTakePreview("take-save-preview", "save", cam.pending[0].file);
     takeDialog.showModal();
   }
   function chooseTakeSave(yes) {
     if (!takeDialog.open || !cam.pending.length) return;
     var take = cam.pending.shift();
+    clearTakePreview("take-save-preview", "save");
     takeDialog.close();
-    if (yes) queueVideoSave(take.file, take.offerKey, take.funnelTag, take.diagnostics);
+    if (yes) {
+      setLastWatchFile(take.file);
+      queueVideoSave(take.file, take.offerKey, take.funnelTag, take.diagnostics);
+    }
     else say("Video discarded.");
     if (take.then) take.then();
     askToSaveTake();
@@ -2665,6 +2798,7 @@
       try { video.cancelVideoFrameCallback(cam.pumpVideoFrame); } catch (e) { /* already stopped */ }
     }
     cam.pumpVideoFrame = 0;
+    if (cam.releasePainter) { cam.releasePainter(); cam.releasePainter = null; }
   }
   function captureCameraSettings(stream) {
     var track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
@@ -2678,6 +2812,73 @@
       previewWidth: video && video.videoWidth || null,
       previewHeight: video && video.videoHeight || null, facing: cam.facing };
   }
+  /* Keep 4K pixels on the GPU. WebKit can hand a WebGL surface to the
+     recorder without the 2D canvas snapshot used by the Ad path. */
+  function gpuRecordPainter(canvas) {
+    var gl = canvas.getContext("webgl", { alpha: false, antialias: false,
+      depth: false, stencil: false, preserveDrawingBuffer: true });
+    if (!gl) return null;
+    var shaders = [], program, buffer, texture;
+    function release() {
+      if (texture) gl.deleteTexture(texture);
+      if (buffer) gl.deleteBuffer(buffer);
+      if (program) gl.deleteProgram(program);
+      shaders.forEach(function (shader) { gl.deleteShader(shader); });
+    }
+    try {
+      function shader(type, source) {
+        var out = gl.createShader(type);
+        if (!out) throw new Error("Video shader allocation failed");
+        shaders.push(out);
+        gl.shaderSource(out, source); gl.compileShader(out);
+        if (!gl.getShaderParameter(out, gl.COMPILE_STATUS)) throw new Error("Video shader unavailable");
+        return out;
+      }
+      program = gl.createProgram();
+      if (!program) throw new Error("Video program allocation failed");
+      gl.attachShader(program, shader(gl.VERTEX_SHADER,
+        "attribute vec2 position; varying vec2 uv; uniform float mirror; void main(){gl_Position=vec4(position,0.,1.); uv=(position+1.)*.5; uv.x=mix(uv.x,1.-uv.x,mirror);}"));
+      gl.attachShader(program, shader(gl.FRAGMENT_SHADER,
+        "precision mediump float; varying vec2 uv; uniform sampler2D image; void main(){gl_FragColor=texture2D(image,uv);}"));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error("Video program unavailable");
+      gl.useProgram(program);
+      buffer = gl.createBuffer();
+      if (!buffer) throw new Error("Video buffer allocation failed");
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+      var position = gl.getAttribLocation(program, "position");
+      if (position < 0) throw new Error("Video position unavailable");
+      gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      texture = gl.createTexture();
+      if (!texture) throw new Error("Video texture allocation failed");
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      var image = gl.getUniformLocation(program, "image");
+      var mirror = gl.getUniformLocation(program, "mirror");
+      if (image === null || mirror === null) throw new Error("Video uniforms unavailable");
+      gl.uniform1i(image, 0);
+      gl.clearColor(0, 0, 0, 1);
+      if (gl.getError() !== gl.NO_ERROR) throw new Error("Video GPU setup failed");
+      return {
+        draw: function (video, x, y, width, height, mirrored) {
+          if (gl.isContextLost()) throw new Error("Video GPU context lost");
+          gl.viewport(0, 0, canvas.width, canvas.height); gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.viewport(Math.round(x), Math.round(canvas.height - y - height), Math.round(width), Math.round(height));
+          gl.uniform1f(mirror, mirrored ? 1 : 0);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          gl.flush();
+          if (gl.getError() !== gl.NO_ERROR) throw new Error("Video GPU draw failed");
+        },
+        release: release
+      };
+    } catch (e) { release(); return null; }
+  }
   /* MediaRecorder stays attached to one canvas track for a whole take. Camera
      switches redraw into this canvas without stopping the clip. The canvas
      holds the previous good image until the new lens has actual video frames.
@@ -2685,9 +2886,6 @@
   function continuousRecordStream(stream) {
     var video = $("cam-video");
     if (!video || !stream) return null;
-    var canvas = cam.canvas || doc.createElement("canvas");
-    cam.canvas = canvas;
-    if (!canvas.captureStream) return null;
     var track = stream.getVideoTracks()[0];
     var st = track && track.getSettings ? track.getSettings() : {};
     var w = video.videoWidth || st.width || 0;
@@ -2701,10 +2899,22 @@
       camLine("Camera video is not ready. Wait for your face before recording.", true);
       return null;
     }
-    canvas.width = layout.width;
-    canvas.height = layout.height;
-    var ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) return null;
+    var useGpu = requires4K && layout.width >= 2160 && layout.height >= 2160;
+    var kind = useGpu ? "webgl" : "2d";
+    var canvas = cam.canvas && cam.canvasKind === kind ? cam.canvas : doc.createElement("canvas");
+    if (!canvas.captureStream) return null;
+    canvas.width = layout.width; canvas.height = layout.height;
+    var gpu = useGpu ? gpuRecordPainter(canvas) : null;
+    if (useGpu && !gpu) {
+      canvas.width = canvas.height = 1;
+      canvas = doc.createElement("canvas");
+      canvas.width = layout.width; canvas.height = layout.height;
+      kind = "2d";
+    }
+    var ctx = gpu ? null : canvas.getContext("2d", { alpha: false, desynchronized: true });
+    if (!gpu && !ctx) return null;
+    if (cam.canvas && cam.canvas !== canvas) cam.canvas.width = cam.canvas.height = 1;
+    cam.canvas = canvas; cam.canvasKind = kind;
     cam.recordFullQuality = !layout.needsBetterCamera;
     if (layout.needsBetterCamera) camLine("This camera cannot fill an upright video at the selected quality. The full view will be kept.", true);
     // Ads and 4K films both target 60 fps. Copy only fresh camera frames;
@@ -2719,15 +2929,15 @@
       cameraLast: 0, copiedLast: 0, cameraLongestGap: 0, copiedLongestGap: 0,
       hasVideoCallbacks: !!video.requestVideoFrameCallback, missedCallbacks: 0,
       cameraStart: captureCameraSettings(stream), lensChanges: 0, copyTotalMs: 0, copyLongestMs: 0,
-      hasFrameRequests: false, frameRequests: 0, frameRequestFailures: 0 };
+      hasFrameRequests: false, frameRequests: 0, frameRequestFailures: 0,
+      captureMode: gpu ? "webgl" : "2d" };
     cam.captureStats = stats;
     var frameOrigin = null, copiedSlot = -1, previousFrameTime = null;
     var sourceStream = video.srcObject, sourceFacing = cam.facing, previousPresented = null;
     var sourceFps = st.frameRate > 0 ? st.frameRate : 60;
     var canvasTrack = null;
     var paintedShape = layout.dw + ":" + layout.dh;
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (ctx) { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
     function capturePaintedFrame() {
       // Safari's independent capture timer can miss a freshly painted frame.
       // Hand it over now when supported; retain timed capture as the fallback.
@@ -2789,19 +2999,22 @@
           var drawW = sourceW * scale, drawH = sourceH * scale;
           var drawX = (canvas.width - drawW) / 2, drawY = (canvas.height - drawH) / 2;
           var shape = drawW + ":" + drawH;
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          if (shape !== paintedShape) {
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            paintedShape = shape;
+          if (gpu) gpu.draw(video, drawX, drawY, drawW, drawH, cam.facing !== "environment");
+          else {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            if (shape !== paintedShape) {
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              paintedShape = shape;
+            }
+            if (cam.facing !== "environment") {
+              // A normal mirrored selfie, saved in the video, not just the preview.
+              ctx.translate(canvas.width, 0);
+              ctx.scale(-1, 1);
+            }
+            ctx.drawImage(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH);
+            ctx.restore();
           }
-          if (cam.facing !== "environment") {
-            // A normal mirrored selfie, saved in the video, not just the preview.
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-          }
-          ctx.drawImage(video, 0, 0, sourceW, sourceH, drawX, drawY, drawW, drawH);
-          ctx.restore();
           copiedSlot = slot;
           stats.copiedFrames++;
           if (stats.copiedLast) stats.copiedLongestGap = Math.max(stats.copiedLongestGap, now - stats.copiedLast);
@@ -2810,11 +3023,15 @@
           var copyMs = root.performance.now() - copyStarted;
           stats.copyTotalMs += copyMs;
           stats.copyLongestMs = Math.max(stats.copyLongestMs, copyMs);
-        } catch (e) { try { ctx.restore(); } catch (_) {} }
+        } catch (e) {
+          if (ctx) { try { ctx.restore(); } catch (_) {} }
+          else camLine("4K frame copy failed. Stop and save this take, then retry.", true);
+        }
       }
       schedule();
     }
     stopMirrorPump();
+    cam.releasePainter = gpu ? gpu.release : null;
     cam.pumping = true;
     // Put the already visible camera frame into the take immediately. Later
     // frames arrive only when the camera has actually produced a new image.
@@ -2924,6 +3141,7 @@
         has_frame_requests: stats.hasFrameRequests, frame_requests: stats.frameRequests,
         frame_request_failures: stats.frameRequestFailures,
         copy_total_ms: Math.round(stats.copyTotalMs || 0), copy_longest_ms: Math.round(stats.copyLongestMs || 0),
+        capture_mode: stats.captureMode,
         canvas_width: cam.canvas && cam.canvas.width, canvas_height: cam.canvas && cam.canvas.height,
         target_fps: cam.recordTargetFps, lens_changes: stats.lensChanges,
         start_width: startCamera.width, start_height: startCamera.height,
@@ -3518,6 +3736,7 @@
       });
       cam.uploads.sort(function (a, b) { return a.createdAt - b.createdAt; });
       if (cam.uploads.length) {
+        if (!lastWatchFile) setLastWatchFile(cam.uploads[cam.uploads.length - 1].file);
         videoSaveStatus("Recovered " + cam.uploads.length + " queued take" +
           (cam.uploads.length === 1 ? "" : "s"), "saving", true);
         saveNextVideo();
@@ -3878,11 +4097,27 @@
   };
   $("take-save-yes").onclick = function () { chooseTakeSave(true); };
   $("take-save-no").onclick = function () { chooseTakeSave(false); };
+  $("take-save-phone").onclick = function () {
+    if (cam.pending.length) shareOrDownload(cam.pending[0].file);
+  };
   takeDialog.addEventListener("cancel", function (e) { e.preventDefault(); });
+  $("watch-last").onclick = openLastWatch;
+  $("take-watch-phone").onclick = function () { if (watchingFile) shareOrDownload(watchingFile); };
+  $("take-watch-close").onclick = closeLastWatch;
+  watchDialog.addEventListener("close", closeLastWatch);
   $("q-complete").onclick = completeFromTop;
   $("e-done").onclick = endEdit;
   $("e-back").onclick = putBack;
   $("e-hist").onclick = function () { openHistory(); };
+  var savePulse = $("p-save");
+  savePulse.setAttribute("role", "button");
+  savePulse.tabIndex = 0;
+  savePulse.onclick = pulseTap;
+  savePulse.onkeydown = function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    pulseTap();
+  };
   $("b-got").onclick = gotIt;
   $("b-again").onclick = anotherTake;
   $("empty-retry").onclick = function () { load(true); };
