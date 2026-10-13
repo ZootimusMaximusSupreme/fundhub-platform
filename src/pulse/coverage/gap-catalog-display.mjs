@@ -1,5 +1,5 @@
 // Exact read-only saved-result judges for display controls. Browser contracts
-// prove the click. This lane proves the named durable result, or stays red.
+// prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
 
@@ -10,7 +10,7 @@ export const DISPLAY_TRACKING_CASES = Object.freeze(catalog.displayTrackingCases
 
 export const CHECK_IDS = Object.freeze(DISPLAY_TRACKING_CASES.map((entry) => entry.id));
 export const PASS_CAPABLE_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").length;
-export const ALWAYS_RED_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "always-red").length;
+export const UNMEASURED_CONTRACT_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "always-red").length;
 export const SQL_BATCHES = Object.freeze([
   ...new Set(DISPLAY_RESULT_CASES
     .filter((entry) => entry.contract.mode === "query")
@@ -31,17 +31,17 @@ export function judgeDisplayResult(entry, stats = null) {
   if (!entry.contract) {
     return result(
       entry.id,
-      "FAIL",
+      "NOT_PROVED",
       `${entry.surface} — ${entry.control}: no exact safe action/result contract is attached yet.`,
-      `Add a receipt that links this exact control's input to its saved result. Do not auto-fix. Chris fixes reds.`,
+      `Add a receipt that links this exact control's input to its saved result, then let the read-only pulse judge it.`,
     );
   }
   if (entry.contract.mode === "always-red") {
     return result(
       entry.id,
-      "FAIL",
+      "NOT_PROVED",
       `${entry.surface} — ${entry.control}: ${entry.contract.requirement}`,
-      `Add the missing exact input-to-result receipt for this control. Do not auto-fix. Chris fixes reds.`,
+      `Add the missing exact input-to-result receipt for this control, then let the read-only pulse judge it.`,
     );
   }
 

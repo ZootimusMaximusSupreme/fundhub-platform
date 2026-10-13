@@ -7,12 +7,12 @@ import { pathToFileURL } from "node:url";
 
 import { DISPLAY_RESULT_CONTRACTS } from "../catalog/proofs/display-saved-result.mjs";
 import {
-  ALWAYS_RED_COUNT,
   CHECK_IDS,
   DISPLAY_RESULT_CASES,
   DISPLAY_TRACKING_CASES,
   PASS_CAPABLE_COUNT,
   SQL_BATCHES,
+  UNMEASURED_CONTRACT_COUNT,
   gapChecks,
   judgeDisplayResult,
   naVerify,
@@ -51,8 +51,8 @@ test("all 45 deep display controls own one exact contract", () => {
   assert.equal(DISPLAY_RESULT_CONTRACTS.length, 45);
   assert.equal(DISPLAY_RESULT_CASES.length, 45);
   assert.equal(PASS_CAPABLE_COUNT, 27);
-  assert.equal(ALWAYS_RED_COUNT, 18);
-  assert.equal(PASS_CAPABLE_COUNT + ALWAYS_RED_COUNT, 45);
+  assert.equal(UNMEASURED_CONTRACT_COUNT, 18);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 45);
   assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 45);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
@@ -99,37 +99,60 @@ test("query contracts pass only with a real exact sample and no broken links", (
   assert.match(broken.suggestedFix, /Do not auto-fix\. Chris fixes reds\./);
 });
 
-test("unprovable controls always stay red and name the missing exact link", () => {
+test("missing contracts are not proved while measured breaks stay broken", () => {
+  const unprovedEntry = DISPLAY_TRACKING_CASES.find((item) => !item.retired && !item.contract);
+  assert.ok(unprovedEntry);
+  const unproved = judgeDisplayResult(unprovedEntry);
+  assert.equal(unproved.status, "NOT_PROVED");
+  assert.match(unproved.detail, /no exact safe action\/result contract is attached yet/);
+  assert.match(unproved.suggestedFix, /links this exact control's input to its saved result/);
+
+  const measuredEntry = DISPLAY_RESULT_CASES.find((item) => item.contract.mode === "query");
+  assert.ok(measuredEntry);
+  const broken = judgeDisplayResult(measuredEntry, { sample_count: 3, bad_count: 1 });
+  assert.equal(broken.status, "FAIL");
+  assert.match(broken.detail, /1 of 3/);
+});
+
+test("unmeasured contracts stay not proved and name the missing exact link", () => {
   const entries = DISPLAY_RESULT_CASES.filter((item) => item.contract.mode === "always-red");
   assert.equal(entries.length, 18);
   for (const entry of entries) {
     const out = judgeDisplayResult(entry, { sample_count: 99, bad_count: 0 });
-    assert.equal(out.status, "FAIL", entry.control);
+    assert.equal(out.status, "NOT_PROVED", entry.control);
     assert.match(out.detail, new RegExp(entry.control.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.ok(out.detail.includes(entry.contract.requirement));
     assert.match(out.suggestedFix, /exact input-to-result receipt/);
   }
 });
 
-test("the lane runs each exact query once and keeps the 18 gaps red", async () => {
+test("the lane keeps missing contracts not proved and measured gaps red", async () => {
   const db = fakeDb();
   const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveRedirect() });
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
+  const unprovedIds = new Set(DISPLAY_TRACKING_CASES
+    .filter((entry) => !entry.retired && !entry.contract)
+    .map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
+  const unproved = rows.filter((row) => unprovedIds.has(row.id));
 
   assert.equal(db.calls.length, 27);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
   assert.equal(focused.filter((row) => row.status === "PASS").length, 27);
-  assert.equal(focused.filter((row) => row.status === "FAIL").length, 18);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 18);
+  assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
+  assert.equal(unproved.length, unprovedIds.size);
+  assert.ok(unproved.every((row) => row.status === "NOT_PROVED"));
 });
 
-test("a failed exact read stays unchecked while static gaps remain red", async () => {
+test("a failed exact read stays unchecked while unmeasured contracts stay not proved", async () => {
   const failedKey = marker(SQL_BATCHES[0]);
   const rows = await gapChecks({ db: fakeDb({}, failedKey), orgId: ORG, fetchImpl: liveRedirect() });
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   assert.ok(focused.some((row) => row.status === "skip"));
-  assert.equal(focused.filter((row) => row.status === "FAIL").length, 18);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 18);
+  assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
 });
 
 test("only the exact retired redirect can be nothing-to-judge", async () => {

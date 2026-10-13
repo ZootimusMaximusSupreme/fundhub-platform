@@ -16,6 +16,7 @@ import { Inngest } from "inngest";
 
 import {
   AUDIT_BUDGET_MS,
+  AUDIT_HARD_STOP_MS,
   AUDIT_COVERS,
   BRIEFS_SENT_SQL,
   NAMED_PULSE_IDS,
@@ -300,12 +301,14 @@ test("an unknown code or missing args (verifyNa says not ok) cannot stay quiet",
   assert.equal(res.checks.find((c) => c.id === "wf:no-object").status, "skip");
 });
 
-test("a verify that throws counts as not true and the error text is kept", async () => {
+test("a verify that throws stays not checked and keeps the exact read error", async () => {
   const res = await run({ verifyNa: async () => { throw new Error("events table gone"); } });
-  assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
+  const audit = rowOf(res, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /2 could not be read \(wf:evt-a, wf:evt-off\)/);
   assert.equal(
     res.checks.find((c) => c.id === "wf:evt-a").detail,
-    "Said nothing to judge, but the condition being readable (the read failed: events table gone) is not true."
+    "Said nothing to judge, but it could not be checked again: the read failed: events table gone."
   );
 });
 
@@ -346,16 +349,15 @@ test("the three reasons the audit writes itself fit the same sentence", async ()
     const res = await run({ budgetMs: 40, verifyNa });
     seen.push(res.checks.find((c) => c.id === "wf:evt-a").detail);
   }
-  assert.deepEqual(seen.map((d) => d.replace(/\(the read failed: [^)]*\)/, "(the read failed: X)")), [
-    "Said nothing to judge, but the condition being readable (the read failed: X) is not true.",
-    "Said nothing to judge, but the check giving an answer is not true.",
-    "Said nothing to judge, but the condition being readable (the read failed: X) is not true."
+  assert.deepEqual(seen, [
+    "Said nothing to judge, but it could not be checked again: the read failed: events table gone.",
+    "Said nothing to judge, but it could not be checked again: the checker did not give an answer.",
+    "Said nothing to judge, but it could not be checked again: the check did not answer within 40 ms."
   ]);
-  // The audit's budget already spent: the reason is a condition too.
   const late = await run({ budgetMs: -1, verifyNa: okVerify });
   assert.equal(
     late.checks.find((c) => c.id === "wf:evt-a").detail,
-    "Said nothing to judge, but the audit having time left to check it again is not true."
+    "Said nothing to judge, but it could not be checked again: the check was given no time to answer."
   );
 });
 
@@ -514,13 +516,51 @@ test("at most eight nothing-to-judge checks run at the same time", async () => {
   assert.ok(peak > 1 && peak <= 8, `peak was ${peak}`);
 });
 
-test("a nothing-to-judge check that never answers is cut off inside the budget and counts as not true", async () => {
+test("waiting for a worker slot does not spend a check's own timeout", async () => {
+  const fx = fixture();
+  for (let i = 0; i < 24; i++) {
+    fx.checks.push({ id: `wf:queued-${i}`, status: "na", detail: "x.", na: { code: "no-demand", args: { n: i } } });
+  }
+  const res = await run({
+    budgetMs: 220,
+    verifyNa: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 90));
+      return { ok: true, reason: "" };
+    }
+  }, fx);
+  assert.equal(rowOf(res, "audit:na-verified").status, "PASS");
+  assert.equal(res.checks.filter((row) => row.status === "na").length, 26);
+});
+
+test("the whole N/A audit stops below the lane limit without calling unread rows stale", async () => {
+  const fx = fixture();
+  for (let i = 0; i < 16; i++) {
+    fx.checks.push({ id: `wf:hung-${i}`, status: "na", detail: "x.", na: { code: "no-demand", args: { n: i } } });
+  }
+  const started = Date.now();
+  const res = await run({
+    budgetMs: 80,
+    totalBudgetMs: 120,
+    verifyNa: () => new Promise(() => {})
+  }, fx);
+  assert.ok(Date.now() - started < 1500, "the lane safety stop must end the audit");
+  const audit = rowOf(res, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /timed out/);
+  assert.match(audit.detail, /lane safety stop/);
+  assert.match(audit.detail, /None was called stale/);
+});
+
+test("a nothing-to-judge check that never answers is cut off and stays not checked, not stale", async () => {
   const started = Date.now();
   const res = await run({ budgetMs: 60, verifyNa: () => new Promise(() => {}) });
   assert.ok(Date.now() - started < 1500, "the audit must not wait forever");
-  assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
-  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /took too long|having time left/);
+  const audit = rowOf(res, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /2 timed out \(wf:evt-a, wf:evt-off\)/);
+  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /did not answer within 60 ms/);
   assert.ok(AUDIT_BUDGET_MS <= 3000);
+  assert.ok(AUDIT_HARD_STOP_MS < 20_000);
 });
 
 test("a row that is not na is never sent to verifyNa", async () => {

@@ -1,22 +1,26 @@
 # Codex heartbeat build manifest — 2026-10-13
 
-Branch: `codex/heartbeat-tripwire-repair-2026-10-13` (review branch; never main)
+Branch: `codex/heartbeat-eight-items-build-2026-10-13` (draft PR #41; never main)
 
-This build changes the heartbeat, its proof harness, and one existing staff-screen load race exposed by the proof. It does not add a product page, route, screen, customer action, send, live database write, secret, dependency, deploy, or product feature.
+This build changes the heartbeat and its proof harness. It does not add or change a product page, route, screen, customer action, send, live database write, secret, dependency, deploy, or product feature. The branch was rebased onto `origin/main` on 2026-10-13; the agent-editor page and its matching e2e-only timeout change were removed from the PR.
 
 ## 1. Display lane
 
-- Changed `src/pulse/coverage/gap-catalog-display.mjs` and its test. The runtime imports compiled `generated.json`; it does not read repository files. Missing GET support, unread pages, wrong pages, and invalid URLs return `FAIL` without throwing.
+- Changed `src/pulse/coverage/gap-catalog-display.mjs` and its test. The runtime imports compiled `generated.json`; it does not read repository files. A row with no measurable action/result contract returns `NOT_PROVED`. A query contract returns `FAIL` only for a measured missing or bad result. Unread pages and invalid redirects remain visible as `skip` or `FAIL` with the reason; nothing throws.
 - Included the three PR #37 commits, then added the honest unread-page failure guard.
-- Proof: `node --test src/pulse/catalog/compiler.test.mjs src/pulse/coverage/gap-catalog-display.test.mjs src/pulse/coverage/gap-catalog.test.mjs` — 27 passed, 0 failed, 0 skipped.
+- Exact display split: 1,123 rows = 1,093 Not proved, 27 measurable query contracts, and 3 verified retired rows.
+- Proof: `env -u DATABASE_URL node --test src/pulse/coverage/gap-catalog-display.test.mjs` — 10 passed, 0 failed, 0 skipped. The wider focused heartbeat command below passed 227 of 227.
 - Unfinished: none.
 
 ## 2. Broken versus Not proved
 
 - Changed the scorecard, self-audit, morning text, existing morning report page, and the route/flow/read gap lanes and tests. `FAIL` always becomes Broken. `NOT_PROVED` is stored as `not_checked` with an explicit marker and remains counted daily.
 - Fixed the coverage runner so a gap lane's explicit `NOT_PROVED` status survives to the scorecard instead of being changed to `skip`.
-- Final exact Not proved count from the three explicit gap lanes: 460 = 310 route + 123 flow + 27 read. The other 160 flow rows are honest N/A inactive controls, not Not proved.
+- Final exact Not proved count from the four explicit gap groups: 1,553 = 1,093 display + 310 route + 123 flow + 27 read. The other 160 flow rows are honest N/A inactive controls, not Not proved.
+- Fixed `audit:na-verified`: the old single 2.5-second deadline included time spent waiting behind its eight workers, which could incorrectly call queued rows stale under load. Each started check now gets its own 2.5 seconds and the whole N/A audit hard-stops at 15 seconds. A verifier answer of `ok:false` stays Broken; a timeout, throw, or unread result is `skip` with the exact reason and remains visible through the red `audit:not-checked` row.
+- Claude's saved output named six of the 27 affected rows, and all six said `took too long`: `checkout:funnel-no-sale`, `gap-leads:lead:pipe-cut-with-traffic`, `gap-leads:lead:slo-contact-not-in-clickfunnels`, `msg:dead-senders`, `gap-pipeline-boards:pipeline:dead-stage`, and `social:video-stats-stale`. The other 21 ids were truncated from the saved output, so they are not invented here. No live database rerun was used to recover them.
 - Proof: the focused Node suite passed 197 tests with 0 failed and 0 skipped. `E2E_PORT=43129 npx playwright test e2e/morning-brief.spec.mjs` passed 15 tests with 0 failed and 0 skipped.
+- Repair proof: `env -u DATABASE_URL node --test src/pulse/self-audit.test.mjs src/pulse/na-conditions.test.mjs` — 140 passed, 0 failed, 0 skipped.
 - Unfinished: none.
 
 ## 3. Forty-two workflow receipt reds
@@ -25,7 +29,8 @@ This build changes the heartbeat, its proof harness, and one existing staff-scre
 - Result: 42 of 42 are `workflow-did-not-run`; 0 are `receipt-writer-failed`; 0 are unknown. Each event id has zero matching `workflow_runs.bus_event_id`. The rows carry test markers from the named Postgres suites.
 - Every database read used `BEGIN READ ONLY`, verified `transaction_read_only=on`, and ended with `ROLLBACK`.
 - Proof: `node --test src/pulse/workflow-runs.test.mjs src/pulse/run-evidence.test.mjs` — 117 passed, 0 failed, 0 skipped.
-- Unfinished: none. No writer change was justified.
+- Claude later confirmed those receipt reds came from tests that had been pointed at production on October 11–12. This repair did not run a database test, did not point `DATABASE_URL` at anything, and did not alter the 116 fake clients or 21 fake funding rounds. Chris decides what happens to that data.
+- Unfinished: none in code. No writer change or production cleanup was attempted.
 
 ## 4. Hourly money beats
 
@@ -51,6 +56,7 @@ This build changes the heartbeat, its proof harness, and one existing staff-scre
 - Exact fresh totals: 3,975 mapped rows; 33 marked repeats; 3,942 unique rows; coverage 880 none, 560 ping, 1,694 e2e, 808 deep; 3,919 wired and 23 red.
 - Proof: two consecutive `node scripts/pulse/compile-catalog.mjs` runs produced the same SHA-256: `8d3bee44e829bf03f10e7162f5a53ea38149aa05b334f2c19fda2f255188b297`.
 - Proof: `node --test src/pulse/catalog/compiler.test.mjs` — 13 passed, 0 failed, 0 skipped.
+- Rebase repair proof: two more consecutive no-database compiles produced the same SHA-256, and `git diff --exit-code -- src/pulse/catalog/generated.json` passed.
 - Unfinished: none.
 
 ## 7. Named real breaks
@@ -61,12 +67,13 @@ This build changes the heartbeat, its proof harness, and one existing staff-scre
 
 ## 8. Clean gates
 
-- `npm run lint` — 3,452 files and inline scripts parse clean.
-- `npx tsc --noEmit` — only the existing `src/marketing/filmed-receive.mjs:159` error present on `origin/main`; no new TypeScript error.
-- `npm test` — unit: 21,939 tests, 21,916 passed, 0 failed, 23 existing skips; Postgres runner: exit 0 with database-only tests skipped because this isolated worktree intentionally had no writable `DATABASE_URL`; final runner result `unit exit 0, pg exit 0`. No new test was skipped, deleted, or weakened.
-- The full-suite proof exposed and fixed an existing response-order race on `public/app/agent-editor.html`: staff options now load before agents, so a fast agent read cannot erase the saved owner/escalation. The exact browser proof passed 8 of 8.
-- `E2E_PORT=43173 npx playwright test e2e/morning-brief.spec.mjs --workers=1` — 15 passed, 0 failed, 0 skipped.
-- `npm run pulse:prove` — 75 steps; 2,622 final rows; 713 green, 1,209 Broken, 460 Not proved, 205 nothing to judge, 35 unread; every listed file bundled; no step threw or exceeded 20 seconds; no SQL error; nothing tried to write; final `OK`.
-- Two consecutive fresh compiles kept SHA-256 `8d3bee44e829bf03f10e7162f5a53ea38149aa05b334f2c19fda2f255188b297`; `git diff --exit-code src/pulse/catalog/generated.json` and `git diff --check` passed.
-- Audit: no LNR, teleprompter, key, secret, dependency, new route, new page, or deploy file changed. Temporary `.env` links used only by the read-only proof were removed.
-- Unfinished: Claude still performs the required clean-checkout test of the draft PR. Nothing was merged or deployed.
+- Rebase: `origin/main` is an ancestor of the repair branch; all five proof-test conflicts were resolved and the affected command passed 46 of 46.
+- `env -u DATABASE_URL npm run lint` — 3,452 files and inline scripts parse clean.
+- `env -u DATABASE_URL npx --no-install tsc --noEmit` — exit 0; no TypeScript error.
+- Focused integration command covering display, scorecard, named breaks, self-audit, N/A conditions, rebase conflicts, and the outbound fence — 227 passed, 0 failed, 0 skipped.
+- `npm test` was run only with `DATABASE_URL` removed. The Postgres half made no connection and finished with 83 pass and 1,005 database skips. The unit half found one load-only failure: the display meta-test ran the same Chromium proof deck at the same time as the suite's direct copy. The exact failing meta-test was rerun alone and passed 3 of 3; its full child deck completed in 342 seconds. No test was changed, deleted, skipped, or weakened to hide that load contention.
+- The prior morning-brief browser proof remains 15 of 15. No product page was changed in this repair.
+- Two consecutive fresh compiles kept SHA-256 `8d3bee44e829bf03f10e7162f5a53ea38149aa05b334f2c19fda2f255188b297`; `git diff --exit-code -- src/pulse/catalog/generated.json` passed.
+- `git diff --check` passed after removing two rebase artifacts: one duplicate outbound-fence key and one blank line at the end of the receipt evidence file.
+- Audit: no LNR, teleprompter, agent-editor, key, secret, dependency, new route, new page, deploy file, production data, or live database was changed. No `.env` file or link was created.
+- Unfinished: Claude still performs the required clean-checkout test of the updated draft PR, including a fresh non-contended full-suite run. Nothing was merged or deployed.

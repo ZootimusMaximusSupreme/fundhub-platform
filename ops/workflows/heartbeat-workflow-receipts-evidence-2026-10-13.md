@@ -120,4 +120,3 @@ above and every receipt count must be zero.
 
 Making the receipt check always return PASS makes these tests fail. No duplicate
 test was added.
-

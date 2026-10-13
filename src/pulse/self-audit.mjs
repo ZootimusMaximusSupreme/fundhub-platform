@@ -96,7 +96,10 @@ export const NAMED_PULSE_IDS = Object.freeze([
   ...MACHINE_CHECKS.map((c) => c.id)
 ]);
 
+// Each started condition gets this long to answer. Waiting for a worker slot does not spend it.
 export const AUDIT_BUDGET_MS = 2500;
+// The whole self-audit still stops below the 20 second lane limit.
+export const AUDIT_HARD_STOP_MS = 15000;
 const BRIEFS_READ_MS = 2000;
 const NA_CONCURRENCY = 8;
 const MAX_IDS = 10;
@@ -179,7 +182,9 @@ const UNWATCHED = "Part of Fundhub is not being watched, so a break there would 
 function withTimeout(promise, ms) {
   let timer;
   const cut = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("took too long")), ms);
+    const error = new Error("took too long");
+    error.code = "PULSE_NA_TIMEOUT";
+    timer = setTimeout(() => reject(error), Math.max(0, ms));
   });
   return Promise.race([Promise.resolve(promise), cut]).finally(() => clearTimeout(timer));
 }
@@ -359,15 +364,47 @@ async function defaultVerifyNa() {
    fits "Said nothing to judge, but <reason> is not true." Piece A's verifyNa
    writes it that way ("no ad running", "the reason code "x" being one the
    computer knows"). The three reasons written here use the same shape. */
-async function verifyOne(row, ctx, verify, deadline) {
-  const left = deadline - Date.now();
-  if (left <= 0) return { ok: false, reason: "the audit having time left to check it again" };
+async function verifyOne(row, ctx, verify, timeoutMs, hardStopAt, hardStopMs) {
+  const perCheckMs = Math.max(0, Number(timeoutMs) || 0);
+  const hardLeft = hardStopAt - Date.now();
+  if (hardLeft <= 0) {
+    return {
+      ok: false,
+      problem: "hard-stop",
+      reason: `the audit reached its ${hardStopMs} ms safety stop before this check started`
+    };
+  }
+  const waitMs = Math.min(perCheckMs, hardLeft);
+  if (waitMs <= 0) {
+    return { ok: false, problem: "timeout", reason: "the check was given no time to answer" };
+  }
+  const limitedByHardStop = hardLeft < perCheckMs;
   try {
-    const res = await withTimeout(verify(row, ctx), left);
-    if (res && typeof res === "object") return { ok: res.ok === true, reason: clip(res.reason, 200) };
-    return { ok: false, reason: "the check giving an answer" };
+    const res = await withTimeout(verify(row, ctx), waitMs);
+    if (res && typeof res === "object") {
+      const ok = res.ok === true;
+      return { ok, problem: ok ? null : "stale", reason: clip(res.reason, 200) };
+    }
+    return { ok: false, problem: "unreadable", reason: "the checker did not give an answer" };
   } catch (err) {
-    return { ok: false, reason: `the condition being readable (the read failed: ${clip((err && err.message) || err, 120)})` };
+    if (err && err.code === "PULSE_NA_TIMEOUT") {
+      return limitedByHardStop
+        ? {
+          ok: false,
+          problem: "hard-stop",
+          reason: `the audit reached its ${hardStopMs} ms safety stop while this check was running`
+        }
+        : {
+          ok: false,
+          problem: "timeout",
+          reason: `the check did not answer within ${perCheckMs} ms`
+        };
+    }
+    return {
+      ok: false,
+      problem: "unreadable",
+      reason: `the read failed: ${clip((err && err.message) || err, 120)}`
+    };
   }
 }
 
@@ -390,13 +427,14 @@ function naKeyOf(row) {
 }
 
 /* Runs verifyNa for every `na` row. Same code + args + lane = one call. Eight
-   at a time. Returns a Map from the row object to { ok, reason }. */
-async function verifyAllNa(list, { verifyNa, ctx, budgetMs }) {
+   at a time. Returns a Map from the row object to { ok, problem, reason }. */
+async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs }) {
   const naRows = list.filter((r) => r && r.status === "na");
   const outcome = new Map();
   if (!naRows.length) return outcome;
   const verify = verifyNa || await defaultVerifyNa();
-  const deadline = Date.now() + budgetMs;
+  const hardStopMs = Math.min(AUDIT_HARD_STOP_MS, Math.max(0, Number(totalBudgetMs) || 0));
+  const hardStopAt = Date.now() + hardStopMs;
   const memo = new Map();
   let next = 0;
   async function worker() {
@@ -405,7 +443,7 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs }) {
       const key = naKeyOf(row);
       let pending = key ? memo.get(key) : null;
       if (!pending) {
-        pending = verifyOne(row, ctx, verify, deadline);
+        pending = verifyOne(row, ctx, verify, budgetMs, hardStopAt, hardStopMs);
         if (key) memo.set(key, pending);
       }
       outcome.set(row, await pending);
@@ -418,19 +456,24 @@ async function verifyAllNa(list, { verifyNa, ctx, budgetMs }) {
 /* "Said nothing to judge, but <why> is not true." <why> is the reason verifyNa
    gave, a short condition. Only when no reason came back does the row's own
    sentence stand in for it. */
-function failedNaRow(row, reason) {
+function failedNaRow(row, result) {
   const rest = { ...row };
   delete rest.na;
+  const reason = result && result.reason;
   const why = clip(reason, 200) || `"${clip(row.detail, 160) || "its reason"}"`;
+  const stale = result && result.problem === "stale";
+  const detail = stale
+    ? (/[.!?]$/.test(why)
+      ? `Said nothing to judge, but that is not true. ${why}`
+      : `Said nothing to judge, but ${why} is not true.`)
+    : `Said nothing to judge, but it could not be checked again: ${why}${/[.!?]$/.test(why) ? "" : "."}`;
   return {
     ...rest,
     status: "skip",
-    // verifyNa says what it FOUND as a whole sentence ("5 x.y events came since 10-06."). Read it after the
-    // plain line. A bare condition ("the audit having time left to check it again") reads inside the line.
-    detail: clip(/[.!?]$/.test(why)
-      ? `Said nothing to judge, but that is not true. ${why}`
-      : `Said nothing to judge, but ${why} is not true.`),
-    suggestedFix: "Make this a real check, or fix its nothing-to-judge condition in src/pulse/na-conditions.mjs.",
+    detail: clip(detail),
+    suggestedFix: stale
+      ? "Make this a real check, or fix its nothing-to-judge condition in src/pulse/na-conditions.mjs."
+      : "Read this exact check reason. Fix the read or its time use, then run the pulse again.",
     customerSees: row.customerSees || null
   };
 }
@@ -597,18 +640,45 @@ async function checkRunRecorder({ db, scope, now, functions, sharedClient }) {
 
 function judgeNaVerified(naRows, outcome) {
   const failed = naRows.filter((r) => !(outcome.get(r) || {}).ok);
-  if (failed.length) {
-    const ids = failed.map((r) => String(r.id));
+  const stale = failed.filter((r) => (outcome.get(r) || {}).problem === "stale");
+  const unread = failed.filter((r) => (outcome.get(r) || {}).problem !== "stale");
+
+  if (stale.length) {
+    const staleIds = stale.map((r) => String(r.id));
+    const unreadIds = unread.map((r) => String(r.id));
+    const unreadDetail = unread.length
+      ? ` ${unread.length} more could not be checked again (${listIds(unreadIds)}); those are not called stale.`
+      : "";
     return auditRow(
       AUDIT_ROW_IDS.naVerified,
       "FAIL",
-      `${failed.length} of ${naRows.length} "nothing to judge" ${plural(naRows.length, "row", "rows")} ${plural(failed.length, "was", "were")} not true any more: ${listIds(ids)}. They now count as not checked.`,
+      `${stale.length} of ${naRows.length} "nothing to judge" ${plural(naRows.length, "row", "rows")} ${plural(stale.length, "was", "were")} not true any more: ${listIds(staleIds)}.${unreadDetail} They now count as not checked.`,
       {
-        fix: "Open each named row. If its reason is no longer true, the check has to run now. If the reason is wrong, fix its condition in src/pulse/na-conditions.mjs.",
+        fix: "Open each stale row. If its reason is no longer true, the check has to run now. For a row that could not be read, fix that read and run the pulse again.",
         sees: UNWATCHED
       }
     );
   }
+
+  if (unread.length) {
+    const timedOut = unread.filter((r) => (outcome.get(r) || {}).problem === "timeout");
+    const hardStopped = unread.filter((r) => (outcome.get(r) || {}).problem === "hard-stop");
+    const unreadable = unread.filter((r) => !["timeout", "hard-stop"].includes((outcome.get(r) || {}).problem));
+    const facts = [];
+    if (timedOut.length) facts.push(`${timedOut.length} timed out (${listIds(timedOut.map((r) => String(r.id)))})`);
+    if (hardStopped.length) facts.push(`${hardStopped.length} reached the lane safety stop (${listIds(hardStopped.map((r) => String(r.id)))})`);
+    if (unreadable.length) facts.push(`${unreadable.length} could not be read (${listIds(unreadable.map((r) => String(r.id)))})`);
+    return auditRow(
+      AUDIT_ROW_IDS.naVerified,
+      "skip",
+      `${unread.length} of ${naRows.length} "nothing to judge" ${plural(naRows.length, "row", "rows")} could not be checked again: ${facts.join("; ")}. None was called stale. They now count as not checked.`,
+      {
+        fix: "Read the named rows and their exact skip reasons. Fix the read or its time use, then run the pulse again.",
+        sees: UNWATCHED
+      }
+    );
+  }
+
   const detail = naRows.length
     ? `All ${naRows.length} "nothing to judge" ${plural(naRows.length, "row was", "rows were")} checked again and ${plural(naRows.length, "is", "are")} still true.`
     : "No row said nothing to judge today.";
@@ -864,7 +934,8 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
  *   laneNaVerify   (sliceId, code, args) => Promise<boolean|undefined>; see makeLaneNaVerify()
  *   orgId          the company for the morning-report read; the default company when left out
  * Wiring that tests inject, and the pulse leaves alone:
- *   verifyNa, sharedClient, notLiveRows, contract { toContractCheck, countChecks }, budgetMs
+ *   verifyNa, sharedClient, notLiveRows, contract { toContractCheck, countChecks },
+ *   budgetMs (per check), totalBudgetMs (whole audit safety stop)
  *
  * Returns { checks, rows, folded }:
  *   checks  the input rows; every failed `na` row replaced by a `skip` row, and
@@ -888,7 +959,8 @@ export async function auditPulse({
   sharedClient = null,
   notLiveRows = null,
   contract = null,
-  budgetMs = AUDIT_BUDGET_MS
+  budgetMs = AUDIT_BUDGET_MS,
+  totalBudgetMs = AUDIT_HARD_STOP_MS
 } = {}) {
   try {
     if (!Array.isArray(checks)) throw new TypeError("auditPulse needs the list of checks");
@@ -904,7 +976,7 @@ export async function auditPulse({
         (err) => ({ want: null, error: clip((err && err.message) || err, 120) })
       );
     const [outcome, briefs, built, recorder] = await Promise.all([
-      verifyAllNa(checks, { verifyNa, ctx, budgetMs }),
+      verifyAllNa(checks, { verifyNa, ctx, budgetMs, totalBudgetMs }),
       checkBriefsSent({ db, now, orgId }),
       manifestJob,
       checkRunRecorder({ db, scope, now, functions, sharedClient })
@@ -915,7 +987,7 @@ export async function auditPulse({
     const afterNa = checks.map((r) => {
       if (!r || r.status !== "na") return r;
       const res = outcome.get(r);
-      return res && res.ok ? r : failedNaRow(r, res && res.reason);
+      return res && res.ok ? r : failedNaRow(r, res);
     });
 
     // 2. the claims an audit row answers fold into it.

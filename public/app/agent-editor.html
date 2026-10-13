@@ -1051,17 +1051,13 @@ document.addEventListener("DOMContentLoaded", function () {
       cur.esc = setSelectOrFirst("a_esc", cur.esc);
     }
   }
-  var staffReady = FHData.wire(FHData.staff({ limit: 200 }), "agent owners", function (data) {
+  FHData.wire(FHData.staff({ limit: 200 }), "agent owners", function (data) {
     var rows = data.items || [];
     fillPeople(rows);
     return rows.length ? ("live staff · " + rows.length) : "no staff rows · Pick a person";
   });
 
-  // Staff options must exist before select() normalizes a saved owner or
-  // escalation. Otherwise a fast agent read can erase a valid saved value.
-  staffReady.then(function () {
-    return FHData.read("agents", { limit: 200 });
-  }).then(function (res) {
+  FHData.read("agents", { limit: 200 }).then(function (res) {
     if (res && res.ok) {
       var rows = (res.data && res.data.items) || [];
       AGENTS = rows.map(agentFromRow);

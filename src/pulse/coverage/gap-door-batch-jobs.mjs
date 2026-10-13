@@ -32,6 +32,7 @@ const FINAL_JOB_SURFACES = new Set([
   "workflow:paid-checkout-expiry-sweeper",
   "workflow:pulse-instant-watch",
   "workflow:affiliate-payout-run",
+  "workflow:hiring-outreach-cadence",
   "workflow:meet-transcript-sweeper",
   "workflow:inquiry-call-sweeper",
   "workflow:repair-bureau-response-reader",
