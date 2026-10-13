@@ -3,6 +3,46 @@ import { createHash } from "node:crypto";
 import { mappedState, validateMappedRow, validateRecipe } from "./contract.mjs";
 import { proofTargets } from "./evidence.mjs";
 
+const DISPLAY_SOURCES = [
+  "desks-a.json", "desks-b.json", "desks-c.json", "desks-d.json",
+  "desks-e.json", "desks-f.json", "public-pages.json"
+];
+
+export function compileHourlyUncoveredSurfaces(tripwires, beats) {
+  const covered = new Set(beats.flatMap((beat) => beat.covers));
+  return Object.keys(tripwires).filter((surface) => !covered.has(surface)).sort();
+}
+
+// Build-time input only. Live checks consume these saved arrays without loading
+// the proof builders, which read the repository's map files on a laptop.
+export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases, contractFor, isTracked }) {
+  const maps = new Map(sources.map((source) => [source.sourceFile, source.rows]));
+  const keyFor = (entry) => `${entry.sourceFile}\0${entry.surface}\0${entry.control}`;
+  const resultCases = staffProofCases.filter((entry) => entry.depth === "deep").map((entry) => {
+    const matches = (maps.get(entry.sourceFile) || []).filter((row) => row.surface === entry.surface && row.control === entry.control);
+    if (matches.length !== 1) throw new Error(`Expected one display result row for ${entry.sourceFile} / ${entry.surface} / ${entry.control}, found ${matches.length}`);
+    const contract = contractFor(matches[0]);
+    if (!contract) return null;
+    return { id: `catalog-display:${entry.sourceFile}:${entry.surface}:${entry.control}`, sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control, contract };
+  }).filter(Boolean);
+  const resultsByKey = new Map(resultCases.map((entry) => [keyFor(entry), entry]));
+  const directKeys = new Set(proofCases.map(keyFor));
+  const laneKeys = new Set(proofCases.filter((entry) => String(entry.evidence || "").includes("gap-catalog-display.mjs")).map(keyFor));
+  const trackingCases = [...new Map(DISPLAY_SOURCES.flatMap((sourceFile) => (maps.get(sourceFile) || [])
+    .filter((row) => !row.repeats_row_in && (isTracked(row) || resultsByKey.has(keyFor({ ...row, sourceFile }))))
+    .map((row) => {
+      const key = keyFor({ ...row, sourceFile });
+      if (directKeys.has(key) && !laneKeys.has(key) && !resultsByKey.has(key)) return null;
+      return [key, {
+        id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`,
+        sourceFile, surface: row.surface, control: row.control, expected: row.control,
+        contract: resultsByKey.get(key)?.contract || null,
+        retired: String(row.page || "") === "public/partner/autopsy/index.html"
+      }];
+    })).filter(Boolean)).values()];
+  return { displayResultCases: resultCases, displayTrackingCases: trackingCases };
+}
+
 function idFor(sourceFile, row) {
   return createHash("sha256")
     .update(`${sourceFile}\0${row.surface}\0${row.control}`)

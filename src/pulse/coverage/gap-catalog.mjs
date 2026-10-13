@@ -10,7 +10,7 @@
 
 import catalog from "../catalog/generated.json" with { type: "json" };
 
-export const CHECK_IDS = Object.freeze(["catalog:all-mapped", "catalog:proof-linked"]);
+export const CHECK_IDS = Object.freeze(["catalog:all-mapped", "catalog:proof-linked", "catalog:hourly-proof-linked"]);
 export const MIN_MAPPED_ROWS = 3974;
 export const EXPECTED_REPEATS = 33;
 export const MIN_UNIQUE_ITEMS = 3941;
@@ -49,7 +49,15 @@ export function judgeCatalog(value = catalog) {
         "Open the generated coverage catalog, add real proof for red items, rebuild it, and keep moving. Never mark an item green without executable proof."
       );
 
-  return [mapRow, proofRow];
+  const hourly = value?.hourlyUncoveredSurfaces;
+  const hourlyRow = Array.isArray(hourly) && hourly.length === 0
+    ? row(CHECK_IDS[2], "PASS", "Every customer or money tripwire surface has an hourly proof owner.")
+    : row(CHECK_IDS[2], "FAIL", Array.isArray(hourly)
+        ? `${hourly.length} customer or money tripwire surfaces still lack an hourly beat: ${hourly.slice(0, 6).join(", ")}${hourly.length > 6 ? ", …" : ""}.`
+        : "The built catalog does not contain the hourly coverage inventory.",
+      "Open hourlyUncoveredSurfaces in the built catalog. Reuse a real hourly business-result check or add the missing read-only proof; never attach an unrelated beat just to clear this row.");
+
+  return [mapRow, proofRow, hourlyRow];
 }
 
 export async function gapChecks() {

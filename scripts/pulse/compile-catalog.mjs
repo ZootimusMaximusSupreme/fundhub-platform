@@ -3,7 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compileCatalog } from "../../src/pulse/catalog/compiler.mjs";
+import { compileCatalog, compileDisplayRuntimeData, compileHourlyUncoveredSurfaces } from "../../src/pulse/catalog/compiler.mjs";
+import { TRIPWIRES } from "../../src/pulse/tripwires.mjs";
+import { loadBeats } from "../../src/pulse/beats/index.mjs";
+import { DISPLAY_PROOF_CASES } from "../../src/pulse/catalog/proofs/display-proof-cases.mjs";
+import { STAFF_UI_PROOF_CASES } from "../../src/pulse/catalog/proofs/display-batch-staff-ui.mjs";
+import { displaySavedResultContract, isTrackedDisplayControl } from "../../src/pulse/catalog/proofs/display-saved-result.mjs";
 import * as doors from "../../src/pulse/catalog/door-recipes.mjs";
 import * as display from "../../src/pulse/catalog/display-recipes.mjs";
 import * as data from "../../src/pulse/catalog/data-recipes.mjs";
@@ -44,6 +49,11 @@ const sources = files.map((sourceFile) => ({
   rows: JSON.parse(fs.readFileSync(path.join(MAP_DIR, sourceFile), "utf8"))
 }));
 const catalog = compileCatalog(sources, [doors, display, data, flow], { resolve });
+Object.assign(catalog, compileDisplayRuntimeData(sources, {
+  proofCases: DISPLAY_PROOF_CASES, staffProofCases: STAFF_UI_PROOF_CASES,
+  contractFor: displaySavedResultContract, isTracked: isTrackedDisplayControl
+}));
+catalog.hourlyUncoveredSurfaces = compileHourlyUncoveredSurfaces(TRIPWIRES, await loadBeats());
 
 if (catalog.rows < MIN_ROWS || catalog.unique < MIN_UNIQUE) {
   throw new Error(`Coverage map shrank: ${catalog.rows} rows / ${catalog.unique} unique; expected at least ${MIN_ROWS} / ${MIN_UNIQUE}.`);
@@ -54,7 +64,10 @@ function renderCatalog(value) {
     rows: value.rows,
     repeats: value.repeats,
     unique: value.unique,
-    counts: value.counts
+    counts: value.counts,
+    displayResultCases: value.displayResultCases,
+    displayTrackingCases: value.displayTrackingCases,
+    hourlyUncoveredSurfaces: value.hourlyUncoveredSurfaces
   };
   const lines = Object.entries(head).map(([key, item]) => `  ${JSON.stringify(key)}: ${JSON.stringify(item)},`);
   return `{\n${lines.join("\n")}\n  "items": [\n${value.items.map((item) => `    ${JSON.stringify(item)}`).join(",\n")}\n  ]\n}\n`;
