@@ -29,6 +29,10 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
     if (!camera) return;
+    // Retain WebKit's native wrapper so GC cannot replace it and drop these
+    // test-only method overrides when the recording canvas is allocated.
+    const cameraMediaDevices = navigator.mediaDevices;
+    window.__cameraMediaDevices = cameraMediaDevices;
     // A real MediaStream for the preview, with a deterministic recorder. Each
     // camera request gets a fresh track so front/rear switching is testable.
     window.__cameraRequests = [];
@@ -153,7 +157,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       window.__cameraStreams.push(stream);
       return stream;
     };
-    navigator.mediaDevices.getUserMedia = (ask) => {
+    cameraMediaDevices.getUserMedia = (ask) => {
       const video = ask && ask.video;
       const fm = video && video.facingMode;
       const exactId = video && video.deviceId && video.deviceId.exact;
@@ -163,7 +167,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       window.__cameraAsks.push({ facing, audio: !!ask.audio, video: JSON.parse(JSON.stringify(video)) });
       return Promise.resolve(makeStream(facing, deviceId, video));
     };
-    navigator.mediaDevices.enumerateDevices = () => Promise.resolve(cameraDevices);
+    cameraMediaDevices.enumerateDevices = () => Promise.resolve(cameraDevices);
     let take = 0;
     window.MediaRecorder = class {
       static isTypeSupported() { return true; }
