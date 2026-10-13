@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, savedCam = "1080p", portraitOnlyFor4k = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -39,6 +39,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     window.__recordStream = null;
     window.__captureRates = [];
     window.__recordDraws = 0;
+    window.__recordFrameRequests = 0;
     const nativeDrawImage = CanvasRenderingContext2D.prototype.drawImage;
     CanvasRenderingContext2D.prototype.drawImage = function (...args) {
       if (this.canvas === window.__recordCanvas) window.__recordDraws++;
@@ -65,13 +66,13 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         return id;
       };
       HTMLVideoElement.prototype.cancelVideoFrameCallback = (id) => { pending.delete(id); };
-      window.__sendVideoFrames = (times, counts = []) => {
+      window.__sendVideoFrames = (times, counts = [], mediaTimes = []) => {
         for (const [index, now] of times.entries()) {
           const next = pending.entries().next().value;
           if (!next) throw new Error("recorder did not request the next camera frame");
           pending.delete(next[0]);
           presentedFrames = counts[index] ?? presentedFrames + 1;
-          next[1](now, { presentedFrames, mediaTime: presentedFrames / 60 });
+          next[1](now, { presentedFrames, mediaTime: mediaTimes[index] ?? presentedFrames / 60, presentationTime: now, expectedDisplayTime: now + 8 });
         }
       };
     }
@@ -80,7 +81,18 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
     HTMLCanvasElement.prototype.captureStream = function (rate) {
       window.__captureRates.push(rate);
       window.__recordCanvas = this;
-      return nativeCanvasCapture.call(this, rate);
+      const stream = nativeCanvasCapture.call(this, rate);
+      const track = stream.getVideoTracks()[0];
+      if (track && disableRequestFrame) track.requestFrame = undefined;
+      else if (track && typeof track.requestFrame === "function") {
+        const nativeRequestFrame = track.requestFrame.bind(track);
+        const canvas = this;
+        track.requestFrame = () => {
+          if (canvas === window.__recordCanvas) window.__recordFrameRequests++;
+          return nativeRequestFrame();
+        };
+      }
+      return stream;
     };
     if (rearPlayRejectOnce) {
       const nativePlay = HTMLMediaElement.prototype.play;
@@ -153,7 +165,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, savedCam, portraitOnlyFor4k });
+  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -491,6 +503,64 @@ test("1080p Ad copies each fresh 60 fps camera frame despite callback jitter", a
   expect(server.errors).toEqual([]);
 });
 
+test("recorder requests each freshly painted canvas frame", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+    scriptShapes: [{ stack_kind: "ad", script_format: "standard" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const counts = await page.evaluate(() => {
+    const initial = window.__recordFrameRequests;
+    const every = 1000 / 60;
+    const start = performance.now() + 100;
+    const times = Array.from({ length: 12 }, (_, i) => start + (i + 1) * every);
+    window.__sendVideoFrames(times);
+    return {
+      initial,
+      draws: window.__recordDraws,
+      requests: window.__recordFrameRequests,
+      supported: typeof window.__recordStream.getVideoTracks()[0].requestFrame === "function"
+    };
+  });
+  expect(counts.supported).toBe(true);
+  expect(counts.initial).toBe(1);
+  expect(counts.draws).toBe(12);
+  expect(counts.requests).toBe(counts.draws + 1);
+  await page.locator("#b-rec").tap();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
+test("recording still works when canvas requestFrame is unsupported", async ({ page }) => {
+  const { server } = await open(page, {
+    iphone: true, cameraFps: 60, manualVideoCallbacks: true, disableRequestFrame: true,
+    scriptShapes: [{ stack_kind: "ad", script_format: "standard" }]
+  });
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  const counts = await page.evaluate(() => {
+    const every = 1000 / 60;
+    const start = performance.now() + 100;
+    const times = Array.from({ length: 12 }, (_, i) => start + (i + 1) * every);
+    window.__sendVideoFrames(times);
+    return {
+      draws: window.__recordDraws,
+      requests: window.__recordFrameRequests,
+      supported: typeof window.__recordStream.getVideoTracks()[0].requestFrame === "function",
+      captureRate: window.__captureRates.at(-1)
+    };
+  });
+  expect(counts.supported).toBe(false);
+  expect(counts.captureRate).toBe(60);
+  expect(counts.draws).toBe(12);
+  expect(counts.requests).toBe(0);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+  await page.locator("#take-save-no").tap();
+  expect(server.errors).toEqual([]);
+});
+
 test("1080p Ad keeps its 60 fps request when camera settings omit frame rate", async ({ page }) => {
   const { server } = await open(page, {
     iphone: true, omitFrameRateSetting: true,
@@ -550,6 +620,55 @@ test("4K VSL caps fresh 60 fps camera frames near 30 canvas copies", async ({ pa
   await page.locator("#take-save-no").tap();
   expect(server.errors).toEqual([]);
 });
+
+for (const frozenMediaTime of [0, 2]) {
+  test(`1080p Ad copies all fresh frames when mediaTime stays ${frozenMediaTime}`, async ({ page }) => {
+    const { server } = await open(page, {
+      iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+      sourceWidth: 1080, sourceHeight: 1920,
+      scriptShapes: [{ stack_kind: "ad", script_format: "standard" }]
+    });
+    await page.locator("#b-rec").tap();
+    await expect(page.locator("#b-rec")).toHaveText("Stop");
+    const { copied, rate } = await page.evaluate((mediaTime) => {
+      const before = window.__recordDraws;
+      const every = 1000 / 60;
+      const start = performance.now() + 100;
+      const times = Array.from({ length: 60 }, (_, i) => start + (i + 1) * every + (i % 2 ? -1 : 1));
+      window.__sendVideoFrames(times, [], times.map(() => mediaTime));
+      return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
+    }, frozenMediaTime);
+    expect(rate).toBe(60);
+    expect(copied).toBe(60);
+    await page.locator("#b-rec").tap();
+    await page.locator("#take-save-no").tap();
+    expect(server.errors).toEqual([]);
+  });
+
+  test(`4K VSL caps fresh frames when mediaTime stays ${frozenMediaTime}`, async ({ page }) => {
+    const { server } = await open(page, {
+      iphone: true, cameraFps: 60, manualVideoCallbacks: true,
+      sourceWidth: 1080, sourceHeight: 1920,
+      scriptShapes: [{ stack_kind: "vsl", script_format: "vsl" }]
+    });
+    await page.locator("#b-rec").tap();
+    await expect(page.locator("#b-rec")).toHaveText("Stop");
+    const { copied, rate } = await page.evaluate((mediaTime) => {
+      const before = window.__recordDraws;
+      const every = 1000 / 60;
+      const start = performance.now() + 100;
+      const times = Array.from({ length: 60 }, (_, i) => start + (i + 1) * every + (i % 2 ? -1 : 1));
+      window.__sendVideoFrames(times, [], times.map(() => mediaTime));
+      return { copied: window.__recordDraws - before, rate: window.__captureRates.at(-1) };
+    }, frozenMediaTime);
+    expect(rate).toBe(30);
+    expect(copied).toBeGreaterThanOrEqual(25);
+    expect(copied).toBeLessThanOrEqual(35);
+    await page.locator("#b-rec").tap();
+    await page.locator("#take-save-no").tap();
+    expect(server.errors).toEqual([]);
+  });
+}
 
 test("live camera stays unrotated while saved video follows the phone turn", async ({ page }) => {
   const { server } = await open(page, { iphone: true, sourceWidth: 36, sourceHeight: 64 });

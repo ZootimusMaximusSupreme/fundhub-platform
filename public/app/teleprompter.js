@@ -2680,9 +2680,18 @@
     cam.captureStats = stats;
     var frameOrigin = null, copiedSlot = -1, previousFrameTime = null;
     var sourceStream = video.srcObject, previousPresented = null;
+    var sourceFps = st.frameRate > 0 ? st.frameRate : 60;
+    var canvasTrack = null;
     var paintedShape = layout.dw + ":" + layout.dh;
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function capturePaintedFrame() {
+      // Safari's independent capture timer can miss a freshly painted frame.
+      // Hand it over now when supported; retain timed capture as the fallback.
+      if (canvasTrack && typeof canvasTrack.requestFrame === "function") {
+        try { canvasTrack.requestFrame(); } catch (e) { /* timed capture remains active */ }
+      }
+    }
     function schedule() {
       if (!cam.pumping) return;
       if (video.requestVideoFrameCallback) cam.pumpVideoFrame = video.requestVideoFrameCallback(function (now, metadata) { draw(now, true, metadata); });
@@ -2696,6 +2705,9 @@
       if (sourceStream !== video.srcObject) {
         sourceStream = video.srcObject;
         frameOrigin = null; copiedSlot = -1; previousFrameTime = null; previousPresented = null;
+        var liveTrack = sourceStream && sourceStream.getVideoTracks ? sourceStream.getVideoTracks()[0] : null;
+        var liveSettings = liveTrack && liveTrack.getSettings ? liveTrack.getSettings() : {};
+        sourceFps = liveSettings.frameRate > 0 ? liveSettings.frameRate : 60;
       }
       if (fromCamera) {
         var presented = metadata && metadata.presentedFrames;
@@ -2707,17 +2719,19 @@
         if (stats.cameraLast) stats.cameraLongestGap = Math.max(stats.cameraLongestGap, now - stats.cameraLast);
         stats.cameraLast = now;
       }
-      // Choose frames by their video timestamps, not when JavaScript gets its
-      // callback. Just 1 ms of callback jitter made the old 60 fps gate skip
-      // every other fresh frame. Slots also keep a 4K take at its 30 fps budget.
-      var mediaTime = metadata && metadata.mediaTime;
-      var frameTime = fromCamera && typeof mediaTime === "number" && isFinite(mediaTime) ? mediaTime * 1000 : now;
+      // Each video callback has a fresh camera frame. Do not reject it for
+      // callback jitter when the recording budget can keep the source rate.
+      // Live Safari streams can report mediaTime=0 forever. Use their advancing
+      // presentation timestamp only when reducing a faster source (4K/30).
+      var copyFreshFrame = fromCamera && fps >= sourceFps;
+      var presentationTime = metadata && metadata.presentationTime;
+      var frameTime = fromCamera && typeof presentationTime === "number" && isFinite(presentationTime) ? presentationTime : now;
       if (frameOrigin == null || (previousFrameTime != null && frameTime < previousFrameTime)) {
         frameOrigin = frameTime; copiedSlot = -1;
       }
       previousFrameTime = frameTime;
       var slot = Math.floor((frameTime - frameOrigin) / frameEvery + 0.25);
-      if (slot > copiedSlot && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      if ((copyFreshFrame || slot > copiedSlot) && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
           // The canvas size is fixed for the whole take. A lens switch can
           // change source dimensions, so fit that new full frame to this same
@@ -2744,6 +2758,7 @@
           stats.copiedFrames++;
           if (stats.copiedLast) stats.copiedLongestGap = Math.max(stats.copiedLongestGap, now - stats.copiedLast);
           stats.copiedLast = now;
+          capturePaintedFrame();
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
       schedule();
@@ -2756,6 +2771,8 @@
     var out;
     try { out = canvas.captureStream(fps); }
     catch (e) { stopMirrorPump(); return null; }
+    canvasTrack = out.getVideoTracks()[0] || null;
+    capturePaintedFrame();
     var audio = cam.audioTrack || stream.getAudioTracks()[0];
     if (audio && audio.readyState === "live") {
       try { out.addTrack(audio); } catch (e) { /* camera still saves */ }
