@@ -715,6 +715,7 @@
     var short = "";
     if (want === "4k" && !four) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 4K.";
     else if (want === "1080p" && !hd) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 1080p.";
+    else if (fps && fps < 60) short = line + " · below 60 fps target";
     return { line: line, short: short, width: w, height: h, fps: fps };
   }
 
@@ -3007,6 +3008,9 @@
     }
     function ready() {
       if (gen !== cam.gen) return;
+      // Read the granted settings after the live preview has started, rather
+      // than reporting the earlier snapshot taken before its metadata arrived.
+      got = track && track.getSettings ? track.getSettings() : got;
       if (retryPortrait && isPhone() && mode === "1080p" && recordingIsPortrait() &&
           video && video.videoWidth > video.videoHeight) {
         stream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });

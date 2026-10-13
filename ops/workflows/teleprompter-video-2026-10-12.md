@@ -16,6 +16,8 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 | `/root` | Inspect teleprompter code and specs, make the smallest supported fix, integrate and ship | Running |
 | `/root/proof_tests` | Baseline and focused automated proof in test files | Done |
 | `/root/luna_video_integrity` | Owner-requested Luna review of the 8:06 p.m. Drive original, every frame and audio decode | Done |
+| `/root/luna_camera_settings` | Owner-requested Luna check of camera requests, granted settings, and stale quality reports | Running |
+| `/root/luna_release` | Owner-requested Luna diagnosis of the stalled GitHub/Netlify publication | Running |
 
 ## Drive video findings
 
@@ -42,6 +44,16 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 - Changed: `public/app/teleprompter.js`, `public/app/teleprompter.html` (fresh asset version), `docs/journeys/shoot-flow.md`, `docs/journeys/CHANGELOG.md`. Tests are owned by `/root/proof_tests`.
 
 ## Test and live proof
+
+### Follow-up: fetched camera settings and publication failure
+
+- Luna confirmed that camera requests and actual grants are separate. Start/end diagnostics correctly read `track.getSettings()` and survive the upload allowlist. The known report bug was that a correctly sized 30 fps grant received normal success styling. The fix marks that actual grant below the 60 fps target and refreshes its settings once the live preview is ready. Camera negotiation and saved video bytes are unchanged by this reporting repair.
+- Baseline proof: both 1080p30 and 4K30 preview cases lacked a quality warning; the new unit and browser expectations failed before the status change. Both 60 fps preview cases passed.
+- After the reporting change, Luna's tests pass **63/63 units and 48/48 browser cases**. They read fake track grants at both 30 and 60 fps and prove that only the lower rate gets the failure warning. They do not prove saved-file 60 fps.
+- Luna traced the first production attempt to GitHub's 30-minute job limit: setup/install used about 11 minutes, then Netlify reached edge-function bundling before GitHub stopped it. Its draft deploy never published. The next attempt failed the mandatory hourly proof on a 10-second health request; no deployment happened. A read-only local retry passed that same proof in 8.1 seconds, with the health check passing in 2.7 seconds. Existing unrelated operational RED checks remain RED.
+- A rerun is active. Its triggering SHA does not define the deployed source: the workflow checks out `main`, and the ship script pulls GitHub's current main before checks. Verify the served script and actual deployment source before calling it live.
+- The rerun passed and shipped **820d31d7** at **9:07 p.m. Phoenix**, Netlify deploy `6acdae49a8418ccb9fbb5d60`. Root independently verified `20261012-4k60-report` and a byte-for-byte match of the served JS to that GitHub source; health was up with **0 pending**. Normal deployment guards, database checks, and Inngest registration passed. The new camera-warning report change is tested but not part of that deployed commit yet.
+- The owner has been asked for one 10-second front Ad take and one 10-second front VSL take after reloading the verified live build. Actual granted settings and all-frame Drive output still decide the two 60 fps acceptance results.
 
 ### Follow-up: remove the deliberate iPhone 4K30 recording cap
 

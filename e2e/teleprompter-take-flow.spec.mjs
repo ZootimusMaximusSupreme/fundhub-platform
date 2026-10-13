@@ -550,6 +550,25 @@ test("an iPhone VSL requests 4K and a 60 fps take despite a saved 1080p choice",
   expect(server.errors).toEqual([]);
 });
 
+for (const [mode, fps, expected, scriptShape, sourceWidth, sourceHeight] of [
+  ["Ad", 30, /1080p · 30 fps · below 60 fps target/i, { stack_kind: "ad", script_format: "standard" }, 1080, 1920],
+  ["Ad", 60, /1080p · 60 fps/i, { stack_kind: "ad", script_format: "standard" }, 1080, 1920],
+  ["VSL", 30, /4K · 30 fps · below 60 fps target/i, { stack_kind: "vsl", script_format: "vsl" }, 2160, 3840],
+  ["VSL", 60, /4K · 60 fps/i, { stack_kind: "vsl", script_format: "vsl" }, 2160, 3840]
+]) {
+  test(`${mode} preview reports the granted ${fps} fps camera rate`, async ({ page }) => {
+    await open(page, {
+      iphone: true, cameraFps: fps, sourceWidth, sourceHeight,
+      scriptShapes: [scriptShape]
+    });
+    const report = page.locator("#cam-line");
+    await expect(report).toContainText(expected);
+    const inlineColor = await report.evaluate((el) => el.style.color);
+    if (fps < 60) expect(inlineColor).toBe("var(--tally)");
+    else expect(inlineColor).toBe("");
+  });
+}
+
 test("1080p Ad copies each fresh 60 fps camera frame despite callback jitter", async ({ page }) => {
   const { server } = await open(page, {
     iphone: true, cameraFps: 60, manualVideoCallbacks: true,

@@ -29,9 +29,9 @@ const [ONE, TWO] = PAGE.shoot.scripts;
 describe("teleprompter, pure", () => {
   test("2160×3840 and 3840×2160 are 4K; 1920×1080 is not", () => {
     const T = load();
-    const tall = T.cameraReport({ width: 2160, height: 3840, frameRate: 30 }, "4k");
-    const wide = T.cameraReport({ width: 3840, height: 2160, frameRate: 30 }, "4k");
-    const hd = T.cameraReport({ width: 1920, height: 1080, frameRate: 30 }, "4k");
+    const tall = T.cameraReport({ width: 2160, height: 3840, frameRate: 60 }, "4k");
+    const wide = T.cameraReport({ width: 3840, height: 2160, frameRate: 60 }, "4k");
+    const hd = T.cameraReport({ width: 1920, height: 1080, frameRate: 60 }, "4k");
     assert.match(tall.line, /^4K/);
     assert.equal(tall.short, "");
     assert.match(wide.line, /^4K/);
@@ -42,6 +42,31 @@ describe("teleprompter, pure", () => {
     assert.match(asked.line, /^1080p/);
     assert.equal(asked.short, "");
     assert.doesNotMatch(asked.line, /4K/);
+  });
+
+  test("actual 30 fps reports below the 60 fps target for Ads and VSLs", () => {
+    const T = load();
+    const cases = [
+      ["1080p", { width: 1080, height: 1920, frameRate: 30 }],
+      ["4k", { width: 2160, height: 3840, frameRate: 30 }]
+    ];
+    for (const [mode, settings] of cases) {
+      const report = T.cameraReport(settings, mode);
+      assert.match(report.line, /30 fps/);
+      assert.match(report.short, /below 60 fps target/i);
+    }
+  });
+
+  test("actual 60 fps meets the target for Ads and VSLs", () => {
+    const T = load();
+    for (const [mode, settings] of [
+      ["1080p", { width: 1080, height: 1920, frameRate: 60 }],
+      ["4k", { width: 2160, height: 3840, frameRate: 60 }]
+    ]) {
+      const report = T.cameraReport(settings, mode);
+      assert.match(report.line, /60 fps/);
+      assert.equal(report.short, "");
+    }
   });
 
   test("front camera asks for real 4K at the highest frame rate", () => {
