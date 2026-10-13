@@ -10,9 +10,9 @@ Goal: pass the eight items in `codex-build-claude-test-2026-10-13.md`. No new pr
 | Item 2: broken vs not proved | status_split | done | scorecard, morning text, report page, focused tests |
 | Item 3: 42 workflow receipts | receipt_reds | done | run evidence, workflow rows, focused tests, written evidence |
 | Item 4: hourly money beats | hourly_money_beats | built; focused and bundle proof green | beat files, shared read helpers, focused tests |
-| Item 5: money/customer route proof | route_proofs | claimed | handler proof tests and catalog proof recipes |
-| Item 7: named real breaks | named_breaks | claimed | focused status tests only |
-| Items 6 and 8: rescore, clean gates, manifest | root | claimed | catalog output, full gates, manifest |
+| Item 5: money/customer route proof | route_proofs | done | handler proof tests and catalog proof recipes |
+| Item 7: named real breaks | named_breaks | done | focused status tests only |
+| Items 6 and 8: rescore, clean gates, manifest | root | done | catalog output, full gates, manifest |
 
 ## Shared rules
 
@@ -81,11 +81,11 @@ Agents append their exact files, commands, counts, and unfinished work here.
 
 - State: done in this worktree. The saved scorecard, morning text, and existing report page show separate **Broken** and **Not proved** counts. Not-proved rows remain in the daily total and can never turn green. A raw measured `FAIL` always remains Broken, even if bad metadata carries a not-proved marker.
 - Files changed: `src/pulse/scorecard.mjs`, `src/pulse/scorecard.test.mjs`, `src/pulse/scorecard.pg.test.mjs`, `src/pulse/self-audit.mjs`, `src/pulse/self-audit.test.mjs`, `src/ops/morning-brief.mjs`, `src/ops/morning-brief.test.mjs`, `public/app/morning-brief.html`, `src/http/morning-brief-page.test.mjs`, `e2e/morning-brief.spec.mjs`, `src/pulse/coverage/gap-door-batch-routes.mjs`, `src/pulse/coverage/gap-door-batch-routes.test.mjs`, `src/pulse/coverage/gap-catalog-flow.mjs`, `src/pulse/coverage/gap-catalog-flow.test.mjs`, `src/pulse/coverage/gap-catalog-reads.mjs`, `src/pulse/coverage/gap-catalog-reads.test.mjs`, `docs/journeys/heartbeat-flow.md`, `docs/journeys/CHANGELOG.md`, and this board.
-- Counts: 466 explicit not-proved rows: 316 route rows + 123 flow rows + 27 read rows. A fake compile produced 626 total rows: 0 green, 0 broken, 466 not proved, 160 nothing to judge. The stored counts were 466 `not_checked`, all 466 carrying the explicit `not_proved` marker.
+- Counts: 460 explicit not-proved rows: 310 route rows + 123 flow rows + 27 read rows. The other 160 flow rows are honest N/A controls, not Not proved. The final read-only bundle reported the same 460 Not proved rows.
 - Command: focused Node suite covering scorecard save/map, morning text, public report handler/page, the three proof-gap lanes, self-audit, and daily pulse — 197 passed, 0 failed, 0 skipped.
 - Command: `E2E_PORT=43129 npx playwright test e2e/morning-brief.spec.mjs` — 15 passed, 0 failed, 0 skipped. The first default-port run reached another agent's stale local server and failed 4 label assertions; the isolated clean-port run is the valid result.
 - Command: `npm run lint` — passed.
-- Unfinished: no item 2 work. Root still owns the combined full-suite gates and final compile. No live database write, send, deploy, product route, page, or customer behavior was added.
+- Unfinished: no item 2 work. The combined full-suite gates and final compile passed. No live database write, send, deploy, product route, page, or customer behavior was added.
 
 ### Item 5 — route_proofs
 
@@ -94,11 +94,11 @@ Agents append their exact files, commands, counts, and unfinished work here.
 - Files changed: `src/http/campaigns-write-handler.test.mjs`; `src/http/paydown-simulator-handler.test.mjs`; `src/http/read-invoices-handler.test.mjs`; `src/http/partner-home-tiles.test.mjs`; `src/pulse/catalog/proofs/door-contracts-money-customer.mjs`; `src/pulse/catalog/proofs/door-contracts-money-customer.test.mjs`; `src/pulse/catalog/proofs/door-proof.mjs`; `src/pulse/catalog/proofs/door-proof.test.mjs`; and this board.
 - Count: the exact route recipe count moved from 316 NOT PROVED to 310. By map it is now `routes-0.json` 97, `routes-1.json` 110, `routes-2.json` 63, `routes-3.json` 40. Sensitive money/customer rows still NOT PROVED: 162.
 - Command: `node --test src/http/partner-home-tiles.test.mjs src/pulse/catalog/proofs/door-contracts-money-customer.test.mjs` — 18 passed, 0 failed, 0 skipped.
-- Command: focused handler plus catalog suite covering all six mapped results — 1,065 passed, 0 failed, 0 skipped.
+- Command: focused handler plus catalog suite covering all six mapped results — 1,062 passed, 0 failed, 0 skipped.
 - Command: direct `makeRecipe` recount across the four route maps — 310 total: 97 + 110 + 63 + 40; 162 are money/customer rows.
 - Command: `git diff --check` on the item 5 files — clean.
 - Safety: no product code, route, page, screen, live database, provider call, send, event, secret, LNR file, or teleprompter file changed.
-- Unfinished handoff: item 2 owns `gap-door-batch-routes.mjs/.test.mjs`; their fixed 316 guard must be changed by root to 310 with the per-file counts above. Root also owns the final catalog compile, so `generated.json` has not been written by this agent.
+- Unfinished: none. Root updated the route guard to 310 and committed the deterministic fresh catalog.
 
 ### Item 7 — named_breaks
 
@@ -130,3 +130,11 @@ Agents append their exact files, commands, counts, and unfinished work here.
 - Command: `git diff --check` — clean. Direct count: 15 beats; 0 `PURE_IMPORTS` entries.
 - Command: `npm run pulse:prove -- --beats` through the root read-only bundle proof — 15 beats loaded; 5 expected truth-red fixtures; 0 cut; 44 reads, 0 errors, 0 refused; 0 commits sent; transaction rolled back and connection destroyed; 62 GETs; fake sink only; final `OK`.
 - Unfinished: no item 4 build work remains. This agent did not read a secret, write live data, send anything, deploy, or change customer-facing behavior. Root owns the full repository gates and Claude tests the review branch next.
+
+### Final integration — root
+
+- Final catalog: 3,975 mapped, 33 repeats, 3,942 unique, 3,919 wired, 23 red; two compiles produced SHA-256 `8d3bee44e829bf03f10e7162f5a53ea38149aa05b334f2c19fda2f255188b297`.
+- Final bundle proof: 2,622 rows = 713 green + 1,209 Broken + 460 Not proved + 205 nothing to judge + 35 unread. All 72 gap lanes answered; no SQL error or write attempt; final `OK`.
+- Final gates: lint clean; morning page 15/15; agent-editor race proof 8/8; full test runner `unit exit 0, pg exit 0`; no new TypeScript error.
+- Safety: no LNR, teleprompter, secret, key, dependency, new page, new route, send, live write, merge, or deploy.
+- Next: Claude tests the draft PR from a clean checkout.

@@ -27,9 +27,9 @@ The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and
 
 ## Whole-company catalog
 
-Claude's 20 map files hold 3,974 rows. Thirty-three rows clearly name another row they repeat, leaving 3,941 unique company items. The compiler gives every item one stable id and one recipe. It links existing tests, deep lanes, hourly beats and pings. A money or customer item needs deep proof. A staff-only item needs an end-to-end test. A claim with no executable proof stays red.
+Claude's 20 map files hold 3,975 rows. Thirty-three rows clearly name another row they repeat, leaving 3,942 unique company items. The compiler gives every item one stable id and one recipe. It links existing tests, deep lanes, hourly beats and pings. A money or customer item needs deep proof. A staff-only item needs an end-to-end test. A claim with no executable proof stays red.
 
-The catalog does not fake 3,941 green checks. Today, 2,496 items link to proof at the needed level and 1,445 stay red or unproved. A recipe may raise a row to deep or end-to-end proof only when it names a real executable test, gap lane, or hourly beat, states the exact result it checks, and uses a safe runner. A status ping alone never counts as result proof. The morning pulse reports the count through `gap-catalog.mjs`. The full item list is in `src/pulse/catalog/generated.json`. `npm run pulse:surface -- <id>` runs the proof for one item. Every ship rebuilds the catalog in memory and stops if the saved copy is stale, the map shrank, a row has no recipe owner, or ids repeat.
+The catalog does not fake 3,942 green checks. The fresh compile reports 3,919 wired items and 23 red items, with coverage split into 880 none, 560 ping, 1,694 end-to-end and 808 deep. A recipe may raise a row to deep or end-to-end proof only when it names a real executable test, gap lane, or hourly beat, states the exact result it checks, and uses a safe runner. A status ping alone never counts as result proof. The morning pulse reports the count through `gap-catalog.mjs`. The full item list is in `src/pulse/catalog/generated.json`. `npm run pulse:surface -- <id>` runs the proof for one item. Every ship rebuilds the catalog in memory and stops if the saved copy is stale, the map shrank, a row has no recipe owner, or ids repeat.
 
 The display-result lane imports its exact result and tracking cases from that same built catalog. The compiler resolves source-map and proof-builder files before shipping; the live lane reads none of those checkout files. It reads the retired Decline Autopsy redirect and its menu with GET requests, and a wrong redirect or dead menu stays red. The catalog also carries the current customer/money tripwire surfaces missing hourly beat coverage. `catalog:hourly-proof-linked` reports those gaps red in the morning; a legacy exemption in a build test does not mean a surface has hourly proof.
 
@@ -83,20 +83,22 @@ The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute 
 
 ## The hourly pulse (added 2026-10-09)
 
-Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. The pulse is the **read-only half** (8 beats): each beat reads data through a box where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. The pulse is the **read-only half** (15 beats): each beat reads data through a box where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
 
 ```mermaid
 flowchart TD
     CLOCK["Every hour at minute 7<br/>pulse-hourly (Netlify scheduled function)"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
     PRE --> BOX["Open ONE read box<br/>BEGIN READ ONLY, staff scope, always rolled back"]
-    BOX --> BEATS["Run all 8 beats at once (13 s)"]
+    BOX --> BEATS["Run all 15 beats at once (22 s budget)"]
     BEATS --> B1["apply-links<br/>40 bank Apply pages an hour"]
     BEATS --> B2["pay-webhook<br/>door, sweeper, stuck inbox"]
     BEATS --> B3["vendor-keys<br/>Twilio, Resend, Commas accept the keys"]
     BEATS --> B4["text-path and email-path<br/>queue moving, templates ready, dispatcher alive"]
-    BEATS --> B5["doors-live<br/>10 money doors and pages answer right"]
-    BEATS --> B6["db-health<br/>pool writable, grants, connections"]
+    BEATS --> B5["doors-live and checkout-doors<br/>money doors and pages answer right"]
+    BEATS --> B6["db-health and engine-alive<br/>database and both pulse clocks answer"]
     BEATS --> B7["brief-link<br/>the link in today's morning text really opens"]
+    BEATS --> B8["funding-trip and partner-trip<br/>both complete money journeys"]
+    BEATS --> B9["money-funding, money-checkout,<br/>money-operations: all W1/W2 checks"]
     B1 --> DECIDE["Decide: new break, still broken, fixed"]
     B2 --> DECIDE
     B3 --> DECIDE
@@ -104,6 +106,8 @@ flowchart TD
     B5 --> DECIDE
     B6 --> DECIDE
     B7 --> DECIDE
+    B8 --> DECIDE
+    B9 --> DECIDE
     DECIDE --> TEXT["TEXT FIRST (6 s): Chris, and ntfy if the text fails"]
     TEXT --> REC["Then save (2.5 s): pulse_beats, pulse_incidents, pulse_bank_links"]
     REC --> BEAT["job heartbeat pulse-hourly<br/>red at the 6 a.m. check if it stops for 3 hours"]
