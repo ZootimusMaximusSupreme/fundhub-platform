@@ -164,16 +164,27 @@ async function roll(page) {
   await page.waitForTimeout(300);
 }
 
+/* Owner call 2026-10-13: no editing on the phone. He double-taps, copies the
+   whole script, fixes it in Claude, double-taps again and pastes it back. */
 async function editHook(page, text, from = HOOK) {
-  const f = await finger(page);
-  const box = await page.locator('#content p[data-p="0"]').boundingBox();
-  await f.hold(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator("#edit-box")).toBeVisible();
-  await expect(page.locator("#edit-box")).toHaveValue(from);
-  await page.locator("#edit-box").fill(text);
+  const now = (await page.locator("#content p").allTextContents())
+    .map((t) => t.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean).join("\n\n");
+  expect(now).toContain(from);
+  const pasted = now.replace(from, text);
+  await page.evaluate((t) => {
+    const clipboard = { writeText: async (x) => { window.__copiedScript = x; }, readText: async () => t };
+    Object.defineProperty(navigator, "clipboard", { configurable: true, get: () => clipboard });
+  }, pasted);
+  const m = await middle(page);
+  const touch = await page.evaluate(() => navigator.maxTouchPoints > 0);
+  if (touch) { await page.touchscreen.tap(m.x, m.y); await page.touchscreen.tap(m.x, m.y); }
+  else { await page.mouse.click(m.x, m.y); await page.mouse.click(m.x, m.y); }
+  await expect(page.locator("#b-script-paste")).toBeVisible();
+  if (touch) await page.locator("#b-script-paste").tap();
+  else await page.locator("#b-script-paste").click();
+  await expect(page.locator("body.copying")).toHaveCount(0);
 }
 
-const SAVED_HELD = /^Saved \d{1,2}:\d{2} [AP]M\. Waiting to copy to the repo\.$/;
 
 for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { width: 1024, height: 1366 }]]) {
   test.describe(`teleprompter on an ${name} (touch)`, () => {
@@ -272,11 +283,9 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(s.mode).toBe("paused");
     });
 
-    test("hold a line, change it in place: it saves itself through the edit route and rolls on", async ({ page }) => {
+    test("Paste script saves the whole script through the edit route, and the screen stays clean", async ({ page }) => {
       const { server, errors } = await open(page);
       await editHook(page, NEW_HOOK);
-      // The words never leave the teleprompter; the mirror is off while the box is open.
-      expect((await state(page)).editing).toBe(true);
       await expect.poll(() => server.posts.length, { timeout: 5000 }).toBe(1);
       const post = server.posts[0];
       expect(post.id).toBe(THREE.id);
@@ -284,45 +293,28 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       expect(post.request_id).toMatch(/^[A-Za-z0-9._:-]{8,200}$/);
       expect(post.body).toBe(THREE.body.replace(HOOK, NEW_HOOK));
       expect(post.parts.find((p) => p.kind === "hook").text).toBe(NEW_HOOK);
-      // The pulse tells the truth: saved, and the repo copy waits for its key.
-      await expect(page.locator("#p-save")).toHaveText(SAVED_HELD);
-      await expect(page.locator("#e-status")).toHaveText(SAVED_HELD);
-      await page.locator("#e-done").tap();
-      await expect(page.locator("#edit-box")).toHaveCount(0);
+      // A good save says nothing: no save line on the glass.
+      await expect(page.locator("#p-save")).toBeHidden();
       await expect(page.locator("#content")).toContainText("BOTH files before they ever say yes.");
-      expect((await state(page)).script.version).toBe(2);
-      // A second change goes on the new version.
+      await expect.poll(async () => (await state(page)).script.version).toBe(2);
+      // A second paste goes on the new version.
       await editHook(page, NEW_HOOK + " Today.", NEW_HOOK);
-      await page.locator("#e-done").tap();
       await expect.poll(() => server.posts.length).toBe(2);
       expect(server.posts[1]).toMatchObject({ id: server.versions[THREE.root_script_id][1].id, version: 2 });
       expect(server.versions[THREE.root_script_id][0].body).toContain(NEW_HOOK + " Today.");
       expect(errors).toEqual([]);
     });
 
-    test("editing while it rolls: it stops, then rolls on from the start of the changed line", async ({ page }) => {
+    test("a double-tap while it rolls pauses the words, and Paste script starts the new words from the top", async ({ page }) => {
       const { server } = await open(page);
       await roll(page);
-      await page.waitForTimeout(1500);
-      const m = await middle(page);
-      await page.touchscreen.tap(m.x, m.y); // pause, so the bar shows
-      await expect.poll(async () => (await state(page)).playing).toBe(false);
-      await page.waitForTimeout(400);
-      await page.touchscreen.tap(m.x, m.y); // roll again
-      await expect.poll(async () => (await state(page)).playing).toBe(true);
-      const f = await finger(page);
+      await page.waitForTimeout(1200);
       expect((await state(page)).word).toBeGreaterThan(0);
-      const box = await page.locator('#content p[data-p="0"]').boundingBox();
-      await f.hold(box.x + box.width / 2, box.y + box.height / 2);
-      await expect(page.locator("#edit-box")).toBeVisible();
-      expect((await state(page)).playing).toBe(false);
-      await page.locator("#edit-box").fill(NEW_HOOK);
-      await page.locator("#e-done").tap();
+      await editHook(page, NEW_HOOK);
       await expect.poll(() => server.posts.length).toBe(1);
-      await expect.poll(async () => (await state(page)).playing).toBe(true);
-      // The reading line sat inside the line he changed: it rolls that line again, new words.
       const s = await state(page);
-      expect(s.word).toBeLessThan(3);
+      expect(s.playing).toBe(false);
+      expect(s.word).toBe(0);
       expect(s.script.body.startsWith(NEW_HOOK)).toBe(true);
     });
 
@@ -330,7 +322,7 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       const { server } = await open(page);
       server.editDown = true;
       await editHook(page, NEW_HOOK);
-      await page.locator("#e-done").tap();
+      // A save that has not reached the server is the one thing the line shows.
       await expect(page.locator("#p-save")).toHaveText("Offline — 1 edit waiting");
       const first = server.posts[0].request_id;
       // The page comes back from a reload with the words still there and still waiting.
@@ -339,7 +331,8 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       await expect(page.locator("#p-save")).toHaveText(/edit waiting|Offline/);
       server.editDown = false;
       await page.evaluate(() => window.dispatchEvent(new Event("online")));
-      await expect(page.locator("#p-save")).toHaveText(SAVED_HELD);
+      await expect.poll(() => server.versions[THREE.root_script_id].length).toBe(2);
+      await expect(page.locator("#p-save")).toBeHidden();
       const ids = new Set(server.posts.map((p) => p.request_id));
       expect(ids).toEqual(new Set([first]));
       expect(server.versions[THREE.root_script_id]).toHaveLength(2);
@@ -352,7 +345,6 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris"); // the Scripts tab, on the Mac
       await editHook(page, NEW_HOOK);
-      await page.locator("#e-done").tap();
       await expect(page.locator("#pick")).toBeHidden();
       await expect(page.locator("#p-save")).toHaveText("Choose words");
       await page.locator("#p-save").tap();
@@ -362,7 +354,8 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       await expect(page.locator("#pick-body")).toContainText("BOTH files before they ever say yes.");
       await expect(page.locator("#pick-body")).toContainText("MOST banks read TWO files first.");
       await page.getByRole("button", { name: "Keep my words" }).tap();
-      await expect(page.locator("#p-save")).toHaveText(SAVED_HELD);
+      await expect.poll(() => server.versions[THREE.root_script_id].length).toBe(3);
+      await expect(page.locator("#p-save")).toBeHidden();
       const last = server.posts[server.posts.length - 1];
       expect(last).toMatchObject({ id: server.versions[THREE.root_script_id][1].id, version: 2 });
       expect(server.versions[THREE.root_script_id][0].body).toContain(NEW_HOOK);
@@ -374,7 +367,6 @@ for (const [name, size] of [["iPhone", { width: 390, height: 844 }], ["iPad", { 
       const theirs = THREE.body.replace(HOOK, "MOST banks read TWO files first.");
       server.save(THREE.root_script_id, theirs, null, "chris");
       await editHook(page, NEW_HOOK);
-      await page.locator("#e-done").tap();
       await expect(page.locator("#pick")).toBeHidden();
       await page.locator("#p-save").tap();
       await expect(page.locator("#pick")).toBeVisible();
@@ -420,7 +412,6 @@ test.describe("saved words reload for every filming text type", () => {
       await open(page, { server });
       const changed = `${NEW_HOOK} ${name}.`;
       await editHook(page, changed);
-      await page.locator("#e-done").tap();
       await expect.poll(() => server.posts.length).toBe(1);
       const live = server.versions[THREE.root_script_id][0];
       expect(live.body).toContain(changed);
@@ -459,11 +450,6 @@ test.describe("teleprompter on an iPad: the rig", () => {
     await page.locator("#r-measure").fill("40");
     await page.locator("#set").getByRole("button", { name: "Close" }).tap();
     const flip = () => page.locator("#flip").evaluate((el) => getComputedStyle(el).transform);
-    expect(await flip()).toBe("matrix(-1, 0, 0, 1, 0, 0)");
-    // Editing shows the words the right way round, then the mirror comes back.
-    await editHook(page, NEW_HOOK);
-    expect(await flip()).toBe("none");
-    await page.locator("#e-done").tap();
     expect(await flip()).toBe("matrix(-1, 0, 0, 1, 0, 0)");
     await page.reload();
     expect(await flip()).toBe("matrix(-1, 0, 0, 1, 0, 0)");
@@ -509,7 +495,6 @@ test.describe("the Command Center hears a saved edit", () => {
     const tp = await context.newPage();
     await open(tp, { server });
     await editHook(tp, NEW_HOOK);
-    await tp.locator("#e-done").click();
     await expect.poll(() => server.posts.length).toBe(1);
     await expect.poll(() => reads, { timeout: 5000 }).toBeGreaterThan(before);
   });
@@ -520,19 +505,29 @@ test.describe("the Command Center hears a saved edit", () => {
 test.describe("teleprompter fixes 2026-10-09", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("double-tap shows Save, typing reaches the server on its own, Save puts the keyboard away", async ({ page }) => {
+  test("double-tap shows only Copy script, Paste script and X: no keyboard, no Save (owner call 2026-10-13)", async ({ page }) => {
     const { server } = await open(page);
     const m = await middle(page);
     await page.touchscreen.tap(m.x, m.y);
     await page.touchscreen.tap(m.x, m.y);
-    await expect(page.locator("body.wording")).toHaveCount(1);
-    await expect(page.locator("#b-script-save")).toBeVisible();
-    await page.keyboard.type("ZEBRA ");
-    await expect.poll(() => server.posts.length, { timeout: 3000 }).toBeGreaterThan(0);
-    expect(server.posts[0].body).toContain("ZEBRA");
-    await page.locator("#b-script-save").tap();
-    await expect(page.locator("body.wording")).toHaveCount(0);
+    await expect(page.locator("body.copying")).toHaveCount(1);
+    await expect(page.locator("#b-script-copy")).toBeVisible();
+    await expect(page.locator("#b-script-paste")).toBeVisible();
+    await expect(page.locator("#b-cancel")).toBeVisible();
     await expect(page.locator("#b-script-save")).toBeHidden();
+    expect(await page.locator("#content").getAttribute("contenteditable")).toBeNull();
+    await page.keyboard.type("ZEBRA ");
+    await page.waitForTimeout(800);
+    expect(server.posts).toHaveLength(0);
+    await page.locator("#b-cancel").dispatchEvent("pointerdown");
+    await expect(page.locator("body.copying")).toHaveCount(0);
+  });
+
+  test("no History anywhere (owner call 2026-10-13)", async ({ page }) => {
+    await open(page);
+    await expect(page.locator("#hist")).toHaveCount(0);
+    await expect(page.locator("#e-hist")).toHaveCount(0);
+    await expect(page.locator("#p-save")).toBeHidden();
   });
 
   test("sideways, the words are 0.6 of the size", async ({ page }) => {
@@ -557,21 +552,19 @@ test.describe("teleprompter fixes 2026-10-09", () => {
 
 test.describe("double tap edits while the words roll (owner call 2026-10-09)", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-  test("two quick taps while rolling pause the words and open the editor with Save", async ({ page }) => {
-    const { server } = await open(page);
+  test("two quick taps while rolling pause the words and show Copy script and Paste script", async ({ page }) => {
+    await open(page);
     await roll(page);
     const m = await middle(page);
     await page.touchscreen.tap(m.x, m.y);
     await page.touchscreen.tap(m.x, m.y);
     await expect.poll(async () => (await state(page)).playing).toBe(false);
-    await expect(page.locator("body.wording")).toHaveCount(1);
-    await expect(page.locator("#b-script-save")).toBeVisible();
-    await page.keyboard.type("ROLLING ");
-    await expect.poll(() => server.posts.length, { timeout: 3000 }).toBeGreaterThan(0);
-    expect(server.posts[0].body).toContain("ROLLING");
+    await expect(page.locator("body.copying")).toHaveCount(1);
+    await expect(page.locator("#b-script-copy")).toBeVisible();
+    await expect(page.locator("#b-script-paste")).toBeVisible();
   });
 
-  test("Copy script copies every current word for Claude, including an unsaved edit", async ({ page }) => {
+  test("Copy script copies every word of the script for Claude, then closes", async ({ page }) => {
     await page.addInitScript(() => {
       const clipboard = { writeText: async (text) => { window.__copiedScript = text; } };
       Object.defineProperty(navigator, "clipboard", { configurable: true, get: () => clipboard });
@@ -580,15 +573,15 @@ test.describe("double tap edits while the words roll (owner call 2026-10-09)", (
     const m = await middle(page);
     await page.touchscreen.tap(m.x, m.y);
     await page.touchscreen.tap(m.x, m.y);
-    await expect(page.locator("body.wording")).toHaveCount(1);
+    await expect(page.locator("body.copying")).toHaveCount(1);
     await expect(page.locator("#b-script-copy")).toBeVisible();
-    await page.keyboard.type("CLAUDE COPY ");
     const expected = (await page.locator("#content p").allTextContents())
       .map((text) => text.replace(/\u00a0/g, " ").trim()).filter(Boolean).join("\n\n");
     await page.locator("#b-script-copy").tap();
     await expect.poll(() => page.evaluate(() => (window.__copiedScript || "").replace(/\s+/g, " ").trim()))
       .toBe(expected.replace(/\s+/g, " ").trim());
-    expect(expected).toContain("CLAUDE COPY");
+    expect(expected).toContain(HOOK);
+    await expect(page.locator("body.copying")).toHaveCount(0);
   });
 });
 
@@ -625,15 +618,14 @@ test.describe("single tap is play and pause only (owner call 2026-10-09)", () =>
     expect(n.ranges).toBe(0);
   });
 
-  test("after a double-tap edit and Save, the next single tap still shows no cursor", async ({ page }) => {
+  test("after a double-tap and X, the next single tap still shows no cursor", async ({ page }) => {
     await open(page);
     const m = await middle(page);
     await page.touchscreen.tap(m.x, m.y);
     await page.touchscreen.tap(m.x, m.y);
-    await expect(page.locator("body.wording")).toHaveCount(1);
-    await page.keyboard.type("X ");
-    await page.locator("#b-script-save").tap();
-    await expect(page.locator("body.wording")).toHaveCount(0);
+    await expect(page.locator("body.copying")).toHaveCount(1);
+    await page.locator("#b-cancel").dispatchEvent("pointerdown");
+    await expect(page.locator("body.copying")).toHaveCount(0);
     let n = await noCursor(page);
     expect(n.focused).toBe(false);
     expect(n.ranges).toBe(0);

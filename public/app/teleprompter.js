@@ -3888,7 +3888,17 @@
     var body = String(text || "").replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
     if (!flatWords(body)) return "empty";
     if (flatWords(body) === flatWords(currentScriptText())) return "same";
-    var next = withWords(s, body, null);
+    // Same paragraphs: change each one through applyEdit so the hook, body and
+    // call-to-action parts stay. A different paragraph count saves the words as one body.
+    var paras = body.split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
+    var old = paragraphsFor(s);
+    var next = paras.length === old.length ? s : null;
+    for (var i = 0; next && i < paras.length; i++) {
+      if (flatWords(paras[i]) === flatWords(old[i].text)) continue;
+      var r = E.applyEdit(next, paragraphsFor(next), i, paras[i], isBullets(s));
+      next = r ? withWords(next, r.body, r.parts) : null;
+    }
+    if (!next) next = withWords(s, paras.join("\n\n"), null);
     scripts[cur] = next;
     edits.edit(s.root_script_id, { id: s.id, version: s.version, body: s.body, parts: s.parts }, next.body, next.parts);
     edits.commit();
