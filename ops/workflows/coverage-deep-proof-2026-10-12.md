@@ -163,10 +163,23 @@ Budget fact: the account was 86% used when Wave 5 began. This wave checkpoints a
 
 | Lane | Model | Exact scope | Status |
 |---|---|---|---|
-| Shared shells | Luna Medium | remaining controls on `sidebar.fragment.html`, staff `shell.js`, and public app `shell.js`; new `display-contracts-shells-1.*` only | claimed |
-| Teleprompter | Luna Medium | remaining `desks-f.json` teleprompter controls; new `display-contracts-teleprompter-4.*` only | claimed |
-| Money connections/plan | Luna Medium | remaining controls on `money-connections.html` and `money-plan.html`; new `display-contracts-money-2.*` only | claimed |
-| Teams/social | Luna Medium | remaining controls on `staff-teams.html` and `social-studio.html`; new `display-contracts-teams-social-1.*` only | claimed |
-| Integration | Sol High | fresh review, imports, counts, focused tests, and checkpoint commit | claimed |
+| Shared shells | Luna Medium | remaining controls on `sidebar.fragment.html`, staff `shell.js`, and public app `shell.js`; new `display-contracts-shells-1.*` only | done — 6 exact results |
+| Teleprompter | Luna Medium | remaining `desks-f.json` teleprompter controls; new `display-contracts-teleprompter-4.*` only | done — 2 exact results |
+| Money connections/plan | Luna Medium | remaining controls on `money-connections.html` and `money-plan.html`; new `display-contracts-money-2.*` only | done — 16 exact results |
+| Teams/social | Luna Medium | remaining controls on `staff-teams.html` and `social-studio.html`; new `display-contracts-teams-social-1.*` only | done — 29 net-new exact results |
+| Integration | Sol High | fresh review, imports, counts, focused tests, and checkpoint commit | done through local verification; ship pending |
 
 Rule: real rendered action plus observed result only. Existing page loads, selectors, text, and fake green claims stay red.
+
+### Wave 6 manifest
+
+- Fresh Sol review sent back compound claims that proved only part of a row. The final Teams/Social shard removed three weak claims and added the missing actions and results for the accepted rows.
+- New honest green rows: 53 unique Display rows. Shared shells added 6, teleprompter added 2, money connections/plan added 16, and Teams/Social added 29 net-new rows.
+- Display red moved from 1,092 to 1,039. Door stays 322, Flow stays 121, and Read stays 14. Strict total moved from 1,549 to 1,496.
+- Focused rendered-browser tests: 13 passed, 0 failed. Exact map and unmapped-red guards: 2 passed, 0 failed.
+- Catalog rebuild: 3,942 unique; 3,919 mapped/wired; 23 unmapped red. The two deep social actions remain wired because their proof depth is deep, not page-load-only.
+- The combined Display mega-run was stopped after its old `display-batch-staff-ui.test.mjs` child did not exit after six minutes. All four new shards and both exact catalog guards passed on their own.
+- Safe selected-lane pulse built and ran without a live send or write. It reported 1,985 final rows: 465 green, 1,323 red, 189 verified nothing-to-judge, and 8 not checked. This selected-lane total is not directly comparable to the earlier 2,357-row full pulse.
+- The pulse exit is red because `routes-2.json` now has 64 rows while the route monitor still expects 65. Per owner direction, this unrelated drift is recorded and was not fixed in this proof batch.
+- Lint passed: 3,418 files and inline scripts parse clean.
+- Type check still has the known unrelated error at `src/marketing/filmed-receive.mjs:159`; this batch did not touch that file.

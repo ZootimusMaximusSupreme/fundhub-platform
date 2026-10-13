@@ -8,6 +8,10 @@ import { DISPLAY_CONTRACTS_CD_2_PROOFS } from "./display-contracts-cd-2.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_3_PROOF_CASES } from "./display-contracts-ef-public-3.mjs";
+import { DISPLAY_CONTRACTS_MONEY_2_PROOFS } from "./display-contracts-money-2.mjs";
+import { DISPLAY_CONTRACTS_SHELLS_1 } from "./display-contracts-shells-1.mjs";
+import { DISPLAY_CONTRACTS_TEAMS_SOCIAL_1_PROOF_CASES } from "./display-contracts-teams-social-1.mjs";
+import { DISPLAY_CONTRACTS_TELEPROMPTER_4 } from "./display-contracts-teleprompter-4.mjs";
 import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
 import {
   DISPLAY_RESULT_LANE,
@@ -382,6 +386,10 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_3_PROOF_CASES,
+  ...DISPLAY_CONTRACTS_MONEY_2_PROOFS,
+  ...DISPLAY_CONTRACTS_SHELLS_1,
+  ...DISPLAY_CONTRACTS_TEAMS_SOCIAL_1_PROOF_CASES,
+  ...DISPLAY_CONTRACTS_TELEPROMPTER_4,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));
