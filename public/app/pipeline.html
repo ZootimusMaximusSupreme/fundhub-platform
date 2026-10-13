@@ -1201,7 +1201,10 @@ function end(){
 }
 board.addEventListener('pointerdown',function(e){
   var card=e.target.closest('.card');
-  if(!card||e.target.closest('.c-btn.route')||e.target.closest('.c-msg')||e.button!==0) return;
+  // Only the message link and its badge are taps. The rest of the message row
+  // is card, so grabbing the middle of a card drags it (the row used to be a
+  // dead zone across the middle of every card).
+  if(!card||e.target.closest('.c-btn.route')||e.target.closest('.c-msg-link, .c-msg-badge')||e.button!==0) return;
   if(card.closest('.drag-card')) return;
   e.preventDefault();
   startDrag(card,e);

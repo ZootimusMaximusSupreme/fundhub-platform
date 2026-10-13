@@ -60,6 +60,40 @@ test.describe("pipeline board", () => {
     expect(writes[0].stage_key).toBeTruthy();
   });
 
+  test("the phone and email links on a card stay taps; the rest of the card drags", async ({ page }) => {
+    const writes = [];
+    const withContact = JSON.parse(JSON.stringify(STAGES));
+    Object.assign(withContact.stages[0].cards[0], { phone: "+1 602 555 0100", email: "dana@example.com" });
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": withContact,
+      "/api/pipeline-cards": async (route, { method }) => {
+        if (method === "POST") writes.push(JSON.parse(route.request().postData() || "{}"));
+        return json(route, { ok: true, action: "move" });
+      }
+    });
+    const link = page.locator('.card[data-client-id] .c-msg-link').first();
+    await expect(link).toBeVisible();
+    const l = await link.boundingBox();
+    await page.mouse.move(l.x + 4, l.y + l.height / 2);
+    await page.mouse.down();
+    await expect(page.locator(".drag-card")).toHaveCount(0);
+    // Let go away from the link, so the test does not follow it to messaging.
+    await page.mouse.move(5, 5);
+    await page.mouse.up();
+    expect(writes).toHaveLength(0);
+    // The empty part of the same row picks the card up.
+    const row = page.locator('.card[data-client-id] .c-msg').first();
+    const r = await row.boundingBox();
+    const dest = await page.locator('.col[data-stage-key="booked"] .col-body').first().boundingBox();
+    await page.mouse.move(r.x + r.width - 6, r.y + r.height / 2);
+    await page.mouse.down();
+    await expect(page.locator(".drag-card")).toHaveCount(1);
+    await page.mouse.move(dest.x + dest.width / 2, dest.y + 20, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(() => writes.length, { timeout: 5000 }).toBe(1);
+    expect(writes[0].stage_key).toBe("booked");
+  });
+
   test("dropping a card onto another column posts a move", async ({ page }) => {
     const writes = [];
     await openScreen(page, "/app/pipeline.html", OWNER, {
