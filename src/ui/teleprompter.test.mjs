@@ -69,10 +69,21 @@ describe("teleprompter, pure", () => {
     }
   });
 
+  test("known 30 fps is rejected for 60 fps asks without rejecting unknown or nominal 60 fps", () => {
+    const T = load();
+    const settings = { frameRate: 30 };
+    assert.equal(T.cameraRateBelow(settings, { frameRate: { min: 60, ideal: 60 } }), true);
+    assert.equal(T.cameraRateBelow(settings, { frameRate: { ideal: 60 } }), true);
+    assert.equal(T.cameraRateBelow({}, { frameRate: { min: 60, ideal: 60 } }), false);
+    assert.equal(T.cameraRateBelow({ frameRate: 59.94 }, { frameRate: { min: 60, ideal: 60 } }), false);
+    assert.equal(T.cameraRateBelow(settings, { frameRate: { min: 30, ideal: 30 } }), false);
+  });
+
   test("front camera asks for real 4K at the highest frame rate", () => {
     const T = load();
     const tries = T.cameraTries("user", "4k");
     assert.equal(tries[0].facingMode.ideal, "user");
+    assert.equal(tries[0].frameRate.min, 60, "first 4K ask must require 60 fps");
     assert.equal(tries[0].width.ideal, 3840);
     assert.equal(tries[0].height.ideal, 2160);
     assert.equal(tries[0].width.max, undefined);
@@ -86,7 +97,7 @@ describe("teleprompter, pure", () => {
     assert.notEqual(tries[0].facingMode.ideal, "environment");
   });
 
-  test("portrait iPhone first asks for native wide 4K60, then 4K30", () => {
+  test("portrait iPhone asks for strict 4K60, then relaxed 4K60", () => {
     const ctx = createContext({
       console,
       navigator: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15" },
@@ -99,7 +110,9 @@ describe("teleprompter, pure", () => {
     assert.deepEqual(plain([
       tries[0].width.ideal, tries[0].height.ideal, tries[0].frameRate.ideal,
       tries[1].width.ideal, tries[1].height.ideal, tries[1].frameRate.ideal
-    ]), [3840, 2160, 60, 3840, 2160, 30]);
+    ]), [3840, 2160, 60, 3840, 2160, 60]);
+    assert.equal(tries[0].frameRate.min, 60);
+    assert.equal(tries[1].frameRate.min, undefined);
     assert.equal(tries[0].aspectRatio.ideal, 16 / 9);
     assert.equal(tries[0].facingMode.ideal, "user");
     const hd = T.cameraTries("user", "1080p");
@@ -113,6 +126,18 @@ describe("teleprompter, pure", () => {
     assert.equal(T.recordFrameBox(2160, 3840, true, true).height, 3840);
     assert.equal(T.recordFrameBox(2160, 3840, true, true).width, 2160);
     assert.match(SRC, /var list = \["video\/mp4;codecs=hvc1,mp4a\.40\.2", "video\/mp4"/);
+  });
+
+  test("every front-camera mode tries all 60 fps sources before any 30 fps fallback", () => {
+    const T = load();
+    for (const mode of ["1080p", "4k"]) {
+      const tries = T.cameraTries("user", mode);
+      const rates = tries.map((c) => c.frameRate?.ideal).filter((n) => n != null);
+      const first30 = rates.indexOf(30);
+      const last60 = rates.lastIndexOf(60);
+      assert.ok(first30 >= 0, mode + " keeps a 30 fps preview fallback");
+      assert.ok(last60 < first30, mode + " tries every 60 fps source first");
+    }
   });
 
   test("portrait Ad asks for 1080x1920 at 60 fps before a full-frame fallback", () => {

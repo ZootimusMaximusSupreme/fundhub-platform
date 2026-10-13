@@ -99,12 +99,13 @@ describe("take capture diagnostics", () => {
   test("formats bounded measured fields and strips unknown strings and identifiers", () => {
     const description = takeUpload.takeCaptureDescription({
       elapsed_ms: 2500, camera_frames: 147, copied_frames: 140, missed_callbacks: 7,
-      camera_longest_gap_ms: 54, copied_longest_gap_ms: 60, has_video_callbacks: true,
+      camera_longest_gap_ms: 54, copied_longest_gap_ms: 60, copy_total_ms: 174,
+      copy_longest_ms: 18, has_video_callbacks: true,
       has_frame_requests: true, frame_requests: 140, frame_request_failures: 0,
       canvas_width: 1080, canvas_height: 1920, target_fps: 60,
-      start_width: 1080, start_height: 1920, start_frame_rate: 60,
+      start_width: 1080, start_height: 1920, start_frame_rate: 60, start_frame_rate_max: 60,
       start_preview_width: 1080, start_preview_height: 1920, start_facing: "user",
-      end_width: 1080, end_height: 1920, end_frame_rate: 30,
+      end_width: 1080, end_height: 1920, end_frame_rate: 30, end_frame_rate_max: 60,
       end_preview_width: 1080, end_preview_height: 1920, end_facing: "environment",
       lens_changes: 1,
       deviceId: "private-camera-id", token: "secret", extra: "do not send"
@@ -115,12 +116,16 @@ describe("take capture diagnostics", () => {
     assert.equal(data.elapsed_ms, 2500);
     assert.equal(data.camera_frames, 147);
     assert.equal(data.copied_frames, 140);
+    assert.equal(data.copy_total_ms, 174);
+    assert.equal(data.copy_longest_ms, 18);
     assert.equal(data.has_video_callbacks, true);
     assert.equal(data.has_frame_requests, true);
     assert.equal(data.frame_requests, 140);
     assert.equal(data.frame_request_failures, 0);
     assert.equal(data.start_frame_rate, 60);
     assert.equal(data.end_frame_rate, 30);
+    assert.equal(data.start_frame_rate_max, 60);
+    assert.equal(data.end_frame_rate_max, 60);
     assert.equal(data.start_facing, "user");
     assert.equal(data.end_facing, "environment");
     assert.equal(data.lens_changes, 1);
@@ -136,13 +141,15 @@ describe("take capture diagnostics", () => {
     const description = takeUpload.takeCaptureDescription({
       elapsed_ms: 2500, camera_frames: -1, copied_frames: Number.POSITIVE_INFINITY,
       missed_callbacks: 1e100, target_fps: "60", start_frame_rate: Number.NaN,
+      start_frame_rate_max: 241, end_frame_rate_max: -1,
+      copy_total_ms: 10000001, copy_longest_ms: -1,
       camera_longest_gap_ms: -12, lens_changes: 1e100,
       has_frame_requests: "true", frame_requests: -1, frame_request_failures: 1e100,
       start_facing: "private-camera-id", end_facing: "environment"
     });
     const data = JSON.parse(description.slice(prefix.length));
     assert.equal(data.elapsed_ms, 2500);
-    for (const field of ["camera_frames", "copied_frames", "missed_callbacks", "target_fps", "start_frame_rate", "camera_longest_gap_ms", "lens_changes", "has_frame_requests", "frame_requests", "frame_request_failures", "start_facing"]) {
+    for (const field of ["camera_frames", "copied_frames", "copy_total_ms", "copy_longest_ms", "missed_callbacks", "target_fps", "start_frame_rate", "start_frame_rate_max", "end_frame_rate_max", "camera_longest_gap_ms", "lens_changes", "has_frame_requests", "frame_requests", "frame_request_failures", "start_facing"]) {
       assert.equal(data[field], undefined, field);
     }
     assert.equal(data.end_facing, "environment");
@@ -200,7 +207,9 @@ describe("the route", () => {
       method: "POST", headers: {},
       body: { name: NAME, bytes: 16, diagnostics: {
         elapsed_ms: 2500, camera_frames: 147, copied_frames: 140,
-        start_frame_rate: 60, target_fps: 60, deviceId: "private-camera-id"
+        start_frame_rate: 60, start_frame_rate_max: 60, end_frame_rate_max: 60,
+        copy_total_ms: 174, copy_longest_ms: 18,
+        target_fps: 60, deviceId: "private-camera-id"
       } }
     }, out, {
       filmSecret: SECRET,
@@ -210,6 +219,10 @@ describe("the route", () => {
     assert.equal(calls.length, 1);
     assert.ok(calls[0].description.startsWith("FundHub recording diagnostics v1\n"));
     assert.match(calls[0].description, /"camera_frames":147/);
+    assert.match(calls[0].description, /"start_frame_rate_max":60/);
+    assert.match(calls[0].description, /"end_frame_rate_max":60/);
+    assert.match(calls[0].description, /"copy_total_ms":174/);
+    assert.match(calls[0].description, /"copy_longest_ms":18/);
     assert.doesNotMatch(calls[0].description, /deviceId|private-camera-id/);
   });
 

@@ -564,7 +564,7 @@
     var tall = shape === "tall";
     var four = mode === "4k" && front;
     var frame = four
-      ? { ideal: rate }
+      ? (lockRate ? { min: rate, ideal: rate } : { ideal: rate })
       : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
     if (four) {
       return {
@@ -582,6 +582,13 @@
       aspectRatio: { ideal: tall ? (9 / 16) : (16 / 9) },
       frameRate: frame
     };
+  }
+
+  function cameraRateBelow(settings, ask) {
+    var rate = ask && ask.frameRate;
+    var wanted = typeof rate === "number" ? rate : rate && (rate.min || rate.exact || rate.ideal);
+    var actual = settings && settings.frameRate;
+    return wanted >= 60 && typeof actual === "number" && actual > 0 && Math.round(actual) < 60;
   }
 
   /**
@@ -607,6 +614,7 @@
       list.push(video);
     }
     if (!back && mode === "4k") {
+      push(60, "wide", true, false, "4k");
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
@@ -627,6 +635,7 @@
     // it only when every 1080p try lacks a full upright frame. The Ad file is
     // still recorded by the 1080p canvas, never saved at 4K.
     if (!back && mode === "1080p") {
+      push(60, "wide", true, false, "4k");
       push(60, "wide", false, false, "4k");
       push(30, "wide", false, false, "4k");
     }
@@ -635,7 +644,13 @@
       width: { max: 1920 },
       height: { max: 1920 }
     });
-    return list;
+    // Try every 60 fps source before settling for a lower-rate preview.
+    // A portrait 4K60 source can supply an uncropped 1080p60 Ad.
+    return list.sort(function (a, b) {
+      var ar = a.frameRate && (a.frameRate.min || a.frameRate.exact || a.frameRate.ideal);
+      var br = b.frameRate && (b.frameRate.min || b.frameRate.exact || b.frameRate.ideal);
+      return (ar >= 60 ? 0 : ar > 0 ? 1 : 2) - (br >= 60 ? 0 : br > 0 ? 1 : 2);
+    });
   }
 
   /**
@@ -994,7 +1009,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
+    cameraAsk: cameraAsk, cameraRateBelow: cameraRateBelow, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -2476,6 +2491,19 @@
     btn.setAttribute("aria-label", "Use " + next + " camera");
     btn.title = "Use " + next + " camera";
   }
+  function paintCameraQuality() {
+    var el = $("camera-quality");
+    if (!el) return;
+    var settings = captureCameraSettings(cam.stream);
+    var width = settings.width || settings.previewWidth;
+    var height = settings.height || settings.previewHeight;
+    if (!cam.previewReady || !width || !height) { el.hidden = true; return; }
+    var report = cameraReport({ width: width, height: height, frameRate: settings.frameRate }, activeMode());
+    el.textContent = report.line + (report.fps ? "" : " · fps unavailable");
+    el.dataset.belowTarget = report.short ? "true" : "false";
+    el.setAttribute("aria-label", "Actual camera: " + el.textContent);
+    el.hidden = false;
+  }
   function camLine(text, bad) {
     var el = $("cam-line");
     if (!el) return;
@@ -2484,6 +2512,7 @@
     el.style.color = bad ? "var(--tally)" : "";
     var now = $("cam-now");
     if (now && text) now.textContent = text;
+    paintCameraQuality();
   }
   function cameraMessage(message, retry) {
     var box = $("camera-status");
@@ -2641,9 +2670,12 @@
     var track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
     var settings = {};
     try { settings = track && track.getSettings ? track.getSettings() : {}; } catch (e) {}
+    var capabilities = {};
+    try { capabilities = track && track.getCapabilities ? track.getCapabilities() : {}; } catch (e) {}
     var video = $("cam-video");
     return { width: settings.width || null, height: settings.height || null,
-      frameRate: settings.frameRate || null, previewWidth: video && video.videoWidth || null,
+      frameRate: settings.frameRate || null, frameRateMax: capabilities.frameRate && capabilities.frameRate.max || null,
+      previewWidth: video && video.videoWidth || null,
       previewHeight: video && video.videoHeight || null, facing: cam.facing };
   }
   /* MediaRecorder stays attached to one canvas track for a whole take. Camera
@@ -2686,7 +2718,7 @@
     var stats = { started: root.performance.now(), cameraFrames: 0, copiedFrames: 0,
       cameraLast: 0, copiedLast: 0, cameraLongestGap: 0, copiedLongestGap: 0,
       hasVideoCallbacks: !!video.requestVideoFrameCallback, missedCallbacks: 0,
-      cameraStart: captureCameraSettings(stream), lensChanges: 0,
+      cameraStart: captureCameraSettings(stream), lensChanges: 0, copyTotalMs: 0, copyLongestMs: 0,
       hasFrameRequests: false, frameRequests: 0, frameRequestFailures: 0 };
     cam.captureStats = stats;
     var frameOrigin = null, copiedSlot = -1, previousFrameTime = null;
@@ -2748,6 +2780,7 @@
       var slot = Math.floor((frameTime - frameOrigin) / frameEvery + 0.25);
       if ((copyFreshFrame || slot > copiedSlot) && cam.previewReady && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
+          var copyStarted = root.performance.now();
           // The canvas size is fixed for the whole take. A lens switch can
           // change source dimensions, so fit that new full frame to this same
           // canvas instead of drawing it into a smaller corner.
@@ -2774,6 +2807,9 @@
           if (stats.copiedLast) stats.copiedLongestGap = Math.max(stats.copiedLongestGap, now - stats.copiedLast);
           stats.copiedLast = now;
           capturePaintedFrame();
+          var copyMs = root.performance.now() - copyStarted;
+          stats.copyTotalMs += copyMs;
+          stats.copyLongestMs = Math.max(stats.copyLongestMs, copyMs);
         } catch (e) { try { ctx.restore(); } catch (_) {} }
       }
       schedule();
@@ -2798,6 +2834,7 @@
     if (!wantRec || !cam.stream) return;
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) { cam.again = true; return; }
+    paintCameraQuality();
     if (!root.MediaRecorder) { camLine("This phone cannot save a video file. The words still roll.", true); return; }
     var mime = pickMime();
     cam.mime = mime;
@@ -2886,13 +2923,16 @@
         copied_longest_gap_ms: Math.round(stats.copiedLongestGap), has_video_callbacks: stats.hasVideoCallbacks,
         has_frame_requests: stats.hasFrameRequests, frame_requests: stats.frameRequests,
         frame_request_failures: stats.frameRequestFailures,
+        copy_total_ms: Math.round(stats.copyTotalMs || 0), copy_longest_ms: Math.round(stats.copyLongestMs || 0),
         canvas_width: cam.canvas && cam.canvas.width, canvas_height: cam.canvas && cam.canvas.height,
         target_fps: cam.recordTargetFps, lens_changes: stats.lensChanges,
         start_width: startCamera.width, start_height: startCamera.height,
-        start_frame_rate: startCamera.frameRate, start_preview_width: startCamera.previewWidth,
+        start_frame_rate: startCamera.frameRate, start_frame_rate_max: startCamera.frameRateMax,
+        start_preview_width: startCamera.previewWidth,
         start_preview_height: startCamera.previewHeight, start_facing: startCamera.facing,
         end_width: endCamera.width, end_height: endCamera.height,
-        end_frame_rate: endCamera.frameRate, end_preview_width: endCamera.previewWidth,
+        end_frame_rate: endCamera.frameRate, end_frame_rate_max: endCamera.frameRateMax,
+        end_preview_width: endCamera.previewWidth,
         end_preview_height: endCamera.previewHeight, end_facing: endCamera.facing
       };
       var source = stats.hasVideoCallbacks ? Math.round(stats.cameraFrames / seconds) + " fps" : "unavailable";
@@ -3011,7 +3051,7 @@
       // Read the granted settings after the live preview has started, rather
       // than reporting the earlier snapshot taken before its metadata arrived.
       got = track && track.getSettings ? track.getSettings() : got;
-      if (retryPortrait && isPhone() && mode === "1080p" && recordingIsPortrait() &&
+      if (retryPortrait && isPhone() && (mode === "1080p" || facing === "user") && recordingIsPortrait() &&
           video && video.videoWidth > video.videoHeight) {
         stream.getVideoTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
         var oldTrack = old && old.getVideoTracks()[0];
@@ -3040,6 +3080,7 @@
       if (!rep.short && activeMode() === "4k" && rep.line.indexOf("4K") !== 0) text += ". It is not 4K.";
       if (noMic) text += " · no sound";
       camLine(text, !!rep.short);
+      paintCameraQuality();
       paintCameraFlip();
       paintPicks();
       if (cam.startAfterOpen && wantRec) {
@@ -3113,6 +3154,7 @@
       var exactId = cam.deviceIds[wanted];
       if (exactId) {
         var exactVideo = cameraAsk(wanted, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", false, mode);
+        exactVideo.frameRate = mode === "4k" ? { min: 60, ideal: 60 } : { min: 60, ideal: 60, max: 60 };
         exactVideo.deviceId = { exact: exactId };
         delete exactVideo.facingMode;
         steps.push({ video: exactVideo, audio: false, facing: wanted });
@@ -3146,10 +3188,11 @@
         // with the crop path did not help this portrait recording.
         attachStream(stream, mode, noMic, facing, function () { wideRejected = true; run(); });
       }
-      function afterOpen(stream, noMic, requestedFacing) {
+      function afterOpen(stream, noMic, requestedFacing, ask) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
         var track = stream.getVideoTracks()[0];
         var settings = track && track.getSettings ? track.getSettings() : {};
+        if (cameraRateBelow(settings, ask)) { stopTracks(stream); run(); return; }
         var facing = cameraFacing(settings, requestedFacing);
         var requested = requestedFacing === "environment" ? "environment" : "user";
         if (!md.enumerateDevices) {
@@ -3170,6 +3213,9 @@
           video.deviceId = { exact: id };
           delete video.facingMode;
           md.getUserMedia({ audio: !noMic, video: video }).then(function (s2) {
+            var exactTrack = s2.getVideoTracks()[0];
+            var exactSettings = exactTrack && exactTrack.getSettings ? exactTrack.getSettings() : {};
+            if (cameraRateBelow(exactSettings, video)) { stopTracks(s2); stopTracks(stream); run(); return; }
             stopTracks(stream);
             finish(s2, noMic, requested);
           }, function () {
@@ -3187,7 +3233,7 @@
         var cur = steps[step++];
         if (cur.facing === "environment" && cur.audio) camLine("Asking the back camera for 1080p.", false);
         md.getUserMedia({ audio: cur.audio, video: cur.video }).then(function (s) {
-          afterOpen(s, !cur.audio, cur.facing);
+          afterOpen(s, !cur.audio, cur.facing, cur.video);
         }, function () { run(); });
       }
       run();
@@ -3243,11 +3289,14 @@
       }
       if (wanted === "user" && mode === "1080p") {
         for (var fallbackFps of [60, 30]) {
-          var portraitSource = cameraAsk(wanted, fallbackFps, "wide", false, "4k");
+          var portraitSource = cameraAsk(wanted, fallbackFps, "wide", fallbackFps === 60, "4k");
           portraitSource.facingMode = { exact: wanted };
           asks.push(portraitSource);
         }
       }
+      asks.sort(function (a, b) {
+        return ((b.frameRate && b.frameRate.ideal) || 0) - ((a.frameRate && a.frameRate.ideal) || 0);
+      });
       var at = 0;
       function next() {
         if (gen !== cam.gen) return;
@@ -3260,13 +3309,18 @@
           openCamera();
           return;
         }
-        md.getUserMedia({ audio: false, video: asks[at++] }).then(function (stream) {
+        var currentAsk = asks[at++];
+        md.getUserMedia({ audio: false, video: currentAsk }).then(function (stream) {
           if (gen !== cam.gen) {
             stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* old request */ } });
             return;
           }
           var gotTrack = stream.getVideoTracks()[0];
           var got = gotTrack && gotTrack.getSettings ? gotTrack.getSettings() : {};
+          if (cameraRateBelow(got, currentAsk)) {
+            stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+            next(); return;
+          }
           if (got.facingMode && got.facingMode !== wanted) {
             stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* wrong lens */ } });
             next();
@@ -3307,6 +3361,7 @@
       }
       camLine((wanted === "environment" ? "Back" : "Front") + " camera", false);
       cam.previewReady = true;
+      paintCameraQuality();
       clearHeldPreview();
       cameraMessage("", false);
       paintCameraFlip();

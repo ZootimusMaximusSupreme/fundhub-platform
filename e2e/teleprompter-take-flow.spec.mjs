@@ -7,7 +7,7 @@ const copy = (v) => JSON.parse(JSON.stringify(v));
 const sample = CONTRACT["GET marketing/shoot"].example.response;
 const health = CONTRACT["GET marketing/health"].example.response;
 
-async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false } = {}) {
+async function open(page, { countdown = false, wpm = 200, camera = true, holdUpload = false, failUpload = false, scriptShapes = [], omitFacingSetting = false, omitFrameRateSetting = false, ignoreIdealFacing = false, rejectTrackSwitch = false, rearPlayRejectOnce = false, cameraDevices = [], iphone = false, cameraFps = 30, sourceWidth = 32, sourceHeight = 32, edgeMarkers = false, freezeVideoCallbacks = false, manualVideoCallbacks = false, disableVideoCallbacks = false, disableRequestFrame = false, savedCam = "1080p", portraitOnlyFor4k = false, fourKCameraFps = null, rearCameraFps = null, sourceSizeByAsk = false } = {}) {
   const count = Math.max(sample.shoot.scripts.length, scriptShapes.length);
   const bases = Array.from({ length: count }, (_, i) => {
     if (sample.shoot.scripts[i]) return sample.shoot.scripts[i];
@@ -24,7 +24,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
   const server = { marks: [], uploads: [], chunks: [], errors: [], release: null };
   const uploadGate = holdUpload ? new Promise((resolve) => { server.release = resolve; }) : Promise.resolve();
   page.on("pageerror", (e) => server.errors.push(String(e)));
-  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k }) => {
+  await page.addInitScript(({ countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk }) => {
     localStorage.setItem("fhtp.settings", JSON.stringify({ countdown, wpm, cam: savedCam }));
     localStorage.setItem("fhtp.wpm", JSON.stringify(wpm));
     if (iphone) Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
@@ -94,6 +94,15 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       }
       return stream;
     };
+    const cameraPaints = new WeakMap();
+    const nativeCameraPlay = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      const paint = cameraPaints.get(this.srcObject);
+      const result = nativeCameraPlay.call(this);
+      // WebKit needs a camera-source paint after the preview attaches.
+      if (paint) setTimeout(paint, 0);
+      return result;
+    };
     if (rearPlayRejectOnce) {
       const nativePlay = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function () {
@@ -107,9 +116,11 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       };
     }
     const makeStream = (facing, deviceId, videoAsk) => {
-      const highSource = portraitOnlyFor4k && videoAsk?.width?.ideal >= 2160;
-      const width = portraitOnlyFor4k ? (highSource ? 32 : 56) : sourceWidth;
-      const height = portraitOnlyFor4k ? (highSource ? 56 : 32) : sourceHeight;
+      const fourKAsk = videoAsk?.width?.ideal >= 2160;
+      const highSource = portraitOnlyFor4k && fourKAsk;
+      const width = sourceSizeByAsk ? (fourKAsk ? 2160 : 1080) : portraitOnlyFor4k ? (highSource ? 32 : 56) : sourceWidth;
+      const height = sourceSizeByAsk ? (fourKAsk ? 3840 : 1920) : portraitOnlyFor4k ? (highSource ? 56 : 32) : sourceHeight;
+      const grantedFps = () => liveFacing === "environment" && rearCameraFps != null ? rearCameraFps : fourKAsk && fourKCameraFps != null ? fourKCameraFps : cameraFps;
       const canvas = document.createElement("canvas");
       canvas.width = width; canvas.height = height;
       const cameraPixels = canvas.getContext("2d");
@@ -125,9 +136,11 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
       }
       const stream = canvas.captureStream(30);
       const track = stream.getVideoTracks()[0];
+      // Keep the same source pixels and exclude them from recorder counts.
+      cameraPaints.set(stream, () => nativeDrawImage.call(cameraPixels, canvas, 0, 0));
       let liveFacing = facing;
       let liveDevice = deviceId;
-      track.getSettings = () => ({ width, height, ...(omitFrameRateSetting ? {} : { frameRate: cameraFps }), deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
+      track.getSettings = () => ({ width, height, ...(omitFrameRateSetting ? {} : { frameRate: grantedFps() }), deviceId: liveDevice, ...(omitFacingSetting ? {} : { facingMode: liveFacing }) });
       track.applyConstraints = (next = {}) => {
         const exactFacing = next.facingMode && next.facingMode.exact;
         if (exactFacing && exactFacing !== liveFacing && rejectTrackSwitch) return Promise.reject(new Error("track switch rejected"));
@@ -165,7 +178,7 @@ async function open(page, { countdown = false, wpm = 200, camera = true, holdUpl
         }, 10);
       }
     };
-  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k });
+  }, { countdown, wpm, camera, omitFacingSetting, omitFrameRateSetting, ignoreIdealFacing, rejectTrackSwitch, rearPlayRejectOnce, cameraDevices, iphone, cameraFps, sourceWidth, sourceHeight, edgeMarkers, freezeVideoCallbacks, manualVideoCallbacks, disableVideoCallbacks, disableRequestFrame, savedCam, portraitOnlyFor4k, fourKCameraFps, rearCameraFps, sourceSizeByAsk });
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -430,7 +443,7 @@ test("iPhone opens the exact rear live view, retries preview start, and stays id
     { kind: "videoinput", deviceId: "front", label: "Front Camera" },
     { kind: "videoinput", deviceId: "rear", label: "Back Camera" }
   ];
-  const { server } = await open(page, { iphone: true, rearPlayRejectOnce: true, cameraDevices });
+  const { server } = await open(page, { iphone: true, cameraFps: 60, rearPlayRejectOnce: true, cameraDevices });
   const flip = page.locator("#b-camera-flip");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
@@ -447,7 +460,7 @@ test("camera button keeps the rear lens when Safari omits facingMode", async ({ 
     { kind: "videoinput", deviceId: "front", label: "Front Camera" },
     { kind: "videoinput", deviceId: "rear", label: "Back Camera" }
   ];
-  const { server } = await open(page, { omitFacingSetting: true, cameraDevices });
+  const { server } = await open(page, { cameraFps: 60, omitFacingSetting: true, cameraDevices });
   const flip = page.locator("#b-camera-flip");
   await expect(flip).toHaveAttribute("aria-label", "Use back camera");
   await flip.tap();
@@ -463,7 +476,7 @@ test("camera button uses the exact rear device when Safari ignores the ideal rea
     { kind: "videoinput", deviceId: "front", label: "Front Camera" },
     { kind: "videoinput", deviceId: "rear", label: "Back Camera" }
   ];
-  const { server } = await open(page, { ignoreIdealFacing: true, rejectTrackSwitch: true, cameraDevices });
+  const { server } = await open(page, { cameraFps: 60, ignoreIdealFacing: true, rejectTrackSwitch: true, cameraDevices });
   const flip = page.locator("#b-camera-flip");
   await flip.tap();
   await expect(flip).toHaveAttribute("aria-label", "Use front camera");
@@ -542,6 +555,8 @@ test("an iPhone VSL requests 4K and a 60 fps take despite a saved 1080p choice",
   const ask = await page.evaluate(() => window.__cameraAsks[0].video);
   expect([ask.width.ideal, ask.height.ideal]).toEqual([3840, 2160]);
   expect(ask.frameRate.ideal).toBeGreaterThanOrEqual(60);
+  // The requested 4K mode cannot be used as the displayed granted size.
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 60 fps");
   await page.locator("#b-rec").tap();
   await expect(page.locator("#b-rec")).toHaveText("Stop");
   expect(await page.evaluate(() => window.__captureRates.at(-1))).toBe(60);
@@ -563,11 +578,79 @@ for (const [mode, fps, expected, scriptShape, sourceWidth, sourceHeight] of [
     });
     const report = page.locator("#cam-line");
     await expect(report).toContainText(expected);
+    const badge = page.locator("#camera-quality");
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveText(`${mode === "VSL" ? "4K" : "1080p"} · ${fps} fps`);
+    await expect(badge).toHaveAttribute("data-below-target", String(fps < 60));
+    const badgeUi = await badge.evaluate((el) => ({
+      tag: el.tagName, role: el.getAttribute("role"), tabIndex: el.tabIndex,
+      pointers: getComputedStyle(el).pointerEvents, box: el.getBoundingClientRect().toJSON()
+    }));
+    expect(badgeUi.tag).not.toBe("BUTTON");
+    expect(badgeUi.role).not.toBe("button");
+    expect(badgeUi.tabIndex).toBeLessThan(0);
+    expect(badgeUi.pointers).toBe("none");
+    const micBox = await page.locator("#mic-monitor").boundingBox();
+    expect(badgeUi.box.top).toBeGreaterThanOrEqual(micBox.y + micBox.height);
     const inlineColor = await report.evaluate((el) => el.style.color);
     if (fps < 60) expect(inlineColor).toBe("var(--tally)");
     else expect(inlineColor).toBe("");
   });
 }
+
+test("camera quality badge says fps unavailable when the track omits its rate", async ({ page }) => {
+  await open(page, { iphone: true, omitFrameRateSetting: true, sourceWidth: 1080, sourceHeight: 1920 });
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · fps unavailable");
+  await expect(page.locator("#camera-quality")).not.toContainText("60 fps");
+});
+
+test("camera quality badge follows the granted rate when switching lenses during a take", async ({ page }) => {
+  await open(page, { iphone: true, cameraFps: 60, rearCameraFps: 30, sourceWidth: 1080, sourceHeight: 1920 });
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 60 fps");
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  await page.locator("#b-camera-flip").tap();
+  await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use front camera");
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 30 fps");
+  await expect(page.locator("#camera-quality")).toHaveAttribute("data-below-target", "true");
+  await page.locator("#b-camera-flip").tap();
+  await expect(page.locator("#b-camera-flip")).toHaveAttribute("aria-label", "Use back camera");
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 60 fps");
+  await expect(page.locator("#camera-quality")).toHaveAttribute("data-below-target", "false");
+  expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 0]);
+  // Record ignores ghost clicks for 500 ms after a camera flip.
+  await page.waitForTimeout(550);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+});
+
+test("camera quality badge follows the actual resolution when changing Ad to VSL", async ({ page }) => {
+  await open(page, { iphone: true, cameraFps: 60, sourceSizeByAsk: true, scriptShapes: [
+    { stack_kind: "ad", script_format: "standard" },
+    { stack_kind: "vsl", script_format: "vsl", take_file_name: "Direct Book VSL 1 — Script 1 Take 1.mp4" }
+  ] });
+  await expect(page.locator("#camera-quality")).toHaveText("1080p · 60 fps");
+  await page.locator("#p-file").dblclick();
+  await page.locator("#qmenu-list .item").nth(1).tap();
+  await expect(page.locator("#camera-quality")).toHaveText("4K · 60 fps");
+});
+
+test("an Ad tries the portrait 4K 60 fps source before keeping a native 1080p 30 fps grant", async ({ page }) => {
+  await open(page, { iphone: true, cameraFps: 30, fourKCameraFps: 60, sourceSizeByAsk: true });
+  await expect(page.locator("#camera-quality")).toHaveText("4K · 60 fps");
+  const asks = await page.evaluate(() => window.__cameraAsks);
+  const fourK60 = asks.findIndex((ask) => ask.video.width?.ideal >= 2160 && ask.video.frameRate?.ideal >= 60);
+  expect(fourK60).toBeGreaterThan(0);
+  expect(asks.slice(0, fourK60).every((ask) => ask.video.frameRate?.ideal !== 30)).toBe(true);
+  const liveSettings = await page.evaluate(() => document.querySelector("#cam-video").srcObject.getVideoTracks()[0].getSettings());
+  expect(liveSettings.frameRate).toBe(60);
+  expect([liveSettings.width, liveSettings.height]).toEqual([2160, 3840]);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#b-rec")).toHaveText("Stop");
+  expect(await page.evaluate(() => [window.__recordCanvas.width, window.__recordCanvas.height])).toEqual([1080, 1920]);
+  await page.locator("#b-rec").tap();
+  await expect(page.locator("#take-save")).toBeVisible();
+});
 
 test("1080p Ad copies each fresh 60 fps camera frame despite callback jitter", async ({ page }) => {
   const { server } = await open(page, {
@@ -916,6 +999,36 @@ test("iPhone records one stable canvas stream even as physical lenses change", a
   await page.locator("#take-save-no").tap();
   expect(await page.evaluate(() => [window.__recorderStarts, window.__recorderStops])).toEqual([1, 1]);
   expect(server.errors).toEqual([]);
+});
+
+test("Still to film keeps each title, take detail, and hook on its own line", async ({ page }) => {
+  await open(page, { camera: false, scriptShapes: [
+    { offer_word: "Direct Book", stack_kind: "vsl", stack_no: 1, angle_name: "Why lenders say no when your business needs funding", body: "A longer opening line makes the filmed script easy to find." },
+    { offer_word: "Direct Book", stack_kind: "ad", stack_no: 2, angle_name: "Over and over", body: "You keep getting told to try again." },
+    { offer_word: "Direct Book", stack_kind: "thank_you", stack_no: null, angle_name: "Next steps", body: "Here is what happens next." }
+  ] });
+  await page.locator("#p-file").dblclick();
+  await expect(page.locator("#qmenu")).toBeVisible();
+  const boxes = await page.locator("#qmenu-list .item").evaluateAll((rows) => rows.map((row) => {
+    const rect = (el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    };
+    return { row: rect(row), parts: [".t", ".m", ".hook"].map((selector) => rect(row.querySelector(selector))) };
+  }));
+  expect(boxes).toHaveLength(3);
+  for (const [index, box] of boxes.entries()) {
+    const [title, detail, hook] = box.parts;
+    expect(title.bottom, `row ${index}: title must end before take detail`).toBeLessThanOrEqual(detail.top);
+    expect(detail.bottom, `row ${index}: take detail must end before hook`).toBeLessThanOrEqual(hook.top);
+    for (const part of box.parts) {
+      expect(part.left).toBeGreaterThanOrEqual(box.row.left);
+      expect(part.right).toBeLessThanOrEqual(box.row.right);
+      expect(part.top).toBeGreaterThanOrEqual(box.row.top);
+      expect(part.bottom).toBeLessThanOrEqual(box.row.bottom);
+    }
+    if (index) expect(boxes[index - 1].row.bottom).toBeLessThanOrEqual(box.row.top);
+  }
 });
 
 test("Still to film uses offer-stack names and clearly marks the Complete target", async ({ page }) => {

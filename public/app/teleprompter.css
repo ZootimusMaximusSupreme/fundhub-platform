@@ -303,6 +303,8 @@ body.cam-side-right #script-fade {
   overscroll-behavior: contain;
   touch-action: pan-y;
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 8px;
   max-height: min(52vh, 440px);
 }
@@ -567,6 +569,23 @@ body:not(.wording) #content {
 #mic-monitor[data-level="3"] #mic-bars i:nth-child(-n+3) {height:11px;}
 #mic-monitor[data-level="4"] #mic-bars i:nth-child(-n+4) {height:12px;}
 
+/* Owner-requested camera grant, read from the live track, never the preset. */
+#camera-quality {
+  position:fixed;
+  z-index:6;
+  top:calc(94px + env(safe-area-inset-top, 0px));
+  left:8px;
+  max-width:min(230px, 68vw);
+  padding:5px 8px;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;
+  background:rgba(0,0,0,.6);
+  color:#fff;
+  font:600 10px/1.2 system-ui,-apple-system,sans-serif;
+  pointer-events:none;
+}
+#camera-quality[data-below-target="true"] { border-color:var(--tally); }
+
 
 /* Tiny Drive shortcut beside the file name. A single tap does nothing,
    a double-tap opens the current offer's own folder. */
@@ -591,10 +610,14 @@ body:not(.wording) #content {
 /* Show the complete offer/ad name and the first spoken words. The script
    title alone ("The bank") is not enough to identify a filming take. */
 #qmenu-list .item {
-  grid-template-columns:minmax(0, 1fr);
+  display:flex;
+  flex-direction:column;
   gap:4px;
   align-items:start;
 }
+#qmenu-list .item .t,
+#qmenu-list .item .m,
+#qmenu-list .item .hook { display:block; flex:none; }
 #qmenu-list .item .t {
   font-size:15px;
   font-weight:700;

@@ -126,15 +126,17 @@ export function takeCaptureDescription(input) {
     missed_callbacks: 10000000, camera_longest_gap_ms: 10000000,
     copied_longest_gap_ms: 10000000, lens_changes: 10000000,
     frame_requests: 10000000, frame_request_failures: 10000000,
+    copy_total_ms: 10000000, copy_longest_ms: 10000000,
     canvas_width: 8192, canvas_height: 8192, target_fps: 240,
     start_width: 8192, start_height: 8192, start_frame_rate: 240,
+    start_frame_rate_max: 240, end_frame_rate_max: 240,
     start_preview_width: 8192, start_preview_height: 8192,
     end_width: 8192, end_height: 8192, end_frame_rate: 240,
     end_preview_width: 8192, end_preview_height: 8192
   };
   for (const [key, max] of Object.entries(limits)) {
     const value = input[key];
-    const rate = key === "target_fps" || key.endsWith("frame_rate");
+    const rate = key === "target_fps" || key.includes("frame_rate");
     if (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max &&
         (rate || Number.isInteger(value))) allowed[key] = value;
   }

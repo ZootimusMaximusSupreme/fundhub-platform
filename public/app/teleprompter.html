@@ -211,7 +211,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css?v=20261012-upright2">
+<link rel="stylesheet" href="teleprompter.css?v=20261012-quality-badge">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -455,6 +455,7 @@ body.wording #flip{transform:none !important}
   <span id="mic-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
 </div>
 <div id="rec" hidden><span id="rec-dot"></span><span id="rec-time">0:00</span></div>
+<div id="camera-quality" role="status" aria-live="off" hidden title="Actual camera settings"></div>
 <button type="button" class="mini" id="b-save" hidden>Save the video</button>
 
 <div id="video-save-status" role="status" aria-live="polite" data-state="idle" hidden>
@@ -466,6 +467,6 @@ body.wording #flip{transform:none !important}
 
 <script src="teleprompter-edits.js?v=20261012-reconnect2"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-  <script src="teleprompter.js?v=20261012-camera-grant2"></script>
+  <script src="teleprompter.js?v=20261012-quality-badge"></script>
 </body>
 </html>

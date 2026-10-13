@@ -16,8 +16,11 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 | `/root` | Inspect teleprompter code and specs, make the smallest supported fix, integrate and ship | Running |
 | `/root/proof_tests` | Baseline and focused automated proof in test files | Done |
 | `/root/luna_video_integrity` | Owner-requested Luna review of the 8:06 p.m. Drive original, every frame and audio decode | Done |
-| `/root/luna_camera_settings` | Owner-requested Luna check of camera requests, granted settings, and stale quality reports | Running |
-| `/root/luna_release` | Owner-requested Luna diagnosis of the stalled GitHub/Netlify publication | Running |
+| `/root/luna_camera_settings` | Owner-requested Luna check of camera requests, granted settings, and stale quality reports | Done |
+| `/root/luna_release` | Owner-requested Luna diagnosis of the stalled GitHub/Netlify publication | Done |
+| `/root/luna_new_video_integrity` | Every-frame check of the 9:17 p.m. Ad and 9:20 p.m. VSL originals | Done |
+| `/root/luna_capture_settings` | Camera-rate ordering, actual-grant guard, bounded capability and copy-cost proof | Done |
+| `/root/sol_screen_proof` | Requested actual-camera badge and reported picker overlap proof in Chromium/WebKit | Done |
 
 ## Drive video findings
 
@@ -44,6 +47,16 @@ Owner clarification at 8:35 p.m. Phoenix: front-camera Ads must save full-frame 
 - Changed: `public/app/teleprompter.js`, `public/app/teleprompter.html` (fresh asset version), `docs/journeys/shoot-flow.md`, `docs/journeys/CHANGELOG.md`. Tests are owned by `/root/proof_tests`.
 
 ## Test and live proof
+
+### Follow-up: two new saved takes locate the remaining failure
+
+- Both originals are complete in the correct Direct Book folder. [9:17 p.m. Ad](https://drive.google.com/file/d/1TO513g3pEqhhm-8ULwCWzd13pJ9bou6I/view): **72,435,135 bytes**; [9:20 p.m. VSL](https://drive.google.com/file/d/1vJA8Uzhyz2-Sbvvunmf2MWoVf61vYzF7/view): **101,865,018 bytes**. Authenticated original downloads matched both recorded Drive byte counts; queued phone saves were retained.
+- Actual Ad start/end settings were **1080×1920 at 30 fps**, and the canvas budget followed that 30 fps grant. In 19.953 seconds the phone reported 597 presented camera frames, 574 copies and 24 missed callbacks. Luna decoded **573 distinct frames, 28.82 fps**, no decode error, crop or repeated frames; longest saved gap 86.7 ms. Audio decodes without clipping.
+- Actual VSL start/end settings were **2160×3840 at 30 fps**, again with a 30 fps canvas budget. In 16.414 seconds the phone reported 288 presented frames, 179 copies and **110 missed callbacks**. Luna decoded **177 distinct frames, 10.87 fps**, no decode error, crop or repeated frames; 53 gaps exceeded 100 ms and the longest was 213.3 ms. Audio decodes without clipping. The lower granted rate and the later missed-copy problem are separate measured failures. Neither file passes 60 fps.
+- Confirmed camera-selection flaw: a 30 fps HD fallback came before the full-portrait 4K60 source for an Ad; a 4K request used an ideal 60 value and accepted a reported 30 grant. The correction tries all 60 fps sources before any 30 fps fallback, starts 4K with a minimum 60 request, and rejects a known below-60 result on a 60 request. A lower fallback remains a failed quality target, never a claimed 60 fps success.
+- The owner requested a small truthful camera badge and Sol for screen work. It reads actual track dimensions/rate, updates across lens/script changes, and says `fps unavailable` when the browser omits the rate. The picker bug was reproduced in both Chromium and WebKit: title/detail overlapped and the hook spilled out of compressed rows. The repair keeps each row at its text's natural height. No camera-view, word-size, reading-line or control layout changes are part of this batch. The explicit screen guardrail is in `docs/rules/TELEPROMPTER-VIDEO.md`.
+- Added only bounded optional frame-rate capability maxima and paint/capture time totals to the saved diagnostics, so the next VSL can distinguish camera negotiation from costly 4K copies. These are measurements, not an unproved rendering optimization.
+- New proof: **121/121 scoped unit/provider checks**, **53/53 Chromium take-flow cases**, **10/10 focused WebKit cases**, plus six high-risk Chromium cases after the deterministic WebKit fake-camera setup. A real WebKit encoder run decoded 172 clean 1080×1920 frames, matching 171 instrumented draws plus the initial paint. Its emulated camera supplied about 47 fps, so it does not prove real iPhone 60 fps. Latest source still needs release and new phone proof.
 
 ### Follow-up: fetched camera settings and publication failure
 
